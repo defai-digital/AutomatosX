@@ -9,6 +9,12 @@ import * as readline from 'readline';
 import type { PromptConfig, PromptResponse, CheckpointAction } from '../types/stage-execution.js';
 
 /**
+ * Default warning threshold before timeout (in milliseconds)
+ * When timeout > 30s, a warning will be shown this many ms before timeout
+ */
+const DEFAULT_TIMEOUT_WARNING_THRESHOLD_MS = 30000;
+
+/**
  * Prompt Manager Interface
  *
  * Abstract interface for user prompts. Allows different implementations:
@@ -252,9 +258,9 @@ export class CLIPromptAdapter implements IPromptManager {
       // Set timeout (default: 10 minutes)
       timeoutHandle = setTimeout(handleTimeout, this.config.timeout);
 
-      // Set warning (if timeout > 30s)
-      if (this.config.timeout > 30000) {
-        warningHandle = setTimeout(handleWarning, this.config.timeout - 30000);
+      // Set warning (if timeout > warning threshold)
+      if (this.config.timeout > DEFAULT_TIMEOUT_WARNING_THRESHOLD_MS) {
+        warningHandle = setTimeout(handleWarning, this.config.timeout - DEFAULT_TIMEOUT_WARNING_THRESHOLD_MS);
       }
 
       // Ask question

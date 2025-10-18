@@ -338,8 +338,8 @@ export class ParallelAgentExecutor {
         },
         duration: endTime - startTime,
         outputs: {
-          files: [],  // TODO: Track file creation in parallel execution
-          memoryIds: [],  // TODO: Track memory entries
+          files: [],  // TODO(v5.7.0): Track file creation in parallel execution (requires workspace monitoring)
+          memoryIds: [],  // TODO(v5.7.0): Track memory entries created during execution
           workspacePath: context.agentWorkspace || ''
         },
         startTime: new Date(startTime),

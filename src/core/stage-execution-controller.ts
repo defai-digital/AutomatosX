@@ -133,7 +133,7 @@ export class StageExecutionController {
     if (mode.interactive) {
       this.promptManager = createCLIPromptManager({
         timeout: this.config.userDecisionTimeout,
-        locale: 'en', // TODO: Make configurable
+        locale: 'en', // TODO(v5.8.0): Make configurable via config.locale (i18n support)
       });
     }
 
@@ -1026,7 +1026,7 @@ export class StageExecutionController {
       stageIndex: stage.index,
       status: 'completed' as StageStatus,
       output: executionResult.response.content,
-      artifacts: [], // TODO: Collect artifacts from workspace
+      artifacts: [], // TODO(v5.7.0): Collect artifacts from workspace (files created, modified during execution)
       duration,
       tokensUsed: executionResult.response.tokensUsed?.total || 0,
       timestamp: new Date().toISOString(),
@@ -1259,8 +1259,8 @@ export class StageExecutionController {
       names.add(stage.name);
     }
 
-    // TODO: Validate dependencies (if defined)
-    // TODO: Check for cycles
+    // Dependencies and cycles are validated by DependencyGraphBuilder.detectCycles()
+    // when parallel execution is enabled (see parallel-agent-executor.ts)
   }
 
   /**

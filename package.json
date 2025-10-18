@@ -23,6 +23,7 @@
     "test:smoke": "bash tests/smoke/smoke-test.sh",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
+    "test:memory": "node --expose-gc --max-old-space-size=4096 node_modules/.bin/vitest run",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm run typecheck && npm run test:all",
     "prepack": "npm run build",

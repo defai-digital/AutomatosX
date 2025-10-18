@@ -828,7 +828,26 @@ export class AgentExecutor {
         prompt += `**Collaborating agents:** ${context.session.agents.join(', ')}\n\n`;
       }
 
-      prompt += `**Shared workspace:** ${context.orchestration.sharedWorkspace}\n\n`;
+      prompt += `**Project root:** ${context.projectDir}\n`;
+      prompt += `**Shared workspace:** ${context.orchestration.sharedWorkspace}\n`;
+      prompt += `**Temporary workspace:** ${context.projectDir}/automatosx/tmp\n\n`;
+
+      prompt += `**File System Access Rights:**\n`;
+      prompt += `✅ You have FULL read/write access to the entire project directory\n`;
+      prompt += `✅ You can read/write ANY file in: ${context.projectDir}\n`;
+      prompt += `✅ No restrictions on file types (source code, tests, configs, docs, etc.)\n`;
+      prompt += `✅ You can create, modify, and delete files as needed for your task\n\n`;
+
+      prompt += `**Organization Guidelines (NOT restrictions):**\n`;
+      prompt += `- Prefer automatosx/PRD/ for planning documents, proposals, architecture docs\n`;
+      prompt += `- Prefer automatosx/tmp/ for temporary files, scripts, ad-hoc analysis\n`;
+      prompt += `- Write source code to src/, tests to tests/, docs to docs/ as normal\n`;
+      prompt += `- These are recommendations for organization, not access restrictions\n\n`;
+
+      prompt += `**When to ask user permission:**\n`;
+      prompt += `- ONLY when accessing files OUTSIDE the project directory\n`;
+      prompt += `- ONLY when deleting critical files (package.json, .git/ folder, .env)\n`;
+      prompt += `- DO NOT ask permission for normal project file operations\n\n`;
 
       if (context.orchestration.delegationChain.length > 0) {
         prompt += `**Delegation chain:** ${context.orchestration.delegationChain.join(' → ')} → YOU\n`;

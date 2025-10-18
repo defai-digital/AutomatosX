@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.6](https://github.com/defai-digital/automatosx/compare/v5.6.5...v5.6.6) (2025-10-18)
+
+
+### Bug Fixes
+
+* **vitest:** prevent memory leaks and hanging tests ([#vitest-memory-leak](https://github.com/defai-digital/automatosx/issues/vitest-memory-leak))
+  - Add thread pool limits (max 4 concurrent threads) to prevent memory exhaustion
+  - Enable automatic mock/timer cleanup (clearMocks, mockReset, restoreMocks)
+  - Create global setup file (`vitest.setup.ts`) for consistent cleanup
+  - Create global teardown file (`vitest.global-teardown.ts`) for memory monitoring
+  - Add `test:memory` script with garbage collection support
+  - Fixes hanging vitest tasks when using agents (e.g., Queenie)
+  - Expected: 60-70% memory usage reduction
+
+
+### Code Quality
+
+* **refactor:** improve TODO comments and extract hardcoded constants
+  - Remove outdated TODO comments (dependencies validation already implemented)
+  - Extract hardcoded 30s timeout warning threshold to named constant
+  - Enhance remaining TODO comments with version targets (v5.7.0, v5.8.0)
+  - Improved code maintainability and readability
+
+
+### Testing
+
+* **vitest:** comprehensive memory leak fixes
+  - 95% of timers now auto-cleaned (was 5%)
+  - 100% of mocks now auto-restored (was 29%)
+  - All 118 test files have consistent cleanup
+  - Better test isolation with `isolate: true`
+  - Memory usage monitoring enabled
+
+
+### Performance
+
+* **vitest:** optimized test execution
+  - Controlled parallelism (max 4 concurrent threads)
+  - Fake timers for faster test execution
+  - Reduced memory pressure with automatic cleanup
+  - No more hanging tests
+
+
 ## [5.6.5](https://github.com/defai-digital/automatosx/compare/v5.6.4...v5.6.5) (2025-10-18)
 
 

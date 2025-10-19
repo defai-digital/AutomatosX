@@ -131,7 +131,7 @@ jobs:
         run: |
           echo "🧪 Running test suite with CI-optimized configuration..."
           npm run test:ci
-        timeout-minutes: 5  # Reduced from 15min (actual execution: ~26s)
+        timeout-minutes: 10  # CI tests take 5-10 minutes (2,007 tests with exclusions)
         env:
           AUTOMATOSX_MOCK_PROVIDERS: true
           NODE_ENV: test  # Override job-level NODE_ENV for tests

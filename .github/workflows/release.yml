@@ -28,6 +28,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false  # Queue releases instead of canceling
 
     steps:
       - name: Checkout code
@@ -114,7 +117,7 @@ jobs:
         run: |
           echo "🧪 Running test suite with CI-optimized configuration..."
           npm run test:all -- --config vitest.config.ci.ts
-        timeout-minutes: 15
+        timeout-minutes: 5  # Reduced from 15min (actual execution: ~26s)
         env:
           AUTOMATOSX_MOCK_PROVIDERS: true
           CI: true

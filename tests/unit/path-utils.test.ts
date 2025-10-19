@@ -561,15 +561,10 @@ describe('path-utils', () => {
       });
 
       it('handles root paths', () => {
-        // Note: path.basename('/') returns '' on most platforms
+        // Note: path.basename('/') returns '' on all platforms
         // This is expected behavior from Node.js path module
         const result = basename('/');
-        if (os.platform() === 'win32') {
-          expect(result).toBeTruthy();
-        } else {
-          // On Unix, basename('/') returns '' (empty string)
-          expect(result).toBe('');
-        }
+        expect(result).toBe('');
       });
     });
 

@@ -130,7 +130,7 @@ jobs:
       - name: Run test suite
         run: |
           echo "🧪 Running test suite with CI-optimized configuration..."
-          npm run test:all -- --config vitest.config.ci.ts
+          npm run test:ci
         timeout-minutes: 5  # Reduced from 15min (actual execution: ~26s)
         env:
           AUTOMATOSX_MOCK_PROVIDERS: true

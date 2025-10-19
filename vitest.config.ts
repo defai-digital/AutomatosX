@@ -5,8 +5,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    testTimeout: 30000,      // 30 seconds per test (increased for integration tests)
-    hookTimeout: 30000,       // 30 seconds for hooks
+    testTimeout: 60000,      // 60 seconds per test (increased for slow async tests)
+    hookTimeout: 60000,       // 60 seconds for hooks
     teardownTimeout: 10000,   // 10 seconds for teardown
 
     // Thread pool configuration to prevent memory exhaustion

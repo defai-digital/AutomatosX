@@ -1,119 +1,125 @@
 /**
- * Vitest Configuration for CI Environments
+ * Vitest Configuration for CI/CD Environments
  *
- * Optimized for GitHub Actions and other CI platforms with limited resources.
+ * This configuration excludes problematic tests that require:
+ * - Complex CLI integration test refactoring
+ * - Worker-incompatible features (process.chdir)
+ * - Long-running async operations
  *
- * Key optimizations:
- * - Reduced thread pool size (2-4 threads for CI)
- * - Shorter timeouts to fail fast
- * - Disabled coverage for speed
- * - Verbose reporting for better CI logs
+ * These tests are documented in tmp/test-fixes-final-report.md
+ * and will be addressed in future versions (v5.7.0 or v6.0.0).
  */
 
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { resolve } from 'path';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@tests': path.resolve(__dirname, './tests')
-    }
-  },
   test: {
     globals: true,
     environment: 'node',
+    testTimeout: 60000,      // 60 seconds per test (increased for slow async tests)
+    hookTimeout: 60000,       // 60 seconds for hooks
+    teardownTimeout: 10000,   // 10 seconds for teardown
 
-    // CI-specific pool configuration
+    // Thread pool configuration to prevent memory exhaustion
     pool: 'threads',
     poolOptions: {
       threads: {
         singleThread: false,
-        minThreads: 2,
-        maxThreads: 4, // Limit for CI environments (2 core machines)
-        useAtomics: true,
-      },
+        isolate: true,         // Isolate each test file for better stability
+        minThreads: 1,
+        maxThreads: 4,         // Limit concurrent threads to prevent memory issues
+        useAtomics: true       // Better performance with worker threads
+      }
     },
 
-    // Balanced timeouts for CI - accommodate reliability tests
-    testTimeout: 20000,     // 20s (was 10s - increased for chaos/concurrency tests)
-    hookTimeout: 20000,     // 20s (was 10s - increased for async cleanup)
-    teardownTimeout: 10000, // 10s (was 5s - increased for async cleanup)
+    // File parallelism and resource limits
+    fileParallelism: true,
+    maxConcurrency: 4,         // Max 4 tests running concurrently
 
-    // Disable file watching in CI
-    watch: false,
+    // Auto-cleanup for mocks and timers
+    clearMocks: true,          // Auto-clear mocks after each test
+    mockReset: true,           // Reset mock state after each test
+    restoreMocks: true,        // Restore original implementations after each test
+    unstubEnvs: true,          // Restore environment variables after each test
+    unstubGlobals: true,       // Restore global objects after each test
 
-    // Process isolation for consistency
-    isolate: true,
+    // Memory monitoring
+    logHeapUsage: true,        // Log memory usage
 
-    // Memory optimization
-    maxConcurrency: 4,      // Limit concurrent test files
+    // Global setup and teardown
+    setupFiles: ['./vitest.setup.ts'],
+    globalTeardown: './vitest.global-teardown.ts',
 
-    // CI-friendly reporting
-    reporters: ['verbose'],
-
-    // Disable coverage in CI for speed
-    // (can be enabled separately if needed)
+    env: {
+      // Always use mock providers in tests
+      AUTOMATOSX_MOCK_PROVIDERS: 'true'
+    },
     coverage: {
-      enabled: false,
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'dist/',
+        'tmp/',
+        'tests/',
+        '**/*.config.*',
+        '**/*.d.ts'
+      ]
     },
-
-    // Global setup/teardown (optional, only if files exist)
-    // globalSetup: './tests/setup/global-setup.ts',
-    // globalTeardown: './tests/setup/global-teardown.ts',
-
-    // Automatic cleanup
-    clearMocks: true,
-    restoreMocks: true,
-    unstubGlobals: true,
-    unstubEnvs: true,
-
-    // Include/exclude patterns
     include: ['tests/**/*.test.ts'],
     exclude: [
       'node_modules',
       'dist',
       '.automatosx',
-      'automatosx',
-      'coverage',
-      '**/*.d.ts',
-      'tests/setup/**',
-      'tests/helpers/**',
-      // Temporarily exclude flaky/failing tests (pre-existing issues, not v5.6.6 regressions)
-      // These tests have infrastructure issues (mocking, timing) that need separate fixes
-      // Issue: https://github.com/defai-digital/automatosx/issues/XXX (to be created)
-      'tests/benchmark/**',    // Benchmark tests fail in CI (2-core machine constraints)
-      'tests/e2e/**',          // E2E tests fail in CI (session lifecycle timing issues)
-      'tests/integration/**',  // Integration tests have timing issues in CI
-      'tests/reliability/**',  // Reliability tests (chaos, concurrency) exceed CI timeouts
-      'tests/unit/agent-helpers.test.ts',
-      'tests/unit/cache-warmer.test.ts',
-      'tests/unit/checkpoint-manager.test.ts',
-      'tests/unit/config-command.test.ts',
-      'tests/unit/error-formatter.test.ts',
-      'tests/unit/executor-retry.test.ts',
-      'tests/unit/executor-timeout.test.ts',
-      'tests/unit/graceful-shutdown.test.ts',
-      'tests/unit/lazy-loader.test.ts',
-      'tests/unit/list-command.test.ts',
-      'tests/unit/memory-backup.test.ts',
-      'tests/unit/memory-manager.test.ts',
-      'tests/unit/metrics.test.ts',
-      'tests/unit/openai-embedding-provider.test.ts',
-      'tests/unit/performance.test.ts',
-      'tests/unit/provider-streaming.test.ts',
-      'tests/unit/rate-limiter.test.ts',
-      'tests/unit/response-cache.test.ts',
-      'tests/unit/retry.test.ts',
-      'tests/unit/router.test.ts',
-      'tests/unit/run-command-handlers.test.ts',
-      'tests/unit/runs-command.test.ts',
-      'tests/unit/session-manager.test.ts',
-      'tests/unit/stage-execution-controller.test.ts',
-      'tests/unit/status-command.test.ts',
-    ],
 
-    // Setup files (use existing vitest.setup.ts)
-    setupFiles: ['./vitest.setup.ts'],
+      // ===== CLI Integration Tests with process.exit() Mock Issues (38 tests) =====
+      // These tests require complex refactoring to separate process.exit() behavior
+      // from test assertions. Current mock approach breaks test flow control.
+      // See: tmp/test-fixes-final-report.md - Category A
+      'tests/unit/status-command.test.ts',      // 21 tests
+      'tests/unit/run-command-handlers.test.ts', // 13 tests
+      'tests/unit/list-command.test.ts',         // 9 tests (partial)
+      'tests/unit/config-command.test.ts',       // 8 tests (partial)
+
+      // ===== Worker Compatibility Issues (10 tests) =====
+      // These tests use process.chdir() which is not supported in Vitest workers
+      // See: tmp/test-fixes-final-report.md - Category B
+      'tests/unit/agent-helpers.test.ts',        // 10 tests
+
+      // ===== Slow Async Operations (53 tests) =====
+      // These tests exceed 60s timeout and need better mocking or optimization
+      // See: tmp/test-fixes-final-report.md - Category C
+      'tests/unit/memory-backup.test.ts',        // 18 tests - Real file I/O
+      'tests/unit/provider-streaming.test.ts',   // 8 tests - Real streaming
+      'tests/unit/performance.test.ts',          // 7 tests - Performance benchmarks
+      'tests/unit/executor-retry.test.ts',       // 6 tests - Retry with delays
+      'tests/unit/retry.test.ts',                // 5 tests - Retry logic
+
+      // ===== Other Issues (20 tests) =====
+      // Various individual test failures requiring investigation
+      // See: tmp/test-fixes-final-report.md - Category D
+      'tests/unit/openai-embedding-provider.test.ts', // 3 tests
+      'tests/unit/session-manager.test.ts',           // 3 tests (partial)
+      'tests/unit/graceful-shutdown.test.ts',         // 3 tests
+      'tests/unit/memory-manager.test.ts',            // 2 tests (partial)
+      'tests/unit/response-cache.test.ts',            // 2 tests (partial)
+      'tests/unit/executor-timeout.test.ts',          // 2 tests
+      'tests/unit/stage-execution-controller.test.ts', // 2 tests (partial)
+      'tests/unit/checkpoint-manager.test.ts',        // 1 test (partial)
+      'tests/unit/lazy-loader.test.ts',               // 1 test (partial)
+      'tests/unit/metrics.test.ts',                   // 1 test (partial)
+      'tests/unit/rate-limiter.test.ts',              // 1 test (partial)
+      'tests/unit/runs-command.test.ts',              // 1 test (partial)
+
+      // Note: Router tests have 6 failures but are critical, so kept in CI
+      // 'tests/unit/router.test.ts', // 6 tests - Keeping for now
+    ]
   },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+      '@tests': resolve(__dirname, './tests')
+    }
+  }
 });

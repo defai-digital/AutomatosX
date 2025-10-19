@@ -100,7 +100,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 16+ specialized agents
-- v5.6.4 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.8 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -140,7 +140,7 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.4 (October 2025)
+### Latest Release: v5.6.8 (October 2025)
 
 **What's New**:
 

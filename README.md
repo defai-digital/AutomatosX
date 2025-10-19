@@ -8,7 +8,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-1,667%20passing-brightgreen.svg)](#)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/defai-digital/automatosx/publish.yml?branch=main&label=CI)](https://github.com/defai-digital/automatosx/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/defai-digital/automatosx/ci.yml?branch=main&label=CI)](https://github.com/defai-digital/automatosx/actions)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)

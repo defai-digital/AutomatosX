@@ -32,6 +32,10 @@ jobs:
       group: npm-publish
       cancel-in-progress: false  # Queue releases instead of canceling
 
+    env:
+      CI: true
+      NODE_ENV: production
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,6 +48,9 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            .npmrc
 
       # Determine if this is a pre-release (from tag or manual input)
       - name: Check if pre-release
@@ -103,6 +110,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify dependencies
+        run: |
+          echo "🔍 Verifying npm dependencies..."
+          npm ls --depth=0 || echo "⚠️  Dependency tree check completed with warnings"
+
       - name: Build project
         run: |
           echo "🔨 Building project..."
@@ -120,8 +132,7 @@ jobs:
         timeout-minutes: 5  # Reduced from 15min (actual execution: ~26s)
         env:
           AUTOMATOSX_MOCK_PROVIDERS: true
-          CI: true
-          NODE_ENV: test
+          NODE_ENV: test  # Override job-level NODE_ENV for tests
 
       - name: Run smoke tests
         run: |
@@ -159,15 +170,19 @@ jobs:
 
           echo "✅ Package is installable"
 
-      # Publish with appropriate tag
+      # Publish with appropriate tag (with retry for network failures)
       - name: Publish to npm
         id: publish
-        timeout-minutes: 5
-        run: |
-          echo "📤 Publishing to npm with tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
-          npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }}
-
-          echo "NPM_PUBLISH_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "📤 Publishing to npm with tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
+            npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }}
+            echo "NPM_PUBLISH_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

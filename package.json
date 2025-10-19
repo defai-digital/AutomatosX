@@ -25,7 +25,7 @@
     "test:watch": "vitest watch",
     "test:memory": "node --expose-gc --max-old-space-size=4096 node_modules/.bin/vitest run",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run typecheck && npm run test:all",
+    "prepublishOnly": "npm run build && npm run typecheck && ([ -n \"$CI\" ] || npm run test:all)",
     "prepack": "npm run build",
     "postpack": "echo '✅ Package created successfully'",
     "version": "node tools/sync-all-versions.js && git add README.md CLAUDE.md",

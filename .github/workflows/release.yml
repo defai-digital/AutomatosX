@@ -159,6 +159,7 @@ jobs:
       # Publish with appropriate tag
       - name: Publish to npm
         id: publish
+        timeout-minutes: 5
         run: |
           echo "📤 Publishing to npm with tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
           npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }}

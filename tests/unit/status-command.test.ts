@@ -43,9 +43,12 @@ vi.mock('../../src/core/path-resolver.js', async () => {
   return {
     ...actual,
     PathResolver: vi.fn().mockImplementation(() => ({
-      detectProjectRoot: vi.fn().mockImplementation(() => {
+      detectProjectRoot: vi.fn().mockImplementation(async () => {
         return (global as any).__testDir || process.cwd();
-      })
+      }),
+      resolveUserPath: vi.fn().mockImplementation((userPath) => userPath),
+      resolveProjectPath: vi.fn().mockImplementation((relativePath) => relativePath),
+      resolveAgentPath: vi.fn().mockImplementation((userPath) => userPath)
     }))
   };
 });

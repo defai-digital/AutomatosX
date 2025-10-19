@@ -353,6 +353,11 @@ export class AgentExecutor {
         response = await context.provider.execute(request);
       }
 
+      // Validate response (v5.6.7 fix: prevent undefined.content errors)
+      if (!response) {
+        throw new Error('Provider returned undefined response');
+      }
+
       const duration = Date.now() - startTime;
 
       // Check for delegation requests in response (v4.7.2+)

@@ -319,6 +319,11 @@ export class ParallelAgentExecutor {
         signal: options.signal
       });
 
+      // Validate response (v5.6.7 fix: prevent undefined.content errors)
+      if (!response) {
+        throw new Error('Provider returned undefined response');
+      }
+
       // Create complete DelegationResult structure (Issue #5 fix)
       const endTime = Date.now();
       const result: DelegationResult = {

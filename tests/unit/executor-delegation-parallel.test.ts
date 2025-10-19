@@ -107,6 +107,17 @@ describe('AgentExecutor - Parallel Delegation', () => {
   } as unknown as Provider;
 
   beforeEach(() => {
+    // Reset and reconfigure mock provider to ensure consistent behavior
+    vi.mocked(mockProvider.execute).mockClear();
+    vi.mocked(mockProvider.execute).mockResolvedValue({
+      content: 'Test output',
+      model: 'test-model',
+      tokensUsed: { prompt: 10, completion: 10, total: 20 },
+      latencyMs: 100,
+      finishReason: 'stop' as const,
+      cached: false
+    });
+
     // Mock SessionManager
     mockSessionManager = {
       createSession: vi.fn().mockResolvedValue({

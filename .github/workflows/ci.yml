@@ -41,16 +41,20 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
-        run: npm run test:unit
-        timeout-minutes: 15
+        run: npm run test:unit -- --config vitest.config.ci.ts
+        timeout-minutes: 10
         env:
           AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
 
       - name: Run integration tests
-        run: npm run test:integration
-        timeout-minutes: 15
+        run: npm run test:integration -- --config vitest.config.ci.ts
+        timeout-minutes: 10
         env:
           AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
 
       - name: Upload coverage report
         if: always()

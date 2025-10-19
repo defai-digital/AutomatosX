@@ -112,11 +112,13 @@ jobs:
 
       - name: Run test suite
         run: |
-          echo "🧪 Running test suite..."
-          npm run test:all
-        timeout-minutes: 20
+          echo "🧪 Running test suite with CI-optimized configuration..."
+          npm run test:all -- --config vitest.config.ci.ts
+        timeout-minutes: 15
         env:
           AUTOMATOSX_MOCK_PROVIDERS: true
+          CI: true
+          NODE_ENV: test
 
       - name: Run smoke tests
         run: |

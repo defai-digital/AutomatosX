@@ -13,6 +13,7 @@ import { ClaudeProvider } from '../../src/providers/claude-provider.js';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { normalizePath } from '../../src/utils/path-utils.js';
 
 describe('ContextManager', () => {
   let testDir: string;
@@ -152,8 +153,8 @@ temperature: 0.7
       const context = await manager.createContext('test', 'Task');
 
       expect(context.agentWorkspace).toBeDefined();
-      expect(context.agentWorkspace).toContain('.automatosx/workspaces');
-      expect(context.agentWorkspace).toContain('test-agent'); // Agent name is sanitized to lowercase with dashes
+      expect(normalizePath(context.agentWorkspace)).toContain('.automatosx/workspaces');
+      expect(normalizePath(context.agentWorkspace)).toContain('test-agent'); // Agent name is sanitized to lowercase with dashes
     });
 
     it('should inject memory by default', async () => {

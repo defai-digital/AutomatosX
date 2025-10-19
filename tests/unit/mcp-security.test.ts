@@ -10,6 +10,7 @@ import { PathResolver } from '../../src/core/path-resolver.js';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { mkdirSync, rmSync } from 'fs';
+import { normalizePath } from '../../src/utils/path-utils.js';
 
 describe('MCP Security - Path Traversal Prevention', () => {
   let testDir: string;
@@ -65,15 +66,15 @@ describe('MCP Security - Path Traversal Prevention', () => {
     it('should allow simple filename', () => {
       const result = resolveExportPath(pathResolver, 'backup.json');
 
-      expect(result).toContain('.automatosx/memory/exports');
-      expect(result).toContain('backup.json');
+      expect(normalizePath(result)).toContain('.automatosx/memory/exports');
+      expect(normalizePath(result)).toContain('backup.json');
     });
 
     it('should allow filename with timestamp', () => {
       const result = resolveExportPath(pathResolver, 'backup-2025-10-10.json');
 
-      expect(result).toContain('.automatosx/memory/exports');
-      expect(result).toContain('backup-2025-10-10.json');
+      expect(normalizePath(result)).toContain('.automatosx/memory/exports');
+      expect(normalizePath(result)).toContain('backup-2025-10-10.json');
     });
 
     it('should reject path traversal with ..', () => {
@@ -98,26 +99,26 @@ describe('MCP Security - Path Traversal Prevention', () => {
       // When user provides "some/path/file.json", extract only "file.json"
       const result = resolveExportPath(pathResolver, 'some/path/file.json');
 
-      expect(result).toContain('.automatosx/memory/exports');
-      expect(result).toContain('file.json');
-      expect(result).not.toContain('some/path');
+      expect(normalizePath(result)).toContain('.automatosx/memory/exports');
+      expect(normalizePath(result)).toContain('file.json');
+      expect(normalizePath(result)).not.toContain('some/path');
     });
 
     it('should extract only filename from Windows-style path', () => {
       const result = resolveExportPath(pathResolver, 'C:\\Users\\file.json');
 
-      expect(result).toContain('.automatosx/memory/exports');
+      expect(normalizePath(result)).toContain('.automatosx/memory/exports');
 
       // On Unix, the whole string becomes the filename
       // On Windows, it would be split properly
       if (process.platform === 'win32') {
-        expect(result).toContain('file.json');
-        expect(result).not.toContain('C:');
-        expect(result).not.toContain('Users');
+        expect(normalizePath(result)).toContain('file.json');
+        expect(normalizePath(result)).not.toContain('C:');
+        expect(normalizePath(result)).not.toContain('Users');
       } else {
         // On Unix, backslash is a valid filename character
         // So 'C:\Users\file.json' becomes the entire filename
-        expect(result).toContain('.automatosx/memory/exports');
+        expect(normalizePath(result)).toContain('.automatosx/memory/exports');
       }
     });
   });
@@ -228,7 +229,7 @@ describe('MCP Security - Path Traversal Prevention', () => {
 
       for (const path of paths) {
         const result = resolveExportPath(pathResolver, path);
-        expect(result).toContain('.automatosx/memory/exports');
+        expect(normalizePath(result)).toContain('.automatosx/memory/exports');
       }
     });
   });

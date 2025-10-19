@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { resolvePath, joinPathDisplay } from '../../src/utils/path-utils.js';
+import { resolvePath, joinPathDisplay, normalizePath } from '../../src/utils/path-utils.js';
 import { PathResolver, detectProjectRoot } from '../../src/core/path-resolver.js';
 import { PathError } from '../../src/types/path.js';
 
@@ -35,7 +35,7 @@ describe('PathResolver', () => {
     it('should accept absolute paths within project', () => {
       const absolutePath = joinPathDisplay(projectDir, 'src/file.ts');
       const result = resolver.resolveUserPath(absolutePath);
-      expect(result).toBe(absolutePath);
+      expect(normalizePath(result)).toBe(absolutePath);
     });
 
     it('should reject absolute paths outside project', () => {
@@ -79,31 +79,31 @@ describe('PathResolver', () => {
   describe('resolveProjectPath', () => {
     it('should resolve paths relative to project root', () => {
       const result = resolver.resolveProjectPath('src/index.ts');
-      expect(result).toBe(joinPathDisplay(projectDir, 'src/index.ts'));
+      expect(normalizePath(result)).toBe(joinPathDisplay(projectDir, 'src/index.ts'));
     });
 
     it('should handle nested paths', () => {
       const result = resolver.resolveProjectPath('src/core/router.ts');
-      expect(result).toBe(joinPathDisplay(projectDir, 'src/core/router.ts'));
+      expect(normalizePath(result)).toBe(joinPathDisplay(projectDir, 'src/core/router.ts'));
     });
   });
 
   describe('resolveWorkingPath', () => {
     it('should resolve paths relative to working directory', () => {
       const result = resolver.resolveWorkingPath('file.ts');
-      expect(result).toBe(joinPathDisplay(workingDir, 'file.ts'));
+      expect(normalizePath(result)).toBe(joinPathDisplay(workingDir, 'file.ts'));
     });
   });
 
   describe('resolveWorkspacePath', () => {
     it('should resolve paths within agent workspace', () => {
       const result = resolver.resolveWorkspacePath('output.json');
-      expect(result).toBe(joinPathDisplay(agentWorkspace, 'output.json'));
+      expect(normalizePath(result)).toBe(joinPathDisplay(agentWorkspace, 'output.json'));
     });
 
     it('should handle nested workspace paths', () => {
       const result = resolver.resolveWorkspacePath('analysis/report.md');
-      expect(result).toBe(joinPathDisplay(agentWorkspace, 'analysis/report.md'));
+      expect(normalizePath(result)).toBe(joinPathDisplay(agentWorkspace, 'analysis/report.md'));
     });
 
     it('should not validate workspace paths against project boundaries', () => {

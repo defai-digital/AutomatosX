@@ -7,7 +7,10 @@ import {
   formatError,
   formatErrorJSON,
   formatErrorSummary,
-  formatErrorList
+  formatErrorList,
+  printError,
+  printErrorSummary,
+  printErrorList
 } from '../../src/utils/error-formatter.js';
 import { ConfigError, ErrorCode, BaseError } from '../../src/utils/errors.js';
 
@@ -225,8 +228,7 @@ describe('Error Formatter', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should print error to console', async () => {
-      const { printError } = await import('../../src/utils/error-formatter.js');
+    it('should print error to console', () => {
       const error = ConfigError.notFound('/config.json');
 
       printError(error, { colors: false });
@@ -237,8 +239,7 @@ describe('Error Formatter', () => {
       expect(output).toContain('[E1000]');
     });
 
-    it('should print error summary to console', async () => {
-      const { printErrorSummary } = await import('../../src/utils/error-formatter.js');
+    it('should print error summary to console', () => {
       const error = ConfigError.notFound('/config.json');
 
       printErrorSummary(error, { colors: false });
@@ -249,8 +250,7 @@ describe('Error Formatter', () => {
       expect(output).not.toContain('\n');
     });
 
-    it('should print error list to console', async () => {
-      const { printErrorList } = await import('../../src/utils/error-formatter.js');
+    it('should print error list to console', () => {
       const errors = [
         ConfigError.notFound('/config1.json'),
         ConfigError.notFound('/config2.json')

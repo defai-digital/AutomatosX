@@ -148,14 +148,25 @@ export class OpenAIProvider extends BaseProvider {
       // Build CLI arguments using the new buildCLIArgs method
       const args = this.buildCLIArgs(request);
 
-      // Add prompt as last argument
-      args.push(prompt);
+      // NOTE: Prompt is now passed via stdin instead of command-line argument
+      // This avoids shell parsing errors when prompt contains special characters,
+      // quotes, newlines, or code examples
 
-      // Spawn the CLI process
+      // Spawn the CLI process with stdin pipe enabled
       const child = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
         env: process.env
       });
+
+      // Write prompt to stdin (safer than command-line argument)
+      // This prevents shell parsing issues with special characters
+      try {
+        child.stdin?.write(prompt);
+        child.stdin?.end();
+      } catch (error) {
+        reject(new Error(`Failed to write prompt to Codex CLI stdin: ${(error as Error).message}`));
+        return;
+      }
 
       // v5.0.7: Handle abort signal for proper timeout cancellation
       if (request.signal) {
@@ -380,13 +391,24 @@ export class OpenAIProvider extends BaseProvider {
       // Build CLI args with streaming enabled
       const args = this.buildCLIArgs(request);
       args.push('--stream'); // Enable streaming in OpenAI CLI
-      args.push(prompt);
 
-      // Spawn the CLI process
+      // NOTE: Prompt is now passed via stdin instead of command-line argument
+      // This avoids shell parsing errors when prompt contains special characters
+
+      // Spawn the CLI process with stdin pipe enabled
       const child = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
         env: process.env
       });
+
+      // Write prompt to stdin (safer than command-line argument)
+      try {
+        child.stdin?.write(prompt);
+        child.stdin?.end();
+      } catch (error) {
+        reject(new Error(`Failed to write prompt to Codex CLI stdin: ${(error as Error).message}`));
+        return;
+      }
 
       // Handle abort signal
       if (request.signal) {

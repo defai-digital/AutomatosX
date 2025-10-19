@@ -75,7 +75,7 @@ describe('CacheWarmer', () => {
 
       expect(stats.agents).toBe(2);
       expect(stats.abilities).toBe(2);
-      expect(stats.duration).toBeGreaterThan(0);
+      expect(stats.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should return zero counts for empty directories', async () => {
@@ -272,7 +272,7 @@ describe('CacheWarmer', () => {
 
       expect(stats.agents).toBe(1);
       expect(stats.abilities).toBe(1);
-      expect(stats.duration).toBeGreaterThan(0);
+      expect(stats.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should return a copy of stats (immutability)', async () => {

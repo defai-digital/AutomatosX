@@ -140,7 +140,7 @@ export class GeminiProvider extends BaseProvider {
       let hasTimedOut = false;
 
       // Build CLI arguments for Gemini CLI
-      // Note: Gemini CLI uses positional prompt, not --prompt flag
+      // Note: We pass prompt via stdin to avoid shell parsing issues with special characters
       // Do NOT pass --model - let CLI use its own default
       const args: string[] = [];
 
@@ -148,17 +148,28 @@ export class GeminiProvider extends BaseProvider {
       // This allows agents to create, modify, and delete files
       args.push('--approval-mode', 'auto_edit');
 
-      // Add prompt as positional argument (not as flag)
-      args.push(prompt);
+      // NOTE: Prompt is now passed via stdin instead of positional argument
+      // This avoids shell parsing errors when prompt contains special characters,
+      // quotes, newlines, or code examples
 
       // Note: Gemini CLI doesn't support temperature and maxTokens via CLI flags
       // These parameters are configured in the Gemini settings.json instead
 
-      // Spawn the CLI process
+      // Spawn the CLI process with stdin pipe enabled
       const child = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
         env: process.env
       });
+
+      // Write prompt to stdin (safer than command-line argument)
+      // This prevents shell parsing issues with special characters
+      try {
+        child.stdin?.write(prompt);
+        child.stdin?.end();
+      } catch (error) {
+        reject(new Error(`Failed to write prompt to Gemini CLI stdin: ${(error as Error).message}`));
+        return;
+      }
 
       // v5.0.7: Handle abort signal for proper timeout cancellation
       if (request.signal) {

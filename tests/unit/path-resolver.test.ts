@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { resolve, join } from 'path';
+import { resolvePath, joinPathDisplay } from '../../src/utils/path-utils.js';
 import { PathResolver, detectProjectRoot } from '../../src/core/path-resolver.js';
 import { PathError } from '../../src/types/path.js';
 
@@ -24,16 +24,16 @@ describe('PathResolver', () => {
   describe('resolveUserPath', () => {
     it('should resolve relative paths from working directory', () => {
       const result = resolver.resolveUserPath('./file.ts');
-      expect(result).toBe(resolve(workingDir, './file.ts'));
+      expect(result).toBe(resolvePath(workingDir, './file.ts'));
     });
 
     it('should resolve paths with parent directory references', () => {
       const result = resolver.resolveUserPath('../package.json');
-      expect(result).toBe(resolve(workingDir, '../package.json'));
+      expect(result).toBe(resolvePath(workingDir, '../package.json'));
     });
 
     it('should accept absolute paths within project', () => {
-      const absolutePath = join(projectDir, 'src/file.ts');
+      const absolutePath = joinPathDisplay(projectDir, 'src/file.ts');
       const result = resolver.resolveUserPath(absolutePath);
       expect(result).toBe(absolutePath);
     });
@@ -47,7 +47,7 @@ describe('PathResolver', () => {
     it('should reject path traversal attempts', () => {
       const workingInSubdir = new PathResolver({
         projectDir,
-        workingDir: join(projectDir, 'src/components'),
+        workingDir: joinPathDisplay(projectDir, 'src/components'),
         agentWorkspace
       });
 
@@ -79,31 +79,31 @@ describe('PathResolver', () => {
   describe('resolveProjectPath', () => {
     it('should resolve paths relative to project root', () => {
       const result = resolver.resolveProjectPath('src/index.ts');
-      expect(result).toBe(join(projectDir, 'src/index.ts'));
+      expect(result).toBe(joinPathDisplay(projectDir, 'src/index.ts'));
     });
 
     it('should handle nested paths', () => {
       const result = resolver.resolveProjectPath('src/core/router.ts');
-      expect(result).toBe(join(projectDir, 'src/core/router.ts'));
+      expect(result).toBe(joinPathDisplay(projectDir, 'src/core/router.ts'));
     });
   });
 
   describe('resolveWorkingPath', () => {
     it('should resolve paths relative to working directory', () => {
       const result = resolver.resolveWorkingPath('file.ts');
-      expect(result).toBe(join(workingDir, 'file.ts'));
+      expect(result).toBe(joinPathDisplay(workingDir, 'file.ts'));
     });
   });
 
   describe('resolveWorkspacePath', () => {
     it('should resolve paths within agent workspace', () => {
       const result = resolver.resolveWorkspacePath('output.json');
-      expect(result).toBe(join(agentWorkspace, 'output.json'));
+      expect(result).toBe(joinPathDisplay(agentWorkspace, 'output.json'));
     });
 
     it('should handle nested workspace paths', () => {
       const result = resolver.resolveWorkspacePath('analysis/report.md');
-      expect(result).toBe(join(agentWorkspace, 'analysis/report.md'));
+      expect(result).toBe(joinPathDisplay(agentWorkspace, 'analysis/report.md'));
     });
 
     it('should not validate workspace paths against project boundaries', () => {
@@ -115,7 +115,7 @@ describe('PathResolver', () => {
 
   describe('validatePath', () => {
     it('should return true for paths within base directory', () => {
-      const path = join(projectDir, 'src/file.ts');
+      const path = joinPathDisplay(projectDir, 'src/file.ts');
       expect(resolver.validatePath(path, projectDir)).toBe(true);
     });
 
@@ -131,12 +131,12 @@ describe('PathResolver', () => {
 
   describe('isPathAllowed', () => {
     it('should allow paths in user project', () => {
-      const path = join(projectDir, 'src/file.ts');
+      const path = joinPathDisplay(projectDir, 'src/file.ts');
       expect(resolver.isPathAllowed(path)).toBe(true);
     });
 
     it('should allow paths in agent workspace', () => {
-      const path = join(agentWorkspace, 'output.json');
+      const path = joinPathDisplay(agentWorkspace, 'output.json');
       expect(resolver.isPathAllowed(path)).toBe(true);
     });
 
@@ -157,12 +157,12 @@ describe('PathResolver', () => {
 
   describe('checkBoundaries', () => {
     it('should identify agent workspace paths', () => {
-      const path = join(agentWorkspace, 'file.txt');
+      const path = joinPathDisplay(agentWorkspace, 'file.txt');
       expect(resolver.checkBoundaries(path)).toBe('agent_workspace');
     });
 
     it('should identify user project paths', () => {
-      const path = join(projectDir, 'src/file.ts');
+      const path = joinPathDisplay(projectDir, 'src/file.ts');
       expect(resolver.checkBoundaries(path)).toBe('user_project');
     });
 
@@ -179,24 +179,24 @@ describe('PathResolver', () => {
 
   describe('getRelativeToProject', () => {
     it('should return relative path from project root', () => {
-      const path = join(projectDir, 'src/file.ts');
+      const path = joinPathDisplay(projectDir, 'src/file.ts');
       expect(resolver.getRelativeToProject(path)).toBe('src/file.ts');
     });
 
     it('should handle paths in subdirectories', () => {
-      const path = join(projectDir, 'src/core/router.ts');
+      const path = joinPathDisplay(projectDir, 'src/core/router.ts');
       expect(resolver.getRelativeToProject(path)).toBe('src/core/router.ts');
     });
   });
 
   describe('getRelativeToWorking', () => {
     it('should return relative path from working directory', () => {
-      const path = join(workingDir, 'file.ts');
+      const path = joinPathDisplay(workingDir, 'file.ts');
       expect(resolver.getRelativeToWorking(path)).toBe('file.ts');
     });
 
     it('should handle parent directory', () => {
-      const path = join(projectDir, 'package.json');
+      const path = joinPathDisplay(projectDir, 'package.json');
       expect(resolver.getRelativeToWorking(path)).toBe('../package.json');
     });
   });

@@ -14,6 +14,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { WorkspaceManager } from '../../src/core/workspace-manager.js';
+import { joinPathDisplay } from '../../src/utils/path-utils.js';
 
 describe('WorkspaceManager (v5.2.0)', () => {
   let workspaceManager: WorkspaceManager;
@@ -189,8 +190,8 @@ describe('WorkspaceManager (v5.2.0)', () => {
 
         expect(files).toHaveLength(3);
         expect(files).toContain('file1.md');
-        expect(files).toContain(path.join('features', 'file2.md'));
-        expect(files).toContain(path.join('designs', 'ui.md'));
+        expect(files).toContain(joinPathDisplay('features', 'file2.md'));
+        expect(files).toContain(joinPathDisplay('designs', 'ui.md'));
       });
 
       it('should return empty array when PRD directory is empty', async () => {
@@ -298,8 +299,8 @@ describe('WorkspaceManager (v5.2.0)', () => {
 
         expect(files).toHaveLength(3);
         expect(files).toContain('script1.js');
-        expect(files).toContain(path.join('analysis', 'data.json'));
-        expect(files).toContain(path.join('reports', 'summary.md'));
+        expect(files).toContain(joinPathDisplay('analysis', 'data.json'));
+        expect(files).toContain(joinPathDisplay('reports', 'summary.md'));
       });
 
       it('should return empty array when tmp directory is empty', async () => {

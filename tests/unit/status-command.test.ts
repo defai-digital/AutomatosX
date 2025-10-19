@@ -42,14 +42,10 @@ vi.mock('../../src/core/path-resolver.js', async () => {
   const actual = await vi.importActual('../../src/core/path-resolver.js') as any;
   return {
     ...actual,
-    PathResolver: vi.fn().mockImplementation(() => ({
-      detectProjectRoot: vi.fn().mockImplementation(async () => {
-        return (global as any).__testDir || process.cwd();
-      }),
-      resolveUserPath: vi.fn().mockImplementation((userPath) => userPath),
-      resolveProjectPath: vi.fn().mockImplementation((relativePath) => relativePath),
-      resolveAgentPath: vi.fn().mockImplementation((userPath) => userPath)
-    }))
+    detectProjectRoot: vi.fn().mockImplementation(async () => {
+      // Return the mocked test directory
+      return (global as any).__testDir || process.cwd();
+    })
   };
 });
 

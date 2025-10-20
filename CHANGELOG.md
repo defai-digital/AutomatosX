@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.12](https://github.com/defai-digital/automatosx/compare/v5.6.11...v5.6.12) (2025-10-21)
+
+### Bug Fixes
+
+* **docs:** correct slash command format from `/ax:` to `/ax-` across all files ([#3](https://github.com/defai-digital/automatosx/issues/3)) ([420b17f](https://github.com/defai-digital/automatosx/commit/420b17f))
+  - **Problem**: Command files use dash format (`ax-agent.md`) but documentation incorrectly used colon format (`/ax:agent`)
+  - **Solution**: Corrected all slash commands to use consistent dash format
+  - **Files Changed**: 20 files, 40+ occurrences corrected
+    - **P0**: 7 command definition files (`.claude/commands/*.md`)
+    - **P1**: 1 source code file (`src/cli/commands/init.ts`)
+    - **P2**: 12 documentation files (README, BEST-PRACTICES, examples, etc.)
+  - **Impact**: Users now see correct slash command format (`/ax-agent`, `/ax-status`, `/ax-memory`, etc.) when running `ax init` and reading documentation
+
+### Documentation
+
+* **docs:** update CLAUDE.md for v5.6.11 - 24 agents, workspace conventions ([e8911f7](https://github.com/defai-digital/automatosx/commit/e8911f7))
+  - Updated version from v5.6.9 to v5.6.11
+  - Updated agent count: 19 → 24 agents
+  - Added Phase 2 agent expansion details (Fiona, Ivy)
+  - Consolidated v5.6.9-5.6.11 release notes
+  - Added comprehensive workspace path conventions section
+  - Documented `/tmp` vs `/automatosx/tmp` distinction
+  - Fixed markdown lint warnings
+
+## [5.6.11](https://github.com/defai-digital/automatosx/compare/v5.6.10...v5.6.11) (2025-10-20)
+
+### Version Note
+
+Version 5.6.11 was a version bump to reflect Phase 2 agent expansion completion. All changes are documented in v5.6.10 release notes below.
+
 ## [5.6.10](https://github.com/defai-digital/automatosx/compare/v5.6.9...v5.6.10) (2025-10-20)
 
 

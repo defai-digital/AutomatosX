@@ -1,12 +1,51 @@
 # AutomatosX Agent Directory
 
-**v5.6.9 Update**: Bob & Frank enhanced with comprehensive language and framework expertise. Total: 13,925 lines of guidance across 11 ability files.
-- **Bob**: Multi-language expertise (C++, C, Python, Rust, Go, JS/TS) - 7,079 lines
-- **Frank**: Multi-framework expertise (React, Next.js, Swift, Python) - 6,846 lines
+**v5.6.9 Update - Agent Team Optimization**:
+- ✨ **2 New Specialist Agents**: Quinn (Quantum Systems Engineer) & Astrid (Aerospace Mission Scientist)
+- 🔧 **Enhanced Capabilities**: Bob & Frank with comprehensive language/framework expertise (13,925 lines across 11 ability files)
+- 🎯 **Skill Redistribution**: Eliminated Python/JS/TS overlaps across Bob, Frank, Felix, Maya
+- 📚 **9 New Ability Files**: 4 quantum computing + 4 aerospace + 1 mathematical reasoning (~21 KB)
+- 🤖 **19 Total Agents** (was 17): +2 specialists for quantum and aerospace projects
+
+**Key Changes**:
+- **Bob** (Backend): Multi-language expertise (Go, Rust, C++, C) + mathematical validation
+- **Frank** (Frontend): Multi-framework expertise (React, Next.js, Swift) - removed Python overlap
+- **Felix** (Fullstack): Now owns Node.js/TypeScript backend + Python automation
+- **Quinn** (NEW): Quantum algorithm design, Qiskit/Cirq, error correction
+- **Astrid** (NEW): Orbital mechanics, mission analysis, telemetry diagnostics
 
 **v5.3.6 Update**: Bob & Frank upgraded to depth 1 for specialist consultation. Daisy configuration clarified.
 
 AutomatosX agents have **human-friendly names** to make them easier to remember and use. Each agent has both a technical role name and a memorable display name.
+
+## 🤖 Provider Configuration Overview
+
+AutomatosX uses **team-based provider configuration** with intelligent fallback chains to ensure 99.9% uptime.
+
+### Provider Legend
+
+- 🟢 **Codex (OpenAI)**: Code generation, testing, implementation
+- 🟣 **Claude**: Code review, analysis, strategic planning
+- 🔵 **Gemini**: Creative content, UX/UI design, writing
+- 🟠 **OpenAI**: Structured research, data analysis
+
+### Quick Reference: Team Providers
+
+| Team | Primary Provider | Fallback Chain | Best For |
+|------|------------------|----------------|----------|
+| **Engineering** | 🟢 Codex | Codex → Gemini → Claude | Code implementation, testing, DevOps |
+| **Core/Quality** | 🟣 Claude | Claude → Gemini → Codex | Code review, QA, security audits |
+| **Business** | 🟣 Claude | Claude → Codex → Gemini | Strategy, planning, decision-making |
+| **Design** | 🔵 Gemini | Gemini → Claude → Codex | UX/UI design, technical writing |
+| **Research** | 🟠 OpenAI | OpenAI → Gemini-CLI → Claude | Research, analysis, feasibility studies |
+
+**Why Team-Based Configuration?**
+- ✅ Optimized for each team's primary tasks
+- ✅ Automatic fallback if primary provider is unavailable
+- ✅ Consistent behavior across team members
+- ✅ Easy to manage and update
+
+---
 
 ## 💡 How to Use These Agents (Best Practices)
 
@@ -140,21 +179,20 @@ Bob (Backend): "Optimize database queries"
 
 | Team | Depth 3 | Depth 2 | Depth 1 | Depth 0 |
 |------|---------|---------|---------|---------|
-| **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank** | - |
+| **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank**, **Quinn**, **Astrid** ✨ | Steve |
 | **Core/Quality** | - | **Queenie** | - | - |
-| **Business** | - | - | Paris, Eric | - |
-| **Content** | - | - | - | Debbee, Wendy |
+| **Business** | Tony | - | Paris, Eric | - |
+| **Design/Content** | - | - | - | Debbee, Wendy |
 | **Data** | Dana | - | - | Daisy |
-| **Security** | - | - | - | Steve |
 | **Research** | - | - | - | Rodman |
 | **Marketing** | - | - | Cynthia | - |
 
-### Total: 16 Agents
+### Total: 19 Agents ✨ (was 17 in v5.6.8)
 
 - **3 Strategic Coordinators** (Depth 3): Tony, Oliver, Dana
 - **6 Tactical Coordinators** (Depth 1-2): Queenie (2), Paris, Felix, Maya, Eric, Cynthia
-- **2 Tactical Implementers** (Depth 1): Bob, Frank ⭐ NEW in v5.3.6
-- **5 Pure Implementers** (Depth 0): Daisy, Debbee, Steve, Wendy, Rodman
+- **4 Tactical Implementers** (Depth 1): Bob, Frank, **Quinn** ✨, **Astrid** ✨ (NEW in v5.6.9)
+- **6 Pure Implementers** (Depth 0): Steve, Daisy, Debbee, Wendy, Rodman
 
 ---
 
@@ -249,7 +287,10 @@ Bob (Backend): "Optimize database queries"
 
 ### 💻 Engineering Team
 
-**Provider**: 🟣 Claude (claude-code) primary, 🟢 OpenAI fallback
+**Provider Configuration**:
+- **Primary**: 🟢 Codex (OpenAI)
+- **Fallback Chain**: Codex → Gemini → Claude
+- **Why**: Optimized for code generation, testing, and implementation tasks
 
 #### Strategic Coordinators (Depth 3)
 
@@ -288,6 +329,25 @@ Bob (Backend): "Optimize database queries"
 - **Swift/UIKit**: MVC/MVVM patterns, Auto Layout, programmatic UI, UITableView/UICollectionView
 - **Python**: Frontend tooling, data processing (pandas, numpy), build automation, API integration, pytest
 
+#### Specialist Implementers (Depth 1) ✨ NEW in v5.6.9
+
+| Name | Agent | Expertise | Best For | Delegation Capability |
+|------|-------|-----------|----------|-----------------------|
+| **Quinn** | quantum-engineer | Quantum algorithm design, Qiskit/Cirq, error correction, noise modeling | Quantum computing projects, QAOA, VQE, circuit optimization | 1 layer (can consult Bob for math validation, Dana for statistics) |
+| **Astrid** | aerospace-scientist | Orbital mechanics, mission analysis, telemetry diagnostics, propulsion systems | Aerospace projects, orbit determination, delta-v budgeting | 1 layer (can consult Bob for computational performance, Dana for Monte Carlo analysis) |
+
+**Quinn's Quantum Expertise (v5.6.9)**:
+- **Quantum Algorithms**: QAOA, VQE, Grover, Shor, phase estimation, variational quantum algorithms
+- **Frameworks**: Qiskit (IBM), Cirq (Google), circuit optimization, transpilation strategies
+- **Error Correction**: Surface codes, stabilizer codes, error mitigation, quantum error correction protocols
+- **Noise Modeling**: Decoherence, gate fidelity, noise calibration, T1/T2 characterization
+
+**Astrid's Aerospace Expertise (v5.6.9)**:
+- **Orbital Mechanics**: Astrodynamics, Keplerian elements, maneuver planning, two-body/N-body problems
+- **Mission Analysis**: Launch windows, delta-v budgets, trajectory optimization, mission phase analysis
+- **Telemetry**: Anomaly detection, health monitoring, sensor data validation, state estimation
+- **Propulsion**: Performance envelopes, trade studies, reliability modeling, system optimization
+
 #### Pure Implementers (Depth 0)
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
@@ -296,9 +356,12 @@ Bob (Backend): "Optimize database queries"
 
 ---
 
-### 🎯 Quality Team
+### 🎯 Core/Quality Team
 
-**Provider**: 🟢 OpenAI (codex) primary, 🔵 Gemini fallback
+**Provider Configuration**:
+- **Primary**: 🟣 Claude
+- **Fallback Chain**: Claude → Gemini → Codex
+- **Why**: Optimized for code review, quality assurance, and detailed analysis
 
 #### Tactical Coordinator (Depth 2) ⭐ NEW in v5.3.5
 
@@ -312,7 +375,10 @@ Bob (Backend): "Optimize database queries"
 
 ### 💾 Data Team
 
-**Provider**: 🔵 Gemini (gemini-cli) primary, 🟣 Claude fallback
+**Provider Configuration**:
+- **Primary**: 🟢 Codex (OpenAI) - inherited from Engineering Team
+- **Fallback Chain**: Codex → Gemini → Claude
+- **Why**: Data scientists and engineers are part of Engineering Team, optimized for data processing and ML tasks
 
 #### Strategic Coordinator (Depth 3)
 
@@ -328,9 +394,12 @@ Bob (Backend): "Optimize database queries"
 
 ---
 
-### 🎨 Content Team
+### 🎨 Design/Content Team
 
-**Provider**: Various
+**Provider Configuration**:
+- **Primary**: 🔵 Gemini
+- **Fallback Chain**: Gemini → Claude → Codex
+- **Why**: Optimized for creative content, UX/UI design, and technical writing
 
 #### Pure Implementers (Depth 0)
 
@@ -341,9 +410,12 @@ Bob (Backend): "Optimize database queries"
 
 ---
 
-### 📊 Leadership Team
+### 📊 Business/Leadership Team
 
-**Provider**: Various
+**Provider Configuration**:
+- **Primary**: 🟣 Claude
+- **Fallback Chain**: Claude → Codex → Gemini
+- **Why**: Optimized for strategic planning, business analysis, and executive decision-making
 
 #### Strategic Coordinator (Depth 3)
 
@@ -360,13 +432,27 @@ Bob (Backend): "Optimize database queries"
 
 ---
 
-### 🔬 Research & Specialist Teams
+### 🔬 Research Team
+
+**Provider Configuration**:
+- **Primary**: 🟠 OpenAI
+- **Fallback Chain**: OpenAI → Gemini-CLI → Claude
+- **Why**: Optimized for structured research, analysis, and evidence-based decision making
 
 #### Pure Implementer (Depth 0)
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
 | **Rodman** | researcher | Idea validation, feasibility analysis | Research reports, literature review | None (recommends handoff) |
+
+---
+
+### 🎨 Marketing Team
+
+**Provider Configuration**:
+- **Primary**: 🟣 Claude - inherited from Business Team
+- **Fallback Chain**: Claude → Codex → Gemini
+- **Why**: Marketing strategists collaborate closely with business team
 
 #### Tactical Coordinator (Depth 1)
 
@@ -380,14 +466,36 @@ Bob (Backend): "Optimize database queries"
 
 Each agent uses a **smart fallback strategy** to ensure maximum reliability:
 
-1. **Primary Provider**: Team-optimized AI (🟢 OpenAI / 🟣 Claude / 🔵 Gemini)
-2. **Fallback Provider**: Agent-specific backup (configured per agent)
+1. **Primary Provider**: Team-optimized AI provider
+2. **Fallback Chain**: Team-configured fallback sequence
 3. **Router Fallback**: Auto-routing through all available providers (priority-based)
 
-**Example**: If an Engineering agent (primary: claude-code) encounters an issue:
-- ✅ Try Claude first (primary: `claude-code`)
-- ✅ Fall back to OpenAI (configured fallback: `openai`)
-- ✅ Try Gemini (router fallback: `gemini-cli`)
+### Team-Specific Fallback Chains
+
+**Engineering Team** (Bob, Frank, Felix, Maya, Oliver, Dana):
+- ✅ Primary: Codex (OpenAI)
+- ✅ Fallback 1: Gemini
+- ✅ Fallback 2: Claude
+
+**Core/Quality Team** (Queenie, Steve):
+- ✅ Primary: Claude
+- ✅ Fallback 1: Gemini
+- ✅ Fallback 2: Codex (OpenAI)
+
+**Business Team** (Tony, Eric, Paris):
+- ✅ Primary: Claude
+- ✅ Fallback 1: Codex (OpenAI)
+- ✅ Fallback 2: Gemini
+
+**Design Team** (Debbee, Wendy):
+- ✅ Primary: Gemini
+- ✅ Fallback 1: Claude
+- ✅ Fallback 2: Codex (OpenAI)
+
+**Research Team** (Rodman):
+- ✅ Primary: OpenAI
+- ✅ Fallback 1: Gemini-CLI
+- ✅ Fallback 2: Claude
 
 This ensures **99.9% uptime** even if one provider has issues!
 

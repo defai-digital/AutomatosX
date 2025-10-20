@@ -219,5 +219,6 @@
       "defaultLimit": 10
     }
   },
-  "version": "5.6.5"
+  "version": "5.6.9",
+  "_versionNote": "This field is for reference only. The actual version is managed in package.json."
 }

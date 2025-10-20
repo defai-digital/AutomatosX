@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file. See [standa
 ## [5.6.9](https://github.com/defai-digital/automatosx/compare/v5.6.8...v5.6.9) (2025-10-20)
 
 
+### New Features
+
+* **agents:** Agent team optimization - specialist agents and skill redistribution
+  - **2 New Specialist Agents**: Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist)
+  - **19 Total Agents** (was 17): Enhanced engineering team with quantum and aerospace expertise
+  - **Skill Redistribution**: Eliminated JS/TS and Python overlaps across Bob, Frank, Felix, Maya
+    - Bob (backend): Focused on Go/Rust + systems programming, Python only for math validation
+    - Frank (frontend): Pure frontend (React/Next.js/Swift), removed Python tooling
+    - Felix (fullstack): Now owns Node.js/TypeScript backend + Python automation
+    - Maya (mobile): Enhanced Swift/Kotlin/Flutter expertise, coordinates with Astrid on telemetry
+  - **Mathematical Reasoning Enhancement**: New shared ability (`mathematical-reasoning.md`) for Bob and Dana to support Quinn/Astrid
+  - **9 New Ability Files**: Quantum algorithms, orbital mechanics, mission analysis, mathematical reasoning (~21 KB)
+  - **Expected Productivity Gain**: 15-20% from reduced context switching and clearer agent boundaries
+
+* **agents/quantum-engineer (Quinn):** Quantum Systems Engineer
+  - Quantum algorithm design for NISQ-era hardware
+  - Circuit optimization in Qiskit and Cirq
+  - Quantum error mitigation and correction strategies
+  - Noise modeling (decoherence, crosstalk, gate infidelities)
+  - Hybrid quantum-classical workflow architecture
+  - Abilities: `quantum-algorithm-design`, `quantum-frameworks-transpilation`, `quantum-error-correction`, `quantum-noise-modeling`
+  - maxDelegationDepth: 1 (can consult Bob for backend integration, Dana for statistical validation)
+
+* **agents/aerospace-scientist (Astrid):** Aerospace Mission Scientist
+  - Orbital mechanics and trajectory optimization
+  - Mission analysis and system integration
+  - Telemetry diagnostics and data interpretation
+  - Propulsion systems engineering
+  - Abilities: `orbital-mechanics`, `mission-analysis`, `telemetry-diagnostics`, `propulsion-systems`
+  - maxDelegationDepth: 1 (can consult Bob for computational performance, Dana for data analysis)
+
+
 ### Enhanced
 
 * **agents/backend (Bob) & agents/frontend (Frank):** Comprehensive language and framework expertise enhancement

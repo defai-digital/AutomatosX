@@ -125,17 +125,17 @@ ax run product "Build a complete user authentication feature"
 
 ---
 
-## 🎭 16+ Specialized Agents
+## 🎭 19 Specialized Agents
 
-AutomatosX comes with a pre-built team of 16+ agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
+AutomatosX comes with a pre-built team of 19 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
 
--   **Backend** (API design, databases)
--   **Frontend** (UI/UX, components)
--   **Fullstack** (End-to-end development)
--   **Mobile** (iOS/Android development)
+-   **Backend** (API design, databases, Go/Rust systems)
+-   **Frontend** (React/Next.js/Swift UI)
+-   **Fullstack** (Node.js/TypeScript + Python)
+-   **Mobile** (iOS/Android, Swift/Kotlin/Flutter)
 -   **DevOps** (CI/CD, infrastructure)
 -   **Security** (Audits, threat modeling)
--   **Data Science** (ML models, analysis)
+-   **Data Science** (ML models, statistical analysis)
 -   **Data** (ETL, SQL, modeling)
 -   **Quality** (Testing, code reviews)
 -   **Design** (UX research, wireframes)
@@ -145,6 +145,8 @@ AutomatosX comes with a pre-built team of 16+ agents, each with a specific role 
 -   **CTO** (Technical strategy)
 -   **CEO** (Business leadership)
 -   **Researcher** (Feasibility studies)
+-   **Quantum Engineer** (Quantum algorithms, Qiskit/Cirq) ✨ NEW in v5.6.9
+-   **Aerospace Scientist** (Orbital mechanics, mission analysis) ✨ NEW in v5.6.9
 
 **Governance**: Agents have clear roles, permissions, and delegation limits (`maxDelegationDepth`) to ensure efficient and safe collaboration while preventing infinite loops.
 
@@ -186,7 +188,7 @@ ax run quality "Write tests for the API" # Auto-receives design + implementation
 | Feature | Traditional AI Chat | Claude Code | AutomatosX |
 |---|---|---|---|
 | **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** |
-| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (16+ specialized agents)** |
+| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (19 specialized agents)** |
 | **Autonomous Delegation** | ❌ No | ❌ No | ✅ **Yes (Automatic workflows)** |
 | **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** |
 | **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across all agents)** |

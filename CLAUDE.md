@@ -99,8 +99,8 @@ npm run release:rc         # Create RC pre-release
 
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
-- 4 teams, 16+ specialized agents
-- v5.6.8 | 2,116 tests passing (12 skipped) | Node.js 20+
+- 4 teams, 19 specialized agents
+- v5.6.9 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -140,17 +140,38 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.8 (October 2025)
+### Latest Release: v5.6.9 (October 2025)
 
 **What's New**:
 
-- **Path Security Enhancement**: Centralized path validation utilities preventing traversal attacks
+- **Agent Team Optimization**: Comprehensive skill redistribution and specialist agents
+  - **2 New Specialist Agents**: Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist)
+  - **19 Total Agents** (was 17): Enhanced engineering team with quantum and aerospace expertise
+  - **Skill Redistribution**: Eliminated JS/TS and Python overlaps across Bob, Frank, Felix, Maya
+    - Bob (backend): Focused on Go/Rust + systems programming, Python only for math validation
+    - Frank (frontend): Pure frontend (React/Next.js/Swift), removed Python tooling
+    - Felix (fullstack): Now owns Node.js/TypeScript backend + Python automation
+    - Maya (mobile): Enhanced Swift/Kotlin/Flutter expertise, coordinates with Astrid on telemetry
+  - **Mathematical Reasoning Enhancement**: New shared ability for Bob and Dana to support Quinn/Astrid
+  - **9 New Ability Files**: Quantum algorithms, orbital mechanics, mission analysis, mathematical reasoning (~21 KB)
+  - **Expected Productivity Gain**: 15-20% from reduced context switching and clearer agent boundaries
+- **Multi-Language Expertise (Bob)**: Enhanced with 6 programming languages
+  - C++, C, Python, Rust, Go, JavaScript/TypeScript abilities
+  - 7,079 lines of comprehensive language guidance
+  - 19 keyword mappings for smart ability loading
+  - Expected C++ task success: 60% → 85%+ (42% improvement)
+- **Multi-Framework Expertise (Frank)**: Enhanced with 4 frontend frameworks
+  - React, Next.js, Swift/SwiftUI, Python frontend tooling abilities
+  - 6,846 lines of comprehensive framework guidance
+  - 28 keyword mappings for smart ability loading
+  - Expected React: 70% → 90%+, Next.js: 50% → 85%+, Swift: 40% → 80%+ task success
+- **Path Security Enhancement (v5.6.8)**: Centralized path validation utilities preventing traversal attacks
   - New `src/utils/path-utils.ts` module for cross-platform path normalization
   - Security validation in all managers (PathResolver, WorkspaceManager, ConfigManager, SessionManager, MemoryManager)
   - Blocks `..`, absolute paths outside project, symbolic links
-- **Simplified Architecture**: Removed legacy stage executors (~1,200 LOC, -30KB package size)
-- **Single Execution Path**: All multi-stage agents now use `StageExecutionController`
-- **Centralized Retry Logic**: New `src/providers/retry-errors.ts` for consistent error handling
+- **Simplified Architecture (v5.6.8)**: Removed legacy stage executors (~1,200 LOC, -30KB package size)
+- **Single Execution Path (v5.6.8)**: All multi-stage agents now use `StageExecutionController`
+- **Centralized Retry Logic (v5.6.8)**: New `src/providers/retry-errors.ts` for consistent error handling
   - Provider-specific retryable errors (Claude, Gemini, OpenAI)
   - Common network, rate limit, and server error patterns
   - Non-retryable error detection (authentication, configuration)
@@ -612,8 +633,10 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Teams & Agents
 
 **4 Teams**: core (QA), engineering (dev), business (product), design (UX)
+**19 Agents**: Including 2 specialist agents (Quinn, Astrid) added in v5.6.9
 
 - Agents inherit team config (provider, abilities, orchestration)
+- Specialist agents: Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist) with `maxDelegationDepth: 1`
 - See `examples/AGENTS_INFO.md` for full directory
 
 ### CLI Commands

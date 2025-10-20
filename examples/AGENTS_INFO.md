@@ -1,5 +1,9 @@
 # AutomatosX Agent Directory
 
+**v5.6.9 Update**: Bob & Frank enhanced with comprehensive language and framework expertise. Total: 13,925 lines of guidance across 11 ability files.
+- **Bob**: Multi-language expertise (C++, C, Python, Rust, Go, JS/TS) - 7,079 lines
+- **Frank**: Multi-framework expertise (React, Next.js, Swift, Python) - 6,846 lines
+
 **v5.3.6 Update**: Bob & Frank upgraded to depth 1 for specialist consultation. Daisy configuration clarified.
 
 AutomatosX agents have **human-friendly names** to make them easier to remember and use. Each agent has both a technical role name and a memorable display name.
@@ -265,8 +269,24 @@ Bob (Backend): "Optimize database queries"
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
-| **Bob** | backend | API design, database modeling, caching | Backend development | 1 layer (can consult security, design, quality) |
-| **Frank** | frontend | React, component architecture, state mgmt | Frontend development | 1 layer (can consult design, security, quality) |
+| **Bob** | backend | API design, database modeling, caching, **multi-language expertise** (C++, C, Python, Rust, Go, JS/TS) ⭐ v5.6.9 | Backend development, systems programming | 1 layer (can consult security, design, quality) |
+| **Frank** | frontend | **Multi-framework expertise** (React, Next.js, Swift, Python), component architecture, state mgmt ⭐ v5.6.9 | Frontend development, iOS/web apps | 1 layer (can consult design, security, quality) |
+
+**Bob's Language Expertise (v5.6.9)**:
+- **C++**: Modern C++17/20 patterns, RAII, smart pointers, move semantics, STL algorithms
+- **C**: Pure C99/C11/C17, manual memory management, string safety, system-level programming
+- **Python**: Pythonic idioms, type hints, async/await, FastAPI, Django
+- **Rust**: Ownership system, borrowing, lifetimes, fearless concurrency
+- **Go**: Goroutines, channels, idiomatic error handling, microservices
+- **JavaScript/TypeScript**: Strict TypeScript, async patterns, Node.js backend, Express/Fastify
+- **Systems Programming**: Cache-friendly data structures, SIMD, lock-free algorithms
+
+**Frank's Framework Expertise (v5.6.9)**:
+- **React**: Modern hooks (useState, useEffect, useContext, useReducer, useMemo, useCallback), React 18+ concurrent rendering, performance optimization
+- **Next.js**: App Router (Next.js 13+), Server Components vs Client Components, SSR/SSG/ISR, API routes, edge runtime
+- **Swift/SwiftUI**: Declarative UI, state management (@State, @Binding, @ObservedObject, @StateObject, @EnvironmentObject), Combine framework
+- **Swift/UIKit**: MVC/MVVM patterns, Auto Layout, programmatic UI, UITableView/UICollectionView
+- **Python**: Frontend tooling, data processing (pandas, numpy), build automation, API integration, pytest
 
 #### Pure Implementers (Depth 0)
 

@@ -849,6 +849,15 @@ export class AgentExecutor {
       prompt += `- Write source code to src/, tests to tests/, docs to docs/ as normal\n`;
       prompt += `- These are recommendations for organization, not access restrictions\n\n`;
 
+      prompt += `**File Writing Guidelines:**\n`;
+      prompt += `- ALWAYS use WorkspaceManager for workspace file operations:\n`;
+      prompt += `  \`\`\`typescript\n`;
+      prompt += `  await workspaceManager.writeTmp('report.md', content);\n`;
+      prompt += `  \`\`\`\n`;
+      prompt += `- DO NOT use relative paths like 'tmp/' or './tmp/' for workspace files\n`;
+      prompt += `- DO NOT use direct fs.writeFile() for workspace files (automatosx/tmp/, automatosx/PRD/)\n`;
+      prompt += `- For project files outside workspace (src/, tests/, docs/), use normal file I/O\n\n`;
+
       prompt += `**When to ask user permission:**\n`;
       prompt += `- ONLY when accessing files OUTSIDE the project directory\n`;
       prompt += `- ONLY when deleting critical files (package.json, .git/ folder, .env)\n`;

@@ -171,7 +171,7 @@ Use natural language to collaborate with agents directly within your editor. Cla
 "please work with ax agent to refactor this module with best practices"
 ```
 
-For simple, direct tasks, use slash commands: `/ax:agent backend, write a function to validate emails`.
+For simple, direct tasks, use slash commands: `/ax-agent backend, write a function to validate emails`.
 
 ### 2. Terminal/CLI Mode (For Power Users)
 

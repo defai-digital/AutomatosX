@@ -1,6 +1,6 @@
 Display AutomatosX system status and configuration.
 
-**IMPORTANT**: When user types `/ax:status`, you MUST execute:
+**IMPORTANT**: When user types `/ax-status`, you MUST execute:
 
 ```bash
 automatosx status
@@ -16,9 +16,9 @@ This will show:
 
 **Examples**:
 
-User input: `/ax:status`
+User input: `/ax-status`
 → Execute: `automatosx status`
 
-User input: `/ax:status --verbose`
+User input: `/ax-status --verbose`
 → Execute: `automatosx status --verbose`
 (Shows detailed configuration and environment information)

@@ -31,7 +31,7 @@
 
 | 特性 | 終端模式 | Claude Code 模式 |
 |------|---------|------------------|
-| **使用方式** | `ax run Bob "任務"` | `/ax:agent Bob, 任務` |
+| **使用方式** | `ax run Bob "任務"` | `/ax-agent Bob, 任務` |
 | **環境** | 任何終端（Bash, Zsh, PowerShell） | Claude Code 內部 |
 | **適合場景** | 腳本自動化、CI/CD、獨立使用 | 開發時整合在 Claude Code 工作流程 |
 | **互動方式** | 單次執行，返回結果 | 整合在對話中 |

@@ -35,7 +35,7 @@ The most powerful way to use AutomatosX is to **let Claude Code think and plan**
 
 ### When to Use Slash Commands (Express 20%)
 
-**Use**: `/ax:agent <name>, <task>`
+**Use**: `/ax-agent <name>, <task>`
 
 ✅ **Best For**:
 - Simple, well-defined single tasks
@@ -71,7 +71,7 @@ Why it works:
 **vs.**
 
 ```
-❌ Less Effective: /ax:agent backend, add JWT refresh to auth
+❌ Less Effective: /ax-agent backend, add JWT refresh to auth
 
 Why it's less effective:
 - Agent doesn't know your current auth implementation
@@ -98,9 +98,9 @@ Result:
 
 ```
 ❌ Less Effective:
-/ax:agent backend, design API auth
+/ax-agent backend, design API auth
 [wait for result]
-/ax:agent security, review this design
+/ax-agent security, review this design
 [wait for result]
 [manually combine the feedback]
 
@@ -130,7 +130,7 @@ What happens:
 **vs.**
 
 ```
-❌ Less Effective: /ax:agent backend, refactor user management
+❌ Less Effective: /ax-agent backend, refactor user management
 
 Why it's less effective:
 - No planning phase
@@ -303,23 +303,23 @@ Benefits:
 
 #### 1. Quick Code Generation
 ```
-✅ /ax:agent backend, write a function to validate email addresses
+✅ /ax-agent backend, write a function to validate email addresses
 ```
 
 #### 2. Fast Code Review
 ```
-✅ /ax:agent quality, review this function:
+✅ /ax-agent quality, review this function:
    [paste code]
 ```
 
 #### 3. Simple Queries
 ```
-✅ /ax:agent backend, what's the best way to handle file uploads in Express?
+✅ /ax-agent backend, what's the best way to handle file uploads in Express?
 ```
 
 #### 4. Rapid Prototyping
 ```
-✅ /ax:agent frontend, create a React component for a user profile card
+✅ /ax-agent frontend, create a React component for a user profile card
 ```
 
 ### When to Avoid
@@ -388,7 +388,7 @@ Benefits:
 
 Instead of:
 ```
-❌ /ax:agent backend, help with this database query
+❌ /ax-agent backend, help with this database query
 ```
 
 Try:
@@ -406,7 +406,7 @@ Claude Code will:
 Instead of:
 ```
 ❌ Step 1: Read the code yourself
-❌ Step 2: /ax:agent backend, implement [feature]
+❌ Step 2: /ax-agent backend, implement [feature]
 ```
 
 Try:
@@ -419,7 +419,7 @@ Try:
 
 Instead of:
 ```
-❌ /ax:agent backend, build a complete auth system
+❌ /ax-agent backend, build a complete auth system
 ```
 
 Try:
@@ -590,12 +590,12 @@ Master complete feature development with automatic agent orchestration.
 
 ```bash
 # Simple tasks only
-/ax:agent <agent-name>, <simple-task>
+/ax-agent <agent-name>, <simple-task>
 
 # Examples
-/ax:agent backend, write a function to [specific task]
-/ax:agent quality, review this code snippet
-/ax:agent frontend, create a [simple component]
+/ax-agent backend, write a function to [specific task]
+/ax-agent quality, review this code snippet
+/ax-agent frontend, create a [simple component]
 ```
 
 ---

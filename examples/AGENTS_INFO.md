@@ -78,8 +78,8 @@ Instead of directly commanding agents with slash commands, **let Claude Code coo
 ### Express Method: Slash Commands (for simple tasks only)
 
 ```
-⚡ EXPRESS: /ax:agent backend, write an email validation function
-⚡ EXPRESS: /ax:agent quality, review this code snippet
+⚡ EXPRESS: /ax-agent backend, write an email validation function
+⚡ EXPRESS: /ax-agent quality, review this code snippet
 ```
 
 **Use slash commands only when**:

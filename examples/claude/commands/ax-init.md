@@ -1,6 +1,6 @@
 Initialize AutomatosX in the current project directory.
 
-**IMPORTANT**: When user types `/ax:init`, you MUST execute:
+**IMPORTANT**: When user types `/ax-init`, you MUST execute:
 
 ```bash
 automatosx init
@@ -17,9 +17,9 @@ This will:
 
 **Examples**:
 
-User input: `/ax:init`
+User input: `/ax-init`
 → Execute: `automatosx init`
 
-User input: `/ax:init --force`
+User input: `/ax-init --force`
 → Execute: `automatosx init --force`
 (Use `--force` to reinitialize if `.automatosx` already exists)

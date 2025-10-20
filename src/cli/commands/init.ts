@@ -170,8 +170,8 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       console.log(chalk.gray('  • cto        - Technology strategist'));
       console.log(chalk.gray('  • researcher - Research analyst\n'));
       console.log(chalk.cyan('Claude Code Integration:'));
-      console.log(chalk.gray('  • Use /ax command in Claude Code'));
-      console.log(chalk.gray('  • Example: /ax assistant "Explain this code"'));
+      console.log(chalk.gray('  • Use /ax-agent command in Claude Code'));
+      console.log(chalk.gray('  • Example: /ax-agent backend, create a REST API'));
       console.log(chalk.gray('  • MCP tools available in .claude/mcp/\n'));
 
       logger.info('AutomatosX initialized', {

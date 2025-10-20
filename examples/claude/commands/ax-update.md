@@ -1,6 +1,6 @@
 Update AutomatosX to the latest version.
 
-**IMPORTANT**: When user types `/ax:update`, you MUST execute:
+**IMPORTANT**: When user types `/ax-update`, you MUST execute:
 
 ```bash
 automatosx update
@@ -15,14 +15,14 @@ This will:
 
 **Examples**:
 
-User input: `/ax:update`
+User input: `/ax-update`
 → Execute: `automatosx update`
 (Interactive update with confirmation)
 
-User input: `/ax:update --check`
+User input: `/ax-update --check`
 → Execute: `automatosx update --check`
 (Only check for updates without installing)
 
-User input: `/ax:update --yes`
+User input: `/ax-update --yes`
 → Execute: `automatosx update --yes`
 (Update without confirmation prompt)

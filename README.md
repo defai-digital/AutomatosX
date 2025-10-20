@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.9** · October 2025 · Bob supports 6 languages · Frank supports 4 frameworks (React, Next.js, Swift, Python)
+**Status**: ✅ Production Ready · **v5.6.10** · October 2025 · 24 Specialized Agents · Stan (Best Practices) · Emma (ERP) · Fiona (Design) · Ivy (IoT)
 
 ---
 
@@ -125,9 +125,9 @@ ax run product "Build a complete user authentication feature"
 
 ---
 
-## 🎭 19 Specialized Agents
+## 🎭 24 Specialized Agents
 
-AutomatosX comes with a pre-built team of 19 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
+AutomatosX comes with a pre-built team of 24 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
 
 -   **Backend** (API design, databases, Go/Rust systems)
 -   **Frontend** (React/Next.js/Swift UI)
@@ -135,7 +135,12 @@ AutomatosX comes with a pre-built team of 19 agents, each with a specific role a
 -   **Mobile** (iOS/Android, Swift/Kotlin/Flutter)
 -   **DevOps** (CI/CD, infrastructure)
 -   **Security** (Audits, threat modeling)
--   **Data Science** (ML models, statistical analysis)
+-   **Data Science** (ML strategy, statistical analysis)
+-   **ML Engineer** (PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning)
+-   **Best Practices** (SOLID, design patterns, clean code, refactoring, architecture)
+-   **ERP Integration** (SAP, Oracle, Dynamics 365, enterprise integration patterns)
+-   **Figma Expert** (Figma API, design tokens, design-to-code, MCP integration) ✨ NEW in v5.6.10
+-   **IoT/Embedded Engineer** (MQTT, ROS2, FreeRTOS, edge computing, robotics) ✨ NEW in v5.6.10
 -   **Data** (ETL, SQL, modeling)
 -   **Quality** (Testing, code reviews)
 -   **Design** (UX research, wireframes)
@@ -145,8 +150,8 @@ AutomatosX comes with a pre-built team of 19 agents, each with a specific role a
 -   **CTO** (Technical strategy)
 -   **CEO** (Business leadership)
 -   **Researcher** (Feasibility studies)
--   **Quantum Engineer** (Quantum algorithms, Qiskit/Cirq) ✨ NEW in v5.6.9
--   **Aerospace Scientist** (Orbital mechanics, mission analysis) ✨ NEW in v5.6.9
+-   **Quantum Engineer** (Quantum algorithms, Qiskit/Cirq, error correction)
+-   **Aerospace Scientist** (Orbital mechanics, mission analysis, telemetry)
 
 **Governance**: Agents have clear roles, permissions, and delegation limits (`maxDelegationDepth`) to ensure efficient and safe collaboration while preventing infinite loops.
 
@@ -188,7 +193,7 @@ ax run quality "Write tests for the API" # Auto-receives design + implementation
 | Feature | Traditional AI Chat | Claude Code | AutomatosX |
 |---|---|---|---|
 | **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** |
-| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (19 specialized agents)** |
+| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (22 specialized agents)** |
 | **Autonomous Delegation** | ❌ No | ❌ No | ✅ **Yes (Automatic workflows)** |
 | **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** |
 | **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across all agents)** |

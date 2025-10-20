@@ -1,5 +1,15 @@
 # AutomatosX Agent Directory
 
+**v5.6.10 Update - Four New Specialist Agents (Completed in One Release)**:
+- ✨ **New Best Practices Agent**: Stan (Software Engineering Standards Expert) - SOLID, design patterns, clean code, refactoring, architecture
+- ✨ **New ERP Integration Agent**: Emma (ERP Integration Specialist) - SAP, Oracle, Dynamics 365, enterprise integration patterns
+- ✨ **New Figma Expert**: Fiona (Design-to-Code Specialist) - Figma API, design tokens, design-to-code automation, MCP integration
+- ✨ **New IoT/Embedded/Robotics Engineer**: Ivy (IoT Specialist) - MQTT, ROS2, FreeRTOS, K3s edge computing
+- ✨ **New ML Engineer Agent**: Mira (Deep Learning Specialist) - PyTorch/TensorFlow implementation expert (from earlier in v5.6.10)
+- 🧠 **Enhanced Dana**: Strategic DL guidance (architecture selection, framework choice, evaluation metrics)
+- 📚 **17 New Abilities**: 5 best practices + 4 ERP + 4 Figma + 4 IoT + 4 deep learning (~11,269 lines, 283+ keywords)
+- 🤖 **24 Total Agents** (was 19): Stan, Emma, Fiona, Ivy, Mira added in v5.6.10
+
 **v5.6.9 Update - Agent Team Optimization**:
 - ✨ **2 New Specialist Agents**: Quinn (Quantum Systems Engineer) & Astrid (Aerospace Mission Scientist)
 - 🔧 **Enhanced Capabilities**: Bob & Frank with comprehensive language/framework expertise (13,925 lines across 11 ability files)
@@ -179,19 +189,19 @@ Bob (Backend): "Optimize database queries"
 
 | Team | Depth 3 | Depth 2 | Depth 1 | Depth 0 |
 |------|---------|---------|---------|---------|
-| **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank**, **Quinn**, **Astrid** ✨ | Steve |
+| **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank**, **Quinn**, **Astrid**, **Mira**, **Ivy** ✨ | Steve |
 | **Core/Quality** | - | **Queenie** | - | - |
 | **Business** | Tony | - | Paris, Eric | - |
-| **Design/Content** | - | - | - | Debbee, Wendy |
+| **Design/Content** | - | - | **Fiona** ✨ | Debbee, Wendy |
 | **Data** | Dana | - | - | Daisy |
 | **Research** | - | - | - | Rodman |
 | **Marketing** | - | - | Cynthia | - |
 
-### Total: 19 Agents ✨ (was 17 in v5.6.8)
+### Total: 24 Agents ✨ (was 17 in v5.6.8, 19 in v5.6.9, 22 in v5.6.10)
 
 - **3 Strategic Coordinators** (Depth 3): Tony, Oliver, Dana
 - **6 Tactical Coordinators** (Depth 1-2): Queenie (2), Paris, Felix, Maya, Eric, Cynthia
-- **4 Tactical Implementers** (Depth 1): Bob, Frank, **Quinn** ✨, **Astrid** ✨ (NEW in v5.6.9)
+- **9 Tactical Implementers** (Depth 1): Bob, Frank, Quinn (v5.6.9), Astrid (v5.6.9), Mira (v5.6.10), Stan (v5.6.10), Emma (v5.6.10), **Fiona** ✨ (v5.6.11), **Ivy** ✨ (v5.6.11)
 - **6 Pure Implementers** (Depth 0): Steve, Daisy, Debbee, Wendy, Rodman
 
 ---
@@ -348,6 +358,45 @@ Bob (Backend): "Optimize database queries"
 - **Telemetry**: Anomaly detection, health monitoring, sensor data validation, state estimation
 - **Propulsion**: Performance envelopes, trade studies, reliability modeling, system optimization
 
+| Name | Agent | Expertise | Best For | Delegation Capability |
+|------|-------|-----------|----------|-----------------------|
+| **Mira** | ml-engineer | **Deep learning implementation** - PyTorch/TensorFlow training, CNN/Transformer architectures, model optimization (quantization, pruning, LoRA/QLoRA), deployment (ONNX, vLLM) ⭐ v5.6.10 | DL model implementation, training loops, fine-tuning, inference optimization | 1 layer (can consult Bob for production, Dana for architecture validation) |
+| **Emma** | erp-specialist | **ERP integration** - SAP S/4HANA (OData, BAPI/RFC, IDoc), Oracle Fusion (REST, OIC, FBDI), Microsoft Dynamics 365 (Web API, Power Platform), enterprise integration patterns (idempotency, retry, circuit breakers) ⭐ v5.6.10 | Enterprise system integration, ERP API design, data migration, observability | 1 layer (can consult Bob/Felix for backend implementation) |
+
+**Mira's Deep Learning Expertise (v5.6.10)**:
+- **PyTorch 2.x** (primary): torch.compile() optimization, mixed precision training, distributed (DDP/FSDP), ONNX export
+- **TensorFlow 2.x** (secondary): Keras API, tf.data pipelines, distributed training (MirroredStrategy), TensorFlow Lite
+- **Computer Vision**: CNN architectures (ResNet, EfficientNet, YOLO, U-Net), transfer learning, data augmentation (Albumentations)
+- **NLP/LLMs**: Transformer fine-tuning, LoRA/QLoRA efficient tuning, RAG pipelines, vLLM inference optimization, GPTQ/AWQ quantization
+- **Model Optimization**: Quantization (PTQ, QAT), pruning (structured, unstructured), knowledge distillation, TensorRT deployment
+- **Deployment**: ONNX export, TorchServe, TensorFlow Serving, vLLM for fast LLM inference
+
+**Emma's ERP Integration Expertise (v5.6.10)**:
+- **SAP S/4HANA**: OData APIs (read-mostly operations), BAPI/RFC (complex writes), IDoc (high-volume batch), Fiori UI integration, SAP BTP
+- **Oracle Fusion Cloud**: REST APIs (cloud-native), Oracle Integration Cloud (OIC workflows), FBDI (File-Based Data Import), UCM (Universal Content Management)
+- **Microsoft Dynamics 365**: Web API (OData V4 CRUD), Power Automate (low-code workflows), Azure Logic Apps (code-first integration), DMF (Data Management Framework)
+- **Integration Patterns**: Idempotency (ExternalSystemId strategy), retry with exponential backoff, circuit breakers, rate limiting (token bucket), pagination
+- **Error Handling**: Transient vs permanent error classification, dead letter queues, comprehensive logging, alerting on failures
+
+| Name | Agent | Expertise | Best For | Delegation Capability |
+|------|-------|-----------|----------|-----------------------|
+| **Fiona** | figma-expert | **Figma Integration & Design-to-Code** - Figma API (REST, webhooks, plugins, OAuth 2.0), design tokens (Style Dictionary, W3C format, multi-platform output), design-to-code (React/Vue/HTML generation, Tailwind CSS), MCP integration (JSON-RPC 2.0, AI-powered workflows) ⭐ v5.6.11 | Design system synchronization, automated component generation, design QA automation | 1 layer (can delegate to Frank/Felix for frontend integration) |
+| **Ivy** | iot-engineer | **IoT/Embedded/Robotics** - IoT protocols (MQTT, CoAP, LoRaWAN, BLE, Zigbee), edge computing (K3s, AWS IoT Greengrass, Azure IoT Edge), embedded systems (FreeRTOS, Zephyr RTOS, bare-metal, device drivers), robotic systems (ROS2, Nav2, MoveIt2, Gazebo) ⭐ v5.6.11 | IoT device firmware, edge ML inference, robot navigation, sensor fusion | 1 layer (can delegate to Bob for backend integration) |
+
+**Fiona's Figma & Design-to-Code Expertise (v5.6.11)**:
+- **Figma REST API**: File structure parsing, component extraction, asset export (SVG/PNG), webhooks for design updates, OAuth 2.0 authentication, rate limiting (100 req/min)
+- **Design Tokens**: W3C Design Tokens format, 3-tier aliasing (palette → semantic → component), Style Dictionary multi-platform output (CSS, SCSS, Tailwind, iOS, Android)
+- **Design-to-Code**: Auto Layout → Flexbox conversion, React/Vue/HTML component generation, Tailwind CSS integration, Storybook stories, 70% scaffold automation
+- **MCP Integration**: JSON-RPC 2.0 tools for AI workflows, natural language component creation, automated design QA (spacing, colors, accessibility), smart prop inference from annotations
+- **Design Validation**: Enforces design system tokens, validates contrast ratios (WCAG AA/AAA), checks spacing consistency, identifies hardcoded values
+
+**Ivy's IoT/Embedded/Robotics Expertise (v5.6.11)**:
+- **IoT Protocols**: MQTT (QoS 0/1/2, retained messages, will messages), CoAP (UDP-based, confirmable/non-confirmable), LoRaWAN (Class A/B/C, adaptive data rate), BLE (GATT, advertising, pairing), Zigbee (mesh networking)
+- **Edge Computing**: K3s lightweight Kubernetes, AWS IoT Greengrass (Lambda@Edge, local ML inference), Azure IoT Edge (modules, offline-first patterns), edge-to-cloud synchronization
+- **Embedded Systems**: FreeRTOS (tasks, queues, semaphores, mutexes), Zephyr RTOS (device tree, shields, samples), bare-metal ARM Cortex-M (startup, linker scripts), device drivers (I2C, SPI, UART, GPIO), firmware OTA updates
+- **Robotic Systems**: ROS2 (DDS middleware, nodes, topics, services), Nav2 (SLAM, AMCL localization, path planning), MoveIt2 (motion planning, inverse kinematics, collision detection), Gazebo (simulation, sensor models, physics), sensor fusion (Kalman filters, IMU + GPS)
+- **Zero Overlap with Bob**: Ivy handles constrained devices, edge deployments, real-time systems; Bob handles server-side APIs, databases, cloud services
+
 #### Pure Implementers (Depth 0)
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
@@ -370,6 +419,19 @@ Bob (Backend): "Optimize database queries"
 | **Queenie** | quality | **SOLE OWNER** of code-review & debugging | Multi-layer QA workflows, test coordination | 2 layers (QA → Implementation → Specialist) |
 
 **Why Depth 2?**: Quality assurance requires coordinating complex workflows where implementers need to delegate to specialists (e.g., Backend implements tests → Security audits security aspects).
+
+#### Tactical Implementers (Depth 1) ⭐ NEW in v5.6.10
+
+| Name | Agent | Expertise | Best For | Delegation Capability |
+|------|-------|-----------|----------|-----------------------|
+| **Stan** | best-practices | **Software engineering standards** - SOLID principles, design patterns (Gang of Four), clean code, refactoring techniques, software architecture (Layered, Microservices, Hexagonal, Event-Driven) ⭐ v5.6.10 | Code reviews, architecture validation, refactoring guidance, pattern recommendations | 1 layer (can consult implementers for code validation) |
+
+**Stan's Best Practices Expertise (v5.6.10)**:
+- **SOLID Principles**: SRP (Single Responsibility), OCP (Open/Closed), LSP (Liskov Substitution), ISP (Interface Segregation), DIP (Dependency Inversion)
+- **Design Patterns**: Creational (Singleton, Factory, Builder), Structural (Adapter, Decorator, Facade), Behavioral (Strategy, Observer, Command, Template Method)
+- **Clean Code**: Meaningful naming, small functions, DRY (Don't Repeat Yourself), YAGNI (You Aren't Gonna Need It), KISS (Keep It Simple)
+- **Refactoring**: Code smells detection (Bloaters, OO Abusers, Change Preventers), Extract Method, Rename, Introduce Parameter Object, Replace Conditional with Polymorphism
+- **Software Architecture**: Layered (N-Tier), Microservices, Hexagonal (Ports and Adapters), Event-Driven, Serverless patterns
 
 ---
 
@@ -487,7 +549,7 @@ Each agent uses a **smart fallback strategy** to ensure maximum reliability:
 - ✅ Fallback 1: Codex (OpenAI)
 - ✅ Fallback 2: Gemini
 
-**Design Team** (Debbee, Wendy):
+**Design Team** (Fiona, Debbee, Wendy):
 - ✅ Primary: Gemini
 - ✅ Fallback 1: Claude
 - ✅ Fallback 2: Codex (OpenAI)

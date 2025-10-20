@@ -41,7 +41,7 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
-        run: npm run test:unit -- --config vitest.config.ci.ts
+        run: npm run test:ci
         timeout-minutes: 10
         env:
           AUTOMATOSX_MOCK_PROVIDERS: 'true'

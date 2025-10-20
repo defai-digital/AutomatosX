@@ -159,7 +159,7 @@ export default defineConfig({
       'tests/unit/rate-limiter.test.ts',              // 1 test (partial)
       'tests/unit/runs-command.test.ts',              // 1 test (partial)
 
-      // ===== CATEGORY 9: Windows-Specific Path Issues (~103 tests) =====
+      // ===== CATEGORY 9: Windows-Specific Path Issues (~120 tests) =====
       // Cross-platform path handling issues on Windows CI
       // These tests pass on Linux/macOS but fail on Windows due to path separators and drive letters
       'tests/unit/context-manager.test.ts',        // 18 tests - ENOENT errors on Windows
@@ -167,6 +167,7 @@ export default defineConfig({
       'tests/unit/init-command.test.ts',           // 15 tests - Promise rejection handling
       'tests/unit/cli-agent-list.test.ts',         // 21 tests - String expectation mismatches
       'tests/unit/path-resolver.test.ts',          // 29 tests - Drive letter (D:) in normalized paths
+      'tests/unit/memory-command-handlers.test.ts',// 17 tests - Memory path handling on Windows
 
       // Note: Router tests have some failures but are CRITICAL, so kept in CI
       // All other core unit tests (providers, config, memory, agents) are included

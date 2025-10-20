@@ -208,6 +208,7 @@ ax run quality "Write tests for the API" # Auto-receives design + implementation
 -   **[Core Concepts](docs/guide/core-concepts.md)**
 -   **[Full CLI Command Reference](docs/reference/cli-commands.md)**
 -   **[Agent Directory](examples/AGENTS_INFO.md)**
+-   **[Workspace Path Conventions](docs/workspace-conventions.md)**
 -   **[Troubleshooting Guide](TROUBLESHOOTING.md)**
 
 ---

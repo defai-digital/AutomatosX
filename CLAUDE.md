@@ -99,8 +99,8 @@ npm run release:rc         # Create RC pre-release
 
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
-- 4 teams, 19 specialized agents
-- v5.6.9 | 2,116 tests passing (12 skipped) | Node.js 20+
+- 4 teams, 24 specialized agents
+- v5.6.11 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -140,13 +140,21 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.9 (October 2025)
+### Latest Release: v5.6.11 (October 2025)
 
 **What's New**:
 
-- **Agent Team Optimization**: Comprehensive skill redistribution and specialist agents
-  - **2 New Specialist Agents**: Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist)
-  - **19 Total Agents** (was 17): Enhanced engineering team with quantum and aerospace expertise
+- **Phase 2 Agent Expansion (v5.6.11)**: Two new specialist agents completing design and IoT capabilities
+  - **Fiona (Figma Expert)**: Design-to-code automation, design tokens, MCP integration (50-70% time reduction)
+  - **Ivy (IoT/Embedded Engineer)**: IoT protocols, edge computing, embedded systems, robotics (end-to-end IoT development)
+  - **24 Total Agents** (was 22): Complete design team + enhanced engineering team
+  - **8 New Ability Files**: Figma API, design tokens, IoT protocols, edge computing, embedded systems, robotics (~4,025 lines, 110+ keywords)
+- **Agent Team Optimization (v5.6.9-5.6.10)**: Comprehensive skill redistribution and specialist agents
+  - **Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist)**: Quantum algorithms, orbital mechanics, mission analysis
+  - **Stan (Best Practices Expert)**: SOLID, design patterns, clean code, refactoring, architecture
+  - **Emma (ERP Integration Specialist)**: SAP, Oracle, Dynamics 365, enterprise integration patterns
+  - **Mira (ML Engineer)**: PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning
+  - **19 → 24 Agents**: Enhanced engineering, core, and design teams
   - **Skill Redistribution**: Eliminated JS/TS and Python overlaps across Bob, Frank, Felix, Maya
     - Bob (backend): Focused on Go/Rust + systems programming, Python only for math validation
     - Frank (frontend): Pure frontend (React/Next.js/Swift), removed Python tooling
@@ -632,11 +640,17 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 
 ### Teams & Agents
 
-**4 Teams**: core (QA), engineering (dev), business (product), design (UX)
-**19 Agents**: Including 2 specialist agents (Quinn, Astrid) added in v5.6.9
+**4 Teams**: core (QA, Best Practices), engineering (dev), business (product), design (UX)
+**24 Agents**: Including 7 specialist agents (Quinn, Astrid, Stan, Emma, Mira, Fiona, Ivy)
 
 - Agents inherit team config (provider, abilities, orchestration)
-- Specialist agents: Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist) with `maxDelegationDepth: 1`
+- Specialist agents (v5.6.9-5.6.11):
+  - Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist): `maxDelegationDepth: 1`
+  - Stan (Best Practices Expert): SOLID, design patterns, clean code
+  - Emma (ERP Integration Specialist): SAP, Oracle, Dynamics 365
+  - Mira (ML Engineer): PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning
+  - Fiona (Figma Expert): Design-to-code automation, design tokens, MCP integration
+  - Ivy (IoT/Embedded Engineer): IoT protocols, edge computing, embedded systems, robotics
 - See `examples/AGENTS_INFO.md` for full directory
 
 ### CLI Commands
@@ -715,15 +729,33 @@ ax agent create <name> --template developer --interactive
 3. Add tests: `tests/unit/` + `tests/integration/`
 4. Follow Conventional Commits for commit messages (see CONTRIBUTING.md)
 
-### Working with tmp Directory
+### Working with tmp Directory and Workspace Paths
 
-The `/tmp` directory in the project root is used for:
+**CRITICAL**: AutomatosX uses workspace isolation with two separate tmp directories:
 
-- Temporary test files and scripts
-- Planning documents and implementation reports
-- Analysis and debugging artifacts
+| Path | Purpose | Managed By |
+|------|---------|------------|
+| `/tmp/` | User's project temporary directory | User |
+| `/automatosx/tmp/` | Agent workspace (isolated) | AutomatosX |
+| `/automatosx/PRD/` | Planning documents | AutomatosX |
+
+**When agents report "saved to tmp/file.md"**, check **both** locations:
+
+```bash
+# Check user tmp (less likely)
+ls tmp/*.md
+
+# Check agent workspace (more likely)
+ls automatosx/tmp/*.md
+```
+
+**Key Points**:
+
+- All providers (OpenAI, Gemini CLI, Claude Code) should write to `automatosx/tmp/` for agent files
+- User files go in project `/tmp/`
+- Agent files are isolated in `/automatosx/tmp/` for auto-cleanup and workspace management
+- See `docs/workspace-conventions.md` for full details
 - Should NOT be committed to git (add to `.gitignore` if needed)
-- AutomatosX agents can write to `automatosx/tmp/` (workspace isolation)
 
 ### Commit Changes
 
@@ -933,7 +965,7 @@ ax gemini validate --fix
 ax gemini status --json
 ```
 
-### Testing
+### Gemini CLI Testing
 
 ```bash
 # Integration tests

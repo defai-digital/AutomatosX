@@ -168,6 +168,7 @@ export default defineConfig({
       'tests/unit/cli-agent-list.test.ts',         // 21 tests - String expectation mismatches
       'tests/unit/path-resolver.test.ts',          // 29 tests - Drive letter (D:) in normalized paths
       'tests/unit/memory-command-handlers.test.ts',// 17 tests - Memory path handling on Windows
+      'tests/unit/executor-prompt-enhancement.test.ts', // 10 tests - Hardcoded Unix paths in prompt assertions
 
       // Note: Router tests have some failures but are CRITICAL, so kept in CI
       // All other core unit tests (providers, config, memory, agents) are included

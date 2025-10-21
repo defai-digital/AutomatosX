@@ -112,9 +112,22 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         }));
       }
 
+      // v5.7.0: Include router configuration for health checks
+      const providerHealthCheckIntervals = providers
+        .map(p => config.providers[p.name]?.healthCheck?.interval)
+        .filter((interval): interval is number => interval !== undefined && interval > 0);
+
+      const minProviderHealthCheckInterval = providerHealthCheckIntervals.length > 0
+        ? Math.min(...providerHealthCheckIntervals)
+        : undefined;
+
+      const healthCheckInterval = minProviderHealthCheckInterval ?? config.router?.healthCheckInterval;
+
       const router = new Router({
         providers,
-        fallbackEnabled: true
+        fallbackEnabled: true,
+        healthCheckInterval,
+        providerCooldownMs: config.router?.providerCooldownMs
       });
 
       // Get provider health
@@ -182,7 +195,8 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         router: {
           totalProviders: providers.length,
           availableProviders: availableProviders.length,
-          fallbackEnabled: true
+          fallbackEnabled: true,
+          healthCheck: router.getHealthCheckStatus()  // v5.7.0: Add health check status
         },
         performance: {
           statusCheckMs: Date.now() - startTime
@@ -312,6 +326,22 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         console.log(`  Total providers: ${chalk.white(status.router.totalProviders)}`);
         console.log(`  Available: ${chalk.white(status.router.availableProviders)}`);
         console.log(`  Fallback: ${chalk.white(status.router.fallbackEnabled ? 'enabled' : 'disabled')}`);
+
+        // v5.7.0: Health check status
+        const healthCheck = status.router.healthCheck;
+        if (healthCheck.enabled) {
+          console.log(`  Health Checks: ${chalk.green('✓ enabled')} (${(healthCheck.interval! / 1000).toFixed(0)}s interval)`);
+          if (healthCheck.checksPerformed > 0) {
+            console.log(`    Checks: ${chalk.white(healthCheck.checksPerformed.toLocaleString())} (${chalk.white(healthCheck.successRate.toFixed(1))}% success)`);
+            console.log(`    Avg Duration: ${chalk.white(Math.round(healthCheck.avgDuration))}ms`);
+            if (healthCheck.lastCheck) {
+              const lastCheckAgo = Math.floor((Date.now() - healthCheck.lastCheck) / 1000);
+              console.log(`    Last Check: ${chalk.white(lastCheckAgo)}s ago`);
+            }
+          }
+        } else {
+          console.log(`  Health Checks: ${chalk.gray('disabled')}`);
+        }
         console.log();
 
         // Performance (verbose only)

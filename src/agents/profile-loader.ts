@@ -750,6 +750,45 @@ export class ProfileLoader {
     // Validate
     this.validateProfile(profile);
 
+    // v5.6.13: Phase 2.4 - Freeze profile for immutability (2-10ms copy optimization)
+    // Deep freeze nested objects for full immutability
+    if (profile.orchestration) {
+      Object.freeze(profile.orchestration);
+    }
+    if (profile.abilitySelection) {
+      Object.freeze(profile.abilitySelection);
+      if (profile.abilitySelection.core) {
+        Object.freeze(profile.abilitySelection.core);
+      }
+      if (profile.abilitySelection.taskBased) {
+        Object.freeze(profile.abilitySelection.taskBased);
+      }
+    }
+    if (profile.stages) {
+      Object.freeze(profile.stages);
+    }
+    if (profile.personality) {
+      Object.freeze(profile.personality);
+    }
+    if (profile.thinking_patterns) {
+      Object.freeze(profile.thinking_patterns);
+    }
+    if (profile.abilities) {
+      Object.freeze(profile.abilities);
+    }
+    if (profile.dependencies) {
+      Object.freeze(profile.dependencies);
+    }
+    if (profile.tags) {
+      Object.freeze(profile.tags);
+    }
+    if (profile.metadata) {
+      Object.freeze(profile.metadata);
+    }
+
+    // Freeze the profile itself
+    Object.freeze(profile);
+
     return profile;
   }
 

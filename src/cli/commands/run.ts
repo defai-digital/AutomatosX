@@ -318,19 +318,23 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       }
 
       // Phase 2 (v5.6.2): Enable background health checks if configured
-      // Use the minimum health check interval from all enabled providers
-      const healthCheckIntervals = providers
+      // Phase 2.1 (v5.7.0): Use router.healthCheckInterval from config, with provider-level overrides
+      const providerHealthCheckIntervals = providers
         .map(p => config.providers[p.name]?.healthCheck?.interval)
         .filter((interval): interval is number => interval !== undefined && interval > 0);
 
-      const minHealthCheckInterval = healthCheckIntervals.length > 0
-        ? Math.min(...healthCheckIntervals)
+      const minProviderHealthCheckInterval = providerHealthCheckIntervals.length > 0
+        ? Math.min(...providerHealthCheckIntervals)
         : undefined;
+
+      // Priority: provider-level min interval > router config > undefined (disabled)
+      const healthCheckInterval = minProviderHealthCheckInterval ?? config.router?.healthCheckInterval;
 
       router = new Router({
         providers,
         fallbackEnabled: true,
-        healthCheckInterval: minHealthCheckInterval
+        healthCheckInterval,
+        providerCooldownMs: config.router?.providerCooldownMs
       });
 
       // 5. Initialize orchestration managers

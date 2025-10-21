@@ -324,6 +324,15 @@ export interface OpenAIConfig {
 // Main Configuration
 // ========================================
 
+// ========================================
+// Router Configuration (v5.7.0+)
+// ========================================
+
+export interface RouterConfig {
+  healthCheckInterval?: number;  // Background health check interval (ms), optional
+  providerCooldownMs?: number;   // Cooldown period for failed providers (ms)
+}
+
 export interface AutomatosXConfig {
   $schema?: string;
   version?: string;
@@ -339,6 +348,7 @@ export interface AutomatosXConfig {
   integration?: IntegrationConfig;
   cli?: CLIConfig;
   openai?: OpenAIConfig;  // legacy
+  router?: RouterConfig;  // v5.7.0: Router configuration
 }
 
 // ========================================
@@ -570,5 +580,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     memory: {
       defaultLimit: 10
     }
+  },
+
+  // v5.7.0: Router configuration for background health checks
+  router: {
+    healthCheckInterval: 60000,  // 60 seconds (default: enabled)
+    providerCooldownMs: 30000    // 30 seconds cooldown for failed providers
   }
 };

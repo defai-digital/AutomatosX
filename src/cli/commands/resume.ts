@@ -190,9 +190,22 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
         }));
       }
 
+      // v5.7.0: Include router configuration for health checks
+      const providerHealthCheckIntervals = providers
+        .map(p => config.providers[p.name]?.healthCheck?.interval)
+        .filter((interval): interval is number => interval !== undefined && interval > 0);
+
+      const minProviderHealthCheckInterval = providerHealthCheckIntervals.length > 0
+        ? Math.min(...providerHealthCheckIntervals)
+        : undefined;
+
+      const healthCheckInterval = minProviderHealthCheckInterval ?? config.router?.healthCheckInterval;
+
       router = new Router({
         providers,
-        fallbackEnabled: true
+        fallbackEnabled: true,
+        healthCheckInterval,
+        providerCooldownMs: config.router?.providerCooldownMs
       });
 
       // 7. Initialize orchestration managers

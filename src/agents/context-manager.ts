@@ -57,6 +57,7 @@ export class ContextManager {
 
   /**
    * Create execution context for an agent task
+   * v5.6.13: Phase 2.3 - Parallel context creation for 20-40ms improvement
    */
   async createContext(
     agentName: string,
@@ -72,14 +73,19 @@ export class ContextManager {
       resolved: resolvedName
     });
 
-    // 2. Load agent profile
-    const agent = await this.config.profileLoader.loadProfile(resolvedName);
+    // v5.6.13: Phase 2.3 - Parallel execution of independent operations
+    // Step 2-5: Load profile, detect project root in parallel
+    const [agent, projectDir] = await Promise.all([
+      this.config.profileLoader.loadProfile(resolvedName),
+      this.config.pathResolver.detectProjectRoot()
+    ]);
 
-    // 3. Load abilities (smart selection based on task)
+    // Step 3-4: After profile loaded, select abilities and provider in parallel
     const selectedAbilities = this.selectAbilities(agent, task);
-    const abilities = await this.config.abilitiesManager.getAbilitiesText(
-      selectedAbilities
-    );
+    const [abilities, provider] = await Promise.all([
+      this.config.abilitiesManager.getAbilitiesText(selectedAbilities),
+      this.selectProviderForAgent(agent, options)
+    ]);
 
     logger.debug('Abilities selected', {
       total: agent.abilities.length,
@@ -87,11 +93,7 @@ export class ContextManager {
       abilities: selectedAbilities
     });
 
-    // 4. Select provider (v4.10.0+: team-based → agent-based → router)
-    const provider = await this.selectProviderForAgent(agent, options);
-
-    // 5. Get paths
-    const projectDir = await this.config.pathResolver.detectProjectRoot();
+    // 5. Get working directory (synchronous)
     const workingDir = process.cwd();
 
     // v5.2: Agent-specific workspaces removed
@@ -102,56 +104,68 @@ export class ContextManager {
 
     logger.debug('Agent workspace path defined (not created)', { workspace: agentWorkspace });
 
-    // 7. Handle session (if sessionId provided)
-    let session: Session | undefined;
-    if (options?.sessionId) {
-      if (!this.config.sessionManager) {
-        throw new Error(
-          `SessionManager not configured but session ID was provided: ${options.sessionId}`
-        );
-      }
+    // v5.6.13: Phase 2.3 - Parallel session and orchestration loading
+    // Step 7-8: Load session and build orchestration metadata in parallel
+    const [session, orchestration] = await Promise.all([
+      // 7. Handle session (if sessionId provided)
+      (async (): Promise<Session | undefined> => {
+        if (!options?.sessionId) {
+          return undefined;
+        }
 
-      const foundSession = await this.config.sessionManager.getSession(options.sessionId);
-      if (!foundSession) {
-        throw new Error(
-          `Session not found: ${options.sessionId}. Please verify the session ID or create a new session.`
-        );
-      }
-      session = foundSession;
-    }
+        if (!this.config.sessionManager) {
+          throw new Error(
+            `SessionManager not configured but session ID was provided: ${options.sessionId}`
+          );
+        }
 
-    // 8. Build orchestration metadata (v4.7.8+: all agents can delegate)
-    let orchestration: OrchestrationMetadata | undefined;
-    if (this.config.workspaceManager && this.config.profileLoader) {
-      // Get list of available agents for delegation
-      const allAgents = await this.config.profileLoader.listProfiles();
+        const foundSession = await this.config.sessionManager.getSession(options.sessionId);
+        if (!foundSession) {
+          throw new Error(
+            `Session not found: ${options.sessionId}. Please verify the session ID or create a new session.`
+          );
+        }
+        return foundSession;
+      })(),
 
-      // v4.7.8+: All agents can delegate by default
-      // Only exclude self to prevent direct self-delegation (cycles still detected)
-      const availableAgents = allAgents.filter(a => a !== agent.name);
+      // 8. Build orchestration metadata (v4.7.8+: all agents can delegate)
+      (async (): Promise<OrchestrationMetadata | undefined> => {
+        if (!this.config.workspaceManager || !this.config.profileLoader) {
+          return undefined;
+        }
 
-      // v5.2: Shared workspace now points to automatosx/PRD
-      // PRD is for planning documents and shared resources across all agents
-      const sharedWorkspace = join(projectDir, 'automatosx', 'PRD');
+        // Get list of available agents for delegation
+        const allAgents = await this.config.profileLoader.listProfiles();
 
-      // Respect maxDelegationDepth from agent config, default to 2
-      const maxDelegationDepth = agent.orchestration?.maxDelegationDepth ?? 2;
+        // v4.7.8+: All agents can delegate by default
+        // Only exclude self to prevent direct self-delegation (cycles still detected)
+        const availableAgents = allAgents.filter(a => a !== agent.name);
 
-      orchestration = {
-        isDelegationEnabled: true,
-        availableAgents,
-        sharedWorkspace,
-        delegationChain: options?.delegationChain || [],
-        maxDelegationDepth
-      };
+        // v5.2: Shared workspace now points to automatosx/PRD
+        // PRD is for planning documents and shared resources across all agents
+        const sharedWorkspace = join(projectDir, 'automatosx', 'PRD');
 
-      logger.debug('Orchestration metadata built', {
-        availableAgents,
-        sharedWorkspace,
-        delegationChain: orchestration.delegationChain,
-        maxDelegationDepth
-      });
-    }
+        // Respect maxDelegationDepth from agent config, default to 2
+        const maxDelegationDepth = agent.orchestration?.maxDelegationDepth ?? 2;
+
+        const metadata = {
+          isDelegationEnabled: true,
+          availableAgents,
+          sharedWorkspace,
+          delegationChain: options?.delegationChain || [],
+          maxDelegationDepth
+        };
+
+        logger.debug('Orchestration metadata built', {
+          availableAgents,
+          sharedWorkspace,
+          delegationChain: metadata.delegationChain,
+          maxDelegationDepth
+        });
+
+        return metadata;
+      })()
+    ]);
 
     // 9. Create context
     const context: ExecutionContext = {

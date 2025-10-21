@@ -36,6 +36,7 @@ import {
   inRange
 } from './validation-limits.js';
 import { TTLCache } from './cache.js';
+import { calculateMaxConcurrentAgents } from '../utils/resource-calculator.js';
 
 /**
  * Configuration cache (process-level)
@@ -131,7 +132,24 @@ async function loadConfigUncached(projectDir: string): Promise<AutomatosXConfig>
 
   // Default config
   logger.debug('Using DEFAULT_CONFIG');
-  return DEFAULT_CONFIG;
+
+  // v5.6.13: Phase 2.6 - Apply dynamic maxConcurrentAgents for default config
+  // Use mergeConfig to properly deep copy DEFAULT_CONFIG
+  const config = mergeConfig(DEFAULT_CONFIG, {});
+
+  const resourceLimits = calculateMaxConcurrentAgents();
+  if (config.execution) {
+    // Deep copy execution to avoid mutating DEFAULT_CONFIG
+    config.execution = { ...config.execution };
+    config.execution.maxConcurrentAgents = resourceLimits.maxConcurrentAgents;
+  }
+
+  logger.info('Dynamic maxConcurrentAgents calculated (default config)', {
+    limit: resourceLimits.maxConcurrentAgents,
+    reason: resourceLimits.reason
+  });
+
+  return config;
 }
 
 /**
@@ -171,6 +189,19 @@ export async function loadConfigFile(path: string): Promise<AutomatosXConfig> {
 
     // Merge with defaults (deep merge)
     const config = mergeConfig(DEFAULT_CONFIG, userConfig);
+
+    // v5.6.13: Phase 2.6 - Apply dynamic maxConcurrentAgents if not explicitly configured
+    if (config.execution && userConfig.execution?.maxConcurrentAgents === undefined) {
+      // Deep copy execution object to avoid mutating shared references
+      config.execution = { ...config.execution };
+
+      const resourceLimits = calculateMaxConcurrentAgents();
+      config.execution.maxConcurrentAgents = resourceLimits.maxConcurrentAgents;
+      logger.info('Dynamic maxConcurrentAgents calculated', {
+        limit: resourceLimits.maxConcurrentAgents,
+        reason: resourceLimits.reason
+      });
+    }
 
     // Validate merged config
     const validationErrors = validateConfig(config);

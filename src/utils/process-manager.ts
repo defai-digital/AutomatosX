@@ -10,7 +10,7 @@
  * Solution: Track all spawned child processes and forcefully kill them
  * before process exit.
  *
- * @since v5.7.1
+ * @since v5.6.15
  */
 
 import { ChildProcess } from 'child_process';
@@ -161,19 +161,27 @@ class ProcessManager {
 // Singleton instance
 export const processManager = new ProcessManager();
 
+// Module-level flags for exit handler management
+let exitHandlersInstalled = false;
+let exitInProgress = false;
+
 /**
  * Install process exit handlers to ensure cleanup
  *
  * This should be called once at application startup (in CLI index.ts)
  */
 export function installExitHandlers(): void {
-  let handlerInstalled = false;
+  if (exitHandlersInstalled) {
+    logger.warn('Exit handlers already installed, skipping duplicate installation');
+    return;
+  }
+  exitHandlersInstalled = true;
 
   const exitHandler = async (signal: string) => {
-    if (handlerInstalled) {
+    if (exitInProgress) {
       return; // Prevent re-entry
     }
-    handlerInstalled = true;
+    exitInProgress = true;
 
     logger.info(`Received ${signal}, initiating shutdown...`);
 
@@ -205,14 +213,14 @@ export function installExitHandlers(): void {
   process.once('SIGHUP', () => exitHandler('SIGHUP'));
 
   // Handle uncaught exceptions
-  process.once('uncaughtException', (error) => {
+  process.once('uncaughtException', async (error) => {
     logger.error('Uncaught exception', { error: error.message, stack: error.stack });
-    exitHandler('uncaughtException');
+    await exitHandler('uncaughtException');
   });
 
   // Handle unhandled rejections
-  process.once('unhandledRejection', (reason) => {
+  process.once('unhandledRejection', async (reason) => {
     logger.error('Unhandled rejection', { reason });
-    exitHandler('unhandledRejection');
+    await exitHandler('unhandledRejection');
   });
 }

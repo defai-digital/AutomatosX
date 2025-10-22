@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.13** · October 2025 · 24 Specialized Agents · Phase 2 Performance Optimizations · 70% Faster
+**Status**: ✅ Production Ready · **v5.6.14** · October 2025 · 24 Specialized Agents · Phase 2 Performance Optimizations · 70% Faster
 
 ---
 

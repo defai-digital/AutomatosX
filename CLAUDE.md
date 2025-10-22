@@ -614,7 +614,7 @@ export TEST_REAL_PROVIDERS=true
 export TEST_REAL_GEMINI_CLI=true
 ```
 
-**Timeouts** (vitest.config.ts): Test 30s, Hook 30s, Teardown 10s
+**Timeouts** (vitest.config.ts): Test 60s, Hook 60s, Teardown 10s
 
 **Test Coverage**: 2,116 tests passing (12 skipped) across 101 test files. See CONTRIBUTING.md for test requirements.
 
@@ -813,7 +813,13 @@ ax runs list/show/delete                 # Manage
 **Core**:
 
 - `src/cli/index.ts` - CLI entry
-- `src/core/` - router, team-manager, memory-manager, session-manager, workspace-manager, response-cache (v5.5.0+), path-resolver (v5.6.3+)
+- `src/core/` - Key modules:
+  - router, team-manager, memory-manager, session-manager, workspace-manager
+  - response-cache (v5.5.0+), path-resolver (v5.6.3+)
+  - cache-warmer, adaptive-cache (v5.6.13+) - Background health checks
+  - db-connection-pool, lazy-loader - Performance optimization
+  - checkpoint-manager, stage-execution-controller - Execution control
+  - metrics, timeout-manager, parameter-validator - System utilities
 - `src/utils/path-utils.ts` - Path normalization and validation utilities (v5.6.4+)
 - `src/agents/` - executor, delegation-parser, template-engine, context-manager, dependency-graph (v5.6.0), execution-planner (v5.6.0), parallel-agent-executor (v5.6.0)
 - `src/providers/` - base-provider, claude-provider, gemini-provider, openai-provider, retry-errors (v5.6.4+)

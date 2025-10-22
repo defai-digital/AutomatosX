@@ -2,6 +2,81 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.14](https://github.com/defai-digital/automatosx/compare/v5.6.13...v5.6.14) (2025-10-22)
+
+### New Features - Claude Code Integration Enhancement
+
+* **feat(init):** Automatic CLAUDE.md generation with AutomatosX integration guide 📖 NEW
+  - **Problem Solved**: Claude Code didn't know how to use AutomatosX agents in new projects
+  - **Solution**: `ax init` now automatically creates/updates project CLAUDE.md with comprehensive integration guide
+  - **File**: `examples/claude/CLAUDE_INTEGRATION.md` - Complete AutomatosX usage template
+  - **Features**:
+    - Natural language examples: "Please work with ax agent backend to implement authentication"
+    - Slash command examples: `/ax-agent backend, create REST API`
+    - Complete agent directory (24 specialized agents)
+    - Memory system explanation
+    - Multi-agent collaboration examples
+    - Configuration guide
+    - Troubleshooting tips
+  - **Smart Update Behavior**:
+    - New projects: Creates full CLAUDE.md with AutomatosX integration
+    - Existing CLAUDE.md: Appends AutomatosX section without overwriting user content
+    - Force mode (`--force`): Updates existing AutomatosX section
+  - **Impact**: Claude Code now automatically understands how to work with AutomatosX agents in every project
+  - **Files Changed**:
+    - `src/cli/commands/init.ts` - Added `setupProjectClaudeMd()` function
+    - `examples/claude/CLAUDE_INTEGRATION.md` - New integration template (370 lines)
+
+### Documentation Updates
+
+* **docs(quick-start):** Updated Quick Start guide to v5.6.13 specifications
+  - Updated version references: 5.1.0 → 5.6.13
+  - Updated agent count: 12 → 24 specialized agents
+  - Updated ability count: 15 → 56 abilities
+  - Updated team count: 4 → 5 teams
+  - Added new directory structure (templates, .claude, CLAUDE.md)
+  - Added router health check output example
+  - Updated expected output examples
+
+* **docs(claude-md):** Updated CLAUDE.md with v5.6.13 performance improvements
+  - Fixed test timeout documentation: 30s → 60s
+  - Expanded core modules documentation with v5.6.13 additions
+  - Added cache-warmer, adaptive-cache, db-connection-pool modules
+
+### Developer Experience
+
+* **Before this release**:
+  ```
+  User: "Please use ax agent to help me"
+  Claude Code: "I don't have AutomatosX agent. I'll use my Task tool instead..."
+  ```
+
+* **After this release**:
+  ```bash
+  cd new-project
+  ax init
+  # → Creates CLAUDE.md with AutomatosX integration guide
+
+  # Now in Claude Code:
+  User: "Please work with ax agent backend to implement auth API"
+  Claude Code: "I'll execute: ax run backend 'implement auth API'" ✅
+  ```
+
+### Configuration
+
+No configuration changes required. The feature works automatically when running `ax init`.
+
+**Optional customization**:
+```bash
+# Force update existing CLAUDE.md
+ax init --force
+
+# Template location for customization
+examples/claude/CLAUDE_INTEGRATION.md
+```
+
+---
+
 ## [5.6.13](https://github.com/defai-digital/automatosx/compare/v5.6.12...v5.6.13) (2025-10-21)
 
 ### New Features - Phase 3 Advanced Optimizations

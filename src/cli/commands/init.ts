@@ -140,6 +140,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       createdResources.push(join(projectDir, '.claude'));
       console.log(chalk.green('   ✓ Claude Code integration configured'));
 
+      // Setup project CLAUDE.md with AutomatosX integration guide
+      console.log(chalk.cyan('📖 Setting up CLAUDE.md with AutomatosX integration...'));
+      await setupProjectClaudeMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ CLAUDE.md configured'));
+
       // Initialize git repository if needed (for Codex CLI compatibility)
       console.log(chalk.cyan('🔧 Initializing git repository...'));
       await initializeGitRepository(projectDir);
@@ -554,4 +559,121 @@ async function updateGitignore(projectDir: string): Promise<void> {
     // Non-critical error, just log it
     logger.warn('Failed to update .gitignore', { error: (error as Error).message });
   }
+}
+
+/**
+ * Setup project CLAUDE.md with AutomatosX integration guide
+ *
+ * This function creates or updates the project's CLAUDE.md file to include
+ * AutomatosX integration instructions, helping Claude Code understand how to
+ * work with AutomatosX agents in this project.
+ */
+async function setupProjectClaudeMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  const claudeMdPath = join(projectDir, 'CLAUDE.md');
+  const templatePath = join(packageRoot, 'examples/claude/CLAUDE_INTEGRATION.md');
+
+  try {
+    // Read the template
+    const { readFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+
+    const exists = await checkExists(claudeMdPath);
+
+    if (!exists) {
+      // Create new CLAUDE.md with AutomatosX integration
+      const content = [
+        '# CLAUDE.md',
+        '',
+        'This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.',
+        '',
+        '---',
+        '',
+        template
+      ].join('\n');
+
+      await writeFile(claudeMdPath, content, 'utf-8');
+      logger.info('Created CLAUDE.md with AutomatosX integration', { path: claudeMdPath });
+    } else {
+      // Update existing CLAUDE.md
+      const existingContent = await readFile(claudeMdPath, 'utf-8');
+
+      // Check if AutomatosX integration already exists
+      if (existingContent.includes('# AutomatosX Integration')) {
+        if (!force) {
+          logger.info('CLAUDE.md already contains AutomatosX integration', { path: claudeMdPath });
+          return;
+        }
+        // Force mode: replace existing AutomatosX section
+        const updatedContent = replaceAutomatosXSection(existingContent, template);
+        await writeFile(claudeMdPath, updatedContent, 'utf-8');
+        logger.info('Updated AutomatosX integration in CLAUDE.md', { path: claudeMdPath });
+      } else {
+        // Append AutomatosX integration to existing content
+        const updatedContent = [
+          existingContent.trimEnd(),
+          '',
+          '---',
+          '',
+          template
+        ].join('\n');
+
+        await writeFile(claudeMdPath, updatedContent, 'utf-8');
+        logger.info('Added AutomatosX integration to existing CLAUDE.md', { path: claudeMdPath });
+      }
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup CLAUDE.md', {
+      error: (error as Error).message,
+      path: claudeMdPath
+    });
+  }
+}
+
+/**
+ * Replace existing AutomatosX section in CLAUDE.md
+ *
+ * Finds and replaces the AutomatosX Integration section while preserving
+ * other content in the file.
+ */
+function replaceAutomatosXSection(content: string, newSection: string): string {
+  // Find the AutomatosX Integration section
+  const sectionStart = content.indexOf('# AutomatosX Integration');
+
+  if (sectionStart === -1) {
+    // Section not found, append at the end
+    return [
+      content.trimEnd(),
+      '',
+      '---',
+      '',
+      newSection
+    ].join('\n');
+  }
+
+  // Find the next major section (starts with # at beginning of line)
+  // or end of file
+  const afterSection = content.substring(sectionStart + 1);
+  const nextSectionMatch = afterSection.match(/\n#(?!#) /);
+
+  let sectionEnd: number;
+  if (nextSectionMatch && nextSectionMatch.index !== undefined) {
+    sectionEnd = sectionStart + 1 + nextSectionMatch.index;
+  } else {
+    sectionEnd = content.length;
+  }
+
+  // Replace the section
+  const before = content.substring(0, sectionStart);
+  const after = content.substring(sectionEnd);
+
+  return [
+    before.trimEnd(),
+    newSection,
+    after.trimStart()
+  ].join('\n\n');
 }

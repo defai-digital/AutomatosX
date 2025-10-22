@@ -48,7 +48,7 @@ npm install -g @defai.digital/automatosx
 
 ```bash
 ax --version
-# Expected output: 5.1.0 (or later)
+# Expected output: 5.6.13 (or later)
 ```
 
 **Windows-Specific Issues**:
@@ -115,10 +115,11 @@ See [Contributing Guide](../CONTRIBUTING.md) for more details.
 ### Why This Step Is Required
 
 AutomatosX is project-specific. Each project needs its own:
-- Agent profiles (12 pre-built agents)
+- Agent profiles (24 specialized agents in v5.6.13)
 - Memory database (SQLite FTS5)
 - Configuration file
 - Workspace directories
+- Claude Code integration (CLAUDE.md with AutomatosX guidance)
 
 **Without running `ax init`, you will see**:
 - "0 agents" when running `ax status`
@@ -169,14 +170,20 @@ npx @defai.digital/automatosx init --force
 ```
 your-project/
 ├── .automatosx/
-│   ├── agents/           # 12 pre-built agents (backend, frontend, etc.)
-│   ├── abilities/        # 15 shared abilities
-│   ├── teams/            # 4 team configurations
+│   ├── agents/           # 24 specialized agents (backend, frontend, security, etc.)
+│   ├── abilities/        # 56 shared abilities
+│   ├── teams/            # 5 team configurations
+│   ├── templates/        # 9 agent templates
 │   ├── memory/           # SQLite FTS5 database
 │   │   └── exports/      # Memory export directory
 │   ├── sessions/         # Multi-agent session data
-│   └── workspaces/       # Agent workspaces
-└── automatosx.config.json  # Project configuration
+│   └── logs/             # System logs
+├── .claude/
+│   ├── commands/         # Slash commands (e.g., /ax-agent)
+│   └── mcp/              # MCP server configuration
+├── automatosx.config.json  # Project configuration
+├── CLAUDE.md             # Claude Code integration guide (NEW in v5.6.14)
+└── .gitignore            # Updated with AutomatosX entries
 ```
 
 ### Step 2.3: Verify Initialization
@@ -193,19 +200,25 @@ ax status
 📊 AutomatosX Status
 
 System:
-  Version: 5.1.0
+  Version: 5.6.13
   Node: v20.12.2
-  Platform: win32 x64
+  Platform: darwin arm64
 
 Resources:
-  ✓ agents (12 agents)
-  ✓ abilities (15 abilities)
+  ✓ agents (24 agents)
+  ✓ abilities (56 abilities)
+  ✓ teams (5 teams)
   ✓ memory (1 file, 8 KB)
 
 Providers:
-  ✗ claude-code: unavailable (priority: 1)
+  ✓ claude-code: available (priority: 1)
   ✗ gemini-cli: unavailable (priority: 2)
   ✗ openai: unavailable (priority: 3)
+
+Router:
+  Health Checks: ✅ Enabled (60s interval)
+  Checks Performed: 5
+  Success Rate: 100.0%
 
 ✅ System is healthy
 ```
@@ -218,7 +231,7 @@ Providers:
 ax list agents
 ```
 
-**Expected Output**: Should show 12 agents including `backend`, `frontend`, `devops`, `security`, `quality`, etc.
+**Expected Output**: Should show 24 specialized agents including `backend`, `frontend`, `devops`, `security`, `quality`, `data`, `ml-engineer`, `best-practices`, `erp-integration`, `figma`, `iot`, `quantum`, `aerospace`, and more.
 
 ### Troubleshooting Initialization
 
@@ -239,7 +252,7 @@ ax list agents
 2. **Windows: Check directory was created**:
    ```bash
    dir .automatosx\agents
-   # Should list 12 YAML files: backend.yaml, frontend.yaml, etc.
+   # Should list 24 YAML files: backend.yaml, frontend.yaml, security.yaml, etc.
    ```
 
 3. **Re-initialize if needed**:

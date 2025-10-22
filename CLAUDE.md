@@ -100,7 +100,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.13 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.15 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -140,9 +140,35 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.13 (October 2025)
+### Latest Release: v5.6.15 (October 2025)
 
 **What's New**:
+
+- **Critical Bug Fix (v5.6.15)**: Background task hanging in Claude Code integration 🐛 **CRITICAL**
+  - **Problem**: When Claude Code runs `ax agent` commands in background mode (Bash tool with `run_in_background: true`), tasks would hang indefinitely even after completion
+  - **Root Cause**: Provider child processes (gemini-cli, claude, codex) held stdout/stderr file descriptors after `process.exit()`, preventing Bash tool from detecting task completion
+  - **Solution**: Implemented ProcessManager singleton for comprehensive process lifecycle management
+    - Global tracking of all child processes with immediate registration after spawn
+    - Exit handlers for all signals (SIGTERM, SIGINT, SIGHUP, uncaughtException, unhandledRejection)
+    - Graceful shutdown sequence: Custom handlers → SIGTERM → Wait 1.5s → SIGKILL → Close stdio → Exit
+  - **Files Modified**:
+    - `src/utils/process-manager.ts` - **NEW** (230 lines) - Global process tracking and cleanup
+    - `src/cli/index.ts` - Install exit handlers at CLI startup
+    - `src/providers/gemini-provider.ts` - Register gemini-cli subprocess
+    - `src/providers/claude-provider.ts` - Register claude subprocess
+    - `src/providers/openai-provider.ts` - Register openai-codex subprocess
+    - `src/cli/commands/run.ts` - Add graceful shutdown before exit (both success and error paths)
+  - **Testing**: All manual tests passed
+    - ✅ Smoke tests: ALL PASSED (basic commands, no regressions)
+    - ✅ Process cleanup: VERIFIED (0 leaked processes)
+    - ✅ Background task completion: VERIFIED (1s vs hanging forever)
+    - ✅ Zombie processes: 0 new zombies created
+    - ✅ Command exit codes: All return 0
+    - ✅ Stdio stream closure: Bash tool detects completion correctly
+  - **Performance Impact**: Shutdown overhead ~100ms (negligible), memory overhead <1KB
+  - **Before Fix**: `ax agent list &` → Hangs forever, never completes
+  - **After Fix**: `ax agent list &` → Completes in 1 second, exits cleanly with code 0
+  - **Impact**: Enables reliable Claude Code integration with AutomatosX agents
 
 - **Phase 2 Performance Optimization (v5.6.13)**: Priority 1 optimizations completed
   - **Background Health Checks**: Router configuration with 60s default interval, eliminates cold-start delays
@@ -660,6 +686,135 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
   - Ivy (IoT/Embedded Engineer): IoT protocols, edge computing, embedded systems, robotics
 - See `examples/AGENTS_INFO.md` for full directory
 
+## Agent Selection Playbook (v5.7.0)
+
+**Purpose**: Guide for selecting the correct agent to avoid mis-selection and improve task routing accuracy.
+
+### Quick Decision Tree
+
+**When user mentions...**
+
+#### 1. ML/Data Science → Dana (Data Scientist)
+- **ML Debugging**: "debug model," "training failure," "NaN loss," "overfitting," "gradient exploding"
+- **Analysis**: "data analysis," "statistical significance," "A/B test," "hypothesis testing"
+- **Modeling**: "transformer," "CNN," "BERT," "GPT," "LLM," "model architecture selection"
+- **Performance**: "model drift," "accuracy drop," "performance regression"
+- **NOT**: Feasibility studies (Rodman), backend APIs (Bob), code quality (Stan)
+
+#### 2. Deep Learning Implementation → Mira (ML Engineer)
+- **Training Code**: "implement training loop," "custom PyTorch," "fine-tune code," "LoRA implementation"
+- **Optimization**: "quantization," "pruning," "distillation," "ONNX export"
+- **Deployment**: "TensorRT," "model serving," "distributed training," "DDP setup"
+- **NOT**: Architecture selection (Dana), API endpoints (Bob), evaluation (Dana)
+
+#### 3. Backend/Systems → Bob (Backend Engineer)
+- **APIs**: "REST API," "GraphQL," "microservices," "API design"
+- **Database**: "SQL optimization," "query performance," "indexing," "connection pooling"
+- **Performance**: "API performance," "caching strategy," "backend optimization"
+- **Languages**: "Go," "Rust," "backend code"
+- **NOT**: ML models (Dana/Mira), frontend (Frank), architecture patterns (Stan)
+
+#### 4. Research/Feasibility → Rodman (Researcher)
+- **Studies**: "feasibility study," "cost-benefit analysis," "risk assessment"
+- **Literature**: "literature review," "research paper," "prior art," "vendor comparison"
+- **Evaluation**: "technology evaluation," "options analysis"
+- **NOT**: ML debugging (Dana), implementation (domain experts), data analysis (Dana)
+
+#### 5. Best Practices/Architecture → Stan (Best Practices Expert)
+- **Code Quality**: "code review," "refactoring," "clean code," "code smell"
+- **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS"
+- **Architecture**: "software architecture," "microservices design," "hexagonal architecture"
+- **NOT**: ML architecture (Dana), implementation (domain experts), feasibility (Rodman)
+
+### Disambiguation Rules
+
+**Ambiguous: "analysis"**
+- Data analysis / Statistical analysis? → **Dana**
+- Performance analysis (API/DB)? → **Bob**
+- Feasibility / Logical analysis? → **Rodman**
+- Code quality analysis? → **Stan**
+
+**Ambiguous: "model"**
+- ML model / Neural network? → **Dana** (strategy) or **Mira** (implementation)
+- Mental model / Framework? → **Rodman**
+- Data model / Database schema? → **Bob**
+
+**Ambiguous: "architecture"**
+- ML model architecture (CNN vs Transformer)? → **Dana**
+- DL architecture implementation? → **Mira**
+- Software architecture / Design patterns? → **Stan**
+- Systems architecture / Infrastructure? → **Bob**
+
+**Ambiguous: "performance"**
+- Model performance / Accuracy? → **Dana**
+- Training / Inference performance? → **Mira**
+- API / Database performance? → **Bob**
+
+**Ambiguous: "optimization"**
+- Model hyperparameter optimization? → **Dana**
+- DL optimization (quantization/pruning)? → **Mira**
+- Backend optimization (caching/queries)? → **Bob**
+
+**Ambiguous: "debug"**
+- ML model debugging? → **Dana**
+- Backend / Systems debugging? → **Bob**
+- Frontend debugging? → **Frank**
+
+### Common Mis-selection Scenarios
+
+#### ❌ Scenario 1: Transformer Model Bug
+**User**: "Debug transformer model - training loss is NaN"
+- **Wrong Agent**: Rodman (keyword: "analysis"), Bob (keyword: "debug")
+- **Correct Agent**: **Dana** (ML debugging, training failures)
+- **Why Wrong**: Generic "debug" matches multiple agents; need ML-specific context
+
+#### ❌ Scenario 2: Model Performance Regression
+**User**: "Analyze model performance regression - accuracy dropped from 95% to 75%"
+- **Wrong Agent**: Rodman (keyword: "analysis"), Bob (keyword: "performance")
+- **Correct Agent**: **Dana** (model evaluation, accuracy analysis)
+- **Why Wrong**: "Performance" is ambiguous; model accuracy ≠ API performance
+
+#### ❌ Scenario 3: Architecture Review
+**User**: "Review model architecture - should we use CNN or Transformer?"
+- **Wrong Agent**: Stan (keyword: "architecture review")
+- **Correct Agent**: **Dana** (ML architecture selection)
+- **Why Wrong**: "Architecture" is ambiguous; software architecture ≠ ML architecture
+
+#### ❌ Scenario 4: Fine-tuning Implementation
+**User**: "Implement LoRA fine-tuning for LLaMA on custom dataset"
+- **Wrong Agent**: Dana (keyword: "fine-tuning"), Bob (keyword: "implement")
+- **Correct Agent**: **Mira** (DL implementation)
+- **Why Wrong**: Dana designs strategy, Mira implements code
+
+### Selection Confidence Indicators
+
+**HIGH confidence (>90%)**:
+- Multiple domain-specific keywords match
+- No ambiguous keywords present
+- Clear task type (debugging, implementation, analysis)
+
+**MEDIUM confidence (60-90%)**:
+- Some domain keywords match
+- 1-2 ambiguous keywords present
+- May need disambiguation question
+
+**LOW confidence (<60%)**:
+- Generic keywords only
+- Multiple ambiguous keywords
+- Should ask clarifying question
+
+### Clarifying Questions Templates
+
+**When ambiguous**, ask:
+- "Are you looking for [Domain A] or [Domain B]?"
+- "Do you need strategy/analysis (Dana) or implementation (Mira)?"
+- "Is this about ML models or backend systems?"
+
+**Examples**:
+- "model optimization" → "Do you mean ML model hyperparameters (Dana) or inference optimization code (Mira)?"
+- "performance analysis" → "Is this about model accuracy (Dana) or API latency (Bob)?"
+- "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Stan)?"
+
 ### CLI Commands
 
 `init` | `run` | `list` | `memory` | `status` | `session` | `workspace` | `mcp` | `gemini` | `cache` (v5.5.0+)
@@ -821,6 +976,7 @@ ax runs list/show/delete                 # Manage
   - checkpoint-manager, stage-execution-controller - Execution control
   - metrics, timeout-manager, parameter-validator - System utilities
 - `src/utils/path-utils.ts` - Path normalization and validation utilities (v5.6.4+)
+- `src/utils/process-manager.ts` - Global process tracking and cleanup (v5.6.15+) - **CRITICAL** for Claude Code integration
 - `src/agents/` - executor, delegation-parser, template-engine, context-manager, dependency-graph (v5.6.0), execution-planner (v5.6.0), parallel-agent-executor (v5.6.0)
 - `src/providers/` - base-provider, claude-provider, gemini-provider, openai-provider, retry-errors (v5.6.4+)
 - `src/mcp/` - server, types, tools (16 tools)

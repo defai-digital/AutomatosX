@@ -132,6 +132,7 @@ export class ClaudeProvider extends BaseProvider {
    */
   private async executeRealCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
     const { spawn } = await import('child_process');
+    const { processManager } = await import('../utils/process-manager.js');
 
     return new Promise((resolve, reject) => {
       let stdout = '';
@@ -152,6 +153,9 @@ export class ClaudeProvider extends BaseProvider {
           stdio: ['pipe', 'pipe', 'pipe'],  // Use pipe for stdin
           env: process.env
         });
+
+        // Register child process for cleanup tracking
+        processManager.register(child, 'claude-code');
       } catch (error) {
         const err = error as NodeJS.ErrnoException;
         if (err.code === 'ENOENT') {

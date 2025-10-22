@@ -674,6 +674,19 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
       console.log(chalk.green.bold('✅ Complete\n'));
 
+      // Graceful shutdown: cleanup all child processes before exit
+      // Fixes: Background tasks hanging when run via Claude Code
+      const { processManager } = await import('../../utils/process-manager.js');
+      await processManager.shutdown(3000); // 3 second timeout
+
+      // Close stdio streams to signal completion
+      if (process.stdout.writable) {
+        process.stdout.end();
+      }
+      if (process.stderr.writable) {
+        process.stderr.end();
+      }
+
       // Explicitly exit process to prevent hanging
       // (Required for integration tests and clean process termination)
       process.exit(0);
@@ -711,6 +724,18 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }
         // Ensure event loop completes all pending operations
         await new Promise(resolve => setImmediate(resolve));
+
+        // Graceful shutdown: cleanup all child processes before exit
+        const { processManager } = await import('../../utils/process-manager.js');
+        await processManager.shutdown(3000); // 3 second timeout
+
+        // Close stdio streams
+        if (process.stdout.writable) {
+          process.stdout.end();
+        }
+        if (process.stderr.writable) {
+          process.stderr.end();
+        }
       } catch (cleanupError) {
         const errMsg = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
         logger.debug('Cleanup error ignored', { error: errMsg });

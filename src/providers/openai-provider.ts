@@ -139,6 +139,7 @@ export class OpenAIProvider extends BaseProvider {
    */
   private async executeRealCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
     const { spawn } = await import('child_process');
+    const { processManager } = await import('../utils/process-manager.js');
 
     return new Promise((resolve, reject) => {
       let stdout = '';
@@ -157,6 +158,9 @@ export class OpenAIProvider extends BaseProvider {
         stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
         env: process.env
       });
+
+      // Register child process for cleanup tracking
+      processManager.register(child, 'openai-codex');
 
       // Write prompt to stdin (safer than command-line argument)
       // This prevents shell parsing issues with special characters

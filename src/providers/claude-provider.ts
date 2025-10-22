@@ -176,6 +176,8 @@ export class ClaudeProvider extends BaseProvider {
         child.stdin?.write(prompt);
         child.stdin?.end();
       } catch (error) {
+        // Kill child process before rejecting to prevent orphan process
+        child.kill('SIGTERM');
         reject(new Error(`Failed to write prompt to Claude CLI stdin: ${(error as Error).message}`));
         return;
       }

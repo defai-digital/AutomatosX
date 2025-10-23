@@ -9,6 +9,7 @@ import { createCommand } from './create.js';
 import { listCommand } from './list.js';
 import { showCommand } from './show.js';
 import { removeCommand } from './remove.js';
+import { suggestCommand } from './suggest.js';
 
 export const agentCommand: CommandModule = {
   command: 'agent <command>',
@@ -21,6 +22,7 @@ export const agentCommand: CommandModule = {
       .command(listCommand)
       .command(showCommand)
       .command(removeCommand)
+      .command(suggestCommand)
       .demandCommand(1, 'You must provide a valid subcommand')
       .help();
   },

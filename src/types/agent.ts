@@ -62,6 +62,92 @@ export interface AbilitySelection {
 }
 
 /**
+ * Redirect Rule - When to suggest alternative agents
+ *
+ * @example
+ * {
+ *   phrase: "model.*train|train.*model",
+ *   suggest: "Dana (Data Scientist) or Mira (ML Engineer)"
+ * }
+ */
+export interface RedirectRule {
+  /** Regular expression pattern to match in user prompts */
+  phrase: string;
+  /** Agent(s) to suggest when pattern matches */
+  suggest: string;
+}
+
+/**
+ * Selection Metadata - Structured data for agent selection
+ *
+ * Used by Claude Code integration and `ax agent suggest` command to improve
+ * agent selection accuracy by providing explicit intent signals.
+ *
+ * @since v5.7.0
+ *
+ * @example
+ * selectionMetadata:
+ *   primaryIntents:
+ *     - "ML model debugging and troubleshooting"
+ *     - "Training failure analysis (NaN loss, convergence issues)"
+ *   secondarySignals:
+ *     - "transformer"
+ *     - "overfitting"
+ *     - "gradient"
+ *   negativeIntents:
+ *     - "Feasibility study (use Rodman)"
+ *     - "Backend API implementation (use Bob)"
+ *   redirectWhen:
+ *     - phrase: "feasibility study"
+ *       suggest: "Rodman (Researcher)"
+ */
+export interface SelectionMetadata {
+  /**
+   * Primary intents - User problem archetypes this agent should own
+   *
+   * Clear descriptions of the types of tasks this agent is best suited for.
+   * Used for matching user requests to the correct agent.
+   *
+   * @example
+   * ["ML model debugging", "Training failure analysis", "Model performance regression"]
+   */
+  primaryIntents?: string[];
+
+  /**
+   * Secondary signals - Keywords/n-grams that reinforce ownership
+   *
+   * Domain-specific terms that indicate this agent should handle the task.
+   * Lower weight than primaryIntents but used for disambiguation.
+   *
+   * @example
+   * ["transformer", "CNN", "overfitting", "gradient", "model drift"]
+   */
+  secondarySignals?: string[];
+
+  /**
+   * Negative intents - Topics that should be routed elsewhere
+   *
+   * Explicit signals that this agent should NOT handle certain tasks.
+   * Helps prevent mis-selection by excluding ambiguous cases.
+   *
+   * @example
+   * ["Feasibility study (use Rodman)", "Backend API (use Bob)"]
+   */
+  negativeIntents?: string[];
+
+  /**
+   * Redirect rules - Patterns that trigger agent suggestions
+   *
+   * Regular expression patterns that, when matched, suggest alternative agents.
+   * Used for automated routing and validation.
+   *
+   * @example
+   * [{ phrase: "feasibility study", suggest: "Rodman (Researcher)" }]
+   */
+  redirectWhen?: RedirectRule[];
+}
+
+/**
  * Agent Profile - Loaded from YAML
  */
 export interface AgentProfile {
@@ -86,6 +172,9 @@ export interface AgentProfile {
   personality?: Personality;     // Character traits
   thinking_patterns?: string[];  // Guiding principles
   abilitySelection?: AbilitySelection; // Smart ability loading
+
+  // v5.7.0+ Agent Selection Metadata
+  selectionMetadata?: SelectionMetadata;  // Structured data for agent selection accuracy
 
   /**
    * Provider configuration (v4.10.0+)

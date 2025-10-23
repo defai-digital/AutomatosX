@@ -734,6 +734,8 @@ export class ProfileLoader {
       personality: data.personality,
       thinking_patterns: data.thinking_patterns,
       abilitySelection: data.abilitySelection,
+      // v5.7.0+: Agent Selection Metadata
+      selectionMetadata: data.selectionMetadata,
       // Provider preferences (deprecated, kept for backward compatibility)
       provider: data.provider,
       model: data.model,
@@ -784,6 +786,21 @@ export class ProfileLoader {
     }
     if (profile.metadata) {
       Object.freeze(profile.metadata);
+    }
+    if (profile.selectionMetadata) {
+      Object.freeze(profile.selectionMetadata);
+      if (profile.selectionMetadata.primaryIntents) {
+        Object.freeze(profile.selectionMetadata.primaryIntents);
+      }
+      if (profile.selectionMetadata.secondarySignals) {
+        Object.freeze(profile.selectionMetadata.secondarySignals);
+      }
+      if (profile.selectionMetadata.negativeIntents) {
+        Object.freeze(profile.selectionMetadata.negativeIntents);
+      }
+      if (profile.selectionMetadata.redirectWhen) {
+        Object.freeze(profile.selectionMetadata.redirectWhen);
+      }
     }
 
     // Freeze the profile itself

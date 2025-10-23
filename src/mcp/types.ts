@@ -115,6 +115,16 @@ export interface ListAgentsOutput {
     displayName?: string;
     role?: string;
     team?: string;
+    // v5.7.0+: Agent Selection Metadata for improved routing
+    selectionMetadata?: {
+      primaryIntents?: string[];
+      secondarySignals?: string[];
+      negativeIntents?: string[];
+      redirectWhen?: Array<{
+        phrase: string;
+        suggest: string;
+      }>;
+    };
   }>;
 }
 

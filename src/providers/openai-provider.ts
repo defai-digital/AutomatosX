@@ -153,11 +153,17 @@ export class OpenAIProvider extends BaseProvider {
       // This avoids shell parsing errors when prompt contains special characters,
       // quotes, newlines, or code examples
 
-      // Spawn the CLI process with stdin pipe enabled
-      const child = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
-        env: process.env
-      });
+      let child: ReturnType<typeof spawn>;
+      try {
+        // Spawn the CLI process with stdin pipe enabled
+        child = spawn(this.config.command, args, {
+          stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
+          env: process.env,
+        });
+      } catch (error) {
+        reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
+        return;
+      }
 
       // Register child process for cleanup tracking
       processManager.register(child, 'openai-codex');
@@ -401,17 +407,25 @@ export class OpenAIProvider extends BaseProvider {
       // NOTE: Prompt is now passed via stdin instead of command-line argument
       // This avoids shell parsing errors when prompt contains special characters
 
-      // Spawn the CLI process with stdin pipe enabled
-      const child = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],  // Enable stdin for prompt input
-        env: process.env
-      });
+      let child: ReturnType<typeof spawn>;
+      try {
+        // Spawn the CLI process with stdin pipe enabled
+        child = spawn(this.config.command, args, {
+          stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
+          env: process.env,
+        });
+      } catch (error) {
+        reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
+        return;
+      }
 
       // Write prompt to stdin (safer than command-line argument)
       try {
         child.stdin?.write(prompt);
         child.stdin?.end();
       } catch (error) {
+        // Kill child process before rejecting to prevent orphan process
+        child.kill('SIGTERM');
         reject(new Error(`Failed to write prompt to Codex CLI stdin: ${(error as Error).message}`));
         return;
       }

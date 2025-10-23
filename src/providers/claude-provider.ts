@@ -147,28 +147,31 @@ export class ClaudeProvider extends BaseProvider {
       // We use stdin to avoid command-line length limits
 
       let child: ReturnType<typeof spawn>;
-
       try {
         child = spawn(this.config.command, args, {
-          stdio: ['pipe', 'pipe', 'pipe'],  // Use pipe for stdin
-          env: process.env
+          stdio: ['pipe', 'pipe', 'pipe'], // Use pipe for stdin
+          env: process.env,
         });
-
-        // Register child process for cleanup tracking
-        processManager.register(child, 'claude-code');
       } catch (error) {
         const err = error as NodeJS.ErrnoException;
         if (err.code === 'ENOENT') {
           const suggestion = getProviderSuggestion('claude');
-          reject(new Error(
-            `Claude CLI not found: '${this.config.command}'\n\n` +
-            `${suggestion}`
-          ));
+          reject(
+            new Error(
+              `Claude CLI not found: '${this.config.command}'
+
+` +
+                `${suggestion}`,
+            ),
+          );
         } else {
           reject(new Error(`Failed to start Claude CLI: ${err.message}`));
         }
         return;
       }
+
+      // Register child process for cleanup tracking
+      processManager.register(child, 'claude-code');
 
       // Write prompt to stdin and close it
       // This is how Claude CLI expects to receive the prompt

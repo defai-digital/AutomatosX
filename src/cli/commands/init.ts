@@ -498,6 +498,19 @@ async function initializeGitRepository(projectDir: string): Promise<void> {
       child.on('error', (error) => {
         reject(error);
       });
+
+      try {
+        child.stdin?.write('');
+        child.stdin?.end();
+      } catch (error) {
+        child.kill('SIGTERM');
+        reject(
+          new Error(
+            `Failed to write to git init stdin: ${(error as Error).message}`,
+          ),
+        );
+        return;
+      }
     });
 
   } catch (error) {

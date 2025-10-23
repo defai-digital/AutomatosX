@@ -529,13 +529,16 @@ export abstract class BaseProvider implements Provider {
     try {
       // NEW: Use async spawn instead of spawnSync to avoid blocking
       const { spawn } = await import('child_process');
+      const { processManager } = await import('../utils/process-manager.js');
 
       const version = await new Promise<string | null>((resolve) => {
         const versionArg = this.config.versionArg || '--version';
         const proc = spawn(command, [versionArg], {
           timeout: 5000,
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
+
+        processManager.register(proc, `${command}-version-check`);
 
         let output = '';
         let errorOutput = '';

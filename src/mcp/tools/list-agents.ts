@@ -42,7 +42,9 @@ export function createListAgentsHandler(
             name: profile!.name,
             displayName: profile!.displayName,
             role: profile!.role,
-            team: profile!.team
+            team: profile!.team,
+            // v5.7.0+: Include selection metadata for improved routing
+            selectionMetadata: profile!.selectionMetadata
           }))
       };
 

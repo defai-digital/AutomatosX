@@ -96,16 +96,37 @@ class ProcessManager {
       }
 
       killPromises.push(new Promise((resolve) => {
-        child.once('exit', () => resolve());
+        let timeoutId: NodeJS.Timeout | null = null;
+        let resolved = false;
+
+        const cleanup = () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
+
+        // Resolve when process exits
+        child.once('exit', () => {
+          cleanup();
+        });
+
         child.kill('SIGTERM');
 
-        // Force kill after timeout/2
-        setTimeout(() => {
+        // Force kill after timeout/2 if still running
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
           if (!child.killed && child.exitCode === null) {
             logger.warn('Force killing child process', { pid: child.pid });
             child.kill('SIGKILL');
           }
-          resolve(); // Resolve anyway
+          // Don't resolve here - let the exit handler do it
+          // But set a fallback timeout in case exit never fires
+          setTimeout(() => cleanup(), 100);
         }, timeout / 2);
       }));
     }
@@ -139,7 +160,10 @@ class ProcessManager {
           child.kill('SIGKILL');
         }
       } catch (error) {
-        // Ignore errors (process might already be dead)
+        logger.warn('Failed to force kill child process', {
+          pid: child.pid,
+          error: (error as Error).message,
+        });
       }
     }
 
@@ -182,6 +206,13 @@ export function installExitHandlers(): void {
       return; // Prevent re-entry
     }
     exitInProgress = true;
+
+    // Remove all other listeners to prevent race conditions
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGINT');
+    process.removeAllListeners('SIGHUP');
+    process.removeAllListeners('uncaughtException');
+    process.removeAllListeners('unhandledRejection');
 
     logger.info(`Received ${signal}, initiating shutdown...`);
 

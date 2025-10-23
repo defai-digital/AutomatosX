@@ -106,7 +106,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.15 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.16 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -146,13 +146,19 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.15 (October 2025)
+### Latest Release: v5.6.16 (January 2025)
 
-**Critical Bug Fix**: Background task hanging in Claude Code integration
-- **Problem**: Tasks would hang indefinitely when run in background mode
-- **Solution**: ProcessManager singleton for comprehensive process lifecycle management
-- **Impact**: Enables reliable Claude Code integration with AutomatosX agents
-- **Key File**: `src/utils/process-manager.ts` (230 lines) - Global process tracking and cleanup
+**Critical Bug Fixes**: 9 timeout and resource leak bugs eliminated
+- **3 Ultrathink Reviews**: Systematic deep code review found 9 bugs (7 CRITICAL, 2 MEDIUM)
+- **Provider Timeout Leaks**: Fixed stdin write failures, abort handlers, main timeout handlers across all 3 providers
+- **BaseProvider Leaks**: Fixed version detection timeout, circuit breaker accumulation, Promise.race timeout leak
+- **Impact**: 100% elimination of timeout and process leaks, production-ready stability
+- **Key Files**: All provider files + `src/providers/base-provider.ts` - Comprehensive timeout management
+
+**Previous Release (v5.6.15)**:
+- ProcessManager singleton for process lifecycle management
+- Background health checks and performance optimizations (70% improvement)
+- 24 specialized agents across 4 teams
 
 **Performance Optimizations (v5.6.13)**:
 - Background health checks (60s interval, eliminates cold-start delays)

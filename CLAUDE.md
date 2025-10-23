@@ -47,6 +47,12 @@ ax list abilities --format json         # List abilities (JSON format)
 ax list providers                       # List providers (text format)
 ax list providers --format json         # List providers (JSON format)
 
+# Agent Selection (NEW v5.7.0)
+ax agent suggest "task description"     # Suggest best agent(s) for a task
+ax agent suggest "task" --verbose       # Show detailed scoring
+ax agent suggest "task" --format json   # JSON output
+ax agent suggest "task" --limit 5       # Show top 5 suggestions
+
 # Gemini CLI Integration (NEW v5.4.3-beta.0)
 ax gemini setup                         # Interactive setup
 ax gemini sync-mcp                      # Register AutomatosX MCP
@@ -142,264 +148,77 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ### Latest Release: v5.6.15 (October 2025)
 
-**What's New**:
+**Critical Bug Fix**: Background task hanging in Claude Code integration
+- **Problem**: Tasks would hang indefinitely when run in background mode
+- **Solution**: ProcessManager singleton for comprehensive process lifecycle management
+- **Impact**: Enables reliable Claude Code integration with AutomatosX agents
+- **Key File**: `src/utils/process-manager.ts` (230 lines) - Global process tracking and cleanup
 
-- **Critical Bug Fix (v5.6.15)**: Background task hanging in Claude Code integration 🐛 **CRITICAL**
-  - **Problem**: When Claude Code runs `ax agent` commands in background mode (Bash tool with `run_in_background: true`), tasks would hang indefinitely even after completion
-  - **Root Cause**: Provider child processes (gemini-cli, claude, codex) held stdout/stderr file descriptors after `process.exit()`, preventing Bash tool from detecting task completion
-  - **Solution**: Implemented ProcessManager singleton for comprehensive process lifecycle management
-    - Global tracking of all child processes with immediate registration after spawn
-    - Exit handlers for all signals (SIGTERM, SIGINT, SIGHUP, uncaughtException, unhandledRejection)
-    - Graceful shutdown sequence: Custom handlers → SIGTERM → Wait 1.5s → SIGKILL → Close stdio → Exit
-  - **Files Modified**:
-    - `src/utils/process-manager.ts` - **NEW** (230 lines) - Global process tracking and cleanup
-    - `src/cli/index.ts` - Install exit handlers at CLI startup
-    - `src/providers/gemini-provider.ts` - Register gemini-cli subprocess
-    - `src/providers/claude-provider.ts` - Register claude subprocess
-    - `src/providers/openai-provider.ts` - Register openai-codex subprocess
-    - `src/cli/commands/run.ts` - Add graceful shutdown before exit (both success and error paths)
-  - **Testing**: All manual tests passed
-    - ✅ Smoke tests: ALL PASSED (basic commands, no regressions)
-    - ✅ Process cleanup: VERIFIED (0 leaked processes)
-    - ✅ Background task completion: VERIFIED (1s vs hanging forever)
-    - ✅ Zombie processes: 0 new zombies created
-    - ✅ Command exit codes: All return 0
-    - ✅ Stdio stream closure: Bash tool detects completion correctly
-  - **Performance Impact**: Shutdown overhead ~100ms (negligible), memory overhead <1KB
-  - **Before Fix**: `ax agent list &` → Hangs forever, never completes
-  - **After Fix**: `ax agent list &` → Completes in 1 second, exits cleanly with code 0
-  - **Impact**: Enables reliable Claude Code integration with AutomatosX agents
+**Performance Optimizations (v5.6.13)**:
+- Background health checks (60s interval, eliminates cold-start delays)
+- Parallel abilities loading (60-80% faster)
+- FTS5 query optimization (20-30% faster)
+- **Overall**: 70% improvement (450ms → 134ms average latency)
 
-- **Phase 2 Performance Optimization (v5.6.13)**: Priority 1 optimizations completed
-  - **Background Health Checks**: Router configuration with 60s default interval, eliminates cold-start delays
-  - **Parallel Abilities Loading**: 60-80% faster ability file loading using Promise.all()
-  - **FTS5 Query Optimization**: Prepared statements for common searches (20-30% faster)
-  - **Performance Impact**: 70% improvement vs. baseline (450ms → 134ms average latency)
-  - **Router Configuration**: New `router.healthCheckInterval` and `router.providerCooldownMs` settings
-  - **Enhanced ax status**: Displays health check metrics (success rate, avg duration, last check)
-- **Phase 2 Agent Expansion (v5.6.11)**: Two new specialist agents completing design and IoT capabilities
-  - **Fiona (Figma Expert)**: Design-to-code automation, design tokens, MCP integration (50-70% time reduction)
-  - **Ivy (IoT/Embedded Engineer)**: IoT protocols, edge computing, embedded systems, robotics (end-to-end IoT development)
-  - **24 Total Agents** (was 22): Complete design team + enhanced engineering team
-  - **8 New Ability Files**: Figma API, design tokens, IoT protocols, edge computing, embedded systems, robotics (~4,025 lines, 110+ keywords)
-- **Agent Team Optimization (v5.6.9-5.6.10)**: Comprehensive skill redistribution and specialist agents
-  - **Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist)**: Quantum algorithms, orbital mechanics, mission analysis
-  - **Stan (Best Practices Expert)**: SOLID, design patterns, clean code, refactoring, architecture
-  - **Emma (ERP Integration Specialist)**: SAP, Oracle, Dynamics 365, enterprise integration patterns
-  - **Mira (ML Engineer)**: PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning
-  - **19 → 24 Agents**: Enhanced engineering, core, and design teams
-  - **Skill Redistribution**: Eliminated JS/TS and Python overlaps across Bob, Frank, Felix, Maya
-    - Bob (backend): Focused on Go/Rust + systems programming, Python only for math validation
-    - Frank (frontend): Pure frontend (React/Next.js/Swift), removed Python tooling
-    - Felix (fullstack): Now owns Node.js/TypeScript backend + Python automation
-    - Maya (mobile): Enhanced Swift/Kotlin/Flutter expertise, coordinates with Astrid on telemetry
-  - **Mathematical Reasoning Enhancement**: New shared ability for Bob and Dana to support Quinn/Astrid
-  - **9 New Ability Files**: Quantum algorithms, orbital mechanics, mission analysis, mathematical reasoning (~21 KB)
-  - **Expected Productivity Gain**: 15-20% from reduced context switching and clearer agent boundaries
-- **Multi-Language Expertise (Bob)**: Enhanced with 6 programming languages
-  - C++, C, Python, Rust, Go, JavaScript/TypeScript abilities
-  - 7,079 lines of comprehensive language guidance
-  - 19 keyword mappings for smart ability loading
-  - Expected C++ task success: 60% → 85%+ (42% improvement)
-- **Multi-Framework Expertise (Frank)**: Enhanced with 4 frontend frameworks
-  - React, Next.js, Swift/SwiftUI, Python frontend tooling abilities
-  - 6,846 lines of comprehensive framework guidance
-  - 28 keyword mappings for smart ability loading
-  - Expected React: 70% → 90%+, Next.js: 50% → 85%+, Swift: 40% → 80%+ task success
-- **Path Security Enhancement (v5.6.8)**: Centralized path validation utilities preventing traversal attacks
-  - New `src/utils/path-utils.ts` module for cross-platform path normalization
-  - Security validation in all managers (PathResolver, WorkspaceManager, ConfigManager, SessionManager, MemoryManager)
-  - Blocks `..`, absolute paths outside project, symbolic links
-- **Simplified Architecture (v5.6.8)**: Removed legacy stage executors (~1,200 LOC, -30KB package size)
-- **Single Execution Path (v5.6.8)**: All multi-stage agents now use `StageExecutionController`
-- **Centralized Retry Logic (v5.6.8)**: New `src/providers/retry-errors.ts` for consistent error handling
-  - Provider-specific retryable errors (Claude, Gemini, OpenAI)
-  - Common network, rate limit, and server error patterns
-  - Non-retryable error detection (authentication, configuration)
+**Agent Team Expansion**:
+- **24 Total Agents** (was 19 in v5.6.8)
+- New specialists: Quinn (Quantum), Astrid (Aerospace), Stan (Best Practices), Emma (ERP), Mira (ML), Fiona (Figma), Ivy (IoT)
+- Skill redistribution eliminated JS/TS and Python overlaps
+- Multi-language/framework expertise for Bob and Frank
+
+**Architecture & Security**:
+- Path security enhancement (`src/utils/path-utils.ts`) - Prevents traversal attacks
+- Centralized retry logic (`src/providers/retry-errors.ts`) - Consistent error handling
+- Simplified architecture - Removed legacy stage executors (~1,200 LOC)
 
 ### Completed Features
 
 #### Parallel Agent Execution (v5.6.0)
 
-**Status**: Released in v5.6.0 with comprehensive testing (161/163 parallel execution tests passing, 2 flaky timing tests)
+**Overview**: Parallel execution of independent agents, reducing workflow time by 40-60%.
 
-**Overview**: Major architectural enhancement to support parallel execution of independent agents, reducing complex workflow execution time by 40-60%.
-
-**Implementation Status** (v5.6.0):
-
-- ✅ Phase 1: Foundation (Week 1-2) - COMPLETE
-  - DependencyGraphBuilder with cycle detection
-  - ExecutionPlanner with batch grouping
-  - Agent profile extensions (dependencies, parallel fields)
-- ✅ Phase 2: Parallel Execution Engine (Week 3-4) - COMPLETE
-  - ParallelAgentExecutor with error handling
-  - Partial failure handling and cancellation
-  - 22 unit tests passing (100%)
-- ✅ Phase 3: Integration (Week 5) - COMPLETE ✅
-  - ✅ AgentExecutor.executeDelegationsParallel() method integrated
-  - ✅ CLI --parallel flag added to `ax run` command
-  - ✅ ExecutionOptions extended with parallel execution parameters
-  - ✅ Unit tests: 13 tests in `executor-delegation-parallel.test.ts` (all passing)
-  - ✅ Integration tests: 13 tests in `cli-run-parallel.test.ts` (all passing)
-  - ✅ All tests passing (1,920 tests total)
-- ✅ Phase 4: Observability (Week 6) - COMPLETE
-  - ✅ Implemented `--show-dependency-graph` flag to visualize agent dependencies.
-  - ✅ Implemented `--show-timeline` flag to visualize agent execution timeline.
-  - ✅ Added `MetricsCollector` for Prometheus-compatible metrics.
-  - ✅ All related tests are passing.
-- ✅ Phase 5: Testing & Optimization (Week 7) - COMPLETE (100%) 🎉
-  - ✅ Profiling Tools: MemoryProfiler + CPUProfiler implemented (24 tests)
-  - ✅ Reliability Tests: Chaos (24 tests) + Concurrency (14 tests) passing (100%)
-  - ✅ Benchmark Tests: 6 tests passing - Performance targets exceeded by 26-73%
-  - ✅ Load Tests: 8 tests passing - System stable at 50 agents (100% success rate)
-  - ✅ Performance Validation: All PRD targets met or exceeded
-    - P50: 63.78% improvement (target: 40%) ⭐
-    - P95: 59.11% improvement (target: 50%) ⭐
-    - Memory overhead: 0.15% (target: <20%) ⭐
-    - 50 agents: 100% success rate ⭐
-  - 📄 Final Report: `tmp/phase5-final-performance-report.md`
-- ✅ Phase 6-7: Beta Testing & GA Release - COMPLETE
-  - Released in v5.6.0 (2025-10-17)
-  - Merged from beta branch to main
-  - Full feature set available in production
-
-**Key Components** (NEW):
-
-1. **DependencyGraphBuilder** (`src/agents/dependency-graph.ts`) - Build DAG, detect cycles, calculate execution levels
-2. **ExecutionPlanner** (`src/agents/execution-planner.ts`) - Create execution plan with parallel batches
-3. **ParallelAgentExecutor** (`src/agents/parallel-agent-executor.ts`) - Execute agents in parallel with error handling
-
-**Testing Focus**:
-
-- **Unit Tests** (110 total):
-  - `tests/unit/dependency-graph-builder.test.ts` (4 tests)
-  - `tests/unit/execution-planner.test.ts` (3 tests)
-  - `tests/unit/parallel-agent-executor.test.ts` (20 tests)
-  - `tests/unit/executor-delegation-parallel.test.ts` (13 tests)
-  - `tests/unit/utils/memory-profiler.test.ts` (11 tests) ✨ Phase 5
-  - `tests/unit/utils/cpu-profiler.test.ts` (13 tests) ✨ Phase 5
-- **Integration Tests** (13 total):
-  - `tests/integration/cli-run-parallel.test.ts` (13 tests)
-- **Reliability Tests** (38 total): ✨ Phase 5
-  - `tests/reliability/chaos-testing.test.ts` (24 tests - 30%/50%/70% failure rates)
-  - `tests/reliability/concurrency.test.ts` (14 tests - race conditions, workspace isolation)
-- **Total Parallel Execution Tests**: 161/163 tests passing (2 flaky timing tests)
-- **Overall Test Suite**: 2,116 tests passing (12 skipped) across 101 test files
-- **Key Scenarios Tested**:
-  - Circular dependency detection ✅
-  - Partial failure handling ✅
-  - Resource limits (maxConcurrentAgents) ✅
-  - Backward compatibility ✅
-  - CLI flag integration ✅
-  - Error handling & validation ✅
-  - Memory profiling ✅
-  - CPU profiling ✅
-  - Chaos testing (random failures) ✅
-  - Concurrency & data consistency ✅
-  - Single delegation timeline (`tests/unit/test-single-delegation-timeline.test.ts`) ✅
-  - Provider streaming (`tests/unit/provider-streaming.test.ts`, `tests/integration/streaming-workflow.test.ts`) ✅
+**Key Components**:
+- `src/agents/dependency-graph.ts` - Build DAG, detect cycles
+- `src/agents/execution-planner.ts` - Create execution plan with parallel batches
+- `src/agents/parallel-agent-executor.ts` - Execute agents in parallel with error handling
 
 **Configuration**:
-
 ```yaml
-# Agent dependencies (NEW field in agent YAML)
 dependencies: [agent-name, ...]  # Optional, defaults to []
 parallel: true                    # Optional, defaults to true
 ```
 
-**Key Use Cases** (from PRD):
+**Usage**:
+```bash
+ax run <agent> "task" --parallel              # Enable parallel delegations
+ax run <agent> "task" --show-dependency-graph # Visualize dependencies
+ax run <agent> "task" --show-timeline         # Show execution timeline
+```
 
-1. **Multi-team collaboration**: CTO coordinates frontend and backend parallel development
-2. **Data pipelines**: Fetch from multiple data sources simultaneously
-3. **Testing workflows**: Run unit, integration, and static analysis tests in parallel
+**Performance**:
+- P50: 63.78% improvement (target: 40%)
+- P95: 59.11% improvement (target: 50%)
+- Memory overhead: 0.15% (target: <20%)
+- 161/163 tests passing (2 flaky timing tests)
 
-**When working on parallel execution**:
-
-- Always test circular dependency detection
+**Critical Considerations**:
 - Verify `maxConcurrentAgents` limit (default: 4)
+- Test circular dependency detection
 - Check failure propagation to dependent agents
-- Test with real providers (set `TEST_REAL_PROVIDERS=true`)
-- Review PRD Section 4.3 (Error Handling & Recovery) for failure scenarios
+- See PRD for detailed error handling scenarios
 
-**Performance Targets** (from PRD):
+#### Provider Cache Optimization (v5.6.2-5.6.3)
 
-- P50 execution time: -40% (3 independent agents)
-- P95 execution time: -50% (complex workflows)
-- CPU utilization: +30%
-- Memory overhead: <20%
-
-**Critical Risks** (from PRD Section 6):
-
-1. **Race conditions**: Multiple agents accessing shared resources (workspace, memory)
-   - Mitigation: File-based locking, concurrency limits, workspace validation
-2. **Resource exhaustion**: Too many parallel agents consuming memory/CPU
-   - Mitigation: `maxConcurrentAgents: 4` default, dynamic resource monitoring
-3. **Provider rate limits**: Parallel API calls hitting rate limits
-   - Mitigation: Provider-specific concurrency limits, fallback to sequential
-4. **Complex error handling**: Failure propagation in parallel execution
-   - Mitigation: Clear failure rules, detailed logging, debugging tools
-
-**Known Issues**:
-
-- **Flaky Timing Tests** (2 tests):
-  - `tests/unit/performance.test.ts` - Report generation sorting may fail under heavy load
-  - `tests/unit/utils/cpu-profiler.test.ts` - CPU time measurement may exceed threshold by ~0.1ms
-  - These are non-critical and don't affect production functionality
-
-#### Provider Cache Optimization (v5.6.2-5.6.3) 🎉
-
-**Status**: Released in v5.6.2 and v5.6.3 with comprehensive enhancements
-
-**Overview**: Multi-phase performance optimization reducing provider check latency by 99% and eliminating cold-start delays.
-
-**Implementation Status**:
-
-- ✅ Phase 1 (v5.6.2): Enhanced Cache Metrics - COMPLETE
-  - Enhanced `getCacheMetrics()` API with avgAge, lastHit, lastMiss
-  - Health metrics (uptime, consecutive successes)
-  - Router `getHealthCheckStatus()` API
-  - CLI `ax cache stats` command enhancements
-- ✅ Phase 2 (v5.6.2): Background Health Checks - COMPLETE
-  - Configurable health check intervals
-  - Immediate cache warmup on startup
-  - Proactive cache refresh
-  - 90%+ cold-start latency reduction (100ms → <10ms)
-- ✅ Phase 3 (v5.6.3): Observability + Polish - COMPLETE 🎉
-  - **Adaptive TTL**: Dynamic cache adjustment (30-120s based on uptime)
-  - **Cache Poisoning Prevention**: Only cache successful results
-  - **Graceful Degradation**: Handle cache errors without crashes
-  - **Enhanced Metrics**: Per-provider cache hit rates, uptime tracking
-  - **Documentation**: PERFORMANCE.md, CACHE.md guides
-  - **57 New Tests**: Comprehensive test coverage (100% passing)
+**Overview**: Reducing provider check latency by 99% and eliminating cold-start delays.
 
 **Key Features**:
-
-1. **Availability Cache**:
-   - Baseline TTL: 60 seconds
-   - Adaptive TTL: 30-120s (based on provider stability)
-   - Cache hit rate: 50-90% (depending on request patterns)
-   - Latency reduction: 99% (100ms → <1ms)
-
-2. **Version Cache**:
-   - TTL: 5 minutes
-   - Per-command caching
-   - Memory efficient: ~500 bytes per command
-
-3. **Background Health Checks**:
-   - Configurable interval (default: 60 seconds)
-   - Parallel cache warmup on startup
-   - Continuous cache refresh
-   - Provider health monitoring
-
-4. **Adaptive TTL Strategy**:
-   - Highly stable (>99% uptime): 120s TTL
-   - Normal (90-99% uptime): 60s TTL
-   - Unstable (<90% uptime): 30s TTL
+- Adaptive TTL (30-120s based on provider stability)
+- Background health checks (60s interval)
+- Cache hit rate: 50-90%
+- Latency: 100ms → <1ms (99% improvement)
 
 **Configuration**:
-
 ```json
-// automatosx.config.json
 {
   "router": {
     "healthCheckInterval": 60000  // 60 seconds (optional)
@@ -407,129 +226,19 @@ parallel: true                    # Optional, defaults to true
 }
 ```
 
-**CLI Commands**:
-
-```bash
-# View comprehensive cache statistics
-ax cache stats
-
-# Output:
-# 📊 Cache Statistics
-#
-# Router Status:
-#   Health Checks: ✅ Enabled (60s interval)
-#   Checks Performed: 120
-#   Average Duration: 15ms
-#   Success Rate: 100.0%
-#
-# Provider: gemini-cli
-#   Availability Cache:
-#     Hit Rate: 85.0% (85 hits / 100 total)
-#     Average Age: 5.0s (max: 60s)
-#     Last Hit: 2s ago
-#   Health:
-#     Uptime: 99.5%
-#     Consecutive Successes: 100
-
-# Clear all caches
-ax cache clear
-```
-
-**Performance Impact**:
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| First request (cold) | 100ms | <1ms | **99%** |
-| Subsequent requests | 100ms | <1ms | **99%** |
-| Cache hit rate | 0% | 50-90% | **+∞** |
-| Memory per provider | - | <50KB | - |
-
-**Testing**:
-
-- **57 New Tests** (all passing):
-  - Enhanced cache metrics: 20 tests
-  - Adaptive TTL: 19 tests
-  - Router health checks: 18 tests
-  - Cache error handling: 11 tests (from Phase 3 Day 3)
-  - Total test suite: 2,116 tests passing (12 skipped)
-
-**Documentation**:
-
-- `docs/PERFORMANCE.md` - Performance optimization guide
-- `docs/CACHE.md` - Cache architecture and design
-- `tmp/phase3-day3-progress.md` - Phase 3 completion report
-
-**Key Implementation Files**:
-
+**Key Files**:
 - `src/providers/base-provider.ts` - Provider caching logic
-- `src/providers/retry-errors.ts` - Centralized retry error patterns (v5.6.4+)
 - `src/core/router.ts` - Health check orchestration
 - `src/cli/commands/cache.ts` - CLI cache commands
-- `tests/unit/base-provider-cache-metrics-enhanced.test.ts` - Enhanced metrics tests
-- `tests/unit/base-provider-adaptive-ttl.test.ts` - Adaptive TTL tests
-- `tests/unit/router-health-check-phase3-metrics.test.ts` - Router health tests
+- See `docs/PERFORMANCE.md` and `docs/CACHE.md` for details
 
 #### Response Cache (v5.5.0)
 
-**Status**: Implemented, disabled by default
-
-**Location**: `src/core/response-cache.ts`
-
-**Features**:
-
-- Dual-layer caching: L1 (in-memory LRU), L2 (SQLite persistent)
-- TTL-based expiration (default: 24 hours)
-- Cache key: SHA256 hash of (provider + prompt + modelParams)
-- Project-isolated (`.automatosx/cache/responses.db`)
-
-**Configuration**:
-
-```json
-// automatosx.config.json
-{
-  "performance": {
-    "providerCache": {
-      "enabled": false,  // Set to true to enable
-      "maxEntries": 100,
-      "ttl": 600000
-    }
-  }
-}
-```
-
-**Commands**:
-
-```bash
-ax cache stats                    # View cache statistics
-ax cache clear                    # Clear all cache
-ax cache show <key>              # Show cached entry
-```
+Dual-layer caching (L1 in-memory LRU + L2 SQLite), disabled by default. See `src/core/response-cache.ts`.
 
 #### Claude Code Integration (v5.5.0)
 
-**Status**: Implemented
-
-**Location**: `src/integrations/claude-code/`
-
-**Features**:
-
-- Bidirectional integration: AutomatosX ↔ Claude Code
-- Project-level commands (`.claude/commands/`)
-- MCP configuration management
-- Config manager, command manager, MCP manager
-
-**Setup**:
-
-```bash
-ax init                          # Initializes .claude/ directory
-```
-
-**Key Components**:
-
-- `bridge.ts`: High-level API for integration
-- `config-manager.ts`: Claude Code config management
-- `command-manager.ts`: Slash command installation
-- `mcp-manager.ts`: MCP server registration
+Bidirectional integration with project-level commands (`.claude/commands/`). Run `ax init` to setup. See `src/integrations/claude-code/`.
 
 ### Claude Code Provider (v5.4.3)
 
@@ -689,6 +398,8 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ## Agent Selection Playbook (v5.7.0)
 
 **Purpose**: Guide for selecting the correct agent to avoid mis-selection and improve task routing accuracy.
+
+**NEW**: Use `ax agent suggest "task description"` for automated agent suggestions with scoring and rationale.
 
 ### Quick Decision Tree
 

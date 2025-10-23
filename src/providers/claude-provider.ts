@@ -138,6 +138,25 @@ export class ClaudeProvider extends BaseProvider {
       let stdout = '';
       let stderr = '';
       let hasTimedOut = false;
+      let abortKillTimeout: NodeJS.Timeout | null = null;
+      let mainTimeout: NodeJS.Timeout | null = null;
+      let nestedKillTimeout: NodeJS.Timeout | null = null;
+
+      // Cleanup function to clear all timeouts
+      const cleanup = () => {
+        if (abortKillTimeout) {
+          clearTimeout(abortKillTimeout);
+          abortKillTimeout = null;
+        }
+        if (mainTimeout) {
+          clearTimeout(mainTimeout);
+          mainTimeout = null;
+        }
+        if (nestedKillTimeout) {
+          clearTimeout(nestedKillTimeout);
+          nestedKillTimeout = null;
+        }
+      };
 
       // Build CLI arguments using the new buildCLIArgs method
       const args = this.buildCLIArgs(request);
@@ -201,13 +220,16 @@ export class ClaudeProvider extends BaseProvider {
       if (request.signal) {
         request.signal.addEventListener('abort', () => {
           hasTimedOut = true;
+          cleanup();  // Clear all timeouts
           child.kill('SIGTERM');
+
           // Force kill after 5 seconds if SIGTERM doesn't work
-          setTimeout(() => {
+          abortKillTimeout = setTimeout(() => {
             if (!child.killed) {
               child.kill('SIGKILL');
             }
           }, 5000);
+
           reject(new Error('Execution aborted by timeout'));
         });
       }
@@ -230,6 +252,8 @@ export class ClaudeProvider extends BaseProvider {
 
       // Handle process exit
       child.on('close', (code) => {
+        cleanup();  // Clear all timeouts
+
         if (hasTimedOut) {
           return; // Timeout already handled
         }
@@ -297,12 +321,13 @@ export class ClaudeProvider extends BaseProvider {
       });
 
       // Set timeout
-      const timeout = setTimeout(() => {
+      mainTimeout = setTimeout(() => {
         hasTimedOut = true;
+        cleanup();  // Clear other timeouts
         child.kill('SIGTERM');
 
         // Force kill after 5 seconds if still running
-        setTimeout(() => {
+        nestedKillTimeout = setTimeout(() => {
           if (child.killed === false) {
             child.kill('SIGKILL');
           }
@@ -317,10 +342,6 @@ export class ClaudeProvider extends BaseProvider {
           `Try again or use --timeout option to increase the limit.`
         ));
       }, this.config.timeout);
-
-      child.on('close', () => {
-        clearTimeout(timeout);
-      });
     });
   }
 

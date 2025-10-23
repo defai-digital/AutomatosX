@@ -97,6 +97,9 @@ export abstract class BaseProvider implements Provider {
   private lastCheckDuration = 0;
   private healthHistory: Array<{ timestamp: number; available: boolean }> = [];
 
+  // Circuit breaker auto-recovery timeout tracking
+  private circuitBreakerRecoveryTimeout: NodeJS.Timeout | null = null;
+
   constructor(config: ProviderConfig) {
     this.config = config;
     this.health = {
@@ -532,9 +535,31 @@ export abstract class BaseProvider implements Provider {
       const { processManager } = await import('../utils/process-manager.js');
 
       const version = await new Promise<string | null>((resolve) => {
+        let mainTimeoutId: NodeJS.Timeout | null = null;
+        let nestedKillTimeoutId: NodeJS.Timeout | null = null;
+        let resolved = false;
+
+        const cleanup = () => {
+          if (mainTimeoutId) {
+            clearTimeout(mainTimeoutId);
+            mainTimeoutId = null;
+          }
+          if (nestedKillTimeoutId) {
+            clearTimeout(nestedKillTimeoutId);
+            nestedKillTimeoutId = null;
+          }
+        };
+
+        const safeResolve = (value: string | null) => {
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            resolve(value);
+          }
+        };
+
         const versionArg = this.config.versionArg || '--version';
         const proc = spawn(command, [versionArg], {
-          timeout: 5000,
           stdio: 'pipe',
         });
 
@@ -564,7 +589,7 @@ export abstract class BaseProvider implements Provider {
               output: cleanOutput.substring(0, 100)
             });
 
-            resolve(detectedVersion);
+            safeResolve(detectedVersion);
           } else {
             logger.debug('Version detection failed', {
               command,
@@ -572,7 +597,7 @@ export abstract class BaseProvider implements Provider {
               output,
               errorOutput
             });
-            resolve(null);
+            safeResolve(null);
           }
         });
 
@@ -581,8 +606,26 @@ export abstract class BaseProvider implements Provider {
             command,
             error: error.message
           });
-          resolve(null);
+          safeResolve(null);
         });
+
+        // Manual timeout after 5 seconds
+        mainTimeoutId = setTimeout(() => {
+          mainTimeoutId = null;
+          if (!resolved) {
+            logger.debug('Version detection timeout', { command });
+            proc.kill('SIGTERM');
+
+            // Force kill after 1 second if SIGTERM doesn't work
+            nestedKillTimeoutId = setTimeout(() => {
+              if (!proc.killed && proc.exitCode === null) {
+                proc.kill('SIGKILL');
+              }
+            }, 1000);
+
+            safeResolve(null);
+          }
+        }, 5000);
       });
 
       // Phase 3 (v5.6.3): Cache Poisoning Prevention
@@ -995,12 +1038,20 @@ export abstract class BaseProvider implements Provider {
   }
 
   /**
-   * Clear all caches (for testing or manual refresh).
+   * Clear all caches and cleanup timeouts (for testing or manual refresh).
    * NEW: Added in Phase 1 optimization.
+   * v5.6.16+: Also clears circuit breaker recovery timeout to prevent leaks.
    */
   clearCaches(): void {
     this.availabilityCache = undefined;
     this.versionCache.clear();
+
+    // Clear circuit breaker recovery timeout
+    if (this.circuitBreakerRecoveryTimeout) {
+      clearTimeout(this.circuitBreakerRecoveryTimeout);
+      this.circuitBreakerRecoveryTimeout = null;
+    }
+
     logger.info(`Caches cleared for provider ${this.config.name}`);
   }
 
@@ -1019,13 +1070,30 @@ export abstract class BaseProvider implements Provider {
   // Protected helper methods
   protected async executeWithTimeout(request: ExecutionRequest): Promise<ExecutionResponse> {
     const timeout = this.config.timeout;
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    return Promise.race([
-      this.executeRequest(request),
-      this.createTimeoutPromise(timeout)
-    ]);
+    try {
+      return await Promise.race([
+        this.executeRequest(request),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error(`Request timeout after ${timeout}ms`)),
+            timeout
+          );
+        })
+      ]);
+    } finally {
+      // Always clear the timeout, whether the execution completed or timed out
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
+  /**
+   * @deprecated Use executeWithTimeout instead. This method creates timeout leaks.
+   * Kept for backward compatibility but should not be used.
+   */
   protected createTimeoutPromise(timeoutMs: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
@@ -1071,10 +1139,17 @@ export abstract class BaseProvider implements Provider {
       this.health.available = false;
       logger.error(`Provider ${this.name} circuit breaker triggered (5 consecutive failures)`);
 
+      // Clear any existing recovery timeout to prevent accumulation
+      if (this.circuitBreakerRecoveryTimeout) {
+        clearTimeout(this.circuitBreakerRecoveryTimeout);
+        this.circuitBreakerRecoveryTimeout = null;
+      }
+
       // Auto-recover after 60 seconds
-      setTimeout(() => {
+      this.circuitBreakerRecoveryTimeout = setTimeout(() => {
         this.health.available = true;
         this.health.consecutiveFailures = 0;
+        this.circuitBreakerRecoveryTimeout = null;
         logger.info(`Provider ${this.name} circuit breaker reset`);
       }, 60000);
     }

@@ -267,6 +267,7 @@ export const suggestCommand: CommandModule<{}, SuggestOptions> = {
 
       // Score each agent
       const scoredAgents: SuggestionResult[] = [];
+      const failedProfiles: string[] = [];
 
       for (const name of agentNames) {
         try {
@@ -294,11 +295,27 @@ export const suggestCommand: CommandModule<{}, SuggestOptions> = {
           });
         } catch (error) {
           logger.warn(`Failed to load profile: ${name}`, { error });
+          failedProfiles.push(name);
         }
       }
 
-      // Sort by score (descending) and take top N
-      scoredAgents.sort((a, b) => b.score - a.score);
+      // Check if no agents were loaded successfully
+      if (scoredAgents.length === 0) {
+        const errorMsg = failedProfiles.length > 0
+          ? `Failed to load all agent profiles. Failed: ${failedProfiles.join(', ')}`
+          : 'No agent profiles found in project';
+        logger.error('[agent suggest] No agents loaded', { failedProfiles });
+        console.error(`\n❌ Error: ${errorMsg}\n`);
+        console.error('💡 Run `ax init` to initialize agent profiles.\n');
+        process.exit(1);
+      }
+
+      // Sort by score (descending), then by agent name (for stable ordering)
+      scoredAgents.sort((a, b) => {
+        const scoreDiff = b.score - a.score;
+        if (scoreDiff !== 0) return scoreDiff;
+        return a.agent.localeCompare(b.agent);  // Secondary sort by name
+      });
       const topSuggestions = scoredAgents.slice(0, limit);
 
       // Output results

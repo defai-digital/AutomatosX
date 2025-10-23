@@ -96,13 +96,18 @@ class ProcessManager {
       }
 
       killPromises.push(new Promise((resolve) => {
-        let timeoutId: NodeJS.Timeout | null = null;
+        let mainTimeoutId: NodeJS.Timeout | null = null;
+        let fallbackTimeoutId: NodeJS.Timeout | null = null;
         let resolved = false;
 
         const cleanup = () => {
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
+          if (mainTimeoutId) {
+            clearTimeout(mainTimeoutId);
+            mainTimeoutId = null;
+          }
+          if (fallbackTimeoutId) {
+            clearTimeout(fallbackTimeoutId);
+            fallbackTimeoutId = null;
           }
           if (!resolved) {
             resolved = true;
@@ -118,15 +123,20 @@ class ProcessManager {
         child.kill('SIGTERM');
 
         // Force kill after timeout/2 if still running
-        timeoutId = setTimeout(() => {
-          timeoutId = null;
+        mainTimeoutId = setTimeout(() => {
+          mainTimeoutId = null;
           if (!child.killed && child.exitCode === null) {
             logger.warn('Force killing child process', { pid: child.pid });
             child.kill('SIGKILL');
+
+            // Set fallback timeout in case SIGKILL doesn't trigger exit event
+            fallbackTimeoutId = setTimeout(() => {
+              cleanup();
+            }, 100);
+          } else {
+            // Process already exited, cleanup immediately
+            cleanup();
           }
-          // Don't resolve here - let the exit handler do it
-          // But set a fallback timeout in case exit never fires
-          setTimeout(() => cleanup(), 100);
         }, timeout / 2);
       }));
     }

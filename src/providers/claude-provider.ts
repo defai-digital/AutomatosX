@@ -179,9 +179,21 @@ export class ClaudeProvider extends BaseProvider {
         child.stdin?.write(prompt);
         child.stdin?.end();
       } catch (error) {
-        // Kill child process before rejecting to prevent orphan process
+        // Kill child process and wait for it to exit before rejecting
         child.kill('SIGTERM');
-        reject(new Error(`Failed to write prompt to Claude CLI stdin: ${(error as Error).message}`));
+
+        // Set fallback timeout to force kill if SIGTERM doesn't work
+        const cleanupTimeout = setTimeout(() => {
+          if (!child.killed && child.exitCode === null) {
+            child.kill('SIGKILL');
+          }
+        }, 1000);
+
+        // Wait for process to exit, then reject
+        child.once('exit', () => {
+          clearTimeout(cleanupTimeout);
+          reject(new Error(`Failed to write prompt to Claude CLI stdin: ${(error as Error).message}`));
+        });
         return;
       }
 

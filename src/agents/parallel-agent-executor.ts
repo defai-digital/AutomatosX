@@ -189,16 +189,17 @@ export class ParallelAgentExecutor {
   ): Promise<void> {
     logger.info('Executing batch in parallel', { agents: batch });
 
-    const promises = batch.map(async (agentName) => {
+    const promises = batch.map(async (agentName): Promise<TimelineEntry | null> => {
       const node = graph.nodes.get(agentName);
       if (!node) {
-        return;
+        return null;
       }
 
       // Check dependencies before execution
       if (!this.checkDependencies(node, results)) {
         node.status = 'skipped';
-        timeline.push({
+        // Return timeline entry instead of directly pushing (fixes race condition)
+        const entry: TimelineEntry = {
           agentName,
           displayName: node.agent.displayName,
           startTime: Date.now(),
@@ -207,14 +208,15 @@ export class ParallelAgentExecutor {
           level: node.level,
           status: 'skipped',
           error: 'Dependencies not met'
-        });
-        return;
+        };
+        return entry;
       }
 
       // Execute agent
       try {
         const result = await this.executeAgent(node, graph, context, options, timeline);
         results.set(agentName, result);
+        return null;  // Timeline already updated in executeAgent
       } catch (error) {
         logger.error('Agent execution failed in parallel batch', {
           agent: agentName,
@@ -222,10 +224,18 @@ export class ParallelAgentExecutor {
         });
         // Mark dependents as skipped
         this.markDependentsAsSkipped(agentName, graph);
+        return null;  // Timeline already updated in executeAgent error handler
       }
     });
 
-    await Promise.all(promises);
+    // Collect timeline entries from skipped agents
+    const timelineEntries = await Promise.all(promises);
+
+    // Batch update timeline (fixes race condition - single atomic operation)
+    const entriesToAdd = timelineEntries.filter((entry): entry is TimelineEntry => entry !== null);
+    if (entriesToAdd.length > 0) {
+      timeline.push(...entriesToAdd);
+    }
   }
 
   /**

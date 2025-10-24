@@ -223,12 +223,17 @@ export class AgentExecutor {
   ): Promise<ExecutionResult> {
     const retryConfig = { ...this.defaultRetryConfig, ...options.retry };
     const { maxAttempts, initialDelay, maxDelay, backoffFactor, retryableErrors } = retryConfig;
-    const { verbose = false } = options;
+    const { verbose = false, signal } = options;
 
     let lastError: Error | null = null;
     let attempt = 0;
 
     while (attempt < maxAttempts) {
+      // Check if execution was cancelled before retry
+      if (signal?.aborted) {
+        throw new Error('Execution cancelled');
+      }
+
       attempt++;
 
       try {
@@ -258,7 +263,8 @@ export class AgentExecutor {
           console.log(chalk.gray(`Waiting ${delay}ms before retry...`));
         }
 
-        await this.sleep(delay);
+        // Sleep with cancellation support
+        await this.sleep(delay, signal);
       }
     }
 
@@ -972,9 +978,28 @@ export class AgentExecutor {
 
   /**
    * Sleep for specified milliseconds
+   * @param ms - Milliseconds to sleep
+   * @param signal - Optional AbortSignal to cancel the sleep
    */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  private sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if already aborted
+      if (signal?.aborted) {
+        reject(new Error('Sleep cancelled'));
+        return;
+      }
+
+      const timeoutId = setTimeout(resolve, ms);
+
+      // Support cancellation via AbortSignal
+      if (signal) {
+        const abortHandler = () => {
+          clearTimeout(timeoutId);
+          reject(new Error('Sleep cancelled'));
+        };
+        signal.addEventListener('abort', abortHandler, { once: true });
+      }
+    });
   }
 
   /**

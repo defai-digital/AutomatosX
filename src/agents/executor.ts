@@ -152,7 +152,7 @@ export class AgentExecutor {
     context: ExecutionContext,
     options: ExecutionOptions = {}
   ): Promise<ExecutionResult> {
-    let timeoutMonitor: ReturnType<typeof this.timeoutManager.startMonitoring> | undefined;
+    let timeoutMonitor: ReturnType<NonNullable<typeof this.timeoutManager>['startMonitoring']> | undefined;
 
     // v5.4.0: Resolve timeout using TimeoutManager if not explicitly provided
     if (!options.timeout && this.timeoutManager) {

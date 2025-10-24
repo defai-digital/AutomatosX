@@ -62,8 +62,11 @@ export class Router {
 
       // Phase 3: Immediate cache warmup on startup (only if health checks enabled)
       // Warm up caches immediately to eliminate first-request cold start
+      // CRITICAL FIX (v5.6.18): Add catch handler to prevent unhandled rejection
       if (this.providers.length > 0) {
-        void this.warmupCaches();
+        void this.warmupCaches().catch(err => {
+          logger.error('Cache warmup failed', { error: err.message });
+        });
       }
     }
   }
@@ -368,8 +371,11 @@ export class Router {
     };
 
     // Set up interval
+    // CRITICAL FIX (v5.6.18): Add catch handler to prevent unhandled rejection
     this.healthCheckInterval = setInterval(() => {
-      void runHealthChecks(); // Explicitly handle promise
+      void runHealthChecks().catch(err => {
+        logger.error('Health check interval failed', { error: err.message });
+      });
     }, intervalMs);
 
     // Run immediately on start to warm up caches
@@ -377,7 +383,9 @@ export class Router {
       interval: intervalMs,
       providers: this.providers.map(p => p.name)
     });
-    void runHealthChecks();
+    void runHealthChecks().catch(err => {
+      logger.error('Initial health check failed', { error: err.message });
+    });
   }
 
   /**

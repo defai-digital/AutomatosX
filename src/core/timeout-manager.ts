@@ -329,4 +329,16 @@ export class TimeoutManager {
   getConfig(): TimeoutConfig {
     return { ...this.config };
   }
+
+  /**
+   * Destroy timeout manager
+   *
+   * CRITICAL FIX (v5.6.18): Clean up warning emitter to prevent memory leak.
+   * Must be called when TimeoutManager instance is no longer needed.
+   *
+   * @since 5.6.18
+   */
+  destroy(): void {
+    this.warningEmitter.destroy();
+  }
 }

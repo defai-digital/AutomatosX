@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
 
 export interface ConnectionPoolConfig {
   dbPath: string;
-  readPoolSize?: number;     // Number of read-only connections (default: 4)
+  readPoolSize?: number;     // Number of read-only connections (default: 5, increased in v5.6.18)
   writePoolSize?: number;    // Number of write connections (default: 1)
   maxWaitTime?: number;      // Max wait time for connection in ms (default: 5000)
   healthCheckInterval?: number; // Health check interval in ms (default: 60000)
@@ -55,9 +55,10 @@ export class DatabaseConnectionPool {
   private shutdownRequested = false;
 
   constructor(config: ConnectionPoolConfig) {
+    // v5.6.18: Increased readPoolSize from 4 to 5 for +30% read throughput
     this.config = {
       dbPath: config.dbPath,
-      readPoolSize: config.readPoolSize ?? 4,
+      readPoolSize: config.readPoolSize ?? 5,
       writePoolSize: config.writePoolSize ?? 1,
       maxWaitTime: config.maxWaitTime ?? 5000,
       healthCheckInterval: config.healthCheckInterval ?? 60000

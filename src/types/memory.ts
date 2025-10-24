@@ -188,6 +188,9 @@ export interface MemoryManagerConfig {
   /** Enable access tracking */
   trackAccess?: boolean;
 
+  /** SQLite busy timeout in milliseconds (default: 5000) - v5.6.18 */
+  busyTimeout?: number;
+
   /** Embedding provider for text-to-vector conversion (required for text queries) */
   embeddingProvider?: unknown; // IEmbeddingProvider - use unknown to avoid circular dependency
 }

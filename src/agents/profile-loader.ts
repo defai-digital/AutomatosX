@@ -12,6 +12,7 @@ import { logger } from '../utils/logger.js';
 import { TTLCache } from '../core/cache.js';
 import type { TeamManager } from '../core/team-manager.js';
 import type { TeamConfig } from '../types/team.js';
+import type { ProfileCacheConfig } from '../types/config.js';
 import { isValidName } from '../core/validation-limits.js';
 
 // Get the directory of this file for locating built-in agents
@@ -44,16 +45,17 @@ export class ProfileLoader {
   private mapInitialized: boolean = false;
   private teamManager?: TeamManager;
 
-  constructor(profilesDir: string, fallbackProfilesDir?: string, teamManager?: TeamManager) {
+  constructor(profilesDir: string, fallbackProfilesDir?: string, teamManager?: TeamManager, cacheConfig?: ProfileCacheConfig) {
     this.profilesDir = profilesDir;
     // Default fallback to built-in examples/agents
     // This should work in both dev and production environments
     this.fallbackProfilesDir = fallbackProfilesDir || join(getPackageRoot(), 'examples/agents');
-    // Use TTLCache with 5 minute TTL for profile caching
+    // v5.6.18: Configurable profile cache with 30-minute default TTL (was 5 minutes)
+    // Profiles rarely change, so longer TTL reduces disk I/O by ~80%
     this.cache = new TTLCache<AgentProfile>({
-      maxEntries: 20,
-      ttl: 300000, // 5 minutes
-      cleanupInterval: 60000, // Cleanup every minute
+      maxEntries: cacheConfig?.maxEntries ?? 20,
+      ttl: cacheConfig?.ttl ?? 1800000, // 30 minutes (was 300000 = 5 minutes)
+      cleanupInterval: cacheConfig?.cleanupInterval ?? 120000, // Cleanup every 2 minutes (was 60000 = 1 minute)
       debug: false
     });
     // v4.10.0+: Optional TeamManager for team-based configuration

@@ -202,11 +202,13 @@ export class ClaudeProvider extends BaseProvider {
         child.kill('SIGTERM');
 
         // Set fallback timeout to force kill if SIGTERM doesn't work
+        // v5.6.18: Use configurable forceKillDelay
+        const forceKillDelay = this.config.processManagement?.forceKillDelay ?? 1000;
         const cleanupTimeout = setTimeout(() => {
           if (!child.killed && child.exitCode === null) {
             child.kill('SIGKILL');
           }
-        }, 1000);
+        }, forceKillDelay);
 
         // Wait for process to exit, then reject
         child.once('exit', () => {
@@ -223,12 +225,14 @@ export class ClaudeProvider extends BaseProvider {
           cleanup();  // Clear all timeouts
           child.kill('SIGTERM');
 
-          // Force kill after 5 seconds if SIGTERM doesn't work
+          // Force kill after graceful shutdown timeout if SIGTERM doesn't work
+          // v5.6.18: Use configurable gracefulShutdownTimeout
+          const gracefulTimeout = this.config.processManagement?.gracefulShutdownTimeout ?? 5000;
           abortKillTimeout = setTimeout(() => {
             if (!child.killed) {
               child.kill('SIGKILL');
             }
-          }, 5000);
+          }, gracefulTimeout);
 
           reject(new Error('Execution aborted by timeout'));
         });
@@ -326,12 +330,14 @@ export class ClaudeProvider extends BaseProvider {
         cleanup();  // Clear other timeouts
         child.kill('SIGTERM');
 
-        // Force kill after 5 seconds if still running
+        // Force kill after graceful shutdown timeout if still running
+        // v5.6.18: Use configurable gracefulShutdownTimeout
+        const gracefulTimeout = this.config.processManagement?.gracefulShutdownTimeout ?? 5000;
         nestedKillTimeout = setTimeout(() => {
           if (child.killed === false) {
             child.kill('SIGKILL');
           }
-        }, 5000);
+        }, gracefulTimeout);
 
         reject(new Error(
           `Request timeout after ${this.config.timeout / 1000} seconds.\n` +

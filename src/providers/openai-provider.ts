@@ -197,11 +197,13 @@ export class OpenAIProvider extends BaseProvider {
         child.kill('SIGTERM');
 
         // Set fallback timeout to force kill if SIGTERM doesn't work
+        // v5.6.18: Use configurable forceKillDelay
+        const forceKillDelay = this.config.processManagement?.forceKillDelay ?? 1000;
         const cleanupTimeout = setTimeout(() => {
           if (!child.killed && child.exitCode === null) {
             child.kill('SIGKILL');
           }
-        }, 1000);
+        }, forceKillDelay);
 
         // Wait for process to exit, then reject
         child.once('exit', () => {
@@ -218,12 +220,14 @@ export class OpenAIProvider extends BaseProvider {
           cleanup();  // Clear all timeouts
           child.kill('SIGTERM');
 
-          // Force kill after 5 seconds if SIGTERM doesn't work
+          // Force kill after graceful shutdown timeout if SIGTERM doesn't work
+          // v5.6.18: Use configurable gracefulShutdownTimeout
+          const gracefulTimeout = this.config.processManagement?.gracefulShutdownTimeout ?? 5000;
           abortKillTimeout = setTimeout(() => {
             if (!child.killed) {
               child.kill('SIGKILL');
             }
-          }, 5000);
+          }, gracefulTimeout);
 
           reject(new Error('Execution aborted by timeout'));
         });
@@ -274,11 +278,13 @@ export class OpenAIProvider extends BaseProvider {
         child.kill('SIGTERM');
 
         // Give it a moment to terminate gracefully
+        // v5.6.18: Use configurable forceKillDelay
+        const forceKillDelay = this.config.processManagement?.forceKillDelay ?? 1000;
         nestedKillTimeout = setTimeout(() => {
           if (!child.killed) {
             child.kill('SIGKILL');
           }
-        }, 1000);
+        }, forceKillDelay);
 
         reject(new Error(`OpenAI CLI execution timeout after ${this.config.timeout}ms`));
       }, this.config.timeout);
@@ -463,16 +469,21 @@ export class OpenAIProvider extends BaseProvider {
         return;
       }
 
+      // MEDIUM FIX (v5.6.17): Track abort kill timeout to prevent leak
+      let abortKillTimeout: NodeJS.Timeout | null = null;
+
       // Handle abort signal
       if (request.signal) {
         request.signal.addEventListener('abort', () => {
           hasTimedOut = true;
           child.kill('SIGTERM');
-          setTimeout(() => {
+          // v5.6.18: Use configurable gracefulShutdownTimeout
+          const gracefulTimeout = this.config.processManagement?.gracefulShutdownTimeout ?? 5000;
+          abortKillTimeout = setTimeout(() => {
             if (!child.killed) {
               child.kill('SIGKILL');
             }
-          }, 5000);
+          }, gracefulTimeout);
           reject(new Error('Execution aborted by timeout'));
         });
       }
@@ -558,22 +569,44 @@ export class OpenAIProvider extends BaseProvider {
         }
       });
 
+      // MEDIUM FIX (v5.6.17): Track all timeouts and create cleanup function
+      let mainTimeout: NodeJS.Timeout | null = null;
+      let nestedKillTimeout: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (mainTimeout) {
+          clearTimeout(mainTimeout);
+          mainTimeout = null;
+        }
+        if (nestedKillTimeout) {
+          clearTimeout(nestedKillTimeout);
+          nestedKillTimeout = null;
+        }
+        if (abortKillTimeout) {
+          clearTimeout(abortKillTimeout);
+          abortKillTimeout = null;
+        }
+      };
+
       // Set timeout
-      const timeout = setTimeout(() => {
+      mainTimeout = setTimeout(() => {
         hasTimedOut = true;
+        cleanup(); // Clear other timeouts before creating new one
         child.kill('SIGTERM');
 
-        setTimeout(() => {
+        // v5.6.18: Use configurable forceKillDelay
+        const forceKillDelay = this.config.processManagement?.forceKillDelay ?? 1000;
+        nestedKillTimeout = setTimeout(() => {
           if (!child.killed) {
             child.kill('SIGKILL');
           }
-        }, 1000);
+        }, forceKillDelay);
 
         reject(new Error(`OpenAI CLI streaming timeout after ${this.config.timeout}ms`));
       }, this.config.timeout);
 
       child.on('close', () => {
-        clearTimeout(timeout);
+        cleanup(); // Clean up all timeouts
       });
     });
   }

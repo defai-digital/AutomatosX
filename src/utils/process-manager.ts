@@ -73,18 +73,24 @@ class ProcessManager {
     });
 
     // Step 1: Run custom shutdown handlers (close DB connections, etc.)
+    // CRITICAL FIX (v5.6.18): Track and clear timeout to prevent leak
     for (const handler of this.shutdownHandlers) {
+      let timeoutId: NodeJS.Timeout | null = null;
       try {
         await Promise.race([
           handler(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Handler timeout')), timeout / 2)
-          )
+          new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Handler timeout')), timeout / 2);
+          })
         ]);
       } catch (error) {
         logger.warn('Shutdown handler failed', {
           error: (error as Error).message
         });
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
       }
     }
 

@@ -38,7 +38,8 @@ export interface ParallelExecutionResult {
 
 export interface ParallelExecutionOptions {
   continueOnFailure?: boolean;
-  maxConcurrentAgents?: number;
+  maxConcurrentAgents?: number;  // DEPRECATED: use concurrency
+  concurrency?: import('../types/config.js').ConcurrencyConfig;  // v5.6.18: Advanced concurrency control
   signal?: AbortSignal;
   timeout?: number;
 }
@@ -79,7 +80,9 @@ export class ParallelAgentExecutor {
     }
 
     // Create execution plan
+    // v5.6.18: Pass concurrency config if available, fallback to legacy maxConcurrentAgents
     const plan = this.planner.createExecutionPlan(graph, {
+      concurrency: options.concurrency,
       maxConcurrentAgents: options.maxConcurrentAgents
     });
 

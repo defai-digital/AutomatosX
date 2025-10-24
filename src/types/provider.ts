@@ -2,6 +2,17 @@
  * Provider Types - AI Provider Interface Definitions
  */
 
+// v5.6.18: Import and re-export RetryConfig, and other v5.6.18 config types from config.ts for consistency
+import type {
+  RetryConfig as RetryConfigImpl,
+  CircuitBreakerConfig,
+  ProcessManagementConfig,
+  VersionDetectionConfig
+} from './config.js';
+
+// Re-export RetryConfig for backward compatibility
+export type RetryConfig = RetryConfigImpl;
+
 export interface ProviderConfig {
   name: string;
   enabled: boolean;
@@ -18,19 +29,17 @@ export interface ProviderConfig {
   versionArg?: string;
   /** Minimum required version (semantic versioning) */
   minVersion?: string;
+
+  // v5.6.18: Process management and reliability
+  circuitBreaker?: CircuitBreakerConfig;        // Circuit breaker configuration
+  processManagement?: ProcessManagementConfig;  // Process lifecycle management
+  versionDetection?: VersionDetectionConfig;    // Version detection configuration
 }
 
 export interface RateLimitConfig {
   maxRequestsPerMinute: number;
   maxTokensPerMinute: number;
   maxConcurrentRequests: number;
-}
-
-export interface RetryConfig {
-  maxAttempts: number;
-  initialDelayMs: number;
-  maxDelayMs: number;
-  backoffMultiplier: number;
 }
 
 export interface ProviderCapabilities {

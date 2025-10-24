@@ -145,11 +145,15 @@ export class AgentExecutor {
 
   /**
    * Execute an agent with the given context
+   *
+   * MEDIUM FIX (v5.6.17): Store and cleanup TimeoutManager monitor to prevent timer leak
    */
   async execute(
     context: ExecutionContext,
     options: ExecutionOptions = {}
   ): Promise<ExecutionResult> {
+    let timeoutMonitor: ReturnType<typeof this.timeoutManager.startMonitoring> | undefined;
+
     // v5.4.0: Resolve timeout using TimeoutManager if not explicitly provided
     if (!options.timeout && this.timeoutManager) {
       try {
@@ -169,8 +173,8 @@ export class AgentExecutor {
           source: resolved.source,
         });
 
-        // Start monitoring for warnings
-        this.timeoutManager.startMonitoring(resolved, {
+        // Start monitoring for warnings and store the monitor handle
+        timeoutMonitor = this.timeoutManager.startMonitoring(resolved, {
           agentName: context.agent.name,
           taskDescription: context.task,
         });
@@ -182,27 +186,32 @@ export class AgentExecutor {
       }
     }
 
-    // If both retry and timeout are enabled
-    if (options.retry && options.timeout) {
-      return this.executeWithTimeout(context, {
-        ...options,
-        // Wrap retry logic inside timeout
-        retry: options.retry
-      });
-    }
+    try {
+      // If both retry and timeout are enabled
+      if (options.retry && options.timeout) {
+        return await this.executeWithTimeout(context, {
+          ...options,
+          // Wrap retry logic inside timeout
+          retry: options.retry
+        });
+      }
 
-    // If only retry is enabled
-    if (options.retry) {
-      return this.executeWithRetry(context, options);
-    }
+      // If only retry is enabled
+      if (options.retry) {
+        return await this.executeWithRetry(context, options);
+      }
 
-    // If only timeout is enabled
-    if (options.timeout) {
-      return this.executeWithTimeout(context, options);
-    }
+      // If only timeout is enabled
+      if (options.timeout) {
+        return await this.executeWithTimeout(context, options);
+      }
 
-    // Otherwise, execute normally
-    return this.executeInternal(context, options);
+      // Otherwise, execute normally
+      return await this.executeInternal(context, options);
+    } finally {
+      // MEDIUM FIX: Always stop monitoring to clear warning timer
+      timeoutMonitor?.stop();
+    }
   }
 
   /**
@@ -259,6 +268,8 @@ export class AgentExecutor {
 
   /**
    * Execute with timeout
+   *
+   * CRITICAL FIX (v5.6.17): Clear timeout when execution completes to prevent resource leak
    */
   private async executeWithTimeout(
     context: ExecutionContext,
@@ -266,6 +277,8 @@ export class AgentExecutor {
   ): Promise<ExecutionResult> {
     const timeout = options.timeout!;
     const { verbose = false } = options;
+
+    let timeoutId: NodeJS.Timeout | null = null;
 
     // Create an AbortController for cancellation
     const controller = new AbortController();
@@ -280,7 +293,7 @@ export class AgentExecutor {
       : this.executeInternal(context, executionOptions);
 
     const timeoutPromise = new Promise<ExecutionResult>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         controller.abort(); // Cancel the execution
         reject(new Error(`Execution timed out after ${timeout}ms`));
       }, timeout);
@@ -292,6 +305,11 @@ export class AgentExecutor {
       // Ensure abortion on error
       controller.abort();
       throw error;
+    } finally {
+      // CRITICAL: Always clear the timeout to prevent resource leak
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 

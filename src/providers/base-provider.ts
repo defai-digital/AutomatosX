@@ -609,23 +609,27 @@ export abstract class BaseProvider implements Provider {
           safeResolve(null);
         });
 
-        // Manual timeout after 5 seconds
+        // Manual timeout for version detection
+        // v5.6.18: Use configurable version detection timeouts
+        const versionTimeout = this.config.versionDetection?.timeout ?? 5000;
+        const forceKillDelay = this.config.versionDetection?.forceKillDelay ?? 1000;
+
         mainTimeoutId = setTimeout(() => {
           mainTimeoutId = null;
           if (!resolved) {
-            logger.debug('Version detection timeout', { command });
+            logger.debug('Version detection timeout', { command, timeout: versionTimeout });
             proc.kill('SIGTERM');
 
-            // Force kill after 1 second if SIGTERM doesn't work
+            // Force kill if SIGTERM doesn't work
             nestedKillTimeoutId = setTimeout(() => {
               if (!proc.killed && proc.exitCode === null) {
                 proc.kill('SIGKILL');
               }
-            }, 1000);
+            }, forceKillDelay);
 
             safeResolve(null);
           }
-        }, 5000);
+        }, versionTimeout);
       });
 
       // Phase 3 (v5.6.3): Cache Poisoning Prevention
@@ -1063,8 +1067,9 @@ export abstract class BaseProvider implements Provider {
 
   getRetryDelay(attempt: number): number {
     const policy = this.config.retryPolicy ?? this.getDefaultRetryPolicy();
-    const delay = policy.initialDelayMs * Math.pow(policy.backoffMultiplier, attempt - 1);
-    return Math.min(delay, policy.maxDelayMs);
+    // v5.6.18: Use config.ts property names (initialDelay, backoffFactor, maxDelay)
+    const delay = policy.initialDelay * Math.pow(policy.backoffFactor, attempt - 1);
+    return Math.min(delay, policy.maxDelay);
   }
 
   // Protected helper methods
@@ -1145,13 +1150,14 @@ export abstract class BaseProvider implements Provider {
         this.circuitBreakerRecoveryTimeout = null;
       }
 
-      // Auto-recover after 60 seconds
+      // v5.6.18: Use configurable recovery timeout (default: 60 seconds)
+      const recoveryTimeout = this.config.circuitBreaker?.recoveryTimeout ?? 60000;
       this.circuitBreakerRecoveryTimeout = setTimeout(() => {
         this.health.available = true;
         this.health.consecutiveFailures = 0;
         this.circuitBreakerRecoveryTimeout = null;
-        logger.info(`Provider ${this.name} circuit breaker reset`);
-      }, 60000);
+        logger.info(`Provider ${this.name} circuit breaker reset after ${recoveryTimeout}ms`);
+      }, recoveryTimeout);
     }
   }
 
@@ -1196,11 +1202,12 @@ export abstract class BaseProvider implements Provider {
   }
 
   protected getDefaultRetryPolicy(): RetryConfig {
+    // v5.6.18: Use config.ts property names for consistency
     return {
       maxAttempts: 3,
-      initialDelayMs: 1000,
-      maxDelayMs: 10000,
-      backoffMultiplier: 2
+      initialDelay: 1000,        // milliseconds (was initialDelayMs)
+      maxDelay: 10000,           // milliseconds (was maxDelayMs)
+      backoffFactor: 2           // was backoffMultiplier
     };
   }
 }

@@ -7,6 +7,7 @@
 
 import type { LogLevel } from './logger.js';
 import type { TimeoutConfig } from './timeout.js';
+import type { AdaptiveCacheConfig as AdaptiveCacheConfigImpl } from '../core/adaptive-cache.js';
 
 // ========================================
 // Provider Configuration
@@ -27,6 +28,35 @@ export interface ProviderDefaultsConfig {
   topP?: number;           // Default top_p (0-1)
 }
 
+/**
+ * Circuit Breaker Configuration (v5.6.18+)
+ * Prevents cascading failures by temporarily disabling failed providers
+ */
+export interface CircuitBreakerConfig {
+  enabled: boolean;               // Enable circuit breaker
+  failureThreshold: number;       // Number of failures before opening circuit
+  recoveryTimeout: number;        // Time to wait before attempting recovery (ms)
+}
+
+/**
+ * Process Management Configuration (v5.6.18+)
+ * Controls process lifecycle and cleanup behavior
+ */
+export interface ProcessManagementConfig {
+  gracefulShutdownTimeout: number;  // Max time to wait for graceful shutdown (ms)
+  forceKillDelay: number;           // Delay before force killing process (ms)
+}
+
+/**
+ * Version Detection Configuration (v5.6.18+)
+ * Controls provider version detection behavior
+ */
+export interface VersionDetectionConfig {
+  timeout: number;          // Version check timeout (ms)
+  forceKillDelay: number;   // Delay before force killing version check (ms)
+  cacheEnabled: boolean;    // Cache version detection results
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   priority: number;
@@ -42,6 +72,11 @@ export interface ProviderConfig {
   versionArg?: string;
   /** Minimum required version (semantic versioning) */
   minVersion?: string;
+
+  // v5.6.18: Process management and reliability
+  circuitBreaker?: CircuitBreakerConfig;        // Circuit breaker configuration
+  processManagement?: ProcessManagementConfig;  // Process lifecycle management
+  versionDetection?: VersionDetectionConfig;    // Version detection configuration
 }
 
 // ========================================
@@ -91,11 +126,24 @@ export interface StageExecutionConfigOptions {
   progress: StageProgressConfig; // progress configuration
 }
 
+/**
+ * Concurrency Configuration (v5.6.18+)
+ * Controls parallel execution and CPU utilization
+ */
+export interface ConcurrencyConfig {
+  maxConcurrentAgents?: number;  // Max agents to run in parallel (if set, overrides autoDetect)
+  autoDetect: boolean;           // Auto-detect based on CPU cores
+  cpuMultiplier: number;         // Multiplier for CPU core count (default: 1.0)
+  minConcurrency: number;        // Minimum concurrent agents (default: 2)
+  maxConcurrency: number;        // Maximum concurrent agents (default: 16)
+}
+
 export interface ExecutionConfig {
   defaultTimeout: number;  // default execution timeout (ms)
   retry: RetryConfig;
   provider: ExecutionProviderConfig;
-  maxConcurrentAgents?: number;  // max agents allowed to run in parallel
+  maxConcurrentAgents?: number;  // DEPRECATED: use concurrency.maxConcurrentAgents
+  concurrency?: ConcurrencyConfig;  // v5.6.18: Advanced concurrency control
   stages?: StageExecutionConfigOptions;  // v5.3.0: stage-based execution
   timeouts?: TimeoutConfig;  // v5.4.0: layered timeout configuration (optional)
 }
@@ -150,6 +198,7 @@ export interface MemoryConfig {
   persistPath: string;
   autoCleanup: boolean;
   cleanupDays: number;
+  busyTimeout?: number;         // v5.6.18: SQLite busy timeout in ms (default: 5000)
   search?: MemorySearchConfig;  // Optional for backward compatibility
 }
 
@@ -211,6 +260,12 @@ export interface TeamCacheConfig extends CacheConfig {}
 export interface ProviderCacheConfig extends CacheConfig {}
 
 /**
+ * Adaptive Cache Configuration (v5.6.18+)
+ * Re-export from adaptive-cache.ts for type safety
+ */
+export type AdaptiveCacheConfig = AdaptiveCacheConfigImpl;
+
+/**
  * Response Cache Configuration (v5.5.3+)
  * SQLite-backed response caching for provider calls
  */
@@ -232,6 +287,7 @@ export interface PerformanceConfig {
   profileCache: ProfileCacheConfig;
   teamCache: TeamCacheConfig;
   providerCache: ProviderCacheConfig;
+  adaptiveCache?: AdaptiveCacheConfig;  // v5.6.18: Optional adaptive cache with dynamic TTL
   responseCache?: ResponseCacheConfig;  // v5.5.3: Optional provider response cache
   rateLimit: RateLimitConfig;
 }
@@ -355,6 +411,24 @@ export interface AutomatosXConfig {
 // Default Configuration
 // ========================================
 
+// v5.6.18: Global provider defaults for circuit breaker, process management, and version detection
+const GLOBAL_PROVIDER_DEFAULTS = {
+  circuitBreaker: {
+    enabled: true,
+    failureThreshold: 3,
+    recoveryTimeout: 60000  // 60 seconds
+  },
+  processManagement: {
+    gracefulShutdownTimeout: 5000,  // 5 seconds
+    forceKillDelay: 1000             // 1 second
+  },
+  versionDetection: {
+    timeout: 5000,           // 5 seconds
+    forceKillDelay: 1000,    // 1 second
+    cacheEnabled: true
+  }
+};
+
 export const DEFAULT_CONFIG: AutomatosXConfig = {
   providers: {
     'claude-code': {
@@ -366,7 +440,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
         enabled: true,
         interval: 300000,  // 5 minutes (v5.0: reduced frequency from 1 min)
         timeout: 5000      // 5 seconds
-      }
+      },
+      // v5.6.18: Circuit breaker, process management, and version detection
+      circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
+      processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
       // Users can still set provider.defaults in config for specific needs
     },
@@ -379,7 +457,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
         enabled: true,
         interval: 300000,  // 5 minutes (v5.0: reduced frequency)
         timeout: 5000
-      }
+      },
+      // v5.6.18: Circuit breaker, process management, and version detection
+      circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
+      processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
     },
     'openai': {
@@ -391,14 +473,25 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
         enabled: true,
         interval: 300000,  // 5 minutes (v5.0: reduced frequency)
         timeout: 5000
-      }
+      },
+      // v5.6.18: Circuit breaker, process management, and version detection
+      circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
+      processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
     }
   },
 
   execution: {
     defaultTimeout: 1500000,  // 25 minutes (v5.1.0: increased from 15 min based on user feedback)
-    maxConcurrentAgents: 4,
+    maxConcurrentAgents: 4,  // DEPRECATED: use concurrency.maxConcurrentAgents
+    // v5.6.18: Advanced concurrency configuration with CPU auto-detection
+    concurrency: {
+      autoDetect: false,        // Disabled by default for backward compatibility
+      cpuMultiplier: 1.0,       // 1 agent per CPU core
+      minConcurrency: 2,        // Minimum 2 concurrent agents
+      maxConcurrency: 16        // Maximum 16 concurrent agents
+    },
     retry: {
       maxAttempts: 3,
       initialDelay: 1000,    // 1 second
@@ -462,6 +555,7 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     persistPath: '.automatosx/memory',
     autoCleanup: true,
     cleanupDays: 30,
+    busyTimeout: 5000,      // 5 seconds (v5.6.18: SQLite lock wait timeout)
     search: {
       defaultLimit: 10,
       maxLimit: 100,
@@ -520,6 +614,16 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
       maxEntries: 100,
       ttl: 600000,         // 10 minutes (v5.0: reduced from 1 hour)
       cleanupInterval: 120000  // 2 minutes (v5.0: standardized)
+    },
+    adaptiveCache: {
+      maxEntries: 1000,
+      baseTTL: 300000,        // 5 minutes
+      minTTL: 60000,          // 1 minute
+      maxTTL: 3600000,        // 1 hour
+      adaptiveMultiplier: 2,  // Double TTL for high-frequency items
+      lowFreqDivisor: 2,      // Halve TTL for low-frequency items
+      frequencyThreshold: 5,  // 5 accesses = high frequency
+      cleanupInterval: 60000  // 1 minute
     },
     responseCache: {
       enabled: false,      // v5.5.3: Disabled by default (opt-in feature)

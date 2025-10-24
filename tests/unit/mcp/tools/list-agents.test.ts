@@ -183,7 +183,8 @@ describe('MCP Tool: list_agents', () => {
         team: 'test-team',
         // Additional fields that should be ignored
         systemPrompt: 'You are a test agent',
-        abilities: ['test-ability']
+        abilities: ['test-ability'],
+        selectionMetadata: undefined
       });
 
       const handler = createListAgentsHandler({
@@ -194,18 +195,19 @@ describe('MCP Tool: list_agents', () => {
 
       expect(result.agents).toHaveLength(1);
 
-      // Should only include name, displayName, role, team
+      // Should include name, displayName, role, team, selectionMetadata (v5.7.0+)
       const agent = result.agents[0];
       expect(agent).toBeDefined();
       expect(agent).toEqual({
         name: 'test-agent',
         displayName: 'Test Agent',
         role: 'Test Engineer',
-        team: 'test-team'
+        team: 'test-team',
+        selectionMetadata: undefined
       });
 
-      // Should not include extra fields
-      expect(agent && Object.keys(agent)).toHaveLength(4);
+      // Should have 5 fields (v5.7.0+: added selectionMetadata)
+      expect(agent && Object.keys(agent)).toHaveLength(5);
     });
   });
 });

@@ -131,6 +131,7 @@ AutomatosX comes with a pre-built team of 24 agents, each with a specific role a
 
 -   **Astrid** - Aerospace Scientist (Orbital mechanics, mission analysis, telemetry)
 -   **Bob** - Backend Engineer (API design, databases, Go/Rust systems)
+-   **Candy** - Creative Marketer (Content strategy)
 -   **Daisy** - Data Engineer (ETL, SQL, modeling)
 -   **Dana** - Data Scientist (ML strategy, statistical analysis)
 -   **Debbee** - UX Designer (UX research, wireframes)
@@ -144,14 +145,13 @@ AutomatosX comes with a pre-built team of 24 agents, each with a specific role a
 -   **Mira** - ML Engineer (PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning)
 -   **Oliver** - DevOps Engineer (CI/CD, infrastructure)
 -   **Paris** - Product Manager (Roadmaps, strategy)
+-   **Peter** - Best Practices Expert (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
 -   **Queenie** - Quality Specialist (Testing, code reviews)
 -   **Quinn** - Quantum Engineer (Quantum algorithms, Qiskit/Cirq, error correction)
 -   **Rodman** - Researcher (Feasibility studies)
--   **Stan** - Best Practices Expert (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
 -   **Steve** - Security Engineer (Audits, threat modeling)
 -   **Tony** - CTO (Technical strategy)
 -   **Wendy** - Technical Writer (Documentation, reports)
--   **Zara** - Creative Marketer (Content strategy)
 
 **Governance**: Agents have clear roles, permissions, and delegation limits (`maxDelegationDepth`) to ensure efficient and safe collaboration while preventing infinite loops.
 

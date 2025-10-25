@@ -1,11 +1,11 @@
 # AutomatosX Agent Directory
 
-**v5.6.21 Update - Stan Agent Implementation**:
-- ✨ **New Best Practices Agent**: Stan (Software Engineering Standards Expert) - SOLID, design patterns, clean code, refactoring, software architecture
+**v5.6.21 Update - Peter Agent Implementation**:
+- ✨ **New Best Practices Agent**: Peter (Software Engineering Peterdards Expert) - SOLID, design patterns, clean code, refactoring, software architecture
 - 📚 **5 New Best Practices Abilities**: solid-principles, design-patterns, clean-code, refactoring, software-architecture (~8,200 lines)
-- 🔧 **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Stan
-- 🤝 **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Stan (standards/patterns/architecture)
-- 🤖 **24 Total Agents**: Stan fills critical ownership gap for SOLID principles and architecture standards
+- 🔧 **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Peter
+- 🤝 **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Peter (standards/patterns/architecture)
+- 🤖 **24 Total Agents**: Peter fills critical ownership gap for SOLID principles and architecture standards
 
 **v5.6.10 Update - Four New Specialist Agents (Completed in One Release)**:
 - ✨ **New ERP Integration Agent**: Emma (ERP Integration Specialist) - SAP, Oracle, Dynamics 365, enterprise integration patterns
@@ -14,7 +14,7 @@
 - ✨ **New ML Engineer Agent**: Mira (Deep Learning Specialist) - PyTorch/TensorFlow implementation expert (from earlier in v5.6.10)
 - 🧠 **Enhanced Dana**: Strategic DL guidance (architecture selection, framework choice, evaluation metrics)
 - 📚 **17 New Abilities**: 5 best practices + 4 ERP + 4 Figma + 4 IoT + 4 deep learning (~11,269 lines, 283+ keywords)
-- 🤖 **24 Total Agents** (was 19): Stan, Emma, Fiona, Ivy, Mira added in v5.6.10
+- 🤖 **24 Total Agents** (was 19): Peter, Emma, Fiona, Ivy, Mira added in v5.6.10
 
 **v5.6.9 Update - Agent Team Optimization**:
 - ✨ **2 New Specialist Agents**: Quinn (Quantum Systems Engineer) & Astrid (Aerospace Mission Scientist)
@@ -50,7 +50,7 @@ AutomatosX uses **team-based provider configuration** with intelligent fallback 
 | Team | Primary Provider | Fallback Chain | Best For |
 |------|------------------|----------------|----------|
 | **Engineering** | 🟢 Codex | Codex → Gemini → Claude | Code implementation, testing, DevOps |
-| **Core/Quality** | 🟣 Claude | Claude → Gemini → Codex | Code review, QA, security audits |
+| **Core/Quality** | 🟢 Codex | Codex → Gemini → Claude | Code review, QA, security audits |
 | **Business** | 🟣 Claude | Claude → Codex → Gemini | Strategy, planning, decision-making |
 | **Design** | 🔵 Gemini | Gemini → Claude → Codex | UX/UI design, technical writing |
 | **Research** | 🟠 OpenAI | OpenAI → Gemini-CLI → Claude | Research, analysis, feasibility studies |
@@ -196,7 +196,7 @@ Bob (Backend): "Optimize database queries"
 | Team | Depth 3 | Depth 2 | Depth 1 | Depth 0 |
 |------|---------|---------|---------|---------|
 | **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank**, **Quinn**, **Astrid**, **Mira**, **Ivy** ✨ | Steve |
-| **Core/Quality** | - | **Queenie** | **Stan** ✨ | - |
+| **Core/Quality** | - | **Queenie** | **Peter** ✨ | - |
 | **Business** | Tony | - | Paris, Eric | - |
 | **Design/Content** | - | - | **Fiona** ✨ | Debbee, Wendy |
 | **Data** | Dana | - | - | Daisy |
@@ -207,7 +207,7 @@ Bob (Backend): "Optimize database queries"
 
 - **3 Strategic Coordinators** (Depth 3): Tony, Oliver, Dana
 - **6 Tactical Coordinators** (Depth 1-2): Queenie (2), Paris, Felix, Maya, Eric, Cynthia
-- **9 Tactical Implementers** (Depth 1): Bob, Frank, Quinn (v5.6.9), Astrid (v5.6.9), Mira (v5.6.10), **Stan** ✨ (v5.6.21), Emma (v5.6.10), Fiona (v5.6.11), Ivy (v5.6.11)
+- **9 Tactical Implementers** (Depth 1): Bob, Frank, Quinn (v5.6.9), Astrid (v5.6.9), Mira (v5.6.10), **Peter** ✨ (v5.6.21), Emma (v5.6.10), Fiona (v5.6.11), Ivy (v5.6.11)
 - **6 Pure Implementers** (Depth 0): Steve, Daisy, Debbee, Wendy, Rodman
 
 ---
@@ -414,15 +414,15 @@ Bob (Backend): "Optimize database queries"
 ### 🎯 Core/Quality Team
 
 **Provider Configuration**:
-- **Primary**: 🟣 Claude
-- **Fallback Chain**: Claude → Gemini → Codex
+- **Primary**: 🟢 Codex (OpenAI)
+- **Fallback Chain**: Codex → Gemini → Claude
 - **Why**: Optimized for code review, quality assurance, and detailed analysis
 
 #### Tactical Coordinator (Depth 2) ⭐ NEW in v5.3.5
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
-| **Queenie** | quality | **SHARED code-review** with Stan & **SOLE OWNER** of debugging/testing | Multi-layer QA workflows, test coordination | 2 layers (QA → Implementation → Specialist) |
+| **Queenie** | quality | **SHARED code-review** with Peter & **SOLE OWNER** of debugging/testing | Multi-layer QA workflows, test coordination | 2 layers (QA → Implementation → Specialist) |
 
 **Why Depth 2?**: Quality assurance requires coordinating complex workflows where implementers need to delegate to specialists (e.g., Backend implements tests → Security audits security aspects).
 
@@ -430,9 +430,9 @@ Bob (Backend): "Optimize database queries"
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
-| **Stan** | best-practices | **Software engineering standards** - SOLID principles, design patterns (Gang of Four), clean code, refactoring techniques, software architecture (Layered, Microservices, Hexagonal, Event-Driven) ⭐ v5.6.21 | Code reviews, architecture validation, refactoring guidance, pattern recommendations | 1 layer (can consult implementers for code validation) |
+| **Peter** | best-practices | **Software engineering standards** - SOLID principles, design patterns (Gang of Four), clean code, refactoring techniques, software architecture (Layered, Microservices, Hexagonal, Event-Driven) ⭐ v5.6.21 | Code reviews, architecture validation, refactoring guidance, pattern recommendations | 1 layer (can consult implementers for code validation) |
 
-**Stan's Best Practices Expertise (v5.6.21)**:
+**Peter's Best Practices Expertise (v5.6.21)**:
 - **SOLID Principles**: SRP (Single Responsibility), OCP (Open/Closed), LSP (Liskov Substitution), ISP (Interface Segregation), DIP (Dependency Inversion)
 - **Design Patterns**: Creational (Singleton, Factory, Builder), Structural (Adapter, Decorator, Facade), Behavioral (Strategy, Observer, Command, Template Method)
 - **Clean Code**: Meaningful naming, small functions, DRY (Don't Repeat Yourself), YAGNI (You Aren't Gonna Need It), KISS (Keep It Simple)
@@ -545,10 +545,10 @@ Each agent uses a **smart fallback strategy** to ensure maximum reliability:
 - ✅ Fallback 1: Gemini
 - ✅ Fallback 2: Claude
 
-**Core/Quality Team** (Queenie, Steve):
-- ✅ Primary: Claude
+**Core/Quality Team** (Queenie, Peter):
+- ✅ Primary: Codex (OpenAI)
 - ✅ Fallback 1: Gemini
-- ✅ Fallback 2: Codex (OpenAI)
+- ✅ Fallback 2: Claude
 
 **Business Team** (Tony, Eric, Paris):
 - ✅ Primary: Claude

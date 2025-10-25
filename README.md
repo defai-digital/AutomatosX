@@ -129,29 +129,29 @@ ax run product "Build a complete user authentication feature"
 
 AutomatosX comes with a pre-built team of 24 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
 
--   **Backend** (API design, databases, Go/Rust systems)
--   **Frontend** (React/Next.js/Swift UI)
--   **Fullstack** (Node.js/TypeScript + Python)
--   **Mobile** (iOS/Android, Swift/Kotlin/Flutter)
--   **DevOps** (CI/CD, infrastructure)
--   **Security** (Audits, threat modeling)
--   **Data Science** (ML strategy, statistical analysis)
--   **ML Engineer** (PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning)
--   **Best Practices - Stan** (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
--   **ERP Integration** (SAP, Oracle, Dynamics 365, enterprise integration patterns)
--   **Figma Expert** (Figma API, design tokens, design-to-code, MCP integration) ✨ NEW in v5.6.10
--   **IoT/Embedded Engineer** (MQTT, ROS2, FreeRTOS, edge computing, robotics) ✨ NEW in v5.6.10
--   **Data** (ETL, SQL, modeling)
--   **Quality** (Testing, code reviews)
--   **Design** (UX research, wireframes)
--   **Writer** (Documentation, reports)
--   **Creative Marketer** (Content strategy)
--   **Product** (Roadmaps, strategy)
--   **CTO** (Technical strategy)
--   **CEO** (Business leadership)
--   **Researcher** (Feasibility studies)
--   **Quantum Engineer** (Quantum algorithms, Qiskit/Cirq, error correction)
--   **Aerospace Scientist** (Orbital mechanics, mission analysis, telemetry)
+-   **Bob** - Backend Engineer (API design, databases, Go/Rust systems)
+-   **Frank** - Frontend Engineer (React/Next.js/Swift UI)
+-   **Felix** - Fullstack Engineer (Node.js/TypeScript + Python)
+-   **Maya** - Mobile Engineer (iOS/Android, Swift/Kotlin/Flutter)
+-   **Oliver** - DevOps Engineer (CI/CD, infrastructure)
+-   **Steve** - Security Engineer (Audits, threat modeling)
+-   **Dana** - Data Scientist (ML strategy, statistical analysis)
+-   **Mira** - ML Engineer (PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning)
+-   **Stan** - Best Practices Expert (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
+-   **Emma** - ERP Integration Specialist (SAP, Oracle, Dynamics 365, enterprise integration patterns)
+-   **Fiona** - Figma Expert (Figma API, design tokens, design-to-code, MCP integration) ✨ NEW in v5.6.10
+-   **Ivy** - IoT/Embedded Engineer (MQTT, ROS2, FreeRTOS, edge computing, robotics) ✨ NEW in v5.6.10
+-   **Daisy** - Data Engineer (ETL, SQL, modeling)
+-   **Queenie** - Quality Specialist (Testing, code reviews)
+-   **Debbee** - UX Designer (UX research, wireframes)
+-   **Wendy** - Technical Writer (Documentation, reports)
+-   **Zara** - Creative Marketer (Content strategy)
+-   **Paris** - Product Manager (Roadmaps, strategy)
+-   **Tony** - CTO (Technical strategy)
+-   **Eric** - CEO (Business leadership)
+-   **Rodman** - Researcher (Feasibility studies)
+-   **Quinn** - Quantum Engineer (Quantum algorithms, Qiskit/Cirq, error correction)
+-   **Astrid** - Aerospace Scientist (Orbital mechanics, mission analysis, telemetry)
 
 **Governance**: Agents have clear roles, permissions, and delegation limits (`maxDelegationDepth`) to ensure efficient and safe collaboration while preventing infinite loops.
 

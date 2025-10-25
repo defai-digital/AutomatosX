@@ -6,6 +6,7 @@ import { readFile, readdir } from 'fs/promises';
 import { join, extname, basename, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { load } from 'js-yaml';
+import { Mutex } from 'async-mutex';
 import type { AgentProfile } from '../types/agent.js';
 import { AgentValidationError, AgentNotFoundError } from '../types/agent.js';
 import { logger } from '../utils/logger.js';
@@ -43,6 +44,7 @@ export class ProfileLoader {
   private cache: TTLCache<AgentProfile>;
   private displayNameMap: Map<string, string> = new Map();
   private mapInitialized: boolean = false;
+  private initMutex: Mutex = new Mutex();  // Protect mapInitialized from race conditions
   private teamManager?: TeamManager;
 
   constructor(profilesDir: string, fallbackProfilesDir?: string, teamManager?: TeamManager, cacheConfig?: ProfileCacheConfig) {
@@ -66,44 +68,48 @@ export class ProfileLoader {
    * Build displayName → name mapping table (lightweight)
    * Only reads displayName field from YAML, doesn't load full profile
    * Priority: Local .automatosx/agents override examples/agents
+   * Protected by mutex to prevent race conditions
    */
   private async buildDisplayNameMap(): Promise<void> {
-    if (this.mapInitialized) {
-      return;
-    }
-
-    logger.debug('Building displayName mapping table');
-    this.displayNameMap.clear();
-
-    try {
-      // Priority 1: Process local profiles first (.automatosx/agents)
-      const localProfiles = await this.listProfilesFromDir(this.profilesDir);
-      for (const name of localProfiles) {
-        await this.addToDisplayNameMap(name, 'local');
+    return this.initMutex.runExclusive(async () => {
+      // Double-check inside mutex
+      if (this.mapInitialized) {
+        return;
       }
 
-      // Priority 2: Process fallback profiles (examples/agents)
-      // These will NOT override local profiles with the same displayName
-      const fallbackProfiles = await this.listProfilesFromDir(this.fallbackProfilesDir);
-      for (const name of fallbackProfiles) {
-        // Skip if already exists in local profiles (by name)
-        if (localProfiles.includes(name)) {
-          logger.debug('Skipping fallback profile (local override)', { name });
-          continue;
+      logger.debug('Building displayName mapping table');
+      this.displayNameMap.clear();
+
+      try {
+        // Priority 1: Process local profiles first (.automatosx/agents)
+        const localProfiles = await this.listProfilesFromDir(this.profilesDir);
+        for (const name of localProfiles) {
+          await this.addToDisplayNameMap(name, 'local');
         }
-        await this.addToDisplayNameMap(name, 'fallback');
-      }
 
-      this.mapInitialized = true;
-      logger.info('DisplayName mapping built', {
-        mappings: this.displayNameMap.size,
-        localProfiles: localProfiles.length,
-        fallbackProfiles: fallbackProfiles.length
-      });
-    } catch (error) {
-      logger.error('Failed to build displayName mapping', { error });
-      // Don't throw - allow fallback to direct name lookup
-    }
+        // Priority 2: Process fallback profiles (examples/agents)
+        // These will NOT override local profiles with the same displayName
+        const fallbackProfiles = await this.listProfilesFromDir(this.fallbackProfilesDir);
+        for (const name of fallbackProfiles) {
+          // Skip if already exists in local profiles (by name)
+          if (localProfiles.includes(name)) {
+            logger.debug('Skipping fallback profile (local override)', { name });
+            continue;
+          }
+          await this.addToDisplayNameMap(name, 'fallback');
+        }
+
+        this.mapInitialized = true;
+        logger.info('DisplayName mapping built', {
+          mappings: this.displayNameMap.size,
+          localProfiles: localProfiles.length,
+          fallbackProfiles: fallbackProfiles.length
+        });
+      } catch (error) {
+        logger.error('Failed to build displayName mapping', { error });
+        // Don't throw - allow fallback to direct name lookup
+      }
+    });
   }
 
   /**
@@ -661,12 +667,15 @@ export class ProfileLoader {
 
   /**
    * Clear cache and displayName mapping
+   * Protected by mutex to prevent race conditions
    */
-  clearCache(): void {
-    this.cache.clear();
-    this.displayNameMap.clear();
-    this.mapInitialized = false;
-    logger.debug('Cache and displayName mapping cleared');
+  async clearCache(): Promise<void> {
+    await this.initMutex.runExclusive(async () => {
+      this.cache.clear();
+      this.displayNameMap.clear();
+      this.mapInitialized = false;
+      logger.debug('Cache and displayName mapping cleared');
+    });
   }
 
   /**

@@ -35,6 +35,7 @@ interface WorkerInfo {
   busy: boolean;
   taskId?: string;
   startTime?: number;
+  taskTimeout?: NodeJS.Timeout;  // Timeout for current task
 }
 
 export interface WorkerPoolConfig {
@@ -401,7 +402,7 @@ export class WorkerPool {
     workerInfo.worker.postMessage(queuedTask.task);
 
     // Store timeout reference
-    (workerInfo as any).timeout = timeout;
+    workerInfo.taskTimeout = timeout;
 
     logger.debug('Task assigned to worker', {
       taskId: queuedTask.task.id,
@@ -415,9 +416,9 @@ export class WorkerPool {
    */
   private handleWorkerResult(workerInfo: WorkerInfo, result: WorkerResult): void {
     // Clear timeout
-    if ((workerInfo as any).timeout) {
-      clearTimeout((workerInfo as any).timeout);
-      delete (workerInfo as any).timeout;
+    if (workerInfo.taskTimeout) {
+      clearTimeout(workerInfo.taskTimeout);
+      workerInfo.taskTimeout = undefined;
     }
 
     // Mark worker as idle

@@ -117,7 +117,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.21 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.22 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -159,15 +159,23 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.21 (October 2025)
+### Latest Release: v5.6.22 (October 2025)
 
-**Stan Agent Implementation**: Best Practices Expert added to fill critical ownership gap
+**Agent Renaming & Team Refinement**: Core team structure improvements
 
-- **New Agent**: Stan (Best Practices Expert) - SOLID, design patterns, clean code, refactoring, software architecture
+- **Renamed Agents**: Stan → Peter (Best Practices Expert), Zara → Candy (Creative Marketer)
+- **Agent Restructuring**: Moved Peter and Queenie to Core team, improved provider assignments
+- **Impact**: Better team organization and clearer role definitions
+
+**Previous Release (v5.6.21)**:
+
+**Peter Agent Implementation** (formerly Stan): Best Practices Expert added to fill critical ownership gap
+
+- **New Agent**: Peter (Best Practices Expert) - SOLID, design patterns, clean code, refactoring, software architecture
 - **5 New Abilities**: solid-principles.md, design-patterns.md, clean-code.md, refactoring.md, software-architecture.md (~8,200 lines)
-- **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Stan
-- **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Stan (standards/patterns/architecture)
-- **Key Files**: `.automatosx/agents/stan.yaml`, `.automatosx/abilities/solid-principles.md`, `.automatosx/abilities/design-patterns.md`, `.automatosx/abilities/clean-code.md`, `.automatosx/abilities/refactoring.md`, `.automatosx/abilities/software-architecture.md`, `.automatosx/agents/quality.yaml`
+- **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Peter
+- **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Peter (standards/patterns/architecture)
+- **Key Files**: `.automatosx/agents/peter.yaml`, `.automatosx/abilities/solid-principles.md`, `.automatosx/abilities/design-patterns.md`, `.automatosx/abilities/clean-code.md`, `.automatosx/abilities/refactoring.md`, `.automatosx/abilities/software-architecture.md`, `.automatosx/agents/quality.yaml`
 
 **Impact**: Dedicated expertise for SOLID principles, design patterns, and software architecture standards
 
@@ -416,6 +424,7 @@ npm run test:integration   # Integration tests only
 npm run test:smoke         # Smoke tests (package verification)
 npm run test:coverage      # Coverage report
 npm run test:watch         # Watch mode
+npm run test:memory        # Test with garbage collection tracking
 
 # Single test file
 npx vitest run tests/unit/router.test.ts
@@ -481,7 +490,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
   - Mira (ML Engineer): PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning
   - Fiona (Figma Expert): Design-to-code automation, design tokens, MCP integration
   - Ivy (IoT/Embedded Engineer): IoT protocols, edge computing, embedded systems, robotics
-- **Best Practices**: Handled by Bob (backend), Tony (CTO), and Queenie (quality)
+- **Best Practices**: Handled by Bob (backend), Tony (CTO), Peter (best practices), and Queenie (quality)
 - See `examples/AGENTS_INFO.md` for full directory
 
 ## Agent Selection Playbook (v5.7.0)
@@ -524,11 +533,11 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **Evaluation**: "technology evaluation," "options analysis"
 - **NOT**: ML debugging (Dana), implementation (domain experts), data analysis (Dana)
 
-#### 5. Best Practices/Architecture → Queenie/Bob/Tony
+#### 5. Best Practices/Architecture → Peter/Queenie/Bob/Tony
 
 - **Code Quality**: "code review," "refactoring," "clean code," "code smell" → **Queenie** (quality)
-- **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS" → **Bob** (backend) or **Tony** (CTO)
-- **Architecture**: "software architecture," "microservices design," "hexagonal architecture" → **Tony** (CTO) or **Bob** (backend)
+- **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS" → **Peter** (best practices) or **Bob** (backend) or **Tony** (CTO)
+- **Architecture**: "software architecture," "microservices design," "hexagonal architecture" → **Tony** (CTO) or **Peter** (best practices) or **Bob** (backend)
 - **NOT**: ML architecture (Dana), implementation (domain experts), feasibility (Rodman)
 
 ### Disambiguation Rules
@@ -637,7 +646,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 
 - "model optimization" → "Do you mean ML model hyperparameters (Dana) or inference optimization code (Mira)?"
 - "performance analysis" → "Is this about model accuracy (Dana) or API latency (Bob)?"
-- "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Tony/Bob)?"
+- "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Tony/Peter/Bob)?"
 
 ### CLI Commands
 

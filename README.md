@@ -13,7 +13,9 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.22** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.23** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+
+**Latest (v5.6.23)**: Code quality tooling - Added ESLint configuration for automated async/promise pattern detection and timer cleanup verification script. [See full changelog →](CHANGELOG.md)
 
 ---
 

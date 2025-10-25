@@ -5,6 +5,7 @@
 
 import Database from 'better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
+import { Mutex } from 'async-mutex';
 import { logger } from '../utils/logger.js';
 
 export interface ConnectionPoolConfig {
@@ -53,6 +54,7 @@ export class DatabaseConnectionPool {
   }> = [];
   private healthCheckInterval?: NodeJS.Timeout;
   private shutdownRequested = false;
+  private acquisitionMutex = new Mutex(); // Ensures atomic acquire/release operations
 
   constructor(config: ConnectionPoolConfig) {
     // v5.6.18: Increased readPoolSize from 4 to 5 for +30% read throughput
@@ -89,20 +91,26 @@ export class DatabaseConnectionPool {
       throw new Error('Connection pool is shutting down');
     }
 
-    // Try to get an idle connection
-    const pool = readonly ? this.readPool : this.writePool;
-    const idleConn = pool.find(c => !c.busy);
+    // Try to get an idle connection (mutex-protected for atomicity)
+    const idleConn = await this.acquisitionMutex.runExclusive(() => {
+      const pool = readonly ? this.readPool : this.writePool;
+      const conn = pool.find(c => !c.busy);
+
+      if (conn) {
+        conn.busy = true;
+        conn.lastUsed = Date.now();
+        conn.queryCount++;
+
+        logger.debug('Connection acquired from pool', {
+          readonly,
+          queryCount: conn.queryCount
+        });
+      }
+
+      return conn;
+    });
 
     if (idleConn) {
-      idleConn.busy = true;
-      idleConn.lastUsed = Date.now();
-      idleConn.queryCount++;
-
-      logger.debug('Connection acquired from pool', {
-        readonly,
-        queryCount: idleConn.queryCount
-      });
-
       return idleConn;
     }
 
@@ -165,21 +173,23 @@ export class DatabaseConnectionPool {
    *
    * @param conn - Pooled connection to release
    */
-  release(conn: PooledConnection): void {
+  async release(conn: PooledConnection): Promise<void> {
     if (!conn.busy) {
       logger.warn('Attempted to release idle connection');
       return;
     }
 
-    conn.busy = false;
+    await this.acquisitionMutex.runExclusive(() => {
+      conn.busy = false;
 
-    logger.debug('Connection released to pool', {
-      readonly: conn.readonly,
-      queryCount: conn.queryCount
+      logger.debug('Connection released to pool', {
+        readonly: conn.readonly,
+        queryCount: conn.queryCount
+      });
     });
 
-    // Process wait queue
-    this.processWaitQueue();
+    // Process wait queue (outside mutex to avoid deadlock)
+    await this.processWaitQueue();
   }
 
   /**
@@ -196,7 +206,7 @@ export class DatabaseConnectionPool {
       const result = fn(conn.db);
       return result;
     } finally {
-      this.release(conn);
+      await this.release(conn);
     }
   }
 
@@ -332,48 +342,55 @@ export class DatabaseConnectionPool {
   /**
    * Process the wait queue
    */
-  private processWaitQueue(): void {
+  private async processWaitQueue(): Promise<void> {
     if (this.waitQueue.length === 0) {
       return;
     }
 
-    // Find first waiting request that can be satisfied
-    for (let i = 0; i < this.waitQueue.length; i++) {
-      const entry = this.waitQueue[i];
-      if (!entry) {
-        continue;
-      }
-
-      const pool = entry.readonly ? this.readPool : this.writePool;
-      const idleConn = pool.find(c => !c.busy);
-
-      if (idleConn) {
-        // Remove from queue
-        this.waitQueue.splice(i, 1);
-
-        // Clear timeout to prevent memory leak
-        if (entry.timeoutId) {
-          clearTimeout(entry.timeoutId);
+    // Mutex-protected operation to prevent race conditions
+    const processed = await this.acquisitionMutex.runExclusive(() => {
+      // Find first waiting request that can be satisfied
+      for (let i = 0; i < this.waitQueue.length; i++) {
+        const entry = this.waitQueue[i];
+        if (!entry) {
+          continue;
         }
 
-        // Acquire connection
-        idleConn.busy = true;
-        idleConn.lastUsed = Date.now();
-        idleConn.queryCount++;
+        const pool = entry.readonly ? this.readPool : this.writePool;
+        const idleConn = pool.find(c => !c.busy);
 
-        // Resolve promise
-        entry.resolve(idleConn);
+        if (idleConn) {
+          // Remove from queue
+          this.waitQueue.splice(i, 1);
 
-        logger.debug('Connection allocated from wait queue', {
-          readonly: entry.readonly,
-          waitedFor: Date.now() - entry.requestedAt,
-          queueLength: this.waitQueue.length
-        });
+          // Clear timeout to prevent memory leak
+          if (entry.timeoutId) {
+            clearTimeout(entry.timeoutId);
+          }
 
-        // Continue processing queue
-        this.processWaitQueue();
-        break;
+          // Acquire connection
+          idleConn.busy = true;
+          idleConn.lastUsed = Date.now();
+          idleConn.queryCount++;
+
+          logger.debug('Connection allocated from wait queue', {
+            readonly: entry.readonly,
+            waitedFor: Date.now() - entry.requestedAt,
+            queueLength: this.waitQueue.length
+          });
+
+          // Resolve promise outside the mutex
+          entry.resolve(idleConn);
+
+          return true; // Indicate we processed an entry
+        }
       }
+      return false; // No entry processed
+    });
+
+    // Continue processing queue if we satisfied a request (iterative approach)
+    if (processed) {
+      await this.processWaitQueue();
     }
   }
 

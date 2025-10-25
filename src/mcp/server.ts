@@ -60,7 +60,9 @@ export interface McpServerOptions {
 }
 
 export class McpServer {
-  private tools: Map<string, ToolHandler<unknown, unknown>> = new Map();
+  // Use 'any' for heterogeneous tool handlers to avoid unsafe type casts
+  // Runtime validation via validateToolInput provides type safety
+  private tools: Map<string, ToolHandler<any, any>> = new Map();
   private toolSchemas: McpTool[] = [];
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;  // Fix: Race condition prevention
@@ -207,6 +209,27 @@ export class McpServer {
   }
 
   /**
+   * Cleanup resources before shutdown
+   */
+  private async cleanup(): Promise<void> {
+    logger.info('[MCP Server] Performing cleanup...');
+
+    try {
+      // Close database connections
+      if (this.memoryManager) {
+        await this.memoryManager.close();
+      }
+
+      // Additional cleanup can be added here as needed
+      logger.info('[MCP Server] Cleanup completed');
+    } catch (error) {
+      logger.error('[MCP Server] Cleanup failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
    * Register Phase 1 tools
    */
   private registerTools(): void {
@@ -223,7 +246,7 @@ export class McpServer {
           contextManager: this.contextManager,
           profileLoader: this.profileLoader
         }
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -260,7 +283,7 @@ export class McpServer {
       'list_agents',
       createListAgentsHandler({
         profileLoader: this.profileLoader
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -277,7 +300,7 @@ export class McpServer {
       'search_memory',
       createSearchMemoryHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -307,7 +330,7 @@ export class McpServer {
         memoryManager: this.memoryManager,
         sessionManager: this.sessionManager,
         router: this.router
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -328,7 +351,7 @@ export class McpServer {
       'session_create',
       createSessionCreateHandler({
         sessionManager: this.sessionManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -355,7 +378,7 @@ export class McpServer {
       'session_list',
       createSessionListHandler({
         sessionManager: this.sessionManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -372,7 +395,7 @@ export class McpServer {
       'session_status',
       createSessionStatusHandler({
         sessionManager: this.sessionManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -395,7 +418,7 @@ export class McpServer {
       'session_complete',
       createSessionCompleteHandler({
         sessionManager: this.sessionManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -418,7 +441,7 @@ export class McpServer {
       'session_fail',
       createSessionFailHandler({
         sessionManager: this.sessionManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -449,7 +472,7 @@ export class McpServer {
       'memory_add',
       createMemoryAddHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -480,7 +503,7 @@ export class McpServer {
       'memory_list',
       createMemoryListHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -507,7 +530,7 @@ export class McpServer {
       'memory_delete',
       createMemoryDeleteHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -531,7 +554,7 @@ export class McpServer {
       createMemoryExportHandler({
         memoryManager: this.memoryManager,
         pathResolver: this.pathResolver
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -555,7 +578,7 @@ export class McpServer {
       createMemoryImportHandler({
         memoryManager: this.memoryManager,
         pathResolver: this.pathResolver
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -578,7 +601,7 @@ export class McpServer {
       'memory_stats',
       createMemoryStatsHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -595,7 +618,7 @@ export class McpServer {
       'memory_clear',
       createMemoryClearHandler({
         memoryManager: this.memoryManager
-      }) as ToolHandler<unknown, unknown>
+      })
     );
 
     this.toolSchemas.push({
@@ -1008,19 +1031,23 @@ export class McpServer {
       }
     });
 
-    process.stdin.on('end', () => {
+    process.stdin.on('end', async () => {
       logger.info('[MCP Server] Server stopped (stdin closed)');
+      // Perform cleanup before exit
+      await this.cleanup();
       process.exit(0);
     });
 
-    // Graceful shutdown
-    process.on('SIGINT', () => {
+    // Graceful shutdown - delegate to shutdown handlers instead of abrupt exit
+    process.on('SIGINT', async () => {
       logger.info('[MCP Server] Received SIGINT, shutting down...');
+      await this.cleanup();
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
+    process.on('SIGTERM', async () => {
       logger.info('[MCP Server] Received SIGTERM, shutting down...');
+      await this.cleanup();
       process.exit(0);
     });
 

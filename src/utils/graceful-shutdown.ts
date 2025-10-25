@@ -133,7 +133,8 @@ export class GracefulShutdownManager {
         handlersExecuted: this.handlers.length
       });
 
-      process.exit(0);
+      // Note: Caller is responsible for calling process.exit() if needed
+      // This allows for final cleanup and logging at the application level
     } catch (error) {
       // Clear timeout on error
       if (timeoutHandle !== null) {
@@ -147,15 +148,12 @@ export class GracefulShutdownManager {
         error: error instanceof Error ? error.message : String(error)
       });
 
-      if (options.forceExitOnTimeout) {
-        logger.warn('Forcing exit due to shutdown timeout');
-        process.exit(1);
-      } else {
-        throw error;
-      }
+      // Note: Removed process.exit() calls - caller should handle exit
+      // This prevents bypassing final cleanup at application level
+      throw error;
     } finally {
-      // Reset state to allow retry if needed
-      this.isShuttingDown = false;
+      // Note: Do not reset isShuttingDown to prevent race conditions
+      // Shutdown should be a final, one-time operation
       this.shutdownPromise = null;
     }
   }

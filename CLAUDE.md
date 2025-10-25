@@ -117,7 +117,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.19 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.21 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -159,15 +159,23 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.19 (October 2025)
+### Latest Release: v5.6.21 (October 2025)
 
-**Critical Bug Fixes**: 5 resource lifecycle bugs fixed via Ultrathink Review #6
+**Stan Agent Implementation**: Best Practices Expert added to fill critical ownership gap
 
-- **ProgressChannel setTimeout Leak** (CRITICAL): Fixed timeout tracking in event queue processing
-- **AdaptiveCache Shutdown**: Fixed cleanupInterval reference not cleared
-- **ResponseCache Close**: Added explicit prepared statement cleanup
-- **MemoryManager Close**: Added explicit prepared statement cleanup
-- **PromptManager Code Quality**: Fixed non-null assertion misuse
+- **New Agent**: Stan (Best Practices Expert) - SOLID, design patterns, clean code, refactoring, software architecture
+- **5 New Abilities**: solid-principles.md, design-patterns.md, clean-code.md, refactoring.md, software-architecture.md (~8,200 lines)
+- **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Stan
+- **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Stan (standards/patterns/architecture)
+- **Key Files**: `.automatosx/agents/stan.yaml`, `.automatosx/abilities/solid-principles.md`, `.automatosx/abilities/design-patterns.md`, `.automatosx/abilities/clean-code.md`, `.automatosx/abilities/refactoring.md`, `.automatosx/abilities/software-architecture.md`, `.automatosx/agents/quality.yaml`
+
+**Impact**: Dedicated expertise for SOLID principles, design patterns, and software architecture standards
+
+**Previous Release (v5.6.20)**:
+
+- 5 resource lifecycle bugs fixed via Ultrathink Review #6
+- ProgressChannel setTimeout leak, AdaptiveCache shutdown, ResponseCache/MemoryManager cleanup, PromptManager code quality
+- Complete elimination of critical memory and timeout leaks
 
 **Previous Release (v5.6.18)**:
 
@@ -225,7 +233,7 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 **Agent Team Expansion**:
 
 - **24 Total Agents** (was 19 in v5.6.8)
-- New specialists: Quinn (Quantum), Astrid (Aerospace), Stan (Best Practices), Emma (ERP), Mira (ML), Fiona (Figma), Ivy (IoT)
+- New specialists: Quinn (Quantum), Astrid (Aerospace), Emma (ERP), Mira (ML), Fiona (Figma), Ivy (IoT)
 - Skill redistribution eliminated JS/TS and Python overlaps
 - Multi-language/framework expertise for Bob and Frank
 
@@ -423,6 +431,14 @@ export TEST_REAL_GEMINI_CLI=true
 
 **Timeouts** (vitest.config.ts): Test 60s, Hook 60s, Teardown 10s
 
+**Test Configuration**:
+
+- Thread pool: Max 4 threads, isolated per test file
+- File parallelism: Max 4 concurrent tests
+- Auto-cleanup: Mocks, timers, env vars restored after each test
+- Memory monitoring: Heap usage logging enabled
+- Setup files: `vitest.setup.ts`, Global teardown: `vitest.global-teardown.ts`
+
 **Test Coverage**: 2,116 tests passing (12 skipped) across 101 test files. See CONTRIBUTING.md for test requirements.
 
 ### Debugging
@@ -456,16 +472,16 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 
 **4 Teams**: core (QA, Best Practices), engineering (dev), business (product), design (UX)
 
-**24 Agents**: Including 7 specialist agents (Quinn, Astrid, Stan, Emma, Mira, Fiona, Ivy)
+**24 Agents**: Including 6 specialist agents (Quinn, Astrid, Emma, Mira, Fiona, Ivy)
 
 - Agents inherit team config (provider, abilities, orchestration)
 - Specialist agents (v5.6.9-5.6.11):
   - Quinn (Quantum Systems Engineer), Astrid (Aerospace Mission Scientist): `maxDelegationDepth: 1`
-  - Stan (Best Practices Expert): SOLID, design patterns, clean code
   - Emma (ERP Integration Specialist): SAP, Oracle, Dynamics 365
   - Mira (ML Engineer): PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning
   - Fiona (Figma Expert): Design-to-code automation, design tokens, MCP integration
   - Ivy (IoT/Embedded Engineer): IoT protocols, edge computing, embedded systems, robotics
+- **Best Practices**: Handled by Bob (backend), Tony (CTO), and Queenie (quality)
 - See `examples/AGENTS_INFO.md` for full directory
 
 ## Agent Selection Playbook (v5.7.0)
@@ -484,7 +500,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **Analysis**: "data analysis," "statistical significance," "A/B test," "hypothesis testing"
 - **Modeling**: "transformer," "CNN," "BERT," "GPT," "LLM," "model architecture selection"
 - **Performance**: "model drift," "accuracy drop," "performance regression"
-- **NOT**: Feasibility studies (Rodman), backend APIs (Bob), code quality (Stan)
+- **NOT**: Feasibility studies (Rodman), backend APIs (Bob), code quality (Queenie/Bob/Tony)
 
 #### 2. Deep Learning Implementation → Mira (ML Engineer)
 
@@ -499,7 +515,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **Database**: "SQL optimization," "query performance," "indexing," "connection pooling"
 - **Performance**: "API performance," "caching strategy," "backend optimization"
 - **Languages**: "Go," "Rust," "backend code"
-- **NOT**: ML models (Dana/Mira), frontend (Frank), architecture patterns (Stan)
+- **NOT**: ML models (Dana/Mira), frontend (Frank), architecture patterns (Tony/Bob)
 
 #### 4. Research/Feasibility → Rodman (Researcher)
 
@@ -508,48 +524,48 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **Evaluation**: "technology evaluation," "options analysis"
 - **NOT**: ML debugging (Dana), implementation (domain experts), data analysis (Dana)
 
-#### 5. Best Practices/Architecture → Stan (Best Practices Expert)
+#### 5. Best Practices/Architecture → Queenie/Bob/Tony
 
-- **Code Quality**: "code review," "refactoring," "clean code," "code smell"
-- **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS"
-- **Architecture**: "software architecture," "microservices design," "hexagonal architecture"
+- **Code Quality**: "code review," "refactoring," "clean code," "code smell" → **Queenie** (quality)
+- **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS" → **Bob** (backend) or **Tony** (CTO)
+- **Architecture**: "software architecture," "microservices design," "hexagonal architecture" → **Tony** (CTO) or **Bob** (backend)
 - **NOT**: ML architecture (Dana), implementation (domain experts), feasibility (Rodman)
 
 ### Disambiguation Rules
 
-**Ambiguous: "analysis"**
+#### Ambiguous: "analysis"
 
 - Data analysis / Statistical analysis? → **Dana**
 - Performance analysis (API/DB)? → **Bob**
 - Feasibility / Logical analysis? → **Rodman**
-- Code quality analysis? → **Stan**
+- Code quality analysis? → **Queenie** or **Bob**
 
-**Ambiguous: "model"**
+#### Ambiguous: "model"
 
 - ML model / Neural network? → **Dana** (strategy) or **Mira** (implementation)
 - Mental model / Framework? → **Rodman**
 - Data model / Database schema? → **Bob**
 
-**Ambiguous: "architecture"**
+#### Ambiguous: "architecture"
 
 - ML model architecture (CNN vs Transformer)? → **Dana**
 - DL architecture implementation? → **Mira**
-- Software architecture / Design patterns? → **Stan**
+- Software architecture / Design patterns? → **Tony** or **Bob**
 - Systems architecture / Infrastructure? → **Bob**
 
-**Ambiguous: "performance"**
+#### Ambiguous: "performance"
 
 - Model performance / Accuracy? → **Dana**
 - Training / Inference performance? → **Mira**
 - API / Database performance? → **Bob**
 
-**Ambiguous: "optimization"**
+#### Ambiguous: "optimization"
 
 - Model hyperparameter optimization? → **Dana**
 - DL optimization (quantization/pruning)? → **Mira**
 - Backend optimization (caching/queries)? → **Bob**
 
-**Ambiguous: "debug"**
+#### Ambiguous: "debug"
 
 - ML model debugging? → **Dana**
 - Backend / Systems debugging? → **Bob**
@@ -577,7 +593,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 
 **User**: "Review model architecture - should we use CNN or Transformer?"
 
-- **Wrong Agent**: Stan (keyword: "architecture review")
+- **Wrong Agent**: Tony/Bob (keyword: "architecture review")
 - **Correct Agent**: **Dana** (ML architecture selection)
 - **Why Wrong**: "Architecture" is ambiguous; software architecture ≠ ML architecture
 
@@ -621,7 +637,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 
 - "model optimization" → "Do you mean ML model hyperparameters (Dana) or inference optimization code (Mira)?"
 - "performance analysis" → "Is this about model accuracy (Dana) or API latency (Bob)?"
-- "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Stan)?"
+- "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Tony/Bob)?"
 
 ### CLI Commands
 

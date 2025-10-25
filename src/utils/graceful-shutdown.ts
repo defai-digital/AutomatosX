@@ -261,8 +261,10 @@ export class InFlightTracker {
 
   /**
    * Wait for all in-flight operations to complete
+   * @param timeoutMs - Maximum time to wait in milliseconds
+   * @param signal - Optional AbortSignal to cancel the wait
    */
-  async waitForCompletion(timeoutMs: number = 30000): Promise<void> {
+  async waitForCompletion(timeoutMs: number = 30000, signal?: AbortSignal): Promise<void> {
     if (this.inFlightCount === 0) {
       return;
     }
@@ -274,30 +276,52 @@ export class InFlightTracker {
 
     const startTime = Date.now();
     let checkInterval: NodeJS.Timeout | null = null;
+    let abortHandler: (() => void) | null = null;
 
-    return new Promise<void>((resolve, reject) => {
-      checkInterval = setInterval(() => {
-        if (this.inFlightCount === 0) {
-          clearInterval(checkInterval!);
-          checkInterval = null;
-          const duration = Date.now() - startTime;
-          logger.info('All in-flight operations completed', { duration });
-          resolve();
-        } else if (Date.now() - startTime >= timeoutMs) {
-          clearInterval(checkInterval!);
-          checkInterval = null;
-          reject(new Error(
-            `Timeout waiting for in-flight operations (${this.inFlightCount} remaining)`
-          ));
+    try {
+      return await new Promise<void>((resolve, reject) => {
+        // Set up abort handler if signal provided
+        if (signal) {
+          if (signal.aborted) {
+            reject(new Error('Operation cancelled'));
+            return;
+          }
+          abortHandler = () => {
+            if (checkInterval) {
+              clearInterval(checkInterval);
+              checkInterval = null;
+            }
+            reject(new Error('Operation cancelled'));
+          };
+          signal.addEventListener('abort', abortHandler, { once: true });
         }
-      }, 100); // Check every 100ms
-    }).finally(() => {
-      // Safety net: Ensure interval is always cleared (for external cancellation).
+
+        checkInterval = setInterval(() => {
+          if (this.inFlightCount === 0) {
+            clearInterval(checkInterval!);
+            checkInterval = null;
+            const duration = Date.now() - startTime;
+            logger.info('All in-flight operations completed', { duration });
+            resolve();
+          } else if (Date.now() - startTime >= timeoutMs) {
+            clearInterval(checkInterval!);
+            checkInterval = null;
+            reject(new Error(
+              `Timeout waiting for in-flight operations (${this.inFlightCount} remaining)`
+            ));
+          }
+        }, 100); // Check every 100ms
+      });
+    } finally {
+      // Cleanup: Ensure interval and abort handler are always removed
       if (checkInterval !== null) {
         clearInterval(checkInterval);
         checkInterval = null;
       }
-    });
+      if (abortHandler && signal) {
+        signal.removeEventListener('abort', abortHandler);
+      }
+    }
   }
 }
 

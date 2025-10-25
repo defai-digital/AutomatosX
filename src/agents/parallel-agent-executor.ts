@@ -93,12 +93,14 @@ export class ParallelAgentExecutor {
     });
 
     // Setup cancellation
+    let abortHandler: (() => void) | undefined;
     if (options.signal) {
       this.abortController = new AbortController();
-      options.signal.addEventListener('abort', () => {
+      abortHandler = () => {
         logger.warn('Execution cancellation requested');
         this.abortController?.abort();
-      });
+      };
+      options.signal.addEventListener('abort', abortHandler);
     }
 
     // Execute level by level
@@ -155,6 +157,11 @@ export class ParallelAgentExecutor {
     } catch (error) {
       logger.error('Execution failed', { error: (error as Error).message });
       throw error;
+    } finally {
+      // Cleanup: Remove abort signal listener
+      if (abortHandler && options.signal) {
+        options.signal.removeEventListener('abort', abortHandler);
+      }
     }
 
     const totalDuration = Date.now() - startTime;
@@ -228,13 +235,22 @@ export class ParallelAgentExecutor {
       }
     });
 
-    // Collect timeline entries from skipped agents
-    const timelineEntries = await Promise.all(promises);
+    try {
+      // Collect timeline entries from skipped agents
+      const timelineEntries = await Promise.all(promises);
 
-    // Batch update timeline (fixes race condition - single atomic operation)
-    const entriesToAdd = timelineEntries.filter((entry): entry is TimelineEntry => entry !== null);
-    if (entriesToAdd.length > 0) {
-      timeline.push(...entriesToAdd);
+      // Batch update timeline (fixes race condition - single atomic operation)
+      const entriesToAdd = timelineEntries.filter((entry): entry is TimelineEntry => entry !== null);
+      if (entriesToAdd.length > 0) {
+        timeline.push(...entriesToAdd);
+      }
+    } catch (error) {
+      // Handle any unhandled rejections from parallel execution
+      logger.error('Unhandled error in parallel batch execution', {
+        batch,
+        error: (error as Error).message
+      });
+      throw error;
     }
   }
 

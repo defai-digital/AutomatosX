@@ -81,9 +81,10 @@ export class DatabaseConnectionPool {
    * Acquire a connection from the pool
    *
    * @param readonly - Whether to acquire a read-only connection
+   * @param signal - Optional AbortSignal to cancel the acquisition
    * @returns Pooled connection
    */
-  async acquire(readonly: boolean = true): Promise<PooledConnection> {
+  async acquire(readonly: boolean = true, signal?: AbortSignal): Promise<PooledConnection> {
     if (this.shutdownRequested) {
       throw new Error('Connection pool is shutting down');
     }
@@ -107,6 +108,12 @@ export class DatabaseConnectionPool {
 
     // No idle connections, wait in queue
     return new Promise((resolve, reject) => {
+      // Check if already aborted
+      if (signal?.aborted) {
+        reject(new Error('Connection acquisition cancelled'));
+        return;
+      }
+
       const queueEntry = {
         resolve,
         reject,
@@ -122,11 +129,31 @@ export class DatabaseConnectionPool {
         queueLength: this.waitQueue.length
       });
 
+      // Set up abort handler
+      let abortHandler: (() => void) | undefined;
+      if (signal) {
+        abortHandler = () => {
+          const index = this.waitQueue.indexOf(queueEntry);
+          if (index !== -1) {
+            this.waitQueue.splice(index, 1);
+            if (queueEntry.timeoutId) {
+              clearTimeout(queueEntry.timeoutId);
+            }
+            reject(new Error('Connection acquisition cancelled'));
+          }
+        };
+        signal.addEventListener('abort', abortHandler, { once: true });
+      }
+
       // Set timeout and store ID for cleanup
       queueEntry.timeoutId = setTimeout(() => {
         const index = this.waitQueue.indexOf(queueEntry);
         if (index !== -1) {
           this.waitQueue.splice(index, 1);
+          // Remove abort handler if present
+          if (abortHandler && signal) {
+            signal.removeEventListener('abort', abortHandler);
+          }
           reject(new Error(`Connection wait timeout after ${this.config.maxWaitTime}ms`));
         }
       }, this.config.maxWaitTime);

@@ -1,7 +1,13 @@
 # AutomatosX Agent Directory
 
+**v5.6.21 Update - Stan Agent Implementation**:
+- ✨ **New Best Practices Agent**: Stan (Software Engineering Standards Expert) - SOLID, design patterns, clean code, refactoring, software architecture
+- 📚 **5 New Best Practices Abilities**: solid-principles, design-patterns, clean-code, refactoring, software-architecture (~8,200 lines)
+- 🔧 **Enhanced Queenie**: Added base-level best-practices ability with delegation pattern to Stan
+- 🤝 **Collaboration Model**: Queenie (quality/bugs/tests) ↔ Stan (standards/patterns/architecture)
+- 🤖 **24 Total Agents**: Stan fills critical ownership gap for SOLID principles and architecture standards
+
 **v5.6.10 Update - Four New Specialist Agents (Completed in One Release)**:
-- ✨ **New Best Practices Agent**: Stan (Software Engineering Standards Expert) - SOLID, design patterns, clean code, refactoring, architecture
 - ✨ **New ERP Integration Agent**: Emma (ERP Integration Specialist) - SAP, Oracle, Dynamics 365, enterprise integration patterns
 - ✨ **New Figma Expert**: Fiona (Design-to-Code Specialist) - Figma API, design tokens, design-to-code automation, MCP integration
 - ✨ **New IoT/Embedded/Robotics Engineer**: Ivy (IoT Specialist) - MQTT, ROS2, FreeRTOS, K3s edge computing
@@ -190,7 +196,7 @@ Bob (Backend): "Optimize database queries"
 | Team | Depth 3 | Depth 2 | Depth 1 | Depth 0 |
 |------|---------|---------|---------|---------|
 | **Engineering** | Oliver, Dana | - | Felix, Maya, **Bob**, **Frank**, **Quinn**, **Astrid**, **Mira**, **Ivy** ✨ | Steve |
-| **Core/Quality** | - | **Queenie** | - | - |
+| **Core/Quality** | - | **Queenie** | **Stan** ✨ | - |
 | **Business** | Tony | - | Paris, Eric | - |
 | **Design/Content** | - | - | **Fiona** ✨ | Debbee, Wendy |
 | **Data** | Dana | - | - | Daisy |
@@ -201,7 +207,7 @@ Bob (Backend): "Optimize database queries"
 
 - **3 Strategic Coordinators** (Depth 3): Tony, Oliver, Dana
 - **6 Tactical Coordinators** (Depth 1-2): Queenie (2), Paris, Felix, Maya, Eric, Cynthia
-- **9 Tactical Implementers** (Depth 1): Bob, Frank, Quinn (v5.6.9), Astrid (v5.6.9), Mira (v5.6.10), Stan (v5.6.10), Emma (v5.6.10), **Fiona** ✨ (v5.6.11), **Ivy** ✨ (v5.6.11)
+- **9 Tactical Implementers** (Depth 1): Bob, Frank, Quinn (v5.6.9), Astrid (v5.6.9), Mira (v5.6.10), **Stan** ✨ (v5.6.21), Emma (v5.6.10), Fiona (v5.6.11), Ivy (v5.6.11)
 - **6 Pure Implementers** (Depth 0): Steve, Daisy, Debbee, Wendy, Rodman
 
 ---
@@ -416,17 +422,17 @@ Bob (Backend): "Optimize database queries"
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
-| **Queenie** | quality | **SOLE OWNER** of code-review & debugging | Multi-layer QA workflows, test coordination | 2 layers (QA → Implementation → Specialist) |
+| **Queenie** | quality | **SHARED code-review** with Stan & **SOLE OWNER** of debugging/testing | Multi-layer QA workflows, test coordination | 2 layers (QA → Implementation → Specialist) |
 
 **Why Depth 2?**: Quality assurance requires coordinating complex workflows where implementers need to delegate to specialists (e.g., Backend implements tests → Security audits security aspects).
 
-#### Tactical Implementers (Depth 1) ⭐ NEW in v5.6.10
+#### Tactical Implementers (Depth 1) ⭐ UPDATED in v5.6.21
 
 | Name | Agent | Expertise | Best For | Delegation Capability |
 |------|-------|-----------|----------|-----------------------|
-| **Stan** | best-practices | **Software engineering standards** - SOLID principles, design patterns (Gang of Four), clean code, refactoring techniques, software architecture (Layered, Microservices, Hexagonal, Event-Driven) ⭐ v5.6.10 | Code reviews, architecture validation, refactoring guidance, pattern recommendations | 1 layer (can consult implementers for code validation) |
+| **Stan** | best-practices | **Software engineering standards** - SOLID principles, design patterns (Gang of Four), clean code, refactoring techniques, software architecture (Layered, Microservices, Hexagonal, Event-Driven) ⭐ v5.6.21 | Code reviews, architecture validation, refactoring guidance, pattern recommendations | 1 layer (can consult implementers for code validation) |
 
-**Stan's Best Practices Expertise (v5.6.10)**:
+**Stan's Best Practices Expertise (v5.6.21)**:
 - **SOLID Principles**: SRP (Single Responsibility), OCP (Open/Closed), LSP (Liskov Substitution), ISP (Interface Segregation), DIP (Dependency Inversion)
 - **Design Patterns**: Creational (Singleton, Factory, Builder), Structural (Adapter, Decorator, Facade), Behavioral (Strategy, Observer, Command, Template Method)
 - **Clean Code**: Meaningful naming, small functions, DRY (Don't Repeat Yourself), YAGNI (You Aren't Gonna Need It), KISS (Keep It Simple)

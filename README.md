@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.20** · October 2025 · 24 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.21** · October 2025 · 24 Specialized Agents · 100% Resource Leak Free · Production Stability
 
 ---
 
@@ -137,7 +137,7 @@ AutomatosX comes with a pre-built team of 24 agents, each with a specific role a
 -   **Security** (Audits, threat modeling)
 -   **Data Science** (ML strategy, statistical analysis)
 -   **ML Engineer** (PyTorch/TensorFlow, CNN/Transformer, LLM fine-tuning)
--   **Best Practices** (SOLID, design patterns, clean code, refactoring, architecture)
+-   **Best Practices - Stan** (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
 -   **ERP Integration** (SAP, Oracle, Dynamics 365, enterprise integration patterns)
 -   **Figma Expert** (Figma API, design tokens, design-to-code, MCP integration) ✨ NEW in v5.6.10
 -   **IoT/Embedded Engineer** (MQTT, ROS2, FreeRTOS, edge computing, robotics) ✨ NEW in v5.6.10

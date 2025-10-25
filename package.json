@@ -40,6 +40,7 @@
     "release:check": "node tools/check-release.js",
     "check:size": "bash tools/check-package-size.sh",
     "tools:check": "bash -c 'echo \"🔍 Checking shell scripts syntax...\"; for f in tools/*.sh; do echo \"  Checking $f...\"; bash -n \"$f\" && echo \"  ✓ $f OK\" || echo \"  ✗ $f FAILED\"; done; echo \"✅ All tools checked\"'",
+    "check:timers": "bash tools/check-timer-cleanup.sh",
     "prepare": "[ -n \"$CI\" ] || husky",
     "commit": "cz",
     "release": "standard-version",

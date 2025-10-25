@@ -74,6 +74,7 @@ export class ProgressChannel {
   private processing = false;
   private throttleMs: number;
   private lastEmitTime = 0;
+  private processQueueTimeout?: NodeJS.Timeout;
 
   /**
    * Create ProgressChannel
@@ -137,6 +138,13 @@ export class ProgressChannel {
   clear(): void {
     this.listeners.clear();
     this.eventQueue = [];
+
+    // Clear pending timeout
+    if (this.processQueueTimeout) {
+      clearTimeout(this.processQueueTimeout);
+      this.processQueueTimeout = undefined;
+    }
+    this.processing = false;
   }
 
   /**
@@ -170,7 +178,8 @@ export class ProgressChannel {
     if (this.processing) return;
 
     this.processing = true;
-    setTimeout(() => {
+    this.processQueueTimeout = setTimeout(() => {
+      this.processQueueTimeout = undefined;
       this.processQueue();
     }, this.throttleMs);
   }
@@ -195,7 +204,8 @@ export class ProgressChannel {
 
     // Schedule next processing
     if (this.eventQueue.length > 0) {
-      setTimeout(() => {
+      this.processQueueTimeout = setTimeout(() => {
+        this.processQueueTimeout = undefined;
         this.processQueue();
       }, this.throttleMs);
     } else {

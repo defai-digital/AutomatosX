@@ -268,7 +268,7 @@ export class CLIPromptAdapter implements IPromptManager {
         if (!resolved) {
           resolved = true;
           clearTimeout(timeoutHandle);
-          if (warningHandle!) {
+          if (warningHandle) {
             clearTimeout(warningHandle);
           }
 

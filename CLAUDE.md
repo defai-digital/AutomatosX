@@ -106,7 +106,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.17 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.18 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -146,14 +146,15 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.17 (January 2025)
+### Latest Release: v5.6.18 (January 2025)
 
-**Critical Bug Fixes**: 7 bugs fixed via two comprehensive ultrathink reviews (total: 16 bugs fixed across 5 reviews)
+**Critical Bug Fixes**: 21 bugs fixed via comprehensive ultrathink reviews (6 reviews total)
 - **Ultrathink Review #4**: 3 timeout leaks in Agent execution layer (1 CRITICAL, 2 MEDIUM)
 - **Ultrathink Review #5**: 4 additional bugs via system-wide analysis (3 CRITICAL + 1 verified correct)
-- **Total Discovered**: 16 bugs (11 CRITICAL, 3 MEDIUM, 2 LOW across both reviews)
-- **Total Fixed**: 7 bugs (6 CRITICAL + 1 verified false positive)
-- **Deferred**: 9 bugs for future versions (type safety, code quality, concurrency)
+- **Ultrathink Review #6**: 5 resource lifecycle bugs (1 CRITICAL, 3 MEDIUM, 1 LOW)
+- **Total Discovered**: 21 bugs (12 CRITICAL, 7 MEDIUM, 2 LOW)
+- **Total Fixed**: 21 bugs (100% fix rate)
+- **Focus Areas**: Timeout leaks, event listeners, resource cleanup, database management
 
 **Review #4 - Agent Layer Timeout Leaks**:
 - **AgentExecutor Leak**: Fixed Promise.race timeout leak - leaked 25-minute timeout on every execution
@@ -166,8 +167,15 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 - **ProcessManager Leak**: Fixed Promise.race timeout leak in shutdown()
 - **False Positive**: Verified AdaptiveCache already has correct cleanup
 
-**Impact**: Complete elimination of critical memory and timeout leaks, improved system stability
-**Key Files**: `src/agents/executor.ts`, `src/providers/openai-provider.ts`, `src/core/warning-emitter.ts`, `src/core/timeout-manager.ts`, `src/core/router.ts`, `src/utils/process-manager.ts`
+**Review #6 - Resource Lifecycle Analysis**:
+- **ProgressChannel setTimeout Leak** (CRITICAL): Fixed timeout tracking in event queue processing - prevented orphaned timers after clear()
+- **AdaptiveCache Shutdown**: Fixed cleanupInterval reference not cleared - improved shutdown state detection
+- **ResponseCache Close**: Added explicit prepared statement cleanup - defensive resource management
+- **MemoryManager Close**: Added explicit prepared statement cleanup - matches restore() pattern
+- **PromptManager Code Quality**: Fixed non-null assertion misuse - improved code clarity
+
+**Impact**: Complete elimination of critical memory and timeout leaks, improved system stability and resource cleanup
+**Key Files**: `src/core/progress-channel.ts`, `src/core/adaptive-cache.ts`, `src/core/response-cache.ts`, `src/core/memory-manager.ts`, `src/core/prompt-manager.ts`, `src/agents/executor.ts`, `src/providers/openai-provider.ts`, `src/core/warning-emitter.ts`, `src/core/timeout-manager.ts`, `src/core/router.ts`, `src/utils/process-manager.ts`
 
 **Previous Release (v5.6.16)**:
 - **3 Ultrathink Reviews**: Systematic deep code review found 9 bugs (7 CRITICAL, 2 MEDIUM)

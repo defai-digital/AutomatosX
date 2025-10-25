@@ -1060,6 +1060,11 @@ export class MemoryManager implements IMemoryManager {
    */
   async close(): Promise<void> {
     if (this.db) {
+      // Clear prepared statements explicitly
+      // (Note: better-sqlite3 does this automatically on db.close(),
+      //  but being explicit is clearer and matches restore() pattern)
+      this.statements = {};
+
       this.db.close();
       this.initialized = false;
       logger.info('MemoryManager closed');

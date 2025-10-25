@@ -533,6 +533,11 @@ export class ResponseCache {
   close(): void {
     if (this.db) {
       try {
+        // Clear prepared statements explicitly
+        // (Note: better-sqlite3 does this automatically on db.close(),
+        //  but being explicit is clearer and more defensive)
+        this.statements = {};
+
         this.db.close();
         this.db = null;
         this.initialized = false;

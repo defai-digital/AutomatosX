@@ -268,6 +268,7 @@ export class AdaptiveCache<T = any> {
   shutdown(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
     }
 
     logger.debug('Adaptive cache shut down');

@@ -97,6 +97,17 @@ npm run release:rc         # Create RC pre-release
 - Run `npm run typecheck` before committing
 - Path aliases available: `@/` → `src/`, `@tests/` → `tests/`
 
+### Git Commit Guidelines (IMPORTANT)
+
+**CRITICAL**: Follow user's global `.claude/CLAUDE.md` rules:
+
+- **Never mention AI/Claude assistance** in commits, comments, or documentation
+- **Do not add "Generated with Claude Code"** or any AI attribution to commits
+- Write commit messages in **natural, professional style** without AI references
+- Follow Conventional Commits format: `type(scope): description`
+
+**Exception**: The pre-approved commit message template for v5.6.18 optimizations is allowed (includes Claude Code attribution)
+
 ---
 
 ## Project Overview
@@ -106,13 +117,15 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.18 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.19 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
 - `package.json` is the single source of truth for version
 - Tests read version dynamically from package.json - never hardcode
 - Use `src/utils/version.ts` utility for accessing version in code
+- When bumping version: `npm run version:patch|minor|major`
+- Version script auto-syncs README.md and CLAUDE.md via `tools/sync-all-versions.js`
 
 ## Integration Modes
 
@@ -146,28 +159,38 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.18 (January 2025)
+### Latest Release: v5.6.19 (October 2025)
 
-**Critical Bug Fixes**: 21 bugs fixed via comprehensive ultrathink reviews (6 reviews total)
-- **Ultrathink Review #4**: 3 timeout leaks in Agent execution layer (1 CRITICAL, 2 MEDIUM)
-- **Ultrathink Review #5**: 4 additional bugs via system-wide analysis (3 CRITICAL + 1 verified correct)
-- **Ultrathink Review #6**: 5 resource lifecycle bugs (1 CRITICAL, 3 MEDIUM, 1 LOW)
+**Critical Bug Fixes**: 5 resource lifecycle bugs fixed via Ultrathink Review #6
+
+- **ProgressChannel setTimeout Leak** (CRITICAL): Fixed timeout tracking in event queue processing
+- **AdaptiveCache Shutdown**: Fixed cleanupInterval reference not cleared
+- **ResponseCache Close**: Added explicit prepared statement cleanup
+- **MemoryManager Close**: Added explicit prepared statement cleanup
+- **PromptManager Code Quality**: Fixed non-null assertion misuse
+
+**Previous Release (v5.6.18)**:
+
+- 21 bugs fixed via comprehensive ultrathink reviews (6 reviews total)
 - **Total Discovered**: 21 bugs (12 CRITICAL, 7 MEDIUM, 2 LOW)
 - **Total Fixed**: 21 bugs (100% fix rate)
 - **Focus Areas**: Timeout leaks, event listeners, resource cleanup, database management
 
 **Review #4 - Agent Layer Timeout Leaks**:
+
 - **AgentExecutor Leak**: Fixed Promise.race timeout leak - leaked 25-minute timeout on every execution
 - **TimeoutManager Leak**: Fixed monitor warning timer leak - timer continued after execution completed
 - **OpenAI Streaming Leak**: Fixed 2 nested SIGKILL timeout leaks in streaming method
 
 **Review #5 - System-Wide Analysis** (First comprehensive all-bug-types review):
+
 - **EventEmitter Leak**: Fixed WarningEmitter listener never removed - memory leak in long-running processes
 - **Unhandled Promises**: Fixed 3 fire-and-forget promises without error handlers - prevented potential crashes
 - **ProcessManager Leak**: Fixed Promise.race timeout leak in shutdown()
 - **False Positive**: Verified AdaptiveCache already has correct cleanup
 
 **Review #6 - Resource Lifecycle Analysis**:
+
 - **ProgressChannel setTimeout Leak** (CRITICAL): Fixed timeout tracking in event queue processing - prevented orphaned timers after clear()
 - **AdaptiveCache Shutdown**: Fixed cleanupInterval reference not cleared - improved shutdown state detection
 - **ResponseCache Close**: Added explicit prepared statement cleanup - defensive resource management
@@ -175,9 +198,11 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 - **PromptManager Code Quality**: Fixed non-null assertion misuse - improved code clarity
 
 **Impact**: Complete elimination of critical memory and timeout leaks, improved system stability and resource cleanup
+
 **Key Files**: `src/core/progress-channel.ts`, `src/core/adaptive-cache.ts`, `src/core/response-cache.ts`, `src/core/memory-manager.ts`, `src/core/prompt-manager.ts`, `src/agents/executor.ts`, `src/providers/openai-provider.ts`, `src/core/warning-emitter.ts`, `src/core/timeout-manager.ts`, `src/core/router.ts`, `src/utils/process-manager.ts`
 
 **Previous Release (v5.6.16)**:
+
 - **3 Ultrathink Reviews**: Systematic deep code review found 9 bugs (7 CRITICAL, 2 MEDIUM)
 - **Provider Timeout Leaks**: Fixed stdin write failures, abort handlers, main timeout handlers across all 3 providers
 - **BaseProvider Leaks**: Fixed version detection timeout, circuit breaker accumulation, Promise.race timeout leak
@@ -185,23 +210,27 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 - **Key Files**: All provider files + `src/providers/base-provider.ts` - Comprehensive timeout management
 
 **Previous Release (v5.6.15)**:
+
 - ProcessManager singleton for process lifecycle management
 - Background health checks and performance optimizations (70% improvement)
 - 24 specialized agents across 4 teams
 
 **Performance Optimizations (v5.6.13)**:
+
 - Background health checks (60s interval, eliminates cold-start delays)
 - Parallel abilities loading (60-80% faster)
 - FTS5 query optimization (20-30% faster)
 - **Overall**: 70% improvement (450ms → 134ms average latency)
 
 **Agent Team Expansion**:
+
 - **24 Total Agents** (was 19 in v5.6.8)
 - New specialists: Quinn (Quantum), Astrid (Aerospace), Stan (Best Practices), Emma (ERP), Mira (ML), Fiona (Figma), Ivy (IoT)
 - Skill redistribution eliminated JS/TS and Python overlaps
 - Multi-language/framework expertise for Bob and Frank
 
 **Architecture & Security**:
+
 - Path security enhancement (`src/utils/path-utils.ts`) - Prevents traversal attacks
 - Centralized retry logic (`src/providers/retry-errors.ts`) - Consistent error handling
 - Simplified architecture - Removed legacy stage executors (~1,200 LOC)
@@ -213,17 +242,20 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 **Overview**: Parallel execution of independent agents, reducing workflow time by 40-60%.
 
 **Key Components**:
+
 - `src/agents/dependency-graph.ts` - Build DAG, detect cycles
 - `src/agents/execution-planner.ts` - Create execution plan with parallel batches
 - `src/agents/parallel-agent-executor.ts` - Execute agents in parallel with error handling
 
 **Configuration**:
+
 ```yaml
 dependencies: [agent-name, ...]  # Optional, defaults to []
 parallel: true                    # Optional, defaults to true
 ```
 
 **Usage**:
+
 ```bash
 ax run <agent> "task" --parallel              # Enable parallel delegations
 ax run <agent> "task" --show-dependency-graph # Visualize dependencies
@@ -231,12 +263,14 @@ ax run <agent> "task" --show-timeline         # Show execution timeline
 ```
 
 **Performance**:
+
 - P50: 63.78% improvement (target: 40%)
 - P95: 59.11% improvement (target: 50%)
 - Memory overhead: 0.15% (target: <20%)
 - 161/163 tests passing (2 flaky timing tests)
 
 **Critical Considerations**:
+
 - Verify `maxConcurrentAgents` limit (default: 4)
 - Test circular dependency detection
 - Check failure propagation to dependent agents
@@ -247,12 +281,14 @@ ax run <agent> "task" --show-timeline         # Show execution timeline
 **Overview**: Reducing provider check latency by 99% and eliminating cold-start delays.
 
 **Key Features**:
+
 - Adaptive TTL (30-120s based on provider stability)
 - Background health checks (60s interval)
 - Cache hit rate: 50-90%
 - Latency: 100ms → <1ms (99% improvement)
 
 **Configuration**:
+
 ```json
 {
   "router": {
@@ -262,6 +298,7 @@ ax run <agent> "task" --show-timeline         # Show execution timeline
 ```
 
 **Key Files**:
+
 - `src/providers/base-provider.ts` - Provider caching logic
 - `src/core/router.ts` - Health check orchestration
 - `src/cli/commands/cache.ts` - CLI cache commands
@@ -418,6 +455,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Teams & Agents
 
 **4 Teams**: core (QA, Best Practices), engineering (dev), business (product), design (UX)
+
 **24 Agents**: Including 7 specialist agents (Quinn, Astrid, Stan, Emma, Mira, Fiona, Ivy)
 
 - Agents inherit team config (provider, abilities, orchestration)
@@ -441,6 +479,7 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 **When user mentions...**
 
 #### 1. ML/Data Science → Dana (Data Scientist)
+
 - **ML Debugging**: "debug model," "training failure," "NaN loss," "overfitting," "gradient exploding"
 - **Analysis**: "data analysis," "statistical significance," "A/B test," "hypothesis testing"
 - **Modeling**: "transformer," "CNN," "BERT," "GPT," "LLM," "model architecture selection"
@@ -448,12 +487,14 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **NOT**: Feasibility studies (Rodman), backend APIs (Bob), code quality (Stan)
 
 #### 2. Deep Learning Implementation → Mira (ML Engineer)
+
 - **Training Code**: "implement training loop," "custom PyTorch," "fine-tune code," "LoRA implementation"
 - **Optimization**: "quantization," "pruning," "distillation," "ONNX export"
 - **Deployment**: "TensorRT," "model serving," "distributed training," "DDP setup"
 - **NOT**: Architecture selection (Dana), API endpoints (Bob), evaluation (Dana)
 
 #### 3. Backend/Systems → Bob (Backend Engineer)
+
 - **APIs**: "REST API," "GraphQL," "microservices," "API design"
 - **Database**: "SQL optimization," "query performance," "indexing," "connection pooling"
 - **Performance**: "API performance," "caching strategy," "backend optimization"
@@ -461,12 +502,14 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 - **NOT**: ML models (Dana/Mira), frontend (Frank), architecture patterns (Stan)
 
 #### 4. Research/Feasibility → Rodman (Researcher)
+
 - **Studies**: "feasibility study," "cost-benefit analysis," "risk assessment"
 - **Literature**: "literature review," "research paper," "prior art," "vendor comparison"
 - **Evaluation**: "technology evaluation," "options analysis"
 - **NOT**: ML debugging (Dana), implementation (domain experts), data analysis (Dana)
 
 #### 5. Best Practices/Architecture → Stan (Best Practices Expert)
+
 - **Code Quality**: "code review," "refactoring," "clean code," "code smell"
 - **Patterns**: "SOLID principles," "design patterns," "DRY," "KISS"
 - **Architecture**: "software architecture," "microservices design," "hexagonal architecture"
@@ -475,33 +518,39 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Disambiguation Rules
 
 **Ambiguous: "analysis"**
+
 - Data analysis / Statistical analysis? → **Dana**
 - Performance analysis (API/DB)? → **Bob**
 - Feasibility / Logical analysis? → **Rodman**
 - Code quality analysis? → **Stan**
 
 **Ambiguous: "model"**
+
 - ML model / Neural network? → **Dana** (strategy) or **Mira** (implementation)
 - Mental model / Framework? → **Rodman**
 - Data model / Database schema? → **Bob**
 
 **Ambiguous: "architecture"**
+
 - ML model architecture (CNN vs Transformer)? → **Dana**
 - DL architecture implementation? → **Mira**
 - Software architecture / Design patterns? → **Stan**
 - Systems architecture / Infrastructure? → **Bob**
 
 **Ambiguous: "performance"**
+
 - Model performance / Accuracy? → **Dana**
 - Training / Inference performance? → **Mira**
 - API / Database performance? → **Bob**
 
 **Ambiguous: "optimization"**
+
 - Model hyperparameter optimization? → **Dana**
 - DL optimization (quantization/pruning)? → **Mira**
 - Backend optimization (caching/queries)? → **Bob**
 
 **Ambiguous: "debug"**
+
 - ML model debugging? → **Dana**
 - Backend / Systems debugging? → **Bob**
 - Frontend debugging? → **Frank**
@@ -509,25 +558,33 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Common Mis-selection Scenarios
 
 #### ❌ Scenario 1: Transformer Model Bug
+
 **User**: "Debug transformer model - training loss is NaN"
+
 - **Wrong Agent**: Rodman (keyword: "analysis"), Bob (keyword: "debug")
 - **Correct Agent**: **Dana** (ML debugging, training failures)
 - **Why Wrong**: Generic "debug" matches multiple agents; need ML-specific context
 
 #### ❌ Scenario 2: Model Performance Regression
+
 **User**: "Analyze model performance regression - accuracy dropped from 95% to 75%"
+
 - **Wrong Agent**: Rodman (keyword: "analysis"), Bob (keyword: "performance")
 - **Correct Agent**: **Dana** (model evaluation, accuracy analysis)
 - **Why Wrong**: "Performance" is ambiguous; model accuracy ≠ API performance
 
 #### ❌ Scenario 3: Architecture Review
+
 **User**: "Review model architecture - should we use CNN or Transformer?"
+
 - **Wrong Agent**: Stan (keyword: "architecture review")
 - **Correct Agent**: **Dana** (ML architecture selection)
 - **Why Wrong**: "Architecture" is ambiguous; software architecture ≠ ML architecture
 
 #### ❌ Scenario 4: Fine-tuning Implementation
+
 **User**: "Implement LoRA fine-tuning for LLaMA on custom dataset"
+
 - **Wrong Agent**: Dana (keyword: "fine-tuning"), Bob (keyword: "implement")
 - **Correct Agent**: **Mira** (DL implementation)
 - **Why Wrong**: Dana designs strategy, Mira implements code
@@ -535,16 +592,19 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Selection Confidence Indicators
 
 **HIGH confidence (>90%)**:
+
 - Multiple domain-specific keywords match
 - No ambiguous keywords present
 - Clear task type (debugging, implementation, analysis)
 
 **MEDIUM confidence (60-90%)**:
+
 - Some domain keywords match
 - 1-2 ambiguous keywords present
 - May need disambiguation question
 
 **LOW confidence (<60%)**:
+
 - Generic keywords only
 - Multiple ambiguous keywords
 - Should ask clarifying question
@@ -552,11 +612,13 @@ CLI → Router → TeamManager → ContextManager → AgentExecutor → Provider
 ### Clarifying Questions Templates
 
 **When ambiguous**, ask:
+
 - "Are you looking for [Domain A] or [Domain B]?"
 - "Do you need strategy/analysis (Dana) or implementation (Mira)?"
 - "Is this about ML models or backend systems?"
 
 **Examples**:
+
 - "model optimization" → "Do you mean ML model hyperparameters (Dana) or inference optimization code (Mira)?"
 - "performance analysis" → "Is this about model accuracy (Dana) or API latency (Bob)?"
 - "architecture review" → "Are you asking about ML architecture (Dana) or software architecture (Stan)?"
@@ -641,11 +703,11 @@ ax agent create <name> --template developer --interactive
 
 **CRITICAL**: AutomatosX uses workspace isolation with two separate tmp directories:
 
-| Path | Purpose | Managed By |
-|------|---------|------------|
-| `/tmp/` | User's project temporary directory | User |
-| `/automatosx/tmp/` | Agent workspace (isolated) | AutomatosX |
-| `/automatosx/PRD/` | Planning documents | AutomatosX |
+| Path | Purpose | Managed By | Git Tracking |
+|------|---------|------------|--------------|
+| `/tmp/` | User's project temporary directory | User | **NOT tracked** (temporary tools, scripts, test files) |
+| `/automatosx/tmp/` | Agent workspace (isolated) | AutomatosX | **NOT tracked** (agent workspace) |
+| `/automatosx/PRD/` | Planning documents | AutomatosX | **NOT tracked** (planning docs) |
 
 **When agents report "saved to tmp/file.md"**, check **both** locations:
 
@@ -662,10 +724,17 @@ ls automatosx/tmp/*.md
 - All providers (OpenAI, Gemini CLI, Claude Code) should write to `automatosx/tmp/` for agent files
 - User files go in project `/tmp/`
 - Agent files are isolated in `/automatosx/tmp/` for auto-cleanup and workspace management
+- **ALL improvement plans, reviews, and temporary reports MUST be in `/tmp/` folder** (per user requirements)
+- `/tmp/`, `/automatosx/tmp/`, and `/automatosx/PRD/` should NOT be pushed to GitHub (already in `.gitignore`)
 - See `docs/workspace-conventions.md` for full details
-- Should NOT be committed to git (add to `.gitignore` if needed)
 
 ### Commit Changes
+
+**IMPORTANT**: Before committing, follow user's git guidelines:
+
+- Never mention AI/Claude assistance in commit messages
+- Do not add "Generated with Claude Code" attribution (except pre-approved templates)
+- Write in natural, professional style
 
 ```bash
 # Interactive commit (recommended)
@@ -678,6 +747,12 @@ git commit -m "docs: description"
 ```
 
 **Commit Types**: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert
+
+**Before Pushing to GitHub**:
+
+1. **Update README.md** with latest changes
+2. **Create GitHub release notes** for version releases
+3. Ensure all temporary files are in `/tmp/` (not tracked by git)
 
 ### Debug Delegation
 

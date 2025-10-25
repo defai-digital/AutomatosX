@@ -273,21 +273,30 @@ export class InFlightTracker {
     });
 
     const startTime = Date.now();
+    let checkInterval: NodeJS.Timeout | null = null;
 
-    return new Promise((resolve, reject) => {
-      const checkInterval = setInterval(() => {
+    return new Promise<void>((resolve, reject) => {
+      checkInterval = setInterval(() => {
         if (this.inFlightCount === 0) {
-          clearInterval(checkInterval);
+          clearInterval(checkInterval!);
+          checkInterval = null;
           const duration = Date.now() - startTime;
           logger.info('All in-flight operations completed', { duration });
           resolve();
-        } else if (Date.now() - startTime > timeoutMs) {
-          clearInterval(checkInterval);
+        } else if (Date.now() - startTime >= timeoutMs) {
+          clearInterval(checkInterval!);
+          checkInterval = null;
           reject(new Error(
             `Timeout waiting for in-flight operations (${this.inFlightCount} remaining)`
           ));
         }
       }, 100); // Check every 100ms
+    }).finally(() => {
+      // Safety net: Ensure interval is always cleared (for external cancellation).
+      if (checkInterval !== null) {
+        clearInterval(checkInterval);
+        checkInterval = null;
+      }
     });
   }
 }

@@ -80,18 +80,24 @@ export class WorkerPool {
       throw new Error('minWorkers cannot exceed maxWorkers');
     }
 
-    // Initialize minimum workers
-    this.initializeMinWorkers();
+    try {
+      // Initialize minimum workers
+      this.initializeMinWorkers();
 
-    // Start idle worker cleanup
-    this.startIdleCleanup();
+      // Start idle worker cleanup AFTER successful initialization
+      this.startIdleCleanup();
 
-    logger.info('Worker pool initialized', {
-      workerScript,
-      minWorkers: this.config.minWorkers,
-      maxWorkers: this.config.maxWorkers,
-      cpuCount
-    });
+      logger.info('Worker pool initialized', {
+        workerScript,
+        minWorkers: this.config.minWorkers,
+        maxWorkers: this.config.maxWorkers,
+        cpuCount
+      });
+    } catch (error) {
+      // CRITICAL FIX: Clean up on initialization failure
+      this.cleanup();
+      throw error;
+    }
   }
 
   /**
@@ -169,6 +175,30 @@ export class WorkerPool {
   }
 
   /**
+   * Internal cleanup (for initialization failures)
+   * Similar to shutdown() but without async operations
+   */
+  private cleanup(): void {
+    // Clear idle cleanup interval
+    if (this.idleCheckInterval) {
+      clearInterval(this.idleCheckInterval);
+      this.idleCheckInterval = undefined;
+    }
+
+    // Terminate all workers (synchronously)
+    for (const workerInfo of this.workers) {
+      try {
+        workerInfo.worker.terminate();
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    }
+    this.workers = [];
+
+    logger.debug('Worker pool cleaned up after initialization failure');
+  }
+
+  /**
    * Initialize minimum workers
    */
   private initializeMinWorkers(): void {
@@ -222,7 +252,31 @@ export class WorkerPool {
     worker.on('exit', (code) => {
       if (code !== 0 && !this.shutdownRequested) {
         logger.warn('Worker exited unexpectedly', { code });
+
+        // CRITICAL FIX: Clear timeout before removing worker
+        if ((workerInfo as any).timeout) {
+          clearTimeout((workerInfo as any).timeout);
+          delete (workerInfo as any).timeout;
+        }
+
+        // If worker was busy, fail the task
+        if (workerInfo.busy && workerInfo.taskId) {
+          const pendingTask = this.pendingTasks.get(workerInfo.taskId);
+          if (pendingTask) {
+            this.pendingTasks.delete(workerInfo.taskId);
+            pendingTask.reject(new Error(`Worker exited unexpectedly with code ${code}`));
+          }
+        }
+
         this.removeWorker(workerInfo);
+
+        // Spawn replacement if below minimum
+        if (this.workers.length < this.config.minWorkers) {
+          this.spawnWorker();
+        }
+
+        // Process next task
+        this.processQueue();
       }
     });
 

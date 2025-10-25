@@ -89,6 +89,8 @@ describe('InFlightTracker', () => {
   let tracker: InFlightTracker;
 
   beforeEach(() => {
+    // Use real timers for InFlightTracker tests (setInterval/setTimeout must run)
+    vi.useRealTimers();
     tracker = new InFlightTracker();
   });
 

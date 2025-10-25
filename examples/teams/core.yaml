@@ -6,13 +6,14 @@ displayName: "Core Team"
 description: "General-purpose assistants and quality assurance"
 
 # Provider Configuration
+# v5.6.22: Updated to match documentation and individual agent overrides
 provider:
-  primary: claude
+  primary: openai  # Codex (OpenAI)
   fallback: gemini
   fallbackChain:
-    - claude
+    - openai  # Codex
     - gemini
-    - codex
+    - claude
 
 # Shared Abilities
 sharedAbilities:

@@ -220,21 +220,31 @@ export abstract class BaseProvider implements Provider {
     }
 
     // v5.6.25: Check shared provider cache first (across all instances)
+    // v5.6.25-fix: Add graceful degradation for shared cache
     const ttl = this.calculateAdaptiveTTL();
-    const sharedCached = providerCache.get(this.config.name, ttl);
+    try {
+      const sharedCached = providerCache.get(this.config.name, ttl);
 
-    if (sharedCached !== undefined) {
-      this.cacheMetrics.availabilityHits++;
-      this.availabilityCacheMetrics.lastHit = Date.now();
-      this.availabilityCacheMetrics.hitCount++;
-      logger.debug(`Using shared cache for ${this.config.name}`, {
+      if (sharedCached !== undefined) {
+        this.cacheMetrics.availabilityHits++;
+        this.availabilityCacheMetrics.lastHit = Date.now();
+        this.availabilityCacheMetrics.hitCount++;
+        logger.debug(`Using shared cache for ${this.config.name}`, {
+          provider: this.config.name,
+          available: sharedCached,
+          source: 'shared-cache',
+          cacheTTL: ttl,
+          cacheHits: this.cacheMetrics.availabilityHits
+        });
+        return sharedCached;
+      }
+    } catch (error) {
+      // Graceful degradation: If shared cache read fails, log and continue to instance cache
+      logger.warn(`Failed to read shared cache for ${this.config.name}, falling back to instance cache`, {
         provider: this.config.name,
-        available: sharedCached,
-        source: 'shared-cache',
-        cacheTTL: ttl,
-        cacheHits: this.cacheMetrics.availabilityHits
+        error: (error as Error).message
       });
-      return sharedCached;
+      // Continue to instance cache check below
     }
 
     // Phase 3 (v5.6.3): Graceful Cache Degradation

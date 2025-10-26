@@ -182,7 +182,7 @@ export class GeminiProvider extends BaseProvider {
           child = spawn(this.config.command, args, {
             stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
             env: process.env,
-            shell: true, // Required for Windows .cmd/.bat files
+            shell: process.platform === 'win32', // Required for Windows .cmd/.bat files
           });
         } catch (error) {
           reject(new Error(`Failed to spawn Gemini CLI: ${(error as Error).message}`));

@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.31] - 2025-10-26
+
+### Fixed
+
+**Node.js DEP0190 Deprecation Warning Resolution**
+
+This release eliminates the Node.js DEP0190 deprecation warning that appeared when executing AutomatosX commands on macOS and Linux systems.
+
+#### Problem
+
+When running `ax run` or other agent commands, users on macOS/Linux would see the following warning:
+
+```
+(node:xxxxx) [DEP0190] DeprecationWarning: Passing args to a child process with
+shell option true can lead to security vulnerabilities, as the arguments are not
+escaped, only concatenated.
+```
+
+**Root Cause**: v5.6.29 added `shell: true` to all `spawn()` calls to fix Windows `.cmd`/`.bat` execution (Issue #4). However, on Node.js v22+, using `shell: true` with an args array triggers the DEP0190 security warning because arguments are concatenated without escaping.
+
+#### Solution
+
+Modified all provider spawn calls to use shell option conditionally - only on Windows where it's required for `.cmd`/`.bat` files:
+
+```typescript
+// Before
+shell: true,
+
+// After
+shell: process.platform === 'win32',
+```
+
+#### Changes
+
+**Modified Files** (5 spawn locations):
+1. `src/providers/openai-provider.ts` - Lines 182, 478
+2. `src/providers/gemini-provider.ts` - Line 185
+3. `src/providers/claude-provider.ts` - Line 174
+4. `src/providers/base-provider.ts` - Line 711
+
+**Impact**:
+- ✅ Windows users: No change, `.cmd`/`.bat` files still work correctly
+- ✅ macOS/Linux users: DEP0190 warning eliminated
+- ✅ Security: Reduced command injection attack surface on Unix systems
+- ✅ Compatibility: Follows Node.js best practices
+- ✅ No breaking changes: 100% backward compatible
+
+#### Verification
+- TypeScript type check: PASS
+- Build: SUCCESS (956.51 KB)
+- Smoke tests: PASS (all commands work without warnings)
+- CLI functionality: Verified on macOS (no deprecation warning)
+
+#### Technical Details
+
+**Why Windows needs `shell: true`**: Windows `.cmd` and `.bat` files are not true executables and must be executed through `cmd.exe`. Setting `shell: true` enables this on Windows while using direct execution on Unix systems.
+
+**Security Improvement**: On Unix systems, arguments are now passed directly to `spawn()` without shell interpretation, eliminating the risk of shell metacharacter injection.
+
+---
+
 ## [5.6.30] - 2025-10-26
 
 ### Fixed

@@ -708,7 +708,7 @@ export abstract class BaseProvider implements Provider {
         const versionArg = this.config.versionArg || '--version';
         const proc = spawn(sanitizedCommand, [versionArg], {
           stdio: 'pipe',
-          shell: true, // Required for Windows .cmd/.bat files
+          shell: process.platform === 'win32', // Required for Windows .cmd/.bat files
         });
 
         processManager.register(proc, `${command}-version-check`);

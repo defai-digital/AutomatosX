@@ -130,4 +130,4 @@ Please use [GitHub Issues](https://github.com/defai-digital/automatosx/issues) f
 
 ## License
 
-[MIT License](https://github.com/defai-digital/automatosx/blob/main/LICENSE) © 2024-present AutomatosX Team
+[Apache License 2.0](https://github.com/defai-digital/automatosx/blob/main/LICENSE) © 2025 DEFAI Private Limited

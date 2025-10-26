@@ -224,3 +224,5 @@ AutomatosX is an open-source project. We welcome contributions!
 ## 📄 License
 
 AutomatosX is [Apache 2.0 licensed](LICENSE).
+
+Copyright © 2025 DEFAI Private Limited. All rights reserved.

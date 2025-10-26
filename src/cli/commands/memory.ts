@@ -12,45 +12,6 @@ import { printError } from '../../utils/error-formatter.js';
 import { ProgressIndicator } from '../../utils/progress.js';
 import { printSuccess } from '../../utils/message-formatter.js';
 
-interface BaseMemoryArgs {
-  db?: string;
-}
-
-interface SearchArgs extends BaseMemoryArgs {
-  query: string;  // v4.11.0: Required, no vector file support
-  limit?: number;
-  threshold?: number;
-  type?: string;
-  tags?: string;
-  output?: 'json' | 'table';
-}
-
-interface ExportArgs extends BaseMemoryArgs {
-  output: string;
-  type?: string;
-  from?: string;
-  to?: string;
-  // v4.11.0: includeEmbeddings removed (no embeddings in FTS5 mode)
-}
-
-interface ImportArgs extends BaseMemoryArgs {
-  input: string;
-  validate?: boolean;
-  batchSize?: number;
-  skipDuplicates?: boolean;
-}
-
-interface StatsArgs extends BaseMemoryArgs {
-  output?: 'json' | 'table';
-}
-
-interface ClearArgs extends BaseMemoryArgs {
-  all?: boolean;
-  type?: string;
-  olderThan?: number;
-  confirm?: boolean;
-}
-
 const DEFAULT_DB_PATH = '.automatosx/memory/memory.db';
 
 /**

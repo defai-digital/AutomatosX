@@ -103,6 +103,8 @@ export class DatabaseConnectionPool {
     readonly: boolean;
     requestedAt: number;
     timeoutId?: NodeJS.Timeout; // Track timeout to clear it
+    abortHandler?: () => void;  // Track abort handler to remove listener
+    signal?: AbortSignal;       // Track signal to remove listener
   }> = [];
   private healthCheckInterval?: NodeJS.Timeout;
   private shutdownRequested = false;
@@ -188,7 +190,9 @@ export class DatabaseConnectionPool {
         reject,
         readonly,
         requestedAt: Date.now(),
-        timeoutId: undefined as NodeJS.Timeout | undefined
+        timeoutId: undefined as NodeJS.Timeout | undefined,
+        abortHandler: undefined as (() => void) | undefined,  // CRITICAL: Store handler for cleanup
+        signal: signal  // CRITICAL: Store signal for cleanup
       };
 
       this.waitQueue.push(queueEntry);
@@ -199,9 +203,8 @@ export class DatabaseConnectionPool {
       });
 
       // Set up abort handler
-      let abortHandler: (() => void) | undefined;
       if (signal) {
-        abortHandler = () => {
+        queueEntry.abortHandler = () => {
           const index = this.waitQueue.indexOf(queueEntry);
           if (index !== -1) {
             this.waitQueue.splice(index, 1);
@@ -211,7 +214,7 @@ export class DatabaseConnectionPool {
             reject(new Error('Connection acquisition cancelled'));
           }
         };
-        signal.addEventListener('abort', abortHandler, { once: true });
+        signal.addEventListener('abort', queueEntry.abortHandler, { once: true });
       }
 
       // Set timeout and store ID for cleanup
@@ -220,8 +223,8 @@ export class DatabaseConnectionPool {
         if (index !== -1) {
           this.waitQueue.splice(index, 1);
           // Remove abort handler if present
-          if (abortHandler && signal) {
-            signal.removeEventListener('abort', abortHandler);
+          if (queueEntry.abortHandler && queueEntry.signal) {
+            queueEntry.signal.removeEventListener('abort', queueEntry.abortHandler);
           }
           reject(new Error(`Connection wait timeout after ${this.config.maxWaitTime}ms`));
         }
@@ -427,6 +430,11 @@ export class DatabaseConnectionPool {
           // Clear timeout to prevent memory leak
           if (entry.timeoutId) {
             clearTimeout(entry.timeoutId);
+          }
+
+          // CRITICAL: Remove abort listener to prevent memory leak
+          if (entry.abortHandler && entry.signal) {
+            entry.signal.removeEventListener('abort', entry.abortHandler);
           }
 
           // Acquire connection

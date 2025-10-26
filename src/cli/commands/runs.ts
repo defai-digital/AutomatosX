@@ -10,7 +10,7 @@ import { CheckpointManager } from '../../core/checkpoint-manager.js';
 import { detectProjectRoot } from '../../core/path-resolver.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
-import type { RunMetadata, ExecutionMode, StageStates } from '../../types/stage-execution.js';
+import type { ExecutionMode } from '../../types/stage-execution.js';
 
 // ============================================================================
 // List Runs Command

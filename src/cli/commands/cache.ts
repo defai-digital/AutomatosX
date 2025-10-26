@@ -12,18 +12,6 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { printSuccess } from '../../utils/message-formatter.js';
 
-interface BaseCacheArgs {
-  db?: string;
-}
-
-interface StatsArgs extends BaseCacheArgs {
-  output?: 'json' | 'table';
-}
-
-interface ClearArgs extends BaseCacheArgs {
-  confirm?: boolean;
-}
-
 const DEFAULT_CACHE_DB_PATH = '.automatosx/cache/responses.db';
 
 /**

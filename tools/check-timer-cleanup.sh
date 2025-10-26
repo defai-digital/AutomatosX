@@ -34,8 +34,8 @@ for file in $FILES_WITH_TIMERS; do
     continue
   fi
 
-  # Check if file has destroy/cleanup/shutdown method
-  HAS_CLEANUP=$(grep -E "destroy\(\)|cleanup\(\)|shutdown\(\)|stopCleanup\(\)" "$file" || true)
+  # Check if file has destroy/cleanup/shutdown/clear/close/flush method
+  HAS_CLEANUP=$(grep -E "destroy\(\)|cleanup\(\)|shutdown\(\)|stopCleanup\(\)|clear\(\)|close\(\)|flush\(\)" "$file" || true)
 
   if [ -z "$HAS_CLEANUP" ]; then
     # Check if it's just Promise delays (safe pattern)
@@ -49,7 +49,7 @@ for file in $FILES_WITH_TIMERS; do
     fi
   else
     # Has cleanup method - verify it clears timers
-    HAS_CLEAR=$(grep -E "clearTimeout\|clearInterval" "$file" || true)
+    HAS_CLEAR=$(grep -E "clearTimeout|clearInterval" "$file" || true)
     if [ -z "$HAS_CLEAR" ]; then
       echo "${YELLOW}⚠  $file${NC}"
       echo "   Has cleanup method but doesn't clear timers"

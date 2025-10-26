@@ -66,6 +66,8 @@ export class LazyMemoryManager implements IMemoryManager {
    * Ensure MemoryManager is initialized (singleton pattern)
    *
    * **Thread-safe**: Prevents duplicate initialization if called concurrently
+   *
+   * v5.6.27: Fixed race condition - await initPromise before returning manager
    */
   private async ensureInitialized(): Promise<MemoryManager> {
     // Fast path: Already initialized
@@ -76,7 +78,8 @@ export class LazyMemoryManager implements IMemoryManager {
     // Prevent duplicate initialization (race condition)
     if (this.initPromise) {
       logger.debug('🔄 LazyMemoryManager: waiting for concurrent initialization');
-      return this.initPromise;
+      await this.initPromise;
+      return this.manager!; // Safe: initPromise guarantees manager is set
     }
 
     // Initialize MemoryManager
@@ -92,16 +95,19 @@ export class LazyMemoryManager implements IMemoryManager {
     );
 
     this.initPromise = MemoryManager.create(this.config);
-    this.manager = await this.initPromise;
-    this.initPromise = undefined;
+    try {
+      this.manager = await this.initPromise;
+      timer.end();
 
-    timer.end();
+      markState(ComponentType.LAZY_MEMORY_MANAGER, LifecycleState.INITIALIZED, {
+        message: 'database initialized'
+      });
 
-    markState(ComponentType.LAZY_MEMORY_MANAGER, LifecycleState.INITIALIZED, {
-      message: 'database initialized'
-    });
-
-    return this.manager;
+      return this.manager;
+    } finally {
+      // CRITICAL: Always clear initPromise to allow retry on failure
+      this.initPromise = undefined;
+    }
   }
 
   /**
@@ -241,9 +247,25 @@ export class LazyMemoryManager implements IMemoryManager {
    * Close database connection (only if initialized)
    *
    * **Safe**: Does nothing if never initialized (no connection to close)
+   * **Race-safe**: Waits for any in-flight initialization before closing
    */
   async close(): Promise<void> {
-    // Only close if already initialized
+    // CRITICAL: Wait for any in-flight initialization to complete
+    // to avoid leaving a dangling open manager
+    if (this.initPromise) {
+      try {
+        logger.debug('LazyMemoryManager: waiting for initialization to complete before closing');
+        await this.initPromise;
+      } catch (error) {
+        // Initialization failed, nothing to close
+        logger.debug('LazyMemoryManager: initialization failed, nothing to close', {
+          error: (error as Error).message
+        });
+        return;
+      }
+    }
+
+    // Now close if initialized
     if (this.manager) {
       logger.debug('Closing LazyMemoryManager (was initialized)');
       await this.manager.close();

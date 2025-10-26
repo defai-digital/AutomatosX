@@ -484,9 +484,9 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
 
   execution: {
     defaultTimeout: 1500000,  // 25 minutes (v5.1.0: increased from 15 min based on user feedback)
-    maxConcurrentAgents: 4,  // DEPRECATED: use concurrency.maxConcurrentAgents
     // v5.6.18: Advanced concurrency configuration with CPU auto-detection
     concurrency: {
+      maxConcurrentAgents: 4,   // Default: 4 concurrent agents
       autoDetect: false,        // Disabled by default for backward compatibility
       cpuMultiplier: 1.0,       // 1 agent per CPU core
       minConcurrency: 2,        // Minimum 2 concurrent agents

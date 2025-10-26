@@ -113,7 +113,7 @@ systemPrompt: You are a test agent
       await writeFile(join(testDir, 'test.yaml'), profileYaml);
 
       const profile1 = await loader.loadProfile('test');
-      loader.clearCache();
+      await loader.clearCache();
       const profile2 = await loader.loadProfile('test');
 
       expect(profile1).not.toBe(profile2); // Different object reference

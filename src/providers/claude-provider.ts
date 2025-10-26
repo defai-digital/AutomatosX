@@ -171,6 +171,7 @@ export class ClaudeProvider extends BaseProvider {
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Use pipe for stdin
           env: process.env,
+          shell: true, // Required for Windows .cmd/.bat files
         });
       } catch (error) {
         const err = error as NodeJS.ErrnoException;

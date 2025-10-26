@@ -477,7 +477,8 @@ async function initializeGitRepository(projectDir: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const child = spawn('git', ['init'], {
         cwd: projectDir,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        shell: true // Required for Windows .cmd/.bat files
       });
 
       let stderr = '';

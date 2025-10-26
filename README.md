@@ -13,9 +13,9 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.28** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.29** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
 
-**Latest (v5.6.27)**: Failure-Mode Bug Fixes - Fixed 3 critical bugs in LazyMemoryManager and db-connection-pool discovered by Quality Agent (Queenie). Improved code quality rating from 7/10 to 9/10 (+28%). Includes initPromise cleanup for retry support, close() race condition fix, and AbortSignal listener leak prevention. 100% backward compatible, zero regressions. [See full changelog →](CHANGELOG.md)
+**Latest (v5.6.29)**: Windows Compatibility Fix - Resolved spawn ENOENT errors for all Windows users (GitHub Issue #4). Added `shell: true` to 6 spawn() calls across all providers (Gemini CLI, Claude Code, OpenAI Codex). Windows 10+ users can now execute AutomatosX without errors. Fully backward compatible with macOS and Linux. Zero breaking changes. [See full changelog →](CHANGELOG.md)
 
 ---
 

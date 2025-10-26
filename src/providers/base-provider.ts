@@ -858,7 +858,8 @@ export abstract class BaseProvider implements Provider {
     }
 
     // Check rate limits
-    await this.waitForCapacity();
+    // CRITICAL: Pass signal to waitForCapacity for cancellable rate-limit waiting
+    await this.waitForCapacity(request.signal);
 
     // Check cache before executing
     const messages = this.requestToMessages(request);
@@ -1010,14 +1011,24 @@ export abstract class BaseProvider implements Provider {
     };
   }
 
-  async waitForCapacity(): Promise<void> {
+  async waitForCapacity(signal?: AbortSignal): Promise<void> {
     const maxWaitMs = 60000; // 1 minute max wait
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitMs) {
+      // CRITICAL: Check abort signal
+      if (signal?.aborted) {
+        throw new Error('Execution cancelled');
+      }
+
       const status = await this.checkRateLimit();
 
       if (status.hasCapacity) {
+        // CRITICAL: Double-check abort before reserving capacity
+        if (signal?.aborted) {
+          throw new Error('Execution cancelled');
+        }
+
         // Reserve capacity
         this.rateLimitState.requests.push(Date.now());
         return;
@@ -1025,7 +1036,8 @@ export abstract class BaseProvider implements Provider {
 
       // Wait until reset time
       const waitMs = Math.min(status.resetAtMs - Date.now(), 1000);
-      await this.sleep(waitMs);
+      // CRITICAL: Make sleep cancellable
+      await this.sleep(waitMs, signal);
     }
 
     throw new Error(`Rate limit exceeded for provider ${this.name}`);
@@ -1277,12 +1289,8 @@ export abstract class BaseProvider implements Provider {
       bucket => bucket.timestamp > oneMinuteAgo
     );
 
-    // DEPRECATED: Keep old array for backward compatibility, but limit size
-    // This prevents memory issues with large responses while maintaining compatibility
-    const tokensToAdd = Math.min(response.tokensUsed.total, 1000); // Cap at 1000 entries
-    for (let i = 0; i < tokensToAdd; i++) {
-      this.rateLimitState.tokens.push(now);
-    }
+    // REMOVED: Deprecated legacy token array (caused memory leak)
+    // The new tokenBuckets implementation above is used exclusively
   }
 
   protected updateHealthAfterFailure(): void {
@@ -1313,8 +1321,37 @@ export abstract class BaseProvider implements Provider {
     return Math.ceil(text.length / 4);
   }
 
-  protected sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  protected sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // CRITICAL: Check if already aborted
+      if (signal?.aborted) {
+        reject(new Error('Sleep cancelled'));
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
+
+      let abortHandler: (() => void) | undefined;
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (abortHandler && signal) {
+          signal.removeEventListener('abort', abortHandler);
+          abortHandler = undefined;
+        }
+      };
+
+      if (signal) {
+        abortHandler = () => {
+          cleanup();
+          reject(new Error('Sleep cancelled'));
+        };
+        signal.addEventListener('abort', abortHandler, { once: true });
+      }
+    });
   }
 
   /**

@@ -218,8 +218,11 @@ export class GeminiProvider extends BaseProvider {
       }
 
       // v5.0.7: Handle abort signal for proper timeout cancellation
+      // CRITICAL: Track abort handler for cleanup to prevent memory leak
+      let abortHandler: (() => void) | undefined;
+
       if (request.signal) {
-        request.signal.addEventListener('abort', () => {
+        abortHandler = () => {
           hasTimedOut = true;
           cleanup();  // Clear all timeouts
           child.kill('SIGTERM');
@@ -234,8 +237,17 @@ export class GeminiProvider extends BaseProvider {
           }, gracefulTimeout);
 
           reject(new Error('Execution aborted by timeout'));
-        });
+        };
+        request.signal.addEventListener('abort', abortHandler, { once: true });
       }
+
+      // CRITICAL: Helper to cleanup abort listener
+      const cleanupAbortListener = () => {
+        if (abortHandler && request.signal) {
+          request.signal.removeEventListener('abort', abortHandler);
+          abortHandler = undefined;
+        }
+      };
 
       // Collect stdout
       child.stdout?.on('data', (data) => {
@@ -257,6 +269,7 @@ export class GeminiProvider extends BaseProvider {
       child.on('close', (code) => {
         try {
           cleanup();  // Clear all timeouts
+          cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
 
           if (hasTimedOut) {
             return; // Timeout already handled
@@ -276,6 +289,7 @@ export class GeminiProvider extends BaseProvider {
 
       // Handle process errors
       child.on('error', (error) => {
+        cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
         if (!hasTimedOut) {
           reject(new Error(`Failed to spawn Gemini CLI: ${error.message}`));
         }

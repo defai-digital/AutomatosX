@@ -314,6 +314,13 @@ export class DatabaseConnectionPool {
       if (entry.timeoutId) {
         clearTimeout(entry.timeoutId);
       }
+
+      // CRITICAL: Remove AbortSignal listener before rejecting to prevent memory leak
+      if (entry.signal && entry.abortHandler) {
+        entry.signal.removeEventListener('abort', entry.abortHandler);
+        entry.abortHandler = undefined;  // Allow GC to reclaim
+      }
+
       entry.reject(new Error('Connection pool shutting down'));
     }
     this.waitQueue = [];

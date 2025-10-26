@@ -2,6 +2,91 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.30] - 2025-10-26
+
+### Fixed
+
+**Init Command: Complete Agent List & Enhanced Home Directory Validation**
+
+This release fixes two user experience issues in the `ax init` command: incomplete agent listing and improved guidance for home directory initialization attempts.
+
+#### Issue #1: Incomplete Agent List Display
+
+**Problem**: The `ax init` success message only displayed 12 out of 19 available agents, causing user confusion about which agents were installed.
+
+**Missing Agents** (7 total):
+- `aerospace-scientist` (Astrid) - Aerospace Mission Scientist
+- `creative-marketer` (Candy) - Creative Marketing Strategist
+- `data-scientist` (Dana) - Data Scientist
+- `fullstack` (Felix) - Fullstack Engineer
+- `mobile` (Maya) - Mobile Engineer
+- `quantum-engineer` (Quinn) - Quantum Systems Engineer
+- `stan` (Peter) - Best Practices Expert
+
+**Incorrect Role**: `data` agent displayed as "Data scientist" instead of "Data Engineer" (Daisy)
+
+**Fix** (`src/cli/commands/init.ts:190-209`):
+- Updated hardcoded agent list to include all 19 agents
+- Corrected all agent roles to match YAML definitions
+- Added "(19 total)" label for clarity
+- Updated display format: `• agent-name - DisplayName (Role)`
+
+**Impact**:
+- ✅ Users now see complete list of all 19 available agents
+- ✅ All roles accurately reflect agent capabilities
+- ✅ Consistent with `ax list agents` output
+- ✅ No confusion about missing agents
+
+#### Issue #2: Enhanced Home Directory Error Message
+
+**Problem**: When users accidentally ran `ax init` in their home directory (`~/`), the error message was unclear and didn't guide them on next steps.
+
+**Fix** (`src/cli/commands/init.ts:87-111`):
+- Added step-by-step guide for creating project directory
+- Included concrete example with full path
+- Shows both `mkdir` and `cd` commands
+- Platform-aware messaging (Windows vs Unix)
+
+**New Error Message**:
+```
+❌ Error: Cannot initialize AutomatosX in home directory
+⚠️  AutomatosX must be initialized in a project directory, not in ~/
+
+📋 Please follow these steps:
+   1. Create a project directory:
+      mkdir my-project
+      cd my-project
+
+   2. Initialize AutomatosX:
+      ax init
+
+   3. Start using AutomatosX:
+      ax list agents
+      ax run <agent-name> "your task"
+
+   Example:
+      mkdir ~/projects/my-ai-project
+      cd ~/projects/my-ai-project
+      ax init
+```
+
+**Impact**:
+- ✅ Users understand why initialization failed
+- ✅ Clear guidance on correct initialization steps
+- ✅ Reduces support burden for common mistake
+- ✅ Better onboarding experience
+
+#### Verification
+- TypeScript type check: PASS (0 errors)
+- Project build: SUCCESS (955.70 KB)
+- Manual testing: All 19 agents display correctly
+- Home directory validation: Error message tested and verified
+
+#### Files Modified
+- `src/cli/commands/init.ts` (lines 87-111, 190-209)
+
+---
+
 ## [5.6.29] - 2025-10-26
 
 ### Fixed

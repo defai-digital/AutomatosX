@@ -84,6 +84,32 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
     let shouldRollback = false;
 
     try {
+      // Prevent global installation (home directory)
+      const homeDir = process.env.HOME || process.env.USERPROFILE;
+      if (homeDir && resolve(projectDir) === resolve(homeDir)) {
+        console.log(chalk.red('\n❌ Error: Cannot initialize AutomatosX in home directory'));
+        console.log(chalk.yellow('\n⚠️  AutomatosX must be initialized in a project directory, not in ~/'));
+
+        console.log(chalk.cyan('\n📋 Please follow these steps:\n'));
+        console.log(chalk.white('   1. Create a project directory:'));
+        console.log(chalk.gray('      mkdir my-project'));
+        console.log(chalk.gray('      cd my-project\n'));
+
+        console.log(chalk.white('   2. Initialize AutomatosX:'));
+        console.log(chalk.gray('      ax init\n'));
+
+        console.log(chalk.white('   3. Start using AutomatosX:'));
+        console.log(chalk.gray('      ax list agents'));
+        console.log(chalk.gray('      ax run <agent-name> "your task"\n'));
+
+        console.log(chalk.dim('   Example:'));
+        console.log(chalk.dim('      mkdir ~/projects/my-ai-project'));
+        console.log(chalk.dim('      cd ~/projects/my-ai-project'));
+        console.log(chalk.dim('      ax init\n'));
+
+        process.exit(1);
+      }
+
       // Pre-flight validation
       console.log(chalk.cyan('🔍 Validating environment...'));
       await validateEnvironment(packageRoot);
@@ -161,19 +187,26 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       console.log(chalk.gray('  1. Review automatosx.config.json'));
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
       console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
-      console.log(chalk.cyan('Available example agents:'));
-      console.log(chalk.gray('  • backend    - Backend engineer'));
-      console.log(chalk.gray('  • frontend   - Frontend engineer'));
-      console.log(chalk.gray('  • devops     - DevOps specialist'));
-      console.log(chalk.gray('  • security   - Security analyst'));
-      console.log(chalk.gray('  • quality    - QA specialist'));
-      console.log(chalk.gray('  • data       - Data scientist'));
-      console.log(chalk.gray('  • design     - Product designer'));
-      console.log(chalk.gray('  • writer     - Technical writer'));
-      console.log(chalk.gray('  • product    - Product manager'));
-      console.log(chalk.gray('  • ceo        - Executive advisor'));
-      console.log(chalk.gray('  • cto        - Technology strategist'));
-      console.log(chalk.gray('  • researcher - Research analyst\n'));
+      console.log(chalk.cyan('Available example agents (19 total):'));
+      console.log(chalk.gray('  • aerospace-scientist  - Astrid (Aerospace Mission Scientist)'));
+      console.log(chalk.gray('  • backend             - Bob (Senior Backend Engineer)'));
+      console.log(chalk.gray('  • ceo                 - Eric (Chief Executive Officer)'));
+      console.log(chalk.gray('  • creative-marketer   - Candy (Creative Marketing Strategist)'));
+      console.log(chalk.gray('  • cto                 - Tony (Chief Technology Officer)'));
+      console.log(chalk.gray('  • data                - Daisy (Data Engineer)'));
+      console.log(chalk.gray('  • data-scientist      - Dana (Data Scientist)'));
+      console.log(chalk.gray('  • design              - Debbee (UX/UI Designer)'));
+      console.log(chalk.gray('  • devops              - Oliver (DevOps Engineer)'));
+      console.log(chalk.gray('  • frontend            - Frank (Senior Frontend Developer)'));
+      console.log(chalk.gray('  • fullstack           - Felix (Fullstack Engineer)'));
+      console.log(chalk.gray('  • mobile              - Maya (Mobile Engineer)'));
+      console.log(chalk.gray('  • product             - Paris (Product Manager)'));
+      console.log(chalk.gray('  • quality             - Queenie (QA Engineer)'));
+      console.log(chalk.gray('  • quantum-engineer    - Quinn (Quantum Systems Engineer)'));
+      console.log(chalk.gray('  • researcher          - Rodman (Researcher)'));
+      console.log(chalk.gray('  • security            - Steve (Security Engineer)'));
+      console.log(chalk.gray('  • stan                - Peter (Best Practices Expert)'));
+      console.log(chalk.gray('  • writer              - Wendy (Technical Writer)\n'));
       console.log(chalk.cyan('Claude Code Integration:'));
       console.log(chalk.gray('  • Use /ax-agent command in Claude Code'));
       console.log(chalk.gray('  • Example: /ax-agent backend, create a REST API'));

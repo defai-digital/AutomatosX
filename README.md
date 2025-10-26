@@ -13,9 +13,9 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.29** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.30** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
 
-**Latest (v5.6.29)**: Windows Compatibility Fix - Resolved spawn ENOENT errors for all Windows users (GitHub Issue #4). Added `shell: true` to 6 spawn() calls across all providers (Gemini CLI, Claude Code, OpenAI Codex). Windows 10+ users can now execute AutomatosX without errors. Fully backward compatible with macOS and Linux. Zero breaking changes. [See full changelog →](CHANGELOG.md)
+**Latest (v5.6.30)**: Init Command Improvements - Fixed incomplete agent list (now shows all 19 agents with correct roles) and enhanced home directory error message with step-by-step guidance. Users now see complete agent list including Astrid, Candy, Dana, Felix, Maya, Quinn, and Peter. Better onboarding experience with clear initialization instructions. [See full changelog →](CHANGELOG.md)
 
 ---
 

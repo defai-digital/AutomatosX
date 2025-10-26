@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-26T12:06:17.517Z
+ * Generated: 2025-10-26T12:35:38.001Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -100,8 +100,8 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   },
   "execution": {
     "defaultTimeout": 1500000,
-    "maxConcurrentAgents": 4,
     "concurrency": {
+      "maxConcurrentAgents": 4,
       "autoDetect": false,
       "cpuMultiplier": 1,
       "minConcurrency": 2,
@@ -304,14 +304,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.6.26"
+  "version": "5.6.28"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-26T12:06:17.517Z',
+  generatedAt: '2025-10-26T12:35:38.001Z',
   sourceFile: 'automatosx.config.json',
-  version: '5.6.26'
+  version: '5.6.28'
 } as const;

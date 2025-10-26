@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-25T23:17:50.572Z
+ * Generated: 2025-10-26T10:42:33.044Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -31,6 +31,20 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "enabled": true,
         "interval": 300000,
         "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
       }
     },
     "gemini-cli": {
@@ -42,6 +56,20 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "enabled": true,
         "interval": 300000,
         "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
       }
     },
     "openai": {
@@ -53,12 +81,32 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "enabled": true,
         "interval": 300000,
         "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
       }
     }
   },
   "execution": {
     "defaultTimeout": 1500000,
     "maxConcurrentAgents": 4,
+    "concurrency": {
+      "autoDetect": false,
+      "cpuMultiplier": 1,
+      "minConcurrency": 2,
+      "maxConcurrency": 16
+    },
     "retry": {
       "maxAttempts": 3,
       "initialDelay": 1000,
@@ -118,6 +166,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "persistPath": ".automatosx/memory",
     "autoCleanup": true,
     "cleanupDays": 30,
+    "busyTimeout": 5000,
     "search": {
       "defaultLimit": 10,
       "maxLimit": 100,
@@ -172,6 +221,16 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "maxEntries": 100,
       "ttl": 600000,
       "cleanupInterval": 120000
+    },
+    "adaptiveCache": {
+      "maxEntries": 1000,
+      "baseTTL": 300000,
+      "minTTL": 60000,
+      "maxTTL": 3600000,
+      "adaptiveMultiplier": 2,
+      "lowFreqDivisor": 2,
+      "frequencyThreshold": 5,
+      "cleanupInterval": 60000
     },
     "responseCache": {
       "enabled": false,
@@ -229,8 +288,8 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   },
   "cli": {
     "run": {
-      "defaultMemory": false,
-      "defaultSaveMemory": false,
+      "defaultMemory": true,
+      "defaultSaveMemory": true,
       "defaultFormat": "text",
       "defaultVerbose": false
     },
@@ -245,14 +304,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.6.24"
+  "version": "5.6.26"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-25T23:17:50.572Z',
+  generatedAt: '2025-10-26T10:42:33.044Z',
   sourceFile: 'automatosx.config.json',
-  version: '5.6.24'
+  version: '5.6.26'
 } as const;

@@ -79,6 +79,43 @@ GEMINI.md
 .claude/
 .gemini/
 
+# User-specific configuration and secrets
+**/config.local.json
+**/settings.local.json
+**/.secrets/
+**/secrets/
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# API keys and credentials (additional patterns)
+.api-keys
+.credentials
+credentials.json
+service-account*.json
+
+# Database files with potentially sensitive data
+*.db
+*.sqlite
+*.sqlite3
+!.automatosx/memory/memories.db  # Exception: Allow memory DB tracking if needed
+!**/*.test.db                     # Exception: Allow test databases
+
+# Personal notes and documentation
+PERSONAL*.md
+PRIVATE*.md
+TODO-*.md
+NOTES*.md
+
 # Work in progress
 WIP-*.md
 DRAFT-*.md
+
+# System and IDE specific (additional)
+.history/
+*.sublime-*
+.vscode/settings.json
+.vscode/launch.json

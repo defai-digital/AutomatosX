@@ -1,0 +1,6 @@
+
+# AutomatosX
+.automatosx/memory/
+.automatosx/logs/
+automatosx/tmp/  # v5.2: Temporary files
+automatosx.config.json  # Optional: remove to track config

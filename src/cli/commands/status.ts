@@ -16,6 +16,8 @@ import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { OpenAIProvider } from '../../providers/openai-provider.js';
 import { loadConfig } from '../../core/config.js';
+import type { AutomatosXConfig } from '../../types/config.js';
+import { DEFAULT_CONFIG } from '../../types/config.js';
 import { logger } from '../../utils/logger.js';
 import chalk from 'chalk';
 import { existsSync, statSync } from 'fs';
@@ -54,19 +56,31 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
   handler: async (argv) => {
     try {
       const startTime = Date.now();
-      const config = await loadConfig(process.cwd());
-      const projectDir = process.cwd();
-
-      // Initialize path resolver
-      // v5.2: agentWorkspace path kept for PathResolver compatibility (directory not created)
+      const workingDir = process.cwd();
       const pathResolver = new PathResolver({
-        projectDir,
-        workingDir: process.cwd(),
-        agentWorkspace: join(projectDir, '.automatosx', 'workspaces')
+        projectDir: workingDir,
+        workingDir,
+        agentWorkspace: join(workingDir, '.automatosx', 'workspaces')
       });
 
-      // Detect project root
       const detectedProjectDir = await pathResolver.detectProjectRoot();
+      let config: AutomatosXConfig;
+
+      try {
+        config = await loadConfig(detectedProjectDir);
+      } catch (error) {
+        logger.warn('Status command using default configuration due to load failure', {
+          error: (error as Error).message
+        });
+        config = DEFAULT_CONFIG;
+      }
+
+      if (!config) {
+        logger.warn('Status command received empty configuration, falling back to defaults');
+        config = DEFAULT_CONFIG;
+      }
+
+      const providerConfigs = config.providers ?? {};
 
       // Check directories
       const automatosxDir = join(detectedProjectDir, '.automatosx');
@@ -81,33 +95,33 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       // Initialize providers
       const providers = [];
 
-      if (config.providers['claude-code']?.enabled) {
+      if (providerConfigs['claude-code']?.enabled) {
         providers.push(new ClaudeProvider({
           name: 'claude-code',
           enabled: true,
-          priority: config.providers['claude-code'].priority,
-          timeout: config.providers['claude-code'].timeout,
-          command: config.providers['claude-code'].command
+          priority: providerConfigs['claude-code'].priority,
+          timeout: providerConfigs['claude-code'].timeout,
+          command: providerConfigs['claude-code'].command
         }));
       }
 
-      if (config.providers['gemini-cli']?.enabled) {
+      if (providerConfigs['gemini-cli']?.enabled) {
         providers.push(new GeminiProvider({
           name: 'gemini-cli',
           enabled: true,
-          priority: config.providers['gemini-cli'].priority,
-          timeout: config.providers['gemini-cli'].timeout,
-          command: config.providers['gemini-cli'].command
+          priority: providerConfigs['gemini-cli'].priority,
+          timeout: providerConfigs['gemini-cli'].timeout,
+          command: providerConfigs['gemini-cli'].command
         }));
       }
 
-      if (config.providers['openai']?.enabled) {
+      if (providerConfigs['openai']?.enabled) {
         providers.push(new OpenAIProvider({
           name: 'openai',
           enabled: true,
-          priority: config.providers['openai'].priority,
-          timeout: config.providers['openai'].timeout,
-          command: config.providers['openai'].command
+          priority: providerConfigs['openai'].priority,
+          timeout: providerConfigs['openai'].timeout,
+          command: providerConfigs['openai'].command
         }));
       }
 
@@ -154,9 +168,9 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         configuration: {
           configFile: join(detectedProjectDir, 'automatosx.config.json'),
           configExists: existsSync(join(detectedProjectDir, 'automatosx.config.json')),
-          logLevel: config.logging.level,
-          memoryMaxEntries: config.memory.maxEntries,
-          memoryRetentionDays: config.memory.cleanupDays
+          logLevel: config.logging?.level ?? DEFAULT_CONFIG.logging.level,
+          memoryMaxEntries: config.memory?.maxEntries ?? DEFAULT_CONFIG.memory.maxEntries,
+          memoryRetentionDays: config.memory?.cleanupDays ?? DEFAULT_CONFIG.memory.cleanupDays
         },
         directories: {
           automatosx: { path: automatosxDir, exists: existsSync(automatosxDir) },

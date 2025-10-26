@@ -85,29 +85,53 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
 
     try {
       // Prevent global installation (home directory)
-      const homeDir = process.env.HOME || process.env.USERPROFILE;
-      if (homeDir && resolve(projectDir) === resolve(homeDir)) {
-        console.log(chalk.red('\n❌ Error: Cannot initialize AutomatosX in home directory'));
-        console.log(chalk.yellow('\n⚠️  AutomatosX must be initialized in a project directory, not in ~/'));
+      // Fix: Use USERPROFILE on Windows to avoid Git Bash path mismatch
+      const homeDir = process.platform === 'win32'
+        ? process.env.USERPROFILE
+        : process.env.HOME;
 
-        console.log(chalk.cyan('\n📋 Please follow these steps:\n'));
-        console.log(chalk.white('   1. Create a project directory:'));
-        console.log(chalk.gray('      mkdir my-project'));
-        console.log(chalk.gray('      cd my-project\n'));
+      if (homeDir) {
+        // Fix: Case-insensitive comparison on Windows
+        const isSameDir = process.platform === 'win32'
+          ? resolve(projectDir).toLowerCase() === resolve(homeDir).toLowerCase()
+          : resolve(projectDir) === resolve(homeDir);
 
-        console.log(chalk.white('   2. Initialize AutomatosX:'));
-        console.log(chalk.gray('      ax init\n'));
+        if (isSameDir) {
+          console.log(chalk.red('\n❌ Error: Cannot initialize AutomatosX in home directory'));
 
-        console.log(chalk.white('   3. Start using AutomatosX:'));
-        console.log(chalk.gray('      ax list agents'));
-        console.log(chalk.gray('      ax run <agent-name> "your task"\n'));
+          // Fix: Platform-aware error message
+          const homeDirDisplay = process.platform === 'win32'
+            ? '%USERPROFILE%'
+            : '~/';
+          console.log(chalk.yellow(`\n⚠️  AutomatosX must be initialized in a project directory, not in ${homeDirDisplay}`));
 
-        console.log(chalk.dim('   Example:'));
-        console.log(chalk.dim('      mkdir ~/projects/my-ai-project'));
-        console.log(chalk.dim('      cd ~/projects/my-ai-project'));
-        console.log(chalk.dim('      ax init\n'));
+          console.log(chalk.cyan('\n📋 Please follow these steps:\n'));
+          console.log(chalk.white('   1. Create a project directory:'));
+          console.log(chalk.gray('      mkdir my-project'));
+          console.log(chalk.gray('      cd my-project\n'));
 
-        process.exit(1);
+          console.log(chalk.white('   2. Initialize AutomatosX:'));
+          console.log(chalk.gray('      ax init\n'));
+
+          console.log(chalk.white('   3. Start using AutomatosX:'));
+          console.log(chalk.gray('      ax list agents'));
+          console.log(chalk.gray('      ax run <agent-name> "your task"\n'));
+
+          // Fix: Platform-specific examples
+          if (process.platform === 'win32') {
+            console.log(chalk.dim('   Example (Windows):'));
+            console.log(chalk.dim('      mkdir %USERPROFILE%\\projects\\my-ai-project'));
+            console.log(chalk.dim('      cd %USERPROFILE%\\projects\\my-ai-project'));
+            console.log(chalk.dim('      ax init\n'));
+          } else {
+            console.log(chalk.dim('   Example:'));
+            console.log(chalk.dim('      mkdir ~/projects/my-ai-project'));
+            console.log(chalk.dim('      cd ~/projects/my-ai-project'));
+            console.log(chalk.dim('      ax init\n'));
+          }
+
+          process.exit(1);
+        }
       }
 
       // Pre-flight validation

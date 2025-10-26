@@ -989,11 +989,19 @@ export class AgentExecutor {
         return;
       }
 
-      const timeoutId = setTimeout(resolve, ms);
+      let abortHandler: (() => void) | null = null;
+
+      const timeoutId = setTimeout(() => {
+        // Clean up abort listener on normal completion
+        if (abortHandler && signal) {
+          signal.removeEventListener('abort', abortHandler);
+        }
+        resolve();
+      }, ms);
 
       // Support cancellation via AbortSignal
       if (signal) {
-        const abortHandler = () => {
+        abortHandler = () => {
           clearTimeout(timeoutId);
           reject(new Error('Sleep cancelled'));
         };

@@ -16,6 +16,7 @@ import type {
   StreamingOptions
 } from '../types/provider.js';
 import { getProviderSuggestion } from '../utils/environment.js';
+import { logger } from '../utils/logger.js';
 
 export class ClaudeProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -256,47 +257,54 @@ export class ClaudeProvider extends BaseProvider {
 
       // Handle process exit
       child.on('close', (code) => {
-        cleanup();  // Clear all timeouts
+        try {
+          cleanup();  // Clear all timeouts
 
-        if (hasTimedOut) {
-          return; // Timeout already handled
-        }
-
-        if (code !== 0) {
-          const errorMsg = stderr || 'No error message';
-
-          // Parse common error patterns
-          if (errorMsg.toLowerCase().includes('network') ||
-              errorMsg.toLowerCase().includes('connection') ||
-              errorMsg.toLowerCase().includes('econnrefused') ||
-              errorMsg.toLowerCase().includes('enotfound')) {
-            reject(new Error(
-              `Network connection error: Unable to reach Claude API.\n` +
-              `Please check your internet connection and try again.\n` +
-              `Details: ${errorMsg}`
-            ));
-          } else if (errorMsg.toLowerCase().includes('authentication') ||
-                     errorMsg.toLowerCase().includes('unauthorized') ||
-                     errorMsg.toLowerCase().includes('api key')) {
-            reject(new Error(
-              `Authentication failed: Please check your Claude API credentials.\n` +
-              `Details: ${errorMsg}`
-            ));
-          } else if (errorMsg.toLowerCase().includes('rate limit') ||
-                     errorMsg.toLowerCase().includes('quota')) {
-            reject(new Error(
-              `Rate limit exceeded: Please wait a moment and try again.\n` +
-              `Details: ${errorMsg}`
-            ));
-          } else {
-            reject(new Error(`Claude CLI exited with code ${code}: ${errorMsg}`));
+          if (hasTimedOut) {
+            return; // Timeout already handled
           }
-        } else {
-          if (!stdout.trim()) {
-            reject(new Error('Claude CLI returned empty response'));
+
+          if (code !== 0) {
+            const errorMsg = stderr || 'No error message';
+
+            // Parse common error patterns
+            if (errorMsg.toLowerCase().includes('network') ||
+                errorMsg.toLowerCase().includes('connection') ||
+                errorMsg.toLowerCase().includes('econnrefused') ||
+                errorMsg.toLowerCase().includes('enotfound')) {
+              reject(new Error(
+                `Network connection error: Unable to reach Claude API.\n` +
+                `Please check your internet connection and try again.\n` +
+                `Details: ${errorMsg}`
+              ));
+            } else if (errorMsg.toLowerCase().includes('authentication') ||
+                       errorMsg.toLowerCase().includes('unauthorized') ||
+                       errorMsg.toLowerCase().includes('api key')) {
+              reject(new Error(
+                `Authentication failed: Please check your Claude API credentials.\n` +
+                `Details: ${errorMsg}`
+              ));
+            } else if (errorMsg.toLowerCase().includes('rate limit') ||
+                       errorMsg.toLowerCase().includes('quota')) {
+              reject(new Error(
+                `Rate limit exceeded: Please wait a moment and try again.\n` +
+                `Details: ${errorMsg}`
+              ));
+            } else {
+              reject(new Error(`Claude CLI exited with code ${code}: ${errorMsg}`));
+            }
           } else {
-            resolve({ content: stdout.trim() });
+            if (!stdout.trim()) {
+              reject(new Error('Claude CLI returned empty response'));
+            } else {
+              resolve({ content: stdout.trim() });
+            }
           }
+        } catch (handlerError) {
+          // Event handler threw - this is critical
+          const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
+          logger.error('Close event handler error', { error: errMsg, provider: 'claude' });
+          reject(new Error(`Internal error handling process exit: ${errMsg}`));
         }
       });
 

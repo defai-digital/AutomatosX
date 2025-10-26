@@ -15,6 +15,7 @@ import type {
   Cost,
   StreamingOptions
 } from '../types/provider.js';
+import { logger } from '../utils/logger.js';
 
 export class OpenAIProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -251,16 +252,23 @@ export class OpenAIProvider extends BaseProvider {
 
       // Handle process exit
       child.on('close', (code) => {
-        cleanup();  // Clear all timeouts
+        try {
+          cleanup();  // Clear all timeouts
 
-        if (hasTimedOut) {
-          return; // Already rejected by timeout
-        }
+          if (hasTimedOut) {
+            return; // Already rejected by timeout
+          }
 
-        if (code !== 0) {
-          reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
-        } else {
-          resolve({ content: stdout.trim() });
+          if (code !== 0) {
+            reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
+          } else {
+            resolve({ content: stdout.trim() });
+          }
+        } catch (handlerError) {
+          // Event handler threw - this is critical
+          const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
+          logger.error('Close event handler error', { error: errMsg, provider: 'openai' });
+          reject(new Error(`Internal error handling process exit: ${errMsg}`));
         }
       });
 
@@ -536,29 +544,36 @@ export class OpenAIProvider extends BaseProvider {
 
       // Handle process exit
       child.on('close', (code) => {
-        if (hasTimedOut) {
-          return; // Already rejected by timeout
-        }
-
-        if (code !== 0) {
-          reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
-        } else {
-          // Emit final progress
-          if (options.onProgress) {
-            options.onProgress(100);
+        try {
+          if (hasTimedOut) {
+            return; // Already rejected by timeout
           }
 
-          resolve({
-            content: fullOutput.trim(),
-            model: request.model || 'openai-default',
-            tokensUsed: {
-              prompt: this.estimateTokens(prompt),
-              completion: this.estimateTokens(fullOutput),
-              total: this.estimateTokens(prompt) + this.estimateTokens(fullOutput)
-            },
-            latencyMs: Date.now() - startTime,
-            finishReason: 'stop'
-          });
+          if (code !== 0) {
+            reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
+          } else {
+            // Emit final progress
+            if (options.onProgress) {
+              options.onProgress(100);
+            }
+
+            resolve({
+              content: fullOutput.trim(),
+              model: request.model || 'openai-default',
+              tokensUsed: {
+                prompt: this.estimateTokens(prompt),
+                completion: this.estimateTokens(fullOutput),
+                total: this.estimateTokens(prompt) + this.estimateTokens(fullOutput)
+              },
+              latencyMs: Date.now() - startTime,
+              finishReason: 'stop'
+            });
+          }
+        } catch (handlerError) {
+          // Event handler threw - this is critical
+          const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
+          logger.error('Close event handler error (streaming)', { error: errMsg, provider: 'openai' });
+          reject(new Error(`Internal error handling process exit: ${errMsg}`));
         }
       });
 
@@ -606,7 +621,13 @@ export class OpenAIProvider extends BaseProvider {
       }, this.config.timeout);
 
       child.on('close', () => {
-        cleanup(); // Clean up all timeouts
+        try {
+          cleanup(); // Clean up all timeouts
+        } catch (handlerError) {
+          // Event handler threw - this is critical
+          const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
+          logger.error('Close event handler error (cleanup)', { error: errMsg, provider: 'openai' });
+        }
       });
     });
   }

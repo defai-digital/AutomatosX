@@ -6,7 +6,8 @@
 export default function() {
   // Force garbage collection if available
   // Run Node with --expose-gc flag to enable this
-  if (global.gc) {
+  // Skip force GC in CI to prevent race with native cleanup (better-sqlite3)
+  if (global.gc && !process.env.CI) {
     global.gc();
   }
 

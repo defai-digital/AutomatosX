@@ -15,6 +15,7 @@ import type {
   Cost,
   StreamingOptions
 } from '../types/provider.js';
+import { logger } from '../utils/logger.js';
 
 export class GeminiProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -254,15 +255,22 @@ export class GeminiProvider extends BaseProvider {
 
       // Handle process exit
       child.on('close', (code) => {
-        cleanup();  // Clear all timeouts
+        try {
+          cleanup();  // Clear all timeouts
 
-        if (hasTimedOut) {
-          return; // Timeout already handled
-        }
-        if (code !== 0) {
-          reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`));
-        } else {
-          resolve({ content: stdout.trim() });
+          if (hasTimedOut) {
+            return; // Timeout already handled
+          }
+          if (code !== 0) {
+            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`));
+          } else {
+            resolve({ content: stdout.trim() });
+          }
+        } catch (handlerError) {
+          // Event handler threw - this is critical
+          const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
+          logger.error('Close event handler error', { error: errMsg, provider: 'gemini' });
+          reject(new Error(`Internal error handling process exit: ${errMsg}`));
         }
       });
 

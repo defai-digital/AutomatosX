@@ -704,8 +704,15 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
       // Graceful shutdown: cleanup all child processes before exit
       // Fixes: Background tasks hanging when run via Claude Code
-      const { processManager } = await import('../../utils/process-manager.js');
-      await processManager.shutdown(3000); // 3 second timeout
+      try {
+        const { processManager } = await import('../../utils/process-manager.js');
+        await processManager.shutdown(3000); // 3 second timeout
+      } catch (shutdownError) {
+        logger.error('Process manager shutdown failed', {
+          error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
+        });
+        // Continue with process exit anyway
+      }
 
       // Close stdio streams to signal completion
       if (process.stdout.writable) {
@@ -754,8 +761,15 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         await new Promise(resolve => setImmediate(resolve));
 
         // Graceful shutdown: cleanup all child processes before exit
-        const { processManager } = await import('../../utils/process-manager.js');
-        await processManager.shutdown(3000); // 3 second timeout
+        try {
+          const { processManager } = await import('../../utils/process-manager.js');
+          await processManager.shutdown(3000); // 3 second timeout
+        } catch (shutdownError) {
+          logger.error('Process manager shutdown failed', {
+            error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
+          });
+          // Continue with process exit anyway
+        }
 
         // Close stdio streams
         if (process.stdout.writable) {

@@ -61,6 +61,7 @@ export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
    * v5.6.24: Prevents command injection via malicious provider names
+   * v5.6.25: Allow test-provider in test environment
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
@@ -68,7 +69,8 @@ export abstract class BaseProvider implements Provider {
     'gemini',
     'gemini-cli',
     'openai',
-    'codex'
+    'codex',
+    'test-provider'  // v5.6.25: For unit tests
   ] as const;
 
   protected config: ProviderConfig;

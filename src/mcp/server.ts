@@ -24,7 +24,8 @@ import { McpErrorCode } from './types.js';
 import { logger, setLogLevel } from '../utils/logger.js';
 import { loadConfig } from '../core/config.js';
 import { Router } from '../core/router.js';
-import { MemoryManager } from '../core/memory-manager.js';
+import { LazyMemoryManager } from '../core/lazy-memory-manager.js';
+import type { IMemoryManager } from '../types/memory.js';
 import { SessionManager } from '../core/session-manager.js';
 import { WorkspaceManager } from '../core/workspace-manager.js';
 import { ContextManager } from '../agents/context-manager.js';
@@ -70,7 +71,7 @@ export class McpServer {
 
   // Shared services (initialized once per server)
   private router!: Router;
-  private memoryManager!: MemoryManager;
+  private memoryManager!: IMemoryManager;
   private sessionManager!: SessionManager;
   private workspaceManager!: WorkspaceManager;
   private contextManager!: ContextManager;
@@ -116,8 +117,8 @@ export class McpServer {
       join(projectDir, '.automatosx', 'abilities')
     );
 
-    // Initialize MemoryManager
-    this.memoryManager = await MemoryManager.create({
+    // Initialize MemoryManager (v5.6.24: Use LazyMemoryManager for deferred initialization)
+    this.memoryManager = new LazyMemoryManager({
       dbPath: join(projectDir, '.automatosx', 'memory', 'memory.db')
     });
 

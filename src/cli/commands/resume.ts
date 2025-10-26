@@ -11,7 +11,7 @@ import { ContextManager } from '../../agents/context-manager.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { AbilitiesManager } from '../../agents/abilities-manager.js';
 import { AgentExecutor } from '../../agents/executor.js';
-import { MemoryManager } from '../../core/memory-manager.js';
+import { LazyMemoryManager } from '../../core/lazy-memory-manager.js';
 import { Router } from '../../core/router.js';
 import { PathResolver, detectProjectRoot } from '../../core/path-resolver.js';
 import { SessionManager } from '../../core/session-manager.js';
@@ -84,7 +84,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
     console.log(chalk.blue.bold(`\n🔄 AutomatosX - Resuming ${runId.substring(0, 8)}...\n`));
 
     // Declare resources for cleanup
-    let memoryManager: MemoryManager | undefined;
+    let memoryManager: LazyMemoryManager | undefined;
     let router: Router | undefined;
     let contextManager: ContextManager | undefined;
 
@@ -136,13 +136,14 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
       );
 
       // Initialize memory manager if needed
+      // v5.6.24: Use LazyMemoryManager for deferred initialization
       try {
-        memoryManager = await MemoryManager.create({
+        memoryManager = new LazyMemoryManager({
           dbPath: join(projectDir, '.automatosx', 'memory', 'memory.db')
         });
 
         if (argv.verbose) {
-          console.log(chalk.green('✓ Memory system initialized\n'));
+          console.log(chalk.green('✓ Memory system ready (lazy initialization)\n'));
         }
       } catch (error) {
         if (argv.verbose) {

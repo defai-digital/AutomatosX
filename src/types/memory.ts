@@ -395,6 +395,18 @@ export interface IMemoryManager {
    * Import memories from JSON
    */
   importFromJSON(filePath: string, options?: ImportOptions): Promise<ImportResult>;
+
+  /**
+   * Get all memory entries with optional filters
+   */
+  getAll(options?: {
+    type?: string;
+    tags?: string[];
+    limit?: number;
+    offset?: number;
+    orderBy?: 'created' | 'accessed' | 'count';
+    order?: 'asc' | 'desc';
+  }): Promise<MemoryEntry[]>;
 }
 
 /**

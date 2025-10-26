@@ -242,7 +242,7 @@ export class MemoryManager implements IMemoryManager {
       this.entryCount = countResult.count;
 
       this.initialized = true;
-      logger.info('MemoryManager initialized successfully', {
+      logger.debug('MemoryManager initialized successfully', {
         dbPath: normalizePath(this.config.dbPath),
         searchMethod: 'FTS5',
         hasEmbeddingProvider: !!this.embeddingProvider,

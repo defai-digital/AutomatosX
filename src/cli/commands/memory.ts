@@ -4,7 +4,8 @@
 
 import type { CommandModule } from 'yargs';
 import { resolve } from 'path';
-import { MemoryManager } from '../../core/memory-manager.js';
+import { LazyMemoryManager } from '../../core/lazy-memory-manager.js';
+import type { IMemoryManager } from '../../types/memory.js';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { printError } from '../../utils/error-formatter.js';
@@ -56,11 +57,12 @@ const DEFAULT_DB_PATH = '.automatosx/memory/memory.db';
  * Get memory manager instance
  *
  * v4.11.0: No embedding provider needed (uses FTS5)
+ * v5.6.24: Use LazyMemoryManager for consistency
  */
-async function getMemoryManager(dbPath?: string): Promise<MemoryManager> {
+function getMemoryManager(dbPath?: string): IMemoryManager {
   const path = dbPath || DEFAULT_DB_PATH;
 
-  return await MemoryManager.create({
+  return new LazyMemoryManager({
     dbPath: resolve(path),
     maxEntries: 100000,
     autoCleanup: false,

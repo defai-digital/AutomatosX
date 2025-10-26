@@ -23,6 +23,12 @@ import { Router } from '../core/router.js';
 import { PathResolver } from '../core/path-resolver.js';
 import { logger } from '../utils/logger.js';
 import { PathError, ProviderError } from '../utils/errors.js';
+import {
+  ComponentType,
+  LifecycleState,
+  markState,
+  PerformanceTimer
+} from '../utils/performance-markers.js';
 
 /**
  * Provider name aliases (v5.0.7 fix)
@@ -64,7 +70,18 @@ export class ContextManager {
     task: string,
     options?: ContextOptions
   ): Promise<ExecutionContext> {
-    logger.info('Creating execution context', { agentName, task });
+    const timer = new PerformanceTimer(
+      ComponentType.CONTEXT_MANAGER,
+      'createContext',
+      'config',
+      { agentName }
+    );
+
+    markState(ComponentType.CONTEXT_MANAGER, LifecycleState.INITIALIZING, {
+      message: 'creating execution context',
+      agentName,
+      task: task.substring(0, 100) // Truncate long tasks for logging
+    });
 
     // 1. Resolve agent name (supports displayName)
     const resolvedName = await this.config.profileLoader.resolveAgentName(agentName);
@@ -191,13 +208,19 @@ export class ContextManager {
       );
     }
 
-    logger.info('Execution context created', {
+    timer.end({
+      agent: agent.name,
+      provider: provider.name,
+      memoryEntries: context.memory.length
+    });
+
+    markState(ComponentType.CONTEXT_MANAGER, LifecycleState.READY, {
+      message: 'execution context created',
       agent: agent.name,
       provider: provider.name,
       memoryEntries: context.memory.length,
       hasAbilities: abilities.length > 0,
-      hasOrchestration: !!orchestration,
-      isDelegationEnabled: orchestration?.isDelegationEnabled ?? false
+      hasOrchestration: !!orchestration
     });
 
     return context;

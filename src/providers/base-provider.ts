@@ -27,8 +27,10 @@ import { logger } from '../utils/logger.js';
 import { ProviderResponseCache } from '../core/cache.js';
 import { shouldRetryError } from './retry-errors.js';
 import { existsSync } from 'fs';
+import * as path from 'path';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import { shouldAutoEnableMockProviders } from '../utils/environment.js';
+import { providerCache } from '../core/provider-cache.js';
 
 /**
  * Cache entry for availability check results
@@ -56,6 +58,19 @@ interface TokenBucket {
 }
 
 export abstract class BaseProvider implements Provider {
+  /**
+   * Whitelist of allowed provider names for security
+   * v5.6.24: Prevents command injection via malicious provider names
+   */
+  private static readonly ALLOWED_PROVIDER_NAMES = [
+    'claude',
+    'claude-code',
+    'gemini',
+    'gemini-cli',
+    'openai',
+    'codex'
+  ] as const;
+
   protected config: ProviderConfig;
   protected health: HealthStatus;
   protected usageStats: UsageStats;
@@ -101,6 +116,14 @@ export abstract class BaseProvider implements Provider {
   private circuitBreakerRecoveryTimeout: NodeJS.Timeout | null = null;
 
   constructor(config: ProviderConfig) {
+    // v5.6.24: Security - Validate provider name against whitelist
+    if (!BaseProvider.ALLOWED_PROVIDER_NAMES.includes(config.name as any)) {
+      throw new Error(
+        `Invalid provider name: "${config.name}". ` +
+        `Allowed providers: ${BaseProvider.ALLOWED_PROVIDER_NAMES.join(', ')}`
+      );
+    }
+
     this.config = config;
     this.health = {
       available: true,
@@ -194,26 +217,41 @@ export abstract class BaseProvider implements Provider {
       return true;
     }
 
+    // v5.6.25: Check shared provider cache first (across all instances)
+    const ttl = this.calculateAdaptiveTTL();
+    const sharedCached = providerCache.get(this.config.name, ttl);
+
+    if (sharedCached !== undefined) {
+      this.cacheMetrics.availabilityHits++;
+      this.availabilityCacheMetrics.lastHit = Date.now();
+      this.availabilityCacheMetrics.hitCount++;
+      logger.debug(`Using shared cache for ${this.config.name}`, {
+        provider: this.config.name,
+        available: sharedCached,
+        source: 'shared-cache',
+        cacheTTL: ttl,
+        cacheHits: this.cacheMetrics.availabilityHits
+      });
+      return sharedCached;
+    }
+
     // Phase 3 (v5.6.3): Graceful Cache Degradation
-    // Wrap cache read in try-catch to handle corrupted cache gracefully
+    // Fallback to instance cache if shared cache misses
     try {
-      // NEW: Check availability cache first
       if (this.availabilityCache) {
         const age = Date.now() - this.availabilityCache.timestamp;
-        // Phase 3: Use adaptive TTL instead of fixed TTL
-        const ttl = this.calculateAdaptiveTTL();
 
         if (age < ttl) {
           this.cacheMetrics.availabilityHits++;
-          // Phase 3: Track hit metrics
           this.availabilityCacheMetrics.lastHit = Date.now();
           this.availabilityCacheMetrics.totalAge += age;
           this.availabilityCacheMetrics.hitCount++;
-          logger.debug(`Using cached availability for ${this.config.name}`, {
+          logger.debug(`Using instance cache for ${this.config.name}`, {
             provider: this.config.name,
             available: this.availabilityCache.available,
+            source: 'instance-cache',
             cacheAge: age,
-            cacheTTL: ttl, // Phase 3: Log adaptive TTL
+            cacheTTL: ttl,
             uptime: this.calculateUptime().toFixed(1) + '%',
             cacheHits: this.cacheMetrics.availabilityHits
           });
@@ -272,6 +310,8 @@ export abstract class BaseProvider implements Provider {
     // Only cache successful availability checks to prevent caching failures
     if (available) {
       try {
+        // v5.6.25: Update both shared cache and instance cache
+        providerCache.set(this.config.name, available);
         this.availabilityCache = {
           available,
           timestamp: Date.now()
@@ -396,21 +436,30 @@ export abstract class BaseProvider implements Provider {
 
   /**
    * Check if a file path exists and is accessible.
-   * Validates path to prevent path traversal attacks.
+   * Validates path to prevent path traversal and injection attacks.
+   * v5.6.24: Enhanced security with shell metacharacter detection
    *
    * @param path File path to check
    * @returns true if path exists and is valid
    */
   private checkPathExists(path: string): boolean {
     try {
-      // Security: Reject suspicious path patterns
+      // Security: Reject path traversal patterns
       if (path.includes('..')) {
         logger.warn('Path traversal pattern detected (..)', { path });
         return false;
       }
 
+      // Security: Reject home directory shortcuts
       if (path.startsWith('~') || path.includes('~')) {
         logger.warn('Home directory shortcut detected (~)', { path });
+        return false;
+      }
+
+      // v5.6.24: Security - Reject shell metacharacters
+      const DANGEROUS_CHARS = /[;|&$`<>{}[\]'"\\]/;
+      if (DANGEROUS_CHARS.test(path)) {
+        logger.warn('Dangerous shell characters detected in path', { path });
         return false;
       }
 
@@ -423,6 +472,79 @@ export abstract class BaseProvider implements Provider {
       });
       return false;
     }
+  }
+
+  /**
+   * Sanitize and validate command path for security.
+   * v5.6.24: Prevents command injection and validates safe execution paths
+   *
+   * @param cmdPath Command path to sanitize
+   * @returns Sanitized command path
+   * @throws Error if command path is dangerous or not in whitelist
+   */
+  private sanitizeCommandPath(cmdPath: string): string {
+    // 1. Check for dangerous shell metacharacters
+    const DANGEROUS_CHARS = /[;|&$`()<>{}[\]'"\\]/;
+    if (DANGEROUS_CHARS.test(cmdPath)) {
+      throw new Error(
+        `Command path contains dangerous characters: "${cmdPath}". ` +
+        `This may indicate a command injection attempt.`
+      );
+    }
+
+    // 2. For non-absolute paths (command names), validate against whitelist
+    if (!path.isAbsolute(cmdPath)) {
+      const ALLOWED_COMMANDS = [
+        'claude',
+        'claude-code',
+        'gemini',
+        'gemini-cli',
+        'openai',
+        'codex'
+      ];
+
+      if (!ALLOWED_COMMANDS.includes(cmdPath)) {
+        throw new Error(
+          `Command "${cmdPath}" not in whitelist. ` +
+          `Allowed commands: ${ALLOWED_COMMANDS.join(', ')}`
+        );
+      }
+    }
+
+    // 4. For absolute paths, log warning if not in common safe directories
+    if (path.isAbsolute(cmdPath)) {
+      const SAFE_DIRECTORIES = [
+        '/usr/local/bin',
+        '/usr/bin',
+        '/bin',
+        '/opt/homebrew/bin',  // macOS Homebrew (Apple Silicon)
+        '/usr/local/opt'      // macOS Homebrew (Intel)
+      ];
+
+      // Add user directories if available
+      if (process.env.HOME) {
+        SAFE_DIRECTORIES.push(
+          path.join(process.env.HOME, '.local/bin'),
+          path.join(process.env.HOME, 'bin')
+        );
+      }
+
+      const cmdDir = path.dirname(cmdPath);
+      const isSafe = SAFE_DIRECTORIES.some(safeDir =>
+        cmdDir.startsWith(safeDir)
+      );
+
+      if (!isSafe) {
+        logger.warn('Command path not in standard safe directory', {
+          path: cmdPath,
+          directory: cmdDir,
+          safeDirs: SAFE_DIRECTORIES
+        });
+        // Log warning but don't block - allow for custom installations
+      }
+    }
+
+    return cmdPath;
   }
 
   /**
@@ -558,8 +680,21 @@ export abstract class BaseProvider implements Provider {
           }
         };
 
+        // v5.6.24: Security - Sanitize command path before execution
+        let sanitizedCommand: string;
+        try {
+          sanitizedCommand = this.sanitizeCommandPath(command);
+        } catch (error) {
+          logger.error('Command path sanitization failed', {
+            command,
+            error: (error as Error).message
+          });
+          safeResolve(null);
+          return;
+        }
+
         const versionArg = this.config.versionArg || '--version';
-        const proc = spawn(command, [versionArg], {
+        const proc = spawn(sanitizedCommand, [versionArg], {
           stdio: 'pipe',
         });
 

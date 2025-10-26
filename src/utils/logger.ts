@@ -16,13 +16,15 @@ import { existsSync } from 'fs';
 import { dirname } from 'path';
 
 const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3
+  trace: 0,
+  debug: 1,
+  info: 2,
+  warn: 3,
+  error: 4
 };
 
 const COLORS = {
+  trace: '\x1b[90m', // Gray
   debug: '\x1b[36m', // Cyan
   info: '\x1b[32m',  // Green
   warn: '\x1b[33m',  // Yellow
@@ -104,8 +106,15 @@ export class SimpleLogger implements Logger {
   private jsonMode: boolean;
 
   constructor(config: Partial<LoggerConfig> = {}) {
+    // Support AUTOMATOSX_LOG_LEVEL environment variable
+    const envLogLevel = process.env.AUTOMATOSX_LOG_LEVEL?.toLowerCase() as LogLevel | undefined;
+    const validLevels: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
+    const level = (envLogLevel && validLevels.includes(envLogLevel))
+      ? envLogLevel
+      : (config.level || 'info');
+
     this.config = {
-      level: config.level || 'info',
+      level,
       console: config.console ?? true,
       file: config.file
     };
@@ -131,6 +140,10 @@ export class SimpleLogger implements Logger {
    */
   isJSONMode(): boolean {
     return this.jsonMode;
+  }
+
+  trace(message: string, context?: Record<string, unknown>): void {
+    this.log('trace', message, context);
   }
 
   debug(message: string, context?: Record<string, unknown>): void {

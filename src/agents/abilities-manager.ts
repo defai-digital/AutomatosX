@@ -79,7 +79,7 @@ export class AbilitiesManager {
         // Cache it
         this.cache.set(name, content);
 
-        logger.info('Ability loaded', { name, path: abilityPath });
+        logger.trace('Ability loaded', { name, path: abilityPath });
         return content;
 
       } catch (error) {

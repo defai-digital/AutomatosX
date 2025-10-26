@@ -65,6 +65,10 @@ ax cache stats                          # View cache statistics
 ax cache clear                          # Clear all cache
 ax cache show <key>                     # Show cached entry
 
+# Code Quality (NEW v5.6.23)
+npm run check:timers        # Verify timer cleanup patterns
+npx eslint src/             # Run ESLint (async/promise validation)
+
 # Publishing
 npm run version:patch      # Bump version (x.x.N)
 npm run version:minor      # Bump version (x.N.0)
@@ -97,6 +101,43 @@ npm run release:rc         # Create RC pre-release
 - Run `npm run typecheck` before committing
 - Path aliases available: `@/` → `src/`, `@tests/` → `tests/`
 
+### Code Quality & Linting (NEW v5.6.23)
+
+**ESLint Configuration**: Automated detection of async/promise anti-patterns
+
+- `@typescript-eslint/no-floating-promises: error` - All promises MUST be awaited or handled
+- `@typescript-eslint/no-misused-promises: error` - Prevent promise misuse in conditionals
+- `@typescript-eslint/await-thenable: error` - Only await promise-returning values
+
+**Critical Promise/Async Rules**:
+
+```typescript
+// ❌ BAD: Floating promise (ESLint error)
+someAsyncFunction();
+
+// ✅ GOOD: Properly awaited
+await someAsyncFunction();
+
+// ✅ GOOD: Error handled
+someAsyncFunction().catch(error => handleError(error));
+
+// ❌ BAD: Fire-and-forget in background
+void someAsyncFunction();  // Still risky
+
+// ✅ GOOD: Explicit background task with error handling
+someAsyncFunction().catch(error => {
+  logger.error('Background task failed:', error);
+});
+```
+
+**Timer Cleanup Verification**:
+
+```bash
+npm run check:timers        # Verify setTimeout/setInterval cleanup
+```
+
+**Why This Matters**: v5.6.18-v5.6.20 fixed 21 critical bugs (12 CRITICAL) related to unhandled promises and timer leaks. ESLint now prevents these issues automatically.
+
 ### Git Commit Guidelines (IMPORTANT)
 
 **CRITICAL**: Follow user's global `.claude/CLAUDE.md` rules:
@@ -117,7 +158,7 @@ npm run release:rc         # Create RC pre-release
 - Multi-LLM providers (Claude, Gemini, OpenAI) with fallback routing
 - SQLite FTS5 memory (< 1ms search)
 - 4 teams, 24 specialized agents
-- v5.6.22 | 2,116 tests passing (12 skipped) | Node.js 20+
+- v5.6.23 | 2,116 tests passing (12 skipped) | Node.js 20+
 
 **Version Management**:
 
@@ -159,7 +200,16 @@ Bidirectional command translation between AutomatosX and Gemini CLI
 
 ## Critical Development Notes
 
-### Latest Release: v5.6.22 (October 2025)
+### Latest Release: v5.6.23 (October 2025)
+
+**Code Quality Tooling**: ESLint configuration and timer cleanup verification
+
+- **ESLint Config**: Added TypeScript-ESLint rules for async/promise pattern detection
+- **Timer Cleanup Checker**: Shell script to verify setTimeout/setInterval cleanup patterns
+- **Impact**: Automated prevention of promise/timer leaks that caused 21 bugs in v5.6.16-v5.6.20
+- **Key Files**: `.eslintrc.json`, `tools/check-timer-cleanup.sh`
+
+**Previous Release (v5.6.22)**:
 
 **Agent Renaming & Team Refinement**: Core team structure improvements
 

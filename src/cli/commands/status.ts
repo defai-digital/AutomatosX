@@ -10,7 +10,6 @@
  */
 
 import type { CommandModule } from 'yargs';
-import { Router } from '../../core/router.js';
 import { PathResolver } from '../../core/path-resolver.js';
 import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
@@ -112,26 +111,9 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         }));
       }
 
-      // v5.7.0: Include router configuration for health checks
-      const providerHealthCheckIntervals = providers
-        .map(p => config.providers[p.name]?.healthCheck?.interval)
-        .filter((interval): interval is number => interval !== undefined && interval > 0);
-
-      const minProviderHealthCheckInterval = providerHealthCheckIntervals.length > 0
-        ? Math.min(...providerHealthCheckIntervals)
-        : undefined;
-
-      const healthCheckInterval = minProviderHealthCheckInterval ?? config.router?.healthCheckInterval;
-
-      const router = new Router({
-        providers,
-        fallbackEnabled: true,
-        healthCheckInterval,
-        providerCooldownMs: config.router?.providerCooldownMs
-      });
-
-      // Get provider health
-      const availableProviders = await router.getAvailableProviders();
+      // v5.6.25: Optimize status command - avoid Router initialization
+      // Status command only needs to check provider availability, not full Router functionality
+      // This eliminates unnecessary health check timers and cache warmup delays
       const providerHealth = await Promise.all(
         providers.map(async (p) => ({
           name: p.name,
@@ -140,6 +122,9 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
           priority: p.priority
         }))
       );
+
+      // Calculate available providers count for router status display
+      const availableProvidersCount = providerHealth.filter(p => p.available).length;
 
       // v5.2.0: Collect workspace statistics using WorkspaceManager
       const workspaceManager = new WorkspaceManager(detectedProjectDir);
@@ -194,9 +179,16 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         providers: providerHealth,
         router: {
           totalProviders: providers.length,
-          availableProviders: availableProviders.length,
+          availableProviders: availableProvidersCount,
           fallbackEnabled: true,
-          healthCheck: router.getHealthCheckStatus()  // v5.7.0: Add health check status
+          healthCheck: {
+            enabled: config.router?.healthCheckInterval !== undefined,
+            interval: config.router?.healthCheckInterval,
+            checksPerformed: 0,
+            successRate: 100,
+            avgDuration: 0,
+            lastCheck: undefined
+          }
         },
         performance: {
           statusCheckMs: Date.now() - startTime

@@ -148,10 +148,21 @@ class ProcessManager {
     }
 
     // Wait for all children to exit (or timeout)
-    await Promise.race([
-      Promise.all(killPromises),
-      new Promise((resolve) => setTimeout(resolve, timeout))
-    ]);
+    // CRITICAL FIX (v5.6.24): Track and clear timeout to prevent leak
+    let finalTimeoutId: NodeJS.Timeout | null = null;
+    try {
+      await Promise.race([
+        Promise.all(killPromises),
+        new Promise((resolve) => {
+          finalTimeoutId = setTimeout(resolve, timeout);
+        })
+      ]);
+    } finally {
+      // Always clear the timeout, whether processes completed or timed out
+      if (finalTimeoutId !== null) {
+        clearTimeout(finalTimeoutId);
+      }
+    }
 
     logger.info('ProcessManager: Shutdown complete', {
       remainingProcesses: this.childProcesses.size

@@ -15,6 +15,14 @@ import type { TeamManager } from '../core/team-manager.js';
 import type { TeamConfig } from '../types/team.js';
 import type { ProfileCacheConfig } from '../types/config.js';
 import { isValidName } from '../core/validation-limits.js';
+import {
+  ComponentType,
+  LifecycleState,
+  markState,
+  markCacheHit,
+  markCacheMiss,
+  PerformanceTimer
+} from '../utils/performance-markers.js';
 
 // Get the directory of this file for locating built-in agents
 const __filename = fileURLToPath(import.meta.url);
@@ -100,7 +108,7 @@ export class ProfileLoader {
         }
 
         this.mapInitialized = true;
-        logger.info('DisplayName mapping built', {
+        logger.debug('DisplayName mapping built', {
           mappings: this.displayNameMap.size,
           localProfiles: localProfiles.length,
           fallbackProfiles: fallbackProfiles.length
@@ -207,12 +215,22 @@ export class ProfileLoader {
    * Optimized: Try direct load first, only build full mapping if needed
    */
   async resolveAgentName(identifier: string): Promise<string> {
+    markState(ComponentType.PROFILE_LOADER, LifecycleState.RESOLVING, {
+      message: 'resolving agent name',
+      input: identifier
+    });
+
     // Optimization: Try direct profile load first (most common case)
     // This avoids loading all profiles when using profile names directly
     try {
       await this.loadProfile(identifier);
       // If load succeeds, identifier is a valid profile name
-      logger.debug('Using identifier as profile name (direct match)', { identifier });
+      markState(ComponentType.PROFILE_LOADER, LifecycleState.RESOLVED, {
+        message: 'resolved (direct match)',
+        input: identifier,
+        resolved: identifier,
+        method: 'direct'
+      });
       return identifier;
     } catch (error) {
       // Profile not found directly, might be a displayName
@@ -226,9 +244,11 @@ export class ProfileLoader {
         // Try case-insensitive displayName lookup
         const resolved = this.displayNameMap.get(identifier.toLowerCase());
         if (resolved) {
-          logger.debug('Resolved displayName to agent name', {
-            displayName: identifier,
-            name: resolved
+          markState(ComponentType.PROFILE_LOADER, LifecycleState.RESOLVED, {
+            message: 'resolved (displayName match)',
+            input: identifier,
+            resolved,
+            method: 'displayName'
           });
           return resolved;
         }
@@ -246,12 +266,26 @@ export class ProfileLoader {
    * Load a specific agent profile
    */
   async loadProfile(name: string): Promise<AgentProfile> {
+    markState(ComponentType.PROFILE_LOADER, LifecycleState.LOADING, {
+      message: 'loading profile',
+      name
+    });
+
     // Check cache first
     const cached = this.cache.get(name);
     if (cached) {
-      logger.debug('Profile loaded from cache', { name });
+      markCacheHit(ComponentType.PROFILE_LOADER, 'loadProfile', { name });
       return cached;
     }
+
+    markCacheMiss(ComponentType.PROFILE_LOADER, 'loadProfile', { name });
+
+    const timer = new PerformanceTimer(
+      ComponentType.PROFILE_LOADER,
+      'loadProfile',
+      'profile',
+      { name }
+    );
 
     // Get possible paths (primary and fallback)
     const profilePaths = this.getProfilePath(name);
@@ -276,7 +310,15 @@ export class ProfileLoader {
         // Cache it
         this.cache.set(name, profile);
 
-        logger.info('Profile loaded', { name, path: profilePath });
+        timer.end({ path: profilePath, team: profile.team });
+
+        markState(ComponentType.PROFILE_LOADER, LifecycleState.LOADED, {
+          message: 'profile loaded',
+          name,
+          path: profilePath,
+          team: profile.team
+        });
+
         return profile;
 
       } catch (error) {

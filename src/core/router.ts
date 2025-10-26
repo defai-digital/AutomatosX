@@ -17,6 +17,13 @@ import type {
 import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
 import type { ResponseCache } from './response-cache.js';
+import {
+  ComponentType,
+  LifecycleState,
+  markState,
+  markCacheHit,
+  PerformanceTimer
+} from '../utils/performance-markers.js';
 
 export interface RouterConfig {
   providers: Provider[];
@@ -78,7 +85,7 @@ export class Router {
    * Runs in background (non-blocking) to avoid delaying router initialization.
    */
   private async warmupCaches(): Promise<void> {
-    logger.info('Warming up provider caches...', {
+    logger.debug('Warming up provider caches...', {
       providers: this.providers.map(p => p.name)
     });
 
@@ -98,7 +105,7 @@ export class Router {
     );
 
     const duration = Date.now() - startTime;
-    logger.info('Cache warmup completed', {
+    logger.debug('Cache warmup completed', {
       duration,
       providers: this.providers.length
     });
@@ -108,16 +115,35 @@ export class Router {
    * Execute request with automatic provider fallback
    */
   async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
+    const timer = new PerformanceTimer(
+      ComponentType.ROUTER,
+      'execute',
+      'provider'
+    );
+
     const availableProviders = await this.getAvailableProviders();
+
+    markState(ComponentType.ROUTER, LifecycleState.EXECUTING, {
+      message: 'starting execution',
+      totalProviders: this.providers.length,
+      availableProviders: availableProviders.length,
+      fallbackEnabled: this.fallbackEnabled,
+      cacheEnabled: this.cache?.isEnabled ?? false
+    });
 
     if (availableProviders.length === 0) {
       throw ProviderError.noAvailableProviders();
     }
 
     let lastError: Error | undefined;
+    let attemptNumber = 0;
 
     for (const provider of availableProviders) {
+      attemptNumber++;
+
       try {
+        logger.info(`Selecting provider: ${provider.name} (attempt ${attemptNumber}/${availableProviders.length})`);
+
         // Check cache first (if enabled and available)
         if (this.cache?.isEnabled) {
           const modelParams = {
@@ -132,7 +158,12 @@ export class Router {
           );
 
           if (cachedContent) {
-            logger.info(`Cache hit for provider: ${provider.name}`);
+            markCacheHit(ComponentType.ROUTER, 'execute', {
+              provider: provider.name,
+              attempt: attemptNumber
+            });
+
+            timer.end({ cached: true, provider: provider.name });
 
             // Return cached response with minimal latency
             return {
@@ -154,9 +185,17 @@ export class Router {
 
         const response = await provider.execute(request);
 
-        logger.info(`Execution successful with provider: ${provider.name}`, {
+        timer.end({
+          provider: provider.name,
+          attempt: attemptNumber,
           latency: response.latencyMs,
           tokens: response.tokensUsed.total
+        });
+
+        markState(ComponentType.ROUTER, LifecycleState.COMPLETED, {
+          message: 'execution successful',
+          provider: provider.name,
+          attempt: attemptNumber
         });
 
         // Cache successful response (if cache is enabled)
@@ -182,8 +221,12 @@ export class Router {
       } catch (error) {
         lastError = error as Error;
 
-        logger.warn(`Provider ${provider.name} failed`, {
-          error: lastError.message
+        // v5.6.24: Lifecycle logging - Provider failed
+        logger.warn('❌ Router: provider failed', {
+          provider: provider.name,
+          attempt: attemptNumber,
+          error: lastError.message,
+          willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
         });
 
         // Penalize failed provider (add cooldown period)
@@ -197,10 +240,25 @@ export class Router {
           throw lastError;
         }
 
+        // v5.6.24: Lifecycle logging - Fallback triggered
+        if (attemptNumber < availableProviders.length) {
+          logger.info('🔄 Router: fallback triggered', {
+            failedProvider: provider.name,
+            nextProvider: availableProviders[attemptNumber]?.name,
+            remainingProviders: availableProviders.length - attemptNumber
+          });
+        }
+
         // Continue to next provider
         continue;
       }
     }
+
+    // v5.6.24: Lifecycle logging - All providers failed
+    logger.error('❌ Router: all providers failed', {
+      totalAttempts: attemptNumber,
+      lastError: lastError?.message
+    });
 
     // All providers failed
     throw new ProviderError(
@@ -328,7 +386,7 @@ export class Router {
         this.healthCheckMetrics.totalDuration += checkDuration;
 
         // Phase 3: Enhanced logging with cache statistics
-        logger.info('Health check completed', {
+        logger.debug('Health check completed', {
           duration: checkDuration,
           providers: this.providers.map(p => {
             const metrics = p.getCacheMetrics();
@@ -379,7 +437,7 @@ export class Router {
     }, intervalMs);
 
     // Run immediately on start to warm up caches
-    logger.info('Starting background health checks', {
+    logger.debug('Starting background health checks', {
       interval: intervalMs,
       providers: this.providers.map(p => p.name)
     });

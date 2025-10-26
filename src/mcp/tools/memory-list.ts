@@ -9,11 +9,11 @@ import type {
   MemoryListInput,
   MemoryListOutput
 } from '../types.js';
-import { MemoryManager } from '../../core/memory-manager.js';
+import type { IMemoryManager } from '../../types/memory.js';
 import { logger } from '../../utils/logger.js';
 
 export interface MemoryListDependencies {
-  memoryManager: MemoryManager;
+  memoryManager: IMemoryManager;
 }
 
 export function createMemoryListHandler(

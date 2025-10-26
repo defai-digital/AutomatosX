@@ -58,7 +58,7 @@ export class TeamManager {
 
       // Cache and return
       this.cache.set(teamName, team);
-      logger.info('Team loaded', { name: team.name, path: teamPath });
+      logger.debug('Team loaded', { name: team.name, path: teamPath });
 
       return team;
     } catch (error) {

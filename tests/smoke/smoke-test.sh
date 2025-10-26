@@ -145,7 +145,7 @@ fi
 echo "   ✓ Bin entries correct"
 
 # Check engine requirement
-if ! grep -q '"node": ">=20.0.0"' "$PKG_JSON"; then
+if ! grep -q '"node": ">=24.0.0"' "$PKG_JSON"; then
     echo "   ✗ Node version requirement missing or incorrect"
     exit 1
 fi

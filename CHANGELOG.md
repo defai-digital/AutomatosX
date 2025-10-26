@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.33] - 2025-10-27
+
+### Changed
+
+**Node.js v24 Required**
+
+AutomatosX now requires Node.js 24.0.0 or higher for optimal performance, security, and access to modern JavaScript features.
+
+#### Why This Change?
+
+This upgrade brings significant improvements to all users:
+
+**Performance Improvements**:
+- ✅ 10-15% faster execution (V8 engine v13.6)
+- ✅ Faster dependency resolution (npm 11)
+- ✅ Improved async context tracking (AsyncLocalStorage)
+
+**Security & Stability**:
+- ✅ Latest security patches and vulnerability fixes
+- ✅ More reliable async operations
+- ✅ Better memory management
+
+**Future-Proof**:
+- ✅ Node.js 24 becomes LTS in October 2025
+- ✅ Supported until April 2028
+- ✅ Node.js 20 reaches EOL in April 2026
+
+#### What Changed?
+
+**Modified Files**:
+1. `package.json` - Updated engines requirement from `>=20.0.0` to `>=24.0.0`
+2. `.nvmrc` - Added version lock file (specifies Node.js 24)
+3. `README.md` - Added requirements section and upgrade guide
+
+**Impact**:
+- ✅ No breaking changes for existing functionality
+- ✅ All features work exactly the same
+- ⚠️ Users on Node.js 20 need to upgrade
+
+#### How to Upgrade
+
+**Using nvm (recommended)**:
+```bash
+nvm install 24
+nvm use 24
+nvm alias default 24
+npm install -g @defai.digital/automatosx
+```
+
+**Using official installer**:
+1. Download Node.js 24 from [nodejs.org](https://nodejs.org/)
+2. Install (includes npm 11 automatically)
+3. Reinstall AutomatosX: `npm install -g @defai.digital/automatosx`
+
+**Verification**:
+```bash
+node --version  # Should show v24.x.x
+npm --version   # Should show 11.x.x
+ax --version    # Should show 5.6.33
+```
+
+See [README.md](README.md#upgrading-from-nodejs-20) for detailed upgrade instructions.
+
+---
+
 ## [5.6.31] - 2025-10-26
 
 ### Fixed

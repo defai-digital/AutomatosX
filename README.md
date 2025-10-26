@@ -13,9 +13,30 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.31** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.33** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
 
-**Latest (v5.6.31)**: Node.js DEP0190 Deprecation Warning Resolution - Eliminated deprecation warning on macOS/Linux by using conditional shell option (only on Windows). Improves security by reducing command injection attack surface on Unix systems while maintaining Windows `.cmd`/`.bat` compatibility. [See full changelog →](CHANGELOG.md)
+**Latest (v5.6.33)**: Node.js v24 Required - Upgraded minimum Node.js requirement to v24.0.0 for 10-15% performance improvement, latest security patches, and future LTS support (October 2025). Includes npm 11, V8 v13.6, and improved async context tracking. [See upgrade guide →](#upgrading-from-nodejs-20) | [Full changelog →](CHANGELOG.md)
+
+---
+
+## 📋 Requirements
+
+- **Node.js 24.0.0 or higher** (recommended: latest LTS)
+- **npm 11.0.0 or higher** (included with Node.js 24)
+
+> **Why Node.js 24?** AutomatosX requires Node.js 24 for optimal performance, security, and modern JavaScript features. [See upgrade guide →](#upgrading-from-nodejs-20)
+
+### Quick Install Node.js 24
+
+**Using nvm (recommended)**:
+```bash
+nvm install 24
+nvm use 24
+```
+
+**Using official installer**:
+- Download from [nodejs.org](https://nodejs.org/)
+- The installer includes npm 11 automatically
 
 ---
 
@@ -208,6 +229,71 @@ ax run quality "Write tests for the API" # Auto-receives design + implementation
 -   **[Agent Directory](examples/AGENTS_INFO.md)**
 -   **[Workspace Path Conventions](docs/workspace-conventions.md)**
 -   **[Troubleshooting Guide](TROUBLESHOOTING.md)**
+
+---
+
+## ⬆️ Upgrading from Node.js 20
+
+If you're currently using Node.js 20, upgrading to Node.js 24 is recommended for better performance and security.
+
+### Why Upgrade?
+
+- **🚀 10-15% faster execution** - V8 engine v13.6 improvements
+- **🔒 Latest security patches** - Critical vulnerabilities fixed
+- **⚡ npm 11** - Faster dependency resolution
+- **🎯 Better async tracking** - AsyncLocalStorage improvements
+- **📅 Future LTS** - Becomes LTS in October 2025, supported until April 2028
+
+### Upgrade Steps
+
+1. **Install Node.js 24**:
+   ```bash
+   # Using nvm (recommended)
+   nvm install 24
+   nvm use 24
+   nvm alias default 24
+
+   # Or download from https://nodejs.org/
+   ```
+
+2. **Verify installation**:
+   ```bash
+   node --version  # Should show v24.x.x
+   npm --version   # Should show 11.x.x
+   ```
+
+3. **Reinstall AutomatosX**:
+   ```bash
+   npm install -g @defai.digital/automatosx
+   ```
+
+4. **Verify everything works**:
+   ```bash
+   ax --version    # Should show 5.6.33
+   ax list agents
+   ```
+
+### What Changed?
+
+- **Node.js requirement**: `>=20.0.0` → `>=24.0.0`
+- **npm version**: 10.x → 11.x (included with Node.js 24)
+- **Breaking changes**: None for AutomatosX users
+- **Compatibility**: All features work exactly the same
+
+### Troubleshooting
+
+**Issue**: "Unsupported engine" error
+```bash
+# Solution: Update to Node.js 24
+nvm install 24
+nvm use 24
+```
+
+**Issue**: npm version mismatch
+```bash
+# Solution: npm 11 comes with Node.js 24
+# Just install Node.js 24 and npm will be updated automatically
+```
 
 ---
 

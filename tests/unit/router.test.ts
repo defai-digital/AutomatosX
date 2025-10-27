@@ -297,6 +297,14 @@ describe('Router', () => {
   });
 
   describe('health checks', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should perform periodic health checks when interval provided', async () => {
       const routerWithHealthCheck = new Router({
         providers: [mockProvider1],
@@ -304,12 +312,15 @@ describe('Router', () => {
         healthCheckInterval: 100
       });
 
-      // Wait for at least one health check
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for warmup + initial health check + periodic health check
+      await vi.advanceTimersByTimeAsync(300);
 
       expect(mockProvider1.getHealth).toHaveBeenCalled();
 
       routerWithHealthCheck.destroy();
+
+      // Wait a bit after destroy to ensure cleanup completes
+      await vi.advanceTimersByTimeAsync(50);
     });
 
     it('should stop health checks when destroyed', async () => {
@@ -319,15 +330,15 @@ describe('Router', () => {
         healthCheckInterval: 100
       });
 
-      // Wait for warmup to complete before destroying
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      routerWithHealthCheck.destroy();
+      // Wait for warmup and initial health check to complete
+      await vi.advanceTimersByTimeAsync(200);
 
       const callCount = (mockProvider1.getHealth as any).mock.calls.length;
 
-      // Wait to ensure no more calls happen
-      await new Promise(resolve => setTimeout(resolve, 150));
+      routerWithHealthCheck.destroy();
+
+      // Wait to ensure no more calls happen after destroy
+      await vi.advanceTimersByTimeAsync(200);
 
       expect((mockProvider1.getHealth as any).mock.calls.length).toBe(callCount);
     });
@@ -342,13 +353,16 @@ describe('Router', () => {
         healthCheckInterval: 100
       });
 
-      // Wait for health check to run
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for warmup + initial health check + periodic health check
+      await vi.advanceTimersByTimeAsync(300);
 
       // Should not throw unhandled rejection
       expect(mockProvider1.getHealth).toHaveBeenCalled();
 
       routerWithHealthCheck.destroy();
+
+      // Wait for cleanup to complete
+      await vi.advanceTimersByTimeAsync(50);
     });
 
     it('should clear interval handle when destroyed', () => {
@@ -366,6 +380,10 @@ describe('Router', () => {
   });
 
   describe('parallel availability checks', () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should check provider availability in parallel', async () => {
       const startTime = Date.now();
 
@@ -403,6 +421,14 @@ describe('Router', () => {
   });
 
   describe('dynamic provider penalty (cooldown)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should penalize failed providers temporarily', async () => {
       // Provider 1 fails once
       mockProvider1.execute = vi.fn().mockRejectedValueOnce(new Error('Provider failed'));
@@ -458,7 +484,7 @@ describe('Router', () => {
       await shortCooldownRouter.execute(mockRequest);
 
       // Wait for cooldown to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       // Reset mocks
       vi.clearAllMocks();
@@ -476,6 +502,9 @@ describe('Router', () => {
       expect(mockProvider1.execute).toHaveBeenCalled();
 
       shortCooldownRouter.destroy();
+
+      // Wait for cleanup to complete
+      await vi.advanceTimersByTimeAsync(50);
     });
 
     it('should remove penalty on successful execution', async () => {
@@ -508,7 +537,7 @@ describe('Router', () => {
       await shortCooldownRouter.execute(mockRequest);
 
       // Wait for cooldown to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await vi.advanceTimersByTimeAsync(150);
 
       // Provider 1 should be available again and succeed
       const response = await shortCooldownRouter.execute(mockRequest);
@@ -521,6 +550,9 @@ describe('Router', () => {
       expect(mockProvider1.execute).toHaveBeenCalled();
 
       shortCooldownRouter.destroy();
+
+      // Wait for cleanup to complete
+      await vi.advanceTimersByTimeAsync(50);
     });
 
     it('should clear penalties on destroy', () => {

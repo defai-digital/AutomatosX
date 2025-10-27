@@ -10,16 +10,18 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { listCommand } from '../../src/cli/commands/list.js';
+import { detectProjectRoot } from '../../src/core/path-resolver.js';
 
 // Mock the path resolver to use our test directory
 vi.mock('../../src/core/path-resolver.js', async () => {
   const actual = await vi.importActual('../../src/core/path-resolver.js') as any;
+  // Create a mock function that returns a Promise
+  const mockDetectProjectRoot = vi.fn();
+
   return {
     ...actual,
-    detectProjectRoot: vi.fn().mockImplementation(() => {
-      // Return the mocked test directory
-      return (global as any).__testDir || process.cwd();
-    })
+    detectProjectRoot: mockDetectProjectRoot,
+    PathResolver: actual.PathResolver
   };
 });
 
@@ -37,6 +39,9 @@ describe('List Command', () => {
 
     // Set global test directory for mock
     (global as any).__testDir = testDir;
+
+    // Configure the detectProjectRoot mock to return testDir
+    vi.mocked(detectProjectRoot).mockResolvedValue(testDir);
 
     // Spy on console methods
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

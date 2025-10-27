@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-26T20:04:21.239Z
+ * Generated: 2025-10-27T04:29:04.518Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -25,7 +25,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "claude-code": {
       "enabled": true,
       "priority": 3,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "claude",
       "healthCheck": {
         "enabled": true,
@@ -50,7 +50,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "gemini-cli": {
       "enabled": true,
       "priority": 2,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "gemini",
       "healthCheck": {
         "enabled": true,
@@ -75,7 +75,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "openai": {
       "enabled": true,
       "priority": 1,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "codex",
       "healthCheck": {
         "enabled": true,
@@ -99,7 +99,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     }
   },
   "execution": {
-    "defaultTimeout": 1500000,
+    "defaultTimeout": 2700000,
     "concurrency": {
       "maxConcurrentAgents": 4,
       "autoDetect": false,
@@ -157,7 +157,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     },
     "delegation": {
       "maxDepth": 2,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "enableCycleDetection": true
     }
   },
@@ -311,7 +311,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-26T20:04:21.239Z',
+  generatedAt: '2025-10-27T04:29:04.518Z',
   sourceFile: 'automatosx.config.json',
   version: '5.6.28'
 } as const;

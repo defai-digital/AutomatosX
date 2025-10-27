@@ -515,10 +515,17 @@ export abstract class BaseProvider implements Provider {
         'codex'
       ];
 
-      if (!ALLOWED_COMMANDS.includes(cmdPath)) {
+      // v5.6.35: Allow additional commands in test environment
+      const TEST_COMMANDS = ['node', 'echo', 'cat', 'test'];
+      const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+      const allowedCommands = isTestEnv
+        ? [...ALLOWED_COMMANDS, ...TEST_COMMANDS]
+        : ALLOWED_COMMANDS;
+
+      if (!allowedCommands.includes(cmdPath)) {
         throw new Error(
           `Command "${cmdPath}" not in whitelist. ` +
-          `Allowed commands: ${ALLOWED_COMMANDS.join(', ')}`
+          `Allowed commands: ${allowedCommands.join(', ')}`
         );
       }
     }

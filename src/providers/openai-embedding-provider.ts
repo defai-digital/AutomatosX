@@ -21,6 +21,8 @@ const DEFAULT_RETRY_DELAY = 1000;
  */
 export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   private config: Required<EmbeddingProviderConfig>;
+  private abortController: AbortController;
+  private pendingRequests = new Set<NodeJS.Timeout>();
 
   constructor(config: EmbeddingProviderConfig) {
     if (!config.apiKey) {
@@ -39,6 +41,8 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
       maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
       retryDelay: config.retryDelay ?? DEFAULT_RETRY_DELAY
     };
+
+    this.abortController = new AbortController();
   }
 
   /**
@@ -153,7 +157,15 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeout);
 
+    // Track timeout for cleanup
+    this.pendingRequests.add(timeout);
+
     try {
+      // Check if provider is being destroyed
+      if (this.abortController.signal.aborted) {
+        throw new Error('Provider is shutting down');
+      }
+
       const response = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
         headers: {
@@ -169,6 +181,7 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
       });
 
       clearTimeout(timeout);
+      this.pendingRequests.delete(timeout);
 
       if (!response.ok) {
         const error = await response.json() as { error?: { message?: string } };
@@ -183,6 +196,7 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
       return data;
     } catch (error) {
       clearTimeout(timeout);
+      this.pendingRequests.delete(timeout);
       throw error as Error;
     }
   }
@@ -218,9 +232,55 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   }
 
   /**
-   * Sleep utility
+   * Sleep utility with proper timer tracking
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve, reject) => {
+      // Check if provider is being destroyed
+      if (this.abortController.signal.aborted) {
+        reject(new Error('Provider is shutting down'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(timeout);
+        resolve();
+      }, ms);
+
+      // Track timeout for cleanup
+      this.pendingRequests.add(timeout);
+
+      // Support cancellation via AbortSignal
+      const abortHandler = () => {
+        clearTimeout(timeout);
+        this.pendingRequests.delete(timeout);
+        reject(new Error('Sleep cancelled - provider shutting down'));
+      };
+
+      // Use { once: true } to automatically remove listener after first call
+      this.abortController.signal.addEventListener('abort', abortHandler, { once: true });
+    });
+  }
+
+  /**
+   * Cleanup method to cancel pending requests and clear timers
+   * Call this when the provider is no longer needed
+   */
+  cleanup(): void {
+    // Signal to abort all future operations
+    this.abortController.abort();
+
+    // Clear all pending timeout timers
+    for (const timeout of this.pendingRequests) {
+      clearTimeout(timeout);
+    }
+    this.pendingRequests.clear();
+  }
+
+  /**
+   * Alias for cleanup() for consistency with other components
+   */
+  destroy(): void {
+    this.cleanup();
   }
 }

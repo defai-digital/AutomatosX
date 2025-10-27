@@ -19,6 +19,8 @@ describe('Provider Streaming', () => {
     // Enable mock mode for all tests
     process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
     vi.clearAllMocks();
+    // Use real timers for streaming tests (mock execution uses setTimeout)
+    vi.useRealTimers();
   });
 
   afterEach(() => {

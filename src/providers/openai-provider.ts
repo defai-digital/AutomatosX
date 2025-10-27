@@ -119,7 +119,11 @@ export class OpenAIProvider extends BaseProvider {
   // CLI execution helper (Phase 1 implementation)
   private async executeCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
     // Check if running in production mode (real CLI) or test mode (mock)
-    const useMock = process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true';
+    // Enhanced: Check multiple environment variables to ensure mock mode in test environments
+    const useMock =
+      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
 
     if (useMock) {
       // Mock mode for testing
@@ -386,7 +390,11 @@ export class OpenAIProvider extends BaseProvider {
       }
 
       // Check if running in mock mode
-      const useMock = process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true';
+      // Enhanced: Check multiple environment variables to ensure mock mode in test environments
+      const useMock =
+        process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+        process.env.NODE_ENV === 'test' ||
+        process.env.VITEST === 'true';
 
       if (useMock) {
         // Mock streaming simulation

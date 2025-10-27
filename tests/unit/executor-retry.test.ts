@@ -68,6 +68,10 @@ describe('AgentExecutor - Retry Mechanism', () => {
   });
 
   describe('Retry Configuration', () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should retry on retryable errors', async () => {
       const provider = new MockProvider(2); // Fail first 2 attempts
       context.provider = provider as any;
@@ -218,6 +222,10 @@ describe('AgentExecutor - Retry Mechanism', () => {
   });
 
   describe('Retry with Timeout', () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should timeout even with retry enabled', async () => {
       const slowProvider = {
         name: 'mock',

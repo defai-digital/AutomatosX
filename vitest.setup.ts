@@ -26,7 +26,11 @@ beforeEach(() => {
   // This ensures test isolation and prevents module state leakage
   vi.resetModules();
 
-  // Use fake timers for better control
-  // This makes tests faster and more deterministic
-  vi.useFakeTimers();
+  // ✅ v5.7.0: Global fake timers removed
+  // Each test should now explicitly declare its timer requirements using:
+  //   beforeEach(() => vi.useFakeTimers())  // For fake timers
+  //   beforeEach(() => vi.useRealTimers())   // For real timers (if needed)
+  //
+  // Migration completed: All priority tests now manage their own timers
+  // See tmp/fake-timers-migration-roadmap-revised.md for details
 });

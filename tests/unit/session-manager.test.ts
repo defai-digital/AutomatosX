@@ -5,7 +5,7 @@
  * @group core
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SessionManager } from '../../src/core/session-manager.js';
 import { SessionError } from '../../src/types/orchestration.js';
 
@@ -60,6 +60,14 @@ describe('SessionManager', () => {
   });
 
   describe('Agent Management', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should add agent to session', async () => {
       const session = await sessionManager.createSession(
         'Test task',
@@ -99,7 +107,7 @@ describe('SessionManager', () => {
       const originalUpdate = session.updatedAt;
 
       // Small delay to ensure different timestamp
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
       await sessionManager.addAgent(session.id, 'frontend');
 
       const updated = await sessionManager.getSession(session.id);
@@ -110,6 +118,14 @@ describe('SessionManager', () => {
   });
 
   describe('Session Retrieval', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should get session by ID', async () => {
       const created = await sessionManager.createSession(
         'Test task',
@@ -168,7 +184,7 @@ describe('SessionManager', () => {
         'Task 1',
         'backend'
       );
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
       const session2 = await sessionManager.createSession(
         'Task 2',
         'backend'
@@ -185,6 +201,14 @@ describe('SessionManager', () => {
   });
 
   describe('Session Completion', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should complete session successfully', async () => {
       const session = await sessionManager.createSession(
         'Test task',
@@ -204,7 +228,7 @@ describe('SessionManager', () => {
       );
       const originalUpdate = session.updatedAt;
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
       await sessionManager.completeSession(session.id);
 
       const updated = await sessionManager.getSession(session.id);

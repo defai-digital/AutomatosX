@@ -3,7 +3,7 @@
     "claude-code": {
       "enabled": true,
       "priority": 3,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "claude",
       "healthCheck": {
         "enabled": true,
@@ -28,7 +28,7 @@
     "gemini-cli": {
       "enabled": true,
       "priority": 2,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "gemini",
       "healthCheck": {
         "enabled": true,
@@ -53,7 +53,7 @@
     "openai": {
       "enabled": true,
       "priority": 1,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "command": "codex",
       "healthCheck": {
         "enabled": true,
@@ -77,7 +77,7 @@
     }
   },
   "execution": {
-    "defaultTimeout": 1500000,
+    "defaultTimeout": 2700000,
     "concurrency": {
       "maxConcurrentAgents": 4,
       "autoDetect": false,
@@ -135,7 +135,7 @@
     },
     "delegation": {
       "maxDepth": 2,
-      "timeout": 1500000,
+      "timeout": 2700000,
       "enableCycleDetection": true
     }
   },

@@ -5,7 +5,7 @@
  * @group core
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SessionManager } from '../../src/core/session-manager.js';
 import { SessionError } from '../../src/types/orchestration.js';
 

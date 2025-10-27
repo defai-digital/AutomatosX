@@ -15,7 +15,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 
 **Status**: ✅ Production Ready · **v5.6.35** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
 
-**Latest (v5.6.35)**: Documentation & Testing Enhancements - Updated CLAUDE.md with comprehensive build & release workflow documentation, added ESLint command, expanded test documentation (121 test files), and addressed test isolation issues. Provider timeouts increased to 45 minutes for complex long-running tasks. Enabled CLAUDE.md tracking in git for better project guidance. [See full changelog →](CHANGELOG.md)
+**Latest (v5.6.35)**: Documentation & Testing Enhancements - Comprehensive build & release workflow documentation, added ESLint command, expanded test documentation (121 test files), and addressed test isolation issues. Provider timeouts increased to 45 minutes for complex long-running tasks. Fixed TypeScript compilation errors in test suite. [See full changelog →](CHANGELOG.md)
 
 ---
 

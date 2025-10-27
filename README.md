@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.34** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.6.35** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
 
 **Latest (v5.6.34)**: Critical Memory Leak Fix - Resolved AbortSignal listener memory leak in AgentExecutor.sleep() that affected long-running applications with frequent retry operations. Event listeners are now properly cleaned up on both normal completion and abort paths, ensuring 100% resource cleanup coverage. This fix prevents progressive memory accumulation (200-300 bytes per retry) in high-frequency retry scenarios. [See full changelog →](CHANGELOG.md)
 

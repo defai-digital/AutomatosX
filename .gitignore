@@ -74,7 +74,7 @@ RELEASE-NOTES.md
 
 # AI assistant files (internal only)
 AGENTS.md
-CLAUDE.md
+# CLAUDE.md - Now tracked in git for project guidance
 GEMINI.md
 .claude/
 .gemini/

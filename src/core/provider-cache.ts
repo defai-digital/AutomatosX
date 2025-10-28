@@ -64,6 +64,30 @@ class ProviderAvailabilityCache {
   }
 
   /**
+   * Get cache entry with metadata (age, timestamp).
+   * v5.7.2: Added for enhanced metrics tracking.
+   */
+  getWithMetadata(providerName: string, ttl: number = 30000): { available: boolean; age: number } | undefined {
+    const entry = this.cache.get(providerName);
+
+    if (!entry) {
+      return undefined;
+    }
+
+    const age = Date.now() - entry.timestamp;
+
+    if (age >= ttl) {
+      this.cache.delete(providerName);
+      return undefined;
+    }
+
+    return {
+      available: entry.available,
+      age
+    };
+  }
+
+  /**
    * Set availability status for a provider.
    *
    * @param providerName - Provider name

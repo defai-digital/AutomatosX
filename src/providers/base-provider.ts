@@ -221,22 +221,25 @@ export abstract class BaseProvider implements Provider {
 
     // v5.6.25: Check shared provider cache first (across all instances)
     // v5.6.25-fix: Add graceful degradation for shared cache
+    // v5.7.2: Use getWithMetadata for accurate age tracking
     const ttl = this.calculateAdaptiveTTL();
     try {
-      const sharedCached = providerCache.get(this.config.name, ttl);
+      const sharedCached = providerCache.getWithMetadata(this.config.name, ttl);
 
       if (sharedCached !== undefined) {
         this.cacheMetrics.availabilityHits++;
         this.availabilityCacheMetrics.lastHit = Date.now();
+        this.availabilityCacheMetrics.totalAge += sharedCached.age;
         this.availabilityCacheMetrics.hitCount++;
         logger.debug(`Using shared cache for ${this.config.name}`, {
           provider: this.config.name,
-          available: sharedCached,
+          available: sharedCached.available,
           source: 'shared-cache',
+          cacheAge: sharedCached.age,
           cacheTTL: ttl,
           cacheHits: this.cacheMetrics.availabilityHits
         });
-        return sharedCached;
+        return sharedCached.available;
       }
     } catch (error) {
       // Graceful degradation: If shared cache read fails, log and continue to instance cache

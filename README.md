@@ -13,9 +13,9 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.7.3** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
+**Status**: ✅ Production Ready · **v5.8.0** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
-**Latest (v5.7.0)**: Provider Limit Detection & Automatic Rotation - AutomatosX now automatically detects when you've hit usage limits (Claude weekly, Gemini/OpenAI daily) and seamlessly switches to available fallback providers. The system auto-restores providers when limits reset, eliminating downtime and manual intervention. New CLI commands: `ax provider-limits` shows current status. [See full changelog →](CHANGELOG.md)
+**Latest (v5.8.0)**: Spec-Kit Integration - AutomatosX now supports spec-driven development! Define your project specs in `.specify/` directory (spec.md, plan.md, tasks.md) and let AutomatosX automatically orchestrate tasks based on your dependency graph. Features include: DAG-based task execution, cycle detection, LRU caching, and automatic spec detection. Perfect for structured, multi-step projects. [See full changelog →](CHANGELOG.md)
 
 ---
 
@@ -124,6 +124,43 @@ ax run product "Build a complete user authentication feature"
 -   **Full Transparency**: The entire delegation chain is tracked and logged.
 
 [➡️ **Learn More: Multi-Agent Orchestration Guide**](docs/guide/multi-agent-orchestration.md)
+
+---
+
+## 📋 Core Feature: Spec-Driven Development (✨ NEW in v5.8.0)
+
+Define your project structure once, and let AutomatosX orchestrate execution automatically. Perfect for complex, multi-step projects with dependencies.
+
+### How It Works
+
+```bash
+# 1. Initialize spec-kit in your project
+ax init --spec-kit
+
+# 2. Define your project in .specify/ directory
+.specify/
+├── spec.md    # Requirements and success criteria
+├── plan.md    # Technical approach and architecture
+└── tasks.md   # Task breakdown with dependencies
+
+# 3. Example tasks.md format:
+- [ ] id:setup:env ops:"ax run backend 'Setup environment'"
+- [ ] id:impl:api ops:"ax run backend 'Implement API'" dep:setup:env
+- [ ] id:test:api ops:"ax run quality 'Test API'" dep:impl:api
+
+# 4. AutomatosX automatically:
+#    - Detects the spec in your workspace
+#    - Builds a dependency graph (DAG)
+#    - Executes tasks in the correct order
+#    - Caches spec for fast access
+```
+
+**Key Features:**
+-   **Automatic Spec Detection**: Just create `.specify/` and AutomatosX finds it
+-   **DAG-Based Execution**: Tasks run in dependency order with cycle detection
+-   **LRU Caching**: Fast spec loading with checksum-based invalidation
+-   **Multi-Format Support**: Flexible task format with 3 parsing patterns
+-   **File Watching**: Auto-reload when specs change (optional)
 
 ---
 

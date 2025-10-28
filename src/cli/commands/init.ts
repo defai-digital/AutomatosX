@@ -39,6 +39,8 @@ function getPackageRoot(): string {
 interface InitOptions {
   force?: boolean;
   path?: string;
+  specKit?: boolean;
+  skipSpecKit?: boolean;
 }
 
 export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = {
@@ -57,6 +59,14 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
         describe: 'Force initialization even if .automatosx already exists',
         type: 'boolean',
         default: false
+      })
+      .option('spec-kit', {
+        describe: 'Automatically initialize GitHub Spec-Kit for spec-driven development',
+        type: 'boolean'
+      })
+      .option('skip-spec-kit', {
+        describe: 'Skip Spec-Kit initialization (useful for CI/CD)',
+        type: 'boolean'
       });
   },
 
@@ -205,12 +215,29 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       await updateGitignore(projectDir);
       console.log(chalk.green('   ✓ .gitignore updated'));
 
+      // Initialize Spec-Kit (optional, interactive or via flags)
+      const specKitInitialized = await maybeInitializeSpecKit(projectDir, argv);
+
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX initialized successfully!\n'));
       console.log(chalk.gray('Next steps:'));
       console.log(chalk.gray('  1. Review automatosx.config.json'));
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
       console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
+
+      if (specKitInitialized) {
+        console.log(chalk.cyan('Spec-Driven Development:'));
+        console.log(chalk.gray('  • Spec files created in .specify/'));
+        console.log(chalk.gray('  • Use agents to work with specs:'));
+        console.log(chalk.gray('    ax run product "Write spec for feature X"'));
+        console.log(chalk.gray('    ax run tony "Create technical plan"'));
+        console.log(chalk.gray('    ax run backend "Implement according to spec"'));
+        console.log(chalk.gray('  • Validate specs: npx @github/spec-kit validate .specify/\n'));
+      } else {
+        console.log(chalk.cyan('Spec-Driven Development (optional):'));
+        console.log(chalk.gray('  • Initialize later: npx @github/spec-kit init . --here'));
+        console.log(chalk.gray('  • Or use: ax init --spec-kit\n'));
+      }
       console.log(chalk.cyan('Available example agents (19 total):'));
       console.log(chalk.gray('  • aerospace-scientist  - Astrid (Aerospace Mission Scientist)'));
       console.log(chalk.gray('  • backend             - Bob (Senior Backend Engineer)'));
@@ -747,4 +774,146 @@ function replaceAutomatosXSection(content: string, newSection: string): string {
     newSection,
     after.trimStart()
   ].join('\n\n');
+}
+
+/**
+ * Maybe initialize GitHub Spec-Kit for spec-driven development
+ *
+ * This function handles the optional initialization of Spec-Kit based on:
+ * 1. --spec-kit flag: automatically initialize
+ * 2. --skip-spec-kit flag: skip initialization
+ * 3. Interactive prompt (if TTY): ask user
+ * 4. Non-interactive: skip by default
+ *
+ * @param projectDir - Project directory path
+ * @param argv - Command line arguments
+ * @returns Promise<boolean> - true if Spec-Kit was initialized, false otherwise
+ */
+async function maybeInitializeSpecKit(
+  projectDir: string,
+  argv: InitOptions
+): Promise<boolean> {
+  const specifyDir = join(projectDir, '.specify');
+
+  // Skip if .specify/ already exists
+  const specifyExists = await checkExists(specifyDir);
+  if (specifyExists) {
+    logger.info('Spec-Kit directory already exists, skipping initialization', {
+      path: specifyDir
+    });
+    return true; // Consider it "initialized"
+  }
+
+  // Skip if --skip-spec-kit flag is set
+  if (argv.skipSpecKit) {
+    logger.info('Skipping Spec-Kit initialization (--skip-spec-kit flag)');
+    return false;
+  }
+
+  // Auto-initialize if --spec-kit flag is set
+  if (argv.specKit) {
+    console.log(chalk.cyan('\n📋 Initializing GitHub Spec-Kit...'));
+    return await initializeSpecKit(projectDir);
+  }
+
+  // Interactive prompt if running in TTY
+  if (process.stdout.isTTY && process.stdin.isTTY) {
+    console.log(chalk.cyan('\n📋 GitHub Spec-Kit Integration'));
+    console.log(chalk.gray('   Spec-Kit enables spec-driven development workflows.'));
+    console.log(chalk.gray('   It creates .specify/ directory with spec.md, plan.md, and tasks.md'));
+    console.log(chalk.gray('   for structured planning and task management.\n'));
+
+    try {
+      const readline = await import('readline/promises');
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+
+      const answer = await rl.question(
+        chalk.cyan('   Initialize Spec-Kit now? (y/N): ')
+      );
+      rl.close();
+
+      const shouldInit = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+
+      if (shouldInit) {
+        console.log(chalk.cyan('\n   Initializing Spec-Kit...'));
+        return await initializeSpecKit(projectDir);
+      } else {
+        logger.info('User declined Spec-Kit initialization');
+        return false;
+      }
+    } catch (error) {
+      // Error in interactive prompt, skip initialization
+      logger.warn('Failed to prompt for Spec-Kit initialization', {
+        error: (error as Error).message
+      });
+      return false;
+    }
+  }
+
+  // Non-interactive mode: skip by default
+  logger.info('Non-interactive mode, skipping Spec-Kit initialization');
+  return false;
+}
+
+/**
+ * Initialize GitHub Spec-Kit in the project directory
+ *
+ * Executes: npx @github/spec-kit init . --here
+ *
+ * @param projectDir - Project directory path
+ * @returns Promise<boolean> - true if initialization succeeded, false otherwise
+ */
+async function initializeSpecKit(projectDir: string): Promise<boolean> {
+  try {
+    const { spawn } = await import('child_process');
+
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('npx', ['@github/spec-kit', 'init', '.', '--here'], {
+        cwd: projectDir,
+        stdio: 'inherit', // Stream output directly to user
+        shell: true
+      });
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`spec-kit init failed with code ${code}`));
+        } else {
+          resolve();
+        }
+      });
+
+      child.on('error', (error) => {
+        reject(error);
+      });
+    });
+
+    console.log(chalk.green('   ✓ Spec-Kit initialized successfully'));
+    logger.info('Spec-Kit initialized successfully', { projectDir });
+    return true;
+
+  } catch (error) {
+    // Non-critical error - log warning but don't fail the init
+    const errorMessage = (error as Error).message;
+
+    if (errorMessage.includes('ENOENT') || errorMessage.includes('spawn npx')) {
+      console.log(chalk.yellow('   ⚠️  npx not found - cannot initialize Spec-Kit'));
+      console.log(chalk.gray('      Install Node.js 18+ to use Spec-Kit'));
+      console.log(chalk.gray('      Or initialize manually: npm install -g @github/spec-kit\n'));
+    } else {
+      console.log(chalk.yellow('   ⚠️  Failed to initialize Spec-Kit'));
+      console.log(chalk.gray(`      ${errorMessage}`));
+      console.log(chalk.gray('      You can initialize manually later with:'));
+      console.log(chalk.gray('      npx @github/spec-kit init . --here\n'));
+    }
+
+    logger.warn('Spec-Kit initialization failed (non-critical)', {
+      error: errorMessage,
+      projectDir
+    });
+
+    return false;
+  }
 }

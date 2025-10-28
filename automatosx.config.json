@@ -23,6 +23,11 @@
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "weekly",
+        "resetHourUtc": 0
       }
     },
     "gemini-cli": {
@@ -48,6 +53,11 @@
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
       }
     },
     "openai": {
@@ -73,6 +83,11 @@
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
       }
     }
   },
@@ -282,5 +297,5 @@
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.6.28"
+  "version": "5.7.3"
 }

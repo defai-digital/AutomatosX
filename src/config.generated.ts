@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-28T08:33:02.120Z
+ * Generated: 2025-10-28T09:44:54.425Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -45,6 +45,11 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "weekly",
+        "resetHourUtc": 0
       }
     },
     "gemini-cli": {
@@ -70,6 +75,11 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
       }
     },
     "openai": {
@@ -95,6 +105,11 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
       }
     }
   },
@@ -304,14 +319,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.6.28"
+  "version": "5.7.3"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-28T08:33:02.120Z',
+  generatedAt: '2025-10-28T09:44:54.425Z',
   sourceFile: 'automatosx.config.json',
-  version: '5.6.28'
+  version: '5.7.3'
 } as const;

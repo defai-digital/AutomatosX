@@ -217,7 +217,7 @@ describe('Config Command', () => {
       await configCommand.handler?.({
         _: [],
         $0: 'automatosx',
-        set: 'workspace.isolation',
+        set: 'workspace.autoCleanupTmp',
         value: 'false',
         list: false,
         reset: false,
@@ -227,7 +227,7 @@ describe('Config Command', () => {
       // Check saveConfigFile was called with updated config
       expect(saveConfigFile).toHaveBeenCalled();
       const savedConfig = vi.mocked(saveConfigFile).mock.calls[0]?.[1];
-      expect(savedConfig?.workspace.isolation).toBe(false);
+      expect(savedConfig?.workspace.autoCleanupTmp).toBe(false);
 
       exitSpy.mockRestore();
       consoleSpy.mockRestore();

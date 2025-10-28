@@ -12,6 +12,8 @@
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import ora from 'ora';
+import { join } from 'path';
+import { spawn } from 'child_process';
 import { SpecRegistry } from '../../core/spec/SpecRegistry.js';
 import { SpecExecutor } from '../../core/spec/SpecExecutor.js';
 import { SpecGenerator } from '../../core/spec/SpecGenerator.js';
@@ -26,9 +28,9 @@ import { logger } from '../../utils/logger.js';
 import { SpecError, SpecErrorCode } from '../../types/spec.js';
 import type {
   SpecExecutorOptions,
-  TaskFilter
+  TaskFilter,
+  SpecTask
 } from '../../types/spec.js';
-import { spawn } from 'child_process';
 import readline from 'readline';
 
 interface SpecOptions {
@@ -282,7 +284,7 @@ async function handleCreate(
     console.log(chalk.cyan('📋 Tasks Overview:'));
     const tasksByPhase = new Map<string, number>();
     for (const task of spec.tasks) {
-      const prefix = task.id.split(':')[0];
+      const prefix = task.id.split(':')[0] || 'default';
       tasksByPhase.set(prefix, (tasksByPhase.get(prefix) || 0) + 1);
     }
     for (const [phase, count] of tasksByPhase) {
@@ -334,7 +336,17 @@ async function handleRun(
 
   try {
     // Load spec
-    const registry = await SpecRegistry.forWorkspace(workspacePath);
+    const registry = new SpecRegistry({
+      workspacePath,
+      enableCache: true,
+      cacheSize: 100,
+      enableWatch: false,
+      validationOptions: {
+        mode: 'strict',
+        validateDependencies: true,
+        validateOps: true
+      }
+    });
     const spec = await registry.load();
 
     spinner.succeed('Spec loaded');
@@ -344,8 +356,8 @@ async function handleRun(
     console.log(chalk.gray(`  Workspace: ${workspacePath}`));
     console.log(chalk.gray(`  Spec ID: ${spec.metadata.id}`));
 
-    const pendingTasks = spec.tasks.filter(t => t.status === 'pending');
-    const completedTasks = spec.tasks.filter(t => t.status === 'completed');
+    const pendingTasks = spec.tasks.filter((t: SpecTask) => t.status === 'pending');
+    const completedTasks = spec.tasks.filter((t: SpecTask) => t.status === 'completed');
 
     console.log(
       chalk.gray(
@@ -359,6 +371,7 @@ async function handleRun(
 
       for (let i = 0; i < pendingTasks.length; i++) {
         const task = pendingTasks[i];
+        if (!task) continue;
         console.log(chalk.cyan(`[${i + 1}/${pendingTasks.length}]`), task.id);
         console.log(chalk.gray(`  ${task.title}`));
         console.log(chalk.gray(`  Command: ${task.ops}\n`));
@@ -368,7 +381,16 @@ async function handleRun(
     }
 
     // Initialize session manager
-    const sessionManager = new SessionManager(config, workspacePath);
+    const sessionManager = new SessionManager({
+      persistencePath: join(workspacePath, '.automatosx/sessions'),
+      maxSessions: config.orchestration?.session?.maxSessions || 100
+    });
+
+    // Create session for this spec execution
+    const session = await sessionManager.createSession(
+      `Spec execution: ${spec.metadata.id}`,
+      'spec-cli'
+    );
 
     // Build task filter
     const taskFilter: TaskFilter | undefined = argv.task
@@ -377,7 +399,7 @@ async function handleRun(
 
     // Create executor
     const executorOptions: SpecExecutorOptions = {
-      sessionId: sessionManager.getCurrentSessionId() || 'default',
+      sessionId: session.id,
       parallel: argv.parallel ?? false,
       continueOnError: true,
       dryRun: false,
@@ -419,7 +441,17 @@ async function handleStatus(
   const spinner = ora('Loading spec...').start();
 
   try {
-    const registry = await SpecRegistry.forWorkspace(workspacePath);
+    const registry = new SpecRegistry({
+      workspacePath,
+      enableCache: true,
+      cacheSize: 100,
+      enableWatch: false,
+      validationOptions: {
+        mode: 'strict',
+        validateDependencies: true,
+        validateOps: true
+      }
+    });
     const spec = await registry.load();
 
     spinner.succeed('Spec loaded');
@@ -430,9 +462,9 @@ async function handleStatus(
         specId: spec.metadata.id,
         version: spec.metadata.version,
         totalTasks: spec.tasks.length,
-        completedTasks: spec.tasks.filter(t => t.status === 'completed').length,
-        pendingTasks: spec.tasks.filter(t => t.status === 'pending').length,
-        tasks: spec.tasks.map(t => ({
+        completedTasks: spec.tasks.filter((t: SpecTask) => t.status === 'completed').length,
+        pendingTasks: spec.tasks.filter((t: SpecTask) => t.status === 'pending').length,
+        tasks: spec.tasks.map((t: SpecTask) => ({
           id: t.id,
           title: t.title,
           status: t.status,
@@ -444,8 +476,8 @@ async function handleStatus(
       console.log(JSON.stringify(data, null, 2));
     } else {
       // Human-readable output
-      const completedTasks = spec.tasks.filter(t => t.status === 'completed');
-      const pendingTasks = spec.tasks.filter(t => t.status === 'pending');
+      const completedTasks = spec.tasks.filter((t: SpecTask) => t.status === 'completed');
+      const pendingTasks = spec.tasks.filter((t: SpecTask) => t.status === 'pending');
 
       console.log(chalk.cyan(`\n📊 Spec Status`));
       console.log(chalk.gray(`  Version: ${spec.metadata.version}`));
@@ -494,7 +526,17 @@ async function handleValidate(
   const spinner = ora('Validating spec...').start();
 
   try {
-    const registry = await SpecRegistry.forWorkspace(workspacePath);
+    const registry = new SpecRegistry({
+      workspacePath,
+      enableCache: true,
+      cacheSize: 100,
+      enableWatch: false,
+      validationOptions: {
+        mode: 'strict',
+        validateDependencies: true,
+        validateOps: true
+      }
+    });
     const spec = await registry.load();
     const validation = await registry.validate();
 
@@ -503,12 +545,14 @@ async function handleValidate(
     console.log(chalk.cyan('\n✅ Spec Validation Results\n'));
 
     // Display issues
-    if (validation.isValid) {
+    const allIssues = [...validation.errors, ...validation.warnings];
+
+    if (validation.valid) {
       console.log(chalk.green('  All checks passed!\n'));
     } else {
-      console.log(chalk.red(`  ${validation.issues.length} issue(s) found:\n`));
+      console.log(chalk.red(`  ${allIssues.length} issue(s) found:\n`));
 
-      for (const issue of validation.issues) {
+      for (const issue of allIssues) {
         const icon = issue.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠️');
         console.log(`${icon} ${issue.message}`);
         if (issue.file) {
@@ -523,7 +567,7 @@ async function handleValidate(
 
     await registry.destroy();
 
-    if (!validation.isValid && argv.strict) {
+    if (!validation.valid && argv.strict) {
       process.exit(1);
     }
 
@@ -543,7 +587,17 @@ async function handleGraph(
   const spinner = ora('Building dependency graph...').start();
 
   try {
-    const registry = await SpecRegistry.forWorkspace(workspacePath);
+    const registry = new SpecRegistry({
+      workspacePath,
+      enableCache: true,
+      cacheSize: 100,
+      enableWatch: false,
+      validationOptions: {
+        mode: 'strict',
+        validateDependencies: true,
+        validateOps: true
+      }
+    });
     const spec = await registry.load();
 
     if (!spec.graph) {
@@ -577,7 +631,7 @@ async function handleGraph(
       console.log(chalk.cyan('\n📊 Task Dependency Graph\n'));
 
       for (const taskId of spec.graph.sortedTaskIds) {
-        const task = spec.tasks.find(t => t.id === taskId);
+        const task = spec.tasks.find((t: SpecTask) => t.id === taskId);
         if (!task) continue;
 
         const deps = spec.graph.reverseAdjacencyList.get(taskId) || [];

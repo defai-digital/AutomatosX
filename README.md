@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.8.3** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
+**Status**: ✅ Production Ready · **v5.8.4** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
 **Latest (v5.8.0)**: Spec-Kit Integration - AutomatosX now supports spec-driven development! Define your project specs in `.specify/` directory (spec.md, plan.md, tasks.md) and let AutomatosX automatically orchestrate tasks based on your dependency graph. Features include: DAG-based task execution, cycle detection, LRU caching, and automatic spec detection. Perfect for structured, multi-step projects. [See full changelog →](CHANGELOG.md)
 

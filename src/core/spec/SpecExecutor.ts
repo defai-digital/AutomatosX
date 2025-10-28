@@ -48,8 +48,8 @@ export class SpecExecutor {
     this.abortController = new AbortController();
 
     // Build dependency graph
-    this.graphBuilder = new SpecGraphBuilder(spec);
-    this.spec.graph = this.graphBuilder.build();
+    this.graphBuilder = new SpecGraphBuilder();
+    this.spec.graph = SpecGraphBuilder.build(spec.tasks);
 
     // Initialize run state
     this.runState = this.initializeRunState();
@@ -244,6 +244,7 @@ export class SpecExecutor {
 
     for (let i = 0; i < taskIds.length; i++) {
       const taskId = taskIds[i];
+      if (!taskId) continue;
       const state = this.runState.tasks.get(taskId);
 
       if (!state) {
@@ -554,6 +555,11 @@ export class SpecExecutor {
 
       const [, agent, task] = parts;
 
+      if (!agent || !task) {
+        reject(new Error('Missing agent or task'));
+        return;
+      }
+
       logger.debug('Executing ops command', { agent, task });
 
       // Execute as child process
@@ -565,19 +571,23 @@ export class SpecExecutor {
       let stdout = '';
       let stderr = '';
 
-      child.stdout?.on('data', (data: Buffer) => {
-        stdout += data.toString();
-      });
+      if (child.stdout) {
+        child.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+      }
 
-      child.stderr?.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
+      if (child.stderr) {
+        child.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+      }
 
       child.on('error', (error: Error) => {
         reject(error);
       });
 
-      child.on('close', (code: number) => {
+      child.on('close', (code: number | null) => {
         if (code === 0) {
           resolve(stdout);
         } else {

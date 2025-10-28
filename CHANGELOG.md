@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.4] - 2025-10-28
+
+### 🐛 Bug Fixes
+
+**CI/CD TypeScript Errors** - Fixed critical TypeScript compilation errors in SpecExecutor
+
+- **SpecGraphBuilder API** - Fixed incorrect static method usage (line 51-52)
+  - Changed from instance `build()` to static `SpecGraphBuilder.build(spec.tasks)`
+  - Corrected parameter from `ParsedSpec` to `SpecTask[]`
+
+- **Null Safety** - Added taskId undefined checks (line 247)
+  - Prevents runtime errors with undefined array elements
+  - Added early return for null/undefined taskIds
+
+- **Child Process Types** - Fixed spawn() type safety issues (lines 558-596)
+  - Added null checks for `child.stdout` and `child.stderr`
+  - Changed `code: number` to `code: number | null` for close event
+  - Added agent/task validation before spawn
+
+- **File**: `src/core/spec/SpecExecutor.ts`
+- **Fixed**: 11 TypeScript errors
+- **Impact**: All CI/CD pipelines now passing
+
+### 📊 Statistics
+
+- **Tests**: ✅ All 2368 tests passing
+- **TypeCheck**: ✅ Zero TypeScript errors
+- **Build**: ✅ Successful
+- **CI/CD**: ✅ All workflows passing
+
+---
+
 ## [5.8.3] - 2025-10-28
 
 ### ✨ Features

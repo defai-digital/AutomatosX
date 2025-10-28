@@ -220,14 +220,21 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
             const projectDir = await detectProjectRoot(process.cwd());
             const tempConfig = await loadConfig(projectDir);
-            const tempRouter = new Router(
-              tempConfig,
-              [new ClaudeProvider(tempConfig.providers['claude-code'] || {name: 'claude-code'}),
-               new GeminiProvider(tempConfig.providers['gemini-cli'] || {name: 'gemini-cli'}),
-               new OpenAIProvider(tempConfig.providers['openai'] || {name: 'openai'})],
-              undefined
-            );
-            const realGenerator = new SpecGeneratorClass(tempRouter);
+
+            // Use Claude provider for spec generation (highest priority)
+            const claudeConfig = tempConfig.providers['claude-code'];
+            if (!claudeConfig) {
+              console.error(chalk.red('✗ Claude provider not configured'));
+              process.exit(1);
+            }
+            // Convert config.ProviderConfig to provider.ProviderConfig by adding name
+            const claudeProviderConfig: import('../../types/provider.js').ProviderConfig = {
+              ...claudeConfig,
+              name: 'claude-code',
+              command: claudeConfig.command || 'claude'
+            };
+            const tempProvider = new ClaudeProvider(claudeProviderConfig);
+            const realGenerator = new SpecGeneratorClass(tempProvider);
             const spec = await realGenerator.generate(argv.task, projectDir);
 
             console.log(chalk.green('✓ Generated spec files:\n'));

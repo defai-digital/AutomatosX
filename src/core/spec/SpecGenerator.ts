@@ -197,15 +197,13 @@ Return ONLY valid JSON, no markdown formatting, no explanation.`;
 
     const result = await this.provider.execute({
       prompt,
-      context: '',
-      agentName: 'system',
-      workspacePath: process.cwd(),
+      systemPrompt: 'You are an expert software architect.',
     });
 
     // Parse AI response
     try {
       // Remove markdown code blocks if present
-      let jsonStr = result.output.trim();
+      let jsonStr = result.content.trim();
       if (jsonStr.startsWith('```json')) {
         jsonStr = jsonStr.slice(7);
       }
@@ -325,7 +323,7 @@ ax spec run --parallel
     const tasksByPhase = new Map<string, ParsedTask[]>();
 
     for (const task of spec.tasks) {
-      const prefix = task.id.split(':')[0];
+      const prefix = task.id.split(':')[0] || 'general';
       const phase = prefix.charAt(0).toUpperCase() + prefix.slice(1);
 
       if (!tasksByPhase.has(phase)) {

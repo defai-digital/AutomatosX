@@ -156,7 +156,7 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
 
   handler: async (argv) => {
     try {
-      const workspacePath = detectProjectRoot();
+      const workspacePath = await detectProjectRoot(process.cwd());
       const config = await loadConfig(workspacePath);
 
       switch (argv.subcommand) {
@@ -237,16 +237,25 @@ async function handleCreate(
     process.exit(1);
   }
 
-  // Create router and generator
+  // Create provider and generator
   const spinner = ora('Analyzing task complexity...').start();
 
   try {
-    const router = new Router(
-      config,
-      [new ClaudeProvider(), new GeminiProvider(), new OpenAIProvider()],
-      undefined
-    );
-    const generator = new SpecGenerator(router);
+    // Use Claude provider for spec generation (highest priority)
+    const claudeConfig = config.providers['claude-code'];
+    if (!claudeConfig) {
+      spinner.fail('Claude provider not configured');
+      console.error(chalk.red('✗ Claude provider is required for spec generation'));
+      process.exit(1);
+    }
+    // Convert config.ProviderConfig to provider.ProviderConfig by adding name
+    const claudeProviderConfig: import('../../types/provider.js').ProviderConfig = {
+      ...claudeConfig,
+      name: 'claude-code',
+      command: claudeConfig.command || 'claude'
+    };
+    const provider = new ClaudeProvider(claudeProviderConfig);
+    const generator = new SpecGenerator(provider);
 
     // Analyze complexity
     const complexity = generator.analyzeComplexity(description);

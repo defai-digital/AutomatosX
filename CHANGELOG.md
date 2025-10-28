@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.7.1] - 2025-10-28
+
+### Fixed
+
+- **Release Process**: Re-release v5.7.0 features as v5.7.1 due to NPM 24-hour republish restriction
+  - NPM does not allow republishing the same version within 24 hours of unpublishing
+  - This version is functionally identical to v5.7.0
+  - See [v5.7.0](#570---2025-10-28) below for full feature list
+
 ## [5.7.0] - 2025-10-28
 
 ### Added

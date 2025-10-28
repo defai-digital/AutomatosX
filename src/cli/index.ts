@@ -40,6 +40,7 @@ import { resumeCommand } from './commands/resume.js';
 import { runsCommand } from './commands/runs.js';
 import { geminiCommand } from './commands/gemini.js';
 import { providerLimitsCommand } from './commands/provider-limits.js';
+import { specCommand } from './commands/spec.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -68,6 +69,8 @@ const argv = await yargs(hideBin(process.argv))
   .example('$0 mcp', 'Start MCP server for Claude Code')
   .example('$0 update', 'Update to latest version')
   .example('$0 gemini status', 'Show Gemini CLI integration status')
+  .example('$0 spec run', 'Execute spec-driven tasks')
+  .example('$0 spec status', 'Show spec task status')
 
   // Global options
   .option('debug', {
@@ -105,6 +108,7 @@ const argv = await yargs(hideBin(process.argv))
   .command(mcpCommand)
   .command(geminiCommand)
   .command(providerLimitsCommand)
+  .command(specCommand)
   .command(updateCommand)
 
   // Configuration

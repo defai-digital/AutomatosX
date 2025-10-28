@@ -391,6 +391,67 @@ export interface SpecExecutorOptions {
 }
 
 /**
+ * Spec execution result
+ */
+export interface SpecExecutionResult {
+  /** Spec ID */
+  specId: string;
+
+  /** Session ID */
+  sessionId: string;
+
+  /** Total tasks executed */
+  totalTasks: number;
+
+  /** Completed tasks */
+  completedTasks: number;
+
+  /** Failed tasks */
+  failedTasks: number;
+
+  /** Skipped tasks */
+  skippedTasks: number;
+
+  /** Execution duration (ms) */
+  duration: number;
+
+  /** Task results */
+  taskResults: TaskExecutionResult[];
+
+  /** Run state */
+  runState: SpecRunState;
+}
+
+/**
+ * Task execution result
+ */
+export interface TaskExecutionResult {
+  /** Task ID */
+  taskId: string;
+
+  /** Execution status */
+  status: TaskStatus;
+
+  /** Task output */
+  output?: string;
+
+  /** Error message (if failed) */
+  error?: string;
+
+  /** Execution duration (ms) */
+  duration: number;
+
+  /** Tokens used */
+  tokensUsed?: number;
+
+  /** Agent that executed the task */
+  executedBy?: string;
+
+  /** Retry count */
+  retryCount: number;
+}
+
+/**
  * Task filter for selective execution
  */
 export interface TaskFilter {

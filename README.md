@@ -129,38 +129,201 @@ ax run product "Build a complete user authentication feature"
 
 ## 📋 Core Feature: Spec-Driven Development (✨ NEW in v5.8.0)
 
-Define your project structure once, and let AutomatosX orchestrate execution automatically. Perfect for complex, multi-step projects with dependencies.
+**Transform AutomatosX from a tool into a platform.** Spec-Kit elevates AutomatosX from executing individual agent tasks to orchestrating complex, multi-agent workflows with automatic dependency management.
 
-### How It Works
+### 🎯 The Game Changer
+
+**Before Spec-Kit** (Manual Coordination):
+```bash
+# You manually execute each task in order
+ax run backend "Setup authentication"
+ax run backend "Implement JWT"           # Wait for setup to finish
+ax run security "Audit authentication"   # Wait for implementation
+ax run quality "Write tests"             # Remember dependencies
+ax run devops "Deploy to staging"        # Hope you got the order right
+```
+
+**Problems:**
+- ❌ Manual coordination of every single task
+- ❌ Easy to forget dependencies or run tasks in wrong order
+- ❌ No progress tracking - can't resume if interrupted
+- ❌ Can't parallelize independent tasks
+- ❌ Difficult to share workflows with team
+
+**With Spec-Kit** (Automated Orchestration):
+```bash
+# 1. Define your workflow once in .specify/tasks.md
+- [ ] id:auth:setup ops:"ax run backend 'Setup authentication'"
+- [ ] id:auth:impl ops:"ax run backend 'Implement JWT'" dep:auth:setup
+- [ ] id:auth:audit ops:"ax run security 'Audit'" dep:auth:impl
+- [ ] id:auth:test ops:"ax run quality 'Write tests'" dep:auth:impl
+- [ ] id:deploy ops:"ax run devops 'Deploy'" dep:auth:audit,auth:test
+
+# 2. Execute with one command
+ax spec run --parallel
+
+# AutomatosX automatically:
+# ✅ Executes auth:setup first
+# ✅ Runs auth:impl after setup completes
+# ✅ Runs auth:audit AND auth:test in PARALLEL (both depend only on impl)
+# ✅ Waits for both audit and test before deploying
+# ✅ Saves progress - can resume if interrupted
+```
+
+### 💡 Key Benefits
+
+#### 1. **Declarative Workflows** (Describe WHAT, not HOW)
+You define the desired outcome and dependencies. AutomatosX figures out the execution order automatically.
+
+#### 2. **Smart Dependency Management**
+- **DAG (Directed Acyclic Graph)** automatically resolves execution order
+- **Cycle Detection** prevents infinite loops
+- **Topological Sorting** ensures tasks run when dependencies are ready
+
+#### 3. **Parallel Execution**
+AutomatosX identifies tasks that can run simultaneously:
+```bash
+ax spec run --parallel
+
+# Execution plan:
+# Level 1: auth:setup
+# Level 2: auth:impl
+# Level 3: auth:audit, auth:test  ← Run in parallel!
+# Level 4: deploy
+```
+
+#### 4. **Progress Tracking & Resume**
+```bash
+ax spec status
+# 📊 Progress: 3/5 tasks (60%)
+# ✅ Completed: auth:setup, auth:impl, auth:test
+# ⏳ Pending: auth:audit, deploy
+
+# Interrupted? Resume from checkpoint:
+ax spec run  # Automatically skips completed tasks
+```
+
+#### 5. **Multi-Agent Coordination**
+Define complex workflows involving multiple specialized agents:
+```bash
+# .specify/tasks.md
+- [ ] id:design ops:"ax run product 'Design user authentication API'"
+- [ ] id:backend ops:"ax run backend 'Implement API'" dep:design
+- [ ] id:frontend ops:"ax run frontend 'Build login UI'" dep:design
+- [ ] id:test ops:"ax run quality 'Write E2E tests'" dep:backend,frontend
+- [ ] id:security ops:"ax run security 'Security audit'" dep:backend
+- [ ] id:docs ops:"ax run writer 'Write documentation'" dep:backend,frontend
+- [ ] id:deploy ops:"ax run devops 'Deploy to production'" dep:test,security,docs
+```
+
+**Result**: Product, Backend, Frontend, Quality, Security, Writer, and DevOps agents collaborate automatically in the correct order!
+
+### 📊 Spec-Kit vs Traditional Approach
+
+| Feature | `ax run` (Manual) | `ax spec` (Automated) |
+|---------|-------------------|----------------------|
+| **Task Definition** | Command-line (temporary) | Files (Git-tracked, shareable) |
+| **Dependency Management** | Manual memory | Automatic DAG resolution |
+| **Execution Order** | You control | Automatic topological sort |
+| **Parallel Execution** | Not supported | Automatic detection |
+| **Progress Tracking** | None | Auto-saved to tasks.md |
+| **Resume After Interrupt** | Start over | Resume from checkpoint |
+| **Visualization** | None | Status, graphs, progress bars |
+| **Team Collaboration** | Hard to share | `.specify/` in Git |
+| **Best For** | Quick, one-off tasks | Production workflows, complex projects |
+
+### 🚀 Quick Start
 
 ```bash
 # 1. Initialize spec-kit in your project
 ax init --spec-kit
 
-# 2. Define your project in .specify/ directory
+# 2. Edit .specify/ files
 .specify/
 ├── spec.md    # Requirements and success criteria
 ├── plan.md    # Technical approach and architecture
 └── tasks.md   # Task breakdown with dependencies
 
-# 3. Example tasks.md format:
-- [ ] id:setup:env ops:"ax run backend 'Setup environment'"
-- [ ] id:impl:api ops:"ax run backend 'Implement API'" dep:setup:env
-- [ ] id:test:api ops:"ax run quality 'Test API'" dep:impl:api
+# 3. Validate your spec
+ax spec validate
 
-# 4. AutomatosX automatically:
-#    - Detects the spec in your workspace
-#    - Builds a dependency graph (DAG)
-#    - Executes tasks in the correct order
-#    - Caches spec for fast access
+# 4. Preview execution plan (dry-run)
+ax spec run --dry-run
+
+# 5. Execute the workflow
+ax spec run --parallel
+
+# 6. Track progress
+ax spec status
+
+# 7. Visualize dependencies
+ax spec graph
+ax spec graph --dot | dot -Tpng -o workflow.png
+```
+
+### 🎓 Real-World Example
+
+**Scenario**: Building a complete user authentication feature
+
+**.specify/tasks.md**:
+```markdown
+## Phase 1: Design
+- [ ] id:design:api ops:"ax run product 'Design authentication API'"
+- [ ] id:design:db ops:"ax run backend 'Design user schema'" dep:design:api
+
+## Phase 2: Implementation
+- [ ] id:impl:backend ops:"ax run backend 'Implement JWT auth'" dep:design:db
+- [ ] id:impl:frontend ops:"ax run frontend 'Build login UI'" dep:design:api
+
+## Phase 3: Quality & Security
+- [ ] id:test:unit ops:"ax run quality 'Unit tests'" dep:impl:backend
+- [ ] id:test:e2e ops:"ax run quality 'E2E tests'" dep:impl:backend,impl:frontend
+- [ ] id:security ops:"ax run security 'Security audit'" dep:impl:backend
+
+## Phase 4: Documentation & Deployment
+- [ ] id:docs ops:"ax run writer 'Write docs'" dep:impl:backend,impl:frontend
+- [ ] id:deploy:staging ops:"ax run devops 'Deploy staging'" dep:test:e2e,security
+- [ ] id:deploy:prod ops:"ax run devops 'Deploy production'" dep:deploy:staging
+```
+
+**Execute**:
+```bash
+ax spec run --parallel
+
+# Automatic execution:
+# 1. design:api first
+# 2. design:db and impl:frontend in parallel (both depend only on design:api)
+# 3. impl:backend after design:db
+# 4. test:unit, test:e2e, security, docs all run in parallel when ready
+# 5. deploy:staging waits for test:e2e and security
+# 6. deploy:prod waits for staging verification
 ```
 
 **Key Features:**
 -   **Automatic Spec Detection**: Just create `.specify/` and AutomatosX finds it
 -   **DAG-Based Execution**: Tasks run in dependency order with cycle detection
--   **LRU Caching**: Fast spec loading with checksum-based invalidation
--   **Multi-Format Support**: Flexible task format with 3 parsing patterns
--   **File Watching**: Auto-reload when specs change (optional)
+-   **Parallel Execution**: Backend and frontend implement simultaneously
+-   **Progress Persistence**: Resume from any checkpoint
+-   **Multi-Agent Orchestration**: 7 different agents collaborate automatically
+-   **Visualization**: See dependency graph and execution plan
+
+### 💡 When to Use Spec-Kit
+
+**Use `ax spec` for:**
+- ✅ Complex, multi-step projects (5+ tasks)
+- ✅ Workflows with dependencies
+- ✅ Production environments requiring reliability
+- ✅ Team collaboration (`.specify/` files in Git)
+- ✅ Repeatable workflows (bug fixes, deployments)
+- ✅ Projects requiring progress tracking
+
+**Use `ax run` for:**
+- ✅ Quick, exploratory tasks
+- ✅ One-off commands
+- ✅ Interactive development
+- ✅ Learning and experimentation
+
+**Both are powerful - choose based on your needs!**
 
 ---
 
@@ -267,15 +430,21 @@ $ ax provider-limits
 
 ## ✨ Key Features
 
-| Feature | Traditional AI Chat | Claude Code | AutomatosX |
-|---|---|---|---|
-| **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** |
-| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (22 specialized agents)** |
-| **Autonomous Delegation** | ❌ No | ❌ No | ✅ **Yes (Automatic workflows)** |
-| **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** |
-| **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across all agents)** |
-| **Privacy** | Cloud-Based | Claude Servers | ✅ **100% Local** |
-| **Cost** | Subscription | Included | ✅ **$0 (No API calls for memory)** |
+| Feature | Traditional AI Chat | Claude Code | AutomatosX | AutomatosX + Spec-Kit |
+|---|---|---|---|---|
+| **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** | ✅ **Yes + Spec Context** |
+| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (19 specialized agents)** | ✅ **Yes + Orchestration** |
+| **Autonomous Delegation** | ❌ No | ❌ No | ✅ **Yes (Ad-hoc workflows)** | ✅ **Yes (Automated DAG)** |
+| **Workflow Management** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Declarative (Git-tracked)** |
+| **Dependency Resolution** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Automatic (DAG + Cycles)** |
+| **Parallel Execution** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Automatic Detection** |
+| **Progress Tracking** | ❌ No | ❌ No | ⚠️ **Session Only** | ✅ **Persistent (tasks.md)** |
+| **Resume After Interrupt** | ❌ No | ❌ No | ⚠️ **Start Over** | ✅ **From Checkpoint** |
+| **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** | ✅ **+ Spec-Aware** |
+| **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across agents)** | ✅ **Yes + Team Workflows** |
+| **Privacy** | Cloud-Based | Claude Servers | ✅ **100% Local** | ✅ **100% Local** |
+| **Cost** | Subscription | Included | ✅ **$0 (No API for memory)** | ✅ **$0 (No extra cost)** |
+| **Best For** | Q&A | Development | **Complex Tasks** | **Production Workflows** |
 
 ---
 

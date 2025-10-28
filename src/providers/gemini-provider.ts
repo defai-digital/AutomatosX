@@ -16,6 +16,8 @@ import type {
   StreamingOptions
 } from '../types/provider.js';
 import { logger } from '../utils/logger.js';
+import { ProviderError } from '../utils/errors.js';
+import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 
 export class GeminiProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -276,7 +278,14 @@ export class GeminiProvider extends BaseProvider {
             return; // Timeout already handled
           }
           if (code !== 0) {
-            reject(new Error(`Gemini CLI exited with code ${code}: ${stderr}`));
+            const errorMsg = stderr || 'No error message';
+
+            // v5.7.0: Enhanced error handling with rate limit detection
+            if (this.isRateLimitError(errorMsg)) {
+              reject(this.createRateLimitError(errorMsg));
+            } else {
+              reject(new Error(`Gemini CLI exited with code ${code}: ${errorMsg}`));
+            }
           } else {
             resolve({ content: stdout.trim() });
           }
@@ -375,5 +384,57 @@ export class GeminiProvider extends BaseProvider {
    */
   override supportsStreaming(): boolean {
     return false;
+  }
+
+  /**
+   * Check if error message indicates a rate limit / usage limit error
+   * v5.7.0: Provider limit detection patterns for Gemini
+   */
+  private isRateLimitError(errorMsg: string): boolean {
+    const lowerMsg = errorMsg.toLowerCase();
+    return (
+      lowerMsg.includes('resource_exhausted') ||  // gRPC error code
+      lowerMsg.includes('429') ||                 // HTTP status
+      lowerMsg.includes('ratelimitexceeded') ||   // Gemini API error
+      lowerMsg.includes('quota exceeded') ||
+      lowerMsg.includes('quota') ||
+      lowerMsg.includes('rate limit') ||
+      lowerMsg.includes('too many requests')
+    );
+  }
+
+  /**
+   * Create detailed rate limit error with automatic recording
+   * v5.7.0: Provider limit detection and auto-rotation
+   */
+  private createRateLimitError(errorMsg: string): Error {
+    // Gemini typically has daily limits
+    const limitWindow = 'daily';
+
+    // Calculate reset time
+    const limitManager = getProviderLimitManager();
+    const resetAtMs = limitManager.calculateResetTime(
+      this.config.name,
+      limitWindow
+    );
+
+    // Record limit hit asynchronously (don't block error throwing)
+    void limitManager.recordLimitHit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      {
+        reason: 'quota_exceeded',
+        rawMessage: errorMsg
+      }
+    );
+
+    // Return ProviderError with detailed context
+    return ProviderError.rateLimit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      errorMsg
+    );
   }
 }

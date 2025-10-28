@@ -17,6 +17,8 @@ import type {
 } from '../types/provider.js';
 import { getProviderSuggestion } from '../utils/environment.js';
 import { logger } from '../utils/logger.js';
+import { ProviderError } from '../utils/errors.js';
+import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 
 export class ClaudeProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -298,12 +300,9 @@ export class ClaudeProvider extends BaseProvider {
                 `Authentication failed: Please check your Claude API credentials.\n` +
                 `Details: ${errorMsg}`
               ));
-            } else if (errorMsg.toLowerCase().includes('rate limit') ||
-                       errorMsg.toLowerCase().includes('quota')) {
-              reject(new Error(
-                `Rate limit exceeded: Please wait a moment and try again.\n` +
-                `Details: ${errorMsg}`
-              ));
+            } else if (this.isRateLimitError(errorMsg)) {
+              // v5.7.0: Enhanced rate limit detection with auto-rotation
+              reject(this.createRateLimitError(errorMsg));
             } else {
               reject(new Error(`Claude CLI exited with code ${code}: ${errorMsg}`));
             }
@@ -431,5 +430,57 @@ export class ClaudeProvider extends BaseProvider {
    */
   override supportsStreaming(): boolean {
     return false;
+  }
+
+  /**
+   * Check if error message indicates a rate limit / usage limit error
+   * v5.7.0: Provider limit detection patterns for Claude
+   */
+  private isRateLimitError(errorMsg: string): boolean {
+    const lowerMsg = errorMsg.toLowerCase();
+    return (
+      lowerMsg.includes('rate limit') ||
+      lowerMsg.includes('quota') ||
+      lowerMsg.includes('limit for today') ||
+      lowerMsg.includes('limit for this week') ||
+      lowerMsg.includes('anthropicusagelimit') ||
+      lowerMsg.includes('usage limit') ||
+      lowerMsg.includes('exceeded') && (lowerMsg.includes('limit') || lowerMsg.includes('quota'))
+    );
+  }
+
+  /**
+   * Create detailed rate limit error with automatic recording
+   * v5.7.0: Provider limit detection and auto-rotation
+   */
+  private createRateLimitError(errorMsg: string): Error {
+    // Determine limit window (Claude Code typically has weekly limits)
+    const limitWindow = errorMsg.toLowerCase().includes('week') ? 'weekly' : 'daily';
+
+    // Calculate reset time
+    const limitManager = getProviderLimitManager();
+    const resetAtMs = limitManager.calculateResetTime(
+      this.config.name,
+      limitWindow
+    );
+
+    // Record limit hit asynchronously (don't block error throwing)
+    void limitManager.recordLimitHit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      {
+        reason: 'usage_limit_exceeded',
+        rawMessage: errorMsg
+      }
+    );
+
+    // Return ProviderError with detailed context
+    return ProviderError.rateLimit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      errorMsg
+    );
   }
 }

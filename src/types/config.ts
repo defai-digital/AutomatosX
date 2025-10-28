@@ -57,6 +57,17 @@ export interface VersionDetectionConfig {
   cacheEnabled: boolean;    // Cache version detection results
 }
 
+/**
+ * Provider Limit Tracking Configuration (v5.7.0+)
+ * Controls usage limit detection and automatic rotation
+ */
+export interface ProviderLimitTrackingConfig {
+  enabled: boolean;          // Enable limit tracking (default: true)
+  window: 'daily' | 'weekly' | 'custom';  // Reset window type
+  resetHourUtc: number;      // Reset hour in UTC (0-23, default: 0 for midnight)
+  customResetMs?: number;    // Custom reset interval in ms (for 'custom' window only)
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   priority: number;
@@ -77,6 +88,9 @@ export interface ProviderConfig {
   circuitBreaker?: CircuitBreakerConfig;        // Circuit breaker configuration
   processManagement?: ProcessManagementConfig;  // Process lifecycle management
   versionDetection?: VersionDetectionConfig;    // Version detection configuration
+
+  // v5.7.0: Usage limit tracking and automatic rotation
+  limitTracking?: ProviderLimitTrackingConfig;  // Usage limit tracking configuration
 }
 
 // ========================================
@@ -412,6 +426,7 @@ export interface AutomatosXConfig {
 // ========================================
 
 // v5.6.18: Global provider defaults for circuit breaker, process management, and version detection
+// v5.7.0: Added limitTracking defaults
 const GLOBAL_PROVIDER_DEFAULTS = {
   circuitBreaker: {
     enabled: true,
@@ -426,6 +441,11 @@ const GLOBAL_PROVIDER_DEFAULTS = {
     timeout: 5000,           // 5 seconds
     forceKillDelay: 1000,    // 1 second
     cacheEnabled: true
+  },
+  limitTracking: {
+    enabled: true,           // Enabled by default
+    window: 'daily' as const,  // Daily reset by default
+    resetHourUtc: 0          // Midnight UTC
   }
 };
 
@@ -444,7 +464,12 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
       // v5.6.18: Circuit breaker, process management, and version detection
       circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
       processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
-      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection,
+      // v5.7.0: Usage limit tracking
+      limitTracking: {
+        ...GLOBAL_PROVIDER_DEFAULTS.limitTracking,
+        window: 'weekly'  // Claude Code has weekly limits
+      }
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
       // Users can still set provider.defaults in config for specific needs
     },
@@ -461,7 +486,9 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
       // v5.6.18: Circuit breaker, process management, and version detection
       circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
       processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
-      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection,
+      // v5.7.0: Usage limit tracking
+      limitTracking: GLOBAL_PROVIDER_DEFAULTS.limitTracking  // Gemini: daily limits
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
     },
     'openai': {
@@ -477,7 +504,9 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
       // v5.6.18: Circuit breaker, process management, and version detection
       circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
       processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
-      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection,
+      // v5.7.0: Usage limit tracking
+      limitTracking: GLOBAL_PROVIDER_DEFAULTS.limitTracking  // OpenAI: daily limits
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
     }
   },

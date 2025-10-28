@@ -16,6 +16,8 @@ import type {
   StreamingOptions
 } from '../types/provider.js';
 import { logger } from '../utils/logger.js';
+import { ProviderError } from '../utils/errors.js';
+import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 
 export class OpenAIProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -278,7 +280,14 @@ export class OpenAIProvider extends BaseProvider {
           }
 
           if (code !== 0) {
-            reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
+            const errorMsg = stderr || 'No error message';
+
+            // v5.7.0: Enhanced error handling with rate limit detection
+            if (this.isRateLimitError(errorMsg)) {
+              reject(this.createRateLimitError(errorMsg));
+            } else {
+              reject(new Error(`OpenAI CLI exited with code ${code}: ${errorMsg}`));
+            }
           } else {
             resolve({ content: stdout.trim() });
           }
@@ -669,5 +678,56 @@ export class OpenAIProvider extends BaseProvider {
         }
       });
     });
+  }
+
+  /**
+   * Check if error message indicates a rate limit / usage limit error
+   * v5.7.0: Provider limit detection patterns for OpenAI
+   */
+  private isRateLimitError(errorMsg: string): boolean {
+    const lowerMsg = errorMsg.toLowerCase();
+    return (
+      lowerMsg.includes('rate_limit_exceeded') ||  // OpenAI API error type
+      lowerMsg.includes('429') ||                   // HTTP status
+      lowerMsg.includes('quota exceeded') ||
+      lowerMsg.includes('insufficient_quota') ||
+      lowerMsg.includes('rate limit') ||
+      lowerMsg.includes('too many requests')
+    );
+  }
+
+  /**
+   * Create detailed rate limit error with automatic recording
+   * v5.7.0: Provider limit detection and auto-rotation
+   */
+  private createRateLimitError(errorMsg: string): Error {
+    // OpenAI typically has daily limits
+    const limitWindow = 'daily';
+
+    // Calculate reset time
+    const limitManager = getProviderLimitManager();
+    const resetAtMs = limitManager.calculateResetTime(
+      this.config.name,
+      limitWindow
+    );
+
+    // Record limit hit asynchronously (don't block error throwing)
+    void limitManager.recordLimitHit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      {
+        reason: 'rate_limit_exceeded',
+        rawMessage: errorMsg
+      }
+    );
+
+    // Return ProviderError with detailed context
+    return ProviderError.rateLimit(
+      this.config.name,
+      limitWindow,
+      resetAtMs,
+      errorMsg
+    );
   }
 }

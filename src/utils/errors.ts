@@ -357,6 +357,71 @@ export class ProviderError extends BaseError {
       { providerName, originalError: error.message }
     );
   }
+
+  /**
+   * Create rate limit error with detailed context
+   * v5.7.0: Provider limit detection and rotation
+   */
+  static rateLimit(
+    providerName: string,
+    limitWindow: 'daily' | 'weekly' | 'custom',
+    resetAtMs: number,
+    rawMessage?: string,
+    retryAfterSeconds?: number
+  ): ProviderError {
+    const resetDate = new Date(resetAtMs);
+    const hoursUntilReset = Math.ceil((resetAtMs - Date.now()) / (1000 * 60 * 60));
+    const timeDesc = hoursUntilReset < 1
+      ? 'less than 1 hour'
+      : hoursUntilReset === 1
+      ? '1 hour'
+      : `${hoursUntilReset} hours`;
+
+    return new ProviderError(
+      `Provider "${providerName}" has hit its ${limitWindow} usage limit. Resets in ${timeDesc} at ${resetDate.toISOString()}`,
+      ErrorCode.PROVIDER_RATE_LIMIT,
+      [
+        'AutomatosX will automatically switch to the next available provider',
+        `Wait until ${resetDate.toLocaleString()} for "${providerName}" to become available again`,
+        'Check current provider status with "ax provider limits"',
+        'Use "ax provider use <name>" to manually select a different provider'
+      ],
+      {
+        providerName,
+        limitWindow,
+        resetAtMs,
+        rawMessage,
+        retryAfterSeconds
+      }
+    );
+  }
+
+  /**
+   * Create error for all providers exhausted
+   * v5.7.0: Provider limit detection and rotation
+   */
+  static allProvidersLimited(
+    limitedProviders: Array<{ name: string; resetAtMs: number }>,
+    soonestResetMs: number
+  ): ProviderError {
+    const soonestResetDate = new Date(soonestResetMs);
+    const hoursUntilReset = Math.ceil((soonestResetMs - Date.now()) / (1000 * 60 * 60));
+
+    return new ProviderError(
+      `All providers have hit usage limits. Next provider resets in ${hoursUntilReset} hour(s) at ${soonestResetDate.toISOString()}`,
+      ErrorCode.PROVIDER_NO_AVAILABLE,
+      [
+        `Wait until ${soonestResetDate.toLocaleString()} for providers to reset`,
+        'Check provider limits with "ax provider limits"',
+        'Use "ax provider use <name> --force" to override and try anyway',
+        'Consider spreading workload across different time periods'
+      ],
+      {
+        limitedProviders,
+        soonestResetMs
+      }
+    );
+  }
 }
 
 /**

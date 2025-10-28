@@ -39,6 +39,7 @@ import { agentCommand } from './commands/agent/index.js';
 import { resumeCommand } from './commands/resume.js';
 import { runsCommand } from './commands/runs.js';
 import { geminiCommand } from './commands/gemini.js';
+import { providerLimitsCommand } from './commands/provider-limits.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -63,6 +64,7 @@ const argv = await yargs(hideBin(process.argv))
   .example('$0 memory search "topic"', 'Search memory')
   .example('$0 cache status', 'View cache statistics')
   .example('$0 config --list', 'View configuration')
+  .example('$0 provider-limits', 'Show provider usage limits')
   .example('$0 mcp', 'Start MCP server for Claude Code')
   .example('$0 update', 'Update to latest version')
   .example('$0 gemini status', 'Show Gemini CLI integration status')
@@ -102,6 +104,7 @@ const argv = await yargs(hideBin(process.argv))
   .command(memoryCommand)
   .command(mcpCommand)
   .command(geminiCommand)
+  .command(providerLimitsCommand)
   .command(updateCommand)
 
   // Configuration

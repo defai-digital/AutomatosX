@@ -13,9 +13,9 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.6.35** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Production Stability
+**Status**: ✅ Production Ready · **v5.7.0** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
 
-**Latest (v5.6.35)**: Documentation & Testing Enhancements - Comprehensive build & release workflow documentation, added ESLint command, expanded test documentation (121 test files), and addressed test isolation issues. Provider timeouts increased to 45 minutes for complex long-running tasks. Fixed TypeScript compilation errors in test suite. [See full changelog →](CHANGELOG.md)
+**Latest (v5.7.0)**: Provider Limit Detection & Automatic Rotation - AutomatosX now automatically detects when you've hit usage limits (Claude weekly, Gemini/OpenAI daily) and seamlessly switches to available fallback providers. The system auto-restores providers when limits reset, eliminating downtime and manual intervention. New CLI commands: `ax provider-limits` shows current status. [See full changelog →](CHANGELOG.md)
 
 ---
 
@@ -183,6 +183,48 @@ ax run quality "Write tests for the API" # Auto-receives design + implementation
 ```
 
 [➡️ **Read the Terminal Mode Guide**](docs/guide/terminal-mode.md)
+
+---
+
+## 🔄 Intelligent Provider Management (v5.7.0)
+
+AutomatosX automatically handles provider usage limits so you never experience downtime.
+
+### Automatic Limit Detection & Rotation
+
+When you hit a provider's usage limit, AutomatosX instantly detects it and switches to the next available provider:
+
+```bash
+$ ax run backend "implement authentication API"
+⚠️  Switched from openai → gemini-cli
+   (OpenAI daily quota hit, resets at 2025-10-29 00:00 UTC)
+
+✓ Task completed successfully with gemini-cli
+```
+
+### Auto-Recovery
+
+The system tracks reset times (daily/weekly) and automatically restores providers when limits expire. No manual intervention needed.
+
+### Monitor Status
+
+Check your provider status anytime:
+
+```bash
+$ ax provider-limits
+📊 Provider Limits Status
+
+  ⚠️  openai:
+     Status: limited
+     Window: daily
+     Resets: 2025-10-29 00:00:00 (6h)
+
+  ✅ 2 provider(s) available
+```
+
+**Performance**: < 1ms overhead per request, O(1) limit checks, persistent state across restarts.
+
+[➡️ **Learn More: Provider Management Guide**](CHANGELOG.md#570---2025-10-28)
 
 ---
 

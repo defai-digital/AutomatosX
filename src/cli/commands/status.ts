@@ -26,6 +26,7 @@ import { join, basename } from 'path';
 import os from 'os';
 import { printError } from '../../utils/error-formatter.js';
 import { getVersion } from '../../utils/version.js';
+import { getProviderLimitManager } from '../../core/provider-limit-manager.js';
 
 // Get version from package.json (single source of truth)
 const VERSION = getVersion();
@@ -293,6 +294,62 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
             console.log(chalk.gray(`     Latency: ${provider.health.latencyMs}ms`));
             console.log(chalk.gray(`     Error rate: ${(provider.health.errorRate * 100).toFixed(2)}%`));
           }
+        }
+        console.log();
+
+        // v5.7.0: Provider Limits Status
+        console.log(chalk.cyan('Provider Limits:'));
+        try {
+          const limitManager = getProviderLimitManager();
+          await limitManager.initialize();
+
+          const limitStates = limitManager.getAllStates();
+          const manualOverride = limitManager.getManualOverride();
+          const now = Date.now();
+
+          if (limitStates.size === 0 && !manualOverride) {
+            console.log(chalk.gray('  No limits detected. All providers available.'));
+          } else {
+            // Show limited providers
+            if (limitStates.size > 0) {
+              for (const [name, state] of limitStates.entries()) {
+                const remainingMs = state.resetAtMs - now;
+                const hours = Math.ceil(remainingMs / (1000 * 60 * 60));
+                console.log(chalk.yellow(`  ⚠️  ${name}: LIMITED (resets in ${hours}h)`));
+
+                if (argv.verbose) {
+                  const resetDate = new Date(state.resetAtMs);
+                  console.log(chalk.gray(`     Window: ${state.window}`));
+                  console.log(chalk.gray(`     Resets: ${resetDate.toLocaleString()}`));
+                  if (state.reason) {
+                    console.log(chalk.gray(`     Reason: ${state.reason}`));
+                  }
+                }
+              }
+            }
+
+            // Show manual override
+            if (manualOverride) {
+              const expiresText = manualOverride.expiresAtMs
+                ? `expires in ${Math.ceil((manualOverride.expiresAtMs - now) / (1000 * 60))}m`
+                : 'no expiry';
+              console.log(chalk.cyan(`  🔧 Manual Override: ${manualOverride.provider} (${expiresText})`));
+            }
+
+            // Show available providers
+            const availableCount = status.providers.filter(p => {
+              const isLimited = limitStates.has(p.name);
+              const isOverridden = manualOverride && manualOverride.provider !== p.name;
+              return p.available && !isLimited && !isOverridden;
+            }).length;
+
+            if (availableCount > 0) {
+              console.log(chalk.green(`  ✅ ${availableCount} provider(s) available`));
+            }
+          }
+        } catch (error) {
+          logger.warn('Failed to get provider limits', { error: (error as Error).message });
+          console.log(chalk.gray('  (Unable to load limit status)'));
         }
         console.log();
 

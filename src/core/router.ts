@@ -17,6 +17,7 @@ import type {
 import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
 import type { ResponseCache } from './response-cache.js';
+import { getProviderLimitManager } from './provider-limit-manager.js';
 import {
   ComponentType,
   LifecycleState,
@@ -59,6 +60,12 @@ export class Router {
     this.penalizedProviders = new Map();
     this.providerCooldownMs = config.providerCooldownMs ?? 30000; // Default: 30 seconds
     this.cache = config.cache;
+
+    // v5.7.0: Initialize provider limit manager (non-blocking)
+    const limitManager = getProviderLimitManager();
+    void limitManager.initialize().catch(err => {
+      logger.warn('Failed to initialize ProviderLimitManager', { error: err.message });
+    });
 
     // Phase 3: Store interval value for observability
     this.healthCheckIntervalMs = config.healthCheckInterval;
@@ -132,6 +139,28 @@ export class Router {
     });
 
     if (availableProviders.length === 0) {
+      // v5.7.0: Check if all providers are limited (quota exhausted)
+      const limitManager = getProviderLimitManager();
+      const allProviders = this.providers;
+      const limitedProviders = [];
+
+      for (const provider of allProviders) {
+        const limitCheck = limitManager.isProviderLimited(provider.name);
+        if (limitCheck.isLimited && limitCheck.resetAtMs) {
+          limitedProviders.push({
+            name: provider.name,
+            resetAtMs: limitCheck.resetAtMs
+          });
+        }
+      }
+
+      // If all providers are limited, throw specialized error
+      if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
+        const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
+        throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
+      }
+
+      // Otherwise throw generic "no available providers" error
       throw ProviderError.noAvailableProviders();
     }
 
@@ -221,19 +250,49 @@ export class Router {
       } catch (error) {
         lastError = error as Error;
 
-        // v5.6.24: Lifecycle logging - Provider failed
-        logger.warn('❌ Router: provider failed', {
-          provider: provider.name,
-          attempt: attemptNumber,
-          error: lastError.message,
-          willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
-        });
+        // v5.7.0: Check if this is a rate limit error (quota exceeded)
+        const isRateLimitError = error instanceof ProviderError &&
+                                  error.code === ErrorCode.PROVIDER_RATE_LIMIT;
 
-        // Penalize failed provider (add cooldown period)
-        const penaltyExpiry = Date.now() + this.providerCooldownMs;
-        this.penalizedProviders.set(provider.name, penaltyExpiry);
+        if (isRateLimitError) {
+          // Rate limit error - record to limitManager and don't penalize
+          const providerError = error as ProviderError;
+          const limitManager = getProviderLimitManager();
 
-        logger.debug(`Provider ${provider.name} penalized until ${new Date(penaltyExpiry).toISOString()}`);
+          // Ensure limit is recorded (idempotent - safe to call even if already recorded)
+          if (providerError.context?.resetAtMs && providerError.context?.limitWindow) {
+            await limitManager.recordLimitHit(
+              provider.name,
+              providerError.context.limitWindow as 'daily' | 'weekly' | 'custom',
+              providerError.context.resetAtMs,
+              {
+                reason: providerError.context.reason as string || 'usage_limit_exceeded',
+                rawMessage: providerError.message
+              }
+            );
+          }
+
+          logger.warn('⚠️  Router: provider hit usage limit, auto-rotating', {
+            provider: provider.name,
+            attempt: attemptNumber,
+            resetAtMs: providerError.context?.resetAtMs,
+            willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
+          });
+        } else {
+          // Other error - apply cooldown penalty (existing logic)
+          logger.warn('❌ Router: provider failed', {
+            provider: provider.name,
+            attempt: attemptNumber,
+            error: lastError.message,
+            willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
+          });
+
+          // Penalize failed provider (add cooldown period)
+          const penaltyExpiry = Date.now() + this.providerCooldownMs;
+          this.penalizedProviders.set(provider.name, penaltyExpiry);
+
+          logger.debug(`Provider ${provider.name} penalized until ${new Date(penaltyExpiry).toISOString()}`);
+        }
 
         // If fallback is disabled, throw immediately
         if (!this.fallbackEnabled) {
@@ -242,7 +301,9 @@ export class Router {
 
         // v5.6.24: Lifecycle logging - Fallback triggered
         if (attemptNumber < availableProviders.length) {
+          const reason = isRateLimitError ? 'usage limit hit' : 'error';
           logger.info('🔄 Router: fallback triggered', {
+            reason,
             failedProvider: provider.name,
             nextProvider: availableProviders[attemptNumber]?.name,
             remainingProviders: availableProviders.length - attemptNumber
@@ -260,7 +321,27 @@ export class Router {
       lastError: lastError?.message
     });
 
-    // All providers failed
+    // v5.7.0: Check if all providers are limited (quota exhausted)
+    const limitManager = getProviderLimitManager();
+    const limitedProviders = [];
+
+    for (const provider of availableProviders) {
+      const limitCheck = limitManager.isProviderLimited(provider.name);
+      if (limitCheck.isLimited && limitCheck.resetAtMs) {
+        limitedProviders.push({
+          name: provider.name,
+          resetAtMs: limitCheck.resetAtMs
+        });
+      }
+    }
+
+    // If all attempted providers are limited, throw specialized error
+    if (limitedProviders.length === availableProviders.length && limitedProviders.length > 0) {
+      const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
+      throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
+    }
+
+    // Otherwise, throw generic error (existing logic)
     throw new ProviderError(
       `All providers failed. Last error: ${lastError?.message || 'Unknown error'}`,
       ErrorCode.PROVIDER_NO_AVAILABLE,
@@ -276,10 +357,12 @@ export class Router {
 
   /**
    * Get available providers sorted by priority
-   * Filters out penalized providers (those in cooldown period)
+   * v5.7.0: Enhanced with provider limit detection
+   * Filters out penalized providers (those in cooldown period) and limited providers (quota exceeded)
    */
   async getAvailableProviders(): Promise<Provider[]> {
     const now = Date.now();
+    const limitManager = getProviderLimitManager();
 
     // Clean up expired penalties
     for (const [providerName, expiryTime] of this.penalizedProviders.entries()) {
@@ -292,7 +375,16 @@ export class Router {
     // Check availability in parallel
     const checks = this.providers.map(async provider => {
       try {
-        // Skip penalized providers
+        // v5.7.0: Check limit manager first (< 1ms, O(1) operation)
+        const limitCheck = limitManager.isProviderLimited(provider.name, now);
+        if (limitCheck.isLimited) {
+          const remainingSec = Math.ceil((limitCheck.remainingMs || 0) / 1000);
+          const remainingHours = Math.ceil(remainingSec / 3600);
+          logger.debug(`Skipping limited provider ${provider.name} (resets in ${remainingHours}h)`);
+          return null;
+        }
+
+        // Skip penalized providers (existing logic)
         if (this.penalizedProviders.has(provider.name)) {
           const expiryTime = this.penalizedProviders.get(provider.name)!;
           const remainingMs = expiryTime - now;
@@ -360,6 +452,17 @@ export class Router {
       this.healthCheckMetrics.checksPerformed++;
 
       try {
+        // v5.7.0: Refresh expired provider limits (automatic recovery)
+        const limitManager = getProviderLimitManager();
+        const restoredProviders = await limitManager.refreshExpired();
+
+        if (restoredProviders.length > 0) {
+          logger.info('✅ Router: provider limits auto-restored', {
+            providers: restoredProviders,
+            count: restoredProviders.length
+          });
+        }
+
         // Phase 2: Call isAvailable() to refresh cache for all providers
         // This ensures availability cache is always fresh and reduces
         // synchronous checks during actual request execution

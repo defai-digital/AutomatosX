@@ -241,8 +241,9 @@ describe('BaseProvider - Graceful Cache Degradation', () => {
       expect(initialCache).toBeDefined();
 
       // v5.6.25: Corrupt BOTH shared and instance cache
-      const originalGet = providerCache.get.bind(providerCache);
-      vi.spyOn(providerCache, 'get').mockImplementation(() => {
+      // v5.7.2: Updated to mock getWithMetadata instead of get
+      const originalGetWithMetadata = providerCache.getWithMetadata.bind(providerCache);
+      vi.spyOn(providerCache, 'getWithMetadata').mockImplementation(() => {
         throw new Error('Shared cache corrupted');
       });
 
@@ -260,7 +261,7 @@ describe('BaseProvider - Graceful Cache Degradation', () => {
       expect((provider as any).checkCLIAvailabilityEnhanced).toHaveBeenCalledTimes(2);
 
       // Restore
-      providerCache.get = originalGet;
+      providerCache.getWithMetadata = originalGetWithMetadata;
     });
 
     it('should handle cache write failures gracefully', async () => {

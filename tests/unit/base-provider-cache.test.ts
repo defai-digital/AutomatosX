@@ -16,6 +16,7 @@ import type {
   ProviderCapabilities
 } from '../../src/types/provider.js';
 import { BaseProvider } from '../../src/providers/base-provider.js';
+import { providerCache } from '../../src/core/provider-cache.js';
 
 // Mock concrete provider for testing
 class TestProvider extends BaseProvider {
@@ -73,6 +74,9 @@ describe('BaseProvider - Availability Caching', () => {
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
     delete process.env.CLAUDE_CODE;
 
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -85,6 +89,8 @@ describe('BaseProvider - Availability Caching', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   it('should cache availability check results', async () => {
@@ -181,6 +187,9 @@ describe('BaseProvider - Version Detection Caching', () => {
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
     delete process.env.CLAUDE_CODE;
 
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -194,6 +203,8 @@ describe('BaseProvider - Version Detection Caching', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   it('should cache version detection results', async () => {
@@ -256,6 +267,9 @@ describe('BaseProvider - Token Bucket Optimization', () => {
   let config: ProviderConfig;
 
   beforeEach(() => {
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -277,6 +291,8 @@ describe('BaseProvider - Token Bucket Optimization', () => {
   afterEach(() => {
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
     vi.restoreAllMocks();
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   it('should use aggregated token buckets instead of individual timestamps', async () => {
@@ -347,6 +363,9 @@ describe('BaseProvider - Cache Metrics', () => {
   let config: ProviderConfig;
 
   beforeEach(() => {
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -355,6 +374,11 @@ describe('BaseProvider - Cache Metrics', () => {
       command: 'echo'
     };
     provider = new TestProvider(config);
+  });
+
+  afterEach(() => {
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   it('should calculate correct hit rates', async () => {
@@ -407,6 +431,9 @@ describe('BaseProvider - Integration Tests', () => {
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
     delete process.env.CLAUDE_CODE;
 
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -419,6 +446,8 @@ describe('BaseProvider - Integration Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   it('should benefit from caching in real execution flow', async () => {

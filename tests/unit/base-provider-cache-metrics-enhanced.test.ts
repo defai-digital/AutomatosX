@@ -16,6 +16,7 @@ import type {
   ProviderCapabilities
 } from '../../src/types/provider.js';
 import { BaseProvider } from '../../src/providers/base-provider.js';
+import { providerCache } from '../../src/core/provider-cache.js';
 
 // Mock concrete provider for testing
 class TestProvider extends BaseProvider {
@@ -73,6 +74,9 @@ describe('BaseProvider - Enhanced Cache Metrics (Phase 3)', () => {
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
     delete process.env.CLAUDE_CODE;
 
+    // Clear shared cache to prevent test pollution
+    providerCache.clearAll();
+
     config = {
       name: 'test-provider',
       enabled: true,
@@ -85,6 +89,8 @@ describe('BaseProvider - Enhanced Cache Metrics (Phase 3)', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clean up shared cache after each test
+    providerCache.clearAll();
   });
 
   describe('Average Age Calculation', () => {

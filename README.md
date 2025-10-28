@@ -7,13 +7,13 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-2,006%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2,356%20passing-brightgreen.svg)](#)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/defai-digital/automatosx/ci.yml?branch=main&label=CI)](https://github.com/defai-digital/automatosx/actions)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.7.2** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
+**Status**: ✅ Production Ready · **v5.7.3** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
 
 **Latest (v5.7.0)**: Provider Limit Detection & Automatic Rotation - AutomatosX now automatically detects when you've hit usage limits (Claude weekly, Gemini/OpenAI daily) and seamlessly switches to available fallback providers. The system auto-restores providers when limits reset, eliminating downtime and manual intervention. New CLI commands: `ax provider-limits` shows current status. [See full changelog →](CHANGELOG.md)
 

@@ -29,6 +29,8 @@ import { mkdir } from 'fs/promises';
 import boxen from 'boxen';
 import type { ExecutionResult } from '../../agents/executor.js';
 import { formatOutput, formatForSave } from '../../utils/output-formatter.js';
+import { existsSync } from 'fs';
+import readline from 'readline';
 
 interface RunOptions {
   provider?: string;
@@ -50,6 +52,8 @@ interface RunOptions {
   parallel?: boolean;
   showDependencyGraph?: boolean;
   showTimeline?: boolean;
+  // v5.8.3: Spec-kit integration
+  noSpec?: boolean;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -148,6 +152,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         type: 'boolean',
         default: true
       })
+      .option('no-spec', {
+        describe: 'Bypass spec-kit suggestion for complex tasks (v5.8.3+)',
+        type: 'boolean',
+        default: false
+      })
   },
 
   handler: async (argv) => {
@@ -160,6 +169,106 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
     if (!argv.task || typeof argv.task !== 'string') {
       console.log(chalk.red.bold('\n❌ Error: Task is required\n'));
       process.exit(1);
+    }
+
+    // v5.8.3: Detect complex tasks and suggest spec-kit (unless --no-spec flag is set)
+    if (!argv.noSpec) {
+      // Simple complexity check without provider initialization
+      // (saves time and avoids dependency issues)
+      const SpecGeneratorClass = (await import('../../core/spec/SpecGenerator.js')).SpecGenerator;
+      const tempGenerator = new SpecGeneratorClass(null as any); // Temporary for analysis only
+      const complexity = tempGenerator.analyzeComplexity(argv.task);
+
+      if (complexity.isComplex) {
+        // Show complexity analysis
+        console.log(chalk.yellow.bold('\n⚠️  Complex Task Detected\n'));
+        console.log(chalk.gray('This task appears to be complex and multi-step:'));
+        complexity.indicators.forEach((indicator) => {
+          console.log(chalk.gray(`  • ${indicator}`));
+        });
+        console.log(chalk.gray(`\nComplexity Score: ${complexity.score}/10\n`));
+
+        // Show spec-kit benefits
+        console.log(chalk.cyan.bold('💡 Consider using Spec-Kit for:\n'));
+        console.log(chalk.gray('  ✓ Automatic dependency management'));
+        console.log(chalk.gray('  ✓ Parallel execution of independent tasks'));
+        console.log(chalk.gray('  ✓ Progress tracking and resume capability'));
+        console.log(chalk.gray('  ✓ Better orchestration across multiple agents\n'));
+
+        // Prompt user
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+
+        const question = (query: string): Promise<string> => {
+          return new Promise((resolve) => {
+            rl.question(query, (answer) => {
+              resolve(answer);
+            });
+          });
+        };
+
+        try {
+          const answer = await question(
+            chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
+          );
+
+          if (answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no') {
+            // User wants spec-kit workflow
+            console.log(chalk.green('\n✓ Generating spec-driven workflow...\n'));
+
+            const projectDir = await detectProjectRoot(process.cwd());
+            const tempConfig = await loadConfig(projectDir);
+            const tempRouter = new Router(
+              tempConfig,
+              [new ClaudeProvider(tempConfig.providers['claude-code'] || {name: 'claude-code'}),
+               new GeminiProvider(tempConfig.providers['gemini-cli'] || {name: 'gemini-cli'}),
+               new OpenAIProvider(tempConfig.providers['openai'] || {name: 'openai'})],
+              undefined
+            );
+            const realGenerator = new SpecGeneratorClass(tempRouter);
+            const spec = await realGenerator.generate(argv.task, projectDir);
+
+            console.log(chalk.green('✓ Generated spec files:\n'));
+            console.log(chalk.gray(`  • .specify/spec.md - Project specification`));
+            console.log(chalk.gray(`  • .specify/plan.md - Technical plan`));
+            console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
+
+            // Ask if user wants to execute now
+            const executeAnswer = await question(
+              chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
+            );
+
+            rl.close();
+
+            if (executeAnswer.toLowerCase() !== 'n' && executeAnswer.toLowerCase() !== 'no') {
+              // Execute spec with parallel mode
+              console.log(chalk.blue('\n🚀 Executing spec-driven workflow...\n'));
+              const { spawn } = await import('child_process');
+              const child = spawn('ax', ['spec', 'run', '--parallel'], {
+                stdio: 'inherit',
+                shell: true,
+              });
+
+              return new Promise<void>((resolve) => {
+                child.on('close', (code) => {
+                  process.exit(code || 0);
+                });
+              });
+            } else {
+              console.log(chalk.yellow('\n💡 To execute later, run: ax spec run --parallel\n'));
+              process.exit(0);
+            }
+          } else {
+            rl.close();
+            console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
+          }
+        } catch (error) {
+          rl.close();
+          console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
+        }
+      }
     }
 
     console.log(chalk.blue.bold(`\n🤖 AutomatosX - Running ${argv.agent}\n`));

@@ -2,6 +2,7 @@
  * Spec Command - Spec-driven development CLI
  *
  * Main command for interacting with .specify/ directory:
+ * - ax spec create - Create spec from natural language (v5.8.3)
  * - ax spec run - Execute tasks
  * - ax spec status - Show status
  * - ax spec validate - Validate spec files
@@ -13,19 +14,30 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { SpecRegistry } from '../../core/spec/SpecRegistry.js';
 import { SpecExecutor } from '../../core/spec/SpecExecutor.js';
+import { SpecGenerator } from '../../core/spec/SpecGenerator.js';
 import { SessionManager } from '../../core/session-manager.js';
 import { detectProjectRoot } from '../../core/path-resolver.js';
 import { loadConfig } from '../../core/config.js';
+import { Router } from '../../core/router.js';
+import { ClaudeProvider } from '../../providers/claude-provider.js';
+import { GeminiProvider } from '../../providers/gemini-provider.js';
+import { OpenAIProvider } from '../../providers/openai-provider.js';
 import { logger } from '../../utils/logger.js';
 import { SpecError, SpecErrorCode } from '../../types/spec.js';
 import type {
   SpecExecutorOptions,
   TaskFilter
 } from '../../types/spec.js';
+import { spawn } from 'child_process';
+import readline from 'readline';
 
 interface SpecOptions {
   // Subcommand
   subcommand?: string;
+
+  // Create options (v5.8.3)
+  description?: string;
+  execute?: boolean;
 
   // Run options
   task?: string;
@@ -55,10 +67,20 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
   builder: (yargs) => {
     return yargs
       .positional('subcommand', {
-        describe: 'Subcommand (run, status, validate, graph)',
+        describe: 'Subcommand (create, run, status, validate, graph)',
         type: 'string',
-        choices: ['run', 'status', 'validate', 'graph'],
+        choices: ['create', 'run', 'status', 'validate', 'graph'],
         demandOption: true
+      })
+      // Create options (v5.8.3)
+      .option('description', {
+        describe: 'Task description in natural language (for create subcommand)',
+        type: 'string'
+      })
+      .option('execute', {
+        describe: 'Execute spec immediately after creation',
+        type: 'boolean',
+        default: false
       })
       // Run options
       .option('task', {
@@ -123,6 +145,8 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
         type: 'boolean',
         default: false
       })
+      .example('$0 spec create "Build auth with DB, API, JWT, tests"', 'Create spec from natural language')
+      .example('$0 spec create "Build auth" --execute', 'Create and execute immediately')
       .example('$0 spec run', 'Execute all pending tasks')
       .example('$0 spec run --task auth:impl', 'Run specific task')
       .example('$0 spec status', 'Show task status')
@@ -136,6 +160,9 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
       const config = await loadConfig(workspacePath);
 
       switch (argv.subcommand) {
+        case 'create':
+          await handleCreate(workspacePath, argv, config);
+          break;
         case 'run':
           await handleRun(workspacePath, argv, config);
           break;
@@ -165,6 +192,126 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
     }
   }
 };
+
+/**
+ * Handle 'ax spec create' command (v5.8.3)
+ */
+async function handleCreate(
+  workspacePath: string,
+  argv: SpecOptions,
+  config: any
+): Promise<void> {
+  console.log(chalk.blue.bold('\n🎨 Spec-Kit: Create from Natural Language\n'));
+
+  // Get description from argv or prompt
+  let description = argv.description;
+
+  if (!description) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const question = (query: string): Promise<string> => {
+      return new Promise((resolve) => {
+        rl.question(query, (answer) => {
+          resolve(answer);
+        });
+      });
+    };
+
+    try {
+      description = await question(
+        chalk.cyan('Describe your project (e.g., "Build authentication with database, API, JWT, audit, and tests"): ')
+      );
+      rl.close();
+    } catch (error) {
+      rl.close();
+      console.error(chalk.red('✗ Failed to read input'));
+      process.exit(1);
+    }
+  }
+
+  if (!description || description.trim().length === 0) {
+    console.error(chalk.red('✗ Description is required'));
+    process.exit(1);
+  }
+
+  // Create router and generator
+  const spinner = ora('Analyzing task complexity...').start();
+
+  try {
+    const router = new Router(
+      config,
+      [new ClaudeProvider(), new GeminiProvider(), new OpenAIProvider()],
+      undefined
+    );
+    const generator = new SpecGenerator(router);
+
+    // Analyze complexity
+    const complexity = generator.analyzeComplexity(description);
+    spinner.succeed('Task analyzed');
+
+    console.log(chalk.gray('\n📊 Complexity Analysis:'));
+    console.log(chalk.gray(`  Score: ${complexity.score}/10`));
+    complexity.indicators.forEach((indicator) => {
+      console.log(chalk.gray(`  • ${indicator}`));
+    });
+
+    // Generate spec
+    spinner.start('Generating spec files with AI...');
+    const spec = await generator.generate(description, workspacePath);
+    spinner.succeed('Spec files generated');
+
+    // Display summary
+    console.log(chalk.green('\n✓ Spec created successfully!\n'));
+    console.log(chalk.cyan('📁 Files:'));
+    console.log(chalk.gray(`  • .specify/spec.md - Project specification`));
+    console.log(chalk.gray(`  • .specify/plan.md - Technical plan`));
+    console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
+
+    console.log(chalk.cyan('📋 Tasks Overview:'));
+    const tasksByPhase = new Map<string, number>();
+    for (const task of spec.tasks) {
+      const prefix = task.id.split(':')[0];
+      tasksByPhase.set(prefix, (tasksByPhase.get(prefix) || 0) + 1);
+    }
+    for (const [phase, count] of tasksByPhase) {
+      console.log(chalk.gray(`  • ${phase}: ${count} task${count > 1 ? 's' : ''}`));
+    }
+
+    console.log(chalk.cyan('\n🤖 Agents:'));
+    const agents = new Set(spec.tasks.map(t => t.agent));
+    agents.forEach(agent => {
+      const count = spec.tasks.filter(t => t.agent === agent).length;
+      console.log(chalk.gray(`  • ${agent}: ${count} task${count > 1 ? 's' : ''}`));
+    });
+
+    // Execute if --execute flag is set
+    if (argv.execute) {
+      console.log(chalk.blue('\n🚀 Executing spec with parallel mode...\n'));
+
+      const child = spawn('ax', ['spec', 'run', '--parallel'], {
+        stdio: 'inherit',
+        shell: true,
+      });
+
+      return new Promise<void>((resolve) => {
+        child.on('close', (code) => {
+          process.exit(code || 0);
+        });
+      });
+    } else {
+      console.log(chalk.yellow('\n💡 Next steps:'));
+      console.log(chalk.gray('  1. Review generated files in .specify/'));
+      console.log(chalk.gray('  2. Validate: ax spec validate'));
+      console.log(chalk.gray('  3. Execute: ax spec run --parallel\n'));
+    }
+  } catch (error) {
+    spinner.fail('Failed to generate spec');
+    throw error;
+  }
+}
 
 /**
  * Handle 'ax spec run' command

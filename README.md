@@ -127,9 +127,11 @@ ax run product "Build a complete user authentication feature"
 
 ---
 
-## 📋 Core Feature: Spec-Driven Development (✨ NEW in v5.8.0)
+## 📋 Core Feature: Spec-Driven Development (✨ NEW in v5.8.0, Enhanced in v5.8.3)
 
 **Transform AutomatosX from a tool into a platform.** Spec-Kit elevates AutomatosX from executing individual agent tasks to orchestrating complex, multi-agent workflows with automatic dependency management.
+
+**NEW in v5.8.3**: Use natural language to create and execute workflows! No need to manually write spec files.
 
 ### 🎯 The Game Changer
 
@@ -232,7 +234,62 @@ Define complex workflows involving multiple specialized agents:
 | **Team Collaboration** | Hard to share | `.specify/` in Git |
 | **Best For** | Quick, one-off tasks | Production workflows, complex projects |
 
-### 🚀 Quick Start
+### 🎨 NEW: Natural Language Workflow (v5.8.3)
+
+**The easiest way to use Spec-Kit** - just describe what you want in plain English:
+
+```bash
+# Method 1: Direct command
+ax spec create "Build authentication with database, API, JWT, security audit, and tests"
+
+# Method 2: Interactive prompt (automatically suggested for complex tasks)
+ax run backend "Build complete authentication system with database, API, JWT, audit, and tests"
+# → AutomatosX detects complexity and suggests spec-kit workflow
+# → Generates .specify/ files automatically
+# → Executes with parallel mode
+
+# Method 3: Create and execute immediately
+ax spec create "Build auth system" --execute
+```
+
+**What happens automatically**:
+1. ✅ AI analyzes your description
+2. ✅ Generates spec.md, plan.md, and tasks.md
+3. ✅ Creates task dependencies intelligently
+4. ✅ Selects appropriate agents for each task
+5. ✅ Optionally executes with parallel mode
+
+**Example Output**:
+```
+🎨 Spec-Kit: Create from Natural Language
+
+📊 Complexity Analysis:
+  Score: 8/10
+  • Multiple technical components
+  • Project-level scope
+  • 5 items separated by commas
+
+✓ Spec files generated
+
+📁 Files:
+  • .specify/spec.md - Project specification
+  • .specify/plan.md - Technical plan
+  • .specify/tasks.md - 8 tasks with dependencies
+
+📋 Tasks Overview:
+  • auth: 3 tasks
+  • test: 2 tasks
+  • security: 1 task
+  • deploy: 2 tasks
+
+🤖 Agents:
+  • backend: 3 tasks
+  • quality: 2 tasks
+  • security: 1 task
+  • devops: 2 tasks
+```
+
+### 🚀 Quick Start (Manual Method)
 
 ```bash
 # 1. Initialize spec-kit in your project

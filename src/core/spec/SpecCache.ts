@@ -280,13 +280,16 @@ export class SpecCache {
     // Check if entry already exists
     const existing = this.cache.get(key);
     if (existing) {
+      // Save old size before updating
+      const oldSize = existing.sizeBytes;
+
       // Update existing entry
       existing.spec = spec;
       existing.lastAccessedAt = new Date();
       existing.sizeBytes = sizeBytes;
 
-      // Update total bytes
-      this.totalBytes = this.totalBytes - existing.sizeBytes + sizeBytes;
+      // Update total bytes with correct old size
+      this.totalBytes = this.totalBytes - oldSize + sizeBytes;
 
       // Move to head
       this.moveToHead(existing);

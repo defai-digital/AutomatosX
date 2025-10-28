@@ -247,7 +247,8 @@ export class SpecGraphBuilder {
 
     tasks.forEach(task => calculateDepth(task.id));
 
-    return Math.max(...Array.from(depths.values()));
+    // Handle empty tasks array - return 0 instead of -Infinity
+    return depths.size > 0 ? Math.max(...Array.from(depths.values())) : 0;
   }
 
   /**

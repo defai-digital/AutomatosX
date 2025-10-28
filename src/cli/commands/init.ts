@@ -196,8 +196,13 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
 
       // Setup Claude Code integration
       console.log(chalk.cyan('🔌 Setting up Claude Code integration...'));
+      const claudeDir = join(projectDir, '.claude');
+      const claudeDirExistedBefore = await checkExists(claudeDir);
       await setupClaudeIntegration(projectDir, packageRoot);
-      createdResources.push(join(projectDir, '.claude'));
+      // Only add to rollback if we created it (not if it pre-existed)
+      if (!claudeDirExistedBefore) {
+        createdResources.push(claudeDir);
+      }
       console.log(chalk.green('   ✓ Claude Code integration configured'));
 
       // Setup project CLAUDE.md with AutomatosX integration guide

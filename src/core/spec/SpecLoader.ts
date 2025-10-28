@@ -28,15 +28,15 @@ import { logger } from '../../utils/logger.js';
 const TASK_PATTERNS = {
   // Format 1: Inline attributes
   // - [ ] id:auth:setup ops:"ax run backend 'Setup'" dep:core:init labels:auth,backend
-  inline: /^-\s*\[([ x])\]\s+id:(\S+)\s+ops:"([^"]+)"\s*(?:dep:(\S+))?\s*(?:labels:(\S+))?/,
+  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"\s*(?:dep:(\S+))?\s*(?:labels:(\S+))?/i,
 
   // Format 2: Simpler inline
   // - [ ] id:auth:setup ops:"command" dep:dep1,dep2
-  simple: /^-\s*\[([ x])\]\s+id:(\S+)\s+ops:"([^"]+)"(?:\s+dep:([^"\s]+))?/,
+  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"(?:\s+dep:([^"\s]+))?/i,
 
   // Format 3: Very simple (just ID and ops)
   // - [ ] id:auth:setup ops:"command"
-  minimal: /^-\s*\[([ x])\]\s+id:(\S+)\s+ops:"([^"]+)"/
+  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"/i
 };
 
 /**
@@ -277,7 +277,8 @@ export class SpecLoader {
    */
   private extractAssignee(ops: string): string | undefined {
     // Pattern: ax run <agent> "task"
-    const match = /ax\s+run\s+(\w+)/.exec(ops);
+    // Support hyphenated agent names like "creative-marketer"
+    const match = /ax\s+run\s+([\w-]+)/.exec(ops);
     return match ? match[1] : undefined;
   }
 

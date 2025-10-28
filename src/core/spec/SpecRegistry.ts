@@ -9,9 +9,10 @@
  */
 
 import { EventEmitter } from 'events';
-import { stat, access } from 'fs/promises';
+import { stat, access, readFile } from 'fs/promises';
 import { join } from 'path';
 import { watch, FSWatcher } from 'fs';
+import { createHash } from 'crypto';
 import type {
   SpecRegistryOptions,
   SpecMetadata,
@@ -158,6 +159,29 @@ export class SpecRegistry extends EventEmitter {
     try {
       logger.info('Loading spec', { workspacePath: this.workspacePath });
 
+      // Calculate fresh checksum quickly (no parsing)
+      const freshChecksum = await this.calculateQuickChecksum();
+
+      // Check cache with fresh checksum first
+      if (this.cache) {
+        const cached = this.cache.get(this.workspacePath, freshChecksum);
+        if (cached) {
+          logger.debug('Spec loaded from cache (checksum match)', {
+            specId: cached.metadata.id,
+            checksum: freshChecksum
+          });
+          // Update current spec with cached version
+          this.currentSpec = cached;
+          return cached;
+        }
+      }
+
+      // Cache miss or checksum changed - do full load
+      logger.debug('Cache miss or checksum changed, loading spec', {
+        freshChecksum,
+        oldChecksum: this.currentSpec?.metadata.checksum
+      });
+
       // Create loader
       const loader = new SpecLoader({
         workspacePath: this.workspacePath,
@@ -167,22 +191,7 @@ export class SpecRegistry extends EventEmitter {
         }
       });
 
-      // Check cache first
-      if (this.cache && this.currentSpec) {
-        const cached = this.cache.get(
-          this.workspacePath,
-          this.currentSpec.metadata.checksum
-        );
-        if (cached) {
-          logger.debug('Spec loaded from cache', {
-            specId: cached.metadata.id,
-            checksum: cached.metadata.checksum
-          });
-          return cached;
-        }
-      }
-
-      // Load spec
+      // Load spec (will parse everything)
       const spec = await loader.load();
 
       // Build graph
@@ -240,6 +249,31 @@ export class SpecRegistry extends EventEmitter {
         }
       }, 100);
     });
+  }
+
+  /**
+   * Calculate checksum of spec files quickly without full parsing
+   */
+  private async calculateQuickChecksum(): Promise<string> {
+    try {
+      const [specContent, planContent, tasksContent] = await Promise.all([
+        readFile(join(this.specDir, 'spec.md'), 'utf8'),
+        readFile(join(this.specDir, 'plan.md'), 'utf8'),
+        readFile(join(this.specDir, 'tasks.md'), 'utf8')
+      ]);
+
+      const hash = createHash('sha256');
+      hash.update(specContent);
+      hash.update(planContent);
+      hash.update(tasksContent);
+      return hash.digest('hex').substring(0, 16);
+    } catch (error) {
+      logger.error('Failed to calculate quick checksum', {
+        error: (error as Error).message,
+        specDir: this.specDir
+      });
+      throw error;
+    }
   }
 
   /**
@@ -393,6 +427,11 @@ export class SpecRegistry extends EventEmitter {
     if (this.watcher) {
       this.watcher.close();
       this.watcher = null;
+    }
+
+    // Clear cache entries for this workspace
+    if (this.cache) {
+      this.cache.invalidateWorkspace(this.workspacePath);
     }
 
     // Clear current spec

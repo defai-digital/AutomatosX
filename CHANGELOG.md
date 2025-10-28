@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.2] - 2025-10-28
+
+### Fixed
+
+**Critical Bug Fixes:**
+- **SpecRegistry Cache Staleness** (`src/core/spec/SpecRegistry.ts:162-188`)
+  - Fixed cache returning stale data when spec files are modified
+  - Now calculates fresh checksum before checking cache
+  - Cache is only used if checksums match, ensuring data integrity
+  - Prevents serving outdated spec data in production workflows
+
+- **Init Command Rollback Data Loss** (`src/cli/commands/init.ts:199-206`)
+  - Fixed destructive rollback that deleted existing `.claude` directory
+  - Now checks if `.claude` existed before init and preserves it on failure
+  - Prevents accidental deletion of user's Claude Code configuration
+  - Only rolls back newly created files
+
+**High Priority Fixes:**
+- **SpecCache Byte Counting Bug** (`src/core/spec/SpecCache.ts:283-292`)
+  - Fixed totalBytes calculation when updating existing cache entries
+  - Now correctly saves old size before updating
+  - Fixes byte-limit eviction that wasn't working
+  - Prevents memory growth in long-running processes
+
+**Medium Priority Fixes:**
+- **SpecRegistry Memory Leak** (`src/core/spec/SpecRegistry.ts:432-435`)
+  - Added cache invalidation when destroying registry
+  - Prevents memory leak from stale cached specs
+  - Ensures clean cleanup of all resources
+
+- **SpecGraphBuilder -Infinity Bug** (`src/core/spec/SpecGraphBuilder.ts:250-251`)
+  - Fixed `Math.max()` returning -Infinity for empty task arrays
+  - Now returns 0 for empty graphs instead of -Infinity
+  - Prevents invalid metadata in analytics
+
+- **SpecLoader Regex Issues** (`src/core/spec/SpecLoader.ts:31,39,281`)
+  - Added case-insensitive support for `[X]` completion markers
+  - Added support for hyphenated agent names (e.g., `creative-marketer`)
+  - Fixed task parsing to handle GitHub Markdown conventions
+  - Agent regex now accepts `[\w-]+` instead of `\w+`
+
+### Testing
+- All 2181 unit tests passing
+- TypeScript strict mode validation passing
+- Zero memory leaks detected
+
 ## [5.8.1] - 2025-10-28
 
 ### Fixed

@@ -13,7 +13,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.7.1** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
+**Status**: ✅ Production Ready · **v5.7.2** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Intelligent Provider Management
 
 **Latest (v5.7.0)**: Provider Limit Detection & Automatic Rotation - AutomatosX now automatically detects when you've hit usage limits (Claude weekly, Gemini/OpenAI daily) and seamlessly switches to available fallback providers. The system auto-restores providers when limits reset, eliminating downtime and manual intervention. New CLI commands: `ax provider-limits` shows current status. [See full changelog →](CHANGELOG.md)
 

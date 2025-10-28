@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-28T12:30:40.394Z
+ * Generated: 2025-10-28T16:56:36.795Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -326,7 +326,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-28T12:30:40.394Z',
+  generatedAt: '2025-10-28T16:56:36.795Z',
   sourceFile: 'automatosx.config.json',
   version: '5.8.1'
 } as const;

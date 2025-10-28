@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.1] - 2025-10-28
+
+### Fixed
+
+- **Init Command**: Fixed `ax init --spec-kit` to use built-in implementation instead of non-existent external package
+  - Previously attempted to install `@github/spec-kit` from NPM (404 error)
+  - Now creates `.specify/` directory locally with template files (spec.md, plan.md, tasks.md)
+  - Templates include helpful comments and examples for spec-driven development
+  - Removed outdated references to external spec-kit package
+  - Location: `src/cli/commands/init.ts:869-982`
+
 ## [5.8.0] - 2025-10-28
 
 ### Added

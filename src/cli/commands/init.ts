@@ -231,12 +231,10 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
         console.log(chalk.gray('  • Use agents to work with specs:'));
         console.log(chalk.gray('    ax run product "Write spec for feature X"'));
         console.log(chalk.gray('    ax run tony "Create technical plan"'));
-        console.log(chalk.gray('    ax run backend "Implement according to spec"'));
-        console.log(chalk.gray('  • Validate specs: npx @github/spec-kit validate .specify/\n'));
+        console.log(chalk.gray('    ax run backend "Implement according to spec"\n'));
       } else {
         console.log(chalk.cyan('Spec-Driven Development (optional):'));
-        console.log(chalk.gray('  • Initialize later: npx @github/spec-kit init . --here'));
-        console.log(chalk.gray('  • Or use: ax init --spec-kit\n'));
+        console.log(chalk.gray('  • Initialize with: ax init --spec-kit\n'));
       }
       console.log(chalk.cyan('Available example agents (19 total):'));
       console.log(chalk.gray('  • aerospace-scientist  - Astrid (Aerospace Mission Scientist)'));
@@ -859,55 +857,118 @@ async function maybeInitializeSpecKit(
 }
 
 /**
- * Initialize GitHub Spec-Kit in the project directory
+ * Initialize Spec-Kit in the project directory
  *
- * Executes: npx @github/spec-kit init . --here
+ * Creates .specify/ directory with template files for spec-driven development
  *
  * @param projectDir - Project directory path
  * @returns Promise<boolean> - true if initialization succeeded, false otherwise
  */
 async function initializeSpecKit(projectDir: string): Promise<boolean> {
   try {
-    const { spawn } = await import('child_process');
+    const specifyDir = join(projectDir, '.specify');
 
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn('npx', ['@github/spec-kit', 'init', '.', '--here'], {
-        cwd: projectDir,
-        stdio: 'inherit', // Stream output directly to user
-        shell: true
-      });
+    // Create .specify directory
+    await mkdir(specifyDir, { recursive: true });
 
-      child.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`spec-kit init failed with code ${code}`));
-        } else {
-          resolve();
-        }
-      });
+    // Create spec.md template
+    const specTemplate = `# Project Specification
 
-      child.on('error', (error) => {
-        reject(error);
-      });
-    });
+## Overview
+<!-- Brief description of what this project does -->
+
+## Goals
+<!-- List the main goals and objectives -->
+
+## Requirements
+<!-- Detailed requirements -->
+
+### Functional Requirements
+<!-- What the system should do -->
+
+### Non-Functional Requirements
+<!-- Performance, security, scalability, etc. -->
+
+## Success Criteria
+<!-- How do we measure success? -->
+
+## Out of Scope
+<!-- What this project explicitly does NOT include -->
+`;
+
+    // Create plan.md template
+    const planTemplate = `# Technical Plan
+
+## Architecture
+<!-- High-level architecture diagram or description -->
+
+## Technology Stack
+<!-- Languages, frameworks, libraries, tools -->
+
+## Implementation Approach
+<!-- Step-by-step approach to implementation -->
+
+## Data Model
+<!-- Database schema, data structures -->
+
+## API Design
+<!-- API endpoints, interfaces -->
+
+## Security Considerations
+<!-- Authentication, authorization, data protection -->
+
+## Testing Strategy
+<!-- Unit tests, integration tests, E2E tests -->
+
+## Deployment Plan
+<!-- How will this be deployed? -->
+
+## Risks and Mitigations
+<!-- Potential risks and how to handle them -->
+`;
+
+    // Create tasks.md template
+    const tasksTemplate = `# Tasks
+
+<!-- Task format: - [ ] id:task-id ops:"command" dep:dependency-id -->
+<!-- Example: -->
+<!-- - [ ] id:setup:env ops:"ax run devops 'Setup development environment'" -->
+<!-- - [ ] id:impl:api ops:"ax run backend 'Implement REST API'" dep:setup:env -->
+<!-- - [ ] id:test:api ops:"ax run quality 'Write API tests'" dep:impl:api -->
+
+## Phase 1: Setup
+- [ ] id:setup:env ops:"ax run devops 'Setup development environment'"
+- [ ] id:setup:db ops:"ax run backend 'Setup database schema'" dep:setup:env
+
+## Phase 2: Implementation
+- [ ] id:impl:core ops:"ax run backend 'Implement core functionality'" dep:setup:db
+
+## Phase 3: Testing
+- [ ] id:test:unit ops:"ax run quality 'Write unit tests'" dep:impl:core
+- [ ] id:test:integration ops:"ax run quality 'Write integration tests'" dep:impl:core
+
+## Phase 4: Documentation
+- [ ] id:docs:api ops:"ax run writer 'Write API documentation'" dep:impl:core
+`;
+
+    // Write template files
+    await writeFile(join(specifyDir, 'spec.md'), specTemplate, 'utf8');
+    await writeFile(join(specifyDir, 'plan.md'), planTemplate, 'utf8');
+    await writeFile(join(specifyDir, 'tasks.md'), tasksTemplate, 'utf8');
 
     console.log(chalk.green('   ✓ Spec-Kit initialized successfully'));
-    logger.info('Spec-Kit initialized successfully', { projectDir });
+    console.log(chalk.gray('      Files created: .specify/spec.md, plan.md, tasks.md'));
+    logger.info('Spec-Kit initialized successfully', {
+      projectDir,
+      specifyDir
+    });
     return true;
 
   } catch (error) {
     // Non-critical error - log warning but don't fail the init
     const errorMessage = (error as Error).message;
-
-    if (errorMessage.includes('ENOENT') || errorMessage.includes('spawn npx')) {
-      console.log(chalk.yellow('   ⚠️  npx not found - cannot initialize Spec-Kit'));
-      console.log(chalk.gray('      Install Node.js 18+ to use Spec-Kit'));
-      console.log(chalk.gray('      Or initialize manually: npm install -g @github/spec-kit\n'));
-    } else {
-      console.log(chalk.yellow('   ⚠️  Failed to initialize Spec-Kit'));
-      console.log(chalk.gray(`      ${errorMessage}`));
-      console.log(chalk.gray('      You can initialize manually later with:'));
-      console.log(chalk.gray('      npx @github/spec-kit init . --here\n'));
-    }
+    console.log(chalk.yellow('   ⚠️  Failed to initialize Spec-Kit'));
+    console.log(chalk.gray(`      ${errorMessage}\n`));
 
     logger.warn('Spec-Kit initialization failed (non-critical)', {
       error: errorMessage,

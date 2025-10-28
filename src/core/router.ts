@@ -260,13 +260,16 @@ export class Router {
           const limitManager = getProviderLimitManager();
 
           // Ensure limit is recorded (idempotent - safe to call even if already recorded)
-          if (providerError.context?.resetAtMs && providerError.context?.limitWindow) {
+          const resetAtMs = providerError.context?.resetAtMs;
+          const limitWindow = providerError.context?.limitWindow;
+
+          if (typeof resetAtMs === 'number' && typeof limitWindow === 'string') {
             await limitManager.recordLimitHit(
               provider.name,
-              providerError.context.limitWindow as 'daily' | 'weekly' | 'custom',
-              providerError.context.resetAtMs,
+              limitWindow as 'daily' | 'weekly' | 'custom',
+              resetAtMs,
               {
-                reason: providerError.context.reason as string || 'usage_limit_exceeded',
+                reason: (providerError.context?.reason as string) || 'usage_limit_exceeded',
                 rawMessage: providerError.message
               }
             );

@@ -69,6 +69,18 @@ class MockProvider extends BaseProvider {
   protected async generateEmbeddingInternal(_text: string, _options?: EmbeddingOptions): Promise<number[]> {
     return [0.1, 0.2, 0.3];
   }
+
+  protected buildCLIArgs(_request: ExecutionRequest): string[] {
+    return ['--mock'];
+  }
+
+  supportsStreaming(): boolean {
+    return false;
+  }
+
+  protected supportsParameter(_param: string): boolean {
+    return false;
+  }
 }
 
 describe('Router - Limit Handling Integration', () => {

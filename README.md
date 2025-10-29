@@ -7,13 +7,13 @@ AutomatosX is a local-first CLI that transforms stateless AI assistants into a p
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-2,368%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2,384%20passing-brightgreen.svg)](#)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/defai-digital/automatosx/ci.yml?branch=main&label=CI)](https://github.com/defai-digital/automatosx/actions)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.8.6** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
+**Status**: ✅ Production Ready · **v5.8.7** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
 ---
 

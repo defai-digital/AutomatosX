@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.7] - 2025-10-29
+
+### 🐛 Bug Fixes
+
+**CLI Initialization** - Fixed unsettled top-level await warning
+
+- **Issue**: Node.js warning "Detected unsettled top-level await" appeared on CLI startup
+- **Fix**: Wrapped CLI initialization in async IIFE to properly handle top-level await
+- **Impact**: Eliminates warning message, cleaner CLI startup
+- **Files**: `src/cli/index.ts`
+
+### 📚 Documentation Improvements
+
+**README Restructure** - Enhanced clarity, structure, and engagement
+
+1. **Stronger Introduction**
+   - More concise and benefit-oriented opening
+   - Clear value proposition: "Stop repeating yourself. Give your AI a brain and a team."
+
+2. **New Core Concepts Section**
+   - Visual table format for the three pillars
+   - Quick understanding of system architecture
+   - Better onboarding experience
+
+3. **Condensed Spec-Driven Development Section**
+   - Moved detailed examples to dedicated guide (`docs/guide/spec-driven-development.md`)
+   - Focused on natural language workflow (recommended approach)
+   - Reduced README length while maintaining clarity
+
+4. **Improved Flow**
+   - Better section organization
+   - Clearer "Problem → Solution" narrative
+   - More scannable content structure
+
+### 🧹 Configuration Cleanup
+
+- Removed unused provider-specific config sections from `automatosx.config.json`
+- Cleaned up legacy Claude and Gemini configuration blocks
+
 ## [5.8.6] - 2025-10-29
 
 ### ✨ Features & Enhancements

@@ -13,6 +13,7 @@ import { AgentExecutor } from './executor.js';
 import type { ExecutionContext } from '../types/agent.js';
 import type { ExecutionResult as AgentExecutionResult } from './executor.js';
 import { logger } from '../utils/logger.js';
+import type { ChildProcess } from 'child_process';
 
 /**
  * Options for agent execution
@@ -59,6 +60,8 @@ export interface AgentExecutionServiceResult {
  */
 export class AgentExecutionService {
   private executions: number = 0;
+  // BUG FIX (v5.12.1): Track child processes to prevent leaks
+  private activeChildren: Set<ChildProcess> = new Set();
 
   constructor(config?: { projectDir?: string; config?: any }) {
     logger.debug('AgentExecutionService created (simplified mode)', {
@@ -135,14 +138,19 @@ export class AgentExecutionService {
 
   /**
    * Execute via subprocess (fallback)
+   * BUG FIX (v5.12.1): Track children, remove shell:true, implement cleanup
    */
   private async executeViaSubprocess(agent: string, task: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const { spawn } = require('child_process');
+      // BUG FIX: Use shell:false to prevent argument tokenization issues
       const child = spawn('ax', ['run', agent, task], {
-        shell: true,
+        shell: false,
         stdio: ['ignore', 'pipe', 'pipe']
       });
+
+      // BUG FIX: Track child process for cleanup
+      this.activeChildren.add(child);
 
       let stdout = '';
       let stderr = '';
@@ -159,8 +167,15 @@ export class AgentExecutionService {
         });
       }
 
-      child.on('error', reject);
+      child.on('error', (error: Error) => {
+        this.activeChildren.delete(child);
+        reject(error);
+      });
+
       child.on('close', (code: number | null) => {
+        // BUG FIX: Remove from tracking when process exits
+        this.activeChildren.delete(child);
+
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -172,12 +187,22 @@ export class AgentExecutionService {
 
   /**
    * Cleanup resources
+   * BUG FIX (v5.12.1): Kill tracked child processes to prevent leaks
    */
   async cleanup(): Promise<void> {
     logger.debug('AgentExecutionService.cleanup', {
-      executions: this.executions
+      executions: this.executions,
+      activeChildren: this.activeChildren.size
     });
-    // Nothing to cleanup in simplified version
+
+    // BUG FIX: Kill all tracked child processes
+    for (const child of this.activeChildren) {
+      if (!child.killed) {
+        logger.debug('Killing active child process', { pid: child.pid });
+        child.kill('SIGTERM');
+      }
+    }
+    this.activeChildren.clear();
   }
 
   /**

@@ -10,7 +10,7 @@
  * @module core/spec/SpecExecutor
  */
 
-import { spawn } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import { writeFile, readFile, access, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { constants } from 'fs';
@@ -66,6 +66,9 @@ export class SpecExecutor {
 
   // BUG FIX (v5.12.1): Mutex to serialize tasks.md file writes
   private taskFileMutex = new Mutex();
+
+  // BUG FIX (v5.12.1): Track child processes to prevent leaks
+  private activeChildren: Set<ChildProcess> = new Set();
 
   constructor(
     spec: ParsedSpec,
@@ -369,6 +372,15 @@ export class SpecExecutor {
   async cleanup(): Promise<void> {
     // Abort any pending operations
     this.abortController.abort();
+
+    // BUG FIX (v5.12.1): Kill tracked child processes to prevent leaks
+    for (const child of this.activeChildren) {
+      if (!child.killed) {
+        logger.debug('Killing active child process', { pid: child.pid });
+        child.kill('SIGTERM');
+      }
+    }
+    this.activeChildren.clear();
 
     // Cleanup agent service
     if (this.agentService) {
@@ -1003,14 +1015,18 @@ Use this context to:
 
   /**
    * Legacy subprocess execution (kept for backward compatibility)
+   * BUG FIX (v5.12.1): Track children, remove shell:true, implement cleanup
    */
   private async executeOpsCommandLegacy(ops: string, agent: string, task: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      // Execute as child process
+      // BUG FIX: Use shell:false to prevent argument tokenization issues
       const child = spawn('ax', ['run', agent, task], {
-        shell: true,
+        shell: false,
         stdio: ['ignore', 'pipe', 'pipe']
       });
+
+      // BUG FIX: Track child process for cleanup
+      this.activeChildren.add(child);
 
       let stdout = '';
       let stderr = '';
@@ -1028,10 +1044,14 @@ Use this context to:
       }
 
       child.on('error', (error: Error) => {
+        this.activeChildren.delete(child);
         reject(error);
       });
 
       child.on('close', (code: number | null) => {
+        // BUG FIX: Remove from tracking when process exits
+        this.activeChildren.delete(child);
+
         if (code === 0) {
           resolve(stdout);
         } else {

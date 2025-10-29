@@ -103,7 +103,7 @@ export class SpecExecutor {
     );
 
     // Phase 1: Initialize native execution service
-    if (this.useNativeExecution) {
+    if (this.useNativeExecution && options.config) {
       this.agentService = new AgentExecutionService({
         projectDir: spec.metadata.workspacePath,
         config: options.config

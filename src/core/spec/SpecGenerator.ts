@@ -340,12 +340,16 @@ ax spec run --parallel
       for (const task of tasks) {
         const deps = task.dependencies.length > 0 ? ` dep:${task.dependencies.join(',')}` : '';
         const labels = task.labels && task.labels.length > 0 ? ` labels:${task.labels.join(',')}` : '';
-        // Use single quotes for the ax run argument to avoid nested double quotes
-        // Escape single quotes using shell-safe escaping: ' → '\''
-        const escapedDescription = task.description.replace(/'/g, "'\\''");
-        const ops = `ax run ${task.agent} '${escapedDescription}'`;
 
-        content += `- [ ] id:${task.id} ops:"${ops}"${deps}${labels}\n`;
+        // Use JSON encoding to safely preserve all characters including quotes
+        // This avoids the quote escaping issues that plagued the shell-style approach
+        const serializedOps = JSON.stringify({
+          command: 'ax run',
+          agent: task.agent,
+          args: [task.description],
+        });
+
+        content += `- [ ] id:${task.id} ops:${serializedOps}${deps}${labels}\n`;
       }
 
       content += '\n';

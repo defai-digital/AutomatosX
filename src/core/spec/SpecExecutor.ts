@@ -871,6 +871,7 @@ export class SpecExecutor {
 
   /**
    * Build context-enriched prompt (Phase 3)
+   * Supports both JSON format and old string format
    *
    * @param originalOps - Original ops command
    * @param priorContext - Prior task outputs
@@ -894,8 +895,7 @@ ${prior.output.slice(0, 500)}${prior.output.length > 500 ? '...' : ''}
 `)
       .join('\n');
 
-    // Enrich the original prompt
-    return `${originalOps}
+    const contextPrompt = `
 
 ## Context from Prior Tasks
 
@@ -907,6 +907,23 @@ Use this context to:
 - Build upon prior work without redundancy
 - Reference earlier outputs when relevant
 `;
+
+    // Handle JSON format
+    if (originalOps.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(originalOps);
+        // Append context to the first argument
+        if (parsed.args && Array.isArray(parsed.args) && parsed.args[0]) {
+          parsed.args[0] = parsed.args[0] + contextPrompt;
+          return JSON.stringify(parsed);
+        }
+      } catch {
+        // Fall through to string format
+      }
+    }
+
+    // Fallback: String format
+    return originalOps + contextPrompt;
   }
 
   /**
@@ -963,6 +980,7 @@ Use this context to:
 
   /**
    * Execute ops command (ax run ...)
+   * Supports both JSON format and old string format
    *
    * Phase 1 (v5.9.0): Native execution (10x faster!)
    * - Uses AgentExecutionService for in-process execution
@@ -970,19 +988,34 @@ Use this context to:
    * - Falls back to subprocess if native execution disabled
    */
   private async executeOpsCommand(ops: string): Promise<string> {
-    // Extract command and args
-    // ops format: ax run <agent> "<task>" or ax run <agent> '<task>'
-    // Support both single and double quotes for robustness
-    const parts = ops.match(/ax\s+run\s+([\w-]+)\s+["']([^"']+)["']/);
+    let agent: string;
+    let task: string;
 
-    if (!parts) {
-      throw new Error(`Invalid ops format: ${ops}`);
-    }
+    // Try JSON format first
+    if (ops.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(ops);
+        agent = parsed.agent;
+        task = parsed.args?.[0];
 
-    const [, agent, task] = parts;
+        if (!agent || !task) {
+          throw new Error('Invalid JSON ops format: missing agent or args[0]');
+        }
+      } catch (error) {
+        throw new Error(`Invalid JSON ops format: ${(error as Error).message}`);
+      }
+    } else {
+      // Fallback: String format
+      // ops format: ax run <agent> "<task>" or ax run <agent> '<task>'
+      // Support both single and double quotes for robustness
+      const parts = ops.match(/ax\s+run\s+([\w-]+)\s+["']([^"']+)["']/);
 
-    if (!agent || !task) {
-      throw new Error('Missing agent or task');
+      if (!parts || !parts[1] || !parts[2]) {
+        throw new Error(`Invalid ops format: ${ops}`);
+      }
+
+      agent = parts[1];
+      task = parts[2];
     }
 
     logger.debug('Executing ops command', {

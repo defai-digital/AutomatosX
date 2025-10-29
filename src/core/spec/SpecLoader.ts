@@ -24,19 +24,23 @@ import { logger } from '../../utils/logger.js';
 
 /**
  * Task format regex patterns
+ * Supports both old format (ops:"...") and new JSON format (ops:{...})
  */
 const TASK_PATTERNS = {
   // Format 1: Inline attributes
   // - [ ] id:auth:setup ops:"ax run backend 'Setup'" dep:core:init labels:auth,backend
-  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"\s*(?:dep:(\S+))?\s*(?:labels:(\S+))?/i,
+  // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["Setup"]} dep:core:init
+  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))\s*(?:dep:(\S+))?\s*(?:labels:(\S+))?/i,
 
   // Format 2: Simpler inline
   // - [ ] id:auth:setup ops:"command" dep:dep1,dep2
-  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"(?:\s+dep:([^"\s]+))?/i,
+  // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]} dep:dep1,dep2
+  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))(?:\s+dep:([^"\s]+))?/i,
 
   // Format 3: Very simple (just ID and ops)
   // - [ ] id:auth:setup ops:"command"
-  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:"([^"]+)"/i
+  // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]}
+  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))/i
 };
 
 /**
@@ -213,7 +217,23 @@ export class SpecLoader {
       }
 
       if (match) {
-        const [, checked, id, ops, deps, labels] = match;
+        // Extract fields based on regex format
+        // For inline: [, checked, id, fullOps, quotedOps, jsonOps, deps, labels]
+        // For simple: [, checked, id, fullOps, quotedOps, jsonOps, deps]
+        // For minimal: [, checked, id, fullOps, quotedOps, jsonOps]
+        const [, checked, id, , quotedOps, jsonOps, ...rest] = match;
+
+        // Ops is either from quoted format or JSON format
+        const ops = quotedOps || jsonOps;
+
+        // Extract deps and labels from rest based on format
+        let deps: string | undefined;
+        let labels: string | undefined;
+        if (format === 'inline') {
+          [deps, labels] = rest;
+        } else if (format === 'simple') {
+          [deps] = rest;
+        }
 
         // Skip if missing required fields
         if (!id || !ops) {
@@ -274,9 +294,20 @@ export class SpecLoader {
 
   /**
    * Extract assignee hint from ops command
+   * Supports both JSON format and old string format
    */
   private extractAssignee(ops: string): string | undefined {
-    // Pattern: ax run <agent> "task"
+    // Try JSON format first
+    if (ops.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(ops);
+        return parsed.agent;
+      } catch {
+        // Fall through to old format
+      }
+    }
+
+    // Fallback: Pattern: ax run <agent> "task"
     // Support hyphenated agent names like "creative-marketer"
     const match = /ax\s+run\s+([\w-]+)/.exec(ops);
     return match ? match[1] : undefined;
@@ -284,9 +315,23 @@ export class SpecLoader {
 
   /**
    * Extract title from ops command
+   * Supports both JSON format and old string format
    */
   private extractTitle(ops: string): string {
-    // Try to extract quoted text
+    // Try JSON format first
+    if (ops.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(ops);
+        // Extract first argument as title
+        if (parsed.args && Array.isArray(parsed.args) && parsed.args[0]) {
+          return parsed.args[0];
+        }
+      } catch {
+        // Fall through to old format
+      }
+    }
+
+    // Fallback: Try to extract quoted text
     const quotedMatch = /"([^"]+)"/.exec(ops);
     if (quotedMatch && quotedMatch[1]) {
       return quotedMatch[1];

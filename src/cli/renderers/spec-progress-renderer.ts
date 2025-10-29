@@ -179,6 +179,7 @@ export class SpecProgressRenderer {
 
     if (this.spinner) {
       this.spinner.stop();
+      this.spinner = null;  // Fix: Clear reference for garbage collection
     }
 
     console.log(chalk.cyan(`\nLevel ${event.level + 1}/${event.totalLevels}:`));
@@ -260,18 +261,33 @@ export class SpecProgressRenderer {
   /**
    * Stop rendering
    *
-   * Cleans up spinner, removes event listeners, and resets state.
+   * Cleans up spinner, removes event listeners, clears all state, and releases references.
+   * Ensures proper garbage collection of all resources.
    */
   stop(): void {
+    // Stop and clear spinner
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;
     }
 
-    // Fix memory leak: Remove event listener
+    // Remove event listener (fix memory leak #1)
     if (this.eventListener && this.executor.events) {
       this.executor.events.removeListener('*', this.eventListener);
       this.eventListener = null;
     }
+
+    // Clear taskStartTimes Map (fix memory leak #2)
+    this.taskStartTimes.clear();
+
+    // Clear executor reference (fix memory leak #3)
+    // @ts-expect-error - Setting to null for garbage collection
+    this.executor = null;
+
+    // Reset all state variables
+    this.taskCount = 0;
+    this.completedCount = 0;
+    this.failedCount = 0;
+    this.currentLevel = 0;
   }
 }

@@ -79,7 +79,7 @@ export class SpecExecutor {
     // Phase 3: Initialize defaults for all paths
     this.enableContextSharing = false;
     this.concurrencyLimit = 4;
-    this.limiter = pLimit(this.concurrencyLimit);
+    this.limiter = pLimit(4); // Temporary, will be re-initialized with config value
 
     // Build dependency graph
     this.graphBuilder = new SpecGraphBuilder();
@@ -361,6 +361,18 @@ export class SpecExecutor {
         logger.debug('SpecExecutor cleanup complete');
       } catch (error) {
         logger.warn('SpecExecutor cleanup failed', {
+          error: (error as Error).message
+        });
+      }
+    }
+
+    // Phase 3: Cleanup memory manager (fix memory leak)
+    if (this.memoryManager) {
+      try {
+        await this.memoryManager.close();
+        logger.debug('SpecExecutor memory manager closed');
+      } catch (error) {
+        logger.warn('SpecExecutor memory manager cleanup failed', {
           error: (error as Error).message
         });
       }

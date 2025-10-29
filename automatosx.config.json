@@ -304,5 +304,5 @@
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.8.10"
+  "version": "5.12.0"
 }

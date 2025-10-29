@@ -340,7 +340,9 @@ ax spec run --parallel
       for (const task of tasks) {
         const deps = task.dependencies.length > 0 ? ` dep:${task.dependencies.join(',')}` : '';
         const labels = task.labels && task.labels.length > 0 ? ` labels:${task.labels.join(',')}` : '';
-        const ops = `ax run ${task.agent} '${task.description}'`;
+        // Use double quotes and escape any quotes in the description
+        const escapedDescription = task.description.replace(/"/g, '\\"');
+        const ops = `ax run ${task.agent} "${escapedDescription}"`;
 
         content += `- [ ] id:${task.id} ops:"${ops}"${deps}${labels}\n`;
       }

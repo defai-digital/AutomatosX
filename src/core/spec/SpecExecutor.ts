@@ -545,8 +545,9 @@ export class SpecExecutor {
   private async executeOpsCommand(ops: string): Promise<string> {
     return new Promise((resolve, reject) => {
       // Extract command and args
-      // ops format: ax run <agent> "<task>"
-      const parts = ops.match(/ax\s+run\s+([\w-]+)\s+"([^"]+)"/);
+      // ops format: ax run <agent> "<task>" or ax run <agent> '<task>'
+      // Support both single and double quotes for robustness
+      const parts = ops.match(/ax\s+run\s+([\w-]+)\s+["']([^"']+)["']/);
 
       if (!parts) {
         reject(new Error(`Invalid ops format: ${ops}`));
@@ -599,6 +600,9 @@ export class SpecExecutor {
 
   /**
    * Update task status in tasks.md
+   *
+   * IMPORTANT: Re-reads file before updating to prevent stale state corruption
+   * where concurrent task completions could overwrite each other's updates.
    */
   private async updateTaskStatus(
     taskId: string,
@@ -606,10 +610,14 @@ export class SpecExecutor {
   ): Promise<void> {
     try {
       const tasksPath = this.spec.metadata.files.tasks;
-      const content = this.spec.content.tasks;
+
+      // CRITICAL FIX: Re-read file to get latest state
+      // This prevents stale in-memory state from overwriting recent updates
+      const { readFile } = await import('fs/promises');
+      const currentContent = await readFile(tasksPath, 'utf8');
 
       // Find the task line and update status
-      const lines = content.split('\n');
+      const lines = currentContent.split('\n');
       const updatedLines = lines.map(line => {
         // Match task ID
         if (line.includes(`id:${taskId}`)) {
@@ -623,8 +631,13 @@ export class SpecExecutor {
         return line;
       });
 
+      const updatedContent = updatedLines.join('\n');
+
       // Write back to file
-      await writeFile(tasksPath, updatedLines.join('\n'), 'utf8');
+      await writeFile(tasksPath, updatedContent, 'utf8');
+
+      // CRITICAL FIX: Update in-memory copy to keep it in sync
+      this.spec.content.tasks = updatedContent;
 
       logger.debug('Task status updated in tasks.md', { taskId, status });
     } catch (error) {

@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-29T14:32:14.117Z
+ * Generated: 2025-10-29T15:05:46.486Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -319,14 +319,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.8.6"
+  "version": "5.8.9"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-29T14:32:14.117Z',
+  generatedAt: '2025-10-29T15:05:46.486Z',
   sourceFile: 'automatosx.config.json',
-  version: '5.8.6'
+  version: '5.8.9'
 } as const;

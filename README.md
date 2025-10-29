@@ -13,7 +13,7 @@ AutomatosX is a local-first CLI that transforms stateless AI assistants into a p
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.8.8** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
+**Status**: ✅ Production Ready · **v5.8.9** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
 ---
 

@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.5] - 2025-10-29
+
+### 🐛 Bug Fixes
+
+**MCP Provider Integration** - Fixed critical MCP provider name mismatch and model specification issues
+
+#### Provider Name Mapping Fix
+- **Problem**: MCP clients use simplified provider names (`'claude'`, `'gemini'`, `'openai'`) but system uses full names (`'claude-code'`, `'gemini-cli'`, `'openai'`)
+- **Impact**: MCP requests with `provider: 'gemini'` failed with routing errors
+- **Solution**: Created bidirectional provider name mapping utility
+
+#### Changes Made
+
+1. **Created Provider Mapping Utility** (`src/mcp/utils/provider-mapping.ts` - NEW)
+   - `mapMcpProviderToActual()` - Maps MCP names → Internal names
+   - `mapActualProviderToMcp()` - Maps Internal names → MCP names
+   - Enables seamless translation between MCP API and internal system
+
+2. **Updated MCP run_agent Tool** (`src/mcp/tools/run-agent.ts`)
+   - Import and apply provider mapping before context creation
+   - Enhanced logging to show both MCP and actual provider names
+   - Now correctly routes `'gemini'` → `'gemini-cli'`
+
+3. **Updated MCP get_status Tool** (`src/mcp/tools/get-status.ts`)
+   - Map internal provider names to MCP names in status responses
+   - Returns: `['claude', 'gemini', 'openai']` instead of `['claude-code', 'gemini-cli', 'openai']`
+
+4. **Fixed OpenAI Model Specification** (`src/providers/openai-provider.ts`)
+   - Removed explicit model parameter passing to OpenAI Codex CLI
+   - Let CLI use its own default model to avoid version conflicts
+   - Added documentation explaining why model is not passed
+
+5. **Verified Gemini Model Handling** (`src/providers/gemini-provider.ts`)
+   - Confirmed Gemini CLI already correctly avoids passing model parameter
+   - Uses CLI's default model selection
+
+6. **Added Comprehensive Tests**
+   - Created `tests/unit/mcp/provider-mapping.test.ts` with full coverage
+   - Updated `tests/unit/mcp/tools/run-agent.test.ts` expectations
+   - Added bidirectional mapping tests and edge case handling
+
+### ✅ Results
+
+**Before Fix:**
+- ❌ MCP client requests with `provider: 'gemini'` failed
+- ❌ Provider routing didn't work for gemini
+- ❌ Models were explicitly specified causing potential conflicts
+
+**After Fix:**
+- ✅ MCP client requests with `provider: 'gemini'` work correctly
+- ✅ Provider routing properly routes to 'gemini-cli'
+- ✅ Status responses show simplified names
+- ✅ Both Gemini and OpenAI use their optimal default models
+- ✅ Full test coverage for provider mapping
+- ✅ Fully backwards compatible
+
+### 📊 Statistics
+
+- **New Files**: 2 (provider-mapping.ts, provider-mapping.test.ts)
+- **Modified Files**: 4 (run-agent.ts, get-status.ts, openai-provider.ts, run-agent.test.ts)
+- **Tests**: All tests passing
+- **Backwards Compatibility**: ✅ Fully compatible
+
+---
+
 ## [5.8.4] - 2025-10-28
 
 ### 🐛 Bug Fixes

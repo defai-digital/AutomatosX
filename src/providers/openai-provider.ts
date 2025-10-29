@@ -343,10 +343,9 @@ export class OpenAIProvider extends BaseProvider {
     // workspace-write allows writing to the workspace while maintaining security
     args.push('--sandbox', 'workspace-write');
 
-    // Add model if specified
-    if (request.model) {
-      args.push('-m', request.model);
-    }
+    // NOTE: Do NOT pass --model / -m flag - let OpenAI Codex CLI use its own default model
+    // The CLI is configured to use the best available model automatically
+    // Specifying a model manually can cause version conflicts
 
     // Add temperature via config override if specified
     if (request.temperature !== undefined) {

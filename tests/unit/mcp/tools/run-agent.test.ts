@@ -214,10 +214,11 @@ describe('MCP Tool: run_agent', () => {
 
       await handler(input);
 
+      // Provider should be mapped from 'gemini' (MCP) to 'gemini-cli' (actual)
       expect(mockContextManager.createContext).toHaveBeenCalledWith(
         'test-agent',
         'test task',
-        { provider: 'gemini', skipMemory: undefined }
+        { provider: 'gemini-cli', skipMemory: undefined }
       );
     });
 

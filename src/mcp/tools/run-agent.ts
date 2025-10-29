@@ -11,6 +11,7 @@ import { ContextManager } from '../../agents/context-manager.js';
 import { logger } from '../../utils/logger.js';
 import { formatError } from '../../utils/error-formatter.js';
 import { validateAgentName, validateStringParameter } from '../utils/validation.js';
+import { mapMcpProviderToActual } from '../utils/provider-mapping.js';
 
 export interface RunAgentDependencies {
   contextManager: ContextManager;
@@ -36,12 +37,23 @@ export function createRunAgentHandler(
       maxLength: 10000
     });
 
-    logger.info('[MCP] run_agent called', { agent, task, provider, no_memory });
+    // Map MCP provider name to actual provider name
+    // MCP uses: 'gemini', 'claude', 'openai'
+    // System uses: 'gemini-cli', 'claude-code', 'openai'
+    const actualProvider = mapMcpProviderToActual(provider);
+
+    logger.info('[MCP] run_agent called', {
+      agent,
+      task,
+      mcpProvider: provider,
+      actualProvider,
+      no_memory
+    });
 
     try {
       // Build execution context (same as CLI run command)
       const context = await deps.contextManager.createContext(agent, task, {
-        provider,
+        provider: actualProvider,
         skipMemory: no_memory
       });
 

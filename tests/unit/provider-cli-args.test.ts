@@ -31,7 +31,7 @@ describe('Provider CLI Arguments (Phase 2)', () => {
         expect(args).toEqual(['exec', '--sandbox', 'workspace-write']);
       });
 
-      it('should include model if specified', () => {
+      it('should NOT include model parameter (uses CLI default)', () => {
         const request: ExecutionRequest = {
           prompt: 'test prompt',
           model: 'gpt-4o'
@@ -39,8 +39,10 @@ describe('Provider CLI Arguments (Phase 2)', () => {
 
         const args = (provider as any).buildCLIArgs(request);
 
-        expect(args).toContain('-m');
-        expect(args).toContain('gpt-4o');
+        // Model should NOT be passed - let OpenAI Codex CLI use its default
+        expect(args).not.toContain('-m');
+        expect(args).not.toContain('gpt-4o');
+        expect(args).toEqual(['exec', '--sandbox', 'workspace-write']);
       });
 
       it('should include maxTokens if specified', () => {
@@ -68,10 +70,10 @@ describe('Provider CLI Arguments (Phase 2)', () => {
       });
 
 
-      it('should include all parameters when specified', () => {
+      it('should include all supported parameters (excluding model)', () => {
         const request: ExecutionRequest = {
           prompt: 'test prompt',
-          model: 'gpt-4o',
+          model: 'gpt-4o', // Model is ignored
           maxTokens: 4096,
           temperature: 0.5
         };
@@ -79,8 +81,12 @@ describe('Provider CLI Arguments (Phase 2)', () => {
         const args = (provider as any).buildCLIArgs(request);
 
         expect(args).toContain('exec');
-        expect(args).toContain('-m');
-        expect(args).toContain('gpt-4o');
+        expect(args).toContain('--sandbox');
+        expect(args).toContain('workspace-write');
+        // Model should NOT be passed
+        expect(args).not.toContain('-m');
+        expect(args).not.toContain('gpt-4o');
+        // But maxTokens and temperature should be passed
         expect(args).toContain('-c');
         expect(args).toContain('max_tokens=4096');
         expect(args).toContain('temperature=0.5');

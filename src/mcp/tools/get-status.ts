@@ -11,6 +11,7 @@ import { SessionManager } from '../../core/session-manager.js';
 import { Router } from '../../core/router.js';
 import { logger } from '../../utils/logger.js';
 import { getVersion } from '../../utils/version.js';
+import { mapActualProviderToMcp } from '../utils/provider-mapping.js';
 
 export interface GetStatusDependencies {
   memoryManager: IMemoryManager;
@@ -35,9 +36,11 @@ export function createGetStatusHandler(
       const activeSessions = await deps.sessionManager.getActiveSessions();
       const totalSessions = await deps.sessionManager.getTotalSessionCount();
 
-      // Get available providers
+      // Get available providers and map to MCP names
+      // System uses: 'claude-code', 'gemini-cli', 'openai'
+      // MCP returns: 'claude', 'gemini', 'openai'
       const availableProviders = await deps.router.getAvailableProviders();
-      const providers = availableProviders.map((p) => p.name);
+      const providers = availableProviders.map((p) => mapActualProviderToMcp(p.name));
 
       // Format dbSize as human-readable string
       const formatBytes = (bytes: number): string => {

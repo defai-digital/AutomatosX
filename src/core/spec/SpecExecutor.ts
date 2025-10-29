@@ -208,6 +208,13 @@ export class SpecExecutor {
         nativeExecution: this.useNativeExecution
       });
 
+      // Phase 2B: Emit spec:started event
+      this.events?.emitSpecStarted({
+        totalTasks: this.runState.metadata.totalTasks,
+        workspacePath: this.spec.metadata.workspacePath,
+        parallel: this.options.parallel ?? false
+      });
+
       if (!this.spec.graph) {
         throw new SpecErrorClass(
           SpecErrorCode.EXECUTION_FAILED,
@@ -248,6 +255,18 @@ export class SpecExecutor {
         failed: this.runState.metadata.failedTasks
       });
 
+      // Phase 2B: Emit spec:completed event
+      const skippedCount = Array.from(this.runState.tasks.values()).filter(
+        t => t.status === 'skipped'
+      ).length;
+
+      this.events?.emitSpecCompleted({
+        completedTasks: this.runState.metadata.completedTasks,
+        failedTasks: this.runState.metadata.failedTasks,
+        skippedTasks: skippedCount,
+        totalTasks: this.runState.metadata.totalTasks
+      });
+
       // Phase 1: Cleanup agent service
       await this.cleanup();
 
@@ -257,9 +276,7 @@ export class SpecExecutor {
         totalTasks: this.runState.metadata.totalTasks,
         completedTasks: this.runState.metadata.completedTasks,
         failedTasks: this.runState.metadata.failedTasks,
-        skippedTasks: Array.from(this.runState.tasks.values()).filter(
-          t => t.status === 'skipped'
-        ).length,
+        skippedTasks: skippedCount,
         duration,
         taskResults,
         runState: this.runState
@@ -271,6 +288,17 @@ export class SpecExecutor {
       });
 
       this.runState.status = 'failed';
+
+      // Phase 2B: Emit spec:failed event
+      this.events?.emitSpecFailed({
+        error: {
+          message: (error as Error).message,
+          code: (error as any).code,
+          stack: (error as Error).stack
+        },
+        completedTasks: this.runState.metadata.completedTasks,
+        failedTasks: this.runState.metadata.failedTasks
+      });
 
       // Phase 1: Cleanup even on failure
       await this.cleanup();
@@ -395,6 +423,16 @@ export class SpecExecutor {
         tasksInLevel: taskIds.length
       });
 
+      const levelStartTime = Date.now();
+
+      // Phase 2B: Emit level:started event
+      this.events?.emitLevelStarted({
+        level: levelIndex,
+        totalLevels: levels.length,
+        taskCount: taskIds.length,
+        taskIds
+      });
+
       // Execute all tasks in this level in parallel
       const levelResults = await Promise.all(
         taskIds.map(async (taskId, i) => {
@@ -443,6 +481,19 @@ export class SpecExecutor {
 
       // Add non-null results
       results.push(...levelResults.filter((r): r is TaskExecutionResult => r !== null));
+
+      const levelDuration = Date.now() - levelStartTime;
+      const completedInLevel = levelResults.filter(r => r?.status === 'completed').length;
+      const failedInLevel = levelResults.filter(r => r?.status === 'failed').length;
+
+      // Phase 2B: Emit level:completed event
+      this.events?.emitLevelCompleted({
+        level: levelIndex,
+        totalLevels: levels.length,
+        duration: levelDuration,
+        completedTasks: completedInLevel,
+        failedTasks: failedInLevel
+      });
 
       // Stop if any task failed and not continuing on error
       if (
@@ -566,6 +617,14 @@ export class SpecExecutor {
 
     const startTime = Date.now();
 
+    // Phase 2B: Emit task:started event
+    this.events?.emitTaskStarted({
+      taskId: task.id,
+      taskTitle: task.title,
+      agent: task.assigneeHint,
+      level: 0 // Will be updated in parallel execution
+    });
+
     // Dry run mode
     if (this.options.dryRun) {
       logger.info('Dry run mode - task simulated', { taskId });
@@ -585,11 +644,21 @@ export class SpecExecutor {
       // Update task status in tasks.md
       await this.updateTaskStatus(taskId, 'completed');
 
+      const duration = Date.now() - startTime;
+
+      // Phase 2B: Emit task:completed event
+      this.events?.emitTaskCompleted({
+        taskId: task.id,
+        taskTitle: task.title,
+        duration,
+        output
+      });
+
       return {
         taskId,
         status: 'completed',
         output,
-        duration: Date.now() - startTime,
+        duration,
         executedBy: task.assigneeHint,
         retryCount: 0
       };
@@ -602,11 +671,24 @@ export class SpecExecutor {
       // Update task status in tasks.md
       await this.updateTaskStatus(taskId, 'failed');
 
+      const duration = Date.now() - startTime;
+
+      // Phase 2B: Emit task:failed event
+      this.events?.emitTaskFailed({
+        taskId: task.id,
+        taskTitle: task.title,
+        duration,
+        error: {
+          message: (error as Error).message,
+          stack: (error as Error).stack
+        }
+      });
+
       return {
         taskId,
         status: 'failed',
         error: (error as Error).message,
-        duration: Date.now() - startTime,
+        duration,
         executedBy: task.assigneeHint,
         retryCount: 0
       };

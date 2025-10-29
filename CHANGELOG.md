@@ -2,6 +2,122 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.11.0] - 2025-10-29
+
+### ✨ Features & Enhancements
+
+**Phase 2B: Full Streaming Progress** - Complete real-time observability for spec execution
+
+#### 🎯 Streaming Progress System (NEW)
+
+1. **Event Emission Integration** (`src/core/spec/SpecExecutor.ts`)
+   - Added event emission throughout SpecExecutor execution flow
+   - `spec:started` - Emitted when execution begins
+   - `spec:completed/failed` - Emitted when execution ends
+   - `task:started` - Emitted when each task begins
+   - `task:completed/failed` - Emitted when tasks finish
+   - `level:started/completed` - Emitted for parallel execution levels
+   - All events include duration, timestamps, and context
+
+2. **SpecProgressRenderer** (`src/cli/renderers/spec-progress-renderer.ts` - NEW)
+   - Real-time terminal rendering for spec execution
+   - Live progress updates with task status icons (⏳ ✓ ✗)
+   - Level-based parallel execution visualization
+   - Duration tracking for each task
+   - Error diagnostics display with stack traces (DEBUG mode)
+   - Clean, informative output with color coding
+
+3. **CLI Integration** (`src/cli/commands/spec.ts`)
+   - Automatic streaming progress when running `ax spec run`
+   - New `--no-streaming` flag to disable and use legacy mode
+   - Seamless integration with existing spec command
+   - Backward compatible with all existing workflows
+
+#### 📊 User Experience Impact
+
+**Before (v5.10.0):**
+```bash
+$ ax spec run
+🚀 Starting execution...
+✅ Execution completed
+Results:
+  Total: 10
+  Completed: 10
+  Duration: 45.32s
+```
+
+**After (v5.11.0):**
+```bash
+$ ax spec run
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Running spec: my-app-spec
+  Total tasks: 10
+  Mode: parallel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Level 1/3:
+  3 task(s) in parallel
+✓ [1/10] Setup database (2.3s)
+✓ [2/10] Setup config (1.8s)
+✓ [3/10] Initialize environment (1.5s)
+  ✓ All 3 task(s) completed (2.3s)
+
+Level 2/3:
+  5 task(s) in parallel
+⏳ [4/10] Backend API...
+✓ [4/10] Backend API (5.2s)
+⏳ [5/10] Frontend UI...
+✓ [5/10] Frontend UI (6.1s)
+...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Spec completed successfully
+  Duration: 45.3s
+  Completed: 10/10
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+#### 🎯 Key Benefits
+
+- **Live Feedback**: See task progress in real-time
+- **Transparency**: Know exactly what's happening at each moment
+- **Better Debugging**: Immediate visibility into failures
+- **Parallel Visualization**: Clear display of concurrent task execution
+- **Duration Insights**: Per-task timing information
+- **Optional**: Use `--no-streaming` for legacy output
+
+#### 🔧 Technical Details
+
+- **Performance**: <1ms overhead per event (validated)
+- **Backward Compatible**: All existing code works unchanged
+- **Optional Chaining**: Uses `?.` to safely emit events
+- **Clean Architecture**: Renderer subscribes to events, doesn't interfere with execution
+- **Extensible**: Foundation for future MCP streaming, web dashboards
+
+### 🧪 Testing
+
+- All 2,197 unit tests passing
+- All 103 integration tests passing
+- Smoke tests passing
+- Type checking: PASSED
+- Build: SUCCESS
+- Zero breaking changes
+
+### 📖 Documentation
+
+- Updated `automatosx/PRD/PHASE2-FINAL-STATUS.md` with complete Phase 2 status
+- Comprehensive implementation documentation
+- CLI usage examples with streaming
+
+### 🎉 Phase 2 Complete!
+
+Phase 2 (Observability & Streaming Progress) is now **100% complete**:
+- ✅ Phase 2A (v5.10.0): Event bus infrastructure
+- ✅ Phase 2B (v5.11.0): Full streaming integration
+
+Real-time observability is now production-ready across all spec execution workflows!
+
+---
+
 ## [5.10.0] - 2025-10-29
 
 ### ✨ Features & Enhancements

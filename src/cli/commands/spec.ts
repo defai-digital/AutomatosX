@@ -17,6 +17,7 @@ import { spawn } from 'child_process';
 import { SpecRegistry } from '../../core/spec/SpecRegistry.js';
 import { SpecExecutor } from '../../core/spec/SpecExecutor.js';
 import { SpecGenerator } from '../../core/spec/SpecGenerator.js';
+import { SpecProgressRenderer } from '../renderers/spec-progress-renderer.js';
 import { SessionManager } from '../../core/session-manager.js';
 import { detectProjectRoot } from '../../core/path-resolver.js';
 import { loadConfig } from '../../core/config.js';
@@ -46,6 +47,7 @@ interface SpecOptions {
   'dry-run'?: boolean;
   parallel?: boolean;
   resume?: boolean;
+  'no-streaming'?: boolean; // Phase 2B: Disable progress streaming (v5.11.0)
 
   // Status options
   pending?: boolean;
@@ -101,6 +103,11 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
       })
       .option('resume', {
         describe: 'Resume from last checkpoint',
+        type: 'boolean',
+        default: false
+      })
+      .option('no-streaming', {
+        describe: 'Disable real-time progress streaming',
         type: 'boolean',
         default: false
       })
@@ -408,9 +415,22 @@ async function handleRun(
 
     const executor = new SpecExecutor(spec, executorOptions, sessionManager);
 
+    // Phase 2B: Create progress renderer if streaming is enabled (v5.11.0)
+    let renderer: SpecProgressRenderer | undefined;
+    if (!argv['no-streaming']) {
+      renderer = new SpecProgressRenderer(executor);
+    } else {
+      // Legacy mode: show starting message
+      console.log(chalk.cyan('🚀 Starting execution...\n'));
+    }
+
     // Execute
-    console.log(chalk.cyan('🚀 Starting execution...\n'));
     const result = await executor.execute();
+
+    // Phase 2B: Cleanup renderer (v5.11.0)
+    if (renderer) {
+      renderer.stop();
+    }
 
     // Display results
     console.log(chalk.green('\n✅ Execution completed\n'));

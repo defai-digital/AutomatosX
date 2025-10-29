@@ -72,6 +72,9 @@ export class SessionManager {
   /** Maximum metadata size (10 KB) */
   private readonly MAX_METADATA_SIZE = 10 * 1024;
 
+  /** Maximum tasks per session (prevent unbounded growth) */
+  private readonly MAX_TASKS_PER_SESSION = 1000;
+
   /** UUID v4 validation regex (static for performance) */
   private static readonly UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -308,6 +311,30 @@ export class SessionManager {
 
     session.metadata.tasks.push(taskMetadata);
     session.updatedAt = new Date();
+
+    // Cleanup old completed tasks if limit exceeded (prevent unbounded growth)
+    if (session.metadata.tasks.length > this.MAX_TASKS_PER_SESSION) {
+      const completedTasks = session.metadata.tasks.filter((t: SessionTaskInfo) => t.status === 'completed' || t.status === 'failed');
+      const runningTasks = session.metadata.tasks.filter((t: SessionTaskInfo) => t.status === 'running' || t.status === 'pending');
+
+      // Keep all running/pending tasks + most recent completed tasks
+      const tasksToKeep = this.MAX_TASKS_PER_SESSION - runningTasks.length;
+      const recentCompleted = completedTasks
+        .sort((a: SessionTaskInfo, b: SessionTaskInfo) => {
+          const aTime = a.completedAt || a.startedAt;
+          const bTime = b.completedAt || b.startedAt;
+          return bTime.localeCompare(aTime); // Newest first
+        })
+        .slice(0, Math.max(0, tasksToKeep));
+
+      session.metadata.tasks = [...runningTasks, ...recentCompleted];
+
+      logger.debug('Cleaned up old tasks', {
+        sessionId,
+        removed: session.metadata.tasks.length - (runningTasks.length + recentCompleted.length),
+        remaining: session.metadata.tasks.length
+      });
+    }
 
     logger.debug('Task joined session', {
       sessionId,

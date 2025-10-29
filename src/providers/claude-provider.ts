@@ -19,6 +19,9 @@ import { getProviderSuggestion } from '../utils/environment.js';
 import { logger } from '../utils/logger.js';
 import { ProviderError } from '../utils/errors.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
+import { spawn } from 'child_process';
+import { processManager } from '../utils/process-manager.js';
+import { platform } from 'os';
 
 export class ClaudeProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -63,19 +66,41 @@ export class ClaudeProvider extends BaseProvider {
 
       const latency = Date.now() - startTime;
 
+      // v5.8.6: Cache token counts (performance optimization)
+      const promptTokens = this.estimateTokens(fullPrompt);
+      const completionTokens = this.estimateTokens(response.content);
+      const totalTokens = promptTokens + completionTokens;
+
+      // v5.8.6: Log structured telemetry for observability
+      logger.debug('Claude execution telemetry', {
+        provider: 'claude',
+        model: request.model || 'claude-default',
+        latencyMs: latency,
+        promptTokens,
+        completionTokens,
+        totalTokens
+      });
+
       return {
         content: response.content,
         model: request.model || 'claude-default', // CLI decides actual model
         tokensUsed: {
-          prompt: this.estimateTokens(fullPrompt),
-          completion: this.estimateTokens(response.content),
-          total: this.estimateTokens(fullPrompt) + this.estimateTokens(response.content)
+          prompt: promptTokens,
+          completion: completionTokens,
+          total: totalTokens
         },
         latencyMs: latency,
         finishReason: 'stop'
       };
     } catch (error) {
-      throw new Error(`Claude execution failed: ${(error as Error).message}`);
+      // v5.8.6: Use ProviderError for structured error handling
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw ProviderError.executionError(
+        this.config.name,
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 
@@ -110,7 +135,7 @@ export class ClaudeProvider extends BaseProvider {
   }
 
   // CLI execution helper (Phase 1 implementation)
-  private async executeCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
+  private async executeCLI(prompt: string, request: ExecutionRequest, streamingOptions?: StreamingOptions): Promise<{ content: string }> {
     // Check if running in production mode (real CLI) or test mode (mock)
     const useMock = process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true';
 
@@ -122,7 +147,7 @@ export class ClaudeProvider extends BaseProvider {
     }
 
     // Real CLI execution
-    return this.executeRealCLI(prompt, request);
+    return this.executeRealCLI(prompt, request, streamingOptions);
   }
 
   /**
@@ -132,11 +157,11 @@ export class ClaudeProvider extends BaseProvider {
    * Uses --print flag for non-interactive output
    * Prompt is passed via stdin (not as positional argument)
    * Model selection is delegated to CLI's own defaults
+   *
+   * v5.8.6: Security improvements - conditional shell, env filtering
+   * v5.8.6: Streaming support - progressive stdout parsing
    */
-  private async executeRealCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
-    const { spawn } = await import('child_process');
-    const { processManager } = await import('../utils/process-manager.js');
-
+  private async executeRealCLI(prompt: string, request: ExecutionRequest, streamingOptions?: StreamingOptions): Promise<{ content: string }> {
     return new Promise((resolve, reject) => {
       let stdout = '';
       let stderr = '';
@@ -168,28 +193,26 @@ export class ClaudeProvider extends BaseProvider {
       // Claude CLI expects prompt via stdin or --prompt flag
       // We use stdin to avoid command-line length limits
 
+      // v5.8.6: Filter environment variables for security
+      const filteredEnv = this.filterEnvironment(process.env);
+
+      // v5.8.6: Determine if shell is needed (only on Windows for .cmd/.bat files)
+      const isWindows = platform() === 'win32';
+      const needsShell = isWindows && (
+        this.config.command.endsWith('.cmd') ||
+        this.config.command.endsWith('.bat')
+      );
+
       let child: ReturnType<typeof spawn>;
       try {
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Use pipe for stdin
-          env: process.env,
-          shell: true, // Required for Windows .cmd/.bat files
+          env: filteredEnv,
+          shell: needsShell, // v5.8.6: Only use shell when necessary (Windows .cmd/.bat)
         });
       } catch (error) {
-        const err = error as NodeJS.ErrnoException;
-        if (err.code === 'ENOENT') {
-          const suggestion = getProviderSuggestion('claude');
-          reject(
-            new Error(
-              `Claude CLI not found: '${this.config.command}'
-
-` +
-                `${suggestion}`,
-            ),
-          );
-        } else {
-          reject(new Error(`Failed to start Claude CLI: ${err.message}`));
-        }
+        const err = error instanceof Error ? error : new Error(String(error));
+        reject(ProviderError.executionError(this.config.name, err));
         return;
       }
 
@@ -203,6 +226,7 @@ export class ClaudeProvider extends BaseProvider {
         child.stdin?.end();
       } catch (error) {
         // Kill child process and wait for it to exit before rejecting
+        // Process manager will auto-cleanup on exit event
         child.kill('SIGTERM');
 
         // Set fallback timeout to force kill if SIGTERM doesn't work
@@ -217,7 +241,8 @@ export class ClaudeProvider extends BaseProvider {
         // Wait for process to exit, then reject
         child.once('exit', () => {
           clearTimeout(cleanupTimeout);
-          reject(new Error(`Failed to write prompt to Claude CLI stdin: ${(error as Error).message}`));
+          const err = error instanceof Error ? error : new Error(String(error));
+          reject(ProviderError.executionError(this.config.name, err));
         });
         return;
       }
@@ -241,7 +266,7 @@ export class ClaudeProvider extends BaseProvider {
             }
           }, gracefulTimeout);
 
-          reject(new Error('Execution aborted by timeout'));
+          reject(ProviderError.timeout(this.config.name, this.config.timeout));
         };
         request.signal.addEventListener('abort', abortHandler, { once: true });
       }
@@ -254,10 +279,42 @@ export class ClaudeProvider extends BaseProvider {
         }
       };
 
-      // Collect stdout
+      // Collect stdout and emit streaming updates
       child.stdout?.on('data', (data) => {
         const chunk = data.toString();
         stdout += chunk;
+
+        // v5.8.6: Progressive streaming support
+        if (streamingOptions) {
+          // Emit token callback for incremental updates
+          if (streamingOptions.onToken) {
+            try {
+              streamingOptions.onToken(chunk);
+            } catch (error) {
+              logger.warn('Streaming onToken callback error', {
+                provider: 'claude',
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+
+          // Emit progress callback if provided
+          if (streamingOptions.onProgress) {
+            try {
+              // Estimate progress based on output length vs expected tokens
+              const currentTokens = this.estimateTokens(stdout);
+              const expectedTokens = request.maxTokens || 4096;
+              const progress = Math.min(currentTokens / expectedTokens, 0.95); // Cap at 95% until complete
+
+              streamingOptions.onProgress(progress);
+            } catch (error) {
+              logger.warn('Streaming onProgress callback error', {
+                provider: 'claude',
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+        }
 
         // Real-time output if enabled (v5.6.5: UX improvement)
         if (process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true') {
@@ -308,8 +365,31 @@ export class ClaudeProvider extends BaseProvider {
             }
           } else {
             if (!stdout.trim()) {
-              reject(new Error('Claude CLI returned empty response'));
+              reject(ProviderError.executionError(
+                this.config.name,
+                new Error('Claude CLI returned empty response')
+              ));
             } else {
+              // v5.8.6: Check for soft errors (warnings in stderr with exit code 0)
+              if (stderr.trim()) {
+                logger.warn('Claude CLI completed with warnings', {
+                  provider: 'claude',
+                  stderr: stderr.trim()
+                });
+              }
+
+              // v5.8.6: Emit final progress update for streaming
+              if (streamingOptions?.onProgress) {
+                try {
+                  streamingOptions.onProgress(1.0);
+                } catch (error) {
+                  logger.warn('Final streaming onProgress callback error', {
+                    provider: 'claude',
+                    error: error instanceof Error ? error.message : String(error)
+                  });
+                }
+              }
+
               resolve({ content: stdout.trim() });
             }
           }
@@ -317,7 +397,8 @@ export class ClaudeProvider extends BaseProvider {
           // Event handler threw - this is critical
           const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
           logger.error('Close event handler error', { error: errMsg, provider: 'claude' });
-          reject(new Error(`Internal error handling process exit: ${errMsg}`));
+          const err = handlerError instanceof Error ? handlerError : new Error(errMsg);
+          reject(ProviderError.executionError(this.config.name, err));
         }
       });
 
@@ -329,22 +410,7 @@ export class ClaudeProvider extends BaseProvider {
           return; // Timeout already handled
         }
 
-        const err = error as NodeJS.ErrnoException;
-
-        if (err.code === 'ENOENT') {
-          const suggestion = getProviderSuggestion('claude');
-          reject(new Error(
-            `Claude CLI command '${this.config.command}' not found.\n\n` +
-            `${suggestion}`
-          ));
-        } else if (err.code === 'EACCES') {
-          reject(new Error(
-            `Permission denied: Cannot execute '${this.config.command}'.\n` +
-            `Please check file permissions.`
-          ));
-        } else {
-          reject(new Error(`Failed to execute Claude CLI: ${err.message}`));
-        }
+        reject(ProviderError.executionError(this.config.name, error));
       });
 
       // Set timeout
@@ -362,14 +428,17 @@ export class ClaudeProvider extends BaseProvider {
           }
         }, gracefulTimeout);
 
-        reject(new Error(
-          `Request timeout after ${this.config.timeout / 1000} seconds.\n` +
-          `This may be due to:\n` +
-          `- Slow network connection\n` +
-          `- Large request requiring more processing time\n` +
-          `- Claude API being overloaded\n` +
-          `Try again or use --timeout option to increase the limit.`
-        ));
+        // v5.8.6: Log partial output if available for debugging
+        const partialOutput = stdout.trim();
+        if (partialOutput) {
+          logger.debug('Partial output available on timeout', {
+            provider: 'claude',
+            partialLength: partialOutput.length,
+            preview: partialOutput.substring(0, 100)
+          });
+        }
+
+        reject(ProviderError.timeout(this.config.name, this.config.timeout));
       }, this.config.timeout);
     });
   }
@@ -381,19 +450,41 @@ export class ClaudeProvider extends BaseProvider {
 
   /**
    * Build CLI arguments for Claude Code CLI
-   * Currently does not support parameter passing via CLI
-   * Claude Code uses its own optimal defaults
+   * v5.8.6: Now supports configurable tools and directories
    */
   protected buildCLIArgs(request: ExecutionRequest): string[] {
-    // Claude Code CLI uses --print for non-interactive output
-    const args: string[] = ['--print'];
+    const args: string[] = [];
 
-    // Enable file operation tools (v5.0.6 fix)
-    // Allow Read, Write, Edit, and Bash tools for agent operations
-    args.push('--allowedTools', 'Read Write Edit Bash Glob Grep');
+    // v5.8.6: Configurable print mode
+    // Priority: context override > config default > fallback
+    const claudeConfig = (this.config as any).claude;
+    const printMode = request.context?.printMode ?? claudeConfig?.printMode ?? true;
 
-    // Allow access to current working directory and tmp folder
-    args.push('--add-dir', process.cwd());
+    if (printMode) {
+      args.push('--print');
+    }
+
+    // v5.8.6: Configurable allowed tools
+    // Priority: context override > config default > fallback
+    const allowedTools = request.context?.allowedTools ??
+                         claudeConfig?.allowedTools ??
+                         ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'];
+
+    if (Array.isArray(allowedTools) && allowedTools.length > 0) {
+      args.push('--allowedTools', allowedTools.join(' '));
+    }
+
+    // v5.8.6: Configurable allowed directories
+    // Priority: context override > config default > fallback
+    const allowedDirs = request.context?.allowedDirs ??
+                        claudeConfig?.allowedDirs ??
+                        ['.'];
+
+    if (Array.isArray(allowedDirs) && allowedDirs.length > 0) {
+      for (const dir of allowedDirs) {
+        args.push('--add-dir', dir === '.' ? process.cwd() : dir);
+      }
+    }
 
     // Claude Code CLI does not support parameter configuration via CLI flags
     // It uses provider-optimized defaults for best results
@@ -423,13 +514,70 @@ export class ClaudeProvider extends BaseProvider {
 
   /**
    * Check if provider supports streaming
-   * Claude CLI doesn't support native streaming
-   *
-   * Note: Real-time output is still available via AUTOMATOSX_SHOW_PROVIDER_OUTPUT
-   * environment variable, which displays CLI output as it's generated.
+   * v5.8.6: Claude Code now supports progressive streaming via stdout parsing
    */
   override supportsStreaming(): boolean {
-    return false;
+    return true;
+  }
+
+  /**
+   * Execute with streaming support
+   * v5.8.6: Progressive stdout parsing for real-time updates
+   */
+  override async executeStreaming(
+    request: ExecutionRequest,
+    options: StreamingOptions
+  ): Promise<ExecutionResponse> {
+    const startTime = Date.now();
+
+    try {
+      // Build prompt with system prompt if provided
+      let fullPrompt = request.prompt;
+      if (request.systemPrompt) {
+        fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+      }
+
+      // Execute via CLI with streaming callbacks
+      const response = await this.executeCLI(fullPrompt, request, options);
+
+      const latency = Date.now() - startTime;
+
+      // Cache token counts
+      const promptTokens = this.estimateTokens(fullPrompt);
+      const completionTokens = this.estimateTokens(response.content);
+      const totalTokens = promptTokens + completionTokens;
+
+      // Log telemetry
+      logger.debug('Claude streaming execution telemetry', {
+        provider: 'claude',
+        model: request.model || 'claude-default',
+        latencyMs: latency,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        streaming: true
+      });
+
+      return {
+        content: response.content,
+        model: request.model || 'claude-default',
+        tokensUsed: {
+          prompt: promptTokens,
+          completion: completionTokens,
+          total: totalTokens
+        },
+        latencyMs: latency,
+        finishReason: 'stop'
+      };
+    } catch (error) {
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw ProviderError.executionError(
+        this.config.name,
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
   }
 
   /**
@@ -482,5 +630,47 @@ export class ClaudeProvider extends BaseProvider {
       resetAtMs,
       errorMsg
     );
+  }
+
+  /**
+   * Filter environment variables for security
+   * v5.8.6: Only pass whitelisted variables to subprocess
+   *
+   * @param env - Original environment variables
+   * @returns Filtered environment variables
+   */
+  private filterEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+    const whitelist = [
+      'PATH',
+      'HOME',
+      'USER',
+      'SHELL',
+      'TMPDIR',
+      'TEMP',
+      'TMP',
+      // Claude/Anthropic-specific variables
+      /^CLAUDE_/,
+      /^ANTHROPIC_/,
+      // AutomatosX variables
+      /^AUTOMATOSX_/,
+    ];
+
+    const filtered: NodeJS.ProcessEnv = {};
+
+    for (const [key, value] of Object.entries(env)) {
+      const isWhitelisted = whitelist.some((pattern) => {
+        if (typeof pattern === 'string') {
+          return key === pattern;
+        } else {
+          return pattern.test(key);
+        }
+      });
+
+      if (isWhitelisted) {
+        filtered[key] = value;
+      }
+    }
+
+    return filtered;
   }
 }

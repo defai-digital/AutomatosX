@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "5.8.5",
+  "version": "5.8.6",
   "description": "AI Agent Orchestration Platform",
   "type": "module",
   "publishConfig": {
@@ -61,7 +61,7 @@
     "@types/yargs": "^17.0.33",
     "@vitest/coverage-v8": "^3.2.4",
     "commitizen": "^4.3.1",
-    "cz-conventional-changelog": "^3.3.0",
+    "cz-conventional-changelog": "^3.0.1",
     "husky": "^9.1.7",
     "markdownlint-cli": "^0.45.0",
     "standard-version": "^9.5.0",
@@ -71,6 +71,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@defai.digital/automatosx": "^5.8.5",
     "@iarna/toml": "^2.2.5",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^12.4.1",

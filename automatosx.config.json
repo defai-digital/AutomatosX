@@ -28,6 +28,11 @@
         "enabled": true,
         "window": "weekly",
         "resetHourUtc": 0
+      },
+      "claude": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
+        "allowedDirs": ["."],
+        "printMode": true
       }
     },
     "gemini-cli": {
@@ -58,6 +63,11 @@
         "enabled": true,
         "window": "daily",
         "resetHourUtc": 0
+      },
+      "gemini": {
+        "approvalMode": "auto_edit",
+        "embeddingModel": "text-embedding-004",
+        "enableRealEmbeddings": false
       }
     },
     "openai": {
@@ -297,5 +307,5 @@
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.8.1"
+  "version": "5.8.6"
 }

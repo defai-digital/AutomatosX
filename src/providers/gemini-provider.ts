@@ -18,6 +18,9 @@ import type {
 import { logger } from '../utils/logger.js';
 import { ProviderError } from '../utils/errors.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
+import { spawn } from 'child_process';
+import { processManager } from '../utils/process-manager.js';
+import { platform } from 'os';
 
 export class GeminiProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -58,19 +61,41 @@ export class GeminiProvider extends BaseProvider {
 
       const latency = Date.now() - startTime;
 
+      // Cache token counts (performance optimization - avoid recalculation)
+      const promptTokens = this.estimateTokens(fullPrompt);
+      const completionTokens = this.estimateTokens(response.content);
+      const totalTokens = promptTokens + completionTokens;
+
+      // Log telemetry for observability
+      logger.debug('Gemini execution telemetry', {
+        provider: 'gemini',
+        model: request.model || 'gemini-default',
+        latencyMs: latency,
+        promptTokens,
+        completionTokens,
+        totalTokens
+      });
+
       return {
         content: response.content,
         model: request.model || 'gemini-default', // CLI decides actual model
         tokensUsed: {
-          prompt: this.estimateTokens(fullPrompt),
-          completion: this.estimateTokens(response.content),
-          total: this.estimateTokens(fullPrompt) + this.estimateTokens(response.content)
+          prompt: promptTokens,
+          completion: completionTokens,
+          total: totalTokens
         },
         latencyMs: latency,
         finishReason: 'stop'
       };
     } catch (error) {
-      throw new Error(`Gemini execution failed: ${(error as Error).message}`);
+      // Use ProviderError for structured error handling
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw ProviderError.executionError(
+        this.config.name,
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 
@@ -113,7 +138,7 @@ export class GeminiProvider extends BaseProvider {
   }
 
   // CLI execution helper (Phase 1 implementation)
-  private async executeCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
+  private async executeCLI(prompt: string, request: ExecutionRequest, streamingOptions?: StreamingOptions): Promise<{ content: string }> {
     // Check if running in production mode (real CLI) or test mode (mock)
     const useMock = process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true';
 
@@ -125,7 +150,7 @@ export class GeminiProvider extends BaseProvider {
     }
 
     // Real CLI execution
-    return this.executeRealCLI(prompt, request);
+    return this.executeRealCLI(prompt, request, streamingOptions);
   }
 
   /**
@@ -133,11 +158,10 @@ export class GeminiProvider extends BaseProvider {
    *
    * Gemini CLI syntax: gemini "prompt"
    * Model selection is delegated to CLI's own defaults
+   *
+   * v5.8.6: Added streaming support via optional StreamingOptions parameter
    */
-  private async executeRealCLI(prompt: string, request: ExecutionRequest): Promise<{ content: string }> {
-      const { spawn } = await import('child_process');
-      const { processManager } = await import('../utils/process-manager.js');
-
+  private async executeRealCLI(prompt: string, request: ExecutionRequest, streamingOptions?: StreamingOptions): Promise<{ content: string }> {
       return new Promise((resolve, reject) => {
         let stdout = '';
         let stderr = '';
@@ -162,32 +186,36 @@ export class GeminiProvider extends BaseProvider {
           }
         };
 
-        // Build CLI arguments for Gemini CLI
-        // Note: We pass prompt via stdin to avoid shell parsing issues with special characters
-        // Do NOT pass --model - let CLI use its own default
-        const args: string[] = [];
-
-        // Enable file operation tools (v5.0.6 fix)
-        // This allows agents to create, modify, and delete files
-        args.push('--approval-mode', 'auto_edit');
+        // Use buildCLIArgs() for consistency (DRY principle)
+        const args = this.buildCLIArgs(request);
 
         // NOTE: Prompt is now passed via stdin instead of positional argument
         // This avoids shell parsing errors when prompt contains special characters,
         // quotes, newlines, or code examples
 
-        // Note: Gemini CLI doesn't support temperature and maxTokens via CLI flags
-        // These parameters are configured in the Gemini settings.json instead
+        // Filter environment variables for security
+        // Only allow whitelisted variables to reach subprocess
+        const filteredEnv = this.filterEnvironment(process.env);
+
+        // Determine if shell is needed (only on Windows for .cmd/.bat files)
+        const isWindows = platform() === 'win32';
+        const needsShell = isWindows && (
+          this.config.command.endsWith('.cmd') ||
+          this.config.command.endsWith('.bat')
+        );
 
         let child: ReturnType<typeof spawn>;
         try {
           // Spawn the CLI process with stdin pipe enabled
+          // Security: Only use shell on Windows when necessary
           child = spawn(this.config.command, args, {
             stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
-            env: process.env,
-            shell: true, // Required for Windows .cmd/.bat files
+            env: filteredEnv,
+            shell: needsShell, // Only use shell when necessary (Windows .cmd/.bat)
           });
         } catch (error) {
-          reject(new Error(`Failed to spawn Gemini CLI: ${(error as Error).message}`));
+          const err = error instanceof Error ? error : new Error(String(error));
+          reject(ProviderError.executionError(this.config.name, err));
           return;
         }
 
@@ -201,6 +229,7 @@ export class GeminiProvider extends BaseProvider {
         child.stdin?.end();
       } catch (error) {
         // Kill child process and wait for it to exit before rejecting
+        // Process manager will auto-cleanup on exit event
         child.kill('SIGTERM');
 
         // Set fallback timeout to force kill if SIGTERM doesn't work
@@ -215,7 +244,8 @@ export class GeminiProvider extends BaseProvider {
         // Wait for process to exit, then reject
         child.once('exit', () => {
           clearTimeout(cleanupTimeout);
-          reject(new Error(`Failed to write prompt to Gemini CLI stdin: ${(error as Error).message}`));
+          const err = error instanceof Error ? error : new Error(String(error));
+          reject(ProviderError.executionError(this.config.name, err));
         });
         return;
       }
@@ -239,7 +269,10 @@ export class GeminiProvider extends BaseProvider {
             }
           }, gracefulTimeout);
 
-          reject(new Error('Execution aborted by timeout'));
+          reject(ProviderError.timeout(
+            this.config.name,
+            this.config.timeout
+          ));
         };
         request.signal.addEventListener('abort', abortHandler, { once: true });
       }
@@ -252,10 +285,42 @@ export class GeminiProvider extends BaseProvider {
         }
       };
 
-      // Collect stdout
+      // Collect stdout and emit streaming updates
       child.stdout?.on('data', (data) => {
         const chunk = data.toString();
         stdout += chunk;
+
+        // v5.8.6: Progressive streaming support
+        if (streamingOptions) {
+          // Emit token callback for incremental updates
+          if (streamingOptions.onToken) {
+            try {
+              streamingOptions.onToken(chunk);
+            } catch (error) {
+              logger.warn('Streaming onToken callback error', {
+                provider: 'gemini',
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+
+          // Emit progress callback if provided
+          if (streamingOptions.onProgress) {
+            try {
+              // Estimate progress based on output length vs expected tokens
+              const currentTokens = this.estimateTokens(stdout);
+              const expectedTokens = request.maxTokens || 4096;
+              const progress = Math.min(currentTokens / expectedTokens, 0.95); // Cap at 95% until complete
+
+              streamingOptions.onProgress(progress);
+            } catch (error) {
+              logger.warn('Streaming onProgress callback error', {
+                provider: 'gemini',
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+        }
 
         // Real-time output if enabled (v5.6.5: UX improvement)
         if (process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true') {
@@ -284,16 +349,40 @@ export class GeminiProvider extends BaseProvider {
             if (this.isRateLimitError(errorMsg)) {
               reject(this.createRateLimitError(errorMsg));
             } else {
-              reject(new Error(`Gemini CLI exited with code ${code}: ${errorMsg}`));
+              reject(ProviderError.executionError(
+                this.config.name,
+                new Error(`Gemini CLI exited with code ${code}: ${errorMsg}`)
+              ));
             }
           } else {
+            // Check for soft errors: non-empty stderr with exit code 0
+            if (stderr.trim()) {
+              logger.warn('Gemini CLI completed with warnings', {
+                provider: 'gemini',
+                stderr: stderr.trim()
+              });
+            }
+
+            // v5.8.6: Emit final progress update for streaming
+            if (streamingOptions?.onProgress) {
+              try {
+                streamingOptions.onProgress(1.0);
+              } catch (error) {
+                logger.warn('Final streaming onProgress callback error', {
+                  provider: 'gemini',
+                  error: error instanceof Error ? error.message : String(error)
+                });
+              }
+            }
+
             resolve({ content: stdout.trim() });
           }
         } catch (handlerError) {
           // Event handler threw - this is critical
           const errMsg = handlerError instanceof Error ? handlerError.message : String(handlerError);
           logger.error('Close event handler error', { error: errMsg, provider: 'gemini' });
-          reject(new Error(`Internal error handling process exit: ${errMsg}`));
+          const err = handlerError instanceof Error ? handlerError : new Error(errMsg);
+          reject(ProviderError.executionError(this.config.name, err));
         }
       });
 
@@ -301,7 +390,7 @@ export class GeminiProvider extends BaseProvider {
       child.on('error', (error) => {
         cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
         if (!hasTimedOut) {
-          reject(new Error(`Failed to spawn Gemini CLI: ${error.message}`));
+          reject(ProviderError.executionError(this.config.name, error));
         }
       });
 
@@ -320,7 +409,17 @@ export class GeminiProvider extends BaseProvider {
           }
         }, forceKillDelay);
 
-        reject(new Error(`Gemini CLI execution timeout after ${this.config.timeout}ms`));
+        // Log partial output if available for debugging
+        const partialOutput = stdout.trim();
+        if (partialOutput) {
+          logger.debug('Partial output available on timeout', {
+            provider: 'gemini',
+            partialLength: partialOutput.length,
+            preview: partialOutput.substring(0, 100)
+          });
+        }
+
+        reject(ProviderError.timeout(this.config.name, this.config.timeout));
       }, this.config.timeout);
     });
   }
@@ -332,7 +431,8 @@ export class GeminiProvider extends BaseProvider {
 
   /**
    * Build CLI arguments for Gemini CLI
-   * Currently does not support parameter passing via CLI
+   *
+   * v5.8.6: Now supports configurable approval mode
    *
    * @see https://github.com/google-gemini/gemini-cli/issues/5280
    * Blocked: Waiting for Gemini CLI to add support for maxTokens and temperature parameters
@@ -341,9 +441,15 @@ export class GeminiProvider extends BaseProvider {
   protected buildCLIArgs(_request: ExecutionRequest): string[] {
     const args: string[] = [];
 
-    // Enable auto-edit mode for file operations (v5.6.5: Fix read-only sandbox issue)
-    // auto_edit mode automatically approves edit tools while maintaining safety
-    args.push('--approval-mode', 'auto_edit');
+    // v5.8.6: Configurable approval mode
+    // Priority: context override > config default > fallback
+    const geminiConfig = (this.config as any).gemini;
+    const approvalMode =
+      _request.context?.approvalMode ||
+      geminiConfig?.approvalMode ||
+      'auto_edit';
+
+    args.push('--approval-mode', approvalMode);
 
     // Gemini CLI currently does not support parameter passing
     // Parameters would need to be configured in ~/.gemini/settings.json
@@ -377,13 +483,115 @@ export class GeminiProvider extends BaseProvider {
 
   /**
    * Check if provider supports streaming
-   * Gemini CLI doesn't support native streaming
    *
-   * Note: Real-time output is still available via AUTOMATOSX_SHOW_PROVIDER_OUTPUT
-   * environment variable, which displays CLI output as it's generated.
+   * v5.8.6: Gemini CLI now supports progressive streaming via stdout parsing
+   * Parses CLI output line-by-line and emits tokens incrementally
    */
   override supportsStreaming(): boolean {
-    return false;
+    return true;
+  }
+
+  /**
+   * Execute with streaming support
+   * v5.8.6: Progressive stdout parsing for real-time updates
+   */
+  override async executeStreaming(
+    request: ExecutionRequest,
+    options: StreamingOptions
+  ): Promise<ExecutionResponse> {
+    const startTime = Date.now();
+
+    try {
+      // Build prompt with system prompt if provided
+      let fullPrompt = request.prompt;
+      if (request.systemPrompt) {
+        fullPrompt = `${request.systemPrompt}\n\n${request.prompt}`;
+      }
+
+      // Execute via CLI with streaming callbacks
+      const response = await this.executeCLI(fullPrompt, request, options);
+
+      const latency = Date.now() - startTime;
+
+      // Cache token counts
+      const promptTokens = this.estimateTokens(fullPrompt);
+      const completionTokens = this.estimateTokens(response.content);
+      const totalTokens = promptTokens + completionTokens;
+
+      // Log telemetry
+      logger.debug('Gemini streaming execution telemetry', {
+        provider: 'gemini',
+        model: request.model || 'gemini-default',
+        latencyMs: latency,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        streaming: true
+      });
+
+      return {
+        content: response.content,
+        model: request.model || 'gemini-default',
+        tokensUsed: {
+          prompt: promptTokens,
+          completion: completionTokens,
+          total: totalTokens
+        },
+        latencyMs: latency,
+        finishReason: 'stop'
+      };
+    } catch (error) {
+      // Use ProviderError for structured error handling
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw ProviderError.executionError(
+        this.config.name,
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
+  }
+
+  /**
+   * Filter environment variables for security
+   * Only pass whitelisted variables to subprocess
+   *
+   * @param env - Original environment variables
+   * @returns Filtered environment variables
+   */
+  private filterEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+    const whitelist = [
+      'PATH',
+      'HOME',
+      'USER',
+      'SHELL',
+      'TMPDIR',
+      'TEMP',
+      'TMP',
+      // Gemini-specific variables
+      /^GEMINI_/,
+      /^GOOGLE_/,
+      // AutomatosX variables
+      /^AUTOMATOSX_/,
+    ];
+
+    const filtered: NodeJS.ProcessEnv = {};
+
+    for (const [key, value] of Object.entries(env)) {
+      const isWhitelisted = whitelist.some((pattern) => {
+        if (typeof pattern === 'string') {
+          return key === pattern;
+        } else {
+          return pattern.test(key);
+        }
+      });
+
+      if (isWhitelisted) {
+        filtered[key] = value;
+      }
+    }
+
+    return filtered;
   }
 
   /**

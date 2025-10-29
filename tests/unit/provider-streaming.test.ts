@@ -230,31 +230,33 @@ describe('Provider Streaming', () => {
       provider = new GeminiProvider(config);
     });
 
-    it('should report no native streaming support', () => {
-      expect(provider.supportsStreaming()).toBe(false);
+    it('should report streaming support (v5.8.6)', () => {
+      // v5.8.6: Gemini now supports progressive streaming via stdout parsing
+      expect(provider.supportsStreaming()).toBe(true);
     });
 
-    // Note: Gemini provider does not implement executeStreaming() method
-    // Synthetic progress is tested in integration tests via AgentExecutor
+    // Note: v5.8.6 - Gemini provider now implements executeStreaming() method
+    // Progressive streaming via stdout parsing
 
-    it.skip('should execute with synthetic progress (Gemini does not support executeStreaming)', async () => {
-      // Skipped: Gemini provider uses synthetic progress via AgentExecutor wrapper
+    it.skip('should execute with streaming (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
+      // See tests/integration/gemini-streaming.integration.test.ts
     });
 
-    it.skip('should work without onProgress callback (Gemini does not support executeStreaming)', async () => {
-      // Skipped: Gemini provider uses execute() method without streaming
+    it.skip('should work without onProgress callback (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
     });
 
-    it.skip('should not call onToken (Gemini does not support executeStreaming)', async () => {
-      // Skipped: Gemini provider does not implement executeStreaming()
+    it.skip('should call onToken with chunks (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
     });
 
-    it.skip('should provide random progress updates (Gemini does not support executeStreaming)', async () => {
-      // Skipped: Gemini provider uses synthetic progress via AgentExecutor wrapper
+    it.skip('should provide progressive updates (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
     });
   });
 
-  describe('Claude Provider (Synthetic Progress)', () => {
+  describe('Claude Provider (Progressive Streaming)', () => {
     let provider: ClaudeProvider;
     const config: ProviderConfig = {
       name: 'claude',
@@ -268,23 +270,29 @@ describe('Provider Streaming', () => {
       provider = new ClaudeProvider(config);
     });
 
-    it('should report no native streaming support', () => {
-      expect(provider.supportsStreaming()).toBe(false);
+    it('should report streaming support (v5.8.6)', () => {
+      // v5.8.6: Claude now supports progressive streaming via stdout parsing
+      expect(provider.supportsStreaming()).toBe(true);
     });
 
-    // Note: Claude provider does not implement executeStreaming() method
-    // Synthetic progress is tested in integration tests via AgentExecutor
+    // Note: v5.8.6 - Claude provider now implements executeStreaming() method
+    // Progressive streaming via stdout parsing
 
-    it.skip('should execute with synthetic progress (Claude does not support executeStreaming)', async () => {
-      // Skipped: Claude provider uses synthetic progress via AgentExecutor wrapper
+    it.skip('should execute with streaming (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
+      // See tests/integration/claude-streaming.integration.test.ts
     });
 
-    it.skip('should work without onProgress callback (Claude does not support executeStreaming)', async () => {
-      // Skipped: Claude provider uses execute() method without streaming
+    it.skip('should work without onProgress callback (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
     });
 
-    it.skip('should not call onToken (Claude does not support executeStreaming)', async () => {
-      // Skipped: Claude provider does not implement executeStreaming()
+    it.skip('should call onToken with chunks (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
+    });
+
+    it.skip('should provide progressive updates (tested with real CLI)', async () => {
+      // Skipped: Real CLI testing required
     });
   });
 
@@ -351,9 +359,11 @@ describe('Provider Streaming', () => {
       // OpenAI supports native streaming
       expect(openaiProvider.supportsStreaming()).toBe(true);
 
-      // Gemini and Claude use synthetic progress
-      expect(geminiProvider.supportsStreaming()).toBe(false);
-      expect(claudeProvider.supportsStreaming()).toBe(false);
+      // v5.8.6: Gemini now supports streaming via stdout parsing
+      expect(geminiProvider.supportsStreaming()).toBe(true);
+
+      // v5.8.6: Claude now supports streaming via stdout parsing
+      expect(claudeProvider.supportsStreaming()).toBe(true);
     });
   });
 

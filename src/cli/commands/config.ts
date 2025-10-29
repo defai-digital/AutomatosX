@@ -215,9 +215,9 @@ async function resetConfig(path: string, verbose: boolean): Promise<void> {
   // Read version from package.json dynamically
   const { createRequire } = await import('module');
   const require = createRequire(import.meta.url);
-  let version = '5.2.2'; // fallback
+  let version = '5.8.6'; // fallback
   try {
-    const packageJson = require('../../package.json');
+    const packageJson = require('../../../package.json');
     version = packageJson.version;
   } catch {
     // Use fallback version

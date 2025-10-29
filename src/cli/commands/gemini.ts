@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { basename, resolve, join } from 'path';
 import { glob } from 'glob';
+import { spawn, spawnSync } from 'child_process';
 import { GeminiCLIBridge } from '../../integrations/gemini-cli/bridge.js';
 import { CommandTranslator } from '../../integrations/gemini-cli/command-translator.js';
 import type {
@@ -21,6 +22,7 @@ import {
   getProjectConfigPath,
   fileExists,
 } from '../../integrations/gemini-cli/utils/file-reader.js';
+import { loadConfig } from '../../core/config.js';
 
 const bridge = new GeminiCLIBridge();
 const translator = new CommandTranslator();
@@ -63,6 +65,11 @@ interface ValidateOptions {
 interface SetupOptions {
   skipMcp?: boolean;
   skipImport?: boolean;
+}
+
+interface DoctorOptions {
+  verbose?: boolean;
+  fix?: boolean;
 }
 
 function handleGeminiError(error: unknown, context: string): never {
@@ -866,6 +873,237 @@ const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> = {
   },
 };
 
+// v5.8.6: Doctor command for comprehensive diagnostics
+const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
+  command: 'doctor',
+  describe: 'Run diagnostic checks for Gemini CLI integration',
+
+  builder: (yargs: Argv<Record<string, unknown>>): Argv<DoctorOptions> => {
+    return (yargs as Argv<DoctorOptions>)
+      .option('verbose', {
+        alias: 'v',
+        type: 'boolean',
+        description: 'Show detailed information',
+        default: false,
+      })
+      .option('fix', {
+        type: 'boolean',
+        description: 'Attempt to automatically fix issues',
+        default: false,
+      })
+      .example('$0 gemini doctor', 'Run all diagnostic checks')
+      .example('$0 gemini doctor --verbose', 'Show detailed diagnostic information');
+  },
+
+  handler: async (argv) => {
+    interface CheckResult {
+      name: string;
+      status: 'pass' | 'fail' | 'warn';
+      message: string;
+      details?: string;
+      suggestion?: string;
+    }
+
+    function printResult(result: CheckResult, verbose: boolean): void {
+      const icon =
+        result.status === 'pass'
+          ? chalk.green('✓')
+          : result.status === 'warn'
+            ? chalk.yellow('⚠')
+            : chalk.red('✗');
+
+      console.log(`${icon} ${chalk.bold(result.name)}: ${result.message}`);
+
+      if (verbose && result.details) {
+        console.log(`  ${chalk.gray(result.details)}`);
+      }
+
+      if (result.suggestion) {
+        console.log(`  ${chalk.cyan('→')} ${result.suggestion}`);
+      }
+
+      console.log();
+    }
+
+    async function checkCLIInstalled(): Promise<CheckResult> {
+      // Check if gemini command exists using which
+      const which = spawnSync('which', ['gemini'], { timeout: 3000 });
+
+      if (which.status === 0 && which.stdout) {
+        const geminiPath = which.stdout.toString().trim();
+        return {
+          name: 'CLI Installation',
+          status: 'pass',
+          message: 'Gemini CLI is installed',
+          details: `Found at: ${geminiPath}`,
+        };
+      } else {
+        return {
+          name: 'CLI Installation',
+          status: 'fail',
+          message: 'Gemini CLI not found in PATH',
+          suggestion: 'Install: npm install -g @google/generative-ai-cli',
+        };
+      }
+    }
+
+    async function checkCLIVersion(): Promise<CheckResult> {
+      return new Promise((resolve) => {
+        const child = spawn('gemini', ['--version'], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout?.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        child.stderr?.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        child.on('close', (code) => {
+          if (code === 0 && stdout.trim()) {
+            resolve({
+              name: 'CLI Version',
+              status: 'pass',
+              message: 'Gemini CLI version detected',
+              details: stdout.trim(),
+            });
+          } else {
+            resolve({
+              name: 'CLI Version',
+              status: 'warn',
+              message: 'Could not detect version',
+              details: stderr || 'No version output',
+            });
+          }
+        });
+
+        setTimeout(() => {
+          child.kill();
+          resolve({
+            name: 'CLI Version',
+            status: 'fail',
+            message: 'Version check timed out',
+          });
+        }, 5000);
+      });
+    }
+
+    async function checkConfiguration(): Promise<CheckResult> {
+      try {
+        const config = await loadConfig(process.cwd());
+        const geminiConfig = config?.providers?.['gemini-cli'];
+
+        if (!geminiConfig) {
+          return {
+            name: 'Configuration',
+            status: 'fail',
+            message: 'Gemini provider not found in config',
+            suggestion: 'Add gemini-cli to automatosx.config.json',
+          };
+        }
+
+        if (!geminiConfig.enabled) {
+          return {
+            name: 'Configuration',
+            status: 'warn',
+            message: 'Gemini provider is disabled',
+            suggestion: 'Enable: providers.gemini-cli.enabled = true',
+          };
+        }
+
+        return {
+          name: 'Configuration',
+          status: 'pass',
+          message: 'Configuration is valid',
+          details: `Priority: ${geminiConfig.priority}, Timeout: ${geminiConfig.timeout}ms`,
+        };
+      } catch (error) {
+        return {
+          name: 'Configuration',
+          status: 'fail',
+          message: 'Failed to load configuration',
+          details: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
+    async function checkMCPRegistration(): Promise<CheckResult> {
+      try {
+        const isRegistered = await bridge.isAutomatosXMCPRegistered('user');
+
+        if (isRegistered) {
+          return {
+            name: 'MCP Registration',
+            status: 'pass',
+            message: 'AutomatosX MCP server is registered',
+          };
+        } else {
+          return {
+            name: 'MCP Registration',
+            status: 'warn',
+            message: 'AutomatosX MCP server not registered',
+            suggestion: 'Run: ax gemini sync-mcp',
+          };
+        }
+      } catch (error) {
+        return {
+          name: 'MCP Registration',
+          status: 'fail',
+          message: 'Failed to check MCP registration',
+          details: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
+    try {
+      console.log(chalk.bold('\n🏥 Gemini CLI Doctor\n'));
+      console.log('Running diagnostic checks...\n');
+
+      const checks: CheckResult[] = [];
+
+      // Run all checks
+      checks.push(await checkCLIInstalled());
+      checks.push(await checkCLIVersion());
+      checks.push(await checkConfiguration());
+      checks.push(await checkMCPRegistration());
+
+      // Print results
+      for (const result of checks) {
+        printResult(result, argv.verbose || false);
+      }
+
+      // Summary
+      const passed = checks.filter((c) => c.status === 'pass').length;
+      const warned = checks.filter((c) => c.status === 'warn').length;
+      const failed = checks.filter((c) => c.status === 'fail').length;
+
+      console.log(chalk.bold('Summary:'));
+      console.log(`  ${chalk.green('✓')} ${passed} passed`);
+      if (warned > 0) console.log(`  ${chalk.yellow('⚠')} ${warned} warnings`);
+      if (failed > 0) console.log(`  ${chalk.red('✗')} ${failed} failed`);
+      console.log();
+
+      if (failed > 0) {
+        console.log(chalk.yellow('⚠️  Some checks failed. Address issues above.\n'));
+        process.exit(1);
+      } else if (warned > 0) {
+        console.log(chalk.cyan('ℹ️  Gemini CLI functional but has warnings.\n'));
+      } else {
+        console.log(chalk.green('✅ All checks passed! Gemini CLI is ready.\n'));
+      }
+
+      process.exit(0);
+    } catch (error) {
+      handleGeminiError(error, 'Doctor diagnostic failed');
+    }
+  },
+};
+
 export const geminiCommand: CommandModule = {
   command: 'gemini <command>',
   describe: 'Manage Gemini CLI integration',
@@ -880,6 +1118,7 @@ export const geminiCommand: CommandModule = {
       .command(exportAbilityCommand)
       .command(validateCommand)
       .command(setupCommand)
+      .command(doctorCommand)
       .demandCommand(1, 'You must provide a valid subcommand')
       .help();
   },

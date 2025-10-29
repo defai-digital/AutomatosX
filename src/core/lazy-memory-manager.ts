@@ -261,6 +261,8 @@ export class LazyMemoryManager implements IMemoryManager {
         logger.debug('LazyMemoryManager: initialization failed, nothing to close', {
           error: (error as Error).message
         });
+        // Clear initPromise to prevent post-close method calls from failing
+        this.initPromise = undefined;
         return;
       }
     }
@@ -270,6 +272,9 @@ export class LazyMemoryManager implements IMemoryManager {
       logger.debug('Closing LazyMemoryManager (was initialized)');
       await this.manager.close();
       this.manager = undefined;
+      // BUG FIX (v5.12.1): Clear initPromise to prevent post-close method calls
+      // from awaiting stale Promise and accessing undefined manager
+      this.initPromise = undefined;
     } else {
       logger.debug('LazyMemoryManager close() called but never initialized');
     }

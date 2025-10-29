@@ -11,8 +11,9 @@
  */
 
 import { spawn } from 'child_process';
-import { writeFile } from 'fs/promises';
+import { writeFile, readFile, access } from 'fs/promises';
 import { join } from 'path';
+import { constants } from 'fs';
 import pLimit from 'p-limit';
 import type {
   ParsedSpec,
@@ -244,6 +245,17 @@ export class SpecExecutor {
         parallel: this.options.parallel ?? false,
         nativeExecution: this.useNativeExecution
       });
+
+      // BUG FIX (v5.12.1): Load checkpoint if resuming from previous run
+      if (this.options.checkpointInterval) {
+        const loaded = await this.loadCheckpoint();
+        if (loaded) {
+          logger.info('Resuming from checkpoint', {
+            completedTasks: this.runState.metadata.completedTasks,
+            remainingTasks: this.runState.metadata.totalTasks - this.runState.metadata.completedTasks
+          });
+        }
+      }
 
       // Phase 2B: Emit spec:started event
       this.events?.emitSpecStarted({
@@ -1074,6 +1086,57 @@ Use this context to:
         error: (error as Error).message
       });
       // Don't throw - this is not critical
+    }
+  }
+
+  /**
+   * Load checkpoint from disk (if exists)
+   * BUG FIX (v5.12.1): Add missing checkpoint restoration feature
+   */
+  private async loadCheckpoint(): Promise<boolean> {
+    try {
+      const checkpointPath = join(
+        this.spec.metadata.workspacePath,
+        '.automatosx/checkpoints',
+        `${this.runState.specId}-${this.runState.sessionId}.json`
+      );
+
+      // Check if checkpoint exists
+      try {
+        await access(checkpointPath, constants.F_OK);
+      } catch {
+        // Checkpoint doesn't exist
+        return false;
+      }
+
+      // Load checkpoint
+      const data = await readFile(checkpointPath, 'utf8');
+      const checkpoint = JSON.parse(data);
+
+      // Restore task states (convert object back to Map)
+      if (checkpoint.tasks) {
+        this.runState.tasks = new Map(Object.entries(checkpoint.tasks));
+      }
+
+      // Restore metadata
+      if (checkpoint.metadata) {
+        this.runState.metadata = checkpoint.metadata;
+      }
+
+      logger.info('Checkpoint loaded successfully', {
+        specId: this.runState.specId,
+        sessionId: this.runState.sessionId,
+        completedTasks: this.runState.metadata.completedTasks,
+        totalTasks: this.runState.metadata.totalTasks
+      });
+
+      return true;
+    } catch (error) {
+      logger.error('Failed to load checkpoint', {
+        error: (error as Error).message
+      });
+      // Don't throw - just continue without checkpoint
+      return false;
     }
   }
 

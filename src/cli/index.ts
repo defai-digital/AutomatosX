@@ -45,9 +45,13 @@ import { specCommand } from './commands/spec.js';
 // Mark CLI startup
 globalTracker.mark('cli_start');
 
-// Parse CLI arguments
-globalTracker.mark('yargs_parse_start');
-const argv = await yargs(hideBin(process.argv))
+// Main CLI execution wrapped in async IIFE to properly handle top-level await
+// Fixes: "Warning: Detected unsettled top-level await" error
+(async () => {
+  try {
+    // Parse CLI arguments
+    globalTracker.mark('yargs_parse_start');
+    const argv = await yargs(hideBin(process.argv))
   .scriptName('automatosx')
   .usage('$0 <command> [options]')
   .usage('\nAI Agent Orchestration Platform')
@@ -119,58 +123,64 @@ const argv = await yargs(hideBin(process.argv))
   .alias('v', 'version')
   .strict()
   .wrap(Math.min(120, yargs().terminalWidth()))
-  .parse();
+      .parse();
 
-globalTracker.mark('yargs_parse_end');
-globalTracker.measure('yargs_parsing', 'yargs_parse_start', 'yargs_parse_end');
+    globalTracker.mark('yargs_parse_end');
+    globalTracker.measure('yargs_parsing', 'yargs_parse_start', 'yargs_parse_end');
 
-// Apply global options
-globalTracker.mark('options_setup_start');
+    // Apply global options
+    globalTracker.mark('options_setup_start');
 
-if (argv.debug) {
-  setLogLevel('debug');
-  process.env.AUTOMATOSX_DEBUG = 'true';
-  logger.debug('Debug mode enabled', {
-    node: process.version,
-    platform: process.platform,
-    arch: process.arch,
-    cwd: process.cwd(),
-    argv: process.argv.slice(2)
-  });
-}
-
-if (argv.quiet) {
-  setLogLevel('error');
-  process.env.AUTOMATOSX_QUIET = 'true';
-}
-
-// Store global options in process.env for access by commands
-if (argv.config) {
-  process.env.AUTOMATOSX_CONFIG_PATH = argv.config as string;
-  logger.debug('Custom config path set', { path: argv.config });
-}
-
-// Log startup info in debug mode
-if (argv.debug) {
-  logger.debug('AutomatosX CLI started', {
-    version: VERSION,
-    command: argv._[0],
-    options: {
-      debug: argv.debug,
-      quiet: argv.quiet,
-      config: argv.config
+    if (argv.debug) {
+      setLogLevel('debug');
+      process.env.AUTOMATOSX_DEBUG = 'true';
+      logger.debug('Debug mode enabled', {
+        node: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        cwd: process.cwd(),
+        argv: process.argv.slice(2)
+      });
     }
-  });
-}
 
-globalTracker.mark('options_setup_end');
-globalTracker.measure('options_setup', 'options_setup_start', 'options_setup_end');
+    if (argv.quiet) {
+      setLogLevel('error');
+      process.env.AUTOMATOSX_QUIET = 'true';
+    }
 
-// Mark CLI ready
-globalTracker.mark('cli_ready');
-globalTracker.measure('cli_startup', 'cli_start', 'cli_ready');
+    // Store global options in process.env for access by commands
+    if (argv.config) {
+      process.env.AUTOMATOSX_CONFIG_PATH = argv.config as string;
+      logger.debug('Custom config path set', { path: argv.config });
+    }
 
-// Output profile report if enabled
-if (globalTracker.isEnabled() && argv.debug) {
-  console.error('\n' + globalTracker.generateReport() + '\n');
-}
+    // Log startup info in debug mode
+    if (argv.debug) {
+      logger.debug('AutomatosX CLI started', {
+        version: VERSION,
+        command: argv._[0],
+        options: {
+          debug: argv.debug,
+          quiet: argv.quiet,
+          config: argv.config
+        }
+      });
+    }
+
+    globalTracker.mark('options_setup_end');
+    globalTracker.measure('options_setup', 'options_setup_start', 'options_setup_end');
+
+    // Mark CLI ready
+    globalTracker.mark('cli_ready');
+    globalTracker.measure('cli_startup', 'cli_start', 'cli_ready');
+
+    // Output profile report if enabled
+    if (globalTracker.isEnabled() && argv.debug) {
+      console.error('\n' + globalTracker.generateReport() + '\n');
+    }
+  } catch (error) {
+    // Handle any errors during CLI initialization
+    console.error('Error initializing CLI:', error);
+    process.exit(1);
+  }
+})();

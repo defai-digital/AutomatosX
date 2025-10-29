@@ -1,8 +1,8 @@
 # AutomatosX
 
-**Give your AI assistant a long-term memory and a team of autonomous agents.**
+**Stop repeating yourself. Give your AI a brain and a team.**
 
-AutomatosX is a CLI-first orchestration tool that transforms stateless AI assistants into a powerful, collaborative workforce. It provides persistent memory, intelligent agent delegation, and cross-provider support (Claude, Gemini, OpenAI), all running 100% locally.
+AutomatosX is a local-first CLI that transforms stateless AI assistants into a persistent, collaborative workforce. It ends the cycle of repeating context and manually orchestrating tasks by providing a long-term memory and a team of autonomous agents that learn and work together.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -15,11 +15,34 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 
 **Status**: ✅ Production Ready · **v5.8.6** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
-**Latest (v5.8.0)**: Spec-Kit Integration - AutomatosX now supports spec-driven development! Define your project specs in `.specify/` directory (spec.md, plan.md, tasks.md) and let AutomatosX automatically orchestrate tasks based on your dependency graph. Features include: DAG-based task execution, cycle detection, LRU caching, and automatic spec detection. Perfect for structured, multi-step projects. [See full changelog →](CHANGELOG.md)
+---
+
+## The Problem: AI Has No Memory
+
+Standard AI assistants are stateless. They have no memory of past conversations, forcing you to re-explain requirements, manually coordinate every task, and lose valuable insights the moment a session ends. This is slow, repetitive, and inefficient.
+
+## The Solution: A Local, Collaborative AI Workforce
+
+AutomatosX provides the two things AI assistants are missing:
+
+1.  **A Persistent Brain**: A local, zero-cost memory that ensures context is never lost.
+2.  **A Team of Specialists**: Autonomous agents who can delegate tasks, share knowledge, and execute complex workflows.
 
 ---
 
-## 🚀 Get Started in 3 Steps
+## 🚀 How It Works: Core Concepts
+
+AutomatosX is built on three pillars that enable a smarter, more autonomous workflow.
+
+| Concept | Description |
+|---|---|
+| 🧠 **Persistent Memory** | Every conversation and decision is automatically saved to a local database. Agents instantly retrieve context for new tasks, so you never have to repeat yourself. |
+| 🤝 **Autonomous Agents** | A team of 19 specialized agents (backend, frontend, security, etc.) can delegate tasks to each other to achieve a high-level goal. You manage the project, not the micromanagement. |
+| 📋 **Declarative Workflows** | For complex projects, define your entire workflow in simple markdown. AutomatosX builds a dependency graph, executes tasks in parallel, and resumes from checkpoints automatically. |
+
+---
+
+## ⚙️ Get Started in 3 Steps
 
 1.  **Install AutomatosX:**
     ```bash
@@ -34,10 +57,7 @@ AutomatosX is a CLI-first orchestration tool that transforms stateless AI assist
 
 3.  **Run Your First Agent:**
     ```bash
-    # Use natural language in Claude Code
-    "please work with ax agent to design a REST API for user management"
-
-    # Or run directly in your terminal
+    # Run an agent directly from your terminal
     ax run product "Design a REST API for user management"
     ```
 
@@ -127,260 +147,47 @@ ax run product "Build a complete user authentication feature"
 
 ---
 
-## 📋 Core Feature: Spec-Driven Development (✨ NEW in v5.8.0, Enhanced in v5.8.3)
+## 📋 Core Feature: Spec-Driven Development
 
-**Transform AutomatosX from a tool into a platform.** Spec-Kit elevates AutomatosX from executing individual agent tasks to orchestrating complex, multi-agent workflows with automatic dependency management.
+For complex projects, AutomatosX can manage the entire workflow. Instead of running individual commands, you can define a high-level specification and let AutomatosX orchestrate the entire plan, run tasks in parallel, and even resume if interrupted.
 
-**NEW in v5.8.3**: Use natural language to create and execute workflows! No need to manually write spec files.
+### Natural Language Workflows (Recommended)
 
-### 🎯 The Game Changer
+The easiest way to use this feature is to describe your goal in plain English. AutomatosX will analyze the request, generate a complete plan, and execute it.
 
-**Before Spec-Kit** (Manual Coordination):
 ```bash
-# You manually execute each task in order
-ax run backend "Setup authentication"
-ax run backend "Implement JWT"           # Wait for setup to finish
-ax run security "Audit authentication"   # Wait for implementation
-ax run quality "Write tests"             # Remember dependencies
-ax run devops "Deploy to staging"        # Hope you got the order right
-```
-
-**Problems:**
-- ❌ Manual coordination of every single task
-- ❌ Easy to forget dependencies or run tasks in wrong order
-- ❌ No progress tracking - can't resume if interrupted
-- ❌ Can't parallelize independent tasks
-- ❌ Difficult to share workflows with team
-
-**With Spec-Kit** (Automated Orchestration):
-```bash
-# 1. Define your workflow once in .specify/tasks.md
-- [ ] id:auth:setup ops:"ax run backend 'Setup authentication'"
-- [ ] id:auth:impl ops:"ax run backend 'Implement JWT'" dep:auth:setup
-- [ ] id:auth:audit ops:"ax run security 'Audit'" dep:auth:impl
-- [ ] id:auth:test ops:"ax run quality 'Write tests'" dep:auth:impl
-- [ ] id:deploy ops:"ax run devops 'Deploy'" dep:auth:audit,auth:test
-
-# 2. Execute with one command
-ax spec run --parallel
+# Describe a complex goal in one command
+ax spec create "Build a complete user auth system with a database, API, JWT, security audit, and tests"
 
 # AutomatosX automatically:
-# ✅ Executes auth:setup first
-# ✅ Runs auth:impl after setup completes
-# ✅ Runs auth:audit AND auth:test in PARALLEL (both depend only on impl)
-# ✅ Waits for both audit and test before deploying
-# ✅ Saves progress - can resume if interrupted
+# 1. Generates a full project specification (.specify/)
+# 2. Creates a dependency graph of all tasks
+# 3. Assigns the right agents for each task
+# 4. Executes the plan with parallel execution and progress tracking
 ```
 
-### 💡 Key Benefits
+This turns a multi-day coordination effort into a single command.
 
-#### 1. **Declarative Workflows** (Describe WHAT, not HOW)
-You define the desired outcome and dependencies. AutomatosX figures out the execution order automatically.
+### Manual Workflows
 
-#### 2. **Smart Dependency Management**
-- **DAG (Directed Acyclic Graph)** automatically resolves execution order
-- **Cycle Detection** prevents infinite loops
-- **Topological Sorting** ensures tasks run when dependencies are ready
+You can also define workflows manually for full control:
 
-#### 3. **Parallel Execution**
-AutomatosX identifies tasks that can run simultaneously:
-```bash
-ax spec run --parallel
-
-# Execution plan:
-# Level 1: auth:setup
-# Level 2: auth:impl
-# Level 3: auth:audit, auth:test  ← Run in parallel!
-# Level 4: deploy
-```
-
-#### 4. **Progress Tracking & Resume**
-```bash
-ax spec status
-# 📊 Progress: 3/5 tasks (60%)
-# ✅ Completed: auth:setup, auth:impl, auth:test
-# ⏳ Pending: auth:audit, deploy
-
-# Interrupted? Resume from checkpoint:
-ax spec run  # Automatically skips completed tasks
-```
-
-#### 5. **Multi-Agent Coordination**
-Define complex workflows involving multiple specialized agents:
-```bash
+```markdown
 # .specify/tasks.md
-- [ ] id:design ops:"ax run product 'Design user authentication API'"
 - [ ] id:backend ops:"ax run backend 'Implement API'" dep:design
 - [ ] id:frontend ops:"ax run frontend 'Build login UI'" dep:design
 - [ ] id:test ops:"ax run quality 'Write E2E tests'" dep:backend,frontend
-- [ ] id:security ops:"ax run security 'Security audit'" dep:backend
-- [ ] id:docs ops:"ax run writer 'Write documentation'" dep:backend,frontend
-- [ ] id:deploy ops:"ax run devops 'Deploy to production'" dep:test,security,docs
 ```
 
-**Result**: Product, Backend, Frontend, Quality, Security, Writer, and DevOps agents collaborate automatically in the correct order!
+When you run `ax spec run --parallel`, AutomatosX executes this plan, running the `backend` and `frontend` tasks in parallel before starting the `test` task.
 
-### 📊 Spec-Kit vs Traditional Approach
+**Key Benefits:**
+-   **Automated Orchestration**: Eliminates manual coordination.
+-   **Parallel Execution**: Completes work faster.
+-   **Progress Tracking & Resume**: Never lose work on an interruption.
+-   **Reproducible Workflows**: Check your `.specify/` directory into Git to share your process.
 
-| Feature | `ax run` (Manual) | `ax spec` (Automated) |
-|---------|-------------------|----------------------|
-| **Task Definition** | Command-line (temporary) | Files (Git-tracked, shareable) |
-| **Dependency Management** | Manual memory | Automatic DAG resolution |
-| **Execution Order** | You control | Automatic topological sort |
-| **Parallel Execution** | Not supported | Automatic detection |
-| **Progress Tracking** | None | Auto-saved to tasks.md |
-| **Resume After Interrupt** | Start over | Resume from checkpoint |
-| **Visualization** | None | Status, graphs, progress bars |
-| **Team Collaboration** | Hard to share | `.specify/` in Git |
-| **Best For** | Quick, one-off tasks | Production workflows, complex projects |
-
-### 🎨 NEW: Natural Language Workflow (v5.8.3)
-
-**The easiest way to use Spec-Kit** - just describe what you want in plain English:
-
-```bash
-# Method 1: Direct command
-ax spec create "Build authentication with database, API, JWT, security audit, and tests"
-
-# Method 2: Interactive prompt (automatically suggested for complex tasks)
-ax run backend "Build complete authentication system with database, API, JWT, audit, and tests"
-# → AutomatosX detects complexity and suggests spec-kit workflow
-# → Generates .specify/ files automatically
-# → Executes with parallel mode
-
-# Method 3: Create and execute immediately
-ax spec create "Build auth system" --execute
-```
-
-**What happens automatically**:
-1. ✅ AI analyzes your description
-2. ✅ Generates spec.md, plan.md, and tasks.md
-3. ✅ Creates task dependencies intelligently
-4. ✅ Selects appropriate agents for each task
-5. ✅ Optionally executes with parallel mode
-
-**Example Output**:
-```
-🎨 Spec-Kit: Create from Natural Language
-
-📊 Complexity Analysis:
-  Score: 8/10
-  • Multiple technical components
-  • Project-level scope
-  • 5 items separated by commas
-
-✓ Spec files generated
-
-📁 Files:
-  • .specify/spec.md - Project specification
-  • .specify/plan.md - Technical plan
-  • .specify/tasks.md - 8 tasks with dependencies
-
-📋 Tasks Overview:
-  • auth: 3 tasks
-  • test: 2 tasks
-  • security: 1 task
-  • deploy: 2 tasks
-
-🤖 Agents:
-  • backend: 3 tasks
-  • quality: 2 tasks
-  • security: 1 task
-  • devops: 2 tasks
-```
-
-### 🚀 Quick Start (Manual Method)
-
-```bash
-# 1. Initialize spec-kit in your project
-ax init --spec-kit
-
-# 2. Edit .specify/ files
-.specify/
-├── spec.md    # Requirements and success criteria
-├── plan.md    # Technical approach and architecture
-└── tasks.md   # Task breakdown with dependencies
-
-# 3. Validate your spec
-ax spec validate
-
-# 4. Preview execution plan (dry-run)
-ax spec run --dry-run
-
-# 5. Execute the workflow
-ax spec run --parallel
-
-# 6. Track progress
-ax spec status
-
-# 7. Visualize dependencies
-ax spec graph
-ax spec graph --dot | dot -Tpng -o workflow.png
-```
-
-### 🎓 Real-World Example
-
-**Scenario**: Building a complete user authentication feature
-
-**.specify/tasks.md**:
-```markdown
-## Phase 1: Design
-- [ ] id:design:api ops:"ax run product 'Design authentication API'"
-- [ ] id:design:db ops:"ax run backend 'Design user schema'" dep:design:api
-
-## Phase 2: Implementation
-- [ ] id:impl:backend ops:"ax run backend 'Implement JWT auth'" dep:design:db
-- [ ] id:impl:frontend ops:"ax run frontend 'Build login UI'" dep:design:api
-
-## Phase 3: Quality & Security
-- [ ] id:test:unit ops:"ax run quality 'Unit tests'" dep:impl:backend
-- [ ] id:test:e2e ops:"ax run quality 'E2E tests'" dep:impl:backend,impl:frontend
-- [ ] id:security ops:"ax run security 'Security audit'" dep:impl:backend
-
-## Phase 4: Documentation & Deployment
-- [ ] id:docs ops:"ax run writer 'Write docs'" dep:impl:backend,impl:frontend
-- [ ] id:deploy:staging ops:"ax run devops 'Deploy staging'" dep:test:e2e,security
-- [ ] id:deploy:prod ops:"ax run devops 'Deploy production'" dep:deploy:staging
-```
-
-**Execute**:
-```bash
-ax spec run --parallel
-
-# Automatic execution:
-# 1. design:api first
-# 2. design:db and impl:frontend in parallel (both depend only on design:api)
-# 3. impl:backend after design:db
-# 4. test:unit, test:e2e, security, docs all run in parallel when ready
-# 5. deploy:staging waits for test:e2e and security
-# 6. deploy:prod waits for staging verification
-```
-
-**Key Features:**
--   **Automatic Spec Detection**: Just create `.specify/` and AutomatosX finds it
--   **DAG-Based Execution**: Tasks run in dependency order with cycle detection
--   **Parallel Execution**: Backend and frontend implement simultaneously
--   **Progress Persistence**: Resume from any checkpoint
--   **Multi-Agent Orchestration**: 7 different agents collaborate automatically
--   **Visualization**: See dependency graph and execution plan
-
-### 💡 When to Use Spec-Kit
-
-**Use `ax spec` for:**
-- ✅ Complex, multi-step projects (5+ tasks)
-- ✅ Workflows with dependencies
-- ✅ Production environments requiring reliability
-- ✅ Team collaboration (`.specify/` files in Git)
-- ✅ Repeatable workflows (bug fixes, deployments)
-- ✅ Projects requiring progress tracking
-
-**Use `ax run` for:**
-- ✅ Quick, exploratory tasks
-- ✅ One-off commands
-- ✅ Interactive development
-- ✅ Learning and experimentation
-
-**Both are powerful - choose based on your needs!**
+[➡️ **Full Guide: Spec-Driven Development**](docs/guide/spec-driven-development.md)
 
 ---
 

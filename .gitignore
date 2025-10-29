@@ -46,8 +46,10 @@ temp/
 .automatosx-backups/
 
 # Workspace directories (v5.2.0+)
+# These are local-only directories for development planning
 automatosx/tmp/
 automatosx/PRD/
+automatosx/
 
 # Spec-Kit generated files (v5.8.3+)
 .specify/

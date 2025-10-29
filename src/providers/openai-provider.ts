@@ -18,8 +18,12 @@ import type {
 import { logger } from '../utils/logger.js';
 import { ProviderError } from '../utils/errors.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
+import type { ChildProcess } from 'child_process';
 
 export class OpenAIProvider extends BaseProvider {
+  // BUG FIX (v5.12.2): Track child processes to prevent leaks
+  private activeChildren: Set<ChildProcess> = new Set();
+
   constructor(config: ProviderConfig) {
     super(config);
   }
@@ -181,16 +185,19 @@ export class OpenAIProvider extends BaseProvider {
 
       let child: ReturnType<typeof spawn>;
       try {
-        // Spawn the CLI process with stdin pipe enabled
+        // BUG FIX (v5.12.2): Use shell:false to prevent command injection and tokenization issues
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
           env: process.env,
-          shell: true, // Required for Windows .cmd/.bat files
+          shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
         });
       } catch (error) {
         reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
         return;
       }
+
+      // BUG FIX (v5.12.2): Track child process for cleanup
+      this.activeChildren.add(child);
 
       // Register child process for cleanup tracking
       processManager.register(child, 'openai-codex');
@@ -274,6 +281,9 @@ export class OpenAIProvider extends BaseProvider {
         try {
           cleanup();  // Clear all timeouts
           cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
+
+          // BUG FIX (v5.12.2): Remove from tracking when process exits
+          this.activeChildren.delete(child);
 
           if (hasTimedOut) {
             return; // Already rejected by timeout
@@ -487,22 +497,27 @@ export class OpenAIProvider extends BaseProvider {
 
       let child: ReturnType<typeof spawn>;
       try {
-        // Spawn the CLI process with stdin pipe enabled
+        // BUG FIX (v5.12.2): Use shell:false to prevent command injection and tokenization issues
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
           env: process.env,
-          shell: true, // Required for Windows .cmd/.bat files
+          shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
         });
       } catch (error) {
         reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
         return;
       }
 
+      // BUG FIX (v5.12.2): Track child process for cleanup
+      this.activeChildren.add(child);
+
       // Write prompt to stdin (safer than command-line argument)
       try {
         child.stdin?.write(prompt);
         child.stdin?.end();
       } catch (error) {
+        // BUG FIX (v5.12.2): Remove from tracking before killing
+        this.activeChildren.delete(child);
         // Kill child process before rejecting to prevent orphan process
         child.kill('SIGTERM');
         reject(new Error(`Failed to write prompt to Codex CLI stdin: ${(error as Error).message}`));
@@ -590,6 +605,9 @@ export class OpenAIProvider extends BaseProvider {
       child.on('close', (code) => {
         try {
           cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
+
+          // BUG FIX (v5.12.2): Remove from tracking when process exits
+          this.activeChildren.delete(child);
 
           if (hasTimedOut) {
             return; // Already rejected by timeout
@@ -728,5 +746,24 @@ export class OpenAIProvider extends BaseProvider {
       resetAtMs,
       errorMsg
     );
+  }
+
+  /**
+   * Cleanup resources
+   * BUG FIX (v5.12.2): Kill tracked child processes to prevent leaks
+   */
+  async cleanup(): Promise<void> {
+    logger.debug('OpenAIProvider.cleanup', {
+      activeChildren: this.activeChildren.size
+    });
+
+    // BUG FIX (v5.12.2): Kill all tracked child processes
+    for (const child of this.activeChildren) {
+      if (!child.killed) {
+        logger.debug('Killing active child process', { pid: child.pid, provider: 'openai' });
+        child.kill('SIGTERM');
+      }
+    }
+    this.activeChildren.clear();
   }
 }

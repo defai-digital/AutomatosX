@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.11.1] - 2025-10-29
+
+### 🐛 Bug Fixes
+
+**Critical Memory Leak Fix** - SpecProgressRenderer event listener cleanup
+
+#### 🔧 Fix Details
+
+**Problem:**
+- Event listener registered in `SpecProgressRenderer` constructor was never removed
+- Caused memory leak as renderer remained in memory after `stop()` was called
+- Multiple listener instances accumulated on repeated spec executions
+- Renderer could not be garbage collected
+
+**Solution:** (`src/cli/renderers/spec-progress-renderer.ts`)
+- Added `eventListener` private property to store listener reference
+- Modified constructor to store listener before registering with event emitter
+- Implemented proper cleanup in `stop()` method using `removeListener('*', listener)`
+- Set listener reference to null for proper garbage collection
+
+**Impact:**
+- Proper memory cleanup after spec execution completes
+- No listener accumulation on repeated runs
+- Renderer can be garbage collected when no longer needed
+- All 2,197 tests passing after fix
+
+**Location:**
+- `src/cli/renderers/spec-progress-renderer.ts:45` - Added `eventListener` property
+- `src/cli/renderers/spec-progress-renderer.ts:59-62` - Store listener reference
+- `src/cli/renderers/spec-progress-renderer.ts:271-275` - Remove listener in `stop()`
+
+---
+
 ## [5.11.0] - 2025-10-29
 
 ### ✨ Features & Enhancements

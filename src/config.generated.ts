@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-29T20:23:07.797Z
+ * Generated: 2025-10-29T21:07:06.812Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -87,6 +87,12 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
+      "mcp": {
+        "enabled": false,
+        "command": "codex",
+        "transport": "stdio",
+        "autoStart": false
+      },
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -333,7 +339,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-29T20:23:07.797Z',
+  generatedAt: '2025-10-29T21:07:06.812Z',
   sourceFile: 'automatosx.config.json',
   version: '5.12.0'
 } as const;

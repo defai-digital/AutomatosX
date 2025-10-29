@@ -88,6 +88,18 @@ export interface GeminiProviderConfig {
   enableRealEmbeddings?: boolean;  // Enable real embeddings instead of mock (default: false)
 }
 
+/**
+ * OpenAI/Codex MCP Configuration (v5.13.0+)
+ * Provider-specific settings for OpenAI Codex CLI with MCP support
+ */
+export interface OpenAIMCPConfig {
+  enabled: boolean;           // Enable MCP server (default: false)
+  command: string;            // CLI command for MCP server (default: 'codex')
+  transport: 'stdio';         // Transport protocol (stdio only for now)
+  autoStart?: boolean;        // Auto-start MCP server on provider init (default: false)
+  configOverrides?: Record<string, any>;  // Additional config overrides for MCP server
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   priority: number;
@@ -115,6 +127,9 @@ export interface ProviderConfig {
   // v5.8.6: Provider-specific configuration
   claude?: ClaudeProviderConfig;  // Claude Code specific configuration
   gemini?: GeminiProviderConfig;  // Gemini CLI specific configuration
+
+  // v5.13.0: OpenAI/Codex MCP configuration
+  mcp?: OpenAIMCPConfig;          // OpenAI Codex MCP server configuration
 }
 
 // ========================================

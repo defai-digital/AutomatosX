@@ -53,6 +53,7 @@ export class LazyMemoryManager implements IMemoryManager {
   private manager?: MemoryManager;
   private config: MemoryManagerConfig;
   private initPromise?: Promise<MemoryManager>;
+  private closing = false; // BUG FIX (v5.12.1): Prevent access during shutdown
 
   constructor(config: MemoryManagerConfig) {
     this.config = config;
@@ -68,8 +69,14 @@ export class LazyMemoryManager implements IMemoryManager {
    * **Thread-safe**: Prevents duplicate initialization if called concurrently
    *
    * v5.6.27: Fixed race condition - await initPromise before returning manager
+   * v5.12.1: Added closing flag check to prevent access during shutdown
    */
   private async ensureInitialized(): Promise<MemoryManager> {
+    // BUG FIX (v5.12.1): Wait if manager is being closed
+    if (this.closing) {
+      throw new Error('MemoryManager is closing, cannot perform operations');
+    }
+
     // Fast path: Already initialized
     if (this.manager) {
       return this.manager;
@@ -248,6 +255,7 @@ export class LazyMemoryManager implements IMemoryManager {
    *
    * **Safe**: Does nothing if never initialized (no connection to close)
    * **Race-safe**: Waits for any in-flight initialization before closing
+   * v5.12.1: Enhanced with closing flag to prevent concurrent access during shutdown
    */
   async close(): Promise<void> {
     // CRITICAL: Wait for any in-flight initialization to complete
@@ -267,16 +275,22 @@ export class LazyMemoryManager implements IMemoryManager {
       }
     }
 
-    // Now close if initialized
-    if (this.manager) {
-      logger.debug('Closing LazyMemoryManager (was initialized)');
-      await this.manager.close();
-      this.manager = undefined;
-      // BUG FIX (v5.12.1): Clear initPromise to prevent post-close method calls
-      // from awaiting stale Promise and accessing undefined manager
-      this.initPromise = undefined;
-    } else {
+    // BUG FIX (v5.12.1): Prevent new operations from starting during close
+    if (!this.manager) {
       logger.debug('LazyMemoryManager close() called but never initialized');
+      return;
+    }
+
+    this.closing = true;
+    const manager = this.manager;
+    this.manager = undefined;
+    this.initPromise = undefined;
+
+    try {
+      logger.debug('Closing LazyMemoryManager (was initialized)');
+      await manager.close();
+    } finally {
+      this.closing = false;
     }
   }
 

@@ -300,6 +300,18 @@ export class SessionManager {
       session.metadata.tasks = [];
     }
 
+    // BUG FIX (v5.12.1): Remove stale duplicate entry before adding new one
+    // Prevents accumulation of zombie task entries from retries/re-runs
+    const existingIndex = session.metadata.tasks.findIndex((t: SessionTaskInfo) => t.id === taskInfo.taskId);
+    if (existingIndex !== -1) {
+      logger.debug('Removing stale task entry before re-adding', {
+        sessionId,
+        taskId: taskInfo.taskId,
+        oldStatus: session.metadata.tasks[existingIndex].status
+      });
+      session.metadata.tasks.splice(existingIndex, 1);
+    }
+
     // Add task to session
     const taskMetadata: SessionTaskInfo = {
       id: taskInfo.taskId,
@@ -362,7 +374,15 @@ export class SessionManager {
       return;
     }
 
-    const task = session.metadata.tasks.find((t: SessionTaskInfo) => t.id === taskId);
+    // BUG FIX (v5.12.1): Find the LATEST task entry (in case of duplicates from retries)
+    // Use reverse iteration to get most recent attempt instead of oldest
+    let task: SessionTaskInfo | undefined;
+    for (let i = session.metadata.tasks.length - 1; i >= 0 && !task; i--) {
+      if (session.metadata.tasks[i].id === taskId) {
+        task = session.metadata.tasks[i];
+      }
+    }
+
     if (task) {
       task.status = 'completed';
       task.completedAt = new Date().toISOString();

@@ -11,10 +11,11 @@
  */
 
 import { spawn } from 'child_process';
-import { writeFile, readFile, access } from 'fs/promises';
-import { join } from 'path';
+import { writeFile, readFile, access, mkdir } from 'fs/promises';
+import { join, dirname } from 'path';
 import { constants } from 'fs';
 import pLimit from 'p-limit';
+import { Mutex } from 'async-mutex';
 import type {
   ParsedSpec,
   SpecExecutorOptions,
@@ -62,6 +63,9 @@ export class SpecExecutor {
   // Phase 3: Concurrency control (v5.12.0)
   private concurrencyLimit: number;
   private limiter: ReturnType<typeof pLimit>;
+
+  // BUG FIX (v5.12.1): Mutex to serialize tasks.md file writes
+  private taskFileMutex = new Mutex();
 
   constructor(
     spec: ParsedSpec,
@@ -1050,33 +1054,37 @@ Use this context to:
     try {
       const tasksPath = this.spec.metadata.files.tasks;
 
-      // CRITICAL FIX: Re-read file to get latest state
-      // This prevents stale in-memory state from overwriting recent updates
-      const { readFile } = await import('fs/promises');
-      const currentContent = await readFile(tasksPath, 'utf8');
+      // BUG FIX (v5.12.1): Serialize file writes to prevent parallel race conditions
+      // Without mutex: parallel tasks read same state → last writer wins → earlier updates lost
+      await this.taskFileMutex.runExclusive(async () => {
+        // CRITICAL FIX: Re-read file to get latest state
+        // This prevents stale in-memory state from overwriting recent updates
+        const { readFile } = await import('fs/promises');
+        const currentContent = await readFile(tasksPath, 'utf8');
 
-      // Find the task line and update status
-      const lines = currentContent.split('\n');
-      const updatedLines = lines.map(line => {
-        // Match task ID
-        if (line.includes(`id:${taskId}`)) {
-          // Update status marker
-          if (status === 'completed') {
-            return line.replace(/^-\s*\[\s*\]/, '- [x]').replace(/^-\s*\[x\]/i, '- [x]');
-          } else {
-            return line.replace(/^-\s*\[x\]/i, '- [ ]');
+        // Find the task line and update status
+        const lines = currentContent.split('\n');
+        const updatedLines = lines.map(line => {
+          // Match task ID
+          if (line.includes(`id:${taskId}`)) {
+            // Update status marker
+            if (status === 'completed') {
+              return line.replace(/^-\s*\[\s*\]/, '- [x]').replace(/^-\s*\[x\]/i, '- [x]');
+            } else {
+              return line.replace(/^-\s*\[x\]/i, '- [ ]');
+            }
           }
-        }
-        return line;
+          return line;
+        });
+
+        const updatedContent = updatedLines.join('\n');
+
+        // Write back to file
+        await writeFile(tasksPath, updatedContent, 'utf8');
+
+        // CRITICAL FIX: Update in-memory copy to keep it in sync
+        this.spec.content.tasks = updatedContent;
       });
-
-      const updatedContent = updatedLines.join('\n');
-
-      // Write back to file
-      await writeFile(tasksPath, updatedContent, 'utf8');
-
-      // CRITICAL FIX: Update in-memory copy to keep it in sync
-      this.spec.content.tasks = updatedContent;
 
       logger.debug('Task status updated in tasks.md', { taskId, status });
     } catch (error) {
@@ -1150,6 +1158,11 @@ Use this context to:
         '.automatosx/checkpoints',
         `${this.runState.specId}-${this.runState.sessionId}.json`
       );
+
+      // BUG FIX (v5.12.1): Ensure checkpoint directory exists before writing
+      // Prevents ENOENT error on fresh workspaces
+      const checkpointDir = dirname(checkpointPath);
+      await mkdir(checkpointDir, { recursive: true });
 
       // Serialize run state (convert Map to object)
       const serialized = {

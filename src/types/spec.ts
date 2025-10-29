@@ -388,6 +388,12 @@ export interface SpecExecutorOptions {
 
   /** Task filter */
   taskFilter?: TaskFilter;
+
+  /** Phase 1 (v5.9.0): Config for native execution */
+  config?: import('./config.js').AutomatosXConfig;
+
+  /** Phase 1 (v5.9.0): Default timeout for tasks */
+  timeout?: number;
 }
 
 /**

@@ -210,6 +210,22 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       await setupProjectClaudeMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ CLAUDE.md configured'));
 
+      // Setup Gemini CLI integration
+      console.log(chalk.cyan('🔌 Setting up Gemini CLI integration...'));
+      const geminiDir = join(projectDir, '.gemini');
+      const geminiDirExistedBefore = await checkExists(geminiDir);
+      await setupGeminiIntegration(projectDir, packageRoot);
+      // Only add to rollback if we created it (not if it pre-existed)
+      if (!geminiDirExistedBefore) {
+        createdResources.push(geminiDir);
+      }
+      console.log(chalk.green('   ✓ Gemini CLI integration configured'));
+
+      // Setup project GEMINI.md with AutomatosX integration guide
+      console.log(chalk.cyan('📖 Setting up GEMINI.md with AutomatosX integration...'));
+      await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ GEMINI.md configured'));
+
       // Initialize git repository if needed (for Codex CLI compatibility)
       console.log(chalk.cyan('🔧 Initializing git repository...'));
       await initializeGitRepository(projectDir);
@@ -265,6 +281,10 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       console.log(chalk.gray('  • Use /ax-agent command in Claude Code'));
       console.log(chalk.gray('  • Example: /ax-agent backend, create a REST API'));
       console.log(chalk.gray('  • MCP tools available in .claude/mcp/\n'));
+      console.log(chalk.cyan('Gemini CLI Integration:'));
+      console.log(chalk.gray('  • Use /ax command in Gemini CLI'));
+      console.log(chalk.gray('  • Example: /ax backend, create a REST API'));
+      console.log(chalk.gray('  • Custom commands available in .gemini/commands/\n'));
 
       logger.info('AutomatosX initialized', {
         projectDir,
@@ -981,5 +1001,100 @@ async function initializeSpecKit(projectDir: string): Promise<boolean> {
     });
 
     return false;
+  }
+}
+
+/**
+ * Setup Gemini CLI integration files
+ */
+async function setupGeminiIntegration(projectDir: string, packageRoot: string): Promise<void> {
+  const examplesBaseDir = join(packageRoot, 'examples/gemini');
+
+  // Create .gemini directory structure
+  const geminiDir = join(projectDir, '.gemini');
+  const commandsDir = join(geminiDir, 'commands');
+
+  await mkdir(commandsDir, { recursive: true });
+
+  // Copy slash commands (.toml files)
+  const commandsSourceDir = join(examplesBaseDir, 'commands');
+  const commandFiles = await readdir(commandsSourceDir);
+  for (const file of commandFiles) {
+    if (file.endsWith('.toml')) {
+      await copyFile(join(commandsSourceDir, file), join(commandsDir, file));
+    }
+  }
+}
+
+/**
+ * Setup project GEMINI.md with AutomatosX integration guide
+ *
+ * This function creates or updates the project's GEMINI.md file to include
+ * AutomatosX integration instructions, helping Gemini CLI users understand how to
+ * work with AutomatosX agents in this project.
+ */
+async function setupProjectGeminiMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  const geminiMdPath = join(projectDir, 'GEMINI.md');
+  const templatePath = join(packageRoot, 'examples/gemini/GEMINI_INTEGRATION.md');
+
+  try {
+    // Read the template
+    const { readFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+
+    const exists = await checkExists(geminiMdPath);
+
+    if (!exists) {
+      // Create new GEMINI.md with AutomatosX integration
+      const content = [
+        '# GEMINI.md',
+        '',
+        'This file provides guidance to Gemini CLI users when working with code in this repository.',
+        '',
+        '---',
+        '',
+        template
+      ].join('\n');
+
+      await writeFile(geminiMdPath, content, 'utf-8');
+      logger.info('Created GEMINI.md with AutomatosX integration', { path: geminiMdPath });
+    } else {
+      // Update existing GEMINI.md
+      const existingContent = await readFile(geminiMdPath, 'utf-8');
+
+      // Check if AutomatosX integration already exists
+      if (existingContent.includes('# AutomatosX Integration')) {
+        if (!force) {
+          logger.info('GEMINI.md already contains AutomatosX integration', { path: geminiMdPath });
+          return;
+        }
+        // Force mode: replace existing AutomatosX section
+        const updatedContent = replaceAutomatosXSection(existingContent, template);
+        await writeFile(geminiMdPath, updatedContent, 'utf-8');
+        logger.info('Updated AutomatosX integration in GEMINI.md', { path: geminiMdPath });
+      } else {
+        // Append AutomatosX integration to existing content
+        const updatedContent = [
+          existingContent.trimEnd(),
+          '',
+          '---',
+          '',
+          template
+        ].join('\n');
+
+        await writeFile(geminiMdPath, updatedContent, 'utf-8');
+        logger.info('Added AutomatosX integration to existing GEMINI.md', { path: geminiMdPath });
+      }
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup GEMINI.md', {
+      error: (error as Error).message,
+      path: geminiMdPath
+    });
   }
 }

@@ -1,6 +1,6 @@
 # AutomatosX Integration
 
-This project uses [AutomatosX](https://github.com/defai-digital/automatosx) - an AI agent orchestration platform with persistent memory and multi-agent collaboration.
+This project uses [AutomatosX](https://github.com/defai.digital/automatosx) - an AI agent orchestration platform with persistent memory and multi-agent collaboration.
 
 ## Quick Start
 
@@ -23,22 +23,32 @@ ax memory search "keyword"
 ax status
 ```
 
-### Using AutomatosX in Claude Code
+### Using AutomatosX in Gemini CLI
 
-You can interact with AutomatosX agents directly in Claude Code using natural language or slash commands:
+You can interact with AutomatosX agents directly in Gemini CLI using custom commands or natural language:
 
-**Natural Language (Recommended)**:
+**Slash Commands (Recommended)**:
 ```
-"Please work with ax agent backend to implement user authentication"
+/ax backend, create a REST API for user management
+/ax security, audit the authentication flow
+/ax quality, write unit tests for the API
+```
+
+**Natural Language**:
+```
+"Please use the ax backend agent to implement user authentication"
 "Ask the ax security agent to audit this code for vulnerabilities"
 "Have the ax quality agent write tests for this feature"
 ```
 
-**Slash Command**:
+**System Commands**:
 ```
-/ax-agent backend, create a REST API for user management
-/ax-agent security, audit the authentication flow
-/ax-agent quality, write unit tests for the API
+/ax-status          - Check AutomatosX system status
+/ax-list agents     - List all available agents
+/ax-memory search   - Search conversation history
+/ax-init            - Initialize AutomatosX in current project
+/ax-clear           - Clear memory cache
+/ax-update          - Update AutomatosX to latest version
 ```
 
 ### Available Agents
@@ -81,6 +91,13 @@ ax run product "Design a calculator with add/subtract features"
 ax run backend "Implement the calculator API"
 ```
 
+**Or in Gemini CLI**:
+```
+/ax product, design a calculator with add/subtract features
+# Later...
+/ax backend, implement the calculator API
+```
+
 ### 2. Multi-Agent Collaboration
 
 Agents can delegate tasks to each other automatically:
@@ -92,11 +109,16 @@ ax run product "Build a complete user authentication feature"
 # → Automatically delegates security audit to security agent
 ```
 
+**Gemini CLI Example**:
+```
+/ax product, build a complete user authentication feature
+```
+
 ### 3. Cross-Provider Support
 
 AutomatosX supports multiple AI providers with automatic fallback:
-- **Claude** (Anthropic) - Primary provider for Claude Code users
-- **Gemini** (Google) - Alternative provider
+- **Gemini** (Google) - Primary provider for Gemini CLI users
+- **Claude** (Anthropic) - Alternative provider
 - **OpenAI** (GPT) - Alternative provider
 
 Configuration is in `automatosx.config.json`.
@@ -110,17 +132,18 @@ Edit `automatosx.config.json` to customize:
 ```json
 {
   "providers": {
-    "claude-code": {
-      "enabled": true,
-      "priority": 1
-    },
     "gemini-cli": {
+      "enabled": true,
+      "priority": 1,
+      "command": "gemini"
+    },
+    "claude-code": {
       "enabled": true,
       "priority": 2
     }
   },
   "execution": {
-    "defaultTimeout": 1500000,  // 25 minutes
+    "defaultTimeout": 1500000,
     "maxRetries": 3
   },
   "memory": {
@@ -138,6 +161,11 @@ Create custom agents in `.automatosx/agents/`:
 ax agent create my-agent --template developer --interactive
 ```
 
+Then use them in Gemini CLI:
+```
+/ax my-agent, your custom task
+```
+
 ## Memory System
 
 ### Search Memory
@@ -152,6 +180,11 @@ ax memory list --limit 10
 
 # Export memory for backup
 ax memory export > backup.json
+```
+
+**In Gemini CLI**:
+```
+/ax-memory search authentication
 ```
 
 ### How Memory Works
@@ -208,6 +241,52 @@ ax spec run --parallel
 ax spec status
 ```
 
+## Gemini CLI Integration
+
+### Custom Commands
+
+AutomatosX provides custom Gemini CLI commands in `.gemini/commands/`:
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/ax` | Execute any agent | `/ax backend, create API` |
+| `/ax-status` | Check system status | `/ax-status` |
+| `/ax-list` | List agents/abilities | `/ax-list agents` |
+| `/ax-memory` | Search memory | `/ax-memory search auth` |
+| `/ax-init` | Initialize project | `/ax-init` |
+| `/ax-clear` | Clear memory | `/ax-clear` |
+| `/ax-update` | Update AutomatosX | `/ax-update` |
+
+### Command Syntax
+
+**Format**: `/ax <agent>, <task>`
+
+- Use a **comma** to separate agent name and task
+- Agent name can be display name (Bob, Frank) or ID (backend, frontend)
+
+**Examples**:
+```
+/ax bob, create a REST API for authentication
+/ax frank, build a responsive navbar
+/ax steve, audit this code for security
+/ax queenie, write unit tests
+```
+
+### Sync Commands
+
+Register custom commands with Gemini CLI:
+
+```bash
+# Check Gemini CLI integration status
+ax gemini status
+
+# Sync custom commands
+ax gemini sync-mcp
+
+# List available commands
+ax gemini list-commands
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -222,6 +301,12 @@ ax run backend "task"  # ✓ Correct
 ax run Backend "task"  # ✗ Wrong (case-sensitive)
 ```
 
+Or in Gemini CLI:
+```
+/ax-list agents
+/ax backend, your task
+```
+
 **"Provider not available"**
 ```bash
 # Check system status
@@ -231,6 +316,11 @@ ax status
 ax config show
 ```
 
+Or in Gemini CLI:
+```
+/ax-status
+```
+
 **"Out of memory"**
 ```bash
 # Clear old memories
@@ -238,6 +328,23 @@ ax memory clear --before "2024-01-01"
 
 # View memory stats
 ax cache stats
+```
+
+Or in Gemini CLI:
+```
+/ax-clear
+```
+
+**"Gemini CLI not found"**
+```bash
+# Install Gemini CLI
+npm install -g @google/generative-ai-cli
+
+# Verify installation
+gemini --version
+
+# Check AutomatosX integration
+ax gemini status
 ```
 
 ### Getting Help
@@ -254,13 +361,21 @@ ax --debug run backend "task"
 ax memory search "similar task"
 ```
 
+**In Gemini CLI**:
+```
+/ax-status          # Check system health
+/ax-list agents     # See available agents
+/ax-memory search   # Find past conversations
+```
+
 ## Best Practices
 
-1. **Use Natural Language in Claude Code**: Let Claude Code coordinate with agents for complex tasks
+1. **Use Slash Commands in Gemini CLI**: Cleaner syntax than natural language
 2. **Leverage Memory**: Reference past decisions and designs
 3. **Start Simple**: Test with small tasks before complex workflows
 4. **Review Configurations**: Check `automatosx.config.json` for timeouts and retries
 5. **Keep Agents Specialized**: Use the right agent for each task type
+6. **Use Agent Names or IDs**: Both work (Bob = backend, Frank = frontend)
 
 ## Documentation
 
@@ -269,6 +384,7 @@ ax memory search "similar task"
 - **Configuration**: `automatosx.config.json`
 - **Memory Database**: `.automatosx/memory/memories.db`
 - **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
+- **Gemini Commands**: `.gemini/commands/` (custom slash commands)
 
 ## Support
 

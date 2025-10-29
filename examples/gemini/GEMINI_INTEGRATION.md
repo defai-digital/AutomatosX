@@ -166,6 +166,35 @@ Then use them in Gemini CLI:
 /ax my-agent, your custom task
 ```
 
+### Workspace Conventions
+
+**IMPORTANT**: AutomatosX uses specific directories for organized file management. Please follow these conventions when working with agents:
+
+- **`automatosx/PRD/`** - Product Requirements Documents, design specs, and planning documents
+  - Use for: Architecture designs, feature specs, technical requirements
+  - Example: `automatosx/PRD/auth-system-design.md`
+
+- **`automatosx/tmp/`** - Temporary files, scratch work, and intermediate outputs
+  - Use for: Draft code, test outputs, temporary analysis
+  - Auto-cleaned periodically
+  - Example: `automatosx/tmp/draft-api-endpoints.ts`
+
+**Usage in Gemini CLI**:
+```
+/ax product, save the architecture design to automatosx/PRD/user-auth-design.md
+/ax backend, put the draft implementation in automatosx/tmp/auth-draft.ts for review
+/ax backend, implement the spec in automatosx/PRD/api-spec.md
+```
+
+**Natural Language**:
+```
+"Please save the architecture design to automatosx/PRD/user-auth-design.md"
+"Put the draft implementation in automatosx/tmp/auth-draft.ts for review"
+"Implement the spec in automatosx/PRD/api-spec.md"
+```
+
+These directories are automatically created by `ax init` and included in `.gitignore` appropriately.
+
 ## Memory System
 
 ### Search Memory

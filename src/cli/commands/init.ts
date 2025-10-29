@@ -226,6 +226,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ GEMINI.md configured'));
 
+      // Create workspace directories for organized file management
+      console.log(chalk.cyan('📂 Creating workspace directories...'));
+      await createWorkspaceDirectories(projectDir);
+      console.log(chalk.green('   ✓ Workspace directories created'));
+
       // Initialize git repository if needed (for Codex CLI compatibility)
       console.log(chalk.cyan('🔧 Initializing git repository...'));
       await initializeGitRepository(projectDir);
@@ -1095,6 +1100,69 @@ async function setupProjectGeminiMd(
     logger.warn('Failed to setup GEMINI.md', {
       error: (error as Error).message,
       path: geminiMdPath
+    });
+  }
+}
+
+/**
+ * Create workspace directories for organized file management
+ *
+ * This function creates the standard workspace directories that AutomatosX uses
+ * for organizing files:
+ * - automatosx/PRD/ - Product Requirements Documents and design specs
+ * - automatosx/tmp/ - Temporary files and intermediate outputs
+ *
+ * These directories help keep projects organized and are documented in both
+ * CLAUDE.md and GEMINI.md integration guides.
+ */
+async function createWorkspaceDirectories(projectDir: string): Promise<void> {
+  const workspaceDirs = [
+    join(projectDir, 'automatosx'),
+    join(projectDir, 'automatosx/PRD'),
+    join(projectDir, 'automatosx/tmp')
+  ];
+
+  try {
+    for (const dir of workspaceDirs) {
+      await mkdir(dir, { recursive: true, mode: 0o755 });
+    }
+
+    // Create README in each workspace directory to explain its purpose
+    const prdReadme = `# Product Requirements Documents
+
+This directory contains:
+- Architecture designs
+- Feature specifications
+- Technical requirements
+- Planning documents
+
+Created by AutomatosX for organized project documentation.
+`;
+
+    const tmpReadme = `# Temporary Files
+
+This directory contains:
+- Draft code
+- Test outputs
+- Temporary analysis
+- Intermediate work
+
+Files here may be auto-cleaned periodically.
+Created by AutomatosX for organized scratch work.
+`;
+
+    await writeFile(join(projectDir, 'automatosx/PRD/README.md'), prdReadme, 'utf-8');
+    await writeFile(join(projectDir, 'automatosx/tmp/README.md'), tmpReadme, 'utf-8');
+
+    logger.info('Workspace directories created', {
+      projectDir,
+      dirs: workspaceDirs
+    });
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to create workspace directories', {
+      error: (error as Error).message,
+      projectDir
     });
   }
 }

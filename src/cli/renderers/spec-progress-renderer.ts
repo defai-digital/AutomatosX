@@ -42,6 +42,7 @@ export class SpecProgressRenderer {
   private failedCount = 0;
   private currentLevel = 0;
   private taskStartTimes = new Map<string, number>();
+  private eventListener: ((event: SpecEvent) => void) | null = null;
 
   /**
    * Create SpecProgressRenderer
@@ -55,9 +56,10 @@ export class SpecProgressRenderer {
 
     // Subscribe to all events
     if (this.executor.events && !this.quiet) {
-      this.executor.events.onAny((event: SpecEvent) => {
+      this.eventListener = (event: SpecEvent) => {
         this.handleEvent(event);
-      });
+      };
+      this.executor.events.onAny(this.eventListener);
     }
   }
 
@@ -258,12 +260,18 @@ export class SpecProgressRenderer {
   /**
    * Stop rendering
    *
-   * Cleans up spinner and resets state.
+   * Cleans up spinner, removes event listeners, and resets state.
    */
   stop(): void {
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;
+    }
+
+    // Fix memory leak: Remove event listener
+    if (this.eventListener && this.executor.events) {
+      this.executor.events.removeListener('*', this.eventListener);
+      this.eventListener = null;
     }
   }
 }

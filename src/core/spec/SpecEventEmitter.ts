@@ -512,8 +512,14 @@ export class SpecEventEmitter extends EventEmitter {
 
   /**
    * Cleanup
+   *
+   * Removes all event listeners and resets internal state.
    */
   async cleanup(): Promise<void> {
     this.removeAllListeners();
+
+    // Reset state for proper cleanup
+    this.eventCount = 0;
+    this.startTime = undefined;
   }
 }

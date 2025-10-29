@@ -328,6 +328,18 @@ export class SpecExecutor {
         });
       }
     }
+
+    // Phase 2B: Cleanup event emitter (fix memory leak)
+    if (this.events) {
+      try {
+        await this.events.cleanup();
+        logger.debug('SpecExecutor event emitter cleanup complete');
+      } catch (error) {
+        logger.warn('SpecExecutor event emitter cleanup failed', {
+          error: (error as Error).message
+        });
+      }
+    }
   }
 
   /**

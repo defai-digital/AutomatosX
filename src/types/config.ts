@@ -68,6 +68,26 @@ export interface ProviderLimitTrackingConfig {
   customResetMs?: number;    // Custom reset interval in ms (for 'custom' window only)
 }
 
+/**
+ * Claude Code Provider Configuration (v5.8.6+)
+ * Provider-specific settings for Claude Code CLI
+ */
+export interface ClaudeProviderConfig {
+  allowedTools?: string[];   // Tools accessible to Claude (default: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'])
+  allowedDirs?: string[];    // Directories Claude can access (default: ['.'])
+  printMode?: boolean;       // Enable --print flag (default: true)
+}
+
+/**
+ * Gemini CLI Provider Configuration (v5.8.6+)
+ * Provider-specific settings for Gemini CLI
+ */
+export interface GeminiProviderConfig {
+  approvalMode?: 'auto' | 'always' | 'never' | 'auto_edit';  // File edit approval mode (default: 'auto_edit')
+  embeddingModel?: string;   // Embedding model to use (default: 'text-embedding-004')
+  enableRealEmbeddings?: boolean;  // Enable real embeddings instead of mock (default: false)
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   priority: number;
@@ -91,6 +111,10 @@ export interface ProviderConfig {
 
   // v5.7.0: Usage limit tracking and automatic rotation
   limitTracking?: ProviderLimitTrackingConfig;  // Usage limit tracking configuration
+
+  // v5.8.6: Provider-specific configuration
+  claude?: ClaudeProviderConfig;  // Claude Code specific configuration
+  gemini?: GeminiProviderConfig;  // Gemini CLI specific configuration
 }
 
 // ========================================

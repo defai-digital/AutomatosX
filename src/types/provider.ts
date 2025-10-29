@@ -7,7 +7,9 @@ import type {
   RetryConfig as RetryConfigImpl,
   CircuitBreakerConfig,
   ProcessManagementConfig,
-  VersionDetectionConfig
+  VersionDetectionConfig,
+  ClaudeProviderConfig,
+  GeminiProviderConfig
 } from './config.js';
 
 // Re-export RetryConfig for backward compatibility
@@ -34,6 +36,10 @@ export interface ProviderConfig {
   circuitBreaker?: CircuitBreakerConfig;        // Circuit breaker configuration
   processManagement?: ProcessManagementConfig;  // Process lifecycle management
   versionDetection?: VersionDetectionConfig;    // Version detection configuration
+
+  // v5.8.6: Provider-specific configuration
+  claude?: ClaudeProviderConfig;  // Claude Code specific configuration
+  gemini?: GeminiProviderConfig;  // Gemini CLI specific configuration
 }
 
 export interface RateLimitConfig {

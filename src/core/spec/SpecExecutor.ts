@@ -13,6 +13,7 @@
 import { spawn } from 'child_process';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
+import pLimit from 'p-limit';
 import type {
   ParsedSpec,
   SpecExecutorOptions,
@@ -30,6 +31,7 @@ import { AgentExecutionService } from '../../agents/agent-execution-service.js';
 import { SpecEventEmitter } from './SpecEventEmitter.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { logger } from '../../utils/logger.js';
+import { LazyMemoryManager } from '../lazy-memory-manager.js';
 
 /**
  * SpecExecutor class
@@ -52,6 +54,14 @@ export class SpecExecutor {
   // Phase 2: Event emitter for real-time progress (v5.10.0)
   public events?: SpecEventEmitter;
 
+  // Phase 3: Memory manager for context sharing (v5.12.0)
+  private memoryManager?: LazyMemoryManager;
+  private enableContextSharing: boolean;
+
+  // Phase 3: Concurrency control (v5.12.0)
+  private concurrencyLimit: number;
+  private limiter: ReturnType<typeof pLimit>;
+
   constructor(
     spec: ParsedSpec,
     options: SpecExecutorOptions,
@@ -65,6 +75,11 @@ export class SpecExecutor {
     // Phase 1: Enable native execution by default (10x faster!)
     // Can be disabled with SPEC_LEGACY_EXECUTION=1 for debugging
     this.useNativeExecution = process.env.SPEC_LEGACY_EXECUTION !== '1';
+
+    // Phase 3: Initialize defaults for all paths
+    this.enableContextSharing = false;
+    this.concurrencyLimit = 4;
+    this.limiter = pLimit(this.concurrencyLimit);
 
     // Build dependency graph
     this.graphBuilder = new SpecGraphBuilder();
@@ -84,6 +99,28 @@ export class SpecExecutor {
       this.agentService = new AgentExecutionService({
         projectDir: spec.metadata.workspacePath,
         config: options.config
+      });
+
+      // Phase 3: Initialize memory manager for context sharing
+      this.enableContextSharing = this.options.config?.execution?.stages?.memorySharing?.enabled ?? true;
+
+      if (this.enableContextSharing && this.useNativeExecution) {
+        this.memoryManager = new LazyMemoryManager({
+          dbPath: join(spec.metadata.workspacePath, '.automatosx/memory/memories.db'),
+          maxEntries: this.options.config?.memory?.maxEntries ?? 10000
+        });
+
+        logger.info('SpecExecutor: Context sharing ENABLED', {
+          sessionId: options.sessionId
+        });
+      }
+
+      // Phase 3: Initialize concurrency limiter
+      this.concurrencyLimit = this.options.concurrency || this.options.config?.execution?.concurrency?.maxConcurrentAgents || 4;
+      this.limiter = pLimit(this.concurrencyLimit);
+
+      logger.debug('SpecExecutor concurrency limit initialized', {
+        limit: this.concurrencyLimit
       });
 
       logger.info('SpecExecutor initialized with NATIVE execution', {
@@ -446,49 +483,52 @@ export class SpecExecutor {
       });
 
       // Execute all tasks in this level in parallel
+      // Phase 3: Apply concurrency control with p-limit
       const levelResults = await Promise.all(
-        taskIds.map(async (taskId, i) => {
-          const state = this.runState.tasks.get(taskId);
+        taskIds.map((taskId, i) =>
+          this.limiter(async () => {
+            const state = this.runState.tasks.get(taskId);
 
-          if (!state) {
-            return null;
-          }
+            if (!state) {
+              return null;
+            }
 
-          // Skip if already completed
-          if (state.status === 'completed') {
-            return null;
-          }
+            // Skip if already completed
+            if (state.status === 'completed') {
+              return null;
+            }
 
-          // Check dependencies
-          if (!this.areDependenciesCompleted(taskId)) {
-            state.status = 'skipped';
-            return null;
-          }
+            // Check dependencies
+            if (!this.areDependenciesCompleted(taskId)) {
+              state.status = 'skipped';
+              return null;
+            }
 
-          // Execute task
-          const result = await this.executeTask(
-            taskId,
-            i + 1,
-            taskIds.length
-          );
+            // Execute task
+            const result = await this.executeTask(
+              taskId,
+              i + 1,
+              taskIds.length
+            );
 
-          // Update state
-          state.status = result.status;
-          state.output = result.output;
-          state.error = result.error;
-          state.completedAt = new Date();
-          state.executedBy = result.executedBy;
-          state.retryCount = result.retryCount;
+            // Update state
+            state.status = result.status;
+            state.output = result.output;
+            state.error = result.error;
+            state.completedAt = new Date();
+            state.executedBy = result.executedBy;
+            state.retryCount = result.retryCount;
 
-          // Update metadata
-          if (result.status === 'completed') {
-            this.runState.metadata.completedTasks++;
-          } else if (result.status === 'failed') {
-            this.runState.metadata.failedTasks++;
-          }
+            // Update metadata
+            if (result.status === 'completed') {
+              this.runState.metadata.completedTasks++;
+            } else if (result.status === 'failed') {
+              this.runState.metadata.failedTasks++;
+            }
 
-          return result;
-        })
+            return result;
+          })
+        )
       );
 
       // Add non-null results
@@ -629,6 +669,22 @@ export class SpecExecutor {
 
     const startTime = Date.now();
 
+    // Phase 3: Join task to session
+    if (this.options.sessionId) {
+      try {
+        await this.sessionManager.joinTask(this.options.sessionId, {
+          taskId: task.id,
+          taskTitle: task.title,
+          agent: task.assigneeHint
+        });
+      } catch (error) {
+        logger.warn('Failed to join task to session', {
+          taskId: task.id,
+          error: (error as Error).message
+        });
+      }
+    }
+
     // Phase 2B: Emit task:started event
     this.events?.emitTaskStarted({
       taskId: task.id,
@@ -650,13 +706,38 @@ export class SpecExecutor {
     }
 
     try {
-      // Execute the ops command (ax run <agent> "task")
-      const output = await this.executeOpsCommand(task.ops);
+      // Phase 3: Retrieve prior task context
+      const priorContext = await this.getPriorTaskContext(task.id);
+
+      // Phase 3: Build context-enriched prompt
+      const enrichedOps = this.buildContextPrompt(task.ops, priorContext);
+
+      // Execute the ops command with enriched context
+      const output = await this.executeOpsCommand(enrichedOps);
+
+      // Phase 3: Save task output to memory
+      await this.saveTaskOutput(task.id, task.title, output, Date.now() - startTime);
 
       // Update task status in tasks.md
       await this.updateTaskStatus(taskId, 'completed');
 
       const duration = Date.now() - startTime;
+
+      // Phase 3: Mark task as completed in session
+      if (this.options.sessionId) {
+        try {
+          await this.sessionManager.completeTask(
+            this.options.sessionId,
+            task.id,
+            duration
+          );
+        } catch (error) {
+          logger.warn('Failed to complete task in session', {
+            taskId: task.id,
+            error: (error as Error).message
+          });
+        }
+      }
 
       // Phase 2B: Emit task:completed event
       this.events?.emitTaskCompleted({
@@ -704,6 +785,139 @@ export class SpecExecutor {
         executedBy: task.assigneeHint,
         retryCount: 0
       };
+    }
+  }
+
+  /**
+   * Get prior task context from memory (Phase 3)
+   *
+   * @param currentTaskId - Current task ID
+   * @returns Array of prior task outputs
+   */
+  private async getPriorTaskContext(currentTaskId: string): Promise<Array<{
+    id: string;
+    title: string;
+    output: string;
+    timestamp: string;
+  }>> {
+    if (!this.memoryManager || !this.enableContextSharing || !this.options.sessionId) {
+      return [];
+    }
+
+    try {
+      // Search for prior task outputs in this session
+      const results = await this.memoryManager.search({
+        text: `session:${this.options.sessionId}`,
+        limit: 5,
+        filters: {
+          type: 'task',
+          sessionId: this.options.sessionId
+        }
+      });
+
+      return results.map((result) => ({
+        id: result.entry.metadata.taskId as string,
+        title: result.entry.metadata.taskTitle as string,
+        output: result.entry.content,
+        timestamp: result.entry.createdAt.toISOString()
+      }));
+    } catch (error) {
+      logger.warn('Failed to retrieve prior task context', {
+        error: (error as Error).message
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Build context-enriched prompt (Phase 3)
+   *
+   * @param originalOps - Original ops command
+   * @param priorContext - Prior task outputs
+   * @returns Enriched ops command
+   */
+  private buildContextPrompt(
+    originalOps: string,
+    priorContext: Array<{ id: string; title: string; output: string; timestamp: string }>
+  ): string {
+    if (priorContext.length === 0) {
+      return originalOps;
+    }
+
+    // Build context section
+    const contextSection = priorContext
+      .map(prior => `
+### Prior Task: ${prior.title}
+**Completed:** ${prior.timestamp}
+**Output:**
+${prior.output.slice(0, 500)}${prior.output.length > 500 ? '...' : ''}
+`)
+      .join('\n');
+
+    // Enrich the original prompt
+    return `${originalOps}
+
+## Context from Prior Tasks
+
+You have access to outputs from previously completed tasks in this workflow:
+${contextSection}
+
+Use this context to:
+- Maintain consistency with prior decisions
+- Build upon prior work without redundancy
+- Reference earlier outputs when relevant
+`;
+  }
+
+  /**
+   * Save task output to memory (Phase 3)
+   *
+   * @param taskId - Task ID
+   * @param taskTitle - Task title
+   * @param output - Task output
+   * @param duration - Task duration in ms
+   */
+  private async saveTaskOutput(
+    taskId: string,
+    taskTitle: string,
+    output: string,
+    duration: number
+  ): Promise<void> {
+    if (!this.memoryManager || !this.enableContextSharing || !this.options.sessionId) {
+      return;
+    }
+
+    try {
+      await this.memoryManager.add(
+        output,
+        null, // No embedding needed
+        {
+          type: 'task',
+          source: 'spec-executor',
+          tags: [
+            `session:${this.options.sessionId}`,
+            `task:${taskId}`,
+            `spec:${this.spec.metadata.id}`
+          ],
+          sessionId: this.options.sessionId,
+          specId: this.spec.metadata.id,
+          taskId,
+          taskTitle,
+          duration,
+          timestamp: new Date().toISOString()
+        }
+      );
+
+      logger.debug('Task output saved to memory', {
+        taskId,
+        sessionId: this.options.sessionId,
+        outputLength: output.length
+      });
+    } catch (error) {
+      logger.warn('Failed to save task output to memory', {
+        taskId,
+        error: (error as Error).message
+      });
     }
   }
 

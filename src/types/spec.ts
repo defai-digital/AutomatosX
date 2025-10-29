@@ -394,6 +394,9 @@ export interface SpecExecutorOptions {
 
   /** Phase 1 (v5.9.0): Default timeout for tasks */
   timeout?: number;
+
+  /** Phase 3 (v5.12.0): Concurrency limit for p-limit */
+  concurrency?: number;
 }
 
 /**

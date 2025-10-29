@@ -62,6 +62,9 @@ interface SpecOptions {
   dot?: boolean;
   mermaid?: boolean;
   'critical-path'?: boolean;
+
+  // Phase 3 (v5.12.0): Internal config for direct execution
+  _internalConfig?: any;
 }
 
 export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = {
@@ -307,18 +310,17 @@ async function handleCreate(
 
     // Execute if --execute flag is set
     if (argv.execute) {
-      console.log(chalk.blue('\n🚀 Executing spec with parallel mode...\n'));
+      console.log(chalk.cyan('\n▶️  Executing spec immediately...\n'));
 
-      const child = spawn('ax', ['spec', 'run', '--parallel'], {
-        stdio: 'inherit',
-        shell: true,
-      });
+      // Phase 3: Direct execution in same process (no subprocess!)
+      await handleRun(workspacePath, {
+        ...argv,
+        parallel: true,
+        // Pass internal context for reuse
+        _internalConfig: config // Reuse config
+      }, config);
 
-      return new Promise<void>((resolve) => {
-        child.on('close', (code) => {
-          process.exit(code || 0);
-        });
-      });
+      return;
     } else {
       console.log(chalk.yellow('\n💡 Next steps:'));
       console.log(chalk.gray('  1. Review generated files in .specify/'));

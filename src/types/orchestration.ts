@@ -162,7 +162,12 @@ export interface Session {
   /** Last update timestamp */
   updatedAt: Date;
 
-  /** Additional session metadata */
+  /**
+   * Additional session metadata
+   *
+   * Phase 3: May contain tasks array for task tracking
+   * tasks?: Array<{id, title, agent, startedAt, status, ...}>
+   */
   metadata?: Record<string, any>;
 }
 

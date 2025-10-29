@@ -100,6 +100,9 @@
       "minConcurrency": 2,
       "maxConcurrency": 16
     },
+    "spec": {
+      "maxConcurrentTasks": 6
+    },
     "retry": {
       "maxAttempts": 3,
       "initialDelay": 1000,
@@ -136,6 +139,10 @@
       "progress": {
         "updateInterval": 2000,
         "syntheticProgress": true
+      },
+      "memorySharing": {
+        "enabled": true,
+        "contextDepth": 5
       }
     }
   },

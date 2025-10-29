@@ -13,6 +13,20 @@ import { logger } from '../utils/logger.js';
 import { dirname, normalizePath } from '../utils/path-utils.js';
 
 /**
+ * Task metadata for session tracking
+ * Phase 3 (v5.12.0)
+ */
+export interface SessionTaskInfo {
+  id: string;
+  title: string;
+  agent?: string;
+  startedAt: string;
+  completedAt?: string;
+  duration?: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
+
+/**
  * Session Manager
  *
  * Manages the lifecycle of multi-agent collaborative sessions, providing:
@@ -245,6 +259,88 @@ export class SessionManager {
       });
 
       // Persist to file
+      this.saveToFile();
+    }
+  }
+
+  /**
+   * Join a task to the session (Phase 3)
+   *
+   * Tracks task execution within the session for context sharing.
+   *
+   * @param sessionId - Session ID
+   * @param taskInfo - Task information
+   * @throws {SessionError} If session not found
+   */
+  async joinTask(
+    sessionId: string,
+    taskInfo: { taskId: string; taskTitle: string; agent?: string }
+  ): Promise<void> {
+    this.validateSessionId(sessionId);
+
+    const session = this.activeSessions.get(sessionId);
+    if (!session) {
+      throw new SessionError(
+        `Session not found: ${sessionId}`,
+        sessionId,
+        'not_found'
+      );
+    }
+
+    // Initialize metadata if needed
+    if (!session.metadata) {
+      session.metadata = {};
+    }
+
+    // Initialize tasks array if needed
+    if (!session.metadata.tasks) {
+      session.metadata.tasks = [];
+    }
+
+    // Add task to session
+    const taskMetadata: SessionTaskInfo = {
+      id: taskInfo.taskId,
+      title: taskInfo.taskTitle,
+      agent: taskInfo.agent,
+      startedAt: new Date().toISOString(),
+      status: 'running'
+    };
+
+    session.metadata.tasks.push(taskMetadata);
+    session.updatedAt = new Date();
+
+    logger.debug('Task joined session', {
+      sessionId,
+      taskId: taskInfo.taskId,
+      taskTitle: taskInfo.taskTitle
+    });
+
+    this.saveToFile();
+  }
+
+  /**
+   * Mark task as completed in session (Phase 3)
+   *
+   * @param sessionId - Session ID
+   * @param taskId - Task ID
+   * @param duration - Task duration in ms
+   */
+  async completeTask(
+    sessionId: string,
+    taskId: string,
+    duration: number
+  ): Promise<void> {
+    const session = this.activeSessions.get(sessionId);
+    if (!session || !session.metadata || !session.metadata.tasks) {
+      return;
+    }
+
+    const task = session.metadata.tasks.find((t: SessionTaskInfo) => t.id === taskId);
+    if (task) {
+      task.status = 'completed';
+      task.completedAt = new Date().toISOString();
+      task.duration = duration;
+      session.updatedAt = new Date();
       this.saveToFile();
     }
   }

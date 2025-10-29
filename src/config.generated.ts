@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-29T16:30:05.947Z
+ * Generated: 2025-10-29T19:35:44.951Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -122,6 +122,9 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "minConcurrency": 2,
       "maxConcurrency": 16
     },
+    "spec": {
+      "maxConcurrentTasks": 6
+    },
     "retry": {
       "maxAttempts": 3,
       "initialDelay": 1000,
@@ -158,6 +161,10 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "progress": {
         "updateInterval": 2000,
         "syntheticProgress": true
+      },
+      "memorySharing": {
+        "enabled": true,
+        "contextDepth": 5
       }
     }
   },
@@ -326,7 +333,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-29T16:30:05.947Z',
+  generatedAt: '2025-10-29T19:35:44.951Z',
   sourceFile: 'automatosx.config.json',
   version: '5.8.10'
 } as const;

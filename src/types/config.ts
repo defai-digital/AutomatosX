@@ -153,6 +153,11 @@ export interface StageProgressConfig {
   syntheticProgress: boolean;   // enable synthetic progress for non-streaming providers
 }
 
+export interface StageMemorySharingConfig {
+  enabled: boolean;             // enable memory sharing between tasks (Phase 3)
+  contextDepth: number;         // number of prior tasks to include in context
+}
+
 export interface StageExecutionConfigOptions {
   enabled: boolean;             // enable stage-based execution
   defaultTimeout: number;       // default timeout per stage (ms)
@@ -162,6 +167,7 @@ export interface StageExecutionConfigOptions {
   retry: StageRetryConfig;      // stage retry configuration
   prompts: StagePromptConfig;   // prompt configuration
   progress: StageProgressConfig; // progress configuration
+  memorySharing?: StageMemorySharingConfig; // Phase 3 (v5.12.0): context sharing between tasks
 }
 
 /**
@@ -176,6 +182,10 @@ export interface ConcurrencyConfig {
   maxConcurrency: number;        // Maximum concurrent agents (default: 16)
 }
 
+export interface SpecExecutionConfig {
+  maxConcurrentTasks: number;  // Phase 3 (v5.12.0): Max concurrent spec tasks
+}
+
 export interface ExecutionConfig {
   defaultTimeout: number;  // default execution timeout (ms)
   retry: RetryConfig;
@@ -184,6 +194,7 @@ export interface ExecutionConfig {
   concurrency?: ConcurrencyConfig;  // v5.6.18: Advanced concurrency control
   stages?: StageExecutionConfigOptions;  // v5.3.0: stage-based execution
   timeouts?: TimeoutConfig;  // v5.4.0: layered timeout configuration (optional)
+  spec?: SpecExecutionConfig;  // Phase 3 (v5.12.0): Spec-Kit execution config
 }
 
 // ========================================

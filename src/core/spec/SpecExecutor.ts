@@ -4,7 +4,8 @@
  * Orchestrates task execution according to dependency graph,
  * manages state, checkpoints, and integrates with AgentExecutor.
  *
- * Phase 1 (v5.9.0): Native agent execution (no subprocess)
+ * Phase 1 (v5.8.10): Native agent execution (no subprocess)
+ * Phase 2 (v5.10.0): Streaming progress & event bus
  *
  * @module core/spec/SpecExecutor
  */
@@ -26,6 +27,7 @@ import { SpecError as SpecErrorClass, SpecErrorCode } from '../../types/spec.js'
 import { SpecGraphBuilder } from './SpecGraphBuilder.js';
 import { SessionManager } from '../session-manager.js';
 import { AgentExecutionService } from '../../agents/agent-execution-service.js';
+import { SpecEventEmitter } from './SpecEventEmitter.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { logger } from '../../utils/logger.js';
 
@@ -47,6 +49,9 @@ export class SpecExecutor {
   private agentService?: AgentExecutionService;
   private useNativeExecution: boolean;
 
+  // Phase 2: Event emitter for real-time progress (v5.10.0)
+  public events?: SpecEventEmitter;
+
   constructor(
     spec: ParsedSpec,
     options: SpecExecutorOptions,
@@ -67,6 +72,12 @@ export class SpecExecutor {
 
     // Initialize run state
     this.runState = this.initializeRunState();
+
+    // Phase 2: Initialize event emitter for streaming progress (v5.10.0)
+    this.events = new SpecEventEmitter(
+      spec.metadata.id,
+      options.sessionId
+    );
 
     // Phase 1: Initialize native execution service
     if (this.useNativeExecution) {

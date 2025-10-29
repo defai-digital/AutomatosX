@@ -2,6 +2,81 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.8.8] - 2025-10-29
+
+### ✨ Features & Enhancements
+
+**Comprehensive Integration Guides** - Equal, high-quality integration for both Claude Code and Gemini CLI
+
+#### 🤖 Gemini CLI Integration (NEW)
+
+1. **Complete Integration Guide** (`examples/gemini/GEMINI_INTEGRATION.md`)
+   - 300+ line comprehensive guide matching Claude Code quality
+   - Quick start with slash commands: `/ax backend, create API`
+   - All 19 agents with display names (Bob, Frank, Steve, etc.)
+   - Key features: Persistent memory, multi-agent collaboration, cross-provider support
+   - Configuration examples and customization guide
+   - Memory system documentation
+   - Advanced usage: Parallel execution, resumable runs, streaming, spec-driven development
+   - Gemini CLI-specific commands table and syntax guide
+   - Troubleshooting section with common issues
+   - 6 best practices for Gemini CLI users
+
+2. **Enhanced `ax init` for Gemini**
+   - Added `setupGeminiIntegration()` - copies `.toml` commands to `.gemini/commands/`
+   - Added `setupProjectGeminiMd()` - creates `GEMINI.md` in project root
+   - Shows Gemini CLI integration info in success message
+   - Creates 7 custom commands: `/ax`, `/ax-status`, `/ax-list`, `/ax-memory`, etc.
+
+#### 📖 Claude Code Integration (IMPROVED)
+
+1. **Enhanced Integration Guide** (`examples/claude/CLAUDE_INTEGRATION.md`)
+   - Added agent display names to match Gemini guide
+   - Listed all 19 agents including new ones (Astrid, Quinn, Dana, Candy, Peter)
+   - Added Spec-Driven Development section (v5.8.0+ feature)
+   - Clarified Claude as "Primary provider for Claude Code users"
+   - Consistent structure with Gemini integration guide
+
+#### 📁 Workspace Conventions (NEW)
+
+1. **Standardized Directory Structure**
+   - `automatosx/PRD/` - Product Requirements Documents, design specs, planning
+   - `automatosx/tmp/` - Temporary files, draft code, scratch work
+   - Clear guidance on when to use each directory
+   - Auto-cleaned temp directory
+
+2. **Documentation in Integration Guides**
+   - Added "Workspace Conventions" section to both CLAUDE.md and GEMINI.md
+   - Usage examples for Claude Code and Gemini CLI
+   - Platform-specific syntax examples
+
+3. **Automatic Setup via `ax init`**
+   - Added `createWorkspaceDirectories()` function
+   - Creates `automatosx/`, `automatosx/PRD/`, `automatosx/tmp/`
+   - Adds explanatory README.md to each workspace directory
+   - Uses 0o755 permissions for cross-platform compatibility
+   - Shows "Workspace directories created" in init output
+
+### 🎯 Impact
+
+**Before**:
+- Claude Code: Good integration ✅
+- Gemini CLI: Basic README only ⚠️
+- No workspace conventions ❌
+
+**After**:
+- Claude Code: Comprehensive integration ✅✅
+- Gemini CLI: Comprehensive integration ✅✅
+- Workspace conventions documented and auto-created ✅✅
+
+### 📝 Files Modified
+
+- `examples/gemini/GEMINI_INTEGRATION.md` (NEW - 300+ lines)
+- `examples/claude/CLAUDE_INTEGRATION.md` (IMPROVED)
+- `src/cli/commands/init.ts` (ADDED GEMINI + WORKSPACE SETUP)
+- Integration guides now include workspace conventions
+- `ax init` creates workspace directories with README files
+
 ## [5.8.7] - 2025-10-29
 
 ### 🐛 Bug Fixes

@@ -223,17 +223,27 @@ AutomatosX comes with a pre-built team of 19 agents, each with a specific role a
 
 ## 🚀 Two Ways to Use AutomatosX
 
-### 1. Claude Code Integration (Recommended)
+### 1. Gemini CLI Integration (Recommended)
 
-Use natural language to collaborate with agents directly within your editor. Claude Code acts as an intelligent coordinator, providing project context and validating results.
+AutomatosX ships with first-class Gemini CLI support, so you can stay inside Gemini and hand off work using slash commands or natural language prompts.
 
 ```
-# Let Claude Code think, plan, and coordinate
-"please work with ax agent to implement user authentication"
-"please work with ax agent to refactor this module with best practices"
+/ax backend, create a REST API for user management
+/ax security, audit the authentication flow
+/ax quality, write unit tests for the API
 ```
 
-For simple, direct tasks, use slash commands: `/ax-agent backend, write a function to validate emails`.
+Prefer to type full sentences? Gemini understands natural language requests too:
+
+```
+"Please use the ax backend agent to implement user authentication"
+"Ask the ax security agent to audit this code for vulnerabilities"
+"Have the ax quality agent write tests for this feature"
+```
+
+🔎 Need a full command reference? Check [GEMINI.md](GEMINI.md) for slash commands, system shortcuts, and workspace conventions tailored to Gemini CLI workflows.
+
+> Tip: You can still enable other providers (like Claude Code or OpenAI) as fallbacks in `automatosx.config.json`, but Gemini CLI remains the primary interface.
 
 ### 2. Terminal/CLI Mode (For Power Users)
 
@@ -294,7 +304,7 @@ $ ax provider-limits
 
 ## ✨ Key Features
 
-| Feature | Traditional AI Chat | Claude Code | AutomatosX | AutomatosX + Spec-Kit |
+| Feature | Traditional AI Chat | Gemini CLI | AutomatosX | AutomatosX + Spec-Kit |
 |---|---|---|---|---|
 | **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** | ✅ **Yes + Spec Context** |
 | **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (19 specialized agents)** | ✅ **Yes + Orchestration** |
@@ -306,7 +316,7 @@ $ ax provider-limits
 | **Resume After Interrupt** | ❌ No | ❌ No | ⚠️ **Start Over** | ✅ **From Checkpoint** |
 | **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** | ✅ **+ Spec-Aware** |
 | **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across agents)** | ✅ **Yes + Team Workflows** |
-| **Privacy** | Cloud-Based | Claude Servers | ✅ **100% Local** | ✅ **100% Local** |
+| **Privacy** | Cloud-Based | Gemini Cloud | ✅ **100% Local** | ✅ **100% Local** |
 | **Cost** | Subscription | Included | ✅ **$0 (No API for memory)** | ✅ **$0 (No extra cost)** |
 | **Best For** | Q&A | Development | **Complex Tasks** | **Production Workflows** |
 

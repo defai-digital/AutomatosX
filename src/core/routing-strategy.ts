@@ -51,8 +51,16 @@ export class RoutingStrategyManager extends EventEmitter {
     this.enableLogging = config.enableLogging || false;
 
     // Configure metrics tracker window if provided
+    // NOTE: Providing metricsWindow creates an isolated tracker for this manager.
+    // Use this for testing or when you want independent metrics per strategy.
+    // For production, omit metricsWindow to use the shared global tracker.
     if (config.metricsWindow) {
       this.metricsTracker = new ProviderMetricsTracker({
+        windowSize: config.metricsWindow,
+        minRequests: this.minRequestsForScoring
+      });
+
+      logger.info('RoutingStrategyManager using isolated metrics tracker', {
         windowSize: config.metricsWindow,
         minRequests: this.minRequestsForScoring
       });
@@ -117,8 +125,19 @@ export class RoutingStrategyManager extends EventEmitter {
 
     if (!sufficientData) {
       if (fallbackToPriority) {
-        // Not enough metrics data, use first provider (priority-based)
-        const selected = providers[0];
+        // Not enough metrics data, use first healthy provider (priority-based with health check)
+        // Filter out unhealthy providers (health multiplier < 0.1 means effectively dead)
+        const healthyProviders = providers.filter(p => {
+          const health = healthMultipliers.get(p) ?? 1.0;
+          return health >= 0.1;  // Only consider providers with at least 10% health
+        });
+
+        if (healthyProviders.length === 0) {
+          // All providers are unhealthy
+          return null;
+        }
+
+        const selected = healthyProviders[0];
         if (!selected) {
           return null;
         }
@@ -127,7 +146,7 @@ export class RoutingStrategyManager extends EventEmitter {
           selectedProvider: selected,
           strategy: this.strategy.name as StrategyName,
           scores: [],
-          reason: 'Insufficient metrics data, using priority-based selection',
+          reason: 'Insufficient metrics data, using priority-based selection with health check',
           timestamp: Date.now()
         };
 

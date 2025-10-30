@@ -51,7 +51,7 @@ export class CostTracker extends EventEmitter {
     super();
     this.dbPath = config.persistPath;
     this.budgets = config.budgets || {};
-    this.alertOnBudget = config.alertOnBudget || true;
+    this.alertOnBudget = config.alertOnBudget ?? true;
 
     logger.debug('CostTracker created', {
       dbPath: this.dbPath,
@@ -463,10 +463,13 @@ let globalCostTracker: CostTracker | null = null;
  * Get or create global cost tracker
  */
 export function getCostTracker(config?: CostTrackingConfig): CostTracker {
-  if (!globalCostTracker && config) {
+  if (!globalCostTracker) {
+    if (!config) {
+      throw new Error('CostTracker not initialized. Call getCostTracker(config) first or provide config.');
+    }
     globalCostTracker = new CostTracker(config);
   }
-  return globalCostTracker!;
+  return globalCostTracker;
 }
 
 /**

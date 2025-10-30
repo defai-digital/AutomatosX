@@ -303,9 +303,26 @@ export class PredictiveLimitManager {
       return false;
     }
 
-    const rotationThreshold = threshold || this.config.rotationThreshold;
+    const rotationThreshold = threshold ?? this.config.rotationThreshold;
     const prediction = await this.predictExhaustion(provider);
 
+    // If a custom threshold is provided, re-evaluate the rotation decision
+    if (threshold !== undefined) {
+      const timeToExhaustion = prediction.prediction.timeToExhaustionHours;
+      const trends = await this.getUsageTrends(provider, this.config.trackingWindow);
+
+      // Apply custom threshold
+      if (timeToExhaustion < rotationThreshold) {
+        return true;
+      }
+      // Also rotate if usage is increasing and approaching threshold
+      if (trends.trend === 'increasing' && timeToExhaustion < rotationThreshold * 3) {
+        return true;
+      }
+      return false;
+    }
+
+    // Use the prediction's built-in shouldRotate (based on config threshold)
     return prediction.prediction.shouldRotate;
   }
 
@@ -362,10 +379,13 @@ let globalPredictiveManager: PredictiveLimitManager | null = null;
  * Get or create global predictive limit manager
  */
 export function getPredictiveLimitManager(config?: PredictiveLimitConfig): PredictiveLimitManager {
-  if (!globalPredictiveManager && config) {
+  if (!globalPredictiveManager) {
+    if (!config) {
+      throw new Error('PredictiveLimitManager not initialized. Call getPredictiveLimitManager(config) first or provide config.');
+    }
     globalPredictiveManager = new PredictiveLimitManager(config);
   }
-  return globalPredictiveManager!;
+  return globalPredictiveManager;
 }
 
 /**

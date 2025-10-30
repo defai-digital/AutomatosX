@@ -24,21 +24,22 @@ export default defineConfig({
     hookTimeout: 30000,       // 30 seconds for hooks
     teardownTimeout: 10000,   // 10 seconds for teardown
 
-    // Thread pool configuration - optimized for GitHub Actions (8 cores)
+    // Thread pool configuration - balanced for cross-platform stability
+    // Windows has file locking issues with high concurrency (SQLite operations)
     pool: 'threads',
     poolOptions: {
       threads: {
         singleThread: false,
         isolate: true,         // Isolate each test file for stability
         minThreads: 1,
-        maxThreads: 8,         // Increased from 4 (GitHub Actions has 8 cores)
+        maxThreads: 4,         // Reduced from 8 for Windows stability
         useAtomics: true       // Better performance with worker threads
       }
     },
 
     // File parallelism and resource limits
     fileParallelism: true,
-    maxConcurrency: 8,         // Increased from 4 for faster execution
+    maxConcurrency: 4,         // Reduced from 8 for Windows stability
 
     // Auto-cleanup for mocks and timers
     clearMocks: true,          // Auto-clear mocks after each test

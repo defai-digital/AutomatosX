@@ -1,22 +1,42 @@
 #!/bin/bash
 
 ###############################################################################
-# tmp/ Directory Cleanup Script
+# automatosx/tmp/ Directory Cleanup Script
 #
-# Moves completed task files to archive, keeping only essential final reports
+# Archives all temporary documents by date
+# Note: automatosx/tmp/ is for temporary working documents, not .gitignored tmp/
 #
 # Usage:
-#   ./tools/cleanup-tmp.sh
+#   ./tools/cleanup-tmp.sh [--keep-recent N]
+#
+# Options:
+#   --keep-recent N    Keep files modified within last N days (default: 7)
 ###############################################################################
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TMP_DIR="$PROJECT_ROOT/tmp"
+TMP_DIR="$PROJECT_ROOT/automatosx/tmp"
 # Generate dynamic archive directory based on current date
 ARCHIVE_DATE=$(date +%Y-%m)
 ARCHIVE_DIR="$TMP_DIR/archive-$ARCHIVE_DATE"
+
+# Parse arguments
+KEEP_DAYS=7
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --keep-recent)
+      KEEP_DAYS="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 [--keep-recent N]"
+      exit 1
+      ;;
+  esac
+done
 
 cd "$PROJECT_ROOT"
 
@@ -24,20 +44,9 @@ echo "📁 Creating archive directory..."
 mkdir -p "$ARCHIVE_DIR"
 
 echo ""
-echo "📋 Files to keep:"
-cat << 'EOF'
-AUTOMATOSX-IMPROVEMENT-PLAN.md
-V5.2.0-RELEASE-GUIDE.md
-V5.2.0-GITHUB-RELEASE-NOTES.md
-V5.2.0-FINAL-COMPLETION-REPORT.md
-test-fix-v5.2.2-final-report.md
-test-fix-final-report.md
-MCP-MIGRATION-PRD.md
-WORKSPACE-REWORK-PLAN.md
-BUG-FIXES-2025-10-13.md
-CODE-QUALITY-FIX-FINAL-REPORT.md
-CLEANUP-PLAN.md
-EOF
+echo "📋 Cleanup policy:"
+echo "• Keep files modified within last $KEEP_DAYS days"
+echo "• Archive older files to: archive-$ARCHIVE_DATE/"
 
 echo ""
 echo "🗑️  Moving files to archive..."
@@ -46,34 +55,28 @@ echo "🗑️  Moving files to archive..."
 TOTAL_BEFORE=$(find "$TMP_DIR" -maxdepth 1 -type f | wc -l | tr -d ' ')
 echo "Files before: $TOTAL_BEFORE"
 
-# Move all non-essential files
-find "$TMP_DIR" -maxdepth 1 -type f \
-  ! -name "AUTOMATOSX-IMPROVEMENT-PLAN.md" \
-  ! -name "V5.2.0-RELEASE-GUIDE.md" \
-  ! -name "V5.2.0-GITHUB-RELEASE-NOTES.md" \
-  ! -name "V5.2.0-FINAL-COMPLETION-REPORT.md" \
-  ! -name "test-fix-v5.2.2-final-report.md" \
-  ! -name "test-fix-final-report.md" \
-  ! -name "MCP-MIGRATION-PRD.md" \
-  ! -name "WORKSPACE-REWORK-PLAN.md" \
-  ! -name "BUG-FIXES-2025-10-13.md" \
-  ! -name "CODE-QUALITY-FIX-FINAL-REPORT.md" \
-  ! -name "CLEANUP-PLAN.md" \
+# Move files older than KEEP_DAYS days
+find "$TMP_DIR" -maxdepth 1 -type f -mtime +$KEEP_DAYS \
   -exec mv {} "$ARCHIVE_DIR/" \;
-
-# Move phase0-prototypes if exists
-if [ -d "$TMP_DIR/phase0-prototypes" ]; then
-  mv "$TMP_DIR/phase0-prototypes" "$ARCHIVE_DIR/"
-fi
 
 # Count files after
 TOTAL_AFTER=$(find "$TMP_DIR" -maxdepth 1 -type f | wc -l | tr -d ' ')
-ARCHIVED=$(find "$ARCHIVE_DIR" -type f | wc -l | tr -d ' ')
+ARCHIVED=$(find "$ARCHIVE_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
 
 echo ""
 echo "✅ Cleanup complete!"
 echo "Files remaining: $TOTAL_AFTER"
 echo "Files archived: $ARCHIVED"
 echo ""
-echo "📂 Remaining files:"
-ls -1 "$TMP_DIR" | grep -v "^archive-$ARCHIVE_DATE$"
+echo "📂 Remaining files (modified within last $KEEP_DAYS days):"
+if [ $TOTAL_AFTER -gt 0 ]; then
+  ls -1t "$TMP_DIR" | grep -v "^archive-" | head -10
+else
+  echo "(none)"
+fi
+
+if [ $ARCHIVED -gt 0 ]; then
+  echo ""
+  echo "📁 Archive location:"
+  echo "automatosx/tmp/archive-$ARCHIVE_DATE/ ($ARCHIVED files)"
+fi

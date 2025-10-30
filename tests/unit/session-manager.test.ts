@@ -9,6 +9,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SessionManager } from '../../src/core/session-manager.js';
 import { SessionError } from '../../src/types/orchestration.js';
 
+// Internal type from session-manager (not exported)
+interface SessionTaskInfo {
+  id: string;
+  title: string;
+  agent: string;
+  startedAt: string;
+  completedAt?: string;
+  status: 'running' | 'completed' | 'failed' | 'pending';
+}
+
 describe('SessionManager', () => {
   let sessionManager: SessionManager;
 
@@ -582,12 +592,12 @@ describe('SessionManager', () => {
       });
 
       let updated = await sessionManager.getSession(session.id);
-      expect(updated?.metadata.tasks).toHaveLength(1);
+      expect(updated?.metadata?.tasks).toHaveLength(1);
 
       // Simulate failure by manually adding duplicate entry (simulating old bug)
       // This represents what would happen if joinTask was called multiple times
       // for the same task due to retries
-      if (updated?.metadata.tasks) {
+      if (updated?.metadata?.tasks) {
         updated.metadata.tasks.push({
           id: taskId,
           title: 'Test Task (retry 1)',
@@ -605,7 +615,7 @@ describe('SessionManager', () => {
       }
 
       // Now we have 3 entries for the same taskId (1 original + 2 simulated duplicates)
-      expect(updated?.metadata.tasks?.filter(t => t.id === taskId)).toHaveLength(3);
+      expect(updated?.metadata?.tasks?.filter((t: SessionTaskInfo) => t.id === taskId)).toHaveLength(3);
 
       // Call joinTask again - it should remove ALL 3 duplicates and add a fresh entry
       await sessionManager.joinTask(session.id, {
@@ -617,7 +627,7 @@ describe('SessionManager', () => {
       updated = await sessionManager.getSession(session.id);
 
       // Verify: Should have exactly 1 entry for this taskId (not 2 or 3)
-      const taskEntries = updated?.metadata.tasks?.filter(t => t.id === taskId);
+      const taskEntries = updated?.metadata?.tasks?.filter((t: SessionTaskInfo) => t.id === taskId);
       expect(taskEntries).toHaveLength(1);
       expect(taskEntries?.[0]?.title).toBe('Test Task (final)');
 

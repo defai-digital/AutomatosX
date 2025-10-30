@@ -73,7 +73,7 @@ This project includes the following specialized agents:
 - **aerospace-scientist** (Astrid) - Aerospace engineering and mission design
 - **quantum-engineer** (Quinn) - Quantum computing and algorithms
 - **creative-marketer** (Candy) - Creative marketing and content strategy
-- **stan** (Peter) - Best practices and code quality expert
+- **standard** (Stan) - Standards and best practices expert
 
 For a complete list with capabilities, run: `ax list agents --format json`
 

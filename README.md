@@ -13,7 +13,7 @@ AutomatosX is a local-first CLI that transforms stateless AI assistants into a p
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.11.1** · October 2025 · 19 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
+**Status**: ✅ Production Ready · **v5.11.1** · October 2025 · 23 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
 
 ---
 
@@ -191,9 +191,9 @@ When you run `ax spec run --parallel`, AutomatosX executes this plan, running th
 
 ---
 
-## 🎭 19 Specialized Agents
+## 🎭 23 Specialized Agents
 
-AutomatosX comes with a pre-built team of 19 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
+AutomatosX comes with a pre-built team of 23 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
 
 -   **Astrid** - Aerospace Scientist (Orbital mechanics, mission analysis, telemetry)
 -   **Bob** - Backend Engineer (API design, databases, Go/Rust systems)
@@ -201,13 +201,17 @@ AutomatosX comes with a pre-built team of 19 agents, each with a specific role a
 -   **Daisy** - Data Engineer (ETL, SQL, modeling)
 -   **Dana** - Data Scientist (ML strategy, statistical analysis)
 -   **Debbee** - UX Designer (UX research, wireframes)
+-   **Emma** - ERP Specialist (SAP, Oracle, Dynamics 365 integration)
 -   **Eric** - CEO (Business leadership)
 -   **Felix** - Fullstack Engineer (Node.js/TypeScript + Python)
+-   **Fiona** - Design-to-Code Specialist (Figma API, design system synchronization)
 -   **Frank** - Frontend Engineer (React/Next.js/Swift UI)
+-   **Ivy** - IoT Engineer (IoT protocols, edge computing, ROS2, embedded/robotics)
 -   **Maya** - Mobile Engineer (iOS/Android, Swift/Kotlin/Flutter)
+-   **Mira** - Deep Learning Specialist (PyTorch/TensorFlow, model optimization)
 -   **Oliver** - DevOps Engineer (CI/CD, infrastructure)
 -   **Paris** - Product Manager (Roadmaps, strategy)
--   **Peter** - Best Practices Expert (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
+-   **Stan** - Standard (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
 -   **Queenie** - Quality Specialist (Testing, code reviews)
 -   **Quinn** - Quantum Engineer (Quantum algorithms, Qiskit/Cirq, error correction)
 -   **Rodman** - Researcher (Feasibility studies)

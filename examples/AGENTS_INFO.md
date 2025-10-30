@@ -25,7 +25,7 @@ There are a total of 23 agents in the AutomatosX ecosystem, organized into speci
 | **Ivy** | `iot-engineer` | IoT/Embedded/Robotics Engineer | Engineering |
 | **Steve** | `security` | Security Engineer | Engineering |
 | **Queenie** | `quality` | QA Engineer | Core/Quality |
-| **Peter** | `best-practices` | Software Standards Expert | Core/Quality |
+| **Stan** | `standard` | Software Standards Expert | Core/Quality |
 | **Daisy** | `data` | Data Engineer | Data |
 | **Fiona** | `figma-expert` | Design-to-Code Specialist | Design/Content |
 | **Debbee** | `design` | UX/UI Designer | Design/Content |
@@ -97,7 +97,7 @@ Agents are organized into teams, each with a specific provider configuration to 
 | Name | Agent ID | Expertise | Best For |
 |---|---|---|---|
 | **Queenie** | `quality` | QA, debugging, testing | Multi-layer QA workflows, test coordination |
-| **Peter** | `best-practices` | SOLID, design patterns, clean code | Code reviews, architecture validation |
+| **Stan** | `standard` | SOLID, design patterns, clean code | Code reviews, architecture validation |
 
 ### 💾 Data Team
 
@@ -167,7 +167,7 @@ AutomatosX uses a tiered **Delegation Depth** model to manage complex workflows 
 - **Depth 2 (Tactical Coordinators)**: Coordinate workflows within a domain, where sub-delegation to a specialist is required.
   - *Agent*: Queenie (quality)
 - **Depth 1 (Simple Coordinators/Specialists)**: Can delegate simple tasks to implementers but cannot sub-delegate. Most specialists fall here.
-  - *Agents*: Paris, Felix, Maya, Eric, Cynthia, Bob, Frank, Quinn, Astrid, Peter, Mira, Emma, Fiona, Ivy
+  - *Agents*: Paris, Felix, Maya, Eric, Cynthia, Bob, Frank, Quinn, Astrid, Stan, Mira, Emma, Fiona, Ivy
 - **Depth 0 (Pure Implementers)**: Execute tasks directly with deep expertise and no delegation capabilities.
   - *Agents*: Steve, Daisy, Debbee, Wendy, Rodman
 
@@ -201,8 +201,8 @@ To customize, modify the agent's `.yaml` file in your `.automatosx/agents/` dire
 - ✅ **Compatibility**: 100% backward compatible.
 
 **v5.6.21**:
-- ✨ **New Agent**: Peter (`best-practices`) joins the Core/Quality team to focus on software engineering standards (SOLID, design patterns, etc.).
-- 🔧 **Enhanced Agent**: Queenie (`quality`) now collaborates with Peter on best practices.
+- ✨ **New Agent**: Stan (`standard`) joins the Core/Quality team to focus on software engineering standards (SOLID, design patterns, etc.).
+- 🔧 **Enhanced Agent**: Queenie (`quality`) now collaborates with Stan on best practices.
 
 **v5.6.10**:
 - ✨ **New Agents**: Introduction of four specialists:

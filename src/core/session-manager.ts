@@ -300,16 +300,18 @@ export class SessionManager {
       session.metadata.tasks = [];
     }
 
-    // BUG FIX (v5.12.1): Remove stale duplicate entry before adding new one
+    // BUG FIX (v5.12.1): Remove ALL stale duplicate entries before adding new one
     // Prevents accumulation of zombie task entries from retries/re-runs
-    const existingIndex = session.metadata.tasks.findIndex((t: SessionTaskInfo) => t.id === taskInfo.taskId);
-    if (existingIndex !== -1) {
-      logger.debug('Removing stale task entry before re-adding', {
+    // Fixed: Use filter() to remove ALL duplicates, not just first one
+    const existingTasks = session.metadata.tasks.filter((t: SessionTaskInfo) => t.id === taskInfo.taskId);
+    if (existingTasks.length > 0) {
+      logger.debug('Removing stale task entries before re-adding', {
         sessionId,
         taskId: taskInfo.taskId,
-        oldStatus: session.metadata.tasks[existingIndex].status
+        duplicateCount: existingTasks.length,
+        oldStatuses: existingTasks.map((t: SessionTaskInfo) => t.status)
       });
-      session.metadata.tasks.splice(existingIndex, 1);
+      session.metadata.tasks = session.metadata.tasks.filter((t: SessionTaskInfo) => t.id !== taskInfo.taskId);
     }
 
     // Add task to session

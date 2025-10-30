@@ -560,6 +560,73 @@ describe('SessionManager', () => {
     });
   });
 
+  describe('Task Metadata Management', () => {
+    it('[REGRESSION] should remove ALL duplicate task entries in joinTask', async () => {
+      // Bug fix v5.12.1: Use filter() to remove ALL duplicates, not just first
+      // Previous bug: findIndex() + splice() only removed first duplicate,
+      // leaving additional stale entries from multiple retries
+      const session = await sessionManager.createSession(
+        'Test task with retries',
+        'backend'
+      );
+
+      // Simulate multiple retries by manually adding duplicate task entries
+      // (In production, this would happen through joinTask failures/retries)
+      const taskId = 'task-1';
+
+      // First attempt
+      await sessionManager.joinTask(session.id, {
+        taskId,
+        taskTitle: 'Test Task',
+        agent: 'backend'
+      });
+
+      let updated = await sessionManager.getSession(session.id);
+      expect(updated?.metadata.tasks).toHaveLength(1);
+
+      // Simulate failure by manually adding duplicate entry (simulating old bug)
+      // This represents what would happen if joinTask was called multiple times
+      // for the same task due to retries
+      if (updated?.metadata.tasks) {
+        updated.metadata.tasks.push({
+          id: taskId,
+          title: 'Test Task (retry 1)',
+          agent: 'backend',
+          status: 'running',
+          startedAt: new Date().toISOString()
+        });
+        updated.metadata.tasks.push({
+          id: taskId,
+          title: 'Test Task (retry 2)',
+          agent: 'backend',
+          status: 'running',
+          startedAt: new Date().toISOString()
+        });
+      }
+
+      // Now we have 3 entries for the same taskId (1 original + 2 simulated duplicates)
+      expect(updated?.metadata.tasks?.filter(t => t.id === taskId)).toHaveLength(3);
+
+      // Call joinTask again - it should remove ALL 3 duplicates and add a fresh entry
+      await sessionManager.joinTask(session.id, {
+        taskId,
+        taskTitle: 'Test Task (final)',
+        agent: 'backend'
+      });
+
+      updated = await sessionManager.getSession(session.id);
+
+      // Verify: Should have exactly 1 entry for this taskId (not 2 or 3)
+      const taskEntries = updated?.metadata.tasks?.filter(t => t.id === taskId);
+      expect(taskEntries).toHaveLength(1);
+      expect(taskEntries?.[0]?.title).toBe('Test Task (final)');
+
+      // Verify the old bug would have left duplicates
+      // (If the bug still existed, we'd have 2 entries: one from the last push,
+      //  and one from the splice only removing the first duplicate)
+    });
+  });
+
   describe('Configuration', () => {
     it('should accept custom maxSessions limit', async () => {
       const customManager = new SessionManager({ maxSessions: 50 });

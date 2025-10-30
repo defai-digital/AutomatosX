@@ -253,6 +253,45 @@ Test tag extraction
 
       await expect(loader.load()).rejects.toThrow('Duplicate task ID: task:one');
     });
+
+    it('[REGRESSION] should parse JSON ops format with nested braces', async () => {
+      // Bug fix v5.12.1: extractJSON() now handles nested braces correctly
+      // Previous regex (\{.+?\}) would truncate at first }, breaking nested structures
+      const tasksContent = `# Tasks
+- [ ] id:complex:task ops:{"command":"ax run","agent":"backend","args":["Implement {feature: 'auth', config: {timeout: 5000}}"]} dep:setup
+- [ ] id:array:task ops:{"command":"ax run","agent":"frontend","args":["Process items: [{id: 1}, {id: 2}]"]}
+`;
+
+      await writeFile(join(testWorkspace, '.specify', 'spec.md'), '# Spec');
+      await writeFile(join(testWorkspace, '.specify', 'plan.md'), '# Plan');
+      await writeFile(join(testWorkspace, '.specify', 'tasks.md'), tasksContent);
+
+      const loader = new SpecLoader({ workspacePath: testWorkspace });
+      const spec = await loader.load();
+
+      // Verify both tasks parsed correctly
+      expect(spec.tasks).toHaveLength(2);
+
+      // First task: nested object with braces in string
+      expect(spec.tasks[0]?.id).toBe('complex:task');
+      expect(spec.tasks[0]?.assigneeHint).toBe('backend');
+      expect(spec.tasks[0]?.title).toContain('{feature');
+      expect(spec.tasks[0]?.title).toContain('config: {timeout: 5000}');
+      expect(spec.tasks[0]?.deps).toEqual(['setup']);
+
+      // Second task: array with nested objects
+      expect(spec.tasks[1]?.id).toBe('array:task');
+      expect(spec.tasks[1]?.assigneeHint).toBe('frontend');
+      expect(spec.tasks[1]?.title).toContain('[{id: 1}, {id: 2}]');
+      expect(spec.tasks[1]?.deps).toEqual([]);
+
+      // Verify the full JSON ops is preserved
+      const ops1 = JSON.parse(spec.tasks[0]!.ops);
+      expect(ops1.command).toBe('ax run');
+      expect(ops1.agent).toBe('backend');
+      expect(ops1.args).toHaveLength(1);
+      expect(ops1.args[0]).toContain('config: {timeout: 5000}');
+    });
   });
 
   describe('static methods', () => {

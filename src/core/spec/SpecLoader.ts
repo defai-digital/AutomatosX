@@ -23,24 +23,70 @@ import { SpecError as SpecErrorClass } from '../../types/spec.js';
 import { logger } from '../../utils/logger.js';
 
 /**
+ * Extract JSON object with brace counting to handle nested braces
+ * @param line - The line to extract from
+ * @param startPos - Starting position (should point to opening brace)
+ * @returns Extracted JSON string or null if invalid
+ */
+function extractJSON(line: string, startPos: number): string | null {
+  if (line[startPos] !== '{') return null;
+
+  let braceCount = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = startPos; i < line.length; i++) {
+    const char = line[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') braceCount++;
+      if (char === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          return line.substring(startPos, i + 1);
+        }
+      }
+    }
+  }
+
+  return null; // Unclosed JSON
+}
+
+/**
  * Task format regex patterns
  * Supports both old format (ops:"...") and new JSON format (ops:{...})
+ * Note: For JSON format, we just detect ops:{ and use extractJSON helper
  */
 const TASK_PATTERNS = {
   // Format 1: Inline attributes
   // - [ ] id:auth:setup ops:"ax run backend 'Setup'" dep:core:init labels:auth,backend
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["Setup"]} dep:core:init
-  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))\s*(?:dep:(\S+))?\s*(?:labels:(\S+))?/i,
+  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)\s*/i,
 
   // Format 2: Simpler inline
   // - [ ] id:auth:setup ops:"command" dep:dep1,dep2
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]} dep:dep1,dep2
-  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))(?:\s+dep:([^"\s]+))?/i,
+  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)\s*/i,
 
   // Format 3: Very simple (just ID and ops)
   // - [ ] id:auth:setup ops:"command"
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]}
-  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|(\{.+?\}))/i
+  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)/i
 };
 
 /**
@@ -218,22 +264,40 @@ export class SpecLoader {
 
       if (match) {
         // Extract fields based on regex format
-        // For inline: [, checked, id, fullOps, quotedOps, jsonOps, deps, labels]
-        // For simple: [, checked, id, fullOps, quotedOps, jsonOps, deps]
-        // For minimal: [, checked, id, fullOps, quotedOps, jsonOps]
-        const [, checked, id, , quotedOps, jsonOps, ...rest] = match;
+        // Match format: [, checked, id, fullOps, quotedOps, ...]
+        // fullOps is either "..." or { (JSON indicator)
+        const [, checked, id, fullOps, quotedOps] = match;
 
-        // Ops is either from quoted format or JSON format
-        const ops = quotedOps || jsonOps;
+        // Determine ops value
+        let ops: string;
+        let remainingLine: string;
 
-        // Extract deps and labels from rest based on format
-        let deps: string | undefined;
-        let labels: string | undefined;
-        if (format === 'inline') {
-          [deps, labels] = rest;
-        } else if (format === 'simple') {
-          [deps] = rest;
+        if (quotedOps) {
+          // Quoted format: ops:"command"
+          ops = quotedOps;
+          // Find where ops ends to parse rest
+          const opsEndIndex = line.indexOf('"', line.indexOf('ops:"') + 5) + 1;
+          remainingLine = line.substring(opsEndIndex);
+        } else {
+          // JSON format: ops:{...}
+          const opsStartIndex = line.indexOf('ops:{') + 4;
+          const jsonOps = extractJSON(line, opsStartIndex);
+
+          if (!jsonOps) {
+            logger.warn('Failed to parse JSON ops format', { line: lineNum });
+            continue;
+          }
+
+          ops = jsonOps;
+          remainingLine = line.substring(opsStartIndex + jsonOps.length);
         }
+
+        // Parse remaining attributes from remainingLine
+        const depMatch = /dep:(\S+)/.exec(remainingLine);
+        const labelMatch = /labels:(\S+)/.exec(remainingLine);
+
+        const deps = depMatch ? depMatch[1] : undefined;
+        const labels = labelMatch ? labelMatch[1] : undefined;
 
         // Skip if missing required fields
         if (!id || !ops) {

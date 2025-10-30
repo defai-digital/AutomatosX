@@ -100,6 +100,39 @@ export interface OpenAIMCPConfig {
   configOverrides?: Record<string, any>;  // Additional config overrides for MCP server
 }
 
+/**
+ * Integration Mode (v5.13.0 Phase 1+)
+ * Determines how provider communicates with AI API
+ */
+export type IntegrationMode = 'sdk' | 'cli' | 'mcp';
+
+/**
+ * OpenAI SDK Configuration (v5.13.0 Phase 1+)
+ * Native SDK integration for OpenAI
+ */
+export interface OpenAISDKConfig {
+  apiKey?: string;           // API key (default: process.env.OPENAI_API_KEY)
+  organization?: string;     // Organization ID
+  baseURL?: string;          // Custom base URL (for Azure OpenAI, etc.)
+  timeout?: number;          // Request timeout (ms)
+  maxRetries?: number;       // Max retries for failed requests
+  defaultModel?: string;     // Default model if not specified in request
+}
+
+/**
+ * Connection Pool Configuration (v5.13.0 Phase 1+)
+ * Connection pooling for SDK-based providers
+ */
+export interface ConnectionPoolConfig {
+  enabled: boolean;          // Enable connection pooling (default: true)
+  minConnections: number;    // Minimum connections to maintain (default: 2)
+  maxConnections: number;    // Maximum connections per provider (default: 10)
+  idleTimeout: number;       // Max idle time before cleanup (default: 300000ms = 5 min)
+  maxAge: number;            // Max connection age (default: 3600000ms = 1 hour)
+  healthCheckInterval: number; // Health check interval (default: 60000ms = 1 min)
+  warmupOnInit: boolean;     // Pre-create connections on init (default: true)
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   priority: number;
@@ -130,6 +163,16 @@ export interface ProviderConfig {
 
   // v5.13.0: OpenAI/Codex MCP configuration
   mcp?: OpenAIMCPConfig;          // OpenAI Codex MCP server configuration
+
+  // v5.13.0 Phase 1: SDK Integration and Connection Pooling
+  /** Integration mode: "sdk" (native SDK), "cli" (subprocess), "mcp" (MCP protocol) */
+  integration?: IntegrationMode;  // Default: "cli" for backward compatibility
+  /** OpenAI SDK configuration (when integration === "sdk") */
+  sdk?: OpenAISDKConfig;
+  /** Connection pooling configuration (for SDK/MCP providers) */
+  connectionPool?: ConnectionPoolConfig;
+  /** Automatic fallback to CLI if SDK fails (default: true) */
+  fallbackToCLI?: boolean;
 }
 
 // ========================================

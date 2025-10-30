@@ -9,6 +9,14 @@ export default defineConfig({
     hookTimeout: 60000,       // 60 seconds for hooks
     teardownTimeout: 10000,   // 10 seconds for teardown
 
+    // TypeScript type-checking in watch mode (immediate feedback for test authors)
+    typecheck: {
+      enabled: false,         // Disabled by default (use test:typecheck script for explicit checks)
+      tsconfig: './tsconfig.json',
+      include: ['tests/**/*.test.ts'],
+      checker: 'tsc'
+    },
+
     // Thread pool configuration to prevent memory exhaustion
     pool: 'threads',
     poolOptions: {

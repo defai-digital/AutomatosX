@@ -25,12 +25,24 @@
     "no-debugger": "error",
     "no-alert": "error"
   },
+  "overrides": [
+    {
+      "files": ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
+      "rules": {
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "no-console": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     "dist/",
     "node_modules/",
     "*.js",
     "*.d.ts",
-    "tests/",
     "examples/"
   ]
 }

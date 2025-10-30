@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-30T13:01:10.084Z
+ * Generated: 2025-10-30T13:35:32.439Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -87,6 +87,21 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
+      "integration": "sdk",
+      "sdk": {
+        "defaultModel": "gpt-4o",
+        "maxRetries": 2
+      },
+      "connectionPool": {
+        "enabled": true,
+        "minConnections": 2,
+        "maxConnections": 10,
+        "idleTimeout": 300000,
+        "maxAge": 3600000,
+        "healthCheckInterval": 60000,
+        "warmupOnInit": true
+      },
+      "fallbackToCLI": true,
       "mcp": {
         "enabled": false,
         "command": "codex",
@@ -339,7 +354,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-30T13:01:10.084Z',
+  generatedAt: '2025-10-30T13:35:32.439Z',
   sourceFile: 'automatosx.config.json',
   version: '5.12.0'
 } as const;

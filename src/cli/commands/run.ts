@@ -20,6 +20,7 @@ import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { OpenAIProvider } from '../../providers/openai-provider.js';
+import { OpenAISDKProvider } from '../../providers/openai-sdk-provider.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
 import chalk from 'chalk';
@@ -448,7 +449,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
       if (config.providers['openai']?.enabled) {
         const openaiConfig = config.providers['openai'];
-        providers.push(new OpenAIProvider({
+        const providerConfig = {
           name: 'openai',
           enabled: true,
           priority: openaiConfig.priority,
@@ -457,8 +458,29 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           // Phase 2: Enhanced CLI detection parameters
           customPath: openaiConfig.customPath,
           versionArg: openaiConfig.versionArg,
-          minVersion: openaiConfig.minVersion
-        }));
+          minVersion: openaiConfig.minVersion,
+          // v5.13.0 Phase 1: SDK integration support
+          integration: openaiConfig.integration,
+          sdk: openaiConfig.sdk,
+          connectionPool: openaiConfig.connectionPool,
+          fallbackToCLI: openaiConfig.fallbackToCLI
+        };
+
+        // Check integration mode (v5.13.0 Phase 1)
+        const integrationMode = openaiConfig.integration || 'cli';
+
+        if (integrationMode === 'sdk') {
+          logger.info('📦 Using OpenAI SDK integration (native, no subprocess)', {
+            provider: 'openai',
+            defaultModel: openaiConfig.sdk?.defaultModel || 'gpt-4o'
+          });
+          providers.push(new OpenAISDKProvider(providerConfig, openaiConfig.sdk || {}));
+        } else {
+          logger.info('🖥️  Using OpenAI CLI integration (subprocess)', {
+            provider: 'openai'
+          });
+          providers.push(new OpenAIProvider(providerConfig));
+        }
       }
 
       // Phase 2 (v5.6.2): Enable background health checks if configured

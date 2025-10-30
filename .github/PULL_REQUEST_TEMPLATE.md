@@ -1,68 +1,65 @@
-# Pull Request
-
 ## Description
 
-<!-- Provide a brief description of the changes in this PR -->
+<!-- Provide a clear, concise description of what this PR does -->
 
 ## Type of Change
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
+- [ ] Refactoring (no functional changes)
 - [ ] Performance improvement
-- [ ] Code refactoring
-- [ ] Test improvements
+- [ ] Test coverage improvement
 
 ## Related Issues
 
-<!-- Link to related issues using: Fixes #123, Closes #456, Related to #789 -->
+<!-- Link related issues using #issue_number -->
+Fixes #
+Relates to #
 
-## Changes Made
+## Testing Checklist
 
-<!-- List the main changes made in this PR -->
+### Pre-Commit Verification
 
--
--
--
-
-## Testing
-
-- [ ] Tests pass locally (`npm test`)
-- [ ] Type checking passes (`npm run typecheck`)
-- [ ] Build succeeds (`npm run build`)
-- [ ] Added/updated tests for changes
-- [ ] Manual testing completed
+- [ ] Ran `npm run verify` successfully (typecheck + build + unit tests)
+- [ ] All pre-commit hooks passed without `--no-verify`
+- [ ] No TypeScript errors (`npm run typecheck` passes)
+- [ ] ESLint passes (`npm run lint` passes)
 
 ### Test Coverage
 
-<!-- If applicable, mention any changes in test coverage -->
+- [ ] Added/updated unit tests for new/changed code
+- [ ] Added/updated integration tests where applicable
+- [ ] All tests pass locally (`npm test` passes)
+- [ ] Test coverage maintained or improved (check `npm run test:coverage`)
 
-## Screenshots
+### Type Safety (for test files)
 
-<!-- If applicable, add screenshots to demonstrate the changes -->
+- [ ] Used correct constructor signatures (check TEST_WRITING_STANDARDS.md)
+- [ ] Applied non-null assertions (`!`) for array/object access where needed
+- [ ] Avoided relying on implicit `any` types
+- [ ] Used explicit types for mock return values
+
+### Code Quality
+
+- [ ] Followed existing code style and patterns
+- [ ] Updated documentation (README, JSDoc comments, etc.) if needed
+- [ ] No console.log/debugger statements in production code
+- [ ] Cleaned up commented-out code
 
 ## Breaking Changes
 
-<!-- If this is a breaking change, describe what breaks and migration steps -->
+<!-- If this is a breaking change, describe what breaks and how to migrate -->
 
-- [ ] No breaking changes
-- [ ] Breaking changes documented below
+## Additional Notes
 
-<!-- If breaking changes, describe them here -->
+<!-- Any additional information, screenshots, performance benchmarks, etc. -->
 
-## Checklist
+## Reviewer Checklist
 
-- [ ] My code follows the project's code style
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published
-- [ ] I have updated the CHANGELOG.md
-
-## Additional Context
-
-<!-- Add any other context about the PR here -->
+- [ ] Code follows project conventions
+- [ ] Tests are comprehensive and meaningful
+- [ ] TypeScript types are correct and strict
+- [ ] Documentation is updated if needed
+- [ ] No security vulnerabilities introduced

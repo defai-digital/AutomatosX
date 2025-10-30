@@ -416,7 +416,13 @@ export class ProviderConnectionPool extends EventEmitter {
     // For now, just log the pool state
     for (const [providerName, pool] of this.pools.entries()) {
       const stats = this.getStats(providerName);
-      logger.debug('Pool health check', stats);
+      logger.debug('Pool health check', {
+        provider: stats.provider,
+        totalConnections: stats.totalConnections,
+        activeConnections: stats.activeConnections,
+        idleConnections: stats.idleConnections,
+        totalRequests: stats.totalRequests
+      });
     }
   }
 

@@ -65,6 +65,21 @@
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
+      "integration": "sdk",
+      "sdk": {
+        "defaultModel": "gpt-4o",
+        "maxRetries": 2
+      },
+      "connectionPool": {
+        "enabled": true,
+        "minConnections": 2,
+        "maxConnections": 10,
+        "idleTimeout": 300000,
+        "maxAge": 3600000,
+        "healthCheckInterval": 60000,
+        "warmupOnInit": true
+      },
+      "fallbackToCLI": true,
       "mcp": {
         "enabled": false,
         "command": "codex",

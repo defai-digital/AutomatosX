@@ -226,6 +226,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ GEMINI.md configured'));
 
+      // Setup project CODEX.md with AutomatosX integration guide
+      console.log(chalk.cyan('📖 Setting up CODEX.md with AutomatosX integration...'));
+      await setupProjectCodexMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ CODEX.md configured'));
+
       // Create workspace directories for organized file management
       console.log(chalk.cyan('📂 Creating workspace directories...'));
       await createWorkspaceDirectories(projectDir);
@@ -290,6 +295,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       console.log(chalk.gray('  • Use /ax command in Gemini CLI'));
       console.log(chalk.gray('  • Example: /ax backend, create a REST API'));
       console.log(chalk.gray('  • Custom commands available in .gemini/commands/\n'));
+      console.log(chalk.cyan('OpenAI Codex Provider:'));
+      console.log(chalk.gray('  • Configured as AI provider (priority 1)'));
+      console.log(chalk.gray('  • Use terminal: ax run <agent> "task"'));
+      console.log(chalk.gray('  • Git repository initialized for Codex compatibility'));
+      console.log(chalk.gray('  • See examples/codex/ for integration details\n'));
 
       logger.info('AutomatosX initialized', {
         projectDir,
@@ -1100,6 +1110,79 @@ async function setupProjectGeminiMd(
     logger.warn('Failed to setup GEMINI.md', {
       error: (error as Error).message,
       path: geminiMdPath
+    });
+  }
+}
+
+/**
+ * Setup project CODEX.md with AutomatosX integration guide
+ *
+ * This function creates or updates the project's CODEX.md file to include
+ * AutomatosX integration instructions, helping OpenAI Codex CLI users understand
+ * how to work with AutomatosX agents in this project.
+ */
+async function setupProjectCodexMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  const codexMdPath = join(projectDir, 'CODEX.md');
+  const templatePath = join(packageRoot, 'examples/codex/CODEX_INTEGRATION.md');
+
+  try {
+    // Read the template
+    const { readFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+
+    const exists = await checkExists(codexMdPath);
+
+    if (!exists) {
+      // Create new CODEX.md with AutomatosX integration
+      const content = [
+        '# CODEX.md',
+        '',
+        'This file provides guidance to OpenAI Codex CLI users when working with code in this repository.',
+        '',
+        '---',
+        '',
+        template
+      ].join('\n');
+
+      await writeFile(codexMdPath, content, 'utf-8');
+      logger.info('Created CODEX.md with AutomatosX integration', { path: codexMdPath });
+    } else {
+      // Update existing CODEX.md
+      const existingContent = await readFile(codexMdPath, 'utf-8');
+
+      // Check if AutomatosX integration already exists
+      if (existingContent.includes('# AutomatosX Integration')) {
+        if (!force) {
+          logger.info('CODEX.md already contains AutomatosX integration', { path: codexMdPath });
+          return;
+        }
+        // Force mode: replace existing AutomatosX section
+        const updatedContent = replaceAutomatosXSection(existingContent, template);
+        await writeFile(codexMdPath, updatedContent, 'utf-8');
+        logger.info('Updated AutomatosX integration in CODEX.md', { path: codexMdPath });
+      } else {
+        // Append AutomatosX integration to existing content
+        const updatedContent = [
+          existingContent.trimEnd(),
+          '',
+          '---',
+          '',
+          template
+        ].join('\n');
+
+        await writeFile(codexMdPath, updatedContent, 'utf-8');
+        logger.info('Added AutomatosX integration to existing CODEX.md', { path: codexMdPath });
+      }
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup CODEX.md', {
+      error: (error as Error).message,
+      path: codexMdPath
     });
   }
 }

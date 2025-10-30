@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": [
+        "$tsc"
+      ],
+      "label": "npm: build",
+      "detail": "tsup src/cli/index.ts --format esm --target node20"
+    },
+    {
+      "type": "npm",
+      "script": "typecheck",
+      "group": "test",
+      "problemMatcher": [
+        "$tsc"
+      ],
+      "label": "npm: typecheck",
+      "detail": "tsc --noEmit",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "label": "npm: test",
+      "detail": "vitest run"
+    },
+    {
+      "type": "npm",
+      "script": "test:watch",
+      "group": "test",
+      "problemMatcher": [],
+      "label": "npm: test:watch",
+      "detail": "vitest watch",
+      "isBackground": true
+    },
+    {
+      "type": "npm",
+      "script": "dev",
+      "group": "none",
+      "problemMatcher": [],
+      "label": "npm: dev",
+      "detail": "tsx src/cli/index.ts"
+    }
+  ]
+}

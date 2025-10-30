@@ -1,1 +1,5 @@
+# Run type checking first (fast fail)
+npm run typecheck
+
+# Run full test suite
 npm test

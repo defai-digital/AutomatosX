@@ -23,6 +23,11 @@ Thumbs.db
 
 # IDE
 .vscode/
+# Allow shared VS Code configuration (for team consistency)
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 .idea/
 .grok/
 *.swp
@@ -123,5 +128,4 @@ DRAFT-*.md
 # System and IDE specific (additional)
 .history/
 *.sublime-*
-.vscode/settings.json
-.vscode/launch.json
+# Note: .vscode/ shared config files are allowed via negation rules above

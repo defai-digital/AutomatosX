@@ -1,0 +1,112 @@
+{
+  // TypeScript Configuration
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // TypeScript Validation (STRICT - matches CI/CD)
+  "typescript.validate.enable": true,
+  "typescript.preferences.strictNullChecks": true,
+  "typescript.preferences.noUnusedParameters": true,
+  "typescript.preferences.noUnusedLocals": true,
+  "typescript.preferences.noImplicitAny": true,
+  "typescript.preferences.noImplicitReturns": true,
+  "typescript.preferences.noFallthroughCasesInSwitch": true,
+
+  // Enable inlay hints for better type visibility
+  "typescript.inlayHints.parameterNames.enabled": "all",
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+
+  // Show all TypeScript errors (strict mode)
+  "typescript.reportStyleChecksAsWarnings": false,
+  "typescript.check.npmIsInstalled": true,
+
+  // Format on Save
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+
+  // File Associations
+  "files.associations": {
+    "*.ts": "typescript",
+    "*.tsx": "typescriptreact",
+    "*.test.ts": "typescript",
+    "*.spec.ts": "typescript"
+  },
+
+  // Test Configuration
+  "vitest.enable": true,
+  "vitest.commandLine": "npm run test:watch",
+
+  // Editor Configuration
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.rulers": [80, 120],
+
+  // File Explorer
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "dist": true,
+    "coverage": true,
+    ".automatosx": true
+  },
+
+  // Search Configuration
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/coverage": true,
+    "**/.automatosx": true,
+    "**/package-lock.json": true
+  },
+
+  // Git Configuration
+  "git.enableSmartCommit": false,
+  "git.confirmSync": true,
+  "git.autofetch": true,
+
+  // Terminal Configuration
+  "terminal.integrated.scrollback": 10000,
+
+  // ESLint Configuration (if enabled in future)
+  "eslint.enable": false,
+
+  // Markdown Configuration
+  "markdown.validate.enabled": true,
+
+  // YAML Configuration
+  "yaml.validate": true,
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": [
+      ".github/workflows/*.yml"
+    ]
+  },
+
+  // Problems Panel
+  "problems.showCurrentInStatus": true,
+
+  // Notifications
+  "typescript.surveys.enabled": false,
+
+  // Path Intellisense
+  "path-intellisense.extensionOnImport": true,
+  "path-intellisense.autoSlashAfterDirectory": true,
+
+  // File Nesting (clean up file explorer)
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, tsconfig*.json, vitest*.ts, .npmrc",
+    "tsconfig.json": "tsconfig.*.json",
+    "vitest.config.ts": "vitest.config.*.ts",
+    "README.md": "CHANGELOG.md, LICENSE, CLAUDE.md, GEMINI.md, CODEX.md"
+  }
+}

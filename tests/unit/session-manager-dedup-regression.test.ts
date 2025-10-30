@@ -19,7 +19,7 @@ describe('SessionManager - Deduplication Regression Tests', () => {
   beforeEach(async () => {
     testDir = join(tmpdir(), `session-manager-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
-    sessionManager = new SessionManager(testDir);
+    sessionManager = new SessionManager({ persistencePath: testDir });
   });
 
   afterEach(async () => {
@@ -156,10 +156,7 @@ describe('SessionManager - Deduplication Regression Tests', () => {
       expect(updated?.metadata?.tasks?.[0]?.status).toBe('running');
 
       // Complete the task
-      await sessionManager.completeTask(session.id, 'task-1', {
-        status: 'success',
-        message: 'First attempt completed'
-      });
+      await sessionManager.completeTask(session.id, 'task-1', 1000); // 1000ms duration
 
       updated = await sessionManager.getSession(session.id);
       expect(updated?.metadata?.tasks?.[0]?.status).toBe('completed');

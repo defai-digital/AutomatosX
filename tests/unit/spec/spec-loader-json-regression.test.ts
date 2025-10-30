@@ -53,10 +53,10 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      expect(spec.tasks[0].id).toBe('test:nested');
+      expect(spec.tasks[0]!.id).toBe('test:nested');
 
       // Verify the full JSON was captured, not truncated
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args[0]).toBe('Task with {nested: object}');
     });
 
@@ -69,7 +69,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args[0]).toBe('Implement function foo() { return {}; }');
     });
 
@@ -82,7 +82,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args[0]).toContain('function test()');
       expect(opsJson.args[0]).toContain('return {};');
     });
@@ -96,7 +96,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args[0]).toBe('Task with "quoted text" inside');
     });
 
@@ -109,7 +109,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(Array.isArray(opsJson.args)).toBe(true);
       expect(opsJson.args).toHaveLength(2);
       expect(opsJson.args[0].config.key).toBe('val');
@@ -127,9 +127,9 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
 
       expect(spec.tasks).toHaveLength(3);
 
-      const ops1 = JSON.parse(spec.tasks[0].ops);
-      const ops2 = JSON.parse(spec.tasks[1].ops);
-      const ops3 = JSON.parse(spec.tasks[2].ops);
+      const ops1 = JSON.parse(spec.tasks[0]!.ops);
+      const ops2 = JSON.parse(spec.tasks[1]!.ops);
+      const ops3 = JSON.parse(spec.tasks[2]!.ops);
 
       expect(ops1.args[0]).toBe('Task {one}');
       expect(ops2.args[0]).toBe('Task {two}');
@@ -147,8 +147,8 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      expect(spec.tasks[0].id).toBe('test:old');
-      expect(spec.tasks[0].ops).toBe("ax run backend 'Simple task'");
+      expect(spec.tasks[0]!.id).toBe('test:old');
+      expect(spec.tasks[0]!.ops).toBe("ax run backend 'Simple task'");
     });
 
     it('should parse mixed JSON and string format tasks', async () => {
@@ -161,9 +161,9 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(2);
-      expect(spec.tasks[0].ops).toBe("ax run backend 'Old format'");
+      expect(spec.tasks[0]!.ops).toBe("ax run backend 'Old format'");
 
-      const ops2 = JSON.parse(spec.tasks[1].ops);
+      const ops2 = JSON.parse(spec.tasks[1]!.ops);
       expect(ops2.args[0]).toBe('New format');
     });
   });
@@ -178,7 +178,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args).toEqual([]);
     });
 
@@ -191,7 +191,7 @@ describe('SpecLoader - JSON Ops Regression Tests', () => {
       const spec = await loader.load();
 
       expect(spec.tasks).toHaveLength(1);
-      const opsJson = JSON.parse(spec.tasks[0].ops);
+      const opsJson = JSON.parse(spec.tasks[0]!.ops);
       expect(opsJson.args[0]).toContain('🚀');
       expect(opsJson.args[0]).toContain('émojis');
     });

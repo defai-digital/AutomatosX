@@ -75,6 +75,21 @@ const PROVIDERS: Provider[] = ['claude', 'gemini', 'codex'];
 // In-memory cache for detection results
 const DETECT_CACHE = new Map<Provider, Resolved | null>();
 
+/**
+ * Clear the detection cache.
+ * v5.12.4: Added for test isolation - prevents stale cache between tests.
+ *
+ * @example
+ * ```typescript
+ * // In tests
+ * import { clearDetectCache } from '@/core/cli-provider-detector';
+ * afterEach(() => clearDetectCache());
+ * ```
+ */
+export function clearDetectCache(): void {
+  DETECT_CACHE.clear();
+}
+
 // ============================================================================
 // Public API
 // ============================================================================

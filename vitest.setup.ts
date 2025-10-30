@@ -4,6 +4,8 @@
  */
 
 import { afterEach, beforeEach, vi } from 'vitest';
+import { providerCache } from './src/core/provider-cache.js';
+import { clearDetectCache } from './src/core/cli-provider-detector.js';
 
 // Global cleanup hook - runs after each test
 afterEach(() => {
@@ -18,6 +20,15 @@ afterEach(() => {
   // Clear all mock call history
   // This frees memory from accumulated call data
   vi.clearAllMocks();
+
+  // v5.12.4: Clear global caches to prevent test pollution
+  // This prevents stale cache entries from affecting subsequent tests
+  // See: automatosx/tmp/bug-report-provider-test-failures.md
+  providerCache.clearAll();
+
+  // Note: clearDetectCache() is NOT called globally because some tests
+  // need to verify cache behavior. Tests that need a clean cache should
+  // call clearDetectCache() in their own beforeEach hooks.
 });
 
 // Global setup hook - runs before each test

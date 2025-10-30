@@ -24,22 +24,23 @@ export default defineConfig({
     hookTimeout: 30000,       // 30 seconds for hooks
     teardownTimeout: 10000,   // 10 seconds for teardown
 
-    // Thread pool configuration - balanced for cross-platform stability
-    // Windows has file locking issues with high concurrency (SQLite operations)
+    // Thread pool configuration - single-threaded for Windows stability
+    // Windows + SQLite + worker threads = crashes. Use single thread to ensure stability.
+    // This trades speed for reliability. All 65 test files will run sequentially.
     pool: 'threads',
     poolOptions: {
       threads: {
-        singleThread: false,
+        singleThread: true,    // Run all tests in single thread (Windows-safe)
         isolate: true,         // Isolate each test file for stability
         minThreads: 1,
-        maxThreads: 4,         // Reduced from 8 for Windows stability
-        useAtomics: true       // Better performance with worker threads
+        maxThreads: 1,         // Single thread only
+        useAtomics: false      // Disabled for single-threaded mode
       }
     },
 
     // File parallelism and resource limits
-    fileParallelism: true,
-    maxConcurrency: 4,         // Reduced from 8 for Windows stability
+    fileParallelism: false,    // Disabled for single-threaded mode
+    maxConcurrency: 1,         // Single test at a time
 
     // Auto-cleanup for mocks and timers
     clearMocks: true,          // Auto-clear mocks after each test

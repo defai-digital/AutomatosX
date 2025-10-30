@@ -62,6 +62,52 @@ ax run workflow.ax.yaml
 
 ---
 
+## 🗣️ **Recommended**: Natural Language Interface
+
+AutomatosX is designed to work seamlessly with AI assistants using natural language commands. This is the **recommended way** to use AutomatosX:
+
+### Use with Claude Code, Gemini CLI, or OpenAI Codex
+
+```
+# In Claude Code
+"Please work with ax agent backend to implement user authentication"
+"Ask the ax security agent to audit this code for vulnerabilities"
+"Have the ax quality agent write tests for this feature"
+```
+
+```
+# In Gemini CLI
+"Use ax to help me find and fix bugs in the authentication system"
+"Work with ax agent data to optimize the database queries"
+```
+
+```
+# In OpenAI Codex
+"Collaborate with ax agent frontend to build the login UI"
+"Use ax agent devops to set up CI/CD pipeline"
+```
+
+### Why Natural Language?
+
+- ✅ **Conversational**: Talk to AI assistants like teammates
+- ✅ **Context-aware**: AI assistants maintain full conversation context
+- ✅ **Flexible**: No need to remember exact command syntax
+- ✅ **Integrated**: Works directly in your AI assistant workflow
+- ✅ **Powerful**: Combines AI assistant capabilities with AutomatosX's memory and orchestration
+
+### Behind the Scenes
+
+When you say "work with ax agent backend", the AI assistant:
+1. Calls `ax run backend "your task"` with the appropriate context
+2. AutomatosX routes to the optimal provider based on policy
+3. Persistent memory ensures no context is lost
+4. Results are returned to your AI assistant
+5. The conversation continues naturally
+
+**This natural language interface is how we expect users to work with AutomatosX daily.**
+
+---
+
 ## 🎯 What Makes AutomatosX Different?
 
 ### Traditional AI Workflows

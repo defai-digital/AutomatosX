@@ -466,8 +466,22 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           fallbackToCLI: openaiConfig.fallbackToCLI
         };
 
+        // Check for CLI-only mode enforcement (environment variable)
+        // Users with no API access can set AUTOMATOSX_CLI_ONLY=true to force CLI mode
+        const cliOnlyMode = process.env.AUTOMATOSX_CLI_ONLY === 'true';
+
         // Check integration mode (v5.13.0 Phase 1)
-        const integrationMode = openaiConfig.integration || 'cli';
+        let integrationMode = openaiConfig.integration || 'cli';
+
+        // Override to CLI mode if CLI-only enforcement is active
+        if (cliOnlyMode && integrationMode === 'sdk') {
+          logger.info('⚠️  CLI-only mode enforced (AUTOMATOSX_CLI_ONLY=true)', {
+            provider: 'openai',
+            configuredMode: 'sdk',
+            enforcedMode: 'cli'
+          });
+          integrationMode = 'cli';
+        }
 
         if (integrationMode === 'sdk') {
           logger.info('📦 Using OpenAI SDK integration (native, no subprocess)', {
@@ -477,7 +491,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           providers.push(new OpenAISDKProvider(providerConfig, openaiConfig.sdk || {}));
         } else {
           logger.info('🖥️  Using OpenAI CLI integration (subprocess)', {
-            provider: 'openai'
+            provider: 'openai',
+            cliOnlyMode: cliOnlyMode ? 'enforced' : 'default'
           });
           providers.push(new OpenAIProvider(providerConfig));
         }

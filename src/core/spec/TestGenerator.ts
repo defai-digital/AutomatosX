@@ -259,7 +259,7 @@ export class TestGenerator {
         const current = spec.actors[i];
         const next = spec.actors[i + 1];
         if (current && next) {
-          lines.push(`    expect(result.dataFlow['${current.id}' to '${next.id}']).toBeDefined();`);
+          lines.push(`    expect(result.dataFlow['${current.id}_to_${next.id}']).toBeDefined();`);
         }
       }
       lines.push(`  });`);

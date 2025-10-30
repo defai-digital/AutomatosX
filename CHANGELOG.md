@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.0.6] - 2025-10-30
+
+### 🔧 Fixes
+
+**CLI-Only Mode for Users Without API Access**
+
+- **Environment Variable Override** (`src/cli/commands/run.ts` +17 lines)
+  - Added `AUTOMATOSX_CLI_ONLY=true` environment variable to force CLI mode
+  - Overrides OpenAI provider from SDK mode to CLI mode when set
+  - Prevents API connection attempts for users with CLI-only access
+  - Eliminates "Unable to connect to API" errors and retry loops
+  - Logging shows when CLI-only mode is enforced
+
+- **Documentation** (`README.md` +24 lines)
+  - Added comprehensive CLI-only mode documentation
+  - Explained when to use (no API keys, corporate firewall, restricted network)
+  - Provided clear examples with environment variable usage
+  - Listed benefits: no API calls, no retry delays, works with CLI tools only
+
+**Bug Fixes**
+
+- **Test Generator Syntax Error** (`src/core/spec/TestGenerator.ts` line 262)
+  - Fixed malformed string concatenation in generated integration tests
+  - Changed `'${current.id}' to '${next.id}'` to `'${current.id}_to_${next.id}'`
+  - Fixes: Generated test code now compiles without syntax errors
+
+### 📊 Impact
+
+- **Users affected**: CLI-only users (no API access, corporate networks, firewall restrictions)
+- **Breaking changes**: None
+- **Migration**: Optional - set `AUTOMATOSX_CLI_ONLY=true` if experiencing API connection issues
+
 ## [6.0.1] - 2025-10-30
 
 ### 🎉 Phase 2 & 3 Completion - PRODUCTION READY

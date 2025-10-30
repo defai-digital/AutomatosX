@@ -106,6 +106,31 @@ When you say "work with ax agent backend", the AI assistant:
 
 **This natural language interface is how we expect users to work with AutomatosX daily.**
 
+### CLI-Only Mode (No API Access Required)
+
+If you only have CLI tools installed and **no API access** (no API keys or restricted network), you can force CLI-only mode:
+
+```bash
+# Set environment variable to enforce CLI-only mode
+export AUTOMATOSX_CLI_ONLY=true
+
+# Now all providers will use CLI integration (subprocess), never API
+ax run backend "implement user authentication"
+```
+
+**When to use CLI-only mode:**
+- ✅ You have `codex`, `gemini`, or `claude` CLI tools installed
+- ✅ You don't have API keys configured
+- ✅ You're behind a corporate firewall blocking API access
+- ✅ You want to avoid API connection attempts and retries
+
+**What it does:**
+- Forces `openai` provider to use CLI subprocess mode (`codex` command)
+- Prevents OpenAI SDK API calls even if configured for SDK mode
+- Eliminates "Unable to connect to API" errors and retry loops
+
+**Note**: This only affects OpenAI provider. Claude and Gemini providers always use CLI mode by default.
+
 ---
 
 ## 🎯 What Makes AutomatosX Different?

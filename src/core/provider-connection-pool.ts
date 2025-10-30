@@ -118,8 +118,14 @@ export class ProviderConnectionPool extends EventEmitter {
       minConnections: this.config.minConnections
     });
 
-    // Warmup connections if enabled
-    if (this.config.warmupOnInit) {
+    // Skip warmup in mock/test mode to avoid API key requirement errors
+    const isMockMode =
+      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    // Warmup connections if enabled and not in mock mode
+    if (this.config.warmupOnInit && !isMockMode) {
       void this.warmup(provider).catch(err => {
         logger.warn('Failed to warmup connections for provider', {
           provider,
@@ -133,6 +139,17 @@ export class ProviderConnectionPool extends EventEmitter {
    * Warmup connections for a provider (pre-create min connections)
    */
   async warmup(provider: string): Promise<void> {
+    // Skip warmup in mock/test mode to avoid API key requirement errors
+    const isMockMode =
+      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    if (isMockMode) {
+      logger.debug('Skipping pool warmup in mock mode', { provider });
+      return;
+    }
+
     const factory = this.factories.get(provider);
     if (!factory) {
       throw new Error(`Provider ${provider} not registered`);

@@ -33,6 +33,8 @@ import type {
   SpecTask
 } from '../../types/spec.js';
 import readline from 'readline';
+import { handleSpecInit } from './spec/init.js';
+import { handleSpecExplain } from './spec/explain.js';
 
 interface SpecOptions {
   // Subcommand
@@ -63,6 +65,16 @@ interface SpecOptions {
   mermaid?: boolean;
   'critical-path'?: boolean;
 
+  // Init options (Phase 1)
+  template?: string;
+  output?: string;
+  interactive?: boolean;
+
+  // Explain options (Phase 1)
+  file?: string;
+  format?: 'markdown' | 'text' | 'json';
+  sections?: string;
+
   // Phase 3 (v5.12.0): Internal config for direct execution
   _internalConfig?: any;
 }
@@ -74,9 +86,9 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
   builder: (yargs) => {
     return yargs
       .positional('subcommand', {
-        describe: 'Subcommand (create, run, status, validate, graph)',
+        describe: 'Subcommand (init, create, run, status, validate, graph, explain)',
         type: 'string',
-        choices: ['create', 'run', 'status', 'validate', 'graph'],
+        choices: ['init', 'create', 'run', 'status', 'validate', 'graph', 'explain'],
         demandOption: true
       })
       // Create options (v5.8.3)
@@ -157,6 +169,38 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
         type: 'boolean',
         default: false
       })
+      // Init options (Phase 1)
+      .option('template', {
+        describe: 'Template name (minimal, enterprise, government)',
+        type: 'string'
+      })
+      .option('output', {
+        describe: 'Output file path',
+        type: 'string'
+      })
+      .option('interactive', {
+        describe: 'Interactive mode (prompt for inputs)',
+        type: 'boolean',
+        default: true
+      })
+      // Explain options (Phase 1)
+      .option('file', {
+        describe: 'Spec file to explain',
+        type: 'string'
+      })
+      .option('format', {
+        describe: 'Output format (markdown, text, json)',
+        type: 'string',
+        choices: ['markdown', 'text', 'json'],
+        default: 'markdown'
+      })
+      .option('sections', {
+        describe: 'Sections to include (comma-separated)',
+        type: 'string'
+      })
+      .example('$0 spec init', 'Initialize new spec interactively')
+      .example('$0 spec init --template enterprise --output my-workflow.ax.yaml', 'Create from template')
+      .example('$0 spec explain my-workflow.ax.yaml', 'Explain spec file')
       .example('$0 spec create "Build auth with DB, API, JWT, tests"', 'Create spec from natural language')
       .example('$0 spec create "Build auth" --execute', 'Create and execute immediately')
       .example('$0 spec run', 'Execute all pending tasks')
@@ -172,6 +216,13 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
       const config = await loadConfig(workspacePath);
 
       switch (argv.subcommand) {
+        case 'init':
+          await handleSpecInit(workspacePath, {
+            template: argv.template,
+            output: argv.output,
+            interactive: argv.interactive
+          });
+          break;
         case 'create':
           await handleCreate(workspacePath, argv, config);
           break;
@@ -186,6 +237,22 @@ export const specCommand: CommandModule<Record<string, unknown>, SpecOptions> = 
           break;
         case 'graph':
           await handleGraph(workspacePath, argv);
+          break;
+        case 'explain':
+          if (!argv.file && argv._.length > 1) {
+            // Support: ax spec explain my-workflow.ax.yaml
+            argv.file = String(argv._[1]);
+          }
+          if (!argv.file) {
+            console.error(chalk.red('✗ Error: --file option required for explain subcommand'));
+            console.error(chalk.gray('Usage: ax spec explain <file> [--format markdown|text|json]'));
+            process.exit(1);
+          }
+          await handleSpecExplain(workspacePath, {
+            file: argv.file,
+            format: argv.format as 'markdown' | 'text' | 'json',
+            sections: argv.sections?.split(',').map(s => s.trim())
+          });
           break;
         default:
           console.error(chalk.red(`Unknown subcommand: ${argv.subcommand}`));

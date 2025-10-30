@@ -29,6 +29,16 @@ import type { RoutingConfig } from '../types/routing.js';
 import { getRoutingStrategyManager } from './routing-strategy.js';
 import { getProviderMetricsTracker } from './provider-metrics-tracker.js';
 
+// Phase 2.2: Policy-driven routing
+import { PolicyParser } from './spec/PolicyParser.js';
+import { PolicyEvaluator } from './spec/PolicyEvaluator.js';
+import { PROVIDER_METADATA } from './provider-metadata-registry.js';
+import { getCostTracker } from './cost-tracker.js';
+import type { SpecYAML } from '../types/spec-yaml.js';
+
+// Phase 2.3: Trace logging
+import { RouterTraceLogger, createTraceLogger } from './router-trace-logger.js';
+
 export interface RouterConfig {
   providers: Provider[];
   fallbackEnabled: boolean;
@@ -36,6 +46,8 @@ export interface RouterConfig {
   providerCooldownMs?: number; // Cooldown period for failed providers (default: 30000ms)
   cache?: ResponseCache; // Optional response cache
   strategy?: RoutingConfig; // Phase 3: Multi-factor routing configuration
+  workspacePath?: string; // Phase 2.3: Workspace path for trace logging
+  enableTracing?: boolean; // Phase 2.3: Enable trace logging (default: false)
 }
 
 export class Router {
@@ -57,6 +69,13 @@ export class Router {
 
   // Phase 3: Multi-factor routing
   private useMultiFactorRouting: boolean = false;
+
+  // Phase 2.2: Policy-driven routing
+  private policyParser: PolicyParser;
+  private policyEvaluator: PolicyEvaluator;
+
+  // Phase 2.3: Trace logging
+  private tracer?: RouterTraceLogger;
 
   constructor(config: RouterConfig) {
     // Sort providers by priority (lower number = higher priority)
@@ -81,6 +100,22 @@ export class Router {
       logger.info('Multi-factor routing enabled', {
         strategy: strategyManager.getStrategy().name,
         weights: strategyManager.getWeights()
+      });
+    }
+
+    // Phase 2.2: Initialize policy-driven routing
+    this.policyParser = new PolicyParser();
+    const costTracker = getCostTracker();
+    this.policyEvaluator = new PolicyEvaluator(PROVIDER_METADATA, costTracker);
+    logger.debug('Policy-driven routing initialized');
+
+    // Phase 2.3: Initialize trace logging
+    // FIXED (v6.0.1): Correct default behavior - enabled by default if workspacePath provided
+    if (config.workspacePath && config.enableTracing !== false) {
+      this.tracer = createTraceLogger(config.workspacePath, config.enableTracing ?? true);
+      logger.debug('Router trace logging enabled', {
+        traceFile: this.tracer.getTraceFile(),
+        explicit: config.enableTracing !== undefined
       });
     }
 
@@ -181,15 +216,83 @@ export class Router {
       throw ProviderError.noAvailableProviders();
     }
 
-    // Phase 3: Reorder providers using multi-factor routing if enabled
+    // Phase 2.2: Apply policy-driven routing if spec has policy
     let providersToTry = availableProviders;
+    if (request.spec?.policy) {
+      try {
+        const policy = this.policyParser.parse(request.spec);
+        const providerNames = availableProviders.map(p => p.name);
+
+        // Filter providers by policy constraints
+        const filterResult = await this.policyEvaluator.filterProviders(providerNames, policy);
+
+        // Log policy selection with trace logger
+        if (this.tracer) {
+          const selectedProvider = filterResult.passed.length > 0 ? filterResult.passed[0] : null;
+          this.tracer.logPolicySelection(policy, filterResult, selectedProvider ?? null);
+        }
+
+        // Apply filtered providers
+        if (filterResult.passed.length > 0) {
+          // Score remaining providers and select best match
+          const scoredProviders = this.policyEvaluator.scoreProviders(filterResult.passed, policy);
+
+          if (scoredProviders.length > 0) {
+            // Reorder providers by policy scores
+            const scoreMap = new Map(scoredProviders.map(s => [s.provider, s.totalScore]));
+            providersToTry = availableProviders
+              .filter(p => filterResult.passed.includes(p.name))
+              .sort((a, b) => {
+                const scoreA = scoreMap.get(a.name) ?? 0;
+                const scoreB = scoreMap.get(b.name) ?? 0;
+                return scoreB - scoreA; // Descending order
+              });
+
+            logger.info('Policy-driven routing applied', {
+              goal: policy.goal,
+              constraints: Object.keys(policy.constraints || {}).length,
+              providersBefore: availableProviders.length,
+              providersAfter: providersToTry.length,
+              topProvider: providersToTry[0]?.name,
+              filtered: filterResult.filtered.length
+            });
+          }
+        } else {
+          // No providers match policy - log warning and fall back to priority-based
+          logger.warn('No providers match policy constraints, using priority-based routing', {
+            goal: policy.goal,
+            filtered: filterResult.filtered
+          });
+
+          if (this.tracer) {
+            this.tracer.logError(
+              'No providers match policy constraints',
+              undefined,
+              { filtered: filterResult.filtered, goal: policy.goal }
+            );
+          }
+        }
+      } catch (error) {
+        // Policy parsing/evaluation failed - log error and fall back to priority-based
+        logger.error('Policy-driven routing failed, falling back to priority-based', {
+          error: (error as Error).message
+        });
+
+        if (this.tracer) {
+          this.tracer.logError(error as Error, undefined, { phase: 'policy-evaluation' });
+        }
+      }
+    }
+
+    // Phase 3: Reorder providers using multi-factor routing if enabled
+    // Note: Policy-driven routing has already filtered providers above
     if (this.useMultiFactorRouting) {
       const strategyManager = getRoutingStrategyManager();
-      const providerNames = availableProviders.map(p => p.name);
+      const providerNames = providersToTry.map(p => p.name);
 
       // Calculate health multipliers (1.0 for healthy, 0.5 for penalized)
       const healthMultipliers = new Map<string, number>();
-      for (const provider of availableProviders) {
+      for (const provider of providersToTry) {
         const isPenalized = this.penalizedProviders.has(provider.name);
         healthMultipliers.set(provider.name, isPenalized ? 0.5 : 1.0);
       }
@@ -204,14 +307,15 @@ export class Router {
       // Reorder providers by score (highest first)
       if (scores.length > 0) {
         const scoreMap = new Map(scores.map(s => [s.provider, s.totalScore]));
-        providersToTry = [...availableProviders].sort((a, b) => {
+        const originalOrder = providersToTry.map(p => p.name);
+        providersToTry = [...providersToTry].sort((a, b) => {
           const scoreA = scoreMap.get(a.name) ?? 0;
           const scoreB = scoreMap.get(b.name) ?? 0;
           return scoreB - scoreA; // Descending order
         });
 
         logger.debug('Provider order after multi-factor routing', {
-          original: availableProviders.map(p => p.name),
+          original: originalOrder,
           reordered: providersToTry.map(p => p.name),
           scores: Object.fromEntries(scoreMap)
         });
@@ -226,6 +330,13 @@ export class Router {
 
       try {
         logger.info(`Selecting provider: ${provider.name} (attempt ${attemptNumber}/${availableProviders.length})`);
+
+        // Phase 2.3: Log provider selection
+        if (this.tracer) {
+          const candidateNames = providersToTry.map(p => p.name);
+          const reason = request.spec?.policy ? 'policy-based selection' : 'priority-based selection';
+          this.tracer.logSelection(candidateNames, provider.name, reason);
+        }
 
         // Check cache first (if enabled and available)
         if (this.cache?.isEnabled) {
@@ -299,6 +410,18 @@ export class Router {
         // Remove provider from penalty list on success
         this.penalizedProviders.delete(provider.name);
 
+        // Phase 2.3: Log execution success
+        if (this.tracer) {
+          const estimatedCost = this.estimateCost(provider.name, response.tokensUsed);
+          this.tracer.logExecution(
+            provider.name,
+            true, // success
+            response.latencyMs,
+            estimatedCost,
+            response.tokensUsed
+          );
+        }
+
         // Phase 3: Record metrics for multi-factor routing
         if (this.useMultiFactorRouting) {
           const metricsTracker = getProviderMetricsTracker();
@@ -356,6 +479,17 @@ export class Router {
             resetAtMs: providerError.context?.resetAtMs,
             willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
           });
+
+          // Phase 2.3: Log degradation (rate limit)
+          if (this.tracer) {
+            const nextProvider = providersToTry[attemptNumber]?.name;
+            this.tracer.logDegradation(
+              'rate_limit',
+              nextProvider ? 'switched' : 'failed',
+              provider.name,
+              nextProvider
+            );
+          }
         } else {
           // Other error - apply cooldown penalty (existing logic)
           logger.warn('❌ Router: provider failed', {
@@ -370,6 +504,17 @@ export class Router {
           this.penalizedProviders.set(provider.name, penaltyExpiry);
 
           logger.debug(`Provider ${provider.name} penalized until ${new Date(penaltyExpiry).toISOString()}`);
+
+          // Phase 2.3: Log degradation (provider error)
+          if (this.tracer) {
+            const nextProvider = providersToTry[attemptNumber]?.name;
+            this.tracer.logDegradation(
+              lastError.message,
+              nextProvider ? 'switched' : 'failed',
+              provider.name,
+              nextProvider
+            );
+          }
         }
 
         // Phase 3: Record failed request metrics
@@ -412,6 +557,14 @@ export class Router {
       totalAttempts: attemptNumber,
       lastError: lastError?.message
     });
+
+    // Phase 2.3: Log final error
+    if (this.tracer && lastError) {
+      this.tracer.logError(lastError, undefined, {
+        totalAttempts: attemptNumber,
+        providers: providersToTry.map(p => p.name)
+      });
+    }
 
     // v5.7.0: Check if all providers are limited (quota exhausted)
     const limitManager = getProviderLimitManager();
@@ -652,6 +805,12 @@ export class Router {
 
     // Clear penalty list
     this.penalizedProviders.clear();
+
+    // Phase 2.3: Close trace logger
+    if (this.tracer) {
+      this.tracer.close();
+      logger.debug('Router trace logger closed');
+    }
   }
 
   /**
@@ -704,15 +863,28 @@ export class Router {
   /**
    * Estimate cost of a request based on tokens used
    * Phase 3: Helper for metrics tracking
+   *
+   * FIXED (v6.0.1): Use actual provider costs from PROVIDER_METADATA
    */
   private estimateCost(providerName: string, tokensUsed: { prompt: number; completion: number; total: number }): number {
-    // Simplified cost estimation using average pricing
-    // In production, providers should report actual costs
-    const inputCostPer1M = 2.50;   // Average: $2.50 per 1M input tokens
-    const outputCostPer1M = 10.00; // Average: $10.00 per 1M output tokens
+    // Look up actual provider costs from metadata registry
+    const metadata = PROVIDER_METADATA[providerName];
 
-    const inputCost = (tokensUsed.prompt / 1_000_000) * inputCostPer1M;
-    const outputCost = (tokensUsed.completion / 1_000_000) * outputCostPer1M;
+    if (!metadata) {
+      // Fallback to average pricing if provider not found in metadata
+      logger.warn(`Provider metadata not found for cost estimation: ${providerName}, using fallback costs`);
+      const inputCostPer1M = 2.50;   // Fallback: $2.50 per 1M input tokens
+      const outputCostPer1M = 10.00; // Fallback: $10.00 per 1M output tokens
+
+      const inputCost = (tokensUsed.prompt / 1_000_000) * inputCostPer1M;
+      const outputCost = (tokensUsed.completion / 1_000_000) * outputCostPer1M;
+
+      return inputCost + outputCost;
+    }
+
+    // Use actual provider costs from metadata
+    const inputCost = tokensUsed.prompt * metadata.costPerToken.input;
+    const outputCost = tokensUsed.completion * metadata.costPerToken.output;
 
     return inputCost + outputCost;
   }

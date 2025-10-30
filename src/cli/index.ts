@@ -41,6 +41,8 @@ import { runsCommand } from './commands/runs.js';
 import { geminiCommand } from './commands/gemini.js';
 import { providerLimitsCommand } from './commands/provider-limits.js';
 import { specCommand } from './commands/spec.js';
+import { genCommand } from './commands/gen.js';
+import { providersCommand } from './commands/providers.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -75,6 +77,10 @@ globalTracker.mark('cli_start');
   .example('$0 gemini status', 'Show Gemini CLI integration status')
   .example('$0 spec run', 'Execute spec-driven tasks')
   .example('$0 spec status', 'Show spec task status')
+  .example('$0 providers list', 'List all providers')
+  .example('$0 providers info openai', 'Show provider details')
+  .example('$0 gen plan workflow.ax.yaml', 'Generate execution plan')
+  .example('$0 gen dag workflow.ax.yaml', 'Generate DAG JSON')
 
   // Global options
   .option('debug', {
@@ -112,7 +118,9 @@ globalTracker.mark('cli_start');
   .command(mcpCommand)
   .command(geminiCommand)
   .command(providerLimitsCommand)
+  .command(providersCommand)
   .command(specCommand)
+  .command(genCommand)
   .command(updateCommand)
 
   // Configuration

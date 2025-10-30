@@ -80,6 +80,7 @@ export interface ExecutionRequest {
   systemPrompt?: string;
   context?: Record<string, any>;
   signal?: AbortSignal;  // v5.0.7: Support for execution cancellation
+  spec?: any;  // Phase 2.2: Optional spec for policy-driven routing
 }
 
 export interface ExecutionResponse {

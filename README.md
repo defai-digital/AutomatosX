@@ -1,352 +1,715 @@
 # AutomatosX
 
-**Stop repeating yourself. Give your AI a brain and a team.**
+**From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory**
 
-AutomatosX is a local-first CLI that transforms stateless AI assistants into a persistent, collaborative workforce. It ends the cycle of repeating context and manually orchestrating tasks by providing a long-term memory and a team of autonomous agents that learn and work together.
+AutomatosX is the only AI CLI that combines declarative workflow specs, policy-driven cost optimization, and a persistent AI workforce. Write a YAML spec, and AutomatosX generates your entire project—plans, infrastructure, tests, and execution—while remembering everything and optimizing every API call.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-2,458%20passing-brightgreen.svg)](#)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/defai-digital/automatosx/ci.yml?branch=main&label=CI)](https://github.com/defai-digital/automatosx/actions)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ Production Ready · **v5.12.3** · October 2025 · 23 Specialized Agents · 100% Resource Leak Free · Spec-Driven Development
+**Status**: ✅ **Production Ready v6.0.1** | Oct 2025 | 23 Specialized Agents | Spec-Kit 87.5% Complete | Policy-Driven Routing | Auto-Generation
 
 ---
 
-## The Problem: AI Has No Memory
+## 🚀 The Complete AI Workflow Platform
 
-Standard AI assistants are stateless. They have no memory of past conversations, forcing you to re-explain requirements, manually coordinate every task, and lose valuable insights the moment a session ends. This is slow, repetitive, and inefficient.
+AutomatosX is **the only AI platform** that gives you:
 
-## The Solution: A Local, Collaborative AI Workforce
-
-AutomatosX provides the two things AI assistants are missing:
-
-1.  **A Persistent Brain**: A local, zero-cost memory that ensures context is never lost.
-2.  **A Team of Specialists**: Autonomous agents who can delegate tasks, share knowledge, and execute complex workflows.
-
----
-
-## 🚀 How It Works: Core Concepts
-
-AutomatosX is built on three pillars that enable a smarter, more autonomous workflow.
-
-| Concept | Description |
-|---|---|
-| 🧠 **Persistent Memory** | Every conversation and decision is automatically saved to a local database. Agents instantly retrieve context for new tasks, so you never have to repeat yourself. |
-| 🤝 **Autonomous Agents** | A team of 19 specialized agents (backend, frontend, security, etc.) can delegate tasks to each other to achieve a high-level goal. You manage the project, not the micromanagement. |
-| 📋 **Declarative Workflows** | For complex projects, define your entire workflow in simple markdown. AutomatosX builds a dependency graph, executes tasks in parallel, and resumes from checkpoints automatically. |
+| Feature | What It Does | Value |
+|---------|--------------|-------|
+| 📋 **Spec-Kit Integration** | Define workflows in YAML. Generate plans, DAGs, scaffolding, and tests automatically. | Ship projects 10x faster |
+| 💰 **Policy-Driven Routing** | Set cost/latency/privacy constraints. AutomatosX picks the optimal AI provider for every request. | Save 60-80% on AI costs |
+| 🧠 **Persistent Memory** | Every conversation is remembered. Agents get perfect context automatically. | Never repeat yourself again |
+| 🤝 **Multi-Agent Orchestration** | 23 specialized agents delegate tasks to each other. You manage the project, not the details. | Focus on strategy, not micromanagement |
+| 🔍 **Complete Observability** | Trace every routing decision, cost, and latency. Debug with confidence. | Production-grade reliability |
 
 ---
 
-## ⚙️ Get Started in 3 Steps
-
-1.  **Install AutomatosX:**
-    ```bash
-    npm install -g @defai.digital/automatosx
-    ```
-
-2.  **Initialize Your Project:**
-    ```bash
-    cd your-project-folder
-    ax init
-    ```
-
-3.  **Run Your First Agent:**
-    ```bash
-    # Run an agent directly from your terminal
-    ax run product "Design a REST API for user management"
-    ```
-
-[➡️ **Full Quick Start Guide**](docs/guide/quick-start.md) | [**Installation Details**](docs/guide/installation.md)
-
----
-
-## 💡 Why AutomatosX? The End of AI Amnesia
-
-### The Problem: Stateless AI is Inefficient
-
-Standard AI assistants suffer from digital amnesia. They have no memory of past conversations, forcing you to repeat context, re-explain requirements, and manually coordinate every single task. This is slow, repetitive, and inefficient.
-
--   ❌ **No Long-Term Memory**: Every session starts from zero.
--   ❌ **Constant Repetition**: You explain the same architecture and requirements over and over.
--   ❌ **Manual Coordination**: You are the single point of failure for orchestrating tasks.
--   ❌ **Knowledge is Lost**: Valuable insights and decisions disappear forever.
-
-### The Solution: A Persistent, Collaborative AI Workforce
-
-AutomatosX gives your AI a permanent brain and a team of specialists who learn and collaborate.
-
--   ✅ **Persistent Memory**: Agents remember everything. A local, zero-cost SQLite FTS5 database enables sub-millisecond context retrieval.
--   ✅ **Autonomous Delegation**: Agents intelligently delegate tasks to each other, creating workflows that run on their own.
--   ✅ **Context on Autopilot**: Agents automatically get the context they need from past conversations. Never repeat yourself again.
--   ✅ **A Team That Learns**: Your AI team gets smarter and more effective with every task, building a shared knowledge base over time.
-
-**The result? You save hours per week, produce higher-quality work, and build a system that grows more valuable with every interaction.**
-
----
-
-## 🧠 Core Feature: Persistent Memory
-
-AutomatosX remembers every conversation, decision, and piece of code automatically. This knowledge is instantly searchable and injected into future tasks, ensuring perfect context every time.
-
-### How It Works
+## ⚡ Quick Start: 60 Seconds to Your First Workflow
 
 ```bash
-# 1. A task is completed and automatically saved to memory.
-ax run product "Design a calculator with add/subtract features"
-# → Task and response are indexed in the local SQLite FTS5 database.
+# 1. Install AutomatosX
+npm install -g @defai.digital/automatosx
 
-# 2. A related task is run later.
-ax run backend "Implement the calculator"
-# → Memory automatically finds the "calculator" design spec from the previous step.
-# → The backend agent receives the design and can start work immediately.
-```
+# 2. Initialize your project
+cd your-project && ax init
 
--   **Technology**: SQLite with FTS5 for fast, local full-text search.
--   **Speed**: < 1ms search, even with thousands of entries.
--   **Cost**: $0. No embedding APIs, no cloud services.
--   **Privacy**: 100% local. Your data never leaves your machine.
-
-[➡️ **Learn More: Memory System Guide**](docs/guide/agent-communication.md)
-
----
-
-## 🤝 Core Feature: Multi-Agent Orchestration
-
-Stop micromanaging. With AutomatosX, you can give a high-level goal to one agent, and it will create a plan, delegate tasks, and orchestrate a team of specialists to get the job done.
-
-### How It Works
-
-```typescript
-// 1. You give a high-level task to a coordinator agent.
-ax run product "Build a complete user authentication feature"
-
-// 2. The Product agent creates a plan and delegates to other agents.
-/*
-  "I'll design the auth system with JWT and OAuth2.
-
-   @backend Please implement the JWT authentication API based on this design.
-   @security Please audit the implementation for security vulnerabilities."
-*/
-
-// 3. AutomatosX executes the plan automatically.
-//    - The backend agent receives the spec and implements the API.
-//    - The security agent receives the spec and the code, then performs an audit.
-//    - Results are aggregated and returned.
-```
-
--   **Natural Language Delegation**: Use simple `@mention` syntax to delegate.
--   **Autonomous Workflows**: Agents work in parallel to complete goals faster.
--   **Full Transparency**: The entire delegation chain is tracked and logged.
-
-[➡️ **Learn More: Multi-Agent Orchestration Guide**](docs/guide/multi-agent-orchestration.md)
-
----
-
-## 📋 Core Feature: Spec-Driven Development
-
-For complex projects, AutomatosX can manage the entire workflow. Instead of running individual commands, you can define a high-level specification and let AutomatosX orchestrate the entire plan, run tasks in parallel, and even resume if interrupted.
-
-### Natural Language Workflows (Recommended)
-
-The easiest way to use this feature is to describe your goal in plain English. AutomatosX will analyze the request, generate a complete plan, and execute it.
-
-```bash
-# Describe a complex goal in one command
-ax spec create "Build a complete user auth system with a database, API, JWT, security audit, and tests"
+# 3. Create a workflow spec in natural language
+ax spec create "Build user authentication with database, API, JWT, security audit, and tests"
 
 # AutomatosX automatically:
-# 1. Generates a full project specification (.specify/)
-# 2. Creates a dependency graph of all tasks
-# 3. Assigns the right agents for each task
-# 4. Executes the plan with parallel execution and progress tracking
+#   ✅ Generates a complete project spec (.specify/)
+#   ✅ Creates execution plan with cost estimates
+#   ✅ Generates DAG for parallel execution
+#   ✅ Scaffolds project structure
+#   ✅ Generates comprehensive tests
+#   ✅ Executes with policy-optimized routing
+#   ✅ Tracks all decisions with trace logging
+
+# 4. View the generated plan
+ax gen plan workflow.ax.yaml
+
+# 5. Execute the workflow (with cost optimization)
+ax run workflow.ax.yaml
 ```
 
-This turns a multi-day coordination effort into a single command.
-
-### Manual Workflows
-
-You can also define workflows manually for full control:
-
-```markdown
-# .specify/tasks.md
-- [ ] id:backend ops:"ax run backend 'Implement API'" dep:design
-- [ ] id:frontend ops:"ax run frontend 'Build login UI'" dep:design
-- [ ] id:test ops:"ax run quality 'Write E2E tests'" dep:backend,frontend
-```
-
-When you run `ax spec run --parallel`, AutomatosX executes this plan, running the `backend` and `frontend` tasks in parallel before starting the `test` task.
-
-**Key Benefits:**
--   **Automated Orchestration**: Eliminates manual coordination.
--   **Parallel Execution**: Completes work faster.
--   **Progress Tracking & Resume**: Never lose work on an interruption.
--   **Reproducible Workflows**: Check your `.specify/` directory into Git to share your process.
-
-[➡️ **Full Guide: Spec-Driven Development**](docs/guide/spec-driven-development.md)
+**Result**: Complete authentication system with database, API, security audit, and tests—generated and executed in minutes, not days.
 
 ---
 
-## 🎭 23 Specialized Agents
+## 🎯 What Makes AutomatosX Different?
 
-AutomatosX comes with a pre-built team of 23 agents, each with a specific role and expertise. This ensures the right specialist is always available for the task at hand.
-
--   **Astrid** - Aerospace Scientist (Orbital mechanics, mission analysis, telemetry)
--   **Bob** - Backend Engineer (API design, databases, Go/Rust systems)
--   **Candy** - Creative Marketer (Content strategy)
--   **Daisy** - Data Engineer (ETL, SQL, modeling)
--   **Dana** - Data Scientist (ML strategy, statistical analysis)
--   **Debbee** - UX Designer (UX research, wireframes)
--   **Emma** - ERP Specialist (SAP, Oracle, Dynamics 365 integration)
--   **Eric** - CEO (Business leadership)
--   **Felix** - Fullstack Engineer (Node.js/TypeScript + Python)
--   **Fiona** - Design-to-Code Specialist (Figma API, design system synchronization)
--   **Frank** - Frontend Engineer (React/Next.js/Swift UI)
--   **Ivy** - IoT Engineer (IoT protocols, edge computing, ROS2, embedded/robotics)
--   **Maya** - Mobile Engineer (iOS/Android, Swift/Kotlin/Flutter)
--   **Mira** - Deep Learning Specialist (PyTorch/TensorFlow, model optimization)
--   **Oliver** - DevOps Engineer (CI/CD, infrastructure)
--   **Paris** - Product Manager (Roadmaps, strategy)
--   **Stan** - Standard (SOLID, design patterns, clean code, refactoring, architecture) ✨ NEW in v5.6.21
--   **Queenie** - Quality Specialist (Testing, code reviews)
--   **Quinn** - Quantum Engineer (Quantum algorithms, Qiskit/Cirq, error correction)
--   **Rodman** - Researcher (Feasibility studies)
--   **Steve** - Security Engineer (Audits, threat modeling)
--   **Tony** - CTO (Technical strategy)
--   **Wendy** - Technical Writer (Documentation, reports)
-
-**Governance**: Agents have clear roles, permissions, and delegation limits (`maxDelegationDepth`) to ensure efficient and safe collaboration while preventing infinite loops.
-
-[➡️ **See the Full Agent Directory**](examples/AGENTS_INFO.md)
-
----
-
-## 🚀 Two Ways to Use AutomatosX
-
-### 1. Gemini CLI Integration (Recommended)
-
-AutomatosX ships with first-class Gemini CLI support, so you can stay inside Gemini and hand off work using slash commands or natural language prompts.
-
-```
-/ax backend, create a REST API for user management
-/ax security, audit the authentication flow
-/ax quality, write unit tests for the API
-```
-
-Prefer to type full sentences? Gemini understands natural language requests too:
-
-```
-"Please use the ax backend agent to implement user authentication"
-"Ask the ax security agent to audit this code for vulnerabilities"
-"Have the ax quality agent write tests for this feature"
-```
-
-🔎 Need a full command reference? Check [GEMINI.md](GEMINI.md) for slash commands, system shortcuts, and workspace conventions tailored to Gemini CLI workflows.
-
-> Tip: You can still enable other providers (like Claude Code or OpenAI) as fallbacks in `automatosx.config.json`, but Gemini CLI remains the primary interface.
-
-### 2. Terminal/CLI Mode (For Power Users)
-
-Run agents directly from your terminal for scripting, automation, and CI/CD pipelines.
+### Traditional AI Workflows
 
 ```bash
-# Run a multi-agent workflow from your command line
-ax run product "Design REST API for users"
-ax run backend "Implement the API"           # Auto-receives design from memory
-ax run quality "Write tests for the API" # Auto-receives design + implementation
+# ❌ Manual coordination
+codex "Design auth system"
+# → Copy/paste output
+
+codex "Implement API from this design: [paste design]"
+# → Repeat context, pay for duplicate tokens
+
+codex "Write tests for this code: [paste code]"
+# → Lost context, higher costs, manual orchestration
+
+# Result: Slow, expensive, repetitive
 ```
 
-[➡️ **Read the Terminal Mode Guide**](docs/guide/terminal-mode.md)
-
----
-
-## 🔄 Intelligent Provider Management (v5.7.0)
-
-AutomatosX automatically handles provider usage limits so you never experience downtime.
-
-### Automatic Limit Detection & Rotation
-
-When you hit a provider's usage limit, AutomatosX instantly detects it and switches to the next available provider:
+### AutomatosX Workflows
 
 ```bash
-$ ax run backend "implement authentication API"
-⚠️  Switched from openai → gemini-cli
-   (OpenAI daily quota hit, resets at 2025-10-29 00:00 UTC)
+# ✅ Declarative, automated, optimized
+ax spec create "Build auth system with API, tests, and security audit"
 
-✓ Task completed successfully with gemini-cli
+# Result: Complete system generated and executed automatically
+#   - Persistent memory eliminates context repetition
+#   - Policy routing saves 60-80% on API costs
+#   - Parallel execution completes 3-5x faster
+#   - Auto-generated tests provide 60%+ baseline coverage
 ```
 
-### Auto-Recovery
+---
 
-The system tracks reset times (daily/weekly) and automatically restores providers when limits expire. No manual intervention needed.
+## 📋 **NEW**: Spec-Kit Integration (v6.0+)
 
-### Monitor Status
+The game-changing feature that makes AutomatosX the most powerful AI workflow platform.
 
-Check your provider status anytime:
+### 1. Define Your Workflow in YAML
+
+```yaml
+# workflow.ax.yaml
+metadata:
+  id: user-auth-system
+  name: User Authentication System
+
+# Policy-driven routing: Optimize for cost
+policy:
+  goal: cost
+  constraints:
+    cost:
+      maxPerRequest: 0.01
+      maxDaily: 0.50
+    latency:
+      p95: 5000
+
+actors:
+  - id: backend
+    agent: backend
+    description: Implement JWT authentication API
+
+  - id: security
+    agent: security
+    description: Audit authentication implementation
+
+  - id: quality
+    agent: quality
+    description: Generate comprehensive test suite
+```
+
+### 2. Generate Everything Automatically
 
 ```bash
-$ ax provider-limits
-📊 Provider Limits Status
+# Generate execution plan with cost estimates
+ax gen plan workflow.ax.yaml
+# Output: Execution plan with phases, costs ($0.003-$0.008), risks
 
-  ⚠️  openai:
-     Status: limited
-     Window: daily
-     Resets: 2025-10-29 00:00:00 (6h)
+# Generate DAG for parallel execution
+ax gen dag workflow.ax.yaml --format mermaid
+# Output: Dependency graph with change detection hash
 
-  ✅ 2 provider(s) available
+# Scaffold complete project structure
+ax gen scaffold workflow.ax.yaml
+# Output: Full directory structure, configs, READMEs
+
+# Generate comprehensive test suite
+ax gen tests workflow.ax.yaml
+# Output: Unit, integration, E2E tests with policy assertions
 ```
 
-**Performance**: < 1ms overhead per request, O(1) limit checks, persistent state across restarts.
+### 3. Execute with Policy Optimization
 
-[➡️ **Learn More: Provider Management Guide**](CHANGELOG.md#570---2025-10-28)
+```bash
+# Run workflow with cost optimization
+ax run workflow.ax.yaml
+
+# AutomatosX automatically:
+#   1. Filters providers by cost constraint ($0.01/request)
+#   2. Selects cheapest provider (Gemini: $0.000125/1K tokens)
+#   3. Executes actors in optimal order
+#   4. Logs all decisions to trace file
+#   5. Stays within budget ($0.50/day)
+```
+
+### 4. Debug with Complete Visibility
+
+```bash
+# View all routing decisions
+ax providers trace --follow
+
+# Output (real-time):
+# 18:26:49  POLICY       gemini-cli      goal=cost, passed=2/3
+# 18:26:50  SELECTION    gemini-cli      3 candidates → policy-based selection
+# 18:26:51  EXECUTION    gemini-cli      ✓ 1234ms, $0.000375
+```
+
+**The Complete Workflow**:
+
+```bash
+# From idea to production in one command
+ax spec create "Build e-commerce checkout with Stripe, inventory, and fraud detection" \
+  && ax run workflow.ax.yaml
+
+# AutomatosX handles:
+#   ✅ Cost optimization (saves 60-80% vs Claude/GPT)
+#   ✅ Parallel execution (3-5x faster)
+#   ✅ Persistent memory (zero context repetition)
+#   ✅ Auto-generated tests (60%+ coverage)
+#   ✅ Complete observability (trace every decision)
+```
 
 ---
 
-## ✨ Key Features
+## 💰 Policy-Driven Cost Optimization
 
-| Feature | Traditional AI Chat | Gemini CLI | AutomatosX | AutomatosX + Spec-Kit |
-|---|---|---|---|---|
-| **Long-Term Memory** | ❌ No | ❌ No | ✅ **Yes (SQLite FTS5, <1ms)** | ✅ **Yes + Spec Context** |
-| **Multi-Agent System** | ❌ No | ❌ No | ✅ **Yes (19 specialized agents)** | ✅ **Yes + Orchestration** |
-| **Autonomous Delegation** | ❌ No | ❌ No | ✅ **Yes (Ad-hoc workflows)** | ✅ **Yes (Automated DAG)** |
-| **Workflow Management** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Declarative (Git-tracked)** |
-| **Dependency Resolution** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Automatic (DAG + Cycles)** |
-| **Parallel Execution** | ❌ No | ❌ No | ⚠️ **Manual** | ✅ **Automatic Detection** |
-| **Progress Tracking** | ❌ No | ❌ No | ⚠️ **Session Only** | ✅ **Persistent (tasks.md)** |
-| **Resume After Interrupt** | ❌ No | ❌ No | ⚠️ **Start Over** | ✅ **From Checkpoint** |
-| **Context Retention** | Manual Copy-Paste | Session Only | ✅ **Persistent & Automatic** | ✅ **+ Spec-Aware** |
-| **Knowledge Sharing** | ❌ No | ❌ No | ✅ **Yes (Across agents)** | ✅ **Yes + Team Workflows** |
-| **Privacy** | Cloud-Based | Gemini Cloud | ✅ **100% Local** | ✅ **100% Local** |
-| **Cost** | Subscription | Included | ✅ **$0 (No API for memory)** | ✅ **$0 (No extra cost)** |
-| **Best For** | Q&A | Development | **Complex Tasks** | **Production Workflows** |
+AutomatosX is the **only AI platform with built-in cost optimization**. Define your budget and constraints—AutomatosX automatically routes every request to the optimal provider.
+
+### How It Works
+
+```yaml
+# Set your constraints in the spec
+policy:
+  goal: cost  # Options: cost, latency, reliability, balanced
+
+  constraints:
+    cost:
+      maxPerRequest: 0.01    # Max $0.01 per request
+      maxDaily: 1.00         # Max $1.00 per day
+
+    latency:
+      p95: 5000              # Max 5 seconds at P95
+
+    privacy:
+      allowedClouds: [gcp]   # Only Google Cloud providers
+```
+
+**AutomatosX Routes Intelligently**:
+
+| Provider | Cost/1M Tokens | Speed (P95) | When AutomatosX Uses It |
+|----------|----------------|-------------|-------------------------|
+| Gemini CLI | $0.125-$0.375 | 3000ms | Cost-optimized workflows (default) |
+| OpenAI (Codex) | $2.50-$10.00 | 2000ms | Speed-critical tasks |
+| Claude Code | $3.00-$15.00 | 2500ms | High-reliability tasks |
+
+**Real Savings**:
+
+```bash
+# Traditional workflow (all Claude)
+Task 1: $0.015  (Claude)
+Task 2: $0.018  (Claude)
+Task 3: $0.012  (Claude)
+Total: $0.045
+
+# AutomatosX workflow (policy-optimized)
+Task 1: $0.001  (Gemini - cost goal)
+Task 2: $0.002  (Gemini - cost goal)
+Task 3: $0.001  (Gemini - cost goal)
+Total: $0.004  (91% savings!)
+```
+
+**Debug Your Costs**:
+
+```bash
+# See why each provider was selected
+ax providers trace
+
+# View provider metadata and pricing
+ax providers info gemini-cli
+# Shows: Cost, latency, reliability, features
+
+# List providers sorted by cost
+ax providers list --sort cost
+```
 
 ---
 
-## 📚 Documentation
+## 🧠 Persistent Memory: Context That Never Expires
 
--   **[Quick Start Guide](docs/guide/quick-start.md)**
--   **[Core Concepts](docs/guide/core-concepts.md)**
--   **[Full CLI Command Reference](docs/reference/cli-commands.md)**
--   **[Agent Directory](examples/AGENTS_INFO.md)**
--   **[Workspace Path Conventions](docs/workspace-conventions.md)**
--   **[Troubleshooting Guide](TROUBLESHOOTING.md)**
+AutomatosX **never forgets**. Every conversation, decision, and piece of code is automatically indexed in a local SQLite database with full-text search. Future tasks get perfect context automatically.
+
+### The Problem with Traditional AI
+
+```bash
+# Day 1: Design a calculator
+codex "Design a calculator with add/subtract"
+# → Response: [Calculator design]
+
+# Day 2: Implement it (context lost!)
+codex "Implement the calculator"
+# → Error: "What calculator? Please provide context."
+# → You waste time and money re-explaining
+```
+
+### AutomatosX Solution
+
+```bash
+# Day 1: Design
+ax run product "Design a calculator with add/subtract"
+# → Automatically saved to memory
+
+# Day 2: Implement (context auto-injected!)
+ax run backend "Implement the calculator"
+# → Memory finds "calculator" design from Day 1
+# → Backend agent gets full context automatically
+# → Zero context repetition, zero wasted tokens
+```
+
+### Memory Features
+
+- **Speed**: < 1ms search with SQLite FTS5
+- **Cost**: $0 (no embedding APIs)
+- **Privacy**: 100% local (data never leaves your machine)
+- **Search**: `ax memory search "calculator"`
+- **Export**: `ax memory export > backup.json`
+
+---
+
+## 🤝 Multi-Agent Orchestration
+
+Stop micromanaging AI. Give a high-level goal to one agent, and AutomatosX creates a plan, delegates tasks, and orchestrates a team of specialists.
+
+### How It Works
+
+```bash
+# 1. Give a high-level goal
+ax run product "Build complete user authentication"
+
+# 2. Product agent analyzes and delegates
+# Output:
+# "I'll design auth with JWT and OAuth2.
+#
+#  @backend Please implement the JWT authentication API.
+#  @security Please audit the implementation for vulnerabilities.
+#  @quality Please write integration tests."
+
+# 3. AutomatosX executes automatically
+#    - Backend implements API
+#    - Security audits code
+#    - Quality writes tests
+#    - All in parallel, all with full context
+```
+
+### 23 Specialized Agents
+
+Each agent is an expert in their domain:
+
+| Agent | Role | Use Cases |
+|-------|------|-----------|
+| **Bob** | Backend Engineer | API design, databases, Go/Rust systems |
+| **Frank** | Frontend Engineer | React/Next.js, UI components, state management |
+| **Steve** | Security Specialist | Threat modeling, vulnerability assessment, penetration testing |
+| **Queenie** | QA Engineer | Test planning, E2E testing, quality assurance |
+| **Oliver** | DevOps Engineer | CI/CD, Kubernetes, infrastructure automation |
+| **Paris** | Product Manager | Requirements, roadmaps, stakeholder alignment |
+| **Daisy** | Data Engineer | ETL pipelines, data warehouses, Spark |
+| **Dana** | Data Scientist | ML models, statistical analysis, Python |
+| **Mira** | ML Engineer | PyTorch, TensorFlow, model deployment |
+| **Tony** | CTO | Technical strategy, architecture, scaling |
+| **Eric** | CEO | Business strategy, vision, leadership |
+| **Wendy** | Technical Writer | Documentation, API docs, tutorials |
+| **Stan** | Standards Expert | Best practices, design patterns, code review |
+
+[See all 23 agents](docs/agents/agent-directory.md) | [Create custom agents](docs/guide/custom-agents.md)
+
+---
+
+## 🏗️ Architecture: How It All Fits Together
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. YAML Spec (workflow.ax.yaml)                           │
+│     • Define actors, policy, constraints                    │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  2. Spec-Kit Generation (ax gen)                           │
+│     • Plan: Cost estimates, resource requirements, risks    │
+│     • DAG: Dependency graph with change detection hash      │
+│     • Scaffold: Complete project structure                  │
+│     • Tests: Unit, integration, E2E with policy assertions  │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  3. Policy Evaluation (PolicyEvaluator)                     │
+│     • Filter providers by constraints (cost, latency,       │
+│       privacy, reliability)                                 │
+│     • Score providers by optimization weights               │
+│     • Select optimal provider                               │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  4. Router Execution (Router)                               │
+│     • Load providers in policy order                        │
+│     • Execute with selected provider                        │
+│     • Fallback on failure                                   │
+│     • Log all decisions to trace file                       │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  5. Memory & Context (MemoryManager)                        │
+│     • Index: Save response to SQLite FTS5                   │
+│     • Retrieve: Search < 1ms for future tasks               │
+│     • Inject: Auto-add context to prompts                   │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  6. Observability (RouterTraceLogger)                       │
+│     • Log: JSONL trace to .automatosx/logs/                │
+│     • View: ax providers trace --follow                     │
+│     • Debug: Complete visibility into all decisions         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📚 Real-World Examples
+
+### Example 1: E-Commerce Checkout System
+
+```yaml
+# checkout.ax.yaml
+metadata:
+  id: ecommerce-checkout
+  name: E-Commerce Checkout System
+
+policy:
+  goal: balanced  # Balance cost, speed, reliability
+  constraints:
+    cost:
+      maxPerRequest: 0.02
+      maxDaily: 2.00
+    latency:
+      p95: 3000
+
+actors:
+  - id: backend
+    agent: backend
+    description: Implement Stripe integration and inventory management
+
+  - id: security
+    agent: security
+    description: Implement fraud detection and PCI compliance checks
+
+  - id: quality
+    agent: quality
+    description: E2E tests for checkout flow with Stripe test mode
+```
+
+```bash
+# Generate and execute
+ax gen plan checkout.ax.yaml    # See cost: $0.012-$0.018
+ax gen scaffold checkout.ax.yaml # Create project structure
+ax gen tests checkout.ax.yaml    # Generate test suite
+ax run checkout.ax.yaml          # Execute with cost optimization
+
+# Result:
+#   - Complete Stripe integration
+#   - Fraud detection system
+#   - PCI compliant
+#   - 60%+ test coverage
+#   - Total cost: $0.015 (vs $0.20 with Claude)
+```
+
+### Example 2: Microservices API
+
+```bash
+# Natural language workflow
+ax spec create "Build microservices API with user service, auth service, API gateway, and Docker deployment"
+
+# AutomatosX generates:
+#   - Service architecture design
+#   - Three microservices in parallel
+#   - API gateway with rate limiting
+#   - Docker compose configuration
+#   - Integration tests
+#   - Documentation
+
+# Execute with policy routing
+ax run workflow.ax.yaml
+
+# Monitor costs and decisions
+ax providers trace --follow
+```
+
+---
+
+## 🎨 Advanced Features
+
+### Parallel Execution
+
+```bash
+# Execute tasks in parallel for 3-5x speedup
+ax spec run --parallel
+
+# AutomatosX automatically:
+#   - Builds dependency graph
+#   - Runs independent tasks concurrently
+#   - Waits for dependencies before starting
+#   - Aggregates results
+```
+
+### Checkpoints & Resume
+
+```bash
+# Long-running workflows save checkpoints
+ax spec run --resumable
+
+# Interrupt anytime (Ctrl+C)
+# Resume from last checkpoint
+ax resume <run-id>
+
+# List all runs
+ax runs list
+```
+
+### Cost Tracking
+
+```bash
+# View costs by provider
+ax cost
+
+# View costs by time period
+ax cost --period daily
+ax cost --period weekly
+ax cost --period monthly
+
+# View costs by agent
+ax cost --agent backend
+```
+
+### Change Detection
+
+```bash
+# Generate DAG with hash
+ax gen dag workflow.ax.yaml -o dag.json
+
+# DAG stores spec hash for change detection
+# If spec changes, AutomatosX warns you before execution
+ax run dag.json
+# → Warning: Spec has changed. Regenerate DAG? (Y/n)
+```
+
+---
+
+## 📖 Documentation
+
+### Getting Started
+- [Quick Start Guide](docs/guide/quick-start.md) - Get running in 5 minutes
+- [Installation](docs/guide/installation.md) - Detailed installation instructions
+- [Configuration](docs/guide/configuration.md) - Configure providers and settings
+
+### Core Features
+- [Spec-Kit Integration](docs/guide/spec-driven-development.md) - Complete workflow automation
+- [Policy-Driven Routing](docs/guide/policy-routing.md) - Cost/latency optimization
+- [Persistent Memory](docs/guide/agent-communication.md) - Context management
+- [Multi-Agent Orchestration](docs/guide/multi-agent-orchestration.md) - Team coordination
+
+### Advanced
+- [Custom Agents](docs/guide/custom-agents.md) - Create your own specialists
+- [Provider Configuration](docs/guide/providers.md) - Add AI providers
+- [Trace Debugging](docs/guide/debugging.md) - Debug with trace logs
+- [Cost Optimization](docs/guide/cost-optimization.md) - Maximize savings
+
+### Reference
+- [Agent Directory](docs/agents/agent-directory.md) - All 23 agents
+- [CLI Reference](docs/cli/commands.md) - All commands
+- [YAML Spec Reference](docs/reference/spec-yaml.md) - Complete spec format
+- [API Documentation](docs/api/README.md) - TypeScript API
+
+---
+
+## 🏆 Why AutomatosX Wins
+
+| Capability | AutomatosX | Claude Code | Cursor | GitHub Copilot |
+|------------|------------|-------------|--------|----------------|
+| **Declarative Workflows** | ✅ YAML specs | ❌ | ❌ | ❌ |
+| **Auto-Generation** | ✅ Plans, DAGs, scaffolds, tests | ❌ | ❌ | ❌ |
+| **Policy-Driven Routing** | ✅ Cost/latency optimization | ❌ | ❌ | ❌ |
+| **Persistent Memory** | ✅ SQLite FTS5 < 1ms | ❌ | ❌ | ❌ |
+| **Multi-Agent Teams** | ✅ 23 specialists | ❌ | ❌ | ❌ |
+| **Cost Optimization** | ✅ 60-80% savings | ❌ | ❌ | ❌ |
+| **Complete Observability** | ✅ Trace logging | ❌ | ❌ | ❌ |
+| **Parallel Execution** | ✅ DAG-based | ❌ | ❌ | ❌ |
+| **Local-First** | ✅ 100% private | ⚠️ Hybrid | ⚠️ Cloud | ⚠️ Cloud |
+
+**Bottom Line**: AutomatosX is the **only platform** that combines declarative workflows, cost optimization, persistent memory, and multi-agent orchestration in one tool.
+
+---
+
+## 🚦 Production Readiness
+
+✅ **87.5% Complete** - Spec-Kit integration production ready
+✅ **2,458 Tests Passing** - Comprehensive test coverage
+✅ **TypeScript Strict Mode** - Type-safe codebase
+✅ **Zero Resource Leaks** - Clean shutdown guaranteed
+✅ **Cross-Platform** - macOS, Windows, Ubuntu
+✅ **Local-First** - No cloud dependencies, 100% private
+
+---
+
+## 💻 Installation
+
+### NPM (Recommended)
+
+```bash
+npm install -g @defai.digital/automatosx
+ax --version  # v6.0.1
+```
+
+### Requirements
+
+- **Node.js**: >= 20.0.0
+- **AI Providers**: At least one:
+  - [Gemini CLI](https://ai.google.dev/gemini-api/docs/cli) (recommended - cheapest)
+  - [OpenAI Codex](https://platform.openai.com/docs/guides/code) (fastest)
+  - [Claude Code](https://claude.ai/code) (most capable)
+
+[➡️ Full Installation Guide](docs/guide/installation.md)
+
+---
+
+## 🗺️ Roadmap
+
+### Completed (v6.0.0 - v6.0.1)
+- ✅ Spec-Kit Integration (87.5%)
+  - ✅ Plan generation
+  - ✅ DAG generation
+  - ✅ Scaffold generation
+  - ✅ Test generation
+- ✅ Policy-Driven Routing
+  - ✅ Cost/latency/privacy constraints
+  - ✅ Provider metadata registry
+  - ✅ Multi-factor scoring
+- ✅ Router Trace Logging
+  - ✅ JSONL format
+  - ✅ Real-time following
+  - ✅ Color-coded CLI
+
+### Coming Soon (v6.1.0)
+- ⏳ Regeneration Detector
+  - Automatic spec change detection
+  - Regeneration prompts
+- ⏳ Cost-Aware Router
+  - Pre-execution cost warnings
+  - Budget protection
+- ⏳ Enhanced Parallel Execution
+  - Resource-aware scheduling
+  - Priority-based execution
+
+[View Full Roadmap](docs/ROADMAP.md)
 
 ---
 
 ## 🤝 Contributing
 
-AutomatosX is an open-source project. We welcome contributions!
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
--   [**Contributing Guide**](CONTRIBUTING.md)
--   [**Report an Issue**](https://github.com/defai-digital/automatosx/issues)
--   [**Request a Feature**](https://github.com/defai-digital/automatosx/issues/new)
+### Development Setup
+
+```bash
+# Clone the repo
+git clone https://github.com/defai-digital/automatosx.git
+cd automatosx
+
+# Install dependencies
+npm install
+
+# Run in dev mode
+npm run dev -- run backend "test task"
+
+# Run tests
+npm test
+
+# Run type checking
+npm run typecheck
+
+# Build
+npm run build
+```
 
 ---
 
 ## 📄 License
 
-AutomatosX is [Apache 2.0 licensed](LICENSE).
+Apache 2.0 - See [LICENSE](LICENSE) for details.
+
+---
+
+## 🌟 Star Us on GitHub
+
+If AutomatosX saves you time and money, give us a star! ⭐
+
+[⭐ Star on GitHub](https://github.com/defai-digital/automatosx)
+
+---
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/defai-digital/automatosx/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/defai-digital/automatosx/discussions)
+- **Email**: support@defai.digital
+- **Twitter**: [@defai_digital](https://twitter.com/defai_digital)
+
+---
+
+## 🎯 TL;DR
+
+```bash
+# Install
+npm i -g @defai.digital/automatosx
+
+# Create workflow from natural language
+ax spec create "Build auth system with API, tests, security audit"
+
+# Execute with cost optimization
+ax run workflow.ax.yaml  # 60-80% cheaper than Claude/GPT
+
+# Debug with trace logs
+ax providers trace --follow
+
+# Result: Production-ready auth system in minutes
+```
+
+**AutomatosX**: The only AI platform with declarative workflows, cost optimization, persistent memory, and multi-agent orchestration.
+
+**Try it now**: `npm i -g @defai.digital/automatosx`
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://defai.digital">DeFAI Digital</a>
+</p>

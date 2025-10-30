@@ -65,27 +65,6 @@
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
-      "integration": "sdk",
-      "sdk": {
-        "defaultModel": "gpt-4o",
-        "maxRetries": 2
-      },
-      "connectionPool": {
-        "enabled": true,
-        "minConnections": 2,
-        "maxConnections": 10,
-        "idleTimeout": 300000,
-        "maxAge": 3600000,
-        "healthCheckInterval": 60000,
-        "warmupOnInit": true
-      },
-      "fallbackToCLI": true,
-      "mcp": {
-        "enabled": false,
-        "command": "codex",
-        "transport": "stdio",
-        "autoStart": false
-      },
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -120,9 +99,6 @@
       "cpuMultiplier": 1,
       "minConcurrency": 2,
       "maxConcurrency": 16
-    },
-    "spec": {
-      "maxConcurrentTasks": 6
     },
     "retry": {
       "maxAttempts": 3,
@@ -160,10 +136,6 @@
       "progress": {
         "updateInterval": 2000,
         "syntheticProgress": true
-      },
-      "memorySharing": {
-        "enabled": true,
-        "contextDepth": 5
       }
     }
   },
@@ -325,5 +297,5 @@
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.12.0"
+  "version": "6.0.1"
 }

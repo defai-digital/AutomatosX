@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-30T14:41:51.649Z
+ * Generated: 2025-10-30T19:48:49.687Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -87,27 +87,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
-      "integration": "sdk",
-      "sdk": {
-        "defaultModel": "gpt-4o",
-        "maxRetries": 2
-      },
-      "connectionPool": {
-        "enabled": true,
-        "minConnections": 2,
-        "maxConnections": 10,
-        "idleTimeout": 300000,
-        "maxAge": 3600000,
-        "healthCheckInterval": 60000,
-        "warmupOnInit": true
-      },
-      "fallbackToCLI": true,
-      "mcp": {
-        "enabled": false,
-        "command": "codex",
-        "transport": "stdio",
-        "autoStart": false
-      },
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -142,9 +121,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "cpuMultiplier": 1,
       "minConcurrency": 2,
       "maxConcurrency": 16
-    },
-    "spec": {
-      "maxConcurrentTasks": 6
     },
     "retry": {
       "maxAttempts": 3,
@@ -182,10 +158,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "progress": {
         "updateInterval": 2000,
         "syntheticProgress": true
-      },
-      "memorySharing": {
-        "enabled": true,
-        "contextDepth": 5
       }
     }
   },
@@ -347,14 +319,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
   },
-  "version": "5.12.0"
+  "version": "6.0.1"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-30T14:41:51.649Z',
+  generatedAt: '2025-10-30T19:48:49.687Z',
   sourceFile: 'automatosx.config.json',
-  version: '5.12.0'
+  version: '6.0.1'
 } as const;

@@ -40,7 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AutomatosX is an AI agent orchestration platform that provides persistent memory, multi-agent collaboration, and cross-provider support (Claude, Gemini, OpenAI). It transforms stateless AI assistants into a collaborative workforce with long-term memory and intelligent delegation.
 
-**Current Version**: v5.12.1 (October 2025)
+**Current Version**: v5.12.2 (October 2025)
 **Status**: Production Ready
 **Language**: TypeScript (ESM modules, strict mode)
 **Node**: >=20.0.0

@@ -135,6 +135,31 @@ export class OpenAISDKProvider extends BaseProvider {
   protected async executeRequest(request: ExecutionRequest): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // Check if running in test/mock mode
+    // Enhanced: Check multiple environment variables to ensure mock mode in test environments
+    const useMock =
+      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    if (useMock) {
+      // Mock mode for testing
+      const mockPrompt = request.prompt.substring(0, 100);
+      const latency = Date.now() - startTime;
+
+      return {
+        content: `[Mock Response from OpenAI SDK]\n\nTask received: ${mockPrompt}...\n\nThis is a placeholder response. Set AUTOMATOSX_MOCK_PROVIDERS=false to use real SDK.`,
+        model: request.model || 'gpt-4o',
+        tokensUsed: {
+          prompt: this.estimateTokens(request.prompt),
+          completion: 50,
+          total: this.estimateTokens(request.prompt) + 50
+        },
+        latencyMs: latency,
+        finishReason: 'stop'
+      };
+    }
+
     try {
       // Acquire connection from pool
       const connection = await this.connectionPool.acquire<OpenAI>(this.config.name);
@@ -211,6 +236,40 @@ export class OpenAISDKProvider extends BaseProvider {
     options: StreamingOptions
   ): Promise<ExecutionResponse> {
     const startTime = Date.now();
+
+    // Check if running in test/mock mode
+    // Enhanced: Check multiple environment variables to ensure mock mode in test environments
+    const useMock =
+      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    if (useMock) {
+      // Mock streaming simulation
+      const mockPrompt = request.prompt.substring(0, 100);
+      const mockContent = `[Mock Streaming Response from OpenAI SDK]\n\nTask received: ${mockPrompt}...\n\nThis is a placeholder streaming response. Set AUTOMATOSX_MOCK_PROVIDERS=false to use real SDK.`;
+
+      // Simulate streaming by sending tokens if callback provided
+      if (options.onToken) {
+        for (const char of mockContent) {
+          options.onToken(char);
+        }
+      }
+
+      const latency = Date.now() - startTime;
+
+      return {
+        content: mockContent,
+        model: request.model || 'gpt-4o',
+        tokensUsed: {
+          prompt: this.estimateTokens(request.prompt),
+          completion: 50,
+          total: this.estimateTokens(request.prompt) + 50
+        },
+        latencyMs: latency,
+        finishReason: 'stop'
+      };
+    }
 
     try {
       // Acquire connection from pool

@@ -25,6 +25,9 @@ import {
   markCacheHit,
   PerformanceTimer
 } from '../utils/performance-markers.js';
+import type { RoutingConfig } from '../types/routing.js';
+import { getRoutingStrategyManager } from './routing-strategy.js';
+import { getProviderMetricsTracker } from './provider-metrics-tracker.js';
 
 export interface RouterConfig {
   providers: Provider[];
@@ -32,6 +35,7 @@ export interface RouterConfig {
   healthCheckInterval?: number;
   providerCooldownMs?: number; // Cooldown period for failed providers (default: 30000ms)
   cache?: ResponseCache; // Optional response cache
+  strategy?: RoutingConfig; // Phase 3: Multi-factor routing configuration
 }
 
 export class Router {
@@ -51,6 +55,9 @@ export class Router {
     failures: 0
   };
 
+  // Phase 3: Multi-factor routing
+  private useMultiFactorRouting: boolean = false;
+
   constructor(config: RouterConfig) {
     // Sort providers by priority (lower number = higher priority)
     this.providers = [...config.providers].sort((a, b) => {
@@ -66,6 +73,16 @@ export class Router {
     void limitManager.initialize().catch(err => {
       logger.warn('Failed to initialize ProviderLimitManager', { error: err.message });
     });
+
+    // Phase 3: Initialize multi-factor routing if strategy provided
+    if (config.strategy) {
+      this.useMultiFactorRouting = true;
+      const strategyManager = getRoutingStrategyManager(config.strategy);
+      logger.info('Multi-factor routing enabled', {
+        strategy: strategyManager.getStrategy().name,
+        weights: strategyManager.getWeights()
+      });
+    }
 
     // Phase 3: Store interval value for observability
     this.healthCheckIntervalMs = config.healthCheckInterval;
@@ -164,10 +181,47 @@ export class Router {
       throw ProviderError.noAvailableProviders();
     }
 
+    // Phase 3: Reorder providers using multi-factor routing if enabled
+    let providersToTry = availableProviders;
+    if (this.useMultiFactorRouting) {
+      const strategyManager = getRoutingStrategyManager();
+      const providerNames = availableProviders.map(p => p.name);
+
+      // Calculate health multipliers (1.0 for healthy, 0.5 for penalized)
+      const healthMultipliers = new Map<string, number>();
+      for (const provider of availableProviders) {
+        const isPenalized = this.penalizedProviders.has(provider.name);
+        healthMultipliers.set(provider.name, isPenalized ? 0.5 : 1.0);
+      }
+
+      // Get scores for all providers
+      const scores = await getProviderMetricsTracker().getAllScores(
+        providerNames,
+        strategyManager.getWeights(),
+        healthMultipliers
+      );
+
+      // Reorder providers by score (highest first)
+      if (scores.length > 0) {
+        const scoreMap = new Map(scores.map(s => [s.provider, s.totalScore]));
+        providersToTry = [...availableProviders].sort((a, b) => {
+          const scoreA = scoreMap.get(a.name) ?? 0;
+          const scoreB = scoreMap.get(b.name) ?? 0;
+          return scoreB - scoreA; // Descending order
+        });
+
+        logger.debug('Provider order after multi-factor routing', {
+          original: availableProviders.map(p => p.name),
+          reordered: providersToTry.map(p => p.name),
+          scores: Object.fromEntries(scoreMap)
+        });
+      }
+    }
+
     let lastError: Error | undefined;
     let attemptNumber = 0;
 
-    for (const provider of availableProviders) {
+    for (const provider of providersToTry) {
       attemptNumber++;
 
       try {
@@ -245,6 +299,27 @@ export class Router {
         // Remove provider from penalty list on success
         this.penalizedProviders.delete(provider.name);
 
+        // Phase 3: Record metrics for multi-factor routing
+        if (this.useMultiFactorRouting) {
+          const metricsTracker = getProviderMetricsTracker();
+          // Estimate cost based on tokens (simplified - real cost would come from provider)
+          const estimatedCost = this.estimateCost(provider.name, response.tokensUsed);
+
+          await metricsTracker.recordRequest(
+            provider.name,
+            response.latencyMs,
+            true, // success
+            response.finishReason || 'stop',
+            {
+              prompt: response.tokensUsed.prompt,
+              completion: response.tokensUsed.completion,
+              total: response.tokensUsed.total
+            },
+            estimatedCost,
+            response.model
+          );
+        }
+
         return response;
 
       } catch (error) {
@@ -295,6 +370,20 @@ export class Router {
           this.penalizedProviders.set(provider.name, penaltyExpiry);
 
           logger.debug(`Provider ${provider.name} penalized until ${new Date(penaltyExpiry).toISOString()}`);
+        }
+
+        // Phase 3: Record failed request metrics
+        if (this.useMultiFactorRouting) {
+          const metricsTracker = getProviderMetricsTracker();
+          await metricsTracker.recordRequest(
+            provider.name,
+            0, // latency unknown for failed requests
+            false, // failure
+            'error',
+            { prompt: 0, completion: 0, total: 0 },
+            0, // no cost for failed requests
+            undefined // model unknown
+          );
         }
 
         // If fallback is disabled, throw immediately
@@ -610,5 +699,21 @@ export class Router {
         };
       })
     };
+  }
+
+  /**
+   * Estimate cost of a request based on tokens used
+   * Phase 3: Helper for metrics tracking
+   */
+  private estimateCost(providerName: string, tokensUsed: { prompt: number; completion: number; total: number }): number {
+    // Simplified cost estimation using average pricing
+    // In production, providers should report actual costs
+    const inputCostPer1M = 2.50;   // Average: $2.50 per 1M input tokens
+    const outputCostPer1M = 10.00; // Average: $10.00 per 1M output tokens
+
+    const inputCost = (tokensUsed.prompt / 1_000_000) * inputCostPer1M;
+    const outputCost = (tokensUsed.completion / 1_000_000) * outputCostPer1M;
+
+    return inputCost + outputCost;
   }
 }

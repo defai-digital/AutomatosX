@@ -48,6 +48,9 @@
     "node_modules",
     "dist",
     ".automatosx",
-    "tmp/**/*"
+    "tmp/**/*",
+    "src/providers/claude-sdk-provider.ts",
+    "src/providers/gemini-sdk-provider.ts",
+    "src/providers/openai-sdk-provider.ts"
   ]
 }

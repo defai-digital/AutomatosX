@@ -7,6 +7,31 @@ import { PredictiveLimitManager, resetPredictiveLimitManager } from '../../src/c
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 
+/**
+ * Safely delete a database file with retry logic for Windows
+ * Windows can have file locking delays after closing SQLite databases
+ */
+async function safeUnlink(filePath: string, maxRetries = 5, delayMs = 100): Promise<void> {
+  if (!existsSync(filePath)) {
+    return;
+  }
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      unlinkSync(filePath);
+      return;
+    } catch (err: any) {
+      // EBUSY (Windows file busy) or EPERM (Windows permission) errors are retryable
+      if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+      // If it's the last attempt or a different error, throw
+      throw err;
+    }
+  }
+}
+
 describe('Phase 3: PredictiveLimitManager', () => {
   const testDbPath = '.automatosx/test/predictive-limits-test.db';
   let manager: PredictiveLimitManager;
@@ -41,11 +66,12 @@ describe('Phase 3: PredictiveLimitManager', () => {
 
   afterEach(async () => {
     await manager.closeUsageDb();
-    // Clean up test database
+    // Clean up test database (with retry logic for Windows)
     const dbFile = '.automatosx/usage/usage-tracker.db';
-    if (existsSync(dbFile)) {
-      unlinkSync(dbFile);
-    }
+    await safeUnlink(dbFile);
+    // Also clean up WAL files if they exist
+    await safeUnlink(`${dbFile}-wal`);
+    await safeUnlink(`${dbFile}-shm`);
   });
 
   describe('recordUsage', () => {

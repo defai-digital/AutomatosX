@@ -7,6 +7,31 @@ import { CostTracker, resetCostTracker } from '../../src/core/cost-tracker.js';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 
+/**
+ * Safely delete a database file with retry logic for Windows
+ * Windows can have file locking delays after closing SQLite databases
+ */
+async function safeUnlink(filePath: string, maxRetries = 5, delayMs = 100): Promise<void> {
+  if (!existsSync(filePath)) {
+    return;
+  }
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      unlinkSync(filePath);
+      return;
+    } catch (err: any) {
+      // EBUSY (Windows file busy) or EPERM (Windows permission) errors are retryable
+      if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+      // If it's the last attempt or a different error, throw
+      throw err;
+    }
+  }
+}
+
 describe('Phase 3: CostTracker', () => {
   const testDbPath = '.automatosx/test/cost-tracker-test.db';
   let tracker: CostTracker;
@@ -30,10 +55,11 @@ describe('Phase 3: CostTracker', () => {
 
   afterEach(async () => {
     await tracker.close();
-    // Clean up test database
-    if (existsSync(testDbPath)) {
-      unlinkSync(testDbPath);
-    }
+    // Clean up test database (with retry logic for Windows)
+    await safeUnlink(testDbPath);
+    // Also clean up WAL files if they exist
+    await safeUnlink(`${testDbPath}-wal`);
+    await safeUnlink(`${testDbPath}-shm`);
   });
 
   describe('recordCost', () => {

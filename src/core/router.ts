@@ -105,7 +105,11 @@ export class Router {
 
     // Phase 2.2: Initialize policy-driven routing
     this.policyParser = new PolicyParser();
-    const costTracker = getCostTracker();
+    // Initialize CostTracker with default config if not already initialized
+    const costTracker = getCostTracker({
+      enabled: true,
+      persistPath: '.automatosx/costs'
+    });
     this.policyEvaluator = new PolicyEvaluator(PROVIDER_METADATA, costTracker);
     logger.debug('Policy-driven routing initialized');
 

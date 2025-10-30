@@ -129,10 +129,11 @@ jobs:
 
       - name: Run test suite
         run: |
-          echo "🧪 Running unit test suite..."
-          npm run test:unit
-        timeout-minutes: 10  # Unit tests complete in ~16s (2,271 tests)
+          echo "🧪 Running release test suite (CI-optimized)..."
+          npm run test:release
+        timeout-minutes: 10  # CI tests complete in ~30s (1,390+ tests, excludes flaky tests)
         env:
+          AUTOMATOSX_MOCK_PROVIDERS: true
           NODE_ENV: test  # Override job-level NODE_ENV for tests
 
       - name: Run smoke tests

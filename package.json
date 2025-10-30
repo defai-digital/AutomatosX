@@ -22,6 +22,7 @@
     "test:integration": "vitest run tests/integration",
     "test:all": "vitest run",
     "test:ci": "vitest run --config vitest.config.ci.ts",
+    "test:release": "vitest run --config vitest.config.ci.ts",
     "test:smoke": "bash tests/smoke/smoke-test.sh",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",

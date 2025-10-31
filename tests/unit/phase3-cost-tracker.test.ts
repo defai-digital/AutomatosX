@@ -2,7 +2,7 @@
  * Phase 3 Tests: CostTracker
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { CostTracker, resetCostTracker } from '../../src/core/cost-tracker.js';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
@@ -39,11 +39,17 @@ async function safeUnlink(filePath: string, maxRetries = 10, delayMs = 250): Pro
 }
 
 describe('Phase 3: CostTracker', () => {
-  const testDbPath = '.automatosx/test/cost-tracker-test.db';
   let tracker: CostTracker;
+  let testDbPath: string;
+  const testDbPaths: string[] = []; // Track all DB files for cleanup
 
   beforeEach(async () => {
     resetCostTracker();
+
+    // v6.0.8: Use unique DB file per test for complete isolation
+    // Eliminates Windows EBUSY errors and test data bleeding
+    testDbPath = `.automatosx/test/cost-tracker-test-${Date.now()}-${Math.random().toString(36).substring(7)}.db`;
+    testDbPaths.push(testDbPath);
 
     // Ensure test directory exists
     const dir = dirname(testDbPath);
@@ -61,14 +67,23 @@ describe('Phase 3: CostTracker', () => {
 
   afterEach(async () => {
     await tracker.close();
-    // Wait for file system to release locks (especially important on Windows)
-    // SQLite WAL mode can keep locks briefly after close()
-    await new Promise(resolve => setTimeout(resolve, 200));
-    // Clean up test database (with retry logic for Windows)
-    await safeUnlink(testDbPath);
-    // Also clean up WAL files if they exist
-    await safeUnlink(`${testDbPath}-wal`);
-    await safeUnlink(`${testDbPath}-shm`);
+    // No cleanup needed - unique file per test eliminates lock conflicts
+    // WAL checkpoint in close() handles cleanup internally
+  });
+
+  afterAll(async () => {
+    // One-time cleanup of all test databases
+    // This is non-blocking and best-effort
+    await new Promise(resolve => setTimeout(resolve, 100));
+    for (const dbPath of testDbPaths) {
+      try {
+        await safeUnlink(dbPath);
+        await safeUnlink(`${dbPath}-wal`);
+        await safeUnlink(`${dbPath}-shm`);
+      } catch {
+        // Ignore cleanup errors - temp files will be cleaned by CI
+      }
+    }
   });
 
   describe('recordCost', () => {

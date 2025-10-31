@@ -106,7 +106,12 @@ export class PerformanceTracker {
       .sort(([, a], [, b]) => b - a);
 
     for (const [name, duration] of sorted) {
-      const percentage = (duration / metrics.totalDuration * 100).toFixed(1);
+      // v6.2.12: Bug fix #39 - Prevent division by zero when totalDuration = 0
+      // If performance.now() returns same value as startTime, totalDuration = 0
+      // This can happen on extremely fast operations or right after clear()
+      const percentage = metrics.totalDuration > 0
+        ? (duration / metrics.totalDuration * 100).toFixed(1)
+        : '0.0';
       lines.push(`  ${name.padEnd(40)} ${duration.toFixed(2)}ms (${percentage}%)`);
     }
 

@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.12] - 2025-10-31
+
+### 🔧 Fixes
+
+**Performance Tracker Division by Zero (Bug #39)**
+
+Through ultra-deep heavy-thinking analysis of utility functions:
+
+- **Bug #39 (LOW)**: Division by zero in performance report generation when totalDuration = 0
+  - **File affected**: `src/utils/performance.ts:109`
+  - **Problem**: `(duration / metrics.totalDuration * 100)` divides by zero when `totalDuration = 0`
+  - **Impact**: Displays "Infinity%" in performance breakdown report
+  - **Root Cause**: No guard against totalDuration = 0 when calculating percentage breakdown
+  - **Fix**: Extract calculation into conditional - `totalDuration > 0 ? calculation : '0.0'`
+  - **Scenario**: When performance tracker is used for extremely fast operations (< 1ms) or immediately after clear()
+
+### 🔍 Analysis Methodology
+
+- **Ultra-deep utils analysis**: Systematically checked all division operations in `src/utils/` directory
+- **Edge case testing**: Identified totalDuration = 0 as triggering condition (performance.now() returns same value as startTime)
+- **Guard verification**: Added defensive check to prevent division by zero
+
+### 📊 Impact
+
+- **Users affected**: Users viewing performance reports for sub-millisecond operations
+- **Severity**: Low (cosmetic issue - displays incorrect percentage but doesn't crash)
+- **Breaking changes**: None
+- **Migration**: None required - automatic fix
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.2.11] - 2025-10-31
 
 ### 🔧 Fixes

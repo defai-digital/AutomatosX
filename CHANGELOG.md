@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.9] - 2025-10-31
+
+### 🔧 Fixes
+
+**Timeline Visualization Division by Zero (Bug #36)**
+
+Through systematic heavy-thinking analysis of division operations in agent execution code:
+
+- **Bug #36 (MEDIUM)**: Division by zero in timeline visualization when all agents complete in same millisecond
+  - **File affected**: `src/agents/parallel-agent-executor.ts:616`
+  - **Problem**: `totalDuration = maxEndTime - minStartTime` can be **0** if all agents complete instantly (same ms)
+  - **Impact**: RangeError crash - `entry.duration / 0` = `Infinity`, then `'█'.repeat(Infinity)` throws RangeError
+  - **Root Cause**: No guard against zero duration when calculating progress bar lengths
+  - **Fix**: Added `safeTotalDuration = Math.max(1, totalDuration)` to ensure minimum 1ms duration
+  - **Scenario**: Fast-executing agents or test scenarios where all agents complete in < 1ms
+
+### 🔍 Analysis Methodology
+
+- **Heavy-thinking division analysis**: Systematically checked all division operations in `src/agents/`
+- **Math operations verified**: `Math.max()` does NOT protect against `Infinity` (only against negative/smaller values)
+- **Error chain traced**: `x/0` → `Infinity` → `Math.floor(Infinity)` → `Infinity` → `repeat(Infinity)` → RangeError
+- **Fixed vulnerable operation**: parallel-agent-executor.ts timeline bar length calculation
+
+### 📊 Impact
+
+- **Users affected**: Users running parallel agents that complete very quickly (< 1ms)
+- **Severity**: Medium (rare but causes complete crash when triggered)
+- **Breaking changes**: None
+- **Migration**: None required - automatic fix
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.2.8] - 2025-10-31
 
 ### 🔧 Fixes

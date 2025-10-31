@@ -603,6 +603,10 @@ export class ParallelAgentExecutor {
     const maxEndTime = Math.max(...timeline.map(t => t.endTime));
     const totalDuration = maxEndTime - minStartTime;
 
+    // v6.2.9: Bug fix #36 - Prevent division by zero when all agents complete in same millisecond
+    // If totalDuration is 0, all agents finished instantly - use uniform bar lengths
+    const safeTotalDuration = Math.max(1, totalDuration);
+
     for (let level = 0; level <= maxLevel; level++) {
       const entriesAtLevel = timeline.filter(t => t.level === level);
 
@@ -613,7 +617,7 @@ export class ParallelAgentExecutor {
       output += chalk.gray(`Level ${level}:\n`);
 
       for (const entry of entriesAtLevel) {
-        const barLength = Math.max(1, Math.floor((entry.duration / totalDuration) * 40));
+        const barLength = Math.max(1, Math.floor((entry.duration / safeTotalDuration) * 40));
         const bar = '█'.repeat(barLength);
 
         let statusColor = chalk.green;

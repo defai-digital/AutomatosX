@@ -133,6 +133,15 @@ export class DatabaseConnectionPool {
     // Start health checks
     this.startHealthChecks();
 
+    // Bug #42: Register shutdown handler to cleanup health check interval
+    import('../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        await this.shutdown();
+      });
+    }).catch(() => {
+      logger.debug('DatabaseConnectionPool: process-manager not available for shutdown handler');
+    });
+
     logger.debug('Database connection pool initialized', {
       dbPath: this.config.dbPath,
       readPoolSize: this.config.readPoolSize,

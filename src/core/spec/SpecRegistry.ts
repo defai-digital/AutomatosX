@@ -239,13 +239,24 @@ export class SpecRegistry extends EventEmitter {
 
   /**
    * Wait for ongoing load to complete
+   * Bug #44: Added timeout to prevent interval leak if loading never completes
    */
   private async waitForLoad(): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
+      const maxWaitMs = 30000; // 30 seconds timeout
+      const startTime = Date.now();
+
       const checkInterval = setInterval(() => {
         if (!this.isLoading) {
           clearInterval(checkInterval);
           resolve();
+          return;
+        }
+
+        // Bug #44: Check timeout to prevent infinite loop
+        if (Date.now() - startTime > maxWaitMs) {
+          clearInterval(checkInterval);
+          reject(new Error(`Spec loading timeout after ${maxWaitMs}ms`));
         }
       }, 100);
     });

@@ -44,10 +44,23 @@ vi.mock('../../src/core/path-resolver.js', async () => {
   // Create a mock function that returns a Promise
   const mockDetectProjectRoot = vi.fn();
 
+  // Create a custom PathResolver class that uses testDir
+  class MockPathResolver extends actual.PathResolver {
+    async detectProjectRoot(): Promise<string> {
+      // Use the global test directory if available
+      const testDir = (global as any).__testDir;
+      if (testDir) {
+        return testDir;
+      }
+      // Fallback to original implementation
+      return super.detectProjectRoot();
+    }
+  }
+
   return {
     ...actual,
     detectProjectRoot: mockDetectProjectRoot,
-    PathResolver: actual.PathResolver
+    PathResolver: MockPathResolver
   };
 });
 

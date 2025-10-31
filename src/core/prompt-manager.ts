@@ -238,6 +238,10 @@ export class CLIPromptAdapter implements IPromptManager {
       const handleTimeout = () => {
         if (!resolved) {
           resolved = true;
+          // v6.2.7: Bug fix #34 - Clear warning timer to prevent memory leak
+          if (warningHandle) {
+            clearTimeout(warningHandle);
+          }
           console.log(`\n${template.timedOut}`);
           rl.close();
           this.rl = null;

@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.7] - 2025-10-31
+
+### 🔧 Fixes
+
+**Timer Cleanup Memory Leak (Bug #34)**
+
+Through systematic timer analysis across all setTimeout/setInterval operations:
+
+- **Bug #34 (LOW)**: Missing timer cleanup in prompt timeout handler (`src/core/prompt-manager.ts:238`)
+  - **Problem**: When main timeout fires, the warning timer (`warningHandle`) is not cleared
+  - **Impact**: Memory leak - warning timer continues running even after prompt resolved
+  - **Root Cause**: `handleTimeout()` clears readline and resolves promise, but forgets to clear `warningHandle`
+  - **Fix**: Added `clearTimeout(warningHandle)` in `handleTimeout()` before resolving (lines 242-244)
+  - **Pattern**: Symmetric cleanup - both answer callback and timeout handler now clear both timers
+
+### 🔍 Analysis Methodology
+
+- **Heavy-thinking timer analysis**: Systematically checked all setTimeout/setInterval in `src/core/`
+- **Verified safe operations**:
+  - db-connection-pool.ts queue timeouts (properly cleared in processWaitQueue)
+  - session-manager.ts save debouncing (clears before setting new)
+  - All setInterval operations have corresponding clear in destroy/close methods
+- **Fixed vulnerable operation**: prompt-manager.ts dual-timeout handling
+
+### 📊 Impact
+
+- **Users affected**: Users with interactive prompts that timeout (edge case)
+- **Severity**: Low (timer eventually completes, but wastes resources)
+- **Breaking changes**: None
+- **Migration**: None required - automatic cleanup improvement
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.2.6] - 2025-10-31
 
 ### 🔧 Fixes

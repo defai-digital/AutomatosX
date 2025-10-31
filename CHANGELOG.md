@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.5] - 2025-10-31
+
+### 🔧 Fixes
+
+**Routing and Cost Estimation Bugs (Bugs #31, #32)**
+
+Through heavy-thinking analysis and ax agent collaboration, identified and fixed 2 critical bugs in routing systems:
+
+- **Bug #31 (MEDIUM)**: Division by zero in routing statistics (`src/core/routing-strategy.ts:317`)
+  - **Problem**: Empty scores array caused `0/0 = NaN` in avgScores calculation
+  - **Impact**: Corrupted routing statistics with NaN values
+  - **Fix**: Added guard to check `scores.length === 0` before division, return 0 for empty arrays
+  - **Pattern**: Same defensive approach as Bugs #16, #19
+
+- **Bug #32 (HIGH)**: Unsafe metadata access crashes cost estimation (`src/core/router.ts:878-880`)
+  - **Problem**: Accessed `metadata.costPerToken.input/output` without validation
+  - **Impact**: TypeError crash if provider metadata missing `costPerToken` field
+  - **Fix**: Added comprehensive validation of metadata structure before access
+  - **Fallback**: Uses fallback pricing ($2.50/$10.00 per 1M tokens) if metadata invalid
+  - **Pattern**: Defensive programming to prevent production crashes
+
+### 📊 Impact
+
+- **Users affected**: All users using multi-factor routing and cost tracking
+- **Breaking changes**: None
+- **Migration**: None required - automatic graceful fallback for missing metadata
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.0.7] - 2025-10-30
 
 ### 🔧 Fixes

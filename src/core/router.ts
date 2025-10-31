@@ -874,9 +874,12 @@ export class Router {
     // Look up actual provider costs from metadata registry
     const metadata = PROVIDER_METADATA[providerName];
 
-    if (!metadata) {
-      // Fallback to average pricing if provider not found in metadata
-      logger.warn(`Provider metadata not found for cost estimation: ${providerName}, using fallback costs`);
+    // v6.2.5: Bug fix #32 - Validate metadata and costPerToken exist
+    if (!metadata || !metadata.costPerToken ||
+        typeof metadata.costPerToken.input !== 'number' ||
+        typeof metadata.costPerToken.output !== 'number') {
+      // Fallback to average pricing if provider not found or missing cost data
+      logger.warn(`Provider metadata or cost data not found for: ${providerName}, using fallback costs`);
       const inputCostPer1M = 2.50;   // Fallback: $2.50 per 1M input tokens
       const outputCostPer1M = 10.00; // Fallback: $10.00 per 1M output tokens
 

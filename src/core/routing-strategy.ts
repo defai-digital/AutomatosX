@@ -314,6 +314,11 @@ export class RoutingStrategyManager extends EventEmitter {
     }
 
     for (const [provider, scores] of Object.entries(scoresByProvider)) {
+      // v6.2.5: Bug fix #31 - Prevent division by zero
+      if (scores.length === 0) {
+        stats.avgScores[provider] = 0;
+        continue;
+      }
       const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
       stats.avgScores[provider] = avg;
     }

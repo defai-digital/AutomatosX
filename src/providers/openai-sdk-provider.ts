@@ -333,6 +333,9 @@ export class OpenAISDKProvider extends BaseProvider {
         this.currentStreamingFeedback = null;
       }
 
+      // v6.2.2: Stop progress tracking in mock mode (bugfix #9)
+      this.stopProgressTracking();
+
       return {
         content: mockContent,
         model: request.model || 'gpt-4o',

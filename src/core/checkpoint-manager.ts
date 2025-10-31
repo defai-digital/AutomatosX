@@ -170,7 +170,16 @@ export class CheckpointManager {
 
     // Load checkpoint data
     const checkpointJson = await fs.readFile(checkpointPath, 'utf-8');
-    const checkpoint = JSON.parse(checkpointJson) as CheckpointData;
+
+    let checkpoint: CheckpointData;
+    try {
+      checkpoint = JSON.parse(checkpointJson) as CheckpointData;
+    } catch (error) {
+      throw new CheckpointValidationError(
+        `Checkpoint file contains invalid JSON: ${runId} - ${(error as Error).message}`,
+        'INVALID_CHECKPOINT_FORMAT'
+      );
+    }
 
     // Validate checkpoint
     await this.validateCheckpoint(checkpoint);

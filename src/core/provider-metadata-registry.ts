@@ -8,6 +8,7 @@
  */
 
 import type { ProviderMetadata, ProviderMetadataRegistry } from '@/types/provider-metadata.js';
+import { flagManager } from '@/core/feature-flags/flags.js';
 
 /**
  * Provider metadata registry
@@ -55,6 +56,10 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
    * - Priority: 2
    * - Best for: Low cost, large context, vision
    * - Cost: Low ($0.125-$0.375 per 1M tokens)
+   *
+   * **IMPORTANT**: Gemini DOES support streaming (via progressive stdout parsing).
+   * The streaming feature is controlled by feature flag 'gemini_streaming' for gradual rollout.
+   * See getProviderMetadata() for runtime feature flag application.
    */
   'gemini-cli': {
     name: 'gemini-cli',
@@ -74,7 +79,7 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
       errorRate: 0.005      // 0.5% error rate
     },
     features: {
-      streaming: false,  // No native streaming in CLI
+      streaming: true,  // SOURCE OF TRUTH: Gemini supports streaming (validated 2025-10-31)
       vision: true,
       functionCalling: true
     }
@@ -211,9 +216,33 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
 
 /**
  * Get provider metadata by name
+ *
+ * Applies runtime feature flags to metadata before returning.
+ * This enables gradual rollout of features without changing source of truth.
  */
 export function getProviderMetadata(providerName: string): ProviderMetadata | null {
-  return PROVIDER_METADATA[providerName] || null;
+  const baseMetadata = PROVIDER_METADATA[providerName];
+  if (!baseMetadata) return null;
+
+  // Apply feature flags to Gemini metadata
+  if (providerName === 'gemini-cli') {
+    // CRITICAL FIX: Use feature flag for gradual rollout of streaming
+    // Source of truth: PROVIDER_METADATA['gemini-cli'].features.streaming = true
+    // Runtime: Override based on feature flag rollout percentage
+    const streamingEnabled = flagManager.isEnabled('gemini_streaming', {
+      provider: providerName
+    });
+
+    return {
+      ...baseMetadata,
+      features: {
+        ...baseMetadata.features,
+        streaming: streamingEnabled
+      }
+    };
+  }
+
+  return baseMetadata;
 }
 
 /**

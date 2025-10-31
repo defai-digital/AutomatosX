@@ -47,6 +47,7 @@ import { doctorCommand } from './commands/doctor.js';
 import { setupCommand } from './commands/setup.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
+import { flagsCommand } from './commands/flags.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -92,6 +93,8 @@ globalTracker.mark('cli_start');
   .example('$0 cleanup openai --force', 'Force cleanup OpenAI processes')
   .example('$0 analytics summary', 'Show usage analytics summary')
   .example('$0 analytics optimize', 'Show optimization recommendations')
+  .example('$0 flags list', 'List all feature flags')
+  .example('$0 flags rollout gemini_streaming 10', 'Increase feature rollout to 10%')
 
   // Global options
   .option('debug', {
@@ -134,6 +137,7 @@ globalTracker.mark('cli_start');
   .command(geminiCommand)
   .command(providerLimitsCommand)
   .command(providersCommand)
+  .command(flagsCommand)
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)

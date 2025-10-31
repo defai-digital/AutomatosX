@@ -3,13 +3,19 @@
  */
 
 // v5.6.18: Import and re-export RetryConfig, and other v5.6.18 config types from config.ts for consistency
+// v6.0.7 Phase 3: Added SandboxConfig import
+// v6.1.0 Phase 4: Telemetry and analytics types
 import type {
   RetryConfig as RetryConfigImpl,
   CircuitBreakerConfig,
   ProcessManagementConfig,
   VersionDetectionConfig,
   ClaudeProviderConfig,
-  GeminiProviderConfig
+  GeminiProviderConfig,
+  IntegrationMode,
+  OpenAISDKConfig,
+  ProviderLimitTrackingConfig,
+  SandboxConfig
 } from './config.js';
 
 // Re-export RetryConfig for backward compatibility
@@ -40,6 +46,12 @@ export interface ProviderConfig {
   // v5.8.6: Provider-specific configuration
   claude?: ClaudeProviderConfig;  // Claude Code specific configuration
   gemini?: GeminiProviderConfig;  // Gemini CLI specific configuration
+
+  // v6.0.7: OpenAI integration mode and SDK configuration
+  integration?: IntegrationMode;  // Integration mode: 'cli', 'sdk', 'mcp', or 'auto'
+  sdk?: OpenAISDKConfig;          // OpenAI SDK configuration (when integration === 'sdk')
+  limitTracking?: ProviderLimitTrackingConfig;  // Usage limit tracking configuration
+  sandbox?: SandboxConfig;        // v6.0.7 Phase 3: Sandbox security configuration
 }
 
 export interface RateLimitConfig {

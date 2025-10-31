@@ -422,6 +422,93 @@ export class ProviderError extends BaseError {
       }
     );
   }
+
+  /**
+   * OpenAI Codex CLI not found error
+   * v6.0.7: Enhanced UX for missing CLI
+   */
+  static openaiCLINotFound(): ProviderError {
+    return new ProviderError(
+      'OpenAI Codex CLI not found',
+      ErrorCode.PROVIDER_UNAVAILABLE,
+      [
+        'Install via npm: npm install -g @openai/codex-cli',
+        'Install via Homebrew (macOS): brew install --cask codex',
+        'Verify installation: codex --version',
+        'Check PATH environment variable includes the installation directory'
+      ],
+      {
+        providerName: 'openai',
+        installDocs: 'https://github.com/defai-digital/automatosx/blob/main/docs/integrations/openai-codex.md'
+      }
+    );
+  }
+
+  /**
+   * OpenAI authentication error
+   * v6.0.7: Enhanced UX for auth issues
+   */
+  static openaiAuthenticationFailed(errorMessage?: string): ProviderError {
+    return new ProviderError(
+      errorMessage ? `OpenAI authentication failed: ${errorMessage}` : 'OpenAI authentication failed',
+      ErrorCode.PROVIDER_AUTH_ERROR,
+      [
+        'Interactive login (recommended): codex login',
+        'Manual API key: export OPENAI_API_KEY="sk-..."',
+        'CLI-only mode (no API access): export AUTOMATOSX_CLI_ONLY=true',
+        'Verify authentication: codex exec "test"'
+      ],
+      {
+        providerName: 'openai',
+        authDocs: 'https://github.com/defai-digital/automatosx/blob/main/docs/troubleshooting/authentication.md'
+      }
+    );
+  }
+
+  /**
+   * OpenAI network/API connection error
+   * v6.0.7: Enhanced UX for connection issues
+   */
+  static openaiConnectionFailed(errorMessage?: string): ProviderError {
+    return new ProviderError(
+      errorMessage ? `OpenAI API connection failed: ${errorMessage}` : 'Cannot connect to OpenAI API',
+      ErrorCode.PROVIDER_UNAVAILABLE,
+      [
+        'Check network connectivity',
+        'Verify not behind restrictive firewall or proxy',
+        'Use CLI-only mode if behind firewall: export AUTOMATOSX_CLI_ONLY=true',
+        'Check OpenAI API status: https://status.openai.com'
+      ],
+      {
+        providerName: 'openai',
+        cliOnlyMode: 'AUTOMATOSX_CLI_ONLY=true'
+      }
+    );
+  }
+
+  /**
+   * OpenAI timeout error with context
+   * v6.0.7: Enhanced UX for timeout issues
+   */
+  static openaiTimeout(timeoutMs: number, taskContext?: string): ProviderError {
+    const minutes = Math.round(timeoutMs / 60000);
+    return new ProviderError(
+      `OpenAI execution timeout after ${timeoutMs}ms (${minutes} minutes)${taskContext ? `: ${taskContext}` : ''}`,
+      ErrorCode.PROVIDER_TIMEOUT,
+      [
+        `Increase timeout: Edit automatosx.config.json → providers.openai.timeout`,
+        'Try a simpler prompt or reduce context size',
+        'Check network stability and latency',
+        'Verify OpenAI API status: https://status.openai.com'
+      ],
+      {
+        providerName: 'openai',
+        timeoutMs,
+        minutes,
+        currentConfig: 'automatosx.config.json → providers.openai.timeout'
+      }
+    );
+  }
 }
 
 /**

@@ -515,8 +515,10 @@ export interface OpenAIConfig {
 // ========================================
 
 export interface RouterConfig {
-  healthCheckInterval?: number;  // Background health check interval (ms), optional
-  providerCooldownMs?: number;   // Cooldown period for failed providers (ms)
+  healthCheckInterval?: number;         // Background health check interval (ms), optional
+  providerCooldownMs?: number;          // Cooldown period for failed providers (ms)
+  enableFreeTierPrioritization?: boolean;  // Enable prioritization of free tier providers (default: true)
+  enableWorkloadAwareRouting?: boolean;    // Enable workload-aware provider routing (default: true)
 }
 
 // ========================================
@@ -852,8 +854,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
   },
 
   // v5.7.0: Router configuration for background health checks
+  // v6.3.1+: Cost optimization features
   router: {
-    healthCheckInterval: 60000,  // 60 seconds (default: enabled)
-    providerCooldownMs: 30000    // 30 seconds cooldown for failed providers
+    healthCheckInterval: 60000,             // 60 seconds (default: enabled)
+    providerCooldownMs: 30000,              // 30 seconds cooldown for failed providers
+    enableFreeTierPrioritization: true,     // v6.3.1: Enable free tier prioritization (default: true)
+    enableWorkloadAwareRouting: true        // v6.3.1: Enable workload-aware routing (default: true)
   }
 };

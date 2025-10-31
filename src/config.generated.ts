@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-31T17:24:43.344Z
+ * Generated: 2025-10-31T17:41:12.644Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -327,7 +327,9 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   },
   "router": {
     "healthCheckInterval": 60000,
-    "providerCooldownMs": 30000
+    "providerCooldownMs": 30000,
+    "enableFreeTierPrioritization": true,
+    "enableWorkloadAwareRouting": true
   },
   "telemetry": {
     "enabled": false,
@@ -336,14 +338,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "retentionDays": 30,
     "bufferSize": 100
   },
-  "version": "6.3.0"
+  "version": "6.3.2"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-31T17:24:43.344Z',
+  generatedAt: '2025-10-31T17:41:12.644Z',
   sourceFile: 'automatosx.config.json',
-  version: '6.3.0'
+  version: '6.3.2'
 } as const;

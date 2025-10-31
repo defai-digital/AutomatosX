@@ -194,7 +194,9 @@ export class McpServer {
       providers,
       fallbackEnabled: true,
       healthCheckInterval,
-      providerCooldownMs: config.router?.providerCooldownMs
+      providerCooldownMs: config.router?.providerCooldownMs,
+      enableFreeTierPrioritization: config.router?.enableFreeTierPrioritization,
+      enableWorkloadAwareRouting: config.router?.enableWorkloadAwareRouting
     });
 
     // Initialize SessionManager

@@ -280,7 +280,9 @@ export class AgentExecutionService {
         providers,
         fallbackEnabled: true,
         healthCheckInterval: this.config.router?.healthCheckInterval,
-        providerCooldownMs: this.config.router?.providerCooldownMs
+        providerCooldownMs: this.config.router?.providerCooldownMs,
+        enableFreeTierPrioritization: this.config.router?.enableFreeTierPrioritization,
+        enableWorkloadAwareRouting: this.config.router?.enableWorkloadAwareRouting
       });
       this.ownsRouter = true;
     }

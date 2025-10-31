@@ -218,7 +218,9 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
         providers,
         fallbackEnabled: true,
         healthCheckInterval,
-        providerCooldownMs: config.router?.providerCooldownMs
+        providerCooldownMs: config.router?.providerCooldownMs,
+        enableFreeTierPrioritization: config.router?.enableFreeTierPrioritization,
+        enableWorkloadAwareRouting: config.router?.enableWorkloadAwareRouting
       });
 
       // 7. Initialize orchestration managers

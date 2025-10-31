@@ -305,7 +305,9 @@
   },
   "router": {
     "healthCheckInterval": 60000,
-    "providerCooldownMs": 30000
+    "providerCooldownMs": 30000,
+    "enableFreeTierPrioritization": true,
+    "enableWorkloadAwareRouting": true
   },
   "telemetry": {
     "enabled": false,
@@ -314,5 +316,5 @@
     "retentionDays": 30,
     "bufferSize": 100
   },
-  "version": "6.3.1"
+  "version": "6.3.2"
 }

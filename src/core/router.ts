@@ -57,6 +57,8 @@ export interface RouterConfig {
   strategy?: RoutingConfig; // Phase 3: Multi-factor routing configuration
   workspacePath?: string; // Phase 2.3: Workspace path for trace logging
   enableTracing?: boolean; // Phase 2.3: Enable trace logging (default: false)
+  enableFreeTierPrioritization?: boolean; // v6.3.1: Enable free tier prioritization (default: true)
+  enableWorkloadAwareRouting?: boolean; // v6.3.1: Enable workload-aware routing (default: true)
 }
 
 export class Router {
@@ -66,6 +68,7 @@ export class Router {
   private penalizedProviders: Map<string, number>; // provider name -> penalty expiry timestamp
   private providerCooldownMs: number;
   private cache?: ResponseCache;
+  private routerConfig: RouterConfig; // v6.3.1: Store config for feature flags
 
   // Phase 3: Health check metrics tracking
   private healthCheckIntervalMs?: number;
@@ -87,6 +90,9 @@ export class Router {
   private tracer?: RouterTraceLogger;
 
   constructor(config: RouterConfig) {
+    // v6.3.1: Store config for feature flags
+    this.routerConfig = config;
+
     // Sort providers by priority (lower number = higher priority)
     this.providers = [...config.providers].sort((a, b) => {
       return a.priority - b.priority;
@@ -331,88 +337,94 @@ export class Router {
       }
     }
 
-    // Phase 3A: Prioritize providers with free tier quota available
-    try {
-      const freeTierManager = getFreeTierManager();
-      const providersWithFreeTier: Provider[] = [];
-      const providersWithoutFreeTier: Provider[] = [];
+    // Phase 3A: Prioritize providers with free tier quota available (if enabled)
+    const enableFreeTierPrioritization = this.routerConfig?.enableFreeTierPrioritization ?? true;
+    if (enableFreeTierPrioritization) {
+      try {
+        const freeTierManager = getFreeTierManager();
+        const providersWithFreeTier: Provider[] = [];
+        const providersWithoutFreeTier: Provider[] = [];
 
-      for (const provider of providersToTry) {
-        if (freeTierManager.hasFreeTier(provider.name)) {
-          const quota = freeTierManager.getQuota(provider.name);
-          if (quota.available) {
-            providersWithFreeTier.push(provider);
-            logger.debug(`Provider ${provider.name} has free tier quota available`, {
-              requestsRemaining: quota.requestsRemaining,
-              tokensRemaining: quota.tokensRemaining
-            });
+        for (const provider of providersToTry) {
+          if (freeTierManager.hasFreeTier(provider.name)) {
+            const quota = freeTierManager.getQuota(provider.name);
+            if (quota.available) {
+              providersWithFreeTier.push(provider);
+              logger.debug(`Provider ${provider.name} has free tier quota available`, {
+                requestsRemaining: quota.requestsRemaining,
+                tokensRemaining: quota.tokensRemaining
+              });
+            } else {
+              providersWithoutFreeTier.push(provider);
+            }
           } else {
             providersWithoutFreeTier.push(provider);
           }
-        } else {
-          providersWithoutFreeTier.push(provider);
         }
-      }
 
-      // Reorder: free tier first, then paid tier
-      if (providersWithFreeTier.length > 0) {
-        providersToTry = [...providersWithFreeTier, ...providersWithoutFreeTier];
-        logger.info('Free tier providers prioritized', {
-          freeTierProviders: providersWithFreeTier.map(p => p.name),
-          paidProviders: providersWithoutFreeTier.map(p => p.name)
+        // Reorder: free tier first, then paid tier
+        if (providersWithFreeTier.length > 0) {
+          providersToTry = [...providersWithFreeTier, ...providersWithoutFreeTier];
+          logger.info('Free tier providers prioritized', {
+            freeTierProviders: providersWithFreeTier.map(p => p.name),
+            paidProviders: providersWithoutFreeTier.map(p => p.name)
+          });
+        }
+      } catch (error) {
+        // Free tier prioritization failed - log warning and continue
+        logger.warn('Free tier prioritization failed, continuing with existing order', {
+          error: (error as Error).message
         });
       }
-    } catch (error) {
-      // Free tier prioritization failed - log warning and continue
-      logger.warn('Free tier prioritization failed, continuing with existing order', {
-        error: (error as Error).message
-      });
     }
 
-    // Phase 3B: Apply workload-aware routing
-    try {
-      const analyzer = getWorkloadAnalyzer();
-      const workload = analyzer.analyze(request);
-      const recommendation = analyzer.recommend(workload);
+    // Phase 3B: Apply workload-aware routing (if enabled)
+    const enableWorkloadAwareRouting = this.routerConfig?.enableWorkloadAwareRouting ?? true;
+    if (enableWorkloadAwareRouting) {
+      try {
+        const analyzer = getWorkloadAnalyzer();
+        const workload = analyzer.analyze(request);
+        const recommendation = analyzer.recommend(workload);
 
-      // Reorder providers based on workload recommendation
-      if (recommendation.preferredProviders.length > 0) {
-        // Create a preference map (lower index = higher preference)
-        const preferenceMap = new Map<string, number>();
-        recommendation.preferredProviders.forEach((provider, index) => {
-          preferenceMap.set(provider, index);
-        });
+        // Reorder providers based on workload recommendation
+        if (recommendation.preferredProviders.length > 0) {
+          // Create a preference map (lower index = higher preference)
+          const preferenceMap = new Map<string, number>();
+          recommendation.preferredProviders.forEach((provider, index) => {
+            preferenceMap.set(provider, index);
+          });
 
-        // Sort providers by workload preference, fallback to current order
-        const originalOrder = providersToTry.map(p => p.name);
-        providersToTry = [...providersToTry].sort((a, b) => {
-          const prefA = preferenceMap.get(a.name) ?? 999;
-          const prefB = preferenceMap.get(b.name) ?? 999;
+          // Sort providers by workload preference, fallback to current order
+          const originalOrder = providersToTry.map(p => p.name);
+          providersToTry = [...providersToTry].sort((a, b) => {
+            const prefA = preferenceMap.get(a.name) ?? 999;
+            const prefB = preferenceMap.get(b.name) ?? 999;
 
-          // If preferences are equal, maintain original order
-          if (prefA === prefB) {
-            return originalOrder.indexOf(a.name) - originalOrder.indexOf(b.name);
-          }
+            // If preferences are equal, maintain original order
+            if (prefA === prefB) {
+              return originalOrder.indexOf(a.name) - originalOrder.indexOf(b.name);
+            }
 
-          return prefA - prefB;
-        });
+            return prefA - prefB;
+          });
 
-        logger.info('Workload-aware routing applied', {
-          sizeClass: workload.sizeClass,
-          estimatedTokens: workload.estimatedTokens,
-          streaming: workload.requiresStreaming,
-          complexity: workload.complexity,
-          recommendation: recommendation.reason,
-          providersOrder: providersToTry.map(p => p.name),
-          costOptimized: recommendation.costOptimized,
-          speedOptimized: recommendation.speedOptimized
+          logger.info('Workload-aware routing applied', {
+            sizeClass: workload.sizeClass,
+            estimatedTokens: workload.estimatedTokens,
+            streaming: workload.requiresStreaming,
+            complexity: workload.complexity,
+            recommendation: recommendation.reason,
+            providersOrder: providersToTry.map(p => p.name),
+            costOptimized: recommendation.costOptimized,
+            speedOptimized: recommendation.speedOptimized
+          });
+        }
+      } catch (error) {
+        // Workload analysis failed - log warning and continue
+        logger.warn('Workload-aware routing failed, continuing with existing order', {
+          error: (error as Error).message
         });
       }
-    } catch (error) {
-      // Workload analysis failed - log warning and continue
-      logger.warn('Workload-aware routing failed, continuing with existing order', {
-        error: (error as Error).message
-      });
     }
 
     // Phase 3: Reorder providers using multi-factor routing if enabled

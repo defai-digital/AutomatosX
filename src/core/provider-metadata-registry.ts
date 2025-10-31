@@ -81,17 +81,25 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
   },
 
   /**
-   * Anthropic Claude (claude-opus-4 via claude CLI)
+   * Anthropic Claude (via claude CLI)
    * - Priority: 3
    * - Best for: Long-form content, reasoning, code analysis
-   * - Cost: High ($3.00-$15.00 per 1M tokens)
+   * - Cost: Medium-High (varies by model)
+   *
+   * Model-specific pricing (per 1M tokens):
+   * - claude-3-5-haiku-20241022:  $0.80 input / $4.00 output (fastest, cheapest)
+   * - claude-3-5-sonnet-20241022: $3.00 input / $15.00 output (balanced, default)
+   * - claude-3-opus-20240229:     $15.00 input / $75.00 output (best reasoning)
+   *
+   * Default pricing below reflects Sonnet (most commonly used).
+   * Actual cost varies by selected model (use --model flag).
    */
   'claude-code': {
     name: 'claude-code',
     cloud: 'aws',
     regions: ['us-east-1', 'us-west-2', 'eu-central-1'],
     costPerToken: {
-      input: 0.0030,   // $3.00 per 1M input tokens (Claude Opus 4)
+      input: 0.0030,   // $3.00 per 1M input tokens (Sonnet default)
       output: 0.0150   // $15.00 per 1M output tokens
     },
     latencyEstimate: {
@@ -104,7 +112,7 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
       errorRate: 0.001      // 0.1% error rate
     },
     features: {
-      streaming: false,  // No native streaming in CLI
+      streaming: true,  // v6.1.0: Streaming support added
       vision: false,
       functionCalling: false
     }
@@ -168,15 +176,21 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
 
   /**
    * Anthropic Claude SDK (future support)
-   * - Same as 'claude-code' but via SDK
+   * - Same as 'claude-code' but via SDK instead of CLI
+   * - Slightly better latency due to native SDK integration
+   *
+   * Model-specific pricing (per 1M tokens):
+   * - claude-3-5-haiku-20241022:  $0.80 input / $4.00 output (fastest, cheapest)
+   * - claude-3-5-sonnet-20241022: $3.00 input / $15.00 output (balanced, default)
+   * - claude-3-opus-20240229:     $15.00 input / $75.00 output (best reasoning)
    */
   'claude-sdk': {
     name: 'claude-sdk',
     cloud: 'aws',
     regions: ['us-east-1', 'us-west-2', 'eu-central-1'],
     costPerToken: {
-      input: 0.0030,
-      output: 0.0150
+      input: 0.0030,   // $3.00 per 1M input tokens (Sonnet default)
+      output: 0.0150   // $15.00 per 1M output tokens
     },
     latencyEstimate: {
       p50: 900,   // Slightly faster than CLI
@@ -188,7 +202,7 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
       errorRate: 0.001
     },
     features: {
-      streaming: true,  // SDK has streaming
+      streaming: true,  // SDK has native streaming support
       vision: false,
       functionCalling: false
     }

@@ -513,6 +513,14 @@ export class ClaudeProvider extends BaseProvider {
       args.push('--model', request.model);
     }
 
+    // v6.1.0: Fallback model support for reliability
+    // Priority: context override > config default
+    // Fallback model is used when primary model fails or is unavailable
+    const fallbackModel = request.context?.fallbackModel ?? claudeConfig?.fallbackModel;
+    if (fallbackModel) {
+      args.push('--fallback-model', fallbackModel);
+    }
+
     // v5.8.6: Configurable allowed tools
     // Priority: context override > config default > fallback
     const allowedTools = request.context?.allowedTools ??

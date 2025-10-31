@@ -254,10 +254,11 @@ export class WorkerPool {
       if (code !== 0 && !this.shutdownRequested) {
         logger.warn('Worker exited unexpectedly', { code });
 
-        // CRITICAL FIX: Clear timeout before removing worker
-        if ((workerInfo as any).timeout) {
-          clearTimeout((workerInfo as any).timeout);
-          delete (workerInfo as any).timeout;
+        // Bug #11: Clear taskTimeout before removing worker to prevent resource leak
+        // Previous code referenced wrong property name 'timeout' instead of 'taskTimeout'
+        if (workerInfo.taskTimeout) {
+          clearTimeout(workerInfo.taskTimeout);
+          workerInfo.taskTimeout = undefined;
         }
 
         // If worker was busy, fail the task

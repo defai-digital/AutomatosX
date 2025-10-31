@@ -77,7 +77,10 @@ export class RateLimiter {
     client.timestamps = client.timestamps.filter(ts => ts >= windowStart);
 
     // Check if limit exceeded
-    if (client.timestamps.length >= this.options.maxRequests) {
+    // v6.2.11: Bug fix #38 - Guard against maxRequests = 0 causing undefined array access
+    // When maxRequests is 0, timestamps.length >= 0 is always true even when empty
+    // Must check timestamps has elements before accessing timestamps[0]
+    if (client.timestamps.length >= this.options.maxRequests && client.timestamps.length > 0) {
       // Block client for the remainder of the window
       client.blocked = true;
       client.blockUntil = client.timestamps[0]! + this.options.windowMs;

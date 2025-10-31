@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.11] - 2025-10-31
+
+### 🔧 Fixes
+
+**Rate Limiter Array Access Bug (Bug #38)**
+
+Through ultra-deep heavy-thinking analysis of MCP middleware code:
+
+- **Bug #38 (MEDIUM)**: Undefined array access in rate limiter when maxRequests = 0
+  - **File affected**: `src/mcp/middleware/rate-limiter.ts:83`
+  - **Problem**: `if (timestamps.length >= maxRequests)` is always true when `maxRequests = 0`, even when timestamps array is empty
+  - **Impact**: Accessing `timestamps[0]` when array is empty returns `undefined`, causing `blockUntil = NaN`
+  - **Root Cause**: No guard against empty timestamps array when maxRequests is configured as 0
+  - **Fix**: Added additional check `&& client.timestamps.length > 0` to ensure array has elements before access
+  - **Scenario**: When RateLimiter is instantiated with `{ maxRequests: 0 }` configuration
+
+### 🔍 Analysis Methodology
+
+- **Ultra-deep MCP analysis**: Systematically checked all array access patterns in `src/mcp/` directory
+- **Edge case testing**: Identified maxRequests = 0 as triggering condition
+- **Guard verification**: Added defensive check to prevent undefined access
+
+### 📊 Impact
+
+- **Users affected**: Users configuring rate limiter with maxRequests = 0 (rare edge case)
+- **Severity**: Medium (causes NaN in blockUntil, breaks rate limiting logic)
+- **Breaking changes**: None
+- **Migration**: None required - automatic fix
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.2.10] - 2025-10-31
 
 ### 🔧 Fixes

@@ -809,15 +809,28 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           const tokens = result.response.tokensUsed;
           const model = result.response.model || 'unknown';
 
-          // Calculate cost based on model (OpenAI pricing as of 2024)
+          // Calculate cost based on model (pricing as of Oct 2024)
+          // Prices are per 1M tokens in USD
           const pricing: Record<string, { input: number; output: number }> = {
+            // OpenAI models
             'gpt-4o': { input: 2.50, output: 10.00 },
             'gpt-4o-mini': { input: 0.15, output: 0.60 },
             'gpt-4-turbo': { input: 10.00, output: 30.00 },
             'gpt-4': { input: 30.00, output: 60.00 },
             'gpt-3.5-turbo': { input: 0.50, output: 1.50 },
             'o1-preview': { input: 15.00, output: 60.00 },
-            'o1-mini': { input: 3.00, output: 12.00 }
+            'o1-mini': { input: 3.00, output: 12.00 },
+
+            // Claude models (v6.1.0 Phase 3)
+            'claude-3-5-haiku-20241022': { input: 0.80, output: 4.00 },
+            'claude-3-5-sonnet-20241022': { input: 3.00, output: 15.00 },
+            'claude-3-opus-20240229': { input: 15.00, output: 75.00 },
+            'claude-default': { input: 3.00, output: 15.00 }, // Assumes Sonnet
+
+            // Google Gemini models
+            'gemini-2.0-flash-exp': { input: 0.125, output: 0.375 },
+            'gemini-1.5-pro': { input: 1.25, output: 5.00 },
+            'gemini-1.5-flash': { input: 0.075, output: 0.30 }
           };
 
           let cost = 0;

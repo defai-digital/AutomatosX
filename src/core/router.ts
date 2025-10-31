@@ -45,6 +45,9 @@ import { getFreeTierManager } from './free-tier/free-tier-manager.js';
 // Phase 3B: Workload-aware routing
 import { getWorkloadAnalyzer } from './workload/workload-analyzer.js';
 
+// Provider session management (provider override)
+import { getProviderSession } from './provider-session.js';
+
 export interface RouterConfig {
   providers: Provider[];
   fallbackEnabled: boolean;
@@ -189,6 +192,39 @@ export class Router {
       'execute',
       'provider'
     );
+
+    // Check for provider override (session-based provider switch)
+    const providerSession = getProviderSession();
+    if (providerSession.hasOverride()) {
+      const override = providerSession.getOverride();
+      const overrideProvider = this.providers.find(p => p.name === override?.provider);
+
+      if (overrideProvider) {
+        logger.info('Provider override active', {
+          provider: override?.provider,
+          reason: override?.reason,
+          createdAt: new Date(override?.createdAt || 0)
+        });
+
+        // Execute directly with overridden provider (skip routing)
+        try {
+          const response = await overrideProvider.execute(request);
+          timer.end({ provider: override?.provider, overridden: true });
+          return response;
+        } catch (error) {
+          // Override provider failed - log error and continue to normal routing
+          logger.error('Override provider failed, falling back to normal routing', {
+            provider: override?.provider,
+            error: (error as Error).message
+          });
+        }
+      } else {
+        logger.warn('Provider override set but provider not found', {
+          override: override?.provider,
+          availableProviders: this.providers.map(p => p.name)
+        });
+      }
+    }
 
     const availableProviders = await this.getAvailableProviders();
 

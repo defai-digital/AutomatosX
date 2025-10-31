@@ -58,6 +58,11 @@
         "enabled": true,
         "window": "daily",
         "resetHourUtc": 0
+      },
+      "gemini": {
+        "approvalMode": "auto_edit",
+        "embeddingModel": "text-embedding-004",
+        "enableRealEmbeddings": false
       }
     },
     "openai": {

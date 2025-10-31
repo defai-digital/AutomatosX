@@ -379,18 +379,193 @@ automatosx config --set providers.claude.model --value claude-3-opus-20240229
 
 ### Gemini API errors
 
-**Error**: `RESOURCE_EXHAUSTED`
+#### Free Tier Not Working
+
+**Symptom**: Gemini always shows paid usage, never uses free tier
+
+**Causes**:
+1. Free tier quota already exhausted
+2. Gemini CLI not authenticated
+3. Free tier tracking disabled
 
 **Solution**:
 
 ```bash
-# Gemini has aggressive rate limits on free tier
-# Use exponential backoff (already built in)
-# Or upgrade to paid tier
+# Check authentication
+gemini whoami
 
-# Switch to Claude as fallback
-automatosx config --set providers.preferred --value claude
+# Check free tier status
+ax free-tier status
+
+# Expected output:
+# Daily Requests:  342 / 1,500 (23%)
+# Daily Tokens:    256,789 / 1,000,000 (26%)
+# Status: ✅ Healthy
+
+# If exhausted, wait for midnight UTC reset
+# Or enable fallback providers:
+# Edit automatosx.config.json:
+{
+  "providers": {
+    "gemini-cli": { "priority": 1 },
+    "openai": { "priority": 2 }  // Fallback when free tier exhausted
+  }
+}
+
+# Check tracking is enabled
+cat automatosx.config.json | grep -A3 "limitTracking"
+# Should show: "enabled": true, "window": "daily"
 ```
+
+#### Error: `RESOURCE_EXHAUSTED`
+
+**Cause**: Free tier limit reached (1,500 requests/day or 1M tokens/day)
+
+**Solution**:
+
+```bash
+# Check current usage
+ax free-tier status
+
+# View usage history
+ax free-tier history --days 7
+
+# Options:
+# 1. Wait for midnight UTC reset (automatic)
+# 2. Enable fallback providers (automatic with multi-provider setup)
+# 3. Upgrade to paid tier (10K requests/day, 10M tokens/day)
+
+# Check when quota resets
+ax free-tier status | grep "Resets in"
+```
+
+#### Error: "Authentication failed"
+
+**Cause**: Gemini CLI not authenticated or credentials expired
+
+**Solution**:
+
+```bash
+# Check authentication status
+gemini whoami
+
+# If not authenticated:
+gemini login
+
+# Follow the browser authentication flow
+# Then verify:
+ax providers test --provider gemini-cli
+# Should show: ✓ gemini-cli: Available
+```
+
+#### Error: "Model not available"
+
+**Cause**: Gemini CLI selecting unavailable model
+
+**Solution**:
+
+```bash
+# Update Gemini CLI to latest version
+gemini update
+
+# Or reinstall:
+brew upgrade gemini-cli  # macOS
+apt upgrade gemini-cli   # Ubuntu
+
+# Verify version
+gemini --version
+# Should be: v2.1.0 or higher
+```
+
+#### Streaming Not Working
+
+**Symptom**: Responses come all at once, not streamed
+
+**Causes**:
+1. Feature flag not enabled
+2. Client doesn't support streaming
+
+**Solution**:
+
+```bash
+# Check feature flag status
+ax flags list
+# Should show: gemini_streaming: 100% rollout
+
+# If not 100%, increase rollout:
+ax flags rollout gemini_streaming 100
+
+# Verify streaming in provider info
+ax providers info gemini-cli
+# Features section should show: Streaming: ✓
+
+# Test streaming
+ax run backend "create hello world" --verbose
+# Watch for incremental output
+```
+
+#### Parameter Warnings: "temperature not supported"
+
+**Symptom**: Warning messages about unsupported parameters
+
+**Cause**: Gemini CLI doesn't support `maxTokens`, `temperature`, `topP` parameters
+
+**This is expected behavior**: Gemini CLI limitation ([Issue #5280](https://github.com/google-gemini/gemini-cli/issues/5280))
+
+**Solution** (if you need parameter control):
+
+```yaml
+# Option 1: Use OpenAI for agents requiring parameters
+# .automatosx/agents/qa-specialist.yaml
+name: qa-specialist
+provider:
+  primary: openai  # Supports temperature=0 for determinism
+  defaults:
+    temperature: 0
+
+# Option 2: Use role/prompt instead of parameters
+# .automatosx/agents/qa-specialist.yaml
+name: qa-specialist
+role: Deterministic QA Specialist
+systemPrompt: |
+  Provide consistent, reproducible test results.
+  Follow the same patterns every time.
+provider:
+  primary: gemini-cli  # Cost-effective, use prompt for determinism
+```
+
+#### Provider Not Being Used
+
+**Symptom**: Policy set to `cost` but Gemini never selected
+
+**Causes**:
+1. Gemini CLI not installed
+2. Provider disabled in config
+3. Circuit breaker tripped (too many failures)
+
+**Solution**:
+
+```bash
+# Check provider status
+ax providers list
+# Should show: ✅ gemini-cli (Priority: 1)
+
+# If not available:
+ax providers test --provider gemini-cli
+
+# If test fails:
+# 1. Check installation: gemini --version
+# 2. Check authentication: gemini whoami
+# 3. Check config: cat automatosx.config.json | grep -A5 "gemini-cli"
+
+# View routing trace to debug
+ax providers trace --follow
+# Run a command in another terminal:
+ax run backend "test"
+# Check trace for why Gemini wasn't selected
+```
+
+See also: [Gemini Integration Guide](docs/guide/gemini-integration.md) for detailed troubleshooting
 
 ### Provider selection not working
 

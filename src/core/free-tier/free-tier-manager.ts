@@ -174,7 +174,7 @@ export class FreeTierManager {
    * Get date string in YYYY-MM-DD format (UTC)
    */
   private getDateString(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split('T')[0]!;
   }
 
   /**
@@ -230,6 +230,20 @@ export class FreeTierManager {
     this.checkAndResetQuotas(); // Ensure quotas are current
 
     const limits = FREE_TIER_LIMITS[provider];
+    if (!limits) {
+      // Shouldn't happen since we check hasFreeTier above, but satisfy TypeScript
+      return {
+        provider,
+        available: false,
+        requestsRemaining: 0,
+        tokensRemaining: 0,
+        requestsLimit: 0,
+        tokensLimit: 0,
+        percentUsed: 100,
+        resetsAt: new Date()
+      };
+    }
+
     const today = this.getDateString(new Date());
     const usage = this.getUsageForDate(provider, today);
 

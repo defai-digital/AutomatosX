@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-10-31T14:20:28.184Z
+ * Generated: 2025-10-31T17:00:52.543Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -80,6 +80,11 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "enabled": true,
         "window": "daily",
         "resetHourUtc": 0
+      },
+      "gemini": {
+        "approvalMode": "auto_edit",
+        "embeddingModel": "text-embedding-004",
+        "enableRealEmbeddings": false
       }
     },
     "openai": {
@@ -338,7 +343,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-10-31T14:20:28.184Z',
+  generatedAt: '2025-10-31T17:00:52.543Z',
   sourceFile: 'automatosx.config.json',
   version: '6.0.1'
 } as const;

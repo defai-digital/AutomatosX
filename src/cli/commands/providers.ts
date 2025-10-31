@@ -17,6 +17,7 @@ import { loadConfig } from '@/core/config.js';
 import { detectProjectRoot } from '@/core/path-resolver.js';
 import { PROVIDER_METADATA, getProviderMetadata, getCheapestProvider, getFastestProvider, getMostReliableProvider } from '@/core/provider-metadata-registry.js';
 import { getProviderLimitManager } from '@/core/provider-limit-manager.js';
+import { getProviderSession } from '@/core/provider-session.js';
 import { logger } from '@/utils/logger.js';
 
 interface ProvidersOptions {
@@ -51,9 +52,9 @@ export const providersCommand: CommandModule<Record<string, unknown>, ProvidersO
   builder: (yargs) => {
     return yargs
       .positional('subcommand', {
-        describe: 'Subcommand (list, test, info, switch, trace)',
+        describe: 'Subcommand (list, test, info, switch, reset, trace)',
         type: 'string',
-        choices: ['list', 'test', 'info', 'switch', 'trace']
+        choices: ['list', 'test', 'info', 'switch', 'reset', 'trace']
       })
       // Common options
       .option('provider', {
@@ -114,6 +115,7 @@ export const providersCommand: CommandModule<Record<string, unknown>, ProvidersO
       .example('$0 providers test --all', 'Test all providers')
       .example('$0 providers info openai', 'Show OpenAI provider details')
       .example('$0 providers switch gemini-cli', 'Switch to Gemini CLI')
+      .example('$0 providers reset', 'Reset to normal routing')
       .example('$0 providers trace', 'View router trace log')
       .example('$0 providers trace --follow', 'Follow trace log in real-time');
   },
@@ -137,6 +139,9 @@ export const providersCommand: CommandModule<Record<string, unknown>, ProvidersO
           break;
         case 'switch':
           await handleSwitch(argv);
+          break;
+        case 'reset':
+          await handleReset();
           break;
         case 'trace':
           await handleTrace(workspacePath, argv);
@@ -436,12 +441,45 @@ async function handleSwitch(argv: ProvidersOptions): Promise<void> {
     process.exit(1);
   }
 
-  console.log(chalk.yellow('\n⚠️  Provider switching not yet implemented\n'));
-  console.log(chalk.gray('This feature will allow temporary provider override for testing.'));
-  console.log(chalk.gray(`Requested switch to: ${providerName}\n`));
-  console.log(chalk.gray('For now, modify provider priority in automatosx.config.json:\n'));
-  console.log(chalk.gray('  1. Lower priority number = higher preference'));
-  console.log(chalk.gray('  2. Restart CLI for changes to take effect\n'));
+  // Validate provider exists
+  const metadata = getProviderMetadata(providerName);
+  if (!metadata) {
+    console.error(chalk.red(`✗ Unknown provider: ${providerName}`));
+    console.error(chalk.gray('\nAvailable providers:'));
+    for (const name of Object.keys(PROVIDER_METADATA)) {
+      console.error(chalk.gray(`  - ${name}`));
+    }
+    console.error('');
+    process.exit(1);
+  }
+
+  const providerSession = getProviderSession();
+  providerSession.setProvider(providerName, {
+    reason: 'Manual CLI switch'
+  });
+
+  console.log(chalk.green(`\n✓ Provider switched to ${chalk.bold(providerName)}`));
+  console.log(chalk.gray('All requests will use this provider until reset'));
+  console.log(chalk.gray(`Reset with: ${chalk.white('ax providers reset')}\n`));
+}
+
+/**
+ * Handle 'ax providers reset' command
+ */
+async function handleReset(): Promise<void> {
+  const providerSession = getProviderSession();
+
+  if (!providerSession.hasOverride()) {
+    console.log(chalk.yellow('\n⚠️  No provider override active\n'));
+    console.log(chalk.gray('Normal routing is already in effect\n'));
+    return;
+  }
+
+  const override = providerSession.getOverride();
+  providerSession.clear();
+
+  console.log(chalk.green('\n✓ Provider routing reset to normal'));
+  console.log(chalk.gray(`Previous override: ${override?.provider || 'unknown'}\n`));
 }
 
 /**

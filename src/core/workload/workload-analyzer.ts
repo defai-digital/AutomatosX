@@ -104,11 +104,6 @@ export class WorkloadAnalyzer {
    * Detect if streaming is required
    */
   private detectStreamingRequirement(request: ExecutionRequest): boolean {
-    // Explicit streaming parameter
-    if (request.streaming !== undefined) {
-      return request.streaming;
-    }
-
     // Check for streaming-related keywords in prompt or spec
     const streamingKeywords = [
       'stream',

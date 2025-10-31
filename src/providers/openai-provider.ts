@@ -19,10 +19,28 @@ import { logger } from '../utils/logger.js';
 import { ProviderError } from '../utils/errors.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 import type { ChildProcess } from 'child_process';
+import {
+  estimateTimeout,
+  formatTimeoutEstimate,
+  ProgressTracker,
+  type TimeoutEstimate
+} from './timeout-estimator.js';
+import {
+  createStreamingFeedback,
+  type StreamingFeedback,
+  type SimpleStreamingIndicator
+} from './streaming-feedback.js';
 
 export class OpenAIProvider extends BaseProvider {
   // BUG FIX (v5.12.2): Track child processes to prevent leaks
   private activeChildren: Set<ChildProcess> = new Set();
+
+  // v6.0.7: Smart timeout tracking
+  private currentProgressTracker: ProgressTracker | null = null;
+  private progressInterval: NodeJS.Timeout | null = null;
+
+  // v6.0.7: Streaming feedback
+  private currentStreamingFeedback: StreamingFeedback | SimpleStreamingIndicator | null = null;
 
   constructor(config: ProviderConfig) {
     super(config);
@@ -53,15 +71,37 @@ export class OpenAIProvider extends BaseProvider {
   protected async executeRequest(request: ExecutionRequest): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // Build prompt with system prompt if provided (outside try for error context)
+    let fullPrompt = request.prompt;
+    if (request.systemPrompt) {
+      fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+    }
+
     try {
-      // Build prompt with system prompt if provided
-      let fullPrompt = request.prompt;
-      if (request.systemPrompt) {
-        fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+
+      // v6.0.7: Smart timeout estimation
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: request.model || undefined, // Ensure model is string or undefined
+        maxTokens: request.maxTokens
+      });
+
+      // Show estimate to user (if not in quiet mode)
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
+      }
+
+      // Start progress tracking for long operations
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
       }
 
       // Execute via CLI - let CLI use its own default model
       const response = await this.executeCLI(fullPrompt, request);
+
+      // Stop progress tracking
+      this.stopProgressTracking();
 
       const latency = Date.now() - startTime;
 
@@ -77,7 +117,14 @@ export class OpenAIProvider extends BaseProvider {
         finishReason: 'stop'
       };
     } catch (error) {
-      throw new Error(`OpenAI execution failed: ${(error as Error).message}`);
+      // Stop progress tracking on error
+      this.stopProgressTracking();
+      throw this.enhanceError(error as Error, {
+        operation: 'execute CLI command',
+        prompt: fullPrompt.substring(0, 200),
+        model: request.model,
+        streaming: false
+      });
     }
   }
 
@@ -192,7 +239,7 @@ export class OpenAIProvider extends BaseProvider {
           shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
         });
       } catch (error) {
-        reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
+        reject(this.enhanceError(error as Error));
         return;
       }
 
@@ -332,7 +379,7 @@ export class OpenAIProvider extends BaseProvider {
           }
         }, forceKillDelay);
 
-        reject(new Error(`OpenAI CLI execution timeout after ${this.config.timeout}ms`));
+        reject(ProviderError.openaiTimeout(this.config.timeout));
       }, this.config.timeout);
     });
   }
@@ -344,18 +391,27 @@ export class OpenAIProvider extends BaseProvider {
 
   /**
    * Build CLI arguments for OpenAI Codex CLI
-   * Supports: maxTokens, temperature, sandbox mode
+   * v6.0.7 Phase 3: Supports model selection, configurable sandbox, maxTokens, temperature
    */
   protected buildCLIArgs(request: ExecutionRequest): string[] {
     const args: string[] = ['exec'];
 
-    // Add sandbox mode for write access (v5.6.5: Fix read-only sandbox issue)
-    // workspace-write allows writing to the workspace while maintaining security
-    args.push('--sandbox', 'workspace-write');
+    // v6.0.7 Phase 3: Configurable sandbox mode
+    // Check for per-execution override in request context, then config, then default
+    const sandboxMode =
+      (request.context?.sandbox as string) ||
+      this.config.sandbox?.default ||
+      'workspace-write';
+    args.push('--sandbox', sandboxMode);
 
-    // NOTE: Do NOT pass --model / -m flag - let OpenAI Codex CLI use its own default model
-    // The CLI is configured to use the best available model automatically
-    // Specifying a model manually can cause version conflicts
+    // v6.0.7 Phase 3: Model selection enabled (was previously disabled)
+    // Allow users to specify model for cost optimization:
+    // - gpt-4o-mini: Cheaper, good for simple tasks
+    // - gpt-4o: Balanced performance and cost
+    // - o1-preview: Best reasoning, most expensive
+    if (request.model && request.model !== 'openai-default') {
+      args.push('--model', request.model);
+    }
 
     // Add temperature via config override if specified
     if (request.temperature !== undefined) {
@@ -407,6 +463,12 @@ export class OpenAIProvider extends BaseProvider {
         fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
       }
 
+      // v6.0.7: Estimate total tokens for progress tracking
+      const estimatedOutputTokens = request.maxTokens || this.estimateTokens(fullPrompt) * 2;
+
+      // v6.0.7: Create streaming feedback
+      this.currentStreamingFeedback = createStreamingFeedback(estimatedOutputTokens);
+
       // Check if running in mock mode
       // Enhanced: Check multiple environment variables to ensure mock mode in test environments
       const useMock =
@@ -423,6 +485,11 @@ export class OpenAIProvider extends BaseProvider {
       return this.executeStreamingCLI(fullPrompt, request, options);
 
     } catch (error) {
+      // Stop streaming feedback on error
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.stop();
+        this.currentStreamingFeedback = null;
+      }
       throw new Error(`OpenAI streaming execution failed: ${(error as Error).message}`);
     }
   }
@@ -482,6 +549,11 @@ export class OpenAIProvider extends BaseProvider {
     const { spawn } = await import('child_process');
     const startTime = Date.now();
 
+    // v6.0.7: Start streaming feedback
+    if (this.currentStreamingFeedback) {
+      this.currentStreamingFeedback.start();
+    }
+
     return new Promise((resolve, reject) => {
       let fullOutput = '';
       let tokenCount = 0;
@@ -504,7 +576,7 @@ export class OpenAIProvider extends BaseProvider {
           shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
         });
       } catch (error) {
-        reject(new Error(`Failed to spawn OpenAI CLI: ${(error as Error).message}`));
+        reject(this.enhanceError(error as Error));
         return;
       }
 
@@ -561,6 +633,11 @@ export class OpenAIProvider extends BaseProvider {
         fullOutput += token;
         tokenCount++;
 
+        // v6.0.7: Update streaming feedback
+        if (this.currentStreamingFeedback && 'onToken' in this.currentStreamingFeedback) {
+          this.currentStreamingFeedback.onToken(token);
+        }
+
         // Real-time output if enabled (v5.6.5: UX improvement)
         if (process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true') {
           process.stdout.write(token);
@@ -614,6 +691,11 @@ export class OpenAIProvider extends BaseProvider {
           }
 
           if (code !== 0) {
+            // v6.0.7: Stop streaming feedback on error
+            if (this.currentStreamingFeedback) {
+              this.currentStreamingFeedback.stop(tokenCount);
+              this.currentStreamingFeedback = null;
+            }
             reject(new Error(`OpenAI CLI exited with code ${code}: ${stderr}`));
           } else {
             // Emit final progress
@@ -621,13 +703,20 @@ export class OpenAIProvider extends BaseProvider {
               options.onProgress(100);
             }
 
+            // v6.0.7: Stop streaming feedback on success
+            const finalTokens = this.estimateTokens(fullOutput);
+            if (this.currentStreamingFeedback) {
+              this.currentStreamingFeedback.stop(finalTokens);
+              this.currentStreamingFeedback = null;
+            }
+
             resolve({
               content: fullOutput.trim(),
               model: request.model || 'openai-default',
               tokensUsed: {
                 prompt: this.estimateTokens(prompt),
-                completion: this.estimateTokens(fullOutput),
-                total: this.estimateTokens(prompt) + this.estimateTokens(fullOutput)
+                completion: finalTokens,
+                total: this.estimateTokens(prompt) + finalTokens
               },
               latencyMs: Date.now() - startTime,
               finishReason: 'stop'
@@ -682,7 +771,7 @@ export class OpenAIProvider extends BaseProvider {
           }
         }, forceKillDelay);
 
-        reject(new Error(`OpenAI CLI streaming timeout after ${this.config.timeout}ms`));
+        reject(ProviderError.openaiTimeout(this.config.timeout, 'streaming'));
       }, this.config.timeout);
 
       child.on('close', () => {
@@ -711,6 +800,107 @@ export class OpenAIProvider extends BaseProvider {
       lowerMsg.includes('rate limit') ||
       lowerMsg.includes('too many requests')
     );
+  }
+
+  /**
+   * Enhance error with context-specific messaging
+   * v6.0.7: UX improvement - provide actionable error messages with execution context
+   */
+  private enhanceError(error: Error, context?: {
+    operation?: string;
+    prompt?: string;
+    model?: string;
+    streaming?: boolean;
+  }): Error {
+    const message = error.message.toLowerCase();
+
+    // Build context string for error message
+    const contextStr = context ? this.buildErrorContext(context) : '';
+
+    // CLI not found error
+    if (message.includes('enoent') ||
+        message.includes('not found') ||
+        message.includes('spawn') && message.includes('codex')) {
+      const enhancedError = ProviderError.openaiCLINotFound();
+      if (contextStr) {
+        enhancedError.message = `${enhancedError.message}\n\n${contextStr}`;
+      }
+      return enhancedError;
+    }
+
+    // Authentication errors
+    if (message.includes('unauthorized') ||
+        message.includes('401') ||
+        message.includes('authentication') ||
+        message.includes('invalid api key')) {
+      const enhancedError = ProviderError.openaiAuthenticationFailed(error.message);
+      if (contextStr) {
+        enhancedError.message = `${enhancedError.message}\n\n${contextStr}`;
+      }
+      return enhancedError;
+    }
+
+    // Connection/network errors
+    if (message.includes('econnrefused') ||
+        message.includes('etimedout') ||
+        message.includes('enotfound') ||
+        message.includes('network') ||
+        message.includes('connect') ||
+        message.includes('fetch failed')) {
+      const enhancedError = ProviderError.openaiConnectionFailed(error.message);
+      if (contextStr) {
+        enhancedError.message = `${enhancedError.message}\n\n${contextStr}`;
+      }
+      return enhancedError;
+    }
+
+    // Timeout errors
+    if (message.includes('timeout')) {
+      const taskContext = context?.operation || context?.streaming ? 'streaming' : undefined;
+      const enhancedError = ProviderError.openaiTimeout(this.config.timeout, taskContext);
+      if (contextStr) {
+        enhancedError.message = `${enhancedError.message}\n\n${contextStr}`;
+      }
+      return enhancedError;
+    }
+
+    // Rate limit errors (handled separately by isRateLimitError/createRateLimitError)
+    // Return original error for other cases
+    return error;
+  }
+
+  /**
+   * Build error context string
+   * v6.0.7: Add context about what was being attempted
+   */
+  private buildErrorContext(context: {
+    operation?: string;
+    prompt?: string;
+    model?: string;
+    streaming?: boolean;
+  }): string {
+    const lines: string[] = ['Context:'];
+
+    if (context.operation) {
+      lines.push(`• Operation: ${context.operation}`);
+    }
+
+    if (context.model) {
+      lines.push(`• Model: ${context.model}`);
+    }
+
+    if (context.streaming !== undefined) {
+      lines.push(`• Mode: ${context.streaming ? 'streaming' : 'standard'}`);
+    }
+
+    if (context.prompt) {
+      const truncated = context.prompt.length > 100
+        ? context.prompt.substring(0, 100) + '...'
+        : context.prompt;
+      lines.push(`• Prompt: "${truncated}"`);
+    }
+
+    return lines.join('\n');
   }
 
   /**
@@ -749,6 +939,44 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   /**
+   * Start progress tracking
+   * v6.0.7: Show progress for long-running operations
+   */
+  private startProgressTracking(estimatedDurationMs: number): void {
+    if (process.env.AUTOMATOSX_QUIET === 'true') {
+      return;
+    }
+
+    this.currentProgressTracker = new ProgressTracker(estimatedDurationMs);
+
+    this.progressInterval = setInterval(() => {
+      if (this.currentProgressTracker && this.currentProgressTracker.shouldUpdate()) {
+        // Use \r to overwrite the same line
+        process.stderr.write('\r' + this.currentProgressTracker.formatProgress());
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop progress tracking
+   * v6.0.7: Cleanup progress display
+   */
+  private stopProgressTracking(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+
+    if (this.currentProgressTracker) {
+      // Clear the progress line
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        process.stderr.write('\r' + ' '.repeat(80) + '\r');
+      }
+      this.currentProgressTracker = null;
+    }
+  }
+
+  /**
    * Cleanup resources
    * BUG FIX (v5.12.2): Kill tracked child processes to prevent leaks
    */
@@ -756,6 +984,9 @@ export class OpenAIProvider extends BaseProvider {
     logger.debug('OpenAIProvider.cleanup', {
       activeChildren: this.activeChildren.size
     });
+
+    // Stop progress tracking
+    this.stopProgressTracking();
 
     // BUG FIX (v5.12.2): Kill all tracked child processes
     for (const child of this.activeChildren) {

@@ -63,57 +63,107 @@ export class CostTracker extends EventEmitter {
 
   /**
    * Initialize database
+   * v6.2.4: Bug fix #24 - Wrap in try-catch to prevent memory leaks on error
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
       return;
     }
 
-    // Ensure directory exists
-    const dir = dirname(this.dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    // v6.2.4: Bug fix #24 - Wrap in try-catch to prevent memory leaks on error
+    // If initialization fails partway through, close database to prevent leaks
+    try {
+      // Ensure directory exists
+      const dir = dirname(this.dbPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+
+      // Open database
+      this.db = new Database(this.dbPath);
+      this.db.pragma('journal_mode = WAL');
+
+      // Create schema
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS cost_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp INTEGER NOT NULL,
+          provider TEXT NOT NULL,
+          model TEXT NOT NULL,
+          session_id TEXT,
+          agent TEXT,
+          prompt_tokens INTEGER NOT NULL,
+          completion_tokens INTEGER NOT NULL,
+          total_tokens INTEGER NOT NULL,
+          estimated_cost_usd REAL NOT NULL,
+          request_id TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_cost_timestamp ON cost_entries(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_cost_provider ON cost_entries(provider);
+        CREATE INDEX IF NOT EXISTS idx_cost_session ON cost_entries(session_id);
+        CREATE INDEX IF NOT EXISTS idx_cost_agent ON cost_entries(agent);
+      `);
+
+      this.initialized = true;
+
+      logger.info('CostTracker initialized', {
+        dbPath: this.dbPath
+      });
+    } catch (error) {
+      // v6.2.4: Bug fix #24 - Clean up database connection on error to prevent memory leaks
+      if (this.db) {
+        try {
+          this.db.close();
+        } catch (closeError) {
+          // Ignore close errors, we're already handling an error
+        }
+        this.db = null;
+      }
+      this.initialized = false;
+
+      logger.error('Failed to initialize CostTracker', {
+        error: error instanceof Error ? error.message : String(error),
+        dbPath: this.dbPath
+      });
+
+      throw error;
     }
-
-    // Open database
-    this.db = new Database(this.dbPath);
-    this.db.pragma('journal_mode = WAL');
-
-    // Create schema
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS cost_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,
-        provider TEXT NOT NULL,
-        model TEXT NOT NULL,
-        session_id TEXT,
-        agent TEXT,
-        prompt_tokens INTEGER NOT NULL,
-        completion_tokens INTEGER NOT NULL,
-        total_tokens INTEGER NOT NULL,
-        estimated_cost_usd REAL NOT NULL,
-        request_id TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_cost_timestamp ON cost_entries(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_cost_provider ON cost_entries(provider);
-      CREATE INDEX IF NOT EXISTS idx_cost_session ON cost_entries(session_id);
-      CREATE INDEX IF NOT EXISTS idx_cost_agent ON cost_entries(agent);
-    `);
-
-    this.initialized = true;
-
-    logger.info('CostTracker initialized', {
-      dbPath: this.dbPath
-    });
   }
 
   /**
    * Record cost for a request
+   * v6.2.4: Bug fix #25 - Added input validation
    */
   async recordCost(entry: CostEntry): Promise<void> {
     if (!this.initialized) {
       await this.initialize();
+    }
+
+    // v6.2.4: Bug fix #25 - Input validation to prevent data corruption
+    if (!entry.provider || entry.provider.trim().length === 0) {
+      throw new Error('Provider name cannot be empty');
+    }
+    if (!entry.model || entry.model.trim().length === 0) {
+      throw new Error('Model name cannot be empty');
+    }
+    if (!Number.isFinite(entry.estimatedCostUsd)) {
+      throw new Error(`Invalid estimatedCostUsd value: ${entry.estimatedCostUsd}. Must be a finite number.`);
+    }
+    if (entry.estimatedCostUsd < 0) {
+      throw new Error(`Invalid estimatedCostUsd value: ${entry.estimatedCostUsd}. Cannot be negative.`);
+    }
+    if (!Number.isFinite(entry.promptTokens) || entry.promptTokens < 0) {
+      throw new Error(`Invalid promptTokens: ${entry.promptTokens}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(entry.completionTokens) || entry.completionTokens < 0) {
+      throw new Error(`Invalid completionTokens: ${entry.completionTokens}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(entry.totalTokens) || entry.totalTokens < 0) {
+      throw new Error(`Invalid totalTokens: ${entry.totalTokens}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(entry.timestamp) || entry.timestamp <= 0) {
+      throw new Error(`Invalid timestamp: ${entry.timestamp}. Must be a positive finite number.`);
     }
 
     const stmt = this.db!.prepare(`

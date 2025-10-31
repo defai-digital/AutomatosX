@@ -136,10 +136,13 @@ export class MemoryManager implements IMemoryManager {
    * Initialize database and load FTS5 extension
    *
    * v4.11.0: Added FTS5 full-text search support
+   * v6.2.4: Bug fix #30 - Wrap in try-catch to prevent memory leaks on error
    */
   private async initialize(): Promise<void> {
     if (this.initialized) return;
 
+    // v6.2.4: Bug fix #30 - Wrap entire initialization in try-catch
+    // If initialization fails partway through, close database to prevent leaks
     try {
       // Load sqlite-vec extension (for Plus version compatibility)
       try {
@@ -249,6 +252,19 @@ export class MemoryManager implements IMemoryManager {
         entryCount: this.entryCount
       });
     } catch (error) {
+      // v6.2.4: Bug fix #30 - Clean up database connection on error to prevent memory leaks
+      if (this.db) {
+        try {
+          this.db.close();
+        } catch (closeError) {
+          // Ignore close errors, we're already handling an error
+        }
+        // Reset state after close
+        this.initialized = false;
+        this.entryCount = 0;
+        this.statements = {};
+      }
+
       logger.error('Failed to initialize MemoryManager', { error: (error as Error).message });
       throw new MemoryError(
         `Failed to initialize memory system: ${(error as Error).message}`,

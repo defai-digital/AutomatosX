@@ -75,6 +75,32 @@ export class ProviderMetricsTracker extends EventEmitter {
     costUsd: number,
     model?: string
   ): Promise<void> {
+    // v6.2.4: Bug fix #28 - Input validation to prevent data corruption
+    if (!provider || provider.trim().length === 0) {
+      throw new Error('Provider name cannot be empty');
+    }
+    if (!Number.isFinite(latencyMs)) {
+      throw new Error(`Invalid latencyMs value: ${latencyMs}. Must be a finite number.`);
+    }
+    if (latencyMs < 0) {
+      throw new Error(`Invalid latencyMs value: ${latencyMs}. Cannot be negative.`);
+    }
+    if (!Number.isFinite(costUsd)) {
+      throw new Error(`Invalid costUsd value: ${costUsd}. Must be a finite number.`);
+    }
+    if (costUsd < 0) {
+      throw new Error(`Invalid costUsd value: ${costUsd}. Cannot be negative.`);
+    }
+    if (!Number.isFinite(tokenUsage.prompt) || tokenUsage.prompt < 0) {
+      throw new Error(`Invalid prompt tokens: ${tokenUsage.prompt}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(tokenUsage.completion) || tokenUsage.completion < 0) {
+      throw new Error(`Invalid completion tokens: ${tokenUsage.completion}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(tokenUsage.total) || tokenUsage.total < 0) {
+      throw new Error(`Invalid total tokens: ${tokenUsage.total}. Must be a non-negative finite number.`);
+    }
+
     // Get or create provider's request history
     if (!this.metrics.has(provider)) {
       this.metrics.set(provider, []);

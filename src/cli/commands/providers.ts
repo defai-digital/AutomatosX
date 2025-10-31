@@ -15,7 +15,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '@/core/config.js';
 import { detectProjectRoot } from '@/core/path-resolver.js';
-import { PROVIDER_METADATA, getCheapestProvider, getFastestProvider, getMostReliableProvider } from '@/core/provider-metadata-registry.js';
+import { PROVIDER_METADATA, getProviderMetadata, getCheapestProvider, getFastestProvider, getMostReliableProvider } from '@/core/provider-metadata-registry.js';
 import { getProviderLimitManager } from '@/core/provider-limit-manager.js';
 import { logger } from '@/utils/logger.js';
 
@@ -373,7 +373,7 @@ async function handleInfo(argv: ProvidersOptions): Promise<void> {
     process.exit(1);
   }
 
-  const metadata = PROVIDER_METADATA[providerName];
+  const metadata = getProviderMetadata(providerName);
 
   if (!metadata) {
     console.error(chalk.red(`✗ Provider not found: ${providerName}`));
@@ -412,6 +412,16 @@ async function handleInfo(argv: ProvidersOptions): Promise<void> {
   console.log(chalk.gray(`  Streaming: ${metadata.features.streaming ? '✓' : '✗'}`));
   console.log(chalk.gray(`  Vision: ${metadata.features.vision ? '✓' : '✗'}`));
   console.log(chalk.gray(`  Function Calling: ${metadata.features.functionCalling ? '✓' : '✗'}\n`));
+
+  // Show feature flag info for providers with gradual rollout
+  if (providerName === 'gemini-cli') {
+    const baseMetadata = PROVIDER_METADATA[providerName];
+    if (baseMetadata && baseMetadata.features.streaming !== metadata.features.streaming) {
+      console.log(chalk.yellow('⚠️  Feature Flag Active:'));
+      console.log(chalk.gray('  Gemini streaming is controlled by gradual rollout'));
+      console.log(chalk.gray('  Check current rollout: ax flags list\n'));
+    }
+  }
 }
 
 /**

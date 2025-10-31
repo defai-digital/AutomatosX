@@ -16,6 +16,7 @@ import * as path from 'path';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
 import type { ProviderLimitTrackingConfig } from '../types/config.js';
+import { Mutex } from 'async-mutex';
 
 /**
  * Provider limit state
@@ -95,6 +96,7 @@ export class ProviderLimitManager extends EventEmitter {
   private manualOverride?: ManualOverride;
   private providerConfigs: Map<string, ProviderLimitTrackingConfig>;
   private initialized: boolean = false;
+  private saveMutex: Mutex = new Mutex(); // v6.3.2: Prevent concurrent save race conditions
 
   // Performance tracking
   private metrics = {
@@ -491,33 +493,37 @@ export class ProviderLimitManager extends EventEmitter {
 
   /**
    * Save state to disk (atomic write)
+   * v6.3.2: Protected by mutex to prevent concurrent save race conditions
    */
   private async saveState(): Promise<void> {
-    try {
-      // Ensure directory exists
-      const dir = path.dirname(this.stateFilePath);
-      await fs.mkdir(dir, { recursive: true });
+    // Acquire mutex to prevent concurrent saves
+    return this.saveMutex.runExclusive(async () => {
+      try {
+        // Ensure directory exists
+        const dir = path.dirname(this.stateFilePath);
+        await fs.mkdir(dir, { recursive: true });
 
-      // Serialize state
-      const state = this.serialize();
-      const json = JSON.stringify(state, null, 2);
+        // Serialize state
+        const state = this.serialize();
+        const json = JSON.stringify(state, null, 2);
 
-      // Atomic write: write to temp file then rename
-      const tempPath = `${this.stateFilePath}.tmp`;
-      await fs.writeFile(tempPath, json, 'utf-8');
-      await fs.rename(tempPath, this.stateFilePath);
+        // Atomic write: write to temp file then rename
+        const tempPath = `${this.stateFilePath}.tmp`;
+        await fs.writeFile(tempPath, json, 'utf-8');
+        await fs.rename(tempPath, this.stateFilePath);
 
-      logger.debug('Provider limit state saved', {
-        file: this.stateFilePath,
-        providers: this.providerStates.size
-      });
-    } catch (error) {
-      logger.error('Failed to save provider limit state', {
-        error: (error as Error).message,
-        file: this.stateFilePath
-      });
-      // Don't throw - saving state is non-critical
-    }
+        logger.debug('Provider limit state saved', {
+          file: this.stateFilePath,
+          providers: this.providerStates.size
+        });
+      } catch (error) {
+        logger.error('Failed to save provider limit state', {
+          error: (error as Error).message,
+          file: this.stateFilePath
+        });
+        // Don't throw - saving state is non-critical
+      }
+    });
   }
 }
 

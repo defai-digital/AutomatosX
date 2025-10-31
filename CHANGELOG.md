@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.0.7] - 2025-10-30
+
+### 🔧 Fixes
+
+**Model Null Handling in Timeout Estimator**
+
+- **Bug**: `TypeError: model.includes is not a function` when agent profile has an empty `model` field.
+- **Root Cause**: The `model` field in an agent's YAML profile was parsed as `null` if empty, which was not handled by the timeout estimator.
+- **Fix**: In `OpenAIProvider`, ensure the model is either a string or `undefined` before passing it to the timeout estimator.
+- **Impact**: Prevents crashes when an agent's profile has an empty `model` field.
+
 ## [6.0.6] - 2025-10-30
 
 ### 🔧 Fixes

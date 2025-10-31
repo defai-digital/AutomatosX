@@ -285,21 +285,27 @@ export class OptimizationAnalyzer {
 }
 
 /**
- * Singleton instance
+ * Singleton instance with WeakMap to prevent memory leaks
+ *
+ * Uses WeakMap keyed by telemetry collector so instances can be
+ * garbage collected when telemetry is no longer referenced.
  */
-let optimizationAnalyzer: OptimizationAnalyzer | null = null;
+const optimizationAnalyzerCache = new WeakMap<TelemetryCollector, OptimizationAnalyzer>();
 
 /**
  * Get optimization analyzer singleton
  *
- * Note: Always creates a new instance with provided dependencies
- * to ensure it uses the latest analytics and telemetry instances.
+ * Returns cached instance for the same telemetry collector to prevent
+ * memory leaks from repeated calls. Uses WeakMap for automatic cleanup.
  */
 export function getOptimizationAnalyzer(
   analytics: AnalyticsAggregator,
   telemetry: TelemetryCollector
 ): OptimizationAnalyzer {
-  // Always create new instance to use latest dependencies
-  optimizationAnalyzer = new OptimizationAnalyzer(analytics, telemetry);
-  return optimizationAnalyzer;
+  let instance = optimizationAnalyzerCache.get(telemetry);
+  if (!instance) {
+    instance = new OptimizationAnalyzer(analytics, telemetry);
+    optimizationAnalyzerCache.set(telemetry, instance);
+  }
+  return instance;
 }

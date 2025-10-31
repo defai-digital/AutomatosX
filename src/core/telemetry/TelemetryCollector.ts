@@ -52,6 +52,20 @@ export class TelemetryCollector {
   constructor(options: Partial<TelemetryOptions> = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
 
+    // Validate configuration (prevent negative/zero values)
+    if (this.options.bufferSize <= 0) {
+      logger.warn('Invalid bufferSize, using default', { value: this.options.bufferSize });
+      this.options.bufferSize = DEFAULT_OPTIONS.bufferSize;
+    }
+    if (this.options.flushIntervalMs <= 0) {
+      logger.warn('Invalid flushIntervalMs, using default', { value: this.options.flushIntervalMs });
+      this.options.flushIntervalMs = DEFAULT_OPTIONS.flushIntervalMs;
+    }
+    if (this.options.retentionDays <= 0) {
+      logger.warn('Invalid retentionDays, using default', { value: this.options.retentionDays });
+      this.options.retentionDays = DEFAULT_OPTIONS.retentionDays;
+    }
+
     // Only initialize database if enabled (resource optimization)
     if (this.options.enabled) {
       try {
@@ -88,6 +102,10 @@ export class TelemetryCollector {
 
     // Enable WAL mode for better concurrent access
     db.pragma('journal_mode = WAL');
+
+    // Set busy timeout to handle lock contention (5 seconds)
+    // This prevents "database is locked" errors when multiple processes access the DB
+    db.pragma('busy_timeout = 5000');
 
     // Create telemetry_events table
     db.exec(`
@@ -210,6 +228,20 @@ export class TelemetryCollector {
 
       const insertMany = this.db.transaction((events: TelemetryEvent[]) => {
         for (const event of events) {
+          // Safely serialize context (handle circular references)
+          let contextJson: string | null = null;
+          if (event.context) {
+            try {
+              contextJson = JSON.stringify(event.context);
+            } catch (error) {
+              logger.warn('Failed to serialize event context (circular reference?)', {
+                eventId: event.id,
+                error: (error as Error).message
+              });
+              contextJson = JSON.stringify({ error: 'Serialization failed' });
+            }
+          }
+
           stmt.run(
             event.id,
             event.timestamp,
@@ -227,7 +259,7 @@ export class TelemetryCollector {
             event.errorCode || null,
             event.errorMessage || null,
             event.retryCount || null,
-            event.context ? JSON.stringify(event.context) : null
+            contextJson
           );
         }
       });

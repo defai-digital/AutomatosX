@@ -121,6 +121,8 @@ export class AnalyticsAggregator {
 
   /**
    * Aggregate performance metrics (latency percentiles)
+   *
+   * Filters out NaN/Infinity values to prevent calculation errors.
    */
   private aggregatePerformance(events: TelemetryEvent[]) {
     if (events.length === 0) {
@@ -132,7 +134,22 @@ export class AnalyticsAggregator {
       };
     }
 
-    const latencies = events.map(e => e.latencyMs).sort((a, b) => a - b);
+    // Filter out NaN/Infinity values
+    const latencies = events
+      .map(e => e.latencyMs)
+      .filter(val => Number.isFinite(val))
+      .sort((a, b) => a - b);
+
+    if (latencies.length === 0) {
+      logger.warn('All latency values were NaN/Infinity');
+      return {
+        avgLatencyMs: 0,
+        p50LatencyMs: 0,
+        p95LatencyMs: 0,
+        p99LatencyMs: 0
+      };
+    }
+
     const sum = latencies.reduce((acc, val) => acc + val, 0);
 
     return {
@@ -287,18 +304,24 @@ export class AnalyticsAggregator {
 }
 
 /**
- * Singleton instance
+ * Singleton instance with WeakMap to prevent memory leaks
+ *
+ * Uses WeakMap so instances can be garbage collected when
+ * telemetry collector is no longer referenced.
  */
-let analyticsAggregator: AnalyticsAggregator | null = null;
+const analyticsAggregatorCache = new WeakMap<TelemetryCollector, AnalyticsAggregator>();
 
 /**
  * Get analytics aggregator singleton
  *
- * Note: Always creates a new instance with provided telemetry
- * to ensure it uses the latest telemetry instance.
+ * Returns cached instance for the same telemetry collector to prevent
+ * memory leaks from repeated calls. Uses WeakMap for automatic cleanup.
  */
 export function getAnalyticsAggregator(telemetry: TelemetryCollector): AnalyticsAggregator {
-  // Always create new instance to use latest telemetry
-  analyticsAggregator = new AnalyticsAggregator(telemetry);
-  return analyticsAggregator;
+  let instance = analyticsAggregatorCache.get(telemetry);
+  if (!instance) {
+    instance = new AnalyticsAggregator(telemetry);
+    analyticsAggregatorCache.set(telemetry, instance);
+  }
+  return instance;
 }

@@ -6,69 +6,102 @@ Welcome to the AutomatosX documentation! This guide will help you get started an
 
 ## 📚 Documentation Structure
 
-### Getting Started
+### 🚀 Getting Started
 
 Start here if you're new to AutomatosX:
 
-1. **[Quick Start Guide](./guide/quick-start.md)** ⭐
+1. **[Quick Start Guide](./getting-started/quick-start.md)** ⭐
    - Installation (npm install)
    - Initialize your first project
    - Run your first agent
    - Basic commands overview
 
-2. **[Core Concepts](./guide/core-concepts.md)**
+2. **[Core Concepts](./getting-started/core-concepts.md)**
    - Understand agents, profiles, and abilities
    - Learn about memory and providers
    - Grasp the security model
 
-3. **[Installation Guide](./guide/installation.md)**
+3. **[Installation Guide](./getting-started/installation.md)**
    - Detailed installation instructions
    - Environment setup
    - Troubleshooting installation issues
 
-### Guides
+### 📖 Guides
 
 In-depth explanations of core features:
 
-- **[Multi-Agent Orchestration](./guide/multi-agent-orchestration.md)** 🤝
+- **[Configuration Guide](./guides/configuration.md)** ⚙️
+  - Complete configuration reference
+  - Provider setup and authentication
+  - Cost optimization strategies
+  - Environment variables
+  - Common scenarios
+
+- **[Multi-Agent Orchestration](./guides/multi-agent-orchestration.md)** 🤝
   - Natural language delegation (7 syntaxes)
   - Session management
   - Capability-first strategy
   - Workspace isolation
 
-- **[Agent Communication & Memory](./guide/agent-communication.md)** 🧠 **NEW**
+- **[Agent Communication & Memory](./guides/agent-communication.md)** 🧠
   - How agents communicate (prompt passing vs memory)
   - SQLite FTS5 memory system
   - Long-term knowledge base
   - Memory vs delegation explained
 
-- **[Team Configuration](./guide/team-configuration.md)** 👥
+- **[Team Configuration](./guides/team-configuration.md)** 👥
   - Team-based agent organization
   - Shared configuration
   - Provider management
   - 4 built-in teams
 
-- **[Provider Parameters](./guide/provider-parameters.md)** ⚙️
-  - Model parameter configuration
-  - Temperature and maxTokens
-  - Provider-specific settings
-
-- **[Agent Templates](./guide/agent-templates.md)** 📝
+- **[Agent Templates](./guides/agent-templates.md)** 📝
   - Quick agent creation
   - 5 built-in templates
   - Template engine usage
 
-### Reference
+- **[Spec-Driven Development](./guides/spec-driven-development.md)** 📋
+  - Specification-first workflows
+  - Test generation from specs
+  - Implementation validation
 
-Complete command and API documentation:
+- **[Checkpoints & Resume](./guides/checkpoints-and-resume.md)** 💾
+  - Save execution state
+  - Resume interrupted workflows
+  - Recovery strategies
 
-- **[CLI Commands Reference](./reference/cli-commands.md)** 📖
-  - All commands documented
-  - Options and parameters
-  - Usage examples
-  - Exit codes and environment variables
+- **[Terminal Mode](./guides/terminal-mode.md)** 💻
+  - Interactive terminal interface
+  - Real-time agent interaction
+  - Command shortcuts
 
-### Tutorials
+### 🔌 Providers
+
+Provider-specific documentation:
+
+- **[Provider Overview](./providers/overview.md)** 📊
+  - Compare Claude, Gemini, OpenAI
+  - Cost analysis
+  - Feature comparison
+  - Choosing the right provider
+
+- **[Provider Parameters](./providers/parameters.md)** ⚙️
+  - Model parameter configuration
+  - Temperature and maxTokens
+  - Provider-specific settings
+
+- **[Gemini Integration](./providers/gemini.md)** 🔮
+  - Free tier setup (1,500 requests/day)
+  - 99.6% cost savings vs OpenAI
+  - Approval modes
+  - Best practices
+
+- **[OpenAI Codex](./providers/openai-codex.md)** 🤖
+  - Codex CLI setup
+  - Model configuration
+  - Integration patterns
+
+### 🎓 Tutorials
 
 Step-by-step hands-on guides:
 
@@ -77,33 +110,112 @@ Step-by-step hands-on guides:
   - Add abilities
   - Test your agent
 
-- **[Memory Management](./tutorials/memory-management.md)** 🧠 **UPDATED**
+- **[Memory Management](./tutorials/memory-management.md)** 🧠
   - Automatic memory system
   - Search and explore memories
   - Export/import for backup
   - Multi-day workflows
   - Best practices
 
-### Troubleshooting
+### 🖥️ Platform
 
-Common issues and solutions:
+Platform-specific documentation:
 
-- **Common Issues** (coming soon)
-  - Installation problems
-  - Provider connection errors
-  - Memory search issues
+#### Windows
 
-- **Error Codes** (coming soon)
-  - Complete error reference
-  - Debugging tips
+- **[Windows Setup](./platform/windows/setup.md)** 🪟
+  - Installation on Windows
+  - PATH configuration
+  - Provider CLI setup
+  - Environment variables
 
-### Examples
+- **[Windows Troubleshooting](./platform/windows/troubleshooting.md)** 🔧
+  - Common Windows issues
+  - PowerShell vs CMD
+  - Permission problems
+  - Diagnostic commands
 
-Real-world code examples:
+### 📚 Reference
 
-- **Basic Agent** (coming soon)
-- **Memory Usage** (coming soon)
-- **Multi-Provider** (coming soon)
+Technical reference documentation:
+
+- **[CLI Commands Reference](./reference/cli-commands.md)** 📖
+  - All commands documented
+  - Options and parameters
+  - Usage examples
+  - Exit codes and environment variables
+
+- **[Observability API](./reference/api/observability.md)** 📊
+  - Performance monitoring
+  - Metrics collection
+  - Debugging tools
+
+### ⚡ Advanced
+
+Advanced topics and optimization:
+
+- **[Best Practices](./advanced/best-practices.md)** ✨
+  - Production patterns
+  - Security guidelines
+  - Performance optimization
+  - Error handling
+
+- **[Performance Tuning](./advanced/performance.md)** 🚀
+  - Optimization strategies
+  - Benchmarking
+  - Resource management
+  - Profiling tools
+
+- **[Caching](./advanced/caching.md)** 💾
+  - Cache strategies
+  - Configuration
+  - Invalidation patterns
+  - Performance impact
+
+- **[Parallel Execution](./advanced/parallel-execution.md)** ⚡
+  - Concurrent agent execution
+  - Observability
+  - Resource management
+  - Best practices
+
+### 🤝 Contributing
+
+Contributing to AutomatosX:
+
+- **[Testing Guide](./contributing/testing.md)** 🧪
+  - Unit testing
+  - Integration testing
+  - Test coverage
+
+- **[E2E Testing](./contributing/e2e-testing.md)** 🔄
+  - End-to-end test setup
+  - Test scenarios
+  - CI/CD integration
+
+- **[Test Writing Standards](./contributing/test-standards.md)** 📏
+  - Testing best practices
+  - Code coverage requirements
+  - Mock strategies
+
+- **[Conventional Commits](./contributing/conventional-commits.md)** 📝
+  - Commit message format
+  - Semantic versioning
+  - Changelog generation
+
+- **[Workspace Conventions](./contributing/workspace-conventions.md)** 📂
+  - Project structure
+  - File organization
+  - Naming conventions
+
+- **[Release Process](./contributing/release-process.md)** 🚀
+  - Version management
+  - Release checklist
+  - Publishing workflow
+
+- **[Project History](./contributing/project-history.md)** 📜
+  - Development timeline
+  - Major milestones
+  - Evolution of features
 
 ---
 
@@ -111,20 +223,21 @@ Real-world code examples:
 
 **For End Users**:
 
-- [Quick Start](./guide/quick-start.md) - Get up and running in 5 minutes
+- [Quick Start](./getting-started/quick-start.md) - Get up and running in 5 minutes
 - [CLI Commands](./reference/cli-commands.md) - Complete command reference
-- [Core Concepts](./guide/core-concepts.md) - Understand the basics
+- [Core Concepts](./getting-started/core-concepts.md) - Understand the basics
 
 **For Developers**:
 
 - [Contributing Guide](../CONTRIBUTING.md) - Contribute to AutomatosX
 - [Development Setup](../CONTRIBUTING.md#development-setup) - Local development
-- [API Reference](./reference/api/) - Programmatic usage
+- [Testing Guide](./contributing/testing.md) - Write tests
 
-**For Claude Code Users**:
+**For Power Users**:
 
-- [Claude Code Integration](./guide/claude-code-integration.md) (coming soon)
-- [Best Practices](./guide/best-practices.md) (coming soon)
+- [Best Practices](./advanced/best-practices.md) - Production patterns
+- [Performance Tuning](./advanced/performance.md) - Optimization strategies
+- [Provider Comparison](./providers/overview.md) - Choose the right provider
 
 ---
 
@@ -166,7 +279,7 @@ Run your first agent:
 automatosx run assistant "What is TypeScript?"
 ```
 
-See [Quick Start Guide](./guide/quick-start.md) for details.
+See [Quick Start Guide](./getting-started/quick-start.md) for details.
 
 ---
 
@@ -195,17 +308,20 @@ See [CLI Commands Reference](./reference/cli-commands.md) for complete documenta
 | Core Concepts | ✅ Complete | P0 |
 | CLI Commands Reference | ✅ Complete | P0 |
 | Installation Guide | ✅ Complete | P0 |
-| **Agent Communication & Memory** | ✅ **Complete** | **P0** |
+| Configuration Guide | ✅ Complete | P0 |
+| Agent Communication & Memory | ✅ Complete | P0 |
 | Multi-Agent Orchestration | ✅ Complete | P0 |
-| **Tutorial: Memory Management** | ✅ **Complete** | **P0** |
+| Tutorial: Memory Management | ✅ Complete | P0 |
 | Tutorial: First Agent | ✅ Complete | P1 |
 | Team Configuration | ✅ Complete | P1 |
 | Agent Templates | ✅ Complete | P1 |
 | Provider Parameters | ✅ Complete | P1 |
-| Configuration Guide | 📝 Planned | P2 |
+| Provider Overview | ✅ Complete | P1 |
+| Gemini Integration | ✅ Complete | P1 |
+| Best Practices | ✅ Complete | P1 |
+| Performance Tuning | ✅ Complete | P2 |
 | Tutorial: Custom Abilities | 📝 Planned | P2 |
 | API Reference | 📝 Planned | P2 |
-| Troubleshooting | 📝 Planned | P2 |
 
 ---
 
@@ -217,6 +333,8 @@ We welcome contributions! See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
 - Code style guidelines
 - Testing requirements
 - Pull request process
+
+Also check out our [contributing documentation](./contributing/) for detailed guides on testing, release process, and project conventions.
 
 ---
 

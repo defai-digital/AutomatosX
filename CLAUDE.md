@@ -2,195 +2,448 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Quick Start
-- Node.js >= 20.0.0 required
-- `npm install` after pulling
-- `npm run dev -- <command>` for CLI in watch mode (e.g., `npm run dev -- run backend "test"`)
-- `npm run build` before committing (auto-runs `npm run prebuild:config`)
-- `npm run typecheck` to resolve type issues
-- `npm test` runs all tests; scope with `npm run test:unit`, `npm run test:integration`, `npm run test:smoke`
+## Project Overview
 
-## Directory Structure
-- `src/` — runtime source
-  - `cli/commands/` — command handlers (run.ts, gen.ts, status.ts, etc.)
-  - `agents/` — agent execution and delegation logic
-  - `core/` — router, memory, spec-kit, policy evaluation, telemetry
-  - `providers/` — CLI subprocess wrappers (Claude, Gemini, OpenAI/codex)
-  - `integrations/` — external tool integrations (MCP servers)
-  - `utils/` — shared utilities
-- `tests/` — test suites (unit: ~1,536 tests, integration, reliability, smoke)
-- `automatosx/PRD/` — product requirements documents (read before major changes)
-- `dist/` — generated bundles (never edit directly)
-- `src/config.generated.ts` — auto-generated from `automatosx.config.json` (never edit)
+AutomatosX is an AI Agent Orchestration Platform that combines declarative workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool (v6.3.8) that routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
-## Development Workflow
+**Key Capabilities:**
 
-1. Review `automatosx/PRD/` for context on architectural decisions
-2. Modify implementation in `src/` and corresponding tests in `tests/`
-3. **CRITICAL**: If you modify `automatosx.config.json`:
-   - Run `npm run prebuild:config` to regenerate `src/config.generated.ts`
-   - Never edit `src/config.generated.ts` directly (auto-generated file)
-   - `npm run build` automatically runs `prebuild:config` as a prebuild step
-4. Run `npm run verify` before committing (typecheck + build + unit tests)
-5. Update `docs/` when changing user-facing behavior
+- **Spec-Kit Integration**: YAML-driven workflow generation (plans, DAGs, scaffolds, tests)
+- **Policy-Driven Routing**: Automatic provider selection based on cost/latency/privacy constraints
+- **Persistent Memory**: SQLite + FTS5 for full-text search with no embedding dependencies
+- **Multi-Agent Orchestration**: 23 specialized agents with delegation parsing
+- **Cost Optimization**: 60-80% cost reduction through intelligent routing and free-tier utilization
 
-### Config Precompilation Build Order
+**Current Branch**: docs-cleanup-phase3
+**Repository**: https://github.com/defai-digital/automatosx
 
-When running `npm run build`:
+## Build & Development Commands
 
-1. **Prebuild**: `npm run prebuild:config` generates `src/config.generated.ts` from `automatosx.config.json`
-2. **Build**: `tsup` bundles TypeScript → JavaScript in `dist/`
-3. **Result**: 90% startup performance boost vs runtime JSON parsing
-
-## Essential Commands
+### Essential Commands
 
 ```bash
 # Development
-npm run dev -- run backend "task"              # Test CLI in watch mode
-npm run prebuild:config                        # Regenerate src/config.generated.ts
-npm run typecheck                              # Type check without emitting
+npm run dev -- run backend "test task"    # Run CLI in dev mode with tsx
+npm run build                              # Build with tsup (includes prebuild:config)
+npm run prebuild:config                    # Generate config.generated.ts from automatosx.config.json
 
 # Testing
-npm test                                       # All tests (unit + integration + smoke)
-npm run test:unit                              # Unit tests only (~1,536 tests)
-npm run test:unit -- <pattern>                 # Run specific test suite (e.g., memory)
-npm run test:ci                                # CI profile (critical tests only)
-AUTOMATOSX_MOCK_PROVIDERS=true npm run test:unit  # Mock provider calls
+npm test                                   # Run all tests (unit + integration + smoke)
+npm run test:unit                          # Unit tests only (fast)
+npm run test:integration                   # Integration tests (requires providers)
+npm run test:smoke                         # Smoke tests (bash script)
+npm run test:watch                         # Watch mode for TDD
+npm run test:debug                         # Debug with inspector
 
-# Quality
-npm run verify                                 # Typecheck + build + unit tests (pre-commit)
-npm run tools:check                            # Validate shell scripts syntax
-npm run check:timers                           # Verify no timer leaks
+# Run a single test file
+npx vitest run tests/unit/core/router.test.ts
 
-# Debugging
-ax providers trace                             # View router trace logs
-ax providers trace --follow                    # Follow trace logs in real-time
-ax providers info <provider>                   # View provider metadata (cost, latency, features)
+# Quality Checks
+npm run typecheck                          # TypeScript type checking (no emit)
+npm run typecheck:incremental              # Faster incremental type checking
+npm run lint                               # ESLint check
+npm run lint:fix                           # Auto-fix ESLint issues
+npm run verify                             # Full verification (typecheck + build + unit tests)
+
+# Release & Versioning
+npm run sync:all-versions                  # Sync version across all files
+npm version patch                          # Bump patch version (hooks handle sync)
+npm run release:check                      # Validate release readiness
+npm run check:size                         # Check package size
 ```
+
+### Testing Notes
+
+- Tests use Vitest with strict isolation (4 max threads, 4 max concurrency)
+- Environment: `AUTOMATOSX_MOCK_PROVIDERS=true` is set by default in tests
+- Global setup: `vitest.setup.ts`, teardown: `vitest.global-teardown.ts`
+- Test timeout: 60s per test, 10s for teardown
+- Integration tests can be skipped: `SKIP_INTEGRATION_TESTS=true npm test`
 
 ## Architecture Overview
 
-### Core Systems
+### Core System Components
 
-AutomatosX is a policy-driven AI orchestration platform with persistent memory. Key subsystems:
+1. **Router (`src/core/router.ts`)**
+   - Policy-driven provider selection using `PolicyEvaluator` and `PolicyParser`
+   - Multi-provider routing with fallback and circuit breaker
+   - Free-tier prioritization and workload-aware routing
+   - Trace logging via `RouterTraceLogger` (JSONL format in `.automatosx/logs/`)
+   - Provider cooldown on failure (default 30s)
 
-- **Router** (`src/core/router.ts`) — Provider routing with policy evaluation, automatic failover, trace logging
-- **PolicyEvaluator** (`src/core/spec/PolicyEvaluator.ts`) — Scores providers by cost/latency/privacy constraints
-- **Memory** (`src/core/memory-manager.ts`) — SQLite FTS5 for conversation context (< 1ms search)
-- **Spec-Kit** (`src/core/spec/`) — Generates plans, DAGs, scaffolds, tests from YAML specs
-- **Providers** (`src/providers/`) — CLI subprocess wrappers (claude, gemini, codex commands)
-- **Telemetry** (`src/core/telemetry/`, `src/core/analytics/`) — Local-only usage analytics
+2. **Memory Manager (`src/core/memory-manager.ts`)**
+   - SQLite + FTS5 for full-text search (no vector embeddings required)
+   - Smart cleanup with configurable strategies (oldest/least_accessed/hybrid)
+   - Prepared statements for performance (< 1ms search)
+   - Debounced saves with busy timeout (5s default)
 
-### Key Patterns
+3. **Session Manager (`src/core/session-manager.ts`)**
+   - Multi-agent collaborative sessions with UUID v4 validation
+   - Debounced persistence with atomic saves (temp file + rename)
+   - Task tracking with metadata size limits (10KB)
+   - Automatic cleanup of old sessions (configurable retention)
 
-1. **Config Precompilation**: `automatosx.config.json` → `src/config.generated.ts` at build (90% startup boost)
-   - Never edit `config.generated.ts` directly
-   - Always run `npm run prebuild:config` after config changes
+4. **Delegation Parser (`src/agents/delegation-parser.ts`)**
+   - Parses natural language delegations: `@agent task` or `DELEGATE TO agent: task`
+   - Supports display name resolution via ProfileLoader
+   - Multiple syntax patterns with position-based priority
+   - < 1ms parsing (regex-based, no LLM)
 
-2. **Policy-Driven Routing**: `PolicyEvaluator` filters/scores providers before execution
-   - Constraints: cost, latency, privacy, reliability
-   - Trace all decisions to `.automatosx/logs/router-trace.jsonl`
+5. **Spec-Kit System (`src/core/spec/`)**
+   - `SpecLoader.ts`: Loads and validates YAML specs
+   - `PolicyParser.ts` + `PolicyEvaluator.ts`: Policy-driven provider selection
+   - `PlanGenerator.ts`: Generates execution plans with cost estimates
+   - `DagGenerator.ts`: Creates dependency graphs with change detection hashes
+   - `ScaffoldGenerator.ts`: Project structure generation
+   - `TestGenerator.ts`: Auto-generates unit/integration/E2E tests
+   - `SpecExecutor.ts`: Orchestrates spec execution
 
-3. **Path Aliases**: `@/*` maps to `src/*`, `@tests/*` maps to `tests/*` (tsconfig.json)
+### Provider Architecture
 
-4. **Provider Integration**: Dual-mode provider system
-   - **CLI Mode (default)**: Subprocess execution (`codex`, `claude`, `gemini` commands)
-   - **SDK Mode (OpenAI only)**: Direct API via OpenAI SDK (set `integration: "sdk"` in config)
-   - Use `AUTOMATOSX_CLI_ONLY=true` env var to force CLI mode even if SDK configured
-   - Claude and Gemini always use CLI mode
+**Base Provider (`src/providers/base-provider.ts`)**
 
-5. **Predictive Limit Management** (`src/core/predictive-limit-manager.ts`) — Quota prediction system
-   - Tracks usage trends in rolling windows
-   - Predicts time-to-exhaustion before hitting limits
-   - Proactive provider rotation
-   - SQLite-backed usage tracking (`.automatosx/usage/usage-tracker.db`)
+- Abstract base with rate limiting, retry logic, circuit breaker
+- Availability caching (60s TTL) and version detection caching (5min TTL)
+- Provider name whitelist for security: `claude`, `claude-code`, `gemini`, `gemini-cli`, `openai`, `codex`
+- Cost tracking and usage stats
 
-### Important Constraints
+**Provider Implementations:**
 
-- **TypeScript strict mode** — all code must be type-safe, use `noUncheckedIndexedAccess`
-- **ESM only** — no CommonJS (except `tools/*.cjs` build scripts)
-- **Node 20+** target — use ES2022 features
-- **Never edit**: `dist/`, `src/config.generated.ts`, `.automatosx/` runtime directories
+- `claude-provider.ts`: CLI-based Claude integration
+- `gemini-provider.ts`: CLI-based Gemini integration (lowest cost, 1500 free req/day)
+- `openai-provider.ts`: OpenAI integration with CLI/SDK modes (controlled by `AUTOMATOSX_CLI_ONLY` env var)
 
-## Testing Strategy
+**Provider Metadata (`src/core/provider-metadata-registry.ts`)**
 
-- **Unit tests** (`tests/unit/`) — ~1,536 tests (CI), ~2,457 tests (full suite), fast, isolated
-- **Integration tests** (`tests/integration/`) — Real I/O, provider calls (~115 tests)
-- **Smoke tests** (`tests/smoke/`) — End-to-end bash script validation
-- **Reliability tests** (`tests/reliability/`) — Chaos testing, load tests (~47 tests)
+- Centralized registry with pricing, latency, free-tier limits
+- Used by PolicyEvaluator for constraint-based filtering
 
-### CI vs Local
+**Integration Layer (`src/integrations/`)**
 
-- **CI** (`npm run test:ci`) — ~1,536 critical unit tests only, single-threaded (Windows SQLite stability)
-  - Excludes: integration, E2E, reliability, benchmark tests
-  - Excludes: slow executors, health checks, Windows-incompatible path tests
-  - Target: 3-5 minutes runtime
-- **Local** (`npm test`) — Full suite (~2,457 tests: unit + integration + smoke)
-  - Multi-threaded execution
-  - Target: 15-30 minutes runtime
+Bridges between AutomatosX and external AI platforms:
 
-### Mock Providers
+- `claude-code/`: Claude Code integration with MCP manager, command manager, config manager
+- `gemini-cli/`: Gemini CLI integration with command translator and file readers
+- `openai-codex/`: OpenAI Codex integration with CLI wrapper and MCP support
 
-Set `AUTOMATOSX_MOCK_PROVIDERS=true` to avoid real provider calls during tests (CI uses this by default).
+Each integration provides:
 
-### Environment Variables
+- Bridge classes for provider communication
+- Command managers for CLI interaction
+- Config managers for platform-specific settings
+- Validation utilities and file readers
+- Type definitions for platform interfaces
 
-Important environment variables for development and testing:
+### Configuration System
 
-- `AUTOMATOSX_MOCK_PROVIDERS=true` — Use mock providers instead of real API calls (CI default)
-- `AUTOMATOSX_CLI_ONLY=true` — Force CLI mode for all providers (disables OpenAI SDK)
-- `NODE_ENV=test` — Enable test-specific behavior
-- `CI=true` — CI environment detection (affects test parallelism and timeouts)
+**Config Loading (`src/core/config.ts`)**
 
-## Common Development Tasks
+- Loads from `automatosx.config.json` (user) + default config
+- Deep merge with lodash.merge semantics
+- Generates TypeScript types at build time via `tools/prebuild-config.cjs`
+- Result: `src/config.generated.ts` (committed for type safety)
 
-### Adding a New CLI Command
+**Key Config Sections:**
 
-1. Create handler in `src/cli/commands/<name>.ts`
-2. Register in `src/cli/index.ts` (yargs builder)
-3. Add unit tests in `tests/unit/cli/commands/`
-4. Add smoke test case in `tests/smoke/smoke-test.sh`
-5. Update user docs if needed
+- `providers`: Provider-specific timeouts, health checks, circuit breakers
+- `execution`: Timeouts, concurrency, retry logic, stage execution
+- `orchestration`: Session limits, delegation depth, cycle detection
+- `memory`: Max entries, persistence path, auto-cleanup, FTS search limits
+- `router`: Health check intervals, cooldown, free-tier prioritization
+- `performance`: Various cache configurations (profile, team, provider, adaptive)
 
-### Modifying Configuration Schema
+### CLI Architecture (`src/cli/`)
 
-1. Edit `automatosx.config.json` (source of truth)
-2. Run `npm run prebuild:config` to regenerate `src/config.generated.ts`
-3. Update types in `src/types/config.ts` if adding new fields
-4. Run `npm run typecheck` to catch type errors
-5. Update tests and documentation
+**Entry Point (`src/cli/index.ts`)**
+
+- Uses yargs for command parsing
+- Global options: `--debug`, `--quiet`, `--config`
+- Installs exit handlers via `installExitHandlers()` for cleanup
+- Global performance tracking with `globalTracker`
+
+**Key Commands:**
+
+- `run`: Execute agent tasks with memory and delegation support
+- `spec`: Spec-driven workflow execution
+- `gen`: Generate plans, DAGs, scaffolds, tests from specs
+- `providers`: List providers, show info, view trace logs
+- `memory`: Search, add, export memory entries
+- `session`: Multi-agent session management
+- `agent`: Create/list/show/remove custom agents
+- `doctor`: Diagnostic checks for provider setup
+- `free-tier`: Check quota status and usage history
+
+## Important Development Patterns
+
+### Resource Management
+
+- Always register cleanup handlers for intervals, timers, database connections
+- Use `installExitHandlers()` from `utils/process-manager.ts` for subprocess cleanup
+- Database connections: Set busyTimeout (default 5s) to handle concurrent access
+- Debounce saves to reduce I/O (e.g., SessionManager uses 1s debounce)
+
+### Error Handling
+
+- Use typed errors: `ProviderError`, `SessionError`, `MemoryError`, `SpecError`
+- Include error codes for programmatic handling
+- Retry logic: Check `shouldRetryError()` from `providers/retry-errors.ts`
+- Circuit breaker: Providers have configurable failure thresholds (default 3)
+
+### Performance Optimization
+
+- Cache expensive operations (provider availability, version detection, profiles)
+- Use prepared statements for frequent SQLite queries
+- Regex patterns should be class-level constants (avoid recreation)
+- Debounce I/O operations (saves, logs) to reduce syscalls
+- Use adaptive caching with TTL adjustment based on access patterns
+
+### Testing Patterns
+
+- Mock providers are auto-enabled via `AUTOMATOSX_MOCK_PROVIDERS=true`
+- Use test helpers from `tests/helpers/`
+- Fixtures in `tests/fixtures/`
+- Integration tests may require real provider setup (skip with env var)
+- Cleanup in afterEach hooks to prevent resource leaks
+
+### Type Safety
+
+- Strict TypeScript mode enabled (`strict: true`, `noUncheckedIndexedAccess: true`)
+- Path aliases: `@/*` → `src/*`, `@tests/*` → `tests/*`
+- Generated types: `src/config.generated.ts` is built from JSON schema
+- Provider types: See `src/types/provider.ts` for core interfaces
+
+### Spec-Driven Development
+
+- Specs are YAML files with metadata, policy, and actors
+- Policy goals: `cost`, `latency`, `reliability`, `balanced`
+- Constraints: `cost.maxPerRequest`, `latency.p95`, `privacy.allowedClouds`
+- Change detection: DAGs include spec hash to detect outdated plans
+- Validation: JSON Schema validation via `SpecSchemaValidator.ts`
+
+## Common Workflows
 
 ### Adding a New Provider
 
-1. Extend `BaseProvider` in `src/providers/<name>-provider.ts`
-2. Add metadata to `src/core/provider-metadata-registry.ts` (cost, latency, features)
-3. Update `automatosx.config.json` with provider defaults
-4. Run `npm run prebuild:config`
-5. Add tests in `tests/unit/providers/`
+1. Create provider class extending `BaseProvider` in `src/providers/`
+2. Add provider metadata to `src/core/provider-metadata-registry.ts`
+3. Register in router configuration (`automatosx.config.json`)
+4. Add provider name to whitelist in `BaseProvider.ALLOWED_PROVIDER_NAMES`
+5. Create integration bridge if needed (see `src/integrations/`)
+6. Add tests in `tests/unit/providers/` and `tests/integration/providers/`
 
-## Troubleshooting
+### Adding a New CLI Command
 
-- **CI test failures**: Run `npm run test:ci` locally to reproduce
-- **Config not updating**: Run `npm run prebuild:config` manually, then rebuild
-- **Timer leaks**: Run `npm run check:timers` to detect unclosed intervals/timeouts
-- **Stale workspace**: Run `bash tools/cleanup-tmp.sh` to clean temporary files
-- **Type errors**: Run `npm run typecheck:incremental` for faster feedback loop
-- **Provider issues**: Check that CLI tools are installed (`codex`, `gemini`, `claude` commands)
-- **Windows CI failures**: Path-related tests may fail on Windows due to drive letters and separators
-  - See `vitest.config.ci.ts` for excluded Windows-incompatible tests
-  - Use single-threaded mode on Windows for SQLite stability
-- **OpenAI SDK connection errors**: Set `AUTOMATOSX_CLI_ONLY=true` to force CLI mode
-- **Trace logs not appearing**: Enable with `enableTracing: true` in router config or check `.automatosx/logs/router-trace.jsonl`
+1. Create command file in `src/cli/commands/`
+2. Export command using yargs builder pattern
+3. Import and register in `src/cli/index.ts`
+4. Add examples to CLI usage
+5. Add tests in `tests/unit/cli/commands/`
 
-## Platform-Specific Notes
+### Adding a New Agent
 
-### Windows Development
+1. Create agent profile YAML in `examples/agents/` or `.automatosx/agents/`
+2. Use `ax agent create <name> --template <type>` for scaffolding
+3. Define persona, expertise, reasoning_style, delegation_protocol
+4. Add to team compositions if needed (in `examples/teams/`)
 
-- **Single-threaded tests**: CI uses `singleThread: true` for SQLite stability on Windows
-- **Path issues**: Some path-related tests excluded in CI (see `vitest.config.ci.ts` lines 167-180)
-- **Drive letters**: Test assertions with hardcoded Unix paths will fail (e.g., `/foo` vs `C:\foo`)
+### Debugging Provider Issues
 
-### macOS/Linux
+1. Enable debug mode: `ax --debug <command>`
+2. Check provider availability: `ax doctor <provider>`
+3. View routing decisions: `ax providers trace --follow`
+4. Check free-tier status: `ax free-tier status`
+5. Review logs in `.automatosx/logs/`
 
-- **Parallel tests**: Local development can use multi-threaded test execution
-- **Full test suite**: All ~2,457 tests should pass
+### Working with Specs
+
+1. Create spec: `ax spec create "description"` (natural language)
+2. Or write YAML manually following `examples/specs/` patterns
+3. Validate: `ax gen plan <spec>` (shows cost estimates)
+4. Generate DAG: `ax gen dag <spec> --format mermaid`
+5. Execute: `ax run <spec>`
+6. Monitor: `ax providers trace --follow` (in separate terminal)
+
+## File Organization
+
+```text
+src/
+├── agents/          # Agent system (delegation, profiles, templates)
+├── cli/             # CLI commands and renderers
+├── core/            # Core services (router, memory, session, spec-kit)
+│   ├── analytics/   # Usage analytics and optimization
+│   ├── feature-flags/ # Feature flag system
+│   ├── free-tier/   # Free tier quota management
+│   ├── spec/        # Spec-Kit components (plan, DAG, scaffold, test gen)
+│   ├── telemetry/   # Telemetry collection
+│   └── workload/    # Workload analysis for routing
+├── integrations/    # Provider integrations (claude-code, gemini-cli, openai-codex)
+├── mcp/             # Model Context Protocol (MCP) server
+├── providers/       # Provider implementations
+├── types/           # TypeScript type definitions
+├── utils/           # Utilities (logger, errors, performance, etc.)
+└── workers/         # Worker pool for parallel execution
+
+tests/
+├── unit/            # Unit tests (fast, mocked)
+├── integration/     # Integration tests (requires providers)
+├── smoke/           # Smoke tests (bash scripts)
+├── benchmark/       # Performance benchmarks
+├── e2e/             # End-to-end tests
+├── reliability/     # Reliability tests
+├── fixtures/        # Test fixtures
+└── helpers/         # Test utilities
+
+docs/                # Documentation (recently reorganized)
+├── getting-started/ # Installation, quick start, core concepts
+├── guides/          # Feature guides (agents, memory, orchestration, specs)
+├── reference/       # CLI commands reference
+├── providers/       # Provider-specific documentation
+├── platform/        # Platform-specific guides (Windows, macOS, Linux)
+├── advanced/        # Advanced topics (caching, performance, parallelization)
+├── api/             # API documentation and observability
+├── tutorials/       # Step-by-step tutorials
+└── contributing/    # Contributing guidelines and standards
+
+examples/
+├── agents/          # Agent profile examples
+├── specs/           # Workflow spec examples
+├── teams/           # Team composition examples
+└── abilities/       # Agent ability examples
+
+automatosx/          # Workspace directories (see Workspace Conventions below)
+├── PRD/             # Planning documents (committed to git)
+└── tmp/             # Temporary files (not committed, auto-cleaned)
+```
+
+## Key Files to Know
+
+- `automatosx.config.json`: Main configuration (user-editable)
+- `src/config.generated.ts`: Generated TypeScript config (DO NOT EDIT manually)
+- `tools/prebuild-config.cjs`: Config generator script (runs before build)
+- `tools/sync-all-versions.js`: Version sync tool (used in release process)
+- `vitest.setup.ts`: Test setup (mocks, globals)
+- `vitest.config.ts`: Vitest configuration
+- `tsconfig.json`: TypeScript compiler config
+- `tsup.config.ts`: Build configuration
+
+## Version Management
+
+- Single source of truth: `package.json` version field
+- Sync script: `npm run sync:all-versions` updates README.md, CLAUDE.md, config
+- Git hooks (via Husky): Auto-sync on `npm version`
+- Release workflow: `npm version [patch|minor|major]` → auto-sync → commit → tag
+
+## Performance Considerations
+
+- Router selects providers in < 5ms (with policy evaluation)
+- Memory search: < 1ms with FTS5 prepared statements
+- Delegation parsing: < 1ms per response (regex-based)
+- Provider availability check: Cached for 60s (adaptive TTL)
+- Config loading: Lazy with caching (5min TTL for profiles)
+- Database: Use prepared statements, avoid COUNT(*) in hot paths
+
+## Security Notes
+
+- Provider names are whitelisted to prevent command injection
+- Path validation enabled for file operations (see `advanced.security` config)
+- Allowed file extensions configurable (default: common dev files)
+- No embedding API calls by default (uses FTS5 for search)
+- Local-first: All data in `.automatosx/` (never sent to cloud unless via provider)
+
+## Debugging Tips
+
+- Use `--debug` flag for verbose logging
+- Check `.automatosx/logs/router-trace-*.jsonl` for routing decisions
+- Use `ax doctor` to diagnose provider setup issues
+- Use `ax cleanup` to kill orphaned provider processes
+- Use `ax cache status` to check cache performance
+- Use `ax free-tier status` to check quota usage
+- Set `AUTOMATOSX_CLI_ONLY=true` to force CLI mode (no API calls)
+
+## Known Constraints
+
+- Node.js >= 20.0.0 required (uses ES2022 features)
+- SQLite must support FTS5 extension (usually built-in)
+- Provider CLIs must be installed separately (gemini, claude, codex)
+- Max delegation depth: 2 (configurable in orchestration.delegation.maxDepth)
+- Max concurrent agents: 4 (configurable in execution.concurrency.maxConcurrentAgents)
+- Memory max entries: 10,000 (auto-cleanup if exceeded)
+- Session persistence debounce: 1s (reduces I/O but delays saves)
+
+## Workspace Conventions
+
+AutomatosX uses standardized workspace directories for organization:
+
+**`automatosx/PRD/`** - Planning and Requirements Documents
+
+- Committed to git
+- Contains architectural designs, implementation plans, completion summaries
+- Use for: Feature specs, architecture docs, project plans
+- Example: `automatosx/PRD/auth-system-design.md`
+
+**`automatosx/tmp/`** - Temporary Working Files
+
+- NOT committed to git (in .gitignore)
+- Auto-cleaned periodically
+- Use for: Draft implementations, experimental code, temporary analysis
+- Example: `automatosx/tmp/draft-implementation.ts`
+
+**Best Practice**: Always use these directories for project-related documents and temporary files to maintain workspace organization.
+
+## Documentation Structure
+
+After recent reorganization (docs-cleanup-phase3 branch), documentation follows this structure:
+
+- **Getting Started** (`docs/getting-started/`) - Installation, quick start, core concepts
+- **Guides** (`docs/guides/`) - Feature guides for agents, memory, orchestration, specs
+- **Reference** (`docs/reference/`) - CLI commands and API reference
+- **Providers** (`docs/providers/`) - Provider-specific setup and configuration
+- **Platform** (`docs/platform/`) - Platform-specific guides (Windows setup, troubleshooting)
+- **Advanced** (`docs/advanced/`) - Performance, caching, parallel execution
+- **Tutorials** (`docs/tutorials/`) - Step-by-step walkthroughs
+- **Contributing** (`docs/contributing/`) - Development guidelines, testing standards
+
+When referencing documentation, prefer these organized locations over root-level markdown files.
+
+## Git Workflow
+
+- Main branch: `main`
+- Current branch: `docs-cleanup-phase3` (documentation reorganization)
+- Commit message format: Conventional Commits (feat/fix/chore/docs)
+- Husky hooks: Pre-commit linting, commit-msg validation
+- CI: Tests run on push (see `test:ci` script)
+- Recent focus: Documentation cleanup and reorganization
+
+---
+
+## Working with AutomatosX as a User
+
+When using AutomatosX via Claude Code (or other AI assistants), prefer natural language commands:
+
+**Natural Language (Recommended)**:
+
+```text
+"Please work with the backend agent to implement user authentication"
+"Ask the security agent to audit this code for vulnerabilities"
+"Have the quality agent write tests for this feature"
+```
+
+**Direct CLI Usage**:
+
+```bash
+ax run backend "implement user authentication"
+ax memory search "authentication"
+ax providers trace --follow
+```
+
+**Integration Guide**: See [AX-GUIDE.md](AX-GUIDE.md) for comprehensive usage guide including:
+
+- Complete agent directory with capabilities
+- Memory system and context management
+- Multi-agent orchestration patterns
+- Platform-specific integration (Claude Code, Gemini CLI, etc.)
+- Configuration and troubleshooting
+
+**Claude as a Provider**: If you're configuring Claude Code as a provider in AutomatosX (not using Claude Code to develop), see [docs/providers/claude-code.md](docs/providers/claude-code.md) for setup instructions.
+
+**Documentation**: For detailed feature documentation, see the reorganized `docs/` directory structure above.

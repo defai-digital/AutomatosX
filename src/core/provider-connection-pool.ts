@@ -101,6 +101,15 @@ export class ProviderConnectionPool extends EventEmitter {
     // Start background maintenance
     this.startMaintenanceTasks();
 
+    // Bug #41: Register shutdown handler to cleanup intervals
+    import('../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        await this.shutdown();
+      });
+    }).catch(() => {
+      logger.debug('ProviderConnectionPool: process-manager not available for shutdown handler');
+    });
+
     logger.debug('ProviderConnectionPool initialized', {
       config: this.config
     });

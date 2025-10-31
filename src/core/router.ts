@@ -154,6 +154,15 @@ export class Router {
         });
       }
     }
+
+    // Bug #43: Register shutdown handler to cleanup health check interval
+    import('../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        this.destroy();
+      });
+    }).catch(() => {
+      logger.debug('Router: process-manager not available for shutdown handler');
+    });
   }
 
   /**

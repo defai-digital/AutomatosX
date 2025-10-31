@@ -3,7 +3,7 @@
 Complete installation and configuration guide for Windows 10 and Windows 11 users.
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v5.3.1+
+**Applies to**: AutomatosX v6.3.8+
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11
 
@@ -142,7 +142,7 @@ ax status
 
 ## ✅ Step 4: Verify Provider Detection
 
-AutomatosX v5.3.1+ automatically detects provider CLIs on Windows.
+AutomatosX v6.3.8+ automatically detects provider CLIs on Windows.
 
 ### Check Provider Status
 
@@ -344,14 +344,14 @@ You can enforce minimum provider CLI versions:
 
 ### Learn the Basics
 
-- **[Quick Start Guide](../guide/quick-start.md)** - Basic usage tutorial
-- **[Core Concepts](../guide/core-concepts.md)** - Understand agents, memory, providers
-- **[Terminal Mode Guide](../guide/terminal-mode.md)** - Complete CLI reference
+- **[Quick Start Guide](../getting-started/quick-start.md)** - Basic usage tutorial
+- **[Core Concepts](../getting-started/core-concepts.md)** - Understand agents, memory, providers
+- **[Terminal Mode Guide](../guides/terminal-mode.md)** - Complete CLI reference
 
 ### Explore Features
 
-- **[Agent Communication & Memory](../guide/agent-communication.md)** - How agents remember context
-- **[Multi-Agent Orchestration](../guide/multi-agent-orchestration.md)** - Natural language delegation
+- **[Agent Communication & Memory](../guides/agent-communication.md)** - How agents remember context
+- **[Multi-Agent Orchestration](../guides/multi-agent-orchestration.md)** - Natural language delegation
 - **[Agent Directory](../../examples/AGENTS_INFO.md)** - All 12 available agents
 
 ### Troubleshooting
@@ -399,5 +399,5 @@ ax run Steve "Security audit the code"  # Auto-receives design + implementation
 ---
 
 **Last Updated**: 2025-10-14
-**Version**: AutomatosX v5.3.1
+**Version**: AutomatosX v6.3.8
 **Tested Platforms**: Windows 10, Windows 11

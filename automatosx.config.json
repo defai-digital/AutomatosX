@@ -58,11 +58,6 @@
         "enabled": true,
         "window": "daily",
         "resetHourUtc": 0
-      },
-      "gemini": {
-        "approvalMode": "auto_edit",
-        "embeddingModel": "text-embedding-004",
-        "enableRealEmbeddings": false
       }
     },
     "openai": {
@@ -70,11 +65,6 @@
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
-      "integration": "auto",
-      "sandbox": {
-        "default": "workspace-write",
-        "allowOverride": true
-      },
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -308,13 +298,6 @@
     "providerCooldownMs": 30000,
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
-  },
-  "telemetry": {
-    "enabled": false,
-    "dbPath": ".automatosx/telemetry/events.db",
-    "flushIntervalMs": 30000,
-    "retentionDays": 30,
-    "bufferSize": 100
   },
   "version": "6.3.7"
 }

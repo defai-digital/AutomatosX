@@ -192,7 +192,7 @@ See `tmp/path-standardization-final-recommendations.md` for detailed implementat
 
 ## Related Documentation
 
-- [Quick Start Guide](./guide/quick-start.md)
+- [Quick Start Guide](./getting-started/quick-start.md)
 - [CLI Reference](./guide/cli-reference.md)
 - [Agent Development Guide](../CONTRIBUTING.md)
 - [WorkspaceManager API](../src/core/workspace-manager.ts)

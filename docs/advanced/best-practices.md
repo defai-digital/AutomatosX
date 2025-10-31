@@ -1,7 +1,7 @@
 # AutomatosX Best Practices Guide
 
-**Version**: 5.3.4
-**Last Updated**: 2025-10-14
+**Version**: 6.3.8
+**Last Updated**: 2025-10-31
 **Target Audience**: Claude Code users, CLI users, developers
 
 ---
@@ -605,7 +605,7 @@ Master complete feature development with automatic agent orchestration.
 - [Agent Directory](../examples/AGENTS_INFO.md) - All available agents
 - [Team Structure](../CLAUDE.md#team-based-configuration) - How agents are organized
 - [Memory System](./guide/memory-system.md) - How context is preserved
-- [Multi-Agent Orchestration](./guide/multi-agent-orchestration.md) - Agent coordination
+- [Multi-Agent Orchestration](./guides/multi-agent-orchestration.md) - Agent coordination
 
 ---
 

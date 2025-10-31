@@ -71,6 +71,15 @@ export class AdaptiveCache<T = any> {
     // Start periodic cleanup
     this.startCleanup();
 
+    // Bug #40: Register shutdown handler to cleanup interval
+    import('../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        this.shutdown();
+      });
+    }).catch(() => {
+      logger.debug('AdaptiveCache: process-manager not available for shutdown handler');
+    });
+
     logger.debug('Adaptive cache initialized', {
       maxEntries: this.config.maxEntries,
       baseTTL: this.config.baseTTL

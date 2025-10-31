@@ -101,10 +101,29 @@ export interface OpenAIMCPConfig {
 }
 
 /**
- * Integration Mode (v5.13.0 Phase 1+)
+ * Integration Mode (v5.13.0 Phase 1+, v6.0.7 Phase 2)
  * Determines how provider communicates with AI API
+ * - 'cli': Use subprocess (compatible with firewalls, requires CLI installation)
+ * - 'sdk': Use native SDK (faster, requires API key and direct API access)
+ * - 'mcp': Use MCP protocol (future, not yet implemented)
+ * - 'auto': Auto-detect best mode based on environment (recommended)
  */
-export type IntegrationMode = 'sdk' | 'cli' | 'mcp';
+export type IntegrationMode = 'sdk' | 'cli' | 'mcp' | 'auto';
+
+/**
+ * Sandbox Mode (v6.0.7 Phase 3)
+ * Security sandbox for code execution
+ */
+export type SandboxMode = 'none' | 'workspace-read' | 'workspace-write' | 'full';
+
+/**
+ * Sandbox Configuration (v6.0.7 Phase 3)
+ * Configure code execution sandbox for OpenAI provider
+ */
+export interface SandboxConfig {
+  default: SandboxMode;      // Default sandbox mode (recommended: 'workspace-write')
+  allowOverride: boolean;    // Allow per-execution override via --sandbox flag
+}
 
 /**
  * OpenAI SDK Configuration (v5.13.0 Phase 1+)
@@ -173,6 +192,10 @@ export interface ProviderConfig {
   connectionPool?: ConnectionPoolConfig;
   /** Automatic fallback to CLI if SDK fails (default: true) */
   fallbackToCLI?: boolean;
+
+  // v6.0.7 Phase 3: Sandbox security configuration
+  /** Sandbox mode configuration for file system access control */
+  sandbox?: SandboxConfig;
 }
 
 // ========================================
@@ -496,6 +519,25 @@ export interface RouterConfig {
   providerCooldownMs?: number;   // Cooldown period for failed providers (ms)
 }
 
+// ========================================
+// Telemetry Configuration (v6.0.7+)
+// Phase 4: Observability & Analytics
+// ========================================
+
+/**
+ * Telemetry Configuration
+ *
+ * Controls telemetry collection for usage analytics and cost optimization.
+ * Privacy-first: All data stored locally, never transmitted externally.
+ */
+export interface TelemetryConfig {
+  enabled: boolean;               // Enable/disable telemetry collection (opt-in, default: false)
+  dbPath?: string;                // SQLite database path (default: .automatosx/telemetry/events.db)
+  flushIntervalMs?: number;       // Auto-flush interval in ms (default: 30000)
+  retentionDays?: number;         // Data retention period in days (default: 30)
+  bufferSize?: number;            // Max buffered events before flush (default: 100)
+}
+
 export interface AutomatosXConfig {
   $schema?: string;
   version?: string;
@@ -512,6 +554,7 @@ export interface AutomatosXConfig {
   cli?: CLIConfig;
   openai?: OpenAIConfig;  // legacy
   router?: RouterConfig;  // v5.7.0: Router configuration
+  telemetry?: TelemetryConfig;  // v6.0.7: Phase 4 - Observability & Analytics
 }
 
 // ========================================

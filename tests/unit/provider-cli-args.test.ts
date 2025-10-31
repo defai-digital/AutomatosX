@@ -31,7 +31,7 @@ describe('Provider CLI Arguments (Phase 2)', () => {
         expect(args).toEqual(['exec', '--sandbox', 'workspace-write']);
       });
 
-      it('should NOT include model parameter (uses CLI default)', () => {
+      it('should include model parameter for cost optimization (v6.0.7 Phase 3)', () => {
         const request: ExecutionRequest = {
           prompt: 'test prompt',
           model: 'gpt-4o'
@@ -39,10 +39,10 @@ describe('Provider CLI Arguments (Phase 2)', () => {
 
         const args = (provider as any).buildCLIArgs(request);
 
-        // Model should NOT be passed - let OpenAI Codex CLI use its default
-        expect(args).not.toContain('-m');
-        expect(args).not.toContain('gpt-4o');
-        expect(args).toEqual(['exec', '--sandbox', 'workspace-write']);
+        // Phase 3: Model selection enabled for cost optimization
+        expect(args).toContain('--model');
+        expect(args).toContain('gpt-4o');
+        expect(args).toEqual(['exec', '--sandbox', 'workspace-write', '--model', 'gpt-4o']);
       });
 
       it('should include maxTokens if specified', () => {
@@ -70,10 +70,10 @@ describe('Provider CLI Arguments (Phase 2)', () => {
       });
 
 
-      it('should include all supported parameters (excluding model)', () => {
+      it('should include all supported parameters including model (v6.0.7 Phase 3)', () => {
         const request: ExecutionRequest = {
           prompt: 'test prompt',
-          model: 'gpt-4o', // Model is ignored
+          model: 'gpt-4o', // Phase 3: Model selection now supported
           maxTokens: 4096,
           temperature: 0.5
         };
@@ -83,10 +83,10 @@ describe('Provider CLI Arguments (Phase 2)', () => {
         expect(args).toContain('exec');
         expect(args).toContain('--sandbox');
         expect(args).toContain('workspace-write');
-        // Model should NOT be passed
-        expect(args).not.toContain('-m');
-        expect(args).not.toContain('gpt-4o');
-        // But maxTokens and temperature should be passed
+        // Phase 3: Model IS now passed for cost optimization
+        expect(args).toContain('--model');
+        expect(args).toContain('gpt-4o');
+        // And maxTokens and temperature should be passed
         expect(args).toContain('-c');
         expect(args).toContain('max_tokens=4096');
         expect(args).toContain('temperature=0.5');

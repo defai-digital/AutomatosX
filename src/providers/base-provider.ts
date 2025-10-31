@@ -31,6 +31,7 @@ import * as path from 'path';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import { shouldAutoEnableMockProviders } from '../utils/environment.js';
 import { providerCache } from '../core/provider-cache.js';
+import { getTelemetryCollector } from '../core/telemetry/TelemetryCollector.js';
 
 /**
  * Cache entry for availability check results
@@ -868,6 +869,30 @@ export abstract class BaseProvider implements Provider {
       throw new Error(`Provider ${this.name} is not available`);
     }
 
+    // Phase 4: Record execution start
+    // Telemetry is wrapped in try-catch to ensure it never breaks provider execution
+    const telemetry = getTelemetryCollector();
+    const executionStartTime = Date.now();
+
+    try {
+      telemetry.record({
+        type: 'execution_start',
+        provider: this.name,
+        model: request.model || 'default',
+        agentName: request.context?.agentName,
+        sessionId: request.context?.sessionId,
+        latencyMs: 0,
+        tokensUsed: { prompt: 0, completion: 0, total: 0 },
+        cost: { estimatedUsd: 0, provider: this.name },
+        success: true
+      });
+    } catch (telemetryError) {
+      // Telemetry errors should never break execution
+      logger.debug('Telemetry recording failed (non-fatal)', {
+        error: (telemetryError as Error).message
+      });
+    }
+
     // Check rate limits
     // CRITICAL: Pass signal to waitForCapacity for cancellable rate-limit waiting
     await this.waitForCapacity(request.signal);
@@ -891,6 +916,29 @@ export abstract class BaseProvider implements Provider {
         model: request.model
       });
 
+      // Phase 4: Record cache hit
+      try {
+        telemetry.record({
+          type: 'cache_hit',
+          provider: this.name,
+          model: request.model || 'default',
+          agentName: request.context?.agentName,
+          sessionId: request.context?.sessionId,
+          latencyMs: Date.now() - executionStartTime,
+          tokensUsed: cached.usage || {
+            prompt: this.estimateTokens(request.prompt),
+            completion: this.estimateTokens(cached.response),
+            total: this.estimateTokens(request.prompt) + this.estimateTokens(cached.response)
+          },
+          cost: { estimatedUsd: 0, provider: this.name },
+          success: true
+        });
+      } catch (telemetryError) {
+        logger.debug('Telemetry recording failed (non-fatal)', {
+          error: (telemetryError as Error).message
+        });
+      }
+
       // Return cached response (reconstruct ExecutionResponse)
       return {
         content: cached.response,
@@ -901,18 +949,39 @@ export abstract class BaseProvider implements Provider {
           total: this.estimateTokens(request.prompt) + this.estimateTokens(cached.response)
         },
         latencyMs: 0, // Cached response has no latency
-        finishReason: 'stop'
+        finishReason: 'stop',
+        cached: true
       };
+    }
+
+    // Phase 4: Record cache miss
+    try {
+      telemetry.record({
+        type: 'cache_miss',
+        provider: this.name,
+        model: request.model || 'default',
+        agentName: request.context?.agentName,
+        sessionId: request.context?.sessionId,
+        latencyMs: 0,
+        tokensUsed: { prompt: 0, completion: 0, total: 0 },
+        cost: { estimatedUsd: 0, provider: this.name },
+        success: true
+      });
+    } catch (telemetryError) {
+      logger.debug('Telemetry recording failed (non-fatal)', {
+        error: (telemetryError as Error).message
+      });
     }
 
     const retryPolicy = this.config.retryPolicy ?? this.getDefaultRetryPolicy();
     let lastError: Error | undefined;
+    let startTime = Date.now();
 
     for (let attempt = 1; attempt <= retryPolicy.maxAttempts; attempt++) {
       try {
         // Track concurrent requests
         this.rateLimitState.concurrentRequests++;
-        const startTime = Date.now();
+        startTime = Date.now();
 
         const response = await this.executeWithTimeout(request);
 
@@ -920,6 +989,31 @@ export abstract class BaseProvider implements Provider {
         const latency = Date.now() - startTime;
         this.updateMetrics(response, latency);
         this.health.consecutiveFailures = 0;
+
+        // Phase 4: Calculate cost and record successful execution
+        try {
+          const cost = await this.calculateCostFromTokens(
+            response.tokensUsed,
+            response.model
+          );
+
+          telemetry.record({
+            type: 'execution_complete',
+            provider: this.name,
+            model: response.model,
+            agentName: request.context?.agentName,
+            sessionId: request.context?.sessionId,
+            latencyMs: latency,
+            tokensUsed: response.tokensUsed,
+            cost,
+            success: true,
+            retryCount: attempt > 1 ? attempt - 1 : undefined
+          });
+        } catch (telemetryError) {
+          logger.debug('Telemetry recording failed (non-fatal)', {
+            error: (telemetryError as Error).message
+          });
+        }
 
         // Cache successful response
         this.responseCache.set(
@@ -937,6 +1031,28 @@ export abstract class BaseProvider implements Provider {
         lastError = error as Error;
         this.health.consecutiveFailures++;
         this.usageStats.errorCount++;
+
+        // Phase 4: Record execution error
+        try {
+          telemetry.record({
+            type: 'execution_error',
+            provider: this.name,
+            model: request.model || 'default',
+            agentName: request.context?.agentName,
+            sessionId: request.context?.sessionId,
+            latencyMs: Date.now() - startTime,
+            tokensUsed: { prompt: 0, completion: 0, total: 0 },
+            cost: { estimatedUsd: 0, provider: this.name },
+            success: false,
+            errorCode: this.getErrorCode(lastError),
+            errorMessage: lastError.message,
+            retryCount: attempt - 1
+          });
+        } catch (telemetryError) {
+          logger.debug('Telemetry recording failed (non-fatal)', {
+            error: (telemetryError as Error).message
+          });
+        }
 
         logger.error(`Provider ${this.name} execution failed (attempt ${attempt})`, {
           error: lastError.message,
@@ -1062,6 +1178,42 @@ export abstract class BaseProvider implements Provider {
       estimatedUsd: 0,
       tokensUsed: estimatedTokens
     };
+  }
+
+  /**
+   * Phase 4: Calculate actual cost from token usage
+   */
+  protected async calculateCostFromTokens(
+    tokensUsed: { prompt: number; completion: number },
+    model: string
+  ): Promise<{ estimatedUsd: number; provider: string }> {
+    // Default implementation returns 0 cost
+    // Providers override this with actual pricing logic
+    return {
+      estimatedUsd: 0,
+      provider: this.name
+    };
+  }
+
+  /**
+   * Phase 4: Extract error code from error object
+   */
+  protected getErrorCode(error: Error): string {
+    // Check for common error properties
+    if ('code' in error && typeof (error as any).code === 'string') {
+      return (error as any).code;
+    }
+    if ('name' in error && error.name !== 'Error') {
+      return error.name;
+    }
+    // Default to message-based classification
+    const message = error.message.toLowerCase();
+    if (message.includes('rate limit')) return 'RATE_LIMIT';
+    if (message.includes('timeout')) return 'TIMEOUT';
+    if (message.includes('authentication') || message.includes('unauthorized')) return 'AUTH_ERROR';
+    if (message.includes('not found')) return 'NOT_FOUND';
+    if (message.includes('quota')) return 'QUOTA_EXCEEDED';
+    return 'UNKNOWN_ERROR';
   }
 
   async getUsageStats(): Promise<UsageStats> {
@@ -1265,15 +1417,6 @@ export abstract class BaseProvider implements Provider {
     }
   }
 
-  /**
-   * @deprecated Use executeWithTimeout instead. This method creates timeout leaks.
-   * Kept for backward compatibility but should not be used.
-   */
-  protected createTimeoutPromise(timeoutMs: number): Promise<never> {
-    return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
-    });
-  }
 
   protected updateMetrics(response: ExecutionResponse, latency: number): void {
     this.usageStats.totalRequests++;

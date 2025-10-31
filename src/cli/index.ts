@@ -43,6 +43,10 @@ import { providerLimitsCommand } from './commands/provider-limits.js';
 import { specCommand } from './commands/spec.js';
 import { genCommand } from './commands/gen.js';
 import { providersCommand } from './commands/providers.js';
+import { doctorCommand } from './commands/doctor.js';
+import { setupCommand } from './commands/setup.js';
+import { cleanupCommand } from './commands/cleanup.js';
+import { analyticsCommand } from './commands/analytics.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -81,6 +85,13 @@ globalTracker.mark('cli_start');
   .example('$0 providers info openai', 'Show provider details')
   .example('$0 gen plan workflow.ax.yaml', 'Generate execution plan')
   .example('$0 gen dag workflow.ax.yaml', 'Generate DAG JSON')
+  .example('$0 doctor', 'Run diagnostic checks')
+  .example('$0 doctor openai', 'Check OpenAI provider setup')
+  .example('$0 setup', 'Interactive setup wizard for OpenAI')
+  .example('$0 cleanup', 'Clean up orphaned processes')
+  .example('$0 cleanup openai --force', 'Force cleanup OpenAI processes')
+  .example('$0 analytics summary', 'Show usage analytics summary')
+  .example('$0 analytics optimize', 'Show optimization recommendations')
 
   // Global options
   .option('debug', {
@@ -114,6 +125,10 @@ globalTracker.mark('cli_start');
   .command(cacheCommand)
   .command(configCommand)
   .command(statusCommand)
+  .command(doctorCommand)
+  .command(setupCommand)
+  .command(cleanupCommand)
+  .command(analyticsCommand)
   .command(memoryCommand)
   .command(mcpCommand)
   .command(geminiCommand)

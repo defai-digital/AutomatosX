@@ -335,9 +335,9 @@ Expected output:
 
 Now that AutomatosX is installed:
 
-1. See the [examples directory](../../examples/) for common use cases
-2. Check the [API documentation](../api/) for technical reference
-3. Read the [introduction](./introduction.md) to understand core concepts
+1. See the [Quick Start Guide](./quick-start.md) to get up and running
+2. Read the [Core Concepts](./core-concepts.md) to understand the fundamentals
+3. Check the [examples directory](../../examples/) for common use cases
 
 ## System Requirements
 

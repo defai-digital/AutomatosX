@@ -397,6 +397,8 @@ export class GeminiProvider extends BaseProvider {
 
       // Handle process errors
       child.on('error', (error) => {
+        // v6.2.8: Bug fix #35 - Clear all timers to prevent race conditions
+        cleanup();  // Clear all timeouts before cleanupAbortListener()
         cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
         if (!hasTimedOut) {
           reject(ProviderError.executionError(this.config.name, error));

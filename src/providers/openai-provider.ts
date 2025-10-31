@@ -358,6 +358,9 @@ export class OpenAIProvider extends BaseProvider {
 
       // Handle process errors
       child.on('error', (error) => {
+        // v6.2.8: Bug fix #35 - Clear all timers to prevent race conditions
+        // Must cleanup() before cleanupAbortListener() to match close handler order
+        cleanup();  // Clear all timeouts (mainTimeout, abortKillTimeout, nestedKillTimeout)
         cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
         if (!hasTimedOut) {
           reject(new Error(`Failed to spawn OpenAI CLI: ${error.message}`));
@@ -758,6 +761,9 @@ export class OpenAIProvider extends BaseProvider {
 
       // Handle process errors
       child.on('error', (error) => {
+        // v6.2.8: Bug fix #35 - Clear all timers to prevent race conditions
+        // Must cleanup() before cleanupAbortListener() to match close handler order
+        cleanup();  // Clear all timeouts (mainTimeout, abortKillTimeout, nestedKillTimeout)
         cleanupAbortListener();  // CRITICAL: Remove abort listener to prevent memory leak
         if (!hasTimedOut) {
           reject(new Error(`Failed to spawn OpenAI CLI: ${error.message}`));

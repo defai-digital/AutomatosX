@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.2.8] - 2025-10-31
+
+### 🔧 Fixes
+
+**Provider Error Handler Timer Race Condition (Bug #35)**
+
+Through systematic heavy-thinking analysis of provider timer cleanup patterns:
+
+- **Bug #35 (MEDIUM)**: Missing cleanup() call in child process error handlers across all CLI providers
+  - **Files affected**:
+    - `src/providers/openai-provider.ts` (2 locations: lines 360, 760)
+    - `src/providers/claude-provider.ts` (line 445)
+    - `src/providers/gemini-provider.ts` (line 399)
+  - **Problem**: Error handlers call `cleanupAbortListener()` but NOT `cleanup()`, leaving timers running
+  - **Impact**: Race condition - if child.on('error') fires, mainTimeout continues and can create orphaned nestedKillTimeout
+  - **Root Cause**: Inconsistent cleanup pattern - close/timeout/abort handlers all call cleanup(), but error handler doesn't
+  - **Fix**: Added `cleanup()` call before `cleanupAbortListener()` in all error handlers (matching close handler pattern)
+  - **Scenario**: Between error event and close event, timers fire and create nested timers that aren't cleaned until close
+
+### 🔍 Analysis Methodology
+
+- **Heavy-thinking provider analysis**: Systematically checked all child.on('error') handlers in CLI providers
+- **Pattern comparison**: Verified cleanup() is called in close, timeout, and abort handlers
+- **Verified vulnerable operations**: All 3 CLI providers (OpenAI, Claude, Gemini) had same bug
+- **Fixed**: 4 total error handler locations across 3 provider files
+
+### 📊 Impact
+
+- **Users affected**: Users experiencing provider CLI process errors during execution
+- **Severity**: Medium (timers eventually cleaned in close handler, but race condition window exists)
+- **Breaking changes**: None
+- **Migration**: None required - automatic cleanup improvement
+
+### ✅ Testing
+
+- All 2,281 unit tests passing
+- TypeScript compilation successful
+- Build successful
+
 ## [6.2.7] - 2025-10-31
 
 ### 🔧 Fixes

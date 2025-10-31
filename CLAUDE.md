@@ -14,6 +14,9 @@ AutomatosX is an AI Agent Orchestration Platform that combines declarative workf
 - **Multi-Agent Orchestration**: 23 specialized agents with delegation parsing
 - **Cost Optimization**: 60-80% cost reduction through intelligent routing and free-tier utilization
 
+**Current Branch**: docs-cleanup-phase3
+**Repository**: https://github.com/defai-digital/automatosx
+
 ## Build & Development Commands
 
 ### Essential Commands
@@ -108,12 +111,28 @@ npm run check:size                         # Check package size
 
 - `claude-provider.ts`: CLI-based Claude integration
 - `gemini-provider.ts`: CLI-based Gemini integration (lowest cost, 1500 free req/day)
-- `openai-provider.ts`: OpenAI integration with CLI/SDK modes
+- `openai-provider.ts`: OpenAI integration with CLI/SDK modes (controlled by `AUTOMATOSX_CLI_ONLY` env var)
 
 **Provider Metadata (`src/core/provider-metadata-registry.ts`)**
 
 - Centralized registry with pricing, latency, free-tier limits
 - Used by PolicyEvaluator for constraint-based filtering
+
+**Integration Layer (`src/integrations/`)**
+
+Bridges between AutomatosX and external AI platforms:
+
+- `claude-code/`: Claude Code integration with MCP manager, command manager, config manager
+- `gemini-cli/`: Gemini CLI integration with command translator and file readers
+- `openai-codex/`: OpenAI Codex integration with CLI wrapper and MCP support
+
+Each integration provides:
+
+- Bridge classes for provider communication
+- Command managers for CLI interaction
+- Config managers for platform-specific settings
+- Validation utilities and file readers
+- Type definitions for platform interfaces
 
 ### Configuration System
 
@@ -274,11 +293,26 @@ tests/
 ├── fixtures/        # Test fixtures
 └── helpers/         # Test utilities
 
+docs/                # Documentation (recently reorganized)
+├── getting-started/ # Installation, quick start, core concepts
+├── guides/          # Feature guides (agents, memory, orchestration, specs)
+├── reference/       # CLI commands reference
+├── providers/       # Provider-specific documentation
+├── platform/        # Platform-specific guides (Windows, macOS, Linux)
+├── advanced/        # Advanced topics (caching, performance, parallelization)
+├── api/             # API documentation and observability
+├── tutorials/       # Step-by-step tutorials
+└── contributing/    # Contributing guidelines and standards
+
 examples/
 ├── agents/          # Agent profile examples
 ├── specs/           # Workflow spec examples
 ├── teams/           # Team composition examples
 └── abilities/       # Agent ability examples
+
+automatosx/          # Workspace directories (see Workspace Conventions below)
+├── PRD/             # Planning documents (committed to git)
+└── tmp/             # Temporary files (not committed, auto-cleaned)
 ```
 
 ## Key Files to Know
@@ -336,132 +370,80 @@ examples/
 - Memory max entries: 10,000 (auto-cleanup if exceeded)
 - Session persistence debounce: 1s (reduces I/O but delays saves)
 
+## Workspace Conventions
+
+AutomatosX uses standardized workspace directories for organization:
+
+**`automatosx/PRD/`** - Planning and Requirements Documents
+
+- Committed to git
+- Contains architectural designs, implementation plans, completion summaries
+- Use for: Feature specs, architecture docs, project plans
+- Example: `automatosx/PRD/auth-system-design.md`
+
+**`automatosx/tmp/`** - Temporary Working Files
+
+- NOT committed to git (in .gitignore)
+- Auto-cleaned periodically
+- Use for: Draft implementations, experimental code, temporary analysis
+- Example: `automatosx/tmp/draft-implementation.ts`
+
+**Best Practice**: Always use these directories for project-related documents and temporary files to maintain workspace organization.
+
+## Documentation Structure
+
+After recent reorganization (docs-cleanup-phase3 branch), documentation follows this structure:
+
+- **Getting Started** (`docs/getting-started/`) - Installation, quick start, core concepts
+- **Guides** (`docs/guides/`) - Feature guides for agents, memory, orchestration, specs
+- **Reference** (`docs/reference/`) - CLI commands and API reference
+- **Providers** (`docs/providers/`) - Provider-specific setup and configuration
+- **Platform** (`docs/platform/`) - Platform-specific guides (Windows setup, troubleshooting)
+- **Advanced** (`docs/advanced/`) - Performance, caching, parallel execution
+- **Tutorials** (`docs/tutorials/`) - Step-by-step walkthroughs
+- **Contributing** (`docs/contributing/`) - Development guidelines, testing standards
+
+When referencing documentation, prefer these organized locations over root-level markdown files.
+
 ## Git Workflow
 
 - Main branch: `main`
-- Recent commits focus on bug fixes (resource leaks, race conditions)
+- Current branch: `docs-cleanup-phase3` (documentation reorganization)
 - Commit message format: Conventional Commits (feat/fix/chore/docs)
 - Husky hooks: Pre-commit linting, commit-msg validation
 - CI: Tests run on push (see `test:ci` script)
+- Recent focus: Documentation cleanup and reorganization
 
 ---
 
-<!-- AutomatosX Integration v6.3.8 - Generated 2025-10-31 -->
+## Working with AutomatosX as a User
 
-# AutomatosX Integration for Claude Code
+When using AutomatosX via Claude Code (or other AI assistants), prefer natural language commands:
 
-This project uses [AutomatosX](https://github.com/defai-digital/automatosx) - an AI agent orchestration platform with persistent memory and multi-agent collaboration.
+**Natural Language (Recommended)**:
 
-## Quick Start for Claude Code
-
-Claude Code works best with **natural language commands**. Just describe what you want AutomatosX agents to do:
-
-```
-"Please work with ax agent backend to implement user authentication"
-"Ask the ax security agent to audit this code for vulnerabilities"
-"Have the ax quality agent write tests for this feature"
+```text
+"Please work with the backend agent to implement user authentication"
+"Ask the security agent to audit this code for vulnerabilities"
+"Have the quality agent write tests for this feature"
 ```
 
-Claude Code will automatically:
-1. Run the appropriate `ax` command
-2. Return the agent's response
-3. Continue with full context from memory
-
-### Essential Commands
+**Direct CLI Usage**:
 
 ```bash
-ax list agents                    # See all available agents
-ax run <agent> "task"            # Run an agent
-ax memory search "keyword"        # Search past conversations
-ax status                         # Check system status
+ax run backend "implement user authentication"
+ax memory search "authentication"
+ax providers trace --follow
 ```
 
-## Using AutomatosX in Claude Code
+**Integration Guide**: See [AX-GUIDE.md](AX-GUIDE.md) for comprehensive usage guide including:
 
-### Natural Language (Recommended)
+- Complete agent directory with capabilities
+- Memory system and context management
+- Multi-agent orchestration patterns
+- Platform-specific integration (Claude Code, Gemini CLI, etc.)
+- Configuration and troubleshooting
 
-Claude Code's natural language interface is the most powerful way to work with AutomatosX:
+**Claude as a Provider**: If you're configuring Claude Code as a provider in AutomatosX (not using Claude Code to develop), see [docs/providers/claude-code.md](docs/providers/claude-code.md) for setup instructions.
 
-```
-"Please coordinate with AutomatosX agents to build a complete auth system:
-1. Have the product agent design the architecture
-2. Have the backend agent implement the API
-3. Have the security agent audit the implementation
-4. Have the quality agent write comprehensive tests"
-```
-
-Claude Code excels at:
-- ✅ Multi-agent coordination
-- ✅ Context management across conversations
-- ✅ Remembering past decisions (via AutomatosX memory)
-- ✅ Complex workflow orchestration
-
-### Alternative: Slash Commands
-
-You can also use slash commands:
-
-```
-/ax-agent backend, create a REST API for user management
-/ax-agent security, audit the authentication flow
-/ax-agent quality, write unit tests for the API
-```
-
-### Best Practices for Claude Code
-
-✅ **Do**:
-- Use natural language (it's more powerful in Claude Code)
-- Let Claude coordinate multi-step workflows
-- Reference past conversations ("use the design from yesterday")
-- Ask for explanations of agent outputs
-
-❌ **Don't**:
-- Manually run `ax` commands unless debugging
-- Repeat context (Claude + memory handle this)
-- Use slash commands for complex workflows (natural language works better)
-
-## Available Agents
-
-**Core Development**: backend, frontend, fullstack, mobile, devops
-**Specialized**: security, quality, product, data, writer
-**Leadership**: cto, ceo, researcher
-
-[Complete agent directory → AX-GUIDE.md#agents](AX-GUIDE.md#agents) (19 agents total)
-
-## Workspace Conventions
-
-**IMPORTANT**: Use these directories for organized file management:
-
-- **`automatosx/PRD/`** - Planning documents (committed to git)
-  - Example: `automatosx/PRD/auth-system-design.md`
-
-- **`automatosx/tmp/`** - Temporary files (not committed, auto-cleaned)
-  - Example: `automatosx/tmp/draft-api-endpoints.ts`
-
-**Usage**:
-```
-"Please save the architecture design to automatosx/PRD/user-auth-design.md"
-"Put the draft implementation in automatosx/tmp/auth-draft.ts for review"
-```
-
-## Full Documentation
-
-📚 **Complete Integration Guide: [AX-GUIDE.md](AX-GUIDE.md)**
-
-Comprehensive coverage of:
-- [All 19 agents with capabilities](AX-GUIDE.md#agents)
-- [Memory system details](AX-GUIDE.md#memory)
-- [Configuration options](AX-GUIDE.md#configuration)
-- [Advanced features](AX-GUIDE.md#advanced) (parallel execution, resumable runs, spec-driven)
-- [Troubleshooting guide](AX-GUIDE.md#troubleshooting)
-- [Best practices](AX-GUIDE.md#best-practices)
-
-**Platform guides**:
-- [Using with Claude Code](AX-GUIDE.md#claude-code) (this platform)
-- [Using with Gemini CLI](AX-GUIDE.md#gemini-cli)
-- [Using with other AI assistants](AX-GUIDE.md#other-assistants)
-
-**Quick links**:
-- Configuration: `automatosx.config.json`
-- Agent directory: `.automatosx/agents/`
-- Memory database: `.automatosx/memory/memories.db`
-- Support: https://github.com/defai-digital/automatosx/issues
+**Documentation**: For detailed feature documentation, see the reorganized `docs/` directory structure above.

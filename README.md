@@ -345,9 +345,9 @@ ax free-tier summary
 ```
 
 **Learn More**:
-- [Gemini Integration Guide](docs/guide/gemini-integration.md) - Complete Gemini setup and optimization
-- [Provider Comparison](docs/guide/provider-comparison.md) - Detailed provider comparison matrix
-- [Cost Optimization Strategies](docs/guide/provider-comparison.md#cost-optimization-strategies) - Advanced techniques
+- [Gemini Integration Guide](docs/providers/gemini.md) - Complete Gemini setup and optimization
+- [Provider Comparison](docs/providers/overview.md) - Detailed provider comparison matrix
+- [Cost Optimization Strategies](docs/providers/gemini.md#cost-optimization) - Advanced techniques
 
 ---
 
@@ -437,7 +437,7 @@ Each agent is an expert in their domain:
 | **Wendy** | Technical Writer | Documentation, API docs, tutorials |
 | **Stan** | Standards Expert | Best practices, design patterns, code review |
 
-[See all 23 agents](docs/agents/agent-directory.md) | [Create custom agents](docs/guide/custom-agents.md)
+[See all 23 agents](docs/guides/agents.md) | [Create custom agents](docs/guides/agent-templates.md)
 
 ---
 
@@ -622,27 +622,27 @@ ax run dag.json
 ## 📖 Documentation
 
 ### Getting Started
-- [Quick Start Guide](docs/guide/quick-start.md) - Get running in 5 minutes
-- [Installation](docs/guide/installation.md) - Detailed installation instructions
-- [Configuration](docs/guide/configuration.md) - Configure providers and settings
+- [Quick Start Guide](docs/getting-started/quick-start.md) - Get running in 5 minutes
+- [Installation](docs/getting-started/installation.md) - Detailed installation instructions
+- [Configuration](docs/guides/configuration.md) - Configure providers and settings
 
 ### Core Features
-- [Spec-Kit Integration](docs/guide/spec-driven-development.md) - Complete workflow automation
-- [Policy-Driven Routing](docs/guide/policy-routing.md) - Cost/latency optimization
-- [Persistent Memory](docs/guide/agent-communication.md) - Context management
-- [Multi-Agent Orchestration](docs/guide/multi-agent-orchestration.md) - Team coordination
+- [Spec-Kit Integration](docs/guides/spec-driven-development.md) - Complete workflow automation
+- [Policy-Driven Routing](docs/providers/overview.md) - Cost/latency optimization with providers
+- [Persistent Memory](docs/guides/agent-communication.md) - Context management
+- [Multi-Agent Orchestration](docs/guides/multi-agent-orchestration.md) - Team coordination
 
 ### Advanced
-- [Custom Agents](docs/guide/custom-agents.md) - Create your own specialists
-- [Provider Configuration](docs/guide/providers.md) - Add AI providers
-- [Trace Debugging](docs/guide/debugging.md) - Debug with trace logs
-- [Cost Optimization](docs/guide/cost-optimization.md) - Maximize savings
+- [Custom Agents](docs/guides/agent-templates.md) - Create your own specialists
+- [Provider Configuration](docs/providers/overview.md) - Add AI providers
+- [Performance & Caching](docs/advanced/performance.md) - Optimization techniques
+- [Parallel Execution](docs/advanced/parallel-execution.md) - Scale your workflows
 
 ### Reference
-- [Agent Directory](docs/agents/agent-directory.md) - All 23 agents
-- [CLI Reference](docs/cli/commands.md) - All commands
-- [YAML Spec Reference](docs/reference/spec-yaml.md) - Complete spec format
-- [API Documentation](docs/api/README.md) - TypeScript API
+- [Agent Directory](docs/guides/agents.md) - All 23 agents
+- [CLI Reference](docs/reference/cli-commands.md) - All commands
+- [Provider Comparison](docs/providers/overview.md) - Provider features and costs
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
 
 ---
 
@@ -692,7 +692,7 @@ ax --version  # v6.0.1
   - [OpenAI Codex](https://platform.openai.com/docs/guides/code) (fastest)
   - [Claude Code](https://claude.ai/code) (most capable)
 
-[➡️ Full Installation Guide](docs/guide/installation.md)
+[➡️ Full Installation Guide](docs/getting-started/installation.md)
 
 ---
 
@@ -724,7 +724,7 @@ ax --version  # v6.0.1
   - Resource-aware scheduling
   - Priority-based execution
 
-[View Full Roadmap](docs/ROADMAP.md)
+[View Full Roadmap](#roadmap)
 
 ---
 

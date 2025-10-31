@@ -128,10 +128,13 @@ describe('Router - Limit Handling Integration', () => {
     });
 
     // Create router
+    // Bug #9: Disable cost optimization features for predictable test behavior
     router = new Router({
       providers: [provider1, provider2, provider3],
       fallbackEnabled: true,
-      providerCooldownMs: 1000 // 1 second for testing
+      providerCooldownMs: 1000, // 1 second for testing
+      enableFreeTierPrioritization: false, // Disable to maintain priority order
+      enableWorkloadAwareRouting: false    // Disable to maintain priority order
     });
   });
 

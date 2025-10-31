@@ -316,5 +316,5 @@
     "retentionDays": 30,
     "bufferSize": 100
   },
-  "version": "6.3.3"
+  "version": "6.3.4"
 }

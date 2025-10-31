@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdir, writeFile, rm, readFile } from 'fs/promises';
+import { mkdir, writeFile, rm, readFile, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execFile } from 'child_process';
@@ -17,9 +17,10 @@ describe('CLI Memory Command Integration', () => {
   let cliPath: string;
 
   beforeEach(async () => {
-    // Create test directory
-    testDir = join(tmpdir(), `automatosx-memory-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
+    // Create test directory with unique name (Bug #9: use mkdtemp to avoid timestamp collisions)
+    const tmpBase = join(tmpdir(), 'automatosx-memory-test-');
+    testDir = await mkdtemp(tmpBase);
+    // Note: mkdtemp already creates the directory, no need for mkdir
 
     // CLI path (built binary)
     cliPath = join(process.cwd(), 'dist', 'index.js');

@@ -52,7 +52,7 @@ export class ClaudeProvider extends BaseProvider {
 
   get capabilities(): ProviderCapabilities {
     return {
-      supportsStreaming: false,
+      supportsStreaming: true, // v6.1.0: Streaming support added
       supportsEmbedding: false, // Claude doesn't provide embeddings directly
       supportsVision: true,
       maxContextTokens: 200000,
@@ -592,6 +592,19 @@ export class ClaudeProvider extends BaseProvider {
       let fullPrompt = request.prompt;
       if (request.systemPrompt) {
         fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+      }
+
+      // v6.0.7: Smart timeout estimation (bugfix v6.2.1)
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      // Show estimate to user (if not in quiet mode)
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
       }
 
       // v6.0.7: Estimate output tokens for progress tracking

@@ -31,7 +31,7 @@ describe('ClaudeProvider', () => {
   it('should have correct metadata', () => {
     expect(provider.name).toBe('claude');
     expect(provider.version).toBe('1.0.0');
-    expect(provider.capabilities.supportsStreaming).toBe(false);
+    expect(provider.capabilities.supportsStreaming).toBe(true); // v6.1.0: Streaming support added
     expect(provider.capabilities.supportsEmbedding).toBe(false);
     expect(provider.capabilities.supportsVision).toBe(true);
     expect(provider.capabilities.maxContextTokens).toBe(200000);

@@ -463,6 +463,19 @@ export class OpenAIProvider extends BaseProvider {
         fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
       }
 
+      // v6.0.7: Smart timeout estimation (bugfix v6.2.1)
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      // Show estimate to user (if not in quiet mode)
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
+      }
+
       // v6.0.7: Estimate total tokens for progress tracking
       const estimatedOutputTokens = request.maxTokens || this.estimateTokens(fullPrompt) * 2;
 

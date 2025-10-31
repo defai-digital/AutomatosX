@@ -21,6 +21,10 @@ import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 import { spawn } from 'child_process';
 import { processManager } from '../utils/process-manager.js';
 import { platform } from 'os';
+import {
+  estimateTimeout,
+  formatTimeoutEstimate
+} from './timeout-estimator.js';
 
 export class GeminiProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
@@ -506,6 +510,19 @@ export class GeminiProvider extends BaseProvider {
       let fullPrompt = request.prompt;
       if (request.systemPrompt) {
         fullPrompt = `${request.systemPrompt}\n\n${request.prompt}`;
+      }
+
+      // v6.2.1: Smart timeout estimation (bugfix - consistency with other providers)
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      // Show estimate to user (if not in quiet mode)
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
       }
 
       // Execute via CLI with streaming callbacks

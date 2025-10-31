@@ -403,15 +403,18 @@ export class FreeTierManager {
   }
 }
 
-// Global instance
-let freeTierManagerInstance: FreeTierManager | null = null;
+// Global instances per workspace
+const freeTierManagerInstances = new Map<string, FreeTierManager>();
 
 /**
  * Get or create free tier manager instance
  */
 export function getFreeTierManager(workspacePath?: string): FreeTierManager {
-  if (!freeTierManagerInstance) {
-    freeTierManagerInstance = new FreeTierManager(workspacePath);
+  const path = workspacePath || process.cwd();
+
+  if (!freeTierManagerInstances.has(path)) {
+    freeTierManagerInstances.set(path, new FreeTierManager(path));
   }
-  return freeTierManagerInstance;
+
+  return freeTierManagerInstances.get(path)!;
 }

@@ -9,18 +9,22 @@
 import { FeatureFlagManager } from './flag-manager.js';
 import { logger } from '@/utils/logger.js';
 
-// Global flag manager instance
-let flagManagerInstance: FeatureFlagManager | null = null;
+// Global flag manager instances per workspace
+const flagManagerInstances = new Map<string, FeatureFlagManager>();
 
 /**
  * Get or create flag manager instance
  */
-export function getFlagManager(): FeatureFlagManager {
-  if (!flagManagerInstance) {
-    flagManagerInstance = new FeatureFlagManager();
-    initializeFlags(flagManagerInstance);
+export function getFlagManager(workspacePath?: string): FeatureFlagManager {
+  const path = workspacePath || process.cwd();
+
+  if (!flagManagerInstances.has(path)) {
+    const manager = new FeatureFlagManager(path);
+    initializeFlags(manager);
+    flagManagerInstances.set(path, manager);
   }
-  return flagManagerInstance;
+
+  return flagManagerInstances.get(path)!;
 }
 
 /**

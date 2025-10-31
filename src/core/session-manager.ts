@@ -1036,6 +1036,7 @@ export class SessionManager {
   /**
    * Save sessions to persistence file (debounced)
    *
+   * v6.3.5: Bug #10 - Added race condition protection
    * @private
    */
   private saveToFile(): void {
@@ -1049,13 +1050,32 @@ export class SessionManager {
     }
 
     this.saveTimeout = setTimeout(() => {
-      this.pendingSave = this.doSave().catch(err => {
-        logger.error('Debounced save failed', {
-          error: err.message
+      // Bug #10: Check if there's already a save in progress before starting a new one
+      // This prevents concurrent writes to the same file when saves happen in rapid succession
+      if (this.pendingSave) {
+        // A save is already in progress, schedule another save after it completes
+        this.pendingSave.then(() => {
+          // Recursive call to saveToFile() to ensure data is eventually saved
+          this.saveToFile();
+        }).catch(() => {
+          // Even if previous save failed, try to save again
+          this.saveToFile();
         });
-        // Re-throw to keep promise rejected (so flushSave can detect failures)
-        throw err;
-      });
+        return;
+      }
+
+      this.pendingSave = this.doSave()
+        .catch(err => {
+          logger.error('Debounced save failed', {
+            error: err.message
+          });
+          // Re-throw to keep promise rejected (so flushSave can detect failures)
+          throw err;
+        })
+        .finally(() => {
+          // Bug #10: Clear pendingSave after completion to allow future saves
+          this.pendingSave = undefined;
+        });
     }, 100); // 100ms debounce
   }
 }

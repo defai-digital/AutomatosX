@@ -77,6 +77,11 @@ export class PlanGenerator {
    * Generate execution plan from spec
    */
   generate(spec: SpecYAML): ExecutionPlan {
+    // FIXED: Validate spec.actors exists before accessing
+    if (!spec.actors || !Array.isArray(spec.actors) || spec.actors.length === 0) {
+      throw new Error('Spec must have at least one actor');
+    }
+
     const phases = this.identifyPhases(spec);
     const resources = this.estimateResources(spec);
     const costs = this.estimateCosts(spec);

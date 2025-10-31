@@ -130,6 +130,18 @@ export const genCommand: CommandModule<Record<string, unknown>, GenOptions> = {
       // Resolve absolute path
       specFile = resolve(process.cwd(), specFile);
 
+      // Validate path safety - prevent access to system-critical directories
+      const dangerousPaths = ['/etc', '/sys', '/proc', '/dev', '/root', '/boot'];
+      const isDangerousPath = dangerousPaths.some(dangerous =>
+        specFile.startsWith(dangerous + '/') || specFile === dangerous
+      );
+
+      if (isDangerousPath) {
+        console.error(chalk.red(`✗ Error: Access to system directory '${specFile}' is not allowed`));
+        console.error(chalk.gray('Spec files should be in your project directory'));
+        process.exit(1);
+      }
+
       switch (argv.subcommand) {
         case 'plan':
           await handleGenPlan(specFile, argv);

@@ -74,11 +74,10 @@ export class PredictiveLimitManager {
         provider TEXT NOT NULL,
         tokens_used INTEGER NOT NULL,
         requests_count INTEGER NOT NULL DEFAULT 1,
-        window_start INTEGER NOT NULL
+        window_start INTEGER NOT NULL,
+        UNIQUE(provider, window_start)
       );
 
-      CREATE INDEX IF NOT EXISTS idx_usage_provider_window
-        ON usage_entries(provider, window_start);
       CREATE INDEX IF NOT EXISTS idx_usage_timestamp
         ON usage_entries(timestamp);
     `);
@@ -102,33 +101,21 @@ export class PredictiveLimitManager {
       await this.initializeUsageTracking();
     }
 
+    // Capture timestamp once at the beginning to ensure consistency
     const now = Date.now();
     const windowStart = this.getHourlyWindowStart(now);
 
-    // Check if entry exists for this provider and window
-    const existing = this.usageDb!.prepare(`
-      SELECT id, tokens_used, requests_count
-      FROM usage_entries
-      WHERE provider = ? AND window_start = ?
-    `).get(provider, windowStart) as UsageEntry | undefined;
-
-    if (existing) {
-      // Update existing entry
-      this.usageDb!.prepare(`
-        UPDATE usage_entries
-        SET tokens_used = tokens_used + ?,
-            requests_count = requests_count + 1,
-            timestamp = ?
-        WHERE id = ?
-      `).run(tokens, now, existing.id);
-    } else {
-      // Insert new entry
-      this.usageDb!.prepare(`
-        INSERT INTO usage_entries (
-          timestamp, provider, tokens_used, requests_count, window_start
-        ) VALUES (?, ?, ?, 1, ?)
-      `).run(now, provider, tokens, windowStart);
-    }
+    // Use INSERT OR REPLACE to handle race conditions atomically
+    // This ensures only one entry per (provider, window_start) without race conditions
+    this.usageDb!.prepare(`
+      INSERT INTO usage_entries (
+        timestamp, provider, tokens_used, requests_count, window_start
+      ) VALUES (?, ?, ?, 1, ?)
+      ON CONFLICT(provider, window_start) DO UPDATE SET
+        tokens_used = tokens_used + excluded.tokens_used,
+        requests_count = requests_count + 1,
+        timestamp = excluded.timestamp
+    `).run(now, provider, tokens, windowStart);
 
     logger.debug('Usage recorded', {
       provider,

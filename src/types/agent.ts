@@ -246,6 +246,7 @@ export interface ContextOptions {
   model?: string;         // Override model
   skipMemory?: boolean;   // Skip memory injection
   memoryLimit?: number;   // Limit memory entries
+  sandbox?: string;       // v6.0.7 Phase 3: Sandbox mode override
 
   // v4.7.0+ Orchestration options
   sessionId?: string;           // Session ID for multi-agent workflows

@@ -83,7 +83,7 @@ export class OpenAIProvider extends BaseProvider {
       const timeoutEstimate = estimateTimeout({
         prompt: fullPrompt,
         systemPrompt: request.systemPrompt,
-        model: request.model || undefined, // Ensure model is string or undefined
+        model: typeof request.model === 'string' ? request.model : undefined, // Ensure model is string or undefined
         maxTokens: request.maxTokens
       });
 

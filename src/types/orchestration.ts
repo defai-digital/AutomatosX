@@ -258,20 +258,3 @@ export class SessionError extends Error {
     this.name = 'SessionError';
   }
 }
-
-/**
- * Workspace Error - Specialized error for workspace operations
- *
- * @deprecated v5.2.0 - Simplified WorkspaceManager now throws standard Error
- * Kept for backward compatibility during transition period
- */
-export class WorkspaceError extends Error {
-  constructor(
-    message: string,
-    public readonly workspacePath?: string,
-    public readonly reason?: 'permission_denied' | 'not_found' | 'conflict' | 'quota_exceeded' | 'creation_failed' | 'invalid_session_id'
-  ) {
-    super(message);
-    this.name = 'WorkspaceError';
-  }
-}

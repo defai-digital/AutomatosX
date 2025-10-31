@@ -156,14 +156,26 @@ export class McpServer {
     }
 
     if (config.providers['openai']?.enabled) {
-      const { OpenAIProvider } = await import('../providers/openai-provider.js');
-      providers.push(new OpenAIProvider({
-        name: 'openai',
-        enabled: true,
-        priority: config.providers['openai'].priority,
-        timeout: config.providers['openai'].timeout,
-        command: config.providers['openai'].command
-      }));
+      const openaiConfig = config.providers['openai'];
+      // v6.0.7: Use factory to create provider based on integration mode
+      const { createOpenAIProviderSync } = await import('../providers/openai-provider-factory.js');
+      const provider = createOpenAIProviderSync(
+        {
+          name: 'openai',
+          enabled: true,
+          priority: openaiConfig.priority,
+          timeout: openaiConfig.timeout,
+          command: openaiConfig.command || 'codex',
+          integration: openaiConfig.integration,
+          sdk: openaiConfig.sdk,
+          circuitBreaker: openaiConfig.circuitBreaker,
+          processManagement: openaiConfig.processManagement,
+          versionDetection: openaiConfig.versionDetection,
+          limitTracking: openaiConfig.limitTracking
+        },
+        openaiConfig.integration
+      );
+      providers.push(provider);
     }
 
     // Initialize Router

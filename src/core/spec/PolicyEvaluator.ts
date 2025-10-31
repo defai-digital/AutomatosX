@@ -163,10 +163,11 @@ export class PolicyEvaluator {
     // Sort by score (highest first)
     scores.sort((a, b) => b.totalScore - a.totalScore);
 
+    // FIXED: Protect toFixed() call from undefined with optional chaining AND nullish coalescing
     logger.debug('Providers scored', {
       count: scores.length,
       topProvider: scores[0]?.provider,
-      topScore: scores[0]?.totalScore.toFixed(3)
+      topScore: scores[0]?.totalScore?.toFixed(3) ?? 'N/A'
     });
 
     return scores;

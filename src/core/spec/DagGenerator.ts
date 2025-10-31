@@ -278,12 +278,14 @@ export class DagGenerator {
       }
 
       const node = dag.nodes.find(n => n.id === nodeId);
-      if (!node || node.dependencies.length === 0) {
+      if (!node || !node.dependencies || node.dependencies.length === 0) {
         depths.set(nodeId, 1);
         return 1;
       }
 
-      const maxDepDep = Math.max(...node.dependencies.map(dep => calculateDepth(dep)));
+      // FIXED: Add 0 as fallback to handle empty arrays safely
+      const depthValues = node.dependencies.map(dep => calculateDepth(dep));
+      const maxDepDep = depthValues.length > 0 ? Math.max(...depthValues) : 0;
       const depth = maxDepDep + 1;
       depths.set(nodeId, depth);
       return depth;
@@ -309,12 +311,14 @@ export class DagGenerator {
       if (depths.has(nodeId)) return depths.get(nodeId)!;
 
       const node = dag.nodes.find(n => n.id === nodeId);
-      if (!node || node.dependencies.length === 0) {
+      if (!node || !node.dependencies || node.dependencies.length === 0) {
         depths.set(nodeId, 0);
         return 0;
       }
 
-      const maxDepDep = Math.max(...node.dependencies.map(dep => calculateDepth(dep)));
+      // FIXED: Add -1 as fallback to handle empty arrays safely
+      const depthValues = node.dependencies.map(dep => calculateDepth(dep));
+      const maxDepDep = depthValues.length > 0 ? Math.max(...depthValues) : -1;
       const depth = maxDepDep + 1;
       depths.set(nodeId, depth);
       return depth;

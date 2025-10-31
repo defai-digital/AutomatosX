@@ -14,7 +14,7 @@ import { PathResolver } from '../../core/path-resolver.js';
 import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
-import { OpenAIProvider } from '../../providers/openai-provider.js';
+import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
@@ -117,13 +117,25 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       }
 
       if (providerConfigs['openai']?.enabled) {
-        providers.push(new OpenAIProvider({
-          name: 'openai',
-          enabled: true,
-          priority: providerConfigs['openai'].priority,
-          timeout: providerConfigs['openai'].timeout,
-          command: providerConfigs['openai'].command
-        }));
+        const openaiConfig = providerConfigs['openai'];
+        // v6.0.7: Use factory to create provider based on integration mode
+        const provider = createOpenAIProviderSync(
+          {
+            name: 'openai',
+            enabled: true,
+            priority: openaiConfig.priority,
+            timeout: openaiConfig.timeout,
+            command: openaiConfig.command || 'codex',
+            integration: openaiConfig.integration,
+            sdk: openaiConfig.sdk,
+            circuitBreaker: openaiConfig.circuitBreaker,
+            processManagement: openaiConfig.processManagement,
+            versionDetection: openaiConfig.versionDetection,
+            limitTracking: openaiConfig.limitTracking
+          },
+          openaiConfig.integration
+        );
+        providers.push(provider);
       }
 
       // v5.6.25: Optimize status command - avoid Router initialization

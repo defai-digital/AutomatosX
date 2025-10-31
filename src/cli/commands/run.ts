@@ -19,8 +19,7 @@ import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
-import { OpenAIProvider } from '../../providers/openai-provider.js';
-import { OpenAISDKProvider } from '../../providers/openai-sdk-provider.js';
+import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
 import chalk from 'chalk';
@@ -55,6 +54,9 @@ interface RunOptions {
   showTimeline?: boolean;
   // v5.8.3: Spec-kit integration
   noSpec?: boolean;
+  // v6.0.7 Phase 3: OpenAI enhancements
+  sandbox?: string;
+  showCost?: boolean;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -157,6 +159,16 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: 'Bypass spec-kit suggestion for complex tasks (v5.8.3+)',
         type: 'boolean',
         default: false
+      })
+      .option('sandbox', {
+        describe: 'Sandbox mode for code execution (v6.0.7 Phase 3)',
+        type: 'string',
+        choices: ['none', 'workspace-read', 'workspace-write', 'full']
+      })
+      .option('show-cost', {
+        describe: 'Display model, tokens, and cost after execution (v6.0.7 Phase 3)',
+        type: 'boolean',
+        default: true
       })
   },
 
@@ -483,19 +495,24 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           integrationMode = 'cli';
         }
 
+        // v6.0.7: Use factory to create appropriate provider based on integration mode
+        const provider = createOpenAIProviderSync(providerConfig, integrationMode);
+
+        // Log which mode is being used
         if (integrationMode === 'sdk') {
           logger.info('📦 Using OpenAI SDK integration (native, no subprocess)', {
             provider: 'openai',
             defaultModel: openaiConfig.sdk?.defaultModel || 'gpt-4o'
           });
-          providers.push(new OpenAISDKProvider(providerConfig, openaiConfig.sdk || {}));
         } else {
           logger.info('🖥️  Using OpenAI CLI integration (subprocess)', {
             provider: 'openai',
-            cliOnlyMode: cliOnlyMode ? 'enforced' : 'default'
+            cliOnlyMode: cliOnlyMode ? 'enforced' : 'default',
+            autoResolved: integrationMode === 'auto' || !integrationMode
           });
-          providers.push(new OpenAIProvider(providerConfig));
         }
+
+        providers.push(provider);
       }
 
       // Phase 2 (v5.6.2): Enable background health checks if configured
@@ -577,7 +594,9 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             provider: argv.provider,
             model: argv.model,
             skipMemory: !argv.memory,
-            sessionId: argv.session
+            sessionId: argv.session,
+            // v6.0.7 Phase 3: Pass sandbox mode to execution
+            sandbox: argv.sandbox
           }
         );
       } catch (error) {
@@ -784,6 +803,49 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         // 9. Format and display result
         const formattedOutput = formatOutput(result, argv.format || 'text', argv.verbose || false);
         console.log(formattedOutput);
+
+        // v6.0.7 Phase 3: Display cost information
+        if (argv.showCost !== false && result.response?.tokensUsed) {
+          const tokens = result.response.tokensUsed;
+          const model = result.response.model || 'unknown';
+
+          // Calculate cost based on model (OpenAI pricing as of 2024)
+          const pricing: Record<string, { input: number; output: number }> = {
+            'gpt-4o': { input: 2.50, output: 10.00 },
+            'gpt-4o-mini': { input: 0.15, output: 0.60 },
+            'gpt-4-turbo': { input: 10.00, output: 30.00 },
+            'gpt-4': { input: 30.00, output: 60.00 },
+            'gpt-3.5-turbo': { input: 0.50, output: 1.50 },
+            'o1-preview': { input: 15.00, output: 60.00 },
+            'o1-mini': { input: 3.00, output: 12.00 }
+          };
+
+          let cost = 0;
+          let costDisplay = '';
+
+          if (model && pricing[model]) {
+            const inputCost = (tokens.prompt / 1_000_000) * pricing[model].input;
+            const outputCost = (tokens.completion / 1_000_000) * pricing[model].output;
+            cost = inputCost + outputCost;
+            costDisplay = chalk.cyan(`$${cost.toFixed(4)}`);
+          } else {
+            costDisplay = chalk.gray('(pricing not available)');
+          }
+
+          const duration = result.response.latencyMs
+            ? (result.response.latencyMs / 1000).toFixed(1) + 's'
+            : 'unknown';
+
+          console.log();
+          console.log(chalk.bold('📊 Execution Summary'));
+          console.log(chalk.dim('━'.repeat(50)));
+          console.log(`  Model: ${chalk.cyan(model)}`);
+          console.log(`  Tokens: ${chalk.cyan(tokens.total.toLocaleString())} ${chalk.dim(`(prompt: ${tokens.prompt}, completion: ${tokens.completion})`)}`);
+          console.log(`  Cost: ${costDisplay}`);
+          console.log(`  Duration: ${chalk.cyan(duration)}`);
+          console.log(chalk.dim('━'.repeat(50)));
+          console.log();
+        }
 
         // 10. Save result to file
         if (argv.save) {

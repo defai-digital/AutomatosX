@@ -15,8 +15,7 @@ import type {
 } from '../../../src/types/orchestration.js';
 import {
   DelegationError,
-  SessionError,
-  WorkspaceError
+  SessionError
 } from '../../../src/types/orchestration.js';
 
 describe('Orchestration Types', () => {
@@ -244,18 +243,6 @@ describe('Orchestration Types', () => {
       expect(error.reason).toBe('not_found');
     });
 
-    it('should create WorkspaceError with optional fields', () => {
-      const error = new WorkspaceError(
-        'Permission denied',
-        '/path/to/workspace',
-        'permission_denied'
-      );
-
-      expect(error.name).toBe('WorkspaceError');
-      expect(error.message).toBe('Permission denied');
-      expect(error.workspacePath).toBe('/path/to/workspace');
-      expect(error.reason).toBe('permission_denied');
-    });
   });
 
   describe('Type Compatibility', () => {

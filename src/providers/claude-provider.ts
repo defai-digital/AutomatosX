@@ -22,8 +22,26 @@ import { getProviderLimitManager } from '../core/provider-limit-manager.js';
 import { spawn } from 'child_process';
 import { processManager } from '../utils/process-manager.js';
 import { platform } from 'os';
+import {
+  estimateTimeout,
+  formatTimeoutEstimate,
+  ProgressTracker,
+  type TimeoutEstimate
+} from './timeout-estimator.js';
+import {
+  createStreamingFeedback,
+  type StreamingFeedback,
+  type SimpleStreamingIndicator
+} from './streaming-feedback.js';
 
 export class ClaudeProvider extends BaseProvider {
+  // v6.0.7: Smart timeout tracking
+  private currentProgressTracker: ProgressTracker | null = null;
+  private progressInterval: NodeJS.Timeout | null = null;
+
+  // v6.0.7: Streaming feedback
+  private currentStreamingFeedback: StreamingFeedback | SimpleStreamingIndicator | null = null;
+
   constructor(config: ProviderConfig) {
     super(config);
   }
@@ -54,15 +72,36 @@ export class ClaudeProvider extends BaseProvider {
 
     const startTime = Date.now();
 
+    // Build prompt with system prompt if provided (outside try for error context)
+    let fullPrompt = request.prompt;
+    if (request.systemPrompt) {
+      fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+    }
+
     try {
-      // Build prompt with system prompt if provided
-      let fullPrompt = request.prompt;
-      if (request.systemPrompt) {
-        fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
+      // v6.0.7: Smart timeout estimation
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      // Show estimate to user (if not in quiet mode)
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
+      }
+
+      // Start progress tracking for long operations
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
       }
 
       // Execute via CLI - let CLI use its own default model
       const response = await this.executeCLI(fullPrompt, request);
+
+      // Stop progress tracking
+      this.stopProgressTracking();
 
       const latency = Date.now() - startTime;
 
@@ -93,14 +132,14 @@ export class ClaudeProvider extends BaseProvider {
         finishReason: 'stop'
       };
     } catch (error) {
-      // v5.8.6: Use ProviderError for structured error handling
-      if (error instanceof ProviderError) {
-        throw error;
-      }
-      throw ProviderError.executionError(
-        this.config.name,
-        error instanceof Error ? error : new Error(String(error))
-      );
+      // Stop progress tracking on error
+      this.stopProgressTracking();
+      throw this.enhanceError(error as Error, {
+        operation: 'execute CLI command',
+        prompt: fullPrompt.substring(0, 200),
+        model: request.model,
+        streaming: false
+      });
     }
   }
 
@@ -451,6 +490,7 @@ export class ClaudeProvider extends BaseProvider {
   /**
    * Build CLI arguments for Claude Code CLI
    * v5.8.6: Now supports configurable tools and directories
+   * v6.0.7: Now supports model selection
    */
   protected buildCLIArgs(request: ExecutionRequest): string[] {
     const args: string[] = [];
@@ -462,6 +502,15 @@ export class ClaudeProvider extends BaseProvider {
 
     if (printMode) {
       args.push('--print');
+    }
+
+    // v6.0.7: Model selection support
+    // Allow users to specify model for cost optimization:
+    // - claude-3-5-haiku-20241022: Cheaper, good for simple tasks
+    // - claude-3-5-sonnet-20241022: Balanced performance and cost
+    // - claude-3-opus-20240229: Best reasoning, most expensive
+    if (request.model && request.model !== 'claude-default') {
+      args.push('--model', request.model);
     }
 
     // v5.8.6: Configurable allowed tools
@@ -537,14 +586,39 @@ export class ClaudeProvider extends BaseProvider {
         fullPrompt = `System: ${request.systemPrompt}\n\nUser: ${request.prompt}`;
       }
 
+      // v6.0.7: Estimate output tokens for progress tracking
+      const estimatedOutputTokens = request.maxTokens || this.estimateTokens(fullPrompt) * 2;
+
+      // v6.0.7: Create streaming feedback
+      this.currentStreamingFeedback = createStreamingFeedback(estimatedOutputTokens);
+
       // Execute via CLI with streaming callbacks
-      const response = await this.executeCLI(fullPrompt, request, options);
+      const response = await this.executeCLI(fullPrompt, request, {
+        ...options,
+        onToken: (token) => {
+          // Update streaming feedback
+          if (this.currentStreamingFeedback && 'onToken' in this.currentStreamingFeedback) {
+            this.currentStreamingFeedback.onToken(token);
+          }
+          // Call original callback
+          if (options.onToken) {
+            options.onToken(token);
+          }
+        }
+      });
+
+      // Stop streaming feedback
+      const finalTokens = this.estimateTokens(response.content);
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.stop(finalTokens);
+        this.currentStreamingFeedback = null;
+      }
 
       const latency = Date.now() - startTime;
 
       // Cache token counts
       const promptTokens = this.estimateTokens(fullPrompt);
-      const completionTokens = this.estimateTokens(response.content);
+      const completionTokens = finalTokens;
       const totalTokens = promptTokens + completionTokens;
 
       // Log telemetry
@@ -570,13 +644,17 @@ export class ClaudeProvider extends BaseProvider {
         finishReason: 'stop'
       };
     } catch (error) {
-      if (error instanceof ProviderError) {
-        throw error;
+      // Stop streaming feedback on error
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.stop();
+        this.currentStreamingFeedback = null;
       }
-      throw ProviderError.executionError(
-        this.config.name,
-        error instanceof Error ? error : new Error(String(error))
-      );
+      throw this.enhanceError(error as Error, {
+        operation: 'execute streaming command',
+        prompt: request.prompt.substring(0, 200),
+        model: request.model,
+        streaming: true
+      });
     }
   }
 
@@ -672,5 +750,166 @@ export class ClaudeProvider extends BaseProvider {
     }
 
     return filtered;
+  }
+
+  /**
+   * Enhance error with context-specific messaging
+   * v6.0.7: UX improvement - provide actionable error messages with execution context
+   */
+  private enhanceError(error: Error, context?: {
+    operation?: string;
+    prompt?: string;
+    model?: string;
+    streaming?: boolean;
+  }): Error {
+    const message = error.message.toLowerCase();
+
+    // Build context string for error message
+    const contextStr = context ? this.buildErrorContext(context) : '';
+
+    // CLI not found error
+    if (message.includes('enoent') ||
+        message.includes('not found') ||
+        message.includes('spawn') && message.includes('claude')) {
+      const enhanced = new Error(
+        `❌ Claude CLI not found\n\n` +
+        `The 'claude' command is not installed or not in PATH.\n\n` +
+        `💡 Installation:\n` +
+        `  1. Visit https://claude.ai/code\n` +
+        `  2. Follow installation instructions\n` +
+        `  3. Verify: claude --version\n\n` +
+        `${contextStr}`
+      );
+      enhanced.name = 'ClaudeCLINotFound';
+      return enhanced;
+    }
+
+    // Authentication errors
+    if (message.includes('unauthorized') ||
+        message.includes('401') ||
+        message.includes('authentication') ||
+        message.includes('invalid api key')) {
+      const enhanced = new Error(
+        `❌ Claude authentication failed\n\n` +
+        `You are not logged in to Claude Code.\n\n` +
+        `💡 Fix:\n` +
+        `  Run: claude setup-token\n` +
+        `  Or set: ANTHROPIC_API_KEY environment variable\n\n` +
+        `${contextStr}`
+      );
+      enhanced.name = 'ClaudeAuthenticationFailed';
+      return enhanced;
+    }
+
+    // Connection/network errors
+    if (message.includes('econnrefused') ||
+        message.includes('etimedout') ||
+        message.includes('enotfound') ||
+        message.includes('network') ||
+        message.includes('connect') ||
+        message.includes('fetch failed')) {
+      const enhanced = new Error(
+        `❌ Network connection failed\n\n` +
+        `Unable to reach Claude API.\n\n` +
+        `💡 Troubleshooting:\n` +
+        `  1. Check internet connection\n` +
+        `  2. Verify firewall settings\n` +
+        `  3. Try again in a few moments\n\n` +
+        `${contextStr}`
+      );
+      enhanced.name = 'ClaudeConnectionFailed';
+      return enhanced;
+    }
+
+    // Timeout errors
+    if (message.includes('timeout')) {
+      const enhanced = ProviderError.timeout(this.config.name, this.config.timeout);
+      if (contextStr) {
+        enhanced.message = `${enhanced.message}\n\n${contextStr}`;
+      }
+      return enhanced;
+    }
+
+    // Rate limit errors (handled by isRateLimitError/createRateLimitError)
+    // Return original error for other cases
+    if (error instanceof ProviderError) {
+      return error;
+    }
+    return ProviderError.executionError(
+      this.config.name,
+      error instanceof Error ? error : new Error(String(error))
+    );
+  }
+
+  /**
+   * Build error context string
+   * v6.0.7: Add context about what was being attempted
+   */
+  private buildErrorContext(context: {
+    operation?: string;
+    prompt?: string;
+    model?: string;
+    streaming?: boolean;
+  }): string {
+    const lines: string[] = ['Context:'];
+
+    if (context.operation) {
+      lines.push(`• Operation: ${context.operation}`);
+    }
+
+    if (context.model) {
+      lines.push(`• Model: ${context.model}`);
+    }
+
+    if (context.streaming !== undefined) {
+      lines.push(`• Mode: ${context.streaming ? 'streaming' : 'standard'}`);
+    }
+
+    if (context.prompt) {
+      const truncated = context.prompt.length > 100
+        ? context.prompt.substring(0, 100) + '...'
+        : context.prompt;
+      lines.push(`• Prompt: "${truncated}"`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Start progress tracking
+   * v6.0.7: Show progress for long-running operations
+   */
+  private startProgressTracking(estimatedDurationMs: number): void {
+    if (process.env.AUTOMATOSX_QUIET === 'true') {
+      return;
+    }
+
+    this.currentProgressTracker = new ProgressTracker(estimatedDurationMs);
+
+    this.progressInterval = setInterval(() => {
+      if (this.currentProgressTracker && this.currentProgressTracker.shouldUpdate()) {
+        // Use \r to overwrite the same line
+        process.stderr.write('\r' + this.currentProgressTracker.formatProgress());
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop progress tracking
+   * v6.0.7: Cleanup progress display
+   */
+  private stopProgressTracking(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+
+    if (this.currentProgressTracker) {
+      // Clear the progress line
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        process.stderr.write('\r' + ' '.repeat(80) + '\r');
+      }
+      this.currentProgressTracker = null;
+    }
   }
 }

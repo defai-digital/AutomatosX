@@ -65,6 +65,11 @@
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
+      "integration": "auto",
+      "sandbox": {
+        "default": "workspace-write",
+        "allowOverride": true
+      },
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -296,6 +301,13 @@
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000
+  },
+  "telemetry": {
+    "enabled": false,
+    "dbPath": ".automatosx/telemetry/events.db",
+    "flushIntervalMs": 30000,
+    "retentionDays": 30,
+    "bufferSize": 100
   },
   "version": "6.0.1"
 }

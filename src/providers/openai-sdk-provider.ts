@@ -33,6 +33,11 @@ import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
 import { getProviderConnectionPool, type ProviderConnection } from '../core/provider-connection-pool.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
+import {
+  createStreamingFeedback,
+  type StreamingFeedback,
+  type SimpleStreamingIndicator
+} from './streaming-feedback.js';
 
 /**
  * OpenAI SDK Provider Configuration
@@ -55,6 +60,9 @@ export class OpenAISDKProvider extends BaseProvider {
   private sdkConfig: OpenAISDKConfig;
   private connectionPool = getProviderConnectionPool();
   private initialized = false;
+
+  // v6.0.7: Streaming feedback
+  private currentStreamingFeedback: StreamingFeedback | SimpleStreamingIndicator | null = null;
 
   constructor(config: ProviderConfig, sdkConfig: OpenAISDKConfig = {}) {
     super(config);
@@ -237,6 +245,12 @@ export class OpenAISDKProvider extends BaseProvider {
   ): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // v6.0.7: Estimate total tokens for progress tracking
+    const estimatedOutputTokens = request.maxTokens || this.estimateTokens(request.prompt) * 2;
+
+    // v6.0.7: Create streaming feedback
+    this.currentStreamingFeedback = createStreamingFeedback(estimatedOutputTokens);
+
     // Check if running in test/mock mode
     // Enhanced: Check multiple environment variables to ensure mock mode in test environments
     const useMock =
@@ -258,6 +272,12 @@ export class OpenAISDKProvider extends BaseProvider {
 
       const latency = Date.now() - startTime;
 
+      // v6.0.7: Stop streaming feedback
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.stop(50);
+        this.currentStreamingFeedback = null;
+      }
+
       return {
         content: mockContent,
         model: request.model || 'gpt-4o',
@@ -272,6 +292,10 @@ export class OpenAISDKProvider extends BaseProvider {
     }
 
     try {
+      // v6.0.7: Start streaming feedback
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.start();
+      }
       // Acquire connection from pool
       const connection = await this.connectionPool.acquire<OpenAI>(this.config.name);
 
@@ -311,6 +335,11 @@ export class OpenAISDKProvider extends BaseProvider {
 
           if (delta) {
             fullContent += delta;
+
+            // v6.0.7: Update streaming feedback
+            if (this.currentStreamingFeedback && 'onToken' in this.currentStreamingFeedback) {
+              this.currentStreamingFeedback.onToken(delta);
+            }
 
             // Emit token callback
             if (options.onToken) {
@@ -362,6 +391,12 @@ export class OpenAISDKProvider extends BaseProvider {
           completionTokens = this.estimateTokens(fullContent);
         }
 
+        // v6.0.7: Stop streaming feedback on success
+        if (this.currentStreamingFeedback) {
+          this.currentStreamingFeedback.stop(completionTokens);
+          this.currentStreamingFeedback = null;
+        }
+
         return {
           content: fullContent,
           model: modelUsed,
@@ -377,10 +412,23 @@ export class OpenAISDKProvider extends BaseProvider {
       } catch (error) {
         // Release connection on error
         await this.connectionPool.release(this.config.name, connection);
+
+        // v6.0.7: Stop streaming feedback on error
+        if (this.currentStreamingFeedback) {
+          this.currentStreamingFeedback.stop();
+          this.currentStreamingFeedback = null;
+        }
+
         throw error;
       }
 
     } catch (error) {
+      // v6.0.7: Stop streaming feedback on error
+      if (this.currentStreamingFeedback) {
+        this.currentStreamingFeedback.stop();
+        this.currentStreamingFeedback = null;
+      }
+
       return this.handleSDKError(error, request, startTime);
     }
   }

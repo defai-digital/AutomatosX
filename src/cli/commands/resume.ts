@@ -19,7 +19,7 @@ import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
-import { OpenAIProvider } from '../../providers/openai-provider.js';
+import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
@@ -182,13 +182,25 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
       }
 
       if (config.providers['openai']?.enabled) {
-        providers.push(new OpenAIProvider({
-          name: 'openai',
-          enabled: true,
-          priority: config.providers['openai'].priority,
-          timeout: config.providers['openai'].timeout,
-          command: config.providers['openai'].command
-        }));
+        const openaiConfig = config.providers['openai'];
+        // v6.0.7: Use factory to create provider based on integration mode
+        const provider = createOpenAIProviderSync(
+          {
+            name: 'openai',
+            enabled: true,
+            priority: openaiConfig.priority,
+            timeout: openaiConfig.timeout,
+            command: openaiConfig.command || 'codex',
+            integration: openaiConfig.integration,
+            sdk: openaiConfig.sdk,
+            circuitBreaker: openaiConfig.circuitBreaker,
+            processManagement: openaiConfig.processManagement,
+            versionDetection: openaiConfig.versionDetection,
+            limitTracking: openaiConfig.limitTracking
+          },
+          openaiConfig.integration
+        );
+        providers.push(provider);
       }
 
       // v5.7.0: Include router configuration for health checks

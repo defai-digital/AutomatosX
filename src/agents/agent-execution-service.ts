@@ -28,7 +28,7 @@ import { ContextManager } from './context-manager.js';
 import { AgentExecutor } from './executor.js';
 import { ClaudeProvider } from '../providers/claude-provider.js';
 import { GeminiProvider } from '../providers/gemini-provider.js';
-import { OpenAIProvider } from '../providers/openai-provider.js';
+import { createOpenAIProviderSync } from '../providers/openai-provider-factory.js';
 import type { BaseProvider } from '../providers/base-provider.js';
 import { logger } from '../utils/logger.js';
 import { join } from 'path';
@@ -255,13 +255,24 @@ export class AgentExecutionService {
 
       if (this.config.providers['openai']?.enabled) {
         const openaiConfig = this.config.providers['openai'];
-        providers.push(new OpenAIProvider({
-          name: 'openai',
-          enabled: true,
-          priority: openaiConfig.priority,
-          timeout: openaiConfig.timeout,
-          command: openaiConfig.command || 'codex'
-        }));
+        // v6.0.7: Use factory to create provider based on integration mode
+        const provider = createOpenAIProviderSync(
+          {
+            name: 'openai',
+            enabled: true,
+            priority: openaiConfig.priority,
+            timeout: openaiConfig.timeout,
+            command: openaiConfig.command || 'codex',
+            integration: openaiConfig.integration,
+            sdk: openaiConfig.sdk,
+            circuitBreaker: openaiConfig.circuitBreaker,
+            processManagement: openaiConfig.processManagement,
+            versionDetection: openaiConfig.versionDetection,
+            limitTracking: openaiConfig.limitTracking
+          },
+          openaiConfig.integration
+        );
+        providers.push(provider);
       }
 
       // Create router

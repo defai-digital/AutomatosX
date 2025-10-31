@@ -80,6 +80,14 @@ export class SpecExecutor {
     this.sessionManager = sessionManager;
     this.abortController = new AbortController();
 
+    // FIXED: Validate spec.tasks exists before accessing
+    if (!spec.tasks || !Array.isArray(spec.tasks)) {
+      throw new SpecErrorClass(
+        SpecErrorCode.EXECUTION_FAILED,
+        'Spec must have a valid tasks array'
+      );
+    }
+
     // Phase 1: Enable native execution by default (10x faster!)
     // Can be disabled with SPEC_LEGACY_EXECUTION=1 for debugging
     this.useNativeExecution = process.env.SPEC_LEGACY_EXECUTION !== '1';
@@ -544,12 +552,31 @@ export class SpecExecutor {
               return null;
             }
 
-            // Execute task
-            const result = await this.executeTask(
-              taskId,
-              i + 1,
-              taskIds.length
-            );
+            // FIXED: Wrap executeTask in try-catch to prevent Promise.all rejection
+            // This ensures continueOnError works correctly and other tasks aren't abandoned
+            let result: TaskExecutionResult;
+            try {
+              // Execute task
+              result = await this.executeTask(
+                taskId,
+                i + 1,
+                taskIds.length
+              );
+            } catch (error) {
+              // Convert exception to failed task result
+              logger.error('Task execution threw exception', {
+                taskId,
+                error: (error as Error).message
+              });
+              result = {
+                taskId,
+                status: 'failed',
+                error: (error as Error).message,
+                output: '',
+                duration: 0,
+                retryCount: 0
+              };
+            }
 
             // Update state
             state.status = result.status;

@@ -10,8 +10,12 @@ import { dirname } from 'path';
 /**
  * Safely delete a database file with retry logic for Windows
  * Windows can have file locking delays after closing SQLite databases
+ *
+ * v6.0.8: Increased retries and delays for Windows CI reliability
+ * - Windows: 10 retries × 250ms = 2.5 seconds maximum
+ * - Unix: 10 retries × 250ms = 2.5 seconds maximum (helps under CI load)
  */
-async function safeUnlink(filePath: string, maxRetries = 5, delayMs = 100): Promise<void> {
+async function safeUnlink(filePath: string, maxRetries = 10, delayMs = 250): Promise<void> {
   if (!existsSync(filePath)) {
     return;
   }
@@ -23,7 +27,9 @@ async function safeUnlink(filePath: string, maxRetries = 5, delayMs = 100): Prom
     } catch (err: any) {
       // EBUSY (Windows file busy) or EPERM (Windows permission) errors are retryable
       if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        // Exponential backoff: wait longer on each retry
+        const backoffDelay = delayMs * (1 + attempt * 0.5);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
         continue;
       }
       // If it's the last attempt or a different error, throw
@@ -55,6 +61,9 @@ describe('Phase 3: CostTracker', () => {
 
   afterEach(async () => {
     await tracker.close();
+    // Wait for file system to release locks (especially important on Windows)
+    // SQLite WAL mode can keep locks briefly after close()
+    await new Promise(resolve => setTimeout(resolve, 200));
     // Clean up test database (with retry logic for Windows)
     await safeUnlink(testDbPath);
     // Also clean up WAL files if they exist

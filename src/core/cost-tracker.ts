@@ -442,9 +442,21 @@ export class CostTracker extends EventEmitter {
 
   /**
    * Close database connection
+   *
+   * v6.0.8: Added WAL checkpoint before close for Windows compatibility
+   * Ensures WAL file is merged back into main DB to release file locks faster
    */
   async close(): Promise<void> {
     if (this.db) {
+      try {
+        // Checkpoint WAL to reduce lock contention on Windows
+        // TRUNCATE mode: checkpoint and delete WAL file
+        this.db.pragma('wal_checkpoint(TRUNCATE)');
+      } catch (err) {
+        // Non-fatal: log and continue with close
+        logger.debug('WAL checkpoint failed (non-fatal)', { error: (err as Error).message });
+      }
+
       this.db.close();
       this.db = null;
       this.initialized = false;

@@ -182,7 +182,42 @@ export class FreeTierManager {
    */
   private getNextResetTime(resetTimeUTC: string): Date {
     const now = new Date();
-    const [hours, minutes] = resetTimeUTC.split(':').map(Number);
+    const parts = resetTimeUTC.split(':');
+
+    if (parts.length !== 2) {
+      logger.warn('Invalid reset time format, defaulting to midnight UTC', {
+        resetTimeUTC
+      });
+      return new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0,
+        0,
+        0,
+        0
+      ));
+    }
+
+    const hours = parseInt(parts[0]!, 10);
+    const minutes = parseInt(parts[1]!, 10);
+
+    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      logger.warn('Invalid reset time values, defaulting to midnight UTC', {
+        resetTimeUTC,
+        parsedHours: hours,
+        parsedMinutes: minutes
+      });
+      return new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0,
+        0,
+        0,
+        0
+      ));
+    }
 
     const nextReset = new Date(Date.UTC(
       now.getUTCFullYear(),

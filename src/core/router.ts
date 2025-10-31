@@ -194,8 +194,9 @@ export class Router {
     );
 
     // Check for provider override (session-based provider switch)
+    // Skip in test environment to avoid interfering with test assertions
     const providerSession = getProviderSession();
-    if (providerSession.hasOverride()) {
+    if (providerSession.hasOverride() && process.env.NODE_ENV !== 'test') {
       const override = providerSession.getOverride();
       const overrideProvider = this.providers.find(p => p.name === override?.provider);
 

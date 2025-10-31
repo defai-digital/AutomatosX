@@ -158,15 +158,18 @@ export class ProviderSessionManager {
   }
 }
 
-// Global instance
-let providerSessionInstance: ProviderSessionManager | null = null;
+// Global instances per workspace
+const providerSessionInstances = new Map<string, ProviderSessionManager>();
 
 /**
  * Get or create provider session manager instance
  */
 export function getProviderSession(workspacePath?: string): ProviderSessionManager {
-  if (!providerSessionInstance) {
-    providerSessionInstance = new ProviderSessionManager(workspacePath);
+  const path = workspacePath || process.cwd();
+
+  if (!providerSessionInstances.has(path)) {
+    providerSessionInstances.set(path, new ProviderSessionManager(path));
   }
-  return providerSessionInstance;
+
+  return providerSessionInstances.get(path)!;
 }

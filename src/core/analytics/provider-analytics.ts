@@ -126,6 +126,15 @@ export class ProviderAnalytics {
       CREATE INDEX IF NOT EXISTS idx_executions_feature_flags ON executions(feature_flags);
     `);
 
+    // Bug #12: Register shutdown handler to close database
+    import('../../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        this.close();
+      });
+    }).catch(() => {
+      logger.debug('ProviderAnalytics: process-manager not available for shutdown handler');
+    });
+
     logger.info('Provider analytics initialized', { dbPath: this.dbPath });
   }
 

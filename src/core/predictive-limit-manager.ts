@@ -89,6 +89,15 @@ export class PredictiveLimitManager {
 
       this.usageInitialized = true;
 
+      // Bug #12: Register shutdown handler to close database
+      import('../utils/process-manager.js').then(({ processManager }) => {
+        processManager.onShutdown(async () => {
+          await this.closeUsageDb();
+        });
+      }).catch(() => {
+        logger.debug('PredictiveLimitManager: process-manager not available for shutdown handler');
+      });
+
       logger.info('PredictiveLimitManager usage tracking initialized', {
         dbPath: this.dbPath
       });

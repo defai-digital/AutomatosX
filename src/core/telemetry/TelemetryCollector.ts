@@ -71,6 +71,16 @@ export class TelemetryCollector {
       try {
         this.db = this.initializeDatabase();
         this.startAutoFlush();
+
+        // Bug #12: Register shutdown handler to close database
+        import('../../utils/process-manager.js').then(({ processManager }) => {
+          processManager.onShutdown(async () => {
+            await this.close();
+          });
+        }).catch(() => {
+          logger.debug('TelemetryCollector: process-manager not available for shutdown handler');
+        });
+
         logger.debug('Telemetry collector initialized', {
           dbPath: this.options.dbPath,
           flushInterval: this.options.flushIntervalMs,

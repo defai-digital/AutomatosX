@@ -256,6 +256,15 @@ export class ResponseCache {
 
       this.initialized = true;
 
+      // Bug #12: Register shutdown handler to close database
+      import('../utils/process-manager.js').then(({ processManager }) => {
+        processManager.onShutdown(async () => {
+          this.close();
+        });
+      }).catch(() => {
+        logger.debug('ResponseCache: process-manager not available for shutdown handler');
+      });
+
       logger.info('ResponseCache initialized successfully', {
         dbPath: this.config.dbPath,
         ttl: this.config.ttl,

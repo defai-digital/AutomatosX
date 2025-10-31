@@ -107,6 +107,15 @@ export class CostTracker extends EventEmitter {
 
       this.initialized = true;
 
+      // Bug #12: Register shutdown handler to close database
+      import('../utils/process-manager.js').then(({ processManager }) => {
+        processManager.onShutdown(async () => {
+          await this.close();
+        });
+      }).catch(() => {
+        logger.debug('CostTracker: process-manager not available for shutdown handler');
+      });
+
       logger.info('CostTracker initialized', {
         dbPath: this.dbPath
       });

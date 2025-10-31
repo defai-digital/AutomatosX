@@ -88,6 +88,17 @@ export class FreeTierManager {
     this.db = new Database(dbPath);
 
     this.initializeDatabase();
+
+    // Bug #12: Register shutdown handler to close database
+    // Use dynamic import to avoid circular dependency
+    import('../../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        this.close();
+      });
+    }).catch(() => {
+      // If process-manager not available, continue without shutdown handler
+      logger.debug('FreeTierManager: process-manager not available for shutdown handler');
+    });
     this.checkAndResetQuotas();
   }
 

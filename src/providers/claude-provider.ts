@@ -607,6 +607,11 @@ export class ClaudeProvider extends BaseProvider {
         logger.info(formatTimeoutEstimate(timeoutEstimate));
       }
 
+      // v6.2.1: Start progress tracking for long operations (bugfix #4 - consistency with executeRequest)
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+      }
+
       // v6.0.7: Estimate output tokens for progress tracking
       const estimatedOutputTokens = request.maxTokens || this.estimateTokens(fullPrompt) * 2;
 
@@ -634,6 +639,9 @@ export class ClaudeProvider extends BaseProvider {
         this.currentStreamingFeedback.stop(finalTokens);
         this.currentStreamingFeedback = null;
       }
+
+      // Stop progress tracking (bugfix #4)
+      this.stopProgressTracking();
 
       const latency = Date.now() - startTime;
 
@@ -670,6 +678,8 @@ export class ClaudeProvider extends BaseProvider {
         this.currentStreamingFeedback.stop();
         this.currentStreamingFeedback = null;
       }
+      // Stop progress tracking on error (bugfix #4)
+      this.stopProgressTracking();
       throw this.enhanceError(error as Error, {
         operation: 'execute streaming command',
         prompt: request.prompt.substring(0, 200),

@@ -476,6 +476,11 @@ export class OpenAIProvider extends BaseProvider {
         logger.info(formatTimeoutEstimate(timeoutEstimate));
       }
 
+      // v6.2.1: Start progress tracking for long operations (bugfix #4 - consistency with executeRequest)
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+      }
+
       // v6.0.7: Estimate total tokens for progress tracking
       const estimatedOutputTokens = request.maxTokens || this.estimateTokens(fullPrompt) * 2;
 
@@ -489,13 +494,19 @@ export class OpenAIProvider extends BaseProvider {
         process.env.NODE_ENV === 'test' ||
         process.env.VITEST === 'true';
 
+      let result: ExecutionResponse;
       if (useMock) {
         // Mock streaming simulation
-        return this.mockStreamingExecution(fullPrompt, request, options);
+        result = await this.mockStreamingExecution(fullPrompt, request, options);
+      } else {
+        // Real streaming execution
+        result = await this.executeStreamingCLI(fullPrompt, request, options);
       }
 
-      // Real streaming execution
-      return this.executeStreamingCLI(fullPrompt, request, options);
+      // Stop progress tracking (bugfix #4)
+      this.stopProgressTracking();
+
+      return result;
 
     } catch (error) {
       // Stop streaming feedback on error
@@ -503,6 +514,8 @@ export class OpenAIProvider extends BaseProvider {
         this.currentStreamingFeedback.stop();
         this.currentStreamingFeedback = null;
       }
+      // Stop progress tracking on error (bugfix #4)
+      this.stopProgressTracking();
       throw new Error(`OpenAI streaming execution failed: ${(error as Error).message}`);
     }
   }

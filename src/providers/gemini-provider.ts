@@ -23,10 +23,15 @@ import { processManager } from '../utils/process-manager.js';
 import { platform } from 'os';
 import {
   estimateTimeout,
-  formatTimeoutEstimate
+  formatTimeoutEstimate,
+  ProgressTracker
 } from './timeout-estimator.js';
 
 export class GeminiProvider extends BaseProvider {
+  // v6.2.1: Smart timeout tracking (bugfix #4)
+  private currentProgressTracker: ProgressTracker | null = null;
+  private progressInterval: NodeJS.Timeout | null = null;
+
   constructor(config: ProviderConfig) {
     super(config);
   }
@@ -525,8 +530,16 @@ export class GeminiProvider extends BaseProvider {
         logger.info(formatTimeoutEstimate(timeoutEstimate));
       }
 
+      // v6.2.1: Start progress tracking for long operations (bugfix #4 - consistency with executeRequest)
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+      }
+
       // Execute via CLI with streaming callbacks
       const response = await this.executeCLI(fullPrompt, request, options);
+
+      // Stop progress tracking (bugfix #4)
+      this.stopProgressTracking();
 
       const latency = Date.now() - startTime;
 
@@ -558,6 +571,9 @@ export class GeminiProvider extends BaseProvider {
         finishReason: 'stop'
       };
     } catch (error) {
+      // Stop progress tracking on error (bugfix #4)
+      this.stopProgressTracking();
+
       // Use ProviderError for structured error handling
       if (error instanceof ProviderError) {
         throw error;
@@ -661,5 +677,44 @@ export class GeminiProvider extends BaseProvider {
       resetAtMs,
       errorMsg
     );
+  }
+
+  /**
+   * Start progress tracking for long operations
+   * v6.2.1: Consistency with other providers (bugfix #4)
+   * @param estimatedDurationMs - Estimated duration in milliseconds
+   */
+  private startProgressTracking(estimatedDurationMs: number): void {
+    if (process.env.AUTOMATOSX_QUIET === 'true') {
+      return;
+    }
+
+    this.currentProgressTracker = new ProgressTracker(estimatedDurationMs);
+
+    this.progressInterval = setInterval(() => {
+      if (this.currentProgressTracker && this.currentProgressTracker.shouldUpdate()) {
+        // Use \r to overwrite the same line
+        process.stderr.write('\r' + this.currentProgressTracker.formatProgress());
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop progress tracking
+   * v6.2.1: Consistency with other providers (bugfix #4)
+   */
+  private stopProgressTracking(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+
+    if (this.currentProgressTracker) {
+      // Clear the progress line
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        process.stderr.write('\r' + ' '.repeat(80) + '\r');
+      }
+      this.currentProgressTracker = null;
+    }
   }
 }

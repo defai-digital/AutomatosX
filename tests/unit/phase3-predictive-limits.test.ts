@@ -291,6 +291,50 @@ describe('Phase 3: PredictiveLimitManager', () => {
 
       expect(prediction.confidence).toBeGreaterThan(0.8);
     });
+
+    it('should return confidence 0 when no predictions available (Bug #22)', async () => {
+      // Bug #22: confidence = 0.5 with Infinity is misleading
+      // Should be 0 to indicate no data, not uncertainty
+
+      // Create manager with no known limits
+      const noLimitsManager = new (await import('../../src/core/predictive-limit-manager.js')).PredictiveLimitManager({
+        enabled: true,
+        trackingWindow: 24,
+        rotationThreshold: 1,
+        knownLimits: {} // No limits configured
+      });
+
+      await noLimitsManager.initializeUsageTracking();
+      await noLimitsManager.recordUsage('test-provider', 1000);
+
+      const prediction = await noLimitsManager.predictExhaustion('test-provider');
+
+      // Should have Infinity (no exhaustion predicted)
+      expect(prediction.prediction.timeToExhaustionHours).toBe(Infinity);
+
+      // Should have confidence 0 (no data to base prediction on)
+      expect(prediction.confidence).toBe(0);
+
+      // Should be healthy (Infinity hours to exhaust)
+      expect(prediction.prediction.status).toBe('healthy');
+
+      await noLimitsManager.closeUsageDb();
+    });
+
+    it('should return confidence 0 when zero usage recorded (Bug #22)', async () => {
+      // Bug #22: Zero usage = no predictions = confidence should be 0
+
+      const prediction = await manager.predictExhaustion('never-used-provider');
+
+      // No usage = Infinity hours to exhaust
+      expect(prediction.prediction.timeToExhaustionHours).toBe(Infinity);
+
+      // No usage = confidence 0
+      expect(prediction.confidence).toBe(0);
+
+      // Status should be healthy
+      expect(prediction.prediction.status).toBe('healthy');
+    });
   });
 
   describe('shouldRotate', () => {

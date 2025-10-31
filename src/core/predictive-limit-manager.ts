@@ -291,6 +291,12 @@ export class PredictiveLimitManager {
       ? Math.min(...predictions)
       : Infinity;
 
+    // v6.2.3: Bug fix #22 - Set confidence to 0 when no predictions available
+    // Confidence = 0.5 with Infinity is misleading (implies uncertainty, not absence of data)
+    if (predictions.length === 0) {
+      confidence = 0;
+    }
+
     // Determine status
     let status: PredictionResult['prediction']['status'];
     let shouldRotate: boolean;

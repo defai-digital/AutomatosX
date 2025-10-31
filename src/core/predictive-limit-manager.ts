@@ -56,37 +56,61 @@ export class PredictiveLimitManager {
       return;
     }
 
-    // Ensure directory exists
-    const dir = dirname(this.dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    // v6.2.2: Bug fix #20 - Wrap in try-catch to prevent memory leaks on error
+    // If initialization fails partway through, close any open connection to prevent leaks
+    try {
+      // Ensure directory exists
+      const dir = dirname(this.dbPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+
+      // Open database
+      this.usageDb = new Database(this.dbPath);
+      this.usageDb.pragma('journal_mode = WAL');
+
+      // Create schema
+      this.usageDb.exec(`
+        CREATE TABLE IF NOT EXISTS usage_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp INTEGER NOT NULL,
+          provider TEXT NOT NULL,
+          tokens_used INTEGER NOT NULL,
+          requests_count INTEGER NOT NULL DEFAULT 1,
+          window_start INTEGER NOT NULL,
+          UNIQUE(provider, window_start)
+        );
+
+        -- v6.2.2: Bug fix #18 - Drop unused idx_usage_timestamp (queries now filter by window_start)
+        -- After Bug #17 fix, all queries use window_start not timestamp, making this index unused
+        -- The UNIQUE(provider, window_start) constraint already provides an implicit index for queries
+        DROP INDEX IF EXISTS idx_usage_timestamp;
+      `);
+
+      this.usageInitialized = true;
+
+      logger.info('PredictiveLimitManager usage tracking initialized', {
+        dbPath: this.dbPath
+      });
+    } catch (error) {
+      // Clean up database connection on error to prevent memory leaks
+      if (this.usageDb) {
+        try {
+          this.usageDb.close();
+        } catch (closeError) {
+          // Ignore close errors, we're already handling an error
+        }
+        this.usageDb = null;
+      }
+      this.usageInitialized = false;
+
+      logger.error('Failed to initialize usage tracking', {
+        error: error instanceof Error ? error.message : String(error),
+        dbPath: this.dbPath
+      });
+
+      throw error;
     }
-
-    // Open database
-    this.usageDb = new Database(this.dbPath);
-    this.usageDb.pragma('journal_mode = WAL');
-
-    // Create schema
-    this.usageDb.exec(`
-      CREATE TABLE IF NOT EXISTS usage_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,
-        provider TEXT NOT NULL,
-        tokens_used INTEGER NOT NULL,
-        requests_count INTEGER NOT NULL DEFAULT 1,
-        window_start INTEGER NOT NULL,
-        UNIQUE(provider, window_start)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_usage_timestamp
-        ON usage_entries(timestamp);
-    `);
-
-    this.usageInitialized = true;
-
-    logger.info('PredictiveLimitManager usage tracking initialized', {
-      dbPath: this.dbPath
-    });
   }
 
   /**
@@ -95,6 +119,17 @@ export class PredictiveLimitManager {
   async recordUsage(provider: string, tokens: number): Promise<void> {
     if (!this.config.enabled) {
       return;
+    }
+
+    // v6.2.2: Bug fix #19 - Input validation to prevent data corruption
+    if (!provider || provider.trim().length === 0) {
+      throw new Error('Provider name cannot be empty');
+    }
+    if (!Number.isFinite(tokens)) {
+      throw new Error(`Invalid tokens value: ${tokens}. Must be a finite number.`);
+    }
+    if (tokens < 0) {
+      throw new Error(`Invalid tokens value: ${tokens}. Cannot be negative.`);
     }
 
     if (!this.usageInitialized) {
@@ -136,14 +171,17 @@ export class PredictiveLimitManager {
     const startTime = now - (windowHours * 3600000);  // windowHours ago
 
     // Get all entries in the window
+    // v6.2.2: Bug fix #17 - Filter by window_start (data period) not timestamp (last update)
+    // This ensures we get all usage data for the tracking window, regardless of when
+    // records were last updated. Prevents data loss in rate calculations.
     const entries = this.usageDb!.prepare(`
       SELECT
         tokens_used as tokensUsed,
         requests_count as requestsCount,
         window_start as windowStart
       FROM usage_entries
-      WHERE provider = ? AND timestamp >= ?
-      ORDER BY timestamp ASC
+      WHERE provider = ? AND window_start >= ?
+      ORDER BY window_start ASC
     `).all(provider, startTime) as UsageEntry[];
 
     if (entries.length === 0) {
@@ -162,29 +200,36 @@ export class PredictiveLimitManager {
     const totalRequests = entries.reduce((sum, e) => sum + e.requestsCount, 0);
     const totalTokens = entries.reduce((sum, e) => sum + e.tokensUsed, 0);
 
-    // Calculate time span of actual data (use actual time range, not full window)
-    const firstTimestamp = entries[0]!.windowStart;
-    const lastTimestamp = entries[entries.length - 1]!.windowStart;
-    const actualSpanMs = lastTimestamp - firstTimestamp;
-    const actualSpanHours = Math.max(1, actualSpanMs / 3600000);  // Minimum 1 hour to avoid division by zero
+    // Calculate time span using window boundaries for hourly-aggregated data
+    // v6.2.2: Bug fix #16 - Account for gaps in data by using first to last window span
+    // Data at 10:00 and 12:00 spans 3 hours (10:00-11:00, 11:00-12:00, 12:00-13:00)
+    // even if 11:00 has no data. This prevents massive overestimation with sparse usage.
+    const firstWindow = entries[0]!.windowStart;
+    const lastWindow = entries[entries.length - 1]!.windowStart;
+    const spanHours = (lastWindow - firstWindow) / 3600000;
+    const hoursOfData = spanHours + 1; // +1 to include the last window hour
 
-    // Calculate averages based on actual time span (more accurate for bursty traffic)
-    const avgRequestsPerHour = totalRequests / actualSpanHours;
-    const avgTokensPerHour = totalTokens / actualSpanHours;
+    // Calculate averages based on actual time span (accurate for sparse data)
+    const avgRequestsPerHour = totalRequests / hoursOfData;
+    const avgTokensPerHour = totalTokens / hoursOfData;
 
     // Determine trend (compare first half vs second half)
-    const halfwayPoint = Math.floor(entries.length / 2);
-    const firstHalf = entries.slice(0, halfwayPoint);
-    const secondHalf = entries.slice(halfwayPoint);
-
-    const firstHalfAvg = firstHalf.reduce((sum, e) => sum + e.requestsCount, 0) / Math.max(firstHalf.length, 1);
-    const secondHalfAvg = secondHalf.reduce((sum, e) => sum + e.requestsCount, 0) / Math.max(secondHalf.length, 1);
-
+    // v6.2.2: Bug fix #10 - Need at least 2 entries to determine trend
     let trend: UsageTrends['trend'] = 'stable';
-    if (secondHalfAvg > firstHalfAvg * 1.2) {
-      trend = 'increasing';
-    } else if (secondHalfAvg < firstHalfAvg * 0.8) {
-      trend = 'decreasing';
+
+    if (entries.length >= 2) {
+      const halfwayPoint = Math.floor(entries.length / 2);
+      const firstHalf = entries.slice(0, halfwayPoint);
+      const secondHalf = entries.slice(halfwayPoint);
+
+      const firstHalfAvg = firstHalf.reduce((sum, e) => sum + e.requestsCount, 0) / Math.max(firstHalf.length, 1);
+      const secondHalfAvg = secondHalf.reduce((sum, e) => sum + e.requestsCount, 0) / Math.max(secondHalf.length, 1);
+
+      if (secondHalfAvg > firstHalfAvg * 1.2) {
+        trend = 'increasing';
+      } else if (secondHalfAvg < firstHalfAvg * 0.8) {
+        trend = 'decreasing';
+      }
     }
 
     return {
@@ -332,8 +377,10 @@ export class PredictiveLimitManager {
 
     const cutoffTime = Date.now() - (this.config.trackingWindow * 2 * 3600000);
 
+    // v6.2.2: Bug fix #17 - Filter by window_start (data period) not timestamp
+    // Consistent with getUsageTrends query for semantic correctness
     const result = this.usageDb!.prepare(`
-      DELETE FROM usage_entries WHERE timestamp < ?
+      DELETE FROM usage_entries WHERE window_start < ?
     `).run(cutoffTime);
 
     if (result.changes > 0) {

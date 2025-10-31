@@ -48,6 +48,7 @@ import { setupCommand } from './commands/setup.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
+import { freeTierCommand } from './commands/free-tier.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -95,6 +96,8 @@ globalTracker.mark('cli_start');
   .example('$0 analytics optimize', 'Show optimization recommendations')
   .example('$0 flags list', 'List all feature flags')
   .example('$0 flags rollout gemini_streaming 10', 'Increase feature rollout to 10%')
+  .example('$0 free-tier status', 'Show free tier quota status')
+  .example('$0 free-tier history gemini-cli', 'Show Gemini free tier history')
 
   // Global options
   .option('debug', {
@@ -138,6 +141,7 @@ globalTracker.mark('cli_start');
   .command(providerLimitsCommand)
   .command(providersCommand)
   .command(flagsCommand)
+  .command(freeTierCommand)
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)

@@ -39,6 +39,12 @@ import type { SpecYAML } from '../types/spec-yaml.js';
 // Phase 2.3: Trace logging
 import { RouterTraceLogger, createTraceLogger } from './router-trace-logger.js';
 
+// Phase 3A: Free tier management
+import { getFreeTierManager } from './free-tier/free-tier-manager.js';
+
+// Phase 3B: Workload-aware routing
+import { getWorkloadAnalyzer } from './workload/workload-analyzer.js';
+
 export interface RouterConfig {
   providers: Provider[];
   fallbackEnabled: boolean;
@@ -288,6 +294,90 @@ export class Router {
       }
     }
 
+    // Phase 3A: Prioritize providers with free tier quota available
+    try {
+      const freeTierManager = getFreeTierManager();
+      const providersWithFreeTier: Provider[] = [];
+      const providersWithoutFreeTier: Provider[] = [];
+
+      for (const provider of providersToTry) {
+        if (freeTierManager.hasFreeTier(provider.name)) {
+          const quota = freeTierManager.getQuota(provider.name);
+          if (quota.available) {
+            providersWithFreeTier.push(provider);
+            logger.debug(`Provider ${provider.name} has free tier quota available`, {
+              requestsRemaining: quota.requestsRemaining,
+              tokensRemaining: quota.tokensRemaining
+            });
+          } else {
+            providersWithoutFreeTier.push(provider);
+          }
+        } else {
+          providersWithoutFreeTier.push(provider);
+        }
+      }
+
+      // Reorder: free tier first, then paid tier
+      if (providersWithFreeTier.length > 0) {
+        providersToTry = [...providersWithFreeTier, ...providersWithoutFreeTier];
+        logger.info('Free tier providers prioritized', {
+          freeTierProviders: providersWithFreeTier.map(p => p.name),
+          paidProviders: providersWithoutFreeTier.map(p => p.name)
+        });
+      }
+    } catch (error) {
+      // Free tier prioritization failed - log warning and continue
+      logger.warn('Free tier prioritization failed, continuing with existing order', {
+        error: (error as Error).message
+      });
+    }
+
+    // Phase 3B: Apply workload-aware routing
+    try {
+      const analyzer = getWorkloadAnalyzer();
+      const workload = analyzer.analyze(request);
+      const recommendation = analyzer.recommend(workload);
+
+      // Reorder providers based on workload recommendation
+      if (recommendation.preferredProviders.length > 0) {
+        // Create a preference map (lower index = higher preference)
+        const preferenceMap = new Map<string, number>();
+        recommendation.preferredProviders.forEach((provider, index) => {
+          preferenceMap.set(provider, index);
+        });
+
+        // Sort providers by workload preference, fallback to current order
+        const originalOrder = providersToTry.map(p => p.name);
+        providersToTry = [...providersToTry].sort((a, b) => {
+          const prefA = preferenceMap.get(a.name) ?? 999;
+          const prefB = preferenceMap.get(b.name) ?? 999;
+
+          // If preferences are equal, maintain original order
+          if (prefA === prefB) {
+            return originalOrder.indexOf(a.name) - originalOrder.indexOf(b.name);
+          }
+
+          return prefA - prefB;
+        });
+
+        logger.info('Workload-aware routing applied', {
+          sizeClass: workload.sizeClass,
+          estimatedTokens: workload.estimatedTokens,
+          streaming: workload.requiresStreaming,
+          complexity: workload.complexity,
+          recommendation: recommendation.reason,
+          providersOrder: providersToTry.map(p => p.name),
+          costOptimized: recommendation.costOptimized,
+          speedOptimized: recommendation.speedOptimized
+        });
+      }
+    } catch (error) {
+      // Workload analysis failed - log warning and continue
+      logger.warn('Workload-aware routing failed, continuing with existing order', {
+        error: (error as Error).message
+      });
+    }
+
     // Phase 3: Reorder providers using multi-factor routing if enabled
     // Note: Policy-driven routing has already filtered providers above
     if (this.useMultiFactorRouting) {
@@ -413,6 +503,28 @@ export class Router {
 
         // Remove provider from penalty list on success
         this.penalizedProviders.delete(provider.name);
+
+        // Phase 3A: Track free tier usage if applicable
+        try {
+          const freeTierManager = getFreeTierManager();
+          if (freeTierManager.hasFreeTier(provider.name)) {
+            freeTierManager.trackUsage(
+              provider.name,
+              1, // 1 request
+              response.tokensUsed.total // total tokens used
+            );
+            logger.debug(`Free tier usage tracked for ${provider.name}`, {
+              requests: 1,
+              tokens: response.tokensUsed.total
+            });
+          }
+        } catch (error) {
+          // Non-critical error - log and continue
+          logger.warn('Failed to track free tier usage', {
+            provider: provider.name,
+            error: (error as Error).message
+          });
+        }
 
         // Phase 2.3: Log execution success
         if (this.tracer) {

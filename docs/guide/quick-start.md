@@ -30,13 +30,13 @@ node --version
 # Should show: v20.0.0 or higher
 ```
 
-**Windows Users**: Make sure Node.js and npm are in your PATH. If `node --version` doesn't work, reinstall Node.js from [nodejs.org](https://nodejs.org/).
+**Windows Users**: See [Windows Setup Guide](../troubleshooting/windows-setup.md) for PATH configuration and troubleshooting.
 
 ---
 
-## Installation
+## Step 1: Install AutomatosX
 
-### Step 1: Install AutomatosX Globally
+### Install Globally
 
 **All Platforms** (Windows, macOS, Linux):
 
@@ -48,34 +48,20 @@ npm install -g @defai.digital/automatosx
 
 ```bash
 ax --version
-# Expected output: 5.6.13 (or later)
+# Expected output: 6.3.8 (or later)
 ```
 
-**Windows-Specific Issues**:
+### Alternative: Use npx
 
-If you see `'ax' is not recognized as an internal or external command`:
+If you prefer not to install globally:
 
-1. **Check npm global path**:
-   ```bash
-   npm config get prefix
-   # Should show: C:\Users\<username>\AppData\Roaming\npm
-   ```
+```bash
+npx @defai.digital/automatosx --version
+npx @defai.digital/automatosx init
+npx @defai.digital/automatosx list agents
+```
 
-2. **Ensure npm is in PATH**:
-   - Open System Properties → Environment Variables
-   - Add npm path to your PATH variable
-   - Or simply use `npx @defai.digital/automatosx` instead of `ax`
-
-3. **Alternative**: Use npx without installation:
-   ```bash
-   npx @defai.digital/automatosx --version
-   npx @defai.digital/automatosx init
-   npx @defai.digital/automatosx list agents
-   ```
-
-See [Windows Troubleshooting Guide](../troubleshooting/windows-troubleshooting.md) for more help.
-
-**Update to latest version**:
+### Update to Latest Version
 
 ```bash
 # Use built-in update command
@@ -85,122 +71,52 @@ ax update
 npm install -g @defai.digital/automatosx@latest
 ```
 
-### For Developers
-
-If you want to contribute to AutomatosX development:
-
-```bash
-# Clone repository
-git clone https://github.com/defai-digital/automatosx.git
-cd automatosx
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run tests
-npm test
-```
-
-See [Contributing Guide](../CONTRIBUTING.md) for more details.
+**Troubleshooting**: If `ax` command not found, see [Installation Guide](./installation.md#troubleshooting) for PATH configuration.
 
 ---
 
-## Step 2: Initialize Your Project ⚠️ CRITICAL STEP
+## Step 2: Initialize Your Project
 
-**Before using AutomatosX, you MUST initialize it in your project directory.**
-
-### Why This Step Is Required
-
-AutomatosX is project-specific. Each project needs its own:
-- Agent profiles (24 specialized agents in v5.6.13)
-- Memory database (SQLite FTS5)
-- Configuration file
-- Workspace directories
-- Claude Code integration (CLAUDE.md with AutomatosX guidance)
-
-**Without running `ax init`, you will see**:
-- "0 agents" when running `ax status`
-- "Agent not found" errors
-- "System has issues" warnings
-
-### How to Initialize
-
-**Step 2.1**: Navigate to your project directory
+**Navigate to your project directory**:
 
 ```bash
-# Windows (Command Prompt)
-cd C:\Users\YourName\Projects\my-project
-
-# Windows (PowerShell)
-cd C:\Users\YourName\Projects\my-project
-
-# macOS/Linux
-cd ~/projects/my-project
+cd /path/to/your/project
 ```
 
-**Step 2.2**: Run initialization
+**Initialize AutomatosX**:
 
 ```bash
-# Using ax (if installed globally)
 ax init
-
-# Or using npx (works without global install)
-npx @defai.digital/automatosx init
 ```
 
-**If you see "⚠️ AutomatosX is already initialized"**:
-
-This means `.automatosx` folder already exists. If you're still having issues (0 agents, errors), use `--force` to reinitialize:
-
-```bash
-# Force reinitialize (overwrites existing files)
-ax init --force
-
-# Or with npx
-npx @defai.digital/automatosx init --force
-```
-
-> **⚠️ Warning**: `--force` will overwrite any custom changes you made to agents or abilities.
-
-**What This Creates**:
+**What this creates**:
 
 ```
 your-project/
 ├── .automatosx/
-│   ├── agents/           # 24 specialized agents (backend, frontend, security, etc.)
+│   ├── agents/           # 24 specialized agents
 │   ├── abilities/        # 56 shared abilities
 │   ├── teams/            # 5 team configurations
 │   ├── templates/        # 9 agent templates
-│   ├── memory/           # SQLite FTS5 database
-│   │   └── exports/      # Memory export directory
-│   ├── sessions/         # Multi-agent session data
-│   └── logs/             # System logs
-├── .claude/
-│   ├── commands/         # Slash commands (e.g., /ax-agent)
-│   └── mcp/              # MCP server configuration
+│   └── memory/           # SQLite FTS5 database
 ├── automatosx.config.json  # Project configuration
-├── CLAUDE.md             # Claude Code integration guide (NEW in v5.6.14)
+├── CLAUDE.md             # Claude Code integration guide
 └── .gitignore            # Updated with AutomatosX entries
 ```
 
-### Step 2.3: Verify Initialization
-
-**Check system status**:
+**Verify initialization**:
 
 ```bash
 ax status
 ```
 
-**Expected Output**:
+**Expected output**:
 
-```text
+```
 📊 AutomatosX Status
 
 System:
-  Version: 5.6.13
+  Version: 6.3.8
   Node: v20.12.2
   Platform: darwin arm64
 
@@ -215,92 +131,36 @@ Providers:
   ✗ gemini-cli: unavailable (priority: 2)
   ✗ openai: unavailable (priority: 3)
 
-Router:
-  Health Checks: ✅ Enabled (60s interval)
-  Checks Performed: 5
-  Success Rate: 100.0%
-
 ✅ System is healthy
 ```
 
-> **Note**: Providers showing "unavailable" is normal if you haven't installed provider CLIs yet. See Step 3 for testing without providers.
+> **Note**: Providers showing "unavailable" is normal if you haven't installed provider CLIs yet. Continue to Step 3 to test with mock providers.
 
-**List available agents**:
-
-```bash
-ax list agents
-```
-
-**Expected Output**: Should show 24 specialized agents including `backend`, `frontend`, `devops`, `security`, `quality`, `data`, `ml-engineer`, `best-practices`, `erp-integration`, `figma`, `iot`, `quantum`, `aerospace`, and more.
-
-### Troubleshooting Initialization
-
-**Still seeing "0 agents"?**
-
-1. **Verify you're in the correct directory**:
-   ```bash
-   # Check current directory
-   pwd          # macOS/Linux
-   cd           # Windows (shows current directory)
-
-   # List files
-   ls -la       # macOS/Linux
-   dir /a       # Windows
-   ```
-   You should see `.automatosx/` directory and `automatosx.config.json`
-
-2. **Windows: Check directory was created**:
-   ```bash
-   dir .automatosx\agents
-   # Should list 24 YAML files: backend.yaml, frontend.yaml, security.yaml, etc.
-   ```
-
-3. **Re-initialize if needed**:
-   ```bash
-   ax init --force
-   # This overwrites existing config with latest defaults
-   ```
-
-### Force Reinitialize (Update Existing Installation)
-
-If you want to update agents/abilities to latest templates:
-
-```bash
-ax init --force   # Overwrites with latest templates and config
-```
-
-⚠️ **Warning**: `--force` will overwrite custom changes to agents/abilities.
+**Troubleshooting**:
+- **"0 agents"**: Run `ax init --force` to reinitialize
+- **Permission errors**: Don't use `sudo`, check file permissions
+- **Already initialized**: Use `--force` flag to update templates
 
 ---
 
 ## Step 3: Run Your First Agent
 
-### Testing Without Provider CLIs (Recommended for First-Time Users)
+### Quick Test (Mock Provider)
 
-If you haven't installed provider CLIs (Claude, Gemini, OpenAI) yet, you can test with **mock providers**:
+Test AutomatosX without installing provider CLIs:
 
-**Windows (Command Prompt)**:
 ```bash
-set AUTOMATOSX_MOCK_PROVIDERS=true
+# Set mock provider mode
+export AUTOMATOSX_MOCK_PROVIDERS=true  # macOS/Linux
+# Or: set AUTOMATOSX_MOCK_PROVIDERS=true  # Windows CMD
+# Or: $env:AUTOMATOSX_MOCK_PROVIDERS="true"  # Windows PowerShell
+
+# Run your first agent
 ax run backend "Explain TypeScript in one sentence"
-ax list agents
 ```
 
-**Windows (PowerShell)**:
-```powershell
-$env:AUTOMATOSX_MOCK_PROVIDERS="true"
-ax run backend "Explain TypeScript in one sentence"
-ax list agents
-```
+**Expected output**:
 
-**macOS/Linux**:
-```bash
-export AUTOMATOSX_MOCK_PROVIDERS=true
-ax run backend "Explain TypeScript in one sentence"
-ax list agents
-```
-
-**Expected Output**:
 ```
 🤖 AutomatosX v6.3.8
 
@@ -317,260 +177,132 @@ TypeScript is a strongly typed superset of JavaScript...
 ✓ Complete (0.1s)
 ```
 
-### Using Real Provider CLIs
+### With Real Provider (Recommended)
 
-Once you've verified AutomatosX works, install a provider CLI:
+Once you've verified AutomatosX works, install a provider CLI for real responses.
 
-**Claude CLI** (Recommended):
+**Quick Provider Setup**:
+
 ```bash
-npm install -g @anthropic-ai/claude-cli
-claude --version
+# Claude CLI (recommended for quality)
+npm install -g @anthropic-ai/claude-code
+claude login
+
+# Gemini CLI (recommended for cost - free tier!)
+curl -fsSL https://gemini.google.com/install.sh | sh
+gemini login
+
+# OpenAI Codex
+npm install -g @openai/codex
+codex auth login
 ```
 
-**Gemini CLI**:
-```bash
-npm install -g @google/gemini-cli
-gemini --version
-```
-
-**OpenAI Codex CLI**:
-```bash
-npm install -g @openai/codex-cli
-codex --version
-```
-
-Then run agents normally:
+Then run normally:
 
 ```bash
 ax run backend "What is TypeScript?"
 ```
 
-### Create Custom Agents from Templates (v5.0.0+)
+**See [Configuration Guide](./configuration.md)** for detailed provider setup, cost optimization, and multi-provider configuration.
 
-Quickly create a custom agent:
+---
+
+## Step 4: Explore Features
+
+### List Available Agents
 
 ```bash
-# Interactive creation with prompts
+ax list agents
+```
+
+**Available agents**: backend, frontend, fullstack, mobile, devops, security, quality, product, data, writer, and more (24 total).
+
+### Search Conversation History
+
+AutomatosX remembers all your conversations:
+
+```bash
+# Search past conversations
+ax memory search "authentication"
+
+# List recent memories
+ax memory list --limit 10
+```
+
+### Create Custom Agents
+
+```bash
+# Interactive creation
 ax agent create my-agent --template developer --interactive
 
-# Or one-line creation
+# Quick creation
 ax agent create my-agent \
   --template developer \
   --display-name "Mike" \
-  --role "Backend Engineer" \
-  --team engineering
-
-# Run your new agent
-ax run my-agent "Help me design an API"
+  --role "Backend Engineer"
 ```
 
-**What happens**:
-
-1. AutomatosX loads the `backend` agent profile
-2. Sends your prompt to the configured AI provider (Claude, Gemini, etc.)
-3. Returns the response
-4. Optionally saves the interaction to memory
-
-**Output**:
-
-```
-🤖 AutomatosX v6.3.8
-
-Agent: backend
-Task: What is TypeScript?
-
-─────────────────────────────────────
-
-TypeScript is a strongly typed programming language that builds on
-JavaScript, giving you better tooling at any scale...
-
-─────────────────────────────────────
-
-✓ Complete (1.2s)
-```
-
----
-
-## Explore Available Agents
-
-List all available agents:
-
-```bash
-automatosx list agents
-```
-
-Example output:
-
-```
-Available Agents (5):
-
-┌─────────────┬──────────────────────────┬──────────┐
-│ Name        │ Description              │ Provider │
-├─────────────┼──────────────────────────┼──────────┤
-│ backend     │ Backend development      │ claude   │
-│ coder       │ Code generation expert   │ claude   │
-│ reviewer    │ Code review specialist   │ claude   │
-│ debugger    │ Debug assistance         │ gemini   │
-│ writer      │ Content creation         │ claude   │
-└─────────────┴──────────────────────────┴──────────┘
-```
-
----
-
-## Basic Commands
-
-### Check Status
-
-```bash
-automatosx status
-```
-
-Shows:
-
-- Configuration status
-- Available providers
-- Memory statistics
-- System health
-
-### Manage Configuration
+### View Configuration
 
 ```bash
 # View all configuration
-automatosx config --list
+ax config show
 
-# Set a value
-automatosx config --set memory.maxEntries --value 20000
+# Get specific value
+ax config get providers.claude-code.priority
 
-# Get a specific value
-automatosx config --get providers.claude.enabled
-```
-
-### Memory Management
-
-```bash
-# List memories
-automatosx memory list
-
-# Search memories
-automatosx memory search "TypeScript concepts"
-
-# Add a memory
-automatosx memory add "TypeScript is a typed superset of JavaScript" --type knowledge
-
-# Export memories
-automatosx memory export ./backup.json
-
-# Import memories
-automatosx memory import ./backup.json
+# List providers
+ax providers list
 ```
 
 ---
 
-## Using with Claude Code
+## Common Commands
 
-AutomatosX is designed to work seamlessly inside Claude Code:
+| Command | Description |
+|---------|-------------|
+| `ax init` | Initialize AutomatosX in project |
+| `ax run <agent> "task"` | Execute agent task |
+| `ax list agents` | List all available agents |
+| `ax memory search "keyword"` | Search conversation history |
+| `ax status` | Check system status |
+| `ax config show` | View configuration |
+| `ax --debug run <agent> "task"` | Run with debug logging |
+| `ax update` | Update to latest version |
 
-### Workflow Example
-
-1. **You ask Claude Code**: "Can you help me understand TypeScript generics?"
-
-2. **Claude Code executes**:
-
-   ```bash
-   automatosx run backend "Explain TypeScript generics with examples"
-   ```
-
-3. **AutomatosX**:
-   - Loads assistant agent profile
-   - Sends prompt to AI provider
-   - Returns response with examples
-   - Saves to memory (if enabled)
-
-4. **Claude Code displays** the result to you
-
-### Why This Design?
-
-- **No Duplication**: Claude Code already provides interactive chat
-- **Single Responsibility**: AutomatosX focuses on agent execution
-- **Memory Persistence**: Agents remember context across sessions
-- **Provider Flexibility**: Use different AI providers for different tasks
+**Complete command reference**: [CLI Commands](../reference/cli-commands.md)
 
 ---
 
-## Configuration
+## Using with AI Assistants
 
-### Basic Configuration
+### Claude Code
 
-Edit `automatosx.config.json`:
+AutomatosX integrates seamlessly with Claude Code. See [AX-GUIDE.md](../../AX-GUIDE.md#claude-code) for:
 
-```json
-{
-  "providers": {
-    "claude-code": {
-      "enabled": true,
-      "priority": 1,
-      "timeout": 1500000,
-      "command": "claude"
-    },
-    "gemini-cli": {
-      "enabled": true,
-      "priority": 2,
-      "timeout": 1500000,
-      "command": "gemini"
-    }
-  },
-  "memory": {
-    "maxEntries": 10000,
-    "persistPath": ".automatosx/memory",
-    "autoCleanup": true,
-    "cleanupDays": 30
-  },
-  "logging": {
-    "level": "info",
-    "path": ".automatosx/logs",
-    "console": true
-  }
-}
-```
+- Natural language patterns
+- Multi-step workflows
+- Best practices
 
-### Provider Setup
+Or use the brief [CLAUDE.md](../../CLAUDE.md) integration guide.
 
-AutomatosX calls provider CLI tools directly - **no API keys stored in AutomatosX**.
+### Gemini CLI
 
-**Claude Code CLI**:
-```bash
-# Install (do NOT use sudo)
-npm install -g @anthropic-ai/claude-code
-# Or: curl -fsSL https://claude.ai/install.sh | bash
-# Or: brew install --cask claude-code
-# Docs: https://docs.claude.com/en/docs/claude-code/setup
+Use slash command syntax with Gemini. See [AX-GUIDE.md](../../AX-GUIDE.md#gemini-cli) for:
 
-# Authenticate (handled by CLI)
-claude login
-```
+- Slash command syntax
+- Custom Gemini commands
+- Integration setup
 
-**Gemini CLI**:
-```bash
-# Install
-npm install -g @google/gemini-cli
-# Docs: https://github.com/google-gemini/gemini-cli
+Or use the brief [GEMINI.md](../../GEMINI.md) integration guide.
 
-# Authenticate (handled by CLI)
-gemini auth login
-```
+### Other AI Assistants
 
-**Codex CLI (OpenAI)**:
-```bash
-# Install
-npm install -g @openai/codex
-# Or: brew install codex
-# Docs: https://github.com/openai/codex
+Any AI assistant with terminal access can use AutomatosX. See [AX-GUIDE.md](../../AX-GUIDE.md#other-assistants) for:
 
-# Authenticate (handled by CLI)
-codex auth login
-```
-
-**Important**: v4.0+ uses CLI tools for authentication. Each CLI manages its own API keys - AutomatosX never stores them.
+- Generic bash command patterns
+- OpenAI Codex integration
+- Cursor, Codeium, etc.
 
 ---
 
@@ -578,94 +310,132 @@ codex auth login
 
 ### Learn Core Concepts
 
-- [Core Concepts](./core-concepts.md) - Understand agents, profiles, and abilities
-- [Configuration Guide](./configuration.md) - Deep dive into configuration options
+- **[Core Concepts](./core-concepts.md)** - Understand agents, profiles, and abilities
+- **[Configuration Guide](./configuration.md)** - Provider setup, cost optimization, advanced config
+- **[Agent Communication & Memory](./agent-communication.md)** - How agents remember and collaborate
 
-### Tutorials
+### Hands-On Tutorials
 
-- [Creating Your First Agent](../tutorials/first-agent.md)
-- [Working with Memory](../tutorials/memory-management.md)
-- [Custom Abilities](../tutorials/custom-abilities.md)
+- **[Creating Your First Agent](../tutorials/first-agent.md)** - Build a custom agent from scratch
+- **[Memory Management](../tutorials/memory-management.md)** - Master the memory system
+- **[Multi-Agent Orchestration](./multi-agent-orchestration.md)** - Coordinate multiple agents
 
-### Reference
+### Platform-Specific Guides
 
-- [CLI Commands](../reference/cli-commands.md) - Complete command reference
-- [Configuration Schema](../reference/configuration-schema.md)
-- [API Documentation](../reference/api/) - For programmatic usage
+- **[Gemini Integration](./gemini-integration.md)** - Cost optimization with Gemini's free tier (99.6% savings!)
+- **[Provider Comparison](./provider-comparison.md)** - Compare Claude, Gemini, OpenAI
+- **[Team Configuration](./team-configuration.md)** - Organize agents into teams
 
-### Advanced
+### Reference Documentation
 
-- [Memory Management Guide](../tutorials/memory-management.md)
-- [Multi-Provider Configuration](../tutorials/advanced-usage.md#multi-provider)
-- [Performance Optimization](../tutorials/advanced-usage.md#performance)
+- **[CLI Commands Reference](../reference/cli-commands.md)** - Complete command documentation
+- **[Agent Templates](./agent-templates.md)** - Pre-built agent templates
+- **[Best Practices](../../BEST-PRACTICES.md)** - Production-ready patterns
+
+---
+
+## Troubleshooting
+
+### Command not found: ax
+
+**Solution**:
+```bash
+# Verify installation
+npm list -g @defai.digital/automatosx
+
+# Check npm global path
+npm config get prefix
+
+# Use npx as alternative
+npx @defai.digital/automatosx --version
+```
+
+**Windows**: See [Windows Setup Guide](../troubleshooting/windows-setup.md) for PATH configuration.
+
+### "0 agents" after initialization
+
+**Solution**:
+```bash
+# Verify you're in the correct directory
+pwd  # macOS/Linux
+cd   # Windows
+
+# Check if .automatosx exists
+ls -la .automatosx/  # macOS/Linux
+dir .automatosx\     # Windows
+
+# Reinitialize if needed
+ax init --force
+```
+
+### Provider connection failed
+
+**Solution**:
+```bash
+# Check provider status
+ax providers list
+ax providers test --provider claude-code
+
+# Test provider CLI directly
+claude --version
+gemini --version
+codex --version
+
+# Use mock provider for testing
+export AUTOMATOSX_MOCK_PROVIDERS=true
+ax run backend "test"
+```
+
+### Out of memory / Slow searches
+
+**Solution**:
+```bash
+# Clear old memories
+ax memory clear --before "2024-01-01"
+
+# View memory statistics
+ax cache stats
+
+# Export backup before clearing
+ax memory export > backup.json
+```
+
+**More help**: See [Troubleshooting Guide](../troubleshooting/common-issues.md) for comprehensive solutions.
 
 ---
 
 ## Common Questions
 
 **Q: Do I need to install Claude Code separately?**
-A: Yes, AutomatosX is designed to run inside Claude Code. It's not a standalone application.
+A: No, AutomatosX is a standalone CLI tool. It works inside Claude Code, VS Code, or any terminal.
 
-**Q: Can I use AutomatosX outside Claude Code?**
-A: Yes, you can use it from any terminal, but it's optimized for Claude Code workflows.
+**Q: Can I use AutomatosX without provider CLIs?**
+A: Yes, use `AUTOMATOSX_MOCK_PROVIDERS=true` for testing. For real responses, install at least one provider CLI.
 
-**Q: Why isn't there a `chat` command?**
-A: AutomatosX focuses on single-shot agent execution. Claude Code and other tools provide the interactive chat interface.
+**Q: Which provider should I use?**
+A: **Gemini CLI** for cost savings (99.6% cheaper, free tier), **Claude Code** for quality, **OpenAI** for specific models. See [Provider Comparison](./provider-comparison.md).
 
 **Q: How do I update AutomatosX?**
-A: Use the built-in command `ax update` or run `npm install -g @defai.digital/automatosx@latest`.
-
-**Q: How do I create a custom agent?**
-A: Use `ax agent create <name> --template <template>` to create from templates, or manually create `.automatosx/agents/<name>.yaml`.
+A: Run `ax update` or `npm install -g @defai.digital/automatosx@latest`.
 
 **Q: Where is my data stored?**
-A: All data is stored in `.automatosx/` directory in your project root. This includes configuration, memory, logs, and workspaces.
+A: All data is stored in `.automatosx/` directory in your project root. Configuration: `automatosx.config.json`. Memory: `.automatosx/memory/`. 100% local, no external API calls for memory operations.
 
----
+**Q: How do I create a custom agent?**
+A: Use `ax agent create <name> --template <template>` for quick creation. See [Creating Your First Agent](../tutorials/first-agent.md) tutorial.
 
-## Troubleshooting
-
-**Command not found: automatosx**
-
-```bash
-# If installed globally
-npm install -g @defai.digital/automatosx
-
-# Or use npx
-npx @defai.digital/automatosx --version
-```
-
-**Provider connection failed**
-
-```bash
-# Check provider status
-automatosx status
-
-# Test provider manually
-claude --version  # for Claude
-gemini --version  # for Gemini
-```
-
-**Memory search not returning results**
-
-```bash
-# Try broader search terms
-automatosx memory search "auth"  # instead of specific phrases
-
-# Or use mock provider for testing
-export AUTOMATOSX_MOCK_PROVIDERS=true
-```
-
-For more help, see [Troubleshooting Guide](../troubleshooting/common-issues.md).
+**Q: Can I use multiple providers?**
+A: Yes! AutomatosX supports automatic fallback and priority-based routing. See [Configuration Guide](./configuration.md#multi-provider-fallback).
 
 ---
 
 ## Getting Help
 
-- **Documentation**: [docs.automatosx.dev](https://github.com/defai-digital/automatosx/tree/main/docs) (coming soon)
+- **Documentation**: [docs/](../../docs/)
 - **GitHub Issues**: [github.com/defai-digital/automatosx/issues](https://github.com/defai-digital/automatosx/issues)
-- **Examples**: Check `.automatosx/agents/` and `.automatosx/abilities/` after running `init`
+- **Examples**: Check `.automatosx/` after running `init`
+- **Support**: File issues on GitHub
 
 ---
 
-**Ready to build your first agent?** → [Creating Your First Agent](../tutorials/first-agent.md)
+**Ready to build?** → Start with [Creating Your First Agent](../tutorials/first-agent.md) tutorial!

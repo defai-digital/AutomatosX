@@ -48,6 +48,13 @@ In-depth explanations of core features:
   - Provider management
   - 4 built-in teams
 
+- **[Configuration Guide](./guide/configuration.md)** ⚙️ **NEW**
+  - Complete configuration reference
+  - Provider setup and authentication
+  - Cost optimization strategies
+  - Environment variables
+  - Common scenarios
+
 - **[Provider Parameters](./guide/provider-parameters.md)** ⚙️
   - Model parameter configuration
   - Temperature and maxTokens

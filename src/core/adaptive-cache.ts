@@ -241,6 +241,12 @@ export class AdaptiveCache<T = any> {
         }
       }
 
+      // v6.2.6: Bug fix #33 - Prevent division by zero
+      // Even with timestamps.length >= 2, intervals can be empty if all timestamps are undefined
+      if (intervals.length === 0) {
+        continue; // Cannot predict without valid interval data
+      }
+
       const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
       const lastAccess = timestamps[timestamps.length - 1];
       if (lastAccess === undefined) {

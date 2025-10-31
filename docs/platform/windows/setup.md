@@ -344,14 +344,14 @@ You can enforce minimum provider CLI versions:
 
 ### Learn the Basics
 
-- **[Quick Start Guide](../guide/quick-start.md)** - Basic usage tutorial
-- **[Core Concepts](../guide/core-concepts.md)** - Understand agents, memory, providers
-- **[Terminal Mode Guide](../guide/terminal-mode.md)** - Complete CLI reference
+- **[Quick Start Guide](../getting-started/quick-start.md)** - Basic usage tutorial
+- **[Core Concepts](../getting-started/core-concepts.md)** - Understand agents, memory, providers
+- **[Terminal Mode Guide](../guides/terminal-mode.md)** - Complete CLI reference
 
 ### Explore Features
 
-- **[Agent Communication & Memory](../guide/agent-communication.md)** - How agents remember context
-- **[Multi-Agent Orchestration](../guide/multi-agent-orchestration.md)** - Natural language delegation
+- **[Agent Communication & Memory](../guides/agent-communication.md)** - How agents remember context
+- **[Multi-Agent Orchestration](../guides/multi-agent-orchestration.md)** - Natural language delegation
 - **[Agent Directory](../../examples/AGENTS_INFO.md)** - All 12 available agents
 
 ### Troubleshooting

@@ -30,7 +30,7 @@ node --version
 # Should show: v20.0.0 or higher
 ```
 
-**Windows Users**: See [Windows Setup Guide](../troubleshooting/windows-setup.md) for PATH configuration and troubleshooting.
+**Windows Users**: See [Windows Setup Guide](../platform/windows/setup.md) for PATH configuration and troubleshooting.
 
 ---
 
@@ -330,7 +330,7 @@ Any AI assistant with terminal access can use AutomatosX. See [AX-GUIDE.md](../.
 
 - **[CLI Commands Reference](../reference/cli-commands.md)** - Complete command documentation
 - **[Agent Templates](./agent-templates.md)** - Pre-built agent templates
-- **[Best Practices](../../BEST-PRACTICES.md)** - Production-ready patterns
+- **[Best Practices](../../advanced/best-practices.md)** - Production-ready patterns
 
 ---
 
@@ -350,7 +350,7 @@ npm config get prefix
 npx @defai.digital/automatosx --version
 ```
 
-**Windows**: See [Windows Setup Guide](../troubleshooting/windows-setup.md) for PATH configuration.
+**Windows**: See [Windows Setup Guide](../platform/windows/setup.md) for PATH configuration.
 
 ### "0 agents" after initialization
 

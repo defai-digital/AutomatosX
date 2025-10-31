@@ -596,7 +596,7 @@ Please include the following in your issue:
 - **Windows Setup Guide**: [docs/troubleshooting/windows-setup.md](windows-setup.md) - Complete installation walkthrough
 - **General Troubleshooting**: [TROUBLESHOOTING.md](../../TROUBLESHOOTING.md) - Cross-platform issues
 - **FAQ**: [FAQ.md](../../FAQ.md) - Frequently asked questions
-- **Installation Guide**: [docs/guide/installation.md](../guide/installation.md) - Platform-specific installation
+- **Installation Guide**: [docs/guide/installation.md](../getting-started/installation.md) - Platform-specific installation
 - **GitHub Issues**: https://github.com/defai-digital/automatosx/issues
 - **npm Package**: https://www.npmjs.com/package/@defai.digital/automatosx
 

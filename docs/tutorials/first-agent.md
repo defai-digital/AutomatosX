@@ -681,7 +681,7 @@ You've learned to:
 
 ## Additional Resources
 
-- [Core Concepts](../guide/core-concepts.md) - Understand agents deeply
+- [Core Concepts](../getting-started/core-concepts.md) - Understand agents deeply
 - [CLI Commands Reference](../reference/cli-commands.md) - All available commands
 - [Custom Abilities](./custom-abilities.md) - Create reusable skills
 - [Memory Management](./memory-management.md) - Advanced memory usage

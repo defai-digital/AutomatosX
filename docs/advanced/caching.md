@@ -646,6 +646,6 @@ AVAILABILITY_CACHE_TTL = 30000;  // 30 seconds
 
 ## See Also
 
-- [PERFORMANCE.md](./PERFORMANCE.md) - Performance optimization guide
+- [PERFORMANCE.md](./advanced/performance.md) - Performance optimization guide
 - [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - Troubleshooting guide
 - [API Documentation](./api/) - Detailed API reference

@@ -605,7 +605,7 @@ Master complete feature development with automatic agent orchestration.
 - [Agent Directory](../examples/AGENTS_INFO.md) - All available agents
 - [Team Structure](../CLAUDE.md#team-based-configuration) - How agents are organized
 - [Memory System](./guide/memory-system.md) - How context is preserved
-- [Multi-Agent Orchestration](./guide/multi-agent-orchestration.md) - Agent coordination
+- [Multi-Agent Orchestration](./guides/multi-agent-orchestration.md) - Agent coordination
 
 ---
 

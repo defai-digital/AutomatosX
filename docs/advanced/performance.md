@@ -495,6 +495,6 @@ ax cache stats
 
 ## See Also
 
-- [CACHE.md](./CACHE.md) - Cache architecture details
+- [CACHE.md](./advanced/caching.md) - Cache architecture details
 - [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - General troubleshooting guide
 - [API Documentation](./api/) - Detailed API reference

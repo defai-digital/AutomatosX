@@ -688,8 +688,8 @@ You've learned how to:
 
 ## Next Steps
 
-- **[Agent Communication Guide](../guide/agent-communication.md)** - Understand delegation vs memory
-- **[Multi-Agent Orchestration](../guide/multi-agent-orchestration.md)** - Build complex workflows
+- **[Agent Communication Guide](../guides/agent-communication.md)** - Understand delegation vs memory
+- **[Multi-Agent Orchestration](../guides/multi-agent-orchestration.md)** - Build complex workflows
 - **[CLI Commands Reference](../reference/cli-commands.md)** - All memory commands
 
 ---

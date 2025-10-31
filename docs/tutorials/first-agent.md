@@ -368,7 +368,7 @@ function getUserById(id) {
 Expected output:
 
 ```
-🤖 AutomatosX v4.0
+🤖 AutomatosX v6.3.8
 
 Agent: code-reviewer
 Task: Review this function...

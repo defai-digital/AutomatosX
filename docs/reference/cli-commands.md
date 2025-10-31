@@ -114,7 +114,7 @@ automatosx init --config ./my-config.json
 ### Output
 
 ```
-🤖 AutomatosX v4.0 - Project Initialization
+🤖 AutomatosX v6.3.8 - Project Initialization
 
 📁 Creating directory structure...
    ✓ Directories created
@@ -205,7 +205,7 @@ automatosx run assistant "Long task" --timeout 300
 **Text Format** (default):
 
 ```
-🤖 AutomatosX v4.0
+🤖 AutomatosX v6.3.8
 
 Agent: assistant
 Task: What is TypeScript?
@@ -510,7 +510,7 @@ automatosx status --check-providers
 ### Output
 
 ```
-🤖 AutomatosX v4.0 - System Status
+🤖 AutomatosX v6.3.8 - System Status
 
 📊 System Health: ✅ HEALTHY
 

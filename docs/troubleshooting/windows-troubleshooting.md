@@ -3,7 +3,7 @@
 This guide provides comprehensive troubleshooting solutions for AutomatosX on Windows 10 and Windows 11.
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v5.3.1+
+**Applies to**: AutomatosX v6.3.8+
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11
 
@@ -17,7 +17,7 @@ Before diving into detailed troubleshooting, verify these essentials:
 - ✅ **AutomatosX**: Latest version (v5.3.1+)
 - ✅ **Initialization**: Run `ax init` in your project directory
 - ✅ **Provider CLIs**: At least one provider CLI installed (Claude, Gemini, or OpenAI)
-- ✅ **Provider Detection**: AutomatosX v5.3.1+ automatically detects providers on Windows
+- ✅ **Provider Detection**: AutomatosX v6.3.8+ automatically detects providers on Windows
 
 ---
 
@@ -109,7 +109,7 @@ npx @defai.digital/automatosx config show
 
 **Cause**: Windows uses backslash `\` instead of forward slash `/`
 
-**Solution**: AutomatosX v5.1.0 handles this automatically via `path.sep`, but verify:
+**Solution**: AutomatosX v6.3.8 handles this automatically via `path.sep`, but verify:
 
 ```javascript
 // PathResolver handles this (src/core/path-resolver.ts:150)
@@ -236,7 +236,7 @@ npx @defai.digital/automatosx run backend "test"
 
 **Symptom**: `ax status` shows providers as disabled or not found
 
-**Cause**: AutomatosX v5.3.1+ uses enhanced provider detection, but paths may not be in standard locations
+**Cause**: AutomatosX v6.3.8+ uses enhanced provider detection, but paths may not be in standard locations
 
 **Check Detection**:
 ```bash
@@ -575,7 +575,7 @@ Please include the following in your issue:
 
 ## ✅ Resolution Checklist
 
-- [ ] Update to AutomatosX v5.3.1 or later
+- [ ] Update to AutomatosX v6.3.8 or later
 - [ ] Verify Node.js v20+ is installed
 - [ ] Run `ax init` in your project directory
 - [ ] Run diagnostic commands (`ax status --verbose`)
@@ -603,6 +603,6 @@ Please include the following in your issue:
 ---
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v5.3.1+
+**Applies to**: AutomatosX v6.3.8+
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11

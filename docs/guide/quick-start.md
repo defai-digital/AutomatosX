@@ -302,7 +302,7 @@ ax list agents
 
 **Expected Output**:
 ```
-🤖 AutomatosX v5.6.0
+🤖 AutomatosX v6.3.8
 
 Agent: backend (Bob)
 Task: Explain TypeScript in one sentence
@@ -374,7 +374,7 @@ ax run my-agent "Help me design an API"
 **Output**:
 
 ```
-🤖 AutomatosX v4.0
+🤖 AutomatosX v6.3.8
 
 Agent: backend
 Task: What is TypeScript?

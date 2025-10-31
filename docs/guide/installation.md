@@ -1,6 +1,6 @@
 # Installation
 
-This guide will help you install AutomatosX v4.0 and get your development environment set up.
+This guide will help you install AutomatosX v6.3.8 and get your development environment set up.
 
 ## Prerequisites
 

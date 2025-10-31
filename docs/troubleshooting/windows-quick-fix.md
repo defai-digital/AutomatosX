@@ -3,7 +3,7 @@
 This guide provides quick solutions for common AutomatosX issues on Windows 10/11.
 
 **Last Updated**: 2025-10-11
-**Applies To**: AutomatosX v5.1.0+
+**Applies To**: AutomatosX v6.3.8+
 **Platform**: Windows 10/11
 
 ---
@@ -245,6 +245,6 @@ When creating an issue:
 
 **Last Updated**: 2025-10-11
 
-**Applies To**: AutomatosX v5.1.0+
+**Applies To**: AutomatosX v6.3.8+
 
 **Platform**: Windows 10/11

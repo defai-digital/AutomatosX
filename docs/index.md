@@ -59,24 +59,24 @@ npx @defai.digital/automatosx init
 npx @defai.digital/automatosx run assistant "Help me write a README"
 ```
 
-## Why AutomatosX v4.0?
+## Why AutomatosX v6.3.8?
 
 ### Key Features
 
 - **Lightweight**: <50MB bundle size
-- **Minimal Dependencies**: Only 158 packages
+- **Minimal Dependencies**: Optimized dependency tree
 - **Modern TypeScript**: 100% type safety, strict mode
 - **High Performance**: ~280ms startup, 57MB memory usage
-- **Comprehensive Tests**: 705 tests, 67% coverage
+- **Comprehensive Tests**: 700+ tests passing, high coverage
 - **Full Documentation**: Complete guides, API reference, examples
 
-### What's New
+### What's New in v6.x
 
-- ✨ **SQLite + vec** for vector storage (simple, fast, efficient)
+- ✨ **Enhanced Memory System** with SQLite FTS5 (< 1ms search)
 - ✨ **Advanced Caching** reduces API calls by 30-40%
 - ✨ **Performance Profiling** built-in for optimization
 - ✨ **Improved CLI** with better UX and error handling
-- ✨ **Backward Compatible** configuration format
+- ✨ **Multi-Platform Integration** (Claude Code, Gemini CLI, Codex)
 
 ## Get Started in Minutes
 

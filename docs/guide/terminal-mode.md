@@ -57,7 +57,7 @@ automatosx --version
 
 **輸出範例**：
 ```
-AutomatosX v5.1.0
+AutomatosX v6.3.8
 AI Agent Orchestration Platform
 ```
 
@@ -221,7 +221,7 @@ $ ax run backend "What is TypeScript?"
 
 **輸出**：
 ```
-🤖 AutomatosX v5.1.0
+🤖 AutomatosX v6.3.8
 
 Agent: backend (Bob)
 Task: What is TypeScript?

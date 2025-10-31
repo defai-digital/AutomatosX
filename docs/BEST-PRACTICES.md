@@ -1,7 +1,7 @@
 # AutomatosX Best Practices Guide
 
-**Version**: 5.3.4
-**Last Updated**: 2025-10-14
+**Version**: 6.3.8
+**Last Updated**: 2025-10-31
 **Target Audience**: Claude Code users, CLI users, developers
 
 ---

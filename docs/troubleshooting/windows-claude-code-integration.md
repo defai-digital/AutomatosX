@@ -1,14 +1,14 @@
 # Windows + Claude Code Integration Guide
 
 **Last Updated**: 2025-10-14
-**Applies To**: AutomatosX v5.3.5+
+**Applies To**: AutomatosX v6.3.8+
 **Platform**: Windows 10/11 with Claude Code
 
 ---
 
 ## Overview
 
-AutomatosX v5.3.5+ includes **automatic environment detection** for Claude Code and other AI IDEs. When running inside these environments, mock providers are automatically enabled, eliminating the need for external CLI tools.
+AutomatosX v6.3.8+ includes **automatic environment detection** for Claude Code and other AI IDEs. When running inside these environments, mock providers are automatically enabled, eliminating the need for external CLI tools.
 
 ---
 
@@ -59,7 +59,7 @@ ax run cto "create PRD for todo app"
 
 ### Environment Detection
 
-AutomatosX v5.3.5+ automatically detects:
+AutomatosX v6.3.8+ automatically detects:
 
 1. **Claude Code** - Checks for:
    - `CLAUDE_CODE=true` environment variable
@@ -362,5 +362,5 @@ ax run backend "test"
 ---
 
 **Created**: 2025-10-14
-**Version**: AutomatosX v5.3.5+
+**Version**: AutomatosX v6.3.8+
 **Status**: Active Guide

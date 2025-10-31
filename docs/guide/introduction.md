@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to **AutomatosX v4.0** - a modern AI agent orchestration platform built with TypeScript. AutomatosX helps you build, manage, and scale AI agents with a simple, powerful, and developer-friendly approach.
+Welcome to **AutomatosX v6.3.8** - a modern AI agent orchestration platform built with TypeScript. AutomatosX helps you build, manage, and scale AI agents with a simple, powerful, and developer-friendly approach.
 
 ## What is AutomatosX?
 

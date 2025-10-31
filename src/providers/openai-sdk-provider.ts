@@ -38,6 +38,11 @@ import {
   type StreamingFeedback,
   type SimpleStreamingIndicator
 } from './streaming-feedback.js';
+import {
+  estimateTimeout,
+  formatTimeoutEstimate,
+  ProgressTracker
+} from './timeout-estimator.js';
 
 /**
  * OpenAI SDK Provider Configuration
@@ -63,6 +68,10 @@ export class OpenAISDKProvider extends BaseProvider {
 
   // v6.0.7: Streaming feedback
   private currentStreamingFeedback: StreamingFeedback | SimpleStreamingIndicator | null = null;
+
+  // v6.2.2: Progress tracking for SDK streaming (bugfix #5, #6)
+  private currentProgressTracker: ProgressTracker | null = null;
+  private progressInterval: NodeJS.Timeout | null = null;
 
   constructor(config: ProviderConfig, sdkConfig: OpenAISDKConfig = {}) {
     super(config);
@@ -245,6 +254,24 @@ export class OpenAISDKProvider extends BaseProvider {
   ): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // v6.2.2: Estimate timeout and show warning (bugfix #5)
+    const fullPrompt = `${request.systemPrompt || ''}\n${request.prompt}`.trim();
+    const timeoutEstimate = estimateTimeout({
+      prompt: fullPrompt,
+      systemPrompt: request.systemPrompt,
+      model: typeof request.model === 'string' ? request.model : undefined,
+      maxTokens: request.maxTokens
+    });
+
+    if (process.env.AUTOMATOSX_QUIET !== 'true') {
+      logger.info(formatTimeoutEstimate(timeoutEstimate));
+    }
+
+    // v6.2.2: Start progress tracking for long operations (bugfix #6)
+    if (timeoutEstimate.estimatedDurationMs > 10000) {
+      this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+    }
+
     // v6.0.7: Estimate total tokens for progress tracking
     const estimatedOutputTokens = request.maxTokens || this.estimateTokens(request.prompt) * 2;
 
@@ -352,6 +379,21 @@ export class OpenAISDKProvider extends BaseProvider {
                 });
               }
             }
+
+            // v6.2.2: Emit progress callback (bugfix #7)
+            if (options.onProgress) {
+              try {
+                const currentTokens = this.estimateTokens(fullContent);
+                const expectedTokens = request.maxTokens || 4096;
+                const progress = Math.min(currentTokens / expectedTokens, 0.95);
+                options.onProgress(progress);
+              } catch (error) {
+                logger.warn('Streaming onProgress callback error', {
+                  provider: this.config.name,
+                  error: error instanceof Error ? error.message : String(error)
+                });
+              }
+            }
           }
 
           // Capture finish reason
@@ -397,6 +439,21 @@ export class OpenAISDKProvider extends BaseProvider {
           this.currentStreamingFeedback = null;
         }
 
+        // v6.2.2: Emit final progress update (bugfix #7)
+        if (options.onProgress) {
+          try {
+            options.onProgress(1.0);
+          } catch (error) {
+            logger.warn('Final streaming onProgress callback error', {
+              provider: this.config.name,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+        // v6.2.2: Stop progress tracking (bugfix #6)
+        this.stopProgressTracking();
+
         return {
           content: fullContent,
           model: modelUsed,
@@ -419,6 +476,9 @@ export class OpenAISDKProvider extends BaseProvider {
           this.currentStreamingFeedback = null;
         }
 
+        // v6.2.2: Stop progress tracking on error (bugfix #6)
+        this.stopProgressTracking();
+
         throw error;
       }
 
@@ -428,6 +488,9 @@ export class OpenAISDKProvider extends BaseProvider {
         this.currentStreamingFeedback.stop();
         this.currentStreamingFeedback = null;
       }
+
+      // v6.2.2: Stop progress tracking on error (bugfix #6)
+      this.stopProgressTracking();
 
       return this.handleSDKError(error, request, startTime);
     }
@@ -634,5 +697,44 @@ export class OpenAISDKProvider extends BaseProvider {
       estimatedUsd: inputCost + outputCost,
       tokensUsed: inputTokens + outputTokens
     };
+  }
+
+  /**
+   * Start progress tracking for long operations
+   * v6.2.2: Consistency with CLI providers (bugfix #5, #6)
+   * @param estimatedDurationMs - Estimated duration in milliseconds
+   */
+  private startProgressTracking(estimatedDurationMs: number): void {
+    if (process.env.AUTOMATOSX_QUIET === 'true') {
+      return;
+    }
+
+    this.currentProgressTracker = new ProgressTracker(estimatedDurationMs);
+
+    this.progressInterval = setInterval(() => {
+      if (this.currentProgressTracker && this.currentProgressTracker.shouldUpdate()) {
+        // Use \r to overwrite the same line
+        process.stderr.write('\r' + this.currentProgressTracker.formatProgress());
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop progress tracking
+   * v6.2.2: Consistency with CLI providers (bugfix #5, #6)
+   */
+  private stopProgressTracking(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+
+    if (this.currentProgressTracker) {
+      // Clear the progress line
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        process.stderr.write('\r' + ' '.repeat(80) + '\r');
+      }
+      this.currentProgressTracker = null;
+    }
   }
 }

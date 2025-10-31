@@ -34,6 +34,11 @@ import { logger } from '../utils/logger.js';
 import { ProviderError } from '../utils/errors.js';
 import { getProviderConnectionPool, type ProviderConnection } from '../core/provider-connection-pool.js';
 import { getProviderLimitManager } from '../core/provider-limit-manager.js';
+import {
+  estimateTimeout,
+  formatTimeoutEstimate,
+  ProgressTracker
+} from './timeout-estimator.js';
 
 /**
  * Gemini SDK Provider Configuration
@@ -55,6 +60,10 @@ export class GeminiSDKProvider extends BaseProvider {
   private sdkConfig: GeminiSDKConfig;
   private connectionPool = getProviderConnectionPool();
   private initialized = false;
+
+  // v6.2.2: Progress tracking for SDK streaming (bugfix #5, #6)
+  private currentProgressTracker: ProgressTracker | null = null;
+  private progressInterval: NodeJS.Timeout | null = null;
 
   constructor(config: ProviderConfig, sdkConfig: GeminiSDKConfig = {}) {
     super(config);
@@ -212,6 +221,24 @@ export class GeminiSDKProvider extends BaseProvider {
     const startTime = Date.now();
 
     try {
+      // v6.2.2: Estimate timeout and show warning (bugfix #5)
+      const fullPrompt = `${request.systemPrompt || ''}\n${request.prompt}`.trim();
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
+      }
+
+      // v6.2.2: Start progress tracking for long operations (bugfix #6)
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+      }
+
       // Acquire connection from pool
       const connection = await this.connectionPool.acquire<GoogleGenerativeAI>(this.config.name);
 
@@ -258,6 +285,21 @@ export class GeminiSDKProvider extends BaseProvider {
                 });
               }
             }
+
+            // v6.2.2: Emit progress callback (bugfix #7)
+            if (options.onProgress) {
+              try {
+                const currentTokens = this.estimateTokens(fullContent);
+                const expectedTokens = request.maxTokens || 4096;
+                const progress = Math.min(currentTokens / expectedTokens, 0.95);
+                options.onProgress(progress);
+              } catch (error) {
+                logger.warn('Streaming onProgress callback error', {
+                  provider: this.config.name,
+                  error: error instanceof Error ? error.message : String(error)
+                });
+              }
+            }
           } catch (chunkError) {
             // Some chunks may not have text (e.g., function calls)
             logger.debug('Chunk without text', {
@@ -282,6 +324,21 @@ export class GeminiSDKProvider extends BaseProvider {
         const estimatedPromptTokens = this.estimateTokens(prompt);
         const estimatedCompletionTokens = this.estimateTokens(fullContent);
 
+        // v6.2.2: Emit final progress update (bugfix #7)
+        if (options.onProgress) {
+          try {
+            options.onProgress(1.0);
+          } catch (error) {
+            logger.warn('Final streaming onProgress callback error', {
+              provider: this.config.name,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+        // v6.2.2: Stop progress tracking (bugfix #6)
+        this.stopProgressTracking();
+
         return {
           content: fullContent,
           model: modelName,
@@ -297,10 +354,14 @@ export class GeminiSDKProvider extends BaseProvider {
       } catch (error) {
         // Release connection on error
         await this.connectionPool.release(this.config.name, connection);
+        // v6.2.2: Stop progress tracking on error (bugfix #6)
+        this.stopProgressTracking();
         throw error;
       }
 
     } catch (error) {
+      // v6.2.2: Stop progress tracking on error (bugfix #6)
+      this.stopProgressTracking();
       return this.handleSDKError(error, request, startTime);
     }
   }
@@ -494,5 +555,44 @@ export class GeminiSDKProvider extends BaseProvider {
       estimatedUsd: inputCost + outputCost,
       tokensUsed: inputTokens + outputTokens
     };
+  }
+
+  /**
+   * Start progress tracking for long operations
+   * v6.2.2: Consistency with CLI providers (bugfix #5, #6)
+   * @param estimatedDurationMs - Estimated duration in milliseconds
+   */
+  private startProgressTracking(estimatedDurationMs: number): void {
+    if (process.env.AUTOMATOSX_QUIET === 'true') {
+      return;
+    }
+
+    this.currentProgressTracker = new ProgressTracker(estimatedDurationMs);
+
+    this.progressInterval = setInterval(() => {
+      if (this.currentProgressTracker && this.currentProgressTracker.shouldUpdate()) {
+        // Use \r to overwrite the same line
+        process.stderr.write('\r' + this.currentProgressTracker.formatProgress());
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop progress tracking
+   * v6.2.2: Consistency with CLI providers (bugfix #5, #6)
+   */
+  private stopProgressTracking(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+
+    if (this.currentProgressTracker) {
+      // Clear the progress line
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        process.stderr.write('\r' + ' '.repeat(80) + '\r');
+      }
+      this.currentProgressTracker = null;
+    }
   }
 }

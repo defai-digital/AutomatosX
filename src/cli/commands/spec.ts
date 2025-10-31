@@ -571,9 +571,13 @@ async function handleStatus(
       console.log(chalk.cyan(`\n📊 Spec Status`));
       console.log(chalk.gray(`  Version: ${spec.metadata.version}`));
       console.log(chalk.gray(`  Workspace: ${workspacePath}`));
+      // v6.2.10: Bug fix #37 - Prevent division by zero when spec has no tasks
+      const progressPercent = spec.tasks.length > 0
+        ? ((completedTasks.length / spec.tasks.length) * 100).toFixed(1)
+        : '0.0';
       console.log(
         chalk.gray(
-          `  Progress: ${completedTasks.length}/${spec.tasks.length} tasks (${((completedTasks.length / spec.tasks.length) * 100).toFixed(1)}%)\n`
+          `  Progress: ${completedTasks.length}/${spec.tasks.length} tasks (${progressPercent}%)\n`
         )
       );
 

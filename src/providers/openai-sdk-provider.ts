@@ -152,6 +152,24 @@ export class OpenAISDKProvider extends BaseProvider {
   protected async executeRequest(request: ExecutionRequest): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // v6.2.2: Estimate timeout and show warning (bugfix #8)
+    const fullPrompt = `${request.systemPrompt || ''}\n${request.prompt}`.trim();
+    const timeoutEstimate = estimateTimeout({
+      prompt: fullPrompt,
+      systemPrompt: request.systemPrompt,
+      model: typeof request.model === 'string' ? request.model : undefined,
+      maxTokens: request.maxTokens
+    });
+
+    if (process.env.AUTOMATOSX_QUIET !== 'true') {
+      logger.info(formatTimeoutEstimate(timeoutEstimate));
+    }
+
+    // v6.2.2: Start progress tracking for long operations (bugfix #8)
+    if (timeoutEstimate.estimatedDurationMs > 10000) {
+      this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+    }
+
     // Check if running in test/mock mode
     // Enhanced: Check multiple environment variables to ensure mock mode in test environments
     const useMock =
@@ -163,6 +181,9 @@ export class OpenAISDKProvider extends BaseProvider {
       // Mock mode for testing
       const mockPrompt = request.prompt.substring(0, 100);
       const latency = Date.now() - startTime;
+
+      // v6.2.2: Stop progress tracking (bugfix #8)
+      this.stopProgressTracking();
 
       return {
         content: `[Mock Response from OpenAI SDK]\n\nTask received: ${mockPrompt}...\n\nThis is a placeholder response. Set AUTOMATOSX_MOCK_PROVIDERS=false to use real SDK.`,
@@ -207,6 +228,9 @@ export class OpenAISDKProvider extends BaseProvider {
         // Release connection back to pool
         await this.connectionPool.release(this.config.name, connection);
 
+        // v6.2.2: Stop progress tracking (bugfix #8)
+        this.stopProgressTracking();
+
         // Extract response
         const content = response.choices[0]?.message?.content || '';
         const finishReason = this.mapFinishReason(response.choices[0]?.finish_reason);
@@ -236,10 +260,14 @@ export class OpenAISDKProvider extends BaseProvider {
       } catch (error) {
         // Release connection on error
         await this.connectionPool.release(this.config.name, connection);
+        // v6.2.2: Stop progress tracking on error (bugfix #8)
+        this.stopProgressTracking();
         throw error;
       }
 
     } catch (error) {
+      // v6.2.2: Stop progress tracking on error (bugfix #8)
+      this.stopProgressTracking();
       // Handle OpenAI SDK errors
       return this.handleSDKError(error, request, startTime);
     }

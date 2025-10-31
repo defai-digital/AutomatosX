@@ -140,6 +140,24 @@ export class ClaudeSDKProvider extends BaseProvider {
     const startTime = Date.now();
 
     try {
+      // v6.2.2: Estimate timeout and show warning (bugfix #8)
+      const fullPrompt = `${request.systemPrompt || ''}\n${request.prompt}`.trim();
+      const timeoutEstimate = estimateTimeout({
+        prompt: fullPrompt,
+        systemPrompt: request.systemPrompt,
+        model: typeof request.model === 'string' ? request.model : undefined,
+        maxTokens: request.maxTokens
+      });
+
+      if (process.env.AUTOMATOSX_QUIET !== 'true') {
+        logger.info(formatTimeoutEstimate(timeoutEstimate));
+      }
+
+      // v6.2.2: Start progress tracking for long operations (bugfix #8)
+      if (timeoutEstimate.estimatedDurationMs > 10000) {
+        this.startProgressTracking(timeoutEstimate.estimatedDurationMs);
+      }
+
       // Acquire connection from pool
       const connection = await this.connectionPool.acquire<Anthropic>(this.config.name);
 
@@ -169,6 +187,9 @@ export class ClaudeSDKProvider extends BaseProvider {
 
         // Release connection back to pool
         await this.connectionPool.release(this.config.name, connection);
+
+        // v6.2.2: Stop progress tracking (bugfix #8)
+        this.stopProgressTracking();
 
         // Extract response
         const content = response.content
@@ -203,10 +224,14 @@ export class ClaudeSDKProvider extends BaseProvider {
       } catch (error) {
         // Release connection on error
         await this.connectionPool.release(this.config.name, connection);
+        // v6.2.2: Stop progress tracking on error (bugfix #8)
+        this.stopProgressTracking();
         throw error;
       }
 
     } catch (error) {
+      // v6.2.2: Stop progress tracking on error (bugfix #8)
+      this.stopProgressTracking();
       // Handle Anthropic SDK errors
       return this.handleSDKError(error, request, startTime);
     }

@@ -529,7 +529,14 @@ function displayPlanSummary(plan: any): void {
   console.log(chalk.gray(`  Actors: ${plan.overview.actorCount}`));
   console.log(chalk.gray(`  Phases: ${plan.overview.phaseCount}`));
   console.log(chalk.gray(`  Estimated Duration: ${plan.overview.estimatedDuration}`));
-  console.log(chalk.gray(`  Estimated Cost: $${plan.overview.estimatedCost.min.toFixed(2)} - $${plan.overview.estimatedCost.max.toFixed(2)} ${plan.overview.estimatedCost.currency}\n`));
+
+  // Check if cost estimation is disabled
+  const isCostDisabled = plan.overview.estimatedCost.min === 0 && plan.overview.estimatedCost.max === 0;
+  if (isCostDisabled) {
+    console.log(chalk.gray(`  Estimated Cost: N/A (cost estimation disabled)\n`));
+  } else {
+    console.log(chalk.gray(`  Estimated Cost: $${plan.overview.estimatedCost.min.toFixed(2)} - $${plan.overview.estimatedCost.max.toFixed(2)} ${plan.overview.estimatedCost.currency}\n`));
+  }
 
   // Phases
   console.log(chalk.blue('Phases:'));

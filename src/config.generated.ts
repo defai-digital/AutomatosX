@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-11-01T13:49:00.936Z
+ * Generated: 2025-11-01T16:22:36.500Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -374,6 +374,10 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
+  "costEstimation": {
+    "enabled": false,
+    "disclaimer": "Cost estimates are approximate and may be outdated. Visit provider pricing pages for current rates."
+  },
   "version": "6.5.9"
 } as const;
 
@@ -381,7 +385,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-01T13:49:00.936Z',
+  generatedAt: '2025-11-01T16:22:36.500Z',
   sourceFile: 'automatosx.config.json',
   version: '6.5.9'
 } as const;

@@ -9,6 +9,7 @@
 
 import type { ProviderMetadata, ProviderMetadataRegistry } from '@/types/provider-metadata.js';
 import { flagManager } from '@/core/feature-flags/flags.js';
+import { PRECOMPILED_CONFIG } from '@/config.generated.js';
 
 /**
  * Provider metadata registry
@@ -32,8 +33,11 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
     cloud: 'azure',  // OpenAI runs on Azure infrastructure
     regions: ['us-east', 'us-west', 'eu-west', 'ap-southeast'],
     costPerToken: {
-      input: 0.0025,   // $2.50 per 1M input tokens (gpt-4o)
-      output: 0.0100   // $10.00 per 1M output tokens
+      // NOTE: Despite the field name, these values are actually cost per 1000 tokens (not per single token)
+      // Display code multiplies by 1000 to show per-1K-tokens cost
+      // $2.50 per 1M tokens = 0.0025 per 1K tokens
+      input: 0.0025,   // $2.50 per 1M input tokens (gpt-4o) = $0.0025 per 1K tokens
+      output: 0.0100   // $10.00 per 1M output tokens = $0.0100 per 1K tokens
     },
     latencyEstimate: {
       p50: 800,   // 0.8 seconds
@@ -217,12 +221,21 @@ export const PROVIDER_METADATA: ProviderMetadataRegistry = {
 /**
  * Get provider metadata by name
  *
- * Applies runtime feature flags to metadata before returning.
+ * Applies runtime feature flags and cost estimation settings to metadata before returning.
  * This enables gradual rollout of features without changing source of truth.
  */
 export function getProviderMetadata(providerName: string): ProviderMetadata | null {
   const baseMetadata = PROVIDER_METADATA[providerName];
   if (!baseMetadata) return null;
+
+  // Check if cost estimation is disabled
+  let costPerToken = baseMetadata.costPerToken;
+  const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+  if (!costEstimationEnabled) {
+    // Return $0 for all cost estimates when disabled
+    costPerToken = { input: 0, output: 0 };
+  }
 
   // Apply feature flags to Gemini metadata
   if (providerName === 'gemini-cli') {
@@ -235,6 +248,7 @@ export function getProviderMetadata(providerName: string): ProviderMetadata | nu
 
     return {
       ...baseMetadata,
+      costPerToken,
       features: {
         ...baseMetadata.features,
         streaming: streamingEnabled
@@ -242,7 +256,10 @@ export function getProviderMetadata(providerName: string): ProviderMetadata | nu
     };
   }
 
-  return baseMetadata;
+  return {
+    ...baseMetadata,
+    costPerToken
+  };
 }
 
 /**
@@ -279,12 +296,17 @@ export function getProvidersByRegion(region: string): string[] {
 
 /**
  * Get cheapest provider (by average cost)
+ *
+ * FIXED: Use getProviderMetadata() to respect cost estimation settings
  */
 export function getCheapestProvider(): string | null {
   let cheapest: string | null = null;
   let lowestCost = Infinity;
 
-  for (const [name, metadata] of Object.entries(PROVIDER_METADATA)) {
+  for (const name of Object.keys(PROVIDER_METADATA)) {
+    const metadata = getProviderMetadata(name);
+    if (!metadata) continue;
+
     const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
     if (avgCost < lowestCost) {
       lowestCost = avgCost;

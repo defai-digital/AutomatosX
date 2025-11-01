@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.11] - 2025-11-01
+
+### 🐛 Bug Fixes
+
+#### Fallback Provider & Code Quality Improvements
+
+**Critical Fixes:**
+
+- **GitHub Issue #8**: Fallback provider now activates when primary provider fails
+  - Fixed `src/agents/executor.ts` to implement proper fallback logic during runtime
+  - Primary provider failures now trigger automatic fallback to configured `fallbackProvider`
+  - Handles authentication errors (401), rate limits (429, 503), timeouts, and all error types
+  - User notified in verbose mode when fallback is used
+  - Both errors logged when both providers fail
+  - See `automatosx/PRD/github-issue-8-fallback-provider-fix.md` for details
+
+**Bug Fixes - Round 2:**
+
+- **Bug #106** (CRITICAL): parseInt NaN validation in agent create (`src/cli/commands/agent/create.ts`)
+  - Added NaN validation to template/team selection parseInt() calls
+  - Graceful fallback to first option on invalid input
+
+- **Bug #107** (HIGH): NaN propagation in PlanGenerator (`src/core/spec/PlanGenerator.ts`)
+  - Added NaN validation to `parseDuration()` and `parseMemoryLimit()` functions
+  - Prevents NaN from corrupting cost/duration estimates
+
+- **Bug #108** (HIGH): Stream error handling in RouterTraceLogger (`src/core/router-trace-logger.ts`)
+  - Added error handler to WriteStream to prevent process crashes
+  - Added cleanup handlers for process exit signals (exit, SIGINT, SIGTERM)
+
+- **Bug #109** (HIGH): Array access safety in Router (`src/core/router.ts`)
+  - Verified already safe with nullish coalescing operator
+
+- **Bug #110** (HIGH): Array access in RoutingStrategy (`src/core/routing-strategy.ts`)
+  - Fixed 3 instances of unsafe array access with explicit bounds checks
+  - Replaced non-null assertions with proper null checks
+
+**Impact:**
+- Multi-provider resilience now works as documented
+- NaN validation prevents corrupted calculations
+- Resource cleanup prevents memory leaks
+- All critical/high severity bugs resolved
+- See `automatosx/PRD/bug-fixes-round2-2025-11-01.md` for complete details
+
+### 📚 Documentation
+
+- Updated version to v6.5.11 across all files
+- Test suite: 2,612 passing tests ✅
+
 ## [6.5.9] - 2025-11-01
 
 ### ✨ Features

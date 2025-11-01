@@ -11,6 +11,7 @@ import type { SpecYAML } from '@/types/spec-yaml.js';
 import type { ProviderMetadataRegistry } from '@/types/provider-metadata.js';
 import { PROVIDER_METADATA } from '../provider-metadata-registry.js';
 import { logger } from '@/utils/logger.js';
+import { PRECOMPILED_CONFIG } from '@/config.generated.js';
 
 /**
  * Execution phase in the plan
@@ -237,6 +238,14 @@ export class PlanGenerator {
    * Estimate costs
    */
   private estimateCosts(spec: SpecYAML): { min: number; max: number } {
+    // Check if cost estimation is disabled
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (!costEstimationEnabled) {
+      logger.debug('Cost estimation disabled, returning $0');
+      return { min: 0, max: 0 };
+    }
+
     // Determine provider from spec or use default
     let providerName = spec.providers?.primary?.name || 'gemini-cli';  // Default to cheapest
 
@@ -263,10 +272,12 @@ export class PlanGenerator {
     const inputTokensPerActor = 2000;   // ~500 words input
     const outputTokensPerActor = 1000;  // ~250 words output
 
-    // FIXED (v6.0.1): Divide by 1,000,000 not 1,000 (costs are per-token, not per-1K-tokens)
+    // FIXED (v6.5.11): costPerToken values are stored as "per 1K tokens" despite field name
+    // Need to divide by 1000 to convert to per-token cost, then multiply by token count
+    // OR equivalently: divide token count by 1000 before multiplying
     const costPerActor =
-      inputTokensPerActor * provider.costPerToken.input +
-      outputTokensPerActor * provider.costPerToken.output;
+      (inputTokensPerActor / 1000) * provider.costPerToken.input +
+      (outputTokensPerActor / 1000) * provider.costPerToken.output;
 
     const totalCost = costPerActor * spec.actors.length;
 
@@ -344,10 +355,14 @@ export class PlanGenerator {
       recommendations.push('Enable parallel execution to reduce total duration');
     }
 
-    // Recommend cost optimization if using expensive provider
-    const providerName = spec.providers?.primary?.name;
-    if (providerName === 'claude-code' || providerName === 'openai') {
-      recommendations.push('Consider using gemini-cli for cost savings (5-10x cheaper)');
+    // Recommend cost optimization if using expensive provider (only if cost estimation enabled)
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (costEstimationEnabled) {
+      const providerName = spec.providers?.primary?.name;
+      if (providerName === 'claude-code' || providerName === 'openai') {
+        recommendations.push('Consider using gemini-cli for cost savings (5-10x cheaper)');
+      }
     }
 
     // Recommend observability if not configured
@@ -376,7 +391,14 @@ export class PlanGenerator {
     sections.push(`- **Actors**: ${plan.overview.actorCount}`);
     sections.push(`- **Phases**: ${plan.overview.phaseCount}`);
     sections.push(`- **Estimated Duration**: ${plan.overview.estimatedDuration}`);
-    sections.push(`- **Estimated Cost**: $${plan.overview.estimatedCost.min.toFixed(2)} - $${plan.overview.estimatedCost.max.toFixed(2)} ${plan.overview.estimatedCost.currency}\n`);
+
+    // Show cost estimate or "disabled" message
+    const isCostEstimationDisabled = plan.overview.estimatedCost.min === 0 && plan.overview.estimatedCost.max === 0;
+    if (isCostEstimationDisabled) {
+      sections.push(`- **Estimated Cost**: N/A (cost estimation disabled)\n`);
+    } else {
+      sections.push(`- **Estimated Cost**: $${plan.overview.estimatedCost.min.toFixed(2)} - $${plan.overview.estimatedCost.max.toFixed(2)} ${plan.overview.estimatedCost.currency}\n`);
+    }
 
     // Phases
     sections.push('## Execution Phases\n');
@@ -449,6 +471,9 @@ export class PlanGenerator {
     if (!match || !match[1] || !match[2]) return 0;
 
     const value = parseFloat(match[1]);
+    // FIXED (v6.5.11): Validate parseFloat result to prevent NaN propagation
+    if (isNaN(value) || value < 0) return 0;
+
     const unit = match[2];
 
     switch (unit) {
@@ -467,6 +492,9 @@ export class PlanGenerator {
     if (!match || !match[1] || !match[2]) return 0;
 
     const value = parseInt(match[1], 10);
+    // FIXED (v6.5.11): Validate parseInt result to prevent NaN propagation
+    if (isNaN(value) || value < 0) return 0;
+
     const unit = match[2].toUpperCase();
 
     switch (unit) {

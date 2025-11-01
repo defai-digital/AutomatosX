@@ -239,13 +239,15 @@ async function askTemplate(): Promise<string> {
   console.log();
 
   const answer = await ask(`Select template (1-${templates.length})`, '1');
-  const index = parseInt(answer) - 1;
+  const index = parseInt(answer, 10) - 1;
 
-  if (index >= 0 && index < templates.length) {
-    return templates[index]?.name ?? templates[0]!.name;
+  // FIXED (v6.5.11): Validate parseInt result to prevent NaN array access
+  if (isNaN(index) || index < 0 || index >= templates.length) {
+    console.log(chalk.yellow('\n⚠ Invalid selection, using first template'));
+    return templates[0]!.name;
   }
 
-  return templates[0]!.name;
+  return templates[index]?.name ?? templates[0]!.name;
 }
 
 /**
@@ -267,13 +269,15 @@ async function askTeam(defaultValue: string): Promise<string> {
 
   const defaultIndex = teams.findIndex(t => t.name === defaultValue) + 1;
   const answer = await ask(`Select team (1-${teams.length})`, defaultIndex > 0 ? defaultIndex.toString() : '1');
-  const index = parseInt(answer) - 1;
+  const index = parseInt(answer, 10) - 1;
 
-  if (index >= 0 && index < teams.length) {
-    return teams[index]?.name ?? defaultValue ?? 'core';
+  // FIXED (v6.5.11): Validate parseInt result to prevent NaN array access
+  if (isNaN(index) || index < 0 || index >= teams.length) {
+    console.log(chalk.yellow('\n⚠ Invalid selection, using default team'));
+    return defaultValue || teams[0]?.name || 'core';
   }
 
-  return defaultValue || teams[0]?.name || 'core';
+  return teams[index]?.name ?? defaultValue ?? 'core';
 }
 
 /**

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX is an AI Agent Orchestration Platform that combines declarative workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool (v6.3.8) that routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX is an AI Agent Orchestration Platform that combines declarative workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool (v6.5.10) that routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
 **Key Capabilities:**
 
@@ -14,8 +14,8 @@ AutomatosX is an AI Agent Orchestration Platform that combines declarative workf
 - **Multi-Agent Orchestration**: 20 specialized agents with delegation parsing
 - **Cost Optimization**: 60-80% cost reduction through intelligent routing and free-tier utilization
 
-**Current Branch**: docs-cleanup-phase3
 **Repository**: https://github.com/defai-digital/automatosx
+**Main Branch**: main
 
 ## Build & Development Commands
 
@@ -333,6 +333,32 @@ automatosx/          # Workspace directories (see Workspace Conventions below)
 - Git hooks (via Husky): Auto-sync on `npm version`
 - Release workflow: `npm version [patch|minor|major]` → auto-sync → commit → tag
 
+## Cost Estimation (v6.5.11+)
+
+**IMPORTANT**: Cost estimation is **disabled by default** as of v6.5.11.
+
+Users reported that pricing changes frequently, making estimates unreliable. Cost estimation can be optionally enabled in `automatosx.config.json`:
+
+```json
+{
+  "costEstimation": {
+    "enabled": false,  // Set to true to enable
+    "disclaimer": "Cost estimates are approximate and may be outdated."
+  }
+}
+```
+
+**When disabled** (default):
+- Provider metadata returns $0 for all cost fields
+- PolicyEvaluator skips cost constraints (always passes)
+- PlanGenerator shows "N/A (cost estimation disabled)"
+- CLI commands show "Cost estimation disabled" messages
+
+**When enabled**:
+- Full cost tracking and estimation as before
+- Pricing data from Oct 2024 (may be outdated)
+- Users should verify current pricing on provider websites
+
 ## Performance Considerations
 
 - Router selects providers in < 5ms (with policy evaluation)
@@ -392,7 +418,7 @@ AutomatosX uses standardized workspace directories for organization:
 
 ## Documentation Structure
 
-After recent reorganization (docs-cleanup-phase3 branch), documentation follows this structure:
+Documentation follows this organized structure:
 
 - **Getting Started** (`docs/getting-started/`) - Installation, quick start, core concepts
 - **Guides** (`docs/guides/`) - Feature guides for agents, memory, orchestration, specs
@@ -408,11 +434,10 @@ When referencing documentation, prefer these organized locations over root-level
 ## Git Workflow
 
 - Main branch: `main`
-- Current branch: `docs-cleanup-phase3` (documentation reorganization)
 - Commit message format: Conventional Commits (feat/fix/chore/docs)
 - Husky hooks: Pre-commit linting, commit-msg validation
 - CI: Tests run on push (see `test:ci` script)
-- Recent focus: Documentation cleanup and reorganization
+- Version management: Automated via `npm version` with hooks that sync versions across files
 
 ---
 

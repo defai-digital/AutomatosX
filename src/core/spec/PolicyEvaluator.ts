@@ -17,6 +17,7 @@ import type {
 import type { ProviderMetadata, ProviderMetadataRegistry } from '@/types/provider-metadata.js';
 import type { CostTracker } from '../cost-tracker.js';
 import { logger } from '@/utils/logger.js';
+import { PRECOMPILED_CONFIG } from '@/config.generated.js';
 
 /**
  * Provider score with explanation
@@ -200,7 +201,8 @@ export class PolicyEvaluator {
 
     const selected = scores[0]?.provider || null;
 
-    if (selected && scores[0]) {
+    // FIXED (v6.5.11): Add type check for totalScore to prevent crash if somehow undefined
+    if (selected && scores[0] && typeof scores[0].totalScore === 'number') {
       logger.info('Provider selected by policy', {
         provider: selected,
         score: scores[0].totalScore.toFixed(3),
@@ -218,6 +220,14 @@ export class PolicyEvaluator {
     provider: string,
     constraint: CostConstraint
   ): Promise<{ passed: boolean; reason: string }> {
+    // Skip cost constraints if cost estimation is disabled
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (!costEstimationEnabled) {
+      logger.debug('Cost estimation disabled, skipping cost constraints');
+      return { passed: true, reason: '' };
+    }
+
     // Check daily budget if cost tracker available
     if (constraint.maxDaily && this.costTracker) {
       // Get daily cost (last 24 hours)
@@ -337,6 +347,13 @@ export class PolicyEvaluator {
    * Lower cost = higher score
    */
   private calculateCostScore(metadata: ProviderMetadata): number {
+    // If cost estimation is disabled, all providers get equal cost score
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (!costEstimationEnabled) {
+      return 0.5; // Neutral score when cost estimation is disabled
+    }
+
     const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
     const maxCost = 0.015; // $15 per 1M tokens as reference max
 
@@ -372,6 +389,13 @@ export class PolicyEvaluator {
    * Estimate request cost before execution
    */
   estimateRequestCost(provider: string, inputTokens: number, outputTokens: number): number {
+    // If cost estimation is disabled, return $0
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (!costEstimationEnabled) {
+      return 0;
+    }
+
     const metadata = this.metadataRegistry[provider];
     if (!metadata) return 0;
 
@@ -390,6 +414,13 @@ export class PolicyEvaluator {
     estimatedCost: number,
     constraint?: CostConstraint
   ): Promise<boolean> {
+    // If cost estimation is disabled, never exceed budget
+    const costEstimationEnabled = PRECOMPILED_CONFIG.costEstimation?.enabled ?? false;
+
+    if (!costEstimationEnabled) {
+      return false; // Never exceed budget when cost estimation is disabled
+    }
+
     if (!constraint) return false;
 
     // Check per-request limit

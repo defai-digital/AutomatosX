@@ -137,6 +137,7 @@ export class RoutingStrategyManager extends EventEmitter {
           return null;
         }
 
+        // FIXED (v6.5.11): Explicit bounds check before array access
         const selected = healthyProviders[0];
         if (!selected) {
           return null;
@@ -169,8 +170,11 @@ export class RoutingStrategyManager extends EventEmitter {
       return null;
     }
 
-    // Select provider with highest score
-    const best = scores[0]!;
+    // FIXED (v6.5.11): Explicit bounds check before array access
+    const best = scores[0];
+    if (!best) {
+      return null;
+    }
 
     // Generate reason
     const reason = this.generateReason(best, scores);
@@ -229,6 +233,7 @@ export class RoutingStrategyManager extends EventEmitter {
     const topFactor = Object.entries(weightedScores)
       .sort(([, a], [, b]) => b - a)[0];
 
+    // FIXED (v6.5.11): Explicit bounds check for array destructuring
     if (!topFactor) {
       return `Selected ${best.provider}`;
     }

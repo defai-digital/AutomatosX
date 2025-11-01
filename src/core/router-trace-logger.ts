@@ -65,6 +65,11 @@ export class RouterTraceLogger {
         mkdirSync(logDir, { recursive: true });
       }
     }
+
+    // FIXED (v6.5.11): Add cleanup on process exit
+    process.on('exit', () => this.close());
+    process.on('SIGINT', () => this.close());
+    process.on('SIGTERM', () => this.close());
   }
 
   /**
@@ -78,6 +83,13 @@ export class RouterTraceLogger {
       if (!this.stream && !this.streamInitializing) {
         this.streamInitializing = true;
         this.stream = createWriteStream(this.traceFile, { flags: 'a' });
+
+        // FIXED (v6.5.11): Add error handler to stream to prevent uncaught errors
+        this.stream.on('error', (err) => {
+          logger.error('Trace stream error', { error: err });
+          this.stream = undefined;
+        });
+
         this.streamInitializing = false;
       }
 

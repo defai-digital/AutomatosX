@@ -267,7 +267,15 @@ async function handleList(config: any, argv: ProvidersOptions): Promise<void> {
     if (provider.metadata && argv.verbose) {
       const meta = provider.metadata;
       console.log(chalk.gray(`  Cloud: ${meta.cloud} · Regions: ${meta.regions.join(', ')}`));
-      console.log(chalk.gray(`  Cost: $${(meta.costPerToken.input * 1000).toFixed(3)}-${(meta.costPerToken.output * 1000).toFixed(3)}/1K tokens`));
+
+      // Check if cost estimation is disabled
+      const isCostDisabled = meta.costPerToken.input === 0 && meta.costPerToken.output === 0;
+      if (isCostDisabled) {
+        console.log(chalk.gray(`  Cost: N/A (cost estimation disabled)`));
+      } else {
+        console.log(chalk.gray(`  Cost: $${(meta.costPerToken.input * 1000).toFixed(3)}-${(meta.costPerToken.output * 1000).toFixed(3)}/1K tokens`));
+      }
+
       console.log(chalk.gray(`  Latency: P50=${meta.latencyEstimate.p50}ms, P95=${meta.latencyEstimate.p95}ms`));
       console.log(chalk.gray(`  Reliability: ${(meta.reliability.availability * 100).toFixed(1)}% uptime, ${(meta.reliability.errorRate * 100).toFixed(2)}% error rate`));
       console.log(chalk.gray(`  Features: ${Object.entries(meta.features).filter(([_, v]) => v).map(([k]) => k).join(', ') || 'none'}`));
@@ -399,10 +407,18 @@ async function handleInfo(argv: ProvidersOptions): Promise<void> {
   console.log(chalk.gray(`  Available Regions: ${metadata.regions.join(', ')}\n`));
 
   console.log(chalk.blue('Pricing:'));
-  console.log(chalk.gray(`  Input Tokens: $${(metadata.costPerToken.input * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.input.toFixed(6)} per token)`));
-  console.log(chalk.gray(`  Output Tokens: $${(metadata.costPerToken.output * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.output.toFixed(6)} per token)`));
-  const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
-  console.log(chalk.gray(`  Average: $${(avgCost * 1000000).toFixed(2)} per 1M tokens\n`));
+
+  // Check if cost estimation is disabled
+  const isCostDisabled = metadata.costPerToken.input === 0 && metadata.costPerToken.output === 0;
+  if (isCostDisabled) {
+    console.log(chalk.gray(`  Cost estimation is disabled`));
+    console.log(chalk.gray(`  To enable, set costEstimation.enabled = true in automatosx.config.json\n`));
+  } else {
+    console.log(chalk.gray(`  Input Tokens: $${(metadata.costPerToken.input * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.input.toFixed(6)} per token)`));
+    console.log(chalk.gray(`  Output Tokens: $${(metadata.costPerToken.output * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.output.toFixed(6)} per token)`));
+    const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
+    console.log(chalk.gray(`  Average: $${(avgCost * 1000000).toFixed(2)} per 1M tokens\n`));
+  }
 
   console.log(chalk.blue('Performance:'));
   console.log(chalk.gray(`  P50 Latency: ${metadata.latencyEstimate.p50}ms`));
@@ -608,18 +624,36 @@ function displayTraceEvent(line: string): void {
     const provider = event.provider ? chalk.bold(event.provider.padEnd(15)) : ''.padEnd(15);
 
     // Data summary
+    // FIXED (v6.5.11): Add null/undefined checks for event.data to prevent crashes
     let summary = '';
-    if (event.phase === 'selection') {
-      summary = `${event.data.candidates.length} candidates → ${chalk.bold(event.data.reason)}`;
+    if (!event.data || typeof event.data !== 'object') {
+      summary = chalk.gray('(no data)');
+    } else if (event.phase === 'selection') {
+      const candidates = event.data.candidates?.length ?? 0;
+      const reason = event.data.reason ?? 'unknown';
+      summary = `${candidates} candidates → ${chalk.bold(reason)}`;
     } else if (event.phase === 'policy') {
-      summary = `goal=${event.data.goal}, passed=${event.data.providersAfterFilter}/${event.data.providersBeforeFilter}`;
+      const goal = event.data.goal ?? 'unknown';
+      const after = event.data.providersAfterFilter ?? 0;
+      const before = event.data.providersBeforeFilter ?? 0;
+      summary = `goal=${goal}, passed=${after}/${before}`;
     } else if (event.phase === 'execution') {
       const status = event.data.success ? chalk.green('✓') : chalk.red('✗');
-      summary = `${status} ${event.data.durationMs}ms, $${event.data.cost.toFixed(6)}`;
+      const duration = event.data.durationMs ?? 0;
+      const cost = event.data.cost ?? 0;
+      // Check if cost is $0 (cost estimation disabled)
+      if (cost === 0) {
+        summary = `${status} ${duration}ms`;
+      } else {
+        summary = `${status} ${duration}ms, $${cost.toFixed(6)}`;
+      }
     } else if (event.phase === 'degradation') {
-      summary = `${event.data.reason} → ${event.data.toProvider || 'failed'}`;
+      const reason = event.data.reason ?? 'unknown';
+      const toProvider = event.data.toProvider ?? 'failed';
+      summary = `${reason} → ${toProvider}`;
     } else if (event.phase === 'error') {
-      summary = chalk.red(event.data.error);
+      const errorMsg = event.data.error ?? 'unknown error';
+      summary = chalk.red(errorMsg);
     }
 
     console.log(`${chalk.gray(timestamp)}  ${phase} ${provider} ${summary}`);

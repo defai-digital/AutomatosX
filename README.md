@@ -15,6 +15,8 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 
 **Status**: ✅ **Production Ready v6.5.6** | Nov 2025 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
 
+> ⚠️ **Note on Cost Estimation (v6.5.11+)**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`. See [Cost Estimation Configuration](#cost-estimation-configuration) for details.
+
 ---
 
 ## 🚀 The Complete AI Workflow Platform
@@ -606,6 +608,8 @@ ax spec create "Build e-commerce checkout with Stripe, inventory, and fraud dete
 
 ## 💰 Policy-Driven Cost Optimization
 
+> **Note**: Cost estimation is disabled by default (v6.5.11+). The routing and optimization features work the same, but cost estimates are not shown. See [Cost Estimation Configuration](#cost-estimation-configuration) to enable.
+
 AutomatosX is the **only AI platform with built-in cost optimization**. Define your budget and constraints—AutomatosX automatically routes every request to the optimal provider.
 
 ### How It Works
@@ -826,6 +830,41 @@ Each agent is an expert in their domain:
 │     • Debug: Complete visibility into all decisions         │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Cost Estimation Configuration
+
+**As of v6.5.11**, cost estimation is **disabled by default** because users reported that pricing changes frequently, making estimates unreliable.
+
+#### How to Enable Cost Estimation
+
+Edit `automatosx.config.json`:
+
+```json
+{
+  "costEstimation": {
+    "enabled": true,  // Enable cost estimation
+    "disclaimer": "Cost estimates are approximate and may be outdated."
+  }
+}
+```
+
+#### When Disabled (Default)
+
+- ✅ Policy-driven routing **still works** (selects optimal provider)
+- ✅ Free-tier prioritization **still works** (uses Gemini free tier)
+- ✅ Provider selection **still works** (based on latency, reliability, privacy)
+- ❌ Cost estimates show "N/A" in CLI output
+- ❌ Cost constraints in specs are skipped (always pass)
+
+#### When Enabled
+
+- ✅ Cost estimates shown in `ax gen plan`, `ax providers info`, `ax providers trace`
+- ✅ Cost constraints enforced (maxPerRequest, maxDaily)
+- ⚠️ Pricing data from Oct 2024 (may be outdated)
+- ⚠️ Verify current pricing on provider websites:
+  - [OpenAI Pricing](https://openai.com/pricing)
+  - [Gemini Pricing](https://ai.google.dev/pricing)
+  - [Claude Pricing](https://anthropic.com/pricing)
 
 ---
 

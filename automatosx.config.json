@@ -345,5 +345,9 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
+  "costEstimation": {
+    "enabled": false,
+    "disclaimer": "Cost estimates are approximate and may be outdated. Visit provider pricing pages for current rates."
+  },
   "version": "6.5.9"
 }

@@ -542,6 +542,15 @@ export interface TelemetryConfig {
   bufferSize?: number;            // Max buffered events before flush (default: 100)
 }
 
+/**
+ * Cost Estimation Configuration (v6.5.11+)
+ * Controls whether cost estimates are shown to users
+ */
+export interface CostEstimationConfig {
+  enabled: boolean;           // Enable cost estimation (default: false - disabled by user request)
+  disclaimer?: string;        // Disclaimer text to show when enabled
+}
+
 export interface AutomatosXConfig {
   $schema?: string;
   version?: string;
@@ -559,6 +568,7 @@ export interface AutomatosXConfig {
   openai?: OpenAIConfig;  // legacy
   router?: RouterConfig;  // v5.7.0: Router configuration
   telemetry?: TelemetryConfig;  // v6.0.7: Phase 4 - Observability & Analytics
+  costEstimation?: CostEstimationConfig;  // v6.5.11: Cost estimation control
 }
 
 // ========================================

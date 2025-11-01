@@ -402,26 +402,102 @@ export class AgentExecutor {
       };
 
       let response;
+      let duration = 0;
 
-      // Use streaming if enabled
-      if (options.streaming?.enabled && context.provider.executeStreaming) {
-        // Try streaming execution (works for both native and synthetic)
-        response = await context.provider.executeStreaming(request, {
-          enabled: true,
-          onToken: options.streaming.onToken,
-          onProgress: options.streaming.onProgress
-        });
-      } else {
-        // Regular execution (streaming not enabled or not available)
-        response = await context.provider.execute(request);
+      // FIXED (v6.5.11): Try primary provider, then fallback on error (GitHub Issue #8)
+      try {
+        // Use streaming if enabled
+        if (options.streaming?.enabled && context.provider.executeStreaming) {
+          // Try streaming execution (works for both native and synthetic)
+          response = await context.provider.executeStreaming(request, {
+            enabled: true,
+            onToken: options.streaming.onToken,
+            onProgress: options.streaming.onProgress
+          });
+        } else {
+          // Regular execution (streaming not enabled or not available)
+          response = await context.provider.execute(request);
+        }
+
+        duration = Date.now() - startTime;
+
+      } catch (primaryError) {
+        duration = Date.now() - startTime;
+
+        // Check if fallback provider is configured
+        const fallbackProviderName = context.agent.fallbackProvider;
+
+        if (fallbackProviderName && this.contextManager) {
+          logger.warn('Primary provider failed, attempting fallback', {
+            primary: context.provider.name,
+            fallback: fallbackProviderName,
+            error: (primaryError as Error).message
+          });
+
+          if (spinner) {
+            spinner.text = `Primary provider failed, trying ${fallbackProviderName}...`;
+          }
+
+          try {
+            // Get fallback provider from context manager
+            const fallbackProvider = await this.contextManager.selectProvider(fallbackProviderName);
+
+            // Update context with fallback provider
+            context.provider = fallbackProvider;
+
+            // Update spinner
+            if (spinner) {
+              spinner.text = `Executing with ${fallbackProvider.name} (fallback)...`;
+            }
+
+            // Retry execution with fallback provider
+            const fallbackStartTime = Date.now();
+
+            if (options.streaming?.enabled && fallbackProvider.executeStreaming) {
+              response = await fallbackProvider.executeStreaming(request, {
+                enabled: true,
+                onToken: options.streaming.onToken,
+                onProgress: options.streaming.onProgress
+              });
+            } else {
+              response = await fallbackProvider.execute(request);
+            }
+
+            duration = Date.now() - fallbackStartTime;
+
+            logger.info('Fallback provider succeeded', {
+              fallback: fallbackProvider.name,
+              duration
+            });
+
+            if (verbose) {
+              console.log(chalk.yellow(`\n⚠️  Primary provider failed, used fallback: ${fallbackProvider.name}`));
+            }
+
+          } catch (fallbackError) {
+            // Fallback also failed, log both errors and throw the primary error
+            logger.error('Both primary and fallback providers failed', {
+              primary: context.provider.name,
+              fallback: fallbackProviderName,
+              primaryError: (primaryError as Error).message,
+              fallbackError: (fallbackError as Error).message
+            });
+
+            // Throw primary error with fallback context
+            const enhancedError = primaryError as Error & { fallbackError?: Error };
+            enhancedError.fallbackError = fallbackError as Error;
+            throw enhancedError;
+          }
+        } else {
+          // No fallback configured or context manager not available, throw original error
+          throw primaryError;
+        }
       }
 
       // Validate response (v5.6.7 fix: prevent undefined.content errors)
       if (!response) {
         throw new Error('Provider returned undefined response');
       }
-
-      const duration = Date.now() - startTime;
 
       // Check for delegation requests in response (v4.7.2+)
       if (context.orchestration) {

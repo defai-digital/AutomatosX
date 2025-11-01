@@ -138,6 +138,14 @@ export class PlanGenerator {
       const actor = spec.actors[i];
       if (!actor) continue; // Skip undefined entries (should never happen)
 
+      // FIXED (Bug #14): Validate actor properties before accessing
+      if (!actor.id || typeof actor.id !== 'string') {
+        throw new Error(`Actor at index ${i} must have id field (string)`);
+      }
+      if (!actor.agent || typeof actor.agent !== 'string') {
+        throw new Error(`Actor "${actor.id}" must have agent field (string)`);
+      }
+
       phases.push({
         phase: i + 1,
         name: `Execute ${actor.id}`,
@@ -194,14 +202,24 @@ export class PlanGenerator {
     let totalCpuCores = 0;
 
     for (const actor of spec.actors) {
+      // FIXED (Bug #16): Validate memory limit is a string before parsing
       if (actor.resources?.memory?.limit) {
-        totalMemoryMb += this.parseMemoryLimit(actor.resources.memory.limit);
+        const memLimit = actor.resources.memory.limit;
+        if (typeof memLimit !== 'string') {
+          throw new Error(`Actor "${actor.id}" memory limit must be a string (e.g., "512MB"), got ${typeof memLimit}`);
+        }
+        totalMemoryMb += this.parseMemoryLimit(memLimit);
       } else {
         totalMemoryMb += 512;  // Default 512MB
       }
 
+      // FIXED (Bug #15): Validate CPU limit is a number
       if (actor.resources?.cpu?.limit) {
-        totalCpuCores += actor.resources.cpu.limit;
+        const cpuLimit = actor.resources.cpu.limit;
+        if (typeof cpuLimit !== 'number' || !Number.isFinite(cpuLimit) || cpuLimit < 0) {
+          throw new Error(`Actor "${actor.id}" CPU limit must be a non-negative finite number, got ${typeof cpuLimit === 'number' ? cpuLimit : typeof cpuLimit}`);
+        }
+        totalCpuCores += cpuLimit;
       } else {
         totalCpuCores += 1;  // Default 1 core
       }
@@ -220,7 +238,17 @@ export class PlanGenerator {
    */
   private estimateCosts(spec: SpecYAML): { min: number; max: number } {
     // Determine provider from spec or use default
-    const providerName = spec.providers?.primary?.name || 'gemini-cli';  // Default to cheapest
+    let providerName = spec.providers?.primary?.name || 'gemini-cli';  // Default to cheapest
+
+    // FIXED (Bug #17): Validate provider name is a string before using as object key
+    if (typeof providerName !== 'string' || providerName.trim().length === 0) {
+      logger.warn('Invalid provider name for cost estimation, using default', {
+        invalidProvider: providerName,
+        typeReceived: typeof providerName
+      });
+      providerName = 'gemini-cli';  // Fallback to default
+    }
+
     const provider = this.metadataRegistry[providerName];
 
     if (!provider) {

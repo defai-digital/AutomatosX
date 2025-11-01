@@ -722,9 +722,19 @@ export abstract class BaseProvider implements Provider {
         }
 
         const versionArg = this.config.versionArg || '--version';
-        const proc = spawn(sanitizedCommand, [versionArg], {
+
+        // FIX Bug #141: Use platform-specific approach to avoid shell:true security issue
+        // Windows .cmd/.bat files need special handling, but we can do it safely
+        const isWindows = process.platform === 'win32';
+        const commandToExecute = isWindows && !sanitizedCommand.endsWith('.exe')
+          ? (sanitizedCommand.endsWith('.cmd') || sanitizedCommand.endsWith('.bat')
+             ? sanitizedCommand
+             : `${sanitizedCommand}.cmd`) // Try .cmd first
+          : sanitizedCommand;
+
+        const proc = spawn(commandToExecute, [versionArg], {
           stdio: 'pipe',
-          shell: true, // Required for Windows .cmd/.bat files
+          shell: false, // FIXED Bug #141: Removed shell:true for security
         });
 
         processManager.register(proc, `${command}-version-check`);

@@ -6,7 +6,7 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process'; // FIXED Bug #146: Import spawn at top instead of dynamic import
 import { promisify } from 'util';
 import inquirer from 'inquirer';
 import { logger } from '../../utils/logger.js';
@@ -193,10 +193,16 @@ async function detectOrphanedProcesses(provider: string, verbose: boolean): Prom
 async function findProcesses(processName: string, verbose: boolean): Promise<ProcessInfo[]> {
   const processes: ProcessInfo[] = [];
 
+  // FIX Bug #143: Prevent command injection by validating processName
+  // Only allow alphanumeric characters, dashes, and underscores
+  if (!/^[a-zA-Z0-9_-]+$/.test(processName)) {
+    throw new Error(`Invalid process name: ${processName}. Only alphanumeric characters, dashes, and underscores are allowed.`);
+  }
+
   try {
-    // Use ps to find processes
-    // Format: PID COMMAND ELAPSED RSS (memory in KB)
-    const { stdout } = await execAsync(`ps -eo pid,comm,etime,rss | grep ${processName} | grep -v grep`);
+    // FIX Bug #143: Get all processes first, then filter in JavaScript (safe)
+    // This prevents shell injection from processName interpolation
+    const { stdout } = await execAsync('ps -eo pid,comm,etime,rss');
 
     if (!stdout.trim()) {
       return processes;
@@ -205,6 +211,21 @@ async function findProcesses(processName: string, verbose: boolean): Promise<Pro
     const lines = stdout.trim().split('\n');
 
     for (const line of lines) {
+      // Skip header line
+      if (line.includes('PID') && line.includes('COMMAND')) {
+        continue;
+      }
+
+      // FIX Bug #143: Filter using JavaScript string matching (safe), not grep
+      if (!line.includes(processName)) {
+        continue;
+      }
+
+      // Skip grep processes
+      if (line.includes('grep')) {
+        continue;
+      }
+
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 4 && parts[0] && parts[1] && parts[2] && parts[3]) {
         const pid = parseInt(parts[0], 10);
@@ -248,23 +269,73 @@ async function findProcesses(processName: string, verbose: boolean): Promise<Pro
 
 /**
  * Kill a process by PID
+ * FIX Bug #143: Use spawn with arguments instead of string interpolation
+ * FIXED Bug #146: Import spawn at top of file instead of dynamic import
  */
 async function killProcess(pid: number, verbose: boolean): Promise<void> {
   try {
     // Try SIGTERM first (graceful)
-    await execAsync(`kill -TERM ${pid}`);
+    // FIX Bug #143: Use spawn instead of execAsync to prevent injection
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('kill', ['-TERM', String(pid)], {
+        stdio: 'pipe',
+        shell: false // CRITICAL: shell must be false for security
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`kill -TERM failed with code ${code}`));
+        }
+      });
+
+      proc.on('error', reject);
+    });
 
     // Wait a moment to see if it terminates
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Check if still running
     try {
-      await execAsync(`ps -p ${pid}`);
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn('ps', ['-p', String(pid)], {
+          stdio: 'pipe',
+          shell: false
+        });
+
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve(); // Process still exists
+          } else {
+            reject(new Error('Process not running'));
+          }
+        });
+
+        proc.on('error', reject);
+      });
+
       // Still running, use SIGKILL (force)
       if (verbose) {
         logger.debug(`Process ${pid} didn't respond to SIGTERM, using SIGKILL`);
       }
-      await execAsync(`kill -KILL ${pid}`);
+
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn('kill', ['-KILL', String(pid)], {
+          stdio: 'pipe',
+          shell: false
+        });
+
+        proc.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`kill -KILL failed with code ${code}`));
+          }
+        });
+
+        proc.on('error', reject);
+      });
     } catch {
       // Process terminated with SIGTERM
       if (verbose) {

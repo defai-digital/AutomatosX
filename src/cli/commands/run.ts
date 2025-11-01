@@ -306,9 +306,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                 // Execute spec with parallel mode
                 console.log(chalk.blue('\n🚀 Executing spec-driven workflow...\n'));
                 const { spawn } = await import('child_process');
+
+                // FIX Bug #140: Remove shell:true for security
+                // No shell needed for known executable with safe arguments
                 const child = spawn('ax', ['spec', 'run', '--parallel'], {
                   stdio: 'inherit',
-                  shell: true,
+                  shell: false, // FIXED Bug #140: Removed shell:true for security
                 });
 
                 return new Promise<void>((resolve) => {

@@ -19,6 +19,7 @@ import { EventEmitter } from 'events';
 import type { ProviderMetrics, ProviderScore, RoutingWeights, ModelPricing } from '../types/routing.js';
 import { PROVIDER_PRICING } from '../types/routing.js';
 import { logger } from '../utils/logger.js';
+import { getPercentile } from '../utils/statistics.js'; // FIXED Bug #145: Import at top instead of dynamic import
 
 /**
  * Request record for metrics tracking
@@ -151,11 +152,14 @@ export class ProviderMetricsTracker extends EventEmitter {
     const lastTimestamp = records[records.length - 1]!.timestamp;
 
     // Calculate latency metrics
+    // FIXED Bug #144: Use centralized percentile utility for consistency
+    // FIXED Bug #145: Use getPercentile directly instead of dynamic import
     const latencies = records.map(r => r.latencyMs).sort((a, b) => a - b);
     const avgLatency = latencies.reduce((sum, l) => sum + l, 0) / latencies.length;
-    const p50Index = Math.floor(latencies.length * 0.50);
-    const p95Index = Math.floor(latencies.length * 0.95);
-    const p99Index = Math.floor(latencies.length * 0.99);
+
+    const p50 = getPercentile(latencies, 50);
+    const p95 = getPercentile(latencies, 95);
+    const p99 = getPercentile(latencies, 99);
 
     // Calculate quality metrics
     const successful = records.filter(r => r.success);
@@ -194,9 +198,9 @@ export class ProviderMetricsTracker extends EventEmitter {
       window: records.length,
       latency: {
         avg: avgLatency,
-        p50: latencies[p50Index] ?? avgLatency,
-        p95: latencies[p95Index] ?? latencies[latencies.length - 1]!,
-        p99: latencies[p99Index] ?? latencies[latencies.length - 1]!,
+        p50,
+        p95,
+        p99,
         min: latencies[0]!,
         max: latencies[latencies.length - 1]!
       },
@@ -282,8 +286,23 @@ export class ProviderMetricsTracker extends EventEmitter {
   /**
    * Calculate cost score (0-1, 1 = cheapest)
    * Relative to other providers
+   *
+   * FIXED Bug #148: Validate that allProviders includes the current provider
+   * for fair comparison. Without this, the current provider's cost would be
+   * normalized against an incomplete set, leading to incorrect scores.
    */
   async getCostScore(provider: string, allProviders: string[]): Promise<number> {
+    // FIXED Bug #148: Validate that allProviders includes current provider
+    if (!allProviders.includes(provider)) {
+      logger.warn('getCostScore called with allProviders that excludes current provider', {
+        provider,
+        allProviders,
+        message: 'This may lead to incorrect cost normalization. Adding provider to comparison set.'
+      });
+      // Add current provider to ensure fair comparison
+      allProviders = [...allProviders, provider];
+    }
+
     const metrics = await this.getMetrics(provider);
     if (!metrics || metrics.window < this.minRequests) {
       return 0.5;  // Neutral score if insufficient data
@@ -341,6 +360,36 @@ export class ProviderMetricsTracker extends EventEmitter {
     allProviders: string[],
     healthMultiplier: number = 1.0
   ): Promise<ProviderScore> {
+    // FIXED Bug #147: Validate weights sum to ≤ 1.0 per RoutingWeights specification
+    const weightSum = weights.cost + weights.latency + weights.quality + weights.availability;
+    if (weightSum > 1.0 + Number.EPSILON) { // Use epsilon for floating point comparison
+      throw new Error(
+        `Invalid routing weights: sum (${weightSum.toFixed(4)}) exceeds 1.0. ` +
+        `Weights must sum to ≤ 1.0 per RoutingWeights specification.`
+      );
+    }
+
+    // FIXED Bug #147: Validate individual weights are in valid range [0, 1]
+    if (weights.cost < 0 || weights.cost > 1 ||
+        weights.latency < 0 || weights.latency > 1 ||
+        weights.quality < 0 || weights.quality > 1 ||
+        weights.availability < 0 || weights.availability > 1) {
+      throw new Error(
+        `Invalid routing weights: each weight must be in range [0, 1]. ` +
+        `Got: {cost: ${weights.cost}, latency: ${weights.latency}, ` +
+        `quality: ${weights.quality}, availability: ${weights.availability}}`
+      );
+    }
+
+    // FIXED Bug #149: Validate healthMultiplier is in valid range [0, 1]
+    // Circuit breaker adjustment should never amplify scores above 1.0
+    if (!Number.isFinite(healthMultiplier) || healthMultiplier < 0 || healthMultiplier > 1.0) {
+      throw new Error(
+        `Invalid healthMultiplier: ${healthMultiplier}. Must be in range [0, 1] ` +
+        `(circuit breaker should only reduce scores, not amplify them).`
+      );
+    }
+
     const costScore = await this.getCostScore(provider, allProviders);
     const latencyScore = await this.getLatencyScore(provider);
     const qualityScore = await this.getQualityScore(provider);

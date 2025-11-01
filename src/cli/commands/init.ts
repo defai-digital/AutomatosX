@@ -602,10 +602,12 @@ async function initializeGitRepository(projectDir: string): Promise<void> {
     const { spawn } = await import('child_process');
 
     await new Promise<void>((resolve, reject) => {
+      // FIX Bug #142: Remove shell:true for security
+      // Git executable doesn't require shell, works on all platforms
       const child = spawn('git', ['init'], {
         cwd: projectDir,
         stdio: 'pipe',
-        shell: true // Required for Windows .cmd/.bat files
+        shell: false // FIXED Bug #142: Removed shell:true for security
       });
 
       let stderr = '';

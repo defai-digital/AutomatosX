@@ -19,6 +19,7 @@ import type {
 } from '../../types/telemetry.js';
 import type { TelemetryCollector } from '../telemetry/TelemetryCollector.js';
 import { logger } from '../../utils/logger.js';
+import { getPercentile } from '../../utils/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
 
 /**
  * Analytics Aggregator
@@ -152,21 +153,13 @@ export class AnalyticsAggregator {
 
     const sum = latencies.reduce((acc, val) => acc + val, 0);
 
+    // FIXED Bug #144: Use centralized percentile utility for consistency
     return {
       avgLatencyMs: Math.round(sum / latencies.length),
-      p50LatencyMs: this.percentile(latencies, 50),
-      p95LatencyMs: this.percentile(latencies, 95),
-      p99LatencyMs: this.percentile(latencies, 99)
+      p50LatencyMs: getPercentile(latencies, 50),
+      p95LatencyMs: getPercentile(latencies, 95),
+      p99LatencyMs: getPercentile(latencies, 99)
     };
-  }
-
-  /**
-   * Calculate percentile from sorted array
-   */
-  private percentile(sortedArray: number[], p: number): number {
-    if (sortedArray.length === 0) return 0;
-    const index = Math.ceil((p / 100) * sortedArray.length) - 1;
-    return sortedArray[Math.max(0, index)] || 0;
   }
 
   /**

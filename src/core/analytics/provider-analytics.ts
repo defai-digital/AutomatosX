@@ -11,6 +11,7 @@ import Database from 'better-sqlite3';
 import { join } from 'path';
 import { mkdirSync } from 'fs';
 import { logger } from '@/utils/logger.js';
+import { getPercentile } from '@/utils/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
 
 export interface ProviderExecutionEvent {
   provider: string;
@@ -222,9 +223,10 @@ export class ProviderAnalytics {
       .filter(l => l !== null)
       .sort((a, b) => a - b);
 
-    const p50 = this.percentile(sortedLatencies, 50);
-    const p95 = this.percentile(sortedLatencies, 95);
-    const p99 = this.percentile(sortedLatencies, 99);
+    // FIXED Bug #144: Use centralized percentile utility for consistency
+    const p50 = getPercentile(sortedLatencies, 50);
+    const p95 = getPercentile(sortedLatencies, 95);
+    const p99 = getPercentile(sortedLatencies, 99);
 
     return {
       totalRequests: result.total_requests || 0,
@@ -351,15 +353,6 @@ export class ProviderAnalytics {
                (options.hours || 0) * 60 * 60 * 1000 +
                (options.minutes || 0) * 60 * 1000;
     return now - (ms || 7 * 24 * 60 * 60 * 1000); // Default 7 days
-  }
-
-  /**
-   * Calculate percentile
-   */
-  private percentile(sorted: number[], p: number): number {
-    if (sorted.length === 0) return 0;
-    const index = Math.ceil((p / 100) * sorted.length) - 1;
-    return sorted[Math.max(0, index)] || 0;
   }
 
   /**

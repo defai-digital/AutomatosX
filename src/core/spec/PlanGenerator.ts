@@ -82,6 +82,17 @@ export class PlanGenerator {
       throw new Error('Spec must have at least one actor');
     }
 
+    // FIXED (Bug #13): Validate spec.metadata exists and has required fields
+    if (!spec.metadata || typeof spec.metadata !== 'object') {
+      throw new Error('Spec must have metadata object');
+    }
+    if (!spec.metadata.id || typeof spec.metadata.id !== 'string') {
+      throw new Error('Spec metadata must have id field (string)');
+    }
+    if (!spec.metadata.name || typeof spec.metadata.name !== 'string') {
+      throw new Error('Spec metadata must have name field (string)');
+    }
+
     const phases = this.identifyPhases(spec);
     const resources = this.estimateResources(spec);
     const costs = this.estimateCosts(spec);

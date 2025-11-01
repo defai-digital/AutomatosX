@@ -29,8 +29,32 @@ export class TestGenerator {
       throw new Error('Spec must have at least one actor');
     }
 
+    // FIXED (Bug #29): Validate spec.metadata exists and has required fields
+    if (!spec.metadata || typeof spec.metadata !== 'object') {
+      throw new Error('Spec must have metadata object');
+    }
+    if (!spec.metadata.id || typeof spec.metadata.id !== 'string') {
+      throw new Error('Spec metadata must have id field (string)');
+    }
+    if (!spec.metadata.name || typeof spec.metadata.name !== 'string') {
+      throw new Error('Spec metadata must have name field (string)');
+    }
+
+    // FIXED (Bug #30): Validate basePath is a non-empty string
+    if (typeof basePath !== 'string') {
+      throw new Error(`basePath must be a string, got ${typeof basePath}`);
+    }
+    if (basePath.trim().length === 0) {
+      throw new Error('basePath cannot be empty or whitespace-only');
+    }
+
     // Generate test file for each actor
     for (const actor of spec.actors) {
+      // FIXED (Bug #31): Validate actor.id before using in file path
+      if (!actor.id || typeof actor.id !== 'string') {
+        throw new Error(`Actor must have id field (string), got ${typeof actor.id}`);
+      }
+
       files.push({
         path: join(basePath, 'tests', `${actor.id}.test.ts`),
         content: this.generateActorTest(actor, spec)
@@ -73,6 +97,11 @@ export class TestGenerator {
    * Generate actor-specific test file
    */
   private generateActorTest(actor: any, spec: SpecYAML): string {
+    // FIXED (Bug #32): Validate actor.id before accessing
+    if (!actor.id || typeof actor.id !== 'string') {
+      throw new Error(`Actor must have id field (string) for test generation, got ${typeof actor.id}`);
+    }
+
     const lines: string[] = [
       `/**`,
       ` * Test: ${actor.id}`,
@@ -101,8 +130,11 @@ export class TestGenerator {
     lines.push(`  });`);
     lines.push(``);
 
-    // Timeout test
-    if (actor.timeout) {
+    // FIXED (Bug #33): Validate timeout is a positive number before using
+    if (actor.timeout !== undefined) {
+      if (typeof actor.timeout !== 'number' || !Number.isFinite(actor.timeout) || actor.timeout <= 0) {
+        throw new Error(`Actor "${actor.id}" timeout must be a positive finite number, got ${typeof actor.timeout === 'number' ? actor.timeout : typeof actor.timeout}`);
+      }
       lines.push(`  it('should complete within timeout of ${actor.timeout}ms', async () => {`);
       lines.push(`    const start = Date.now();`);
       lines.push(`    await executeActor('${actor.id}');`);
@@ -112,9 +144,12 @@ export class TestGenerator {
       lines.push(``);
     }
 
-    // Cost assertion from policy
-    if (spec.policy?.constraints?.cost?.maxPerRequest) {
+    // FIXED (Bug #34): Validate cost constraint is a positive number
+    if (spec.policy?.constraints?.cost?.maxPerRequest !== undefined) {
       const maxCost = spec.policy.constraints.cost.maxPerRequest;
+      if (typeof maxCost !== 'number' || !Number.isFinite(maxCost) || maxCost <= 0) {
+        throw new Error(`spec.policy.constraints.cost.maxPerRequest must be a positive finite number, got ${typeof maxCost === 'number' ? maxCost : typeof maxCost}`);
+      }
       lines.push(`  it('should not exceed cost limit of $${maxCost}', async () => {`);
       lines.push(`    // Track cost during execution`);
       lines.push(`    const costTracker = createCostTracker();`);
@@ -125,9 +160,12 @@ export class TestGenerator {
       lines.push(``);
     }
 
-    // Latency assertion from policy
-    if (spec.policy?.constraints?.latency?.p95) {
+    // FIXED (Bug #35): Validate latency constraint is a positive number
+    if (spec.policy?.constraints?.latency?.p95 !== undefined) {
       const maxLatency = spec.policy.constraints.latency.p95;
+      if (typeof maxLatency !== 'number' || !Number.isFinite(maxLatency) || maxLatency <= 0) {
+        throw new Error(`spec.policy.constraints.latency.p95 must be a positive finite number, got ${typeof maxLatency === 'number' ? maxLatency : typeof maxLatency}`);
+      }
       lines.push(`  it('should complete within ${maxLatency}ms (P95)', async () => {`);
       lines.push(`    const durations: number[] = [];`);
       lines.push(``);
@@ -148,9 +186,13 @@ export class TestGenerator {
       lines.push(``);
     }
 
-    // Resource limit tests
-    if (actor.resources?.memory?.limit) {
-      lines.push(`  it('should not exceed memory limit of ${actor.resources.memory.limit}', async () => {`);
+    // FIXED (Bug #36): Validate memory limit is a string (e.g., "512MB")
+    if (actor.resources?.memory?.limit !== undefined) {
+      const memLimit = actor.resources.memory.limit;
+      if (typeof memLimit !== 'string' || memLimit.trim().length === 0) {
+        throw new Error(`Actor "${actor.id}" memory limit must be a non-empty string (e.g., "512MB"), got ${typeof memLimit}`);
+      }
+      lines.push(`  it('should not exceed memory limit of ${memLimit}', async () => {`);
       lines.push(`    const memoryBefore = process.memoryUsage().heapUsed;`);
       lines.push(`    await executeActor('${actor.id}');`);
       lines.push(`    const memoryAfter = process.memoryUsage().heapUsed;`);
@@ -169,16 +211,20 @@ export class TestGenerator {
     lines.push(`  });`);
     lines.push(``);
 
-    // Retry behavior test (if retry policy exists)
-    if (spec.recovery?.retry) {
-      lines.push(`  it('should retry on failure up to ${spec.recovery.retry.maxAttempts} times', async () => {`);
+    // FIXED (Bug #37): Validate maxAttempts is a positive integer
+    if (spec.recovery?.retry?.maxAttempts !== undefined) {
+      const maxAttempts = spec.recovery.retry.maxAttempts;
+      if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
+        throw new Error(`spec.recovery.retry.maxAttempts must be a positive integer, got ${typeof maxAttempts === 'number' ? maxAttempts : typeof maxAttempts}`);
+      }
+      lines.push(`  it('should retry on failure up to ${maxAttempts} times', async () => {`);
       lines.push(`    let attempts = 0;`);
       lines.push(``);
       lines.push(`    await executeActor('${actor.id}', {`);
       lines.push(`      onAttempt: () => { attempts++; throw new Error('Retry test'); }`);
       lines.push(`    }).catch(() => {});`);
       lines.push(``);
-      lines.push(`    expect(attempts).toBe(${spec.recovery.retry.maxAttempts});`);
+      lines.push(`    expect(attempts).toBe(${maxAttempts});`);
       lines.push(`  });`);
       lines.push(``);
     }
@@ -221,6 +267,15 @@ export class TestGenerator {
    * Generate integration test file
    */
   private generateIntegrationTest(spec: SpecYAML): string {
+    // FIXED (Bug #38): Validate spec.metadata before accessing
+    // Note: Already validated in generate() but defensive programming requires validation here too
+    if (!spec.metadata?.name || typeof spec.metadata.name !== 'string') {
+      throw new Error('Spec metadata.name must be a string for integration test generation');
+    }
+    if (!spec.metadata.id || typeof spec.metadata.id !== 'string') {
+      throw new Error('Spec metadata.id must be a string for integration test generation');
+    }
+
     const lines: string[] = [
       `/**`,
       ` * Integration Test`,
@@ -259,6 +314,13 @@ export class TestGenerator {
         const current = spec.actors[i];
         const next = spec.actors[i + 1];
         if (current && next) {
+          // FIXED (Bug #39): Validate actor.id before using in template string
+          if (!current.id || typeof current.id !== 'string') {
+            throw new Error(`Actor at index ${i} must have id field (string) for integration test generation`);
+          }
+          if (!next.id || typeof next.id !== 'string') {
+            throw new Error(`Actor at index ${i + 1} must have id field (string) for integration test generation`);
+          }
           lines.push(`    expect(result.dataFlow['${current.id}_to_${next.id}']).toBeDefined();`);
         }
       }
@@ -312,6 +374,11 @@ export class TestGenerator {
    * Generate E2E test file
    */
   private generateE2ETest(spec: SpecYAML): string {
+    // FIXED (Bug #40): Validate spec.metadata.name before accessing
+    if (!spec.metadata?.name || typeof spec.metadata.name !== 'string') {
+      throw new Error('Spec metadata.name must be a string for E2E test generation');
+    }
+
     return `/**
  * E2E Test
  * End-to-end test for ${spec.metadata.name}
@@ -359,6 +426,11 @@ describe('${spec.metadata.name} - E2E', () => {
     const fixtures: Record<string, any> = {};
 
     for (const actor of spec.actors) {
+      // FIXED (Bug #41): Validate actor.id before using as object key
+      if (!actor.id || typeof actor.id !== 'string') {
+        throw new Error(`Actor must have id field (string) for fixture generation, got ${typeof actor.id}`);
+      }
+
       fixtures[actor.id] = {
         description: `Input fixture for ${actor.id}`,
         data: {
@@ -375,6 +447,25 @@ describe('${spec.metadata.name} - E2E', () => {
    * Generate Vitest config
    */
   private generateVitestConfig(spec: SpecYAML): string {
+    // FIXED (Bug #42): Validate timeout and maxAttempts before using in config
+    const testTimeout = spec.actors[0]?.timeout;
+    let validatedTimeout = 300000; // Default 5 minutes
+    if (testTimeout !== undefined) {
+      if (typeof testTimeout !== 'number' || !Number.isFinite(testTimeout) || testTimeout <= 0) {
+        throw new Error(`spec.actors[0].timeout must be a positive finite number for vitest config, got ${typeof testTimeout === 'number' ? testTimeout : typeof testTimeout}`);
+      }
+      validatedTimeout = testTimeout;
+    }
+
+    const maxAttempts = spec.recovery?.retry?.maxAttempts;
+    let validatedRetry = 0; // Default no retries
+    if (maxAttempts !== undefined) {
+      if (!Number.isInteger(maxAttempts) || maxAttempts < 0) {
+        throw new Error(`spec.recovery.retry.maxAttempts must be a non-negative integer for vitest config, got ${typeof maxAttempts === 'number' ? maxAttempts : typeof maxAttempts}`);
+      }
+      validatedRetry = maxAttempts;
+    }
+
     return `/**
  * Vitest Configuration
  * Generated by AutomatosX
@@ -403,11 +494,11 @@ export default defineConfig({
     },
 
     // Timeouts
-    testTimeout: ${spec.actors[0]?.timeout || 300000},
+    testTimeout: ${validatedTimeout},
     hookTimeout: 30000,
 
     // Retry configuration
-    retry: ${spec.recovery?.retry?.maxAttempts || 0},
+    retry: ${validatedRetry},
 
     // Parallel execution
     threads: true,

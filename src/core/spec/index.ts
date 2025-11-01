@@ -13,6 +13,8 @@ export { SpecValidator } from './SpecValidator.js';
 export { SpecGraphBuilder } from './SpecGraphBuilder.js';
 export { SpecCache, getGlobalCache, resetGlobalCache } from './SpecCache.js';
 export { SpecRegistry, SpecRegistryFactory } from './SpecRegistry.js';
+export { RegenerationDetector } from './RegenerationDetector.js';
+export type { RegenerationCheckResult } from './RegenerationDetector.js';
 
 // Re-export types from types/spec.ts
 export type {

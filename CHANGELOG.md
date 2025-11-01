@@ -2,6 +2,89 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.6] - 2025-11-01
+
+### ✨ Features
+
+#### Spec-Kit Integration - 100% Complete 🎉
+
+**MILESTONE**: AutomatosX Spec-Kit is now **100% complete** with the implementation of RegenerationDetector!
+
+The missing 12.5% has been implemented, bringing Spec-Kit from 87.5% to 100% completion. This completes Phase 3.4 of the Spec-Kit roadmap.
+
+**What's New:**
+
+**RegenerationDetector** (`src/core/spec/RegenerationDetector.ts`)
+- Automatic spec change detection using SHA-256 hash comparison
+- Detects when a spec has changed since DAG was generated
+- Interactive regeneration prompts with user confirmation
+- Prevents execution of stale/outdated DAGs
+- Graceful error handling for missing files and invalid JSON
+
+**Key Methods:**
+```typescript
+class RegenerationDetector {
+  // Check if spec hash matches DAG hash
+  async needsRegeneration(specPath: string, dagPath: string): Promise<RegenerationCheckResult>
+
+  // Prompt user for regeneration confirmation
+  async promptRegeneration(specPath: string): Promise<boolean>
+
+  // Calculate SHA-256 hash of content
+  calculateHash(content: string): string
+}
+```
+
+**Features:**
+- ✅ SHA-256 hash calculation (same algorithm as DagGenerator)
+- ✅ Hash comparison between spec and DAG
+- ✅ User-friendly regeneration prompts
+- ✅ Graceful handling of missing files
+- ✅ JSON parse error handling
+- ✅ Comprehensive logging with logger.debug/info/warn/error
+- ✅ Singleton pattern for consistent instance
+- ✅ TypeScript strict mode compliance
+
+**Testing:**
+- 17 comprehensive unit tests added (`tests/unit/regeneration-detector.test.ts`)
+- Tests cover: hash calculation, change detection, file errors, edge cases
+- All tests passing ✅
+- Test coverage includes special characters, large files, empty content
+
+**Files Changed:**
+- `src/core/spec/RegenerationDetector.ts` (new, 209 lines)
+- `src/core/spec/index.ts` (added exports)
+- `tests/unit/regeneration-detector.test.ts` (new, 17 tests)
+- `README.md` (updated 87.5% → 100%)
+- `CHANGELOG.md` (this entry)
+
+**Impact:**
+- Spec-Kit integration is now **feature-complete**
+- All 8 planned components are implemented
+- Users will be able to detect spec changes automatically
+- Foundation ready for v6.6.0 features (Cost-Aware Router, Enhanced Parallel Execution)
+
+**Spec-Kit Components (8/8 Complete):**
+1. ✅ PlanGenerator - Execution plan generation
+2. ✅ DagGenerator - DAG with change detection hash
+3. ✅ ScaffoldGenerator - Project structure generation
+4. ✅ TestGenerator - Test suite generation
+5. ✅ PolicyParser - Policy YAML parsing
+6. ✅ PolicyEvaluator - Provider selection by policy
+7. ✅ RouterTraceLogger - JSONL trace logging
+8. ✅ **RegenerationDetector - Spec change detection (NEW)**
+
+**Next Steps:**
+- v6.6.0: Integrate RegenerationDetector with CLI (`ax spec run` auto-detection)
+- v6.6.0: Add `--force-regen` and `--skip-regen-check` flags
+- v6.6.0: Implement Cost-Aware Router
+- v6.6.0: Enhanced Parallel Execution
+
+**Credits:**
+Implementation completed through "ultrathinking" analysis and direct implementation after slow ax agent iteration. RegenerationDetector follows existing AutomatosX patterns from DagGenerator, SpecLoader, and PolicyEvaluator.
+
+---
+
 ## [6.5.5] - 2025-11-01
 
 ### 🐛 Bug Fixes

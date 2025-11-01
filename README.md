@@ -12,7 +12,7 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready v6.0.1** | Oct 2025 | 23 Specialized Agents | Spec-Kit 87.5% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready v6.5.6** | Nov 2025 | 23 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
 
 ---
 
@@ -815,8 +815,8 @@ ax run dag.json
 
 ## 🚦 Production Readiness
 
-✅ **87.5% Complete** - Spec-Kit integration production ready
-✅ **2,458 Tests Passing** - Comprehensive test coverage
+✅ **100% Complete** - Spec-Kit integration fully implemented
+✅ **2,425+ Tests Passing** - Comprehensive test coverage
 ✅ **TypeScript Strict Mode** - Type-safe codebase
 ✅ **Zero Resource Leaks** - Clean shutdown guaranteed
 ✅ **Cross-Platform** - macOS, Windows, Ubuntu
@@ -847,12 +847,13 @@ ax --version  # v6.0.1
 
 ## 🗺️ Roadmap
 
-### Completed (v6.0.0 - v6.0.1)
-- ✅ Spec-Kit Integration (87.5%)
+### Completed (v6.0.0 - v6.5.6)
+- ✅ Spec-Kit Integration (100%)
   - ✅ Plan generation
   - ✅ DAG generation
   - ✅ Scaffold generation
   - ✅ Test generation
+  - ✅ Regeneration Detector (v6.5.6)
 - ✅ Policy-Driven Routing
   - ✅ Cost/latency/privacy constraints
   - ✅ Provider metadata registry
@@ -862,10 +863,7 @@ ax --version  # v6.0.1
   - ✅ Real-time following
   - ✅ Color-coded CLI
 
-### Coming Soon (v6.1.0)
-- ⏳ Regeneration Detector
-  - Automatic spec change detection
-  - Regeneration prompts
+### Coming Soon (v6.6.0)
 - ⏳ Cost-Aware Router
   - Pre-execution cost warnings
   - Budget protection

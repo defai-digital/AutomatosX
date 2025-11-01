@@ -208,13 +208,20 @@ export class SecurityValidator {
     ];
 
     if (fs.write) {
-      // FIXED (Bug #62, #63): Normalize paths before checking
+      // FIXED (Bug #62, #63, #86): Normalize paths before checking
+      // FIXED (Bug #86): Don't normalize glob patterns
       const dangerous = fs.write.filter((path: any) => {
         if (typeof path !== 'string') return false;
         const normalized = this.normalizePath(path);
         return dangerousWritePaths.some(d => {
-          const normalizedDangerous = this.normalizePath(d);
-          return normalized === normalizedDangerous || normalized.startsWith(normalizedDangerous);
+          if (d.includes('*') || d.includes('?')) {
+            // Glob pattern - use matchesPattern
+            return this.matchesPattern(normalized, d);
+          } else {
+            // Exact path - normalize and check
+            const normalizedDangerous = this.normalizePath(d);
+            return normalized === normalizedDangerous || normalized.startsWith(normalizedDangerous);
+          }
         });
       });
 
@@ -242,27 +249,56 @@ export class SecurityValidator {
     }
 
     // SEC005: Sensitive file reads
+    // FIXED (Bug #82, #83): Comprehensive sensitive file patterns with proper glob matching
     const sensitiveFiles = [
+      // Unix system files
       '/etc/passwd',
       '/etc/shadow',
       '/etc/ssh/**',
-      '~/.ssh/**',
+
+      // SSH keys - use ** prefix to match any path containing these
+      '~/.ssh/**',                  // Tilde notation (kept for compatibility)
+      '**/.ssh/id_rsa',             // FIXED (Bug #82, #83): Private key anywhere
+      '**/.ssh/id_dsa',             // DSA key
+      '**/.ssh/id_ecdsa',           // ECDSA key
+      '**/.ssh/id_ed25519',         // Ed25519 key
+      '**/.ssh/**',                 // Any file in any .ssh directory
+      '/root/.ssh/**',              // Linux root SSH
+
+      // Credentials and secrets
       '**/.env',
+      '**/.env.local',
+      '**/.env.production',
       '**/credentials.json',
       '**/secrets.yaml',
+      '**/secrets.yml',
       '**/*.key',
       '**/*.pem',
-      'C:\\Windows\\System32\\config\\**'
+      '**/.aws/credentials',        // FIXED (Bug #82): AWS credentials
+      '**/.aws/config',
+
+      // Windows sensitive files
+      'C:\\Windows\\System32\\config\\**',
+      '/c:/windows/system32/config/**',  // FIXED (Bug #82): Normalized Windows path
+      '**/system32/config/**',      // Catch any Windows config access
     ];
 
     if (fs.read) {
-      // FIXED (Bug #62, #63, #67): Normalize paths and check for traversal
+      // FIXED (Bug #62, #63, #67, #86): Normalize paths and check for traversal
+      // FIXED (Bug #86): Don't normalize glob patterns - only normalize exact match patterns
       const sensitive = fs.read.filter((path: any) => {
         if (typeof path !== 'string') return false;
         const normalized = this.normalizePath(path);
         return sensitiveFiles.some(s => {
-          const normalizedSensitive = this.normalizePath(s);
-          return normalized === normalizedSensitive || this.matchesPattern(normalized, normalizedSensitive);
+          // Only normalize patterns that don't contain glob characters
+          if (s.includes('*') || s.includes('?')) {
+            // Glob pattern - use as-is for matching
+            return this.matchesPattern(normalized, s);
+          } else {
+            // Exact path - normalize for comparison
+            const normalizedSensitive = this.normalizePath(s);
+            return normalized === normalizedSensitive;
+          }
         });
       });
 
@@ -657,20 +693,25 @@ export class SecurityValidator {
 
   /**
    * Helper: Normalize path for security checks
-   * FIXED (Bug #62, #63, #67, #74, #76, #77, #78): Canonicalizes paths to prevent bypass via:
+   * FIXED (Bug #62, #63, #67, #74, #76, #77, #78, #85): Canonicalizes paths to prevent bypass via:
    * - Relative traversal (../)
    * - Windows case insensitivity
    * - Mixed path separators (\ vs /)
    * - UNC paths (\\?\ and network \\server\share)
    * - Stack underflow from excessive ../
-   * - Null byte injection
+   * - Null byte injection (all encoding variants)
    * - Case normalization order
    */
   private normalizePath(path: string): string {
     if (typeof path !== 'string') return '';
 
-    // FIXED (Bug #77): Reject null bytes immediately
-    if (path.includes('\0') || path.includes('\x00') || path.includes('%00')) {
+    // FIXED (Bug #77, #85): Reject null bytes in all encoding forms
+    if (path.includes('\0') ||
+        path.includes('\x00') ||
+        path.includes('%00') ||
+        path.includes('\u0000') ||  // Unicode notation
+        path.includes('%2500') ||   // Double URL-encoded
+        path.includes('\xC0\x80')) { // UTF-8 overlong encoding
       return ''; // Invalid path with null byte
     }
 
@@ -826,14 +867,15 @@ export class SecurityValidator {
 
   /**
    * Helper: Parse memory limit string to MB
-   * FIXED (Bug #71, #79): Support decimal/binary units + prevent integer overflow
+   * FIXED (Bug #71, #79, #81): Support decimal/binary units + prevent integer overflow + strict format
    */
   private parseMemoryLimit(limit: string): number | null {
     // Ensure limit is a string
     if (typeof limit !== 'string') return null;
 
     // Match decimal (KB/MB/GB) or binary (KiB/MiB/GiB) units
-    const match = limit.match(/^(\d+(?:\.\d+)?)\s*(KB|MB|GB|KiB|MiB|GiB)$/i);
+    // FIXED (Bug #81): Removed \s* to disallow spaces between number and unit
+    const match = limit.match(/^(\d+(?:\.\d+)?)(KB|MB|GB|KiB|MiB|GiB)$/i);
     if (!match || !match[1] || !match[2]) return null;
 
     const value = parseFloat(match[1]);

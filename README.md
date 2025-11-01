@@ -146,7 +146,7 @@ Use iterate mode naturally through AI assistants - just ask them to use iterate 
 ```
 # In Claude Code
 "Please use ax agent backend in iterate mode to refactor the entire authentication
-module. Set max cost to $2 and timeout to 60 minutes."
+module. Set timeout to 60 minutes with balanced strictness."
 
 "Ask ax agent security to run a comprehensive security audit in iterate mode with
 paranoid strictness. This is for production code so be extra careful."
@@ -158,16 +158,16 @@ functions. Use dry-run first to preview what it will do."
 ```
 # In Gemini CLI
 "Use ax backend agent with iterate mode to implement the new payment gateway.
-Keep it under $3 and 90 minutes."
+Set a 90 minute timeout and use balanced strictness."
 
-"Run ax security agent in iterate mode with balanced strictness to audit the
-codebase for vulnerabilities."
+"Run ax security agent in iterate mode with paranoid strictness to audit the
+codebase for vulnerabilities. Do a dry-run first."
 ```
 
 ```
 # In OpenAI Codex
 "Work with ax agent backend in autonomous iterate mode to refactor database
-queries. Limit to $1.50 and 45 minutes."
+queries. Limit execution to 45 minutes with balanced strictness."
 
 "Use ax agent data in iterate mode to optimize all SQL queries. Run in dry-run
 mode first to see the plan."
@@ -179,8 +179,8 @@ mode first to see the plan."
 # Basic autonomous execution
 ax run backend "implement user authentication" --iterate
 
-# With cost and time limits
-ax run backend "refactor codebase" --iterate --iterate-max-cost 2.0 --iterate-timeout 60
+# With time limit and strictness control
+ax run backend "refactor codebase" --iterate --iterate-timeout 60 --iterate-strictness balanced
 
 # Maximum safety mode
 ax run security "audit entire codebase" --iterate --iterate-strictness paranoid
@@ -194,22 +194,23 @@ ax run backend "plan database migration" --iterate --iterate-dry-run
 | Feature | Description | Default |
 |---------|-------------|---------|
 | **Autonomous Execution** | Agents auto-respond to confirmation prompts | Enabled with `--iterate` |
-| **Cost Budget Control** | Set maximum spend limits with warning thresholds | $5.00 |
-| **Time Limits** | Configure execution timeouts | 120 minutes |
+| **Time Limits** | Configure execution timeouts to prevent runaway tasks | 120 minutes |
 | **Safety Levels** | Choose from `paranoid`, `balanced`, `permissive` | `balanced` |
 | **Dangerous Operation Detection** | Automatic classification of risky operations | Always active |
 | **Dry Run Mode** | Test autonomous execution without making changes | Off |
 | **Context History** | Maintains classification context for smarter decisions | Max 100 entries |
+| **Workspace Protection** | Prevents access to files outside project directory | Always active |
 
 ### Safety Guardrails
 
 Iterate Mode includes comprehensive safety protections:
 
-- ✅ **Cost Budget Enforcement**: Warning at 80% threshold, hard stop at limit
 - ✅ **Execution Timeout Protection**: Automatic shutdown after time limit
 - ✅ **Workspace Boundary Protection**: Cannot access files outside project directory
 - ✅ **Memory Leak Prevention**: Classification history bounded to prevent unbounded growth
 - ✅ **Dangerous Operation Detection**: Auto-blocks risky operations in paranoid mode
+- ✅ **Strictness Controls**: Three levels (paranoid/balanced/permissive) for risk tolerance
+- ✅ **Dry Run Preview**: Test automation logic before making actual changes
 
 ### Use Cases
 
@@ -233,7 +234,6 @@ Iterate Mode includes comprehensive safety protections:
 ax run agent "task" \
   --iterate                           # Enable iterate mode
   --iterate-timeout 60                # Max duration in minutes (default: 120)
-  --iterate-max-cost 5.0              # Max spend in USD (default: 5.00)
   --iterate-strictness balanced       # Safety level: paranoid|balanced|permissive
   --iterate-dry-run                   # Test mode - no actual changes
 ```
@@ -243,7 +243,7 @@ ax run agent "task" \
 - **Classification Latency**: < 50ms per decision
 - **Memory Usage**: Bounded to 100 classification entries
 - **Context Cleanup**: Automatic expiration of old contexts
-- **Cost Tracking**: Real-time budget monitoring with warnings
+- **Timeout Enforcement**: Real-time monitoring with automatic shutdown
 
 ### Example Workflow
 
@@ -253,15 +253,15 @@ ax run agent "task" \
 # In Claude Code or Gemini CLI
 "I need you to refactor the authentication module using ax backend agent.
 First, do a dry run in iterate mode to show me what you plan to do.
-Then if it looks good, run it in iterate mode with paranoid strictness,
-max cost of $1, and 30 minute timeout."
+Then if it looks good, run it in iterate mode with paranoid strictness
+and a 30 minute timeout."
 ```
 
 The AI assistant will:
 1. Run dry-run first: `ax run backend "refactor authentication" --iterate --iterate-dry-run`
 2. Show you the preview
 3. Wait for your approval
-4. Execute with safety controls: `ax run backend "refactor authentication" --iterate --iterate-strictness paranoid --iterate-max-cost 1.0 --iterate-timeout 30`
+4. Execute with safety controls: `ax run backend "refactor authentication" --iterate --iterate-strictness paranoid --iterate-timeout 30`
 
 **Direct CLI Usage**:
 
@@ -274,7 +274,6 @@ ax run backend "refactor authentication module" \
 ax run backend "refactor authentication module" \
   --iterate \
   --iterate-strictness paranoid \
-  --iterate-max-cost 1.0 \
   --iterate-timeout 30
 
 # 3. Monitor progress

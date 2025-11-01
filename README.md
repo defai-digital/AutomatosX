@@ -158,7 +158,7 @@ Iterate mode is perfect for autonomous, repeating tasks without constant questio
 
 ```
 # In Claude Code - Autonomous Bug-Finding (The Real Power!)
-"Please run 5 iterations with ultrathink to autonomously find and fix bugs"
+"Please iterate 5 times with ultrathink to find and fix bugs"
 
 # This will autonomously:
 # - Iterate 1: Scan for parseInt/JSON.parse safety issues → Find & fix bugs

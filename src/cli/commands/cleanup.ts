@@ -211,13 +211,20 @@ async function findProcesses(processName: string, verbose: boolean): Promise<Pro
         const command = parts[1];
         const elapsed = parts[2];
         const memoryKB = parseInt(parts[3], 10);
+
+        // FIX Bug #105: Skip entries with invalid numeric values
+        if (isNaN(pid) || isNaN(memoryKB)) {
+          continue;
+        }
+
         const memoryMB = Math.round(memoryKB / 1024);
 
         // Filter out very short-lived processes (< 5 seconds)
         // These are likely just starting up
         const elapsedParts = elapsed.split(/[-:]/);
         const firstPart = elapsedParts[0];
-        const isLongRunning = elapsedParts.length > 2 || (firstPart && parseInt(firstPart, 10) >= 5);
+        const firstPartNum = firstPart ? parseInt(firstPart, 10) : NaN;
+        const isLongRunning = elapsedParts.length > 2 || (!isNaN(firstPartNum) && firstPartNum >= 5);
 
         if (isLongRunning) {
           processes.push({

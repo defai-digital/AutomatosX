@@ -139,7 +139,41 @@ ax run backend "implement user authentication"
 
 Iterate Mode enables agents to run autonomously without user intervention, automatically responding to confirmations while maintaining strict safety controls. This is perfect for long-running tasks, batch processing, or overnight automation.
 
-### Quick Start
+### Natural Language Usage (Recommended)
+
+Use iterate mode naturally through AI assistants - just ask them to use iterate mode:
+
+```
+# In Claude Code
+"Please use ax agent backend in iterate mode to refactor the entire authentication
+module. Set max cost to $2 and timeout to 60 minutes."
+
+"Ask ax agent security to run a comprehensive security audit in iterate mode with
+paranoid strictness. This is for production code so be extra careful."
+
+"Have ax agent quality run in iterate mode to generate tests for all untested
+functions. Use dry-run first to preview what it will do."
+```
+
+```
+# In Gemini CLI
+"Use ax backend agent with iterate mode to implement the new payment gateway.
+Keep it under $3 and 90 minutes."
+
+"Run ax security agent in iterate mode with balanced strictness to audit the
+codebase for vulnerabilities."
+```
+
+```
+# In OpenAI Codex
+"Work with ax agent backend in autonomous iterate mode to refactor database
+queries. Limit to $1.50 and 45 minutes."
+
+"Use ax agent data in iterate mode to optimize all SQL queries. Run in dry-run
+mode first to see the plan."
+```
+
+### Direct CLI Usage
 
 ```bash
 # Basic autonomous execution
@@ -212,6 +246,24 @@ ax run agent "task" \
 - **Cost Tracking**: Real-time budget monitoring with warnings
 
 ### Example Workflow
+
+**Natural Language (Recommended)**:
+
+```
+# In Claude Code or Gemini CLI
+"I need you to refactor the authentication module using ax backend agent.
+First, do a dry run in iterate mode to show me what you plan to do.
+Then if it looks good, run it in iterate mode with paranoid strictness,
+max cost of $1, and 30 minute timeout."
+```
+
+The AI assistant will:
+1. Run dry-run first: `ax run backend "refactor authentication" --iterate --iterate-dry-run`
+2. Show you the preview
+3. Wait for your approval
+4. Execute with safety controls: `ax run backend "refactor authentication" --iterate --iterate-strictness paranoid --iterate-max-cost 1.0 --iterate-timeout 30`
+
+**Direct CLI Usage**:
 
 ```bash
 # 1. Dry run to preview actions

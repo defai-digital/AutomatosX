@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-11-01T18:32:44.128Z
+ * Generated: 2025-11-01T19:37:25.156Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -158,59 +158,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "progress": {
         "updateInterval": 2000,
         "syntheticProgress": true
-      }
-    },
-    "iterateMode": {
-      "enabled": false,
-      "defaults": {
-        "maxDurationMinutes": 300,
-        "maxIterationsPerStage": 50,
-        "maxIterationsPerRun": 200,
-        "maxAutoResponsesPerStage": 30,
-        "maxEstimatedCostUsd": 5,
-        "autoConfirmCheckpoints": true
-      },
-      "classifier": {
-        "strictness": "balanced",
-        "patternLibraryPath": ".automatosx/iterate/patterns.yaml",
-        "enableSemanticScoring": false,
-        "semanticScoringThreshold": 0.75,
-        "contextWindowMessages": 10
-      },
-      "safety": {
-        "enableDangerousOperationGuard": true,
-        "riskTolerance": "balanced",
-        "dangerousOperations": {
-          "fileDelete": "HIGH",
-          "gitForce": "HIGH",
-          "writeOutsideWorkspace": "HIGH",
-          "secretsInCode": "HIGH",
-          "shellCommands": "MEDIUM",
-          "packageInstall": "LOW"
-        },
-        "enableCostTracking": true,
-        "enableTimeTracking": true,
-        "enableIterationTracking": true
-      },
-      "telemetry": {
-        "level": "info",
-        "logAutoResponses": true,
-        "logClassifications": true,
-        "logSafetyChecks": true,
-        "emitMetrics": true
-      },
-      "notifications": {
-        "warnAtTimePercent": [
-          75,
-          90,
-          95
-        ],
-        "warnAtCostPercent": [
-          75,
-          90
-        ],
-        "pauseOnGenuineQuestion": true,
-        "pauseOnHighRiskOperation": true
       }
     }
   },
@@ -374,18 +321,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "costEstimation": {
-    "enabled": false,
-    "disclaimer": "Cost estimates are approximate and may be outdated. Visit provider pricing pages for current rates."
-  },
-  "version": "6.5.9"
+  "version": "6.5.12"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-01T18:32:44.128Z',
+  generatedAt: '2025-11-01T19:37:25.156Z',
   sourceFile: 'automatosx.config.json',
-  version: '6.5.9'
+  version: '6.5.12'
 } as const;

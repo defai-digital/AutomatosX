@@ -141,7 +141,7 @@
     "iterateMode": {
       "enabled": false,
       "defaults": {
-        "maxDurationMinutes": 120,
+        "maxDurationMinutes": 300,
         "maxIterationsPerStage": 50,
         "maxIterationsPerRun": 200,
         "maxAutoResponsesPerStage": 30,

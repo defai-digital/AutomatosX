@@ -53,6 +53,11 @@ export class RouterTraceLogger {
   private autoFlush: boolean;
   private streamInitializing: boolean = false;
 
+  // FIXED (v6.5.12 Bug #123): Store event handler references for cleanup
+  private exitHandler = () => this.close();
+  private sigintHandler = () => this.close();
+  private sigtermHandler = () => this.close();
+
   constructor(options: TraceLoggerOptions) {
     this.traceFile = join(options.workspacePath, '.automatosx/logs/router.trace.jsonl');
     this.enabled = options.enabled ?? true;
@@ -67,9 +72,10 @@ export class RouterTraceLogger {
     }
 
     // FIXED (v6.5.11): Add cleanup on process exit
-    process.on('exit', () => this.close());
-    process.on('SIGINT', () => this.close());
-    process.on('SIGTERM', () => this.close());
+    // FIXED (v6.5.12 Bug #123): Use stored handler references for proper cleanup
+    process.on('exit', this.exitHandler);
+    process.on('SIGINT', this.sigintHandler);
+    process.on('SIGTERM', this.sigtermHandler);
   }
 
   /**
@@ -303,8 +309,18 @@ export class RouterTraceLogger {
 
   /**
    * Flush and close the trace file
+   *
+   * FIXED (v6.5.12 Bug #123): Remove process event listeners to prevent memory leak
+   * Without cleanup, each RouterTraceLogger instance leaves 3 event listeners attached
+   * to the process object, preventing garbage collection.
    */
   close(): void {
+    // Remove process event listeners
+    process.removeListener('exit', this.exitHandler);
+    process.removeListener('SIGINT', this.sigintHandler);
+    process.removeListener('SIGTERM', this.sigtermHandler);
+
+    // Close stream
     if (this.stream) {
       this.stream.end();
       this.stream = undefined;

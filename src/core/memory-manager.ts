@@ -364,6 +364,8 @@ export class MemoryManager implements IMemoryManager {
         accessCount: 0
       };
     } catch (error) {
+      // FIXED (v6.5.13 Bug #137): Check if error is already MemoryError before wrapping
+      if (error instanceof MemoryError) throw error;
       throw new MemoryError(
         `Failed to add memory entry: ${(error as Error).message}`,
         'DATABASE_ERROR'

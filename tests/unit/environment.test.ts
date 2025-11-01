@@ -56,10 +56,8 @@ describe('Environment Detection', () => {
       expect(isClaudeCodeEnvironment()).toBe(true);
     });
 
-    it('should detect ANTHROPIC_API_KEY as indicator', () => {
-      process.env.ANTHROPIC_API_KEY = 'sk-ant-test123';
-      expect(isClaudeCodeEnvironment()).toBe(true);
-    });
+    // REMOVED (v6.5.12 Bug #125): ANTHROPIC_API_KEY is NOT a reliable indicator
+    // This was causing false positives - API key can be set in any environment
 
     it('should return false when no indicators present', () => {
       delete process.env.CLAUDE_CODE;
@@ -361,11 +359,8 @@ describe('Environment Detection', () => {
       expect(shouldAutoEnableMockProviders()).toBe(false);
     });
 
-    it('should handle ANTHROPIC_API_KEY set to empty string', () => {
-      process.env.ANTHROPIC_API_KEY = '';
-      // Empty string is falsy after !== undefined check passes
-      expect(isClaudeCodeEnvironment()).toBe(true);
-    });
+    // REMOVED (v6.5.12 Bug #125): ANTHROPIC_API_KEY tests removed
+    // API key is not a reliable environment indicator
   });
 
   describe('Priority System', () => {

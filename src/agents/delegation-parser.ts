@@ -321,17 +321,22 @@ export class DelegationParser {
     const lastSingleQuote = before.lastIndexOf("'");
     const lastNewline = before.lastIndexOf('\n');
 
+    // FIXED (v6.5.13 Bug #128): Treat -1 (not found) as infinity for blank line check
     // If we found a quote after the last newline, check for closing quote
     if (lastDoubleQuote > lastNewline) {
       const closingDoubleQuote = after.indexOf('"');
-      if (closingDoubleQuote !== -1 && closingDoubleQuote < after.indexOf('\n\n')) {
+      const blankLinePos = after.indexOf('\n\n');
+      // closingDoubleQuote !== -1 means quote found; blankLinePos === -1 means no blank line (treat as infinity)
+      if (closingDoubleQuote !== -1 && (blankLinePos === -1 || closingDoubleQuote < blankLinePos)) {
         return true; // Enclosed in double quotes
       }
     }
 
     if (lastSingleQuote > lastNewline) {
       const closingSingleQuote = after.indexOf("'");
-      if (closingSingleQuote !== -1 && closingSingleQuote < after.indexOf('\n\n')) {
+      const blankLinePos = after.indexOf('\n\n');
+      // closingSingleQuote !== -1 means quote found; blankLinePos === -1 means no blank line (treat as infinity)
+      if (closingSingleQuote !== -1 && (blankLinePos === -1 || closingSingleQuote < blankLinePos)) {
         return true; // Enclosed in single quotes
       }
     }
@@ -390,9 +395,12 @@ export class DelegationParser {
     // Check if the match is part of a string literal in code
     // Look for patterns like: 'text...@agent...' or "text...@agent..."
     // where the quote starts before the match and ends after it
-    const combinedContext = before.slice(-100) + after.slice(0, 100);
+    // FIXED (v6.5.13 Bug #135): Ensure safe string slicing with bounds checking
+    const beforeSlice = before.length > 0 ? before.slice(-Math.min(100, before.length)) : '';
+    const afterSlice = after.length > 0 ? after.slice(0, Math.min(100, after.length)) : '';
+    const combinedContext = beforeSlice + afterSlice;
     const stringLiteralPattern = /['"`][^'"`]{0,100}@[a-zA-Z0-9-_]+[^'"`]{0,100}['"`]/;
-    if (stringLiteralPattern.test(combinedContext)) {
+    if (combinedContext.length > 0 && stringLiteralPattern.test(combinedContext)) {
       return true;
     }
 

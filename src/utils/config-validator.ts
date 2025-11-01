@@ -137,10 +137,17 @@ function validateProvider(name: string, provider: any): ValidationError[] {
     });
   }
 
+  // FIXED (v6.5.13 Bug #129): Enforce integer validation for priority
   if (typeof provider.priority !== 'number') {
     errors.push({
       path: `${basePath}.priority`,
       message: 'priority must be a number',
+      value: provider.priority
+    });
+  } else if (!Number.isInteger(provider.priority)) {
+    errors.push({
+      path: `${basePath}.priority`,
+      message: 'priority must be an integer (no fractional values)',
       value: provider.priority
     });
   } else if (provider.priority < 1) {
@@ -151,10 +158,17 @@ function validateProvider(name: string, provider: any): ValidationError[] {
     });
   }
 
+  // FIXED (v6.5.13 Bug #129): Enforce integer validation for timeout
   if (typeof provider.timeout !== 'number') {
     errors.push({
       path: `${basePath}.timeout`,
       message: 'timeout must be a number',
+      value: provider.timeout
+    });
+  } else if (!Number.isInteger(provider.timeout)) {
+    errors.push({
+      path: `${basePath}.timeout`,
+      message: 'timeout must be an integer (no fractional values)',
       value: provider.timeout
     });
   } else if (provider.timeout < 1000) {

@@ -348,48 +348,58 @@ export function validateConfig(config: AutomatosXConfig): string[] {
       }
     }
 
-    // retry.maxAttempts
-    if (!isPositiveInteger(config.execution.retry.maxAttempts)) {
-      errors.push('Execution: retry.maxAttempts must be a positive integer');
-    } else if (config.execution.retry.maxAttempts > 10) {
-      errors.push('Execution: retry.maxAttempts must be <= 10 (reasonable retry limit)');
-    }
-
-    // retry.initialDelay
-    if (!isNonNegativeInteger(config.execution.retry.initialDelay)) {
-      errors.push('Execution: retry.initialDelay must be a non-negative integer');
-    } else if (config.execution.retry.initialDelay > VALIDATION_LIMITS.MAX_TIMEOUT) {
-      errors.push(`Execution: retry.initialDelay must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
-    }
-
-    // retry.maxDelay
-    if (!isPositiveInteger(config.execution.retry.maxDelay)) {
-      errors.push('Execution: retry.maxDelay must be a positive integer');
+    // FIXED (v6.5.13 Bug #126): Guard against null/undefined retry config
+    if (!config.execution.retry || typeof config.execution.retry !== 'object') {
+      errors.push('Execution: retry configuration block is required');
     } else {
-      if (config.execution.retry.maxDelay < config.execution.retry.initialDelay) {
-        errors.push('Execution: retry.maxDelay must be >= initialDelay');
+      // retry.maxAttempts
+      if (!isPositiveInteger(config.execution.retry.maxAttempts)) {
+        errors.push('Execution: retry.maxAttempts must be a positive integer');
+      } else if (config.execution.retry.maxAttempts > 10) {
+        errors.push('Execution: retry.maxAttempts must be <= 10 (reasonable retry limit)');
       }
-      if (config.execution.retry.maxDelay > VALIDATION_LIMITS.MAX_TIMEOUT) {
-        errors.push(`Execution: retry.maxDelay must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
+
+      // retry.initialDelay
+      if (!isNonNegativeInteger(config.execution.retry.initialDelay)) {
+        errors.push('Execution: retry.initialDelay must be a non-negative integer');
+      } else if (config.execution.retry.initialDelay > VALIDATION_LIMITS.MAX_TIMEOUT) {
+        errors.push(`Execution: retry.initialDelay must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
+      }
+
+      // retry.maxDelay
+      if (!isPositiveInteger(config.execution.retry.maxDelay)) {
+        errors.push('Execution: retry.maxDelay must be a positive integer');
+      } else {
+        if (config.execution.retry.maxDelay < config.execution.retry.initialDelay) {
+          errors.push('Execution: retry.maxDelay must be >= initialDelay');
+        }
+        if (config.execution.retry.maxDelay > VALIDATION_LIMITS.MAX_TIMEOUT) {
+          errors.push(`Execution: retry.maxDelay must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
+        }
+      }
+
+      // retry.backoffFactor
+      if (typeof config.execution.retry.backoffFactor !== 'number' || config.execution.retry.backoffFactor < VALIDATION_LIMITS.MIN_BACKOFF_FACTOR) {
+        errors.push(`Execution: retry.backoffFactor must be >= ${VALIDATION_LIMITS.MIN_BACKOFF_FACTOR}`);
+      } else if (config.execution.retry.backoffFactor > VALIDATION_LIMITS.MAX_BACKOFF_FACTOR) {
+        errors.push(`Execution: retry.backoffFactor must be <= ${VALIDATION_LIMITS.MAX_BACKOFF_FACTOR}`);
       }
     }
 
-    // retry.backoffFactor
-    if (typeof config.execution.retry.backoffFactor !== 'number' || config.execution.retry.backoffFactor < VALIDATION_LIMITS.MIN_BACKOFF_FACTOR) {
-      errors.push(`Execution: retry.backoffFactor must be >= ${VALIDATION_LIMITS.MIN_BACKOFF_FACTOR}`);
-    } else if (config.execution.retry.backoffFactor > VALIDATION_LIMITS.MAX_BACKOFF_FACTOR) {
-      errors.push(`Execution: retry.backoffFactor must be <= ${VALIDATION_LIMITS.MAX_BACKOFF_FACTOR}`);
-    }
-
-    // provider.maxWaitMs
-    if (!isPositiveInteger(config.execution.provider.maxWaitMs)) {
-      errors.push('Execution: provider.maxWaitMs must be a positive integer');
+    // FIXED (v6.5.13 Bug #126): Guard against null/undefined provider config
+    if (!config.execution.provider || typeof config.execution.provider !== 'object') {
+      errors.push('Execution: provider configuration block is required');
     } else {
-      if (config.execution.provider.maxWaitMs < VALIDATION_LIMITS.MIN_TIMEOUT) {
-        errors.push(`Execution: provider.maxWaitMs must be >= ${VALIDATION_LIMITS.MIN_TIMEOUT}ms`);
-      }
-      if (config.execution.provider.maxWaitMs > VALIDATION_LIMITS.MAX_TIMEOUT) {
-        errors.push(`Execution: provider.maxWaitMs must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
+      // provider.maxWaitMs
+      if (!isPositiveInteger(config.execution.provider.maxWaitMs)) {
+        errors.push('Execution: provider.maxWaitMs must be a positive integer');
+      } else {
+        if (config.execution.provider.maxWaitMs < VALIDATION_LIMITS.MIN_TIMEOUT) {
+          errors.push(`Execution: provider.maxWaitMs must be >= ${VALIDATION_LIMITS.MIN_TIMEOUT}ms`);
+        }
+        if (config.execution.provider.maxWaitMs > VALIDATION_LIMITS.MAX_TIMEOUT) {
+          errors.push(`Execution: provider.maxWaitMs must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms`);
+        }
       }
     }
 

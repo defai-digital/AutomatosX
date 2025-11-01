@@ -151,9 +151,15 @@ async function getLatestVersion(): Promise<string> {
 
 /**
  * Check if version a is newer than version b
+ *
+ * FIXED (v6.5.13 Bug #127): Strip prerelease metadata before numeric comparison
+ * Handles versions like "5.7.0-beta.1" correctly by removing everything after hyphen
  */
 function isNewer(a: string, b: string): boolean {
-  const parseVersion = (v: string) => v.split('.').map(Number);
+  // Strip prerelease metadata (e.g., "5.7.0-beta.1" -> "5.7.0")
+  const stripPrerelease = (v: string) => v.split('-')[0] || v;
+  const parseVersion = (v: string) => stripPrerelease(v).split('.').map(Number);
+
   const [aMajor = 0, aMinor = 0, aPatch = 0] = parseVersion(a);
   const [bMajor = 0, bMinor = 0, bPatch = 0] = parseVersion(b);
 

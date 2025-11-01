@@ -379,19 +379,25 @@ export class AdaptiveCache<T = any> {
   private startCleanup(): void {
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();
-      let expiredCount = 0;
 
+      // FIXED (v6.5.13 Bug #139): Collect expired keys first to avoid race conditions
+      // Prevents modification of Map during iteration which can cause issues
+      const expiredKeys: string[] = [];
       for (const [key, entry] of this.cache.entries()) {
         if (now > entry.expiresAt) {
-          this.cache.delete(key);
-          this.accessPatterns.delete(key);
-          expiredCount++;
+          expiredKeys.push(key);
         }
       }
 
-      if (expiredCount > 0) {
+      // Delete expired entries after iteration completes
+      for (const key of expiredKeys) {
+        this.cache.delete(key);
+        this.accessPatterns.delete(key);
+      }
+
+      if (expiredKeys.length > 0) {
         logger.debug('Cache cleanup completed', {
-          expiredCount,
+          expiredCount: expiredKeys.length,
           remainingEntries: this.cache.size
         });
       }

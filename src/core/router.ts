@@ -491,9 +491,10 @@ export class Router {
           const reason = request.spec?.policy ? 'policy-based selection' : 'priority-based selection';
 
           // Extract spec context if available (Quick Win #2: Router Trace Context)
+          // FIXED (v6.5.13 Bug #136): Add optional chaining for taskId to match metadata access
           const specContext = request.spec ? {
             specId: request.spec.metadata?.id,
-            taskId: request.spec.taskId
+            taskId: request.spec?.taskId
           } : undefined;
 
           this.tracer.logSelection(candidateNames, provider.name, reason, undefined, specContext);

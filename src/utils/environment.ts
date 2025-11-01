@@ -36,6 +36,11 @@ import { logger } from './logger.js';
  * ```
  */
 export function isClaudeCodeEnvironment(): boolean {
+  // FIXED (v6.5.13 Bug #124): Capture lowercase value first to prevent TypeError
+  // FIXED (v6.5.13 Bug #125): Removed ANTHROPIC_API_KEY check (false positive for CLI users)
+  const parentProcess = (process.env._ || '').toLowerCase();
+  const comSpec = (process.env.ComSpec || '').toLowerCase();
+
   return Boolean(
     // Explicit Claude Code indicators
     process.env.CLAUDE_CODE === 'true' ||
@@ -43,11 +48,8 @@ export function isClaudeCodeEnvironment(): boolean {
     process.env.MCP_SERVER === 'true' ||
 
     // Check parent process name (Unix/Windows)
-    process.env._?.toLowerCase().includes('claude') ||
-    process.env.ComSpec?.toLowerCase().includes('claude') ||
-
-    // Check if MCP tools are being used
-    process.env.ANTHROPIC_API_KEY !== undefined
+    parentProcess.includes('claude') ||
+    comSpec.includes('claude')
   );
 }
 
@@ -57,10 +59,13 @@ export function isClaudeCodeEnvironment(): boolean {
  * @returns true if running inside Cursor
  */
 export function isCursorEnvironment(): boolean {
+  // FIXED (v6.5.13 Bug #124): Capture lowercase value first to prevent TypeError
+  const parentProcess = (process.env._ || '').toLowerCase();
+
   return Boolean(
     process.env.CURSOR === 'true' ||
     process.env.CURSOR_IDE === 'true' ||
-    process.env._?.toLowerCase().includes('cursor')
+    parentProcess.includes('cursor')
   );
 }
 

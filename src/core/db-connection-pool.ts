@@ -194,9 +194,24 @@ export class DatabaseConnectionPool {
         return;
       }
 
+      // FIXED (v6.5.13 Bug #130): Prevent race condition by tracking resolution
+      let resolved = false;
+      const safeResolve = (conn: PooledConnection) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(conn);
+        }
+      };
+      const safeReject = (error: Error) => {
+        if (!resolved) {
+          resolved = true;
+          reject(error);
+        }
+      };
+
       const queueEntry = {
-        resolve,
-        reject,
+        resolve: safeResolve,
+        reject: safeReject,
         readonly,
         requestedAt: Date.now(),
         timeoutId: undefined as NodeJS.Timeout | undefined,
@@ -220,24 +235,27 @@ export class DatabaseConnectionPool {
             if (queueEntry.timeoutId) {
               clearTimeout(queueEntry.timeoutId);
             }
-            reject(new Error('Connection acquisition cancelled'));
+            safeReject(new Error('Connection acquisition cancelled'));
           }
         };
         signal.addEventListener('abort', queueEntry.abortHandler, { once: true });
       }
 
       // Set timeout and store ID for cleanup
-      queueEntry.timeoutId = setTimeout(() => {
-        const index = this.waitQueue.indexOf(queueEntry);
-        if (index !== -1) {
-          this.waitQueue.splice(index, 1);
-          // Remove abort handler if present
-          if (queueEntry.abortHandler && queueEntry.signal) {
-            queueEntry.signal.removeEventListener('abort', queueEntry.abortHandler);
+      // Check if already resolved (race condition with processWaitQueue)
+      if (!resolved) {
+        queueEntry.timeoutId = setTimeout(() => {
+          const index = this.waitQueue.indexOf(queueEntry);
+          if (index !== -1) {
+            this.waitQueue.splice(index, 1);
+            // Remove abort handler if present
+            if (queueEntry.abortHandler && queueEntry.signal) {
+              queueEntry.signal.removeEventListener('abort', queueEntry.abortHandler);
+            }
+            safeReject(new Error(`Connection wait timeout after ${this.config.maxWaitTime}ms`));
           }
-          reject(new Error(`Connection wait timeout after ${this.config.maxWaitTime}ms`));
-        }
-      }, this.config.maxWaitTime);
+        }, this.config.maxWaitTime);
+      }
     });
   }
 

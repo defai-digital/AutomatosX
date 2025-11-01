@@ -212,4 +212,27 @@ export class ProgressChannel {
       this.processing = false;
     }
   }
+
+  /**
+   * Cleanup channel and clear pending timers
+   *
+   * FIXED (v6.5.12 Bug #122): Added cleanup method to prevent timer leaks
+   * Clears pending timeout and removes all listeners to allow proper garbage collection.
+   */
+  destroy(): void {
+    // Clear pending timeout
+    if (this.processQueueTimeout) {
+      clearTimeout(this.processQueueTimeout);
+      this.processQueueTimeout = undefined;
+    }
+
+    // Clear listeners
+    this.listeners.clear();
+
+    // Clear event queue
+    this.eventQueue = [];
+
+    // Reset processing state
+    this.processing = false;
+  }
 }

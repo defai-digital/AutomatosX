@@ -456,18 +456,27 @@ export class WorkerPool {
     this.idleCheckInterval = setInterval(() => {
       const idleWorkers = this.workers.filter(w => !w.busy);
 
-      // Terminate excess idle workers
+      // FIXED (v6.5.13 Bug #131): Ensure safe calculation of workers to terminate
+      // We should only terminate idle workers, and never go below minWorkers
       const excessCount = this.workers.length - this.config.minWorkers;
-      if (excessCount > 0) {
-        const toTerminate = idleWorkers.slice(0, excessCount);
+      if (excessCount > 0 && idleWorkers.length > 0) {
+        // Calculate how many idle workers we can safely terminate
+        // Take minimum of: excess workers OR available idle workers
+        const canTerminate = Math.min(excessCount, idleWorkers.length);
+        const toTerminate = idleWorkers.slice(0, canTerminate);
 
-        for (const workerInfo of toTerminate) {
-          workerInfo.worker.terminate();
-          this.removeWorker(workerInfo);
+        // Terminate in reverse order to avoid potential index issues
+        for (let i = toTerminate.length - 1; i >= 0; i--) {
+          const workerInfo = toTerminate[i];
+          if (workerInfo) {
+            workerInfo.worker.terminate();
+            this.removeWorker(workerInfo);
 
-          logger.debug('Idle worker terminated', {
-            totalWorkers: this.workers.length
-          });
+            logger.debug('Idle worker terminated', {
+              totalWorkers: this.workers.length,
+              idleWorkers: this.workers.filter(w => !w.busy).length
+            });
+          }
         }
       }
     }, this.config.idleTimeout);

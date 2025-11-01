@@ -684,6 +684,7 @@ export abstract class BaseProvider implements Provider {
         let nestedKillTimeoutId: NodeJS.Timeout | null = null;
         let resolved = false;
 
+        // FIXED (v6.5.13 Bug #132): Ensure cleanup is always called to prevent timeout leaks
         const cleanup = () => {
           if (mainTimeoutId) {
             clearTimeout(mainTimeoutId);
@@ -700,6 +701,10 @@ export abstract class BaseProvider implements Provider {
             resolved = true;
             cleanup();
             resolve(value);
+          } else {
+            // FIXED (v6.5.13 Bug #132): Call cleanup even if already resolved
+            // This handles race conditions where events fire after timeout
+            cleanup();
           }
         };
 
@@ -989,6 +994,14 @@ export abstract class BaseProvider implements Provider {
         const latency = Date.now() - startTime;
         this.updateMetrics(response, latency);
         this.health.consecutiveFailures = 0;
+
+        // FIXED (v6.5.13 Bug #134): Clear circuit breaker timeout on success
+        // If circuit breaker was triggered, a recovery timeout may still be pending
+        // Clear it since we've successfully executed and recovered
+        if (this.circuitBreakerRecoveryTimeout) {
+          clearTimeout(this.circuitBreakerRecoveryTimeout);
+          this.circuitBreakerRecoveryTimeout = null;
+        }
 
         // Phase 4: Calculate cost and record successful execution
         try {

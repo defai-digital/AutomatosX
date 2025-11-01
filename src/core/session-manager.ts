@@ -335,20 +335,22 @@ export class SessionManager {
       const runningTasks = session.metadata.tasks.filter((t: SessionTaskInfo) => t.status === 'running' || t.status === 'pending');
 
       // Keep all running/pending tasks + most recent completed tasks
-      const tasksToKeep = this.MAX_TASKS_PER_SESSION - runningTasks.length;
+      // FIXED (v6.5.13 Bug #133): Save old length BEFORE replacing array
+      const oldTaskCount = session.metadata.tasks.length;
+      const tasksToKeep = Math.max(0, this.MAX_TASKS_PER_SESSION - runningTasks.length);
       const recentCompleted = completedTasks
         .sort((a: SessionTaskInfo, b: SessionTaskInfo) => {
           const aTime = a.completedAt || a.startedAt;
           const bTime = b.completedAt || b.startedAt;
           return bTime.localeCompare(aTime); // Newest first
         })
-        .slice(0, Math.max(0, tasksToKeep));
+        .slice(0, tasksToKeep);
 
       session.metadata.tasks = [...runningTasks, ...recentCompleted];
 
       logger.debug('Cleaned up old tasks', {
         sessionId,
-        removed: session.metadata.tasks.length - (runningTasks.length + recentCompleted.length),
+        removed: oldTaskCount - session.metadata.tasks.length,
         remaining: session.metadata.tasks.length
       });
     }
@@ -907,6 +909,15 @@ export class SessionManager {
         throw renameError;
       }
     } catch (error) {
+      // FIXED (v6.5.13 Bug #138): Clean up temp file if save failed
+      // Ensures temp files don't accumulate on error
+      const tempPath = `${this.persistencePath}.tmp`;
+      try {
+        await unlink(tempPath);
+      } catch (unlinkError) {
+        // Ignore unlink errors (file might not exist or already cleaned)
+      }
+
       logger.error('Failed to save sessions to persistence', {
         path: normalizePath(this.persistencePath),
         error: (error as Error).message

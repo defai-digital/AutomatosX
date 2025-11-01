@@ -194,8 +194,11 @@ export class ProfileLoader {
         }
 
         // Parse YAML to extract only displayName
-        const data = load(content) as any;
-        return data.displayName || null;
+        // FIX Bug #104: Validate data is object before accessing properties
+        const data = load(content);
+        return data && typeof data === 'object' && !Array.isArray(data) && 'displayName' in data
+          ? (data as any).displayName || null
+          : null;
 
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -725,6 +728,11 @@ export class ProfileLoader {
    * v4.10.0+: Supports team-based configuration inheritance
    */
   private async buildProfile(data: any, name: string): Promise<AgentProfile> {
+    // FIX Bug #104: Validate data is a valid object before accessing properties
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new AgentValidationError(`Invalid profile data for ${name}: expected object, got ${typeof data}`);
+    }
+
     let teamConfig: TeamConfig | undefined;
 
     // v4.10.0+: Load team configuration if specified

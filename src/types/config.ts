@@ -8,6 +8,7 @@
 import type { LogLevel } from './logger.js';
 import type { TimeoutConfig } from './timeout.js';
 import type { AdaptiveCacheConfig as AdaptiveCacheConfigImpl } from '../core/adaptive-cache.js';
+import type { IterateConfig } from './iterate.js';
 
 // ========================================
 // Provider Configuration
@@ -276,6 +277,7 @@ export interface ExecutionConfig {
   stages?: StageExecutionConfigOptions;  // v5.3.0: stage-based execution
   timeouts?: TimeoutConfig;  // v5.4.0: layered timeout configuration (optional)
   spec?: SpecExecutionConfig;  // Phase 3 (v5.12.0): Spec-Kit execution config
+  iterateMode?: IterateConfig;  // v6.4.0: Autonomous iterate mode configuration
 }
 
 // ========================================

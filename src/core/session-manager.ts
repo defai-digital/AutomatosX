@@ -833,7 +833,13 @@ export class SessionManager {
       }
 
       // Do immediate save
-      await this.doSave();
+      // FIXED (Bug #7): Set pendingSave to prevent concurrent saves during flush
+      // Without this, other code checking this.pendingSave won't know a save is in progress
+      this.pendingSave = this.doSave()
+        .finally(() => {
+          this.pendingSave = undefined;
+        });
+      await this.pendingSave;
       return;
     }
 

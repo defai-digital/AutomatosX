@@ -8,7 +8,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { logger } from '@/utils/logger.js';
 
 export interface FeatureFlag {
@@ -53,13 +53,28 @@ export interface FlagMetrics {
 export class FeatureFlagManager {
   private flags: Map<string, FeatureFlag> = new Map();
   private storagePath: string;
+  private flagsDir: string;
+  private workspacePath: string;
 
   constructor(workspacePath: string = process.cwd()) {
-    const flagsDir = join(workspacePath, '.automatosx');
-    mkdirSync(flagsDir, { recursive: true });
-
-    this.storagePath = join(flagsDir, 'feature-flags.json');
+    this.workspacePath = workspacePath;
+    this.flagsDir = join(workspacePath, '.automatosx');
+    this.storagePath = join(this.flagsDir, 'feature-flags.json');
     this.loadFlags();
+  }
+
+  /**
+   * Check if workspace has a storage directory
+   */
+  hasStorage(): boolean {
+    return existsSync(this.flagsDir);
+  }
+
+  /**
+   * Get workspace path for diagnostics
+   */
+  getWorkspacePath(): string {
+    return this.workspacePath;
   }
 
   /**
@@ -67,6 +82,13 @@ export class FeatureFlagManager {
    */
   private loadFlags(): void {
     try {
+      if (!this.hasStorage()) {
+        logger.debug('Feature flag storage not initialized', {
+          workspacePath: this.workspacePath
+        });
+        return;
+      }
+
       if (existsSync(this.storagePath)) {
         const data = readFileSync(this.storagePath, 'utf-8');
         const flags: FeatureFlag[] = JSON.parse(data);
@@ -92,6 +114,7 @@ export class FeatureFlagManager {
    */
   private saveFlags(): void {
     try {
+      this.ensureStorageDir();
       const flagsArray = Array.from(this.flags.values());
       const data = JSON.stringify(flagsArray, null, 2);
       writeFileSync(this.storagePath, data, 'utf-8');
@@ -99,6 +122,15 @@ export class FeatureFlagManager {
       logger.error('Failed to save feature flags', {
         error: (error as Error).message
       });
+    }
+  }
+
+  /**
+   * Ensure storage directory exists before writing
+   */
+  private ensureStorageDir(): void {
+    if (!existsSync(this.flagsDir)) {
+      mkdirSync(this.flagsDir, { recursive: true });
     }
   }
 

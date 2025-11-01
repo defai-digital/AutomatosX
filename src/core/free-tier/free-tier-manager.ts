@@ -321,10 +321,21 @@ export class FreeTierManager {
 
   /**
    * Track free tier usage
+   *
+   * FIXED (Bug #10): Added input validation to prevent data corruption
    */
   trackUsage(provider: string, requests: number, tokens: number): void {
     if (!this.hasFreeTier(provider)) {
       return; // No free tier to track
+    }
+
+    // FIXED (Bug #10): Validate requests and tokens are non-negative finite numbers
+    // Prevents corruption from negative values, NaN, or Infinity
+    if (!Number.isFinite(requests) || requests < 0) {
+      throw new Error(`Invalid requests value: ${requests}. Must be a non-negative finite number.`);
+    }
+    if (!Number.isFinite(tokens) || tokens < 0) {
+      throw new Error(`Invalid tokens value: ${tokens}. Must be a non-negative finite number.`);
     }
 
     const today = this.getDateString(new Date());
@@ -408,8 +419,19 @@ export class FreeTierManager {
 
   /**
    * Close database connection
+   *
+   * Includes WAL checkpoint for Windows compatibility (reduces file lock contention)
    */
   close(): void {
+    try {
+      // Checkpoint WAL to reduce lock contention on Windows
+      // TRUNCATE mode: checkpoint and delete WAL file
+      this.db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (err) {
+      // Non-fatal: log and continue with close
+      logger.debug('WAL checkpoint failed (non-fatal)', { error: (err as Error).message });
+    }
+
     this.db.close();
   }
 }

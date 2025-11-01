@@ -31,6 +31,13 @@ export function getFlagManager(workspacePath?: string): FeatureFlagManager {
  * Initialize all feature flags
  */
 function initializeFlags(manager: FeatureFlagManager): void {
+  if (!manager.hasStorage()) {
+    logger.debug('Skipping feature flag initialization; workspace not initialized', {
+      workspacePath: manager.getWorkspacePath()
+    });
+    return;
+  }
+
   // Gemini streaming flag - only define if not already defined
   const existingFlag = manager.getFlag('gemini_streaming');
   if (!existingFlag) {

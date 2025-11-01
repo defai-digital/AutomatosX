@@ -44,6 +44,17 @@ export class SpecValidator {
    * Validate spec
    */
   async validate(spec: ParsedSpec): Promise<SpecValidationResult> {
+    // FIXED (Bug #46): Validate spec parameter before accessing properties
+    if (!spec || typeof spec !== 'object') {
+      throw new Error('Invalid spec: must be a ParsedSpec object');
+    }
+    if (!spec.metadata || typeof spec.metadata !== 'object') {
+      throw new Error('Invalid spec: must have metadata object');
+    }
+    if (!spec.metadata.id || typeof spec.metadata.id !== 'string') {
+      throw new Error('Invalid spec: metadata.id must be a string');
+    }
+
     logger.info('Validating spec', { specId: spec.metadata.id });
 
     const errors: ValidationIssue[] = [];
@@ -102,8 +113,27 @@ export class SpecValidator {
     errors: ValidationIssue[],
     warnings: ValidationIssue[]
   ): void {
-    // Check if content is non-empty
-    if (!spec.content.spec || spec.content.spec.trim().length === 0) {
+    // FIXED (Bug #47): Validate spec.content exists and is an object
+    if (!spec.content || typeof spec.content !== 'object') {
+      errors.push({
+        severity: 'error',
+        code: 'INVALID_CONTENT',
+        message: 'spec.content must be an object',
+        suggestion: 'Ensure spec has a content object with spec/plan/tasks fields'
+      });
+      return; // Cannot continue without valid content object
+    }
+
+    // FIXED (Bug #48): Validate spec.content.spec is a string before calling trim()
+    if (typeof spec.content.spec !== 'string') {
+      errors.push({
+        severity: 'error',
+        code: 'INVALID_SPEC_CONTENT_TYPE',
+        message: `spec.content.spec must be a string, got ${typeof spec.content.spec}`,
+        file: 'spec.md',
+        suggestion: 'Ensure spec.md content is loaded as a string'
+      });
+    } else if (!spec.content.spec || spec.content.spec.trim().length === 0) {
       errors.push({
         severity: 'error',
         code: 'EMPTY_SPEC',
@@ -113,7 +143,16 @@ export class SpecValidator {
       });
     }
 
-    if (!spec.content.plan || spec.content.plan.trim().length === 0) {
+    // FIXED (Bug #48): Validate spec.content.plan is a string before calling trim()
+    if (typeof spec.content.plan !== 'string') {
+      errors.push({
+        severity: 'error',
+        code: 'INVALID_PLAN_CONTENT_TYPE',
+        message: `spec.content.plan must be a string, got ${typeof spec.content.plan}`,
+        file: 'plan.md',
+        suggestion: 'Ensure plan.md content is loaded as a string'
+      });
+    } else if (!spec.content.plan || spec.content.plan.trim().length === 0) {
       errors.push({
         severity: 'error',
         code: 'EMPTY_PLAN',
@@ -123,7 +162,16 @@ export class SpecValidator {
       });
     }
 
-    if (!spec.content.tasks || spec.content.tasks.trim().length === 0) {
+    // FIXED (Bug #48): Validate spec.content.tasks is a string before calling trim()
+    if (typeof spec.content.tasks !== 'string') {
+      errors.push({
+        severity: 'error',
+        code: 'INVALID_TASKS_CONTENT_TYPE',
+        message: `spec.content.tasks must be a string, got ${typeof spec.content.tasks}`,
+        file: 'tasks.md',
+        suggestion: 'Ensure tasks.md content is loaded as a string'
+      });
+    } else if (!spec.content.tasks || spec.content.tasks.trim().length === 0) {
       errors.push({
         severity: 'error',
         code: 'EMPTY_TASKS',
@@ -133,9 +181,9 @@ export class SpecValidator {
       });
     }
 
-    // Check minimum content length
+    // Check minimum content length (only if spec.content.spec is a valid string)
     const MIN_SPEC_LENGTH = 100; // characters
-    if (spec.content.spec.length < MIN_SPEC_LENGTH) {
+    if (typeof spec.content.spec === 'string' && spec.content.spec.length < MIN_SPEC_LENGTH) {
       warnings.push({
         severity: 'warning',
         code: 'SHORT_SPEC',
@@ -201,6 +249,18 @@ export class SpecValidator {
     errors: ValidationIssue[],
     warnings: ValidationIssue[]
   ): void {
+    // FIXED (Bug #49): Validate spec.tasks exists and is an array
+    if (!spec.tasks || !Array.isArray(spec.tasks)) {
+      errors.push({
+        severity: 'error',
+        code: 'INVALID_TASKS',
+        message: `spec.tasks must be an array, got ${typeof spec.tasks}`,
+        file: 'tasks.md',
+        suggestion: 'Ensure tasks are parsed as an array'
+      });
+      return; // Cannot continue without valid tasks array
+    }
+
     if (spec.tasks.length === 0) {
       errors.push({
         severity: 'error',
@@ -214,7 +274,32 @@ export class SpecValidator {
 
     // Check for duplicate task IDs
     const seenIds = new Set<string>();
-    spec.tasks.forEach(task => {
+    spec.tasks.forEach((task, index) => {
+      // FIXED (Bug #50): Validate task is an object before accessing properties
+      if (!task || typeof task !== 'object') {
+        errors.push({
+          severity: 'error',
+          code: 'INVALID_TASK_OBJECT',
+          message: `Task at index ${index} is not an object, got ${typeof task}`,
+          file: 'tasks.md',
+          suggestion: 'Ensure all tasks are valid objects'
+        });
+        return; // Skip this task
+      }
+
+      // FIXED (Bug #51): Validate task.id exists and is a string
+      if (!task.id || typeof task.id !== 'string') {
+        errors.push({
+          severity: 'error',
+          code: 'INVALID_TASK_ID',
+          message: `Task at index ${index} must have id field (string), got ${typeof task.id}`,
+          file: 'tasks.md',
+          line: task.line,
+          suggestion: 'Ensure all tasks have a string id field'
+        });
+        return; // Skip this task
+      }
+
       if (seenIds.has(task.id)) {
         errors.push({
           severity: 'error',
@@ -229,7 +314,14 @@ export class SpecValidator {
     });
 
     // Validate task format
-    spec.tasks.forEach(task => {
+    spec.tasks.forEach((task, index) => {
+      // Skip if task is not an object (already reported in previous loop)
+      if (!task || typeof task !== 'object') return;
+
+      // Skip if task.id is not a string (already reported in previous loop)
+      if (!task.id || typeof task.id !== 'string') return;
+
+      // FIXED (Bug #51): Validate task.id is a string before regex test
       // Check ID format (should be namespace:action)
       if (!/:/.test(task.id)) {
         warnings.push({
@@ -242,8 +334,17 @@ export class SpecValidator {
         });
       }
 
-      // Check if ops is non-empty
-      if (!task.ops || task.ops.trim().length === 0) {
+      // FIXED (Bug #52): Validate task.ops is a string before calling trim()
+      if (typeof task.ops !== 'string') {
+        errors.push({
+          severity: 'error',
+          code: 'INVALID_OPS_TYPE',
+          message: `Task ${task.id} ops must be a string, got ${typeof task.ops}`,
+          file: 'tasks.md',
+          line: task.line,
+          suggestion: 'Ensure task ops is a string command'
+        });
+      } else if (!task.ops || task.ops.trim().length === 0) {
         errors.push({
           severity: 'error',
           code: 'EMPTY_OPS',
@@ -270,8 +371,30 @@ export class SpecValidator {
 
       // Check for isolated tasks (no deps and no dependents)
       spec.tasks.forEach(task => {
+        // Skip if task is not an object (already reported)
+        if (!task || typeof task !== 'object') return;
+        if (!task.id || typeof task.id !== 'string') return;
+
+        // FIXED (Bug #53): Validate task.deps is an array before accessing length
+        if (!task.deps || !Array.isArray(task.deps)) {
+          errors.push({
+            severity: 'error',
+            code: 'INVALID_TASK_DEPS',
+            message: `Task ${task.id} deps must be an array, got ${typeof task.deps}`,
+            file: 'tasks.md',
+            line: task.line,
+            suggestion: 'Ensure task.deps is an array of task IDs'
+          });
+          return; // Skip this task
+        }
+
         const hasDeps = task.deps.length > 0;
-        const hasDependents = spec.tasks.some(t => t.deps.includes(task.id));
+        // Also validate deps in dependents check
+        const hasDependents = spec.tasks.some(t => {
+          if (!t || typeof t !== 'object') return false;
+          if (!t.deps || !Array.isArray(t.deps)) return false;
+          return t.deps.includes(task.id);
+        });
 
         if (!hasDeps && !hasDependents && spec.tasks.length > 1) {
           warnings.push({
@@ -286,7 +409,11 @@ export class SpecValidator {
       });
 
       // Warn if graph is very deep
-      if (graph.metadata.maxDepth > 10) {
+      // FIXED (Bug #54): Validate graph.metadata exists and maxDepth is a number
+      if (graph.metadata &&
+          typeof graph.metadata === 'object' &&
+          typeof graph.metadata.maxDepth === 'number' &&
+          graph.metadata.maxDepth > 10) {
         warnings.push({
           severity: 'warning',
           code: 'DEEP_DEPENDENCY_TREE',
@@ -361,10 +488,36 @@ export class SpecValidator {
     warnings: ValidationIssue[],
     info: ValidationIssue[]
   ): void {
-    this.options.customRules?.forEach(rule => {
+    this.options.customRules?.forEach((rule, index) => {
       try {
+        // FIXED (Bug #55): Validate rule object has validate function
+        if (!rule || typeof rule !== 'object') {
+          logger.warn('Custom rule is not an object', { index, rule: typeof rule });
+          return;
+        }
+        if (!rule.validate || typeof rule.validate !== 'function') {
+          logger.warn('Custom rule missing validate function', { index, ruleName: rule.name });
+          return;
+        }
+
         const issues = rule.validate(spec);
+
+        // FIXED (Bug #55): Validate issues is an array before iterating
+        if (!issues || !Array.isArray(issues)) {
+          logger.warn('Custom rule did not return an array', {
+            rule: rule.name,
+            returned: typeof issues
+          });
+          return;
+        }
+
         issues.forEach(issue => {
+          // Validate issue has severity property
+          if (!issue || typeof issue !== 'object' || !issue.severity) {
+            logger.warn('Invalid issue from custom rule', { rule: rule.name, issue });
+            return;
+          }
+
           if (issue.severity === 'error') {
             errors.push(issue);
           } else if (issue.severity === 'warning') {
@@ -375,7 +528,7 @@ export class SpecValidator {
         });
       } catch (error) {
         logger.warn('Custom rule failed', {
-          rule: rule.name,
+          rule: rule?.name,
           error: (error as Error).message
         });
       }

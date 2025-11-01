@@ -79,6 +79,8 @@ export class PolicyParser {
 
   /**
    * Parse optimization weights
+   *
+   * FIXED (Bug #12): Added validation to prevent corrupted weights from invalid input
    */
   private parseOptimization(
     policy: PolicySpec | undefined,
@@ -88,19 +90,38 @@ export class PolicyParser {
     if (policy?.optimization?.weights) {
       const weights = policy.optimization.weights;
 
-      // Normalize weights to sum to 1.0
-      const sum = (weights.cost || 0) + (weights.latency || 0) + (weights.reliability || 0);
+      // FIXED (Bug #12): Validate each weight is a non-negative finite number
+      const cost = weights.cost ?? 0;
+      const latency = weights.latency ?? 0;
+      const reliability = weights.reliability ?? 0;
 
-      if (sum === 0) {
-        // All zeros, use defaults
+      if (!Number.isFinite(cost) || cost < 0) {
+        logger.warn('Invalid cost weight, using defaults', { cost });
+        return { weights: this.getDefaultWeights(goal) };
+      }
+      if (!Number.isFinite(latency) || latency < 0) {
+        logger.warn('Invalid latency weight, using defaults', { latency });
+        return { weights: this.getDefaultWeights(goal) };
+      }
+      if (!Number.isFinite(reliability) || reliability < 0) {
+        logger.warn('Invalid reliability weight, using defaults', { reliability });
+        return { weights: this.getDefaultWeights(goal) };
+      }
+
+      // Normalize weights to sum to 1.0
+      const sum = cost + latency + reliability;
+
+      // FIXED (Bug #12): Validate sum is a positive finite number before division
+      if (!Number.isFinite(sum) || sum <= 0) {
+        logger.warn('Invalid weight sum, using defaults', { sum, weights: { cost, latency, reliability } });
         return { weights: this.getDefaultWeights(goal) };
       }
 
       return {
         weights: {
-          cost: (weights.cost || 0) / sum,
-          latency: (weights.latency || 0) / sum,
-          reliability: (weights.reliability || 0) / sum
+          cost: cost / sum,
+          latency: latency / sum,
+          reliability: reliability / sum
         }
       };
     }

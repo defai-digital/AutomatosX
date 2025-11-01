@@ -6,6 +6,7 @@
  */
 
 import type { ExecutionResponse } from './provider.js';
+import type { IterateState } from './iterate.js';
 
 /**
  * Delegation Request - Structured request for agent delegation
@@ -169,6 +170,16 @@ export interface Session {
    * tasks?: Array<{id, title, agent, startedAt, status, ...}>
    */
   metadata?: Record<string, any>;
+
+  /**
+   * Iterate mode state (v6.4.0+)
+   *
+   * Present when session is running in autonomous iterate mode.
+   * Tracks iterations, auto-responses, cost, and classification history.
+   *
+   * @since v6.4.0
+   */
+  iterateState?: IterateState;
 }
 
 /**

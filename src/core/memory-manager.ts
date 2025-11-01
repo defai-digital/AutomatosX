@@ -683,8 +683,28 @@ export class MemoryManager implements IMemoryManager {
       }
 
       // Build LIMIT clause
-      const limitClause = options?.limit ? `LIMIT ${options.limit}` : '';
-      const offsetClause = options?.offset ? `OFFSET ${options.offset}` : '';
+      // FIXED (Bug #9): Validate limit is a safe positive integer before interpolating
+      // Prevents SQL injection: search('test', { limit: "10; DROP TABLE--" })
+      let limitClause = '';
+      if (options?.limit !== undefined) {
+        const limitValue = Number(options.limit);
+        if (!Number.isInteger(limitValue) || limitValue < 0 || limitValue > 10000) {
+          throw new Error(`Invalid limit value: ${options.limit}. Must be a positive integer <= 10000.`);
+        }
+        limitClause = `LIMIT ${limitValue}`;
+      }
+
+      // Build OFFSET clause
+      // FIXED (Bug #9): Validate offset is a safe non-negative integer before interpolating
+      // Prevents SQL injection: search('test', { offset: "0; DELETE FROM--" })
+      let offsetClause = '';
+      if (options?.offset !== undefined) {
+        const offsetValue = Number(options.offset);
+        if (!Number.isInteger(offsetValue) || offsetValue < 0) {
+          throw new Error(`Invalid offset value: ${options.offset}. Must be a non-negative integer.`);
+        }
+        offsetClause = `OFFSET ${offsetValue}`;
+      }
 
       // v4.11.0: No JOIN with memory_vectors (FTS5 only)
       const sql = `
@@ -1144,11 +1164,11 @@ export class MemoryManager implements IMemoryManager {
       this.statements = {};
 
       // Copy backup to current location using better-sqlite3's backup method
+      // FIXED (Bug #6): Removed unused destDb - backup() handles destination file creation
+      // Opening destDb was redundant and could cause file locks on some platforms
       const srcDb = new Database(srcPath, { readonly: true });
-      const destDb = new Database(this.config.dbPath);
       await srcDb.backup(this.config.dbPath);
       srcDb.close();
-      destDb.close();
 
       // Reopen database
       this.db = new Database(this.config.dbPath);

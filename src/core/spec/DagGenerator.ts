@@ -34,6 +34,25 @@ export class DagGenerator {
       throw new Error('Spec must have at least one actor');
     }
 
+    // FIXED (Bug #18): Validate spec.metadata exists and has required fields
+    if (!spec.metadata || typeof spec.metadata !== 'object') {
+      throw new Error('Spec must have metadata object');
+    }
+    if (!spec.metadata.id || typeof spec.metadata.id !== 'string') {
+      throw new Error('Spec metadata must have id field (string)');
+    }
+    if (!spec.metadata.name || typeof spec.metadata.name !== 'string') {
+      throw new Error('Spec metadata must have name field (string)');
+    }
+
+    // FIXED (Bug #19): Validate specContent is a non-empty string
+    if (typeof specContent !== 'string') {
+      throw new Error(`specContent must be a string, got ${typeof specContent}`);
+    }
+    if (specContent.trim().length === 0) {
+      throw new Error('specContent cannot be empty or whitespace-only');
+    }
+
     const hash = this.calculateHash(specContent);
     const nodes = this.buildNodes(spec);
     const edges = this.buildEdges(nodes);
@@ -90,7 +109,15 @@ export class DagGenerator {
    * Build DAG nodes from spec actors
    */
   private buildNodes(spec: SpecYAML): DagNode[] {
-    return spec.actors.map(actor => {
+    return spec.actors.map((actor, index) => {
+      // FIXED (Bug #20): Validate actor properties before accessing
+      if (!actor.id || typeof actor.id !== 'string') {
+        throw new Error(`Actor at index ${index} must have id field (string)`);
+      }
+      if (!actor.agent || typeof actor.agent !== 'string') {
+        throw new Error(`Actor "${actor.id}" must have agent field (string)`);
+      }
+
       const node: DagNode = {
         id: actor.id,
         actor: actor.agent,
@@ -99,14 +126,21 @@ export class DagGenerator {
         metadata: {}
       };
 
-      // Add timeout if specified
-      if (actor.timeout) {
+      // FIXED (Bug #21): Validate timeout is a positive number
+      if (actor.timeout !== undefined) {
+        if (typeof actor.timeout !== 'number' || !Number.isFinite(actor.timeout) || actor.timeout <= 0) {
+          throw new Error(`Actor "${actor.id}" timeout must be a positive finite number, got ${typeof actor.timeout === 'number' ? actor.timeout : typeof actor.timeout}`);
+        }
         node.metadata.timeout = actor.timeout;
       }
 
-      // Add retry config from recovery if present
-      if (spec.recovery?.retry) {
-        node.metadata.retries = spec.recovery.retry.maxAttempts;
+      // FIXED (Bug #22): Validate maxAttempts is a positive integer
+      if (spec.recovery?.retry?.maxAttempts !== undefined) {
+        const maxAttempts = spec.recovery.retry.maxAttempts;
+        if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
+          throw new Error(`spec.recovery.retry.maxAttempts must be a positive integer, got ${typeof maxAttempts === 'number' ? maxAttempts : typeof maxAttempts}`);
+        }
+        node.metadata.retries = maxAttempts;
       }
 
       // Add resources if specified

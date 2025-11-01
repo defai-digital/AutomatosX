@@ -1,0 +1,64 @@
+# Sample Template Library for Iterate Mode Testing
+# This is a fixture for unit tests - not used in production
+#
+# Week 1 Scaffolding - Sample data only
+
+version: "1.0.0"
+description: "Test template library for iterate mode auto-responder"
+
+templates:
+  confirmation_prompt:
+    # Generic affirmative responses
+    - template: "Yes, please proceed."
+      priority: 10
+      provider: null
+
+    - template: "Yes, continue with that approach."
+      priority: 9
+      provider: null
+
+    - template: "Sounds good, go ahead."
+      priority: 8
+      provider: null
+
+    # Context-aware templates with variables
+    - template: "Yes, implement {{component_name}} as described."
+      priority: 7
+      provider: null
+
+    - template: "Proceed with {{action}}."
+      priority: 6
+      provider: null
+
+    # Provider-specific
+    - template: "Yes, that's the right approach. Please continue."
+      priority: 10
+      provider: "claude-code"
+
+    - template: "Affirmative. Proceed."
+      priority: 10
+      provider: "gemini-cli"
+
+    - template: "Yes, continue."
+      priority: 10
+      provider: "openai"
+
+  completion_signal:
+    - template: "Excellent work! Thank you."
+      priority: 10
+      provider: null
+
+    - template: "Great, all done."
+      priority: 9
+      provider: null
+
+    - template: "Thank you for completing all tasks."
+      priority: 8
+      provider: null
+
+  # No templates for these types - should return null
+  status_update: []
+  genuine_question: []
+  blocking_request: []
+  error_signal: []
+  rate_limit_or_context: []

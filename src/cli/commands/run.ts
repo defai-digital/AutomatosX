@@ -57,6 +57,12 @@ interface RunOptions {
   // v6.0.7 Phase 3: OpenAI enhancements
   sandbox?: string;
   showCost?: boolean;
+  // v6.4.0: Iterate mode (autonomous execution)
+  iterate?: boolean;
+  iterateTimeout?: number;
+  iterateMaxCost?: number;
+  iterateStrictness?: 'paranoid' | 'balanced' | 'permissive';
+  iterateDryRun?: boolean;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -169,6 +175,29 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: 'Display model, tokens, and cost after execution (v6.0.7 Phase 3)',
         type: 'boolean',
         default: true
+      })
+      .option('iterate', {
+        describe: 'Enable autonomous iterate mode (auto-respond to confirmations) (v6.4.0)',
+        type: 'boolean',
+        default: false
+      })
+      .option('iterate-timeout', {
+        describe: 'Max duration for iterate mode in minutes (default: 120)',
+        type: 'number'
+      })
+      .option('iterate-max-cost', {
+        describe: 'Max estimated cost in USD for iterate mode (default: 5.00)',
+        type: 'number'
+      })
+      .option('iterate-strictness', {
+        describe: 'Classification strictness: paranoid, balanced, or permissive (default: balanced)',
+        type: 'string',
+        choices: ['paranoid', 'balanced', 'permissive']
+      })
+      .option('iterate-dry-run', {
+        describe: 'Dry run: show what would be auto-responded without actually sending',
+        type: 'boolean',
+        default: false
       })
   },
 

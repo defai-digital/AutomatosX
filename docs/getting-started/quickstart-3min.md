@@ -10,7 +10,7 @@ Before you begin, ensure you have:
 
 - **Node.js >= 20.0.0** ([Download](https://nodejs.org/))
 - **One AI provider CLI** installed:
-  - **Gemini CLI** (recommended, free): `npm install -g @google/generative-ai-cli`
+  - **Gemini CLI** (recommended, free): `npm install -g @google/gemini-cli`
   - **Claude Code**: Already configured if you're using it now
   - **OpenAI Codex**: `npm install -g openai-cli`
 
@@ -30,7 +30,80 @@ Done! AutomatosX is now ready to use.
 
 ---
 
+## 🗣️ Using AutomatosX with Natural Language (Recommended)
+
+**The best way to use AutomatosX is through natural language in your AI assistant!**
+
+AutomatosX is designed to work seamlessly with AI assistants. Instead of typing CLI commands, simply ask your AI assistant naturally, and they'll coordinate with AutomatosX agents for you.
+
+### In Claude Code (claude.ai/code)
+
+Simply talk to Claude naturally:
+
+```
+"Please work with the ax backend agent to implement user authentication"
+
+"Ask the ax security agent to audit this authentication code"
+
+"Have the ax quality agent write comprehensive tests for the login feature"
+
+"Use the ax architect agent to design a microservices architecture"
+```
+
+**What happens**: Claude Code automatically:
+- Translates your request into `ax` commands
+- Runs the appropriate agents
+- Monitors progress
+- Reports results back to you
+
+### In Gemini CLI
+
+Talk to Gemini naturally:
+
+```
+"Please use AutomatosX backend agent to implement the API endpoints"
+
+"Ask AutomatosX security agent to perform a vulnerability scan"
+
+"Have AutomatosX quality agent generate unit tests for this feature"
+```
+
+**What happens**: Gemini CLI:
+- Understands your intent
+- Executes `ax run` commands
+- Shows you the results
+- Handles any errors
+
+### In OpenAI Codex
+
+Talk to Codex naturally:
+
+```
+"Use the ax frontend agent to build the user interface"
+
+"Ask ax devops agent to set up CI/CD pipeline"
+
+"Have ax data agent design the database schema"
+```
+
+**What happens**: Codex:
+- Interprets your request
+- Runs the appropriate agents
+- Returns the results
+
+### Why Natural Language is Better
+
+✅ **Faster**: No need to remember command syntax
+✅ **Easier**: Just describe what you want
+✅ **Smarter**: Your AI assistant handles the details
+✅ **Context-aware**: AI remembers your conversation
+✅ **Error-handling**: AI can retry or clarify if needed
+
+---
+
 ## Your First Commands (1 minute)
+
+**Note**: If you prefer direct CLI usage, here are the commands:
 
 ### Ask an Agent to Help You
 

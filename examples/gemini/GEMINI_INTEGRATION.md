@@ -368,7 +368,7 @@ Or in Gemini CLI:
 **"Gemini CLI not found"**
 ```bash
 # Install Gemini CLI
-npm install -g @google/generative-ai-cli
+npm install -g @google/gemini-cli
 
 # Verify installation
 gemini --version

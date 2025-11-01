@@ -276,6 +276,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               const claudeConfig = tempConfig.providers['claude-code'];
               if (!claudeConfig) {
                 console.error(chalk.red('✗ Claude provider not configured'));
+                rl.close(); // FIXED (Bug #91): Ensure readline closed before exit
                 process.exit(1);
               }
               // Convert config.ProviderConfig to provider.ProviderConfig by adding name
@@ -298,6 +299,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                 chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
               );
 
+              // FIXED (Bug #91): Close readline before any process.exit() call
               rl.close();
 
               if (executeAnswer.toLowerCase() !== 'n' && executeAnswer.toLowerCase() !== 'no') {
@@ -325,6 +327,14 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           } catch (error) {
             rl.close();
             console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
+          } finally {
+            // FIXED (Bug #91): Ensure readline is always closed, even on unexpected errors
+            // This handles edge cases where the interface might still be open
+            try {
+              rl.close();
+            } catch {
+              // Interface already closed, ignore
+            }
           }
         }
       }

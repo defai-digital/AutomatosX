@@ -141,6 +141,17 @@ export class Router {
     // Phase 3: Store interval value for observability
     this.healthCheckIntervalMs = config.healthCheckInterval;
 
+    // FIXED (Bug #92): Register shutdown handler BEFORE starting health checks
+    // This ensures destroy() is called even if errors occur during setup
+    // Bug #43: Register shutdown handler to cleanup health check interval
+    import('../utils/process-manager.js').then(({ processManager }) => {
+      processManager.onShutdown(async () => {
+        this.destroy();
+      });
+    }).catch(() => {
+      logger.debug('Router: process-manager not available for shutdown handler');
+    });
+
     // Start health checks if interval is provided
     if (config.healthCheckInterval) {
       this.startHealthChecks(config.healthCheckInterval);
@@ -154,15 +165,6 @@ export class Router {
         });
       }
     }
-
-    // Bug #43: Register shutdown handler to cleanup health check interval
-    import('../utils/process-manager.js').then(({ processManager }) => {
-      processManager.onShutdown(async () => {
-        this.destroy();
-      });
-    }).catch(() => {
-      logger.debug('Router: process-manager not available for shutdown handler');
-    });
   }
 
   /**

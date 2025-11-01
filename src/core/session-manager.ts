@@ -69,6 +69,9 @@ export class SessionManager {
   /** Pending save promise (for flushing) */
   private pendingSave?: Promise<void>;
 
+  /** Flag indicating another save was requested during pending save */
+  private saveNeeded = false;
+
   /** Maximum metadata size (10 KB) */
   private readonly MAX_METADATA_SIZE = 10 * 1024;
 
@@ -1059,18 +1062,27 @@ export class SessionManager {
       // Bug #10: Check if there's already a save in progress before starting a new one
       // This prevents concurrent writes to the same file when saves happen in rapid succession
       if (this.pendingSave) {
-        // A save is already in progress, schedule another save after it completes
-        this.pendingSave.then(() => {
-          // Recursive call to saveToFile() to ensure data is eventually saved
-          this.saveToFile();
-        }).catch(() => {
-          // Even if previous save failed, try to save again
-          this.saveToFile();
-        });
+        // FIXED (Bug #93): Set flag instead of recursive call to prevent orphaned promises
+        // A save is already in progress, mark that another save is needed after completion
+        this.saveNeeded = true;
         return;
       }
 
-      this.pendingSave = this.doSave()
+      // FIXED (Bug #93): Clear saveNeeded flag at start of save operation
+      this.saveNeeded = false;
+
+      const executeNextSave = async (): Promise<void> => {
+        await this.doSave();
+
+        // FIXED (Bug #93): After save completes, check if another save was requested
+        if (this.saveNeeded) {
+          this.saveNeeded = false;
+          // Recursively save if changes occurred during previous save
+          return executeNextSave();
+        }
+      };
+
+      this.pendingSave = executeNextSave()
         .catch(err => {
           logger.error('Debounced save failed', {
             error: err.message

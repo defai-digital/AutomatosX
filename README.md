@@ -19,6 +19,12 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 
 ---
 
+## ⚡ New to AutomatosX? [Start Here: 3-Minute Quickstart](docs/getting-started/quickstart-3min.md)
+
+Get productive in under 3 minutes with our fast-track guide! Install, run your first agent, try multi-agent collaboration, and learn pro tips. **Perfect for first-time users.**
+
+---
+
 ## 🚀 The Complete AI Workflow Platform
 
 AutomatosX is **the only AI platform** that gives you:

@@ -5,6 +5,7 @@
 AutomatosX is the only AI CLI that combines declarative workflow specs, policy-driven cost optimization, and a persistent AI workforce. Write a YAML spec, and AutomatosX generates your entire project—plans, infrastructure, tests, and execution—while remembering everything and optimizing every API call.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
+[![npm](https://img.shields.io/npm/dt/%40defai.digital%2Fautomatosx.svg?label=total%20downloads&color=blue)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-2,595%20passing-brightgreen.svg)](#)

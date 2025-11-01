@@ -109,12 +109,14 @@ export class RouterTraceLogger {
    * @param selected - Selected provider
    * @param reason - Reason for selection (e.g., "lowest cost", "policy match")
    * @param scores - Optional provider scores
+   * @param specContext - Optional spec context (specId, taskId) for spec-driven workflows
    */
   logSelection(
     candidates: string[],
     selected: string,
     reason: string,
-    scores?: Record<string, number>
+    scores?: Record<string, number>,
+    specContext?: { specId?: string; taskId?: string }
   ): void {
     this.log({
       timestamp: new Date().toISOString(),
@@ -124,7 +126,8 @@ export class RouterTraceLogger {
         candidates,
         reason,
         scores: scores || {},
-        candidateCount: candidates.length
+        candidateCount: candidates.length,
+        specContext: specContext || null
       }
     });
 
@@ -132,7 +135,8 @@ export class RouterTraceLogger {
       selected,
       reason,
       candidates: candidates.length,
-      scores
+      scores,
+      specContext
     });
   }
 

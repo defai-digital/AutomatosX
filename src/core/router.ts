@@ -485,11 +485,18 @@ export class Router {
       try {
         logger.info(`Selecting provider: ${provider.name} (attempt ${attemptNumber}/${availableProviders.length})`);
 
-        // Phase 2.3: Log provider selection
+        // Phase 2.3: Log provider selection with spec context
         if (this.tracer) {
           const candidateNames = providersToTry.map(p => p.name);
           const reason = request.spec?.policy ? 'policy-based selection' : 'priority-based selection';
-          this.tracer.logSelection(candidateNames, provider.name, reason);
+
+          // Extract spec context if available (Quick Win #2: Router Trace Context)
+          const specContext = request.spec ? {
+            specId: request.spec.metadata?.id,
+            taskId: request.spec.taskId
+          } : undefined;
+
+          this.tracer.logSelection(candidateNames, provider.name, reason, undefined, specContext);
         }
 
         // Check cache first (if enabled and available)

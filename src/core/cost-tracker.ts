@@ -479,7 +479,17 @@ export class CostTracker extends EventEmitter {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const limit = query?.limit ? `LIMIT ${query.limit}` : '';
+
+    // FIXED (Bug #9): Validate limit is a safe positive integer before interpolating
+    // Prevents SQL injection: getTotalCost({ limit: "10; DROP TABLE--" })
+    let limit = '';
+    if (query?.limit !== undefined) {
+      const limitValue = Number(query.limit);
+      if (!Number.isInteger(limitValue) || limitValue < 0 || limitValue > 10000) {
+        throw new Error(`Invalid limit value: ${query.limit}. Must be a positive integer <= 10000.`);
+      }
+      limit = `LIMIT ${limitValue}`;
+    }
 
     const sql = `SELECT ${select} FROM cost_entries ${where} ${suffix} ${limit}`.trim();
 

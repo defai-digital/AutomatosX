@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.7] - 2025-11-01
+
+### 🐛 Bug Fixes
+
+#### Session 26 Security Fixes - 4 Critical Bugs (#87-#90)
+
+**Fixed Bugs:**
+
+- **Bug #87** (tools/release.js:156-161): Buffer overflow in concatBuffer function
+  - Added bounds checking before buffer concatenation
+  - Prevents heap overflow from malicious responses
+
+- **Bug #88** (tools/release.js:68-75): Race condition between build and type-check
+  - Sequentialized commands with && operator
+  - Prevents type-check on stale build outputs
+
+- **Bug #89** (tools/release.js:242-245): Missing validation for workflow_run
+  - Added null check for workflow_run.conclusion
+  - Prevents crashes from incomplete GitHub API responses
+
+- **Bug #90** (tools/release.js:119): Unescaped tag name in shell command
+  - Uses spawn() with array arguments instead of shell string
+  - Prevents command injection via malicious tag names
+
+**Impact:**
+- All critical security vulnerabilities in release automation fixed
+- Release process now safe from buffer overflows, race conditions, and command injection
+- All 2,425 unit tests passing ✅
+
 ## [6.5.6] - 2025-11-01
 
 ### ✨ Features

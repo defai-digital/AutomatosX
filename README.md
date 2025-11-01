@@ -154,16 +154,52 @@ Backend handles the API, data handles ETL and warehousing."
 
 **Long-Running Tasks with Iterate Mode**:
 
-```
-# In Gemini CLI
-"Please ultrathink to work with ax in iterate mode to find and fix bug"
+Iterate mode is perfect for autonomous, repeating tasks without constant questions:
 
+```
+# In Claude Code - Autonomous Bug-Finding (The Real Power!)
+"Please run 5 iterations with ultrathink to autonomously find and fix bugs"
+
+# This will autonomously:
+# - Iterate 1: Scan for parseInt/JSON.parse safety issues → Find & fix bugs
+# - Iterate 2: Check array access patterns → Find & fix bugs
+# - Iterate 3: Analyze async/await error handling → Find & fix bugs
+# - Iterate 4: Search for race conditions → Find & fix bugs
+# - Iterate 5: Verify resource cleanup → Find & fix bugs
+# NO questions asked - just autonomous work!
+```
+
+```
+# In Gemini CLI - Comprehensive Code Analysis
 "Use ax quality agent in iterate mode to analyze the entire codebase for
 performance issues. Set 120 minute timeout with balanced strictness."
 
+# This runs multiple analysis passes autonomously:
+# - Memory profiling across all modules
+# - Database query optimization
+# - API response time analysis
+# - Resource utilization patterns
+```
+
+```
+# In OpenAI Codex - Security Hardening
 "Have ax security agent run a comprehensive security audit in iterate mode
 with paranoid strictness. This is for production deployment."
+
+# Autonomous security iterations:
+# - SQL injection scanning
+# - XSS vulnerability detection
+# - Authentication bypass attempts
+# - Authorization flaw discovery
+# - Cryptography weakness analysis
 ```
+
+**Why Iterate Mode is Powerful**:
+- 🔄 **Autonomous Loops**: Repeats tasks without asking questions
+- 🎯 **Systematic**: Each iteration focuses on different aspects
+- 📊 **Comprehensive**: Covers more ground than manual analysis
+- ✅ **Auto-Fix**: Finds AND fixes issues autonomously
+- 🚀 **De Facto Best Practice**: Industry-standard autonomous workflows
 
 ### Why Natural Language?
 

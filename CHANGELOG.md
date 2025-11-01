@@ -39,11 +39,38 @@ All notable changes to this project will be documented in this file. See [standa
   - Fixed 3 instances of unsafe array access with explicit bounds checks
   - Replaced non-null assertions with proper null checks
 
+**Bug Fixes - Round 3 (Deep Analysis):**
+
+- **Bug #118** (CRITICAL): DB connection pool fileMustExist inverted logic (`src/core/db-connection-pool.ts`)
+  - Fixed inverted `fileMustExist` flag in `createConnection()`
+  - Write connections can now create new databases (fresh installs work)
+  - Read-only connections properly require existing database files
+  - Changed `fileMustExist: !readonly` to `fileMustExist: readonly`
+
+- **Bug #119** (HIGH): TelemetryCollector close() race condition (`src/core/telemetry/TelemetryCollector.ts`)
+  - Fixed race condition where `this.closed = true` was set before `await this.flush()`
+  - Buffered telemetry events now persist on shutdown instead of being dropped
+  - Moved `this.closed = true` to after successful flush
+
+- **Bug #120** (HIGH): MCP server initialization promise leak (`src/mcp/server.ts`)
+  - Fixed cached rejected promise in `initializationPromise`
+  - Server can now recover from initialization failures
+  - Added try/catch to clear `initializationPromise` on error
+
+- **Bug #121** (MEDIUM): Division by zero in adaptive cache (`src/core/adaptive-cache.ts`)
+  - Fixed division by `avgInterval` when it equals zero
+  - Occurs when cache entries accessed at exact same timestamp
+  - Added zero-check before score calculation to prevent NaN
+
 **Impact:**
 - Multi-provider resilience now works as documented
 - NaN validation prevents corrupted calculations
 - Resource cleanup prevents memory leaks
-- All critical/high severity bugs resolved
+- Database initialization works for fresh installs
+- Telemetry data persists correctly on shutdown
+- MCP server recovers from initialization failures
+- Cache prediction algorithm handles edge cases
+- All critical/high/medium severity bugs resolved
 - See `automatosx/PRD/bug-fixes-round2-2025-11-01.md` for complete details
 
 ### 📚 Documentation

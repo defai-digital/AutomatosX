@@ -391,9 +391,12 @@ export class DatabaseConnectionPool {
    * Create a database connection
    */
   private createConnection(readonly: boolean): Database.Database {
+    // FIXED (v6.5.11 Bug #118): Inverted fileMustExist logic
+    // Write connections (readonly=false) should be able to create new DB (fileMustExist=false)
+    // Read connections (readonly=true) should require existing DB (fileMustExist=true)
     const db = new Database(this.config.dbPath, {
       readonly,
-      fileMustExist: !readonly  // Write connections can create DB
+      fileMustExist: readonly  // Read-only requires existing file, write can create
     });
 
     // Load sqlite-vec extension

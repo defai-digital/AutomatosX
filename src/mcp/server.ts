@@ -702,15 +702,21 @@ export class McpServer {
       clientInfo: request.params.clientInfo
     });
 
-    // Fix: Prevent race condition in concurrent initialization
+    // FIXED (v6.5.11 Bug #120): Clear initializationPromise on failure to allow retry
     if (!this.initialized) {
       if (!this.initializationPromise) {
         // First initialize request - start initialization
         this.initializationPromise = (async () => {
-          await this.initializeServices();
-          this.registerTools();
-          this.initialized = true;
-          logger.info('[MCP Server] Initialization complete');
+          try {
+            await this.initializeServices();
+            this.registerTools();
+            this.initialized = true;
+            logger.info('[MCP Server] Initialization complete');
+          } catch (error) {
+            // Clear promise on failure so next request can retry
+            this.initializationPromise = null;
+            throw error;
+          }
         })();
       }
       // Wait for initialization to complete (either first or concurrent request)

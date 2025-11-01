@@ -257,6 +257,13 @@ export class AdaptiveCache<T = any> {
       }
 
       const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
+      // FIXED (v6.5.11 Bug #121): Prevent division by zero when avgInterval is 0
+      // This can happen when accesses occur at the exact same timestamp (rapid consecutive calls)
+      if (avgInterval === 0) {
+        continue; // Cannot predict score without meaningful interval data
+      }
+
       const lastAccess = timestamps[timestamps.length - 1];
       if (lastAccess === undefined) {
         continue;

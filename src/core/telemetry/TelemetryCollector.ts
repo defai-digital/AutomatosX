@@ -533,16 +533,18 @@ export class TelemetryCollector {
       return;  // Already closed
     }
 
-    this.closed = true;
-
-    // Stop auto-flush
+    // FIXED (v6.5.11 Bug #119): Set closed AFTER flush to ensure buffered events persist
+    // Stop auto-flush first (before flush to prevent concurrent flush)
     if (this.flushInterval) {
       clearInterval(this.flushInterval);
       this.flushInterval = undefined;
     }
 
-    // Flush any remaining events
+    // Flush any remaining events before marking as closed
     await this.flush();
+
+    // Now mark as closed (after successful flush)
+    this.closed = true;
 
     // Close database if it was initialized
     if (this.db) {

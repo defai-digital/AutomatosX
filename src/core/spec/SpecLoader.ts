@@ -29,6 +29,10 @@ import { logger } from '../../utils/logger.js';
  * @returns Extracted JSON string or null if invalid
  */
 function extractJSON(line: string, startPos: number): string | null {
+  // FIXED (Bug #61): Validate parameters before accessing
+  if (typeof line !== 'string') return null;
+  if (typeof startPos !== 'number' || !Number.isInteger(startPos) || startPos < 0) return null;
+  if (startPos >= line.length) return null;
   if (line[startPos] !== '{') return null;
 
   let braceCount = 0;
@@ -361,10 +365,16 @@ export class SpecLoader {
    * Supports both JSON format and old string format
    */
   private extractAssignee(ops: string): string | undefined {
+    // FIXED (Bug #56): Validate ops is string before using
+    if (typeof ops !== 'string') return undefined;
+
     // Try JSON format first
     if (ops.startsWith('{')) {
       try {
         const parsed = JSON.parse(ops);
+        // FIXED (Bug #56): Validate parsed object and agent field
+        if (!parsed || typeof parsed !== 'object') return undefined;
+        if (!parsed.agent || typeof parsed.agent !== 'string') return undefined;
         return parsed.agent;
       } catch {
         // Fall through to old format
@@ -382,14 +392,18 @@ export class SpecLoader {
    * Supports both JSON format and old string format
    */
   private extractTitle(ops: string): string {
+    // FIXED (Bug #57): Validate ops is string before using
+    if (typeof ops !== 'string') return '';
+
     // Try JSON format first
     if (ops.startsWith('{')) {
       try {
         const parsed = JSON.parse(ops);
-        // Extract first argument as title
-        if (parsed.args && Array.isArray(parsed.args) && parsed.args[0]) {
-          return parsed.args[0];
-        }
+        // FIXED (Bug #57): Validate parsed object structure before accessing
+        if (!parsed || typeof parsed !== 'object') return ops;
+        if (!parsed.args || !Array.isArray(parsed.args)) return ops;
+        if (parsed.args.length === 0 || typeof parsed.args[0] !== 'string') return ops;
+        return parsed.args[0];
       } catch {
         // Fall through to old format
       }
@@ -416,7 +430,15 @@ export class SpecLoader {
    */
   private calculateChecksum(...contents: string[]): string {
     const hash = createHash('sha256');
-    contents.forEach(content => hash.update(content));
+    // FIXED (Bug #58): Validate each content is string before hashing
+    contents.forEach(content => {
+      if (typeof content === 'string') {
+        hash.update(content);
+      } else {
+        // Fallback: convert to string to avoid crashes
+        hash.update(String(content));
+      }
+    });
     return hash.digest('hex').substring(0, 16);
   }
 
@@ -435,6 +457,9 @@ export class SpecLoader {
    * Extract version from spec.md
    */
   private extractVersion(content: string): string | null {
+    // FIXED (Bug #59): Validate content is string before regex operations
+    if (typeof content !== 'string') return null;
+
     // Look for version in various formats
     const patterns = [
       /version:\s*(\d+\.\d+\.\d+)/i,
@@ -457,6 +482,9 @@ export class SpecLoader {
    */
   private extractTags(content: string): string[] {
     const tags: string[] = [];
+
+    // FIXED (Bug #60): Validate content is string before string operations
+    if (typeof content !== 'string') return tags;
 
     // Look for tags in various formats
     const patterns = [

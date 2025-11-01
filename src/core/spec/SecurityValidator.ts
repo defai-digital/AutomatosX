@@ -153,6 +153,7 @@ export class SecurityValidator {
    * SEC004: Dangerous filesystem write paths
    * SEC005: Sensitive file read access
    * SEC006: Overly broad path wildcards
+   * SEC013: Symbolic link bypass warning (Bug #90)
    */
   private validateFilesystemAccess(
     actor: any,
@@ -165,6 +166,19 @@ export class SecurityValidator {
     }
 
     const fs = actor.permissions.filesystem;
+
+    // FIXED (Bug #90): Warn about symbolic link bypass limitation
+    // Path validation does not resolve symbolic links, which could allow bypass
+    // This is a known limitation due to validation happening before filesystem access
+    if ((fs.read && fs.read.length > 0) || (fs.write && fs.write.length > 0)) {
+      issues.push({
+        ruleId: 'SEC013',
+        severity: 'info',
+        message: `Actor "${actor.id}" filesystem access does not validate symbolic links - ensure runtime enforcement prevents symlink attacks`,
+        path: `${actorPath}.permissions.filesystem`,
+        suggestion: 'Implement runtime checks for symbolic links or disable symlink following in execution environment'
+      });
+    }
 
     // FIXED (Bug #66): Validate fs.write is array before using array methods
     if (fs.write && !Array.isArray(fs.write)) {
@@ -191,6 +205,7 @@ export class SecurityValidator {
     }
 
     // SEC004: Dangerous write paths
+    // FIXED (Bug #88): Added normalized Windows paths to ensure patterns match
     const dangerousWritePaths = [
       '/',
       '/*',
@@ -203,8 +218,14 @@ export class SecurityValidator {
       '/var/**',
       '/sys/**',
       '/proc/**',
-      'C:\\Windows\\**',
-      'C:\\Program Files\\**'
+      'C:\\Windows\\**',          // Windows-style (for display/raw input)
+      '/c:/windows/**',           // FIXED (Bug #88): Normalized Windows path
+      '**/windows/**',            // FIXED (Bug #88): Generic Windows system dir
+      'C:\\Program Files\\**',    // Windows-style
+      '/c:/program files/**',     // FIXED (Bug #88): Normalized Windows path
+      '**/program files/**',      // FIXED (Bug #88): Generic Program Files
+      '**/programdata/**',        // FIXED (Bug #88): Windows ProgramData
+      '**/system32/**'            // FIXED (Bug #88): Windows system32 anywhere
     ];
 
     if (fs.write) {
@@ -567,17 +588,21 @@ export class SecurityValidator {
     }
 
     // Shell metacharacters that indicate potential injection
+    // FIXED (Bug #87): Added missing dangerous patterns
     const dangerousPatterns = [
       /\$\(/,           // Command substitution $(...)
+      /\$\{/,           // FIXED (Bug #87): Variable expansion ${...}
       /`/,              // Backtick command substitution
       /;/,              // Command separator
       /\|/,             // Pipe
       /&/,              // Background execution
-      />/,              // Redirect
+      />/,              // Output redirect
+      /<(?!\()/,        // FIXED (Bug #87): Input redirect (but not process substitution <() )
       /<\(/,            // Process substitution
       /\|\|/,           // OR operator
       /&&/,             // AND operator
-      /\n/              // Newline injection
+      /\n/,             // Newline injection
+      /\r/              // FIXED (Bug #87): Carriage return injection
     ];
 
     // Helper to check command string for shell metacharacters
@@ -693,7 +718,7 @@ export class SecurityValidator {
 
   /**
    * Helper: Normalize path for security checks
-   * FIXED (Bug #62, #63, #67, #74, #76, #77, #78, #85): Canonicalizes paths to prevent bypass via:
+   * FIXED (Bug #62, #63, #67, #74, #76, #77, #78, #85, #89): Canonicalizes paths to prevent bypass via:
    * - Relative traversal (../)
    * - Windows case insensitivity
    * - Mixed path separators (\ vs /)
@@ -701,9 +726,16 @@ export class SecurityValidator {
    * - Stack underflow from excessive ../
    * - Null byte injection (all encoding variants)
    * - Case normalization order
+   * - Empty path normalization to root
    */
   private normalizePath(path: string): string {
     if (typeof path !== 'string') return '';
+
+    // FIXED (Bug #89): Reject empty or whitespace-only paths
+    // Empty string would normalize to '/' (root directory access)
+    if (path.length === 0 || path.trim().length === 0) {
+      return ''; // Invalid: empty path
+    }
 
     // FIXED (Bug #77, #85): Reject null bytes in all encoding forms
     if (path.includes('\0') ||

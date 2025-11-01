@@ -45,9 +45,10 @@ You can interact with AutomatosX agents directly in Claude Code using natural la
 
 This project includes the following specialized agents:
 
-- **backend** (Bob) - Backend development (Go/Rust/Python systems)
+- **backend** (Bob) - Backend development (Go/Rust systems)
 - **frontend** (Frank) - Frontend development (React/Next.js/Swift)
-- **fullstack** (Felix) - Full-stack development (Node.js/TypeScript + Python)
+- **architecture** (Avery) - System architecture and ADR management
+- **fullstack** (Felix) - Full-stack development (Node.js/TypeScript)
 - **mobile** (Maya) - Mobile development (iOS/Android, Swift/Kotlin/Flutter)
 - **devops** (Oliver) - DevOps and infrastructure
 - **security** (Steve) - Security auditing and threat modeling

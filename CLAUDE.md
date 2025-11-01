@@ -11,7 +11,7 @@ AutomatosX is an AI Agent Orchestration Platform that combines declarative workf
 - **Spec-Kit Integration**: YAML-driven workflow generation (plans, DAGs, scaffolds, tests)
 - **Policy-Driven Routing**: Automatic provider selection based on cost/latency/privacy constraints
 - **Persistent Memory**: SQLite + FTS5 for full-text search with no embedding dependencies
-- **Multi-Agent Orchestration**: 23 specialized agents with delegation parsing
+- **Multi-Agent Orchestration**: 20 specialized agents with delegation parsing
 - **Cost Optimization**: 60-80% cost reduction through intelligent routing and free-tier utilization
 
 **Current Branch**: docs-cleanup-phase3

@@ -358,12 +358,12 @@ ax agent create test --display-name "Test"
 
 ```bash
 # ✅ Good: Add specific abilities
-ax agent create ml-engineer --template developer \
-  --description "ML model development" \
+ax agent create ml-ops --template developer \
+  --description "MLOps and model deployment" \
   --abilities "ml-modeling,data-processing"
 
 # ❌ Bad: Use template as-is without customization
-ax agent create ml-engineer --template developer
+ax agent create ml-ops --template developer
 # Missing ML-specific context
 ```
 

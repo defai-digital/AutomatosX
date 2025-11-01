@@ -385,9 +385,10 @@ AutomatosX automatically selects the best AI provider based on your policy:
 
 | Agent ID | Name | Expertise | When to Use |
 |----------|------|-----------|-------------|
-| `backend` | Bob | Go, Rust, Python, databases, APIs | Backend systems, APIs, data processing |
+| `backend` | Bob | Go, Rust, databases, APIs | Backend systems, APIs, data processing |
 | `frontend` | Frank | React, Next.js, Vue, Swift UI | Web frontends, mobile UI, component libraries |
-| `fullstack` | Felix | Node.js, TypeScript, Python | Full-stack web apps, both FE + BE |
+| `architecture` | Avery | System architecture, ADRs, technical debt | Architecture governance, system design, ADR management |
+| `fullstack` | Felix | Node.js, TypeScript | Full-stack web apps, both FE + BE |
 | `mobile` | Maya | iOS, Android, Flutter, React Native | Mobile apps, cross-platform development |
 | `devops` | Oliver | Kubernetes, Docker, CI/CD, AWS | Infrastructure, deployment, automation |
 
@@ -399,7 +400,6 @@ AutomatosX automatically selects the best AI provider based on your policy:
 | `quality` | Queenie | Test planning, E2E testing, QA | Writing tests, quality assurance |
 | `data` | Daisy | ETL, Spark, data warehouses | Data pipelines, data engineering |
 | `data-scientist` | Dana | ML, statistics, Python, PyTorch | Machine learning, data analysis |
-| `ml-engineer` | Mira | Model deployment, MLOps, TensorFlow | ML productionization, model serving |
 
 ### Product & Strategy Agents
 
@@ -426,7 +426,7 @@ AutomatosX automatically selects the best AI provider based on your policy:
 | `quantum-engineer` | Quinn | Quantum computing, quantum algorithms | Quantum computing research |
 | `creative-marketer` | Candy | Content strategy, creative marketing | Marketing content, campaigns |
 
-**Total**: 19+ specialized agents
+**Total**: 20 specialized agents
 
 **See full list**:
 ```bash

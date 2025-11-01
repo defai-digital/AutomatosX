@@ -13,7 +13,7 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready v6.5.6** | Nov 2025 | 23 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready v6.5.6** | Nov 2025 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
 
 ---
 
@@ -26,7 +26,7 @@ AutomatosX is **the only AI platform** that gives you:
 | 📋 **Spec-Kit Integration** | Define workflows in YAML. Generate plans, DAGs, scaffolding, and tests automatically. | Ship projects 10x faster |
 | 💰 **Policy-Driven Routing** | Set cost/latency/privacy constraints. AutomatosX picks the optimal AI provider for every request. | Save 60-80% on AI costs |
 | 🧠 **Persistent Memory** | Every conversation is remembered. Agents get perfect context automatically. | Never repeat yourself again |
-| 🤝 **Multi-Agent Orchestration** | 23 specialized agents delegate tasks to each other. You manage the project, not the details. | Focus on strategy, not micromanagement |
+| 🤝 **Multi-Agent Orchestration** | 20 specialized agents delegate tasks to each other. You manage the project, not the details. | Focus on strategy, not micromanagement |
 | 🔍 **Complete Observability** | Trace every routing decision, cost, and latency. Debug with confidence. | Production-grade reliability |
 
 ---
@@ -43,7 +43,7 @@ cd your-project && ax init
 
 # ⚠️ IMPORTANT: You MUST run 'ax init' before using AutomatosX
 # This command:
-#   - Creates .automatosx/ directory with all 23 specialized agents
+#   - Creates .automatosx/ directory with all 20 specialized agents
 #   - Sets up configuration files (automatosx.config.json)
 #   - Initializes memory database and session management
 #   - Configures the CLI environment for optimal performance
@@ -756,7 +756,7 @@ ax run product "Build complete user authentication"
 #    - All in parallel, all with full context
 ```
 
-### 23 Specialized Agents
+### 20 Specialized Agents
 
 Each agent is an expert in their domain:
 
@@ -764,19 +764,19 @@ Each agent is an expert in their domain:
 |-------|------|-----------|
 | **Bob** | Backend Engineer | API design, databases, Go/Rust systems |
 | **Frank** | Frontend Engineer | React/Next.js, UI components, state management |
+| **Avery** | Software Architect | System architecture, ADR management, architecture runway |
 | **Steve** | Security Specialist | Threat modeling, vulnerability assessment, penetration testing |
 | **Queenie** | QA Engineer | Test planning, E2E testing, quality assurance |
 | **Oliver** | DevOps Engineer | CI/CD, Kubernetes, infrastructure automation |
 | **Paris** | Product Manager | Requirements, roadmaps, stakeholder alignment |
 | **Daisy** | Data Engineer | ETL pipelines, data warehouses, Spark |
 | **Dana** | Data Scientist | ML models, statistical analysis, Python |
-| **Mira** | ML Engineer | PyTorch, TensorFlow, model deployment |
 | **Tony** | CTO | Technical strategy, architecture, scaling |
 | **Eric** | CEO | Business strategy, vision, leadership |
 | **Wendy** | Technical Writer | Documentation, API docs, tutorials |
 | **Stan** | Standards Expert | Best practices, design patterns, code review |
 
-[See all 23 agents](docs/guides/agents.md) | [Create custom agents](docs/guides/agent-templates.md)
+[See all 20 agents](docs/guides/agents.md) | [Create custom agents](docs/guides/agent-templates.md)
 
 ---
 
@@ -978,7 +978,7 @@ ax run dag.json
 - [Parallel Execution](docs/advanced/parallel-execution.md) - Scale your workflows
 
 ### Reference
-- [Agent Directory](docs/guides/agents.md) - All 23 agents
+- [Agent Directory](docs/guides/agents.md) - All 20 agents
 - [CLI Reference](docs/reference/cli-commands.md) - All commands
 - [Provider Comparison](docs/providers/overview.md) - Provider features and costs
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
@@ -1040,7 +1040,7 @@ ax init -f
 
 **What `ax init` does:**
 - ✅ Creates `.automatosx/` directory structure
-- ✅ Installs all 23 specialized agents (backend, frontend, security, etc.)
+- ✅ Installs all 20 specialized agents (backend, frontend, security, etc.)
 - ✅ Generates `automatosx.config.json` with optimal defaults
 - ✅ Initializes SQLite memory database
 - ✅ Sets up session management

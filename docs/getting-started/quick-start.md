@@ -94,7 +94,7 @@ ax init
 ```
 your-project/
 ├── .automatosx/
-│   ├── agents/           # 24 specialized agents
+│   ├── agents/           # 20 specialized agents
 │   ├── abilities/        # 56 shared abilities
 │   ├── teams/            # 5 team configurations
 │   ├── templates/        # 9 agent templates

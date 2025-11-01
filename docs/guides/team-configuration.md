@@ -300,11 +300,11 @@ EOF
 ### Step 3: Assign Agents to Team
 
 ```yaml
-# .automatosx/agents/ml-engineer.yaml
-name: ml-engineer
+# .automatosx/agents/ml-ops.yaml
+name: ml-ops
 team: ml                    # Use custom team
-displayName: "Maya"
-role: ML Engineer
+displayName: "Morgan"
+role: MLOps Engineer
 
 abilities:
   - model-training          # Agent-specific
@@ -321,7 +321,7 @@ systemPrompt: |
 ax team show ml
 
 # Show agent with inherited config
-ax agent show ml-engineer
+ax agent show ml-ops
 ```
 
 ---

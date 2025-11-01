@@ -4,30 +4,27 @@ This document provides a comprehensive overview of the specialized AI agents ava
 
 ## 🤖 Quick Reference: All Agents
 
-There are a total of 23 agents in the AutomatosX ecosystem, organized into specialized teams.
+There are a total of 20 agents in the AutomatosX ecosystem, organized into specialized teams.
 
 | Name | Agent ID | Role | Team |
 |---|---|---|---|
 | **Tony** | `cto` | Chief Technology Officer | Business/Leadership |
 | **Eric** | `ceo` | Chief Executive Officer | Business/Leadership |
 | **Paris** | `product` | Product Manager | Business/Leadership |
-| **Cynthia** | `creative-marketer`| Creative Marketer | Marketing |
+| **Candy** | `creative-marketer`| Creative Marketing Strategist | Marketing |
 | **Oliver** | `devops` | DevOps Engineer | Engineering |
 | **Dana** | `data-scientist` | Data Scientist | Data / Engineering |
 | **Felix** | `fullstack` | Full-stack Developer | Engineering |
 | **Maya** | `mobile` | Mobile Developer | Engineering |
 | **Bob** | `backend` | Backend Engineer | Engineering |
 | **Frank** | `frontend` | Frontend Engineer | Engineering |
+| **Avery** | `architecture` | Senior Software Architect | Engineering |
 | **Quinn** | `quantum-engineer` | Quantum Systems Engineer | Engineering |
 | **Astrid** | `aerospace-scientist`| Aerospace Mission Scientist | Engineering |
-| **Mira** | `ml-engineer` | Deep Learning Specialist | Engineering |
-| **Emma** | `erp-specialist` | ERP Integration Specialist | Engineering |
-| **Ivy** | `iot-engineer` | IoT/Embedded/Robotics Engineer | Engineering |
 | **Steve** | `security` | Security Engineer | Engineering |
 | **Queenie** | `quality` | QA Engineer | Core/Quality |
 | **Stan** | `standard` | Software Standards Expert | Core/Quality |
 | **Daisy** | `data` | Data Engineer | Data |
-| **Fiona** | `figma-expert` | Design-to-Code Specialist | Design/Content |
 | **Debbee** | `design` | UX/UI Designer | Design/Content |
 | **Wendy** | `writer` | Technical Writer | Design/Content |
 | **Rodman** | `researcher` | Researcher | Research |
@@ -78,14 +75,11 @@ Agents are organized into teams, each with a specific provider configuration to 
 | **Dana** | `data-scientist` | ML modeling, statistical analysis | End-to-end ML pipelines |
 | **Felix** | `fullstack` | End-to-end features, API integration | Full-stack features |
 | **Maya** | `mobile` | Native iOS/Android, React Native | Mobile app development |
-| **Bob** | `backend` | API design, DB modeling, C++, Rust, Go | Backend development, systems programming |
+| **Bob** | `backend` | API design, DB modeling, Go, Rust | Backend development, systems programming |
 | **Frank** | `frontend` | React, Next.js, Swift, component architecture | Frontend development, iOS/web apps |
+| **Avery** | `architecture` | System architecture, ADR management | Architecture governance, technical debt |
 | **Quinn** | `quantum-engineer` | Quantum algorithms, Qiskit/Cirq | Quantum computing projects |
 | **Astrid** | `aerospace-scientist` | Orbital mechanics, mission analysis | Aerospace projects |
-| **Mira** | `ml-engineer` | PyTorch/TensorFlow, model optimization | Deep learning implementation |
-| **Emma** | `erp-specialist` | SAP, Oracle, Dynamics 365 integration | Enterprise system integration |
-| **Fiona** | `figma-expert` | Figma API, design-to-code automation | Design system synchronization |
-| **Ivy** | `iot-engineer` | IoT protocols, edge computing, ROS2 | IoT, embedded, and robotics firmware |
 | **Steve** | `security` | Security reviews, threat modeling | Security audits and code reviews |
 
 ### 🎯 Core/Quality Team
@@ -118,7 +112,6 @@ Agents are organized into teams, each with a specific provider configuration to 
 
 | Name | Agent ID | Expertise | Best For |
 |---|---|---|---|
-| **Fiona** | `figma-expert` | Figma API, design-to-code automation | Design system synchronization |
 | **Debbee** | `design` | UX research, wireframes, design systems | UX/UI design |
 | **Wendy** | `writer` | API docs, ADRs, release notes | Technical writing |
 
@@ -152,7 +145,7 @@ Agents are organized into teams, each with a specific provider configuration to 
 
 | Name | Agent ID | Expertise | Best For |
 |---|---|---|---|
-| **Cynthia** | `creative-marketer` | GenAI prompting, digital marketing | Marketing campaigns, content creation |
+| **Candy** | `creative-marketer` | GenAI prompting, digital marketing | Marketing campaigns, content creation |
 
 ---
 
@@ -167,7 +160,7 @@ AutomatosX uses a tiered **Delegation Depth** model to manage complex workflows 
 - **Depth 2 (Tactical Coordinators)**: Coordinate workflows within a domain, where sub-delegation to a specialist is required.
   - *Agent*: Queenie (quality)
 - **Depth 1 (Simple Coordinators/Specialists)**: Can delegate simple tasks to implementers but cannot sub-delegate. Most specialists fall here.
-  - *Agents*: Paris, Felix, Maya, Eric, Cynthia, Bob, Frank, Quinn, Astrid, Stan, Mira, Emma, Fiona, Ivy
+  - *Agents*: Paris, Felix, Maya, Eric, Candy, Bob, Frank, Avery, Quinn, Astrid, Stan
 - **Depth 0 (Pure Implementers)**: Execute tasks directly with deep expertise and no delegation capabilities.
   - *Agents*: Steve, Daisy, Debbee, Wendy, Rodman
 
@@ -204,12 +197,8 @@ To customize, modify the agent's `.yaml` file in your `.automatosx/agents/` dire
 - ✨ **New Agent**: Stan (`standard`) joins the Core/Quality team to focus on software engineering standards (SOLID, design patterns, etc.).
 - 🔧 **Enhanced Agent**: Queenie (`quality`) now collaborates with Stan on best practices.
 
-**v5.6.10**:
-- ✨ **New Agents**: Introduction of four specialists:
-  - Emma (`erp-specialist`): ERP integration (SAP, Oracle).
-  - Fiona (`figma-expert`): Design-to-code automation.
-  - Ivy (`iot-engineer`): IoT, Embedded, and Robotics.
-  - Mira (`ml-engineer`): Deep learning implementation.
+**v6.5.4**:
+- ✨ **New Agent**: Avery (`architecture`): Senior Software Architect focusing on system architecture, ADR lifecycle management, and architecture governance.
 
 **v5.6.9**:
 - ✨ **New Agents**:

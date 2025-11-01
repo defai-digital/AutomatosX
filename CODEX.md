@@ -130,11 +130,12 @@ Edit `automatosx.config.json` to customize Codex provider settings:
 
 ## Available Agents
 
-This project includes 23 specialized agents that work with Codex:
+This project includes 20 specialized agents that work with Codex:
 
-- **backend** (Bob) - Backend development (Go/Rust/Python systems)
+- **backend** (Bob) - Backend development (Go/Rust systems)
 - **frontend** (Frank) - Frontend development (React/Next.js/Swift)
-- **fullstack** (Felix) - Full-stack development (Node.js/TypeScript + Python)
+- **architecture** (Avery) - System architecture and ADR management
+- **fullstack** (Felix) - Full-stack development (Node.js/TypeScript)
 - **mobile** (Maya) - Mobile development (iOS/Android, Swift/Kotlin/Flutter)
 - **devops** (Oliver) - DevOps and infrastructure
 - **security** (Steve) - Security auditing and threat modeling
@@ -150,11 +151,7 @@ This project includes 23 specialized agents that work with Codex:
 - **aerospace-scientist** (Astrid) - Aerospace engineering and mission design
 - **quantum-engineer** (Quinn) - Quantum computing and algorithms
 - **creative-marketer** (Candy) - Creative marketing and content strategy
-- **erp-specialist** (Emma) - ERP integration (SAP, Oracle, Dynamics 365)
-- **design-to-code** (Fiona) - Design-to-code automation (Figma API)
-- **iot-engineer** (Ivy) - IoT and embedded systems
-- **deep-learning** (Mira) - Deep learning and model optimization
-- **standard** (Stan) - Best practices and code quality
+- **standard** (Stan) - Software standards and best practices
 
 For a complete list with capabilities, run: `ax list agents --format json`
 

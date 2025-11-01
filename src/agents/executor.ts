@@ -29,6 +29,39 @@ import { DependencyGraphBuilder } from './dependency-graph.js';
 import { ExecutionPlanner } from './execution-planner.js';
 import { ParallelAgentExecutor } from './parallel-agent-executor.js';
 import type { AgentProfile } from '../types/agent.js';
+import type { IterateAction } from '../types/iterate.js';
+
+/**
+ * Execution hooks for iterate mode (v6.4.0+)
+ *
+ * Lightweight hooks that iterate mode controller subscribes to
+ * for monitoring and intercepting execution events.
+ *
+ * @since v6.4.0
+ */
+export interface ExecutionHooks {
+  /**
+   * Called before sending a message to provider
+   *
+   * @param message - Message to be sent
+   */
+  onPreSend?: (message: string) => Promise<void>;
+
+  /**
+   * Called after receiving response from provider
+   *
+   * @param response - Execution response
+   * @returns Action to take (continue, pause, stop, etc.)
+   */
+  onPostResponse?: (response: ExecutionResponse) => Promise<IterateAction>;
+
+  /**
+   * Called for each streaming token (if streaming enabled)
+   *
+   * @param token - Streamed token
+   */
+  onStreamToken?: (token: string) => Promise<void>;
+}
 
 export interface ExecutionOptions {
   verbose?: boolean;
@@ -47,6 +80,12 @@ export interface ExecutionOptions {
   continueDelegationsOnFailure?: boolean;
   showDependencyGraph?: boolean;
   showTimeline?: boolean;
+
+  // Iterate mode options (v6.4.0+)
+  /** Execution hooks for iterate mode */
+  hooks?: ExecutionHooks;
+  /** Iterate mode enabled */
+  iterateMode?: boolean;
 }
 
 export interface ExecutionResult {

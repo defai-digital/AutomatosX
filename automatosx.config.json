@@ -137,6 +137,52 @@
         "updateInterval": 2000,
         "syntheticProgress": true
       }
+    },
+    "iterateMode": {
+      "enabled": false,
+      "defaults": {
+        "maxDurationMinutes": 120,
+        "maxIterationsPerStage": 50,
+        "maxIterationsPerRun": 200,
+        "maxAutoResponsesPerStage": 30,
+        "maxEstimatedCostUsd": 5.0,
+        "autoConfirmCheckpoints": true
+      },
+      "classifier": {
+        "strictness": "balanced",
+        "patternLibraryPath": ".automatosx/iterate/patterns.yaml",
+        "enableSemanticScoring": false,
+        "semanticScoringThreshold": 0.75,
+        "contextWindowMessages": 10
+      },
+      "safety": {
+        "enableDangerousOperationGuard": true,
+        "riskTolerance": "balanced",
+        "dangerousOperations": {
+          "fileDelete": "HIGH",
+          "gitForce": "HIGH",
+          "writeOutsideWorkspace": "HIGH",
+          "secretsInCode": "HIGH",
+          "shellCommands": "MEDIUM",
+          "packageInstall": "LOW"
+        },
+        "enableCostTracking": true,
+        "enableTimeTracking": true,
+        "enableIterationTracking": true
+      },
+      "telemetry": {
+        "level": "info",
+        "logAutoResponses": true,
+        "logClassifications": true,
+        "logSafetyChecks": true,
+        "emitMetrics": true
+      },
+      "notifications": {
+        "warnAtTimePercent": [75, 90, 95],
+        "warnAtCostPercent": [75, 90],
+        "pauseOnGenuineQuestion": true,
+        "pauseOnHighRiskOperation": true
+      }
     }
   },
   "orchestration": {

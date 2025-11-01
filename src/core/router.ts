@@ -741,10 +741,12 @@ export class Router {
     }
 
     // v5.7.0: Check if all providers are limited (quota exhausted)
+    // FIXED (Bug #5): Check ALL providers (not just attempted ones) for accurate soonest reset
     const limitManager = getProviderLimitManager();
+    const allProviders = this.providers;
     const limitedProviders = [];
 
-    for (const provider of availableProviders) {
+    for (const provider of allProviders) {
       const limitCheck = limitManager.isProviderLimited(provider.name);
       if (limitCheck.isLimited && limitCheck.resetAtMs) {
         limitedProviders.push({
@@ -754,8 +756,8 @@ export class Router {
       }
     }
 
-    // If all attempted providers are limited, throw specialized error
-    if (limitedProviders.length === availableProviders.length && limitedProviders.length > 0) {
+    // If all providers are limited, throw specialized error with correct soonest reset
+    if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
       const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
       throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
     }

@@ -22,8 +22,8 @@
  *   node tools/release.js [patch|minor|major]
  */
 
-import { execSync } from 'child_process';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { execSync, spawn as spawnProcess } from 'child_process';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as readline from 'readline';
@@ -248,7 +248,25 @@ async function updateChangelog() {
     console.log('');
 
     try {
-      execSync(`${editor} CHANGELOG.md`, { stdio: 'inherit', cwd: rootDir });
+      // FIX Bug #98: Use spawn with array args to prevent command injection
+      const proc = spawnProcess(editor, ['CHANGELOG.md'], {
+        stdio: 'inherit',
+        cwd: rootDir,
+        shell: false  // CRITICAL: Disable shell to prevent injection
+      });
+
+      // Wait for editor to close
+      await new Promise((resolve, reject) => {
+        proc.on('exit', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Editor exited with code ${code}`));
+          }
+        });
+        proc.on('error', reject);
+      });
+
       success('Editor closed');
     } catch (err) {
       error('Editor failed');
@@ -480,7 +498,8 @@ async function createGitHubRelease() {
     exec(`gh release create v${state.newVersion} --title "v${state.newVersion}" --notes-file "${notesFile}"`, { silent: false });
 
     // Clean up temp file
-    execSync(`rm "${notesFile}"`, { cwd: rootDir });
+    // FIX Bug #99: Use unlinkSync instead of rm command to prevent injection
+    unlinkSync(notesFile);
 
     success('GitHub release created');
     state.releaseCreated = true;

@@ -267,6 +267,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
         console.log(chalk.cyan('Spec-Driven Development (optional):'));
         console.log(chalk.gray('  • Initialize with: ax init --spec-kit\n'));
       }
+      console.log(chalk.cyan('Iterate Mode (Autonomous Multi-Iteration):'));
+      console.log(chalk.gray('  • Enable with --iterate flag for autonomous task loops'));
+      console.log(chalk.gray('  • Example: ax run quality "find bugs" --iterate --iterate-max-iterations 5'));
+      console.log(chalk.gray('  • Works with any agent for repeating tasks'));
+      console.log(chalk.gray('  • See README for Claude Code/Gemini integration examples\n'));
       console.log(chalk.cyan('Available example agents (19 total):'));
       console.log(chalk.gray('  • aerospace-scientist  - Astrid (Aerospace Mission Scientist)'));
       console.log(chalk.gray('  • backend             - Bob (Senior Backend Engineer)'));

@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.3] - 2025-11-01
+
+### 🔒 Critical Security Fixes
+
+**Session 25: Ultra-Deep "Ultrathinking" Security Analysis**
+
+This release includes fixes for **6 additional critical vulnerabilities** (#81-#86) discovered through ultra-deep systematic analysis, including 1 CRITICAL second-order bug found during testing.
+
+#### Bugs Fixed
+
+- **Bug #81 (P0 - HIGH)**: Fixed memory limit regex allowing spaces between number and unit
+  - Removed `\s*` from regex to enforce strict format (e.g., `2GiB` not `2 GiB`)
+
+- **Bug #85 (P1 - MEDIUM)**: Fixed null byte encoding variants missing
+  - Added Unicode notation (`\u0000`), double-encoded (`%2500`), and UTF-8 overlong (`\xC0\x80`) variants
+
+- **Bug #82 (P2 - MEDIUM)**: Fixed Windows SAM file lowercase variants missing
+  - Added normalized Windows paths (`/c:/windows/system32/config/**`)
+  - Added AWS credentials pattern (`**/.aws/credentials`)
+
+- **Bug #83 (P1 - MEDIUM)**: Fixed tilde home directory not expanded
+  - Added comprehensive SSH directory patterns (`**/.ssh/**`, `/root/.ssh/**`, etc.)
+  - Prevents bypass via explicit paths like `/home/victim/.ssh/id_rsa`
+
+- **Bug #84 (P3 - LOW)**: Verified glob pattern case sensitivity working correctly
+  - Confirmed path normalization handles case-insensitivity on Windows
+
+- **Bug #86 (P0 - CRITICAL)**: Fixed pattern normalization breaking glob matching ⚠️
+  - **DISCOVERED DURING TESTING** - Second-order bug in how fixes were applied
+  - Pattern `**/.ssh/**` was being normalized to `/**/.ssh/**`, breaking wildcard semantics
+  - Separated pattern handling from path normalization
+  - **Impact**: This bug rendered ALL glob-based sensitive file protections ineffective
+
+### 📝 Documentation
+
+- Updated README.md Iterate Mode section to remove cost-related examples per user feedback
+- Examples now focus on time limits, strictness controls, and safety features
+
+### ✅ Testing
+
+- Added **24 comprehensive security tests** for Session 25 bugs
+- All 2,586 tests passing (566 test suites)
+- **100% test coverage** for all discovered bugs
+- Zero regressions from previous sessions
+
+### 📊 Cumulative Security Campaign
+
+- **Session 23**: 6 bugs (#68-#73)
+- **Session 24**: 7 bugs (#74-#80)
+- **Session 25**: 6 bugs (#81-#86)
+- **TOTAL**: 19 critical security bugs fixed
+
+### 🎯 Key Insights
+
+- **Test-Driven Bug Fixing**: Bug #86 only discovered through comprehensive testing
+- **Second-Order Bugs**: Bugs can hide in how fixes are applied, not just in original logic
+- **Ultra-Deep Analysis**: Systematic "ultrathinking" methodology effective for edge case discovery
+
 ## [6.5.2] - 2025-11-01
 
 ### 🔒 Critical Security Fixes

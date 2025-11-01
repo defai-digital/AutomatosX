@@ -88,8 +88,8 @@ describe('IterateModeController', () => {
     });
   });
 
-  describe('executeWithIterate() - Week 1 Skeleton', () => {
-    it('should throw IterateError for skeleton implementation', async () => {
+  describe('executeWithIterate()', () => {
+    it('should return framework initialization result', async () => {
       const context = {
         agent: { name: 'test-agent', version: '1.0.0' },
         task: 'Test task'
@@ -97,25 +97,23 @@ describe('IterateModeController', () => {
 
       const options: ExecutionOptions = {};
 
-      await expect(controller.executeWithIterate(context, options)).rejects.toThrow(IterateError);
-      await expect(controller.executeWithIterate(context, options)).rejects.toThrow(
-        'Week 1 skeleton'
-      );
+      const result = await controller.executeWithIterate(context, options);
+
+      expect(result).toBeDefined();
+      expect(result.response.content).toContain('Iterate mode framework initialized');
+      expect(result.response.finishReason).toBe('stop');
     });
 
-    it('should include error details in IterateError', async () => {
+    it('should include session state in result', async () => {
       const context = {
         agent: { name: 'test-agent', version: '1.0.0' },
         task: 'Test task'
       } as ExecutionContext;
 
-      try {
-        await controller.executeWithIterate(context, {});
-      } catch (error) {
-        expect(error).toBeInstanceOf(IterateError);
-        expect((error as IterateError).code).toBe('iterate_disabled');
-        expect((error as IterateError).details).toBeDefined();
-      }
+      const result = await controller.executeWithIterate(context, {});
+
+      expect(result.response.content).toContain('Session ID:');
+      expect(result.response.content).toContain('State:');
     });
   });
 

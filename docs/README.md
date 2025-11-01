@@ -10,18 +10,24 @@ Welcome to the AutomatosX documentation! This guide will help you get started an
 
 Start here if you're new to AutomatosX:
 
-1. **[Quick Start Guide](./getting-started/quick-start.md)** ⭐
+1. **[3-Minute Quickstart](./getting-started/quickstart-3min.md)** ⚡ **[NEW]**
+   - Get productive in under 3 minutes
+   - Installation and first commands
+   - Multi-agent collaboration examples
+   - Pro tips and troubleshooting
+
+2. **[Quick Start Guide](./getting-started/quick-start.md)** ⭐
    - Installation (npm install)
    - Initialize your first project
    - Run your first agent
    - Basic commands overview
 
-2. **[Core Concepts](./getting-started/core-concepts.md)**
+3. **[Core Concepts](./getting-started/core-concepts.md)**
    - Understand agents, profiles, and abilities
    - Learn about memory and providers
    - Grasp the security model
 
-3. **[Installation Guide](./getting-started/installation.md)**
+4. **[Installation Guide](./getting-started/installation.md)**
    - Detailed installation instructions
    - Environment setup
    - Troubleshooting installation issues
@@ -29,6 +35,27 @@ Start here if you're new to AutomatosX:
 ### 📖 Guides
 
 In-depth explanations of core features:
+
+- **[Spec-Kit Usage Guide](./guides/spec-kit-guide.md)** 📋 **[NEW]**
+  - YAML-driven workflow generation
+  - Policy-driven provider selection
+  - Dependency management and DAG generation
+  - Project scaffolding and test generation
+  - Complete examples and best practices
+
+- **[Iteration Mode Guide](./guides/iteration-mode-guide.md)** 🔄 **[NEW]**
+  - Multi-iteration autonomous analysis
+  - Strictness levels (relaxed, balanced, strict)
+  - Natural language usage patterns
+  - Advanced features and best practices
+  - Bug hunting and security audit examples
+
+- **[Cost Calculation Configuration](./guides/cost-calculation-guide.md)** 💰 **[NEW]**
+  - Why cost estimation is disabled by default
+  - How to enable cost tracking
+  - Policy configuration with cost constraints
+  - Best practices for cost optimization
+  - Migration guide for upgrading users
 
 - **[Configuration Guide](./guides/configuration.md)** ⚙️
   - Complete configuration reference
@@ -223,7 +250,10 @@ Contributing to AutomatosX:
 
 **For End Users**:
 
+- [3-Minute Quickstart](./getting-started/quickstart-3min.md) - Get productive in under 3 minutes ⚡
 - [Quick Start](./getting-started/quick-start.md) - Get up and running in 5 minutes
+- [Spec-Kit Guide](./guides/spec-kit-guide.md) - YAML-driven workflows
+- [Iteration Mode Guide](./guides/iteration-mode-guide.md) - Multi-iteration analysis
 - [CLI Commands](./reference/cli-commands.md) - Complete command reference
 - [Core Concepts](./getting-started/core-concepts.md) - Understand the basics
 
@@ -304,6 +334,10 @@ See [CLI Commands Reference](./reference/cli-commands.md) for complete documenta
 
 | Section | Status | Priority |
 |---------|--------|----------|
+| 3-Minute Quickstart | ✅ Complete | P0 |
+| Spec-Kit Usage Guide | ✅ Complete | P0 |
+| Iteration Mode Guide | ✅ Complete | P0 |
+| Cost Calculation Configuration | ✅ Complete | P0 |
 | Quick Start Guide | ✅ Complete | P0 |
 | Core Concepts | ✅ Complete | P0 |
 | CLI Commands Reference | ✅ Complete | P0 |

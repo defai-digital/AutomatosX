@@ -1000,12 +1000,15 @@ ax run dag.json
 ## 📖 Documentation
 
 ### Getting Started
+- **[3-Minute Quickstart](docs/getting-started/quickstart-3min.md)** ⚡ **[NEW]** - Get productive in under 3 minutes
 - [Quick Start Guide](docs/getting-started/quick-start.md) - Get running in 5 minutes
 - [Installation](docs/getting-started/installation.md) - Detailed installation instructions
 - [Configuration](docs/guides/configuration.md) - Configure providers and settings
 
 ### Core Features
-- [Spec-Kit Integration](docs/guides/spec-driven-development.md) - Complete workflow automation
+- **[Spec-Kit Usage Guide](docs/guides/spec-kit-guide.md)** 📋 **[NEW]** - Complete YAML workflow guide with examples
+- **[Iteration Mode Guide](docs/guides/iteration-mode-guide.md)** 🔄 **[NEW]** - Multi-iteration autonomous analysis
+- **[Cost Calculation Configuration](docs/guides/cost-calculation-guide.md)** 💰 **[NEW]** - Enable/configure cost tracking
 - [Policy-Driven Routing](docs/providers/overview.md) - Cost/latency optimization with providers
 - [Persistent Memory](docs/guides/agent-communication.md) - Context management
 - [Multi-Agent Orchestration](docs/guides/multi-agent-orchestration.md) - Team coordination

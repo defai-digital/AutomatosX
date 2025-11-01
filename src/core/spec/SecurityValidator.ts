@@ -750,8 +750,10 @@ export class SecurityValidator {
 
         // Try to find where the next pattern part matches
         const nextPattern = patternParts[patternIdx];
+        if (!nextPattern) return false; // Pattern exhausted
+
         while (pathIdx < pathParts.length) {
-          if (this.matchGlobSegment(pathParts[pathIdx], nextPattern)) {
+          if (this.matchGlobSegment(pathParts[pathIdx]!, nextPattern)) {
             // Found match, continue from here
             break;
           }
@@ -761,12 +763,17 @@ export class SecurityValidator {
         if (pathIdx >= pathParts.length) {
           return false;
         }
-      } else if (this.matchGlobSegment(pathParts[pathIdx], patternPart)) {
-        // Single segment matches
-        pathIdx++;
-        patternIdx++;
       } else {
-        return false;
+        const pathPart = pathParts[pathIdx];
+        if (!pathPart) return false; // Path exhausted
+
+        if (this.matchGlobSegment(pathPart, patternPart)) {
+          // Single segment matches
+          pathIdx++;
+          patternIdx++;
+        } else {
+          return false;
+        }
       }
     }
 

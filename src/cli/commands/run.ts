@@ -222,22 +222,28 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       const complexity = tempGenerator.analyzeComplexity(argv.task);
 
       if (complexity.isComplex) {
-        // Show complexity analysis
-        console.log(chalk.yellow.bold('\n⚠️  Complex Task Detected\n'));
-        console.log(chalk.gray('This task appears to be complex and multi-step:'));
-        complexity.indicators.forEach((indicator) => {
-          console.log(chalk.gray(`  • ${indicator}`));
-        });
-        console.log(chalk.gray(`\nComplexity Score: ${complexity.score}/10\n`));
+        // FIXED (Bug #80): Skip spec-kit prompt in iterate/auto-continue mode
+        // When --iterate or --auto-continue is set, user wants autonomous execution
+        const skipPrompt = argv.autoContinue || argv.iterate;
 
-        // Show spec-kit benefits
-        console.log(chalk.cyan.bold('💡 Consider using Spec-Kit for:\n'));
-        console.log(chalk.gray('  ✓ Automatic dependency management'));
-        console.log(chalk.gray('  ✓ Parallel execution of independent tasks'));
-        console.log(chalk.gray('  ✓ Progress tracking and resume capability'));
-        console.log(chalk.gray('  ✓ Better orchestration across multiple agents\n'));
+        if (!skipPrompt) {
+          // Show complexity analysis
+          console.log(chalk.yellow.bold('\n⚠️  Complex Task Detected\n'));
+          console.log(chalk.gray('This task appears to be complex and multi-step:'));
+          complexity.indicators.forEach((indicator) => {
+            console.log(chalk.gray(`  • ${indicator}`));
+          });
+          console.log(chalk.gray(`\nComplexity Score: ${complexity.score}/10\n`));
 
-        // Prompt user
+          // Show spec-kit benefits
+          console.log(chalk.cyan.bold('💡 Consider using Spec-Kit for:\n'));
+          console.log(chalk.gray('  ✓ Automatic dependency management'));
+          console.log(chalk.gray('  ✓ Parallel execution of independent tasks'));
+          console.log(chalk.gray('  ✓ Progress tracking and resume capability'));
+          console.log(chalk.gray('  ✓ Better orchestration across multiple agents\n'));
+        }
+
+        // Prompt user (unless in autonomous mode)
         const rl = readline.createInterface({
           input: process.stdin,
           output: process.stdout,
@@ -252,9 +258,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         };
 
         try {
-          const answer = await question(
-            chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
-          );
+          // FIXED (Bug #80): Auto-respond "no" in iterate/auto-continue mode
+          const answer = skipPrompt
+            ? 'n' // Auto-decline spec-kit in autonomous mode
+            : await question(
+                chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
+              );
 
           if (answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no') {
             // User wants spec-kit workflow
@@ -285,9 +294,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
 
             // Ask if user wants to execute now
-            const executeAnswer = await question(
-              chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
-            );
+            const executeAnswer = skipPrompt
+              ? 'y' // Auto-accept in autonomous mode
+              : await question(
+                  chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
+                );
 
             rl.close();
 

@@ -222,11 +222,15 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       const complexity = tempGenerator.analyzeComplexity(argv.task);
 
       if (complexity.isComplex) {
-        // FIXED (Bug #80): Skip spec-kit prompt in iterate/auto-continue mode
+        // FIXED (Bug #80 - Part 2): Skip spec-kit prompt entirely in iterate/auto-continue mode
         // When --iterate or --auto-continue is set, user wants autonomous execution
         const skipPrompt = argv.autoContinue || argv.iterate;
 
-        if (!skipPrompt) {
+        if (skipPrompt) {
+          // Autonomous mode: Skip complexity prompt entirely and continue with standard ax run
+          console.log(chalk.gray('\n→ Complex task detected, continuing with standard ax run (autonomous mode)...\n'));
+        } else {
+          // Interactive mode: Show complexity analysis and prompt user
           // Show complexity analysis
           console.log(chalk.yellow.bold('\n⚠️  Complex Task Detected\n'));
           console.log(chalk.gray('This task appears to be complex and multi-step:'));
@@ -241,92 +245,87 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           console.log(chalk.gray('  ✓ Parallel execution of independent tasks'));
           console.log(chalk.gray('  ✓ Progress tracking and resume capability'));
           console.log(chalk.gray('  ✓ Better orchestration across multiple agents\n'));
-        }
 
-        // Prompt user (unless in autonomous mode)
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-
-        const question = (query: string): Promise<string> => {
-          return new Promise((resolve) => {
-            rl.question(query, (answer) => {
-              resolve(answer);
-            });
+          // Only create readline interface in interactive mode
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
           });
-        };
 
-        try {
-          // FIXED (Bug #80): Auto-respond "no" in iterate/auto-continue mode
-          const answer = skipPrompt
-            ? 'n' // Auto-decline spec-kit in autonomous mode
-            : await question(
-                chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
+          const question = (query: string): Promise<string> => {
+            return new Promise((resolve) => {
+              rl.question(query, (answer) => {
+                resolve(answer);
+              });
+            });
+          };
+
+          try {
+            const answer = await question(
+              chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
+            );
+
+            if (answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no') {
+              // User wants spec-kit workflow
+              console.log(chalk.green('\n✓ Generating spec-driven workflow...\n'));
+
+              const projectDir = await detectProjectRoot(process.cwd());
+              const tempConfig = await loadConfig(projectDir);
+
+              // Use Claude provider for spec generation (highest priority)
+              const claudeConfig = tempConfig.providers['claude-code'];
+              if (!claudeConfig) {
+                console.error(chalk.red('✗ Claude provider not configured'));
+                process.exit(1);
+              }
+              // Convert config.ProviderConfig to provider.ProviderConfig by adding name
+              const claudeProviderConfig: import('../../types/provider.js').ProviderConfig = {
+                ...claudeConfig,
+                name: 'claude-code',
+                command: claudeConfig.command || 'claude'
+              };
+              const tempProvider = new ClaudeProvider(claudeProviderConfig);
+              const realGenerator = new SpecGeneratorClass(tempProvider);
+              const spec = await realGenerator.generate(argv.task, projectDir);
+
+              console.log(chalk.green('✓ Generated spec files:\n'));
+              console.log(chalk.gray(`  • .specify/spec.md - Project specification`));
+              console.log(chalk.gray(`  • .specify/plan.md - Technical plan`));
+              console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
+
+              // Ask if user wants to execute now
+              const executeAnswer = await question(
+                chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
               );
 
-          if (answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no') {
-            // User wants spec-kit workflow
-            console.log(chalk.green('\n✓ Generating spec-driven workflow...\n'));
+              rl.close();
 
-            const projectDir = await detectProjectRoot(process.cwd());
-            const tempConfig = await loadConfig(projectDir);
-
-            // Use Claude provider for spec generation (highest priority)
-            const claudeConfig = tempConfig.providers['claude-code'];
-            if (!claudeConfig) {
-              console.error(chalk.red('✗ Claude provider not configured'));
-              process.exit(1);
-            }
-            // Convert config.ProviderConfig to provider.ProviderConfig by adding name
-            const claudeProviderConfig: import('../../types/provider.js').ProviderConfig = {
-              ...claudeConfig,
-              name: 'claude-code',
-              command: claudeConfig.command || 'claude'
-            };
-            const tempProvider = new ClaudeProvider(claudeProviderConfig);
-            const realGenerator = new SpecGeneratorClass(tempProvider);
-            const spec = await realGenerator.generate(argv.task, projectDir);
-
-            console.log(chalk.green('✓ Generated spec files:\n'));
-            console.log(chalk.gray(`  • .specify/spec.md - Project specification`));
-            console.log(chalk.gray(`  • .specify/plan.md - Technical plan`));
-            console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
-
-            // Ask if user wants to execute now
-            const executeAnswer = skipPrompt
-              ? 'y' // Auto-accept in autonomous mode
-              : await question(
-                  chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
-                );
-
-            rl.close();
-
-            if (executeAnswer.toLowerCase() !== 'n' && executeAnswer.toLowerCase() !== 'no') {
-              // Execute spec with parallel mode
-              console.log(chalk.blue('\n🚀 Executing spec-driven workflow...\n'));
-              const { spawn } = await import('child_process');
-              const child = spawn('ax', ['spec', 'run', '--parallel'], {
-                stdio: 'inherit',
-                shell: true,
-              });
-
-              return new Promise<void>((resolve) => {
-                child.on('close', (code) => {
-                  process.exit(code || 0);
+              if (executeAnswer.toLowerCase() !== 'n' && executeAnswer.toLowerCase() !== 'no') {
+                // Execute spec with parallel mode
+                console.log(chalk.blue('\n🚀 Executing spec-driven workflow...\n'));
+                const { spawn } = await import('child_process');
+                const child = spawn('ax', ['spec', 'run', '--parallel'], {
+                  stdio: 'inherit',
+                  shell: true,
                 });
-              });
+
+                return new Promise<void>((resolve) => {
+                  child.on('close', (code) => {
+                    process.exit(code || 0);
+                  });
+                });
+              } else {
+                console.log(chalk.yellow('\n💡 To execute later, run: ax spec run --parallel\n'));
+                process.exit(0);
+              }
             } else {
-              console.log(chalk.yellow('\n💡 To execute later, run: ax spec run --parallel\n'));
-              process.exit(0);
+              rl.close();
+              console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
             }
-          } else {
+          } catch (error) {
             rl.close();
             console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
           }
-        } catch (error) {
-          rl.close();
-          console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
         }
       }
     }

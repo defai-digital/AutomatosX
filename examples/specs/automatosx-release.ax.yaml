@@ -1,0 +1,380 @@
+version: "1.0"
+
+metadata:
+  id: automatosx-release
+  name: AutomatosX Release Workflow
+  description: |
+    Complete release orchestration for AutomatosX using Spec-Kit.
+    Demonstrates "dogfooding" - using AutomatosX to manage its own releases.
+
+    This spec covers the entire release process:
+    - Pre-flight validation
+    - Version bumping and synchronization
+    - CHANGELOG updates
+    - Building and testing
+    - Git operations (commit, tag, push)
+    - GitHub release creation
+    - CI/CD monitoring
+
+  tags:
+    - release
+    - ci-cd
+    - automation
+    - dogfooding
+  author: AutomatosX Team
+  created: "2025-11-01"
+
+# Policy: Use most reliable providers for release automation
+policy:
+  goal: reliability
+  constraints:
+    latency:
+      p95: 5000  # 5s max latency
+    reliability:
+      minAvailability: 0.99  # 99% availability required
+      maxErrorRate: 0.01     # 1% max error rate
+
+# Actors: Specialized agents for each release stage
+actors:
+  - id: validator
+    agent: quality
+    description: Validates release readiness (tests, build, git status)
+    delegation:
+      maxDepth: 1
+
+  - id: version-manager
+    agent: backend
+    description: Handles version bumping and synchronization
+    delegation:
+      maxDepth: 1
+
+  - id: changelog-writer
+    agent: documentation
+    description: Updates and validates CHANGELOG entries
+    delegation:
+      maxDepth: 1
+
+  - id: builder
+    agent: backend
+    description: Builds and tests the project
+    delegation:
+      maxDepth: 1
+
+  - id: git-operator
+    agent: devops
+    description: Handles git operations (commit, tag, push)
+    delegation:
+      maxDepth: 1
+
+  - id: release-publisher
+    agent: devops
+    description: Creates GitHub releases and monitors CI/CD
+    delegation:
+      maxDepth: 2
+
+# Execution stages
+stages:
+  # Stage 1: Pre-flight validation
+  - id: preflight
+    actor: validator
+    description: "Pre-flight validation checks"
+    prompt: |
+      Run comprehensive pre-flight validation checks for AutomatosX release:
+
+      CHECKS REQUIRED:
+      1. Git status is clean (no uncommitted changes)
+      2. On main branch
+      3. All tests pass (npm test)
+      4. TypeScript compiles (npm run typecheck)
+      5. Build succeeds (npm run build)
+      6. No npm audit vulnerabilities (moderate+)
+      7. package.json has required fields
+
+      Use the existing tools/check-release.js script to perform validation.
+
+      OUTPUT FORMAT:
+      - List each check with ✓ (pass) or ✗ (fail)
+      - If any checks fail, provide detailed error messages
+      - Recommend fixes for failed checks
+      - Return READY or NOT_READY status
+    timeout: 300000  # 5 minutes
+    saveToMemory: true
+    dependencies: []
+
+  # Stage 2: Version determination
+  - id: version-bump
+    actor: version-manager
+    description: "Determine and apply version bump"
+    prompt: |
+      Determine version bump type and update package.json:
+
+      CURRENT VERSION: ${preflight.currentVersion}
+
+      BUMP TYPE RULES:
+      - patch: Bug fixes, minor improvements (x.x.X)
+      - minor: New features, backwards compatible (x.X.0)
+      - major: Breaking changes (X.0.0)
+
+      TASKS:
+      1. Analyze recent commits to suggest bump type
+      2. Apply version bump using npm version
+      3. Run tools/sync-all-versions.js to update all references
+      4. Verify version sync in README.md and CLAUDE.md
+
+      OUTPUT:
+      - Current version
+      - New version
+      - Bump type
+      - Files updated
+    timeout: 120000  # 2 minutes
+    saveToMemory: true
+    dependencies: [preflight]
+
+  # Stage 3: CHANGELOG update
+  - id: changelog
+    actor: changelog-writer
+    description: "Validate or generate CHANGELOG entry"
+    prompt: |
+      Validate CHANGELOG.md has entry for new version:
+
+      NEW VERSION: ${version-bump.newVersion}
+
+      TASKS:
+      1. Check if CHANGELOG.md contains ## [${version-bump.newVersion}]
+      2. If missing, extract recent changes from git commits
+      3. Generate CHANGELOG entry following existing format
+      4. Include:
+         - Features (feat: commits)
+         - Bug fixes (fix: commits)
+         - Breaking changes (BREAKING CHANGE)
+         - Documentation updates (docs: commits)
+      5. Add proper date and version header
+
+      CHANGELOG FORMAT:
+      ```markdown
+      ## [X.Y.Z] - YYYY-MM-DD
+
+      ### Features
+      - Description of feature
+
+      ### Bug Fixes
+      - Description of fix
+
+      ### Documentation
+      - Description of doc update
+      ```
+
+      OUTPUT:
+      - CHANGELOG status (exists/created)
+      - Entry preview
+    timeout: 180000  # 3 minutes
+    saveToMemory: true
+    dependencies: [version-bump]
+
+  # Stage 4: Build and test
+  - id: build-test
+    actor: builder
+    description: "Build and test with new version"
+    prompt: |
+      Build and test the project with new version:
+
+      VERSION: ${version-bump.newVersion}
+
+      TASKS:
+      1. Run npm run build
+      2. Verify build output in dist/
+      3. Run full test suite (npm test)
+      4. Verify all tests pass
+      5. Check for any warnings or errors
+
+      VALIDATION:
+      - Build must succeed (exit code 0)
+      - All tests must pass (exit code 0)
+      - No TypeScript errors
+      - No critical warnings
+
+      OUTPUT:
+      - Build status
+      - Test results summary
+      - Any warnings/errors
+    timeout: 600000  # 10 minutes
+    saveToMemory: true
+    dependencies: [changelog]
+
+  # Stage 5: Git commit and tag
+  - id: git-commit
+    actor: git-operator
+    description: "Commit changes and create git tag"
+    prompt: |
+      Commit release changes and create git tag:
+
+      VERSION: ${version-bump.newVersion}
+
+      TASKS:
+      1. Stage changes:
+         - package.json
+         - README.md
+         - CHANGELOG.md
+         - CLAUDE.md
+      2. Create commit with message:
+         "chore: Release v${version-bump.newVersion}"
+      3. Create annotated git tag: v${version-bump.newVersion}
+      4. Verify commit and tag created
+
+      GIT COMMIT MESSAGE FORMAT:
+      ```
+      chore: Release v${version-bump.newVersion}
+
+      Auto-generated release commit
+
+      - Updated package.json to v${version-bump.newVersion}
+      - Updated CHANGELOG.md
+      - Synced version references
+      - Verified build and tests passing
+      ```
+
+      OUTPUT:
+      - Commit SHA
+      - Tag name
+      - Staged files
+    timeout: 60000  # 1 minute
+    saveToMemory: true
+    dependencies: [build-test]
+
+  # Stage 6: Push to GitHub
+  - id: git-push
+    actor: git-operator
+    description: "Push commit and tags to GitHub"
+    prompt: |
+      Push release commit and tag to GitHub:
+
+      VERSION: ${version-bump.newVersion}
+      COMMIT: ${git-commit.commitSHA}
+
+      TASKS:
+      1. Push main branch: git push origin main
+      2. Push tag: git push origin v${version-bump.newVersion}
+      3. Verify push succeeded
+      4. Get remote commit SHA for verification
+
+      SAFETY CHECKS:
+      - Verify we're on main branch
+      - Verify remote is correct (origin -> github.com/defai-digital/automatosx)
+      - Confirm push to main branch (interactive confirmation)
+
+      OUTPUT:
+      - Push status
+      - Remote commit SHA
+      - Tag on remote
+    timeout: 120000  # 2 minutes
+    saveToMemory: true
+    dependencies: [git-commit]
+
+  # Stage 7: Create GitHub release
+  - id: github-release
+    actor: release-publisher
+    description: "Create GitHub release with notes"
+    prompt: |
+      Create GitHub release using gh CLI:
+
+      VERSION: ${version-bump.newVersion}
+      TAG: v${version-bump.newVersion}
+
+      TASKS:
+      1. Extract release notes from CHANGELOG.md for v${version-bump.newVersion}
+      2. Create GitHub release using gh CLI:
+         gh release create v${version-bump.newVersion} \
+           --title "v${version-bump.newVersion}" \
+           --notes <extracted-notes>
+      3. Verify release created successfully
+      4. Get release URL
+
+      RELEASE NOTES FORMAT:
+      - Extract section from CHANGELOG.md between version headers
+      - Include Features, Bug Fixes, Documentation sections
+      - Format as markdown
+      - Add installation instructions
+
+      OUTPUT:
+      - Release URL
+      - Release status
+      - Release notes preview
+    timeout: 180000  # 3 minutes
+    saveToMemory: true
+    dependencies: [git-push]
+
+  # Stage 8: Monitor CI/CD
+  - id: cicd-monitor
+    actor: release-publisher
+    description: "Monitor GitHub Actions workflow"
+    prompt: |
+      Monitor GitHub Actions workflow for release:
+
+      VERSION: ${version-bump.newVersion}
+      RELEASE: ${github-release.releaseURL}
+
+      TASKS:
+      1. Wait for GitHub Actions workflow to start (10-15 seconds)
+      2. Get latest workflow run ID: gh run list --limit 1
+      3. Monitor workflow status: gh run view <run-id>
+      4. Wait for workflow completion or timeout (15 minutes)
+      5. Report final status
+
+      EXPECTED WORKFLOW:
+      - Build and test
+      - Publish to npm
+      - Create npm release
+
+      OUTPUT:
+      - Workflow status (pending/running/completed/failed)
+      - Workflow URL
+      - npm publish status
+      - Any errors or warnings
+    timeout: 1200000  # 20 minutes
+    saveToMemory: true
+    dependencies: [github-release]
+
+# Observability
+observability:
+  metrics:
+    enabled: true
+    labels:
+      project: automatosx
+      workflow: release
+      type: automation
+
+  audit:
+    enabled: true
+    retention: 90  # 90 days
+
+  tracing:
+    enabled: true
+    samplingRate: 1.0  # Capture all release executions
+
+# Retry and error handling
+execution:
+  parallel: false  # Sequential execution
+  continueOnError: false  # Stop on first error
+
+  retry:
+    enabled: true
+    maxRetries: 2
+    backoffMs: 5000
+
+# Expected outputs
+outputs:
+  version:
+    description: "Released version number"
+    from: version-bump.newVersion
+
+  releaseURL:
+    description: "GitHub release URL"
+    from: github-release.releaseURL
+
+  npmURL:
+    description: "npm package URL"
+    value: "https://www.npmjs.com/package/@defai.digital/automatosx"
+
+  status:
+    description: "Overall release status"
+    from: cicd-monitor.workflowStatus

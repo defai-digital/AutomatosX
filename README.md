@@ -37,8 +37,16 @@ AutomatosX is **the only AI platform** that gives you:
 # 1. Install AutomatosX
 npm install -g @defai.digital/automatosx
 
-# 2. Initialize your project
+# 2. Initialize AutomatosX (REQUIRED - sets up agents and configuration)
 cd your-project && ax init
+# Or force reinitialize: ax init -f
+
+# ⚠️ IMPORTANT: You MUST run 'ax init' before using AutomatosX
+# This command:
+#   - Creates .automatosx/ directory with all 23 specialized agents
+#   - Sets up configuration files (automatosx.config.json)
+#   - Initializes memory database and session management
+#   - Configures the CLI environment for optimal performance
 
 # 3. Create a workflow spec in natural language
 ax spec create "Build user authentication with database, API, JWT, security audit, and tests"
@@ -69,6 +77,8 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 
 ### Use with Claude Code, Gemini CLI, or OpenAI Codex
 
+**Basic Agent Collaboration**:
+
 ```
 # In Claude Code
 "Please work with ax agent backend to implement user authentication"
@@ -88,6 +98,73 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 "Use ax agent devops to set up CI/CD pipeline"
 ```
 
+**Workflow Creation and Execution**:
+
+```
+# In Claude Code
+"Create an AutomatosX workflow spec for a REST API with authentication, database,
+and comprehensive tests. Then execute it with cost optimization."
+
+"Generate a spec for refactoring the payment module with security audit and
+backwards compatibility tests. Use the backend and security agents."
+
+"Build a complete microservices architecture spec with service mesh, monitoring,
+and deployment configs. Execute with Gemini for cost savings."
+```
+
+```
+# In Gemini CLI
+"Use AutomatosX to create and execute a workflow for migrating from MongoDB
+to PostgreSQL. Include data validation and rollback procedures."
+
+"Generate a spec for implementing rate limiting across all API endpoints.
+Include security review and load testing."
+
+"Create a workflow for adding GraphQL to our REST API. Include schema
+generation, resolver tests, and performance benchmarks."
+```
+
+```
+# In OpenAI Codex
+"Work with AutomatosX to build a real-time notification system with WebSockets,
+Redis, and push notifications. Generate the full workflow spec."
+
+"Create and execute a spec for implementing OAuth2 with Google, GitHub, and
+Facebook providers. Include security audit and integration tests."
+
+"Generate a workflow for database migration with zero downtime. Include
+blue-green deployment strategy and rollback automation."
+```
+
+**Multi-Agent Orchestration**:
+
+```
+# In Claude Code
+"Coordinate with ax agents to build a complete e-commerce platform:
+- Product agent for requirements and architecture
+- Backend agent for API and database
+- Frontend agent for React UI
+- Security agent for audit
+- Quality agent for comprehensive tests
+Use balanced policy for cost and speed."
+
+"Work with ax backend and data agents to implement a data analytics pipeline.
+Backend handles the API, data handles ETL and warehousing."
+```
+
+**Long-Running Tasks with Iterate Mode**:
+
+```
+# In Gemini CLI
+"Please ultrathink to work with ax in iterate mode to find and fix bug"
+
+"Use ax quality agent in iterate mode to analyze the entire codebase for
+performance issues. Set 120 minute timeout with balanced strictness."
+
+"Have ax security agent run a comprehensive security audit in iterate mode
+with paranoid strictness. This is for production deployment."
+```
+
 ### Why Natural Language?
 
 - ✅ **Conversational**: Talk to AI assistants like teammates
@@ -95,6 +172,8 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 - ✅ **Flexible**: No need to remember exact command syntax
 - ✅ **Integrated**: Works directly in your AI assistant workflow
 - ✅ **Powerful**: Combines AI assistant capabilities with AutomatosX's memory and orchestration
+- ✅ **Cost-Optimized**: AutomatosX automatically selects the cheapest provider based on your constraints
+- ✅ **Production-Ready**: Full observability and trace logging for debugging
 
 ### Behind the Scenes
 
@@ -264,6 +343,29 @@ The AI assistant will:
 3. Wait for your approval
 4. Execute with safety controls: `ax run backend "refactor authentication" --iterate --iterate-strictness paranoid --iterate-timeout 30`
 
+**More Natural Language Examples**:
+
+```
+# Comprehensive Bug Analysis (Long-running task)
+"Please ultrathink to work with ax in iterate mode to find and fix bug"
+
+# Large-Scale Refactoring
+"Use ax backend agent in iterate mode to refactor the entire payment system.
+Set timeout to 120 minutes and use balanced strictness."
+
+# Security Audit with High Safety
+"Work with ax security agent in iterate mode with paranoid strictness to audit
+the entire codebase. This is for production so be very thorough."
+
+# Performance Optimization
+"Ask ax quality agent to analyze and optimize all database queries in iterate mode.
+Use a 90 minute timeout with balanced strictness."
+
+# Multi-File Test Generation
+"Have ax quality agent run in iterate mode to generate tests for all untested
+functions across the codebase. Set 60 minute timeout."
+```
+
 **Direct CLI Usage**:
 
 ```bash
@@ -319,6 +421,57 @@ ax spec create "Build auth system with API, tests, and security audit"
 ## 📋 **NEW**: Spec-Kit Integration (v6.0+)
 
 The game-changing feature that makes AutomatosX the most powerful AI workflow platform.
+
+### Natural Language Spec Creation (Recommended)
+
+Most users interact with AutomatosX through AI assistants (Claude Code, Gemini CLI, OpenAI Codex) using natural language. Here are practical examples:
+
+```
+# In Claude Code
+"Create an AutomatosX workflow spec for building a complete authentication system
+with JWT, OAuth2, database integration, security audit, and comprehensive tests.
+Optimize for cost and generate the full project structure."
+
+"I need a spec for a microservices architecture with user service, payment service,
+API gateway, and Redis caching. Include deployment configs and monitoring."
+
+"Generate a workflow spec for refactoring our legacy authentication code.
+Include security review, performance optimization, and backwards compatibility tests."
+```
+
+```
+# In Gemini CLI
+"Use AutomatosX to create a spec for an e-commerce checkout flow with Stripe,
+inventory management, fraud detection, and integration tests."
+
+"Build me a spec for a data pipeline that ingests CSV files, transforms them,
+loads to PostgreSQL, and includes data validation tests."
+
+"Create a workflow spec for API versioning migration from v1 to v2 with
+backwards compatibility and comprehensive test coverage."
+```
+
+```
+# In OpenAI Codex
+"Work with AutomatosX to generate a spec for a real-time chat application
+with WebSocket support, message persistence, and E2E tests."
+
+"Create a spec for migrating from REST to GraphQL with schema generation,
+resolver implementation, and query performance tests."
+
+"Generate an AutomatosX workflow for implementing RBAC (role-based access control)
+with permissions management, audit logging, and security tests."
+```
+
+**What happens behind the scenes:**
+
+When you ask an AI assistant to create a spec, it uses `ax spec create "your description"` which:
+1. Generates a complete YAML workflow spec in `.specify/`
+2. Creates execution plan with cost estimates
+3. Generates dependency DAG for parallel execution
+4. Scaffolds project structure
+5. Generates comprehensive test suite
+6. All optimized based on your policy constraints (cost, latency, privacy)
 
 ### 1. Define Your Workflow in YAML
 
@@ -831,8 +984,33 @@ ax run dag.json
 
 ```bash
 npm install -g @defai.digital/automatosx
-ax --version  # v6.0.1
+ax --version  # v6.5.7
 ```
+
+### ⚠️ REQUIRED: Initialize Your Project
+
+**After installing, you MUST run `ax init` to set up AutomatosX:**
+
+```bash
+# Navigate to your project directory
+cd your-project
+
+# Initialize AutomatosX (creates .automatosx/ with agents and config)
+ax init
+
+# Or force reinitialize if you already have a .automatosx/ directory
+ax init -f
+```
+
+**What `ax init` does:**
+- ✅ Creates `.automatosx/` directory structure
+- ✅ Installs all 23 specialized agents (backend, frontend, security, etc.)
+- ✅ Generates `automatosx.config.json` with optimal defaults
+- ✅ Initializes SQLite memory database
+- ✅ Sets up session management
+- ✅ Configures trace logging
+
+**Without running `ax init`, AutomatosX commands will not work properly!**
 
 ### Requirements
 
@@ -934,6 +1112,9 @@ If AutomatosX saves you time and money, give us a star! ⭐
 # Install
 npm i -g @defai.digital/automatosx
 
+# Initialize (REQUIRED - sets up agents and config)
+cd your-project && ax init
+
 # Create workflow from natural language
 ax spec create "Build auth system with API, tests, security audit"
 
@@ -948,7 +1129,7 @@ ax providers trace --follow
 
 **AutomatosX**: The only AI platform with declarative workflows, cost optimization, persistent memory, and multi-agent orchestration.
 
-**Try it now**: `npm i -g @defai.digital/automatosx`
+**Try it now**: `npm i -g @defai.digital/automatosx && cd your-project && ax init`
 
 ---
 

@@ -41,8 +41,25 @@ export interface RoutingRecommendation {
 export class WorkloadAnalyzer {
   /**
    * Analyze a request and extract workload characteristics
+   *
+   * FIXED (Bug #11): Added input validation to prevent runtime errors
    */
   analyze(request: ExecutionRequest): WorkloadCharacteristics {
+    // FIXED (Bug #11): Validate request.prompt exists and is a non-empty string
+    if (!request.prompt || typeof request.prompt !== 'string') {
+      throw new Error(`Invalid request.prompt: ${request.prompt}. Must be a non-empty string.`);
+    }
+    if (request.prompt.trim().length === 0) {
+      throw new Error('Invalid request.prompt: cannot be empty or whitespace-only.');
+    }
+
+    // FIXED (Bug #11): Validate request.maxTokens if provided
+    if (request.maxTokens !== undefined) {
+      if (!Number.isInteger(request.maxTokens) || request.maxTokens < 0) {
+        throw new Error(`Invalid request.maxTokens: ${request.maxTokens}. Must be a non-negative integer.`);
+      }
+    }
+
     const estimatedTokens = this.estimateTokens(request);
     const sizeClass = this.classifySize(estimatedTokens);
     const complexity = this.detectComplexity(request);

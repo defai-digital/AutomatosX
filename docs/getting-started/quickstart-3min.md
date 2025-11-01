@@ -34,26 +34,26 @@ Done! AutomatosX is now ready to use.
 
 **The best way to use AutomatosX is through natural language in your AI assistant!**
 
-AutomatosX is designed to work seamlessly with AI assistants. Instead of typing CLI commands, simply ask your AI assistant naturally, and they'll coordinate with AutomatosX agents for you.
+AutomatosX is designed to work seamlessly with AI assistants. Instead of typing CLI commands, simply ask your AI assistant naturally. **Just say "ax" and it automatically selects the best agent(s) for your task** - you don't need to specify which agent to use!
 
 ### In Claude Code (claude.ai/code)
 
 Simply talk to Claude naturally:
 
 ```
-"Please work with the ax backend agent to implement user authentication"
+"Please use ax to implement user authentication"
 
-"Ask the ax security agent to audit this authentication code"
+"Use ax to audit this authentication code for security issues"
 
-"Have the ax quality agent write comprehensive tests for the login feature"
+"Have ax write comprehensive tests for the login feature"
 
-"Use the ax architect agent to design a microservices architecture"
+"Use ax to design a microservices architecture"
 ```
 
 **What happens**: Claude Code automatically:
 - Translates your request into `ax` commands
-- Runs the appropriate agents
-- Monitors progress
+- `ax` analyzes the task and picks the best agent(s)
+- Monitors progress and coordinates multi-agent work
 - Reports results back to you
 
 ### In Gemini CLI
@@ -61,64 +61,75 @@ Simply talk to Claude naturally:
 Talk to Gemini naturally:
 
 ```
-"Please use AutomatosX backend agent to implement the API endpoints"
+"Please use ax to implement the API endpoints"
 
-"Ask AutomatosX security agent to perform a vulnerability scan"
+"Use ax to perform a vulnerability scan"
 
-"Have AutomatosX quality agent generate unit tests for this feature"
+"Have ax generate unit tests for this feature"
 ```
 
 **What happens**: Gemini CLI:
 - Understands your intent
-- Executes `ax run` commands
+- Executes `ax run` with your task description
+- `ax` automatically selects appropriate agents
 - Shows you the results
-- Handles any errors
 
 ### In OpenAI Codex
 
 Talk to Codex naturally:
 
 ```
-"Use the ax frontend agent to build the user interface"
+"Use ax to build the user interface"
 
-"Ask ax devops agent to set up CI/CD pipeline"
+"Use ax to set up CI/CD pipeline"
 
-"Have ax data agent design the database schema"
+"Have ax design the database schema"
 ```
 
 **What happens**: Codex:
 - Interprets your request
-- Runs the appropriate agents
+- Runs `ax` with task description
+- `ax` auto-selects the right agent(s)
 - Returns the results
 
-### Why Natural Language is Better
+### Why Natural Language with Auto-Selection is Better
 
-✅ **Faster**: No need to remember command syntax
-✅ **Easier**: Just describe what you want
-✅ **Smarter**: Your AI assistant handles the details
-✅ **Context-aware**: AI remembers your conversation
+✅ **Smarter**: `ax` picks the optimal agent(s) for your task
+✅ **Faster**: No need to remember agent names or command syntax
+✅ **Easier**: Just say "ax" and describe what you want done
+✅ **Multi-Agent**: Automatically coordinates multiple agents when needed
+✅ **Context-aware**: AI assistants remember your conversation
 ✅ **Error-handling**: AI can retry or clarify if needed
 
 ---
 
 ## Your First Commands (1 minute)
 
-**Note**: If you prefer direct CLI usage, here are the commands:
+**Note**: If you prefer direct CLI usage, you can use `ax run` with just your task description. AutomatosX will automatically select the best agent(s)!
 
-### Ask an Agent to Help You
+### Let AutomatosX Choose the Right Agent (Recommended)
 
 ```bash
-# Explain the codebase
+# AutomatosX analyzes task and picks the best agent
+ax run "Explain this codebase structure"
+
+# AutomatosX selects security agent for auditing
+ax run "Audit src/auth.ts for vulnerabilities"
+
+# AutomatosX picks quality agent for testing
+ax run "Write tests for the authentication module"
+
+# AutomatosX uses architecture agent for design
+ax run "Design a microservices architecture for this project"
+```
+
+### Or Specify an Agent Directly (Optional)
+
+```bash
+# You CAN still specify agents if needed
 ax run backend "Explain this codebase structure"
-
-# Audit a file for security
 ax run security "Audit src/auth.ts for vulnerabilities"
-
-# Write tests
 ax run quality "Write tests for the authentication module"
-
-# Design architecture
-ax run architecture "Design a microservices architecture for this project"
 ```
 
 ### Check Available Agents
@@ -133,24 +144,32 @@ You'll see 20+ specialized agents including:
 - `architecture`, `product`, `data`
 - And more...
 
+But remember: **You don't need to choose** - AutomatosX does it for you!
+
 ---
 
 ## Try Multi-Agent Collaboration (1 minute)
 
-AutomatosX agents can automatically delegate to each other:
+`ax` automatically coordinates multiple agents for complex tasks:
 
 ```bash
-# The product agent will orchestrate multiple agents automatically
-ax run product "Build a user authentication feature with database, API, and tests"
+# ax analyzes this complex task and orchestrates multiple agents
+ax run "Build a user authentication feature with database, API, and tests"
 ```
 
 **What happens:**
-1. 🎯 **Product agent** designs the system architecture
-2. ⚙️  **Backend agent** implements the API endpoints
-3. 🔒 **Security agent** audits for vulnerabilities
-4. ✅ **Quality agent** writes comprehensive tests
+1. 🎯 `ax` analyzes the full scope of your request
+2. 📋 Selects **product agent** to design the system architecture
+3. ⚙️ Delegates to **backend agent** to implement the API endpoints
+4. 🔒 Brings in **security agent** to audit for vulnerabilities
+5. ✅ Assigns **quality agent** to write comprehensive tests
 
-All automatically, in sequence!
+All automatically, in optimal sequence!
+
+**You can also specify agents if needed:**
+```bash
+ax run product "Build a user authentication feature with database, API, and tests"
+```
 
 ---
 

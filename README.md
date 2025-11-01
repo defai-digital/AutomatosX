@@ -83,28 +83,39 @@ ax run workflow.ax.yaml
 
 AutomatosX is designed to work seamlessly with AI assistants using natural language commands. This is the **recommended way** to use AutomatosX:
 
+**✨ Key Feature**: AutomatosX **automatically selects the best agent(s)** for your task. You don't need to specify which agent to use - just describe what you want!
+
 ### Use with Claude Code, Gemini CLI, or OpenAI Codex
 
-**Basic Agent Collaboration**:
+**Natural Task Descriptions** (ax auto-selects agents for you):
 
 ```
 # In Claude Code
-"Please work with ax agent backend to implement user authentication"
-"Ask the ax security agent to audit this code for vulnerabilities"
-"Have the ax quality agent write tests for this feature"
+"Please use ax to implement user authentication"
+"Use ax to audit this code for vulnerabilities"
+"Have ax write comprehensive tests for this feature"
+"Use ax to design a microservices architecture"
 ```
 
 ```
 # In Gemini CLI
-"Use ax to help me find and fix bugs in the authentication system"
-"Work with ax agent data to optimize the database queries"
+"Use ax to find and fix bugs in the authentication system"
+"Work with ax to optimize the database queries"
+"Use ax to build the login UI"
 ```
 
 ```
 # In OpenAI Codex
-"Collaborate with ax agent frontend to build the login UI"
-"Use ax agent devops to set up CI/CD pipeline"
+"Use ax to build the user interface"
+"Work with ax to set up CI/CD pipeline"
+"Use ax to design the database schema"
 ```
+
+**What Happens Behind the Scenes**:
+- 🤖 `ax` analyzes your task description
+- 🎯 Automatically selects the best agent(s) (backend, security, quality, etc.)
+- 🔄 Coordinates multi-agent collaboration if needed
+- 📝 All decisions stored in memory for context
 
 **Workflow Creation and Execution**:
 
@@ -148,16 +159,12 @@ blue-green deployment strategy and rollback automation."
 
 ```
 # In Claude Code
-"Coordinate with ax agents to build a complete e-commerce platform:
-- Product agent for requirements and architecture
-- Backend agent for API and database
-- Frontend agent for React UI
-- Security agent for audit
-- Quality agent for comprehensive tests
+"Use AutomatosX to build a complete e-commerce platform with requirements,
+architecture, API, database, React UI, security audit, and comprehensive tests.
 Use balanced policy for cost and speed."
 
-"Work with ax backend and data agents to implement a data analytics pipeline.
-Backend handles the API, data handles ETL and warehousing."
+"Work with AutomatosX to implement a data analytics pipeline with API,
+ETL, and data warehousing."
 ```
 
 **Long-Running Tasks with Iterate Mode**:
@@ -166,7 +173,7 @@ Iterate mode is perfect for autonomous, repeating tasks without constant questio
 
 ```
 # In Claude Code - Autonomous Bug-Finding (The Real Power!)
-"Please iterate 5 times with ultrathink and ax agent to find and fix bugs"
+"Please use ax in iterate mode to find and fix bugs. Run 5 iterations."
 
 # This will autonomously:
 # - Iterate 1: Scan for parseInt/JSON.parse safety issues → Find & fix bugs
@@ -179,7 +186,7 @@ Iterate mode is perfect for autonomous, repeating tasks without constant questio
 
 ```
 # In Gemini CLI - Comprehensive Code Analysis
-"Use ax quality agent in iterate mode to analyze the entire codebase for
+"Use ax in iterate mode to analyze the entire codebase for
 performance issues. Set 120 minute timeout with balanced strictness."
 
 # This runs multiple analysis passes autonomously:
@@ -191,8 +198,8 @@ performance issues. Set 120 minute timeout with balanced strictness."
 
 ```
 # In OpenAI Codex - Security Hardening
-"Have ax security agent run a comprehensive security audit in iterate mode
-with paranoid strictness. This is for production deployment."
+"Use ax to run a comprehensive security audit in iterate mode
+with strict level. This is for production deployment."
 
 # Autonomous security iterations:
 # - SQL injection scanning
@@ -221,14 +228,22 @@ with paranoid strictness. This is for production deployment."
 
 ### Behind the Scenes
 
-When you say "work with ax agent backend", the AI assistant:
-1. Calls `ax run backend "your task"` with the appropriate context
-2. AutomatosX routes to the optimal provider based on policy
-3. Persistent memory ensures no context is lost
-4. Results are returned to your AI assistant
-5. The conversation continues naturally
+When you say "use AutomatosX to implement authentication", here's what happens:
+1. AI assistant calls `ax run "implement user authentication"`
+2. AutomatosX **automatically analyzes the task** and selects the best agent(s)
+3. Routes to the optimal provider based on policy (cost, latency, reliability)
+4. Persistent memory ensures perfect context across all interactions
+5. Results are returned to your AI assistant with full context
+6. The conversation continues naturally
 
-**This natural language interface is how we expect users to work with AutomatosX daily.**
+**This natural language interface with auto-agent selection is how we expect users to work with AutomatosX daily.**
+
+**Advanced: Direct Agent Specification** (Optional):
+If you need a specific agent, you can still specify it:
+- `ax run backend "task"` - Forces backend agent
+- `ax run security "task"` - Forces security agent
+
+But in most cases, auto-selection works better!
 
 ### CLI-Only Mode (No API Access Required)
 
@@ -269,48 +284,53 @@ Use iterate mode naturally through AI assistants - just ask them to use iterate 
 
 ```
 # In Claude Code
-"Please use ax agent backend in iterate mode to refactor the entire authentication
+"Please use AutomatosX in iterate mode to refactor the entire authentication
 module. Set timeout to 60 minutes with balanced strictness."
 
-"Ask ax agent security to run a comprehensive security audit in iterate mode with
-paranoid strictness. This is for production code so be extra careful."
+"Use AutomatosX to run a comprehensive security audit in iterate mode with
+strict level. This is for production code so be extra careful."
 
-"Have ax agent quality run in iterate mode to generate tests for all untested
+"Have AutomatosX run in iterate mode to generate tests for all untested
 functions. Use dry-run first to preview what it will do."
 ```
 
 ```
 # In Gemini CLI
-"Use ax backend agent with iterate mode to implement the new payment gateway.
+"Use AutomatosX with iterate mode to implement the new payment gateway.
 Set a 90 minute timeout and use balanced strictness."
 
-"Run ax security agent in iterate mode with paranoid strictness to audit the
+"Run AutomatosX in iterate mode with strict level to audit the
 codebase for vulnerabilities. Do a dry-run first."
 ```
 
 ```
 # In OpenAI Codex
-"Work with ax agent backend in autonomous iterate mode to refactor database
+"Work with AutomatosX in autonomous iterate mode to refactor database
 queries. Limit execution to 45 minutes with balanced strictness."
 
-"Use ax agent data in iterate mode to optimize all SQL queries. Run in dry-run
+"Use AutomatosX in iterate mode to optimize all SQL queries. Run in dry-run
 mode first to see the plan."
 ```
 
 ### Direct CLI Usage
 
+**Note**: You can let AutomatosX auto-select agents, or specify a particular agent if needed.
+
 ```bash
-# Basic autonomous execution
+# Auto-selection (recommended) - AutomatosX picks the best agent
+ax run "implement user authentication" --iterate
+
+# With agent specified (optional)
 ax run backend "implement user authentication" --iterate
 
 # With time limit and strictness control
-ax run backend "refactor codebase" --iterate --iterate-timeout 60 --iterate-strictness balanced
+ax run "refactor codebase" --iterate --iterate-timeout 60 --iterate-strictness balanced
 
-# Maximum safety mode
-ax run security "audit entire codebase" --iterate --iterate-strictness paranoid
+# For security-critical tasks
+ax run "audit entire codebase for security vulnerabilities" --iterate --iterate-strictness strict
 
-# Test autonomous execution without changes
-ax run backend "plan database migration" --iterate --iterate-dry-run
+# Test execution plan without making changes (dry-run)
+ax run "plan database migration" --iterate --iterate-dry-run
 ```
 
 ### Key Features

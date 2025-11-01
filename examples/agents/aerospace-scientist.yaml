@@ -12,13 +12,18 @@ description: "Expert in orbital mechanics, mission trajectory design, propulsion
 
 
 # Abilities (v5.7.0: Aerospace mission specialization)
+# v6.5.13: Added simulation and integration abilities
 abilities:
   - orbital-mechanics
   - mission-analysis
   - telemetry-diagnostics
   - propulsion-systems
+  # Aerospace engineering specializations (v6.5.13)
+  - simulation-tooling           # NEW - STK/GMAT integration, simulation frameworks
+  - flight-software-integration  # NEW - Flight software coordination, embedded systems
 
 # v5.7.0: Smart ability loading for aerospace workflows
+# v6.5.13: Expanded with simulation and integration keywords
 abilitySelection:
   # Core abilities (always loaded)
   core:
@@ -27,15 +32,82 @@ abilitySelection:
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
+    # Orbital mechanics and astrodynamics
     orbit: [orbital-mechanics, mission-analysis]
-    trajectory: [mission-analysis, propulsion-systems]
+    orbital: [orbital-mechanics, mission-analysis]
+    astrodynamics: [orbital-mechanics, mission-analysis]
+    trajectory: [mission-analysis, propulsion-systems, orbital-mechanics]
+    maneuver: [orbital-mechanics, propulsion-systems]
+    "delta-v": [orbital-mechanics, propulsion-systems]
+    hohmann: [orbital-mechanics, mission-analysis]
+    transfer: [orbital-mechanics, mission-analysis]
+    "launch-window": [mission-analysis, orbital-mechanics]
+
+    # Mission analysis and planning
+    mission: [mission-analysis, telemetry-diagnostics, orbital-mechanics]
+    "mission-design": [mission-analysis, orbital-mechanics, propulsion-systems]
+    "mission-planning": [mission-analysis, simulation-tooling]
+    feasibility: [mission-analysis, propulsion-systems]
+    "risk-analysis": [mission-analysis, telemetry-diagnostics]
+    budget: [mission-analysis, propulsion-systems]
+    "mission-profile": [mission-analysis, orbital-mechanics]
+
+    # Telemetry and diagnostics
     telemetry: [telemetry-diagnostics, mission-analysis]
+    diagnostic: [telemetry-diagnostics, flight-software-integration]
+    diagnostics: [telemetry-diagnostics, flight-software-integration]
+    anomaly: [telemetry-diagnostics, mission-analysis]
+    health: [telemetry-diagnostics, flight-software-integration]
+    monitoring: [telemetry-diagnostics, mission-analysis]
+    sensor: [telemetry-diagnostics, flight-software-integration]
+    "data-quality": [telemetry-diagnostics, mission-analysis]
+
+    # Propulsion systems
     propulsion: [propulsion-systems, orbital-mechanics]
-    mission: [mission-analysis, telemetry-diagnostics]
-    guidance: [orbital-mechanics, propulsion-systems]
+    thrust: [propulsion-systems, orbital-mechanics]
+    "specific-impulse": [propulsion-systems, mission-analysis]
+    isp: [propulsion-systems, mission-analysis]
+    engine: [propulsion-systems, flight-software-integration]
+    "propulsion-trade": [propulsion-systems, mission-analysis]
+    fuel: [propulsion-systems, mission-analysis]
+
+    # Guidance, navigation, and control
+    guidance: [orbital-mechanics, propulsion-systems, flight-software-integration]
     navigation: [orbital-mechanics, telemetry-diagnostics]
-    control: [telemetry-diagnostics, mission-analysis]
-    flight: [mission-analysis, propulsion-systems]
+    control: [telemetry-diagnostics, mission-analysis, flight-software-integration]
+    gnc: [orbital-mechanics, flight-software-integration]
+    "attitude-control": [flight-software-integration, telemetry-diagnostics]
+    pointing: [flight-software-integration, orbital-mechanics]
+
+    # Simulation tooling (v6.5.13)
+    simulation: [simulation-tooling, mission-analysis]
+    simulate: [simulation-tooling, mission-analysis]
+    stk: [simulation-tooling, orbital-mechanics]
+    gmat: [simulation-tooling, orbital-mechanics]
+    modeling: [simulation-tooling, mission-analysis]
+    model: [simulation-tooling, mission-analysis]
+    framework: [simulation-tooling, flight-software-integration]
+    simulator: [simulation-tooling, mission-analysis]
+    "monte-carlo": [simulation-tooling, mission-analysis]
+    "covariance-propagation": [simulation-tooling, orbital-mechanics]
+
+    # Flight software integration (v6.5.13)
+    flight: [mission-analysis, propulsion-systems, flight-software-integration]
+    "flight-software": [flight-software-integration, telemetry-diagnostics]
+    fsw: [flight-software-integration, telemetry-diagnostics]
+    embedded: [flight-software-integration, telemetry-diagnostics]
+    onboard: [flight-software-integration, telemetry-diagnostics]
+    avionics: [flight-software-integration, telemetry-diagnostics]
+    "real-time": [flight-software-integration, telemetry-diagnostics]
+    firmware: [flight-software-integration]
+    "spacecraft-software": [flight-software-integration, mission-analysis]
+
+    # Standards and compliance
+    nasa: [mission-analysis, telemetry-diagnostics]
+    esa: [mission-analysis, telemetry-diagnostics]
+    compliance: [mission-analysis, flight-software-integration]
+    standard: [mission-analysis, telemetry-diagnostics]
+    verification: [mission-analysis, telemetry-diagnostics]
 
 # v5.7.0: Specialists may consult Bob and Data Scientist (maxDelegationDepth: 1)
 # v4.9.0+ Multi-Agent Orchestration

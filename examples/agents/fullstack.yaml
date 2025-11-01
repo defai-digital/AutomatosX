@@ -11,7 +11,7 @@ role: Fullstack Engineer
 description: "Expert in full-stack development, API integration, end-to-end testing, and cross-layer feature implementation"
 
 
-# Abilities (v5.7.0: Cross-stack development with JS/TS and Python focus)
+# Abilities (v6.5.13: Rebalanced for cross-stack specialization)
 abilities:
   - code-generation
   - api-design
@@ -20,13 +20,15 @@ abilities:
   - db-modeling
   - api-integration
   - e2e-testing
-  - best-practices
   # Language-specific abilities (v5.7.0)
   - javascript-typescript-best-practices
   - python-best-practices
   - react-best-practices
+  # Fullstack-specific strategic abilities (v6.5.13)
+  - shared-contracts      # NEW - TypeScript types shared across frontend/backend
+  - cross-stack-testing   # NEW - Integration testing across layers
 
-# v5.7.0: Smart ability loading based on task keywords
+# v6.5.13: Enhanced ability loading with cross-stack keywords
 abilitySelection:
   # Core abilities (always loaded)
   core:
@@ -36,16 +38,23 @@ abilitySelection:
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
-    fullstack: [code-generation, api-integration, e2e-testing, javascript-typescript-best-practices]
-    integration: [api-integration, e2e-testing]
-    feature: [code-generation, api-integration, component-architecture, react-best-practices]
-    api: [api-design, api-integration, javascript-typescript-best-practices]
+    fullstack: [code-generation, api-integration, e2e-testing, javascript-typescript-best-practices, shared-contracts]
+    integration: [api-integration, e2e-testing, cross-stack-testing]
+    feature: [code-generation, api-integration, component-architecture, react-best-practices, shared-contracts]
+    api: [api-design, api-integration, javascript-typescript-best-practices, shared-contracts]
     frontend: [component-architecture, state-management, react-best-practices]
     backend: [api-design, db-modeling, javascript-typescript-best-practices]
     database: [db-modeling]
     component: [component-architecture, react-best-practices]
-    e2e: [e2e-testing]
-    test: [e2e-testing]
+    e2e: [e2e-testing, cross-stack-testing]
+    test: [e2e-testing, cross-stack-testing]
+
+    # Cross-stack keywords (v6.5.13)
+    "feature-slice": [code-generation, api-integration, component-architecture, shared-contracts]
+    "end-to-end": [e2e-testing, cross-stack-testing, api-integration]
+    "shared-types": [shared-contracts, javascript-typescript-best-practices]
+    "api-contract": [shared-contracts, api-design]
+    "integration-test": [cross-stack-testing, e2e-testing]
 
     # Language-specific (v5.7.0)
     node: [javascript-typescript-best-practices, api-design, api-integration]

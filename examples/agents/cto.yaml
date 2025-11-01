@@ -13,26 +13,60 @@ description: "Expert in technology strategy, technical leadership, innovation ma
 provider: openai
 fallbackProvider: claude-code
 
-# Abilities (v5.0.12: Technical strategy and architecture abilities)
+# Abilities (v6.5.13: Rebalanced for technical leadership focus)
 abilities:
-  - problem-solving       # Technical problem analysis
-  - best-practices        # Architecture and standards
   - technical-writing     # Technical documentation
   - task-planning         # Technology roadmap planning
+  - risk-assessment       # Technical risk evaluation
+  - our-architecture-decisions  # Architecture oversight and governance
+  # Technical leadership abilities (v6.5.13)
+  - tech-radar            # NEW - Technology evaluation, trends, adoption strategy
+  - org-enablement        # NEW - Team development, engineering culture, process improvement
 
-# v5.0.12: Smart ability loading
+# v6.5.13: Enhanced ability loading with technical leadership focus
 abilitySelection:
+  # Core abilities (always loaded)
   core:
-    - problem-solving
-    - best-practices
+    - task-planning
+    - tech-radar
+
+  # Task-based abilities (loaded when keywords match)
   taskBased:
-    architecture: [problem-solving, best-practices]
-    technology: [problem-solving, best-practices]
-    technical: [technical-writing, best-practices]
-    innovation: [problem-solving, task-planning]
-    platform: [best-practices]
-    standards: [best-practices, technical-writing]
-    roadmap: [task-planning, problem-solving]
+    # Technology evaluation and radar (v6.5.13)
+    technology: [tech-radar, task-planning, risk-assessment]
+    "tech-radar": [tech-radar, task-planning]
+    "technology-evaluation": [tech-radar, risk-assessment]
+    "technology-selection": [tech-radar, our-architecture-decisions]
+    trends: [tech-radar, task-planning]
+    adoption: [tech-radar, org-enablement, task-planning]
+    "emerging-tech": [tech-radar, risk-assessment]
+    innovation: [tech-radar, task-planning, org-enablement]
+
+    # Organization enablement (v6.5.13)
+    team: [org-enablement, task-planning]
+    culture: [org-enablement]
+    "engineering-culture": [org-enablement, task-planning]
+    "team-development": [org-enablement]
+    "process-improvement": [org-enablement, task-planning]
+    enablement: [org-enablement, tech-radar]
+    "developer-experience": [org-enablement, task-planning]
+    productivity: [org-enablement, task-planning]
+    hiring: [org-enablement]
+    onboarding: [org-enablement]
+
+    # Architecture and strategy
+    architecture: [our-architecture-decisions, tech-radar, risk-assessment]
+    technical: [technical-writing, tech-radar, our-architecture-decisions]
+    platform: [tech-radar, task-planning, our-architecture-decisions]
+    standards: [our-architecture-decisions, technical-writing]
+    roadmap: [task-planning, tech-radar, our-architecture-decisions]
+    "technical-strategy": [tech-radar, task-planning, our-architecture-decisions]
+    "architecture-governance": [our-architecture-decisions, risk-assessment]
+
+    # Risk and planning
+    risk: [risk-assessment, task-planning]
+    planning: [task-planning, tech-radar]
+    strategy: [task-planning, tech-radar, org-enablement]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults
 # v5.0.12: Coordinators delegate strategic work (maxDelegationDepth: 1)

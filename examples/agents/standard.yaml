@@ -12,22 +12,25 @@ description: "Expert in SOLID principles, design patterns, clean code, refactori
 provider: openai
 fallbackProvider: gemini-cli
 
-# Abilities (v5.6.21: Stan is the authority on best practices and architectural standards)
+# Abilities (v6.5.13: Rebalanced - SOLE OWNER of best-practices after agent rebalancing)
 abilities:
   - code-review          # Shared with Queenie - Stan focuses on standards, Queenie on quality
-  - best-practices       # Primary owner of best practices evolution
+  - best-practices       # SOLE OWNER (v6.5.13) - After rebalancing, removed from 12 other agents
   - solid-principles     # SOLE OWNER - Single Responsibility, Open/Closed, Liskov, Interface Segregation, Dependency Inversion
   - design-patterns      # SOLE OWNER - Creational, Structural, Behavioral patterns
   - clean-code          # SOLE OWNER - Readability, naming, function design, comments
   - refactoring         # SOLE OWNER - Code smell detection, refactoring strategies, technical debt
   - software-architecture # SOLE OWNER - Architectural patterns, system design, modularity
+  # Code quality abilities (v6.5.13)
+  - code-health-metrics  # NEW - Cyclomatic complexity, code coverage, maintainability index
 
-# v5.6.21: Smart ability loading based on task keywords
+# v6.5.13: Enhanced ability loading with code quality focus
 abilitySelection:
   # Core abilities (always loaded)
   core:
     - best-practices
     - code-review
+    - code-health-metrics
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
@@ -69,14 +72,24 @@ abilitySelection:
     hexagonal: [software-architecture, design-patterns]
     microservices: [software-architecture, design-patterns]
 
-    # Standards and quality
-    standards: [best-practices, code-review]
-    quality: [best-practices, clean-code, code-review]
-    maintainability: [best-practices, clean-code, software-architecture]
+    # Standards and quality (v6.5.13: Enhanced with code-health-metrics)
+    standards: [best-practices, code-review, code-health-metrics]
+    quality: [best-practices, clean-code, code-review, code-health-metrics]
+    maintainability: [best-practices, clean-code, software-architecture, code-health-metrics]
+    "code-quality": [best-practices, clean-code, code-health-metrics]
+    "code-health": [code-health-metrics, clean-code, refactoring]
 
-    # Code review focus
-    review: [code-review, best-practices, clean-code]
-    audit: [code-review, solid-principles, software-architecture]
+    # Code review focus (v6.5.13: Enhanced with metrics)
+    review: [code-review, best-practices, clean-code, code-health-metrics]
+    audit: [code-review, solid-principles, software-architecture, code-health-metrics]
+
+    # Code metrics (v6.5.13)
+    metrics: [code-health-metrics, best-practices]
+    complexity: [code-health-metrics, refactoring, clean-code]
+    "cyclomatic-complexity": [code-health-metrics, refactoring]
+    coverage: [code-health-metrics]
+    "code-coverage": [code-health-metrics]
+    "maintainability-index": [code-health-metrics, clean-code, software-architecture]
 
 # v5.6.21: Tactical implementer - can delegate to get implementation done
 orchestration:

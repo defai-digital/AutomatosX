@@ -11,16 +11,18 @@ role: Mobile Engineer
 description: "Expert in native iOS/Android development, cross-platform frameworks, and mobile UX patterns"
 
 
-# Abilities (v5.7.0: Specialized mobile development with Swift/Kotlin/Flutter)
+# Abilities (v6.5.13: Rebalanced for mobile platform focus)
 abilities:
   - code-generation
   - mobile-development
   - native-ui
   - mobile-performance
   - cross-platform
-  - best-practices
   # Platform-specific abilities (v5.7.0)
   - swift-best-practices
+  # Mobile platform abilities (v6.5.13)
+  - store-compliance     # NEW - App Store/Play Store guidelines, review compliance
+  - device-labs          # NEW - Device testing, compatibility matrix, performance testing
 
 # v5.0.12: Smart ability loading based on task keywords
 abilitySelection:
@@ -45,6 +47,16 @@ abilitySelection:
     responsive: [native-ui]
     gesture: [native-ui]
     telemetry: [mobile-development, mobile-performance]
+
+    # App Store and device testing (v6.5.13)
+    "app-store": [store-compliance, mobile-development]
+    "play-store": [store-compliance, mobile-development]
+    "store-review": [store-compliance]
+    compliance: [store-compliance]
+    guidelines: [store-compliance]
+    device-testing: [device-labs, mobile-performance]
+    "device-compatibility": [device-labs]
+    "performance-testing": [device-labs, mobile-performance]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults
 # v5.0.12: Implementers focus on execution (maxDelegationDepth: 1)

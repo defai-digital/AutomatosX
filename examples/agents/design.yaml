@@ -11,33 +11,62 @@ role: UX/UI Designer
 description: "Expert in user experience design, visual design, and design systems"
 
 
-# Abilities (v5.0.12: Specialized design abilities)
+# Abilities (v6.5.13: Rebalanced for UX/UI design specialization)
 abilities:
-  - problem-solving       # UX problem solving
   - content-creation      # Design content and assets
-  - technical-writing     # Design documentation
   - wireframing          # Wireframe and prototype design
   - user-flows           # User journey and flow mapping
   - accessibility-review # Accessibility evaluation and compliance
+  # UX/UI design specializations (v6.5.13)
+  - ux-research-synthesis  # NEW - User research analysis, persona creation, insight extraction
+  - prototype-iteration    # NEW - Iterative prototyping, usability testing, design refinement
+  - design-critique        # NEW - Design review, heuristic evaluation, improvement recommendations
 
-# v5.0.12: Smart ability loading based on task keywords
+# v6.5.13: Enhanced ability loading with UX/UI design specialization
 abilitySelection:
   # Core abilities (always loaded)
   core:
-    - problem-solving
     - wireframing
+    - ux-research-synthesis
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
+    # UX research and insights (v6.5.13)
+    "user-research": [ux-research-synthesis, user-flows]
+    research: [ux-research-synthesis]
+    persona: [ux-research-synthesis]
+    personas: [ux-research-synthesis]
+    insights: [ux-research-synthesis]
+    "user-insight": [ux-research-synthesis]
+    interviews: [ux-research-synthesis]
+    "user-testing": [ux-research-synthesis, prototype-iteration]
+
+    # Prototyping and iteration (v6.5.13)
+    prototype: [prototype-iteration, wireframing, user-flows]
+    prototyping: [prototype-iteration, wireframing]
+    iteration: [prototype-iteration, design-critique]
+    "usability-testing": [prototype-iteration, ux-research-synthesis]
+    "design-testing": [prototype-iteration]
+    refinement: [prototype-iteration, design-critique]
+
+    # Design critique and review (v6.5.13)
+    critique: [design-critique]
+    review: [design-critique, prototype-iteration]
+    "design-review": [design-critique]
+    heuristic: [design-critique]
+    "heuristics-evaluation": [design-critique]
+    feedback: [design-critique, ux-research-synthesis]
+    improvement: [design-critique, prototype-iteration]
+
+    # Core design work
     wireframe: [wireframing, content-creation]
-    prototype: [wireframing, user-flows]
-    design: [content-creation, problem-solving]
-    ux: [problem-solving, user-flows]
+    design: [content-creation, wireframing, ux-research-synthesis]
+    ux: [ux-research-synthesis, user-flows, design-critique]
     ui: [content-creation, wireframing]
-    accessibility: [accessibility-review, problem-solving]
+    accessibility: [accessibility-review, design-critique]
     a11y: [accessibility-review]
-    flow: [user-flows, problem-solving]
-    journey: [user-flows]
+    flow: [user-flows, ux-research-synthesis]
+    journey: [user-flows, ux-research-synthesis]
     wcag: [accessibility-review]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults

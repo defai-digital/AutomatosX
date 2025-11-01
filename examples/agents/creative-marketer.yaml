@@ -14,12 +14,72 @@ description: "Expert in GenAI prompting, digital marketing, SEO, and video scrip
 provider: gemini-cli
 fallbackProvider: claude-code
 
-# Core marketing and content creation abilities
+# Core marketing and content creation abilities (v6.5.13: Rebalanced for marketing strategy)
 abilities:
   - genai-prompting
   - digital-marketing
   - scriptwriting
   - content-creation
+  # Marketing strategy abilities (v6.5.13)
+  - positioning-strategy    # NEW - Brand positioning, competitive differentiation, messaging framework
+  - campaign-planning       # NEW - Multi-channel campaigns, content calendars, performance goals
+  - audience-insights       # NEW - Audience segmentation, persona development, behavioral analysis
+
+# v6.5.13: Enhanced ability loading with marketing strategy focus
+abilitySelection:
+  # Core abilities (always loaded)
+  core:
+    - digital-marketing
+    - campaign-planning
+
+  # Task-based abilities (loaded when keywords match)
+  taskBased:
+    # Brand positioning and strategy (v6.5.13)
+    positioning: [positioning-strategy, digital-marketing]
+    "brand-positioning": [positioning-strategy, campaign-planning]
+    differentiation: [positioning-strategy, audience-insights]
+    messaging: [positioning-strategy, content-creation]
+    "messaging-framework": [positioning-strategy, content-creation]
+    "value-proposition": [positioning-strategy, audience-insights]
+    competitive: [positioning-strategy, audience-insights]
+
+    # Campaign planning (v6.5.13)
+    campaign: [campaign-planning, digital-marketing, audience-insights]
+    "campaign-planning": [campaign-planning, positioning-strategy]
+    "content-calendar": [campaign-planning, content-creation]
+    "multi-channel": [campaign-planning, digital-marketing]
+    "performance-goals": [campaign-planning, audience-insights]
+    kpi: [campaign-planning, digital-marketing]
+    "a/b-test": [campaign-planning, audience-insights]
+    "a/b-testing": [campaign-planning, audience-insights]
+
+    # Audience insights (v6.5.13)
+    audience: [audience-insights, positioning-strategy]
+    segmentation: [audience-insights, campaign-planning]
+    persona: [audience-insights, positioning-strategy]
+    "behavioral-analysis": [audience-insights]
+    demographics: [audience-insights, campaign-planning]
+    psychographics: [audience-insights, positioning-strategy]
+    "target-audience": [audience-insights, positioning-strategy, campaign-planning]
+
+    # GenAI and content creation
+    genai: [genai-prompting, content-creation]
+    imagen: [genai-prompting, content-creation]
+    veo: [genai-prompting, scriptwriting]
+    prompt: [genai-prompting, content-creation]
+    "prompt-engineering": [genai-prompting]
+
+    # Digital marketing and SEO
+    marketing: [digital-marketing, campaign-planning, audience-insights]
+    seo: [digital-marketing, content-creation]
+    "social-media": [digital-marketing, content-creation, campaign-planning]
+    ads: [digital-marketing, campaign-planning, audience-insights]
+    "paid-advertising": [digital-marketing, campaign-planning]
+
+    # Scriptwriting and content
+    script: [scriptwriting, content-creation]
+    video: [scriptwriting, genai-prompting]
+    content: [content-creation, digital-marketing]
 
 # Configuration
 temperature: 0.8  # Higher creativity for marketing and content generation

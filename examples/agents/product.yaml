@@ -11,30 +11,49 @@ role: Product Manager
 description: "Expert in product strategy, user research, and feature prioritization"
 
 
-# Abilities (v5.0.12: Product strategy and user-focused abilities)
+# Abilities (v6.5.13: Rebalanced for product strategy focus)
 abilities:
-  - problem-solving       # User problem analysis
   - task-planning         # Feature planning and prioritization
-  - technical-writing     # Product specs and requirements
+  # Product management abilities (v6.5.13)
+  - roadmap-prioritization     # NEW - Feature prioritization, tradeoff analysis
+  - kpi-definition            # NEW - Metrics definition, success criteria
+  - user-research-synthesis   # NEW - User interview analysis, problem discovery
 
-# v5.0.12: Smart ability loading based on task keywords
+# v6.5.13: Enhanced ability loading with product strategy focus
 abilitySelection:
   # Core abilities (always loaded)
   core:
-    - problem-solving
     - task-planning
+    - roadmap-prioritization
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
-    product: [problem-solving, task-planning]
-    feature: [task-planning, technical-writing]
-    roadmap: [task-planning]
-    requirements: [technical-writing]
-    spec: [technical-writing]
-    prioritization: [problem-solving, task-planning]
-    user: [problem-solving]
-    customer: [problem-solving]
-    research: [problem-solving]
+    product: [roadmap-prioritization, task-planning, kpi-definition]
+    feature: [roadmap-prioritization, task-planning]
+    roadmap: [roadmap-prioritization, task-planning]
+    prioritization: [roadmap-prioritization, task-planning]
+
+    # User research (v6.5.13)
+    user: [user-research-synthesis, kpi-definition]
+    customer: [user-research-synthesis, kpi-definition]
+    research: [user-research-synthesis]
+    "user-interview": [user-research-synthesis]
+    "problem-discovery": [user-research-synthesis, roadmap-prioritization]
+    feedback: [user-research-synthesis, kpi-definition]
+
+    # Metrics and KPIs (v6.5.13)
+    metrics: [kpi-definition, task-planning]
+    kpi: [kpi-definition]
+    "success-criteria": [kpi-definition, task-planning]
+    objectives: [kpi-definition, roadmap-prioritization]
+    okr: [kpi-definition, roadmap-prioritization]
+
+    # Prioritization (v6.5.13)
+    tradeoff: [roadmap-prioritization]
+    tradeoffs: [roadmap-prioritization]
+    "trade-off": [roadmap-prioritization]
+    backlog: [roadmap-prioritization, task-planning]
+    sprint: [roadmap-prioritization, task-planning]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults
 # v5.0.12: Coordinators delegate strategic work (maxDelegationDepth: 1)

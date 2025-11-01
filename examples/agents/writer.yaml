@@ -11,19 +11,17 @@ role: Technical Writer
 description: "Expert technical writer specialized in documentation, articles, and clear communication"
 
 
-# Abilities (v5.0.12: Specialized writing abilities)
+# Abilities (v6.5.13: Rebalanced for technical writing specialization)
 abilities:
   - technical-writing
   - documentation
   - content-creation
-  - best-practices
-  # Writer-specific abilities (using existing until new ones created)
-  # - api-docs
-  # - adr-authoring
-  # - readme-guides
-  # - change-logs
+  # Technical writing specializations (v6.5.13)
+  - api-documentation         # NEW - API docs, SDK guides, code examples
+  - release-notes            # NEW - Changelog authoring, release announcements
+  - knowledge-base-curation  # NEW - Documentation organization, search optimization
 
-# v5.0.12: Smart ability loading based on task keywords
+# v6.5.13: Enhanced ability loading with technical writing specialization
 abilitySelection:
   # Core abilities (always loaded)
   core:
@@ -32,13 +30,47 @@ abilitySelection:
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
-    api: [technical-writing, documentation]  # Will add api-docs when created
-    adr: [technical-writing]  # Will add adr-authoring when created
-    readme: [documentation]  # Will add readme-guides when created
-    guide: [documentation]
-    release: [technical-writing]  # Will add change-logs when created
-    changelog: [technical-writing]
-    tutorial: [documentation, content-creation]
+    # API documentation (v6.5.13)
+    api: [api-documentation, technical-writing]
+    "api-docs": [api-documentation, technical-writing]
+    "api-documentation": [api-documentation, technical-writing]
+    "api-reference": [api-documentation, technical-writing]
+    sdk: [api-documentation, technical-writing]
+    endpoint: [api-documentation, technical-writing]
+    "code-examples": [api-documentation, technical-writing]
+    swagger: [api-documentation, technical-writing]
+    openapi: [api-documentation, technical-writing]
+
+    # Release notes and changelogs (v6.5.13)
+    release: [release-notes, technical-writing]
+    "release-notes": [release-notes, technical-writing]
+    changelog: [release-notes, technical-writing]
+    "change-log": [release-notes, technical-writing]
+    "version-history": [release-notes, knowledge-base-curation]
+    announcement: [release-notes, content-creation]
+    "whats-new": [release-notes, content-creation]
+
+    # Knowledge base and documentation organization (v6.5.13)
+    "knowledge-base": [knowledge-base-curation, documentation]
+    curation: [knowledge-base-curation, documentation]
+    "doc-organization": [knowledge-base-curation, documentation]
+    "search-optimization": [knowledge-base-curation, documentation]
+    taxonomy: [knowledge-base-curation, documentation]
+    "information-architecture": [knowledge-base-curation, documentation]
+
+    # General technical writing
+    documentation: [documentation, technical-writing]
+    readme: [documentation, content-creation]
+    guide: [documentation, content-creation, technical-writing]
+    tutorial: [documentation, content-creation, technical-writing]
+    "how-to": [documentation, technical-writing]
+    "user-guide": [documentation, content-creation]
+    "developer-guide": [documentation, api-documentation, technical-writing]
+
+    # Content types
+    article: [content-creation, technical-writing]
+    blog: [content-creation, technical-writing]
+    writing: [technical-writing, content-creation]
 
 # Configuration
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults

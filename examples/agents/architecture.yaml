@@ -12,7 +12,7 @@ description: "Expert in system architecture, architectural patterns, ADR lifecyc
 provider: openai
 fallbackProvider: gemini-cli
 
-# Abilities (v6.5.4: Architecture-focused with ADR ownership)
+# Abilities (v6.5.13: Rebalanced for architecture governance focus)
 abilities:
   - our-architecture-decisions  # PRIMARY OWNER - ADR lifecycle and curation
   - software-architecture        # System design and architectural patterns
@@ -21,17 +21,17 @@ abilities:
   - risk-assessment             # Architectural governance and risk evaluation
   - our-project-structure       # Project organization understanding
   - feasibility-study           # Architectural option evaluation
-  - technical-writing           # ADR documentation and updates
-  - problem-solving             # Architectural problem analysis
-  - best-practices              # Architecture best practices
+  # Architecture governance abilities (v6.5.13)
+  - adr-governance              # NEW - ADR quality, consistency, lifecycle management
+  - architecture-roadmap        # NEW - Architecture runway planning, evolution strategy
 
-# v6.5.4: Smart ability loading with architecture focus
+# v6.5.13: Enhanced ability loading with architecture governance focus
 abilitySelection:
   # Core abilities (always loaded)
   core:
     - our-architecture-decisions
     - software-architecture
-    - problem-solving
+    - adr-governance
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
@@ -54,35 +54,38 @@ abilitySelection:
     frontend: [component-architecture, our-project-structure]
     ui: [component-architecture]
 
-    # ADR and decisions
-    adr: [our-architecture-decisions, technical-writing]
-    decision: [our-architecture-decisions, risk-assessment, technical-writing]
-    decisions: [our-architecture-decisions, technical-writing]
+    # ADR and decisions (v6.5.13: Enhanced with governance)
+    adr: [our-architecture-decisions, adr-governance]
+    decision: [our-architecture-decisions, risk-assessment, adr-governance]
+    decisions: [our-architecture-decisions, adr-governance]
+    "adr-quality": [adr-governance, our-architecture-decisions]
+    "adr-lifecycle": [adr-governance, our-architecture-decisions]
+    "decision-curation": [adr-governance, our-architecture-decisions]
 
-    # Planning and roadmap
-    roadmap: [task-planning, our-architecture-decisions, risk-assessment]
-    runway: [task-planning, software-architecture, risk-assessment]
-    planning: [task-planning, feasibility-study]
+    # Planning and roadmap (v6.5.13: Enhanced with architecture-roadmap)
+    roadmap: [architecture-roadmap, task-planning, our-architecture-decisions]
+    runway: [architecture-roadmap, task-planning, software-architecture]
+    planning: [task-planning, feasibility-study, architecture-roadmap]
+    "architecture-runway": [architecture-roadmap, task-planning]
+    "architecture-evolution": [architecture-roadmap, software-architecture]
+    "target-architecture": [architecture-roadmap, software-architecture, risk-assessment]
 
     # Debt and refactoring
     debt: [risk-assessment, our-architecture-decisions, task-planning]
     technical-debt: [risk-assessment, software-architecture, task-planning]
     modernization: [software-architecture, feasibility-study, risk-assessment]
 
-    # Governance
-    governance: [risk-assessment, our-architecture-decisions]
-    review: [software-architecture, risk-assessment, our-architecture-decisions]
-    audit: [risk-assessment, software-architecture, our-architecture-decisions]
+    # Governance (v6.5.13: Enhanced with adr-governance)
+    governance: [adr-governance, risk-assessment, our-architecture-decisions]
+    review: [software-architecture, risk-assessment, adr-governance]
+    audit: [risk-assessment, software-architecture, adr-governance]
+    "architecture-health": [adr-governance, risk-assessment, software-architecture]
 
     # Evaluation
     feasibility: [feasibility-study, risk-assessment, software-architecture]
     evaluation: [feasibility-study, risk-assessment]
     trade-off: [risk-assessment, software-architecture]
     tradeoffs: [risk-assessment, software-architecture]
-
-    # Documentation
-    documentation: [technical-writing, our-architecture-decisions]
-    document: [technical-writing, our-architecture-decisions]
 
 # v6.5.4: Architecture agent can delegate to domain experts for spikes
 orchestration:

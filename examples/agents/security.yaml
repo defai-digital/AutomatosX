@@ -12,14 +12,16 @@ description: "Expert in application security, threat modeling, and security best
 provider: openai
 fallbackProvider: gemini-cli
 
-# Abilities (v5.0.12: Specialized security abilities only)
+# Abilities (v6.5.13: Rebalanced for security architecture focus)
 abilities:
   - security-audit
   - threat-modeling
   - secure-coding-review
   - dependency-audit
   - secrets-policy
-  - best-practices
+  # Security architecture abilities (v6.5.13)
+  - secure-architecture     # NEW - Security by design, defense in depth, zero trust
+  - incident-playbooks      # NEW - Security incident response, breach procedures
 
 # v5.0.12: Smart ability loading based on task keywords
 abilitySelection:
@@ -30,15 +32,15 @@ abilitySelection:
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
-    threat: [threat-modeling]
+    threat: [threat-modeling, secure-architecture]
     threat-model: [threat-modeling]
     stride: [threat-modeling]
-    attack: [threat-modeling]
+    attack: [threat-modeling, secure-architecture]
     code-review: [secure-coding-review]
     code-scan: [secure-coding-review]
     sast: [secure-coding-review]
-    owasp: [secure-coding-review]
-    vulnerability: [secure-coding-review]
+    owasp: [secure-coding-review, secure-architecture]
+    vulnerability: [secure-coding-review, security-audit]
     deps: [dependency-audit]
     dependencies: [dependency-audit]
     cve: [dependency-audit]
@@ -48,6 +50,21 @@ abilitySelection:
     vault: [secrets-policy]
     keys: [secrets-policy]
     credentials: [secrets-policy]
+
+    # Security architecture (v6.5.13)
+    "security-architecture": [secure-architecture, threat-modeling]
+    "zero-trust": [secure-architecture]
+    "defense-in-depth": [secure-architecture]
+    "security-by-design": [secure-architecture, threat-modeling]
+    authn: [secure-architecture, secure-coding-review]
+    authz: [secure-architecture, secure-coding-review]
+
+    # Incident response (v6.5.13)
+    breach: [incident-playbooks, security-audit]
+    "security-incident": [incident-playbooks, security-audit]
+    "incident-response": [incident-playbooks]
+    forensics: [incident-playbooks, security-audit]
+    "data-breach": [incident-playbooks, secrets-policy]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults
 # v5.0.12: Implementers focus on execution (maxDelegationDepth: 0)

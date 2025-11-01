@@ -11,7 +11,7 @@ role: Data Engineer
 description: "Expert in data pipelines, ETL processes, and data infrastructure"
 
 
-# Abilities (v5.0.12: Specialized data engineering abilities)
+# Abilities (v6.5.13: Rebalanced for data platform focus)
 abilities:
   - code-generation
   - data-modeling
@@ -19,7 +19,9 @@ abilities:
   - etl-pipelines
   - job-orchestration
   - data-validation
-  - best-practices
+  # Data platform abilities (v6.5.13)
+  - data-governance      # NEW - Data lineage, access control, compliance
+  - quality-monitoring   # NEW - Data quality metrics, anomaly detection, SLA tracking
 
 # v5.0.12: Smart ability loading based on task keywords
 abilitySelection:
@@ -36,12 +38,27 @@ abilitySelection:
     query: [sql-optimization]
     model: [data-modeling]
     schema: [data-modeling]
-    validate: [data-validation]
-    quality: [data-validation]
+    validate: [data-validation, quality-monitoring]
+    quality: [data-validation, quality-monitoring]
     orchestration: [job-orchestration]
     airflow: [job-orchestration]
     kafka: [etl-pipelines]
     spark: [etl-pipelines]
+
+    # Data governance (v6.5.13)
+    governance: [data-governance, data-modeling]
+    lineage: [data-governance]
+    "data-lineage": [data-governance]
+    compliance: [data-governance]
+    "access-control": [data-governance]
+    gdpr: [data-governance]
+
+    # Quality monitoring (v6.5.13)
+    monitoring: [quality-monitoring, job-orchestration]
+    "data-quality": [quality-monitoring, data-validation]
+    anomaly: [quality-monitoring]
+    sla: [quality-monitoring, job-orchestration]
+    "quality-metrics": [quality-monitoring]
 
 # v5.0.11: Removed temperature/maxTokens - let provider CLIs use optimized defaults
 # v5.0.12: Implementers focus on execution (maxDelegationDepth: 0)

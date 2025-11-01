@@ -11,39 +11,103 @@ role: Data Scientist
 description: "Expert in data analysis, machine learning, statistical modeling, and predictive analytics"
 
 
-# Abilities (v5.7.0: Enhanced with mathematical reasoning for specialist support)
+# Abilities (v6.5.13: Rebalanced for ML/data science specialization)
 abilities:
   - code-generation
-  - problem-solving
   - data-analysis
   - ml-modeling
   - statistical-analysis
   - data-visualization
-  - best-practices
   # Mathematical support (v5.7.0: Support for Quinn/Astrid)
   - mathematical-reasoning
+  # ML/data science specializations (v6.5.13)
+  - experiment-design         # NEW - A/B testing, experimental design, hypothesis testing
+  - production-ml            # NEW - Model deployment, serving, monitoring in production
+  - model-monitoring         # NEW - Performance tracking, drift detection, retraining triggers
 
 # v5.0.12: Smart ability loading based on task keywords
+# v6.5.13: Expanded with ML/data science specializations
 abilitySelection:
   # Core abilities (always loaded)
   core:
     - data-analysis
-    - problem-solving
+    - ml-modeling
 
   # Task-based abilities (loaded when keywords match)
   taskBased:
+    # Data analysis and visualization
     analysis: [data-analysis, statistical-analysis]
     analytics: [data-analysis, statistical-analysis]
+    visualization: [data-visualization, data-analysis]
+    viz: [data-visualization]
+    dashboard: [data-visualization, data-analysis]
+    chart: [data-visualization]
+    plot: [data-visualization, statistical-analysis]
+
+    # Machine learning core
     ml: [ml-modeling, code-generation]
     machine: [ml-modeling, code-generation]
+    "machine-learning": [ml-modeling, statistical-analysis, code-generation]
     model: [ml-modeling, statistical-analysis]
     predict: [ml-modeling, statistical-analysis]
+    prediction: [ml-modeling, statistical-analysis]
+    classification: [ml-modeling, code-generation]
+    regression: [ml-modeling, statistical-analysis]
+    clustering: [ml-modeling, statistical-analysis]
+
+    # Statistical analysis
     stats: [statistical-analysis, mathematical-reasoning]
     statistical: [statistical-analysis, mathematical-reasoning]
-    visualization: [data-visualization]
-    viz: [data-visualization]
-    experiment: [statistical-analysis, data-analysis]
-    ab: [statistical-analysis, data-analysis]
+    statistics: [statistical-analysis, mathematical-reasoning]
+    hypothesis: [statistical-analysis, experiment-design]
+    "hypothesis-testing": [statistical-analysis, experiment-design]
+    inference: [statistical-analysis, mathematical-reasoning]
+
+    # Experiment design (v6.5.13)
+    experiment: [experiment-design, statistical-analysis]
+    experimental: [experiment-design, statistical-analysis]
+    "ab-test": [experiment-design, statistical-analysis]
+    "a/b-test": [experiment-design, statistical-analysis]
+    "a/b-testing": [experiment-design, statistical-analysis]
+    "design-of-experiments": [experiment-design, statistical-analysis]
+    "experimental-design": [experiment-design, statistical-analysis]
+    testing: [experiment-design, statistical-analysis]
+    "control-group": [experiment-design, statistical-analysis]
+    treatment: [experiment-design, statistical-analysis]
+
+    # Production ML (v6.5.13)
+    production: [production-ml, code-generation]
+    deployment: [production-ml, code-generation]
+    deploy: [production-ml, code-generation]
+    serving: [production-ml, code-generation]
+    "model-deployment": [production-ml, code-generation]
+    "model-serving": [production-ml, code-generation]
+    mlops: [production-ml, model-monitoring]
+    inference: [production-ml, ml-modeling]
+    "real-time": [production-ml, code-generation]
+    api: [production-ml, code-generation]
+    endpoint: [production-ml, code-generation]
+
+    # Model monitoring (v6.5.13)
+    monitoring: [model-monitoring, data-analysis]
+    monitor: [model-monitoring, data-analysis]
+    drift: [model-monitoring, statistical-analysis]
+    "drift-detection": [model-monitoring, statistical-analysis]
+    "model-drift": [model-monitoring, statistical-analysis]
+    retraining: [model-monitoring, ml-modeling]
+    retrain: [model-monitoring, ml-modeling]
+    "model-performance": [model-monitoring, statistical-analysis]
+    "performance-tracking": [model-monitoring, data-analysis]
+    degradation: [model-monitoring, statistical-analysis]
+    "model-degradation": [model-monitoring, statistical-analysis]
+    observability: [model-monitoring, data-analysis]
+
+    # Feature engineering
+    feature: [code-generation, data-analysis]
+    features: [code-generation, data-analysis]
+    "feature-engineering": [code-generation, data-analysis, ml-modeling]
+    transform: [code-generation, data-analysis]
+    preprocessing: [code-generation, data-analysis]
 
     # Mathematical support (v5.7.0: For quantum/aerospace)
     math: [mathematical-reasoning, statistical-analysis]

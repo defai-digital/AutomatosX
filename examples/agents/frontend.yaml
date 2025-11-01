@@ -11,7 +11,7 @@ role: Senior Frontend Developer
 description: "Expert in user-centric interface design, React patterns, performance optimization, and accessibility"
 
 
-# Abilities (v5.7.0: Enhanced with framework-specific expertise)
+# Abilities (v6.5.13: Rebalanced for frontend specialization)
 abilities:
   - code-generation
   - component-architecture
@@ -19,13 +19,16 @@ abilities:
   - design-system-implementation
   - accessibility
   - performance
-  - best-practices
   # Framework-specific abilities (v5.7.0)
   - react-best-practices
   - nextjs-best-practices
   - swift-best-practices
+  # Frontend-specific strategic abilities (v6.5.13)
+  - ui-performance       # NEW - Performance optimization (Core Web Vitals, bundle size, lazy loading)
+  - ui-debugging         # NEW - Visual debugging (layout issues, CSS conflicts, responsiveness)
+  - accessibility-audit  # NEW - WCAG compliance, screen reader testing, keyboard navigation
 
-# v5.6.9: Enhanced smart ability loading with framework detection
+# v6.5.13: Enhanced ability loading with UI-specific keywords
 abilitySelection:
   # Core abilities (always loaded)
   core:
@@ -36,12 +39,29 @@ abilitySelection:
   # Task-based abilities (loaded when keywords match)
   taskBased:
     component: [component-architecture, code-generation, react-best-practices]
-    ui: [component-architecture, design-system-implementation]
+    ui: [component-architecture, design-system-implementation, ui-debugging]
     state: [state-management, code-generation, react-best-practices]
-    a11y: [accessibility]
-    accessibility: [accessibility]
-    perf: [performance]
-    performance: [performance]
+
+    # Frontend-specific keywords (v6.5.13)
+    layout: [component-architecture, ui-debugging]
+    styling: [design-system-implementation, ui-debugging]
+    interaction: [component-architecture, state-management]
+    responsive: [ui-debugging, component-architecture]
+    "visual-bug": [ui-debugging]
+
+    # Accessibility (v6.5.13)
+    a11y: [accessibility, accessibility-audit]
+    accessibility: [accessibility, accessibility-audit]
+    wcag: [accessibility-audit]
+    "screen-reader": [accessibility-audit]
+
+    # Performance (v6.5.13)
+    perf: [performance, ui-performance]
+    performance: [performance, ui-performance]
+    "bundle-size": [ui-performance]
+    "core-web-vitals": [ui-performance]
+    "lazy-loading": [ui-performance]
+
     design: [design-system-implementation]
 
     # Framework-specific ability loading (v5.6.9)

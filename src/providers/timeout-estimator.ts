@@ -26,6 +26,7 @@ export interface TimeoutOptions {
   streaming?: boolean;
   maxTokens?: number;
   historicalAverage?: number;
+  maxTimeoutMs?: number; // Optional max timeout cap (default: 1 hour)
 }
 
 /**
@@ -38,7 +39,8 @@ export function estimateTimeout(options: TimeoutOptions): TimeoutEstimate {
     model,
     streaming = false,
     maxTokens,
-    historicalAverage
+    historicalAverage,
+    maxTimeoutMs = 3600000 // Default: 1 hour if not specified
   } = options;
 
   // Calculate total input tokens
@@ -76,8 +78,8 @@ export function estimateTimeout(options: TimeoutOptions): TimeoutEstimate {
   // Add safety buffer (2.5x for timeout)
   const timeoutMs = Math.ceil(finalEstimate * 2.5);
 
-  // Cap at reasonable limits
-  const cappedTimeout = Math.min(Math.max(timeoutMs, 30000), 300000); // 30s - 5min
+  // Cap at configured limits (default: 1 hour, min: 30s)
+  const cappedTimeout = Math.min(Math.max(timeoutMs, 30000), maxTimeoutMs);
 
   const reasoning = buildReasoning({
     inputTokens,

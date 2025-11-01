@@ -84,7 +84,8 @@ export class ClaudeProvider extends BaseProvider {
         prompt: fullPrompt,
         systemPrompt: request.systemPrompt,
         model: typeof request.model === 'string' ? request.model : undefined,
-        maxTokens: request.maxTokens
+        maxTokens: request.maxTokens,
+        maxTimeoutMs: this.config.timeout
       });
 
       // Show estimate to user (if not in quiet mode)
@@ -601,7 +602,8 @@ export class ClaudeProvider extends BaseProvider {
         prompt: fullPrompt,
         systemPrompt: request.systemPrompt,
         model: typeof request.model === 'string' ? request.model : undefined,
-        maxTokens: request.maxTokens
+        maxTokens: request.maxTokens,
+        maxTimeoutMs: this.config.timeout
       });
 
       // Show estimate to user (if not in quiet mode)

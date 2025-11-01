@@ -518,7 +518,7 @@ export class SecurityValidator {
 
   /**
    * SEC012: Command injection vulnerabilities in operations
-   * FIXED (Bug #64): Added validation for actor operations/commands
+   * FIXED (Bug #64, #70): Added validation for actor operations/commands (both string and array)
    */
   private validateCommandSecurity(
     actor: any,
@@ -526,7 +526,7 @@ export class SecurityValidator {
   ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    if (!actor.operations || !Array.isArray(actor.operations)) {
+    if (!actor.operations) {
       return issues;
     }
 
@@ -543,6 +543,41 @@ export class SecurityValidator {
       /&&/,             // AND operator
       /\n/              // Newline injection
     ];
+
+    // Helper to check command string for shell metacharacters
+    const checkCommandString = (commandStr: string, path: string) => {
+      const foundPatterns = dangerousPatterns.filter(pattern =>
+        pattern.test(commandStr)
+      );
+
+      if (foundPatterns.length > 0) {
+        issues.push({
+          ruleId: 'SEC012',
+          severity: 'error',
+          message: `Actor "${actor.id}" operation contains shell metacharacters that may enable command injection`,
+          path,
+          suggestion: 'Avoid shell metacharacters in commands. Use explicit argument arrays instead of shell strings'
+        });
+      }
+    };
+
+    // FIXED (Bug #70): Handle string operations (not just arrays)
+    if (typeof actor.operations === 'string') {
+      checkCommandString(actor.operations, `${actorPath}.operations`);
+      return issues;
+    }
+
+    // Handle array of operations
+    if (!Array.isArray(actor.operations)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" operations must be a string or array`,
+        path: `${actorPath}.operations`,
+        suggestion: 'Ensure operations is either a string command or array of operation objects'
+      });
+      return issues;
+    }
 
     for (let i = 0; i < actor.operations.length; i++) {
       const op = actor.operations[i];
@@ -574,19 +609,7 @@ export class SecurityValidator {
       }
 
       // Check for shell metacharacters
-      const foundPatterns = dangerousPatterns.filter(pattern =>
-        pattern.test(command)
-      );
-
-      if (foundPatterns.length > 0) {
-        issues.push({
-          ruleId: 'SEC012',
-          severity: 'error',
-          message: `Actor "${actor.id}" operation contains shell metacharacters that may enable command injection`,
-          path: `${actorPath}.operations[${i}].command`,
-          suggestion: 'Avoid shell metacharacters in commands. Use explicit argument arrays instead of shell strings'
-        });
-      }
+      checkCommandString(command, `${actorPath}.operations[${i}].command`);
     }
 
     return issues;
@@ -669,12 +692,14 @@ export class SecurityValidator {
 
     normalized = '/' + stack.join('/');
 
-    // Windows paths: lowercase drive letters for case-insensitive comparison
-    // FIXED (Bug #63): Handle Windows case sensitivity
-    normalized = normalized.replace(/^\/([A-Z]):\//, (match, drive) => `/${drive.toLowerCase()}:/`);
-
     // Collapse multiple slashes
     normalized = normalized.replace(/\/+/g, '/');
+
+    // Windows paths: lowercase ENTIRE path for case-insensitive comparison
+    // FIXED (Bug #69): Handle Windows case sensitivity for full path, not just drive letter
+    if (process.platform === 'win32') {
+      normalized = normalized.toLowerCase();
+    }
 
     return normalized;
   }
@@ -696,20 +721,33 @@ export class SecurityValidator {
 
   /**
    * Helper: Parse memory limit string to MB
+   * FIXED (Bug #71): Support both decimal (KB/MB/GB) and binary (KiB/MiB/GiB) units
    */
   private parseMemoryLimit(limit: string): number | null {
-    const match = limit.match(/^(\d+)(KB|MB|GB)$/i);
+    // Ensure limit is a string
+    if (typeof limit !== 'string') return null;
+
+    // Match decimal (KB/MB/GB) or binary (KiB/MiB/GiB) units
+    const match = limit.match(/^(\d+(?:\.\d+)?)\s*(KB|MB|GB|KiB|MiB|GiB)$/i);
     if (!match || !match[1] || !match[2]) return null;
 
-    const value = parseInt(match[1], 10);
+    const value = parseFloat(match[1]);
     const unit = match[2].toUpperCase();
 
+    // Handle decimal units (1000-based)
     switch (unit) {
       case 'KB':
         return value / 1024;
       case 'MB':
         return value;
       case 'GB':
+        return value * 1024;
+      // Handle binary units (1024-based)
+      case 'KIB':
+        return value / 1024;
+      case 'MIB':
+        return value;
+      case 'GIB':
         return value * 1024;
       default:
         return null;

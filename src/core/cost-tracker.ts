@@ -53,12 +53,35 @@ export class CostTracker extends EventEmitter {
     this.budgets = config.budgets || {};
     this.alertOnBudget = config.alertOnBudget ?? true;
 
+    // FIXED (Bug #44): Validate budget configs to prevent negative limits or invalid thresholds
+    // Without validation, negative limit or warningThreshold >= 1 defeats budget guardrails
+    this.validateBudgetConfig('daily', this.budgets.daily);
+    this.validateBudgetConfig('weekly', this.budgets.weekly);
+    this.validateBudgetConfig('monthly', this.budgets.monthly);
+
     logger.debug('CostTracker created', {
       dbPath: this.dbPath,
       hasDailyBudget: !!this.budgets.daily,
       hasWeeklyBudget: !!this.budgets.weekly,
       hasMonthlyBudget: !!this.budgets.monthly
     });
+  }
+
+  /**
+   * Validate budget configuration
+   * FIXED (Bug #44): Ensure budget limits and thresholds are valid
+   */
+  private validateBudgetConfig(name: string, budget?: BudgetConfig): void {
+    if (!budget) return;
+
+    if (typeof budget.limit !== 'number' || !Number.isFinite(budget.limit) || budget.limit < 0) {
+      throw new Error(`${name} budget limit must be a non-negative finite number, got ${budget.limit}`);
+    }
+
+    if (typeof budget.warningThreshold !== 'number' || !Number.isFinite(budget.warningThreshold) ||
+        budget.warningThreshold <= 0 || budget.warningThreshold >= 1) {
+      throw new Error(`${name} budget warningThreshold must be between 0 and 1 (exclusive), got ${budget.warningThreshold}`);
+    }
   }
 
   /**
@@ -401,7 +424,23 @@ export class CostTracker extends EventEmitter {
       await this.initialize();
     }
 
-    const { sql, params } = this.buildQuery('*', query);
+    // FIXED (Bug #43): SELECT with column aliases to match CostEntry type (camelCase)
+    // Without aliases, SELECT * returns snake_case but code expects camelCase, causing CSV export to drop all camelCase fields
+    const selectWithAliases = `
+      id,
+      timestamp,
+      provider,
+      model,
+      session_id AS sessionId,
+      agent,
+      prompt_tokens AS promptTokens,
+      completion_tokens AS completionTokens,
+      total_tokens AS totalTokens,
+      estimated_cost_usd AS estimatedCostUsd,
+      request_id AS requestId
+    `.trim().replace(/\s+/g, ' ');
+
+    const { sql, params } = this.buildQuery(selectWithAliases, query);
     const entries = this.db!.prepare(sql).all(...params) as CostEntry[];
 
     if (format === 'json') {
@@ -468,12 +507,20 @@ export class CostTracker extends EventEmitter {
       params.push(query.agent);
     }
 
-    if (query?.startTime) {
+    // FIXED (Bug #45): Validate timestamp parameters before using in query
+    // Without validation, NaN/Infinity/huge negative timestamps bypass time filter unpredictably
+    if (query?.startTime !== undefined) {
+      if (typeof query.startTime !== 'number' || !Number.isFinite(query.startTime) || query.startTime < 0) {
+        throw new Error(`startTime must be a non-negative finite number (Unix timestamp), got ${query.startTime}`);
+      }
       conditions.push('timestamp >= ?');
       params.push(query.startTime);
     }
 
-    if (query?.endTime) {
+    if (query?.endTime !== undefined) {
+      if (typeof query.endTime !== 'number' || !Number.isFinite(query.endTime) || query.endTime < 0) {
+        throw new Error(`endTime must be a non-negative finite number (Unix timestamp), got ${query.endTime}`);
+      }
       conditions.push('timestamp <= ?');
       params.push(query.endTime);
     }

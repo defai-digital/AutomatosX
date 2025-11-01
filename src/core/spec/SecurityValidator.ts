@@ -765,9 +765,10 @@ export class SecurityValidator {
         }
       } else {
         const pathPart = pathParts[pathIdx];
-        if (!pathPart) return false; // Path exhausted
+        const currentPattern = patternParts[patternIdx];
+        if (!pathPart || !currentPattern) return false; // Exhausted
 
-        if (this.matchGlobSegment(pathPart, patternPart)) {
+        if (this.matchGlobSegment(pathPart, currentPattern)) {
           // Single segment matches
           pathIdx++;
           patternIdx++;

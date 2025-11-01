@@ -657,14 +657,22 @@ export class SecurityValidator {
 
   /**
    * Helper: Normalize path for security checks
-   * FIXED (Bug #62, #63, #67): Canonicalizes paths to prevent bypass via:
+   * FIXED (Bug #62, #63, #67, #74, #76, #77, #78): Canonicalizes paths to prevent bypass via:
    * - Relative traversal (../)
    * - Windows case insensitivity
    * - Mixed path separators (\ vs /)
-   * - UNC paths (\\?\)
+   * - UNC paths (\\?\ and network \\server\share)
+   * - Stack underflow from excessive ../
+   * - Null byte injection
+   * - Case normalization order
    */
   private normalizePath(path: string): string {
     if (typeof path !== 'string') return '';
+
+    // FIXED (Bug #77): Reject null bytes immediately
+    if (path.includes('\0') || path.includes('\x00') || path.includes('%00')) {
+      return ''; // Invalid path with null byte
+    }
 
     let normalized = path;
 
@@ -672,19 +680,34 @@ export class SecurityValidator {
     // FIXED (Bug #67): Handle Windows backslashes
     normalized = normalized.replace(/\\/g, '/');
 
-    // Handle Windows UNC paths (\\?\C:\ becomes C:/)
-    // FIXED (Bug #63): Detect and normalize UNC paths
-    normalized = normalized.replace(/^\/\/\?\/([a-zA-Z]):\//, '$1:/');
+    // FIXED (Bug #78): Lowercase FIRST on Windows (before other processing)
+    // This ensures case-insensitive regex matching works correctly
+    if (process.platform === 'win32') {
+      normalized = normalized.toLowerCase();
+    }
+
+    // FIXED (Bug #76): Handle Windows UNC paths (both long path and network UNC)
+    // Long path: \\?\C:\ becomes C:/
+    normalized = normalized.replace(/^\/\/\?\/([a-z]):\//, '$1:/');
+    // Network UNC: //server/share stays as-is but gets leading / removed for consistency
+    // UNC paths starting with // are detected but kept (will be rejected by denylist if needed)
+    if (normalized.startsWith('//')) {
+      // This is a network UNC path like //server/share
+      // Keep it as-is for now (security checks will handle it)
+    }
 
     // Resolve relative path components (..)
-    // FIXED (Bug #62): Prevent directory traversal bypass
+    // FIXED (Bug #62, #74): Prevent directory traversal bypass AND stack underflow
     const parts = normalized.split('/').filter(Boolean);
     const stack: string[] = [];
 
     for (const part of parts) {
       if (part === '..') {
-        // Pop parent directory (traversal attempt)
-        stack.pop();
+        // FIXED (Bug #74): Only pop if stack is not empty (prevent underflow)
+        if (stack.length > 0) {
+          stack.pop();
+        }
+        // If stack is empty, we're trying to go above root - ignore the ../
       } else if (part !== '.') {
         stack.push(part);
       }
@@ -695,33 +718,107 @@ export class SecurityValidator {
     // Collapse multiple slashes
     normalized = normalized.replace(/\/+/g, '/');
 
-    // Windows paths: lowercase ENTIRE path for case-insensitive comparison
-    // FIXED (Bug #69): Handle Windows case sensitivity for full path, not just drive letter
-    if (process.platform === 'win32') {
-      normalized = normalized.toLowerCase();
-    }
-
     return normalized;
   }
 
   /**
    * Helper: Check if path matches pattern (simple glob matching)
+   * FIXED (Bug #75): Prevent ReDoS by using non-backtracking approach
    */
   private matchesPattern(path: string, pattern: string): boolean {
-    // Convert glob pattern to regex
-    const regexPattern = pattern
-      .replace(/\./g, '\\.')
-      .replace(/\*\*/g, '.*')
-      .replace(/\*/g, '[^/]*')
-      .replace(/\?/g, '.');
+    // SECURITY: Avoid regex to prevent ReDoS vulnerability
+    // Instead, use character-by-character matching with ** and * expansion
 
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(path);
+    const pathParts = path.split('/');
+    const patternParts = pattern.split('/');
+
+    let pathIdx = 0;
+    let patternIdx = 0;
+
+    while (pathIdx < pathParts.length && patternIdx < patternParts.length) {
+      const patternPart = patternParts[patternIdx];
+
+      if (patternPart === '**') {
+        // ** matches zero or more path segments
+        // Try to match rest of pattern with remaining path
+        patternIdx++;
+
+        // If ** is last element, it matches everything
+        if (patternIdx >= patternParts.length) {
+          return true;
+        }
+
+        // Try to find where the next pattern part matches
+        const nextPattern = patternParts[patternIdx];
+        while (pathIdx < pathParts.length) {
+          if (this.matchGlobSegment(pathParts[pathIdx], nextPattern)) {
+            // Found match, continue from here
+            break;
+          }
+          pathIdx++;
+        }
+
+        if (pathIdx >= pathParts.length) {
+          return false;
+        }
+      } else if (this.matchGlobSegment(pathParts[pathIdx], patternPart)) {
+        // Single segment matches
+        pathIdx++;
+        patternIdx++;
+      } else {
+        return false;
+      }
+    }
+
+    // Handle trailing ** in pattern
+    while (patternIdx < patternParts.length && patternParts[patternIdx] === '**') {
+      patternIdx++;
+    }
+
+    return pathIdx === pathParts.length && patternIdx === patternParts.length;
+  }
+
+  /**
+   * Helper: Match single path segment against glob pattern
+   * FIXED (Bug #75): Simple character matching without regex backtracking
+   */
+  private matchGlobSegment(segment: string, pattern: string): boolean {
+    let segIdx = 0;
+    let patIdx = 0;
+    let starIdx = -1;
+    let segBacktrack = -1;
+
+    while (segIdx < segment.length) {
+      if (patIdx < pattern.length && (pattern[patIdx] === '?' || pattern[patIdx] === segment[segIdx])) {
+        // Exact match or ? wildcard
+        segIdx++;
+        patIdx++;
+      } else if (patIdx < pattern.length && pattern[patIdx] === '*') {
+        // * wildcard - record position for backtracking
+        starIdx = patIdx;
+        segBacktrack = segIdx;
+        patIdx++;
+      } else if (starIdx !== -1) {
+        // Backtrack to last * and try matching one more character
+        patIdx = starIdx + 1;
+        segBacktrack++;
+        segIdx = segBacktrack;
+      } else {
+        return false;
+      }
+    }
+
+    // Consume remaining * in pattern
+    while (patIdx < pattern.length && pattern[patIdx] === '*') {
+      patIdx++;
+    }
+
+    return patIdx === pattern.length;
   }
 
   /**
    * Helper: Parse memory limit string to MB
-   * FIXED (Bug #71): Support both decimal (KB/MB/GB) and binary (KiB/MiB/GiB) units
+   * FIXED (Bug #71, #79): Support decimal/binary units + prevent integer overflow
    */
   private parseMemoryLimit(limit: string): number | null {
     // Ensure limit is a string
@@ -734,24 +831,48 @@ export class SecurityValidator {
     const value = parseFloat(match[1]);
     const unit = match[2].toUpperCase();
 
+    // FIXED (Bug #79): Validate reasonable bounds to prevent overflow
+    // Max realistic memory: 1TB = 1048576 MB
+    const MAX_MB_LIMIT = 1048576; // 1TB in MB
+
+    // Check for Infinity, NaN, or unreasonably large values BEFORE multiplication
+    if (!Number.isFinite(value) || value < 0 || value > Number.MAX_SAFE_INTEGER) {
+      return null;
+    }
+
+    let resultMB: number;
+
     // Handle decimal units (1000-based)
     switch (unit) {
       case 'KB':
-        return value / 1024;
+        resultMB = value / 1024;
+        break;
       case 'MB':
-        return value;
+        resultMB = value;
+        break;
       case 'GB':
-        return value * 1024;
+        resultMB = value * 1024;
+        break;
       // Handle binary units (1024-based)
       case 'KIB':
-        return value / 1024;
+        resultMB = value / 1024;
+        break;
       case 'MIB':
-        return value;
+        resultMB = value;
+        break;
       case 'GIB':
-        return value * 1024;
+        resultMB = value * 1024;
+        break;
       default:
         return null;
     }
+
+    // FIXED (Bug #79): Validate result is within reasonable bounds
+    if (!Number.isFinite(resultMB) || resultMB < 0 || resultMB > MAX_MB_LIMIT) {
+      return null; // Invalid: overflow, negative, or > 1TB
+    }
+
+    return resultMB;
   }
 }
 

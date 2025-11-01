@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.9] - 2025-11-01
+
+### ✨ Features
+
+#### Iterate Mode Documentation & CLI Guidance
+
+**Enhancements:**
+
+- **README.md**: Updated autonomous iterate mode example
+  - Added "and ax agent" to emphasize AI + AutomatosX agent collaboration
+  - Example: "Please iterate 5 times with ultrathink and ax agent to find and fix bugs"
+  - Highlights the real power of iterate mode for repeating tasks without questions
+
+- **init.ts**: Added Iterate Mode section to CLI success message
+  - Shows `--iterate` flag usage during `ax init`
+  - Provides practical example with quality agent
+  - Positioned before agent list for better discoverability
+  - Teaches users about autonomous multi-iteration capabilities
+
+**Impact:**
+- New users learn about iterate mode during project initialization
+- Clear examples show autonomous bug-finding workflows
+- Better integration guidance for Claude Code/Gemini/Codex
+- All 2,612 unit tests passing ✅
+
 ## [6.5.8] - 2025-11-01
 
 ### 🐛 Bug Fixes

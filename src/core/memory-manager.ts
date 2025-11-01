@@ -1144,11 +1144,11 @@ export class MemoryManager implements IMemoryManager {
       this.statements = {};
 
       // Copy backup to current location using better-sqlite3's backup method
+      // FIXED (Bug #6): Removed unused destDb - backup() handles destination file creation
+      // Opening destDb was redundant and could cause file locks on some platforms
       const srcDb = new Database(srcPath, { readonly: true });
-      const destDb = new Database(this.config.dbPath);
       await srcDb.backup(this.config.dbPath);
       srcDb.close();
-      destDb.close();
 
       // Reopen database
       this.db = new Database(this.config.dbPath);

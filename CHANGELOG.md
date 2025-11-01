@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [6.5.4] - 2025-11-01
 
+### 🐛 Bug Fixes
+
+#### Bug #80 Part 2 - Complete Fix for Iterate Mode Blocking
+
+**CRITICAL FIX**: Background iterate mode agents were still blocking at complexity detection prompt despite initial Bug #80 fix.
+
+**Root Cause:**
+- Bug #80 Part 1 (v6.5.2) added conditional logic to skip UI display in autonomous mode
+- However, the `readline.createInterface()` was still being created before the condition check
+- In background processes where `process.stdin` is unavailable, creating the interface caused agents to block/hang
+- Even though the code auto-responded, the interface creation itself was the blocking point
+
+**The Fix:**
+- Completely refactored complexity detection flow in `src/cli/commands/run.ts:224-330`
+- In autonomous mode (`--iterate` or `--auto-continue`):
+  - Skip entire prompt flow with early return
+  - Never create readline interface
+  - Show simple message and continue execution
+  - Zero stdin interaction
+- In interactive mode:
+  - Full UI and readline interface as before
+  - No behavioral changes
+
+**Changes:**
+```typescript
+// BEFORE (Bug #80 Part 1 - Still had issue)
+const skipPrompt = argv.autoContinue || argv.iterate;
+if (!skipPrompt) { /* show UI */ }
+const rl = readline.createInterface({ /* ALWAYS CREATED */ });
+const answer = skipPrompt ? 'n' : await question(...);
+
+// AFTER (Bug #80 Part 2 - Complete fix)
+if (skipPrompt) {
+  console.log('Continuing with standard ax run (autonomous mode)...');
+  // Skip entirely - no readline creation
+} else {
+  /* show UI */
+  const rl = readline.createInterface({ /* ONLY IN INTERACTIVE */ });
+  const answer = await question(...);
+}
+```
+
+**Impact:**
+- ✅ Background iterate mode agents no longer block at complexity detection
+- ✅ `--iterate` and `--auto-continue` work correctly in all scenarios
+- ✅ Interactive mode unchanged (backward compatible)
+- ✅ Global installation deployment fix applied
+
+**Testing:**
+- Verified with `ax run backend "complex task" --iterate` - no blocking
+- All 2,408 tests passing
+- Zero regressions
+
+**Deployment Note:**
+- Fix requires `npm link` to update global installation
+- Users running global `ax` command need to reinstall or link to get fix
+
 ### 🔒 Critical Security Fixes
 
 **Session 26: Ultra-Deep Security Bug Hunt**

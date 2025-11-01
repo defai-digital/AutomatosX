@@ -13,7 +13,7 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready v6.5.6** | Nov 2025 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready** | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
 
 > ⚠️ **Note on Cost Estimation (v6.5.11+)**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`. See [Cost Estimation Configuration](#cost-estimation-configuration) for details.
 

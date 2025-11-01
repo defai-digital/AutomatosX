@@ -43,6 +43,9 @@ export class SecurityValidator {
 
       // Permission specification validation
       issues.push(...this.validatePermissionSpec(actor, actorPath));
+
+      // FIXED (Bug #64): Command/ops validation
+      issues.push(...this.validateCommandSecurity(actor, actorPath));
     }
 
     // Provider security validation
@@ -79,6 +82,18 @@ export class SecurityValidator {
 
     const network = actor.permissions.network;
 
+    // FIXED (Bug #66): Validate network.whitelist is array before using array methods
+    if (network.whitelist && !Array.isArray(network.whitelist)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" network.whitelist must be an array`,
+        path: `${actorPath}.permissions.network.whitelist`,
+        suggestion: 'Ensure whitelist is an array of strings'
+      });
+      return issues; // Cannot continue validation without valid array
+    }
+
     // SEC001: Network enabled without whitelist
     if (network.enabled && (!network.whitelist || network.whitelist.length === 0)) {
       issues.push({
@@ -103,8 +118,9 @@ export class SecurityValidator {
 
     // SEC003: Wildcard domains
     if (network.whitelist) {
-      const wildcards = network.whitelist.filter((domain: string) =>
-        domain === '*' || domain.startsWith('*.')
+      // FIXED (Bug #66): Validate each domain is string before using string methods
+      const wildcards = network.whitelist.filter((domain: any) =>
+        typeof domain === 'string' && (domain === '*' || domain.startsWith('*.'))
       );
 
       if (wildcards.length > 0) {
@@ -114,6 +130,18 @@ export class SecurityValidator {
           message: `Actor "${actor.id}" has wildcard domains in whitelist: ${wildcards.join(', ')}`,
           path: `${actorPath}.permissions.network.whitelist`,
           suggestion: 'Replace wildcards with specific domain names'
+        });
+      }
+
+      // Validate all domains are strings
+      const nonStrings = network.whitelist.filter((domain: any) => typeof domain !== 'string');
+      if (nonStrings.length > 0) {
+        issues.push({
+          ruleId: 'TYPE-ERROR',
+          severity: 'error',
+          message: `Actor "${actor.id}" whitelist contains non-string values`,
+          path: `${actorPath}.permissions.network.whitelist`,
+          suggestion: 'All whitelist entries must be strings'
         });
       }
     }
@@ -138,6 +166,30 @@ export class SecurityValidator {
 
     const fs = actor.permissions.filesystem;
 
+    // FIXED (Bug #66): Validate fs.write is array before using array methods
+    if (fs.write && !Array.isArray(fs.write)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" filesystem.write must be an array`,
+        path: `${actorPath}.permissions.filesystem.write`,
+        suggestion: 'Ensure write is an array of path strings'
+      });
+      return issues;
+    }
+
+    // FIXED (Bug #66): Validate fs.read is array before using array methods
+    if (fs.read && !Array.isArray(fs.read)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" filesystem.read must be an array`,
+        path: `${actorPath}.permissions.filesystem.read`,
+        suggestion: 'Ensure read is an array of path strings'
+      });
+      return issues;
+    }
+
     // SEC004: Dangerous write paths
     const dangerousWritePaths = [
       '/',
@@ -156,9 +208,15 @@ export class SecurityValidator {
     ];
 
     if (fs.write) {
-      const dangerous = fs.write.filter((path: string) =>
-        dangerousWritePaths.some(d => path === d || path.startsWith(d))
-      );
+      // FIXED (Bug #62, #63): Normalize paths before checking
+      const dangerous = fs.write.filter((path: any) => {
+        if (typeof path !== 'string') return false;
+        const normalized = this.normalizePath(path);
+        return dangerousWritePaths.some(d => {
+          const normalizedDangerous = this.normalizePath(d);
+          return normalized === normalizedDangerous || normalized.startsWith(normalizedDangerous);
+        });
+      });
 
       if (dangerous.length > 0) {
         issues.push({
@@ -167,6 +225,18 @@ export class SecurityValidator {
           message: `Actor "${actor.id}" has dangerous filesystem write access: ${dangerous.join(', ')}`,
           path: `${actorPath}.permissions.filesystem.write`,
           suggestion: 'Restrict write paths to specific project directories'
+        });
+      }
+
+      // Validate all paths are strings
+      const nonStrings = fs.write.filter((path: any) => typeof path !== 'string');
+      if (nonStrings.length > 0) {
+        issues.push({
+          ruleId: 'TYPE-ERROR',
+          severity: 'error',
+          message: `Actor "${actor.id}" filesystem.write contains non-string paths`,
+          path: `${actorPath}.permissions.filesystem.write`,
+          suggestion: 'All write paths must be strings'
         });
       }
     }
@@ -186,9 +256,15 @@ export class SecurityValidator {
     ];
 
     if (fs.read) {
-      const sensitive = fs.read.filter((path: string) =>
-        sensitiveFiles.some(s => path === s || this.matchesPattern(path, s))
-      );
+      // FIXED (Bug #62, #63, #67): Normalize paths and check for traversal
+      const sensitive = fs.read.filter((path: any) => {
+        if (typeof path !== 'string') return false;
+        const normalized = this.normalizePath(path);
+        return sensitiveFiles.some(s => {
+          const normalizedSensitive = this.normalizePath(s);
+          return normalized === normalizedSensitive || this.matchesPattern(normalized, normalizedSensitive);
+        });
+      });
 
       if (sensitive.length > 0) {
         issues.push({
@@ -199,14 +275,27 @@ export class SecurityValidator {
           suggestion: 'Remove access to sensitive system files and credentials'
         });
       }
+
+      // Validate all paths are strings
+      const nonStrings = fs.read.filter((path: any) => typeof path !== 'string');
+      if (nonStrings.length > 0) {
+        issues.push({
+          ruleId: 'TYPE-ERROR',
+          severity: 'error',
+          message: `Actor "${actor.id}" filesystem.read contains non-string paths`,
+          path: `${actorPath}.permissions.filesystem.read`,
+          suggestion: 'All read paths must be strings'
+        });
+      }
     }
 
     // SEC006: Overly broad wildcards
     const broadPatterns = ['/**', '**/*', '**/'];
 
     const checkBroadPatterns = (paths: string[], type: 'read' | 'write') => {
-      const broad = paths.filter((path: string) =>
-        broadPatterns.some(p => path === p || path.endsWith(p))
+      // FIXED (Bug #66): Validate each path is string before using string methods
+      const broad = paths.filter((path: any) =>
+        typeof path === 'string' && broadPatterns.some(p => path === p || path.endsWith(p))
       );
 
       if (broad.length > 0) {
@@ -241,6 +330,30 @@ export class SecurityValidator {
 
     const env = actor.permissions.environment;
 
+    // FIXED (Bug #66): Validate env.read is array before using array methods
+    if (env.read && !Array.isArray(env.read)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" environment.read must be an array`,
+        path: `${actorPath}.permissions.environment.read`,
+        suggestion: 'Ensure read is an array of environment variable names'
+      });
+      return issues;
+    }
+
+    // FIXED (Bug #66): Validate env.write is array before using array methods
+    if (env.write && !Array.isArray(env.write)) {
+      issues.push({
+        ruleId: 'TYPE-ERROR',
+        severity: 'error',
+        message: `Actor "${actor.id}" environment.write must be an array`,
+        path: `${actorPath}.permissions.environment.write`,
+        suggestion: 'Ensure write is an array of environment variable names'
+      });
+      return issues;
+    }
+
     // SEC007: Sensitive environment variables
     const sensitivePatterns = [
       'API_KEY',
@@ -253,8 +366,9 @@ export class SecurityValidator {
     ];
 
     const checkSensitive = (vars: string[], access: 'read' | 'write') => {
-      const sensitive = vars.filter((varName: string) =>
-        sensitivePatterns.some(p => varName.toUpperCase().includes(p))
+      // FIXED (Bug #66): Validate each var is string before using string methods
+      const sensitive = vars.filter((varName: any) =>
+        typeof varName === 'string' && sensitivePatterns.some(p => varName.toUpperCase().includes(p))
       );
 
       if (sensitive.length > 0) {
@@ -264,6 +378,18 @@ export class SecurityValidator {
           message: `Actor "${actor.id}" has ${access} access to sensitive environment variables: ${sensitive.join(', ')}`,
           path: `${actorPath}.permissions.environment.${access}`,
           suggestion: 'Review environment variable access and use secret management instead'
+        });
+      }
+
+      // Validate all vars are strings
+      const nonStrings = vars.filter((varName: any) => typeof varName !== 'string');
+      if (nonStrings.length > 0) {
+        issues.push({
+          ruleId: 'TYPE-ERROR',
+          severity: 'error',
+          message: `Actor "${actor.id}" environment.${access} contains non-string variable names`,
+          path: `${actorPath}.permissions.environment.${access}`,
+          suggestion: 'All environment variable names must be strings'
         });
       }
     };
@@ -322,8 +448,18 @@ export class SecurityValidator {
 
     // SEC010: Excessive resource limits
     if (resources.memory?.limit) {
+      // FIXED (Bug #65): Validate parseMemoryLimit returns valid number
       const memLimit = this.parseMemoryLimit(resources.memory.limit);
-      if (memLimit && memLimit > 8192) { // > 8GB
+
+      if (memLimit === null) {
+        issues.push({
+          ruleId: 'SEC008',
+          severity: 'error',
+          message: `Actor "${actor.id}" has invalid memory limit format: ${resources.memory.limit}`,
+          path: `${actorPath}.resources.memory.limit`,
+          suggestion: 'Use valid format: <number>KB, <number>MB, or <number>GB (e.g., "512MB", "1GB")'
+        });
+      } else if (memLimit > 8192) { // > 8GB
         issues.push({
           ruleId: 'SEC010',
           severity: 'warning',
@@ -334,14 +470,25 @@ export class SecurityValidator {
       }
     }
 
-    if (resources.cpu?.limit && resources.cpu.limit > 8.0) {
-      issues.push({
-        ruleId: 'SEC010',
-        severity: 'warning',
-        message: `Actor "${actor.id}" has excessive CPU limit: ${resources.cpu.limit} cores`,
-        path: `${actorPath}.resources.cpu.limit`,
-        suggestion: 'Review if such high CPU allocation is necessary'
-      });
+    // FIXED (Bug #65, #66): Validate CPU limit is number before comparison
+    if (resources.cpu?.limit) {
+      if (typeof resources.cpu.limit !== 'number' || !Number.isFinite(resources.cpu.limit)) {
+        issues.push({
+          ruleId: 'SEC009',
+          severity: 'error',
+          message: `Actor "${actor.id}" has invalid CPU limit: must be a finite number`,
+          path: `${actorPath}.resources.cpu.limit`,
+          suggestion: 'Use numeric value (e.g., 1.0, 2.0 cores)'
+        });
+      } else if (resources.cpu.limit > 8.0) {
+        issues.push({
+          ruleId: 'SEC010',
+          severity: 'warning',
+          message: `Actor "${actor.id}" has excessive CPU limit: ${resources.cpu.limit} cores`,
+          path: `${actorPath}.resources.cpu.limit`,
+          suggestion: 'Review if such high CPU allocation is necessary'
+        });
+      }
     }
 
     return issues;
@@ -364,6 +511,82 @@ export class SecurityValidator {
         path: `${actorPath}.permissions`,
         suggestion: 'Define explicit permissions (filesystem, network, environment) following principle of least privilege'
       });
+    }
+
+    return issues;
+  }
+
+  /**
+   * SEC012: Command injection vulnerabilities in operations
+   * FIXED (Bug #64): Added validation for actor operations/commands
+   */
+  private validateCommandSecurity(
+    actor: any,
+    actorPath: string
+  ): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+
+    if (!actor.operations || !Array.isArray(actor.operations)) {
+      return issues;
+    }
+
+    // Shell metacharacters that indicate potential injection
+    const dangerousPatterns = [
+      /\$\(/,           // Command substitution $(...)
+      /`/,              // Backtick command substitution
+      /;/,              // Command separator
+      /\|/,             // Pipe
+      /&/,              // Background execution
+      />/,              // Redirect
+      /<\(/,            // Process substitution
+      /\|\|/,           // OR operator
+      /&&/,             // AND operator
+      /\n/              // Newline injection
+    ];
+
+    for (let i = 0; i < actor.operations.length; i++) {
+      const op = actor.operations[i];
+
+      // FIXED (Bug #66): Validate operation is object before accessing properties
+      if (!op || typeof op !== 'object') {
+        issues.push({
+          ruleId: 'SEC012',
+          severity: 'error',
+          message: `Actor "${actor.id}" operation at index ${i} must be an object`,
+          path: `${actorPath}.operations[${i}]`,
+          suggestion: 'Ensure all operations are properly formatted objects'
+        });
+        continue;
+      }
+
+      const command = op.command;
+
+      // Validate command is string
+      if (typeof command !== 'string') {
+        issues.push({
+          ruleId: 'SEC012',
+          severity: 'error',
+          message: `Actor "${actor.id}" operation command must be a string`,
+          path: `${actorPath}.operations[${i}].command`,
+          suggestion: 'Ensure command field is a string'
+        });
+        continue;
+      }
+
+      // Check for shell metacharacters
+      const foundPatterns = dangerousPatterns.filter(pattern =>
+        pattern.test(command)
+      );
+
+      if (foundPatterns.length > 0) {
+        issues.push({
+          ruleId: 'SEC012',
+          severity: 'error',
+          message: `Actor "${actor.id}" operation contains shell metacharacters that may enable command injection`,
+          path: `${actorPath}.operations[${i}].command`,
+          suggestion: 'Avoid shell metacharacters in commands. Use explicit argument arrays instead of shell strings'
+        });
+      }
     }
 
     return issues;
@@ -407,6 +630,53 @@ export class SecurityValidator {
     }
 
     return issues;
+  }
+
+  /**
+   * Helper: Normalize path for security checks
+   * FIXED (Bug #62, #63, #67): Canonicalizes paths to prevent bypass via:
+   * - Relative traversal (../)
+   * - Windows case insensitivity
+   * - Mixed path separators (\ vs /)
+   * - UNC paths (\\?\)
+   */
+  private normalizePath(path: string): string {
+    if (typeof path !== 'string') return '';
+
+    let normalized = path;
+
+    // Normalize path separators to forward slashes
+    // FIXED (Bug #67): Handle Windows backslashes
+    normalized = normalized.replace(/\\/g, '/');
+
+    // Handle Windows UNC paths (\\?\C:\ becomes C:/)
+    // FIXED (Bug #63): Detect and normalize UNC paths
+    normalized = normalized.replace(/^\/\/\?\/([a-zA-Z]):\//, '$1:/');
+
+    // Resolve relative path components (..)
+    // FIXED (Bug #62): Prevent directory traversal bypass
+    const parts = normalized.split('/').filter(Boolean);
+    const stack: string[] = [];
+
+    for (const part of parts) {
+      if (part === '..') {
+        // Pop parent directory (traversal attempt)
+        stack.pop();
+      } else if (part !== '.') {
+        stack.push(part);
+      }
+    }
+
+    normalized = '/' + stack.join('/');
+
+    // Windows paths: lowercase drive letters for case-insensitive comparison
+    // FIXED (Bug #63): Handle Windows case sensitivity
+    normalized = normalized.replace(/^\/([A-Z]):\//, (match, drive) => `/${drive.toLowerCase()}:/`);
+
+    // Collapse multiple slashes
+    normalized = normalized.replace(/\/+/g, '/');
+
+    return normalized;
   }
 
   /**

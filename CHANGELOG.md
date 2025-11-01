@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.8] - 2025-11-01
+
+### 🐛 Bug Fixes
+
+#### Session 28 Security Fix - 1 Critical Bug (#104)
+
+**Fixed Bug:**
+
+- **Bug #104** (src/agents/profile-loader.ts:197-198, 730-734): Null reference in ProfileLoader
+  - Added null/object validation before accessing YAML data properties
+  - Fixed readDisplayNameOnly method to validate data type before property access
+  - Fixed buildProfile method to throw AgentValidationError for invalid data types
+  - Prevents TypeError when loading invalid/empty YAML files
+
+**Technical Details:**
+- `js-yaml`'s `load()` can return null, undefined, or primitive types
+  - Added comprehensive type guards: `data && typeof data === 'object' && !Array.isArray(data)`
+  - Proper error handling with descriptive AgentValidationError messages
+
+**Impact:**
+- Null reference vulnerability in agent profile loading fixed
+- Robust type safety for YAML parsing
+- All 2,425 unit tests passing ✅
+
 ## [6.5.7] - 2025-11-01
 
 ### 🐛 Bug Fixes

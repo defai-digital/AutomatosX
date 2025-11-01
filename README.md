@@ -133,6 +133,104 @@ ax run backend "implement user authentication"
 
 ---
 
+## 🤖 **NEW**: Iterate Mode - Autonomous Agent Execution (v6.5.0+)
+
+**The Future of AI Agent Automation**
+
+Iterate Mode enables agents to run autonomously without user intervention, automatically responding to confirmations while maintaining strict safety controls. This is perfect for long-running tasks, batch processing, or overnight automation.
+
+### Quick Start
+
+```bash
+# Basic autonomous execution
+ax run backend "implement user authentication" --iterate
+
+# With cost and time limits
+ax run backend "refactor codebase" --iterate --iterate-max-cost 2.0 --iterate-timeout 60
+
+# Maximum safety mode
+ax run security "audit entire codebase" --iterate --iterate-strictness paranoid
+
+# Test autonomous execution without changes
+ax run backend "plan database migration" --iterate --iterate-dry-run
+```
+
+### Key Features
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| **Autonomous Execution** | Agents auto-respond to confirmation prompts | Enabled with `--iterate` |
+| **Cost Budget Control** | Set maximum spend limits with warning thresholds | $5.00 |
+| **Time Limits** | Configure execution timeouts | 120 minutes |
+| **Safety Levels** | Choose from `paranoid`, `balanced`, `permissive` | `balanced` |
+| **Dangerous Operation Detection** | Automatic classification of risky operations | Always active |
+| **Dry Run Mode** | Test autonomous execution without making changes | Off |
+| **Context History** | Maintains classification context for smarter decisions | Max 100 entries |
+
+### Safety Guardrails
+
+Iterate Mode includes comprehensive safety protections:
+
+- ✅ **Cost Budget Enforcement**: Warning at 80% threshold, hard stop at limit
+- ✅ **Execution Timeout Protection**: Automatic shutdown after time limit
+- ✅ **Workspace Boundary Protection**: Cannot access files outside project directory
+- ✅ **Memory Leak Prevention**: Classification history bounded to prevent unbounded growth
+- ✅ **Dangerous Operation Detection**: Auto-blocks risky operations in paranoid mode
+
+### Use Cases
+
+**Perfect For:**
+- ✅ Long-running refactoring tasks
+- ✅ Comprehensive code audits
+- ✅ Batch processing multiple files
+- ✅ Overnight automation jobs
+- ✅ Large-scale testing and validation
+- ✅ Multi-step workflow execution
+
+**Not Recommended For:**
+- ❌ Tasks requiring frequent user input
+- ❌ Highly destructive operations without dry-run first
+- ❌ Tasks where intermediate decisions are critical
+
+### Configuration Options
+
+```bash
+# All iterate mode flags
+ax run agent "task" \
+  --iterate                           # Enable iterate mode
+  --iterate-timeout 60                # Max duration in minutes (default: 120)
+  --iterate-max-cost 5.0              # Max spend in USD (default: 5.00)
+  --iterate-strictness balanced       # Safety level: paranoid|balanced|permissive
+  --iterate-dry-run                   # Test mode - no actual changes
+```
+
+### Performance
+
+- **Classification Latency**: < 50ms per decision
+- **Memory Usage**: Bounded to 100 classification entries
+- **Context Cleanup**: Automatic expiration of old contexts
+- **Cost Tracking**: Real-time budget monitoring with warnings
+
+### Example Workflow
+
+```bash
+# 1. Dry run to preview actions
+ax run backend "refactor authentication module" \
+  --iterate --iterate-dry-run
+
+# 2. Run with tight safety controls
+ax run backend "refactor authentication module" \
+  --iterate \
+  --iterate-strictness paranoid \
+  --iterate-max-cost 1.0 \
+  --iterate-timeout 30
+
+# 3. Monitor progress
+tail -f .automatosx/logs/router-trace-*.jsonl
+```
+
+---
+
 ## 🎯 What Makes AutomatosX Different?
 
 ### Traditional AI Workflows

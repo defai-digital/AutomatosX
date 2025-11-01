@@ -58,7 +58,60 @@ This release includes comprehensive security fixes for **13 critical vulnerabili
 
 ## [6.5.0] - 2025-10-31
 
-### 🔒 Major Security Release
+### 🚀 Major Feature Release: Iterate Mode + Security Hardening
+
+This release introduces **Iterate Mode** - a breakthrough autonomous execution system - alongside comprehensive security hardening fixing **62 critical bugs** across the codebase.
+
+### ✨ New Features
+
+#### 🤖 Iterate Mode (Autonomous Agent Execution)
+
+**The Future of AI Agent Automation**
+
+Iterate Mode enables agents to run autonomously without user intervention, automatically responding to confirmations while maintaining strict safety controls.
+
+**Key Capabilities**:
+- **Autonomous Execution**: Agents auto-respond to confirmation prompts
+- **Cost Budget Control**: Set maximum spend limits with warning thresholds (default: $5.00)
+- **Time Limits**: Configure execution timeouts (default: 120 minutes)
+- **Safety Levels**: Three strictness modes - `paranoid`, `balanced`, `permissive`
+- **Dangerous Operation Detection**: Automatic classification of risky operations
+- **Dry Run Mode**: Test autonomous execution without making changes
+- **Context History**: Maintains classification context for smarter decisions (max 100 entries)
+
+**Usage Examples**:
+```bash
+# Basic iterate mode
+ax run agent "task description" --iterate
+
+# With cost and time limits
+ax run agent "task" --iterate --iterate-max-cost 2.0 --iterate-timeout 30
+
+# Paranoid mode (maximum safety)
+ax run agent "task" --iterate --iterate-strictness paranoid
+
+# Dry run (test without execution)
+ax run agent "task" --iterate --iterate-dry-run
+```
+
+**Safety Guardrails**:
+- Cost budget enforcement with warning at 80% threshold
+- Execution timeout protection
+- Workspace boundary protection (Bug #1 fix)
+- Classification history limits to prevent memory leaks (Bug #2 fix)
+- Dangerous operation detection and blocking
+
+**Performance**:
+- < 50ms classification latency
+- Bounded memory usage (max 100 classification entries)
+- Automatic cleanup of expired contexts
+
+**Related Fixes**:
+- **Bug #1 (CRITICAL)**: Fixed workspace protection security vulnerability
+- **Bug #2 (HIGH)**: Fixed memory leak in iterate mode controller
+- **Bug #80**: Fixed iterate mode blocked by complexity detection prompts (v6.5.2)
+
+### 🔒 Security Fixes
 
 **Ultra-Deep Analysis Campaign: Bugs #6-67 Fixed**
 

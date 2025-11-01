@@ -75,22 +75,24 @@ function extractJSON(line: string, startPos: number): string | null {
  * Task format regex patterns
  * Supports both old format (ops:"...") and new JSON format (ops:{...})
  * Note: For JSON format, we just detect ops:{ and use extractJSON helper
+ * FIX Bug #101: Updated regex to support escaped quotes in task strings
  */
 const TASK_PATTERNS = {
   // Format 1: Inline attributes
   // - [ ] id:auth:setup ops:"ax run backend 'Setup'" dep:core:init labels:auth,backend
+  // - [ ] id:auth:setup ops:"ax run backend \"Setup\"" (now supports escaped quotes)
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["Setup"]} dep:core:init
-  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)\s*/i,
+  inline: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("((?:[^"\\]|\\.)*)"|\{)\s*/i,
 
   // Format 2: Simpler inline
   // - [ ] id:auth:setup ops:"command" dep:dep1,dep2
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]} dep:dep1,dep2
-  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)\s*/i,
+  simple: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("((?:[^"\\]|\\.)*)"|\{)\s*/i,
 
   // Format 3: Very simple (just ID and ops)
   // - [ ] id:auth:setup ops:"command"
   // - [ ] id:auth:setup ops:{"command":"ax run","agent":"backend","args":["task"]}
-  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("([^"]+)"|\{)/i
+  minimal: /^-\s*\[([ xX])\]\s+id:(\S+)\s+ops:("((?:[^"\\]|\\.)*)"|\{)/i
 };
 
 /**

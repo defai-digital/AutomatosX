@@ -656,7 +656,8 @@ export class SessionManager {
    * ```
    */
   async cleanup(): Promise<number> {
-    if (this.activeSessions.size <= this.MAX_SESSIONS) {
+    // FIX Bug #102: Change <= to < to match createSession() trigger (>= MAX_SESSIONS)
+    if (this.activeSessions.size < this.MAX_SESSIONS) {
       return 0;
     }
 

@@ -389,7 +389,8 @@ async function commitChanges() {
   }
 
   step('Adding changes to git...');
-  exec('git add package.json README.md CHANGELOG.md CLAUDE.md');
+  // FIX Bug #100: Add package-lock.json to git staging
+  exec('git add package.json package-lock.json README.md CHANGELOG.md CLAUDE.md');
   success('Changes staged');
 
   step('Creating commit...');

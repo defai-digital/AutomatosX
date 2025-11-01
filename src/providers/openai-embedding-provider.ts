@@ -242,20 +242,22 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
         return;
       }
 
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(timeout);
-        resolve();
-      }, ms);
-
-      // Track timeout for cleanup
-      this.pendingRequests.add(timeout);
-
       // Support cancellation via AbortSignal
       const abortHandler = () => {
         clearTimeout(timeout);
         this.pendingRequests.delete(timeout);
         reject(new Error('Sleep cancelled - provider shutting down'));
       };
+
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(timeout);
+        // FIX Bug #103: Remove abort listener when timeout completes normally
+        this.abortController.signal.removeEventListener('abort', abortHandler);
+        resolve();
+      }, ms);
+
+      // Track timeout for cleanup
+      this.pendingRequests.add(timeout);
 
       // Use { once: true } to automatically remove listener after first call
       this.abortController.signal.addEventListener('abort', abortHandler, { once: true });

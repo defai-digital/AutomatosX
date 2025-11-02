@@ -49,7 +49,7 @@ import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
 import { freeTierCommand } from './commands/free-tier.js';
-import { cliInteractiveCommand } from './commands/cli-interactive.js';
+// import { cliInteractiveCommand } from './commands/cli-interactive.js'; // TODO: Re-enable in v7.1.0
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -146,7 +146,7 @@ globalTracker.mark('cli_start');
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)
-  .command(cliInteractiveCommand)
+  // .command(cliInteractiveCommand) // TODO: Re-enable in v7.1.0
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

@@ -99,7 +99,7 @@ ax run product "Build a complete user authentication feature"
 
 **Gemini CLI Example**:
 ```
-/ax product, build a complete user authentication feature
+"Use ax product agent to build a complete user authentication feature"
 ```
 
 ### 3. Cross-Provider Support
@@ -151,7 +151,7 @@ ax agent create my-agent --template developer --interactive
 
 Then use them in Gemini CLI:
 ```
-/ax my-agent, your custom task
+"Use ax agent my-agent for your custom task"
 ```
 
 ### Workspace Conventions
@@ -167,18 +167,11 @@ Then use them in Gemini CLI:
   - Auto-cleaned periodically
   - Example: `automatosx/tmp/draft-api-endpoints.ts`
 
-**Usage in Gemini CLI**:
+**Usage in Gemini CLI** (natural language):
 ```
-/ax product, save the architecture design to automatosx/PRD/user-auth-design.md
-/ax backend, put the draft implementation in automatosx/tmp/auth-draft.ts for review
-/ax backend, implement the spec in automatosx/PRD/api-spec.md
-```
-
-**Natural Language**:
-```
-"Please save the architecture design to automatosx/PRD/user-auth-design.md"
-"Put the draft implementation in automatosx/tmp/auth-draft.ts for review"
-"Implement the spec in automatosx/PRD/api-spec.md"
+"Use ax product agent to save the architecture design to automatosx/PRD/user-auth-design.md"
+"Have ax backend agent put the draft implementation in automatosx/tmp/auth-draft.ts for review"
+"Ask ax backend agent to implement the spec in automatosx/PRD/api-spec.md"
 ```
 
 These directories are automatically created by `ax setup` and included in `.gitignore` appropriately.
@@ -199,9 +192,9 @@ ax memory list --limit 10
 ax memory export > backup.json
 ```
 
-**In Gemini CLI**:
+**In Gemini CLI** (natural language):
 ```
-/ax-memory search authentication
+"Search AutomatosX memory for authentication"
 ```
 
 ### How Memory Works
@@ -260,48 +253,36 @@ ax spec status
 
 ## Gemini CLI Integration
 
-### Custom Commands
+### Natural Language Interface (v7.0.0+)
 
-AutomatosX provides custom Gemini CLI commands in `.gemini/commands/`:
+**IMPORTANT**: As of v7.0.0, AutomatosX uses natural language only. Custom slash commands have been removed.
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/ax` | Execute any agent | `/ax backend, create API` |
-| `/ax-status` | Check system status | `/ax-status` |
-| `/ax-list` | List agents/abilities | `/ax-list agents` |
-| `/ax-memory` | Search memory | `/ax-memory search auth` |
-| `/ax-setup` | Initialize project | `/ax-setup` |
-| `/ax-clear` | Clear memory | `/ax-clear` |
-| `/ax-update` | Update AutomatosX | `/ax-update` |
+Instead of slash commands, simply talk naturally to Gemini CLI:
 
-### Command Syntax
-
-**Format**: `/ax <agent>, <task>`
-
-- Use a **comma** to separate agent name and task
-- Agent name can be display name (Bob, Frank) or ID (backend, frontend)
-
-**Examples**:
+**Natural Language Examples**:
 ```
-/ax bob, create a REST API for authentication
-/ax frank, build a responsive navbar
-/ax steve, audit this code for security
-/ax queenie, write unit tests
+"Use ax agent backend to create a REST API for authentication"
+"Ask ax agent frontend to build a responsive navbar"
+"Have ax agent security audit this code for vulnerabilities"
+"Work with ax agent quality to write unit tests"
 ```
 
-### Sync Commands
+### Direct CLI Usage
 
-Register custom commands with Gemini CLI:
+For direct AutomatosX CLI usage in your terminal:
 
 ```bash
-# Check Gemini CLI integration status
-ax gemini status
+# List all available agents
+ax list agents
 
-# Sync custom commands
-ax gemini sync-mcp
+# Run an agent
+ax run backend "create REST API"
 
-# List available commands
-ax gemini list-commands
+# Search memory
+ax memory search "authentication"
+
+# Check system status
+ax status
 ```
 
 ## Troubleshooting
@@ -318,12 +299,6 @@ ax run backend "task"  # ✓ Correct
 ax run Backend "task"  # ✗ Wrong (case-sensitive)
 ```
 
-Or in Gemini CLI:
-```
-/ax-list agents
-/ax backend, your task
-```
-
 **"Provider not available"**
 ```bash
 # Check system status
@@ -333,11 +308,6 @@ ax status
 ax config show
 ```
 
-Or in Gemini CLI:
-```
-/ax-status
-```
-
 **"Out of memory"**
 ```bash
 # Clear old memories
@@ -345,11 +315,6 @@ ax memory clear --before "2024-01-01"
 
 # View memory stats
 ax cache stats
-```
-
-Or in Gemini CLI:
-```
-/ax-clear
 ```
 
 **"Gemini CLI not found"**
@@ -378,16 +343,16 @@ ax --debug run backend "task"
 ax memory search "similar task"
 ```
 
-**In Gemini CLI**:
+**In Gemini CLI** (natural language):
 ```
-/ax-status          # Check system health
-/ax-list agents     # See available agents
-/ax-memory search   # Find past conversations
+"Check AutomatosX system status"
+"List all available agents"
+"Search memory for authentication conversations"
 ```
 
 ## Best Practices
 
-1. **Use Slash Commands in Gemini CLI**: Cleaner syntax than natural language
+1. **Use Natural Language in Gemini CLI**: Talk naturally to interact with AutomatosX agents
 2. **Leverage Memory**: Reference past decisions and designs
 3. **Start Simple**: Test with small tasks before complex workflows
 4. **Review Configurations**: Check `automatosx.config.json` for timeouts and retries
@@ -401,7 +366,6 @@ ax memory search "similar task"
 - **Configuration**: `automatosx.config.json`
 - **Memory Database**: `.automatosx/memory/memories.db`
 - **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
-- **Gemini Commands**: `.gemini/commands/` (custom slash commands)
 
 ## Support
 

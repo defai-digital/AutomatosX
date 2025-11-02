@@ -100,7 +100,9 @@ your-project/
 │   ├── templates/        # 9 agent templates
 │   └── memory/           # SQLite FTS5 database
 ├── automatosx.config.json  # Project configuration
+├── AGENTS.md             # AI assistant integration (universal standard)
 ├── CLAUDE.md             # Claude Code integration guide
+├── GEMINI.md             # Gemini CLI integration guide
 └── .gitignore            # Updated with AutomatosX entries
 ```
 
@@ -276,7 +278,21 @@ ax providers list
 
 ## Using with AI Assistants
 
-### Claude Code
+### Universal Standard (AGENTS.md)
+
+AutomatosX follows the [AGENTS.md open standard](https://agents.md) for cross-tool compatibility. The `AGENTS.md` file works with all AI coding assistants:
+
+- Codex CLI, Cursor, Cline, Aider
+- Windsurf, Codeium, GitHub Copilot
+- Any AI assistant with terminal access
+
+See [AGENTS.md](../../AGENTS.md) for the universal integration guide.
+
+### Platform-Specific Guides
+
+For platform-specific features and optimizations:
+
+#### Claude Code
 
 AutomatosX integrates seamlessly with Claude Code. See [AX-GUIDE.md](../../AX-GUIDE.md#claude-code) for:
 
@@ -286,7 +302,7 @@ AutomatosX integrates seamlessly with Claude Code. See [AX-GUIDE.md](../../AX-GU
 
 Or use the brief [CLAUDE.md](../../CLAUDE.md) integration guide.
 
-### Gemini CLI
+#### Gemini CLI
 
 Use slash command syntax with Gemini. See [AX-GUIDE.md](../../AX-GUIDE.md#gemini-cli) for:
 
@@ -296,13 +312,13 @@ Use slash command syntax with Gemini. See [AX-GUIDE.md](../../AX-GUIDE.md#gemini
 
 Or use the brief [GEMINI.md](../../GEMINI.md) integration guide.
 
-### Other AI Assistants
+#### Other AI Assistants
 
 Any AI assistant with terminal access can use AutomatosX. See [AX-GUIDE.md](../../AX-GUIDE.md#other-assistants) for:
 
 - Generic bash command patterns
 - OpenAI Codex integration
-- Cursor, Codeium, etc.
+- Integration examples
 
 ---
 

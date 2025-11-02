@@ -226,10 +226,10 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ GEMINI.md configured'));
 
-      // Setup project CODEX.md with AutomatosX integration guide
-      console.log(chalk.cyan('📖 Setting up CODEX.md with AutomatosX integration...'));
-      await setupProjectCodexMd(projectDir, packageRoot, argv.force ?? false);
-      console.log(chalk.green('   ✓ CODEX.md configured'));
+      // Setup project AGENTS.md with AutomatosX integration guide (AGENTS.md standard)
+      console.log(chalk.cyan('📖 Setting up AGENTS.md with AutomatosX integration...'));
+      await setupProjectAgentsMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ AGENTS.md configured'));
 
       // Create workspace directories for organized file management
       console.log(chalk.cyan('📂 Creating workspace directories...'));
@@ -1122,55 +1122,56 @@ async function setupProjectGeminiMd(
 }
 
 /**
- * Setup project CODEX.md with AutomatosX integration guide
+ * Setup project AGENTS.md with AutomatosX integration guide
  *
- * This function creates or updates the project's CODEX.md file to include
- * AutomatosX integration instructions, helping OpenAI Codex CLI users understand
- * how to work with AutomatosX agents in this project.
+ * This function creates or updates the project's AGENTS.md file to include
+ * AutomatosX integration instructions, following the open AGENTS.md standard
+ * (https://agents.md) that works across all AI coding assistants.
  */
-async function setupProjectCodexMd(
+async function setupProjectAgentsMd(
   projectDir: string,
   packageRoot: string,
   force: boolean
 ): Promise<void> {
-  const codexMdPath = join(projectDir, 'CODEX.md');
-  const templatePath = join(packageRoot, 'examples/codex/CODEX_INTEGRATION.md');
+  const agentsMdPath = join(projectDir, 'AGENTS.md');
+  const templatePath = join(packageRoot, 'examples/agents/AGENTS_INTEGRATION.md');
 
   try {
     // Read the template
     const { readFile } = await import('fs/promises');
     const template = await readFile(templatePath, 'utf-8');
 
-    const exists = await checkExists(codexMdPath);
+    const exists = await checkExists(agentsMdPath);
 
     if (!exists) {
-      // Create new CODEX.md with AutomatosX integration
+      // Create new AGENTS.md with AutomatosX integration
       const content = [
-        '# CODEX.md',
+        '# AGENTS.md',
         '',
-        'This file provides guidance to OpenAI Codex CLI users when working with code in this repository.',
+        'This file provides guidance to AI coding assistants when working with code in this repository.',
+        'Following the open AGENTS.md standard (https://agents.md) for cross-tool compatibility.',
         '',
         '---',
         '',
         template
       ].join('\n');
 
-      await writeFile(codexMdPath, content, 'utf-8');
-      logger.info('Created CODEX.md with AutomatosX integration', { path: codexMdPath });
+      await writeFile(agentsMdPath, content, 'utf-8');
+      logger.info('Created AGENTS.md with AutomatosX integration', { path: agentsMdPath });
     } else {
-      // Update existing CODEX.md
-      const existingContent = await readFile(codexMdPath, 'utf-8');
+      // Update existing AGENTS.md
+      const existingContent = await readFile(agentsMdPath, 'utf-8');
 
       // Check if AutomatosX integration already exists
       if (existingContent.includes('# AutomatosX Integration')) {
         if (!force) {
-          logger.info('CODEX.md already contains AutomatosX integration', { path: codexMdPath });
+          logger.info('AGENTS.md already contains AutomatosX integration', { path: agentsMdPath });
           return;
         }
         // Force mode: replace existing AutomatosX section
         const updatedContent = replaceAutomatosXSection(existingContent, template);
-        await writeFile(codexMdPath, updatedContent, 'utf-8');
-        logger.info('Updated AutomatosX integration in CODEX.md', { path: codexMdPath });
+        await writeFile(agentsMdPath, updatedContent, 'utf-8');
+        logger.info('Updated AutomatosX integration in AGENTS.md', { path: agentsMdPath });
       } else {
         // Append AutomatosX integration to existing content
         const updatedContent = [
@@ -1181,15 +1182,15 @@ async function setupProjectCodexMd(
           template
         ].join('\n');
 
-        await writeFile(codexMdPath, updatedContent, 'utf-8');
-        logger.info('Added AutomatosX integration to existing CODEX.md', { path: codexMdPath });
+        await writeFile(agentsMdPath, updatedContent, 'utf-8');
+        logger.info('Added AutomatosX integration to existing AGENTS.md', { path: agentsMdPath });
       }
     }
   } catch (error) {
     // Non-critical error, just log it
-    logger.warn('Failed to setup CODEX.md', {
+    logger.warn('Failed to setup AGENTS.md', {
       error: (error as Error).message,
-      path: codexMdPath
+      path: agentsMdPath
     });
   }
 }

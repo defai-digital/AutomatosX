@@ -511,7 +511,7 @@ ax gen plan spec.yaml  # Should show cost estimates
 
 **Step 3**: Document for your team:
 - Update project README
-- Note in CLAUDE.md or CODEX.md if present
+- Note in AGENTS.md, CLAUDE.md, or GEMINI.md if present
 - Communicate to team members
 
 ---

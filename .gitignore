@@ -83,10 +83,7 @@ RELEASE-NOTES.md
 *ANALYSIS*.md
 *ASSESSMENT*.md
 
-# AI assistant files (internal only)
-AGENTS.md
-CLAUDE.md
-GEMINI.md
+# AI assistant runtime directories (user-specific)
 .claude/
 .gemini/
 

@@ -216,9 +216,14 @@ export class SessionManager {
       task: task.substring(0, 100) + (task.length > 100 ? '...' : '')
     });
 
+    // v6.5.16: Fire-and-forget cleanup to avoid blocking session creation
     // Cleanup old completed/failed sessions (prevents memory leak)
-    // This runs after session creation to avoid blocking the creation process
-    await this.cleanupOldSessions(7); // Clean sessions older than 7 days
+    // Non-blocking: Session creation doesn't wait for cleanup to complete
+    void this.cleanupOldSessions(7).catch((error) => {
+      logger.warn('Session cleanup failed (non-critical)', {
+        error: (error as Error).message
+      });
+    });
 
     // Persist to file
     this.saveToFile();

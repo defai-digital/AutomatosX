@@ -57,8 +57,24 @@ export interface ContextManagerConfig {
 export class ContextManager {
   private config: ContextManagerConfig;
 
+  /**
+   * v6.5.16: Cached list of available agent profiles
+   * Performance: Prevents disk I/O on every context build
+   * Invalidate when agents are added/removed
+   */
+  private cachedProfileList: string[] | null = null;
+
   constructor(config: ContextManagerConfig) {
     this.config = config;
+  }
+
+  /**
+   * Invalidate the cached profile list
+   * Call this when agents are added or removed
+   * @since v6.5.16 - Performance optimization
+   */
+  invalidateProfileCache(): void {
+    this.cachedProfileList = null;
   }
 
   /**
@@ -151,8 +167,15 @@ export class ContextManager {
           return undefined;
         }
 
+        // v6.5.16: Use cached profile list to avoid disk I/O on every context build
         // Get list of available agents for delegation
-        const allAgents = await this.config.profileLoader.listProfiles();
+        if (this.cachedProfileList === null) {
+          this.cachedProfileList = await this.config.profileLoader.listProfiles();
+          logger.debug('Profile list cached', {
+            count: this.cachedProfileList.length
+          });
+        }
+        const allAgents = this.cachedProfileList;
 
         // v4.7.8+: All agents can delegate by default
         // Only exclude self to prevent direct self-delegation (cycles still detected)

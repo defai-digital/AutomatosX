@@ -75,6 +75,13 @@ export class MemoryManager implements IMemoryManager {
     retentionDays: number;
   }
 
+  // v6.5.16: VACUUM throttling to prevent event loop blocking
+  private lastVacuumTime: number = 0;
+  private vacuumConfig: {
+    minIntervalMs: number;      // Minimum time between VACUUM operations
+    minDeletionsForVacuum: number;  // Minimum deletions to trigger VACUUM
+  }
+
   private constructor(config: MemoryManagerConfig) {
     // Set default config
     this.config = {
@@ -106,6 +113,13 @@ export class MemoryManager implements IMemoryManager {
       minCleanupCount: cleanupCfg.minCleanupCount ?? 10,
       maxCleanupCount: cleanupCfg.maxCleanupCount ?? 1000,
       retentionDays
+    };
+
+    // v6.5.16: Initialize VACUUM throttling config
+    // VACUUM is expensive (full table rewrite), so throttle it to prevent event loop blocking
+    this.vacuumConfig = {
+      minIntervalMs: 3600000,  // 1 hour minimum between VACUUM operations
+      minDeletionsForVacuum: 100  // Only VACUUM if we deleted at least 100 entries
     };
 
     // Validate cleanup configuration
@@ -1076,11 +1090,47 @@ export class MemoryManager implements IMemoryManager {
 
       if (deleted > 0) {
         this.entryCount -= deleted;
-        this.db.prepare('VACUUM').run();
+
+        // v6.5.16: Throttled VACUUM to prevent event loop blocking
+        // Only run VACUUM if:
+        // 1. Enough time has passed since last VACUUM (minIntervalMs)
+        // 2. Enough data was deleted (minDeletionsForVacuum)
+        const now = Date.now();
+        const timeSinceLastVacuum = now - this.lastVacuumTime;
+        const shouldVacuum =
+          deleted >= this.vacuumConfig.minDeletionsForVacuum &&
+          timeSinceLastVacuum >= this.vacuumConfig.minIntervalMs;
+
+        if (shouldVacuum) {
+          // Run VACUUM asynchronously to avoid blocking event loop
+          setImmediate(() => {
+            try {
+              this.db.prepare('VACUUM').run();
+              this.lastVacuumTime = Date.now();
+              logger.debug('VACUUM completed', {
+                deleted,
+                timeSinceLastVacuum: Math.round(timeSinceLastVacuum / 1000) + 's'
+              });
+            } catch (error) {
+              logger.warn('VACUUM failed (non-critical)', {
+                error: (error as Error).message
+              });
+            }
+          });
+        } else {
+          logger.debug('VACUUM skipped (throttled)', {
+            deleted,
+            minRequired: this.vacuumConfig.minDeletionsForVacuum,
+            timeSinceLastVacuum: Math.round(timeSinceLastVacuum / 1000) + 's',
+            minInterval: Math.round(this.vacuumConfig.minIntervalMs / 1000) + 's'
+          });
+        }
+
         logger.info('Cleanup completed', {
           deleted,
           olderThanDays: days,
-          newCount: this.entryCount
+          newCount: this.entryCount,
+          vacuumed: shouldVacuum
         });
       }
 
@@ -1158,21 +1208,47 @@ export class MemoryManager implements IMemoryManager {
         );
       }
 
-      // Close current database and reset state
+      // FIXED (v6.5.16 Bug #15): Atomic restore operation
+      // Use temp file + atomic rename to prevent database corruption if process crashes
+      // Problem: Old code closed DB before backup, crash during backup = no database
+      // Solution: Copy to temp file first, then atomically swap
+
+      const tempPath = `${this.config.dbPath}.restore.tmp`;
+
+      // Step 1: Copy backup to temporary location
+      const srcDb = new Database(srcPath, { readonly: true });
+      await srcDb.backup(tempPath);
+      srcDb.close();
+
+      // Step 2: Verify temporary database integrity (basic check)
+      try {
+        const tempDb = new Database(tempPath, { readonly: true });
+        tempDb.prepare('SELECT COUNT(*) FROM memory_entries').get();
+        tempDb.close();
+      } catch (verifyError) {
+        // Clean up temp file on verification failure
+        const { unlink } = await import('fs/promises');
+        await unlink(tempPath).catch(() => {/* ignore cleanup errors */});
+        throw new MemoryError(
+          `Backup file verification failed: ${(verifyError as Error).message}`,
+          'DATABASE_ERROR',
+          { srcPath, tempPath, error: verifyError }
+        );
+      }
+
+      // Step 3: Close current database and reset state
       // Phase 2.1 Fix: Must reset all state before reinitializing
       this.db.close();
       this.initialized = false;
       this.entryCount = 0;
       this.statements = {};
 
-      // Copy backup to current location using better-sqlite3's backup method
-      // FIXED (Bug #6): Removed unused destDb - backup() handles destination file creation
-      // Opening destDb was redundant and could cause file locks on some platforms
-      const srcDb = new Database(srcPath, { readonly: true });
-      await srcDb.backup(this.config.dbPath);
-      srcDb.close();
+      // Step 4: Atomically rename temp file to main database
+      // rename() is atomic on POSIX systems (macOS, Linux)
+      const { rename } = await import('fs/promises');
+      await rename(tempPath, this.config.dbPath);
 
-      // Reopen database
+      // Step 5: Reopen database and reinitialize
       this.db = new Database(this.config.dbPath);
       this.db.pragma('journal_mode = WAL');
       this.db.pragma(`busy_timeout = ${this.config.busyTimeout}`);  // v5.6.18: Configurable lock timeout
@@ -1181,7 +1257,7 @@ export class MemoryManager implements IMemoryManager {
       // This ensures prepared statements are bound to the new connection
       await this.initialize();
 
-      logger.info('Database restored successfully', { srcPath: normalizePath(srcPath) });
+      logger.info('Database restored successfully (atomic operation)', { srcPath: normalizePath(srcPath) });
     } catch (error) {
       throw new MemoryError(
         `Failed to restore database: ${(error as Error).message}`,

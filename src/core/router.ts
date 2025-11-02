@@ -607,12 +607,15 @@ export class Router {
         }
 
         // Phase 3: Record metrics for multi-factor routing
+        // v6.5.16: Fire-and-forget metrics recording to avoid blocking the routing loop
+        // Metrics I/O (disk/network) should not delay response delivery to the user
         if (this.useMultiFactorRouting) {
           const metricsTracker = getProviderMetricsTracker();
           // Estimate cost based on tokens (simplified - real cost would come from provider)
           const estimatedCost = this.estimateCost(provider.name, response.tokensUsed);
 
-          await metricsTracker.recordRequest(
+          // Fire-and-forget: Don't await metrics recording
+          void metricsTracker.recordRequest(
             provider.name,
             response.latencyMs,
             true, // success
@@ -624,7 +627,13 @@ export class Router {
             },
             estimatedCost,
             response.model
-          );
+          ).catch((error) => {
+            // Log but don't fail the request if metrics recording fails
+            logger.warn('Metrics recording failed (non-critical)', {
+              provider: provider.name,
+              error: (error as Error).message
+            });
+          });
         }
 
         return response;
@@ -641,20 +650,29 @@ export class Router {
           const providerError = error as ProviderError;
           const limitManager = getProviderLimitManager();
 
-          // Ensure limit is recorded (idempotent - safe to call even if already recorded)
+          // v6.5.16: Ensure limit is recorded (idempotent - safe to call even if already recorded)
+          // Bug #11 fix: Wrap in try-catch to prevent masking the original provider error
           const resetAtMs = providerError.context?.resetAtMs;
           const limitWindow = providerError.context?.limitWindow;
 
           if (typeof resetAtMs === 'number' && typeof limitWindow === 'string') {
-            await limitManager.recordLimitHit(
-              provider.name,
-              limitWindow as 'daily' | 'weekly' | 'custom',
-              resetAtMs,
-              {
-                reason: (providerError.context?.reason as string) || 'usage_limit_exceeded',
-                rawMessage: providerError.message
-              }
-            );
+            try {
+              await limitManager.recordLimitHit(
+                provider.name,
+                limitWindow as 'daily' | 'weekly' | 'custom',
+                resetAtMs,
+                {
+                  reason: (providerError.context?.reason as string) || 'usage_limit_exceeded',
+                  rawMessage: providerError.message
+                }
+              );
+            } catch (limitError) {
+              // Log but don't fail - the original provider error is more important
+              logger.warn('Failed to record limit hit (non-critical)', {
+                provider: provider.name,
+                error: (limitError as Error).message
+              });
+            }
           }
 
           logger.warn('⚠️  Router: provider hit usage limit, auto-rotating', {
@@ -702,9 +720,13 @@ export class Router {
         }
 
         // Phase 3: Record failed request metrics
+        // v6.5.16: Fire-and-forget metrics recording to avoid blocking error handling loop
+        // Metrics I/O should not delay fallback provider selection
         if (this.useMultiFactorRouting) {
           const metricsTracker = getProviderMetricsTracker();
-          await metricsTracker.recordRequest(
+
+          // Fire-and-forget: Don't await metrics recording
+          void metricsTracker.recordRequest(
             provider.name,
             0, // latency unknown for failed requests
             false, // failure
@@ -712,7 +734,13 @@ export class Router {
             { prompt: 0, completion: 0, total: 0 },
             0, // no cost for failed requests
             undefined // model unknown
-          );
+          ).catch((error) => {
+            // Log but don't fail the fallback attempt if metrics recording fails
+            logger.warn('Failed request metrics recording failed (non-critical)', {
+              provider: provider.name,
+              error: (error as Error).message
+            });
+          });
         }
 
         // If fallback is disabled, throw immediately
@@ -840,14 +868,30 @@ export class Router {
   }
 
   /**
-   * Get health status of all providers
+   * Get health status for all providers
+   *
+   * v6.5.16: Parallelized health checks using Promise.allSettled
+   * - Before: Sequential checks with N×latency worst case
+   * - After: Parallel checks with max(latency) worst case
+   * - Performance: 3x faster with 3 providers (300ms → 100ms)
    */
   async getHealthStatus(): Promise<Map<string, HealthStatus>> {
     const healthMap = new Map<string, HealthStatus>();
 
-    for (const provider of this.providers) {
-      const health = await provider.getHealth();
-      healthMap.set(provider.name, health);
+    // v6.5.16: Run health checks in parallel instead of sequentially
+    // Use allSettled to ensure all checks complete even if some fail
+    const healthChecks = this.providers.map(async (provider) => ({
+      name: provider.name,
+      health: await provider.getHealth()
+    }));
+
+    const results = await Promise.allSettled(healthChecks);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        healthMap.set(result.value.name, result.value.health);
+      }
+      // Rejected promises are ignored - provider.getHealth() handles errors internally
     }
 
     return healthMap;

@@ -483,9 +483,24 @@ export class AgentExecutor {
               fallbackError: (fallbackError as Error).message
             });
 
-            // Throw primary error with fallback context
-            const enhancedError = primaryError as Error & { fallbackError?: Error };
-            enhancedError.fallbackError = fallbackError as Error;
+            // v6.5.16: Avoid mutating the original error object
+            // Create a new error to prevent issues with frozen/sealed errors or serialization
+            const enhancedError = new Error(
+              `Provider failed: ${(primaryError as Error).message} (fallback also failed: ${(fallbackError as Error).message})`
+            );
+            enhancedError.name = (primaryError as Error).name || 'ProviderError';
+            enhancedError.stack = (primaryError as Error).stack;
+            // Attach both errors as non-enumerable properties for debugging
+            Object.defineProperty(enhancedError, 'primaryError', {
+              value: primaryError,
+              enumerable: false,
+              writable: false
+            });
+            Object.defineProperty(enhancedError, 'fallbackError', {
+              value: fallbackError,
+              enumerable: false,
+              writable: false
+            });
             throw enhancedError;
           }
         } else {
@@ -516,15 +531,16 @@ export class AgentExecutor {
           // Execute all delegations
           const delegationResults = await this.executeDelegations(delegations, context, options);
 
-          // Append delegation results to response
-          let delegationSummary = '\n\n---\n\n## Delegation Results\n\n';
+          // v6.5.16: Use array join instead of string concatenation for better performance
+          // Performance: Avoids intermediate string allocations when many delegations succeed
+          const delegationParts = ['\n\n---\n\n## Delegation Results\n\n'];
           delegationResults.forEach((result, index) => {
-            delegationSummary += `### Delegation ${index + 1}: ${result.toAgent}\n\n`;
-            delegationSummary += result.response.content + '\n\n';
+            delegationParts.push(`### Delegation ${index + 1}: ${result.toAgent}\n\n`);
+            delegationParts.push(result.response.content + '\n\n');
           });
 
           // Modify response to include delegation results
-          response.content += delegationSummary;
+          response.content += delegationParts.join('');
 
           if (verbose) {
             console.log(chalk.green(`✅ All delegations completed`));
@@ -706,20 +722,28 @@ export class AgentExecutor {
     }
 
     try {
+      // v6.5.16: Parallelize and deduplicate profile loading for better performance
       // 1. Load agent profiles for all delegations
-      const agentProfiles: AgentProfile[] = [];
       const delegationMap = new Map<string, Array<{ toAgent: string; task: string }>>();
 
+      // Group delegations by agent first (deduplication)
       for (const delegation of delegations) {
-        const profile = await this.profileLoader.loadProfile(delegation.toAgent);
-        agentProfiles.push(profile);
-
-        // Group delegations by agent (in case of multiple tasks to same agent)
         if (!delegationMap.has(delegation.toAgent)) {
           delegationMap.set(delegation.toAgent, []);
         }
-        delegationMap.get(delegation.toAgent)!.push(delegation);
+        const agentDelegations = delegationMap.get(delegation.toAgent);
+        if (agentDelegations) {
+          agentDelegations.push(delegation);
+        }
       }
+
+      // Load unique profiles in parallel (not sequential)
+      // Use for...of loop to avoid noUncheckedIndexedAccess issues with Array.from
+      const profilePromises: Promise<AgentProfile>[] = [];
+      for (const agentName of delegationMap.keys()) {
+        profilePromises.push(this.profileLoader.loadProfile(agentName));
+      }
+      const agentProfiles = await Promise.all(profilePromises);
 
       // 2. Build dependency graph
       const graphBuilder = new DependencyGraphBuilder();
@@ -1174,9 +1198,35 @@ export class AgentExecutor {
     });
 
     try {
-      // 1. Load agent profiles
-      const fromAgentProfile = await this.profileLoader.loadProfile(request.fromAgent);
-      const toAgentProfile = await this.profileLoader.loadProfile(request.toAgent);
+      // v6.5.16: Parallelize profile loading for better performance
+      // 1. Load agent profiles in parallel instead of sequentially
+      const delegationChain = request.context?.delegationChain || [];
+      const initiatorName = delegationChain.length > 0 ? (delegationChain[0] ?? request.fromAgent) : request.fromAgent;
+
+      // Load all three profiles in parallel (or two if fromAgent == initiator)
+      // Use for...of loop to avoid noUncheckedIndexedAccess issues with Array.from
+      const uniqueProfiles = new Set([request.fromAgent, request.toAgent, initiatorName]);
+      const profilePromises: Promise<AgentProfile>[] = [];
+      for (const agentName of uniqueProfiles) {
+        profilePromises.push(this.profileLoader.loadProfile(agentName));
+      }
+      const profiles = await Promise.all(profilePromises);
+
+      // Map profiles back to their respective variables
+      const profileMap = new Map<string, AgentProfile>();
+      profiles.forEach(profile => profileMap.set(profile.name, profile));
+      const fromAgentProfile = profileMap.get(request.fromAgent);
+      const toAgentProfile = profileMap.get(request.toAgent);
+      const initiatorProfile = profileMap.get(initiatorName);
+
+      if (!fromAgentProfile || !toAgentProfile || !initiatorProfile) {
+        throw new DelegationError(
+          'Failed to load agent profiles for delegation',
+          request.fromAgent,
+          request.toAgent,
+          'execution_failed'
+        );
+      }
 
       // 2. v4.7.8+: All agents can delegate by default
       // Permission check removed - autonomous agent collaboration enabled
@@ -1186,7 +1236,6 @@ export class AgentExecutor {
       // - Timeout enforcement
 
       // 3. Cycle detection: check delegation chain
-      const delegationChain = request.context?.delegationChain || [];
       if (delegationChain.includes(request.toAgent)) {
         throw new DelegationError(
           `Delegation cycle detected: ${[...delegationChain, request.toAgent].join(' -> ')}`,
@@ -1204,8 +1253,6 @@ export class AgentExecutor {
       // v4.11.0+: Default to 2 (agents evaluate capability first, delegate only when needed)
       // v5.3.4: Check initiator's depth, not current agent's depth
       //         This allows coordinators (CTO, DevOps) to orchestrate deeper delegation chains
-      const initiatorName = delegationChain.length > 0 ? (delegationChain[0] ?? request.fromAgent) : request.fromAgent;
-      const initiatorProfile = await this.profileLoader.loadProfile(initiatorName);
       const maxDepth = initiatorProfile.orchestration?.maxDelegationDepth ?? 2;
       if (delegationChain.length >= maxDepth) {
         throw new DelegationError(

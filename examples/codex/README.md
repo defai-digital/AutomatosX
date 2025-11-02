@@ -83,7 +83,7 @@ codex --version  # Should show: codex-cli 0.50.0+
 
 ```bash
 # AutomatosX automatically initializes git (required by Codex)
-ax init
+ax setup
 
 # This creates:
 # - .automatosx/ directory with agents, memory, logs
@@ -275,7 +275,7 @@ codex --version
 
 **Issue**: "Git repository required"
 ```bash
-# Solution: Initialize git (or run ax init)
+# Solution: Initialize git (or run ax setup)
 git init
 ```
 
@@ -334,7 +334,7 @@ ax provider-limits
 
 6. **Enable git repository**
    - Codex requires git
-   - `ax init` handles this automatically
+   - `ax setup` handles this automatically
 
 ## Documentation Links
 

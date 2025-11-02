@@ -21,7 +21,7 @@ describe('CLI: init command', () => {
   });
 
   it('should initialize project in empty directory', async () => {
-    const result = await runCLI(['init', testDir]);
+    const result = await runCLI(['setup', testDir]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('AutomatosX initialized successfully');
@@ -45,10 +45,10 @@ describe('CLI: init command', () => {
 
   it('should fail when already initialized without --force', async () => {
     // Initialize once
-    await runCLI(['init', testDir]);
+    await runCLI(['setup', testDir]);
 
     // Try to initialize again
-    const result = await runCLI(['init', testDir]);
+    const result = await runCLI(['setup', testDir]);
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain('already initialized');
@@ -56,10 +56,10 @@ describe('CLI: init command', () => {
 
   it('should reinitialize with --force flag', async () => {
     // Initialize once
-    await runCLI(['init', testDir]);
+    await runCLI(['setup', testDir]);
 
     // Reinitialize with --force
-    const result = await runCLI(['init', testDir, '--force']);
+    const result = await runCLI(['setup', testDir, '--force']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Reinitializing');

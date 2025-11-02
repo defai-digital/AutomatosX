@@ -621,7 +621,7 @@ ax config get providers.claude-code.command
 pwd
 
 # Initialize if needed
-ax init
+ax setup
 
 # Specify custom config
 ax --config /path/to/config.json run backend "task"
@@ -637,7 +637,7 @@ ax config validate
 ax config show
 
 # Reset to defaults
-ax init --force
+ax setup --force
 ```
 
 ### Provider Priority Not Working
@@ -716,4 +716,4 @@ Ensure priority values are **unique integers**:
 
 - **Documentation**: [docs/](https://github.com/defai-digital/automatosx/tree/main/docs)
 - **Issues**: [github.com/defai-digital/automatosx/issues](https://github.com/defai-digital/automatosx/issues)
-- **Examples**: Check `.automatosx/` after running `ax init`
+- **Examples**: Check `.automatosx/` after running `ax setup`

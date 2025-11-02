@@ -26,7 +26,8 @@ const VERSION = getVersion();
 // Import all commands directly (lazy loading broke command options)
 import { cacheCommand } from './commands/cache.js';
 import { configCommand } from './commands/config.js';
-import { initCommand } from './commands/init.js';
+import { setupCommand } from './commands/setup.js';
+import { configureCommand } from './commands/configure.js';
 import { listCommand } from './commands/list.js';
 import { mcpCommand } from './commands/mcp.js';
 import { memoryCommand } from './commands/memory.js';
@@ -44,11 +45,11 @@ import { specCommand } from './commands/spec.js';
 import { genCommand } from './commands/gen.js';
 import { providersCommand } from './commands/providers.js';
 import { doctorCommand } from './commands/doctor.js';
-import { setupCommand } from './commands/setup.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
 import { freeTierCommand } from './commands/free-tier.js';
+import { cliInteractiveCommand } from './commands/cli-interactive.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -63,7 +64,7 @@ globalTracker.mark('cli_start');
   .scriptName('automatosx')
   .usage('$0 <command> [options]')
   .usage('\nAI Agent Orchestration Platform')
-  .example('$0 init', 'Initialize project')
+  .example('$0 setup', 'Set up project')
   .example('$0 agent create backend --template developer', 'Create agent from template')
   .example('$0 agent list', 'List all agents')
   .example('$0 run assistant "Hello"', 'Run assistant agent')
@@ -89,7 +90,7 @@ globalTracker.mark('cli_start');
   .example('$0 gen dag workflow.ax.yaml', 'Generate DAG JSON')
   .example('$0 doctor', 'Run diagnostic checks')
   .example('$0 doctor openai', 'Check OpenAI provider setup')
-  .example('$0 setup', 'Interactive setup wizard for OpenAI')
+  .example('$0 configure', 'Configure provider integration mode')
   .example('$0 cleanup', 'Clean up orphaned processes')
   .example('$0 cleanup openai --force', 'Force cleanup OpenAI processes')
   .example('$0 analytics summary', 'Show usage analytics summary')
@@ -120,7 +121,8 @@ globalTracker.mark('cli_start');
   })
 
   // Commands
-  .command(initCommand)
+  .command(setupCommand)
+  .command(configureCommand)
   .command(agentCommand)
   .command(listCommand)
   .command(runCommand)
@@ -132,7 +134,6 @@ globalTracker.mark('cli_start');
   .command(configCommand)
   .command(statusCommand)
   .command(doctorCommand)
-  .command(setupCommand)
   .command(cleanupCommand)
   .command(analyticsCommand)
   .command(memoryCommand)
@@ -145,6 +146,7 @@ globalTracker.mark('cli_start');
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)
+  .command(cliInteractiveCommand)
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

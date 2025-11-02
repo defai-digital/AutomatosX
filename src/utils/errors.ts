@@ -144,7 +144,7 @@ export class ConfigError extends BaseError {
       `Configuration file not found: ${path}`,
       ErrorCode.CONFIG_NOT_FOUND,
       [
-        'Run "automatosx init" to create a new configuration',
+        'Run "automatosx setup" to create a new configuration',
         'Specify a custom config path with --config option',
         'Check that you are in a valid AutomatosX project directory'
       ],
@@ -159,7 +159,7 @@ export class ConfigError extends BaseError {
       [
         'Check your automatosx.config.json for syntax errors',
         'Validate against the schema in documentation',
-        'Reset to default with "automatosx init --force"'
+        'Reset to default with "automatosx setup --force"'
       ],
       context
     );
@@ -172,7 +172,7 @@ export class ConfigError extends BaseError {
       [
         'Check JSON syntax in your config file',
         'Use a JSON validator to find syntax errors',
-        'Reset to default with "automatosx init --force"'
+        'Reset to default with "automatosx setup --force"'
       ],
       { path, originalError: error.message }
     );
@@ -239,7 +239,7 @@ export class MemoryError extends BaseError {
       'Memory system not initialized',
       ErrorCode.MEMORY_NOT_INITIALIZED,
       [
-        'Run "automatosx init" to initialize the project',
+        'Run "automatosx setup" to initialize the project',
         'Check that .automatosx/memory directory exists',
         'Verify file permissions on the memory database'
       ]

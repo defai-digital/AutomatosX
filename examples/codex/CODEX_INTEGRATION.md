@@ -30,7 +30,7 @@ codex --version  # Should show: codex-cli 0.50.0+
 codex login
 
 # 4. Initialize git repository (required by Codex)
-git init  # Already done by `ax init`
+git init  # Already done by `ax setup`
 ```
 
 ### Using AutomatosX with Codex
@@ -231,7 +231,7 @@ ax run product "Save the authentication architecture design to automatosx/PRD/au
 ax run backend "Put the draft API implementation in automatosx/tmp/auth-api-draft.ts for review"
 ```
 
-These directories are automatically created by `ax init` and included in `.gitignore` appropriately.
+These directories are automatically created by `ax setup` and included in `.gitignore` appropriately.
 
 ## Advanced Usage
 
@@ -349,8 +349,8 @@ ax status
 # Codex CLI requires a git repository
 git init
 
-# Or run ax init (automatically initializes git)
-ax init
+# Or run ax setup (automatically initializes git)
+ax setup
 ```
 
 **"Provider not available"**

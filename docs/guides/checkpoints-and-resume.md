@@ -6,7 +6,7 @@ AutomatosX 5.3 adds stage checkpoints and run history for multi-stage agents. Us
 Stage-based agents break their work into ordered stages. When checkpoints are enabled, AutomatosX records the mode, inputs, outputs, and artifacts after each completed stage. Each run is stored under `.automatosx/checkpoints/<run-id>/`, so you can restart the run from the next stage without repeating earlier work.
 
 ## Prerequisites
-- AutomatosX initialized (run `ax init`) with version 5.3.0 or later.
+- AutomatosX initialized (run `ax setup`) with version 5.3.0 or later.
 - An agent profile that defines `stages`; single-step agents skip checkpoints.
 - Local write access to `.automatosx/` for checkpoints, logs, and artifacts.
 

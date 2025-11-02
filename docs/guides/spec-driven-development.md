@@ -152,7 +152,7 @@ For maximum control, you can create the spec files manually.
 
 ```bash
 # 1. Initialize spec-kit in your project
-ax init --spec-kit
+ax setup --spec-kit
 
 # 2. Edit the generated .specify/ files
 .specify/

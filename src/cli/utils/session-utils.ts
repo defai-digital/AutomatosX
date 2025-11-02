@@ -48,7 +48,7 @@ export async function createSessionManager(): Promise<SessionManager> {
     const err = error as Error;
     throw new Error(
       `Failed to initialize SessionManager: ${err.message}\n` +
-      `Make sure you're in an AutomatosX project directory or run 'automatosx init' first.`
+      `Make sure you're in an AutomatosX project directory or run 'automatosx setup' first.`
     );
   }
 }

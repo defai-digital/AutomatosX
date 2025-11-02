@@ -83,7 +83,7 @@ describe('CLI Entry Point (index.ts)', () => {
 
       expect(result.stdout).toContain('automatosx');
       expect(result.stdout).toContain('Commands:');
-      expect(result.stdout).toContain('init');
+      expect(result.stdout).toContain('setup');
       expect(result.stdout).toContain('run');
       expect(result.stdout).toContain('config');
       expect(result.stdout).toContain('status');
@@ -141,9 +141,9 @@ describe('CLI Entry Point (index.ts)', () => {
 
   describe('Command Execution', () => {
     it('should execute init command', async () => {
-      const result = await execCLI(['init', '--help']);
+      const result = await execCLI(['setup', '--help']);
 
-      expect(result.stdout).toContain('init');
+      expect(result.stdout).toContain('setup');
       expect(result.exitCode).toBe(0);
     });
 
@@ -198,7 +198,7 @@ describe('CLI Entry Point (index.ts)', () => {
     });
 
     it('should handle invalid flags gracefully', async () => {
-      const result = await execCLI(['init', '--totally-invalid-flag-12345']);
+      const result = await execCLI(['setup', '--totally-invalid-flag-12345']);
 
       // Should exit with error code
       expect(result.exitCode).not.toBe(0);
@@ -210,7 +210,7 @@ describe('CLI Entry Point (index.ts)', () => {
       const result = await execCLI(['--help']);
 
       expect(result.stdout).toContain('Examples:');
-      expect(result.stdout).toContain('automatosx init');
+      expect(result.stdout).toContain('automatosx setup');
       expect(result.stdout).toContain('automatosx run');
       expect(result.stdout).toContain('automatosx list');
       expect(result.stdout).toContain('automatosx memory');
@@ -234,7 +234,7 @@ describe('CLI Entry Point (index.ts)', () => {
 
   describe('Strict Mode', () => {
     it('should enforce strict mode for unknown options', async () => {
-      const result = await execCLI(['init', '--unknown-flag']);
+      const result = await execCLI(['setup', '--unknown-flag']);
 
       expect(result.stderr).toContain('Unknown');
       expect(result.exitCode).not.toBe(0);

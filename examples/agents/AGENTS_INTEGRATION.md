@@ -72,7 +72,7 @@ ax run backend "Draft implementation" --output automatosx/tmp/draft.ts
 
 | Command | Description |
 |---------|-------------|
-| `ax init` | Initialize AutomatosX in the current project |
+| `ax setup` | Initialize AutomatosX in the current project |
 | `ax list agents` | List available agents |
 | `ax run <agent> "task"` | Execute an agent task |
 | `ax memory search "keyword"` | Search conversation history |

@@ -102,7 +102,7 @@ automatosx <command> [options]
 AI Agent Orchestration Platform
 
 Commands:
-  automatosx init [options]          Initialize project
+  automatosx setup [options]          Initialize project
   automatosx run <agent> <prompt>    Run agent
   automatosx list <type>             List available agents
   automatosx memory <command>        Memory operations
@@ -122,7 +122,7 @@ Global Options:
 Create a new AutomatosX project:
 
 ```bash
-npx @defai.digital/automatosx init
+npx @defai.digital/automatosx setup
 ```
 
 This command creates:
@@ -319,7 +319,7 @@ Expected output:
 
 1. Ensure `.automatosx` directory exists
 2. Check write permissions
-3. Re-run `automatosx init`
+3. Re-run `automatosx setup`
 
 ### Module Not Found
 

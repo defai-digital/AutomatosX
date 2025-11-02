@@ -53,7 +53,7 @@ features:
 npm install @defai.digital/automatosx
 
 # Initialize project
-npx @defai.digital/automatosx init
+npx @defai.digital/automatosx setup
 
 # Create your first agent
 npx @defai.digital/automatosx run assistant "Help me write a README"
@@ -95,7 +95,7 @@ yarn add automatosx
 ### 2. Initialize Your Project
 
 ```bash
-npx @defai.digital/automatosx init
+npx @defai.digital/automatosx setup
 ```
 
 This creates:

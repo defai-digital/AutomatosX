@@ -15,7 +15,7 @@ cd task-manager
 npm init -y
 
 # Initialize AutomatosX
-automatosx init
+automatosx setup
 
 # Set up API keys
 automatosx config --set providers.claude.apiKey --value "sk-ant-..."

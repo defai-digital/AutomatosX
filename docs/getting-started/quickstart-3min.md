@@ -23,7 +23,7 @@ Before you begin, ensure you have:
 npm install -g @defai.digital/automatosx
 
 # Initialize in your project
-ax init
+ax setup
 ```
 
 Done! AutomatosX is now ready to use.
@@ -326,7 +326,7 @@ ax free-tier status
 ## What You've Learned
 
 In just 3 minutes, you've learned how to:
-- ✅ Install and initialize AutomatosX
+- ✅ Install and set up AutomatosX
 - ✅ Run agents with natural language tasks
 - ✅ Use multi-agent collaboration
 - ✅ Search memory for past conversations

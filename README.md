@@ -8,12 +8,14 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![npm](https://img.shields.io/npm/dt/%40defai.digital%2Fautomatosx.svg?label=total%20downloads&color=blue)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-2,610%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2,423+%20passing-brightgreen.svg)](#)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready** | v7.0.0 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+
+> 🎉 **NEW in v7.0.0**: Unified setup command (`ax setup`), natural language-first design (slash commands removed), enhanced force mode with complete cleanup. See [Migration from v6.x](#migration-from-v6x) for upgrade details.
 
 > ⚠️ **Note on Cost Estimation (v6.5.11+)**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`. See [Cost Estimation Configuration](#cost-estimation-configuration) for details.
 
@@ -45,18 +47,21 @@ AutomatosX is **the only AI platform** that gives you:
 # 1. Install AutomatosX
 npm install -g @defai.digital/automatosx
 
-# 2. Initialize AutomatosX (REQUIRED - sets up agents and configuration)
-cd your-project && ax init
-# Or force reinitialize: ax init -f
+# 2. Change to your project folder
+cd your-project
 
-# ⚠️ IMPORTANT: You MUST run 'ax init' before using AutomatosX
+# 3. Set up AutomatosX (REQUIRED - sets up agents and configuration)
+ax setup
+# Or force reinitialize: ax setup -f
+
+# ⚠️ IMPORTANT: You MUST run 'ax setup' before using AutomatosX
 # This command:
 #   - Creates .automatosx/ directory with all 20 specialized agents
 #   - Sets up configuration files (automatosx.config.json)
 #   - Initializes memory database and session management
 #   - Configures the CLI environment for optimal performance
 
-# 3. Create a workflow spec in natural language
+# 4. Create a workflow spec in natural language
 ax spec create "Build user authentication with database, API, JWT, security audit, and tests"
 
 # AutomatosX automatically:
@@ -68,10 +73,10 @@ ax spec create "Build user authentication with database, API, JWT, security audi
 #   ✅ Executes with policy-optimized routing
 #   ✅ Tracks all decisions with trace logging
 
-# 4. View the generated plan
+# 5. View the generated plan
 ax gen plan workflow.ax.yaml
 
-# 5. Execute the workflow (with cost optimization)
+# 6. Execute the workflow (with cost optimization)
 ax run workflow.ax.yaml
 ```
 
@@ -112,6 +117,7 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 ```
 
 **What Happens Behind the Scenes**:
+
 - 🤖 `ax` analyzes your task description
 - 🎯 Automatically selects the best agent(s) (backend, security, quality, etc.)
 - 🔄 Coordinates multi-agent collaboration if needed
@@ -210,6 +216,7 @@ with strict level. This is for production deployment."
 ```
 
 **Why Iterate Mode is Powerful**:
+
 - 🔄 **Autonomous Loops**: Repeats tasks without asking questions
 - 🎯 **Systematic**: Each iteration focuses on different aspects
 - 📊 **Comprehensive**: Covers more ground than manual analysis
@@ -229,6 +236,7 @@ with strict level. This is for production deployment."
 ### Behind the Scenes
 
 When you say "use AutomatosX to implement authentication", here's what happens:
+
 1. AI assistant calls `ax run "implement user authentication"`
 2. AutomatosX **automatically analyzes the task** and selects the best agent(s)
 3. Routes to the optimal provider based on policy (cost, latency, reliability)
@@ -240,6 +248,7 @@ When you say "use AutomatosX to implement authentication", here's what happens:
 
 **Advanced: Direct Agent Specification** (Optional):
 If you need a specific agent, you can still specify it:
+
 - `ax run backend "task"` - Forces backend agent
 - `ax run security "task"` - Forces security agent
 
@@ -258,12 +267,14 @@ ax run backend "implement user authentication"
 ```
 
 **When to use CLI-only mode:**
+
 - ✅ You have `codex`, `gemini`, or `claude` CLI tools installed
 - ✅ You don't have API keys configured
 - ✅ You're behind a corporate firewall blocking API access
 - ✅ You want to avoid API connection attempts and retries
 
 **What it does:**
+
 - Forces `openai` provider to use CLI subprocess mode (`codex` command)
 - Prevents OpenAI SDK API calls even if configured for SDK mode
 - Eliminates "Unable to connect to API" errors and retry loops
@@ -359,6 +370,7 @@ Iterate Mode includes comprehensive safety protections:
 ### Use Cases
 
 **Perfect For:**
+
 - ✅ Long-running refactoring tasks
 - ✅ Comprehensive code audits
 - ✅ Batch processing multiple files
@@ -367,6 +379,7 @@ Iterate Mode includes comprehensive safety protections:
 - ✅ Multi-step workflow execution
 
 **Not Recommended For:**
+
 - ❌ Tasks requiring frequent user input
 - ❌ Highly destructive operations without dry-run first
 - ❌ Tasks where intermediate decisions are critical
@@ -402,6 +415,7 @@ and a 30 minute timeout."
 ```
 
 The AI assistant will:
+
 1. Run dry-run first: `ax run backend "refactor authentication" --iterate --iterate-dry-run`
 2. Show you the preview
 3. Wait for your approval
@@ -530,6 +544,7 @@ with permissions management, audit logging, and security tests."
 **What happens behind the scenes:**
 
 When you ask an AI assistant to create a spec, it uses `ax spec create "your description"` which:
+
 1. Generates a complete YAML workflow spec in `.specify/`
 2. Creates execution plan with cost estimates
 3. Generates dependency DAG for parallel execution
@@ -684,6 +699,7 @@ Annual cost:  $600
 ```
 
 **How We Achieve 99.6% Reduction**:
+
 1. **Free Tier Utilization**: Automatic use of Gemini's 1,500 requests/day (100% free)
 2. **Workload-Aware Routing**: Large tasks → Gemini (96% cheaper)
 3. **Policy-Driven Selection**: Cost goals prioritize cheapest providers
@@ -714,6 +730,7 @@ ax free-tier summary
 ```
 
 **Learn More**:
+
 - [Gemini Integration Guide](docs/providers/gemini.md) - Complete Gemini setup and optimization
 - [Provider Comparison](docs/providers/overview.md) - Detailed provider comparison matrix
 - [Cost Optimization Strategies](docs/providers/gemini.md#cost-optimization) - Advanced techniques
@@ -994,21 +1011,6 @@ ax resume <run-id>
 ax runs list
 ```
 
-### Cost Tracking
-
-```bash
-# View costs by provider
-ax cost
-
-# View costs by time period
-ax cost --period daily
-ax cost --period weekly
-ax cost --period monthly
-
-# View costs by agent
-ax cost --agent backend
-```
-
 ### Change Detection
 
 ```bash
@@ -1026,12 +1028,14 @@ ax run dag.json
 ## 📖 Documentation
 
 ### Getting Started
+
 - **[3-Minute Quickstart](docs/getting-started/quickstart-3min.md)** ⚡ **[NEW]** - Get productive in under 3 minutes
 - [Quick Start Guide](docs/getting-started/quick-start.md) - Get running in 5 minutes
 - [Installation](docs/getting-started/installation.md) - Detailed installation instructions
 - [Configuration](docs/guides/configuration.md) - Configure providers and settings
 
 ### Core Features
+
 - **[Spec-Kit Usage Guide](docs/guides/spec-kit-guide.md)** 📋 **[NEW]** - Complete YAML workflow guide with examples
 - **[Iteration Mode Guide](docs/guides/iteration-mode-guide.md)** 🔄 **[NEW]** - Multi-iteration autonomous analysis
 - **[Cost Calculation Configuration](docs/guides/cost-calculation-guide.md)** 💰 **[NEW]** - Enable/configure cost tracking
@@ -1040,12 +1044,14 @@ ax run dag.json
 - [Multi-Agent Orchestration](docs/guides/multi-agent-orchestration.md) - Team coordination
 
 ### Advanced
+
 - [Custom Agents](docs/guides/agent-templates.md) - Create your own specialists
 - [Provider Configuration](docs/providers/overview.md) - Add AI providers
 - [Performance & Caching](docs/advanced/performance.md) - Optimization techniques
 - [Parallel Execution](docs/advanced/parallel-execution.md) - Scale your workflows
 
 ### Reference
+
 - [Agent Directory](docs/guides/agents.md) - All 20 agents
 - [CLI Reference](docs/reference/cli-commands.md) - All commands
 - [Provider Comparison](docs/providers/overview.md) - Provider features and costs
@@ -1061,7 +1067,7 @@ ax run dag.json
 | **Auto-Generation** | ✅ Plans, DAGs, scaffolds, tests | ❌ | ❌ | ❌ |
 | **Policy-Driven Routing** | ✅ Cost/latency optimization | ❌ | ❌ | ❌ |
 | **Persistent Memory** | ✅ SQLite FTS5 < 1ms | ❌ | ❌ | ❌ |
-| **Multi-Agent Teams** | ✅ 23 specialists | ❌ | ❌ | ❌ |
+| **Multi-Agent Teams** | ✅ 20 specialists | ❌ | ❌ | ❌ |
 | **Cost Optimization** | ✅ 60-80% savings | ❌ | ❌ | ❌ |
 | **Complete Observability** | ✅ Trace logging | ❌ | ❌ | ❌ |
 | **Parallel Execution** | ✅ DAG-based | ❌ | ❌ | ❌ |
@@ -1073,8 +1079,9 @@ ax run dag.json
 
 ## 🚦 Production Readiness
 
+✅ **v7.0.0 Released** - Natural language-first design, unified setup
 ✅ **100% Complete** - Spec-Kit integration fully implemented
-✅ **2,425+ Tests Passing** - Comprehensive test coverage
+✅ **2,423+ Tests Passing** - Comprehensive test coverage
 ✅ **TypeScript Strict Mode** - Type-safe codebase
 ✅ **Zero Resource Leaks** - Clean shutdown guaranteed
 ✅ **Cross-Platform** - macOS, Windows, Ubuntu
@@ -1088,25 +1095,26 @@ ax run dag.json
 
 ```bash
 npm install -g @defai.digital/automatosx
-ax --version  # v6.5.7
+ax --version  # v7.0.0
 ```
 
 ### ⚠️ REQUIRED: Initialize Your Project
 
-**After installing, you MUST run `ax init` to set up AutomatosX:**
+**After installing, you MUST run `ax setup` to set up AutomatosX:**
 
 ```bash
 # Navigate to your project directory
 cd your-project
 
-# Initialize AutomatosX (creates .automatosx/ with agents and config)
-ax init
+# Set up AutomatosX (creates .automatosx/ with agents and config)
+ax setup
 
 # Or force reinitialize if you already have a .automatosx/ directory
-ax init -f
+ax setup -f
 ```
 
-**What `ax init` does:**
+**What `ax setup` does:**
+
 - ✅ Creates `.automatosx/` directory structure
 - ✅ Installs all 20 specialized agents (backend, frontend, security, etc.)
 - ✅ Generates `automatosx.config.json` with optimal defaults
@@ -1114,7 +1122,7 @@ ax init -f
 - ✅ Sets up session management
 - ✅ Configures trace logging
 
-**Without running `ax init`, AutomatosX commands will not work properly!**
+**Without running `ax setup`, AutomatosX commands will not work properly!**
 
 ### Requirements
 
@@ -1130,7 +1138,13 @@ ax init -f
 
 ## 🗺️ Roadmap
 
-### Completed (v6.0.0 - v6.5.6)
+### Completed (v6.0.0 - v7.0.0)
+
+- ✅ **v7.0.0 - Natural Language First** (Latest)
+  - ✅ Unified setup command (init→setup)
+  - ✅ Natural language-only interaction
+  - ✅ Enhanced force mode with complete cleanup
+  - ✅ Removed slash command dependencies
 - ✅ Spec-Kit Integration (100%)
   - ✅ Plan generation
   - ✅ DAG generation
@@ -1146,13 +1160,95 @@ ax init -f
   - ✅ Real-time following
   - ✅ Color-coded CLI
 
-### Coming Soon (v6.6.0)
+### Coming Soon (v7.1.0)
+
 - ⏳ Cost-Aware Router
   - Pre-execution cost warnings
   - Budget protection
 - ⏳ Enhanced Parallel Execution
   - Resource-aware scheduling
   - Priority-based execution
+
+[View Full Roadmap](#roadmap)
+
+---
+
+## 🔄 Migration from v6.x
+
+**v7.0.0 introduces breaking changes. Follow this guide to upgrade:**
+
+### Breaking Changes
+
+1. **Command Rename**: `ax init` → `ax setup`
+   ```bash
+   # ❌ v6.x (deprecated)
+   ax init
+
+   # ✅ v7.0.0 (new)
+   ax setup
+   ```
+
+2. **Slash Commands Removed**: Natural language only
+   - ❌ No more `.claude/commands/ax-*.md` files
+   - ❌ No more `.gemini/commands/ax-*.toml` files
+   - ✅ Use natural language with AI assistants instead
+
+   ```
+   # ✅ v7.0.0 - Natural language (recommended)
+   "Please use ax to implement user authentication"
+   "Work with ax to audit this code for security issues"
+   "Have ax write tests for this feature"
+   ```
+
+3. **Enhanced Force Mode**: Complete cleanup on `ax setup --force`
+   - Now removes `.automatosx/` directory completely
+   - Removes all `.claude/commands/ax-*` files
+   - Removes all `.gemini/commands/ax-*` files
+   - Ensures clean reinstall with no leftover files
+
+### Migration Steps
+
+1. **Update AutomatosX**:
+   ```bash
+   npm update -g @defai.digital/automatosx
+   ax --version  # Should show v7.0.0
+   ```
+
+2. **Clean Install** (Recommended):
+   ```bash
+   cd your-project
+   ax setup --force  # Complete cleanup and reinstall
+   ```
+
+3. **Update Scripts**: Change any scripts using `ax init` to `ax setup`
+   ```bash
+   # Update in package.json, shell scripts, CI/CD configs
+   sed -i '' 's/ax init/ax setup/g' package.json
+   ```
+
+4. **Remove Custom Slash Commands** (if you had any):
+   ```bash
+   # These are no longer needed
+   rm -rf .claude/commands/ax-*
+   rm -rf .gemini/commands/ax-*
+   ```
+
+5. **Update Documentation**: Search your docs for `ax init` references
+
+### What Stays the Same
+
+- ✅ All agent functionality unchanged
+- ✅ Memory system works the same
+- ✅ Spec-Kit features unchanged
+- ✅ Policy-driven routing unchanged
+- ✅ Cost optimization unchanged
+- ✅ CLI command syntax (except init→setup)
+
+### Need Help?
+
+- [CHANGELOG.md](CHANGELOG.md) - Full v7.0.0 changes
+- [GitHub Issues](https://github.com/defai-digital/automatosx/issues) - Report migration issues
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common problems
 
 [View Full Roadmap](#roadmap)
 
@@ -1205,7 +1301,7 @@ If AutomatosX saves you time and money, give us a star! ⭐
 
 - **Issues**: [GitHub Issues](https://github.com/defai-digital/automatosx/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/defai-digital/automatosx/discussions)
-- **Email**: support@defai.digital
+- **Email**: <support@defai.digital>
 - **Twitter**: [@defai_digital](https://twitter.com/defai_digital)
 
 ---
@@ -1217,7 +1313,7 @@ If AutomatosX saves you time and money, give us a star! ⭐
 npm i -g @defai.digital/automatosx
 
 # Initialize (REQUIRED - sets up agents and config)
-cd your-project && ax init
+cd your-project && ax setup
 
 # Create workflow from natural language
 ax spec create "Build auth system with API, tests, security audit"
@@ -1233,7 +1329,7 @@ ax providers trace --follow
 
 **AutomatosX**: The only AI platform with declarative workflows, cost optimization, persistent memory, and multi-agent orchestration.
 
-**Try it now**: `npm i -g @defai.digital/automatosx && cd your-project && ax init`
+**Try it now**: `npm i -g @defai.digital/automatosx && cd your-project && ax setup`
 
 ---
 

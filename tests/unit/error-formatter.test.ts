@@ -31,7 +31,7 @@ describe('Error Formatter', () => {
       const formatted = formatError(error, { colors: false });
 
       expect(formatted).toContain('Suggestions');
-      expect(formatted).toContain('automatosx init');
+      expect(formatted).toContain('automatosx setup');
       expect(formatted).toContain('--config');
     });
 

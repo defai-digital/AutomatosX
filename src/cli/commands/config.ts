@@ -119,7 +119,7 @@ export const configCommand: CommandModule<Record<string, unknown>, ConfigOptions
       if (!exists) {
         console.log(chalk.yellow('⚠️  Configuration file not found'));
         console.log(chalk.gray(`   Searched at: ${configPath}`));
-        console.log(chalk.gray('   Run "automatosx init" to create configuration\n'));
+        console.log(chalk.gray('   Run "automatosx setup" to create configuration\n'));
         process.exit(1);
       }
 

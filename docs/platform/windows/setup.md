@@ -102,20 +102,20 @@ openai --version
 
 ## 🏁 Step 3: Initialize Your Project
 
-**Navigate to your project directory**, then initialize AutomatosX:
+**Navigate to your project directory**, then set up AutomatosX:
 
 ### Windows Command Prompt
 
 ```cmd
 cd C:\Users\YourName\Documents\MyProject
-ax init
+ax setup
 ```
 
 ### Windows PowerShell
 
 ```powershell
 cd C:\Users\YourName\Documents\MyProject
-ax init
+ax setup
 ```
 
 **What This Does**:
@@ -128,7 +128,7 @@ ax init
 - Generates `automatosx.config.json`
 - Initializes git repository (if not already initialized)
 
-**Verify Initialization**:
+**Verify Setup**:
 ```bash
 ax status
 # Expected output:

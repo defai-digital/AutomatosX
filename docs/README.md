@@ -300,7 +300,7 @@ npx @defai.digital/automatosx --version
 Initialize your project:
 
 ```bash
-automatosx init
+automatosx setup
 ```
 
 Run your first agent:
@@ -318,7 +318,7 @@ See [Quick Start Guide](./getting-started/quick-start.md) for details.
 AutomatosX provides 6 core commands:
 
 ```bash
-automatosx init              # Initialize project
+automatosx setup              # Initialize project
 automatosx run <agent>       # Execute agent
 automatosx list <type>       # List agents/abilities
 automatosx status            # System health
@@ -390,7 +390,7 @@ AutomatosX is [MIT licensed](../LICENSE).
 
 - **Documentation**: You're reading it!
 - **Issues**: [Report bugs or request features](https://github.com/defai-digital/automatosx/issues)
-- **Examples**: Check `.automatosx/agents/` after running `init`
+- **Examples**: Check `.automatosx/agents/` after running `setup`
 
 ---
 

@@ -337,7 +337,7 @@ mkdir fresh-e2e-test
 cd fresh-e2e-test
 
 # Initialize
-automatosx init
+automatosx setup
 
 # Configure
 automatosx config --set providers.claude.apiKey --value "sk-ant-..."

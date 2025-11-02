@@ -57,7 +57,7 @@ If you prefer not to install globally:
 
 ```bash
 npx @defai.digital/automatosx --version
-npx @defai.digital/automatosx init
+npx @defai.digital/automatosx setup
 npx @defai.digital/automatosx list agents
 ```
 
@@ -83,10 +83,10 @@ npm install -g @defai.digital/automatosx@latest
 cd /path/to/your/project
 ```
 
-**Initialize AutomatosX**:
+**Set up AutomatosX**:
 
 ```bash
-ax init
+ax setup
 ```
 
 **What this creates**:
@@ -139,7 +139,7 @@ Providers:
 > **Note**: Providers showing "unavailable" is normal if you haven't installed provider CLIs yet. Continue to Step 3 to test with mock providers.
 
 **Troubleshooting**:
-- **"0 agents"**: Run `ax init --force` to reinitialize
+- **"0 agents"**: Run `ax setup --force` to reinitialize
 - **Permission errors**: Don't use `sudo`, check file permissions
 - **Already initialized**: Use `--force` flag to update templates
 
@@ -263,7 +263,7 @@ ax providers list
 
 | Command | Description |
 |---------|-------------|
-| `ax init` | Initialize AutomatosX in project |
+| `ax setup` | Set up AutomatosX in project |
 | `ax run <agent> "task"` | Execute agent task |
 | `ax list agents` | List all available agents |
 | `ax memory search "keyword"` | Search conversation history |
@@ -368,7 +368,7 @@ npx @defai.digital/automatosx --version
 
 **Windows**: See [Windows Setup Guide](../platform/windows/setup.md) for PATH configuration.
 
-### "0 agents" after initialization
+### "0 agents" after setup
 
 **Solution**:
 ```bash
@@ -381,7 +381,7 @@ ls -la .automatosx/  # macOS/Linux
 dir .automatosx\     # Windows
 
 # Reinitialize if needed
-ax init --force
+ax setup --force
 ```
 
 ### Provider connection failed
@@ -449,7 +449,7 @@ A: Yes! AutomatosX supports automatic fallback and priority-based routing. See [
 
 - **Documentation**: [docs/](../../docs/)
 - **GitHub Issues**: [github.com/defai-digital/automatosx/issues](https://github.com/defai-digital/automatosx/issues)
-- **Examples**: Check `.automatosx/` after running `init`
+- **Examples**: Check `.automatosx/` after running `setup`
 - **Support**: File issues on GitHub
 
 ---

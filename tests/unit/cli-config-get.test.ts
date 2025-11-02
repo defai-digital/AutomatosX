@@ -322,7 +322,7 @@ describe('CLI Config Get Command', () => {
 
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain('Configuration file not found');
-      expect(result.stdout).toContain('automatosx init');
+      expect(result.stdout).toContain('automatosx setup');
     });
   });
 

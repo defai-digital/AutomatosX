@@ -25,31 +25,18 @@ ax status
 
 ### Using AutomatosX in Gemini CLI
 
-You can interact with AutomatosX agents directly in Gemini CLI using custom commands or natural language:
+You can interact with AutomatosX agents directly in Gemini CLI using natural language:
 
-**Slash Commands (Recommended)**:
-```
-/ax backend, create a REST API for user management
-/ax security, audit the authentication flow
-/ax quality, write unit tests for the API
-```
-
-**Natural Language**:
+**Natural Language Examples**:
 ```
 "Please use the ax backend agent to implement user authentication"
 "Ask the ax security agent to audit this code for vulnerabilities"
 "Have the ax quality agent write tests for this feature"
+"Work with ax agent product to design this new feature"
+"Use ax agent devops to set up the deployment pipeline"
 ```
 
-**System Commands**:
-```
-/ax-status          - Check AutomatosX system status
-/ax-list agents     - List all available agents
-/ax-memory search   - Search conversation history
-/ax-init            - Initialize AutomatosX in current project
-/ax-clear           - Clear memory cache
-/ax-update          - Update AutomatosX to latest version
-```
+Gemini CLI will understand your intent and invoke the appropriate AutomatosX agent for you. Just describe what you need in natural language - no special commands required!
 
 ### Available Agents
 
@@ -94,9 +81,9 @@ ax run backend "Implement the calculator API"
 
 **Or in Gemini CLI**:
 ```
-/ax product, design a calculator with add/subtract features
+"Use ax agent product to design a calculator with add/subtract features"
 # Later...
-/ax backend, implement the calculator API
+"Ask ax agent backend to implement the calculator API"
 ```
 
 ### 2. Multi-Agent Collaboration
@@ -194,7 +181,7 @@ Then use them in Gemini CLI:
 "Implement the spec in automatosx/PRD/api-spec.md"
 ```
 
-These directories are automatically created by `ax init` and included in `.gitignore` appropriately.
+These directories are automatically created by `ax setup` and included in `.gitignore` appropriately.
 
 ## Memory System
 
@@ -283,7 +270,7 @@ AutomatosX provides custom Gemini CLI commands in `.gemini/commands/`:
 | `/ax-status` | Check system status | `/ax-status` |
 | `/ax-list` | List agents/abilities | `/ax-list agents` |
 | `/ax-memory` | Search memory | `/ax-memory search auth` |
-| `/ax-init` | Initialize project | `/ax-init` |
+| `/ax-setup` | Initialize project | `/ax-setup` |
 | `/ax-clear` | Clear memory | `/ax-clear` |
 | `/ax-update` | Update AutomatosX | `/ax-update` |
 

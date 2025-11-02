@@ -67,10 +67,10 @@ AI Agent Orchestration Platform
 
 ```bash
 # 在當前目錄初始化
-ax init
+ax setup
 
 # 或指定目錄
-ax init ./my-ai-project
+ax setup ./my-ai-project
 ```
 
 **這會創建**：
@@ -577,7 +577,7 @@ ax config reset memory
 
 AutomatosX 按以下優先順序載入配置：
 
-1. `.automatosx/config.json` - 專案特定（由 `ax init` 創建）
+1. `.automatosx/config.json` - 專案特定（由 `ax setup` 創建）
 2. `automatosx.config.json` - 專案根目錄（手動創建）
 3. `~/.automatosx/config.json` - 使用者全域
 4. 內建預設值 - `src/types/config.ts`
@@ -820,7 +820,7 @@ jobs:
         run: npm install -g @defai.digital/automatosx
 
       - name: Initialize
-        run: ax init
+        run: ax setup
 
       - name: Run AI Review
         run: |
@@ -899,7 +899,7 @@ ax memory stats
 rm -rf .automatosx/
 
 # 重新初始化
-ax init
+ax setup
 ```
 
 ### Q: 代理執行超時？
@@ -972,7 +972,7 @@ cp automatosx.config.json ~/.automatosx/config.json
 - **文檔**: [docs/](../)
 - **GitHub Issues**: [github.com/defai-digital/automatosx/issues](https://github.com/defai-digital/automatosx/issues)
 - **FAQ**: [FAQ.md](../../FAQ.md)
-- **範例**: `.automatosx/agents/` 和 `.automatosx/abilities/`（執行 `ax init` 後）
+- **範例**: `.automatosx/agents/` 和 `.automatosx/abilities/`（執行 `ax setup` 後）
 
 ---
 

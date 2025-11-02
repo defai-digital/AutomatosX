@@ -15,7 +15,7 @@ Before diving into detailed troubleshooting, verify these essentials:
 
 - ✅ **Node.js**: v20.0.0 or higher installed
 - ✅ **AutomatosX**: Latest version (v5.3.1+)
-- ✅ **Initialization**: Run `ax init` in your project directory
+- ✅ **Setup**: Run `ax setup` in your project directory
 - ✅ **Provider CLIs**: At least one provider CLI installed (Claude, Gemini, or OpenAI)
 - ✅ **Provider Detection**: AutomatosX v6.3.8+ automatically detects providers on Windows
 
@@ -30,8 +30,8 @@ Before diving into detailed troubleshooting, verify these essentials:
 
 **Solution 1: First-time initialization**:
 ```bash
-# Initialize AutomatosX in your project
-npx @defai.digital/automatosx init
+# Set up AutomatosX in your project
+npx @defai.digital/automatosx setup
 
 # Verify initialization
 npx @defai.digital/automatosx status
@@ -43,10 +43,10 @@ This means `.automatosx` folder exists, but init won't overwrite it. Use `--forc
 
 ```bash
 # Force reinitialize (overwrites existing setup)
-npx @defai.digital/automatosx init --force
+npx @defai.digital/automatosx setup --force
 
 # Or with global install
-ax init --force
+ax setup --force
 
 # Verify initialization
 ax status
@@ -389,7 +389,7 @@ copy automatosx.config.json automatosx.config.json.backup
 rmdir /S /Q .automatosx
 
 # 3. Reinitialize
-npx @defai.digital/automatosx init
+npx @defai.digital/automatosx setup
 
 # 4. Restore custom config if needed
 # (merge automatosx.config.json.backup)
@@ -559,7 +559,7 @@ Please include the following in your issue:
 - [ ] Updated to v5.1.0
 - [ ] Ran diagnostic commands
 - [ ] Tried mock providers
-- [ ] Ran ax init
+- [ ] Ran ax setup
 - [ ] Other: [describe what you tried]
 ```
 
@@ -577,7 +577,7 @@ Please include the following in your issue:
 
 - [ ] Update to AutomatosX v6.3.8 or later
 - [ ] Verify Node.js v20+ is installed
-- [ ] Run `ax init` in your project directory
+- [ ] Run `ax setup` in your project directory
 - [ ] Run diagnostic commands (`ax status --verbose`)
 - [ ] Check PowerShell execution policy
 - [ ] Verify npm global path in PATH

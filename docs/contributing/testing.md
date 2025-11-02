@@ -238,7 +238,7 @@ All test files must compile with `strict: true` in `tsconfig.json`:
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
-    "strictPropertyInitialization": true,
+    "strictPropertySetup": true,
     "noImplicitThis": true,
     "alwaysStrict": true
   }

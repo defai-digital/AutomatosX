@@ -43,7 +43,7 @@ Memory is AutomatosX's **long-term knowledge base** that provides contextual awa
 
 ```bash
 # Initialize if you haven't already
-ax init
+ax setup
 
 # Run an agent with a task
 ax run paris "Design a simple calculator with add and subtract functions"
@@ -324,7 +324,7 @@ ax memory import project-knowledge.json
 ax memory export template-practices.json --tags best-practices
 
 # New project
-ax init
+ax setup
 ax memory import template-practices.json
 
 # Start with proven patterns

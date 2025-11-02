@@ -116,7 +116,7 @@ async function listAgents(pathResolver: PathResolver, format: 'text' | 'json'): 
       } else {
         console.log(chalk.yellow('\n⚠️  No agents found\n'));
         console.log(chalk.gray('Create agents in: ' + agentsDir));
-        console.log(chalk.gray('Or run: automatosx init\n'));
+        console.log(chalk.gray('Or run: automatosx setup\n'));
       }
       return;
     }
@@ -172,7 +172,7 @@ async function listAgents(pathResolver: PathResolver, format: 'text' | 'json'): 
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       console.log(chalk.yellow('\n⚠️  Agents directory not found\n'));
-      console.log(chalk.gray('Run: automatosx init\n'));
+      console.log(chalk.gray('Run: automatosx setup\n'));
     } else {
       throw error;
     }
@@ -195,7 +195,7 @@ async function listAbilities(pathResolver: PathResolver, format: 'text' | 'json'
       } else {
         console.log(chalk.yellow('\n⚠️  No abilities found\n'));
         console.log(chalk.gray('Create abilities in: ' + abilitiesDir));
-        console.log(chalk.gray('Or run: automatosx init\n'));
+        console.log(chalk.gray('Or run: automatosx setup\n'));
       }
       return;
     }
@@ -240,7 +240,7 @@ async function listAbilities(pathResolver: PathResolver, format: 'text' | 'json'
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       console.log(chalk.yellow('\n⚠️  Abilities directory not found\n'));
-      console.log(chalk.gray('Run: automatosx init\n'));
+      console.log(chalk.gray('Run: automatosx setup\n'));
     } else {
       throw error;
     }

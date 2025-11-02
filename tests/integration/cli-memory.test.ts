@@ -26,7 +26,7 @@ describe('CLI Memory Command Integration', () => {
     cliPath = join(process.cwd(), 'dist', 'index.js');
 
     // Initialize project
-    await execFileAsync('node', [cliPath, 'init'], {
+    await execFileAsync('node', [cliPath, 'setup'], {
       cwd: testDir,
       env: process.env
     });

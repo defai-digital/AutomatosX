@@ -2,6 +2,187 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.0.0] - 2025-11-02
+
+### 🚨 BREAKING CHANGES
+
+#### Command Rename: `init` → `setup`
+
+**Rationale:** The `init` command name conflicted with industry conventions where "init" typically means project analysis/review (like Claude Code's `/init`). AutomatosX's command performs project setup/scaffolding, so `setup` is more accurate.
+
+**Migration Guide:**
+```bash
+# Old (v6.x)
+ax init
+ax init --force
+
+# New (v7.0.0)
+ax setup
+ax setup --force
+```
+
+**Updated Files:**
+- Command file: `src/cli/commands/init.ts` → `setup.ts`
+- Provider config wizard: `src/cli/commands/setup.ts` → `configure.ts`
+- All documentation and examples updated
+- All error messages and help text updated
+- All test files updated (122 test files, 2,423+ tests passing)
+
+#### Natural Language Only - Slash Commands Removed
+
+**Breaking Change:** Custom slash commands removed from Claude Code and Gemini CLI integrations. Users must now use natural language to interact with AutomatosX agents.
+
+**Rationale:** Consistency with OpenAI Codex (which has no custom commands) and better UX. Natural language is more intuitive and doesn't require memorizing command syntax.
+
+**Before (v6.x):**
+```bash
+# Claude Code
+/ax-agent backend, create a REST API
+/ax-list agents
+/ax-memory search keyword
+
+# Gemini CLI
+/ax backend, create a REST API
+/ax-status
+```
+
+**After (v7.0.0):**
+```bash
+# All platforms use natural language
+"Ask ax agent backend to create a REST API"
+"Use ax agent backend to implement authentication"
+"Work with ax agent quality to write tests"
+```
+
+**Removed Files:**
+- `.claude/commands/ax-*.md` (7 files)
+- `.gemini/commands/ax-*.toml` (7 files)
+
+**Updated:**
+- `src/cli/commands/setup.ts` - No longer copies slash command files
+- `examples/claude/CLAUDE_INTEGRATION.md` - Natural language examples only
+- `examples/gemini/GEMINI_INTEGRATION.md` - Natural language examples only
+- `examples/gemini/README.md` - Completely rewritten for natural language
+
+### ✨ New Features
+
+#### Enhanced Force Mode Cleanup
+
+**`ax setup --force`** now performs complete cleanup before re-running setup:
+
+**Removes:**
+1. `.automatosx/` directory (complete cleanup and recreation)
+2. `.claude/commands/ax-*.md` files (legacy slash commands)
+3. `.gemini/commands/ax-*.toml` files (legacy slash commands)
+
+**Usage:**
+```bash
+ax setup --force           # Clean reinstall
+ax setup -f --spec-kit     # Clean reinstall with Spec-Kit
+```
+
+**Benefits:**
+- Guarantees fresh installation state
+- Removes outdated slash command files from previous versions
+- Clears corrupted configuration or state
+- Perfect for troubleshooting installation issues
+
+**Implementation:**
+- New function: `cleanupForceMode()` in `setup.ts`
+- Best-effort cleanup (non-blocking)
+- Comprehensive logging for diagnostics
+
+### 🐛 Bug Fixes
+
+#### Test Suite Compatibility
+
+**Fixed:** All tests updated to reflect `init` → `setup` rename:
+
+- ✅ `tests/unit/cli-index.test.ts` - Updated help text expectations
+- ✅ `tests/unit/cli-config-get.test.ts` - Updated error message expectations
+- ✅ `tests/unit/error-formatter.test.ts` - Updated suggestion text
+- ✅ `tests/integration/cli-config.test.ts` - Updated command references
+- ✅ `tests/unit/setup-command.test.ts` - Fixed import path, command definition, test assertions
+
+**Source Code Updates:**
+- `src/utils/errors.ts` - 4 error message updates
+- `src/cli/commands/config.ts` - Updated suggestion text
+- `src/cli/commands/list.ts` - 4 help message updates
+- `src/cli/commands/status.ts` - Updated diagnostic message
+- `src/cli/utils/session-utils.ts` - Updated error message
+
+**Test Results:**
+```
+✅ Test Files: 122 passed (122)
+✅ Tests: 2,423 passed | 28 skipped (2,451)
+✅ Duration: 17.10s
+```
+
+### 📚 Documentation Updates
+
+**Updated Files (40+ files):**
+- README.md - All references to `init` → `setup`
+- CLAUDE.md - Version updated, command references updated
+- All `docs/` files (16 files)
+- All `examples/` files (8 files)
+- Integration guides for Claude Code, Gemini CLI, Codex
+
+**New Examples:**
+- Natural language interaction patterns for all platforms
+- Cross-platform consistency examples
+- Force mode usage examples
+
+### 🔧 Technical Details
+
+**Files Changed:** 65+ files
+- 3 command files (renamed/updated)
+- 14 slash command files (deleted)
+- 40+ documentation files (updated)
+- 10+ test files (updated)
+- 5+ source files (error messages updated)
+
+**Agent-Assisted Development:**
+Used AutomatosX's own agents to find and fix bugs:
+- `ax run quality` - Identified all files needing updates
+- Systematic fixes across entire codebase
+- Comprehensive testing and verification
+
+### 📦 Migration Checklist
+
+**For existing users upgrading from v6.x:**
+
+1. ✅ Update command usage: `ax init` → `ax setup`
+2. ✅ Update scripts/documentation with new command name
+3. ✅ Remove slash command references (if using Claude Code/Gemini CLI)
+4. ✅ Update to natural language interaction patterns
+5. ✅ Run `ax setup --force` to clean up old installations
+6. ✅ Test natural language interaction with agents
+
+**Example Migration:**
+```bash
+# Old workflow (v6.x)
+ax init
+/ax-agent backend, create API    # Claude Code
+/ax backend, create API           # Gemini CLI
+
+# New workflow (v7.0.0)
+ax setup
+"Ask ax agent backend to create API"  # All platforms
+```
+
+### 🎯 Summary
+
+**Major Version (7.0.0)** due to breaking changes:
+- Command renamed for better UX and industry alignment
+- Slash commands removed for natural language consistency
+- Force mode enhanced with comprehensive cleanup
+
+**Impact:**
+- More intuitive command naming (`setup` vs `init`)
+- Consistent natural language across all AI platforms
+- Cleaner reinstalls with enhanced force mode
+- Better alignment with industry conventions
+
 ## [6.5.11] - 2025-11-01
 
 ### 🐛 Bug Fixes

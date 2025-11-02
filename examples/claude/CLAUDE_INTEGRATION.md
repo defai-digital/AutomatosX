@@ -25,21 +25,18 @@ ax status
 
 ### Using AutomatosX in Claude Code
 
-You can interact with AutomatosX agents directly in Claude Code using natural language or slash commands:
+You can interact with AutomatosX agents directly in Claude Code using natural language:
 
-**Natural Language (Recommended)**:
+**Natural Language Examples**:
 ```
 "Please work with ax agent backend to implement user authentication"
 "Ask the ax security agent to audit this code for vulnerabilities"
 "Have the ax quality agent write tests for this feature"
+"Use ax agent product to design this new feature"
+"Work with ax agent devops to set up the deployment pipeline"
 ```
 
-**Slash Command**:
-```
-/ax-agent backend, create a REST API for user management
-/ax-agent security, audit the authentication flow
-/ax-agent quality, write unit tests for the API
-```
+Claude Code will understand your intent and invoke the appropriate AutomatosX agent for you. Just describe what you need in natural language - no special commands required!
 
 ### Available Agents
 
@@ -159,7 +156,7 @@ ax agent create my-agent --template developer --interactive
 "Work with ax agent backend to implement the spec in automatosx/PRD/api-spec.md"
 ```
 
-These directories are automatically created by `ax init` and included in `.gitignore` appropriately.
+These directories are automatically created by `ax setup` and included in `.gitignore` appropriately.
 
 ## Memory System
 

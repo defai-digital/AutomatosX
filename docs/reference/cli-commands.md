@@ -37,7 +37,7 @@ AutomatosX provides **10 core commands**:
 
 | Command | Purpose | Usage |
 |---------|---------|-------|
-| [`init`](#init) | Initialize project | One-time setup |
+| [`setup`](#init) | Initialize project | One-time setup |
 | [`run`](#run) | Execute agent | Primary command |
 | [`agent`](#agent) | Manage agents | Agent operations (v5.0.0+) |
 | [`list`](#list) | List resources | Discovery |
@@ -50,14 +50,14 @@ AutomatosX provides **10 core commands**:
 
 ---
 
-## `init`
+## `setup`
 
-Initialize AutomatosX in a directory.
+Set up AutomatosX in a directory.
 
 ### Syntax
 
 ```bash
-automatosx init [path] [options]
+automatosx setup [path] [options]
 ```
 
 ### Parameters
@@ -99,22 +99,22 @@ project/
 
 ```bash
 # Initialize in current directory
-automatosx init
+automatosx setup
 
 # Initialize in specific directory
-automatosx init ./my-project
+automatosx setup ./my-project
 
 # Force reinitialize (overwrites existing)
-automatosx init --force
+automatosx setup --force
 
 # Initialize with custom config
-automatosx init --config ./my-config.json
+automatosx setup --config ./my-config.json
 ```
 
 ### Output
 
 ```
-🤖 AutomatosX v6.3.8 - Project Initialization
+🤖 AutomatosX v6.3.8 - Project Setup
 
 📁 Creating directory structure...
    ✓ Directories created
@@ -1190,7 +1190,7 @@ After updating, run:
 
 ```bash
 # Update configuration and templates
-ax init --force
+ax setup --force
 
 # Verify version
 ax --version

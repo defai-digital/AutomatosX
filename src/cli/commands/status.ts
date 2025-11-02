@@ -436,7 +436,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         } else {
           console.log(chalk.yellow.bold('⚠️  System has issues\n'));
           if (!allDirsExist) {
-            console.log(chalk.yellow('  Some directories are missing. Run `automatosx init` to initialize.'));
+            console.log(chalk.yellow('  Some directories are missing. Run `automatosx setup` to initialize.'));
           }
           if (!hasAvailableProviders) {
             console.log(chalk.yellow('  No providers available. Check provider configuration.'));

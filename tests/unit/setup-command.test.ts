@@ -1,8 +1,8 @@
 // @ts-nocheck
 /**
- * Init Command Unit Tests
+ * Setup Command Unit Tests
  *
- * Tests the init command handler directly for coverage
+ * Tests the setup command handler directly for coverage
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -10,16 +10,16 @@ import { mkdir, rm, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { constants } from 'fs';
-import { initCommand } from '../../src/cli/commands/init.js';
+import { setupCommand } from '../../src/cli/commands/setup.js';
 
-describe('Init Command', () => {
+describe('Setup Command', () => {
   let testDir: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `automatosx-init-test-${Date.now()}`);
+    testDir = join(tmpdir(), `setup-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
 
     // Spy on console methods
@@ -39,12 +39,12 @@ describe('Init Command', () => {
 
   describe('Handler', () => {
     it('should have correct command definition', () => {
-      expect(initCommand.command).toBe('init [path]');
-      expect(initCommand.describe).toBeDefined();
+      expect(setupCommand.command).toBe('setup [path]');
+      expect(setupCommand.describe).toBeDefined();
     });
 
     it('should initialize project in new directory', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       // Verify .automatosx directory structure
       const automatosxDir = join(testDir, '.automatosx');
@@ -71,21 +71,21 @@ describe('Init Command', () => {
 
     it('should exit with error if already initialized without force', async () => {
       // First initialization
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       // Try to initialize again without force
       await expect(
-        initCommand.handler({ path: testDir, force: false, _: [], $0: '' })
+        setupCommand.handler({ path: testDir, force: false, _: [], $0: '' })
       ).rejects.toThrow('process.exit(1)');
     });
 
     it('should reinitialize with --force flag', async () => {
       // First initialization
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       // Reinitialize with force
       await expect(
-        initCommand.handler({ path: testDir, force: true, _: [], $0: '' })
+        setupCommand.handler({ path: testDir, force: true, _: [], $0: '' })
       ).resolves.not.toThrow();
 
       // Directory should still exist
@@ -94,7 +94,7 @@ describe('Init Command', () => {
     });
 
     it('should create example agents', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const agentsDir = join(testDir, '.automatosx', 'agents');
       // v5.0.11: Updated to check for specialized default agents (not templates)
@@ -106,7 +106,7 @@ describe('Init Command', () => {
     });
 
     it('should create example abilities', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const abilitiesDir = join(testDir, '.automatosx', 'abilities');
 
@@ -115,7 +115,7 @@ describe('Init Command', () => {
     });
 
     it('should create or update .gitignore', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const gitignorePath = join(testDir, '.gitignore');
       await expect(pathExists(gitignorePath)).resolves.toBe(true);
@@ -133,12 +133,12 @@ describe('Init Command', () => {
       const invalidPath = '/root/cannot-create-this-path-' + Date.now();
 
       await expect(
-        initCommand.handler({ path: invalidPath, force: false, _: [], $0: '' })
+        setupCommand.handler({ path: invalidPath, force: false, _: [], $0: '' })
       ).rejects.toThrow();
     });
 
     it('should create team configuration files', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const teamsDir = join(testDir, '.automatosx', 'teams');
       await expect(pathExists(teamsDir)).resolves.toBe(true);
@@ -156,14 +156,14 @@ describe('Init Command', () => {
     });
 
     it('should create agent templates directory', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const templatesDir = join(testDir, '.automatosx', 'templates');
       await expect(pathExists(templatesDir)).resolves.toBe(true);
     });
 
     it('should display correct version in output', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       // Check that console.log was called with version info
       expect(consoleLogSpy).toHaveBeenCalled();
@@ -174,7 +174,7 @@ describe('Init Command', () => {
     });
 
     it('should create session and memory export directories', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const sessionsDir = join(testDir, '.automatosx', 'sessions');
       const memoryExportsDir = join(testDir, '.automatosx', 'memory', 'exports');
@@ -184,14 +184,13 @@ describe('Init Command', () => {
     });
 
     it('should setup Claude Code integration', async () => {
-      await initCommand.handler({ path: testDir, force: false, _: [], $0: '' });
+      await setupCommand.handler({ path: testDir, force: false, _: [], $0: '' });
 
       const claudeDir = join(testDir, '.claude');
-      const commandsDir = join(claudeDir, 'commands');
       const mcpDir = join(claudeDir, 'mcp');
 
       await expect(pathExists(claudeDir)).resolves.toBe(true);
-      await expect(pathExists(commandsDir)).resolves.toBe(true);
+      // No commands directory created anymore - using natural language only
       await expect(pathExists(mcpDir)).resolves.toBe(true);
     });
   });
@@ -203,7 +202,7 @@ describe('Init Command', () => {
         option: vi.fn().mockReturnThis()
       };
 
-      initCommand.builder(yargsStub as any);
+      setupCommand.builder(yargsStub as any);
 
       expect(yargsStub.positional).toHaveBeenCalledWith('path', expect.objectContaining({
         describe: expect.any(String),
@@ -218,7 +217,7 @@ describe('Init Command', () => {
         option: vi.fn().mockReturnThis()
       };
 
-      initCommand.builder(yargsStub as any);
+      setupCommand.builder(yargsStub as any);
 
       expect(yargsStub.option).toHaveBeenCalledWith('force', expect.objectContaining({
         alias: 'f',

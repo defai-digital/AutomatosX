@@ -30,10 +30,14 @@ export async function startInteractiveCLI(): Promise<void> {
 
 /**
  * CLI entry point (when run directly)
+ *
+ * NOTE: This is intentionally commented out to prevent double-execution
+ * in the bundled environment. The CLI should only be started via the
+ * command handler in src/cli/commands/cli-interactive.ts
  */
-if (import.meta.url === `file://${process.argv[1]}`) {
-  startInteractiveCLI().catch((error) => {
-    console.error('Failed to start interactive CLI:', error);
-    process.exit(1);
-  });
-}
+// if (import.meta.url === `file://${process.argv[1]}`) {
+//   startInteractiveCLI().catch((error) => {
+//     console.error('Failed to start interactive CLI:', error);
+//     process.exit(1);
+//   });
+// }

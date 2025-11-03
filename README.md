@@ -84,6 +84,83 @@ ax run workflow.ax.yaml
 
 ---
 
+## 💬 **Interactive CLI** (New in v7.1.0!)
+
+Experience a ChatGPT-style conversational interface directly in your terminal:
+
+```bash
+# Start interactive mode
+ax cli
+
+╭─────────────────────────────────────────────────────╮
+│   AutomatosX Interactive CLI v7.1.0                 │
+│   Type /help for commands, /exit to quit            │
+│   Using: Gemini 2.5 Flash                           │
+╰─────────────────────────────────────────────────────╯
+
+ax> I need to implement JWT authentication
+
+AI: I'll help you implement JWT authentication. Let me search our
+    memory for existing auth patterns...
+
+    Found 2 relevant patterns. Would you like me to:
+    1. Show implementation plan
+    2. Delegate to backend agent
+    3. Start coding immediately
+
+ax> Delegate to backend agent
+
+AI: @backend implement JWT authentication with refresh tokens
+
+    [Backend agent working...]
+    ✓ Dependencies installed
+    ✓ Auth middleware created
+    ✓ Token refresh endpoint added
+    ✓ Tests generated
+
+ax> /save jwt-implementation
+Conversation saved: jwt-implementation
+
+ax> /exit
+```
+
+### Key Features
+
+- 🤖 **Natural Conversations** - Multi-turn discussions with full context
+- 🔄 **Real-time Streaming** - See responses as they're generated
+- 💾 **Save & Resume** - Continue conversations later with `/save` and `/load`
+- 🎯 **Agent Delegation** - Route tasks to specialists: `@backend`, `@security`, etc.
+- 📝 **13 Slash Commands** - `/help`, `/memory`, `/agents`, `/export`, and more
+- 🎨 **Beautiful Output** - Markdown rendering and syntax-highlighted code blocks
+- ⚡ **Fast & Efficient** - Powered by Gemini free tier (1,500 requests/day)
+
+### Quick Examples
+
+```bash
+# Start a coding session
+ax cli
+ax> @backend create a REST API for user management
+ax> @security audit the authentication code
+ax> /save user-management-api
+
+# Search your knowledge base
+ax cli
+ax> /memory search "authentication patterns"
+ax> Show me the JWT implementation we used last time
+
+# Work across sessions
+ax cli
+ax> /load user-management-api
+ax> Let's add rate limiting to these endpoints
+ax> /export  # Export to markdown for documentation
+```
+
+**📖 Full Guide**: [Interactive CLI Documentation](docs/cli-interactive.md)
+
+**Alternative Commands**: `ax interactive`, `ax chat`
+
+---
+
 ## 🗣️ **Recommended**: Natural Language Interface
 
 AutomatosX is designed to work seamlessly with AI assistants using natural language commands. This is the **recommended way** to use AutomatosX:
@@ -1160,8 +1237,12 @@ ax setup -f
   - ✅ Real-time following
   - ✅ Color-coded CLI
 
-### Coming Soon (v7.1.0)
+### Coming Soon (v7.2.0)
 
+- ⏳ Advanced Conversation Features
+  - Full-text search across conversations
+  - Configurable themes and colors
+  - SQLite-backed persistence
 - ⏳ Cost-Aware Router
   - Pre-execution cost warnings
   - Budget protection
@@ -1300,9 +1381,7 @@ If AutomatosX saves you time and money, give us a star! ⭐
 ## 📧 Support
 
 - **Issues**: [GitHub Issues](https://github.com/defai-digital/automatosx/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/defai-digital/automatosx/discussions)
 - **Email**: <support@defai.digital>
-- **Twitter**: [@defai_digital](https://twitter.com/defai_digital)
 
 ---
 
@@ -1334,5 +1413,5 @@ ax providers trace --follow
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://defai.digital">DeFAI Digital</a>
+  Made with ❤️ by <a href="https://defai.digital">DEFAI Digital</a>
 </p>

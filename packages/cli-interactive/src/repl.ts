@@ -25,6 +25,7 @@ export class REPLManager {
   private isProcessing: boolean = false;
   private provider: InteractiveProvider | null = null;
   private agentExecutor: AgentExecutorBridge | null = null;
+  private isShuttingDown: boolean = false;
 
   constructor(config?: Partial<REPLConfig>) {
     // Default config
@@ -179,8 +180,24 @@ export class REPLManager {
 
         let fullResponse = '';
 
-        // Stream response from provider
-        for await (const event of this.provider.streamResponse(input)) {
+        // Bug #6 fix: Build full prompt with conversation context
+        // The provider interface only accepts a single prompt string, so we need to
+        // combine the conversation history with the current input
+        let fullPrompt = input;
+
+        if (context.length > 0) {
+          // Build conversation history
+          const historyLines = context.map(msg => {
+            const role = msg.role === 'user' ? 'User' : 'Assistant';
+            return `${role}: ${msg.content}`;
+          });
+
+          // Combine history with current input
+          fullPrompt = historyLines.join('\n\n') + `\n\nUser: ${input}`;
+        }
+
+        // Stream response from provider with full context
+        for await (const event of this.provider.streamResponse(fullPrompt)) {
           this.renderer.renderStreamEvent(event);
 
           if (event.type === 'token') {
@@ -289,7 +306,7 @@ export class REPLManager {
     const command = (parts[0] || '').toLowerCase();
     const args = parts.slice(1);
 
-    // Special handling for /exit and /new
+    // Special REPL-level commands (not routed through command system)
     if (command === 'exit' || command === 'quit' || command === 'q') {
       this.shutdown();
       return;
@@ -302,13 +319,22 @@ export class REPLManager {
     }
 
     // Route to command handler
+    // Bug #7 fix: process.cwd() can throw if directory was deleted
+    let workspaceRoot: string | undefined;
+    try {
+      workspaceRoot = process.cwd();
+    } catch (error) {
+      // If CWD was deleted (e.g., git checkout), fall back to undefined
+      workspaceRoot = undefined;
+    }
+
     await routeCommand(command, args, {
       conversation: this.conversation.getConversation(),
       currentProvider: this.currentProvider,
-      workspaceRoot: process.cwd() || undefined,
+      workspaceRoot,
       agentExecutor: this.agentExecutor || undefined,
       conversationManager: this.conversation
-    } as any);
+    });
   }
 
   /**
@@ -348,15 +374,22 @@ export class REPLManager {
 
   /**
    * Shutdown and cleanup
+   * Idempotent - can be called multiple times safely
    */
   private shutdown(): void {
+    // Guard against multiple shutdown calls
+    if (this.isShuttingDown) {
+      return;
+    }
+    this.isShuttingDown = true;
+
     // Stop auto-save
     this.conversation.stopAutoSave();
 
     // Display goodbye
     this.renderer.displayGoodbye();
 
-    // Close readline
+    // Close readline (this triggers 'close' event, but isShuttingDown prevents recursion)
     this.rl.close();
 
     // Exit process

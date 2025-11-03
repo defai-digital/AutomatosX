@@ -299,5 +299,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "6.5.16"
+  "version": "7.1.0-beta.1"
 }

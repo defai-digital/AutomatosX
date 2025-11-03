@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "../..",
     "composite": true,
     "declaration": true,
     "declarationMap": true,
@@ -13,10 +13,23 @@
     "lib": ["ES2022"],
     "types": ["node"],
     "skipLibCheck": true,
+    "baseUrl": "../..",
     "paths": {
-      "@/*": ["../../src/*"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": [
+    "src/**/*",
+    "../../src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "../../node_modules",
+    "../../dist",
+    "../../tests",
+    "../../src/providers/claude-sdk-provider.ts",
+    "../../src/providers/gemini-sdk-provider.ts"
+  ]
 }

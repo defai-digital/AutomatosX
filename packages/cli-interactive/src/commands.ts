@@ -6,6 +6,7 @@
 
 import type { CommandHandler, CommandContext, Conversation } from './types.js';
 import { OutputRenderer } from './renderer.js';
+import { join } from 'path';
 
 const renderer = new OutputRenderer();
 
@@ -28,13 +29,16 @@ const helpCommand: CommandHandler = {
 
 /**
  * Exit command - exit ax-cli
+ *
+ * NOTE: process.exit(0) triggers the readline 'close' event,
+ * which calls shutdown(), which displays goodbye and cleans up.
  */
 const exitCommand: CommandHandler = {
   name: 'exit',
   aliases: ['quit', 'q'],
   description: 'Exit ax-cli',
   async execute(_args, _context) {
-    renderer.displayGoodbye();
+    // Trigger exit - readline 'close' event will handle goodbye message
     process.exit(0);
   }
 };
@@ -69,7 +73,7 @@ const providerCommand: CommandHandler = {
  */
 const historyCommand: CommandHandler = {
   name: 'history',
-  aliases: ['h'],
+  aliases: ['hist'],
   description: 'Show conversation history',
   async execute(_args, context) {
     const messages = context.conversation.messages;
@@ -98,7 +102,7 @@ const saveCommand: CommandHandler = {
     try {
       // Access conversation manager through context
       // We'll need to pass this through from REPL
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (conversationManager && conversationManager.saveAs) {
         const filepath = await conversationManager.saveAs(name);
         renderer.displaySuccess(`Conversation saved as: ${name}`);
@@ -195,7 +199,7 @@ const listCommand: CommandHandler = {
   description: 'List saved conversations',
   async execute(_args, context) {
     try {
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (!conversationManager || !conversationManager.listConversations) {
         renderer.displayError('Conversation manager not available');
         return;
@@ -241,7 +245,7 @@ const loadCommand: CommandHandler = {
     }
 
     try {
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (!conversationManager) {
         renderer.displayError('Conversation manager not available');
         return;
@@ -249,9 +253,9 @@ const loadCommand: CommandHandler = {
 
       // List conversations to find the matching one
       const conversations = await conversationManager.listConversations();
-      const match = conversations.find((c: Conversation) =>
+      const match = conversations.find((c: { filename: string; name?: string }) =>
         (c.name && c.name.toLowerCase() === name.toLowerCase()) ||
-        c.id.toLowerCase().includes(name.toLowerCase())
+        c.filename.toLowerCase().includes(name.toLowerCase())
       );
 
       if (!match) {
@@ -260,12 +264,10 @@ const loadCommand: CommandHandler = {
         return;
       }
 
-      const filepath = require('path').join(
-        conversationManager.conversationsDir || '',
-        match.filename
-      );
-
-      await conversationManager.loadFromFile(filepath);
+      // Bug #11 fix: loadFromFile handles path internally, just pass filename
+      // Don't try to access private conversationsDir field
+      // Don't construct path here - loadFromFile does join(conversationsDir, filepath) internally
+      await conversationManager.loadFromFile(match.filename);
 
       renderer.displaySuccess(`Loaded conversation: ${match.name || match.filename}`);
       renderer.displayInfo(`${match.messageCount} messages loaded`);
@@ -283,7 +285,7 @@ const exportCommand: CommandHandler = {
   description: 'Export current conversation to Markdown',
   async execute(_args, context) {
     try {
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (!conversationManager) {
         renderer.displayError('Conversation manager not available');
         return;
@@ -321,7 +323,7 @@ const deleteCommand: CommandHandler = {
     }
 
     try {
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (!conversationManager) {
         renderer.displayError('Conversation manager not available');
         return;
@@ -329,9 +331,9 @@ const deleteCommand: CommandHandler = {
 
       // List conversations to find the matching one
       const conversations = await conversationManager.listConversations();
-      const match = conversations.find((c: Conversation) =>
+      const match = conversations.find((c: { filename: string; name?: string }) =>
         (c.name && c.name.toLowerCase() === name.toLowerCase()) ||
-        c.id.toLowerCase().includes(name.toLowerCase())
+        c.filename.toLowerCase().includes(name.toLowerCase())
       );
 
       if (!match) {
@@ -357,7 +359,7 @@ const statsCommand: CommandHandler = {
   description: 'Show current conversation statistics',
   async execute(_args, context) {
     try {
-      const conversationManager = (context as any).conversationManager;
+      const conversationManager = context.conversationManager;
       if (!conversationManager) {
         renderer.displayError('Conversation manager not available');
         return;

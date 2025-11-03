@@ -24,7 +24,7 @@ describe('CLI: init command', () => {
     const result = await runCLI(['setup', testDir]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('AutomatosX initialized successfully');
+    expect(result.stdout).toContain('AutomatosX set up successfully!');
 
     // Verify directory structure
     const automatosxDir = join(testDir, '.automatosx');
@@ -43,15 +43,15 @@ describe('CLI: init command', () => {
     await expect(pathExists(configPath)).resolves.toBe(true);
   }, 10000);
 
-  it('should fail when already initialized without --force', async () => {
+  it('should warn when already initialized without --force', async () => {
     // Initialize once
     await runCLI(['setup', testDir]);
 
-    // Try to initialize again
+    // Try to initialize again (should warn and exit with error)
     const result = await runCLI(['setup', testDir]);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain('already initialized');
+    expect(result.stdout).toContain('already set up');
   }, 10000);
 
   it('should reinitialize with --force flag', async () => {
@@ -62,7 +62,7 @@ describe('CLI: init command', () => {
     const result = await runCLI(['setup', testDir, '--force']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Reinitializing');
+    expect(result.stdout).toContain('Re-running setup (--force flag detected)');
   }, 10000);
 });
 

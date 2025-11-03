@@ -486,10 +486,40 @@ export interface CLIMemoryConfig {
   defaultLimit: number;
 }
 
+export interface CLIInteractiveConversationConfig {
+  autoSave: boolean;
+  autoSaveInterval: number;
+  maxMessages: number;
+  storePath: string;
+}
+
+export interface CLIInteractiveUIConfig {
+  colors: boolean;
+  markdown: boolean;
+  syntaxHighlight: boolean;
+  spinner: boolean;
+  welcomeMessage: boolean;
+}
+
+export interface CLIInteractiveHistoryConfig {
+  enabled: boolean;
+  maxEntries: number;
+  storePath: string;
+}
+
+export interface CLIInteractiveConfig {
+  enabled: boolean;
+  defaultProvider: string;
+  conversation: CLIInteractiveConversationConfig;
+  ui: CLIInteractiveUIConfig;
+  history: CLIInteractiveHistoryConfig;
+}
+
 export interface CLIConfig {
   run: CLIRunConfig;
   session: CLISessionConfig;
   memory: CLIMemoryConfig;
+  interactive?: CLIInteractiveConfig;
 }
 
 // ========================================

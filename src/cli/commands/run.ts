@@ -224,11 +224,13 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       if (complexity.isComplex) {
         // FIXED (Bug #80 - Part 2): Skip spec-kit prompt entirely in iterate/auto-continue mode
         // When --iterate or --auto-continue is set, user wants autonomous execution
-        const skipPrompt = argv.autoContinue || argv.iterate;
+        // BUG #45 FIX: Also skip prompt when stdin is not a TTY (non-interactive context)
+        const skipPrompt = argv.autoContinue || argv.iterate || !process.stdin.isTTY;
 
         if (skipPrompt) {
-          // Autonomous mode: Skip complexity prompt entirely and continue with standard ax run
-          console.log(chalk.gray('\n→ Complex task detected, continuing with standard ax run (autonomous mode)...\n'));
+          // Autonomous mode or non-interactive: Skip complexity prompt entirely and continue with standard ax run
+          const reason = !process.stdin.isTTY ? 'non-interactive mode' : 'autonomous mode';
+          console.log(chalk.gray(`\n→ Complex task detected, continuing with standard ax run (${reason})...\n`));
         } else {
           // Interactive mode: Show complexity analysis and prompt user
           // Show complexity analysis

@@ -163,6 +163,10 @@ export class DelegationParser {
     patternName: string,
     resolvedNameCache?: Map<string, string | null>
   ): Promise<void> {
+    // BUG #37 FIX: Reset lastIndex to prevent state persistence between parse() calls
+    // Global regexes keep lastIndex between calls, causing subsequent parses to miss matches
+    pattern.lastIndex = 0;
+
     let match;
     while ((match = pattern.exec(response)) !== null) {
       let toAgent = match[1]?.trim();

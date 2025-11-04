@@ -26,6 +26,7 @@ export class REPLManager {
   private provider: InteractiveProvider | null = null;
   private agentExecutor: AgentExecutorBridge | null = null;
   private isShuttingDown: boolean = false;
+  private currentAbortController: AbortController | null = null; // Bug #8 fix
 
   constructor(config?: Partial<REPLConfig>) {
     // Default config
@@ -120,8 +121,15 @@ export class REPLManager {
     // Handle Ctrl+C (SIGINT)
     this.rl.on('SIGINT', () => {
       if (this.isProcessing) {
-        // Cancel current operation
+        // Bug #8 fix: Cancel current streaming operation
         this.renderer.displayInfo('\nCancelling current operation...');
+
+        // Abort the current stream if one is active
+        if (this.currentAbortController) {
+          this.currentAbortController.abort();
+          this.currentAbortController = null;
+        }
+
         this.isProcessing = false;
         this.rl.prompt();
       } else {
@@ -169,6 +177,10 @@ export class REPLManager {
   private async handleAIResponse(input: string): Promise<void> {
     const spinner = this.config.spinner ? ora('Thinking...').start() : null;
 
+    // Bug #8 fix: Create AbortController for this stream
+    this.currentAbortController = new AbortController();
+    const signal = this.currentAbortController.signal;
+
     try {
       // Get conversation context
       const context = this.conversation.getContext();
@@ -179,6 +191,7 @@ export class REPLManager {
         this.renderer.displayAIPrefix();
 
         let fullResponse = '';
+        let wasCancelled = false;
 
         // Bug #6 fix: Build full prompt with conversation context
         // The provider interface only accepts a single prompt string, so we need to
@@ -196,32 +209,45 @@ export class REPLManager {
           fullPrompt = historyLines.join('\n\n') + `\n\nUser: ${input}`;
         }
 
-        // Stream response from provider with full context
-        for await (const event of this.provider.streamResponse(fullPrompt)) {
+        // Bug #8 fix: Pass abort signal to provider for cancellable streaming
+        for await (const event of this.provider.streamResponse(fullPrompt, signal)) {
           this.renderer.renderStreamEvent(event);
 
           if (event.type === 'token') {
             fullResponse += event.data;
           } else if (event.type === 'error') {
+            // Check if this was a cancellation
+            if (event.data.code === 'STREAM_CANCELLED') {
+              wasCancelled = true;
+              break;
+            }
             throw new Error(event.data.message || 'Provider error');
           }
         }
 
         console.log('\n');
 
-        // Add assistant response to conversation
-        this.conversation.addMessage('assistant', fullResponse);
+        // Only add to conversation if not cancelled
+        if (!wasCancelled && fullResponse) {
+          this.conversation.addMessage('assistant', fullResponse);
+        }
       } else {
         // Fallback to simulated streaming
         spinner?.stop();
         this.renderer.displayAIPrefix();
-        await this.simulateStreaming(input);
-        this.conversation.addMessage('assistant', '[Simulated response]');
+        await this.simulateStreaming(input, signal);
+        // Only add to conversation if not cancelled
+        if (!signal.aborted) {
+          this.conversation.addMessage('assistant', '[Simulated response]');
+        }
       }
 
     } catch (error) {
       spinner?.stop();
       this.renderer.displayError(`Failed to get AI response: ${(error as Error).message}`);
+    } finally {
+      // Bug #8 fix: Clean up AbortController
+      this.currentAbortController = null;
     }
   }
 
@@ -344,7 +370,14 @@ export class REPLManager {
     const commands = [
       '/help', '/exit', '/clear', '/provider', '/history', '/stats',
       '/save', '/list', '/load', '/export', '/delete', '/new',
-      '/agents', '/memory'
+      '/agents', '/memory', '/init',
+      '/read', '/write', '/edit',  // Phase 1: File operations
+      '/exec', '/run', '/processes', '/kill', '/output',  // Phase 2: Code execution
+      '/find', '/search', '/tree',  // Phase 2: Search & navigation
+      '/git', '/status',  // Phase 2: Git integration
+      '/test', '/coverage', '/lint', '/format',  // Phase 3: Testing & linting
+      '/install', '/update', '/outdated',  // Phase 3: Package management
+      '/build', '/dev', '/env', '/create'  // Phase 4: Build & environment
     ];
 
     const hits = commands.filter((c) => c.startsWith(line));
@@ -355,7 +388,7 @@ export class REPLManager {
    * Simulate streaming response (temporary for MVP testing)
    * Will be replaced with real Gemini integration
    */
-  private async simulateStreaming(_input: string): Promise<void> {
+  private async simulateStreaming(_input: string, signal?: AbortSignal): Promise<void> {
     const response = `I understand your request.\n\nThis is a simulated response for MVP testing. ` +
       `Real Gemini streaming integration will be added in Week 1, Day 2-3.\n\n` +
       `For now, you can test:\n` +
@@ -365,6 +398,12 @@ export class REPLManager {
 
     // Simulate token-by-token streaming
     for (const char of response) {
+      // Consistency fix: Check for cancellation during simulation
+      if (signal?.aborted) {
+        console.log('\n[Stream cancelled]\n');
+        return;
+      }
+
       process.stdout.write(char);
       await new Promise(resolve => setTimeout(resolve, 10));
     }

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "7.1.2",
+  "version": "7.6.0",
   "description": "AI Agent Orchestration Platform",
   "type": "module",
   "publishConfig": {
@@ -104,6 +104,7 @@
     "ora": "^9.0.0",
     "p-limit": "^7.2.0",
     "sqlite-vec": "^0.1.7-alpha.2",
+    "yaml": "^2.8.1",
     "yargs": "^18.0.0"
   },
   "files": [

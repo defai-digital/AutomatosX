@@ -12,7 +12,7 @@ import type { StreamEvent } from './types.js';
  */
 export interface InteractiveProvider {
   name: string;
-  streamResponse(prompt: string): AsyncGenerator<StreamEvent>;
+  streamResponse(prompt: string, signal?: AbortSignal): AsyncGenerator<StreamEvent>;
   isAvailable(): Promise<boolean>;
 }
 
@@ -22,9 +22,33 @@ export interface InteractiveProvider {
 export class MockProvider implements InteractiveProvider {
   name = 'Gemini 2.5 Flash (simulated)';
 
-  async *streamResponse(prompt: string): AsyncGenerator<StreamEvent> {
+  async *streamResponse(prompt: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+    // Bug #8 fix: Check for cancellation before starting
+    if (signal?.aborted) {
+      yield {
+        type: 'error',
+        data: {
+          message: 'Stream cancelled by user',
+          code: 'STREAM_CANCELLED'
+        }
+      };
+      return;
+    }
+
     // Simulate thinking time
     await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Check cancellation after initial delay
+    if (signal?.aborted) {
+      yield {
+        type: 'error',
+        data: {
+          message: 'Stream cancelled by user',
+          code: 'STREAM_CANCELLED'
+        }
+      };
+      return;
+    }
 
     // Generate response
     const responses = [
@@ -42,6 +66,18 @@ export class MockProvider implements InteractiveProvider {
     // Stream token by token
     for (const chunk of responses) {
       for (const char of chunk) {
+        // Bug #8 fix: Check for cancellation during streaming
+        if (signal?.aborted) {
+          yield {
+            type: 'error',
+            data: {
+              message: 'Stream cancelled by user',
+              code: 'STREAM_CANCELLED'
+            }
+          };
+          return;
+        }
+
         yield {
           type: 'token',
           data: char
@@ -86,11 +122,11 @@ export class GeminiProviderBridge implements InteractiveProvider {
     }
   }
 
-  async *streamResponse(prompt: string): AsyncGenerator<StreamEvent> {
+  async *streamResponse(prompt: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
     if (this.useMock) {
       // Use mock provider for testing
       const mock = new MockProvider();
-      yield* mock.streamResponse(prompt);
+      yield* mock.streamResponse(prompt, signal);
       return;
     }
 
@@ -179,6 +215,19 @@ export class GeminiProviderBridge implements InteractiveProvider {
       // Stream tokens in real-time as they arrive in the queue
       // This provides true real-time streaming without waiting for full response
       while (!streamComplete || tokenQueue.length > 0) {
+        // Bug #8 fix: Check for cancellation during streaming
+        if (signal?.aborted) {
+          streamComplete = true; // Stop the loop
+          yield {
+            type: 'error',
+            data: {
+              message: 'Stream cancelled by user',
+              code: 'STREAM_CANCELLED'
+            }
+          };
+          return;
+        }
+
         // Check for errors
         if (streamError) {
           yield { type: 'error', data: { message: streamError.message } };

@@ -230,7 +230,9 @@ export class OutputRenderer {
         msg.role;
 
       console.log(`[${time}] ${role}:`);
-      console.log(msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : ''));
+      // Bug #14 extension: Sanitize conversation content to prevent escape injection in history display
+      const sanitizedContent = this.sanitizeOutput(msg.content);
+      console.log(sanitizedContent.substring(0, 100) + (sanitizedContent.length > 100 ? '...' : ''));
       console.log();
     }
   }

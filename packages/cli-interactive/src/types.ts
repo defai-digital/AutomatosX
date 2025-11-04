@@ -141,3 +141,76 @@ export interface REPLConfig {
   historyPath: string;
   conversationsPath: string;
 }
+
+// ============================================================================
+// File Operation Types (Phase 1)
+// ============================================================================
+
+export interface FileMetadata {
+  exists: boolean;
+  size?: number;
+  isDirectory?: boolean;
+  extension?: string;
+}
+
+export interface FileOperation {
+  type: 'read' | 'write' | 'edit';
+  path: string;
+  absolutePath?: string;
+  content?: string;
+  search?: string;
+  replace?: string;
+  replaceAll?: boolean;
+  preview?: string;
+}
+
+export interface ReadOptions {
+  lines?: number;      // Number of lines to read
+  from?: number;       // Starting line number (1-indexed)
+  syntax?: boolean;    // Enable syntax highlighting (default: true)
+}
+
+export interface WriteOptions {
+  force?: boolean;     // Overwrite if exists (default: false)
+  append?: boolean;    // Append to file (default: false)
+  encoding?: string;   // File encoding (default: 'utf-8')
+}
+
+export interface EditOptions {
+  preview?: boolean;   // Show diff before applying (default: true)
+  all?: boolean;       // Replace all occurrences (default: false)
+  backup?: boolean;    // Create .bak file (default: false)
+}
+
+// ============================================================================
+// Memory Integration Types (Phase 1)
+// ============================================================================
+
+export interface MemorySearchOptions {
+  limit?: number;      // Max results (default: 10)
+  agent?: string;      // Filter by agent
+  after?: string;      // After date (ISO format)
+  before?: string;     // Before date (ISO format)
+}
+
+export interface MemorySearchResult {
+  id: string;
+  content: string;
+  timestamp: string;
+  agent?: string;
+  relevance: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MemoryStats {
+  totalEntries: number;
+  oldestEntry?: {
+    id: string;
+    timestamp: string;
+  };
+  newestEntry?: {
+    id: string;
+    timestamp: string;
+  };
+  sizeBytes: number;
+}

@@ -21,6 +21,7 @@ import type { SessionManager } from '../core/session-manager.js';
 import type { WorkspaceManager } from '../core/workspace-manager.js';
 import { Router } from '../core/router.js';
 import { PathResolver } from '../core/path-resolver.js';
+import { ProjectContextLoader } from '../core/project-context.js';
 import { logger } from '../utils/logger.js';
 import { PathError, ProviderError } from '../utils/errors.js';
 import {
@@ -114,10 +115,12 @@ export class ContextManager {
     ]);
 
     // Step 3-4: After profile loaded, select abilities and provider in parallel
+    // v7.1.0: Also load project context in parallel
     const selectedAbilities = this.selectAbilities(agent, task);
-    const [abilities, provider] = await Promise.all([
+    const [abilities, provider, projectContext] = await Promise.all([
       this.config.abilitiesManager.getAbilitiesText(selectedAbilities),
-      this.selectProviderForAgent(agent, options)
+      this.selectProviderForAgent(agent, options),
+      this.loadProjectContext(projectDir)
     ]);
 
     logger.debug('Abilities selected', {
@@ -219,7 +222,8 @@ export class ContextManager {
       abilities,
       createdAt: new Date(),
       orchestration,
-      session
+      session,
+      projectContext: projectContext || undefined
     };
 
     // 10. Inject memory (if not skipped)
@@ -548,6 +552,45 @@ export class ContextManager {
       fallback: fallbackProvider
     });
     return provider;
+  }
+
+  /**
+   * Load project context from ax.md (v7.1.0+)
+   *
+   * Loads project-specific instructions from ax.md file if it exists.
+   * Falls back gracefully if file doesn't exist.
+   *
+   * @param projectDir - Project root directory
+   * @returns Project context or null if not found
+   */
+  private async loadProjectContext(projectDir: string): Promise<import('../core/project-context.js').ProjectContext | null> {
+    try {
+      const loader = new ProjectContextLoader(projectDir);
+
+      // Check if context exists before loading (faster)
+      const exists = await loader.exists();
+      if (!exists) {
+        logger.debug('No ax.md found, skipping project context');
+        return null;
+      }
+
+      const context = await loader.load();
+
+      logger.info('Project context loaded from ax.md', {
+        hasMarkdown: !!context.markdown,
+        hasConfig: !!context.config,
+        agentRules: context.agentRules?.length ?? 0,
+        guardrails: context.guardrails?.length ?? 0
+      });
+
+      return context;
+    } catch (error) {
+      // Graceful fallback - don't fail execution if context loading fails
+      logger.warn('Failed to load project context, continuing without it', {
+        error: (error as Error).message
+      });
+      return null;
+    }
   }
 
   /**

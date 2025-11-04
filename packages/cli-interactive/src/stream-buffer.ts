@@ -30,75 +30,86 @@ export class StreamBuffer {
     this.buffer += token;
     const segments: BufferedSegment[] = [];
 
-    // Bug #5 fix: More robust code block detection using indexOf
-    // This ensures we find ``` anywhere in the buffer, not just at the start
-    const codeBlockStart = this.buffer.indexOf('```');
+    // BUG #35 FIX: Loop to handle multiple fences in same chunk
+    // This prevents incomplete blocks when opening and closing ``` arrive together
+    let foundFence = true;
+    while (foundFence) {
+      // Bug #5 fix: More robust code block detection using indexOf
+      // This ensures we find ``` anywhere in the buffer, not just at the start
+      const codeBlockStart = this.buffer.indexOf('```');
 
-    if (codeBlockStart !== -1) {
-      // Found code block marker
-      if (!this.inCodeBlock) {
-        // Starting a code block
-        // Flush any text before the code block
-        const textBefore = this.buffer.substring(0, codeBlockStart);
-        if (textBefore.trim()) {
-          segments.push({
-            type: 'text',
-            content: textBefore,
-            complete: true
-          });
-        }
+      if (codeBlockStart !== -1) {
+        // Found code block marker
+        if (!this.inCodeBlock) {
+          // Starting a code block
+          // Flush any text before the code block
+          const textBefore = this.buffer.substring(0, codeBlockStart);
+          if (textBefore.trim()) {
+            segments.push({
+              type: 'text',
+              content: textBefore,
+              complete: true
+            });
+          }
 
-        // Enter code block mode
-        this.inCodeBlock = true;
+          // Enter code block mode
+          this.inCodeBlock = true;
 
-        // Extract language from the opening marker
-        // Bug #19 fix: Support languages with hyphens, plus signs, and hash symbols (c++, objective-c, c#)
-        const afterMarker = this.buffer.substring(codeBlockStart + 3);
-        const languageMatch = afterMarker.match(/^([\w\-+#]+)/);
-        this.codeBlockLanguage = languageMatch ? languageMatch[1] : 'text';
+          // Extract language from the opening marker
+          // Bug #19 fix: Support languages with hyphens, plus signs, and hash symbols (c++, objective-c, c#)
+          const afterMarker = this.buffer.substring(codeBlockStart + 3);
+          const languageMatch = afterMarker.match(/^([\w\-+#]+)/);
+          this.codeBlockLanguage = (languageMatch && languageMatch[1]) ? languageMatch[1] : 'text';
 
-        // Calculate how many characters to skip (``` + language + optional newline)
-        let skipLength = 3; // for ```
-        if (languageMatch) {
-          skipLength += languageMatch[1].length;
-        }
-        // Skip optional whitespace and newline after language
-        const afterLanguage = afterMarker.substring(languageMatch ? languageMatch[1].length : 0);
-        if (afterLanguage.match(/^[ \t]*\n/)) {
-          const wsMatch = afterLanguage.match(/^[ \t]*\n/);
-          if (wsMatch) {
-            skipLength += wsMatch[0].length;
+          // Calculate how many characters to skip (``` + language + optional newline)
+          let skipLength = 3; // for ```
+          if (languageMatch && languageMatch[1]) {
+            skipLength += languageMatch[1].length;
+          }
+          // Skip optional whitespace and newline after language
+          const afterLanguage = afterMarker.substring((languageMatch && languageMatch[1]) ? languageMatch[1].length : 0);
+          if (afterLanguage.match(/^[ \t]*\n/)) {
+            const wsMatch = afterLanguage.match(/^[ \t]*\n/);
+            if (wsMatch && wsMatch[0]) {
+              skipLength += wsMatch[0].length;
+            }
+          }
+
+          this.codeBlockBuffer = '';
+
+          // Remove processed text from buffer
+          this.buffer = this.buffer.substring(codeBlockStart + skipLength);
+
+        } else {
+          // Ending a code block
+          // Extract code content (everything before the closing ```)
+          const endIndex = this.buffer.indexOf('```');
+          if (endIndex !== -1) {
+            this.codeBlockBuffer = this.buffer.substring(0, endIndex);
+
+            // Return complete code block
+            segments.push({
+              type: 'code',
+              content: this.codeBlockBuffer.trim(),
+              language: this.codeBlockLanguage,
+              complete: true
+            });
+
+            // Exit code block mode
+            this.inCodeBlock = false;
+            this.codeBlockBuffer = '';
+            this.codeBlockLanguage = '';
+
+            // Remove processed content from buffer
+            this.buffer = this.buffer.substring(endIndex + 3);
+          } else {
+            // No closing fence yet, break loop
+            foundFence = false;
           }
         }
-
-        this.codeBlockBuffer = '';
-
-        // Remove processed text from buffer
-        this.buffer = this.buffer.substring(codeBlockStart + skipLength);
-
       } else {
-        // Ending a code block
-        // Extract code content (everything before the closing ```)
-        const endIndex = this.buffer.indexOf('```');
-        if (endIndex !== -1) {
-          this.codeBlockBuffer = this.buffer.substring(0, endIndex);
-
-          // Return complete code block
-          segments.push({
-            type: 'code',
-            content: this.codeBlockBuffer.trim(),
-            language: this.codeBlockLanguage,
-            complete: true
-          });
-
-          // Exit code block mode
-          this.inCodeBlock = false;
-          this.codeBlockBuffer = '';
-          this.codeBlockLanguage = '';
-
-          // Remove processed content from buffer
-          this.buffer = this.buffer.substring(endIndex + 3);
-        }
+        // No fence marker found, break loop
+        foundFence = false;
       }
     }
 

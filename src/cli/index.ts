@@ -27,6 +27,7 @@ const VERSION = getVersion();
 import { cacheCommand } from './commands/cache.js';
 import { configCommand } from './commands/config.js';
 import { setupCommand } from './commands/setup.js';
+import { initCommand } from './commands/init.js';
 import { configureCommand } from './commands/configure.js';
 import { listCommand } from './commands/list.js';
 import { mcpCommand } from './commands/mcp.js';
@@ -65,6 +66,7 @@ globalTracker.mark('cli_start');
   .usage('$0 <command> [options]')
   .usage('\nAI Agent Orchestration Platform')
   .example('$0 setup', 'Set up project')
+  .example('$0 init', 'Initialize ax.md project context')
   .example('$0 agent create backend --template developer', 'Create agent from template')
   .example('$0 agent list', 'List all agents')
   .example('$0 run assistant "Hello"', 'Run assistant agent')
@@ -122,6 +124,7 @@ globalTracker.mark('cli_start');
 
   // Commands
   .command(setupCommand)
+  .command(initCommand)
   .command(configureCommand)
   .command(agentCommand)
   .command(listCommand)

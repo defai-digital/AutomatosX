@@ -1,7 +1,7 @@
 # Interactive CLI (ax-cli)
 
-**Version**: 7.1.0-beta.1
-**Status**: Beta Release
+**Version**: 7.5.0
+**Status**: Production Release - 100% Feature Parity Achieved
 **Last Updated**: November 3, 2025
 
 ---
@@ -16,9 +16,19 @@ The AutomatosX Interactive CLI (`ax-cli`) is a ChatGPT-style conversational inte
 - 🔄 **Real-time Streaming** - See responses as they're generated
 - 💾 **Conversation Persistence** - Save, load, and manage conversation history
 - 🎯 **Agent Delegation** - Route tasks to specialized agents mid-conversation
-- 📝 **13 Slash Commands** - Quick access to powerful features
+- 📝 **39 Slash Commands** - Complete developer workflow toolset
 - 🎨 **Rich Terminal UI** - Color-coded, formatted output
 - 🔌 **Multiple Providers** - Seamless switching between Gemini, Claude, OpenAI
+- 📁 **File Operations** (v7.2.0) - Read, write, edit files with security
+- ⚙️ **Code Execution** (v7.3.0) - Run commands and manage processes
+- 🔍 **Search & Navigation** (v7.3.0) - Find files and search content
+- 🔧 **Git Integration** (v7.3.0) - Git operations from the CLI
+- 🧪 **Testing Integration** (v7.4.0) - Run tests with framework auto-detection
+- 🎨 **Linting & Formatting** (v7.4.0) - ESLint, Prettier integration
+- 📦 **Package Management** (v7.4.0) - Install, update, manage packages
+- 🏗️ **Build Systems** (v7.5.0) - Vite, Webpack, Rollup, esbuild, tsup, Parcel
+- 🌍 **Environment Management** (v7.5.0) - .env file loading, variable masking
+- 🎯 **Project Scaffolding** (v7.5.0) - React, Vue, Express, TypeScript templates
 
 ---
 
@@ -151,6 +161,250 @@ All commands start with `/` and can be typed at any time:
 | Command | Description | Example |
 |---------|-------------|---------|
 | `/memory <query>` | Search AutomatosX memory | `/memory search auth` |
+| `/init [--template <type>]` | Create project context (ax.md) | `/init --template full` |
+
+### File Operations (v7.2.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/read <path>` | Read file contents | `/read src/index.ts --lines 50` |
+| `/write <path> <content>` | Write to file | `/write test.txt "Hello"` |
+| `/edit <path> "old" "new"` | Search and replace in file | `/edit src/app.ts "foo" "bar"` |
+
+### Code Execution (v7.3.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/exec <command>` | Execute shell command | `/exec npm test` |
+| `/run <script>` | Run npm/yarn script | `/run build --watch` |
+| `/processes` | List background processes | `/processes --all` |
+| `/kill <pid>` | Terminate a process | `/kill 1234 --force` |
+| `/output <pid>` | View process output | `/output 1234 --follow` |
+
+### Search & Navigation (v7.3.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/find <pattern>` | Find files by glob pattern | `/find "*.ts" --type f` |
+| `/search <query>` | Search file contents | `/search "TODO" --type ts,tsx` |
+| `/tree [path]` | Show directory tree | `/tree src --maxdepth 2` |
+
+### Git Integration (v7.3.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/git <subcommand>` | Execute git command | `/git log --oneline -10` |
+| `/status` | Show git status | `/status` |
+
+### Testing Integration (v7.4.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/test [files...]` | Run tests with framework auto-detection | `/test src/utils.test.ts --watch` |
+| `/test --watch` | Run tests in watch mode | `/test --watch` |
+| `/test --filter <pattern>` | Run tests matching pattern | `/test --filter "auth"` |
+| `/coverage [files...]` | Run tests with coverage report | `/coverage src/` |
+
+**Supported Frameworks**: Jest, Vitest, Mocha, AVA, Node.js native test
+
+**Examples**:
+```bash
+# Run all tests
+/test
+
+# Run specific test file
+/test src/auth.test.ts
+
+# Run tests in watch mode
+/test --watch
+
+# Run tests matching "login"
+/test --filter "login"
+
+# Get coverage report
+/coverage
+
+# Coverage for specific directory
+/coverage src/utils/
+```
+
+### Linting & Formatting (v7.4.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/lint [files...]` | Lint code with auto-detected linter | `/lint src/` |
+| `/lint --fix` | Lint and auto-fix issues | `/lint --fix` |
+| `/lint --quiet` | Show only errors (no warnings) | `/lint --quiet` |
+| `/format [files...]` | Format code with auto-detected formatter | `/format src/` |
+| `/format --check` | Check formatting without writing | `/format --check` |
+
+**Supported Linters**: ESLint, StandardJS
+**Supported Formatters**: Prettier, dprint
+
+**Examples**:
+```bash
+# Lint all files
+/lint
+
+# Lint specific directory
+/lint src/
+
+# Lint and auto-fix
+/lint --fix
+
+# Show only errors
+/lint --quiet
+
+# Format all files
+/format
+
+# Check formatting without modifying files
+/format --check
+
+# Format specific files
+/format src/index.ts src/utils.ts
+```
+
+### Package Management (v7.4.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/install <packages...>` | Install npm packages | `/install lodash express` |
+| `/install --dev` | Install as dev dependency | `/install -D typescript` |
+| `/install --exact` | Install exact version | `/install -E react@18.2.0` |
+| `/update [packages...]` | Update packages | `/update lodash` |
+| `/update --latest` | Update to latest version | `/update --latest` |
+| `/outdated` | Show outdated packages | `/outdated` |
+
+**Supported Package Managers**: npm, yarn, pnpm (auto-detected by lockfile)
+
+**Examples**:
+```bash
+# Install package
+/install lodash
+
+# Install multiple packages
+/install react react-dom
+
+# Install as dev dependency
+/install -D typescript @types/node
+
+# Install exact version
+/install -E lodash@4.17.21
+
+# Update all packages
+/update
+
+# Update specific package
+/update lodash
+
+# Update to latest (ignore semver)
+/update --latest lodash
+
+# Check outdated packages
+/outdated
+```
+
+### Build Systems (v7.5.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/build` | Build project with auto-detected tool | `/build` |
+| `/build --production` | Production build with optimizations | `/build --production` |
+| `/build --watch` | Build in watch mode | `/build --watch` |
+| `/build --analyze` | Build with bundle analysis | `/build --analyze` |
+| `/dev` | Start development server | `/dev` |
+| `/dev --port 3000` | Dev server on specific port | `/dev --port 3000` |
+| `/dev --open` | Dev server and open browser | `/dev --open` |
+
+**Supported Build Tools**: Vite, Webpack, Rollup, esbuild, tsup, Parcel (auto-detected from package.json)
+
+**Examples**:
+```bash
+# Production build
+/build --production
+
+# Watch mode for development
+/build --watch
+
+# Start dev server
+/dev
+
+# Dev server on custom port
+/dev --port 8080
+
+# Dev server and open browser
+/dev --open
+```
+
+### Environment Management (v7.5.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/env load [file]` | Load .env file | `/env load .env.local` |
+| `/env list [filter]` | List environment variables | `/env list API` |
+| `/env set <key> <value>` | Set environment variable | `/env set API_KEY abc123` |
+| `/env unset <key>` | Unset environment variable | `/env unset API_KEY` |
+| `/env validate <keys...>` | Validate required env vars | `/env validate API_KEY DB_URL` |
+
+**Features**:
+- .env file parsing with support for quotes and escape sequences
+- Sensitive data auto-masking (API keys, secrets, passwords, tokens)
+- Variable validation with missing key detection
+- Multi-file support (.env, .env.local, .env.production, etc.)
+
+**Examples**:
+```bash
+# Load .env file
+/env load
+
+# Load specific env file
+/env load .env.production
+
+# List all variables
+/env list
+
+# List API-related variables
+/env list API
+
+# Set a variable
+/env set NODE_ENV production
+
+# Validate required variables
+/env validate DATABASE_URL API_KEY JWT_SECRET
+```
+
+### Project Scaffolding (v7.5.0)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/create <name> --template <type>` | Create new project | `/create my-app --template react` |
+| `/create list` | List available templates | `/create list` |
+
+**Available Templates**:
+- **react**: React app with Vite and TypeScript
+- **vue**: Vue 3 app with Vite and TypeScript
+- **express**: Express.js server with TypeScript
+- **typescript**: TypeScript library
+- **node**: Node.js project with TypeScript
+
+**Examples**:
+```bash
+# List available templates
+/create list
+
+# Create React app
+/create my-react-app --template react
+
+# Create Vue app
+/create my-vue-app --template vue
+
+# Create Express server
+/create my-api --template express
+
+# Create TypeScript library
+/create my-lib --template typescript
+```
 
 ---
 
@@ -231,6 +485,54 @@ ax> /export
 # Share with team
 cat .automatosx/cli-conversations/conv-123-export.md
 ```
+
+### Project Context with `/init` (v7.1.0+)
+
+Create a project-level context file (`ax.md`) that provides persistent instructions to AutomatosX:
+
+```bash
+# In interactive mode
+ax> /init
+
+# Or with a specific template
+ax> /init --template full
+
+# Outside interactive mode
+ax init --template basic
+```
+
+**What is ax.md?**
+- Project-level context file (like `.cursorrules` or `CLAUDE.md`)
+- Provides persistent instructions to all agents
+- Auto-loaded when running agents in this project
+- Tells AutomatosX how to work with your specific project
+
+**Available Templates**:
+- `basic` - Minimal template with essential sections (default)
+- `full` - Complete template with all available sections
+- `minimal` - Bare-bones template for quick setup
+
+**Example Usage**:
+```bash
+# Create project context
+ax> /init --template full
+
+# Edit ax.md to customize:
+# - Agent delegation rules (e.g., "Backend/API → @backend")
+# - Project guidelines (e.g., "Always write tests")
+# - Commands (e.g., "npm test = run test suite")
+# - Team conventions
+
+# Context is automatically loaded on next agent run
+ax> @backend implement user authentication
+# Backend agent now sees your project context!
+```
+
+**Benefits**:
+- Persistent project-specific instructions
+- No need to repeat guidelines in every conversation
+- Team consistency (commit ax.md to git)
+- Agent routing automation
 
 ---
 
@@ -550,11 +852,12 @@ A: Update AutomatosX: `npm install -g @defai.digital/automatosx@latest`
 - Initial release of interactive CLI
 - Real-time streaming responses
 - Conversation persistence (save/load/list/delete)
-- 13 slash commands
+- 14 slash commands (including `/init` for project context)
 - Agent delegation (@agent and DELEGATE TO syntax)
 - Markdown export
 - Auto-save (30s intervals)
 - Mock provider for testing
+- `/init` command for creating ax.md project context files
 
 **Fixed:**
 - Welcome message duplication

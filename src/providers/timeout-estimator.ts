@@ -53,9 +53,10 @@ export function estimateTimeout(options: TimeoutOptions): TimeoutEstimate {
   const timing = getModelTiming(model);
 
   // Calculate base duration
+  // BUG #36 FIX: timing constants are already in milliseconds, don't multiply by 1000
   let estimatedDuration = timing.baseLatency;
-  estimatedDuration += (inputTokens / 1000) * timing.inputTokensPerSecond * 1000;
-  estimatedDuration += (estimatedOutputTokens / 1000) * timing.outputTokensPerSecond * 1000;
+  estimatedDuration += (inputTokens / 1000) * timing.inputTokensPerSecond;
+  estimatedDuration += (estimatedOutputTokens / 1000) * timing.outputTokensPerSecond;
 
   // Adjust for streaming (slightly faster due to immediate start)
   if (streaming) {

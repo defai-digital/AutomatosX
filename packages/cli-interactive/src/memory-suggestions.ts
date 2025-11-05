@@ -177,7 +177,8 @@ export function renderMemorySearchResults(
 
     if (compact) {
       // Show only first line of content
-      const preview = result.content.split('\n')[0].substring(0, 80);
+      const firstLine = result.content.split('\n')[0];
+      const preview = firstLine ? firstLine.substring(0, 80) : '';
       lines.push(`   ${chalk.white(preview)}${result.content.length > 80 ? '...' : ''}`);
     } else {
       // Show full context and content
@@ -393,5 +394,8 @@ export function createMemorySuggestionPrompt(suggestions: MemorySuggestion[]): s
   if (suggestions.length === 0) return '';
 
   const topSuggestion = suggestions[0];
+  if (!topSuggestion) {
+    return '';
+  }
   return renderInlineMemoryHint(topSuggestion);
 }

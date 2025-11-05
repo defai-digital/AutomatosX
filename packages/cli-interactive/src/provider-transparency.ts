@@ -198,9 +198,13 @@ export function renderCostComparison(routes: Array<{ provider: string; cost: num
 
   // Savings
   if (sorted.length > 1) {
-    const savings = sorted[sorted.length - 1].cost - sorted[0].cost;
-    lines.push('');
-    lines.push(`  ${chalk.dim('Potential savings:')} ${chalk.green(`$${savings.toFixed(4)}`)} ${chalk.dim(`(${((savings / sorted[sorted.length - 1].cost) * 100).toFixed(0)}%)`)}`);
+    const lastItem = sorted[sorted.length - 1];
+    const firstItem = sorted[0];
+    if (lastItem && firstItem) {
+      const savings = lastItem.cost - firstItem.cost;
+      lines.push('');
+      lines.push(`  ${chalk.dim('Potential savings:')} ${chalk.green(`$${savings.toFixed(4)}`)} ${chalk.dim(`(${((savings / lastItem.cost) * 100).toFixed(0)}%)`)}`);
+    }
   }
 
   lines.push('');

@@ -121,7 +121,7 @@ export class CommandHistoryManager {
   canUndo(): boolean {
     // Find last reversible command
     for (let i = this.currentIndex; i >= 0; i--) {
-      if (this.history[i].reversible) {
+      if (this.history[i]?.reversible) {
         return true;
       }
     }
@@ -142,7 +142,7 @@ export class CommandHistoryManager {
     // Find last reversible command from current index backwards
     let targetIndex = -1;
     for (let i = this.currentIndex; i >= 0; i--) {
-      if (this.history[i].reversible) {
+      if (this.history[i]?.reversible) {
         targetIndex = i;
         break;
       }
@@ -153,6 +153,9 @@ export class CommandHistoryManager {
     }
 
     const entry = this.history[targetIndex];
+    if (!entry) {
+      return { success: false, error: 'Command entry not found' };
+    }
 
     try {
       await this.executeUndo(entry);

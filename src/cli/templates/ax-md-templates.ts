@@ -20,7 +20,7 @@ export interface TemplateContext {
  * Generate current date in ISO format
  */
 function getCurrentDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0] ?? '';
 }
 
 /**

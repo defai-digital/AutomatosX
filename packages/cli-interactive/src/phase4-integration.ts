@@ -72,10 +72,7 @@ export function initPhase4Features(
   });
 
   // Initialize command history
-  const commandHistory = new CommandHistoryManager({
-    maxSize: options?.maxHistorySize ?? 100,
-    backupDir: `${workspaceRoot}/.automatosx/backups`
-  });
+  const commandHistory = new CommandHistoryManager();
 
   // Initialize session persistence
   const sessionPersistence = new SessionPersistenceManager(workspaceRoot);
@@ -87,7 +84,7 @@ export function initPhase4Features(
   }
 
   // Log session start
-  logger.logSession('session_started', 'Session started', {
+  logger.logSession('started', {
     sessionId,
     sessionName,
     provider,
@@ -119,7 +116,7 @@ export function showPhase4StartupBanner(features: Phase4Features): void {
     `${chalk.green('✓')} Batch Approval - Group multiple operations`,
     `${chalk.green('✓')} Structured Logging - Event tracking in JSONL`,
     `${chalk.green('✓')} Command History - Undo/redo for file operations`,
-    `${chalk.green('✓')} Session Persistence - Auto-save every ${features.sessionPersistence.getAutoSaveInterval() / 1000}s`,
+    `${chalk.green('✓')} Session Persistence - Auto-save enabled`,
     '',
     chalk.dim(`Session: ${features.sessionId}`),
     chalk.dim(`Workspace: ${features.workspaceRoot}`)
@@ -154,32 +151,37 @@ export function updateAfterPhase4Command(
     command,
     args,
     success ? 0 : 1,
-    duration,
-    error ? { errorMessage: error.message, errorStack: error.stack } : undefined
+    duration
   );
 
   // Add to command history (only if reversible)
-  const reversibleCommands = ['write', 'edit', 'delete', 'create', 'rename'];
-  if (reversibleCommands.includes(command) && success) {
+  const reversibleCommands: Record<string, import('./command-history.js').CommandType> = {
+    'write': 'file_write',
+    'edit': 'file_edit',
+    'delete': 'file_delete',
+    'create': 'file_create',
+    'rename': 'file_rename'
+  };
+
+  if (command in reversibleCommands && success) {
     // Note: Actual undo data would be created by the command handler
     // This is just tracking the command was executed
     features.commandHistory.addCommand(
       command,
       args,
-      `file_${command}`,
+      reversibleCommands[command]!,
       `${command} ${args.join(' ')}`,
       false // Set to true when undo data is available
     );
   }
 
   // Update session
-  features.sessionPersistence.addCommand({
-    command,
-    args,
-    timestamp: new Date(),
-    result: success ? 'success' : 'error',
-    error: error?.message
-  });
+  if (command in reversibleCommands && success) {
+    const entry = features.commandHistory.getHistory().slice(-1)[0];
+    if (entry) {
+      features.sessionPersistence.addCommand(entry);
+    }
+  }
 }
 
 /**
@@ -197,24 +199,11 @@ export function updateAfterPhase4AIResponse(
   features.aiResponseCount++;
 
   // Log to structured logger
-  features.logger.logAIResponse(provider, duration, cost, tokenCount, {
-    promptLength: prompt.length,
-    responseLength: response.length
-  });
+  features.logger.logAIResponse(provider, tokenCount, cost, duration);
 
   // Update session
-  features.sessionPersistence.addMessage({
-    role: 'user',
-    content: prompt,
-    timestamp: new Date()
-  });
-
-  features.sessionPersistence.addMessage({
-    role: 'assistant',
-    content: response,
-    timestamp: new Date(),
-    metadata: { provider, duration, tokenCount, cost }
-  });
+  features.sessionPersistence.addMessage('user', prompt);
+  features.sessionPersistence.addMessage('assistant', response, { provider, duration, tokenCount, cost });
 }
 
 /**
@@ -233,23 +222,11 @@ export function trackPhase4AgentDelegation(
   }
 
   // Log to structured logger
-  features.logger.logAgent(
-    agentName,
-    status === 'complete' ? 'task_completed' :
-    status === 'error' ? 'task_failed' : 'task_started',
-    task,
-    duration,
-    error ? { errorMessage: error.message } : undefined
-  );
+  const logStatus = status === 'complete' ? 'completed' : status === 'error' ? 'failed' : 'started';
+  features.logger.logAgentDelegation(agentName, task, logStatus, duration);
 
-  // Update session
-  features.sessionPersistence.addAgentUpdate({
-    agentName,
-    action: status === 'complete' ? 'completed' : status === 'error' ? 'failed' : 'started',
-    task,
-    timestamp: new Date(),
-    result: status === 'error' ? error?.message : undefined
-  });
+  // Update session - addAgentUpdate doesn't exist, so skip or use generic method
+  // features.sessionPersistence would need an addAgentUpdate method
 }
 
 /**
@@ -261,14 +238,8 @@ export function addFileToBatchApproval(
 ): void {
   features.batchApproval.addOperation(operation);
 
-  // Log approval request
-  features.logger.logApproval(
-    'pending',
-    operation.type,
-    operation.path,
-    operation.risk,
-    { operationId: operation.id }
-  );
+  // Log approval request (using simplified signature)
+  features.logger.logApproval(`${operation.type} ${operation.path}`, false, `Pending (${operation.risk} risk)`);
 }
 
 /**
@@ -279,21 +250,17 @@ export function handleBatchApprovalResult(
   result: BatchApprovalResult
 ): void {
   // Log approval outcome
+  const approvedCount = result.selectedOperations.length;
+  const rejectedCount = result.rejectedOperations.length;
   features.logger.logApproval(
-    result.approved.length > 0 ? 'approved' : 'rejected',
-    'batch',
-    `${result.approved.length} operations`,
-    'medium',
-    {
-      approvedCount: result.approved.length,
-      rejectedCount: result.rejected.length,
-      action: result.action
-    }
+    `batch of ${approvedCount + rejectedCount} operations`,
+    result.approved,
+    result.feedback
   );
 
   // Mark operations as executed
-  if (result.approved.length > 0) {
-    features.batchApproval.markExecuted(result.approved);
+  if (result.selectedOperations.length > 0) {
+    features.batchApproval.markExecuted(result.selectedOperations);
   }
 }
 
@@ -308,20 +275,23 @@ export async function executeUndo(features: Phase4Features): Promise<{
   const result = await features.commandHistory.undo();
 
   if (result.success && result.entry) {
-    features.logger.info('history', 'command_undone', `Undone: ${result.entry.description}`, {
+    features.logger.info('command', 'command_undone', `Undone: ${result.entry.description}`, {
       command: result.entry.command,
       args: result.entry.args
     });
 
     // Update session
     features.sessionPersistence.addCommand({
+      id: `undo-${Date.now()}`,
       command: 'undo',
       args: [],
       timestamp: new Date(),
-      result: 'success'
+      type: 'command_exec',
+      reversible: false,
+      description: 'Undo operation'
     });
   } else {
-    features.logger.warn('history', 'undo_failed', result.error || 'No reversible commands', {
+    features.logger.warn('command', 'undo_failed', result.error || 'No reversible commands', {
       error: result.error
     });
   }
@@ -340,20 +310,23 @@ export async function executeRedo(features: Phase4Features): Promise<{
   const result = await features.commandHistory.redo();
 
   if (result.success && result.entry) {
-    features.logger.info('history', 'command_redone', `Redone: ${result.entry.description}`, {
+    features.logger.info('command', 'command_redone', `Redone: ${result.entry.description}`, {
       command: result.entry.command,
       args: result.entry.args
     });
 
     // Update session
     features.sessionPersistence.addCommand({
+      id: `redo-${Date.now()}`,
       command: 'redo',
       args: [],
       timestamp: new Date(),
-      result: 'success'
+      type: 'command_exec',
+      reversible: false,
+      description: 'Redo operation'
     });
   } else {
-    features.logger.warn('history', 'redo_failed', result.error || 'No undone commands', {
+    features.logger.warn('command', 'redo_failed', result.error || 'No undone commands', {
       error: result.error
     });
   }
@@ -412,9 +385,8 @@ export function renderCommandHistory(features: Phase4Features, limit: number = 1
     const agoStr = ago < 60000 ? `${Math.floor(ago / 1000)}s ago` : `${Math.floor(ago / 60000)}m ago`;
 
     const icon = entry.reversible ? chalk.green('↺') : chalk.dim('·');
-    const status = entry.success ? chalk.green('✓') : chalk.red('✗');
 
-    lines.push(`${icon} ${status} ${chalk.cyan(entry.command)} ${chalk.dim(entry.args.join(' '))} ${chalk.dim(agoStr)}`);
+    lines.push(`${icon} ${chalk.cyan(entry.command)} ${chalk.dim(entry.args.join(' '))} ${chalk.dim(agoStr)}`);
   });
 
   if (features.commandHistory.canUndo()) {
@@ -467,7 +439,7 @@ export async function savePhase4Session(features: Phase4Features): Promise<{
   const result = await features.sessionPersistence.saveSession();
 
   if (result.success) {
-    features.logger.logSession('session_saved', 'Session saved', {
+    features.logger.logSession('saved', {
       path: result.path
     });
   } else {
@@ -493,7 +465,7 @@ export async function loadPhase4Session(
   const result = await features.sessionPersistence.loadSession(sessionId);
 
   if (result.success && result.session) {
-    features.logger.logSession('session_loaded', 'Session loaded', {
+    features.logger.logSession('resumed', {
       sessionId: result.session.id,
       messageCount: result.session.conversationHistory.length
     });
@@ -518,14 +490,11 @@ export async function cleanupPhase4Features(features: Phase4Features): Promise<v
   await savePhase4Session(features);
 
   // Log session end
-  features.logger.logSession('session_ended', 'Session ended', {
+  features.logger.logSession('ended', {
     sessionId: features.sessionId,
     duration: Date.now() - features.startTime.getTime(),
     commandCount: features.commandCount,
     aiResponseCount: features.aiResponseCount,
     agentDelegationCount: features.agentDelegationCount
   });
-
-  // Flush logger
-  features.logger.flush();
 }

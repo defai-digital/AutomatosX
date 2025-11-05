@@ -395,11 +395,15 @@ function generateOperationSummary(operations: BatchOperation[]): Record<string, 
   operations.forEach(op => {
     // Count by type
     const typeKey = op.type.charAt(0).toUpperCase() + op.type.slice(1);
-    summary[typeKey]++;
+    if (typeKey in summary && summary[typeKey as keyof typeof summary] !== undefined) {
+      (summary[typeKey as keyof typeof summary] as number)++;
+    }
 
     // Count by risk
     const riskKey = op.risk.charAt(0).toUpperCase() + op.risk.slice(1) + ' risk';
-    summary[riskKey]++;
+    if (riskKey in summary && summary[riskKey as keyof typeof summary] !== undefined) {
+      (summary[riskKey as keyof typeof summary] as number)++;
+    }
   });
 
   return summary;

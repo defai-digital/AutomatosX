@@ -253,7 +253,7 @@ export class ProjectContextLoader {
     const sectionRegex = /##\s+Agent\s+Delegation\s+Rules[^\n]*\n([\s\S]*?)(?=\n##|$)/i;
     const match = markdown.match(sectionRegex);
 
-    if (!match) {
+    if (!match || !match[1]) {
       return rules;
     }
 
@@ -264,18 +264,21 @@ export class ProjectContextLoader {
     let lineMatch;
 
     while ((lineMatch = lineRegex.exec(section)) !== null) {
-      const taskType = lineMatch[1].trim();
-      const agentsText = lineMatch[3].trim(); // Group 3 now (group 2 is the arrow)
+      const taskType = lineMatch[1]?.trim() ?? '';
+      const agentsText = lineMatch[3]?.trim() ?? ''; // Group 3 now (group 2 is the arrow)
 
       // Split multiple agents: "@backend, @security"
-      const agents = agentsText.split(',').map(a => a.trim());
+      const agents = agentsText.split(',').map(a => a.trim()).filter(Boolean);
+      const defaultAgent = agents[0];
 
-      rules.push({
-        taskType,
-        patterns: [],  // TODO: Parse file patterns if specified
-        defaultAgent: agents[0],
-        autoReview: agents.length > 1
-      });
+      if (defaultAgent) {
+        rules.push({
+          taskType,
+          patterns: [],  // TODO: Parse file patterns if specified
+          defaultAgent,
+          autoReview: agents.length > 1
+        });
+      }
     }
 
     return rules;
@@ -296,13 +299,14 @@ export class ProjectContextLoader {
 
     while ((match = sectionRegex.exec(markdown)) !== null) {
       const section = match[2];
+      if (!section) continue;
 
       // Extract bullet points
       const bulletRegex = /^[-*]\s+(.+?)$/gm;
       let bulletMatch;
 
       while ((bulletMatch = bulletRegex.exec(section)) !== null) {
-        let rule = bulletMatch[1].trim();
+        let rule = bulletMatch[1]?.trim() ?? '';
 
         // Remove emoji if present
         rule = rule.replace(/^[⚠️❌✅✓⚡🔒]+\s*/, '');
@@ -337,12 +341,15 @@ export class ProjectContextLoader {
     }
 
     const section = match[2];
+    if (!section) {
+      return commands;
+    }
 
     // Extract from code block (```bash ... ```)
     const codeBlockRegex = /```(?:bash|sh|shell)?\n([\s\S]*?)```/;
     const codeMatch = section.match(codeBlockRegex);
 
-    if (codeMatch) {
+    if (codeMatch && codeMatch[1]) {
       const lines = codeMatch[1].split('\n');
 
       for (const line of lines) {
@@ -350,7 +357,7 @@ export class ProjectContextLoader {
         const cmdMatch = line.match(/^([^\s#]+(?:\s+[^\s#]+)*)\s*#?\s*(.*)$/);
         if (cmdMatch && cmdMatch[1]) {
           const cmd = cmdMatch[1].trim();
-          const desc = cmdMatch[2].trim();
+          const desc = cmdMatch[2]?.trim() ?? '';
 
           // Use command as key if no description, otherwise use description
           const key = desc || cmd;
@@ -370,13 +377,13 @@ export class ProjectContextLoader {
 
     // Try to find "Last updated:" line
     const lastUpdatedMatch = markdown.match(/>\s*Last\s+updated:\s*(.+?)$/im);
-    if (lastUpdatedMatch) {
+    if (lastUpdatedMatch && lastUpdatedMatch[1]) {
       metadata.lastUpdated = lastUpdatedMatch[1].trim();
     }
 
     // Try to find "Project:" line
     const projectMatch = markdown.match(/>\s*Project:\s*(.+?)$/im);
-    if (projectMatch) {
+    if (projectMatch && projectMatch[1]) {
       // Parse "my-app v1.0.0"
       const parts = projectMatch[1].trim().split(/\s+v/);
       metadata.name = parts[0];
@@ -387,7 +394,7 @@ export class ProjectContextLoader {
 
     // Try to extract from first H1
     const h1Match = markdown.match(/^#\s+(.+?)$/m);
-    if (h1Match && !metadata.name) {
+    if (h1Match && h1Match[1] && !metadata.name) {
       metadata.name = h1Match[1].replace(/Project Context for AutomatosX/i, '').trim();
     }
 

@@ -37,19 +37,28 @@ const environmentManager = new EnvironmentManager(process.cwd());
 const projectScaffolder = new ProjectScaffolder(process.cwd());
 
 /**
- * Help command - show available commands
+ * Help command - show available commands with progressive disclosure
  */
 const helpCommand: CommandHandler = {
   name: 'help',
   aliases: ['h', '?'],
   description: 'Show this help message',
-  async execute(_args, _context) {
+  usage: '[category]',
+  async execute(args, _context) {
+    // Import progressive help system
+    const { renderProgressiveHelp, renderCategoryHelp } = await import('./progressive-help.js');
     const commands = getAllCommands();
-    renderer.displayHelp(commands.map(cmd => ({
-      name: cmd.name,
-      description: cmd.description,
-      usage: cmd.usage
-    })));
+
+    if (args.length === 0) {
+      // Show main progressive help
+      const helpText = renderProgressiveHelp(commands);
+      console.log(helpText);
+    } else {
+      // Show category-specific help
+      const category = args.join(' ');
+      const categoryHelp = renderCategoryHelp(category, commands);
+      console.log(categoryHelp);
+    }
   }
 };
 

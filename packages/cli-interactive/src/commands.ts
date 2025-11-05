@@ -1877,3 +1877,12 @@ export async function routeCommand(
     renderer.displayError(`Command failed: ${(error as Error).message}`);
   }
 }
+
+/**
+ * Cleanup all module-level resources
+ * Called during REPL shutdown to prevent memory leaks
+ */
+export function cleanupCommands(): void {
+  // Close process manager (clears cleanup interval and event listeners)
+  processManager.close();
+}

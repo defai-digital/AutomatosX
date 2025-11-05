@@ -409,7 +409,9 @@ A: Just don't use it! Stick with `ax run`, `ax memory`, etc.
 
 ## License
 
-Apache 2.0 (same as AutomatosX)
+Elastic License 2.0 (same as AutomatosX)
+
+Copyright 2025 DEFAI Private Limited
 
 ---
 

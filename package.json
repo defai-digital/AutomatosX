@@ -131,7 +131,7 @@
     "ai-agents"
   ],
   "author": "AutomatosX Team",
-  "license": "Apache-2.0",
+  "license": "Elastic-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/defai-digital/automatosx.git"

@@ -15,7 +15,7 @@ import readline from 'readline';
 import ora from 'ora';
 import { ConversationManager } from './conversation.js';
 import { OutputRenderer } from './renderer.js';
-import { routeCommand } from './commands.js';
+import { routeCommand, cleanupCommands } from './commands.js';
 import { getProvider } from './provider-bridge.js';
 import { getAgentExecutor } from './agent-bridge.js';
 import type { AgentDelegation, REPLConfig, StreamEvent } from './types.js';
@@ -224,59 +224,66 @@ export class REPLManager {
   private setupHandlers(): void {
     // Handle line input
     this.rl.on('line', async (input: string) => {
-      const trimmed = input.trim();
+      try {
+        const trimmed = input.trim();
 
-      // Skip empty input
-      if (!trimmed) {
-        this.rl.prompt();
-        return;
-      }
+        // Skip empty input
+        if (!trimmed) {
+          this.rl.prompt();
+          return;
+        }
 
-      // P0 Feature: Intent detection and routing
-      let commandExecuted = false;
+        // P0 Feature: Intent detection and routing
+        let commandExecuted = false;
 
-      // 1. Check for slash commands (traditional mode)
-      if (trimmed.startsWith('/')) {
-        await this.handleCommand(trimmed);
-        commandExecuted = true;
-      }
-      // 2. P0 Feature: Check for natural language intent
-      else if (this.enableP0Features) {
-        const intent = classifyIntent(trimmed);
-
-        if (intent) {
-          // Display what we detected
-          this.renderer.displayInfo(`→ Detected: ${intent.reason}`);
-          console.log('');
-
-          // Route to command handler
-          const parts = ['/' + intent.command, ...intent.args].join(' ');
-          await this.handleCommand(parts);
-
-          this.lastCommand = intent.command;
+        // 1. Check for slash commands (traditional mode)
+        if (trimmed.startsWith('/')) {
+          await this.handleCommand(trimmed);
           commandExecuted = true;
-        } else {
-          // No intent detected - treat as conversation
+        }
+        // 2. P0 Feature: Check for natural language intent
+        else if (this.enableP0Features) {
+          const intent = classifyIntent(trimmed);
+
+          if (intent) {
+            // Display what we detected
+            this.renderer.displayInfo(`→ Detected: ${intent.reason}`);
+            console.log('');
+
+            // Route to command handler
+            const parts = ['/' + intent.command, ...intent.args].join(' ');
+            await this.handleCommand(parts);
+
+            this.lastCommand = intent.command;
+            commandExecuted = true;
+          } else {
+            // No intent detected - treat as conversation
+            await this.handlePrompt(trimmed);
+          }
+        }
+        // 3. Fallback to normal conversation
+        else {
           await this.handlePrompt(trimmed);
         }
-      }
-      // 3. Fallback to normal conversation
-      else {
-        await this.handlePrompt(trimmed);
-      }
 
-      // P0 Feature: Show command palette after responses
-      if (this.enableP0Features && commandExecuted) {
-        this.showCommandPalette();
-      }
+        // P0 Feature: Show command palette after responses
+        if (this.enableP0Features && commandExecuted) {
+          this.showCommandPalette();
+        }
 
-      // P0 Feature: Show contextual help
-      if (this.enableP0Features) {
-        this.showContextualHelpTip();
-      }
+        // P0 Feature: Show contextual help
+        if (this.enableP0Features) {
+          this.showContextualHelpTip();
+        }
 
-      // Show prompt for next input
-      this.rl.prompt();
+        // Show prompt for next input
+        this.rl.prompt();
+      } catch (error) {
+        // Bug #47 fix: Catch any unhandled errors to prevent REPL crash
+        this.renderer.displayError(`Unexpected error: ${(error as Error).message}`);
+        this.isProcessing = false; // Ensure flag is reset
+        this.rl.prompt();
+      }
     });
 
     // Handle Ctrl+C (SIGINT)
@@ -317,19 +324,22 @@ export class REPLManager {
   private async handlePrompt(input: string): Promise<void> {
     this.isProcessing = true;
 
-    // Add user message to conversation
-    this.conversation.addMessage('user', input);
+    try {
+      // Add user message to conversation
+      this.conversation.addMessage('user', input);
 
-    // Check for agent delegation
-    const delegation = this.parseAgentDelegation(input);
+      // Check for agent delegation
+      const delegation = this.parseAgentDelegation(input);
 
-    if (delegation) {
-      await this.handleAgentDelegation(delegation);
-    } else {
-      await this.handleAIResponse(input);
+      if (delegation) {
+        await this.handleAgentDelegation(delegation);
+      } else {
+        await this.handleAIResponse(input);
+      }
+    } finally {
+      // Bug #47 fix: Always reset isProcessing flag, even if error occurs
+      this.isProcessing = false;
     }
-
-    this.isProcessing = false;
   }
 
   /**
@@ -821,6 +831,9 @@ export class REPLManager {
 
     // Stop auto-save
     this.conversation.stopAutoSave();
+
+    // Cleanup command resources (process manager, etc.)
+    cleanupCommands();
 
     // Display goodbye
     this.renderer.displayGoodbye();

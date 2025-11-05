@@ -19,7 +19,7 @@
     "conversational"
   ],
   "author": "AutomatosX Team",
-  "license": "Apache-2.0",
+  "license": "Elastic-2.0",
   "dependencies": {
     "chalk": "^5.3.0",
     "cli-highlight": "^2.1.11",

@@ -129,8 +129,12 @@ describe('Setup Command', () => {
     });
 
     it('should handle error when directory creation fails', async () => {
-      // Try to init in a non-existent parent directory that can't be created
-      const invalidPath = '/root/cannot-create-this-path-' + Date.now();
+      // Use a platform-specific invalid path
+      // On Windows: Use reserved device name
+      // On Unix: Use path under /root (permission denied)
+      const invalidPath = process.platform === 'win32'
+        ? 'CON:\\invalid-path-' + Date.now()  // CON is a reserved name on Windows
+        : '/root/cannot-create-this-path-' + Date.now();
 
       await expect(
         setupCommand.handler({ path: invalidPath, force: false, _: [], $0: '' })

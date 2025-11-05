@@ -137,10 +137,10 @@ function renderUnifiedDiff(
   let contextCount = 0;
   let inHunk = false;
 
-  changes.forEach((change) => {
-    const changeLines = change.value.split('\n').filter(l => l !== '' || change.value.endsWith('\n'));
+  changes.forEach((change: Change) => {
+    const changeLines = change.value.split('\n').filter((l: string) => l !== '' || change.value.endsWith('\n'));
 
-    changeLines.forEach((line) => {
+    changeLines.forEach((line: string) => {
       if (change.added) {
         // Addition
         inHunk = true;
@@ -196,10 +196,10 @@ function renderSideBySideDiff(
   let oldLineNum = 1;
   let newLineNum = 1;
 
-  changes.forEach((change) => {
-    const changeLines = change.value.split('\n').filter(l => l !== '');
+  changes.forEach((change: Change) => {
+    const changeLines = change.value.split('\n').filter((l: string) => l !== '');
 
-    changeLines.forEach((line) => {
+    changeLines.forEach((line: string) => {
       if (change.added) {
         const lineNumStr = options.showLineNumbers ? `    ${newLineNum}`.padStart(8) + ' ' : '';
         lines.push(lineNumStr + (options.colorize ? chalk.green(`+ ${line}`) : `+ ${line}`));
@@ -234,7 +234,7 @@ export function calculateDiffStats(diffs: FileDiff[]): DiffStats {
       deletions += diff.oldContent.split('\n').length;
     } else {
       const changes = diffLines(diff.oldContent, diff.newContent);
-      changes.forEach(change => {
+      changes.forEach((change: Change) => {
         if (change.added) {
           additions += change.count || 0;
         } else if (change.removed) {

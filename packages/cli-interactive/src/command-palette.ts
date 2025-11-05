@@ -7,6 +7,7 @@
 
 import type { CommandHandler, Message } from './types.js';
 import chalk from 'chalk';
+import { execSync } from 'child_process';
 
 export interface QuickAction {
   label: string;
@@ -241,7 +242,7 @@ export function detectPaletteContext(messages: Message[]): PaletteContext {
     hasTests: detectTests(recentText),
     hasBuild: detectBuild(recentText),
     activeAgent: detectActiveAgent(recentMessages),
-    currentBranch: null // TODO: Detect from git context
+    currentBranch: getCurrentGitBranch()
   };
 }
 
@@ -314,6 +315,25 @@ function detectActiveAgent(messages: Message[]): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Helper: Get current git branch
+ * Returns null if not in a git repository or if git is not available
+ */
+function getCurrentGitBranch(): string | null {
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 1000,
+      cwd: process.cwd()
+    }).trim();
+    return branch || null;
+  } catch {
+    // Not in a git repository, git not installed, or command failed
+    return null;
+  }
 }
 
 /**

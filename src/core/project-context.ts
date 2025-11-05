@@ -259,13 +259,20 @@ export class ProjectContextLoader {
 
     const section = match[1];
 
-    // Parse lines like: "- Backend changes → @backend"
+    // Parse lines like: "- Backend changes → @backend" or "- Backend changes (*.ts, api/*) → @backend"
     const lineRegex = /^[-*]\s+(.+?)\s+(→|->)+\s+(.+?)$/gm;
     let lineMatch;
 
     while ((lineMatch = lineRegex.exec(section)) !== null) {
-      const taskType = lineMatch[1]?.trim() ?? '';
-      const agentsText = lineMatch[3]?.trim() ?? ''; // Group 3 now (group 2 is the arrow)
+      const taskTypeRaw = lineMatch[1]?.trim() ?? '';
+      const agentsText = lineMatch[3]?.trim() ?? ''; // Group 3 (group 2 is the arrow)
+
+      // Extract file patterns from parentheses: "Backend changes (*.ts, api/*)"
+      const patternMatch = taskTypeRaw.match(/^(.+?)\s*\(([^)]+)\)$/);
+      const taskType = patternMatch ? patternMatch[1]?.trim() : taskTypeRaw;
+      const patterns = patternMatch
+        ? patternMatch[2]?.split(',').map(p => p.trim()).filter(Boolean) || []
+        : [];
 
       // Split multiple agents: "@backend, @security"
       const agents = agentsText.split(',').map(a => a.trim()).filter(Boolean);
@@ -274,7 +281,7 @@ export class ProjectContextLoader {
       if (defaultAgent) {
         rules.push({
           taskType,
-          patterns: [],  // TODO: Parse file patterns if specified
+          patterns,
           defaultAgent,
           autoReview: agents.length > 1
         });

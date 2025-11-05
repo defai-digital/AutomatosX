@@ -723,18 +723,15 @@ export abstract class BaseProvider implements Provider {
 
         const versionArg = this.config.versionArg || '--version';
 
-        // FIX Bug #141: Use platform-specific approach to avoid shell:true security issue
-        // Windows .cmd/.bat files need special handling, but we can do it safely
+        // FIX Bug #10: Windows npm packages are .cmd files that require shell
+        // Previous approach (Bug #141 fix) tried to append .cmd, but this doesn't work
+        // when command is validated to not contain .cmd extension
+        // Solution: Use shell:true on Windows (safe for version detection with sanitized input)
         const isWindows = process.platform === 'win32';
-        const commandToExecute = isWindows && !sanitizedCommand.endsWith('.exe')
-          ? (sanitizedCommand.endsWith('.cmd') || sanitizedCommand.endsWith('.bat')
-             ? sanitizedCommand
-             : `${sanitizedCommand}.cmd`) // Try .cmd first
-          : sanitizedCommand;
 
-        const proc = spawn(commandToExecute, [versionArg], {
+        const proc = spawn(sanitizedCommand, [versionArg], {
           stdio: 'pipe',
-          shell: false, // FIXED Bug #141: Removed shell:true for security
+          shell: isWindows, // FIX Bug #10: Enable shell on Windows for .cmd wrappers
         });
 
         processManager.register(proc, `${command}-version-check`);

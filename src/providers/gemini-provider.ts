@@ -206,12 +206,12 @@ export class GeminiProvider extends BaseProvider {
         // Only allow whitelisted variables to reach subprocess
         const filteredEnv = this.filterEnvironment(process.env);
 
-        // Determine if shell is needed (only on Windows for .cmd/.bat files)
+        // Determine if shell is needed (Windows npm packages use .cmd wrappers)
+        // FIX Bug #10: Enable shell for ALL Windows commands, not just .cmd/.bat
+        // Rationale: npm global packages on Windows are installed as .cmd files,
+        // but config validation doesn't allow .cmd extension in command field
         const isWindows = platform() === 'win32';
-        const needsShell = isWindows && (
-          this.config.command.endsWith('.cmd') ||
-          this.config.command.endsWith('.bat')
-        );
+        const needsShell = isWindows;
 
         let child: ReturnType<typeof spawn>;
         try {

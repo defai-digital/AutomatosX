@@ -231,13 +231,17 @@ export class OpenAIProvider extends BaseProvider {
       // This avoids shell parsing errors when prompt contains special characters,
       // quotes, newlines, or code examples
 
+      // FIX Bug #10: Windows npm packages require shell:true
+      const isWindows = process.platform === 'win32';
+
       let child: ReturnType<typeof spawn>;
       try {
         // BUG FIX (v5.12.2): Use shell:false to prevent command injection and tokenization issues
+        // FIX Bug #10: Except on Windows where .cmd wrappers require shell:true
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
           env: process.env,
-          shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
+          shell: isWindows, // FIX Bug #10: Enable shell on Windows for .cmd wrappers
         });
       } catch (error) {
         reject(this.enhanceError(error as Error));
@@ -598,13 +602,17 @@ export class OpenAIProvider extends BaseProvider {
       // NOTE: Prompt is now passed via stdin instead of command-line argument
       // This avoids shell parsing errors when prompt contains special characters
 
+      // FIX Bug #10: Windows npm packages require shell:true
+      const isWindows = process.platform === 'win32';
+
       let child: ReturnType<typeof spawn>;
       try {
         // BUG FIX (v5.12.2): Use shell:false to prevent command injection and tokenization issues
+        // FIX Bug #10: Except on Windows where .cmd wrappers require shell:true
         child = spawn(this.config.command, args, {
           stdio: ['pipe', 'pipe', 'pipe'], // Enable stdin for prompt input
           env: process.env,
-          shell: false, // FIX: Prevents shell parsing issues and security vulnerabilities
+          shell: isWindows, // FIX Bug #10: Enable shell on Windows for .cmd wrappers
         });
       } catch (error) {
         reject(this.enhanceError(error as Error));

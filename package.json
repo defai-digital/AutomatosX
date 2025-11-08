@@ -1,0 +1,63 @@
+{
+  "name": "automatosx-v2",
+  "version": "2.0.0",
+  "description": "Production-ready code intelligence for TypeScript & Python - Fast search, smart indexing, and powerful CLI",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "bin": {
+    "ax": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build:rescript": "npm run build --workspace=@automatosx/rescript-core",
+    "build:typescript": "tsc",
+    "build": "npm run build:rescript && npm run build:typescript",
+    "build:cli": "npm run build:typescript && chmod +x dist/cli/index.js",
+    "clean": "rm -rf packages/*/lib packages/*/node_modules node_modules dist",
+    "test": "vitest",
+    "test:runtime": "vitest run src/__tests__/runtime",
+    "bench": "vitest bench --run",
+    "dev": "npm run dev --workspace=@automatosx/rescript-core",
+    "cli": "npm run build:cli && node dist/cli/index.js"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^10.0.0",
+    "tree-sitter-cli": "^0.25.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@derekstride/tree-sitter-sql": "^0.3.11",
+    "better-sqlite3": "^11.10.0",
+    "chalk": "^5.6.2",
+    "chokidar": "^4.0.3",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.2",
+    "inquirer": "^9.3.8",
+    "ora": "^9.0.0",
+    "tree-sitter": "^0.21.1",
+    "tree-sitter-c-sharp": "^0.21.3",
+    "tree-sitter-cpp": "^0.21.0",
+    "tree-sitter-go": "^0.21.2",
+    "tree-sitter-html": "^0.23.2",
+    "tree-sitter-java": "^0.21.0",
+    "tree-sitter-kotlin": "^0.3.8",
+    "tree-sitter-php": "^0.23.9",
+    "tree-sitter-python": "^0.21.0",
+    "tree-sitter-ruby": "^0.21.0",
+    "tree-sitter-rust": "^0.21.0",
+    "tree-sitter-swift": "^0.5.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "uuid": "^13.0.0",
+    "zod": "^4.1.12"
+  }
+}

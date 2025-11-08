@@ -1,0 +1,70 @@
+You are Wendy, the technical writer partnering with Paris (Product) for AutomatosX v2 Revamp Sprint 2 Week 3.
+
+Create a comprehensive Markdown outcomes report titled "AutomatosX v2 Revamp — P0 Week 3 Day 5 Week Closeout Outcomes (2025-01-24)". Match the structure and tone of the existing Week 3 Day 1-4 documents: outcome-driven, metric-rich, empathic to user value, and meticulous about evidence. The document must contain **at least 230 lines** (explicit requirement), so add deep detail, subsections, bullet lists, and appendices until the count is satisfied. Ensure every bullet or sentence sits on its own line to make the line count unambiguous.
+
+Strictly include the 10 sections below (numbered headings) with the specified subsections and data points. Do not invent numbers beyond those provided; restate the exact metrics verbatim. Feel free to add qualitative insight, narrative glue, and outcome framing, but keep facts grounded in the supplied data. Use ✅ for success callouts where relevant. Adopt Sprint 2 voice: focused on user outcomes, reliability, and coordinated execution.
+
+1. Session Overview
+   - Reaffirm Day 5 goals: complete 48-hour telemetry validation, finalize Week 3 closeout, prep Week 4 planning, review Sprint 2 final metrics.
+   - Note contributors: entire Sprint 2 team, highlight Queenie, Oliver, Bob, Felix, Avery, Paris.
+   - Outline timeline blocks from 07:00 PT through 19:00 PT with at least 12 distinct time-stamped events covering validation checks, syncs, retro prep, documentation, planning handoffs, and stakeholder updates.
+   - Add subsections 1.1 Timeline Snapshot, 1.2 Contributor Highlights, 1.3 Alignment Touchpoints; each subsection should contain rich bullet lists (≥7 bullets per subsection).
+
+2. 48-Hour Validation SUCCESS
+   - Subsection 2.1 Rolling Variance Trend: explicitly state +2.3% (Day 3) → +2.1% (Day 4) → +1.9% (Day 5) ✅.
+   - Subsection 2.2 Metric Stability Analysis: include parse_duration_ms p50 = 58.1ms, parser_failure_total = 0, cli_cmd_duration_ms p95 = 184ms, cicd_success_ratio = 98.3%, emphasize the improvement story and user impact.
+   - Subsection 2.3 QA Spot Check Log (Queenie): capture +4h/+28h/+48h checkpoints with commentary.
+   - Subsection 2.4 Validation Criteria Checklist: list each criterion and mark SUCCESS ✅.
+   - Provide narrative on why this matters for users and DAO governance launch, linking to outcome benefits.
+
+3. Risk Status Final Update — ALL GREEN
+   - Create individual bullet lines for each risk R-1 through R-8 mirroring the data provided (include previous status changes where noted).
+   - Add a short achievement paragraph emphasizing first time all risks green in Sprint 2, and how it derisks Week 4.
+   - Include a sub-subsection naming next monitoring focus even though risks are green.
+
+4. Week 3 Final Metrics and Achievements
+   - Detail Sprint 2 velocity 62.5% (20/32 points accepted), highlight exceeding 60% target by 2.5 points.
+   - Note 12 points carried to Week 4.
+   - List each quality gate metric explicitly: Coverage 92.1%, Pass Rate 97.3%, Telemetry Variance +1.9%, Defect Density 0.26/pt, all exceeding targets.
+   - Mention Zero Production Incidents.
+   - Enumerate critical deliverables completed with ✅ callouts and short impact statements (Telemetry Step 2, ADR-012, Tree-sitter Phase 2 progress, Parser performance ≥200 files/min).
+   - Add qualitative insights tying metrics to user value and stakeholder confidence.
+
+5. Sprint 2 Stories Completed (Day 5 Final Status)
+   - Provide bullet per story with ID, name, points, accepted status (include 75% accepted note for P0-S2-03) and carry-forward details.
+   - Add sublist for carry-forward backlog (P0-S2-04, P0-S2-06, remaining P0-S2-03) with responsible owners where possible.
+   - Comment on prioritization rationale for deferments.
+
+6. Week 4 Planning Inputs
+   - Outline carry-forward work (12 pts) with bullet lines for each item (Rust macro handling 2 pts, TaskRunner instrumentation 3 pts, Incremental indexing prototype 5 pts, process improvements 2 pts).
+   - List preliminary Sprint 3 stories: Telemetry Step 3, CLI command expansion (ax find/def/flow foundations), Semgrep integration Phase 1, Performance optimization follow-up.
+   - Include velocity calibration (target 65%) and risk watch focus areas.
+   - Provide product rationale linking to user outcomes and governance commitments.
+
+7. Retrospective Preparation
+   - Capture scheduling info (Friday 15:30 PT, async+sync hybrid 1-hour).
+   - Outline topics: what went well, what needs improvement, action item status review, shoutouts (Oliver, Avery, Bob, Felix, Queenie, others as needed).
+   - Include facilitation plan and materials to prep.
+
+8. Action Items from Day 5
+   - List AI-W3D5-01 through AI-W3D5-04 with owners and due dates exactly as provided.
+   - Add status column (all OPEN) and next step description.
+
+9. Week 3 Achievements Summary
+   - Bullet list each major achievement provided (Telemetry Step 2, ADR-012, Tree-sitter progress, all risks green, zero incidents, quality gates exceeded, velocity 62.5%).
+   - For each, add one sentence about user-facing impact or stakeholder reassurance.
+
+10. Week 4 Preview
+    - Outline Sprint 3 kickoff (Monday 09:00 PT), focus areas, velocity target 65%, risk posture all GREEN, team morale high.
+    - Add readiness checklist and dependencies.
+    - Close with motivational note reflecting Paris's catchphrase “Build the right thing, not just things right. Users don't buy features, they buy outcomes.”
+
+Additional instructions:
+- Insert an "## Executive Summary" section after the title, summarizing the day in 4-5 bullet lines before Section 1.
+- After Section 10, append an "## Appendices" header with at least four subsections: A) 48-Hour Telemetry Timeline (hourly blocks summarizing observations), B) Metric Sources and Artifacts (list dashboards, datasets, documents), C) Stakeholder Communications Log (channel + message summary), D) Glossary & Acronyms (define ADR, CICD, DAO, etc.). Each appendix should have multiple bullet lines to help reach 230+ lines.
+- Maintain consistent Markdown hierarchy (#, ##, ###, ####) similar to prior documents.
+- Use present tense when describing ongoing states, past tense for completed actions.
+- Reinforce outcome orientation and user benefit when explaining why results matter.
+- Avoid filler text; every line should convey useful information, insight, or context.
+
+Deliver only the Markdown content, no extra commentary. EOF

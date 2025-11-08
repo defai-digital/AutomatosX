@@ -1,0 +1,44 @@
+# P0 Week 1 Day 2 – Feature Preservation Test Mapping Template
+
+**Usage:** Complete this document live during the Day 2 alignment workshop, then maintain it as the single source of truth for the regression suite mapping. Update after every material change to test scope or coverage.
+
+## Instructions for Completion
+1. For each checklist item, capture the current v1 coverage, v2 requirements, and planned automation across unit, integration/contract, and end-to-end scopes.  
+2. Record clear success criteria and measurable outcomes that define "feature preserved."  
+3. Assign an accountable owner and target completion date aligned to the Week 1 Day 5 regression suite milestone.  
+4. Rate residual risk (Likelihood / Impact) and describe mitigation actions.  
+5. Review and update the Gap Analysis and Risk Summary sections at the end of every daily standup.
+
+## Traceability Matrix
+| Item # | Checklist Item | Feature Description | v1 Coverage Status | v2 Test Requirements | Unit Test Candidates | Integration / Contract Tests | End-to-End / CLI Tests | Success Criteria | Owner (Proposed) | Target Date | Risk (L/I) | Mitigation Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Multi-provider routing with automatic fallback | Provider router shifts traffic across providers automatically on failure/quota events. | Integration: `provider-router.integration.test.ts` validates 5xx fallback.<br>Manual: Chaos playbook covers provider outage. | Add concurrency + priority weighting scenarios; verify telemetry counters and cooldowns. | `router-fallback.spec.ts` with mocked failure matrix. | Contract test using mock HTTP providers with error injection and quota exhaustion. | `ax run backend "smoke"` with forced 429 -> fallback provider, assert success + telemetry. | Fallback occurs within 2 attempts; telemetry increments `fallback_count`; no user-visible failure. | Bob | W1D5 | M/H | Extend chaos suite nightly; add provider health dashboard alerts. |
+| 2 | Agent execution with delegation and resumability | Agents delegate tasks with resumable state across interruptions. | E2E: `delegation-flow.e2e.test.ts` covers single-level delegation.<br>Unit: State machine tests for AgentExecutor. | Cover nested delegation (depth ≥3), resume after crash, and manual suspension. | `delegation-state-machine.spec.ts` for resume tokens, timeout handling. | Contract test verifying executor API persists checkpoints across restarts. | CLI scenario: multi-agent workflow paused/resumed via `ax session resume`. | Delegations resume without data loss; resume latency <30s; audit log captures state transitions. | Queenie & Avery | W1D5 | M/H | Simulate crash recovery in CI; expand checkpoint schema validation. |
+| 3 | Memory search (keyword + vector) with FTS5 + sqlite-vec | Unified memory search returns consistent results for keyword/vector queries. | Unit: `fts5-memory.test.ts` (keyword).<br>Manual: Vector spot checks in staging. | Automate vector precision tests; validate hybrid query fallback; ensure migrations intact. | `memory-search.spec.ts` covering tokenizer edge cases and vector scoring. | Integration test hitting sqlite-vec extension with seeded corpus; compare golden results. | CLI `ax memory search "keyword"` vs vector query, diff expected hits. | Precision/recall variance ≤5% vs v1 baseline; migrations succeed with no data loss. | Queenie & Data Partner | W1D5 | H/H | Create golden dataset; run nightly diff; add alert on recall drop. |
+| 4 | Checkpoint/resume for long-running tasks | Long-running workflows capture checkpoints and resume after interruptions. | E2E: Manual QA scripts covering 60+ minute runs.<br>Unit: Partial coverage of checkpoint serializer. | Automate checkpoint persistence tests; validate resume after upgrade; cover partial failures. | `checkpoint-serializer.spec.ts` with schema evolution tests. | Service test for checkpoint DAO with forced failures and retries. | CLI workflow executing >15 min job resumed via `ax checkpoint resume`. | Resume success rate 100% in test runs; checkpoint age monitored; telemetry logs resume events. | Avery | W1D5 | M/H | Build synthetic long-run tasks; use fault injection to simulate network loss. |
+| 5 | Spec-driven workflows with parallel execution | Declarative specs execute parallel branches with deterministic outcomes. | Integration: `workflow-engine.integration.test.ts` covers sequential flows.<br>No automated parallel coverage. | Add parallel branch validation, partial failure handling, and ordering guarantees. | `workflow-spec-parser.spec.ts` for parallel constructs. | Contract test verifying orchestration engine handles parallel DAG with retries. | CLI spec file running 3 parallel branches, verifying outputs and metrics. | Parallel branches complete within SLA; retries honored; telemetry captures branch outcomes. | Bob | W1D5 | M/H | Introduce synthetic spec fixtures; monitor execution graph metrics. |
+| 6 | Configuration validation and feature flags | Config schema and feature flags enforce guardrails across teams. | Unit: `config-validator.spec.ts` ensures schema.<br>Manual toggles tested ad hoc. | Automate flag enable/disable flows; validate config drift detection; enforce rollback hooks. | `feature-flag-evaluator.spec.ts` covering edge toggles. | Contract test with config loader + remote override service. | CLI `ax config show` vs toggled runs; verify gating behaviours. | Flag toggles propagate within 5 min; config validation blocks invalid deploys; alerts on drift. | Stan | W1D4 | M/M | Implement config snapshot diffing; add canary flag tests in CI. |
+| 7 | MCP server integration and tool execution | MCP servers register tools and execute safely within constraints. | Integration: `mcp-adapter.integration.test.ts` basic command coverage. | Extend to permission failures, timeouts, tool version drift, and sandbox boundaries. | `mcp-tool-runner.spec.ts` with mocked capability matrix. | Contract tests using MCP stub server with success/failure combos. | CLI `ax tool run` executing sample MCP sequence including negative case. | Success, failure, timeout paths handled gracefully; telemetry captures tool usage. | Bob & DevOps | W1D5 | M/M | Add sandboxed MCP stub to CI; monitor timeout metrics. |
+| 8 | CLI command parity (26 existing commands) | v2 CLI matches v1 command surface and options. | Snapshot diff script; smoke tests for top 5 commands. | Automate all commands; verify flags/options; validate help text. | `command-registry.spec.ts` ensuring registration completeness. | CLI contract tests comparing command metadata JSON to baseline. | Full CLI tour script invoking all commands with sample inputs. | 26/26 commands pass; help text diff shows no regressions; telemetry parity within ±5%. | Frank & Stan | W1D5 | M/H | Maintain baseline snapshots; run CLI tour nightly on macOS/Linux. |
+| 9 | Workspace management and file operations | Workspace manager enforces path security, CRUD ops, and cleanup. | Unit: Path resolver tests; limited e2e coverage. | Add symlink edge cases, concurrent writes, and temp workspace lifecycle. | `workspace-manager.spec.ts` covering ACL rules. | Integration test executing workspace CRUD via API. | CLI workspace scenario (create/edit/delete) verifying security enforcement. | No unauthorized path access; cleanup occurs within SLA; audit logs emitted. | Stan & Queenie | W1D4 | M/M | Add filesystem chaos suite; monitor audit log coverage. |
+| 10 | Cost tracking and telemetry | Track provider usage, fallback costs, and aggregate spend. | Manual reports cross-referencing billing exports. | Automate telemetry validation, alert thresholds, and historical comparisons. | `cost-aggregator.spec.ts` verifying calculations. | Integration test ingesting synthetic billing data across providers. | CLI cost report command vs expected totals; dashboard comparison. | Cost variance ≤5% vs golden dataset; alerts fire on anomaly; dashboard refreshed daily. | Avery & DevOps | W1D5 | M/H | Build synthetic billing feeds; integrate with observability QA dashboards. |
+
+## Gap Analysis Log
+| Gap ID | Checklist Item | Description of Gap | Impact (Qual/Quant) | Owner | Due Date | Status / Notes |
+|---|---|---|---|---|---|---|
+| GAP-01 |  |  |  |  |  |  |
+| GAP-02 |  |  |  |  |  |  |
+| GAP-03 |  |  |  |  |  |  |
+
+_Add rows as needed. Update status daily; link to Jira tickets or ADRs when applicable._
+
+## Risk Summary & Triggers
+- **Residual Risk Assessment:** For each item, review the Risk (L/I) column and document triggers that will prompt escalation (e.g., telemetry variance >5%, flaky rate >2 runs).  
+- **Trigger Log Template:**
+
+| Checklist Item | Trigger Condition | Monitoring Source | Escalation Path | Last Reviewed |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
+> Maintain this template under version control; treat it as a living artifact that reflects the health of our P0 feature preservation effort.
+

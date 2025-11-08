@@ -1,0 +1,50 @@
+name: Runtime CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore ReScript cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/rescript-core/lib/bs
+            packages/rescript-core/.rescript
+          key: ${{ runner.os }}-rescript-${{ hashFiles('packages/rescript-core/rescript.json', 'packages/rescript-core/src/**/*.res') }}
+          restore-keys: |
+            ${{ runner.os }}-rescript-
+
+      - name: Build ReScript runtime
+        run: npm run build:rescript
+
+      - name: Build TypeScript artifacts
+        run: npm run build:typescript
+
+      - name: Runtime harness tests
+        run: npm run test:runtime -- --runInBand
+
+      - name: Full test suite
+        run: npm test -- --runInBand

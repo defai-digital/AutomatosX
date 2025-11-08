@@ -1,0 +1,25 @@
+{
+  "name": "@automatosx/rescript-core",
+  "version": "2.0.0-alpha.0",
+  "description": "ReScript core runtime for AutomatosX v2",
+  "main": "./lib/js/src/Index.bs.js",
+  "types": "./lib/js/src/Index.bs.d.ts",
+  "scripts": {
+    "build": "rescript",
+    "clean": "rescript clean",
+    "dev": "rescript build -w"
+  },
+  "keywords": [
+    "rescript",
+    "automatosx",
+    "state-machine",
+    "workflow"
+  ],
+  "dependencies": {
+    "@rescript/core": "^1.1.0"
+  },
+  "devDependencies": {
+    "rescript": "11.0.1",
+    "gentype": "^4.5.0"
+  }
+}

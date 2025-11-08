@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced HTML5 features demonstration">
+    <meta name="keywords" content="HTML5, semantic, accessibility, SEO">
+    <meta property="og:title" content="Advanced HTML Demo">
+    <meta property="og:description" content="Demonstrating advanced HTML patterns">
+    <meta property="og:image" content="preview.jpg">
+    <title>Advanced HTML5 Features</title>
+
+    <!-- Multiple Stylesheets -->
+    <link rel="stylesheet" href="normalize.css">
+    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="theme.css" media="(prefers-color-scheme: dark)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js" defer></script>
+    <script src="components.js" type="module"></script>
+</head>
+<body>
+    <!-- Skip to main content (accessibility) -->
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <!-- Application Shell -->
+    <div id="app" class="app-container" data-state="active">
+        <!-- Semantic Header with Navigation -->
+        <header role="banner" class="site-header">
+            <div class="header-wrapper">
+                <a href="/" class="logo" aria-label="Home">
+                    <img src="logo.svg" alt="Company Logo" width="120" height="40">
+                </a>
+
+                <nav role="navigation" aria-label="Main navigation">
+                    <button id="menu-toggle" class="menu-btn" aria-expanded="false" aria-controls="nav-menu">
+                        <span class="sr-only">Toggle menu</span>
+                        <span class="hamburger"></span>
+                    </button>
+                    <ul id="nav-menu" class="nav-menu" role="menubar">
+                        <li role="none"><a href="#home" role="menuitem">Home</a></li>
+                        <li role="none"><a href="#products" role="menuitem">Products</a></li>
+                        <li role="none"><a href="#services" role="menuitem">Services</a></li>
+                        <li role="none"><a href="#about" role="menuitem">About</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main" role="main">
+            <!-- Hero Section with Picture Element -->
+            <section class="hero" aria-labelledby="hero-heading">
+                <picture>
+                    <source media="(min-width: 1200px)" srcset="hero-large.webp" type="image/webp">
+                    <source media="(min-width: 768px)" srcset="hero-medium.webp" type="image/webp">
+                    <source media="(min-width: 1200px)" srcset="hero-large.jpg">
+                    <source media="(min-width: 768px)" srcset="hero-medium.jpg">
+                    <img src="hero-small.jpg" alt="Hero background" loading="lazy">
+                </picture>
+                <div class="hero-content">
+                    <h1 id="hero-heading">Advanced Web Technologies</h1>
+                    <p>Exploring modern HTML5 capabilities</p>
+                </div>
+            </section>
+
+            <!-- Article with Structured Data -->
+            <article itemscope itemtype="https://schema.org/Article">
+                <header>
+                    <h2 itemprop="headline">Understanding Semantic HTML</h2>
+                    <p itemprop="description">A deep dive into HTML5 semantic elements</p>
+                    <time itemprop="datePublished" datetime="2025-01-15">January 15, 2025</time>
+                    <address itemprop="author" itemscope itemtype="https://schema.org/Person">
+                        By <span itemprop="name">John Doe</span>
+                    </address>
+                </header>
+                <div itemprop="articleBody">
+                    <p>Semantic HTML provides meaning to web content...</p>
+                </div>
+            </article>
+
+            <!-- Data Tables -->
+            <section aria-labelledby="data-heading">
+                <h2 id="data-heading">Browser Support Matrix</h2>
+                <table class="data-table" role="grid">
+                    <caption>HTML5 Feature Support Across Browsers</caption>
+                    <thead>
+                        <tr role="row">
+                            <th scope="col" role="columnheader">Feature</th>
+                            <th scope="col" role="columnheader">Chrome</th>
+                            <th scope="col" role="columnheader">Firefox</th>
+                            <th scope="col" role="columnheader">Safari</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr role="row">
+                            <th scope="row" role="rowheader">CSS Grid</th>
+                            <td role="gridcell"><span aria-label="Supported">✓</span></td>
+                            <td role="gridcell"><span aria-label="Supported">✓</span></td>
+                            <td role="gridcell"><span aria-label="Supported">✓</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Interactive Elements -->
+            <section aria-labelledby="interactive-heading">
+                <h2 id="interactive-heading">Interactive Components</h2>
+
+                <!-- Details/Summary -->
+                <details class="accordion">
+                    <summary>Frequently Asked Questions</summary>
+                    <div class="accordion-content">
+                        <dl>
+                            <dt>What is semantic HTML?</dt>
+                            <dd>HTML that uses tags with intrinsic meaning.</dd>
+                            <dt>Why is accessibility important?</dt>
+                            <dd>To ensure everyone can use your website.</dd>
+                        </dl>
+                    </div>
+                </details>
+
+                <!-- Dialog (Modal) -->
+                <dialog id="modal" class="modal" aria-labelledby="modal-title">
+                    <h3 id="modal-title">Welcome!</h3>
+                    <p>This is a native HTML dialog element.</p>
+                    <form method="dialog">
+                        <button>Close</button>
+                    </form>
+                </dialog>
+            </section>
+
+            <!-- Media Elements -->
+            <section aria-labelledby="media-heading">
+                <h2 id="media-heading">Rich Media</h2>
+
+                <figure>
+                    <video controls width="640" height="360" poster="poster.jpg">
+                        <source src="video.webm" type="video/webm">
+                        <source src="video.mp4" type="video/mp4">
+                        <track kind="captions" src="captions.vtt" srclang="en" label="English">
+                        Your browser doesn't support HTML5 video.
+                    </video>
+                    <figcaption>Demo video showing features</figcaption>
+                </figure>
+
+                <figure>
+                    <audio controls>
+                        <source src="audio.mp3" type="audio/mpeg">
+                        <source src="audio.ogg" type="audio/ogg">
+                        Your browser doesn't support HTML5 audio.
+                    </audio>
+                    <figcaption>Podcast episode</figcaption>
+                </figure>
+            </section>
+
+            <!-- Forms with Validation -->
+            <section aria-labelledby="form-heading">
+                <h2 id="form-heading">Advanced Form</h2>
+                <form id="advanced-form" novalidate>
+                    <fieldset>
+                        <legend>Personal Information</legend>
+
+                        <div class="form-field">
+                            <label for="user-name">Name:</label>
+                            <input
+                                type="text"
+                                id="user-name"
+                                name="name"
+                                required
+                                pattern="[A-Za-z\s]+"
+                                aria-required="true"
+                                aria-describedby="name-help">
+                            <small id="name-help">Enter your full name</small>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="user-email">Email:</label>
+                            <input
+                                type="email"
+                                id="user-email"
+                                name="email"
+                                required
+                                aria-required="true"
+                                autocomplete="email">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="user-phone">Phone:</label>
+                            <input
+                                type="tel"
+                                id="user-phone"
+                                name="phone"
+                                pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                                placeholder="555-123-4567"
+                                autocomplete="tel">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="birth-date">Date of Birth:</label>
+                            <input type="date" id="birth-date" name="birthdate">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="experience">Years of Experience:</label>
+                            <input type="range" id="experience" name="experience" min="0" max="50" value="5">
+                            <output for="experience">5</output>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Preferences</legend>
+
+                        <div class="form-field">
+                            <label for="theme">Theme:</label>
+                            <select id="theme" name="theme">
+                                <option value="light">Light</option>
+                                <option value="dark" selected>Dark</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="color">Accent Color:</label>
+                            <input type="color" id="color" name="color" value="#3b82f6">
+                        </div>
+
+                        <fieldset>
+                            <legend>Notifications</legend>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="email-notif" name="notifications" value="email" checked>
+                                <label for="email-notif">Email</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="sms-notif" name="notifications" value="sms">
+                                <label for="sms-notif">SMS</label>
+                            </div>
+                        </fieldset>
+                    </fieldset>
+
+                    <button type="submit" class="btn btn-primary">Submit Form</button>
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                </form>
+            </section>
+        </main>
+
+        <!-- Aside for Related Content -->
+        <aside role="complementary" aria-labelledby="sidebar-heading">
+            <h2 id="sidebar-heading">Related Resources</h2>
+            <nav aria-label="Related links">
+                <ul>
+                    <li><a href="/docs">Documentation</a></li>
+                    <li><a href="/tutorials">Tutorials</a></li>
+                    <li><a href="/examples">Examples</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Footer -->
+        <footer role="contentinfo" class="site-footer">
+            <div class="footer-grid">
+                <section>
+                    <h3>About Us</h3>
+                    <p>Creating exceptional web experiences since 2020.</p>
+                </section>
+                <section>
+                    <h3>Quick Links</h3>
+                    <nav aria-label="Footer navigation">
+                        <ul>
+                            <li><a href="/privacy">Privacy Policy</a></li>
+                            <li><a href="/terms">Terms of Service</a></li>
+                            <li><a href="/cookies">Cookie Policy</a></li>
+                        </ul>
+                    </nav>
+                </section>
+                <section>
+                    <h3>Contact</h3>
+                    <address>
+                        123 Web Street<br>
+                        Internet City, WW 12345<br>
+                        <a href="mailto:info@example.com">info@example.com</a>
+                    </address>
+                </section>
+            </div>
+            <div class="footer-bottom">
+                <p><small>&copy; 2025 Your Company. All rights reserved.</small></p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Inline Styles -->
+    <style>
+        .skip-link {
+            position: absolute;
+            left: -9999px;
+        }
+        .skip-link:focus {
+            left: 0;
+        }
+    </style>
+
+    <!-- Application Script -->
+    <script type="module">
+        // Modern JavaScript module
+        import { initApp } from './app.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            console.log('Application initialized');
+        });
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
+</body>
+</html>

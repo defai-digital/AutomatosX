@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample HTML Document</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js"></script>
+</head>
+<body>
+    <!-- Header Section -->
+    <header id="main-header" class="header-container">
+        <nav class="navbar">
+            <ul class="nav-list">
+                <li class="nav-item"><a href="#home">Home</a></li>
+                <li class="nav-item"><a href="#about">About</a></li>
+                <li class="nav-item"><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="container">
+        <section id="hero" class="hero-section">
+            <h1 class="hero-title">Welcome to Our Website</h1>
+            <p class="hero-subtitle">Building amazing web experiences</p>
+            <button id="cta-button" class="btn btn-primary">Get Started</button>
+        </section>
+
+        <section id="features" class="features-section">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <img src="icon1.svg" alt="Feature 1 Icon" class="feature-icon">
+                    <h3>Fast Performance</h3>
+                    <p>Lightning-fast load times for optimal user experience.</p>
+                </article>
+                <article class="feature-card">
+                    <img src="icon2.svg" alt="Feature 2 Icon" class="feature-icon">
+                    <h3>Responsive Design</h3>
+                    <p>Works perfectly on all devices and screen sizes.</p>
+                </article>
+                <article class="feature-card">
+                    <img src="icon3.svg" alt="Feature 3 Icon" class="feature-icon">
+                    <h3>Secure</h3>
+                    <p>Built with security best practices in mind.</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="contact-form" class="contact-section">
+            <h2>Contact Us</h2>
+            <form id="contact" action="/submit" method="POST">
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" rows="5" required class="form-control"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">Send Message</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer id="main-footer" class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 Your Company. All rights reserved.</p>
+            <ul class="social-links">
+                <li><a href="https://twitter.com/company">Twitter</a></li>
+                <li><a href="https://github.com/company">GitHub</a></li>
+                <li><a href="https://linkedin.com/company">LinkedIn</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <!-- Inline Script -->
+    <script>
+        console.log('Page loaded successfully');
+        document.getElementById('cta-button').addEventListener('click', () => {
+            alert('Welcome!');
+        });
+    </script>
+</body>
+</html>

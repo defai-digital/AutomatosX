@@ -1,0 +1,62 @@
+rescript = 1
+g_finger := /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml/install.stamp
+rule astj
+  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe  -warn-error +101+8 -bs-v 11.1.4 -uncurried -bs-super-errors -absname -bs-ast -o $out $i
+o src/Hello.ast : astj ../../src/Hello.res
+rule deps
+  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsb_helper.exe -hash a5acbd69ae1e21ab39c59e825a4b9b98 $in
+  restat = 1
+o src/Hello.d : deps src/Hello.ast
+rule mij
+  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe -I src/security -I src/runtime -I src/rules -I src -I /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml -bs-super-errors  -warn-error +101+8 -bs-gentype -uncurried -bs-package-name @automatosx/rescript-core -bs-package-output esmodule:$in_d:.bs.js -bs-v $g_finger $i
+  dyndep = 1
+  restat = 1
+o src/Hello.cmj src/Hello.cmi ../../src/Hello.bs.js : mij src/Hello.ast
+o src/Index.ast : astj ../../src/Index.res
+o src/Index.d : deps src/Index.ast
+o src/Index.cmj src/Index.cmi ../../src/Index.bs.js : mij src/Index.ast
+o src/rules/RuleAST.ast : astj ../../src/rules/RuleAST.res
+o src/rules/RuleAST.d : deps src/rules/RuleAST.ast
+o src/rules/RuleAST.cmj src/rules/RuleAST.cmi ../../src/rules/RuleAST.bs.js : mij src/rules/RuleAST.ast
+o src/rules/PolicyDSL.ast : astj ../../src/rules/PolicyDSL.res
+o src/rules/PolicyDSL.d : deps src/rules/PolicyDSL.ast
+o src/rules/PolicyDSL.cmj src/rules/PolicyDSL.cmi ../../src/rules/PolicyDSL.bs.js : mij src/rules/PolicyDSL.ast
+o src/rules/RuleEngine.ast : astj ../../src/rules/RuleEngine.res
+o src/rules/RuleEngine.d : deps src/rules/RuleEngine.ast
+o src/rules/RuleEngine.cmj src/rules/RuleEngine.cmi ../../src/rules/RuleEngine.bs.js : mij src/rules/RuleEngine.ast
+o src/rules/RuleParser.ast : astj ../../src/rules/RuleParser.res
+o src/rules/RuleParser.d : deps src/rules/RuleParser.ast
+o src/rules/RuleParser.cmj src/rules/RuleParser.cmi ../../src/rules/RuleParser.bs.js : mij src/rules/RuleParser.ast
+o src/runtime/Guards.ast : astj ../../src/runtime/Guards.res
+o src/runtime/Guards.d : deps src/runtime/Guards.ast
+o src/runtime/Guards.cmj src/runtime/Guards.cmi ../../src/runtime/Guards.bs.js : mij src/runtime/Guards.ast
+o src/runtime/StateMachine.ast : astj ../../src/runtime/StateMachine.res
+o src/runtime/StateMachine.d : deps src/runtime/StateMachine.ast
+o src/runtime/StateMachine.cmj src/runtime/StateMachine.cmi ../../src/runtime/StateMachine.bs.js : mij src/runtime/StateMachine.ast
+o src/runtime/EffectRuntime.ast : astj ../../src/runtime/EffectRuntime.res
+o src/runtime/EffectRuntime.d : deps src/runtime/EffectRuntime.ast
+o src/runtime/EffectRuntime.cmj src/runtime/EffectRuntime.cmi ../../src/runtime/EffectRuntime.bs.js : mij src/runtime/EffectRuntime.ast
+o src/runtime/EventDispatcher.ast : astj ../../src/runtime/EventDispatcher.res
+o src/runtime/EventDispatcher.d : deps src/runtime/EventDispatcher.ast
+o src/runtime/EventDispatcher.cmj src/runtime/EventDispatcher.cmi ../../src/runtime/EventDispatcher.bs.js : mij src/runtime/EventDispatcher.ast
+o src/runtime/TransitionValidator.ast : astj ../../src/runtime/TransitionValidator.res
+o src/runtime/TransitionValidator.d : deps src/runtime/TransitionValidator.ast
+o src/runtime/TransitionValidator.cmj src/runtime/TransitionValidator.cmi ../../src/runtime/TransitionValidator.bs.js : mij src/runtime/TransitionValidator.ast
+o src/security/EventAuth.ast : astj ../../src/security/EventAuth.res
+o src/security/EventAuth.d : deps src/security/EventAuth.ast
+o src/security/EventAuth.cmj src/security/EventAuth.cmi ../../src/security/EventAuth.bs.js : mij src/security/EventAuth.ast
+o src/security/GuardIsolation.ast : astj ../../src/security/GuardIsolation.res
+o src/security/GuardIsolation.d : deps src/security/GuardIsolation.ast
+o src/security/GuardIsolation.cmj src/security/GuardIsolation.cmi ../../src/security/GuardIsolation.bs.js : mij src/security/GuardIsolation.ast
+o src/security/ManifestValidator.ast : astj ../../src/security/ManifestValidator.res
+o src/security/ManifestValidator.d : deps src/security/ManifestValidator.ast
+o src/security/ManifestValidator.cmj src/security/ManifestValidator.cmi ../../src/security/ManifestValidator.bs.js : mij src/security/ManifestValidator.ast
+o src/security/MetadataValidator.ast : astj ../../src/security/MetadataValidator.res
+o src/security/MetadataValidator.d : deps src/security/MetadataValidator.ast
+o src/security/MetadataValidator.cmj src/security/MetadataValidator.cmi ../../src/security/MetadataValidator.bs.js : mij src/security/MetadataValidator.ast
+o src/security/CancellationLimiter.ast : astj ../../src/security/CancellationLimiter.res
+o src/security/CancellationLimiter.d : deps src/security/CancellationLimiter.ast
+o src/security/CancellationLimiter.cmj src/security/CancellationLimiter.cmi ../../src/security/CancellationLimiter.bs.js : mij src/security/CancellationLimiter.ast
+o src/security/DependencyValidator.ast : astj ../../src/security/DependencyValidator.res
+o src/security/DependencyValidator.d : deps src/security/DependencyValidator.ast
+o src/security/DependencyValidator.cmj src/security/DependencyValidator.cmi ../../src/security/DependencyValidator.bs.js : mij src/security/DependencyValidator.ast

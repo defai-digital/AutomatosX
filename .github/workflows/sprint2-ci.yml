@@ -1,0 +1,289 @@
+# Sprint 2 CI Matrix - Cross-Platform Testing
+# Runs on: macOS, Linux, Windows (placeholder)
+# Purpose: Validate CLI commands, schemas, and agent parity tests
+
+name: Sprint 2 CI Matrix
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  # Job 1: macOS Testing
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ReScript core
+        run: npm run build:rescript
+
+      - name: Build TypeScript layer
+        run: npm run build:typescript
+
+      - name: Run linter
+        run: npm run lint || echo "Linter not configured yet"
+
+      - name: Run unit tests
+        run: npm test -- --run --reporter=verbose
+
+      - name: Run CLI integration tests
+        run: |
+          npm run cli -- status
+          npm run cli -- list agents || echo "Agents not yet available"
+
+      - name: Generate coverage report
+        run: npm run test:coverage || echo "Coverage not configured yet"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20.x'
+        with:
+          files: ./coverage/lcov.info
+          flags: macos
+          name: macos-coverage
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-macos-node-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+
+  # Job 2: Linux Testing
+  test-linux:
+    name: Test on Linux
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ReScript core
+        run: npm run build:rescript
+
+      - name: Build TypeScript layer
+        run: npm run build:typescript
+
+      - name: Run linter
+        run: npm run lint || echo "Linter not configured yet"
+
+      - name: Run unit tests
+        run: npm test -- --run --reporter=verbose
+
+      - name: Run CLI integration tests
+        run: |
+          npm run cli -- status
+          npm run cli -- list agents || echo "Agents not yet available"
+
+      - name: Generate coverage report
+        run: npm run test:coverage || echo "Coverage not configured yet"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20.x'
+        with:
+          files: ./coverage/lcov.info
+          flags: linux
+          name: linux-coverage
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-linux-node-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+
+  # Job 3: Windows Testing (Placeholder - Enable on Day 16)
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    if: false  # Disabled until Day 16
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ReScript core
+        run: npm run build:rescript
+
+      - name: Build TypeScript layer
+        run: npm run build:typescript
+
+      - name: Run unit tests
+        run: npm test -- --run --reporter=verbose
+
+      - name: Run CLI integration tests
+        run: |
+          npm run cli -- status
+          npm run cli -- list agents
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-windows-node-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+
+  # Job 4: Schema Validation Tests
+  validate-schemas:
+    name: Validate Zod Schemas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Test schema parsing
+        run: |
+          node -e "
+          const { RunCommandSchema } = require('./dist/cli/schemas/RunCommandSchema.js');
+          const { MemorySearchSchema } = require('./dist/cli/schemas/MemorySearchSchema.js');
+          const { ListAgentsSchema } = require('./dist/cli/schemas/ListAgentsSchema.js');
+          const { StatusSchema } = require('./dist/cli/schemas/StatusSchema.js');
+          const { ConfigShowSchema } = require('./dist/cli/schemas/ConfigShowSchema.js');
+          console.log('All schemas loaded successfully!');
+          "
+
+      - name: Test error envelope
+        run: |
+          node -e "
+          const { createErrorEnvelope, ErrorCodes } = require('./dist/utils/ErrorEnvelope.js');
+          const envelope = createErrorEnvelope(ErrorCodes.VALIDATION_ERROR, 'Test error');
+          console.log('Error envelope created:', envelope);
+          "
+
+      - name: Test streaming logger
+        run: |
+          node -e "
+          const { StreamingLogger } = require('./dist/utils/StreamingLogger.js');
+          const logger = new StreamingLogger();
+          logger.info('Test log');
+          logger.success('Logger works!');
+          console.log('Streaming logger functional');
+          "
+
+  # Job 5: Documentation Check
+  docs-check:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check parity inventory exists
+        run: |
+          test -f automatosx/tmp/sprint2/parity-inventory-template.md || exit 1
+          echo "✅ Parity inventory found"
+
+      - name: Check CLI bridge design exists
+        run: |
+          test -f automatosx/tmp/sprint2/cli-typescript-bridge-interface.md || exit 1
+          echo "✅ CLI bridge design found"
+
+      - name: Check implementation status exists
+        run: |
+          test -f automatosx/tmp/sprint2/SPRINT2-DAY1-3-IMPLEMENTATION-COMPLETE.md || exit 1
+          echo "✅ Implementation status found"
+
+      - name: Validate markdown formatting
+        run: |
+          npm install -g markdownlint-cli
+          markdownlint automatosx/tmp/sprint2/*.md || echo "Markdown linting skipped"
+
+  # Job 6: Test Summary
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-macos, test-linux, validate-schemas, docs-check]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "CI Matrix Results:"
+          echo "macOS Tests: ${{ needs.test-macos.result }}"
+          echo "Linux Tests: ${{ needs.test-linux.result }}"
+          echo "Schema Validation: ${{ needs.validate-schemas.result }}"
+          echo "Documentation Check: ${{ needs.docs-check.result }}"
+
+          if [ "${{ needs.test-macos.result }}" != "success" ] || \
+             [ "${{ needs.test-linux.result }}" != "success" ] || \
+             [ "${{ needs.validate-schemas.result }}" != "success" ]; then
+            echo "❌ Some tests failed"
+            exit 1
+          fi
+
+          echo "✅ All tests passed!"
+
+# Notifications (optional)
+# Add Slack/Discord notifications here if needed

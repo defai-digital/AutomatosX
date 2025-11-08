@@ -1,0 +1,13 @@
+[
+  {
+    "name": "gemini_streaming",
+    "description": "Enable Gemini as a valid option for streaming workloads",
+    "enabled": true,
+    "rolloutPercentage": 0,
+    "metadata": {
+      "owner": "platform-team",
+      "jiraTicket": "AUTO-1234",
+      "expectedImpact": "96% cost reduction on streaming tasks"
+    }
+  }
+]

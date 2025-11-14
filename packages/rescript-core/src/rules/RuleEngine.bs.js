@@ -4,7 +4,7 @@ import * as Js_dict from "rescript/lib/es6/js_dict.js";
 import * as PolicyDSL from "./PolicyDSL.bs.js";
 import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
 import * as Belt_Result from "rescript/lib/es6/belt_Result.js";
-import * as StateMachine from "../runtime/StateMachine.bs.js";
+import * as TaskStateMachine from "../runtime/TaskStateMachine.bs.js";
 
 function createExecutionContext(currentState, $$event, metadata, policy, param) {
   return {
@@ -18,10 +18,10 @@ function createExecutionContext(currentState, $$event, metadata, policy, param) 
 function evaluateCondition(condition, context) {
   switch (condition.TAG) {
     case "StateIs" :
-        var currentStateStr = StateMachine.State.toString(context.currentState);
+        var currentStateStr = TaskStateMachine.State.toString(context.currentState);
         return currentStateStr === condition._0;
     case "EventIs" :
-        var currentEventStr = StateMachine.$$Event.toString(context.event);
+        var currentEventStr = TaskStateMachine.$$Event.toString(context.event);
         return currentEventStr === condition._0;
     case "MetadataHas" :
         var dict = context.metadata;

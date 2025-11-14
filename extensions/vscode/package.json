@@ -1,0 +1,221 @@
+{
+  "name": "automatosx-vscode",
+  "displayName": "AutomatosX - Code Intelligence",
+  "description": "Advanced code intelligence with quality metrics and dependency analysis",
+  "version": "2.0.0",
+  "publisher": "automatosx",
+  "author": {
+    "name": "AutomatosX Team"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/automatosx/automatosx"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "code intelligence",
+    "quality metrics",
+    "dependency analysis",
+    "refactoring",
+    "code navigation"
+  ],
+  "activationEvents": [
+    "onLanguage:typescript",
+    "onLanguage:javascript",
+    "onLanguage:python",
+    "onLanguage:go",
+    "onLanguage:rust",
+    "onCommand:automatosx.indexProject",
+    "onCommand:automatosx.showQuality",
+    "onCommand:automatosx.showDependencies",
+    "onView:automatosxSymbols",
+    "onView:automatosxQuality",
+    "onView:automatosxDependencies"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "automatosx.indexProject",
+        "title": "AutomatosX: Index Project",
+        "icon": "$(database)"
+      },
+      {
+        "command": "automatosx.showQuality",
+        "title": "AutomatosX: Show Quality Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "automatosx.showDependencies",
+        "title": "AutomatosX: Show Dependency Graph",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "automatosx.analyzeFile",
+        "title": "AutomatosX: Analyze Current File",
+        "icon": "$(search)"
+      },
+      {
+        "command": "automatosx.findReferences",
+        "title": "AutomatosX: Find Symbol References",
+        "icon": "$(references)"
+      },
+      {
+        "command": "automatosx.renameSymbol",
+        "title": "AutomatosX: Rename Symbol",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "automatosx.refreshViews",
+        "title": "AutomatosX: Refresh All Views",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "automatosx.exportMetrics",
+        "title": "AutomatosX: Export Quality Report",
+        "icon": "$(export)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "automatosx",
+          "title": "AutomatosX",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "automatosx": [
+        {
+          "id": "automatosxSymbols",
+          "name": "Symbol Explorer",
+          "icon": "$(symbol-class)",
+          "contextualTitle": "AutomatosX Symbols"
+        },
+        {
+          "id": "automatosxQuality",
+          "name": "Quality Metrics",
+          "icon": "$(graph)",
+          "contextualTitle": "AutomatosX Quality"
+        },
+        {
+          "id": "automatosxDependencies",
+          "name": "Dependencies",
+          "icon": "$(type-hierarchy)",
+          "contextualTitle": "AutomatosX Dependencies"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AutomatosX",
+      "properties": {
+        "automatosx.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to AutomatosX LSP server executable. Leave empty to use bundled server."
+        },
+        "automatosx.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable code quality diagnostics and warnings"
+        },
+        "automatosx.complexityThreshold": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Cyclomatic complexity threshold for warnings"
+        },
+        "automatosx.autoIndex": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically index files on save"
+        },
+        "automatosx.excludePatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**"
+          ],
+          "description": "File patterns to exclude from indexing"
+        },
+        "automatosx.maxFileSize": {
+          "type": "number",
+          "default": 1048576,
+          "description": "Maximum file size to index (bytes)"
+        },
+        "automatosx.enableTelemetry": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable anonymous usage telemetry"
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "automatosx.refreshViews",
+          "when": "view =~ /automatosx/",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "automatosx.indexProject"
+        },
+        {
+          "command": "automatosx.showQuality"
+        },
+        {
+          "command": "automatosx.showDependencies"
+        },
+        {
+          "command": "automatosx.analyzeFile"
+        },
+        {
+          "command": "automatosx.findReferences"
+        },
+        {
+          "command": "automatosx.renameSymbol"
+        },
+        {
+          "command": "automatosx.refreshViews"
+        },
+        {
+          "command": "automatosx.exportMetrics"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ && webpack --mode production",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}

@@ -29,6 +29,13 @@ export class SeededRandom {
   }
 
   /**
+   * Generate random float in range [min, max)
+   */
+  nextInRange(min: number, max: number): number {
+    return this.next() * (max - min) + min
+  }
+
+  /**
    * Generate random element from array
    */
   choice<T>(array: T[]): T {
@@ -198,7 +205,7 @@ export class DeterministicEnvironment {
 
     // Mock crypto.randomUUID if available
     if (global.crypto) {
-      global.crypto.randomUUID = () => this.uuid.generate()
+      global.crypto.randomUUID = () => this.uuid.generate() as `${string}-${string}-${string}-${string}-${string}`
     }
 
     // Return cleanup function

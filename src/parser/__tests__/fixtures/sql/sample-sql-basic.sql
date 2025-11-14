@@ -97,11 +97,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ===== Procedures =====
+-- NOTE: Using CREATE FUNCTION instead of CREATE PROCEDURE
+-- because @derekstride/tree-sitter-sql@0.3.11 doesn't support PROCEDURE syntax
 
-CREATE PROCEDURE create_user(
+CREATE FUNCTION create_user(
   p_username VARCHAR,
   p_email VARCHAR
 )
+RETURNS VOID
 AS $$
 BEGIN
   INSERT INTO users (username, email)
@@ -109,10 +112,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE PROCEDURE update_user_email(
+CREATE FUNCTION update_user_email(
   p_user_id INT,
   p_new_email VARCHAR
 )
+RETURNS VOID
 AS $$
 BEGIN
   UPDATE users
@@ -121,7 +125,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE PROCEDURE delete_user(p_user_id INT)
+CREATE FUNCTION delete_user(p_user_id INT)
+RETURNS VOID
 AS $$
 BEGIN
   DELETE FROM comments WHERE user_id = p_user_id;

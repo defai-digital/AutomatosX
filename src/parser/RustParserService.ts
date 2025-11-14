@@ -17,7 +17,7 @@ export class RustParserService extends BaseLanguageParser {
   readonly extensions = ['.rs'];
 
   constructor() {
-    super(Rust);
+    super(Rust as Parser.Language);
   }
 
   /**

@@ -36,8 +36,8 @@ let createPayload = (pairs: array<(string, Js.Json.t)>): Js.Dict.t<Js.Json.t> =>
 }
 
 module Handler = {
-  type effectHandler = (StateMachine.Effect.t, StateMachine.Context.t) => unit
-  type decisionHandler = StateMachine.outcome => unit
+  type effectHandler = (TaskStateMachine.Effect.t, TaskStateMachine.Context.t) => unit
+  type decisionHandler = TaskStateMachine.outcome => unit
 
   type t = {
     onDecision: decisionHandler,
@@ -45,59 +45,59 @@ module Handler = {
   }
 
   // Effect handler with telemetry emission stubs
-  let placeholderEffect = (effect: StateMachine.Effect.t, context: StateMachine.Context.t) =>
+  let placeholderEffect = (effect: TaskStateMachine.Effect.t, context: TaskStateMachine.Context.t) =>
     switch effect {
-    | StateMachine.Effect.HydratePlan(taskId) => {
+    | TaskStateMachine.Effect.HydratePlan(taskId) => {
         let payload = createPayload([
           ("taskId", Js.Json.string(taskId)),
           ("dependenciesReady", Js.Json.boolean(context.dependenciesReady)),
         ])
         emitTelemetryEvent(createTelemetryEvent("plan.hydrated", payload))
       }
-    | StateMachine.Effect.EvaluateGuards => {
-        let guardVerdictStr = StateMachine.GuardVerdict.toString(context.guardVerdict)
+    | TaskStateMachine.Effect.EvaluateGuards => {
+        let guardVerdictStr = TaskStateMachine.GuardVerdict.toString(context.guardVerdict)
         let payload = createPayload([
           ("verdict", Js.Json.string(guardVerdictStr)),
         ])
         emitTelemetryEvent(createTelemetryEvent("guards.evaluated", payload))
       }
-    | StateMachine.Effect.StartExecution(taskId) => {
+    | TaskStateMachine.Effect.StartExecution(taskId) => {
         let payload = createPayload([
           ("taskId", Js.Json.string(taskId)),
         ])
         emitTelemetryEvent(createTelemetryEvent("execution.started", payload))
       }
-    | StateMachine.Effect.EnterWaitState => {
+    | TaskStateMachine.Effect.EnterWaitState => {
         let payload = createPayload([
           ("reason", Js.Json.string("dependencies_not_ready")),
         ])
         emitTelemetryEvent(createTelemetryEvent("wait_state.entered", payload))
       }
-    | StateMachine.Effect.EmitTelemetry(label) => {
+    | TaskStateMachine.Effect.EmitTelemetry(label) => {
         let payload = createPayload([
           ("label", Js.Json.string(label)),
         ])
         emitTelemetryEvent(createTelemetryEvent("custom.event", payload))
       }
-    | StateMachine.Effect.ScheduleRetry => {
+    | TaskStateMachine.Effect.ScheduleRetry => {
         let payload = createPayload([
           ("scheduled", Js.Json.boolean(true)),
         ])
         emitTelemetryEvent(createTelemetryEvent("retry.scheduled", payload))
       }
-    | StateMachine.Effect.PerformRollback(reason) => {
+    | TaskStateMachine.Effect.PerformRollback(reason) => {
         let payload = createPayload([
           ("reason", Js.Json.string(reason)),
         ])
         emitTelemetryEvent(createTelemetryEvent("rollback.performed", payload))
       }
-    | StateMachine.Effect.RecordCancellation(actor) => {
+    | TaskStateMachine.Effect.RecordCancellation(actor) => {
         let payload = createPayload([
           ("actor", Js.Json.string(actor)),
         ])
         emitTelemetryEvent(createTelemetryEvent("cancellation.recorded", payload))
       }
-    | StateMachine.Effect.FlushTelemetryBuffer => {
+    | TaskStateMachine.Effect.FlushTelemetryBuffer => {
         let payload = createPayload([
           ("flushed", Js.Json.boolean(true)),
         ])
@@ -106,12 +106,12 @@ module Handler = {
     }
 
   // Decision handler that emits telemetry for all state transitions
-  let telemetryDecisionHandler = (decision: StateMachine.outcome): unit => {
+  let telemetryDecisionHandler = (decision: TaskStateMachine.outcome): unit => {
     let payload = createPayload([
-      ("status", Js.Json.string(StateMachine.statusToString(decision.status))),
-      ("fromState", Js.Json.string(StateMachine.State.toString(decision.fromState))),
-      ("toState", Js.Json.string(StateMachine.State.toString(decision.toState))),
-      ("event", Js.Json.string(StateMachine.Event.toString(decision.event))),
+      ("status", Js.Json.string(TaskStateMachine.statusToString(decision.status))),
+      ("fromState", Js.Json.string(TaskStateMachine.State.toString(decision.fromState))),
+      ("toState", Js.Json.string(TaskStateMachine.State.toString(decision.toState))),
+      ("event", Js.Json.string(TaskStateMachine.Event.toString(decision.event))),
       ("effectCount", Js.Json.number(Belt.Int.toFloat(Array.length(decision.effects)))),
     ])
 
@@ -131,35 +131,35 @@ module Handler = {
 }
 
 let applyEffects = (
-  effects: array<StateMachine.Effect.t>,
-  context: StateMachine.Context.t,
+  effects: array<TaskStateMachine.Effect.t>,
+  context: TaskStateMachine.Context.t,
   handler: Handler.effectHandler,
 ) =>
   effects->Array.forEach(effect => handler(effect, context))
 
 let dispatchWithHandlers = (
-  state: StateMachine.State.t,
-  event: StateMachine.Event.t,
-  context: StateMachine.Context.t,
+  state: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
+  context: TaskStateMachine.Context.t,
   handlers: Handler.t,
 ) => {
-  let decision = StateMachine.transition(state, event, context)
+  let decision = TaskStateMachine.transition(state, event, context)
   handlers.onDecision(decision)
   applyEffects(decision.effects, context, handlers.onEffect)
   decision
 }
 
 let dispatch = (
-  state: StateMachine.State.t,
-  event: StateMachine.Event.t,
-  context: StateMachine.Context.t,
+  state: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
+  context: TaskStateMachine.Context.t,
 ) =>
   dispatchWithHandlers(state, event, context, Handler.default)
 
 let dispatchSerialized = (
-  state: StateMachine.State.t,
-  event: StateMachine.Event.t,
-  context: StateMachine.Context.t,
+  state: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
+  context: TaskStateMachine.Context.t,
   handlers: Handler.t,
 ) =>
-  dispatchWithHandlers(state, event, context, handlers)->StateMachine.serializeOutcome
+  dispatchWithHandlers(state, event, context, handlers)->TaskStateMachine.serializeOutcome

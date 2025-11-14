@@ -31,8 +31,8 @@ export declare const ListAgentsSchema: z.ZodObject<{
     format: z.ZodDefault<z.ZodDefault<z.ZodEnum<{
         text: "text";
         json: "json";
-        table: "table";
         yaml: "yaml";
+        table: "table";
     }>>>;
     showCapabilities: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;

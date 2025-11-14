@@ -17,9 +17,9 @@ type validationResult =
 
 // Validation error with context
 type validationError = {
-  fromState: StateMachine.State.t,
-  toState: StateMachine.State.t,
-  event: StateMachine.Event.t,
+  fromState: TaskStateMachine.State.t,
+  toState: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
   reason: string,
   timestamp: float,
 }
@@ -27,21 +27,21 @@ type validationError = {
 // Rollback strategy
 type rollbackStrategy =
   | NoRollback
-  | StateRollback(StateMachine.State.t) // Rollback to specific state
-  | CompensateWithEffects(array<StateMachine.Effect.t>) // Run compensating effects
-  | FullRollback(StateMachine.State.t, array<StateMachine.Effect.t>) // Rollback + effects
+  | StateRollback(TaskStateMachine.State.t) // Rollback to specific state
+  | CompensateWithEffects(array<TaskStateMachine.Effect.t>) // Run compensating effects
+  | FullRollback(TaskStateMachine.State.t, array<TaskStateMachine.Effect.t>) // Rollback + effects
 
 // Error recovery action
 type recoveryAction =
   | AbortTransition
   | RetryTransition(int) // Retry count
-  | FallbackToState(StateMachine.State.t)
+  | FallbackToState(TaskStateMachine.State.t)
   | ExecuteRollback(rollbackStrategy)
 
 // Validation context for comprehensive checks
 type validationContext = {
-  context: StateMachine.Context.t,
-  previousState: option<StateMachine.State.t>,
+  context: TaskStateMachine.Context.t,
+  previousState: option<TaskStateMachine.State.t>,
   attemptCount: int,
   lastError: option<validationError>,
 }
@@ -49,68 +49,68 @@ type validationContext = {
 module PreConditionValidator = {
   // Check if state can transition based on current state
   let validateSourceState = (
-    fromState: StateMachine.State.t,
-    event: StateMachine.Event.t,
+    fromState: TaskStateMachine.State.t,
+    event: TaskStateMachine.Event.t,
   ): validationResult => {
     switch (fromState, event) {
     // Bootstrapping can only accept DependenciesReady
-    | (StateMachine.State.Bootstrapping, StateMachine.Event.DependenciesReady) => Valid
-    | (StateMachine.State.Bootstrapping, _) =>
+    | (TaskStateMachine.State.Bootstrapping, TaskStateMachine.Event.DependenciesReady) => Valid
+    | (TaskStateMachine.State.Bootstrapping, _) =>
       Invalid("Bootstrapping state only accepts DependenciesReady event")
 
     // Idle can only accept TaskSubmitted
-    | (StateMachine.State.Idle, StateMachine.Event.TaskSubmitted(_)) => Valid
-    | (StateMachine.State.Idle, _) => Invalid("Idle state only accepts TaskSubmitted events")
+    | (TaskStateMachine.State.Idle, TaskStateMachine.Event.TaskSubmitted(_)) => Valid
+    | (TaskStateMachine.State.Idle, _) => Invalid("Idle state only accepts TaskSubmitted events")
 
     // Preparing accepts DependenciesReady, CancelRequest, Timeout
-    | (StateMachine.State.Preparing, StateMachine.Event.DependenciesReady)
-    | (StateMachine.State.Preparing, StateMachine.Event.CancelRequest(_))
-    | (StateMachine.State.Preparing, StateMachine.Event.Timeout(_)) => Valid
-    | (StateMachine.State.Preparing, _) =>
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.Event.DependenciesReady)
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.Event.CancelRequest(_))
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.Event.Timeout(_)) => Valid
+    | (TaskStateMachine.State.Preparing, _) =>
       Invalid("Preparing state only accepts DependenciesReady, CancelRequest, or Timeout")
 
     // WaitingOnDependency accepts DependenciesReady, RetryTrigger, CancelRequest, Timeout
-    | (StateMachine.State.WaitingOnDependency, StateMachine.Event.DependenciesReady)
-    | (StateMachine.State.WaitingOnDependency, StateMachine.Event.RetryTrigger)
-    | (StateMachine.State.WaitingOnDependency, StateMachine.Event.CancelRequest(_))
-    | (StateMachine.State.WaitingOnDependency, StateMachine.Event.Timeout(_)) => Valid
-    | (StateMachine.State.WaitingOnDependency, _) =>
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.Event.DependenciesReady)
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.Event.RetryTrigger)
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.Event.CancelRequest(_))
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.Event.Timeout(_)) => Valid
+    | (TaskStateMachine.State.WaitingOnDependency, _) =>
       Invalid(
         "WaitingOnDependency state only accepts DependenciesReady, RetryTrigger, CancelRequest, or Timeout",
       )
 
     // Executing accepts TelemetryFlushed, RuleViolation, Timeout, CancelRequest
-    | (StateMachine.State.Executing, StateMachine.Event.TelemetryFlushed)
-    | (StateMachine.State.Executing, StateMachine.Event.RuleViolation(_))
-    | (StateMachine.State.Executing, StateMachine.Event.Timeout(_))
-    | (StateMachine.State.Executing, StateMachine.Event.CancelRequest(_)) => Valid
-    | (StateMachine.State.Executing, _) =>
+    | (TaskStateMachine.State.Executing, TaskStateMachine.Event.TelemetryFlushed)
+    | (TaskStateMachine.State.Executing, TaskStateMachine.Event.RuleViolation(_))
+    | (TaskStateMachine.State.Executing, TaskStateMachine.Event.Timeout(_))
+    | (TaskStateMachine.State.Executing, TaskStateMachine.Event.CancelRequest(_)) => Valid
+    | (TaskStateMachine.State.Executing, _) =>
       Invalid(
         "Executing state only accepts TelemetryFlushed, RuleViolation, Timeout, or CancelRequest",
       )
 
     // Completed only accepts TelemetryFlushed
-    | (StateMachine.State.Completed, StateMachine.Event.TelemetryFlushed) => Valid
-    | (StateMachine.State.Completed, _) =>
+    | (TaskStateMachine.State.Completed, TaskStateMachine.Event.TelemetryFlushed) => Valid
+    | (TaskStateMachine.State.Completed, _) =>
       Invalid("Completed state only accepts TelemetryFlushed")
 
     // Failed only accepts RetryTrigger
-    | (StateMachine.State.Failed, StateMachine.Event.RetryTrigger) => Valid
-    | (StateMachine.State.Failed, _) => Invalid("Failed state only accepts RetryTrigger")
+    | (TaskStateMachine.State.Failed, TaskStateMachine.Event.RetryTrigger) => Valid
+    | (TaskStateMachine.State.Failed, _) => Invalid("Failed state only accepts RetryTrigger")
 
     // Canceled only accepts RetryTrigger
-    | (StateMachine.State.Canceled, StateMachine.Event.RetryTrigger) => Valid
-    | (StateMachine.State.Canceled, _) => Invalid("Canceled state only accepts RetryTrigger")
+    | (TaskStateMachine.State.Canceled, TaskStateMachine.Event.RetryTrigger) => Valid
+    | (TaskStateMachine.State.Canceled, _) => Invalid("Canceled state only accepts RetryTrigger")
     }
   }
 
   // Validate context meets requirements for transition
   let validateContext = (
-    event: StateMachine.Event.t,
-    context: StateMachine.Context.t,
+    event: TaskStateMachine.Event.t,
+    context: TaskStateMachine.Context.t,
   ): validationResult => {
     switch event {
-    | StateMachine.Event.DependenciesReady =>
+    | TaskStateMachine.Event.DependenciesReady =>
       // DependenciesReady requires dependenciesReady flag
       if context.dependenciesReady {
         Valid
@@ -118,7 +118,7 @@ module PreConditionValidator = {
         Invalid("DependenciesReady event requires context.dependenciesReady = true")
       }
 
-    | StateMachine.Event.CancelRequest(_) =>
+    | TaskStateMachine.Event.CancelRequest(_) =>
       // CancelRequest requires cancellationRequested flag
       if context.cancellationRequested {
         Valid
@@ -126,7 +126,7 @@ module PreConditionValidator = {
         Invalid("CancelRequest event requires context.cancellationRequested = true")
       }
 
-    | StateMachine.Event.TelemetryFlushed =>
+    | TaskStateMachine.Event.TelemetryFlushed =>
       // TelemetryFlushed should clear telemetryPending
       Valid
 
@@ -136,16 +136,16 @@ module PreConditionValidator = {
 
   // Validate guard verdict allows transition
   let validateGuardVerdict = (
-    fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    context: StateMachine.Context.t,
+    fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    context: TaskStateMachine.Context.t,
   ): validationResult => {
     // Only check guard verdict when transitioning from Preparing to Executing
     switch (fromState, toState) {
-    | (StateMachine.State.Preparing, StateMachine.State.Executing) =>
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.State.Executing) =>
       switch context.guardVerdict {
-      | StateMachine.GuardVerdict.Allowed => Valid
-      | StateMachine.GuardVerdict.Blocked(reason) =>
+      | TaskStateMachine.GuardVerdict.Allowed => Valid
+      | TaskStateMachine.GuardVerdict.Blocked(reason) =>
         Invalid(`Guard verdict blocked transition: ${reason}`)
       }
     | _ => Valid // Guards only apply to Preparing -> Executing
@@ -156,56 +156,56 @@ module PreConditionValidator = {
 module PostConditionValidator = {
   // Validate transition destination is valid
   let validateDestinationState = (
-    fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    event: StateMachine.Event.t,
+    fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    event: TaskStateMachine.Event.t,
   ): validationResult => {
     switch (fromState, toState, event) {
     // Valid transitions from Bootstrapping
-    | (StateMachine.State.Bootstrapping, StateMachine.State.Idle, StateMachine.Event.DependenciesReady) =>
+    | (TaskStateMachine.State.Bootstrapping, TaskStateMachine.State.Idle, TaskStateMachine.Event.DependenciesReady) =>
       Valid
 
     // Valid transitions from Idle
-    | (StateMachine.State.Idle, StateMachine.State.Preparing, StateMachine.Event.TaskSubmitted(_)) =>
+    | (TaskStateMachine.State.Idle, TaskStateMachine.State.Preparing, TaskStateMachine.Event.TaskSubmitted(_)) =>
       Valid
 
     // Valid transitions from Preparing
-    | (StateMachine.State.Preparing, StateMachine.State.Executing, StateMachine.Event.DependenciesReady)
-    | (StateMachine.State.Preparing, StateMachine.State.Canceled, StateMachine.Event.CancelRequest(_))
-    | (StateMachine.State.Preparing, StateMachine.State.Failed, StateMachine.Event.Timeout(_)) =>
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.State.Executing, TaskStateMachine.Event.DependenciesReady)
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.State.Canceled, TaskStateMachine.Event.CancelRequest(_))
+    | (TaskStateMachine.State.Preparing, TaskStateMachine.State.Failed, TaskStateMachine.Event.Timeout(_)) =>
       Valid
 
     // Valid transitions from WaitingOnDependency
-    | (StateMachine.State.WaitingOnDependency, StateMachine.State.Preparing, StateMachine.Event.DependenciesReady)
-    | (StateMachine.State.WaitingOnDependency, StateMachine.State.Preparing, StateMachine.Event.RetryTrigger)
-    | (StateMachine.State.WaitingOnDependency, StateMachine.State.Canceled, StateMachine.Event.CancelRequest(_))
-    | (StateMachine.State.WaitingOnDependency, StateMachine.State.Failed, StateMachine.Event.Timeout(_)) =>
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.State.Preparing, TaskStateMachine.Event.DependenciesReady)
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.State.Preparing, TaskStateMachine.Event.RetryTrigger)
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.State.Canceled, TaskStateMachine.Event.CancelRequest(_))
+    | (TaskStateMachine.State.WaitingOnDependency, TaskStateMachine.State.Failed, TaskStateMachine.Event.Timeout(_)) =>
       Valid
 
     // Valid transitions from Executing
-    | (StateMachine.State.Executing, StateMachine.State.Completed, StateMachine.Event.TelemetryFlushed)
-    | (StateMachine.State.Executing, StateMachine.State.Executing, StateMachine.Event.TelemetryFlushed) // Can stay in Executing if telemetry pending
-    | (StateMachine.State.Executing, StateMachine.State.Failed, StateMachine.Event.RuleViolation(_))
-    | (StateMachine.State.Executing, StateMachine.State.Failed, StateMachine.Event.Timeout(_))
-    | (StateMachine.State.Executing, StateMachine.State.Canceled, StateMachine.Event.CancelRequest(_)) =>
+    | (TaskStateMachine.State.Executing, TaskStateMachine.State.Completed, TaskStateMachine.Event.TelemetryFlushed)
+    | (TaskStateMachine.State.Executing, TaskStateMachine.State.Executing, TaskStateMachine.Event.TelemetryFlushed) // Can stay in Executing if telemetry pending
+    | (TaskStateMachine.State.Executing, TaskStateMachine.State.Failed, TaskStateMachine.Event.RuleViolation(_))
+    | (TaskStateMachine.State.Executing, TaskStateMachine.State.Failed, TaskStateMachine.Event.Timeout(_))
+    | (TaskStateMachine.State.Executing, TaskStateMachine.State.Canceled, TaskStateMachine.Event.CancelRequest(_)) =>
       Valid
 
     // Valid transitions from Completed
-    | (StateMachine.State.Completed, StateMachine.State.Idle, StateMachine.Event.TelemetryFlushed) =>
+    | (TaskStateMachine.State.Completed, TaskStateMachine.State.Idle, TaskStateMachine.Event.TelemetryFlushed) =>
       Valid
 
     // Valid transitions from Failed
-    | (StateMachine.State.Failed, StateMachine.State.Preparing, StateMachine.Event.RetryTrigger) =>
+    | (TaskStateMachine.State.Failed, TaskStateMachine.State.Preparing, TaskStateMachine.Event.RetryTrigger) =>
       Valid
 
     // Valid transitions from Canceled
-    | (StateMachine.State.Canceled, StateMachine.State.Idle, StateMachine.Event.RetryTrigger) =>
+    | (TaskStateMachine.State.Canceled, TaskStateMachine.State.Idle, TaskStateMachine.Event.RetryTrigger) =>
       Valid
 
     // All other transitions are invalid
     | (from, to, _) => {
-        let fromStr = StateMachine.State.toString(from)
-        let toStr = StateMachine.State.toString(to)
+        let fromStr = TaskStateMachine.State.toString(from)
+        let toStr = TaskStateMachine.State.toString(to)
         Invalid(`Invalid transition from ${fromStr} to ${toStr}`)
       }
     }
@@ -213,22 +213,22 @@ module PostConditionValidator = {
 
   // Validate effects are appropriate for transition
   let validateEffects = (
-    _fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    effects: array<StateMachine.Effect.t>,
+    _fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    effects: array<TaskStateMachine.Effect.t>,
   ): validationResult => {
     // Check that rollback effects are only used when transitioning to Failed/Canceled
     let hasRollback = effects->Array.some(effect =>
       switch effect {
-      | StateMachine.Effect.PerformRollback(_) => true
+      | TaskStateMachine.Effect.PerformRollback(_) => true
       | _ => false
       }
     )
 
     if hasRollback {
       switch toState {
-      | StateMachine.State.Failed
-      | StateMachine.State.Canceled => Valid
+      | TaskStateMachine.State.Failed
+      | TaskStateMachine.State.Canceled => Valid
       | _ =>
         Invalid(
           `PerformRollback effect should only be used when transitioning to Failed or Canceled`,
@@ -243,34 +243,34 @@ module PostConditionValidator = {
 module ErrorRecovery = {
   // Determine rollback strategy based on transition error
   let determineRollbackStrategy = (
-    fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    event: StateMachine.Event.t,
+    fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    event: TaskStateMachine.Event.t,
   ): rollbackStrategy => {
     switch (fromState, toState, event) {
     // Timeout errors require full rollback
-    | (_, StateMachine.State.Failed, StateMachine.Event.Timeout(ms)) =>
+    | (_, TaskStateMachine.State.Failed, TaskStateMachine.Event.Timeout(ms)) =>
       FullRollback(
         fromState,
-        [StateMachine.Effect.PerformRollback(`timeout:${Int.toString(ms)}`)],
+        [TaskStateMachine.Effect.PerformRollback(`timeout:${Int.toString(ms)}`)],
       )
 
     // Rule violations require rollback with telemetry
-    | (_, StateMachine.State.Failed, StateMachine.Event.RuleViolation(rule)) =>
+    | (_, TaskStateMachine.State.Failed, TaskStateMachine.Event.RuleViolation(rule)) =>
       CompensateWithEffects([
-        StateMachine.Effect.PerformRollback(rule),
-        StateMachine.Effect.EmitTelemetry("rule.violation"),
+        TaskStateMachine.Effect.PerformRollback(rule),
+        TaskStateMachine.Effect.EmitTelemetry("rule.violation"),
       ])
 
     // Cancellations require state rollback + recording
-    | (_, StateMachine.State.Canceled, StateMachine.Event.CancelRequest(payload)) =>
+    | (_, TaskStateMachine.State.Canceled, TaskStateMachine.Event.CancelRequest(payload)) =>
       CompensateWithEffects([
-        StateMachine.Effect.RecordCancellation(payload.requestedBy),
-        StateMachine.Effect.EmitTelemetry("task.canceled"),
+        TaskStateMachine.Effect.RecordCancellation(payload.requestedBy),
+        TaskStateMachine.Effect.EmitTelemetry("task.canceled"),
       ])
 
     // For other failures, simple state rollback
-    | (_, StateMachine.State.Failed, _) => StateRollback(StateMachine.State.Idle)
+    | (_, TaskStateMachine.State.Failed, _) => StateRollback(TaskStateMachine.State.Idle)
 
     // No rollback needed for successful transitions
     | _ => NoRollback
@@ -289,11 +289,11 @@ module ErrorRecovery = {
     } else {
       switch error.fromState {
       // For Preparing state errors, try fallback to WaitingOnDependency
-      | StateMachine.State.Preparing =>
-        FallbackToState(StateMachine.State.WaitingOnDependency)
+      | TaskStateMachine.State.Preparing =>
+        FallbackToState(TaskStateMachine.State.WaitingOnDependency)
 
       // For Executing state errors, execute rollback
-      | StateMachine.State.Executing => {
+      | TaskStateMachine.State.Executing => {
           let strategy = determineRollbackStrategy(
             error.fromState,
             error.toState,
@@ -309,11 +309,11 @@ module ErrorRecovery = {
   }
 
   // Execute rollback based on strategy
-  let executeRollback = (strategy: rollbackStrategy): (StateMachine.State.t, array<StateMachine.Effect.t>) => {
+  let executeRollback = (strategy: rollbackStrategy): (TaskStateMachine.State.t, array<TaskStateMachine.Effect.t>) => {
     switch strategy {
-    | NoRollback => (StateMachine.State.Idle, [])
+    | NoRollback => (TaskStateMachine.State.Idle, [])
     | StateRollback(state) => (state, [])
-    | CompensateWithEffects(effects) => (StateMachine.State.Idle, effects)
+    | CompensateWithEffects(effects) => (TaskStateMachine.State.Idle, effects)
     | FullRollback(state, effects) => (state, effects)
     }
   }
@@ -322,11 +322,11 @@ module ErrorRecovery = {
 module TransitionValidation = {
   // Comprehensive validation of a transition
   let validateTransition = (
-    fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    event: StateMachine.Event.t,
-    context: StateMachine.Context.t,
-    effects: array<StateMachine.Effect.t>,
+    fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    event: TaskStateMachine.Event.t,
+    context: TaskStateMachine.Context.t,
+    effects: array<TaskStateMachine.Effect.t>,
   ): validationResult => {
     // Step 1: Validate source state
     let sourceValid = PreConditionValidator.validateSourceState(fromState, event)
@@ -370,11 +370,11 @@ module TransitionValidation = {
 
   // Validate and recover from transition errors
   let validateWithRecovery = (
-    fromState: StateMachine.State.t,
-    toState: StateMachine.State.t,
-    event: StateMachine.Event.t,
-    context: StateMachine.Context.t,
-    effects: array<StateMachine.Effect.t>,
+    fromState: TaskStateMachine.State.t,
+    toState: TaskStateMachine.State.t,
+    event: TaskStateMachine.Event.t,
+    context: TaskStateMachine.Context.t,
+    effects: array<TaskStateMachine.Effect.t>,
     validationCtx: validationContext,
   ): (validationResult, option<recoveryAction>) => {
     let result = validateTransition(fromState, toState, event, context, effects)
@@ -405,8 +405,8 @@ let executeRollback = ErrorRecovery.executeRollback
 
 // Helper to create validation context
 let createValidationContext = (
-  context: StateMachine.Context.t,
-  ~previousState: option<StateMachine.State.t>=?,
+  context: TaskStateMachine.Context.t,
+  ~previousState: option<TaskStateMachine.State.t>=?,
   ~attemptCount: int=0,
   ~lastError: option<validationError>=?,
   ()

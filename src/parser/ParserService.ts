@@ -50,7 +50,7 @@ export class ParserService {
   constructor() {
     this.parser = new Parser();
     // Use TypeScript grammar (handles both .ts and .tsx)
-    this.parser.setLanguage(TypeScript.typescript);
+    this.parser.setLanguage(TypeScript.typescript as Parser.Language);
   }
 
   /**

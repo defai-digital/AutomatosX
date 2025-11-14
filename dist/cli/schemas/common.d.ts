@@ -29,10 +29,10 @@ export declare const TaskDescriptionSchema: z.ZodString;
  */
 export declare const ProviderSchema: z.ZodEnum<{
     claude: "claude";
-    gemini: "gemini";
-    openai: "openai";
     "claude-code": "claude-code";
+    gemini: "gemini";
     "gemini-cli": "gemini-cli";
+    openai: "openai";
     gpt: "gpt";
 }>;
 export type Provider = z.infer<typeof ProviderSchema>;
@@ -42,8 +42,8 @@ export type Provider = z.infer<typeof ProviderSchema>;
 export declare const OutputFormatSchema: z.ZodDefault<z.ZodEnum<{
     text: "text";
     json: "json";
-    table: "table";
     yaml: "yaml";
+    table: "table";
 }>>;
 export type OutputFormat = z.infer<typeof OutputFormatSchema>;
 /**
@@ -98,17 +98,17 @@ export declare const CommonSchemas: {
     TaskDescription: z.ZodString;
     Provider: z.ZodEnum<{
         claude: "claude";
-        gemini: "gemini";
-        openai: "openai";
         "claude-code": "claude-code";
+        gemini: "gemini";
         "gemini-cli": "gemini-cli";
+        openai: "openai";
         gpt: "gpt";
     }>;
     OutputFormat: z.ZodDefault<z.ZodEnum<{
         text: "text";
         json: "json";
-        table: "table";
         yaml: "yaml";
+        table: "table";
     }>>;
     FilePath: z.ZodString;
     Timeout: z.ZodOptional<z.ZodNumber>;

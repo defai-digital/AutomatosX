@@ -397,7 +397,7 @@ module Parser = {
     switch current {
     | Identifier("NoAction") => Success((RuleAST.NoAction, advance(state)))
     | Identifier("ScheduleRetry") =>
-      Success((RuleAST.ExecuteEffect(StateMachine.Effect.ScheduleRetry), advance(state)))
+      Success((RuleAST.ExecuteEffect(TaskStateMachine.Effect.ScheduleRetry), advance(state)))
     | _ =>
       Failure({
         message: `Expected action, got ${current->Obj.magic}`,

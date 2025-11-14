@@ -25,7 +25,7 @@ export class KotlinParserService extends BaseLanguageParser {
   readonly extensions = ['.kt', '.kts'];
 
   constructor() {
-    super(Kotlin);
+    super(Kotlin as Parser.Language);
   }
 
   /**

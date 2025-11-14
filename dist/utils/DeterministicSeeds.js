@@ -24,6 +24,12 @@ export class SeededRandom {
         return Math.floor(this.next() * (max - min)) + min;
     }
     /**
+     * Generate random float in range [min, max)
+     */
+    nextInRange(min, max) {
+        return this.next() * (max - min) + min;
+    }
+    /**
      * Generate random element from array
      */
     choice(array) {

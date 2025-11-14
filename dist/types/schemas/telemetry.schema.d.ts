@@ -6,10 +6,10 @@ import { z } from 'zod';
  * Events are stored in SQLite and used for analytics.
  */
 export declare const EventTypeSchema: z.ZodEnum<{
+    error_occurred: "error_occurred";
     command_executed: "command_executed";
     query_performed: "query_performed";
     parser_invoked: "parser_invoked";
-    error_occurred: "error_occurred";
     performance_metric: "performance_metric";
     feature_used: "feature_used";
 }>;
@@ -17,10 +17,10 @@ export type EventType = z.infer<typeof EventTypeSchema>;
 export declare const TelemetryEventSchema: z.ZodObject<{
     sessionId: z.ZodString;
     eventType: z.ZodEnum<{
+        error_occurred: "error_occurred";
         command_executed: "command_executed";
         query_performed: "query_performed";
         parser_invoked: "parser_invoked";
-        error_occurred: "error_occurred";
         performance_metric: "performance_metric";
         feature_used: "feature_used";
     }>;
@@ -95,8 +95,8 @@ export type TelemetryConfig = z.infer<typeof TelemetryConfigSchema>;
 export declare const TelemetryStatsSchema: z.ZodObject<{
     statDate: z.ZodString;
     statType: z.ZodEnum<{
-        error: "error";
         query: "query";
+        error: "error";
         performance: "performance";
         command: "command";
     }>;

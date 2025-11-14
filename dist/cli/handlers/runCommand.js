@@ -1,8 +1,9 @@
-// Sprint 2 Day 13: Run Command Handler
+// Sprint 2 Day 13: Run Command Handler (Updated Day 15 with UX improvements)
 // Handler for `ax run <agent> "<task>"` CLI command
 import { RunCommandSchema } from '../schemas/RunCommandSchema.js';
 import { errorHandler } from '../../utils/ErrorEnvelope.js';
 import { StreamingLogger } from '../../utils/StreamingLogger.js';
+import { ProgressTracker } from '../../utils/SpinnerLogger.js';
 /**
  * Execute agent task handler
  *
@@ -100,16 +101,44 @@ export async function runCommand(rawArgs) {
  * TODO: Replace with actual AgentOrchestrator integration
  */
 async function mockExecuteTask(args, logger) {
-    const steps = [
-        'Loading agent configuration',
-        'Preparing execution environment',
-        'Analyzing task requirements',
-        'Executing task',
-        'Validating results',
-    ];
-    for (let i = 0; i < steps.length; i++) {
-        logger.info(`[${i + 1}/${steps.length}] ${steps[i]}...`);
-        await new Promise(resolve => setTimeout(resolve, 100));
+    // Use ProgressTracker for visual feedback
+    const progress = new ProgressTracker([
+        { name: 'load-config', status: 'pending' },
+        { name: 'prepare-env', status: 'pending' },
+        { name: 'analyze-task', status: 'pending' },
+        { name: 'execute', status: 'pending' },
+        { name: 'validate', status: 'pending' },
+    ]);
+    // Step 1: Load configuration
+    progress.start('load-config', 'Loading agent configuration');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    progress.complete('load-config', `Loaded agent "${args.agent}" configuration`);
+    // Step 2: Prepare environment
+    progress.start('prepare-env', 'Preparing execution environment');
+    await new Promise(resolve => setTimeout(resolve, 150));
+    progress.complete('prepare-env', 'Environment ready');
+    // Step 3: Analyze task
+    progress.start('analyze-task', 'Analyzing task requirements');
+    await new Promise(resolve => setTimeout(resolve, 180));
+    const taskLength = args.task.length;
+    progress.complete('analyze-task', `Analyzed task (${taskLength} characters)`);
+    // Step 4: Execute task
+    progress.start('execute', args.streaming ? 'Streaming task execution' : 'Executing task');
+    if (args.streaming) {
+        // Simulate streaming updates
+        for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            progress.updateMessage(`Processing step ${i + 1}/5...`);
+        }
     }
+    else {
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    progress.complete('execute', 'Task execution complete');
+    // Step 5: Validate results
+    progress.start('validate', 'Validating results');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    progress.complete('validate', 'Results validated successfully');
+    progress.stopAll();
 }
 //# sourceMappingURL=runCommand.js.map

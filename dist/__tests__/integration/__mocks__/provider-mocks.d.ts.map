@@ -1,0 +1,1 @@
+{"version":3,"file":"provider-mocks.d.ts","sourceRoot":"","sources":["../../../../src/__tests__/integration/__mocks__/provider-mocks.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAIH;;GAEG;AACH,qBAAa,aAAa;IACxB,QAAQ;;MAmBP;CACF;AAED;;GAEG;AACH,qBAAa,sBAAsB;IACjC,kBAAkB;;;CAcnB;AAED;;GAEG;AACH,qBAAa,UAAU;IACrB,IAAI;;;;MAwBH;CACF;AAED;;GAEG;AACH,wBAAgB,kBAAkB,SAqBjC"}

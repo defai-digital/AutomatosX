@@ -26,7 +26,7 @@ export class SwiftParserService extends BaseLanguageParser {
   readonly extensions = ['.swift'];
 
   constructor() {
-    super(Swift);
+    super(Swift as Parser.Language);
   }
 
   /**

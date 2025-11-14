@@ -13,8 +13,8 @@ type guardVerdict =
 
 // Guard context containing state and event being validated
 type guardContext = {
-  currentState: StateMachine.State.t,
-  event: StateMachine.Event.t,
+  currentState: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
   metadata: option<Js.Dict.t<Js.Json.t>>,
 }
 
@@ -42,8 +42,8 @@ type dependencyCheckResult =
 
 // Helper: Create guard context from state and event
 let createGuardContext = (
-  currentState: StateMachine.State.t,
-  event: StateMachine.Event.t,
+  currentState: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
   metadata: option<Js.Dict.t<Js.Json.t>>,
 ): guardContext => {
   {
@@ -152,32 +152,32 @@ let dependencyCheckGuard = (
 }
 
 // State-Based Guard: Only allow transitions from specific states
-let stateBasedGuard = (allowedStates: array<StateMachine.State.t>, ctx: guardContext): guardVerdict => {
+let stateBasedGuard = (allowedStates: array<TaskStateMachine.State.t>, ctx: guardContext): guardVerdict => {
   let isAllowed = Belt.Array.some(allowedStates, allowedState => {
     // Compare states using string representation for simplicity
-    StateMachine.State.toString(allowedState) == StateMachine.State.toString(ctx.currentState)
+    TaskStateMachine.State.toString(allowedState) == TaskStateMachine.State.toString(ctx.currentState)
   })
 
   if isAllowed {
     Pass
   } else {
-    let allowedStateNames = Belt.Array.map(allowedStates, StateMachine.State.toString)->Js.Array2.joinWith(", ")
-    Fail(`Transition not allowed from state ${StateMachine.State.toString(ctx.currentState)}. Allowed states: ${allowedStateNames}`)
+    let allowedStateNames = Belt.Array.map(allowedStates, TaskStateMachine.State.toString)->Js.Array2.joinWith(", ")
+    Fail(`Transition not allowed from state ${TaskStateMachine.State.toString(ctx.currentState)}. Allowed states: ${allowedStateNames}`)
   }
 }
 
 // Event-Based Guard: Only allow specific events
-let eventBasedGuard = (allowedEvents: array<StateMachine.Event.t>, ctx: guardContext): guardVerdict => {
+let eventBasedGuard = (allowedEvents: array<TaskStateMachine.Event.t>, ctx: guardContext): guardVerdict => {
   let isAllowed = Belt.Array.some(allowedEvents, allowedEvent => {
     // Compare events using string representation
-    StateMachine.Event.toString(allowedEvent) == StateMachine.Event.toString(ctx.event)
+    TaskStateMachine.Event.toString(allowedEvent) == TaskStateMachine.Event.toString(ctx.event)
   })
 
   if isAllowed {
     Pass
   } else {
-    let allowedEventNames = Belt.Array.map(allowedEvents, StateMachine.Event.toString)->Js.Array2.joinWith(", ")
-    Fail(`Event ${StateMachine.Event.toString(ctx.event)} not allowed. Allowed events: ${allowedEventNames}`)
+    let allowedEventNames = Belt.Array.map(allowedEvents, TaskStateMachine.Event.toString)->Js.Array2.joinWith(", ")
+    Fail(`Event ${TaskStateMachine.Event.toString(ctx.event)} not allowed. Allowed events: ${allowedEventNames}`)
   }
 }
 
@@ -234,7 +234,7 @@ let executeGuard = (guard: guard, ctx: guardContext, guardName: string): guardVe
   let verdict = guard(ctx)
 
   // Log guard execution (can be replaced with proper telemetry)
-  let logMsg = `[Guards] ${guardName}: ${verdictToString(verdict)} for ${StateMachine.Event.toString(ctx.event)} in ${StateMachine.State.toString(ctx.currentState)}`
+  let logMsg = `[Guards] ${guardName}: ${verdictToString(verdict)} for ${TaskStateMachine.Event.toString(ctx.event)} in ${TaskStateMachine.State.toString(ctx.currentState)}`
   Js.log(logMsg)
 
   verdict

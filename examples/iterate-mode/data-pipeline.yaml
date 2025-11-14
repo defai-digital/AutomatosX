@@ -1,0 +1,175 @@
+# Data Pipeline Example
+#
+# ETL workflow that demonstrates timeout and rate limit handling
+# with automatic retry using aggressive-timeout and fallback-providers strategies
+
+name: data-pipeline
+description: ETL pipeline with API fetch, transform, and database load
+version: 1.0.0
+
+# Configuration
+config:
+  defaultTimeout: 30000  # 30 seconds per step
+  maxRetries: 3
+  providers:
+    primary: claude
+    fallback: [gemini, openai]
+
+# Workflow steps
+steps:
+  # Step 1: Fetch data from external API
+  - name: fetch-customer-data
+    description: Fetch customer records from REST API
+    provider: claude
+    prompt: |
+      Fetch customer data from the API endpoint: https://api.example.com/customers
+
+      Requirements:
+      - Use pagination with 100 records per page
+      - Handle rate limiting with exponential backoff
+      - Validate response structure
+      - Return JSON array of customer objects
+    timeout: 60000  # 60 seconds (may be slow)
+    required: true
+    retryable: true
+    metadata:
+      api_endpoint: https://api.example.com/customers
+      pagination: true
+      page_size: 100
+
+  # Step 2: Validate and transform data
+  - name: transform-data
+    description: Clean and transform customer data
+    provider: claude
+    prompt: |
+      Transform the customer data from previous step:
+
+      Transformations:
+      1. Normalize email addresses (lowercase, trim)
+      2. Parse phone numbers to E.164 format
+      3. Convert dates to ISO 8601
+      4. Extract first/last name from full name
+      5. Add data quality score (0-100)
+
+      Return transformed JSON array with validation report
+    timeout: 30000
+    required: true
+    retryable: true
+    dependsOn: [fetch-customer-data]
+
+  # Step 3: Enrich with third-party data
+  - name: enrich-customer-profiles
+    description: Enrich customer data with demographic info
+    provider: gemini  # Use different provider for diversity
+    prompt: |
+      Enrich customer profiles with demographic data:
+
+      Enrichments:
+      - Add location metadata (city, state, country, timezone)
+      - Add company information (if business email)
+      - Add social media profiles (if available)
+      - Calculate customer lifetime value estimate
+
+      Return enriched customer objects
+    timeout: 45000
+    required: false  # Optional enrichment
+    retryable: true
+    dependsOn: [transform-data]
+
+  # Step 4: Load to database
+  - name: load-to-database
+    description: Insert/update customer records in database
+    provider: claude
+    prompt: |
+      Load customer data to PostgreSQL database:
+
+      Operations:
+      1. Connect to database: postgresql://localhost:5432/customers
+      2. For each customer:
+         - Check if exists (by email)
+         - INSERT if new, UPDATE if exists
+         - Record timestamp in updated_at
+      3. Commit transaction
+      4. Return summary: inserted, updated, failed counts
+    timeout: 90000  # 90 seconds for batch insert
+    required: true
+    retryable: true
+    dependsOn: [transform-data]  # Can proceed without enrichment
+
+  # Step 5: Generate report
+  - name: generate-summary-report
+    description: Create pipeline execution summary
+    provider: openai
+    prompt: |
+      Generate execution summary report:
+
+      Include:
+      - Total records processed
+      - Success/failure counts
+      - Data quality metrics
+      - Processing duration
+      - Any errors or warnings
+
+      Format as markdown report
+    timeout: 15000
+    required: false  # Optional reporting
+    retryable: true
+    dependsOn: [load-to-database]
+
+  # Step 6: Send notification
+  - name: send-completion-notification
+    description: Notify team of pipeline completion
+    provider: claude
+    prompt: |
+      Send completion notification via Slack webhook:
+
+      Webhook: https://hooks.slack.com/services/EXAMPLE
+      Channel: #data-pipeline
+
+      Message should include:
+      - Pipeline status (success/failure)
+      - Record counts
+      - Duration
+      - Link to full report
+    timeout: 10000
+    required: false  # Optional notification
+    retryable: true
+    dependsOn: [generate-summary-report]
+
+# Error handling configuration
+errorHandling:
+  continueOnError: false  # Stop pipeline on required step failure
+  capturePartialResults: true
+  saveCheckpoints: true
+  checkpointInterval: 2  # Checkpoint every 2 steps
+
+# Monitoring and observability
+monitoring:
+  logLevel: info
+  metricsEnabled: true
+  tracingEnabled: true
+  alertOnFailure: true
+
+# Expected behavior with Iterate Mode:
+#
+# Iteration 1 (default strategy):
+#   - fetch-customer-data: May timeout if API is slow
+#   → Switches to aggressive-timeout strategy
+#
+# Iteration 2 (aggressive-timeout):
+#   - fetch-customer-data: Succeeds with extended timeout (120s)
+#   - transform-data: Succeeds
+#   - enrich-customer-profiles: May hit rate limit
+#   → Switches to fallback-providers strategy
+#
+# Iteration 3 (fallback-providers):
+#   - Resumes from checkpoint (step 3)
+#   - enrich-customer-profiles: Uses Gemini instead of Claude
+#   - load-to-database: Succeeds
+#   - generate-summary-report: Succeeds (optional)
+#   - send-completion-notification: Succeeds (optional)
+#   → Pipeline completes successfully
+#
+# Total iterations: 3
+# Expected duration: 2-3 minutes
+# Expected cost: $0.50-1.50

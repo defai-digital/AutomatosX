@@ -24,14 +24,14 @@ export declare const MemorySearchSchema: z.ZodObject<{
     format: z.ZodDefault<z.ZodEnum<{
         text: "text";
         json: "json";
-        table: "table";
         yaml: "yaml";
+        table: "table";
     }>>;
     exactMatch: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     sortBy: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
-        relevance: "relevance";
-        date: "date";
         agent: "agent";
+        date: "date";
+        relevance: "relevance";
     }>>>;
 }, z.core.$strip>;
 export type MemorySearch = z.infer<typeof MemorySearchSchema>;

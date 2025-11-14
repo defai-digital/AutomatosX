@@ -17,7 +17,7 @@ export class PythonParserService extends BaseLanguageParser {
   readonly extensions = ['.py', '.pyi'];
 
   constructor() {
-    super(Python);
+    super(Python as Parser.Language);
   }
 
   /**

@@ -18,7 +18,7 @@ export class HtmlParserService extends BaseLanguageParser {
   readonly extensions = ['.html', '.htm', '.xhtml'];
 
   constructor() {
-    super(HTML);
+    super(HTML as Parser.Language);
   }
 
   /**

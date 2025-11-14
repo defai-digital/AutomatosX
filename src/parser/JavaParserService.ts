@@ -17,7 +17,7 @@ export class JavaParserService extends BaseLanguageParser {
   readonly extensions = ['.java'];
 
   constructor() {
-    super(Java);
+    super(Java as Parser.Language);
   }
 
   /**

@@ -72,7 +72,7 @@ export declare abstract class BaseLanguageParser implements LanguageParser {
     protected parser: Parser;
     abstract readonly language: string;
     abstract readonly extensions: string[];
-    constructor(grammar: any);
+    constructor(grammar: Parser.Language);
     /**
      * Parse source code and extract symbols
      */

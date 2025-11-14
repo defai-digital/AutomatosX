@@ -95,7 +95,7 @@ export abstract class BaseLanguageParser implements LanguageParser {
   abstract readonly language: string;
   abstract readonly extensions: string[];
 
-  constructor(grammar: any) {
+  constructor(grammar: Parser.Language) {
     this.parser = new Parser();
     this.parser.setLanguage(grammar);
   }

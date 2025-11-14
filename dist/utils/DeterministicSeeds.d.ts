@@ -14,6 +14,10 @@ export declare class SeededRandom {
      */
     nextInt(min: number, max: number): number;
     /**
+     * Generate random float in range [min, max)
+     */
+    nextInRange(min: number, max: number): number;
+    /**
      * Generate random element from array
      */
     choice<T>(array: T[]): T;

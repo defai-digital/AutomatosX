@@ -1,13 +1,21 @@
 /**
  * CppParserService.ts
  *
- * C++ language parser using Tree-sitter
- * Extracts symbols from C++ source code
+ * C++/Metal language parser using Tree-sitter
+ * Extracts symbols from C++ and Apple Metal shader source code
+ *
+ * Supports:
+ * - C++ (.cpp, .cc, .cxx, .h, .hpp, .hxx)
+ * - Apple Metal Shading Language (.metal)
+ *
+ * Metal Shading Language is based on C++14 with GPU-specific extensions.
+ * Since Metal uses C++ syntax with additional qualifiers, we can use
+ * the same tree-sitter grammar for both.
  */
 import Parser from 'tree-sitter';
 import { BaseLanguageParser, Symbol } from './LanguageParser.js';
 /**
- * CppParserService - Extracts symbols from C++ code
+ * CppParserService - Extracts symbols from C++ and Metal code
  */
 export declare class CppParserService extends BaseLanguageParser {
     readonly language = "cpp";
@@ -39,6 +47,7 @@ export declare class CppParserService extends BaseLanguageParser {
      * Extract function definition
      * Example: void calculate(int x, int y) { }
      * Example: double Calculator::add(double a, double b) { }
+     * Example (Metal): kernel void computeShader(...) { }
      */
     private extractFunction;
     /**

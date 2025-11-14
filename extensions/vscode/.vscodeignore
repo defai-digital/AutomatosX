@@ -1,0 +1,27 @@
+# Source files
+src/**
+tsconfig.json
+webpack.config.js
+.eslintrc.json
+
+# Test files
+**/__tests__/**
+*.test.ts
+*.spec.ts
+
+# Build artifacts
+node_modules/**
+.vscode-test/**
+
+# Development files
+.gitignore
+.editorconfig
+*.map
+
+# Documentation (keep README)
+# README.md is included by default
+
+# Other
+.DS_Store
+*.log
+npm-debug.log*

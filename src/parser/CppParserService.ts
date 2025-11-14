@@ -1,8 +1,16 @@
 /**
  * CppParserService.ts
  *
- * C++ language parser using Tree-sitter
- * Extracts symbols from C++ source code
+ * C++/Metal language parser using Tree-sitter
+ * Extracts symbols from C++ and Apple Metal shader source code
+ *
+ * Supports:
+ * - C++ (.cpp, .cc, .cxx, .h, .hpp, .hxx)
+ * - Apple Metal Shading Language (.metal)
+ *
+ * Metal Shading Language is based on C++14 with GPU-specific extensions.
+ * Since Metal uses C++ syntax with additional qualifiers, we can use
+ * the same tree-sitter grammar for both.
  */
 
 import Parser from 'tree-sitter';
@@ -10,14 +18,24 @@ import Cpp from 'tree-sitter-cpp';
 import { BaseLanguageParser, Symbol, SymbolKind } from './LanguageParser.js';
 
 /**
- * CppParserService - Extracts symbols from C++ code
+ * CppParserService - Extracts symbols from C++ and Metal code
  */
 export class CppParserService extends BaseLanguageParser {
   readonly language = 'cpp';
-  readonly extensions = ['.cpp', '.cc', '.cxx', '.h', '.hpp', '.hxx'];
+  readonly extensions = [
+    // C++
+    '.cpp',
+    '.cc',
+    '.cxx',
+    '.h',
+    '.hpp',
+    '.hxx',
+    // Apple Metal Shading Language
+    '.metal',
+  ];
 
   constructor() {
-    super(Cpp);
+    super(Cpp as Parser.Language);
   }
 
   /**
@@ -94,6 +112,7 @@ export class CppParserService extends BaseLanguageParser {
    * Extract function definition
    * Example: void calculate(int x, int y) { }
    * Example: double Calculator::add(double a, double b) { }
+   * Example (Metal): kernel void computeShader(...) { }
    */
   private extractFunction(node: Parser.SyntaxNode): Symbol | null {
     const declarator = node.childForFieldName('declarator');
@@ -103,12 +122,23 @@ export class CppParserService extends BaseLanguageParser {
     let name = this.extractFunctionName(declarator);
     if (!name) return null;
 
+    // Check for Metal shader qualifiers
+    const text = node.text;
+    const isKernel = text.includes('kernel ');    // Metal compute shader
+    const isVertex = text.includes('vertex ');    // Metal vertex shader
+    const isFragment = text.includes('fragment '); // Metal fragment shader
+
+    const metadata: Record<string, any> = {};
+    if (isKernel) metadata.metalKernel = true;
+    if (isVertex) metadata.metalVertex = true;
+    if (isFragment) metadata.metalFragment = true;
+
     // Check if it's a member function (contains ::)
     if (name.includes('::')) {
-      return this.createSymbol(node, name, 'method');
+      return this.createSymbol(node, name, 'method', Object.keys(metadata).length > 0 ? metadata : undefined);
     }
 
-    return this.createSymbol(node, name, 'function');
+    return this.createSymbol(node, name, 'function', Object.keys(metadata).length > 0 ? metadata : undefined);
   }
 
   /**

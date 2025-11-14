@@ -154,29 +154,29 @@ module EffectExecutor = {
 module AsyncEffectHandler = {
   // Execute effect with async runtime
   let executeEffect = async (
-    effect: StateMachine.Effect.t,
-    _taskContext: StateMachine.Context.t,
+    effect: TaskStateMachine.Effect.t,
+    _taskContext: TaskStateMachine.Context.t,
     execContext: executionContext,
   ): executionResult => {
     try {
       let result = switch effect {
-      | StateMachine.Effect.HydratePlan(taskId) =>
+      | TaskStateMachine.Effect.HydratePlan(taskId) =>
         await EffectExecutor.executePlanHydration(taskId, execContext)
-      | StateMachine.Effect.EvaluateGuards =>
+      | TaskStateMachine.Effect.EvaluateGuards =>
         await EffectExecutor.executeGuardEvaluation(execContext)
-      | StateMachine.Effect.StartExecution(taskId) =>
+      | TaskStateMachine.Effect.StartExecution(taskId) =>
         await EffectExecutor.executeTaskExecution(taskId, execContext)
-      | StateMachine.Effect.EnterWaitState =>
+      | TaskStateMachine.Effect.EnterWaitState =>
         await EffectExecutor.executeWaitState(execContext)
-      | StateMachine.Effect.EmitTelemetry(label) =>
+      | TaskStateMachine.Effect.EmitTelemetry(label) =>
         await EffectExecutor.executeTelemetryEmission(label, execContext)
-      | StateMachine.Effect.ScheduleRetry =>
+      | TaskStateMachine.Effect.ScheduleRetry =>
         await EffectExecutor.executeRetryScheduling(execContext)
-      | StateMachine.Effect.PerformRollback(reason) =>
+      | TaskStateMachine.Effect.PerformRollback(reason) =>
         await EffectExecutor.executeRollback(reason, execContext)
-      | StateMachine.Effect.RecordCancellation(actor) =>
+      | TaskStateMachine.Effect.RecordCancellation(actor) =>
         await EffectExecutor.executeCancellationRecording(actor, execContext)
-      | StateMachine.Effect.FlushTelemetryBuffer =>
+      | TaskStateMachine.Effect.FlushTelemetryBuffer =>
         await EffectExecutor.executeTelemetryFlush(execContext)
       }
 
@@ -188,8 +188,8 @@ module AsyncEffectHandler = {
 
   // Execute multiple effects sequentially
   let executeEffectList = async (
-    effects: array<StateMachine.Effect.t>,
-    taskContext: StateMachine.Context.t,
+    effects: array<TaskStateMachine.Effect.t>,
+    taskContext: TaskStateMachine.Context.t,
     execContext: executionContext,
   ): array<executionResult> => {
     let results = []
@@ -205,8 +205,8 @@ module AsyncEffectHandler = {
 
   // Execute multiple effects concurrently (for independent effects)
   let executeEffectListConcurrent = async (
-    effects: array<StateMachine.Effect.t>,
-    taskContext: StateMachine.Context.t,
+    effects: array<TaskStateMachine.Effect.t>,
+    taskContext: TaskStateMachine.Context.t,
     execContext: executionContext,
   ): array<executionResult> => {
     let promises = effects->Array.map(effect => {
@@ -221,8 +221,8 @@ module EffectRuntime = {
   // Runtime state for tracking effect execution
   type runtimeState = {
     executionContext: executionContext,
-    pendingEffects: array<StateMachine.Effect.t>,
-    executedEffects: array<(StateMachine.Effect.t, executionResult)>,
+    pendingEffects: array<TaskStateMachine.Effect.t>,
+    executedEffects: array<(TaskStateMachine.Effect.t, executionResult)>,
   }
 
   let createRuntime = (context: executionContext): runtimeState => {
@@ -232,7 +232,7 @@ module EffectRuntime = {
   }
 
   // Add effects to pending queue
-  let queueEffects = (runtime: runtimeState, effects: array<StateMachine.Effect.t>): runtimeState => {
+  let queueEffects = (runtime: runtimeState, effects: array<TaskStateMachine.Effect.t>): runtimeState => {
     {
       ...runtime,
       pendingEffects: runtime.pendingEffects->Array.concat(effects),
@@ -242,7 +242,7 @@ module EffectRuntime = {
   // Execute all pending effects
   let executePendingEffects = async (
     runtime: runtimeState,
-    taskContext: StateMachine.Context.t,
+    taskContext: TaskStateMachine.Context.t,
     concurrent: bool,
   ): runtimeState => {
     if Array.length(runtime.pendingEffects) === 0 {
@@ -307,7 +307,7 @@ module EffectRuntime = {
   }
 
   // Get failed effects
-  let getFailedEffects = (runtime: runtimeState): array<(StateMachine.Effect.t, string)> => {
+  let getFailedEffects = (runtime: runtimeState): array<(TaskStateMachine.Effect.t, string)> => {
     runtime.executedEffects
     ->Array.keepMap(((effect, result)) => {
       switch result {

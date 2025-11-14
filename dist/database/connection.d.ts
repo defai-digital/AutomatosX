@@ -29,6 +29,11 @@ export declare function getDatabase(config?: Partial<DatabaseConfig>): Database.
  */
 export declare function closeDatabase(): void;
 /**
+ * Set database instance (for testing)
+ * @param db - Database instance to use
+ */
+export declare function setDatabase(db: Database.Database): void;
+/**
  * Execute a query with parameters
  * Helper function for common database operations
  */

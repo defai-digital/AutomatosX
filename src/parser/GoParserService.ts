@@ -17,7 +17,7 @@ export class GoParserService extends BaseLanguageParser {
   readonly extensions = ['.go'];
 
   constructor() {
-    super(Go);
+    super(Go as Parser.Language);
   }
 
   /**

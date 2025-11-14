@@ -26,7 +26,7 @@ export class SqlParserService extends BaseLanguageParser {
   readonly extensions = ['.sql', '.ddl', '.dml'];
 
   constructor() {
-    super(SQL);
+    super(SQL as Parser.Language);
   }
 
   /**

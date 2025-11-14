@@ -68,8 +68,8 @@ export type PerformanceConfig = z.infer<typeof PerformanceConfigSchema>;
 export declare const LoggingConfigSchema: z.ZodObject<{
     level: z.ZodDefault<z.ZodEnum<{
         error: "error";
-        info: "info";
         debug: "debug";
+        info: "info";
         warn: "warn";
     }>>;
     enableFileLogging: z.ZodDefault<z.ZodBoolean>;
@@ -124,8 +124,8 @@ export declare const AutomatosXConfigSchema: z.ZodObject<{
     logging: z.ZodObject<{
         level: z.ZodDefault<z.ZodEnum<{
             error: "error";
-            info: "info";
             debug: "debug";
+            info: "info";
             warn: "warn";
         }>>;
         enableFileLogging: z.ZodDefault<z.ZodBoolean>;
@@ -178,8 +178,8 @@ export declare const PartialConfigSchema: z.ZodObject<{
     logging: z.ZodOptional<z.ZodObject<{
         level: z.ZodOptional<z.ZodEnum<{
             error: "error";
-            info: "info";
             debug: "debug";
+            info: "info";
             warn: "warn";
         }>>;
         enableFileLogging: z.ZodOptional<z.ZodBoolean>;

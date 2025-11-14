@@ -1,1 +1,1 @@
-src/runtime/EventDispatcher.cmj : src/runtime/StateMachine.cmj src/runtime/StateMachine.cmi
+src/runtime/EventDispatcher.cmj : src/runtime/TaskStateMachine.cmj src/runtime/TaskStateMachine.cmi

@@ -19,8 +19,8 @@ export declare const ConfigShowSchema: z.ZodObject<{
     format: z.ZodDefault<z.ZodDefault<z.ZodEnum<{
         text: "text";
         json: "json";
-        table: "table";
         yaml: "yaml";
+        table: "table";
     }>>>;
     showDefaults: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     showSources: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
@@ -28,9 +28,9 @@ export declare const ConfigShowSchema: z.ZodObject<{
         memory: "memory";
         all: "all";
         providers: "providers";
-        performance: "performance";
-        agents: "agents";
         execution: "execution";
+        agents: "agents";
+        performance: "performance";
     }>>>;
 }, z.core.$strip>;
 export type ConfigShow = z.infer<typeof ConfigShowSchema>;

@@ -26,7 +26,7 @@ export class PhpParserService extends BaseLanguageParser {
 
   constructor() {
     // Use the full PHP grammar (supports PHP embedded in HTML)
-    super(PHP.php);
+    super(PHP.php as Parser.Language);
   }
 
   /**
@@ -126,11 +126,11 @@ export class PhpParserService extends BaseLanguageParser {
     const constElements = node.descendantsOfType('const_element');
 
     if (constElements.length > 0) {
-      // Get the first constant name
-      const nameNode = constElements[0].childForFieldName('name');
-      if (!nameNode) return null;
+      // Get the first constant name - it's the first child of type 'name'
+      const nameNodes = constElements[0].descendantsOfType('name');
+      if (nameNodes.length === 0) return null;
 
-      const name = nameNode.text;
+      const name = nameNodes[0].text;
       return this.createSymbol(node, name, 'constant');
     }
 

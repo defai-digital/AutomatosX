@@ -1,0 +1,1 @@
+{"version":3,"file":"hooks.js","sourceRoot":"","sources":["../../../src/web/redux/hooks.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,WAAW,EAAE,WAAW,EAAwB,MAAM,aAAa,CAAC;AAG7E,2EAA2E;AAC3E,MAAM,CAAC,MAAM,cAAc,GAAG,GAAG,EAAE,CAAC,WAAW,EAAe,CAAC;AAC/D,MAAM,CAAC,MAAM,cAAc,GAAoC,WAAW,CAAC"}

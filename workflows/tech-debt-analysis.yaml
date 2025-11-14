@@ -1,0 +1,265 @@
+# Technical Debt Analysis Workflow
+#
+# Comprehensive technical debt analysis demonstrating:
+# - Multi-dimensional code analysis
+# - Agent collaboration patterns
+# - Priority-based recommendations
+# - Executive summary generation
+
+name: tech-debt-analysis
+version: 1.0.0
+description: Comprehensive technical debt analysis and prioritization
+author: AutomatosX Team
+tags:
+  - technical-debt
+  - code-quality
+  - refactoring
+
+steps:
+  # Stage 1: Foundational Analysis (parallel)
+  - key: code-metrics
+    description: Gather code metrics (LOC, complexity, duplication)
+    agent: quality
+    action: gather-code-metrics
+    provider: gemini
+    timeout: 60000
+    continueOnError: false
+
+  - key: dependency-analysis
+    description: Analyze dependency health and outdated packages
+    agent: security
+    action: analyze-dependencies
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+
+  - key: test-coverage
+    description: Analyze test coverage and quality
+    agent: testing
+    action: analyze-test-coverage
+    timeout: 60000
+    continueOnError: false
+
+  # Stage 2: Detailed Analysis (depends on Stage 1, runs in parallel)
+  - key: complexity-hotspots
+    description: Identify high-complexity code hotspots
+    agent: quality
+    action: find-complexity-hotspots
+    provider: gemini
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - code-metrics
+
+  - key: security-debt
+    description: Identify security-related technical debt
+    agent: security
+    action: identify-security-debt
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - dependency-analysis
+
+  - key: test-debt
+    description: Identify missing or inadequate tests
+    agent: testing
+    action: identify-test-gaps
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - test-coverage
+
+  - key: performance-debt
+    description: Identify performance bottlenecks and inefficiencies
+    agent: performance
+    action: find-performance-issues
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - code-metrics
+
+  # Stage 3: Architecture & Design Analysis
+  - key: architecture-review
+    description: Review architecture and identify design debt
+    agent: architecture
+    action: review-architecture
+    provider: claude
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - complexity-hotspots
+      - performance-debt
+
+  - key: pattern-analysis
+    description: Analyze usage of design patterns and anti-patterns
+    agent: architecture
+    action: analyze-patterns
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - code-metrics
+
+  # Stage 4: Data & Infrastructure Debt
+  - key: database-debt
+    description: Analyze database schema and query performance
+    agent: database
+    action: analyze-database-debt
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - architecture-review
+
+  - key: infrastructure-debt
+    description: Review infrastructure configuration and deployment practices
+    agent: infrastructure
+    action: review-infrastructure
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - architecture-review
+
+  # Stage 5: Documentation & Standards Debt
+  - key: documentation-audit
+    description: Audit documentation completeness and quality
+    agent: writer
+    action: audit-documentation
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - architecture-review
+
+  - key: standards-compliance
+    description: Check compliance with coding standards and best practices
+    agent: standards
+    action: check-standards-compliance
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - code-metrics
+
+  # Stage 6: Priority & Impact Analysis
+  - key: calculate-debt-score
+    description: Calculate technical debt score for each issue
+    agent: quality
+    action: calculate-debt-scores
+    provider: gemini
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - complexity-hotspots
+      - security-debt
+      - test-debt
+      - performance-debt
+      - architecture-review
+      - database-debt
+      - infrastructure-debt
+
+  - key: estimate-remediation-effort
+    description: Estimate effort to fix each debt item
+    agent: cto
+    action: estimate-effort
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - calculate-debt-score
+
+  # Stage 7: Prioritization & Recommendations
+  - key: prioritize-debt
+    description: Prioritize technical debt items by impact and effort
+    agent: cto
+    action: prioritize-technical-debt
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - estimate-remediation-effort
+
+  - key: create-refactoring-plan
+    description: Create actionable refactoring plan
+    agent: architecture
+    action: create-refactoring-plan
+    provider: claude
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - prioritize-debt
+
+  # Stage 8: Financial Impact Analysis
+  - key: calculate-cost-impact
+    description: Calculate business cost of technical debt
+    agent: product
+    action: calculate-debt-cost
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - prioritize-debt
+
+  - key: roi-analysis
+    description: Calculate ROI for debt reduction initiatives
+    agent: product
+    action: calculate-roi
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - calculate-cost-impact
+      - create-refactoring-plan
+
+  # Stage 9: Executive Summary & Reporting
+  - key: generate-technical-report
+    description: Generate detailed technical debt report
+    agent: writer
+    action: create-technical-report
+    provider: claude
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - create-refactoring-plan
+      - documentation-audit
+      - standards-compliance
+
+  - key: generate-executive-summary
+    description: Create executive summary with key metrics and recommendations
+    agent: ceo
+    action: create-executive-summary
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - roi-analysis
+      - generate-technical-report
+
+  # Stage 10: Actionable Roadmap
+  - key: create-sprint-plan
+    description: Break down refactoring plan into sprint-sized work items
+    agent: product
+    action: create-sprint-plan
+    provider: claude
+    timeout: 90000
+    continueOnError: false
+    dependsOn:
+      - create-refactoring-plan
+      - roi-analysis
+
+  - key: generate-jira-tickets
+    description: Generate JIRA ticket templates for each work item
+    agent: product
+    action: generate-tickets
+    timeout: 60000
+    continueOnError: true  # Nice to have, not critical
+    dependsOn:
+      - create-sprint-plan
+
+# Example usage:
+# ax workflow execute workflows/tech-debt-analysis.yaml --context '{"repository": "./", "targetVersion": "2.0.0"}'
+#
+# Expected output files:
+# - technical-debt-report.md (detailed technical analysis)
+# - executive-summary.pdf (high-level business summary)
+# - refactoring-roadmap.md (sprint-by-sprint plan)
+# - jira-tickets.json (ready-to-import tickets)

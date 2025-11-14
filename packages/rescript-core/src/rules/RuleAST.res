@@ -45,10 +45,10 @@ type rec condition =
 
 // Action to execute when condition is met
 type action =
-  | ExecuteEffect(StateMachine.Effect.t)
+  | ExecuteEffect(TaskStateMachine.Effect.t)
   | SetContextValue(string, value) // Set context field to value
-  | TransitionTo(StateMachine.State.t) // Transition to specific state
-  | EmitEvent(StateMachine.Event.t) // Emit an event
+  | TransitionTo(TaskStateMachine.State.t) // Transition to specific state
+  | EmitEvent(TaskStateMachine.Event.t) // Emit an event
   | NoAction // No-op action
 
 // Rule priority for conflict resolution
@@ -199,29 +199,29 @@ module ActionHelpers = {
     switch action {
     | ExecuteEffect(effect) => {
         let effectStr = switch effect {
-        | StateMachine.Effect.HydratePlan(taskId) => `HydratePlan(${taskId})`
-        | StateMachine.Effect.EvaluateGuards => "EvaluateGuards"
-        | StateMachine.Effect.StartExecution(taskId) => `StartExecution(${taskId})`
-        | StateMachine.Effect.EnterWaitState => "EnterWaitState"
-        | StateMachine.Effect.EmitTelemetry(label) => `EmitTelemetry(${label})`
-        | StateMachine.Effect.ScheduleRetry => "ScheduleRetry"
-        | StateMachine.Effect.PerformRollback(reason) => `PerformRollback(${reason})`
-        | StateMachine.Effect.RecordCancellation(actor) => `RecordCancellation(${actor})`
-        | StateMachine.Effect.FlushTelemetryBuffer => "FlushTelemetryBuffer"
+        | TaskStateMachine.Effect.HydratePlan(taskId) => `HydratePlan(${taskId})`
+        | TaskStateMachine.Effect.EvaluateGuards => "EvaluateGuards"
+        | TaskStateMachine.Effect.StartExecution(taskId) => `StartExecution(${taskId})`
+        | TaskStateMachine.Effect.EnterWaitState => "EnterWaitState"
+        | TaskStateMachine.Effect.EmitTelemetry(label) => `EmitTelemetry(${label})`
+        | TaskStateMachine.Effect.ScheduleRetry => "ScheduleRetry"
+        | TaskStateMachine.Effect.PerformRollback(reason) => `PerformRollback(${reason})`
+        | TaskStateMachine.Effect.RecordCancellation(actor) => `RecordCancellation(${actor})`
+        | TaskStateMachine.Effect.FlushTelemetryBuffer => "FlushTelemetryBuffer"
         }
         `ExecuteEffect(${effectStr})`
       }
     | SetContextValue(field, value) => `SetContext(${field} = ${ValueHelpers.toString(value)})`
-    | TransitionTo(state) => `TransitionTo(${StateMachine.State.toString(state)})`
+    | TransitionTo(state) => `TransitionTo(${TaskStateMachine.State.toString(state)})`
     | EmitEvent(event) => {
         let eventStr = switch event {
-        | StateMachine.Event.TaskSubmitted(payload) => `TaskSubmitted(${payload.taskId})`
-        | StateMachine.Event.DependenciesReady => "DependenciesReady"
-        | StateMachine.Event.TelemetryFlushed => "TelemetryFlushed"
-        | StateMachine.Event.RuleViolation(rule) => `RuleViolation(${rule})`
-        | StateMachine.Event.Timeout(ms) => `Timeout(${Int.toString(ms)})`
-        | StateMachine.Event.CancelRequest(payload) => `CancelRequest(${payload.requestedBy})`
-        | StateMachine.Event.RetryTrigger => "RetryTrigger"
+        | TaskStateMachine.Event.TaskSubmitted(payload) => `TaskSubmitted(${payload.taskId})`
+        | TaskStateMachine.Event.DependenciesReady => "DependenciesReady"
+        | TaskStateMachine.Event.TelemetryFlushed => "TelemetryFlushed"
+        | TaskStateMachine.Event.RuleViolation(rule) => `RuleViolation(${rule})`
+        | TaskStateMachine.Event.Timeout(ms) => `Timeout(${Int.toString(ms)})`
+        | TaskStateMachine.Event.CancelRequest(payload) => `CancelRequest(${payload.requestedBy})`
+        | TaskStateMachine.Event.RetryTrigger => "RetryTrigger"
         }
         `EmitEvent(${eventStr})`
       }

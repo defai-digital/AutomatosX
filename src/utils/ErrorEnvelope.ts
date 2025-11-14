@@ -204,7 +204,7 @@ export async function errorHandler(
   if (error instanceof z.ZodError) {
     // Zod validation errors
     envelope = createErrorEnvelope(ErrorCodes.VALIDATION_ERROR, 'Invalid command arguments', {
-      details: error.errors.map((e) => ({
+      details: error.issues.map((e: any) => ({
         path: e.path.join('.'),
         message: e.message,
       })),

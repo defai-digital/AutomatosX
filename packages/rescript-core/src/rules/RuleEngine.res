@@ -15,8 +15,8 @@ type evaluationResult =
 
 // Rule execution context
 type executionContext = {
-  currentState: StateMachine.State.t,
-  event: StateMachine.Event.t,
+  currentState: TaskStateMachine.State.t,
+  event: TaskStateMachine.Event.t,
   metadata: option<Js.Dict.t<Js.Json.t>>,
   policy: option<PolicyDSL.policy>,
 }
@@ -31,8 +31,8 @@ type evaluationOutcome = {
 
 // Create execution context
 let createExecutionContext = (
-  ~currentState: StateMachine.State.t,
-  ~event: StateMachine.Event.t,
+  ~currentState: TaskStateMachine.State.t,
+  ~event: TaskStateMachine.Event.t,
   ~metadata: option<Js.Dict.t<Js.Json.t>>=?,
   ~policy: option<PolicyDSL.policy>=?,
   (),
@@ -52,11 +52,11 @@ let evaluateCondition = (
 ): bool => {
   switch condition {
   | PolicyDSL.StateIs(expectedState) => {
-      let currentStateStr = StateMachine.State.toString(context.currentState)
+      let currentStateStr = TaskStateMachine.State.toString(context.currentState)
       currentStateStr == expectedState
     }
   | PolicyDSL.EventIs(expectedEvent) => {
-      let currentEventStr = StateMachine.Event.toString(context.event)
+      let currentEventStr = TaskStateMachine.Event.toString(context.event)
       currentEventStr == expectedEvent
     }
   | PolicyDSL.MetadataHas(field) => {

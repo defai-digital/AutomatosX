@@ -2,7 +2,7 @@
 
 import * as Js_dict from "rescript/lib/es6/js_dict.js";
 import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
-import * as StateMachine from "./StateMachine.bs.js";
+import * as TaskStateMachine from "./TaskStateMachine.bs.js";
 
 function createGuardContext(currentState, $$event, metadata) {
   return {
@@ -111,29 +111,29 @@ function dependencyCheckGuard(checker, _ctx) {
 
 function stateBasedGuard(allowedStates, ctx) {
   var isAllowed = Belt_Array.some(allowedStates, (function (allowedState) {
-          return StateMachine.State.toString(allowedState) === StateMachine.State.toString(ctx.currentState);
+          return TaskStateMachine.State.toString(allowedState) === TaskStateMachine.State.toString(ctx.currentState);
         }));
   if (isAllowed) {
     return "Pass";
   }
-  var allowedStateNames = Belt_Array.map(allowedStates, StateMachine.State.toString).join(", ");
+  var allowedStateNames = Belt_Array.map(allowedStates, TaskStateMachine.State.toString).join(", ");
   return {
           TAG: "Fail",
-          _0: "Transition not allowed from state " + StateMachine.State.toString(ctx.currentState) + ". Allowed states: " + allowedStateNames
+          _0: "Transition not allowed from state " + TaskStateMachine.State.toString(ctx.currentState) + ". Allowed states: " + allowedStateNames
         };
 }
 
 function eventBasedGuard(allowedEvents, ctx) {
   var isAllowed = Belt_Array.some(allowedEvents, (function (allowedEvent) {
-          return StateMachine.$$Event.toString(allowedEvent) === StateMachine.$$Event.toString(ctx.event);
+          return TaskStateMachine.$$Event.toString(allowedEvent) === TaskStateMachine.$$Event.toString(ctx.event);
         }));
   if (isAllowed) {
     return "Pass";
   }
-  var allowedEventNames = Belt_Array.map(allowedEvents, StateMachine.$$Event.toString).join(", ");
+  var allowedEventNames = Belt_Array.map(allowedEvents, TaskStateMachine.$$Event.toString).join(", ");
   return {
           TAG: "Fail",
-          _0: "Event " + StateMachine.$$Event.toString(ctx.event) + " not allowed. Allowed events: " + allowedEventNames
+          _0: "Event " + TaskStateMachine.$$Event.toString(ctx.event) + " not allowed. Allowed events: " + allowedEventNames
         };
 }
 
@@ -199,7 +199,7 @@ function notGuard(guard, ctx) {
 
 function executeGuard(guard, ctx, guardName) {
   var verdict = guard(ctx);
-  var logMsg = "[Guards] " + guardName + ": " + verdictToString(verdict) + " for " + StateMachine.$$Event.toString(ctx.event) + " in " + StateMachine.State.toString(ctx.currentState);
+  var logMsg = "[Guards] " + guardName + ": " + verdictToString(verdict) + " for " + TaskStateMachine.$$Event.toString(ctx.event) + " in " + TaskStateMachine.State.toString(ctx.currentState);
   console.log(logMsg);
   return verdict;
 }

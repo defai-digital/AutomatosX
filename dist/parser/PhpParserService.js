@@ -18,11 +18,11 @@ import { BaseLanguageParser } from './LanguageParser.js';
  * - Namespaces
  */
 export class PhpParserService extends BaseLanguageParser {
-    language = 'php';
-    extensions = ['.php', '.php3', '.php4', '.php5', '.phtml'];
     constructor() {
         // Use the full PHP grammar (supports PHP embedded in HTML)
         super(PHP.php);
+        this.language = 'php';
+        this.extensions = ['.php', '.php3', '.php4', '.php5', '.phtml'];
     }
     /**
      * Extract symbol from AST node
@@ -107,11 +107,11 @@ export class PhpParserService extends BaseLanguageParser {
         // const_declaration contains const_element children
         const constElements = node.descendantsOfType('const_element');
         if (constElements.length > 0) {
-            // Get the first constant name
-            const nameNode = constElements[0].childForFieldName('name');
-            if (!nameNode)
+            // Get the first constant name - it's the first child of type 'name'
+            const nameNodes = constElements[0].descendantsOfType('name');
+            if (nameNodes.length === 0)
                 return null;
-            const name = nameNode.text;
+            const name = nameNodes[0].text;
             return this.createSymbol(node, name, 'constant');
         }
         return null;
@@ -153,4 +153,3 @@ export class PhpParserService extends BaseLanguageParser {
         }
     }
 }
-//# sourceMappingURL=PhpParserService.js.map

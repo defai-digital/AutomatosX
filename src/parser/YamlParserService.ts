@@ -1,0 +1,55 @@
+/**
+ * YamlParserService.ts
+ *
+ * YAML language parser using Tree-sitter
+ * Extracts keys and structure from YAML files
+ */
+
+import Parser from 'tree-sitter';
+import YAML from 'tree-sitter-yaml';
+import { BaseLanguageParser, Symbol, SymbolKind } from './LanguageParser.js';
+
+/**
+ * YamlParserService - Extracts structure from YAML files
+ */
+export class YamlParserService extends BaseLanguageParser {
+  readonly language = 'yaml';
+  readonly extensions = ['.yaml', '.yml'];
+
+  constructor() {
+    super(YAML as Parser.Language);
+  }
+
+  /**
+   * Extract symbol from AST node
+   * For YAML, we extract top-level keys as constants
+   */
+  protected extractSymbol(node: Parser.SyntaxNode): Symbol | null {
+    switch (node.type) {
+      case 'block_mapping_pair':
+        return this.extractKey(node);
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Extract YAML key as a symbol
+   */
+  private extractKey(node: Parser.SyntaxNode): Symbol | null {
+    const key = node.childForFieldName('key');
+    if (!key) return null;
+
+    // Only extract top-level keys
+    const parent = node.parent;
+    if (!parent || parent.type !== 'block_mapping') return null;
+
+    const grandparent = parent.parent;
+    if (grandparent && grandparent.type !== 'stream' && grandparent.type !== 'document') return null;
+
+    const name = key.text;
+
+    return this.createSymbol(node, name, 'constant');
+  }
+}

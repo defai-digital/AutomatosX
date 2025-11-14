@@ -17,7 +17,7 @@ export class CSharpParserService extends BaseLanguageParser {
   readonly extensions = ['.cs'];
 
   constructor() {
-    super(CSharp);
+    super(CSharp as Parser.Language);
   }
 
   /**

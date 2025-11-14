@@ -124,7 +124,8 @@ function escapeHtml(input) {
 }
 
 function sanitizeString(input) {
-  return escapeHtml(input.trim().replace(/[\r\n]/g, ""));
+  var beforeInjection = input.split("\\n")[0];
+  return escapeHtml(beforeInjection.trim().replace(/[\r\n]/g, "").replace(/\\r/g, "").replace(/\\t/g, ""));
 }
 
 function sanitizeMetadata(metadata) {

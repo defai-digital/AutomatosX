@@ -22,8 +22,8 @@ export declare const StatusSchema: z.ZodObject<{
     format: z.ZodDefault<z.ZodDefault<z.ZodEnum<{
         text: "text";
         json: "json";
-        table: "table";
         yaml: "yaml";
+        table: "table";
     }>>>;
     showMetrics: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;

@@ -130,11 +130,16 @@ module Sanitizer = {
     ->Js.String2.replaceByRe(%re("/\//g"), "&#x2F;")
   }
 
-  // Sanitize string value (HTML escape + trim + remove newlines)
+  // Sanitize string value (HTML escape + trim + remove newlines and escape sequences)
   let sanitizeString = (input: string): string => {
-    input
+    // First split on literal \n and take only the first part to prevent log injection
+    let beforeInjection = input->Js.String2.split("\\n")->Js.Array2.unsafe_get(0)
+
+    beforeInjection
     ->Js.String2.trim
-    ->Js.String2.replaceByRe(%re("/[\r\n]/g"), "") // Remove newlines to prevent log injection
+    ->Js.String2.replaceByRe(%re("/[\r\n]/g"), "") // Remove actual newlines
+    ->Js.String2.replaceByRe(%re("/\\r/g"), "") // Remove literal \r escape sequences (backslash-r)
+    ->Js.String2.replaceByRe(%re("/\\t/g"), "") // Remove literal \t escape sequences (backslash-t)
     ->escapeHtml
   }
 

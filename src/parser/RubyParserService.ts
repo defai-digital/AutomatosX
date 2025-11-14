@@ -17,7 +17,7 @@ export class RubyParserService extends BaseLanguageParser {
   readonly extensions = ['.rb'];
 
   constructor() {
-    super(Ruby);
+    super(Ruby as Parser.Language);
   }
 
   /**

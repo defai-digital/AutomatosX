@@ -21,10 +21,10 @@ export declare const RunCommandSchema: z.ZodObject<{
     resumable: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     provider: z.ZodOptional<z.ZodEnum<{
         claude: "claude";
-        gemini: "gemini";
-        openai: "openai";
         "claude-code": "claude-code";
+        gemini: "gemini";
         "gemini-cli": "gemini-cli";
+        openai: "openai";
         gpt: "gpt";
     }>>;
     timeout: z.ZodOptional<z.ZodNumber>;

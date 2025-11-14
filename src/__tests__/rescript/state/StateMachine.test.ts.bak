@@ -1,0 +1,616 @@
+/**
+ * State Machine Tests - Sprint 7 Day 61
+ * Comprehensive tests for the generic, polymorphic state machine framework
+ * Target: 40 tests covering all functionality
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+
+// Import the generated TypeScript types and functions
+import * as SM from '../../../../packages/rescript-core/src/state/StateMachine.gen';
+
+// Type definitions for our test state machine
+interface TaskData {
+  name: string;
+  progress: number;
+}
+
+type TaskState =
+  | 'Idle'  // ReScript's Idle variant compiles to the string "Idle"
+  | { TAG: 'Running'; _0: TaskData }
+  | { TAG: 'Paused'; _0: TaskData }
+  | { TAG: 'Completed'; _0: TaskData }
+  | { TAG: 'Failed'; _0: string };
+
+type TaskEvent =
+  | 'start'
+  | 'pause'
+  | 'resume'
+  | 'complete'
+  | 'fail';
+
+describe('StateMachine - Core Functionality', () => {
+  describe('State Machine Creation', () => {
+    it('should create a state machine with initial state', () => {
+      const initialState: TaskState = 'Idle';
+      const machine = SM.create(initialState, [], undefined, undefined);
+
+      expect(SM.getCurrentState(machine)).toEqual(initialState);
+    });
+
+    it('should create a state machine with custom config', () => {
+      const initialState: TaskState = 'Idle';
+      const customConfig = {
+        maxHistorySize: 50,
+        enableLogging: true,
+        strict: false,
+      };
+
+      const machine = SM.create(initialState, [], customConfig, undefined);
+      expect(SM.getHistoryLength(machine)).toBe(0);
+    });
+
+    it('should create a state machine with empty transition list', () => {
+      const initialState: TaskState = 'Idle';
+      const machine = SM.create(initialState, [], undefined, undefined);
+
+      expect(SM.getPossibleTransitions(machine)).toEqual([]);
+    });
+
+    it('should initialize with empty history', () => {
+      const initialState: TaskState = 'Idle';
+      const machine = SM.create(initialState, [], undefined, undefined);
+
+      expect(SM.getHistory(machine)).toEqual([]);
+      expect(SM.getHistoryLength(machine)).toBe(0);
+    });
+  });
+
+  describe('Event Creation', () => {
+    it('should create an event with ID and data', () => {
+      const event = SM.createEvent('evt-1', 'start', undefined, undefined);
+
+      expect(event.id).toBe('evt-1');
+      expect(event.data).toBe('start');
+      expect(event.timestamp).toBeGreaterThan(0);
+    });
+
+    it('should create an event with metadata', () => {
+      const metadata = { userId: 'user-123', source: 'api' };
+      const event = SM.createEvent('evt-2', 'start', metadata, undefined);
+
+      expect(event.metadata).toEqual(metadata);
+    });
+
+    it('should assign current timestamp to events', () => {
+      const before = Date.now();
+      const event = SM.createEvent('evt-3', 'start', undefined, undefined);
+      const after = Date.now();
+
+      expect(event.timestamp).toBeGreaterThanOrEqual(before);
+      expect(event.timestamp).toBeLessThanOrEqual(after);
+    });
+  });
+
+  describe('State Checking', () => {
+    it('should correctly identify Idle state', () => {
+      const machine = SM.create({ TAG: 'Idle' }, [], undefined, undefined);
+
+      expect(SM.isIdle(machine)).toBe(true);
+      expect(SM.isRunning(machine)).toBe(false);
+      expect(SM.isPaused(machine)).toBe(false);
+      expect(SM.isCompleted(machine)).toBe(false);
+      expect(SM.isFailed(machine)).toBe(false);
+    });
+
+    it('should correctly identify Running state', () => {
+      const taskData: TaskData = { name: 'test', progress: 50 };
+      const machine = SM.create({ TAG: 'Running', _0: taskData }, [], undefined, undefined);
+
+      expect(SM.isIdle(machine)).toBe(false);
+      expect(SM.isRunning(machine)).toBe(true);
+      expect(SM.isPaused(machine)).toBe(false);
+      expect(SM.isCompleted(machine)).toBe(false);
+      expect(SM.isFailed(machine)).toBe(false);
+    });
+
+    it('should correctly identify Paused state', () => {
+      const taskData: TaskData = { name: 'test', progress: 50 };
+      const machine = SM.create({ TAG: 'Paused', _0: taskData }, [], undefined, undefined);
+
+      expect(SM.isPaused(machine)).toBe(true);
+      expect(SM.isRunning(machine)).toBe(false);
+    });
+
+    it('should correctly identify Completed state', () => {
+      const taskData: TaskData = { name: 'test', progress: 100 };
+      const machine = SM.create({ TAG: 'Completed', _0: taskData }, [], undefined, undefined);
+
+      expect(SM.isCompleted(machine)).toBe(true);
+      expect(SM.isRunning(machine)).toBe(false);
+    });
+
+    it('should correctly identify Failed state', () => {
+      const machine = SM.create({ TAG: 'Failed', _0: 'error occurred' }, [], undefined, undefined);
+
+      expect(SM.isFailed(machine)).toBe(true);
+      expect(SM.isRunning(machine)).toBe(false);
+    });
+
+    it('should return failure reason for Failed state', () => {
+      const machine = SM.create({ TAG: 'Failed', _0: 'network error' }, [], undefined, undefined);
+
+      const reason = SM.getFailureReason(machine);
+      expect(reason).toBe('network error');
+    });
+
+    it('should return undefined failure reason for non-Failed states', () => {
+      const machine = SM.create({ TAG: 'Idle' }, [], undefined, undefined);
+
+      const reason = SM.getFailureReason(machine);
+      expect(reason).toBeUndefined();
+    });
+  });
+
+  describe('Transitions - Basic', () => {
+    it('should transition from Idle to Running without guard', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const initialState: TaskState = { TAG: 'Idle' };
+      const targetState: TaskState = { TAG: 'Running', _0: taskData };
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'start',
+          to: targetState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'start', undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Ok');
+      expect(SM.isRunning(machine)).toBe(true);
+    });
+
+    it('should reject invalid transition in strict mode', async () => {
+      const initialState: TaskState = { TAG: 'Idle' };
+      const machine = SM.create(initialState, [], { maxHistorySize: 100, enableLogging: false, strict: true }, undefined);
+      const event = SM.createEvent('e1', 'invalid-event' as any, undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Error');
+    });
+
+    it('should allow invalid transition in non-strict mode', async () => {
+      const initialState: TaskState = { TAG: 'Idle' };
+      const machine = SM.create(initialState, [], { maxHistorySize: 100, enableLogging: false, strict: false }, undefined);
+      const event = SM.createEvent('e1', 'invalid-event' as any, undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Ok');
+      expect(SM.getCurrentState(machine)).toEqual(initialState);
+    });
+
+    it('should record successful transition in history', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const initialState: TaskState = { TAG: 'Idle' };
+      const targetState: TaskState = { TAG: 'Running', _0: taskData };
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'start',
+          to: targetState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'start', undefined, undefined);
+
+      await SM.transition(machine, event);
+
+      expect(SM.getHistoryLength(machine)).toBe(1);
+      const history = SM.getHistory(machine);
+      expect(history[0].success).toBe(true);
+    });
+
+    it('should record failed transition in history', async () => {
+      const initialState: TaskState = { TAG: 'Idle' };
+      const machine = SM.create(initialState, [], { maxHistorySize: 100, enableLogging: false, strict: true }, undefined);
+      const event = SM.createEvent('e1', 'invalid' as any, undefined, undefined);
+
+      await SM.transition(machine, event);
+
+      expect(SM.getHistoryLength(machine)).toBe(1);
+      const history = SM.getHistory(machine);
+      expect(history[0].success).toBe(false);
+      expect(history[0].error).toBeDefined();
+    });
+  });
+
+  describe('Transitions - With Guards', () => {
+    it('should allow transition when guard returns true', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 50 };
+      const initialState: TaskState = { TAG: 'Running', _0: taskData };
+      const targetState: TaskState = { TAG: 'Completed', _0: { ...taskData, progress: 100 } };
+
+      const guard = (data: TaskData) => data.progress >= 50;
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'complete',
+          to: targetState,
+          guard,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'complete', undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Ok');
+      expect(SM.isCompleted(machine)).toBe(true);
+    });
+
+    it('should block transition when guard returns false', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 30 };
+      const initialState: TaskState = { TAG: 'Running', _0: taskData };
+      const targetState: TaskState = { TAG: 'Completed', _0: { ...taskData, progress: 100 } };
+
+      const guard = (data: TaskData) => data.progress >= 50;
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'complete',
+          to: targetState,
+          guard,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'complete', undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Error');
+      expect(SM.isRunning(machine)).toBe(true);
+    });
+
+    it('should record guard-blocked transition in history', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 30 };
+      const initialState: TaskState = { TAG: 'Running', _0: taskData };
+      const targetState: TaskState = { TAG: 'Completed', _0: { ...taskData, progress: 100 } };
+
+      const guard = (data: TaskData) => data.progress >= 50;
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'complete',
+          to: targetState,
+          guard,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'complete', undefined, undefined);
+
+      await SM.transition(machine, event);
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.guardBlockedTransitions).toBe(1);
+    });
+  });
+
+  describe('Transitions - With Actions', () => {
+    it('should execute action on successful transition', async () => {
+      let actionExecuted = false;
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const initialState: TaskState = { TAG: 'Idle' };
+      const targetState: TaskState = { TAG: 'Running', _0: taskData };
+
+      const action = async (data: TaskData) => {
+        actionExecuted = true;
+      };
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'start',
+          to: targetState,
+          guard: undefined,
+          action,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'start', undefined, undefined);
+
+      await SM.transition(machine, event);
+
+      expect(actionExecuted).toBe(true);
+    });
+
+    it('should handle action errors gracefully', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const initialState: TaskState = { TAG: 'Idle' };
+      const targetState: TaskState = { TAG: 'Running', _0: taskData };
+
+      const action = async (data: TaskData) => {
+        throw new Error('Action failed');
+      };
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'start',
+          to: targetState,
+          guard: undefined,
+          action,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'start', undefined, undefined);
+
+      const result = await SM.transition(machine, event);
+      expect(result.TAG).toBe('Error');
+      expect(SM.isIdle(machine)).toBe(true);
+    });
+
+    it('should record action-failed transition in statistics', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const initialState: TaskState = { TAG: 'Idle' };
+      const targetState: TaskState = { TAG: 'Running', _0: taskData };
+
+      const action = async (data: TaskData) => {
+        throw new Error('Action failed');
+      };
+
+      const transitions = [
+        {
+          from: initialState,
+          event: 'start',
+          to: targetState,
+          guard: undefined,
+          action,
+        },
+      ];
+
+      const machine = SM.create(initialState, transitions, undefined, undefined);
+      const event = SM.createEvent('e1', 'start', undefined, undefined);
+
+      await SM.transition(machine, event);
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.actionFailedTransitions).toBe(1);
+    });
+  });
+
+  describe('History Management', () => {
+    it('should maintain history of all transitions', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+        {
+          from: { TAG: 'Running', _0: taskData } as TaskState,
+          event: 'pause',
+          to: { TAG: 'Paused', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      await SM.transition(machine, SM.createEvent('e1', 'start', undefined, undefined));
+      await SM.transition(machine, SM.createEvent('e2', 'pause', undefined, undefined));
+
+      expect(SM.getHistoryLength(machine)).toBe(2);
+    });
+
+    it('should trim history when max size is exceeded', async () => {
+      const config = {
+        maxHistorySize: 3,
+        enableLogging: false,
+        strict: true,
+      };
+
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, config, undefined);
+
+      // Create 5 transitions
+      for (let i = 0; i < 5; i++) {
+        const event = SM.createEvent(`e${i}`, 'start', undefined, undefined);
+        await SM.transition(machine, event);
+        // Reset state for next transition
+        SM.reset(machine, { TAG: 'Idle' });
+      }
+
+      expect(SM.getHistoryLength(machine)).toBeLessThanOrEqual(3);
+    });
+
+    it('should clear history on reset', () => {
+      const machine = SM.create({ TAG: 'Idle' }, [], undefined, undefined);
+
+      SM.reset(machine, { TAG: 'Idle' });
+
+      expect(SM.getHistoryLength(machine)).toBe(0);
+    });
+  });
+
+  describe('Statistics', () => {
+    it('should count total transitions', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      await SM.transition(machine, SM.createEvent('e1', 'start', undefined, undefined));
+      await SM.transition(machine, SM.createEvent('e2', 'invalid' as any, undefined, undefined));
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.totalTransitions).toBe(2);
+    });
+
+    it('should count successful transitions', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      await SM.transition(machine, SM.createEvent('e1', 'start', undefined, undefined));
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.successfulTransitions).toBe(1);
+      expect(stats.failedTransitions).toBe(0);
+    });
+
+    it('should count failed transitions', async () => {
+      const machine = SM.create({ TAG: 'Idle' }, [], { maxHistorySize: 100, enableLogging: false, strict: true }, undefined);
+
+      await SM.transition(machine, SM.createEvent('e1', 'invalid' as any, undefined, undefined));
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.failedTransitions).toBe(1);
+      expect(stats.successfulTransitions).toBe(0);
+    });
+
+    it('should provide complete statistics', async () => {
+      const taskData: TaskData = { name: 'task1', progress: 30 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+        {
+          from: { TAG: 'Running', _0: taskData } as TaskState,
+          event: 'complete',
+          to: { TAG: 'Completed', _0: { ...taskData, progress: 100 } } as TaskState,
+          guard: (d: TaskData) => d.progress >= 50,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      await SM.transition(machine, SM.createEvent('e1', 'start', undefined, undefined));
+      await SM.transition(machine, SM.createEvent('e2', 'complete', undefined, undefined)); // Guard blocks
+
+      const stats = SM.getStatistics(machine);
+      expect(stats.totalTransitions).toBe(2);
+      expect(stats.successfulTransitions).toBe(1);
+      expect(stats.failedTransitions).toBe(1);
+      expect(stats.guardBlockedTransitions).toBe(1);
+    });
+  });
+
+  describe('Utility Functions', () => {
+    it('should check if transition is possible', () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      expect(SM.canTransition(machine, 'start')).toBe(true);
+      expect(SM.canTransition(machine, 'pause' as any)).toBe(false);
+    });
+
+    it('should get all possible transitions from current state', () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const transitions = [
+        {
+          from: { TAG: 'Idle' } as TaskState,
+          event: 'start',
+          to: { TAG: 'Running', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+        {
+          from: { TAG: 'Running', _0: taskData } as TaskState,
+          event: 'pause',
+          to: { TAG: 'Paused', _0: taskData } as TaskState,
+          guard: undefined,
+          action: undefined,
+        },
+      ];
+
+      const machine = SM.create({ TAG: 'Idle' }, transitions, undefined, undefined);
+
+      const possible = SM.getPossibleTransitions(machine);
+      expect(possible.length).toBe(1);
+      expect(possible[0].event).toBe('start');
+    });
+
+    it('should reset machine to new initial state', () => {
+      const taskData: TaskData = { name: 'task1', progress: 0 };
+      const machine = SM.create({ TAG: 'Running', _0: taskData }, [], undefined, undefined);
+
+      SM.reset(machine, { TAG: 'Idle' });
+
+      expect(SM.isIdle(machine)).toBe(true);
+      expect(SM.getHistoryLength(machine)).toBe(0);
+    });
+
+    it('should get current state of machine', () => {
+      const taskData: TaskData = { name: 'task1', progress: 50 };
+      const state = { TAG: 'Running', _0: taskData } as TaskState;
+      const machine = SM.create(state, [], undefined, undefined);
+
+      expect(SM.getCurrentState(machine)).toEqual(state);
+    });
+  });
+});

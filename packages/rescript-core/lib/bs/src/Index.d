@@ -1,1 +1,1 @@
-src/Index.cmj : src/Hello.cmj src/Hello.cmi
+src/Index.cmj : src/Hello.cmj src/Hello.cmi src/runtime/StateMachineV2.cmj src/runtime/StateMachineV2.cmi src/workflow/WorkflowStateMachine.cmj src/workflow/WorkflowStateMachine.cmi src/workflow/WorkflowTypes.cmj src/workflow/WorkflowTypes.cmi

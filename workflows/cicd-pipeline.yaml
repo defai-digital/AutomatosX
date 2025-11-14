@@ -1,0 +1,211 @@
+# CI/CD Pipeline Workflow
+#
+# Complete continuous integration and deployment workflow demonstrating:
+# - Multi-agent collaboration (Security, Testing, Quality, DevOps)
+# - Dependency management (parallel and sequential steps)
+# - Provider preferences for different task types
+# - Error handling (continueOnError for non-critical steps)
+
+name: cicd-pipeline
+version: 1.0.0
+description: Complete CI/CD pipeline with security scanning, testing, and deployment
+author: AutomatosX Team
+tags:
+  - cicd
+  - deployment
+  - automation
+
+steps:
+  # Stage 1: Pre-flight checks (parallel)
+  - key: lint-code
+    description: Run linter to check code style and basic issues
+    agent: quality
+    action: lint-codebase
+    provider: gemini
+    timeout: 30000
+    continueOnError: false
+    retries: 2
+
+  - key: security-scan
+    description: Scan for security vulnerabilities and secrets
+    agent: security
+    action: security-scan
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    retries: 2
+
+  # Stage 2: Code analysis (depends on lint, runs in parallel)
+  - key: complexity-analysis
+    description: Analyze code complexity and maintainability
+    agent: quality
+    action: analyze-complexity
+    provider: gemini
+    timeout: 45000
+    continueOnError: true  # Don't fail pipeline for complexity warnings
+    dependsOn:
+      - lint-code
+
+  - key: dependency-audit
+    description: Audit npm/yarn dependencies for vulnerabilities
+    agent: security
+    action: audit-dependencies
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - security-scan
+
+  # Stage 3: Testing (depends on Stage 1 & 2, runs in parallel)
+  - key: unit-tests
+    description: Run unit test suite with coverage
+    agent: testing
+    action: run-unit-tests
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - lint-code
+      - security-scan
+
+  - key: integration-tests
+    description: Run integration tests
+    agent: testing
+    action: run-integration-tests
+    timeout: 180000
+    continueOnError: false
+    dependsOn:
+      - lint-code
+      - security-scan
+
+  - key: performance-tests
+    description: Run performance benchmarks
+    agent: performance
+    action: run-benchmarks
+    timeout: 120000
+    continueOnError: true  # Don't fail for performance regressions
+    dependsOn:
+      - unit-tests
+
+  # Stage 4: Build (depends on all tests passing)
+  - key: build-application
+    description: Build production artifacts
+    agent: devops
+    action: build-production
+    timeout: 300000
+    continueOnError: false
+    dependsOn:
+      - unit-tests
+      - integration-tests
+
+  - key: build-docker-image
+    description: Build Docker container image
+    agent: devops
+    action: build-docker-image
+    timeout: 300000
+    continueOnError: false
+    dependsOn:
+      - build-application
+
+  # Stage 5: Security verification of built artifacts
+  - key: container-scan
+    description: Scan Docker image for vulnerabilities
+    agent: security
+    action: scan-container
+    provider: claude
+    timeout: 180000
+    continueOnError: false
+    dependsOn:
+      - build-docker-image
+
+  # Stage 6: Deploy to staging
+  - key: deploy-staging
+    description: Deploy to staging environment
+    agent: devops
+    action: deploy-to-staging
+    timeout: 300000
+    continueOnError: false
+    dependsOn:
+      - container-scan
+
+  # Stage 7: Smoke tests in staging
+  - key: smoke-tests
+    description: Run smoke tests in staging environment
+    agent: testing
+    action: run-smoke-tests
+    timeout: 120000
+    continueOnError: false
+    dependsOn:
+      - deploy-staging
+
+  - key: e2e-tests
+    description: Run end-to-end tests in staging
+    agent: testing
+    action: run-e2e-tests
+    timeout: 300000
+    continueOnError: false
+    dependsOn:
+      - deploy-staging
+
+  # Stage 8: Infrastructure validation
+  - key: validate-infrastructure
+    description: Validate infrastructure configuration and health
+    agent: infrastructure
+    action: validate-deployment
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - smoke-tests
+      - e2e-tests
+
+  # Stage 9: Final quality gate
+  - key: quality-gate
+    description: Evaluate overall quality metrics and decide if ready for production
+    agent: quality
+    action: quality-gate-evaluation
+    provider: claude
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - validate-infrastructure
+      - performance-tests
+      - complexity-analysis
+
+  # Stage 10: Production deployment (manual approval would go here in real scenario)
+  - key: deploy-production
+    description: Deploy to production environment
+    agent: devops
+    action: deploy-to-production
+    timeout: 300000
+    continueOnError: false
+    dependsOn:
+      - quality-gate
+
+  # Stage 11: Post-deployment verification
+  - key: production-health-check
+    description: Verify production deployment health
+    agent: infrastructure
+    action: health-check
+    timeout: 60000
+    continueOnError: false
+    dependsOn:
+      - deploy-production
+
+  # Stage 12: Generate deployment report
+  - key: generate-report
+    description: Generate comprehensive deployment report
+    agent: writer
+    action: create-deployment-report
+    provider: claude
+    timeout: 120000
+    continueOnError: true  # Report generation failure shouldn't fail deployment
+    dependsOn:
+      - production-health-check
+
+# Example usage:
+# ax workflow execute workflows/cicd-pipeline.yaml --context '{"repository": "./", "branch": "main", "version": "1.2.3"}'
+#
+# To resume from checkpoint:
+# ax workflow resume <checkpoint-id>
+#
+# To monitor execution:
+# ax workflow status <execution-id>

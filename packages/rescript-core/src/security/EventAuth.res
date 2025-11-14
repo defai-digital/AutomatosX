@@ -16,7 +16,7 @@ type traceContext = {
 
 // Authenticated event with trace context and nonce
 type authenticatedEvent = {
-  event: StateMachine.Event.t,
+  event: TaskStateMachine.Event.t,
   traceContext: traceContext,
   nonce: int, // Monotonic sequence number
   signature: option<string>,
@@ -50,7 +50,7 @@ let createTraceContext = (
 
 // Create authenticated event
 let createAuthenticatedEvent = (
-  ~event: StateMachine.Event.t,
+  ~event: TaskStateMachine.Event.t,
   ~traceContext: traceContext,
   ~nonce: int,
   ~signature: option<string>=?,
@@ -79,7 +79,7 @@ type uuidGenerator = unit => string
 
 // Attach trace context to event
 let attachTraceContext = (
-  _event: StateMachine.Event.t,
+  _event: TaskStateMachine.Event.t,
   generateUuid: uuidGenerator,
 ): traceContext => {
   let traceId = generateUuid()
@@ -141,7 +141,7 @@ let verifyEvent = (
 
 // Create authenticated event from raw event
 let authenticateEvent = (
-  event: StateMachine.Event.t,
+  event: TaskStateMachine.Event.t,
   nonce: int,
   generateUuid: uuidGenerator,
 ): authenticatedEvent => {
@@ -162,7 +162,7 @@ let traceContextToString = (ctx: traceContext): string => {
 
 // Convert authenticated event to string for logging
 let authenticatedEventToString = (authEvent: authenticatedEvent): string => {
-  let eventStr = StateMachine.Event.toString(authEvent.event)
+  let eventStr = TaskStateMachine.Event.toString(authEvent.event)
   let traceStr = traceContextToString(authEvent.traceContext)
   let nonceStr = Int.toString(authEvent.nonce)
 

@@ -1,2 +1,605 @@
-#Start(1762619756185)
-#Done(1762619756186)
+#Start(1763115048320)
+
+  Warning number 26
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryFallback.res:360:11-20
+
+  358 ┆ }
+  359 ┆ 
+  360 ┆ let attemptEnd = getCurrentTime()
+  361 ┆ let delayMs = if attemptNumber < config.maxAttempts {
+  362 ┆   calculateDelay(config.strategy, attemptNumber)
+
+  unused variable attemptEnd.
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:414:22-26
+
+  412 │ // Get state name as string (for debugging)
+  413 │ @genType
+  414 │ let stateToString = (state: 'a): string => {
+  415 │   // This is a placeholder - actual implementation depends on the stat
+      │ e type
+  416 │   "state"
+
+  unused variable state.
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:170:3-11
+
+  168 │ @genType
+  169 │ let storeEmbedding = (
+  170 │   embedding: validatedEmbedding<validated>,
+  171 │ ): Js.Promise.t<result<unit, string>> => {
+  172 │   // Simulate database storage
+
+  unused variable embedding.
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:376:29-31
+
+  374 │ // Example function: Get user's conversations (type-safe!)
+  375 │ @genType
+  376 │ let getUserConversations = (uid: userId): array<conversationId> => {
+  377 │   // Implementation would query database
+  378 │   // Return type is array<conversationId>, not array<string>
+
+  unused variable uid.
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:384:32-37
+
+  382 │ // Example function: Get messages in conversation (type-safe!)
+  383 │ @genType
+  384 │ let getConversationMessages = (convId: conversationId): array<messageI
+      │ d> => {
+  385 │   // Implementation would query database
+  386 │   []
+
+  unused variable convId.
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+
+  4 │ 
+  5 │ open Core__Option
+  6 │ open Core__Array
+  7 │ 
+  8 │ // =====================================================================
+    │ =======
+
+  this open statement shadows the value identifier getUnsafe (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+
+  4 │ 
+  5 │ open Core__Option
+  6 │ open Core__Array
+  7 │ 
+  8 │ // =====================================================================
+    │ =======
+
+  this open statement shadows the value identifier map (which is later used)
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:224:46-59
+
+  222 ┆ let depLevels =
+  223 ┆   task.dependencies->map(depId => {
+  224 ┆     acc->Belt.Map.String.get(depId)->getWithDefault(0)
+  225 ┆   })
+  226 ┆ 
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:279:54-67
+
+  277 ┆ | None => acc
+  278 ┆ | Some(level) => {
+  279 ┆     let existing = acc->Belt.Map.Int.get(level)->getWithDefault([])
+  280 ┆     acc->Belt.Map.Int.set(level, concat(existing, [taskId]))
+  281 ┆   }
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+
+  4 │ 
+  5 │ open Core__Option
+  6 │ open Core__Array
+  7 │ 
+  8 │ // =====================================================================
+    │ =======
+
+  this open statement shadows the value identifier forEach (which is later used)
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:321:61-74
+
+  319 ┆ let depFinishes =
+  320 ┆   task.dependencies->map(depId => {
+  321 ┆     let depStart = acc->Belt.Map.String.get(depId)->getWithDefault(0)
+  322 ┆     let depTask = taskMap->Belt.Map.String.get(depId)
+  323 ┆     let depDuration = depTask->Core__Option.map(t => t.estimatedDurati
+      ┆ on)->getWithDefault(0)
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:323:84-97
+
+  321 ┆   let depStart = acc->Belt.Map.String.get(depId)->getWithDefault(0)
+  322 ┆   let depTask = taskMap->Belt.Map.String.get(depId)
+  323 ┆   let depDuration = depTask->Core__Option.map(t => t.estimatedDuration
+      ┆ )->getWithDefault(0)
+  324 ┆   depStart + depDuration
+  325 ┆ })
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:360:47-60
+
+  358 ┆ // Latest start is min(latest start of all dependents) - duration
+  359 ┆ let depStarts = Belt.Array.map(dependents, dep => {
+  360 ┆   acc->Belt.Map.String.get(dep.id)->getWithDefault(projectEndTime)
+  361 ┆ })
+  362 ┆ let minDepStart = Belt.Array.reduce(depStarts, projectEndTime, (a, b) 
+      ┆ => min(a, b))
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:388:62-75
+
+  386 ┆ // Find project end time (max earliest finish)
+  387 ┆ let projectEndTime = Belt.Array.reduce(executionOrder, 0, (acc, taskId
+      ┆ ) => {
+  388 ┆   let start = earliestStarts->Belt.Map.String.get(taskId)->getWithDefa
+      ┆ ult(0)
+  389 ┆   let duration = taskMap->Belt.Map.String.get(taskId)->Core__Option.ma
+      ┆ p(t => t.estimatedDuration)->getWithDefault(0)
+  390 ┆   max(acc, start + duration)
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:389:102-115
+
+  387 ┆ let projectEndTime = Belt.Array.reduce(executionOrder, 0, (acc, taskId
+      ┆ ) => {
+  388 ┆   let start = earliestStarts->Belt.Map.String.get(taskId)->getWithDefa
+      ┆ ult(0)
+  389 ┆   let duration = taskMap->Belt.Map.String.get(taskId)->Core__Option.ma
+      ┆ p(t => t.estimatedDuration)->getWithDefault(0)
+  390 ┆   max(acc, start + duration)
+  391 ┆ })
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:397:65-78
+
+  395 ┆ // Critical tasks have slack = 0 (earliest start === latest start)
+  396 ┆ let criticalTasks = Belt.Array.keep(executionOrder, taskId => {
+  397 ┆   let earliest = earliestStarts->Belt.Map.String.get(taskId)->getWithD
+      ┆ efault(0)
+  398 ┆   let latest = latestStarts->Belt.Map.String.get(taskId)->getWithDefau
+      ┆ lt(0)
+  399 ┆   earliest === latest
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:398:61-74
+
+  396 ┆ let criticalTasks = Belt.Array.keep(executionOrder, taskId => {
+  397 ┆   let earliest = earliestStarts->Belt.Map.String.get(taskId)->getWithD
+      ┆ efault(0)
+  398 ┆   let latest = latestStarts->Belt.Map.String.get(taskId)->getWithDefau
+      ┆ lt(0)
+  399 ┆   earliest === latest
+  400 ┆ })
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:485:56-69
+
+  483 ┆ // Group by level
+  484 ┆ let levels = plan.executionOrder->reduce(Belt.Map.Int.empty, (acc, tas
+      ┆ kId) => {
+  485 ┆   let level = levelMap->Belt.Map.String.get(taskId)->getWithDefault(0)
+  486 ┆   let existing = acc->Belt.Map.Int.get(level)->getWithDefault([])
+  487 ┆   acc->Belt.Map.Int.set(level, concat(existing, [taskId]))
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:486:50-63
+
+  484 ┆ let levels = plan.executionOrder->reduce(Belt.Map.Int.empty, (acc, tas
+      ┆ kId) => {
+  485 ┆   let level = levelMap->Belt.Map.String.get(taskId)->getWithDefault(0)
+  486 ┆   let existing = acc->Belt.Map.Int.get(level)->getWithDefault([])
+  487 ┆   acc->Belt.Map.Int.set(level, concat(existing, [taskId]))
+  488 ┆ })
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:544:66-79
+
+  542 ┆ 
+  543 ┆ let estimatedTotalTime = Belt.Array.reduce(executionOrder, 0, (acc, ta
+      ┆ skId) => {
+  544 ┆   let start = earliestStarts->Belt.Map.String.get(taskId)->getWithDefa
+      ┆ ult(0)
+  545 ┆   let duration = taskMap->Belt.Map.String.get(taskId)->Core__Option.ma
+      ┆ p(t => t.estimatedDuration)->getWithDefault(0)
+  546 ┆   max(acc, start + duration)
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+
+  Warning number 3
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:545:106-119
+
+  543 ┆ let estimatedTotalTime = Belt.Array.reduce(executionOrder, 0, (acc, ta
+      ┆ skId) => {
+  544 ┆   let start = earliestStarts->Belt.Map.String.get(taskId)->getWithDefa
+      ┆ ult(0)
+  545 ┆   let duration = taskMap->Belt.Map.String.get(taskId)->Core__Option.ma
+      ┆ p(t => t.estimatedDuration)->getWithDefault(0)
+  546 ┆   max(acc, start + duration)
+  547 ┆ })
+
+  deprecated: Core__Option.getWithDefault
+  Use getOr instead
+
+#Done(1763115048414)

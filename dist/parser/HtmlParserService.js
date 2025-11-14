@@ -11,19 +11,15 @@ import { BaseLanguageParser } from './LanguageParser.js';
  * HtmlParserService - Extracts symbols from HTML code
  */
 export class HtmlParserService extends BaseLanguageParser {
+    language = 'html';
+    extensions = ['.html', '.htm', '.xhtml'];
     constructor() {
         super(HTML);
-        this.language = 'html';
-        this.extensions = ['.html', '.htm', '.xhtml'];
     }
     /**
      * Extract symbol from AST node
      */
     extractSymbol(node) {
-        // Debug: Log node types (remove after debugging)
-        if (node.type === 'element') {
-            console.log(`Element node found at line ${node.startPosition.row + 1}`);
-        }
         switch (node.type) {
             case 'element':
                 return this.extractElement(node);
@@ -44,20 +40,18 @@ export class HtmlParserService extends BaseLanguageParser {
      * Example: <img src="logo.png" alt="Logo" />
      */
     extractElement(node) {
-        // Get start tag
-        const startTag = node.childForFieldName('start_tag');
-        if (!startTag) {
-            console.log('No start_tag found');
+        // Get start tag - it's a child, not a field
+        const startTags = node.descendantsOfType('start_tag');
+        if (startTags.length === 0) {
             return null;
         }
-        // Get tag name - it's a child node, not a field
+        const startTag = startTags[0];
+        // Get tag name - it's a child node
         const tagNameNode = startTag.descendantsOfType('tag_name')[0];
         if (!tagNameNode) {
-            console.log('No tag_name found');
             return null;
         }
         const tagName = tagNameNode.text;
-        console.log(`Found tag: ${tagName}`);
         // Get id attribute if present (for unique identification)
         const id = this.getAttributeValue(startTag, 'id');
         const className = this.getAttributeValue(startTag, 'class');
@@ -169,3 +163,4 @@ export class HtmlParserService extends BaseLanguageParser {
         return null;
     }
 }
+//# sourceMappingURL=HtmlParserService.js.map

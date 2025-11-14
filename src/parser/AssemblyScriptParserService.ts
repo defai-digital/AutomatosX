@@ -49,7 +49,7 @@ export class AssemblyScriptParserService extends BaseLanguageParser {
   constructor() {
     // Use TypeScript TSX grammar (same as TypeScriptParserService)
     // AssemblyScript uses TypeScript syntax
-    super(TypeScript.tsx);
+    super(TypeScript.tsx as Parser.Language);
   }
 
   /**

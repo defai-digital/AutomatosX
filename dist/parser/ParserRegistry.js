@@ -19,6 +19,43 @@ import { HtmlParserService } from './HtmlParserService.js';
 import { SwiftParserService } from './SwiftParserService.js';
 import { SqlParserService } from './SqlParserService.js';
 import { AssemblyScriptParserService } from './AssemblyScriptParserService.js';
+// New parsers
+import { CParserService } from './CParserService.js';
+import { ObjectiveCParserService } from './ObjectiveCParserService.js';
+import { ScalaParserService } from './ScalaParserService.js';
+import { LuaParserService } from './LuaParserService.js';
+import { BashParserService } from './BashParserService.js';
+import { ZshParserService } from './ZshParserService.js';
+import { JsonParserService } from './JsonParserService.js';
+import { YamlParserService } from './YamlParserService.js';
+import { TomlParserService } from './TomlParserService.js';
+import { MarkdownParserService } from './MarkdownParserService.js';
+import { CsvParserService } from './CsvParserService.js';
+import { OcamlParserService } from './OcamlParserService.js';
+import { ElmParserService } from './ElmParserService.js';
+import { MakefileParserService } from './MakefileParserService.js';
+import { RegexParserService } from './RegexParserService.js';
+import { CudaParserService } from './CudaParserService.js';
+// FPGA and scientific computing parsers
+import { VerilogParserService } from './VerilogParserService.js';
+import { SystemVerilogParserService } from './SystemVerilogParserService.js';
+import { JuliaParserService } from './JuliaParserService.js';
+import { MatlabParserService } from './MatlabParserService.js';
+// Major language parsers
+import { HaskellParserService } from './HaskellParserService.js';
+import { DartParserService } from './DartParserService.js';
+import { ElixirParserService } from './ElixirParserService.js';
+import { ZigParserService } from './ZigParserService.js';
+import { SolidityParserService } from './SolidityParserService.js';
+import { PerlParserService } from './PerlParserService.js';
+import { GleamParserService } from './GleamParserService.js';
+// DevOps/IaC parsers
+import { HclParserService } from './HclParserService.js';
+import { GroovyParserService } from './GroovyParserService.js';
+import { PuppetParserService } from './PuppetParserService.js';
+import { ThriftParserService } from './ThriftParserService.js';
+// Data/Config parsers
+import { XmlParserService } from './XmlParserService.js';
 /**
  * ParserRegistry - Manages language parsers and routes to the appropriate one
  */
@@ -61,6 +98,51 @@ export class ParserRegistry {
         this.registerParser(new AssemblyScriptParserService());
         // HTML parser
         this.registerParser(new HtmlParserService());
+        // Systems languages
+        this.registerParser(new CParserService());
+        this.registerParser(new ObjectiveCParserService());
+        this.registerParser(new CudaParserService());
+        // JVM/Data languages
+        this.registerParser(new ScalaParserService());
+        // Shell/Scripting
+        this.registerParser(new LuaParserService());
+        this.registerParser(new BashParserService());
+        this.registerParser(new ZshParserService());
+        // Config/Data formats
+        this.registerParser(new JsonParserService());
+        this.registerParser(new YamlParserService());
+        this.registerParser(new TomlParserService());
+        this.registerParser(new XmlParserService());
+        // Documentation
+        this.registerParser(new MarkdownParserService());
+        this.registerParser(new CsvParserService());
+        // Functional
+        this.registerParser(new OcamlParserService());
+        this.registerParser(new ElmParserService());
+        // DevOps
+        this.registerParser(new MakefileParserService());
+        // Utility
+        this.registerParser(new RegexParserService());
+        // FPGA/Hardware description
+        this.registerParser(new VerilogParserService());
+        this.registerParser(new SystemVerilogParserService());
+        // Scientific computing
+        this.registerParser(new JuliaParserService());
+        this.registerParser(new MatlabParserService());
+        // Major languages expansion
+        this.registerParser(new HaskellParserService());
+        this.registerParser(new DartParserService());
+        this.registerParser(new ElixirParserService());
+        this.registerParser(new ZigParserService());
+        this.registerParser(new SolidityParserService());
+        this.registerParser(new PerlParserService());
+        this.registerParser(new GleamParserService());
+        // DevOps/Infrastructure as Code
+        this.registerParser(new HclParserService());
+        this.registerParser(new GroovyParserService());
+        this.registerParser(new PuppetParserService());
+        // Messaging/RPC frameworks
+        this.registerParser(new ThriftParserService());
     }
     /**
      * Register a language parser

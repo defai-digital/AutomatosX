@@ -107,7 +107,13 @@ module VerdictSignature = {
     | TelemetryFlushed => "TELEMETRY_FLUSHED"
     }
 
-    computeHmac(stateStr ++ "::" ++ eventStr, "context-hash-key")
+    // Include metadata in hash to ensure unique contexts generate unique hashes
+    let metadataStr = switch ctx.metadata {
+    | Some(meta) => Js.Json.stringify(Js.Json.object_(meta))
+    | None => "NO_METADATA"
+    }
+
+    computeHmac(stateStr ++ "::" ++ eventStr ++ "::" ++ metadataStr, "context-hash-key")
   }
 
   let sign = (verdict: GuardVerdict.t, guardName: string, ctx: GuardContext.t, secretKey: string): signedVerdict => {

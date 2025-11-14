@@ -55,6 +55,16 @@ export function closeDatabase() {
     }
 }
 /**
+ * Set database instance (for testing)
+ * @param db - Database instance to use
+ */
+export function setDatabase(db) {
+    if (dbInstance) {
+        dbInstance.close();
+    }
+    dbInstance = db;
+}
+/**
  * Execute a query with parameters
  * Helper function for common database operations
  */

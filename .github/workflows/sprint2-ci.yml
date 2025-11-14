@@ -17,16 +17,28 @@ jobs:
   # Job 1: macOS Testing
   test-macos:
     name: Test on macOS
-    runs-on: macos-latest
+    runs-on: macos-latest  # Will use latest available (macOS 26 Tahoe when available in GitHub Actions)
 
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [24.x]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Verify macOS version
+        run: |
+          MACOS_VERSION=$(sw_vers -productVersion | cut -d '.' -f 1)
+          echo "macOS version: $MACOS_VERSION"
+          if [ "$MACOS_VERSION" -lt 26 ]; then
+            echo "⚠️  WARNING: macOS version is $MACOS_VERSION, requirement is 26 (Tahoe) or later"
+            echo "Current version: $MACOS_VERSION"
+            echo "CI will continue but may not match production environment"
+          else
+            echo "✅ macOS version check passed: $MACOS_VERSION (Tahoe)"
+          fi
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -59,7 +71,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-        if: matrix.node-version == '20.x'
+        if: matrix.node-version == '24.x'
         with:
           files: ./coverage/lcov.info
           flags: macos
@@ -77,12 +89,12 @@ jobs:
   # Job 2: Linux Testing
   test-linux:
     name: Test on Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [24.x]
 
     steps:
       - name: Checkout code
@@ -119,7 +131,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-        if: matrix.node-version == '20.x'
+        if: matrix.node-version == '24.x'
         with:
           files: ./coverage/lcov.info
           flags: linux
@@ -134,16 +146,15 @@ jobs:
             coverage/
             test-results/
 
-  # Job 3: Windows Testing (Placeholder - Enable on Day 16)
+  # Job 3: Windows Testing (Enabled Day 16)
   test-windows:
     name: Test on Windows
-    runs-on: windows-latest
-    if: false  # Disabled until Day 16
+    runs-on: windows-2022  # Windows Server 2022 (Windows 11 compatible)
 
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [24.x]
 
     steps:
       - name: Checkout code
@@ -184,7 +195,7 @@ jobs:
   # Job 4: Schema Validation Tests
   validate-schemas:
     name: Validate Zod Schemas
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -193,7 +204,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
 
       - name: Install dependencies
@@ -234,7 +245,7 @@ jobs:
   # Job 5: Documentation Check
   docs-check:
     name: Check Documentation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -263,8 +274,8 @@ jobs:
   # Job 6: Test Summary
   test-summary:
     name: Test Summary
-    runs-on: ubuntu-latest
-    needs: [test-macos, test-linux, validate-schemas, docs-check]
+    runs-on: ubuntu-24.04
+    needs: [test-macos, test-linux, test-windows, validate-schemas, docs-check]
     if: always()
 
     steps:
@@ -273,11 +284,13 @@ jobs:
           echo "CI Matrix Results:"
           echo "macOS Tests: ${{ needs.test-macos.result }}"
           echo "Linux Tests: ${{ needs.test-linux.result }}"
+          echo "Windows Tests: ${{ needs.test-windows.result }}"
           echo "Schema Validation: ${{ needs.validate-schemas.result }}"
           echo "Documentation Check: ${{ needs.docs-check.result }}"
 
           if [ "${{ needs.test-macos.result }}" != "success" ] || \
              [ "${{ needs.test-linux.result }}" != "success" ] || \
+             [ "${{ needs.test-windows.result }}" != "success" ] || \
              [ "${{ needs.validate-schemas.result }}" != "success" ]; then
             echo "❌ Some tests failed"
             exit 1

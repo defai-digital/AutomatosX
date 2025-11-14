@@ -101,7 +101,9 @@ function hashContext(ctx) {
         break;
     
   }
-  return computeHmac(stateStr + "::" + eventStr, "context-hash-key");
+  var meta = ctx.metadata;
+  var metadataStr = meta !== undefined ? JSON.stringify(meta) : "NO_METADATA";
+  return computeHmac(stateStr + "::" + eventStr + "::" + metadataStr, "context-hash-key");
 }
 
 function sign(verdict, guardName, ctx, secretKey) {

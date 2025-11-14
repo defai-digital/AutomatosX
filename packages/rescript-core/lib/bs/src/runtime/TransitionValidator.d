@@ -1,1 +1,1 @@
-src/runtime/TransitionValidator.cmj : src/runtime/StateMachine.cmj src/runtime/StateMachine.cmi
+src/runtime/TransitionValidator.cmj : src/runtime/TaskStateMachine.cmj src/runtime/TaskStateMachine.cmi

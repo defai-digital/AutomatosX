@@ -19,7 +19,7 @@ export class TypeScriptParserService extends BaseLanguageParser {
   constructor() {
     // Use TSX grammar to support JSX/React syntax
     // The tsx grammar is a superset that handles both .ts and .tsx files
-    super(TypeScript.tsx);
+    super(TypeScript.tsx as Parser.Language);
   }
 
   /**

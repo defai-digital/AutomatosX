@@ -4,17 +4,32 @@ rule astj
   command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe  -warn-error +101+8 -bs-v 11.1.4 -uncurried -bs-super-errors -absname -bs-ast -o $out $i
 o src/Hello.ast : astj ../../src/Hello.res
 rule deps
-  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsb_helper.exe -hash a5acbd69ae1e21ab39c59e825a4b9b98 $in
+  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsb_helper.exe -hash a61609fb759c06eaaecef6b19f7c6d78 $in
   restat = 1
 o src/Hello.d : deps src/Hello.ast
 rule mij
-  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe -I src/security -I src/runtime -I src/rules -I src -I /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml -bs-super-errors  -warn-error +101+8 -bs-gentype -uncurried -bs-package-name @automatosx/rescript-core -bs-package-output esmodule:$in_d:.bs.js -bs-v $g_finger $i
+  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe -I src/types -I src/memory -I src/retry -I src/security -I src/bridge -I src/providers/__tests__ -I src/providers -I src/runtime -I src/state -I src/math -I src/concurrency -I src/__tests__/rescript-core -I src/__tests__ -I src/workflow -I src/rules -I src/events -I src/resource -I src/error -I src/domain -I src/validation -I src -I /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml -bs-super-errors  -warn-error +101+8 -bs-gentype -uncurried -bs-package-name @automatosx/rescript-core -bs-package-output esmodule:$in_d:.bs.js -bs-v $g_finger $i
   dyndep = 1
   restat = 1
 o src/Hello.cmj src/Hello.cmi ../../src/Hello.bs.js : mij src/Hello.ast
 o src/Index.ast : astj ../../src/Index.res
 o src/Index.d : deps src/Index.ast
 o src/Index.cmj src/Index.cmi ../../src/Index.bs.js : mij src/Index.ast
+o src/validation/ValidationRules.ast : astj ../../src/validation/ValidationRules.res
+o src/validation/ValidationRules.d : deps src/validation/ValidationRules.ast
+o src/validation/ValidationRules.cmj src/validation/ValidationRules.cmi ../../src/validation/ValidationRules.bs.js : mij src/validation/ValidationRules.ast
+o src/domain/DomainValidation.ast : astj ../../src/domain/DomainValidation.res
+o src/domain/DomainValidation.d : deps src/domain/DomainValidation.ast
+o src/domain/DomainValidation.cmj src/domain/DomainValidation.cmi ../../src/domain/DomainValidation.bs.js : mij src/domain/DomainValidation.ast
+o src/error/ErrorHandling.ast : astj ../../src/error/ErrorHandling.res
+o src/error/ErrorHandling.d : deps src/error/ErrorHandling.ast
+o src/error/ErrorHandling.cmj src/error/ErrorHandling.cmi ../../src/error/ErrorHandling.bs.js : mij src/error/ErrorHandling.ast
+o src/resource/ResourceManagement.ast : astj ../../src/resource/ResourceManagement.res
+o src/resource/ResourceManagement.d : deps src/resource/ResourceManagement.ast
+o src/resource/ResourceManagement.cmj src/resource/ResourceManagement.cmi ../../src/resource/ResourceManagement.bs.js : mij src/resource/ResourceManagement.ast
+o src/events/EventBus.ast : astj ../../src/events/EventBus.res
+o src/events/EventBus.d : deps src/events/EventBus.ast
+o src/events/EventBus.cmj src/events/EventBus.cmi ../../src/events/EventBus.bs.js : mij src/events/EventBus.ast
 o src/rules/RuleAST.ast : astj ../../src/rules/RuleAST.res
 o src/rules/RuleAST.d : deps src/rules/RuleAST.ast
 o src/rules/RuleAST.cmj src/rules/RuleAST.cmi ../../src/rules/RuleAST.bs.js : mij src/rules/RuleAST.ast
@@ -27,21 +42,51 @@ o src/rules/RuleEngine.cmj src/rules/RuleEngine.cmi ../../src/rules/RuleEngine.b
 o src/rules/RuleParser.ast : astj ../../src/rules/RuleParser.res
 o src/rules/RuleParser.d : deps src/rules/RuleParser.ast
 o src/rules/RuleParser.cmj src/rules/RuleParser.cmi ../../src/rules/RuleParser.bs.js : mij src/rules/RuleParser.ast
+o src/workflow/TaskPlanner.ast : astj ../../src/workflow/TaskPlanner.res
+o src/workflow/TaskPlanner.d : deps src/workflow/TaskPlanner.ast
+o src/workflow/TaskPlanner.cmj src/workflow/TaskPlanner.cmi ../../src/workflow/TaskPlanner.bs.js : mij src/workflow/TaskPlanner.ast
+o src/workflow/WorkflowTypes.ast : astj ../../src/workflow/WorkflowTypes.res
+o src/workflow/WorkflowTypes.d : deps src/workflow/WorkflowTypes.ast
+o src/workflow/WorkflowTypes.cmj src/workflow/WorkflowTypes.cmi ../../src/workflow/WorkflowTypes.bs.js : mij src/workflow/WorkflowTypes.ast
+o src/workflow/WorkflowOrchestrator.ast : astj ../../src/workflow/WorkflowOrchestrator.res
+o src/workflow/WorkflowOrchestrator.d : deps src/workflow/WorkflowOrchestrator.ast
+o src/workflow/WorkflowOrchestrator.cmj src/workflow/WorkflowOrchestrator.cmi ../../src/workflow/WorkflowOrchestrator.bs.js : mij src/workflow/WorkflowOrchestrator.ast
+o src/workflow/WorkflowStateMachine.ast : astj ../../src/workflow/WorkflowStateMachine.res
+o src/workflow/WorkflowStateMachine.d : deps src/workflow/WorkflowStateMachine.ast
+o src/workflow/WorkflowStateMachine.cmj src/workflow/WorkflowStateMachine.cmi ../../src/workflow/WorkflowStateMachine.bs.js : mij src/workflow/WorkflowStateMachine.ast
+o src/concurrency/ConcurrencySafety.ast : astj ../../src/concurrency/ConcurrencySafety.res
+o src/concurrency/ConcurrencySafety.d : deps src/concurrency/ConcurrencySafety.ast
+o src/concurrency/ConcurrencySafety.cmj src/concurrency/ConcurrencySafety.cmi ../../src/concurrency/ConcurrencySafety.bs.js : mij src/concurrency/ConcurrencySafety.ast
+o src/math/SafeMath.ast : astj ../../src/math/SafeMath.res
+o src/math/SafeMath.d : deps src/math/SafeMath.ast
+o src/math/SafeMath.cmj src/math/SafeMath.cmi ../../src/math/SafeMath.bs.js : mij src/math/SafeMath.ast
+o src/state/StateMachine.ast : astj ../../src/state/StateMachine.res
+o src/state/StateMachine.d : deps src/state/StateMachine.ast
+o src/state/StateMachine.cmj src/state/StateMachine.cmi ../../src/state/StateMachine.bs.js : mij src/state/StateMachine.ast
+o src/state/StateManagement.ast : astj ../../src/state/StateManagement.res
+o src/state/StateManagement.d : deps src/state/StateManagement.ast
+o src/state/StateManagement.cmj src/state/StateManagement.cmi ../../src/state/StateManagement.bs.js : mij src/state/StateManagement.ast
 o src/runtime/Guards.ast : astj ../../src/runtime/Guards.res
 o src/runtime/Guards.d : deps src/runtime/Guards.ast
 o src/runtime/Guards.cmj src/runtime/Guards.cmi ../../src/runtime/Guards.bs.js : mij src/runtime/Guards.ast
-o src/runtime/StateMachine.ast : astj ../../src/runtime/StateMachine.res
-o src/runtime/StateMachine.d : deps src/runtime/StateMachine.ast
-o src/runtime/StateMachine.cmj src/runtime/StateMachine.cmi ../../src/runtime/StateMachine.bs.js : mij src/runtime/StateMachine.ast
 o src/runtime/EffectRuntime.ast : astj ../../src/runtime/EffectRuntime.res
 o src/runtime/EffectRuntime.d : deps src/runtime/EffectRuntime.ast
 o src/runtime/EffectRuntime.cmj src/runtime/EffectRuntime.cmi ../../src/runtime/EffectRuntime.bs.js : mij src/runtime/EffectRuntime.ast
+o src/runtime/StateMachineV2.ast : astj ../../src/runtime/StateMachineV2.res
+o src/runtime/StateMachineV2.d : deps src/runtime/StateMachineV2.ast
+o src/runtime/StateMachineV2.cmj src/runtime/StateMachineV2.cmi ../../src/runtime/StateMachineV2.bs.js : mij src/runtime/StateMachineV2.ast
 o src/runtime/EventDispatcher.ast : astj ../../src/runtime/EventDispatcher.res
 o src/runtime/EventDispatcher.d : deps src/runtime/EventDispatcher.ast
 o src/runtime/EventDispatcher.cmj src/runtime/EventDispatcher.cmi ../../src/runtime/EventDispatcher.bs.js : mij src/runtime/EventDispatcher.ast
+o src/runtime/TaskStateMachine.ast : astj ../../src/runtime/TaskStateMachine.res
+o src/runtime/TaskStateMachine.d : deps src/runtime/TaskStateMachine.ast
+o src/runtime/TaskStateMachine.cmj src/runtime/TaskStateMachine.cmi ../../src/runtime/TaskStateMachine.bs.js : mij src/runtime/TaskStateMachine.ast
 o src/runtime/TransitionValidator.ast : astj ../../src/runtime/TransitionValidator.res
 o src/runtime/TransitionValidator.d : deps src/runtime/TransitionValidator.ast
 o src/runtime/TransitionValidator.cmj src/runtime/TransitionValidator.cmi ../../src/runtime/TransitionValidator.bs.js : mij src/runtime/TransitionValidator.ast
+o src/providers/ProviderStateMachine.ast : astj ../../src/providers/ProviderStateMachine.res
+o src/providers/ProviderStateMachine.d : deps src/providers/ProviderStateMachine.ast
+o src/providers/ProviderStateMachine.cmj src/providers/ProviderStateMachine.cmi ../../src/providers/ProviderStateMachine.bs.js : mij src/providers/ProviderStateMachine.ast
 o src/security/EventAuth.ast : astj ../../src/security/EventAuth.res
 o src/security/EventAuth.d : deps src/security/EventAuth.ast
 o src/security/EventAuth.cmj src/security/EventAuth.cmi ../../src/security/EventAuth.bs.js : mij src/security/EventAuth.ast
@@ -60,3 +105,30 @@ o src/security/CancellationLimiter.cmj src/security/CancellationLimiter.cmi ../.
 o src/security/DependencyValidator.ast : astj ../../src/security/DependencyValidator.res
 o src/security/DependencyValidator.d : deps src/security/DependencyValidator.ast
 o src/security/DependencyValidator.cmj src/security/DependencyValidator.cmi ../../src/security/DependencyValidator.bs.js : mij src/security/DependencyValidator.ast
+o src/retry/RetryFallback.ast : astj ../../src/retry/RetryFallback.res
+o src/retry/RetryFallback.d : deps src/retry/RetryFallback.ast
+o src/retry/RetryFallback.cmj src/retry/RetryFallback.cmi ../../src/retry/RetryFallback.bs.js : mij src/retry/RetryFallback.ast
+o src/retry/RetryOrchestrator.ast : astj ../../src/retry/RetryOrchestrator.res
+o src/retry/RetryOrchestrator.d : deps src/retry/RetryOrchestrator.ast
+o src/retry/RetryOrchestrator.cmj src/retry/RetryOrchestrator.cmi ../../src/retry/RetryOrchestrator.bs.js : mij src/retry/RetryOrchestrator.ast
+o src/memory/Timestamp.ast : astj ../../src/memory/Timestamp.res
+o src/memory/Timestamp.d : deps src/memory/Timestamp.ast
+o src/memory/Timestamp.cmj src/memory/Timestamp.cmi ../../src/memory/Timestamp.bs.js : mij src/memory/Timestamp.ast
+o src/memory/HybridSearchCore.ast : astj ../../src/memory/HybridSearchCore.res
+o src/memory/HybridSearchCore.d : deps src/memory/HybridSearchCore.ast
+o src/memory/HybridSearchCore.cmj src/memory/HybridSearchCore.cmi ../../src/memory/HybridSearchCore.bs.js : mij src/memory/HybridSearchCore.ast
+o src/memory/MessageTransform.ast : astj ../../src/memory/MessageTransform.res
+o src/memory/MessageTransform.d : deps src/memory/MessageTransform.ast
+o src/memory/MessageTransform.cmj src/memory/MessageTransform.cmi ../../src/memory/MessageTransform.bs.js : mij src/memory/MessageTransform.ast
+o src/memory/StatsAggregation.ast : astj ../../src/memory/StatsAggregation.res
+o src/memory/StatsAggregation.d : deps src/memory/StatsAggregation.ast
+o src/memory/StatsAggregation.cmj src/memory/StatsAggregation.cmi ../../src/memory/StatsAggregation.bs.js : mij src/memory/StatsAggregation.ast
+o src/memory/HybridSearchTypes.ast : astj ../../src/memory/HybridSearchTypes.res
+o src/memory/HybridSearchTypes.d : deps src/memory/HybridSearchTypes.ast
+o src/memory/HybridSearchTypes.cmj src/memory/HybridSearchTypes.cmi ../../src/memory/HybridSearchTypes.bs.js : mij src/memory/HybridSearchTypes.ast
+o src/memory/MemoryStateMachine.ast : astj ../../src/memory/MemoryStateMachine.res
+o src/memory/MemoryStateMachine.d : deps src/memory/MemoryStateMachine.ast
+o src/memory/MemoryStateMachine.cmj src/memory/MemoryStateMachine.cmi ../../src/memory/MemoryStateMachine.bs.js : mij src/memory/MemoryStateMachine.ast
+o src/types/TypeSafety.ast : astj ../../src/types/TypeSafety.res
+o src/types/TypeSafety.d : deps src/types/TypeSafety.ast
+o src/types/TypeSafety.cmj src/types/TypeSafety.cmi ../../src/types/TypeSafety.bs.js : mij src/types/TypeSafety.ast

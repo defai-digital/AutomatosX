@@ -23,6 +23,7 @@ import { ProgressTracker } from '../../utils/SpinnerLogger.js';
 export async function runCommand(rawArgs) {
     // Initialize logger
     const logger = new StreamingLogger({ minLevel: 'info' });
+    let progressTracker = null;
     try {
         // 1. Validate inputs with Zod
         logger.debug('Validating command arguments...');
@@ -77,7 +78,8 @@ export async function runCommand(rawArgs) {
         logger.info('Executing task...');
         logger.debug(`Task: ${args.task.substring(0, 100)}${args.task.length > 100 ? '...' : ''}`);
         // Mock execution for now
-        await mockExecuteTask(args, logger);
+        const { progress } = await mockExecuteTask(args, logger);
+        progressTracker = progress; // Store for cleanup in catch block
         // 7. Success output
         logger.success(`Task completed successfully!`);
         if (args.json) {
@@ -90,6 +92,17 @@ export async function runCommand(rawArgs) {
         }
     }
     catch (error) {
+        // Clean up resources before handling error
+        try {
+            if (progressTracker) {
+                progressTracker.stopAll();
+            }
+            // Logger cleanup not needed - StreamingLogger has no persistent state
+        }
+        catch (cleanupError) {
+            // Ignore cleanup errors, prioritize original error
+            console.error('Error during cleanup:', cleanupError);
+        }
         await errorHandler(error, {
             debug: rawArgs?.debug,
             json: rawArgs?.json,
@@ -140,5 +153,6 @@ async function mockExecuteTask(args, logger) {
     await new Promise(resolve => setTimeout(resolve, 100));
     progress.complete('validate', 'Results validated successfully');
     progress.stopAll();
+    return { progress };
 }
 //# sourceMappingURL=runCommand.js.map

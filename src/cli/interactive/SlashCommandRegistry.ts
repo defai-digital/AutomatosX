@@ -6,6 +6,7 @@
  */
 
 import chalk from 'chalk';
+import type { SlashCommand, CommandContext } from './types.js';
 import { HelpCommand } from './commands/HelpCommand.js';
 import { ExitCommand } from './commands/ExitCommand.js';
 import { ClearCommand } from './commands/ClearCommand.js';
@@ -20,30 +21,8 @@ import { StatusCommand } from './commands/StatusCommand.js';
 import { SaveCommand } from './commands/SaveCommand.js';
 import { LoadCommand } from './commands/LoadCommand.js';
 
-/**
- * Conversation Context Interface (Week 2 - stub for now)
- */
-export interface ConversationContext {
-  conversationId: string;
-  userId: string;
-  sessionStartedAt: Date;
-  messageCount: number;
-  activeAgent?: string;
-  activeWorkflow?: string;
-  variables: Record<string, unknown>;
-  lastResults?: unknown;
-}
-
-/**
- * Slash Command Interface
- */
-export interface SlashCommand {
-  name: string;
-  description: string;
-  usage: string;
-  aliases?: string[];
-  execute(args: string[], context?: ConversationContext): Promise<void>;
-}
+// Re-export types for convenience
+export type { SlashCommand, CommandContext };
 
 /**
  * Slash Command Registry
@@ -89,7 +68,7 @@ export class SlashCommandRegistry {
   /**
    * Execute a slash command
    */
-  async execute(input: string, context?: ConversationContext): Promise<void> {
+  async execute(input: string, context: CommandContext): Promise<void> {
     // Split by whitespace and filter empty strings (handles multiple spaces)
     const parts = input.slice(1).split(/\s+/).filter(part => part.length > 0);
     const [commandName, ...args] = parts;

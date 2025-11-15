@@ -94,23 +94,33 @@ export class TestGenerator {
         const createdFiles = [];
         // Create output directory
         await fs.mkdir(outputPath, { recursive: true });
+        // Fixed: Validate paths to prevent traversal
+        const validatePath = (baseOutputPath, userPath) => {
+            const fullPath = path.join(baseOutputPath, '..', userPath);
+            const resolvedPath = path.resolve(fullPath);
+            const baseDir = path.resolve(baseOutputPath, '..');
+            if (!resolvedPath.startsWith(baseDir + path.sep) && resolvedPath !== baseDir) {
+                throw new Error(`Path traversal detected: ${userPath}`);
+            }
+            return fullPath;
+        };
         // Write test files
         for (const testFile of testFiles) {
-            const fullPath = path.join(outputPath, '..', testFile.path);
+            const fullPath = validatePath(outputPath, testFile.path);
             await this.ensureDirectory(path.dirname(fullPath));
             await fs.writeFile(fullPath, testFile.content, 'utf-8');
             createdFiles.push(testFile.path);
         }
         // Write mock files
         for (const mockFile of mockFiles) {
-            const fullPath = path.join(outputPath, '..', mockFile.path);
+            const fullPath = validatePath(outputPath, mockFile.path);
             await this.ensureDirectory(path.dirname(fullPath));
             await fs.writeFile(fullPath, mockFile.content, 'utf-8');
             createdFiles.push(mockFile.path);
         }
         // Write fixture files
         for (const fixtureFile of fixtureFiles) {
-            const fullPath = path.join(outputPath, '..', fixtureFile.path);
+            const fullPath = validatePath(outputPath, fixtureFile.path);
             await this.ensureDirectory(path.dirname(fullPath));
             await fs.writeFile(fullPath, fixtureFile.content, 'utf-8');
             createdFiles.push(fixtureFile.path);

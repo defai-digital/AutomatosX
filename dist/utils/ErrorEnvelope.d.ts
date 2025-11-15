@@ -37,11 +37,43 @@ export declare const ErrorEnvelopeSchema: z.ZodObject<{
         message: z.ZodString;
         details: z.ZodOptional<z.ZodUnknown>;
         stackTrace: z.ZodOptional<z.ZodString>;
-        suggestions: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>;
+        suggestions: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        code: string;
+        message: string;
+        stackTrace?: string | undefined;
+        suggestions?: string[] | undefined;
+        details?: unknown;
+    }, {
+        code: string;
+        message: string;
+        stackTrace?: string | undefined;
+        suggestions?: string[] | undefined;
+        details?: unknown;
+    }>;
     timestamp: z.ZodString;
     requestId: z.ZodOptional<z.ZodString>;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    error: {
+        code: string;
+        message: string;
+        stackTrace?: string | undefined;
+        suggestions?: string[] | undefined;
+        details?: unknown;
+    };
+    timestamp: string;
+    requestId?: string | undefined;
+}, {
+    error: {
+        code: string;
+        message: string;
+        stackTrace?: string | undefined;
+        suggestions?: string[] | undefined;
+        details?: unknown;
+    };
+    timestamp: string;
+    requestId?: string | undefined;
+}>;
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelopeSchema>;
 /**
  * Options for creating an error envelope

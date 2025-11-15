@@ -188,7 +188,8 @@ describe('TypeSafety Module', () => {
       type PhoneNumber = string & { readonly __brand: 'PhoneNumber' };
 
       function makePhoneNumber(phone: string): Result<PhoneNumber, string> {
-        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+        // E.164 format: + followed by 1-15 digits, minimum 10 digits for realistic phone numbers
+        const phoneRegex = /^\+?[1-9]\d{9,14}$/;
 
         if (!phoneRegex.test(phone)) {
           return { TAG: 'Error', _0: 'Invalid phone number format' };

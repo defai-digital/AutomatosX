@@ -100,13 +100,21 @@ export class WorkflowEngineV2 {
                 executionId: execution.id,
                 eventType: 'workflow_completed',
                 eventData: {
-                    stepsCompleted: result.summary.stepsCompleted,
-                    duration: result.summary.duration,
+                    state: result.state,
+                    durationMs: result.durationMs,
                 },
             });
             return result;
         }
         catch (error) {
+            // Cleanup: Invalidate any checkpoints created during failed execution
+            try {
+                await this.checkpointService.invalidateCheckpointsForExecution(execution.id);
+            }
+            catch (cleanupError) {
+                // Log cleanup error but don't mask original error
+                console.error('Failed to invalidate checkpoints during error cleanup:', cleanupError);
+            }
             // Log error and update execution
             this.dao.updateExecutionState(execution.id, 'failed', error instanceof Error ? error.message : String(error));
             this.dao.logEvent({
@@ -114,6 +122,7 @@ export class WorkflowEngineV2 {
                 eventType: 'workflow_failed',
                 eventData: {
                     error: error instanceof Error ? error.message : String(error),
+                    cleanupCompleted: true,
                 },
             });
             throw error;
@@ -255,29 +264,20 @@ export class WorkflowEngineV2 {
         const failedSteps = machine.getFailedSteps();
         return {
             executionId,
+            workflowId: workflowDef.id || executionId,
             workflowName: workflowDef.name,
             state: 'completed',
-            steps: completedSteps.map(step => ({
-                stepKey: step.id,
-                success: step.status === 'completed',
-                result: step.result,
-                error: step.error,
-                duration: step.completedAt && step.startedAt ? step.completedAt - step.startedAt : 0,
-                retries: 0, // TODO: Track retries in ReScript state machine
-            })),
             context: machineContext.variables,
-            summary: {
-                executionId,
-                workflowId: '', // TODO: Get from execution record
-                workflowName: workflowDef.name,
-                state: 'completed',
-                startedAt: machineContext.startedAt,
-                completedAt: machineContext.completedAt,
-                duration: endTime - startTime,
-                stepsCompleted: completedSteps.length,
-                stepsFailed: failedSteps.length,
-                stepsTotal: workflowDef.steps.length,
-            },
+            stepResults: Object.fromEntries(completedSteps.map(step => [step.id, {
+                    success: step.status === 'completed',
+                    result: step.result,
+                    error: step.error,
+                    duration: step.completedAt && step.startedAt ? step.completedAt - step.startedAt : 0,
+                    retries: 0, // TODO: Track retries in ReScript state machine
+                }])),
+            startedAt: machineContext.startedAt,
+            completedAt: machineContext.completedAt,
+            durationMs: endTime - startTime,
         };
     }
     /**
@@ -289,6 +289,8 @@ export class WorkflowEngineV2 {
     async executeStepsWithStateMachine(machine, executionId, workflowDef, graph, context) {
         let current = machine;
         const stepResults = {};
+        // Build step lookup map for O(1) access instead of O(n) find()
+        const stepMap = new Map(workflowDef.steps.map(s => [s.key, s]));
         // Execute each level in sequence
         for (const level of graph.levels) {
             // Get completed steps to skip
@@ -298,8 +300,8 @@ export class WorkflowEngineV2 {
             if (stepsToExecute.length === 0) {
                 continue; // All steps in this level already completed
             }
-            // Get step definitions
-            const steps = stepsToExecute.map(stepKey => workflowDef.steps.find(s => s.key === stepKey));
+            // Get step definitions using O(1) map lookup
+            const steps = stepsToExecute.map(stepKey => stepMap.get(stepKey)).filter(Boolean);
             // Execute steps in parallel
             const results = await Promise.allSettled(steps.map(step => this.executeStepWithAgent(step, context, stepResults, current)));
             // Process results and update state machine
@@ -308,6 +310,26 @@ export class WorkflowEngineV2 {
                 const step = steps[i];
                 if (result.status === 'fulfilled') {
                     const stepResult = result.value;
+                    // Validate step result structure before using
+                    if (!stepResult || typeof stepResult !== 'object') {
+                        throw new Error(`Step ${step.key} returned invalid result: ${JSON.stringify(stepResult)}`);
+                    }
+                    // Check if step actually succeeded
+                    if (stepResult.success === false) {
+                        // Step execution completed but with failure status
+                        current = current.updateStep(step.key, (s) => ({
+                            ...s,
+                            status: 'failed',
+                            error: stepResult.error || 'Step returned success=false',
+                            completedAt: Date.now(),
+                        }));
+                        // Check if we should continue on error
+                        if (!step.continueOnError) {
+                            throw new Error(`Step ${step.key} failed: ${stepResult.error || 'Unknown error'}`);
+                        }
+                        continue; // Skip to next step
+                    }
+                    // Step succeeded - store result
                     stepResults[step.key] = stepResult.result;
                     // Update step state in machine: pending -> running -> completed
                     current = current.updateStep(step.key, (s) => ({
@@ -318,7 +340,7 @@ export class WorkflowEngineV2 {
                     }));
                 }
                 else {
-                    // Step failed
+                    // Promise rejected - step failed
                     const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
                     current = current.updateStep(step.key, (s) => ({
                         ...s,
@@ -326,7 +348,7 @@ export class WorkflowEngineV2 {
                         error,
                         completedAt: Date.now(),
                     }));
-                    // Check if we should continue on error
+                    // Check if we should continue on error (optional property)
                     if (!step.continueOnError) {
                         throw new Error(`Step ${step.key} failed: ${error}`);
                     }
@@ -366,16 +388,38 @@ export class WorkflowEngineV2 {
             };
         }
         catch (error) {
-            // Check if we should retry
-            if (step.retries && step.retries > 0) {
-                // TODO: Implement retry logic with exponential backoff
+            // Fixed: Implement retry logic with exponential backoff
+            const maxRetries = step.retries || 0;
+            let lastError = error;
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                // Exponential backoff: 2^attempt * 100ms (100ms, 200ms, 400ms, 800ms, ...)
+                const backoffMs = Math.min(Math.pow(2, attempt) * 100, 5000); // Cap at 5 seconds
+                await new Promise(resolve => setTimeout(resolve, backoffMs));
+                try {
+                    const result = await this.agentBridge.executeStep(step, {
+                        ...context,
+                        stepResults,
+                    });
+                    return {
+                        stepKey: step.key,
+                        success: true,
+                        result: result.output,
+                        duration: Date.now() - startTime,
+                        retries: attempt,
+                    };
+                }
+                catch (retryError) {
+                    lastError = retryError;
+                    // Continue to next retry
+                }
             }
+            // All retries exhausted
             return {
                 stepKey: step.key,
                 success: false,
-                error: error instanceof Error ? error.message : String(error),
+                error: lastError instanceof Error ? lastError.message : String(lastError),
                 duration: Date.now() - startTime,
-                retries: 0,
+                retries: maxRetries,
             };
         }
     }
@@ -399,7 +443,7 @@ export class WorkflowEngineV2 {
             state: execution.state,
             startedAt: execution.startedAt ?? undefined,
             completedAt: execution.completedAt ?? undefined,
-            duration: execution.duration ?? undefined,
+            duration: execution.durationMs ?? undefined,
             stepsCompleted: 0, // TODO: Query from step results
             stepsFailed: 0, // TODO: Query from step results
             stepsTotal: workflowDef.steps.length,
@@ -410,7 +454,7 @@ export class WorkflowEngineV2 {
      * List all workflow executions
      */
     listExecutions(limit = 100, offset = 0) {
-        return this.dao.listExecutions(limit, offset);
+        return this.dao.listExecutions(String(limit), String(offset));
     }
     /**
      * Get execution by ID

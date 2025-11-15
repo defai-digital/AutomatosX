@@ -5,11 +5,11 @@
  */
 import { EventEmitter } from 'events';
 import { AgentRegistry } from './AgentRegistry.js';
-import { Task, TaskResult, AgentContext, TaskStatus } from '../types/agents.types.js';
+import { Task, TaskResult, AgentContext, TaskStatus, AgentType } from '../types/agents.types.js';
 export interface SubTask {
     id: string;
     description: string;
-    agentType: string;
+    agentType: AgentType;
     dependsOn?: string[];
     priority: number;
     status: TaskStatus;

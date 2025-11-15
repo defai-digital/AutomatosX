@@ -107,10 +107,11 @@ export declare class FileDAO {
      */
     deleteByPath(path: string): boolean;
     /**
-     * List all files
+     * List all files with optional pagination
+     * Uses parameterized queries for safety and performance
      *
-     * @param limit - Optional limit
-     * @param offset - Optional offset
+     * @param limit - Optional limit (default: no limit)
+     * @param offset - Optional offset (default: 0)
      * @returns Array of file records
      */
     list(limit?: number, offset?: number): FileRecord[];

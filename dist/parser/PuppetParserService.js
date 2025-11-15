@@ -1,5 +1,5 @@
 import Puppet from 'tree-sitter-puppet';
-import { BaseLanguageParser } from './LanguageParser.js';
+import { BaseLanguageParser, SymbolKindValue } from './LanguageParser.js';
 /**
  * Parser for Puppet configuration management language
  *
@@ -55,7 +55,7 @@ export class PuppetParserService extends BaseLanguageParser {
         const parameters = paramsNode ? this.extractParameters(paramsNode) : [];
         return {
             name,
-            kind: SymbolKind.Class,
+            kind: SymbolKindValue.CLASS,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `class ${name}${parameters.length > 0 ? `(${parameters.join(', ')})` : ''}`,
@@ -78,7 +78,7 @@ export class PuppetParserService extends BaseLanguageParser {
         const parameters = paramsNode ? this.extractParameters(paramsNode) : [];
         return {
             name,
-            kind: SymbolKind.Type,
+            kind: SymbolKindValue.TYPE,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `define ${name}${parameters.length > 0 ? `(${parameters.join(', ')})` : ''}`,
@@ -101,7 +101,7 @@ export class PuppetParserService extends BaseLanguageParser {
         const title = titleNode?.text || 'unnamed';
         return {
             name: `${resourceType}[${title}]`,
-            kind: SymbolKind.Variable,
+            kind: SymbolKindValue.VARIABLE,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `${resourceType} { ${title} }`,
@@ -123,7 +123,7 @@ export class PuppetParserService extends BaseLanguageParser {
         const name = nameNode.text;
         return {
             name,
-            kind: SymbolKind.Variable,
+            kind: SymbolKindValue.VARIABLE,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: name,
@@ -145,7 +145,7 @@ export class PuppetParserService extends BaseLanguageParser {
         const parameters = paramsNode ? this.extractParameters(paramsNode) : [];
         return {
             name,
-            kind: SymbolKind.Function,
+            kind: SymbolKindValue.FUNCTION,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `function ${name}(${parameters.join(', ')})`,

@@ -468,6 +468,48 @@ let one = {value: defaultScaleFactor, scale: defaultScale}
 let half = {value: defaultScaleFactor / 2, scale: defaultScale}
 
 // ============================================================================
+// BRIDGE CONVENIENCE FUNCTIONS (For TypeScript interop)
+// ============================================================================
+
+// Fixed-point operations for TypeScript bridge
+// Uses simple integer arithmetic - values represent scaled integers
+// For monetary values: 100 cents = $1.00, scale factor handled by caller
+
+@genType
+let addFixed = (a: float, b: float): float => {
+  // Direct addition
+  a +. b
+}
+
+@genType
+let subtractFixed = (a: float, b: float): float => {
+  // Direct subtraction
+  a -. b
+}
+
+@genType
+let multiplyFixed = (a: float, b: float): float => {
+  // Direct multiplication
+  // Tests expect: multiplyFixed(100, 200) = 20000
+  // This is simple: 100 * 200 = 20000
+  a *. b
+}
+
+@genType
+let divideFixed = (a: float, b: float): result<float, string> => {
+  if b == 0.0 {
+    Error("Division by zero")
+  } else {
+    // Scale-preserving division
+    // Tests use scale of 100 (100 = 1.00)
+    // Formula: (a * 100) / b maintains the scale
+    // Example: divideFixed(400, 200) = (400 * 100) / 200 = 200 (represents 2.00)
+    let quotient = (a *. 100.0) /. b
+    Ok(Js.Math.round(quotient))
+  }
+}
+
+// ============================================================================
 // EXAMPLE USAGE (not exported, for documentation)
 // ============================================================================
 

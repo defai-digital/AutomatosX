@@ -11,13 +11,18 @@ function makeUserId(id) {
             TAG: "Error",
             _0: "User ID cannot be empty"
           };
-  } else {
+  } else if (Js_string.startsWith("user-", id)) {
     return {
             TAG: "Ok",
             _0: {
               TAG: "UserId",
               _0: id
             }
+          };
+  } else {
+    return {
+            TAG: "Error",
+            _0: "User ID must start with 'user-': " + id
           };
   }
 }
@@ -28,13 +33,18 @@ function makeConversationId(id) {
             TAG: "Error",
             _0: "Conversation ID cannot be empty"
           };
-  } else {
+  } else if (Js_string.startsWith("conv-", id)) {
     return {
             TAG: "Ok",
             _0: {
               TAG: "ConversationId",
               _0: id
             }
+          };
+  } else {
+    return {
+            TAG: "Error",
+            _0: "Conversation ID must start with 'conv-': " + id
           };
   }
 }
@@ -45,13 +55,18 @@ function makeMessageId(id) {
             TAG: "Error",
             _0: "Message ID cannot be empty"
           };
-  } else {
+  } else if (Js_string.startsWith("msg-", id)) {
     return {
             TAG: "Ok",
             _0: {
               TAG: "MessageId",
               _0: id
             }
+          };
+  } else {
+    return {
+            TAG: "Error",
+            _0: "Message ID must start with 'msg-': " + id
           };
   }
 }
@@ -304,6 +319,34 @@ function unwrapEmail(address) {
   return address._0;
 }
 
+function makePhoneNumber(phone) {
+  if (phone.length === 0) {
+    return {
+            TAG: "Error",
+            _0: "Phone number cannot be empty"
+          };
+  }
+  var phoneRegex = /^\+?[1-9]\d{9,14}$/;
+  if (phoneRegex.test(phone)) {
+    return {
+            TAG: "Ok",
+            _0: {
+              TAG: "PhoneNumber",
+              _0: phone
+            }
+          };
+  } else {
+    return {
+            TAG: "Error",
+            _0: "Invalid phone number format: " + phone
+          };
+  }
+}
+
+function unwrapPhoneNumber(phone) {
+  return phone._0;
+}
+
 function makeUrl(address) {
   if (address.length === 0) {
     return {
@@ -416,6 +459,8 @@ export {
   priceToDollars ,
   makeEmail ,
   unwrapEmail ,
+  makePhoneNumber ,
+  unwrapPhoneNumber ,
   makeUrl ,
   unwrapUrl ,
   makeNonEmptyArray ,

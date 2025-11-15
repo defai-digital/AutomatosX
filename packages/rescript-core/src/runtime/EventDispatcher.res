@@ -124,7 +124,7 @@ module Handler = {
     emitTelemetryEvent(createTelemetryEvent("transition.executed", payload))
   }
 
-  let default: t = {
+  let defaultHandler: t = {
     onDecision: telemetryDecisionHandler,
     onEffect: placeholderEffect,
   }
@@ -154,7 +154,7 @@ let dispatch = (
   event: TaskStateMachine.Event.t,
   context: TaskStateMachine.Context.t,
 ) =>
-  dispatchWithHandlers(state, event, context, Handler.default)
+  dispatchWithHandlers(state, event, context, Handler.defaultHandler)
 
 let dispatchSerialized = (
   state: TaskStateMachine.State.t,

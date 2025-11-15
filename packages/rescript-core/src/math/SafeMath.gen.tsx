@@ -72,3 +72,11 @@ export const zero: fixedPoint = SafeMathJS.zero as any;
 export const one: fixedPoint = SafeMathJS.one as any;
 
 export const half: fixedPoint = SafeMathJS.half as any;
+
+export const addFixed: (a:number, b:number) => number = SafeMathJS.addFixed as any;
+
+export const subtractFixed: (a:number, b:number) => number = SafeMathJS.subtractFixed as any;
+
+export const multiplyFixed: (a:number, b:number) => number = SafeMathJS.multiplyFixed as any;
+
+export const divideFixed: (a:number, b:number) => ErrorHandling_result<number,string> = SafeMathJS.divideFixed as any;

@@ -151,8 +151,9 @@ export class ProviderRouter extends EventEmitter {
           this.emit('error', { provider, attempt: attempt + 1, error: lastError })
 
           // Wait before retry (exponential backoff)
+          // Fixed: Cap delay at 60 seconds to prevent excessive wait times
           if (attempt < providerConfig.maxRetries - 1) {
-            await this.delay(Math.pow(2, attempt) * 1000)
+            await this.delay(Math.min(Math.pow(2, attempt) * 1000, 60000))
           }
         }
       }

@@ -7,7 +7,17 @@ export declare const BaseCommandSchema: z.ZodObject<{
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    verbose: boolean;
+    json: boolean;
+    debug: boolean;
+    quiet: boolean;
+}, {
+    verbose?: boolean | undefined;
+    json?: boolean | undefined;
+    debug?: boolean | undefined;
+    quiet?: boolean | undefined;
+}>;
 export type BaseCommand = z.infer<typeof BaseCommandSchema>;
 /**
  * Agent name validation
@@ -16,42 +26,30 @@ export type BaseCommand = z.infer<typeof BaseCommandSchema>;
  * - Cannot start or end with hyphen
  * - Max 50 characters
  */
-export declare const AgentNameSchema: z.ZodString;
+export declare const AgentNameSchema: z.ZodEffects<z.ZodString, string, string>;
 /**
  * Task description validation
  * - Min 3 characters
  * - Max 5000 characters
  * - Must contain non-whitespace
  */
-export declare const TaskDescriptionSchema: z.ZodString;
+export declare const TaskDescriptionSchema: z.ZodEffects<z.ZodString, string, string>;
 /**
  * Provider selection enum
  */
-export declare const ProviderSchema: z.ZodEnum<{
-    claude: "claude";
-    "claude-code": "claude-code";
-    gemini: "gemini";
-    "gemini-cli": "gemini-cli";
-    openai: "openai";
-    gpt: "gpt";
-}>;
+export declare const ProviderSchema: z.ZodEnum<["claude", "claude-code", "gemini", "gemini-cli", "openai", "gpt"]>;
 export type Provider = z.infer<typeof ProviderSchema>;
 /**
  * Output format enum
  */
-export declare const OutputFormatSchema: z.ZodDefault<z.ZodEnum<{
-    text: "text";
-    json: "json";
-    yaml: "yaml";
-    table: "table";
-}>>;
+export declare const OutputFormatSchema: z.ZodDefault<z.ZodEnum<["text", "json", "table", "yaml"]>>;
 export type OutputFormat = z.infer<typeof OutputFormatSchema>;
 /**
  * File path validation
  * - Must not be empty
  * - Cannot contain directory traversal (..)
  */
-export declare const FilePathSchema: z.ZodString;
+export declare const FilePathSchema: z.ZodEffects<z.ZodString, string, string>;
 /**
  * Timeout validation (in milliseconds)
  * - Positive integer
@@ -76,7 +74,7 @@ export declare const DateTimeSchema: z.ZodOptional<z.ZodString>;
 /**
  * Tag array validation
  */
-export declare const TagsSchema: z.ZodOptional<z.ZodArray<z.ZodString>>;
+export declare const TagsSchema: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 /**
  * UUID validation
  */
@@ -93,29 +91,27 @@ export declare const CommonSchemas: {
         verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-    }, z.core.$strip>;
-    AgentName: z.ZodString;
-    TaskDescription: z.ZodString;
-    Provider: z.ZodEnum<{
-        claude: "claude";
-        "claude-code": "claude-code";
-        gemini: "gemini";
-        "gemini-cli": "gemini-cli";
-        openai: "openai";
-        gpt: "gpt";
+    }, "strip", z.ZodTypeAny, {
+        verbose: boolean;
+        json: boolean;
+        debug: boolean;
+        quiet: boolean;
+    }, {
+        verbose?: boolean | undefined;
+        json?: boolean | undefined;
+        debug?: boolean | undefined;
+        quiet?: boolean | undefined;
     }>;
-    OutputFormat: z.ZodDefault<z.ZodEnum<{
-        text: "text";
-        json: "json";
-        yaml: "yaml";
-        table: "table";
-    }>>;
-    FilePath: z.ZodString;
+    AgentName: z.ZodEffects<z.ZodString, string, string>;
+    TaskDescription: z.ZodEffects<z.ZodString, string, string>;
+    Provider: z.ZodEnum<["claude", "claude-code", "gemini", "gemini-cli", "openai", "gpt"]>;
+    OutputFormat: z.ZodDefault<z.ZodEnum<["text", "json", "table", "yaml"]>>;
+    FilePath: z.ZodEffects<z.ZodString, string, string>;
     Timeout: z.ZodOptional<z.ZodNumber>;
     Limit: z.ZodDefault<z.ZodNumber>;
     Offset: z.ZodDefault<z.ZodNumber>;
     DateTime: z.ZodOptional<z.ZodString>;
-    Tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    Tags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     UUID: z.ZodString;
     ConfigKey: z.ZodString;
 };

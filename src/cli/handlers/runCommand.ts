@@ -25,6 +25,7 @@ import { ProgressTracker } from '../../utils/SpinnerLogger.js'
 export async function runCommand(rawArgs: unknown): Promise<void> {
   // Initialize logger
   const logger = new StreamingLogger({ minLevel: 'info' })
+  let progressTracker: ProgressTracker | null = null;
 
   try {
     // 1. Validate inputs with Zod
@@ -86,7 +87,8 @@ export async function runCommand(rawArgs: unknown): Promise<void> {
     logger.debug(`Task: ${args.task.substring(0, 100)}${args.task.length > 100 ? '...' : ''}`)
 
     // Mock execution for now
-    await mockExecuteTask(args, logger)
+    const { progress } = await mockExecuteTask(args, logger);
+    progressTracker = progress; // Store for cleanup in catch block
 
     // 7. Success output
     logger.success(`Task completed successfully!`)
@@ -101,6 +103,17 @@ export async function runCommand(rawArgs: unknown): Promise<void> {
     }
 
   } catch (error) {
+    // Clean up resources before handling error
+    try {
+      if (progressTracker) {
+        progressTracker.stopAll();
+      }
+      // Logger cleanup not needed - StreamingLogger has no persistent state
+    } catch (cleanupError) {
+      // Ignore cleanup errors, prioritize original error
+      console.error('Error during cleanup:', cleanupError);
+    }
+
     await errorHandler(error, {
       debug: (rawArgs as any)?.debug,
       json: (rawArgs as any)?.json,
@@ -112,7 +125,7 @@ export async function runCommand(rawArgs: unknown): Promise<void> {
  * Mock task execution for testing
  * TODO: Replace with actual AgentOrchestrator integration
  */
-async function mockExecuteTask(args: RunCommand, logger: StreamingLogger): Promise<void> {
+async function mockExecuteTask(args: RunCommand, logger: StreamingLogger): Promise<{ progress: ProgressTracker }> {
   // Use ProgressTracker for visual feedback
   const progress = new ProgressTracker([
     { name: 'load-config', status: 'pending' },
@@ -159,4 +172,6 @@ async function mockExecuteTask(args: RunCommand, logger: StreamingLogger): Promi
   progress.complete('validate', 'Results validated successfully')
 
   progress.stopAll()
+
+  return { progress };
 }

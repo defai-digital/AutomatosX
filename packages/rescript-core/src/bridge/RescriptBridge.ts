@@ -146,7 +146,7 @@ export namespace ErrorHandlingBridge {
     }
 
     // Use ReScript implementation
-    return ErrorHandling.mapResult(fn, result);
+    return ErrorHandling.map(result, fn);
   }
 
   export function flatMapResult<T, U, E>(
@@ -161,27 +161,24 @@ export namespace ErrorHandlingBridge {
       return result as Result<U, E>;
     }
 
-    return ErrorHandling.flatMapResult(fn, result);
+    return ErrorHandling.flatMap(result, fn);
   }
 
   export async function asyncMapResult<T, U, E>(
     fn: (value: T) => Promise<U>,
     result: Result<T, E>
   ): Promise<Result<U, E>> {
-    if (!bridgeConfig.enableErrorHandling) {
-      // TypeScript fallback
-      if (isOk(result)) {
-        try {
-          const value = await fn(result._0);
-          return Ok(value);
-        } catch (error) {
-          return Error(error as E);
-        }
+    // Always use TypeScript implementation for now
+    // ReScript doesn't export asyncMapResult yet
+    if (isOk(result)) {
+      try {
+        const value = await fn(result._0);
+        return Ok(value);
+      } catch (error) {
+        return Error(error as E);
       }
-      return result as Result<U, E>;
     }
-
-    return ErrorHandling.asyncMapResult(fn, result);
+    return result as Result<U, E>;
   }
 }
 

@@ -1,5 +1,5 @@
 import Xml from '@tree-sitter-grammars/tree-sitter-xml';
-import { BaseLanguageParser } from './LanguageParser.js';
+import { BaseLanguageParser, SymbolKindValue } from './LanguageParser.js';
 /**
  * Parser for XML (Extensible Markup Language)
  *
@@ -65,7 +65,7 @@ export class XmlParserService extends BaseLanguageParser {
         const textContent = this.extractTextContent(node);
         return {
             name: elementName,
-            kind: SymbolKind.Variable,
+            kind: SymbolKindValue.VARIABLE,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `<${elementName}${attributes.length > 0 ? ' ...' : ''}>`,
@@ -89,7 +89,7 @@ export class XmlParserService extends BaseLanguageParser {
         const fullName = groupId && artifactId ? `${groupId}:${artifactId}` : name;
         return {
             name: fullName,
-            kind: SymbolKind.Constant,
+            kind: SymbolKindValue.CONSTANT,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `dependency: ${fullName}${version ? `@${version}` : ''}`,
@@ -115,7 +115,7 @@ export class XmlParserService extends BaseLanguageParser {
         const version = attributes.get('Version');
         return {
             name: packageName,
-            kind: SymbolKind.Constant,
+            kind: SymbolKindValue.CONSTANT,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `package: ${packageName}${version ? `@${version}` : ''}`,
@@ -138,7 +138,7 @@ export class XmlParserService extends BaseLanguageParser {
         const fullName = groupId && artifactId ? `${groupId}:${artifactId}` : name;
         return {
             name: fullName,
-            kind: SymbolKind.Function,
+            kind: SymbolKindValue.FUNCTION,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: `plugin: ${fullName}${version ? `@${version}` : ''}`,
@@ -161,7 +161,7 @@ export class XmlParserService extends BaseLanguageParser {
         const attributes = this.extractAttributesAsMap(startTagNode);
         return {
             name: 'project',
-            kind: SymbolKind.Module,
+            kind: SymbolKindValue.MODULE,
             line: node.startPosition.row + 1,
             column: node.startPosition.column,
             signature: 'project',

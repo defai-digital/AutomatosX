@@ -56,6 +56,7 @@ function tsVectorToReScript(vr) {
  */
 function tsOptionsToReScript(opts) {
     return {
+        conversationId: opts?.conversationId ? opts.conversationId : undefined, // Fixed: Add required conversationId field
         limit: opts?.limit ?? 10,
         minScore: opts?.minScore ?? 0.0,
         weights: {

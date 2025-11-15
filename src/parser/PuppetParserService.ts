@@ -1,6 +1,6 @@
 import Parser from 'tree-sitter';
 import Puppet from 'tree-sitter-puppet';
-import { BaseLanguageParser, Symbol, SymbolKind, Call, Import } from './LanguageParser.js';
+import { BaseLanguageParser, Symbol, SymbolKind, SymbolKindValue, Call, Import } from './LanguageParser.js';
 
 /**
  * Parser for Puppet configuration management language
@@ -61,7 +61,7 @@ export class PuppetParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Class,
+      kind: SymbolKindValue.CLASS,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `class ${name}${parameters.length > 0 ? `(${parameters.join(', ')})` : ''}`,
@@ -86,7 +86,7 @@ export class PuppetParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Type,
+      kind: SymbolKindValue.TYPE,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `define ${name}${parameters.length > 0 ? `(${parameters.join(', ')})` : ''}`,
@@ -112,7 +112,7 @@ export class PuppetParserService extends BaseLanguageParser {
 
     return {
       name: `${resourceType}[${title}]`,
-      kind: SymbolKind.Variable,
+      kind: SymbolKindValue.VARIABLE,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `${resourceType} { ${title} }`,
@@ -136,7 +136,7 @@ export class PuppetParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Variable,
+      kind: SymbolKindValue.VARIABLE,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: name,
@@ -160,7 +160,7 @@ export class PuppetParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Function,
+      kind: SymbolKindValue.FUNCTION,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `function ${name}(${parameters.join(', ')})`,

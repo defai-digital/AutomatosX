@@ -64,10 +64,14 @@ function createRunCommand(): Command {
 
           // Convert spec to workloads (simplified)
           for (const spec of workloadSpec.workloads) {
+            // Fixed: Validate iterations to prevent NaN
+            const iterations = spec.iterations || parseInt(options.iterations, 10);
+            const validIterations = Number.isNaN(iterations) || iterations <= 0 ? 10 : iterations;
+
             workloads.push({
               name: spec.name,
               description: spec.description,
-              iterations: spec.iterations || parseInt(options.iterations),
+              iterations: validIterations,
               fn: async () => {
                 // Execute benchmark function
                 // This would be dynamically loaded in real implementation
@@ -77,11 +81,15 @@ function createRunCommand(): Command {
           }
         } else {
           // Default workloads
+          // Fixed: Validate iterations to prevent NaN
+          const iterations = parseInt(options.iterations, 10);
+          const validIterations = Number.isNaN(iterations) || iterations <= 0 ? 10 : iterations;
+
           workloads.push(
             {
               name: 'code-intelligence-search',
               description: 'Full-text code search',
-              iterations: parseInt(options.iterations),
+              iterations: validIterations,
               fn: async () => {
                 // Simulate search operation
                 await new Promise((resolve) => setTimeout(resolve, 10))
@@ -90,7 +98,7 @@ function createRunCommand(): Command {
             {
               name: 'symbol-lookup',
               description: 'Symbol definition lookup',
-              iterations: parseInt(options.iterations),
+              iterations: validIterations,  // Fixed: Reuse validated iterations
               fn: async () => {
                 await new Promise((resolve) => setTimeout(resolve, 5))
               },
@@ -98,7 +106,7 @@ function createRunCommand(): Command {
             {
               name: 'dependency-resolution',
               description: 'Plugin dependency resolution',
-              iterations: parseInt(options.iterations),
+              iterations: validIterations,  // Fixed: Reuse validated iterations
               fn: async () => {
                 await new Promise((resolve) => setTimeout(resolve, 15))
               },

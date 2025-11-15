@@ -6,8 +6,8 @@
  * Phase 2 Week 2 Day 6: ProviderRouter Tests
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ProviderRouter } from '../../../packages/rescript-core/src/providers/ProviderRouter.js';
-import { BaseProvider } from '../../../packages/rescript-core/src/providers/BaseProvider.js';
+import { ProviderRouter } from '../../services/ProviderRouter.js';
+import { BaseProvider } from '../ProviderBase.js';
 /**
  * Mock provider implementation for testing
  */

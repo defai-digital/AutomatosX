@@ -139,26 +139,37 @@ export interface CollaborationRequest {
 export declare const TaskSchema: z.ZodObject<{
     id: z.ZodString;
     description: z.ZodString;
-    priority: z.ZodEnum<{
-        low: "low";
-        medium: "medium";
-        high: "high";
-        critical: "critical";
-    }>;
-    status: z.ZodEnum<{
-        running: "running";
-        pending: "pending";
-        completed: "completed";
-        failed: "failed";
-        cancelled: "cancelled";
-    }>;
+    priority: z.ZodEnum<["low", "medium", "high", "critical"]>;
+    status: z.ZodEnum<["pending", "running", "completed", "failed", "cancelled"]>;
     assignedAgent: z.ZodOptional<z.ZodString>;
-    context: z.ZodOptional<z.ZodRecord<z.core.$ZodRecordKey, z.core.SomeType>>;
-    dependencies: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    context: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    dependencies: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     createdAt: z.ZodNumber;
     startedAt: z.ZodOptional<z.ZodNumber>;
     completedAt: z.ZodOptional<z.ZodNumber>;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    description: string;
+    priority: "low" | "medium" | "high" | "critical";
+    status: "pending" | "running" | "completed" | "failed" | "cancelled";
+    createdAt: number;
+    assignedAgent?: string | undefined;
+    context?: Record<string, unknown> | undefined;
+    dependencies?: string[] | undefined;
+    startedAt?: number | undefined;
+    completedAt?: number | undefined;
+}, {
+    id: string;
+    description: string;
+    priority: "low" | "medium" | "high" | "critical";
+    status: "pending" | "running" | "completed" | "failed" | "cancelled";
+    createdAt: number;
+    assignedAgent?: string | undefined;
+    context?: Record<string, unknown> | undefined;
+    dependencies?: string[] | undefined;
+    startedAt?: number | undefined;
+    completedAt?: number | undefined;
+}>;
 export declare const AgentMetadataSchema: z.ZodObject<{
     type: z.ZodString;
     name: z.ZodString;
@@ -166,30 +177,94 @@ export declare const AgentMetadataSchema: z.ZodObject<{
     capabilities: z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         description: z.ZodString;
-        keywords: z.ZodArray<z.ZodString>;
-    }, z.core.$strip>>;
-    specializations: z.ZodArray<z.ZodString>;
-    requiredContext: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        keywords: z.ZodArray<z.ZodString, "many">;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        description: string;
+        keywords: string[];
+    }, {
+        name: string;
+        description: string;
+        keywords: string[];
+    }>, "many">;
+    specializations: z.ZodArray<z.ZodString, "many">;
+    requiredContext: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     maxTokens: z.ZodOptional<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    type: string;
+    name: string;
+    description: string;
+    capabilities: {
+        name: string;
+        description: string;
+        keywords: string[];
+    }[];
+    specializations: string[];
+    requiredContext?: string[] | undefined;
+    maxTokens?: number | undefined;
+    temperature?: number | undefined;
+}, {
+    type: string;
+    name: string;
+    description: string;
+    capabilities: {
+        name: string;
+        description: string;
+        keywords: string[];
+    }[];
+    specializations: string[];
+    requiredContext?: string[] | undefined;
+    maxTokens?: number | undefined;
+    temperature?: number | undefined;
+}>;
 export declare const TaskResultSchema: z.ZodObject<{
     success: z.ZodBoolean;
     data: z.ZodOptional<z.ZodUnknown>;
     message: z.ZodOptional<z.ZodString>;
     artifacts: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        type: z.ZodEnum<{
-            document: "document";
-            data: "data";
-            file: "file";
-            code: "code";
-            diagram: "diagram";
-        }>;
+        type: z.ZodEnum<["file", "code", "document", "diagram", "data"]>;
         name: z.ZodString;
         path: z.ZodOptional<z.ZodString>;
         content: z.ZodOptional<z.ZodString>;
-        metadata: z.ZodOptional<z.ZodRecord<z.core.$ZodRecordKey, z.core.SomeType>>;
-    }, z.core.$strip>>>;
-    metadata: z.ZodOptional<z.ZodRecord<z.core.$ZodRecordKey, z.core.SomeType>>;
-}, z.core.$strip>;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    }, "strip", z.ZodTypeAny, {
+        type: "document" | "data" | "file" | "code" | "diagram";
+        name: string;
+        path?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        content?: string | undefined;
+    }, {
+        type: "document" | "data" | "file" | "code" | "diagram";
+        name: string;
+        path?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        content?: string | undefined;
+    }>, "many">>;
+    metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, "strip", z.ZodTypeAny, {
+    success: boolean;
+    data?: unknown;
+    metadata?: Record<string, unknown> | undefined;
+    message?: string | undefined;
+    artifacts?: {
+        type: "document" | "data" | "file" | "code" | "diagram";
+        name: string;
+        path?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        content?: string | undefined;
+    }[] | undefined;
+}, {
+    success: boolean;
+    data?: unknown;
+    metadata?: Record<string, unknown> | undefined;
+    message?: string | undefined;
+    artifacts?: {
+        type: "document" | "data" | "file" | "code" | "diagram";
+        name: string;
+        path?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        content?: string | undefined;
+    }[] | undefined;
+}>;
 //# sourceMappingURL=agents.types.d.ts.map

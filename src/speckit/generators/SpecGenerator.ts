@@ -158,11 +158,14 @@ export class SpecGenerator {
     options: SpecOptions
   ): Promise<GenerationContext> {
     // Get all available agents
-    let availableAgents = this.agentRegistry.list().map(agent => ({
-      name: agent.name,
-      description: agent.description,
-      capabilities: agent.capabilities || [],
-    }));
+    let availableAgents = this.agentRegistry.getAll().map(agent => {
+      const metadata = agent.getMetadata();
+      return {
+        name: metadata.name,
+        description: metadata.description,
+        capabilities: metadata.capabilities.map(c => c.name),
+      };
+    });
 
     // Filter to specific agents if requested
     if (options.agents && options.agents.length > 0) {

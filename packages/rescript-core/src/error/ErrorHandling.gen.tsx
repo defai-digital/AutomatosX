@@ -61,7 +61,7 @@ export const isError: <err,ok>(result:
 
 export const getOr: <err,ok>(result:
     { TAG: "Ok"; _0: ok }
-  | { TAG: "Error"; _0: err }, default:ok) => ok = ErrorHandlingJS.getOr as any;
+  | { TAG: "Error"; _0: err }, defaultValue:ok) => ok = ErrorHandlingJS.getOr as any;
 
 export const getOrElse: <err,ok>(result:
     { TAG: "Ok"; _0: ok }
@@ -69,7 +69,7 @@ export const getOrElse: <err,ok>(result:
 
 export const getErrorOr: <err,ok>(result:
     { TAG: "Ok"; _0: ok }
-  | { TAG: "Error"; _0: err }, default:err) => err = ErrorHandlingJS.getErrorOr as any;
+  | { TAG: "Error"; _0: err }, defaultValue:err) => err = ErrorHandlingJS.getErrorOr as any;
 
 export const map: <b,err,ok>(result:
     { TAG: "Ok"; _0: ok }

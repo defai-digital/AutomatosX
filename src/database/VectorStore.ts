@@ -50,7 +50,13 @@ export class VectorStore {
 
   constructor(options: VectorStoreOptions = {}) {
     this.dimensions = options.dimensions || 384;
-    this.tableName = options.tableName || 'memory_vectors';
+
+    // Fixed: Validate table name to prevent SQL injection
+    const tableName = options.tableName || 'memory_vectors';
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+      throw new Error(`Invalid table name: ${tableName}. Must match pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$`);
+    }
+    this.tableName = tableName;
     this.metadataTableName = `${this.tableName}_metadata`;
     this.ownDb = !options.db;
 

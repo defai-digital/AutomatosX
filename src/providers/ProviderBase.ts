@@ -242,7 +242,8 @@ export abstract class BaseProvider implements IProvider {
         }
 
         // Exponential backoff: 1s, 2s, 4s, 8s, etc.
-        const delay = Math.pow(2, attempt) * 1000
+        // Fixed: Cap delay at 60 seconds to prevent excessive wait times
+        const delay = Math.min(Math.pow(2, attempt) * 1000, 60000)
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
@@ -257,11 +258,16 @@ export abstract class BaseProvider implements IProvider {
     promise: Promise<T>,
     timeout: number = this.config.timeout!
   ): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new ProviderTimeoutError(this.name, timeout)), timeout)
-      ),
-    ])
+    // Fixed: Clear timeout to prevent memory leak
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new ProviderTimeoutError(this.name, timeout)), timeout);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
   }
 }

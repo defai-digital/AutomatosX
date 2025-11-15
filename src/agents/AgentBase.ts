@@ -110,12 +110,20 @@ export abstract class AgentBase extends EventEmitter {
     options: AgentExecutionOptions | undefined,
     timeoutMs: number
   ): Promise<TaskResult> {
-    return Promise.race([
-      this.executeTask(task, context, options),
-      new Promise<TaskResult>((_, reject) =>
-        setTimeout(() => reject(new Error('Task execution timeout')), timeoutMs)
-      ),
-    ]);
+    // Fixed: Clear timeout to prevent memory leak
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<TaskResult>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Task execution timeout')), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([
+        this.executeTask(task, context, options),
+        timeoutPromise
+      ]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
   }
 
   /**

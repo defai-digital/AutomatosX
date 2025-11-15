@@ -17,6 +17,7 @@ export interface Symbol {
   column: number;
   endLine?: number;
   endColumn?: number;
+  signature?: string; // Optional signature for functions/methods
   metadata?: Record<string, any>; // Optional metadata for language-specific features
 }
 
@@ -36,6 +37,43 @@ export type SymbolKind =
   | 'struct'
   | 'trait'
   | 'module';
+
+/**
+ * SymbolKind as a runtime value for use in parser implementations
+ */
+export const SymbolKindValue = {
+  FUNCTION: 'function' as const,
+  CLASS: 'class' as const,
+  INTERFACE: 'interface' as const,
+  TYPE: 'type' as const,
+  VARIABLE: 'variable' as const,
+  CONSTANT: 'constant' as const,
+  METHOD: 'method' as const,
+  ENUM: 'enum' as const,
+  STRUCT: 'struct' as const,
+  TRAIT: 'trait' as const,
+  MODULE: 'module' as const,
+};
+
+/**
+ * Function call extracted from source code
+ */
+export interface Call {
+  caller: string;
+  callee: string;
+  line: number;
+  column: number;
+}
+
+/**
+ * Import statement extracted from source code
+ */
+export interface Import {
+  source: string;
+  imported: string[];
+  line: number;
+  column: number;
+}
 
 /**
  * Parse result

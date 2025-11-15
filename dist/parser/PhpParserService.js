@@ -18,11 +18,11 @@ import { BaseLanguageParser } from './LanguageParser.js';
  * - Namespaces
  */
 export class PhpParserService extends BaseLanguageParser {
+    language = 'php';
+    extensions = ['.php', '.php3', '.php4', '.php5', '.phtml'];
     constructor() {
         // Use the full PHP grammar (supports PHP embedded in HTML)
         super(PHP.php);
-        this.language = 'php';
-        this.extensions = ['.php', '.php3', '.php4', '.php5', '.phtml'];
     }
     /**
      * Extract symbol from AST node
@@ -153,3 +153,4 @@ export class PhpParserService extends BaseLanguageParser {
         }
     }
 }
+//# sourceMappingURL=PhpParserService.js.map

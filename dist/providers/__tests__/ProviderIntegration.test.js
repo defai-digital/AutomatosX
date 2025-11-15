@@ -6,10 +6,10 @@
  * Phase 2 Week 2 Day 10: Integration Testing
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ProviderRouter } from '../../../packages/rescript-core/src/providers/ProviderRouter.js';
-import { ClaudeProvider } from '../../../packages/rescript-core/src/providers/ClaudeProvider.js';
-import { GeminiProvider } from '../../../packages/rescript-core/src/providers/GeminiProvider.js';
-import { OpenAIProvider } from '../../../packages/rescript-core/src/providers/OpenAIProvider.js';
+import { ProviderRouter } from '../../services/ProviderRouter.js';
+import { ClaudeProvider } from '../ClaudeProvider.js';
+import { GeminiProvider } from '../GeminiProvider.js';
+import { OpenAIProvider } from '../OpenAIProvider.js';
 describe('Provider Integration Tests', () => {
     let router;
     const createMockRequest = (overrides) => ({

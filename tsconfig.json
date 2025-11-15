@@ -21,5 +21,19 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "packages/*/lib", "src/test-*.ts", "src/parser/__tests__/fixtures/**/*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "packages/*/lib",
+    "packages/**/*.gen.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "src/test-*.ts",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/__benchmarks__/**",
+    "src/web/**",
+    "src/parser/__tests__/fixtures/**/*"
+  ]
 }

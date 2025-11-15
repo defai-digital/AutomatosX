@@ -74,10 +74,20 @@ export class AgentBase extends EventEmitter {
      * Execute task with timeout
      */
     async executeWithTimeout(task, context, options, timeoutMs) {
-        return Promise.race([
-            this.executeTask(task, context, options),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Task execution timeout')), timeoutMs)),
-        ]);
+        // Fixed: Clear timeout to prevent memory leak
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Task execution timeout')), timeoutMs);
+        });
+        try {
+            return await Promise.race([
+                this.executeTask(task, context, options),
+                timeoutPromise
+            ]);
+        }
+        finally {
+            clearTimeout(timeoutId);
+        }
     }
     /**
      * Build prompt for AI provider

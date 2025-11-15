@@ -84,6 +84,15 @@ export declare class CheckpointServiceV2 {
      */
     deleteAllCheckpoints(executionId: string): Promise<number>;
     /**
+     * Invalidate all checkpoints for an execution (for failed workflows)
+     *
+     * Marks checkpoints as invalid without deleting them, so they can be
+     * inspected for debugging but won't be used for resumption.
+     *
+     * This is safer than deletion as it preserves audit trail.
+     */
+    invalidateCheckpointsForExecution(executionId: string): Promise<number>;
+    /**
      * Get checkpoint statistics for an execution
      */
     getCheckpointStats(executionId: string): Promise<CheckpointStats>;

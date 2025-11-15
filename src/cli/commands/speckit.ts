@@ -16,12 +16,45 @@ import * as path from 'path';
 import type { GenerateOptions } from '../../types/speckit.types.js';
 import { ADRGenerator } from '../../speckit/ADRGenerator.js';
 import { PRDGenerator } from '../../speckit/PRDGenerator.js';
-import { ProviderRouterV2 } from '../../services/ProviderRouterV2.js';
+import { ProviderRouterV2, type ProviderRouterOptions } from '../../services/ProviderRouterV2.js';
 import { MemoryService } from '../../memory/MemoryService.js';
 import { SpecGenerator } from '../../speckit/generators/SpecGenerator.js';
 import { AgentRegistry } from '../../agents/AgentRegistry.js';
 import { WorkflowParser } from '../../services/WorkflowParser.js';
 import type { SpecOptions } from '../../speckit/types/speckit.types.js';
+import { getDatabase } from '../../database/connection.js';
+
+/**
+ * Create default provider router configuration
+ */
+function createProviderRouter(): ProviderRouterV2 {
+  return new ProviderRouterV2({
+    providers: {
+      claude: {
+        enabled: true,
+        priority: 1,
+        apiKey: process.env.ANTHROPIC_API_KEY || '',
+        maxRetries: 3,
+        timeout: 30000,
+        defaultModel: 'claude-opus-4-20250514',
+      },
+      gemini: {
+        enabled: true,
+        priority: 2,
+        apiKey: process.env.GOOGLE_API_KEY || '',
+        maxRetries: 2,
+        timeout: 30000,
+      },
+      openai: {
+        enabled: true,
+        priority: 3,
+        apiKey: process.env.OPENAI_API_KEY || '',
+        maxRetries: 2,
+        timeout: 30000,
+      },
+    },
+  });
+}
 
 /**
  * Register SpecKit commands
@@ -48,16 +81,7 @@ export function registerSpecKitCommands(program: Command): void {
 
       try {
         // Initialize dependencies
-        const providerRouter = new ProviderRouterV2({
-          providers: [
-            {
-              name: 'claude',
-              apiKey: process.env.ANTHROPIC_API_KEY || '',
-              enabled: true,
-              priority: 1,
-            },
-          ],
-        });
+        const providerRouter = createProviderRouter();
 
         const agentRegistry = new AgentRegistry();
         const workflowParser = new WorkflowParser();
@@ -208,31 +232,32 @@ export function registerSpecKitCommands(program: Command): void {
 
         // Initialize dependencies
         spinner.text = 'Initializing services...';
-        const providerRouter = new ProviderRouterV2();
-        const memoryService = new MemoryService();
+        const providerRouter = createProviderRouter();
+        const memoryService = new MemoryService(getDatabase());
 
         // Create ADR generator
         const generator = new ADRGenerator(providerRouter, memoryService);
 
         // Generate with progress tracking
-        const result = await generator.generate(generateOptions, (progress) => {
-          spinner.text = progress.message;
+        const result = await generator.generate(generateOptions as any, (progress: any) => {
+          spinner.text = progress.message || 'Generating...';
         });
 
         if (result.success) {
           spinner.succeed(chalk.green(`✅ ADR generated successfully!`));
           console.log(chalk.gray(`\nOutput: ${result.outputPath}`));
-          console.log(chalk.gray(`Patterns detected: ${result.metadata.patterns}`));
-          console.log(chalk.gray(`Files analyzed: ${result.metadata.files}`));
+          const metadata = result.metadata as any;
+          console.log(chalk.gray(`Patterns detected: ${metadata.patterns || 0}`));
+          console.log(chalk.gray(`Files analyzed: ${metadata.files || 0}`));
           console.log(chalk.gray(`Generation time: ${result.metadata.generationTime}ms`));
 
-          if (result.metadata.cached) {
+          if (metadata.cached) {
             console.log(chalk.yellow(`⚡ Result from cache`));
           }
 
           if (options.verbose) {
             console.log(chalk.gray(`\nProvider: ${result.metadata.provider}`));
-            console.log(chalk.gray(`Cost: $${result.metadata.cost?.toFixed(4) || '0.0000'}`));
+            console.log(chalk.gray(`Cost: $${metadata.cost?.toFixed(4) || '0.0000'}`));
           }
         } else {
           spinner.fail(chalk.red('❌ ADR generation failed'));
@@ -301,25 +326,26 @@ export function registerSpecKitCommands(program: Command): void {
 
         // Initialize dependencies
         spinner.text = 'Initializing services...';
-        const providerRouter = new ProviderRouterV2();
-        const memoryService = new MemoryService();
+        const providerRouter = createProviderRouter();
+        const memoryService = new MemoryService(getDatabase());
 
         // Create PRD generator
         const generator = new PRDGenerator(providerRouter, memoryService);
 
         // Generate with progress tracking
-        const result = await generator.generate(generateOptions, (progress) => {
-          spinner.text = progress.message;
+        const result = await generator.generate(generateOptions as any, (progress: any) => {
+          spinner.text = progress.message || 'Generating...';
         });
 
         if (result.success) {
           spinner.succeed(chalk.green(`✅ PRD generated successfully!`));
           console.log(chalk.gray(`\nOutput: ${result.outputPath}`));
-          console.log(chalk.gray(`Features detected: ${result.metadata.patterns}`));
-          console.log(chalk.gray(`Files analyzed: ${result.metadata.files}`));
+          const metadata = result.metadata as any;
+          console.log(chalk.gray(`Features detected: ${metadata.patterns || 0}`));
+          console.log(chalk.gray(`Files analyzed: ${metadata.files || 0}`));
           console.log(chalk.gray(`Generation time: ${result.metadata.generationTime}ms`));
 
-          if (result.metadata.cached) {
+          if (metadata.cached) {
             console.log(chalk.yellow(`⚡ Result from cache`));
           }
 
@@ -327,7 +353,7 @@ export function registerSpecKitCommands(program: Command): void {
             console.log(chalk.gray(`\nProvider: ${result.metadata.provider}`));
             console.log(chalk.gray(`Template: ${options.template}`));
             console.log(chalk.gray(`Audience: ${options.audience}`));
-            console.log(chalk.gray(`Cost: $${result.metadata.cost?.toFixed(4) || '0.0000'}`));
+            console.log(chalk.gray(`Cost: $${metadata.cost?.toFixed(4) || '0.0000'}`));
           }
         } else {
           spinner.fail(chalk.red('❌ PRD generation failed'));

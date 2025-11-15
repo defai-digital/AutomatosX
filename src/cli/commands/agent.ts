@@ -78,7 +78,7 @@ function createListCommand(): Command {
     .action(async (options) => {
       try {
         const registry = initializeRegistry();
-        const agents = registry.listAgents();
+        const agents = registry.getAll();
 
         // Filter by type if specified
         let filteredAgents = agents;
@@ -116,8 +116,7 @@ function createListCommand(): Command {
           console.log(`Total: ${filteredAgents.length} agents\n`);
         }
       } catch (error) {
-        ErrorHandler.handleError(error);
-        process.exit(1);
+        ErrorHandler.handleAndExit(error);
       }
     });
 }
@@ -134,12 +133,12 @@ function createDescribeCommand(): Command {
     .action(async (type, options) => {
       try {
         const registry = initializeRegistry();
-        const agent = registry.getAgent(type);
+        const agent = registry.get(type);
 
         if (!agent) {
           console.error(`Agent not found: ${type}`);
           console.log('\nAvailable agents:');
-          registry.listAgents().forEach(a => console.log(`  - ${a.getMetadata().type}`));
+          registry.getAll().forEach(a => console.log(`  - ${a.getMetadata().type}`));
           process.exit(1);
         }
 
@@ -171,8 +170,7 @@ function createDescribeCommand(): Command {
         console.log(`  ax run @${type} "your task description"`);
         console.log('─'.repeat(80) + '\n');
       } catch (error) {
-        ErrorHandler.handleError(error);
-        process.exit(1);
+        ErrorHandler.handleAndExit(error);
       }
     });
 }
@@ -205,17 +203,18 @@ function createRunCommand(): Command {
         // Determine agent
         let agent;
         if (options.agent) {
-          agent = registry.getAgent(options.agent);
+          agent = registry.get(options.agent);
           if (!agent) {
             console.error(`Agent not found: ${options.agent}`);
             process.exit(1);
           }
         } else {
-          agent = router.routeToAgent(task);
-          if (!agent) {
+          const routedAgent = router.routeToAgent(task);
+          if (!routedAgent) {
             console.error('Could not find suitable agent for this task');
             process.exit(1);
           }
+          agent = routedAgent;
         }
 
         const agentMetadata = agent.getMetadata();
@@ -231,7 +230,9 @@ function createRunCommand(): Command {
 
         // Execute task
         const result = await runtime.executeTask(task, {
-          preferredAgent: agentMetadata.type,
+          provider: 'claude',
+          maxRetries: 3,
+          timeout: 60000,
         });
 
         if (result.success) {
@@ -254,8 +255,7 @@ function createRunCommand(): Command {
 
         console.log('\n' + '─'.repeat(80) + '\n');
       } catch (error) {
-        ErrorHandler.handleError(error);
-        process.exit(1);
+        ErrorHandler.handleAndExit(error);
       }
     });
 }

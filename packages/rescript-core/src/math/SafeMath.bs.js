@@ -495,6 +495,32 @@ var half = {
   scale: 4
 };
 
+function addFixed(a, b) {
+  return a + b;
+}
+
+function subtractFixed(a, b) {
+  return a - b;
+}
+
+function multiplyFixed(a, b) {
+  return a * b;
+}
+
+function divideFixed(a, b) {
+  if (b === 0.0) {
+    return {
+            TAG: "Error",
+            _0: "Division by zero"
+          };
+  }
+  var quotient = a * 100.0 / b;
+  return {
+          TAG: "Ok",
+          _0: Math.round(quotient)
+        };
+}
+
 var defaultScale = 4;
 
 var defaultScaleFactor = 10000;
@@ -534,5 +560,9 @@ export {
   zero ,
   one ,
   half ,
+  addFixed ,
+  subtractFixed ,
+  multiplyFixed ,
+  divideFixed ,
 }
 /* No side effect */

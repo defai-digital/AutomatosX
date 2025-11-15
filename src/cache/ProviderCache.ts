@@ -502,7 +502,9 @@ export class ProviderCache {
     if (this.inMemoryCache.size >= this.maxInMemorySize) {
       // Remove oldest entry
       const firstKey = this.inMemoryCache.keys().next().value;
-      this.inMemoryCache.delete(firstKey);
+      if (firstKey !== undefined) {  // Fixed: Guard against undefined key
+        this.inMemoryCache.delete(firstKey);
+      }
     }
     this.inMemoryCache.set(key, entry);
   }

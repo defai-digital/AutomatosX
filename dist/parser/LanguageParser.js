@@ -6,10 +6,27 @@
  */
 import Parser from 'tree-sitter';
 /**
+ * SymbolKind as a runtime value for use in parser implementations
+ */
+export const SymbolKindValue = {
+    FUNCTION: 'function',
+    CLASS: 'class',
+    INTERFACE: 'interface',
+    TYPE: 'type',
+    VARIABLE: 'variable',
+    CONSTANT: 'constant',
+    METHOD: 'method',
+    ENUM: 'enum',
+    STRUCT: 'struct',
+    TRAIT: 'trait',
+    MODULE: 'module',
+};
+/**
  * Base class for language parsers
  * Provides common functionality for tree-walking and symbol extraction
  */
 export class BaseLanguageParser {
+    parser;
     constructor(grammar) {
         this.parser = new Parser();
         this.parser.setLanguage(grammar);
@@ -76,3 +93,4 @@ export class BaseLanguageParser {
         return symbol;
     }
 }
+//# sourceMappingURL=LanguageParser.js.map

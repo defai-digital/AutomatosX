@@ -5,3 +5,31 @@
 automatosx/tmp/  # v5.2: Temporary files
 automatosx.config.json  # Optional: remove to track config
 node_modules
+
+# Test databases and SQLite temporary files
+test-*.db
+test-*.db-journal
+test-*.db-shm
+test-*.db-wal
+*.test.db
+*.test.db-*
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Test artifacts and temporary files
+*.test.log
+test-output-*
+coverage/
+.nyc_output/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+.secrets
+credentials.json
+service-account.json

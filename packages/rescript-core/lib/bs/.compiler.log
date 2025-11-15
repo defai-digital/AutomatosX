@@ -1,4 +1,4 @@
-#Start(1763115048320)
+#Start(1763164526487)
 
   Warning number 26
   /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryFallback.res:360:11-20
@@ -13,7 +13,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -26,7 +26,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -39,7 +39,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -52,7 +52,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -65,7 +65,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -78,7 +78,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -88,6 +88,31 @@
      │ ========
 
   this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:408:29-31
+
+  406 │ // Example function: Get user's conversations (type-safe!)
+  407 │ @genType
+  408 │ let getUserConversations = (uid: userId): array<conversationId> => {
+  409 │   // Implementation would query database
+  410 │   // Return type is array<conversationId>, not array<string>
+
+  unused variable uid.
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:416:32-37
+
+  414 │ // Example function: Get messages in conversation (type-safe!)
+  415 │ @genType
+  416 │ let getConversationMessages = (convId: conversationId): array<messageI
+      │ d> => {
+  417 │   // Implementation would query database
+  418 │   []
+
+  unused variable convId.
 
 
   Warning number 44
@@ -143,45 +168,6 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 44
   /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
@@ -233,6 +219,45 @@
 
 
   Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 44
   /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
 
   11 │ 
@@ -272,7 +297,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -285,7 +310,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -298,7 +323,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -308,31 +333,6 @@
      │ ========
 
   this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:376:29-31
-
-  374 │ // Example function: Get user's conversations (type-safe!)
-  375 │ @genType
-  376 │ let getUserConversations = (uid: userId): array<conversationId> => {
-  377 │   // Implementation would query database
-  378 │   // Return type is array<conversationId>, not array<string>
-
-  unused variable uid.
-
-
-  Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:384:32-37
-
-  382 │ // Example function: Get messages in conversation (type-safe!)
-  383 │ @genType
-  384 │ let getConversationMessages = (convId: conversationId): array<messageI
-      │ d> => {
-  385 │   // Implementation would query database
-  386 │   []
-
-  unused variable convId.
 
 
   Warning number 44
@@ -602,4 +602,4 @@
   deprecated: Core__Option.getWithDefault
   Use getOr instead
 
-#Done(1763115048414)
+#Done(1763164526558)

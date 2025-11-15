@@ -140,21 +140,21 @@ export class NaturalLanguageRouter {
                 };
             }
             // Execute workflow (async)
-            const execution = await this.workflowEngine.execute(workflowPath);
+            const result = await this.workflowEngine.executeWorkflowFromFile(workflowPath);
             // Add to conversation context
-            const successMsg = `Started workflow: ${workflowName}\nID: ${execution.id}\nStatus: ${execution.status || 'running'}\n\nUse /workflow status ${execution.id} to check progress.`;
+            const successMsg = `Started workflow: ${workflowName}\nID: ${result.executionId}\nState: ${result.state}\n\nUse /workflow status ${result.executionId} to check progress.`;
             context.addMessage('user', input);
             context.addMessage('assistant', successMsg);
             // Store workflow ID in context
-            context.setVariable('lastWorkflowId', execution.id);
+            context.setVariable('lastWorkflowId', result.executionId);
             context.setActiveWorkflow(workflowName);
             return {
                 source: 'workflow-engine',
                 intent,
                 displayFormat: 'workflow-status',
-                workflowId: execution.id,
+                workflowId: result.executionId,
                 workflowName,
-                status: execution.status || 'running'
+                status: result.state
             };
         }
         catch (error) {
@@ -266,15 +266,16 @@ export class NaturalLanguageRouter {
      * List available agents
      */
     listAgents() {
-        const agents = this.agentRegistry.list();
-        return agents.map(a => a.name).join(', ');
+        const agents = this.agentRegistry.getAll();
+        return agents.map(a => a.getMetadata().name).join(', ');
     }
     /**
      * Delegate to specific agent
      */
     async delegateToAgent(agent, input, context) {
         // Build messages with agent context
-        const systemPrompt = `You are ${agent.name}, ${agent.description || 'an AI assistant'}.${agent.systemPrompt ? '\n\n' + agent.systemPrompt : ''}`;
+        const metadata = agent.getMetadata();
+        const systemPrompt = `You are ${metadata.name}, ${metadata.description || 'an AI assistant'}.`;
         const messages = [
             {
                 role: 'system',
@@ -286,9 +287,8 @@ export class NaturalLanguageRouter {
             }))
         ];
         // Call provider with agent context
-        const response = await this.providerRouter.route({
+        const response = await this.providerRouter.request({
             messages,
-            preferredProvider: 'claude',
             temperature: 0.7,
             maxTokens: 2000
         });
@@ -313,9 +313,8 @@ export class NaturalLanguageRouter {
                 }))
             ];
             // Call AI provider
-            const response = await this.providerRouter.route({
+            const response = await this.providerRouter.request({
                 messages,
-                preferredProvider: context.getActiveAgent() ? 'claude' : 'auto',
                 temperature: 0.7,
                 maxTokens: 2000
             });
@@ -347,7 +346,8 @@ export class NaturalLanguageRouter {
         if (activeAgent) {
             const agent = this.agentRegistry.get(activeAgent);
             if (agent) {
-                return `You are ${activeAgent}, ${agent.description || 'an AI assistant'}.${agent.systemPrompt ? '\n\n' + agent.systemPrompt : ''}`;
+                const metadata = agent.getMetadata();
+                return `You are ${activeAgent}, ${metadata.description || 'an AI assistant'}.`;
             }
         }
         return `You are a helpful AI assistant for AutomatosX, a code intelligence and workflow automation system.

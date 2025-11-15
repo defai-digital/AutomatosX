@@ -128,7 +128,7 @@ function telemetryDecisionHandler(decision) {
   emitTelemetryEvent(createTelemetryEvent("transition.executed", payload));
 }
 
-var $$default = {
+var defaultHandler = {
   onDecision: telemetryDecisionHandler,
   onEffect: placeholderEffect
 };
@@ -136,7 +136,7 @@ var $$default = {
 var Handler = {
   placeholderEffect: placeholderEffect,
   telemetryDecisionHandler: telemetryDecisionHandler,
-  $$default: $$default
+  defaultHandler: defaultHandler
 };
 
 function applyEffects(effects, context, handler) {
@@ -153,7 +153,7 @@ function dispatchWithHandlers(state, $$event, context, handlers) {
 }
 
 function dispatch(state, $$event, context) {
-  return dispatchWithHandlers(state, $$event, context, $$default);
+  return dispatchWithHandlers(state, $$event, context, defaultHandler);
 }
 
 function dispatchSerialized(state, $$event, context, handlers) {

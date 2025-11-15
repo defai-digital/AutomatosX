@@ -153,7 +153,7 @@ export class AgentCollaborator extends EventEmitter {
             subtask.status = 'running';
             this.emit('subtask:start', subtask);
             try {
-                const agent = this.registry.getAgent(subtask.agentType);
+                const agent = this.registry.get(subtask.agentType);
                 if (!agent) {
                     throw new Error(`Agent not found: ${subtask.agentType}`);
                 }
@@ -185,7 +185,7 @@ export class AgentCollaborator extends EventEmitter {
             subtask.status = 'running';
             this.emit('subtask:start', subtask);
             try {
-                const agent = this.registry.getAgent(subtask.agentType);
+                const agent = this.registry.get(subtask.agentType);
                 if (!agent) {
                     throw new Error(`Agent not found: ${subtask.agentType}`);
                 }

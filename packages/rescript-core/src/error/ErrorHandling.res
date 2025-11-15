@@ -100,10 +100,10 @@ let isError = (result: result<'ok, 'err>): bool => {
 
 // Get Ok value or default
 @genType
-let getOr = (result: result<'ok, 'err>, default: 'ok): 'ok => {
+let getOr = (result: result<'ok, 'err>, defaultValue: 'ok): 'ok => {
   switch result {
   | Ok(value) => value
-  | Error(_) => default
+  | Error(_) => defaultValue
   }
 }
 
@@ -118,9 +118,9 @@ let getOrElse = (result: result<'ok, 'err>, fn: unit => 'ok): 'ok => {
 
 // Get Error or default
 @genType
-let getErrorOr = (result: result<'ok, 'err>, default: 'err): 'err => {
+let getErrorOr = (result: result<'ok, 'err>, defaultValue: 'err): 'err => {
   switch result {
-  | Ok(_) => default
+  | Ok(_) => defaultValue
   | Error(err) => err
   }
 }

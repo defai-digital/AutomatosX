@@ -24,35 +24,6 @@ export interface PoolStats {
     averageAcquireTime: number;
     peakConnections: number;
 }
-/**
- * Database Connection Pool
- *
- * Manages SQLite connections with pooling for improved performance
- *
- * @example
- * ```typescript
- * const pool = new ConnectionPool('./database.db', {
- *   maxConnections: 10,
- *   minConnections: 2,
- *   enableWAL: true
- * })
- *
- * // Acquire connection
- * const conn = await pool.acquire()
- *
- * try {
- *   const result = conn.prepare('SELECT * FROM users').all()
- *   return result
- * } finally {
- *   pool.release(conn)
- * }
- *
- * // Or use with callback
- * await pool.use(async (db) => {
- *   return db.prepare('SELECT * FROM users').all()
- * })
- * ```
- */
 export declare class ConnectionPool extends EventEmitter {
     private dbPath;
     private config;
@@ -71,6 +42,9 @@ export declare class ConnectionPool extends EventEmitter {
     private createConnection;
     /**
      * Acquire connection from pool
+     *
+     * SAFETY: We use a synchronous for-loop with immediate mutation to avoid race conditions.
+     * The inUse flag is set atomically before any async operations.
      */
     acquire(): Promise<Database.Database>;
     /**

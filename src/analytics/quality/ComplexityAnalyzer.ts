@@ -111,12 +111,18 @@ export class CyclomaticAnalyzer {
     traverse(node);
 
     const complexity = decisionPoints + 1;
-    const paths = Math.pow(2, decisionPoints);
+
+    // Fixed: Guard against integer overflow for large decision point counts
+    // Math.pow(2, n) exceeds MAX_SAFE_INTEGER when n >= 53
+    // Cap at 50 decision points to prevent overflow (2^50 = ~1.126e15, still safe)
+    const safePaths = decisionPoints <= 50
+      ? Math.pow(2, decisionPoints)
+      : Number.MAX_SAFE_INTEGER;
 
     return {
       complexity,
       decisionPoints,
-      paths,
+      paths: safePaths,
     };
   }
 }

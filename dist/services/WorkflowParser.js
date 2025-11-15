@@ -190,6 +190,10 @@ export class WorkflowParser {
             let maxDepLevel = -1;
             for (const depKey of node.dependencies) {
                 const depLevel = levelMap.get(depKey);
+                // Fixed: Add safety check for undefined level (should never happen with valid topological sort)
+                if (depLevel === undefined) {
+                    throw new Error(`Dependency ${depKey} has no level assigned for step ${stepKey}`);
+                }
                 maxDepLevel = Math.max(maxDepLevel, depLevel);
             }
             const level = maxDepLevel + 1;

@@ -3,40 +3,11 @@
 import Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
 import * as path from 'path';
-/**
- * Database Connection Pool
- *
- * Manages SQLite connections with pooling for improved performance
- *
- * @example
- * ```typescript
- * const pool = new ConnectionPool('./database.db', {
- *   maxConnections: 10,
- *   minConnections: 2,
- *   enableWAL: true
- * })
- *
- * // Acquire connection
- * const conn = await pool.acquire()
- *
- * try {
- *   const result = conn.prepare('SELECT * FROM users').all()
- *   return result
- * } finally {
- *   pool.release(conn)
- * }
- *
- * // Or use with callback
- * await pool.use(async (db) => {
- *   return db.prepare('SELECT * FROM users').all()
- * })
- * ```
- */
 export class ConnectionPool extends EventEmitter {
     dbPath;
     config;
     connections;
-    waitingQueue;
+    waitingQueue; // Fixed: Store both resolve and reject
     stats;
     idleCheckInterval;
     constructor(dbPath, config = {}) {
@@ -111,13 +82,17 @@ export class ConnectionPool extends EventEmitter {
     }
     /**
      * Acquire connection from pool
+     *
+     * SAFETY: We use a synchronous for-loop with immediate mutation to avoid race conditions.
+     * The inUse flag is set atomically before any async operations.
      */
     async acquire() {
         const startTime = Date.now();
         // Try to find idle connection
+        // FIXED: Check and set inUse atomically to prevent race conditions
         for (const conn of this.connections.values()) {
             if (!conn.inUse) {
-                conn.inUse = true;
+                conn.inUse = true; // Atomically mark as in-use FIRST
                 conn.lastUsedAt = Date.now();
                 conn.queryCount++;
                 const acquireTime = Date.now() - startTime;
@@ -145,17 +120,25 @@ export class ConnectionPool extends EventEmitter {
         }
         // Wait for connection to become available
         return new Promise((resolve, reject) => {
+            const request = {
+                resolve,
+                reject,
+                addedAt: Date.now(),
+            };
             const timeout = setTimeout(() => {
-                const index = this.waitingQueue.indexOf(resolve);
+                const index = this.waitingQueue.indexOf(request);
                 if (index > -1) {
                     this.waitingQueue.splice(index, 1);
                 }
                 reject(new Error(`Connection acquire timeout after ${this.config.acquireTimeout}ms`));
             }, this.config.acquireTimeout);
-            this.waitingQueue.push((db) => {
+            // Override resolve to clear timeout
+            const originalResolve = request.resolve;
+            request.resolve = (db) => {
                 clearTimeout(timeout);
-                resolve(db);
-            });
+                originalResolve(db);
+            };
+            this.waitingQueue.push(request);
             this.emit('waiting-for-connection', {
                 queueLength: this.waitingQueue.length,
             });
@@ -176,12 +159,12 @@ export class ConnectionPool extends EventEmitter {
                 });
                 // Process waiting queue
                 if (this.waitingQueue.length > 0) {
-                    const waiter = this.waitingQueue.shift();
-                    if (waiter) {
+                    const request = this.waitingQueue.shift();
+                    if (request) {
                         conn.inUse = true;
                         conn.queryCount++;
                         this.stats.totalAcquired++;
-                        waiter(conn.db);
+                        request.resolve(conn.db); // Fixed: Use resolve method
                     }
                 }
                 return;
@@ -302,9 +285,8 @@ export class ConnectionPool extends EventEmitter {
             this.idleCheckInterval = null;
         }
         // Reject all waiting requests
-        this.waitingQueue.forEach((reject) => {
-            ;
-            reject(new Error('Connection pool closed'));
+        this.waitingQueue.forEach((request) => {
+            request.reject(new Error('Connection pool closed')); // Fixed: Use reject method
         });
         this.waitingQueue = [];
         // Close all connections

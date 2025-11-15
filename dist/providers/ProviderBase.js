@@ -145,7 +145,8 @@ export class BaseProvider {
                     throw error;
                 }
                 // Exponential backoff: 1s, 2s, 4s, 8s, etc.
-                const delay = Math.pow(2, attempt) * 1000;
+                // Fixed: Cap delay at 60 seconds to prevent excessive wait times
+                const delay = Math.min(Math.pow(2, attempt) * 1000, 60000);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
@@ -155,10 +156,17 @@ export class BaseProvider {
      * Helper method to apply timeout to a promise
      */
     async withTimeout(promise, timeout = this.config.timeout) {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new ProviderTimeoutError(this.name, timeout)), timeout)),
-        ]);
+        // Fixed: Clear timeout to prevent memory leak
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new ProviderTimeoutError(this.name, timeout)), timeout);
+        });
+        try {
+            return await Promise.race([promise, timeoutPromise]);
+        }
+        finally {
+            clearTimeout(timeoutId);
+        }
     }
 }
 //# sourceMappingURL=ProviderBase.js.map

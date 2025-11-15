@@ -96,10 +96,11 @@ export class CacheInvalidationManager<T = any> extends EventEmitter {
 
     // Register event patterns
     if (rule.strategy === 'event-based' && rule.target) {
+      // Fixed: Replace all asterisks, not just the first one
       const pattern =
         rule.target instanceof RegExp
           ? rule.target
-          : new RegExp(rule.target.replace('*', '.*'))
+          : new RegExp(rule.target.replace(/\*/g, '.*'))
 
       if (!this.eventPatterns.has('event-based')) {
         this.eventPatterns.set('event-based', [])

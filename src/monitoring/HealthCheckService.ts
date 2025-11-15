@@ -442,10 +442,15 @@ export class HealthCheckService extends EventEmitter {
       this.emit('health.checked', health);
     }, intervalMs);
 
-    // Initial check
-    this.getSystemHealth().then(health => {
-      this.emit('health.checked', health);
-    });
+    // Initial check - Fixed: Handle promise rejection
+    this.getSystemHealth()
+      .then(health => {
+        this.emit('health.checked', health);
+      })
+      .catch(error => {
+        console.error('Initial health check failed:', error);
+        this.emit('health.error', error);
+      });
   }
 
   /**

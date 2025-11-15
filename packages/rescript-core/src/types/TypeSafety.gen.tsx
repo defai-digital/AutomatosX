@@ -27,6 +27,8 @@ export type price = { TAG: "Price"; _0: number };
 
 export type email = { TAG: "Email"; _0: string };
 
+export type phoneNumber = { TAG: "PhoneNumber"; _0: string };
+
 export type url = { TAG: "Url"; _0: string };
 
 export type nonEmptyArray<a> = { TAG: "NonEmptyArray"; _0: a[] };
@@ -100,6 +102,10 @@ export const priceToDollars: (price:price) => number = TypeSafetyJS.priceToDolla
 export const makeEmail: (address:string) => ErrorHandling_result<email,string> = TypeSafetyJS.makeEmail as any;
 
 export const unwrapEmail: (address:email) => string = TypeSafetyJS.unwrapEmail as any;
+
+export const makePhoneNumber: (phone:string) => ErrorHandling_result<phoneNumber,string> = TypeSafetyJS.makePhoneNumber as any;
+
+export const unwrapPhoneNumber: (phone:phoneNumber) => string = TypeSafetyJS.unwrapPhoneNumber as any;
 
 export const makeUrl: (address:string) => ErrorHandling_result<url,string> = TypeSafetyJS.makeUrl as any;
 

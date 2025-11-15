@@ -250,7 +250,8 @@ export class StateMachineRuntime extends EventEmitter {
             machine.transition('pause', 'paused')
             this.emit('state-changed', { taskId, from: 'executing', to: 'paused' })
 
-            await this.delay(Math.pow(2, attempt) * 1000)
+            // Fixed: Cap delay at 60 seconds to prevent excessive wait times
+            await this.delay(Math.min(Math.pow(2, attempt) * 1000, 60000))
 
             machine.transition('resume', 'executing')
             this.emit('state-changed', { taskId, from: 'paused', to: 'executing' })

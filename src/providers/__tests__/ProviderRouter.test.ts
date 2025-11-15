@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ProviderRouter } from '../../../packages/rescript-core/src/providers/ProviderRouter.js';
-import { BaseProvider, type ProviderConfig, type StreamOptions } from '../../../packages/rescript-core/src/providers/BaseProvider.js';
+import { ProviderRouter } from '../../services/ProviderRouter.js';
+import { BaseProvider } from '../ProviderBase.js';
 import type {
   ProviderRequest,
   ProviderResponse,

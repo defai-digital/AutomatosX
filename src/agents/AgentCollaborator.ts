@@ -7,12 +7,12 @@
 import { EventEmitter } from 'events';
 import { AgentRegistry } from './AgentRegistry.js';
 import { AgentBase } from './AgentBase.js';
-import { Task, TaskResult, AgentContext, TaskStatus } from '../types/agents.types.js';
+import { Task, TaskResult, AgentContext, TaskStatus, AgentType } from '../types/agents.types.js';
 
 export interface SubTask {
   id: string;
   description: string;
-  agentType: string;
+  agentType: AgentType;  // Fixed: Use AgentType enum instead of string for type safety
   dependsOn?: string[]; // IDs of tasks that must complete first
   priority: number; // Higher = more important
   status: TaskStatus;
@@ -205,7 +205,7 @@ export class AgentCollaborator extends EventEmitter {
       this.emit('subtask:start', subtask);
 
       try {
-        const agent = this.registry.getAgent(subtask.agentType);
+        const agent = this.registry.get(subtask.agentType);
         if (!agent) {
           throw new Error(`Agent not found: ${subtask.agentType}`);
         }
@@ -242,7 +242,7 @@ export class AgentCollaborator extends EventEmitter {
       this.emit('subtask:start', subtask);
 
       try {
-        const agent = this.registry.getAgent(subtask.agentType);
+        const agent = this.registry.get(subtask.agentType);
         if (!agent) {
           throw new Error(`Agent not found: ${subtask.agentType}`);
         }

@@ -73,11 +73,20 @@ export interface PoolStats {
  * })
  * ```
  */
+/**
+ * Queue item with both resolve and reject callbacks
+ */
+interface WaitingRequest {
+  resolve: (conn: Database.Database) => void;
+  reject: (error: Error) => void;
+  addedAt: number;
+}
+
 export class ConnectionPool extends EventEmitter {
   private dbPath: string
   private config: Required<PoolConfig>
   private connections: Map<string, PooledConnection>
-  private waitingQueue: Array<(conn: Database.Database) => void>
+  private waitingQueue: WaitingRequest[]  // Fixed: Store both resolve and reject
   private stats: {
     totalAcquired: number
     totalReleased: number
@@ -172,14 +181,18 @@ export class ConnectionPool extends EventEmitter {
 
   /**
    * Acquire connection from pool
+   *
+   * SAFETY: We use a synchronous for-loop with immediate mutation to avoid race conditions.
+   * The inUse flag is set atomically before any async operations.
    */
   async acquire(): Promise<Database.Database> {
     const startTime = Date.now()
 
     // Try to find idle connection
+    // FIXED: Check and set inUse atomically to prevent race conditions
     for (const conn of this.connections.values()) {
       if (!conn.inUse) {
-        conn.inUse = true
+        conn.inUse = true  // Atomically mark as in-use FIRST
         conn.lastUsedAt = Date.now()
         conn.queryCount++
 
@@ -214,23 +227,33 @@ export class ConnectionPool extends EventEmitter {
     }
 
     // Wait for connection to become available
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        const index = this.waitingQueue.indexOf(resolve)
-        if (index > -1) {
-          this.waitingQueue.splice(index, 1)
-        }
-        reject(new Error(`Connection acquire timeout after ${this.config.acquireTimeout}ms`))
-      }, this.config.acquireTimeout)
+    return new Promise<Database.Database>((resolve, reject) => {
+      const request: WaitingRequest = {
+        resolve,
+        reject,
+        addedAt: Date.now(),
+      };
 
-      this.waitingQueue.push((db) => {
-        clearTimeout(timeout)
-        resolve(db)
-      })
+      const timeout = setTimeout(() => {
+        const index = this.waitingQueue.indexOf(request);
+        if (index > -1) {
+          this.waitingQueue.splice(index, 1);
+        }
+        reject(new Error(`Connection acquire timeout after ${this.config.acquireTimeout}ms`));
+      }, this.config.acquireTimeout);
+
+      // Override resolve to clear timeout
+      const originalResolve = request.resolve;
+      request.resolve = (db: Database.Database) => {
+        clearTimeout(timeout);
+        originalResolve(db);
+      };
+
+      this.waitingQueue.push(request);
 
       this.emit('waiting-for-connection', {
         queueLength: this.waitingQueue.length,
-      })
+      });
     })
   }
 
@@ -252,12 +275,12 @@ export class ConnectionPool extends EventEmitter {
 
         // Process waiting queue
         if (this.waitingQueue.length > 0) {
-          const waiter = this.waitingQueue.shift()
-          if (waiter) {
-            conn.inUse = true
-            conn.queryCount++
-            this.stats.totalAcquired++
-            waiter(conn.db)
+          const request = this.waitingQueue.shift();
+          if (request) {
+            conn.inUse = true;
+            conn.queryCount++;
+            this.stats.totalAcquired++;
+            request.resolve(conn.db);  // Fixed: Use resolve method
           }
         }
 
@@ -392,10 +415,10 @@ export class ConnectionPool extends EventEmitter {
     }
 
     // Reject all waiting requests
-    this.waitingQueue.forEach((reject) => {
-      ;(reject as any)(new Error('Connection pool closed'))
-    })
-    this.waitingQueue = []
+    this.waitingQueue.forEach((request) => {
+      request.reject(new Error('Connection pool closed'));  // Fixed: Use reject method
+    });
+    this.waitingQueue = [];
 
     // Close all connections
     for (const [id, conn] of this.connections.entries()) {

@@ -1,6 +1,6 @@
 import Parser from 'tree-sitter';
 import Thrift from 'tree-sitter-thrift';
-import { BaseLanguageParser, Symbol, SymbolKind, Call, Import } from './LanguageParser.js';
+import { BaseLanguageParser, Symbol, SymbolKind, SymbolKindValue, Call, Import } from './LanguageParser.js';
 
 
 /**
@@ -68,7 +68,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Interface,
+      kind: SymbolKindValue.INTERFACE,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `service ${name}${extendedService ? ` extends ${extendedService}` : ''}`,
@@ -92,7 +92,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Struct,
+      kind: SymbolKindValue.STRUCT,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `struct ${name}`,
@@ -116,7 +116,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Enum,
+      kind: SymbolKindValue.ENUM,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `enum ${name}`,
@@ -140,7 +140,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Class,
+      kind: SymbolKindValue.CLASS,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `exception ${name}`,
@@ -166,7 +166,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Type,
+      kind: SymbolKindValue.TYPE,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `typedef ${baseType} ${name}`,
@@ -192,7 +192,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Constant,
+      kind: SymbolKindValue.CONSTANT,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `const ${type} ${name}`,
@@ -218,7 +218,7 @@ export class ThriftParserService extends BaseLanguageParser {
 
     return {
       name,
-      kind: SymbolKind.Method,
+      kind: SymbolKindValue.METHOD,
       line: node.startPosition.row + 1,
       column: node.startPosition.column,
       signature: `${returnType} ${name}(${parameters.join(', ')})`,

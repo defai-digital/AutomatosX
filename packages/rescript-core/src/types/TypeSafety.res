@@ -52,6 +52,8 @@ type tokenId = TokenId(string)
 let makeUserId = (id: string): result<userId, string> => {
   if Js.String.length(id) == 0 {
     Error("User ID cannot be empty")
+  } else if !Js.String.startsWith("user-", id) {
+    Error(`User ID must start with 'user-': ${id}`)
   } else {
     Ok(UserId(id))
   }
@@ -62,6 +64,8 @@ let makeUserId = (id: string): result<userId, string> => {
 let makeConversationId = (id: string): result<conversationId, string> => {
   if Js.String.length(id) == 0 {
     Error("Conversation ID cannot be empty")
+  } else if !Js.String.startsWith("conv-", id) {
+    Error(`Conversation ID must start with 'conv-': ${id}`)
   } else {
     Ok(ConversationId(id))
   }
@@ -72,6 +76,8 @@ let makeConversationId = (id: string): result<conversationId, string> => {
 let makeMessageId = (id: string): result<messageId, string> => {
   if Js.String.length(id) == 0 {
     Error("Message ID cannot be empty")
+  } else if !Js.String.startsWith("msg-", id) {
+    Error(`Message ID must start with 'msg-': ${id}`)
   } else {
     Ok(MessageId(id))
   }
@@ -280,6 +286,32 @@ let makeEmail = (address: string): result<email, string> => {
 
 @genType
 let unwrapEmail = (Email(address): email): string => address
+
+// ============================================================================
+// BRANDED PHONE NUMBER TYPE (Type-safe phone numbers)
+// ============================================================================
+
+@genType
+type phoneNumber = PhoneNumber(string)
+
+// Phone number validation (E.164 format: + followed by 10-15 digits)
+@genType
+let makePhoneNumber = (phone: string): result<phoneNumber, string> => {
+  if Js.String.length(phone) == 0 {
+    Error("Phone number cannot be empty")
+  } else {
+    // Regex: optional +, digit 1-9, followed by 9-14 more digits (10-15 total)
+    let phoneRegex = %re("/^\+?[1-9]\d{9,14}$/")
+    if Js.Re.test_(phoneRegex, phone) {
+      Ok(PhoneNumber(phone))
+    } else {
+      Error(`Invalid phone number format: ${phone}`)
+    }
+  }
+}
+
+@genType
+let unwrapPhoneNumber = (PhoneNumber(phone): phoneNumber): string => phone
 
 // ============================================================================
 // BRANDED URL TYPE (Type-safe URLs)

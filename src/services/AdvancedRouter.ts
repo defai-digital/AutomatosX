@@ -203,8 +203,9 @@ export class AdvancedRouter {
         const maxLatency = Math.max(...metrics.map(x => x.p95Latency));
         const maxCost = Math.max(...metrics.map(x => calculateRequestCost(x.provider, x.model, estimatedInputTokens, estimatedOutputTokens)));
 
-        const latencyScore = 1 - (m.p95Latency / maxLatency);
-        const costScore = 1 - (cost / maxCost);
+        // Fixed: Guard against division by zero when all values are 0
+        const latencyScore = maxLatency > 0 ? 1 - (m.p95Latency / maxLatency) : 0;
+        const costScore = maxCost > 0 ? 1 - (cost / maxCost) : 0;
 
         // Weighted combination
         const latencyWeight = this.config.latencyWeightPercentage / 100;

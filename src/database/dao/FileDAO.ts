@@ -229,25 +229,25 @@ export class FileDAO {
   }
 
   /**
-   * List all files
+   * List all files with optional pagination
+   * Uses parameterized queries for safety and performance
    *
-   * @param limit - Optional limit
-   * @param offset - Optional offset
+   * @param limit - Optional limit (default: no limit)
+   * @param offset - Optional offset (default: 0)
    * @returns Array of file records
    */
   list(limit?: number, offset?: number): FileRecord[] {
-    let sql = 'SELECT * FROM files ORDER BY indexed_at DESC';
-
-    if (limit !== undefined) {
-      sql += ` LIMIT ${limit}`;
+    // Use parameterized query for safety
+    if (limit !== undefined && offset !== undefined) {
+      const stmt = this.db.prepare('SELECT * FROM files ORDER BY indexed_at DESC LIMIT ? OFFSET ?');
+      return stmt.all(limit, offset) as FileRecord[];
+    } else if (limit !== undefined) {
+      const stmt = this.db.prepare('SELECT * FROM files ORDER BY indexed_at DESC LIMIT ?');
+      return stmt.all(limit) as FileRecord[];
+    } else {
+      const stmt = this.db.prepare('SELECT * FROM files ORDER BY indexed_at DESC');
+      return stmt.all() as FileRecord[];
     }
-
-    if (offset !== undefined) {
-      sql += ` OFFSET ${offset}`;
-    }
-
-    const stmt = this.db.prepare(sql);
-    return stmt.all() as FileRecord[];
   }
 
   /**

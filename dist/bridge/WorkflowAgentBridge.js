@@ -218,7 +218,7 @@ export class WorkflowAgentBridge {
         }
         if (hints.hasArchitectureKeywords) {
             scores.push({
-                agentType: 'architect',
+                agentType: 'architecture', // Fixed: Correct AgentType is 'architecture' not 'architect'
                 score: 0.75,
                 reason: ['Architecture/design keywords detected'],
             });

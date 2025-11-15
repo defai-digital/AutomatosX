@@ -11,18 +11,40 @@ import { z } from 'zod';
 export declare const ProviderRequestSchema: z.ZodObject<{
     model: z.ZodOptional<z.ZodString>;
     messages: z.ZodArray<z.ZodObject<{
-        role: z.ZodEnum<{
-            system: "system";
-            user: "user";
-            assistant: "assistant";
-        }>;
+        role: z.ZodEnum<["system", "user", "assistant"]>;
         content: z.ZodString;
-    }, z.core.$strip>>;
+    }, "strip", z.ZodTypeAny, {
+        content: string;
+        role: "user" | "assistant" | "system";
+    }, {
+        content: string;
+        role: "user" | "assistant" | "system";
+    }>, "many">;
     maxTokens: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     temperature: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     streaming: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     timeout: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    maxTokens: number;
+    temperature: number;
+    messages: {
+        content: string;
+        role: "user" | "assistant" | "system";
+    }[];
+    streaming: boolean;
+    timeout: number;
+    model?: string | undefined;
+}, {
+    messages: {
+        content: string;
+        role: "user" | "assistant" | "system";
+    }[];
+    maxTokens?: number | undefined;
+    temperature?: number | undefined;
+    model?: string | undefined;
+    streaming?: boolean | undefined;
+    timeout?: number | undefined;
+}>;
 export type ProviderRequest = z.infer<typeof ProviderRequestSchema>;
 /**
  * Provider response schema
@@ -34,16 +56,41 @@ export declare const ProviderResponseSchema: z.ZodObject<{
         inputTokens: z.ZodNumber;
         outputTokens: z.ZodNumber;
         totalTokens: z.ZodNumber;
-    }, z.core.$strip>;
-    finishReason: z.ZodOptional<z.ZodEnum<{
-        length: "length";
-        error: "error";
-        stop: "stop";
-        tool_use: "tool_use";
-    }>>;
+    }, "strip", z.ZodTypeAny, {
+        totalTokens: number;
+        inputTokens: number;
+        outputTokens: number;
+    }, {
+        totalTokens: number;
+        inputTokens: number;
+        outputTokens: number;
+    }>;
+    finishReason: z.ZodOptional<z.ZodEnum<["stop", "length", "tool_use", "error"]>>;
     latency: z.ZodNumber;
     provider: z.ZodString;
-}, z.core.$strip>;
+}, "strip", z.ZodTypeAny, {
+    provider: string;
+    content: string;
+    model: string;
+    usage: {
+        totalTokens: number;
+        inputTokens: number;
+        outputTokens: number;
+    };
+    latency: number;
+    finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;
+}, {
+    provider: string;
+    content: string;
+    model: string;
+    usage: {
+        totalTokens: number;
+        inputTokens: number;
+        outputTokens: number;
+    };
+    latency: number;
+    finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;
+}>;
 export type ProviderResponse = z.infer<typeof ProviderResponseSchema>;
 /**
  * Streaming chunk schema
@@ -51,13 +98,16 @@ export type ProviderResponse = z.infer<typeof ProviderResponseSchema>;
 export declare const StreamingChunkSchema: z.ZodObject<{
     delta: z.ZodString;
     model: z.ZodOptional<z.ZodString>;
-    finishReason: z.ZodOptional<z.ZodEnum<{
-        length: "length";
-        error: "error";
-        stop: "stop";
-        tool_use: "tool_use";
-    }>>;
-}, z.core.$strip>;
+    finishReason: z.ZodOptional<z.ZodEnum<["stop", "length", "tool_use", "error"]>>;
+}, "strip", z.ZodTypeAny, {
+    delta: string;
+    model?: string | undefined;
+    finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;
+}, {
+    delta: string;
+    model?: string | undefined;
+    finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;
+}>;
 export type StreamingChunk = z.infer<typeof StreamingChunkSchema>;
 /**
  * Provider configuration schema
@@ -70,7 +120,23 @@ export declare const ProviderConfigSchema: z.ZodObject<{
     maxRetries: z.ZodDefault<z.ZodNumber>;
     timeout: z.ZodDefault<z.ZodNumber>;
     priority: z.ZodDefault<z.ZodNumber>;
-}, z.core.$loose>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
+    apiKey: z.ZodOptional<z.ZodString>;
+    baseUrl: z.ZodOptional<z.ZodString>;
+    defaultModel: z.ZodOptional<z.ZodString>;
+    maxRetries: z.ZodDefault<z.ZodNumber>;
+    timeout: z.ZodDefault<z.ZodNumber>;
+    priority: z.ZodDefault<z.ZodNumber>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
+    apiKey: z.ZodOptional<z.ZodString>;
+    baseUrl: z.ZodOptional<z.ZodString>;
+    defaultModel: z.ZodOptional<z.ZodString>;
+    maxRetries: z.ZodDefault<z.ZodNumber>;
+    timeout: z.ZodDefault<z.ZodNumber>;
+    priority: z.ZodDefault<z.ZodNumber>;
+}, z.ZodTypeAny, "passthrough">>;
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 /**
  * Provider health status

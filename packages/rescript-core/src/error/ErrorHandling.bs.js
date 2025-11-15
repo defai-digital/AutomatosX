@@ -22,11 +22,11 @@ function isError(result) {
   }
 }
 
-function getOr(result, $$default) {
+function getOr(result, defaultValue) {
   if (result.TAG === "Ok") {
     return result._0;
   } else {
-    return $$default;
+    return defaultValue;
   }
 }
 
@@ -38,9 +38,9 @@ function getOrElse(result, fn) {
   }
 }
 
-function getErrorOr(result, $$default) {
+function getErrorOr(result, defaultValue) {
   if (result.TAG === "Ok") {
-    return $$default;
+    return defaultValue;
   } else {
     return result._0;
   }

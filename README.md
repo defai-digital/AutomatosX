@@ -57,6 +57,29 @@ npm test
 
 **Note**: Current build requires fixing TypeScript compilation errors (2-3 hours). Tests pass but CLI requires pre-compiled dist/ files.
 
+### ⚠️ Peer Dependency Warnings
+
+When installing AutomatosX, you may see warnings about tree-sitter peer dependencies:
+
+```
+WARN  Issues with peer dependencies found
+├─┬ tree-sitter-c 0.24.1
+│ └── ✕ unmet peer tree-sitter@^0.22.4: found 0.25.0
+```
+
+**These warnings are harmless and can be safely ignored.** AutomatosX uses tree-sitter v0.25.0 (latest), while some language parser packages haven't updated their peer dependencies yet. Everything works correctly.
+
+**To suppress warnings**, copy `.npmrc.example` to `.npmrc`:
+```bash
+cp .npmrc.example .npmrc
+# Or download directly
+curl -o .npmrc https://raw.githubusercontent.com/defai-digital/automatosx/main/.npmrc.example
+```
+
+See [INSTALLATION.md](./INSTALLATION.md#peer-dependency-warnings) for details.
+
+---
+
 See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
 
 ## ✨ Core Features

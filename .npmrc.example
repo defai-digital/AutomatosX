@@ -1,0 +1,38 @@
+# AutomatosX Recommended Configuration
+# Copy this file to .npmrc in your project to suppress peer dependency warnings
+#
+# Usage:
+#   cp .npmrc.example .npmrc
+#
+# Or download directly:
+#   curl -o .npmrc https://raw.githubusercontent.com/defai-digital/automatosx/main/.npmrc.example
+
+# ========================================
+# Peer Dependency Configuration
+# ========================================
+
+# For pnpm users (recommended)
+# Suppresses warnings about tree-sitter peer dependency mismatches
+strict-peer-dependencies=false
+
+# For npm users (alternative)
+# Allows installation despite peer dependency mismatches
+legacy-peer-deps=true
+
+# ========================================
+# Performance Optimizations (Optional)
+# ========================================
+
+# Auto-install peer dependencies without prompting
+auto-install-peers=true
+
+# Use shamefully-hoist for better compatibility
+shamefully-hoist=true
+
+# ========================================
+# Explanation
+# ========================================
+# AutomatosX uses tree-sitter v0.25.0 (latest)
+# Some language parser packages haven't updated their peer dependencies yet
+# The parsers work correctly with v0.25.0 despite the warnings
+# This configuration suppresses harmless warnings for better UX

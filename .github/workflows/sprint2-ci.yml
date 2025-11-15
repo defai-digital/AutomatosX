@@ -47,10 +47,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          export CXXFLAGS="-std=c++20"
-          export CFLAGS="-std=c++20"
-          npm ci --legacy-peer-deps
+        env:
+          CXXFLAGS: "-std=c++20"
+        run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
         run: npm run build:rescript
@@ -110,10 +109,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          export CXXFLAGS="-std=c++20"
-          export CFLAGS="-std=c++20"
-          npm ci --legacy-peer-deps
+        env:
+          CXXFLAGS: "-std=c++20"
+        run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
         run: npm run build:rescript
@@ -173,10 +171,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          set CXXFLAGS=-std=c++20
-          set CFLAGS=-std=c++20
-          npm ci --legacy-peer-deps
+        env:
+          CXXFLAGS: "-std=c++20"
+        run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
         run: npm run build:rescript
@@ -217,10 +214,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          export CXXFLAGS="-std=c++20"
-          export CFLAGS="-std=c++20"
-          npm ci --legacy-peer-deps
+        env:
+          CXXFLAGS: "-std=c++20"
+        run: npm ci --legacy-peer-deps
 
       - name: Build project
         run: npm run build

@@ -443,7 +443,12 @@ export class MessageEmbeddingDAO {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    const addMany = this.db.transaction((embeddings: typeof embeddings) => {
+    const addMany = this.db.transaction((embeddings: Array<{
+      messageId: string;
+      embedding: Float32Array;
+      modelVersion?: string;
+      chunkIndex?: number;
+    }>) => {
       let added = 0;
       let skipped = 0;
       let failed = 0;

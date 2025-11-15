@@ -170,7 +170,11 @@ export class VectorStore {
       INSERT INTO ${this.metadataTableName}(rowid, id, type, timestamp) VALUES (?, ?, ?, ?)
     `);
 
-    const insertMany = this.db.transaction((vectors: typeof vectors) => {
+    const insertMany = this.db.transaction((vectors: Array<{
+      id: string;
+      embedding: Float32Array;
+      metadata?: Record<string, any>;
+    }>) => {
       for (const { id, embedding, metadata = {} } of vectors) {
         if (embedding.length !== this.dimensions) {
           throw new Error(`Embedding dimensions mismatch: got ${embedding.length}, expected ${this.dimensions}`);

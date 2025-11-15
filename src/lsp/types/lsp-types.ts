@@ -199,12 +199,17 @@ export interface TextDocumentPositionParams {
 }
 
 /**
+ * Reference context
+ */
+export interface ReferenceContext {
+  includeDeclaration: boolean;
+}
+
+/**
  * Reference params
  */
 export interface ReferenceParams extends TextDocumentPositionParams {
-  context: {
-    includeDeclaration: boolean;
-  };
+  context: ReferenceContext;
 }
 
 /**

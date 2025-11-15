@@ -44,9 +44,15 @@ export class MemoryExporter {
    */
   async exportToJSON(
     filePath: string,
-    options: MemoryExportOptions = {}
+    options: Partial<MemoryExportOptions> = {}
   ): Promise<ExportResult> {
-    const exportData = await this.prepareExportData(options);
+    const fullOptions: MemoryExportOptions = {
+      includeArchived: false,
+      includeDeleted: false,
+      format: 'json',
+      ...options
+    };
+    const exportData = await this.prepareExportData(fullOptions);
 
     const json = JSON.stringify(exportData, null, 2);
     writeFileSync(filePath, json, 'utf-8');
@@ -69,9 +75,15 @@ export class MemoryExporter {
    */
   async exportToCSV(
     filePath: string,
-    options: MemoryExportOptions = {}
+    options: Partial<MemoryExportOptions> = {}
   ): Promise<ExportResult> {
-    const exportData = await this.prepareExportData(options);
+    const fullOptions: MemoryExportOptions = {
+      includeArchived: false,
+      includeDeleted: false,
+      format: 'csv',
+      ...options
+    };
+    const exportData = await this.prepareExportData(fullOptions);
 
     // Create CSV header
     const csvLines: string[] = [
@@ -121,9 +133,15 @@ export class MemoryExporter {
    */
   async exportToMarkdown(
     filePath: string,
-    options: MemoryExportOptions = {}
+    options: Partial<MemoryExportOptions> = {}
   ): Promise<ExportResult> {
-    const exportData = await this.prepareExportData(options);
+    const fullOptions: MemoryExportOptions = {
+      includeArchived: false,
+      includeDeleted: false,
+      format: 'markdown',
+      ...options
+    };
+    const exportData = await this.prepareExportData(fullOptions);
 
     const mdLines: string[] = [
       '# Memory Export',
@@ -194,7 +212,7 @@ export class MemoryExporter {
   async export(
     filePath: string,
     format: 'json' | 'csv' | 'markdown' = 'json',
-    options: MemoryExportOptions = {}
+    options: Partial<MemoryExportOptions> = {}
   ): Promise<ExportResult> {
     switch (format) {
       case 'json':

@@ -77,7 +77,7 @@ export class MemoryService {
    */
   async updateConversation(
     id: string,
-    updates: { title?: string; state?: string; metadata?: Record<string, string> }
+    updates: { title?: string; state?: 'idle' | 'active' | 'searching' | 'archived' | 'deleted'; metadata?: Record<string, unknown> }
   ): Promise<Conversation> {
     return this.conversationDAO.update({ id, ...updates });
   }
@@ -763,13 +763,18 @@ export class MemoryService {
 
   /**
    * Search memory - simplified interface for agent system
-   * Delegates to searchMessages with hybrid search
+   * Delegates to searchMessages
    */
   async search(query: string): Promise<any[]> {
     const result = await this.searchMessages({
       query,
       limit: 10,
-      mode: 'hybrid',
+      offset: 0,
+      includeArchived: false,
+      includeDeleted: false,
+      sortBy: 'relevance',
+      sortOrder: 'desc',
+      skipCount: false,
     });
     return result.messages;
   }

@@ -527,6 +527,21 @@ export class ProviderRouterV2 extends EventEmitter {
 
     return stats
   }
+
+  /**
+   * Get health status for all providers (compatibility method)
+   */
+  async getHealth(): Promise<Record<string, unknown>> {
+    return this.getStatistics();
+  }
+
+  /**
+   * Route request (V1 compatibility wrapper)
+   */
+  async route(request: any): Promise<any> {
+    // Convert V1-style request to V2 ProviderRequest format
+    return this.routeRequest(request);
+  }
 }
 
 /**

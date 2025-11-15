@@ -550,4 +550,20 @@ export class ProviderService {
     // Note: ProviderRouterV2 doesn't support runtime config updates
     // Would need to recreate router instance
   }
+
+  /**
+   * Get circuit breaker states (compatibility method)
+   */
+  getCircuitBreakerStates(): Record<string, any> {
+    // Return empty object for now - circuit breaker is managed by ProviderRouterV2
+    return {};
+  }
+
+  /**
+   * Reset circuit breaker for a provider (compatibility method)
+   */
+  resetCircuitBreaker(providerName: string): void {
+    // No-op for now - circuit breaker is managed by ProviderRouterV2
+    console.log(`Circuit breaker reset requested for ${providerName}`);
+  }
 }

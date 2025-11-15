@@ -25,7 +25,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: |
+          export CXXFLAGS="-std=c++20"
+          export CFLAGS="-std=c++20"
+          npm ci --legacy-peer-deps
 
       - name: Restore ReScript cache
         uses: actions/cache@v4

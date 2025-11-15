@@ -8,6 +8,7 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
+import * as sqlite_vec from 'sqlite-vec';
 
 /**
  * Database configuration
@@ -65,6 +66,14 @@ function initializeDatabase(config: Partial<DatabaseConfig>): Database.Database 
   db.pragma('synchronous = NORMAL'); // Faster writes, still safe
   db.pragma('cache_size = -64000'); // 64MB cache (negative = KB)
   db.pragma('temp_store = MEMORY'); // Store temp tables in memory
+
+  // Load sqlite-vec extension for vector search (required for message embeddings)
+  try {
+    sqlite_vec.load(db);
+  } catch (error) {
+    console.warn('Failed to load sqlite-vec extension:', error);
+    // Continue without vec0 support - some features may be unavailable
+  }
 
   return db;
 }

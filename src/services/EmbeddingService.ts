@@ -129,8 +129,22 @@ export class EmbeddingService {
 
     // Extract Float32Array from tensor
     // output is a Tensor with dims [1, 384] and data as Float32Array
-    // The .data property is already a Float32Array, we just need to use it directly
-    const embedding = output.data as Float32Array;
+    // Ensure we have a proper Float32Array (not a proxy or cross-realm type)
+    let embedding: Float32Array;
+
+    if (output.data instanceof Float32Array) {
+      // Direct Float32Array - use as-is
+      embedding = output.data;
+    } else if (ArrayBuffer.isView(output.data)) {
+      // TypedArray from different realm - copy to new Float32Array
+      const view = output.data as any; // Use any to avoid type conflicts
+      embedding = new Float32Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+    } else if (Array.isArray(output.data)) {
+      // Fallback: convert array to Float32Array
+      embedding = new Float32Array(output.data);
+    } else {
+      throw new Error(`Unexpected tensor data type: ${typeof output.data}`);
+    }
 
     // Validate dimensions
     if (embedding.length !== this.dimensions) {

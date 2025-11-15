@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import * as Guards from '../../../packages/rescript-core/src/runtime/Guards.bs.js'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 import { buildGuardContext } from './guardFixtureFactory'
 import { runtimeStates, runtimeEvents } from './runtimeTestUtils'
 

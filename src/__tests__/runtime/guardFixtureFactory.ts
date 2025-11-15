@@ -1,4 +1,4 @@
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 
 type GuardVerdictConfig =
   | { kind: 'allow' }

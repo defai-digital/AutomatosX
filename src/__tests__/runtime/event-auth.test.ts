@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import * as EventAuth from '../../../packages/rescript-core/src/security/EventAuth.bs.js'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 import { createDeterministicUuidGenerator } from './securityTestUtils'
 import { runtimeEvents } from './runtimeTestUtils'
 

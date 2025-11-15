@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import * as TransitionValidator from '../../../packages/rescript-core/src/runtime/TransitionValidator.bs.js'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 
 describe('TransitionValidator - Pre-Condition Validation', () => {
   it('validates source state accepts correct events', () => {

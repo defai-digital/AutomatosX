@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 import * as EventDispatcher from '../../../packages/rescript-core/src/runtime/EventDispatcher.bs.js'
 import { buildGuardContext } from './guardFixtureFactory'
 import { runtimeEvents, runtimeStates } from './runtimeTestUtils'

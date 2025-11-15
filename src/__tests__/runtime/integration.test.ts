@@ -4,7 +4,7 @@ import * as DependencyValidator from '../../../packages/rescript-core/src/securi
 import * as EventAuth from '../../../packages/rescript-core/src/security/EventAuth.bs.js'
 import * as RuleEngine from '../../../packages/rescript-core/src/rules/RuleEngine.bs.js'
 import * as PolicyDSL from '../../../packages/rescript-core/src/rules/PolicyDSL.bs.js'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 import { runtimeStates, runtimeEvents } from './runtimeTestUtils'
 import { generateSha256Checksum, createDeterministicUuidGenerator } from './securityTestUtils'
 

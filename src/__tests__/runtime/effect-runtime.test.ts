@@ -3,7 +3,7 @@
 
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import * as EffectRuntime from '../../../packages/rescript-core/src/runtime/EffectRuntime.bs.js'
-import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachine.bs.js'
+import * as StateMachine from '../../../packages/rescript-core/src/runtime/StateMachineV2.bs.js'
 
 describe('EffectRuntime - Effect Execution', () => {
   it('executes plan hydration effect successfully', async () => {

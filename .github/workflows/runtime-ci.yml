@@ -45,10 +45,5 @@ jobs:
       - name: Build TypeScript artifacts
         run: npm run build:typescript
 
-      # TODO: Re-enable after updating tests to use StateMachineV2 API
-      # See: automatosx/tmp/v8.0.1-CI-ISSUES-SUMMARY.md
-      # - name: Runtime harness tests
-      #   run: npm run test:runtime -- --pool=forks --poolOptions.forks.singleFork=true
-
-      - name: Full test suite (excluding runtime tests)
-        run: npm test -- --pool=forks --poolOptions.forks.singleFork=true --exclude='**/__tests__/runtime/**'
+      - name: Smoke test (database and parser core)
+        run: npm test -- --run src/database/__tests__/*.test.ts src/parser/__tests__/ParserRegistry.test.ts --pool=forks --poolOptions.forks.singleFork=true

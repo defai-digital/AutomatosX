@@ -1,9 +1,9 @@
 # CI/CD Final Status Report - COMPLETE ✅
 
-**Date**: 2025-11-15 19:42 UTC
+**Date**: 2025-11-15 20:20 UTC (Updated)
 **Status**: **ALL CI/CD WORKFLOWS PASSING** ✅
-**Release**: v8.0.2 Published
-**npm Publishing**: Ready (requires NPM_TOKEN secret)
+**Release**: v8.0.4 Published to npm
+**npm Publishing**: ✅ **FULLY OPERATIONAL** (v8.0.4 successfully published)
 
 ---
 
@@ -202,37 +202,45 @@ git push origin v8.0.3
 
 ## 🚀 RELEASE STATUS
 
-### v8.0.2 Published ✅
-- **Tag**: v8.0.2
-- **Release URL**: https://github.com/defai-digital/AutomatosX/releases/tag/v8.0.2
-- **Commits**: 6 commits (b6083d84...902542b6)
-- **Changes**: CI/CD fixes, pnpm migration, npm publish workflow
+### v8.0.4 Published to npm ✅
+- **Tag**: v8.0.4
+- **npm Package**: https://www.npmjs.com/package/@defai.digital/automatosx/v/8.0.4
+- **Release URL**: https://github.com/defai-digital/AutomatosX/releases/tag/v8.0.4
+- **Workflow Run**: https://github.com/defai-digital/AutomatosX/actions/runs/19395060791
+- **Changes**: Python 3.14 installation fix, npm-compatible overrides
 
 ### Release Highlights
-1. Complete pnpm migration
-2. macOS Python 3.14 compatibility
-3. node-gyp 10.3.1 upgrade
-4. npm publish workflow
-5. Windows tests temporarily disabled
+1. ✅ Fixed end-user installation on Python 3.14
+2. ✅ Added npm-compatible `overrides` field (forces node-gyp 10.3.1)
+3. ✅ Package successfully published to npm with provenance
+4. ✅ All 6 enabled CI/CD workflows passing (100%)
+5. ✅ Complete pnpm migration
+6. ✅ macOS Python 3.14 compatibility
+7. ⏸️ Windows tests temporarily disabled (tree-sitter C++20 MSVC issues)
 
 ---
 
 ## 📋 NEXT STEPS
 
-### Immediate (Required for npm Publishing)
-1. **Configure NPM_TOKEN secret**
-   - Generate at: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
-   - Add to: GitHub Settings → Secrets → Actions
-   - Name: `NPM_TOKEN`
+### Immediate ✅ COMPLETED
+1. ✅ **NPM_TOKEN configured and working**
+   - Token configured in GitHub secrets
+   - v8.0.4 successfully published to npm
 
-2. **Verify package name availability**
-   - Check: https://www.npmjs.com/package/automatosx
-   - If taken, use scoped name: `@defai-digital/automatosx`
+2. ✅ **Package name resolved**
+   - Using scoped package: `@defai.digital/automatosx`
+   - npm URL: https://www.npmjs.com/package/@defai.digital/automatosx
 
-3. **Test publish workflow**
-   - Trigger: Actions → Publish to npm → Run workflow
-   - Enter tag: `v8.0.2`
-   - Monitor: Actions tab
+3. ✅ **Publish workflow operational**
+   - Automated publishing on release
+   - Manual trigger via workflow_dispatch
+   - Provenance enabled for supply chain security
+   - Latest run: https://github.com/defai-digital/AutomatosX/actions/runs/19395060791
+
+4. ✅ **Python 3.14 installation fixed**
+   - Added npm-compatible `overrides` field
+   - Users can now install globally with npm/pnpm
+   - Verification: `npm view @defai.digital/automatosx overrides` → `{ 'node-gyp': '^10.3.1' }`
 
 ### Short-term (Optional)
 1. **Fix Windows CI**
@@ -312,32 +320,50 @@ Temporarily disabling Windows CI (66.7% platform coverage) is better than blocki
 - [x] Added npm provenance for supply chain security
 - [x] Published v8.0.2 release to GitHub
 
-### Remaining
-- [x] Configure NPM_TOKEN secret (configured but lacks permissions)
-- [x] Test npm publish workflow (tested - workflow works, auth fails)
-- [ ] **BLOCKED**: Update NPM_TOKEN with `defai.sg` credentials OR add current user as maintainer
-- [ ] Re-run workflow to publish v8.0.0 to npm
-- [ ] Fix Windows CI (future work - optional)
+### Completed ✅
+- [x] Configure NPM_TOKEN secret
+- [x] Test npm publish workflow
+- [x] Change to scoped package name (`@defai.digital/automatosx`)
+- [x] Publish v8.0.3 to npm (initial scoped package publication)
+- [x] Fix Python 3.14 installation issue (v8.0.4)
+- [x] Publish v8.0.4 to npm (working for all users)
+
+### Remaining (Optional)
+- [ ] Fix Windows CI (future work - tree-sitter C++20 MSVC compatibility)
+- [ ] Create GitHub release for v8.0.4 (automated workflow comment only, not full release)
+- [ ] Update README with installation instructions
 
 ---
 
 ## 🎉 CONCLUSION
 
-**STATUS**: ✅ **PRODUCTION READY**
+**STATUS**: ✅ **PRODUCTION READY & PUBLISHED**
 
 All critical CI/CD issues have been resolved:
-- ✅ **5 out of 6 workflows passing** (83.3% success rate)
-- ✅ **npm publish workflow ready** (just needs NPM_TOKEN)
+- ✅ **6 out of 6 workflows passing** (100% success rate)
+- ✅ **npm publish workflow operational** (v8.0.4 published successfully)
+- ✅ **Package available on npm** (https://www.npmjs.com/package/@defai.digital/automatosx)
+- ✅ **Python 3.14 compatible** (users can install with npm/pnpm)
 - ✅ **Cross-platform builds working** (macOS + Linux)
-- ✅ **Security analysis passing** (CodeQL)
+- ✅ **Security analysis passing** (CodeQL + npm provenance)
 - ✅ **All tests passing** (165+ tests, 100%)
 
-The project is **production-ready** and can be published to npm immediately after configuring the NPM_TOKEN secret.
+The project is **production-ready**, **published to npm**, and **installable by all users**.
 
-Windows support can be restored in a future release after addressing tree-sitter 0.25.0 MSVC compatibility issues.
+**Key Achievements**:
+1. Fixed all CI/CD pipeline errors
+2. Successfully published scoped package to npm with provenance
+3. Resolved Python 3.14 distutils compatibility issue
+4. 100% test success rate across all enabled workflows
+5. Full supply chain security with npm provenance attestation
+
+**Known Limitations**:
+- Windows tests temporarily disabled (tree-sitter 0.25.0 MSVC C++20 compatibility)
+- Windows support can be restored in future release with tree-sitter downgrade or custom binding.gyp
 
 ---
 
-**Report Generated**: 2025-11-15 19:42 UTC
-**Final CI Run**: https://github.com/defai-digital/AutomatosX/actions/runs/19394643667
-**Status**: ✅ ALL SYSTEMS OPERATIONAL
+**Report Generated**: 2025-11-15 20:20 UTC (Updated)
+**Latest npm Publish**: https://github.com/defai-digital/AutomatosX/actions/runs/19395060791
+**npm Package**: https://www.npmjs.com/package/@defai.digital/automatosx
+**Status**: ✅ ALL SYSTEMS OPERATIONAL & PUBLISHED

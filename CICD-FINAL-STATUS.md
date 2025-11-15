@@ -31,7 +31,7 @@
 
 ---
 
-## 📦 npm PUBLISHING: READY
+## 📦 npm PUBLISHING: ACTION REQUIRED ⚠️
 
 ### Workflow Status
 - ✅ Workflow file created: `.github/workflows/npm-publish.yml`
@@ -39,16 +39,48 @@
 - ✅ Build steps validated
 - ✅ Error handling implemented
 - ✅ Provenance enabled
-- ⏳ Requires: `NPM_TOKEN` secret configuration
+- ✅ Manual workflow trigger tested and working
+- ❌ **BLOCKED**: NPM_TOKEN lacks permission to publish `automatosx`
 
-### Setup Instructions
+### Publishing Failure Analysis
 
-See **NPM-PUBLISH-SETUP.md** for complete guide.
+**Workflow Run**: [#19394818962](https://github.com/defai-digital/AutomatosX/actions/runs/19394818962)
+**Trigger**: Manual dispatch with tag `v8.0.2`
+**Result**: ❌ Failed at publish step
+**Error**: `403 Forbidden - You do not have permission to publish "automatosx"`
 
-**Quick Setup**:
-1. Generate npm token: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
-2. Add GitHub secret: Settings → Secrets → Actions → `NPM_TOKEN`
-3. Trigger publish: Create GitHub release OR manual workflow dispatch
+**Root Cause**: Package `automatosx` already exists on npm registry:
+- **Current Version**: 4.0.2 (DEPRECATED ⚠️)
+- **Last Publisher**: `defai.sg <akira.lam@defai.digital>`
+- **Published**: 1 month ago
+- **npm URL**: https://www.npmjs.com/package/automatosx
+
+**Issue**: The NPM_TOKEN secret configured in GitHub Actions doesn't have permission to publish to the existing `automatosx` package. The package was last published by the `defai.sg` npm account.
+
+### Solution Options
+
+**Option 1: Use `defai.sg` npm Account** (Recommended)
+1. Log in as `defai.sg` on npm
+2. Generate new Automation token: https://www.npmjs.com/settings/defai.sg/tokens
+3. Update GitHub secret `NPM_TOKEN` with new token
+4. Trigger workflow again: `gh workflow run npm-publish.yml --ref main -f tag=v8.0.2`
+
+**Option 2: Add Current User as Maintainer**
+1. Ask `defai.sg` account owner to add your npm account as maintainer
+2. Run: `npm owner add YOUR_NPM_USERNAME automatosx`
+3. Generate your own Automation token
+4. Update GitHub secret `NPM_TOKEN`
+
+**Option 3: Use Scoped Package Name**
+1. Change package name in `package.json` to `@defai-digital/automatosx`
+2. Update workflow and documentation
+3. Publish as new scoped package
+
+### Next Steps
+
+1. Contact package owner (`defai.sg <akira.lam@defai.digital>`) to determine publish strategy
+2. Update NPM_TOKEN secret with correct credentials
+3. Re-run workflow to publish v8.0.0 to npm
 
 ### Publish Methods
 
@@ -281,9 +313,11 @@ Temporarily disabling Windows CI (66.7% platform coverage) is better than blocki
 - [x] Published v8.0.2 release to GitHub
 
 ### Remaining
-- [ ] Configure NPM_TOKEN secret
-- [ ] Publish to npm
-- [ ] Fix Windows CI (future work)
+- [x] Configure NPM_TOKEN secret (configured but lacks permissions)
+- [x] Test npm publish workflow (tested - workflow works, auth fails)
+- [ ] **BLOCKED**: Update NPM_TOKEN with `defai.sg` credentials OR add current user as maintainer
+- [ ] Re-run workflow to publish v8.0.0 to npm
+- [ ] Fix Windows CI (future work - optional)
 
 ---
 

@@ -114,7 +114,7 @@ export class IntegrationService {
       const symbols = symbolDAO.findByName(name);
 
       // Prefer symbol in the same file
-      const localSymbol = symbols.find((s) => s.filePath === filePath);
+      const localSymbol = symbols.find((s: any) => s.filePath === filePath);
       if (localSymbol) {
         const result = this.mapToSymbolInfo(localSymbol);
         this.setCache(cacheKey, result);
@@ -155,7 +155,7 @@ export class IntegrationService {
       const symbols = symbolDAO.findByFile(filePath);
 
       // Find symbol containing the position
-      const symbol = symbols.find((s) => {
+      const symbol = symbols.find((s: any) => {
         return (
           (line > s.startLine || (line === s.startLine && column >= s.startColumn)) &&
           (line < s.endLine || (line === s.endLine && column <= s.endColumn))
@@ -188,7 +188,7 @@ export class IntegrationService {
       const symbolDAO = this.getSymbolDAO();
       const symbols = symbolDAO.findByName(name);
 
-      const result = symbols.map((s) => this.mapToSymbolInfo(s));
+      const result = symbols.map((s: any) => this.mapToSymbolInfo(s));
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {
@@ -216,12 +216,12 @@ export class IntegrationService {
 
       // Get all symbols matching query prefix
       const allSymbols = symbolDAO.findAll();
-      const matchingSymbols = allSymbols.filter((s) =>
+      const matchingSymbols = allSymbols.filter((s: any) =>
         s.name.toLowerCase().startsWith(query.toLowerCase())
       );
 
       // Sort: local symbols first, then by name
-      const sorted = matchingSymbols.sort((a, b) => {
+      const sorted = matchingSymbols.sort((a: any, b: any) => {
         const aIsLocal = a.filePath === currentFile ? 0 : 1;
         const bIsLocal = b.filePath === currentFile ? 0 : 1;
 
@@ -232,7 +232,7 @@ export class IntegrationService {
         return a.name.localeCompare(b.name);
       });
 
-      const result = sorted.slice(0, limit).map((s) => this.mapToSymbolInfo(s));
+      const result = sorted.slice(0, limit).map((s: any) => this.mapToSymbolInfo(s));
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {
@@ -255,7 +255,7 @@ export class IntegrationService {
       const symbolDAO = this.getSymbolDAO();
       const symbols = symbolDAO.findByFile(filePath);
 
-      const result = symbols.map((s) => this.mapToSymbolInfo(s));
+      const result = symbols.map((s: any) => this.mapToSymbolInfo(s));
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {

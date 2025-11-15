@@ -173,6 +173,33 @@ export class SymbolDAO {
   }
 
   /**
+   * Find all symbols (compatibility method for LSP)
+   *
+   * @param limit - Optional limit on results
+   * @returns Array of symbol records
+   */
+  findAll(limit?: number): SymbolRecord[] {
+    const query = limit ? 'SELECT * FROM symbols LIMIT ?' : 'SELECT * FROM symbols';
+    const stmt = this.db.prepare(query);
+    return (limit ? stmt.all(limit) : stmt.all()) as SymbolRecord[];
+  }
+
+  /**
+   * Find symbols by file path (compatibility method for LSP)
+   *
+   * @param filePath - File path
+   * @returns Array of symbol records
+   */
+  findByFile(filePath: string): SymbolRecord[] {
+    // First get the file ID
+    const fileStmt = this.db.prepare('SELECT id FROM files WHERE file_path = ?');
+    const fileRecord = fileStmt.get(filePath) as { id: number } | undefined;
+    if (!fileRecord) return [];
+
+    return this.findByFileId(fileRecord.id);
+  }
+
+  /**
    * Delete symbol by ID
    *
    * @param id - Symbol ID

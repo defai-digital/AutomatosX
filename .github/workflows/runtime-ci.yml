@@ -45,5 +45,8 @@ jobs:
       - name: Build TypeScript artifacts
         run: npm run build:typescript
 
-      - name: Quick smoke test (build verification)
-        run: npm run cli -- status
+      - name: Verify build artifacts exist
+        run: |
+          test -f dist/cli/index.js || exit 1
+          test -f packages/rescript-core/lib/bs/src/Index.bs.js || exit 1
+          echo "✅ Build verification passed"

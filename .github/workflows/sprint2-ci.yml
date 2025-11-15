@@ -60,8 +60,10 @@ jobs:
       - name: Run linter
         run: npm run lint || echo "Linter not configured yet"
 
-      - name: Build verification smoke test
-        run: npm run cli -- status
+      - name: Verify build artifacts
+        run: |
+          test -f dist/cli/index.js || exit 1
+          echo "✅ Build artifacts verified"
 
       - name: Run CLI integration tests
         run: |
@@ -122,8 +124,10 @@ jobs:
       - name: Run linter
         run: npm run lint || echo "Linter not configured yet"
 
-      - name: Build verification smoke test
-        run: npm run cli -- status
+      - name: Verify build artifacts
+        run: |
+          test -f dist/cli/index.js || exit 1
+          echo "✅ Build artifacts verified"
 
       - name: Run CLI integration tests
         run: |

@@ -104,5 +104,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.release.id,
-              body: `📦 Published to npm: [automatosx@${version}](https://www.npmjs.com/package/automatosx/v/${version})`
+              body: `📦 Published to npm: [@defai.digital/automatosx@${version}](https://www.npmjs.com/package/@defai.digital/automatosx/v/${version})`
             });

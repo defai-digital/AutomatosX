@@ -46,7 +46,7 @@ jobs:
         run: npm run build:typescript
 
       - name: Runtime harness tests
-        run: npm run test:runtime -- --runInBand
+        run: npm run test:runtime -- --pool=forks --poolOptions.forks.singleFork=true
 
       - name: Full test suite
-        run: npm test -- --runInBand
+        run: npm test -- --pool=forks --poolOptions.forks.singleFork=true

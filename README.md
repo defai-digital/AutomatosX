@@ -11,9 +11,9 @@
 [![Languages](https://img.shields.io/badge/languages-45-blue)](./src/parser)
 [![Agents](https://img.shields.io/badge/agents-21-purple)](./src/agents)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-8.0.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-8.0.7-blue.svg)](package.json)
 
-**🎉 v8.0.0 - Production Ready with Full Feature Parity**
+**🎉 v8.0.7 - Security Fix & Production Ready**
 
 AutomatosX is a comprehensive code intelligence platform with AI-powered workflow automation:
 - **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 45 languages
@@ -28,34 +28,76 @@ AutomatosX is a comprehensive code intelligence platform with AI-powered workflo
 ## 📋 Requirements
 
 - **Node.js**: v24.x or higher ([Download](https://nodejs.org/))
-- **npm**: v10.0.0 or higher
+- **pnpm**: v9.0.0 or higher ([Install instructions](#installing-pnpm))
 - **Supported Operating Systems**:
   - **Ubuntu**: 24.04 LTS (Noble Numbat) or later
   - **macOS**: 26 (Tahoe) or later
   - **Windows**: 11 or later
 
-## 🚀 Quick Start
+### Installing pnpm
+
+```bash
+# Via npm (recommended)
+npm install -g pnpm@9
+
+# Via Homebrew (macOS)
+brew install pnpm
+
+# Via winget (Windows)
+winget install -e --id pnpm.pnpm
+
+# Verify installation
+pnpm --version  # Should show 9.x.x
+```
+
+**Why pnpm?** This project uses pnpm (not npm) because:
+- ✅ Better monorepo/workspace support
+- ✅ 2-3x faster installations
+- ✅ Smaller disk usage (40% reduction)
+- ✅ Stricter dependency resolution
+
+See [INSTALLATION.md](./INSTALLATION.md) for detailed setup instructions.
+
+## 🚀 Quick Start (Development)
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Build the project
-npm run build
+pnpm run build
 
 # Launch Interactive CLI
-npm run cli -- cli
+pnpm run cli -- cli
 
 # Or use specific commands
-npm run cli -- find "getUserById"
-npm run cli -- speckit spec "Build authentication API"
-npm run cli -- gen plan workflows/cicd.yaml
+pnpm run cli -- find "getUserById"
+pnpm run cli -- speckit spec "Build authentication API"
+pnpm run cli -- gen plan workflows/cicd.yaml
 
 # Run tests (745+ tests)
-npm test
+pnpm test
 ```
 
 **Note**: Current build requires fixing TypeScript compilation errors (2-3 hours). Tests pass but CLI requires pre-compiled dist/ files.
+
+## 📦 End User Installation (npm)
+
+**If you just want to use the CLI** (not develop AutomatosX):
+
+```bash
+# Install globally with npm (no pnpm needed)
+npm install -g @defai.digital/automatosx
+
+# Verify installation
+ax --version
+
+# Use the CLI
+ax find "getUserById"
+ax cli  # Launch interactive mode
+```
+
+**pnpm is only required for developers** contributing to the AutomatosX codebase.
 
 ### ⚠️ Peer Dependency Warnings
 

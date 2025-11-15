@@ -91,7 +91,7 @@
     "handlebars": "^4.7.8",
     "highlight.js": "^11.11.1",
     "inquirer": "^9.3.8",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "jspdf": "^3.0.3",
     "onnxruntime-node": "^1.23.2",
     "openai": "^6.8.1",

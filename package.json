@@ -138,7 +138,6 @@
     "tree-sitter-rust": "^0.21.0",
     "tree-sitter-scala": "^0.24.0",
     "tree-sitter-solidity": "^1.2.13",
-    "tree-sitter-swift": "^0.5.0",
     "tree-sitter-systemverilog": "^0.3.1",
     "tree-sitter-thrift": "^0.5.0",
     "tree-sitter-toml": "^0.5.1",

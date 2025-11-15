@@ -18,7 +18,7 @@ import { CppParserService } from './CppParserService.js';
 import { PhpParserService } from './PhpParserService.js';
 import { KotlinParserService } from './KotlinParserService.js';
 import { HtmlParserService } from './HtmlParserService.js';
-import { SwiftParserService } from './SwiftParserService.js';
+// import { SwiftParserService } from './SwiftParserService.js'; // Disabled due to tree-sitter-swift installation issues on Node.js v24
 import { SqlParserService } from './SqlParserService.js';
 import { AssemblyScriptParserService } from './AssemblyScriptParserService.js';
 // New parsers
@@ -106,7 +106,7 @@ export class ParserRegistry {
     this.registerParser(new KotlinParserService());
 
     // Swift parser
-    this.registerParser(new SwiftParserService());
+    // this.registerParser(new SwiftParserService()); // Disabled due to tree-sitter-swift installation issues on Node.js v24
 
     // SQL parser
     this.registerParser(new SqlParserService());

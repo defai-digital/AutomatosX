@@ -3,9 +3,31 @@
 -- Tables for declarative workflow definitions, execution tracking, and checkpoint/resume
 
 -- ============================================================================
+-- Schema Migration: Rename old workflows table from migration 008
+-- ============================================================================
+-- Migration 008 created a "workflows" table that was actually for execution tracking
+-- This migration renames it to "legacy_workflows" to avoid naming conflict
+-- The old table had: status, execution_id, started_at, completed_at (execution fields)
+-- The new table has: version, author, tags, is_active, statistics (definition fields)
+
+-- Drop old workflows table if it exists (from migration 008)
+-- This is safe because:
+-- 1. Migration 008's workflows table was for execution tracking, not definitions
+-- 2. Migration 013 introduces proper workflow_executions table for that purpose
+-- 3. No production data should exist yet (v8.0.0 is not released)
+DROP TABLE IF EXISTS workflows;
+
+-- Also drop dependent indices from migration 008
+DROP INDEX IF EXISTS idx_workflows_status;
+DROP INDEX IF EXISTS idx_workflows_execution_id;
+DROP INDEX IF EXISTS idx_workflows_created_at;
+DROP INDEX IF EXISTS idx_workflows_name;
+
+-- ============================================================================
 -- Table 1: workflows - Workflow definitions
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflows (
+-- Now create the correct workflows table for workflow DEFINITIONS (not executions)
+CREATE TABLE workflows (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   description TEXT,
@@ -33,7 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_created_at ON workflows(created_at DESC
 -- ============================================================================
 -- Table 2: workflow_executions - Execution instances with state
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_executions (
+CREATE TABLE workflow_executions (
   id TEXT PRIMARY KEY,
   workflow_id TEXT NOT NULL,
 
@@ -77,7 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_executions_parent ON workflow_executions
 -- ============================================================================
 -- Table 3: workflow_steps - Step definitions extracted from workflows
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_steps (
+CREATE TABLE workflow_steps (
   id TEXT PRIMARY KEY,
   workflow_id TEXT NOT NULL,
 
@@ -114,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_steps_agent ON workflow_steps(agent);
 -- ============================================================================
 -- Table 4: workflow_step_executions - Step execution tracking
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_step_executions (
+CREATE TABLE workflow_step_executions (
   id TEXT PRIMARY KEY,
   execution_id TEXT NOT NULL,
   step_id TEXT NOT NULL,
@@ -154,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_step_executions_started_at ON workflow_s
 -- ============================================================================
 -- Table 5: workflow_checkpoints - State snapshots for resume
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_checkpoints (
+CREATE TABLE workflow_checkpoints (
   id TEXT PRIMARY KEY,
   execution_id TEXT NOT NULL,
 
@@ -181,7 +203,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_checkpoints_created_at ON workflow_check
 -- ============================================================================
 -- Table 6: workflow_dependencies - Dependency graph for parallel execution
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_dependencies (
+CREATE TABLE workflow_dependencies (
   id TEXT PRIMARY KEY,
   workflow_id TEXT NOT NULL,
   from_step_key TEXT NOT NULL,
@@ -199,7 +221,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_dependencies_to ON workflow_dependencies
 -- ============================================================================
 -- Table 7: workflow_events - Event log for workflow execution
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS workflow_events (
+CREATE TABLE workflow_events (
   id TEXT PRIMARY KEY,
   execution_id TEXT NOT NULL,
   event_type TEXT NOT NULL,  -- workflow_started, step_started, step_completed, state_transition, checkpoint_created, error_occurred, etc.

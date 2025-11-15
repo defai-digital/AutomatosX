@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.0.3",
+  "version": "8.0.4",
   "description": "Production-ready code intelligence platform with AI agents, workflow orchestration, interactive CLI, SpecKit generators, and autonomous retry system. 45 languages, 21 AI agents, 745+ tests.",
   "license": "Apache-2.0",
   "author": "DEFAI Private Limited",
@@ -70,6 +70,9 @@
     "overrides": {
       "node-gyp": "^10.3.1"
     }
+  },
+  "overrides": {
+    "node-gyp": "^10.3.1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

@@ -36,10 +36,14 @@ export function createInteractiveCommand() {
             const db = getDatabase();
             console.log(chalk.green('✓ Database connected'));
             // Initialize provider router
-            const providerRouter = new ProviderRouterV2();
+            const providerRouter = new ProviderRouterV2({
+                providers: [],
+                defaultProvider: 'claude',
+                chaosMode: false,
+            });
             console.log(chalk.green('✓ Provider router initialized'));
             // Initialize agent registry
-            const agentRegistry = new AgentRegistry(db);
+            const agentRegistry = new AgentRegistry();
             console.log(chalk.green('✓ Agent registry loaded'));
             // Initialize slash command registry
             const commandRegistry = new SlashCommandRegistry();

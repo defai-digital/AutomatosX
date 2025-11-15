@@ -126,4 +126,26 @@ export class StreamingHandler {
       process.stdout.write('\n');
     }
   }
+
+  /**
+   * Stop streaming (alias for stopThinking)
+   */
+  stop(): void {
+    this.stopThinking();
+  }
+
+  /**
+   * Display complete response
+   */
+  displayResponse(response: string): void {
+    process.stdout.write(response + '\n');
+  }
+
+  /**
+   * Stop and display error
+   */
+  stopError(error: Error): void {
+    this.stopThinking();
+    this.displayError(error);
+  }
 }

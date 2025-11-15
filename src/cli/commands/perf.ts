@@ -146,7 +146,7 @@ function createRunCommand(): Command {
           const profilingResult = profiler.endCommand()
           if (profilingResult) {
             console.log('\n=== Profiling Results ===')
-            console.log(profiler.constructor.formatResult(profilingResult))
+            console.log(PerformanceProfiler.formatResult(profilingResult))
           }
         }
       } catch (error) {
@@ -212,9 +212,9 @@ function createInspectCommand(): Command {
             const analysis = CLIProfiler.analyzeStartup(result)
             if (!analysis.isOptimal) {
               console.log('\n=== Performance Issues ===')
-              analysis.issues.forEach((issue) => console.log(`⚠️  ${issue}`))
+              analysis.issues.forEach((issue: string) => console.log(`⚠️  ${issue}`))
               console.log('\n=== Recommendations ===')
-              analysis.recommendations.forEach((rec) => console.log(`💡 ${rec}`))
+              analysis.recommendations.forEach((rec: string) => console.log(`💡 ${rec}`))
             } else {
               console.log('\n✅ Performance is optimal!')
             }

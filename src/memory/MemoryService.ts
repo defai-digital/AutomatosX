@@ -133,6 +133,8 @@ export class MemoryService {
       offset: 0,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
+      includeArchived: false,
+      includeDeleted: false,
     }).conversations;
   }
 

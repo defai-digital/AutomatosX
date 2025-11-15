@@ -340,9 +340,9 @@ export class ConversationContext {
         conversationId: conversation.id,
         userId: conversation.userId || 'unknown',
         messages,
-        activeAgent: conversation.metadata?.activeAgent,
-        activeWorkflow: conversation.metadata?.activeWorkflow,
-        variables: conversation.metadata?.variables || {},
+        activeAgent: conversation.metadata?.activeAgent as string | undefined,
+        activeWorkflow: conversation.metadata?.activeWorkflow as string | undefined,
+        variables: (conversation.metadata?.variables as Record<string, unknown>) || {},
         createdAt: new Date(conversation.createdAt * 1000), // Convert UNIX seconds to Date
         updatedAt: new Date(conversation.updatedAt * 1000)
       };

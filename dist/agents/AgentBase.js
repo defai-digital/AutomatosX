@@ -27,6 +27,12 @@ export class AgentBase extends EventEmitter {
         return this.metadata;
     }
     /**
+     * Get agent name
+     */
+    getName() {
+        return this.metadata.name;
+    }
+    /**
      * Execute a task
      * This is the main entry point for agent execution
      */

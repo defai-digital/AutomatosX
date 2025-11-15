@@ -70,6 +70,20 @@ export class MetricsCollector extends EventEmitter {
         this.emit('metric.recorded', metric);
     }
     /**
+     * Record a metric (alias for record() for compatibility)
+     */
+    recordMetric(name, value, labels) {
+        // Convert to MetricType - use 'custom' as default
+        const metricType = name;
+        const stringLabels = {};
+        if (labels) {
+            for (const [key, val] of Object.entries(labels)) {
+                stringLabels[key] = String(val);
+            }
+        }
+        this.record(metricType, value, { labels: stringLabels });
+    }
+    /**
      * Flush metrics buffer to database
      */
     flush() {

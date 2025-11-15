@@ -21,8 +21,8 @@ import { BaseLanguageParser, SymbolKindValue } from './LanguageParser.js';
 export class XmlParserService extends BaseLanguageParser {
     language = 'xml';
     extensions = ['.xml', '.pom', '.csproj', '.vbproj', '.fsproj', '.config'];
-    getGrammar() {
-        return Xml;
+    constructor() {
+        super(Xml);
     }
     extractSymbol(node) {
         switch (node.type) {

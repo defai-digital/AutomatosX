@@ -25,7 +25,7 @@ import { BaseLanguageParser, Symbol, Call, Import } from './LanguageParser.js';
 export declare class ThriftParserService extends BaseLanguageParser {
     readonly language = "thrift";
     readonly extensions: string[];
-    protected getGrammar(): Parser.Language;
+    constructor();
     protected extractSymbol(node: Parser.SyntaxNode): Symbol | null;
     /**
      * Extract Thrift service definition

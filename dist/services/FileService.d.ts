@@ -195,5 +195,20 @@ export declare class FileService {
      * Automatically called when files are indexed
      */
     private invalidateCache;
+    /**
+     * Find symbol by name - simplified interface for agent system
+     * Delegates to searchSymbols
+     */
+    findSymbol(name: string): Promise<any[]>;
+    /**
+     * Get call graph for a function
+     * Returns callers and callees of a given function
+     */
+    getCallGraph(functionName: string): Promise<any>;
+    /**
+     * Analyze code quality for a file
+     * Returns quality metrics and issues
+     */
+    analyzeQuality(filePath: string): Promise<any>;
 }
 //# sourceMappingURL=FileService.d.ts.map

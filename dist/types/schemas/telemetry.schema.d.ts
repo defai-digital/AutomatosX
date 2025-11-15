@@ -174,7 +174,7 @@ export declare const TelemetryStatsSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     count: number;
     statDate: string;
-    statType: "error" | "query" | "performance" | "command";
+    statType: "performance" | "error" | "query" | "command";
     statKey: string;
     metadata?: Record<string, unknown> | undefined;
     totalDuration?: number | undefined;
@@ -184,7 +184,7 @@ export declare const TelemetryStatsSchema: z.ZodObject<{
 }, {
     count: number;
     statDate: string;
-    statType: "error" | "query" | "performance" | "command";
+    statType: "performance" | "error" | "query" | "command";
     statKey: string;
     metadata?: Record<string, unknown> | undefined;
     totalDuration?: number | undefined;
@@ -230,8 +230,8 @@ export declare const TelemetryStatsRecordSchema: z.ZodObject<{
     updated_at: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     id: number;
-    metadata: string | null;
     count: number;
+    metadata: string | null;
     updated_at: number;
     stat_date: string;
     stat_type: string;
@@ -242,8 +242,8 @@ export declare const TelemetryStatsRecordSchema: z.ZodObject<{
     max_duration: number | null;
 }, {
     id: number;
-    metadata: string | null;
     count: number;
+    metadata: string | null;
     updated_at: number;
     stat_date: string;
     stat_type: string;

@@ -66,12 +66,12 @@ export declare const PluginPermissionsSchema: z.ZodObject<{
     memory?: {
         maxMB?: number | undefined;
     } | undefined;
-    network?: {
-        allowedDomains?: string[] | undefined;
-    } | undefined;
     runtime?: {
         canSpawnProcess: boolean;
         canAccessEnv: boolean;
+    } | undefined;
+    network?: {
+        allowedDomains?: string[] | undefined;
     } | undefined;
     filesystem?: {
         write?: string[] | undefined;
@@ -81,12 +81,12 @@ export declare const PluginPermissionsSchema: z.ZodObject<{
     memory?: {
         maxMB?: number | undefined;
     } | undefined;
-    network?: {
-        allowedDomains?: string[] | undefined;
-    } | undefined;
     runtime?: {
         canSpawnProcess?: boolean | undefined;
         canAccessEnv?: boolean | undefined;
+    } | undefined;
+    network?: {
+        allowedDomains?: string[] | undefined;
     } | undefined;
     filesystem?: {
         write?: string[] | undefined;
@@ -148,12 +148,12 @@ export declare const PluginManifestSchema: z.ZodObject<{
         memory?: {
             maxMB?: number | undefined;
         } | undefined;
-        network?: {
-            allowedDomains?: string[] | undefined;
-        } | undefined;
         runtime?: {
             canSpawnProcess: boolean;
             canAccessEnv: boolean;
+        } | undefined;
+        network?: {
+            allowedDomains?: string[] | undefined;
         } | undefined;
         filesystem?: {
             write?: string[] | undefined;
@@ -163,12 +163,12 @@ export declare const PluginManifestSchema: z.ZodObject<{
         memory?: {
             maxMB?: number | undefined;
         } | undefined;
-        network?: {
-            allowedDomains?: string[] | undefined;
-        } | undefined;
         runtime?: {
             canSpawnProcess?: boolean | undefined;
             canAccessEnv?: boolean | undefined;
+        } | undefined;
+        network?: {
+            allowedDomains?: string[] | undefined;
         } | undefined;
         filesystem?: {
             write?: string[] | undefined;
@@ -199,12 +199,12 @@ export declare const PluginManifestSchema: z.ZodObject<{
         memory?: {
             maxMB?: number | undefined;
         } | undefined;
-        network?: {
-            allowedDomains?: string[] | undefined;
-        } | undefined;
         runtime?: {
             canSpawnProcess: boolean;
             canAccessEnv: boolean;
+        } | undefined;
+        network?: {
+            allowedDomains?: string[] | undefined;
         } | undefined;
         filesystem?: {
             write?: string[] | undefined;
@@ -236,12 +236,12 @@ export declare const PluginManifestSchema: z.ZodObject<{
         memory?: {
             maxMB?: number | undefined;
         } | undefined;
-        network?: {
-            allowedDomains?: string[] | undefined;
-        } | undefined;
         runtime?: {
             canSpawnProcess?: boolean | undefined;
             canAccessEnv?: boolean | undefined;
+        } | undefined;
+        network?: {
+            allowedDomains?: string[] | undefined;
         } | undefined;
         filesystem?: {
             write?: string[] | undefined;

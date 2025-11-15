@@ -90,8 +90,8 @@ export declare const WorkflowConfigSchema: z.ZodObject<{
 }, {
     timeout?: number | undefined;
     maxRetries?: number | undefined;
-    checkpointInterval?: number | undefined;
     parallelism?: number | undefined;
+    checkpointInterval?: number | undefined;
     continueOnError?: boolean | undefined;
 }>;
 export type WorkflowConfig = z.infer<typeof WorkflowConfigSchema>;
@@ -170,8 +170,8 @@ export declare const WorkflowDefinitionSchema: z.ZodObject<{
     }, {
         timeout?: number | undefined;
         maxRetries?: number | undefined;
-        checkpointInterval?: number | undefined;
         parallelism?: number | undefined;
+        checkpointInterval?: number | undefined;
         continueOnError?: boolean | undefined;
     }>>;
     tags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -228,8 +228,8 @@ export declare const WorkflowDefinitionSchema: z.ZodObject<{
     config?: {
         timeout?: number | undefined;
         maxRetries?: number | undefined;
-        checkpointInterval?: number | undefined;
         parallelism?: number | undefined;
+        checkpointInterval?: number | undefined;
         continueOnError?: boolean | undefined;
     } | undefined;
     tags?: string[] | undefined;
@@ -308,7 +308,7 @@ export declare const WorkflowExecutionSchema: z.ZodObject<{
     priority: number;
     context: string;
     createdAt: number;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     workflowId: string;
     resumeCount: number;
     startedAt?: number | undefined;
@@ -325,7 +325,7 @@ export declare const WorkflowExecutionSchema: z.ZodObject<{
     id: string;
     context: string;
     createdAt: number;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     workflowId: string;
     priority?: number | undefined;
     startedAt?: number | undefined;
@@ -411,7 +411,7 @@ export declare const WorkflowCheckpointSchema: z.ZodObject<{
     id: string;
     context: string;
     createdAt: number;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     executionId: string;
     completedSteps: string;
     pendingSteps: string;
@@ -422,7 +422,7 @@ export declare const WorkflowCheckpointSchema: z.ZodObject<{
     id: string;
     context: string;
     createdAt: number;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     executionId: string;
     completedSteps: string;
     pendingSteps: string;
@@ -525,7 +525,7 @@ export declare const WorkflowResultSchema: z.ZodObject<{
     error: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     context: Record<string, unknown>;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     executionId: string;
     workflowId: string;
     workflowName: string;
@@ -536,7 +536,7 @@ export declare const WorkflowResultSchema: z.ZodObject<{
     durationMs?: number | undefined;
 }, {
     context: Record<string, unknown>;
-    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "parsing" | "validating" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
+    state: "completed" | "failed" | "cancelled" | "idle" | "paused" | "validating" | "parsing" | "building_graph" | "scheduling" | "executing" | "awaiting_completion" | "creating_checkpoint" | "restoring_checkpoint" | "aggregating_results";
     executionId: string;
     workflowId: string;
     workflowName: string;

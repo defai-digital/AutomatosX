@@ -25,8 +25,8 @@ export class XmlParserService extends BaseLanguageParser {
   readonly language = 'xml';
   readonly extensions = ['.xml', '.pom', '.csproj', '.vbproj', '.fsproj', '.config'];
 
-  protected getGrammar(): Parser.Language {
-    return Xml as Parser.Language;
+  constructor() {
+    super(Xml as Parser.Language);
   }
 
   protected extractSymbol(node: Parser.SyntaxNode): Symbol | null {

@@ -238,7 +238,11 @@ export class OpenAIProvider extends BaseProvider {
 export function createOpenAIProvider(config) {
     return new OpenAIProvider({
         enabled: true,
+        priority: 3,
+        maxRetries: 3,
+        timeout: 60000,
         apiKey: process.env.OPENAI_API_KEY,
+        organization: process.env.OPENAI_ORGANIZATION,
         ...config,
     });
 }

@@ -121,7 +121,9 @@ export class CheckpointServiceV2 {
             throw new Error('Checkpoint does not contain ReScript machine state. Use CheckpointService (V1) for legacy checkpoints.');
         }
         // Deserialize ReScript state machine
-        const machineCheckpoint = JSON.parse(machineStateJson);
+        const machineCheckpoint = typeof machineStateJson === 'string'
+            ? JSON.parse(machineStateJson)
+            : machineStateJson;
         const machine = WorkflowStateMachineBridge.deserialize(machineCheckpoint);
         if (!machine) {
             throw new Error('Failed to deserialize ReScript state machine from checkpoint');

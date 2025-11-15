@@ -111,8 +111,9 @@ function registerSlashCommands(
   registry.register({
     name: 'stats',
     description: 'Show intent learning statistics',
+    usage: '/stats',
     aliases: ['statistics', 'learning'],
-    handler: async () => {
+    execute: async () => {
       learningSystem.displayStatistics();
     }
   });
@@ -121,8 +122,9 @@ function registerSlashCommands(
   registry.register({
     name: 'strategies',
     description: 'List all available iterate strategies',
+    usage: '/strategies',
     aliases: ['strategy', 'strats'],
-    handler: async () => {
+    execute: async () => {
       iterateHandler.listStrategies();
     }
   });
@@ -131,8 +133,9 @@ function registerSlashCommands(
   registry.register({
     name: 'telemetry',
     description: 'Show strategy effectiveness telemetry',
+    usage: '/telemetry',
     aliases: ['metrics', 'analytics'],
-    handler: async () => {
+    execute: async () => {
       iterateHandler.displayTelemetry();
     }
   });
@@ -141,8 +144,9 @@ function registerSlashCommands(
   registry.register({
     name: 'iterate',
     description: 'Execute task with iterate mode',
+    usage: '/iterate <task description>',
     aliases: ['retry', 'auto'],
-    handler: async (args: string[]) => {
+    execute: async (args: string[]) => {
       if (args.length === 0) {
         console.log(chalk.yellow('\n⚠ Usage: /iterate <task description>\n'));
         console.log(chalk.gray('Example: /iterate Implement user authentication with JWT\n'));
@@ -161,8 +165,9 @@ function registerSlashCommands(
   registry.register({
     name: 'strategy-stats',
     description: 'Show statistics for a specific strategy',
+    usage: '/strategy-stats <strategy-name>',
     aliases: ['strat-stats'],
-    handler: async (args: string[]) => {
+    execute: async (args: string[]) => {
       if (args.length === 0) {
         console.log(chalk.yellow('\n⚠ Usage: /strategy-stats <strategy-name>\n'));
         return;
@@ -177,8 +182,9 @@ function registerSlashCommands(
   registry.register({
     name: 'clear-corrections',
     description: 'Clear all intent learning corrections',
+    usage: '/clear-corrections',
     aliases: ['reset-learning'],
-    handler: async () => {
+    execute: async () => {
       learningSystem.clearCorrections();
     }
   });

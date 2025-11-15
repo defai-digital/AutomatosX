@@ -4,11 +4,16 @@
  */
 
 import { SpecKitGenerator } from './SpecKitGenerator.js';
-import { PatternDetector, type DetectedPattern } from './PatternDetector.js';
+import { PatternDetector, type DetectedPattern as DetectorPattern } from './PatternDetector.js';
 import type {
   GenerateOptions,
   GenerateResult,
   AnalysisResult,
+  AnalyzedFile,
+  ArchitecturalInsight,
+  DetectedPattern,
+  PatternLocation,
+  CodeExample,
 } from '../types/speckit.types.js';
 
 export interface ADRGenerateOptions extends GenerateOptions {
@@ -35,36 +40,75 @@ export class ADRGenerator extends SpecKitGenerator<ADRGenerateOptions> {
     // Use PatternDetector to find patterns
     const detector = new PatternDetector(this.searchCode.bind(this));
 
-    let patterns: DetectedPattern[];
+    let detectorPatterns: DetectorPattern[];
     if (options.pattern) {
       // Detect specific pattern
       const result = await detector.detect(options.pattern);
-      patterns = result ? [result] : [];
+      detectorPatterns = result ? [result] : [];
     } else {
       // Detect all patterns
-      patterns = await detector.detectAll();
+      detectorPatterns = await detector.detectAll();
     }
 
     this.log(
       options,
-      `Found ${patterns.length} architectural patterns`
+      `Found ${detectorPatterns.length} architectural patterns`
     );
 
+    // Convert file paths to AnalyzedFile objects
+    const uniqueFiles = [...new Set(detectorPatterns.flatMap((p) => p.files))];
+    const analyzedFiles: AnalyzedFile[] = uniqueFiles.map(filePath => ({
+      path: filePath,
+      language: this.inferLanguage(filePath),
+      lines: 0, // Not available from pattern detection
+      symbols: [],
+      imports: [],
+      exports: [],
+    }));
+
+    // Convert DetectorPattern to speckit.types.DetectedPattern
+    const detectedPatterns: DetectedPattern[] = detectorPatterns.map((p) => {
+      const locations: PatternLocation[] = p.files.map(file => ({
+        file,
+        line: 1,
+        context: p.description || '',
+      }));
+
+      const examples: CodeExample[] = p.examples.map(ex => ({
+        code: ex.code,
+        language: this.inferLanguage(ex.file),
+        explanation: ex.context || '',
+      }));
+
+      return {
+        type: p.type === 'design' ? 'design' : p.type === 'architectural' ? 'architectural' : 'integration',
+        name: p.name,
+        description: p.description || '',
+        locations,
+        confidence: p.confidence,
+        examples,
+      };
+    });
+
+    // Convert pattern info to ArchitecturalInsight[]
+    const architecturalInsights: ArchitecturalInsight[] = detectorPatterns.map((p) => ({
+      category: p.type === 'design' ? 'pattern' as const : 'best-practice' as const,
+      title: p.name,
+      description: p.description || `${p.name} pattern detected in ${p.files.length} files`,
+      impact: p.confidence > 0.7 ? 'high' as const : p.confidence > 0.5 ? 'medium' as const : 'low' as const,
+      recommendation: p.benefits?.[0],
+    }));
+
     return {
-      files: [...new Set(patterns.flatMap((p) => p.files))],
-      patterns,
+      files: analyzedFiles,
+      patterns: detectedPatterns,
       stats: {
-        totalPatterns: patterns.length,
-        designPatterns: patterns.filter((p) => p.type === 'design').length,
-        architecturalPatterns: patterns.filter((p) => p.type === 'architectural')
-          .length,
+        totalFiles: analyzedFiles.length,
+        totalLines: 0, // Not available from pattern detection
+        languages: this.countLanguages(analyzedFiles),
       },
       dependencies: [],
-      architecture: patterns.map((p) => ({
-        name: p.name,
-        type: p.type,
-        files: p.files,
-      })),
+      architecture: architecturalInsights,
     };
   }
 
@@ -74,15 +118,35 @@ export class ADRGenerator extends SpecKitGenerator<ADRGenerateOptions> {
   protected async detect(
     analysis: AnalysisResult,
     options: ADRGenerateOptions
-  ): Promise<DetectedPattern[]> {
-    return analysis.patterns || [];
+  ): Promise<DetectorPattern[]> {
+    // Convert back to DetectorPattern format for generateContent
+    return analysis.patterns.map(p => {
+      const files = [...new Set(p.locations.map(loc => loc.file))];
+      const examples = p.examples.map(ex => ({
+        file: files[0] || '',
+        line: 1,
+        code: ex.code,
+        context: ex.explanation,
+      }));
+
+      return {
+        name: p.name,
+        type: p.type as 'design' | 'architectural' | 'integration',
+        files,
+        examples,
+        confidence: p.confidence,
+        description: p.description,
+        benefits: [],
+        tradeoffs: [],
+      };
+    });
   }
 
   /**
    * Generate ADR content using AI
    */
   protected async generateContent(
-    patterns: DetectedPattern[],
+    patterns: DetectorPattern[],
     analysis: AnalysisResult,
     options: ADRGenerateOptions
   ): Promise<string> {
@@ -105,7 +169,7 @@ export class ADRGenerator extends SpecKitGenerator<ADRGenerateOptions> {
    * Build prompt for AI to generate ADR
    */
   private buildADRPrompt(
-    patterns: DetectedPattern[],
+    patterns: DetectorPattern[],
     analysis: AnalysisResult,
     options: ADRGenerateOptions
   ): string {
@@ -219,5 +283,39 @@ Run with specific patterns if needed:
 ax speckit adr --pattern "Singleton"
 \`\`\`
 `;
+  }
+
+  /**
+   * Infer language from file extension
+   */
+  private inferLanguage(filePath: string): string {
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    const languageMap: Record<string, string> = {
+      'ts': 'typescript',
+      'js': 'javascript',
+      'tsx': 'typescript',
+      'jsx': 'javascript',
+      'py': 'python',
+      'go': 'go',
+      'rs': 'rust',
+      'java': 'java',
+      'cpp': 'cpp',
+      'c': 'c',
+      'cs': 'csharp',
+      'rb': 'ruby',
+      'php': 'php',
+    };
+    return languageMap[ext] || 'unknown';
+  }
+
+  /**
+   * Count files by language
+   */
+  private countLanguages(files: AnalyzedFile[]): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const file of files) {
+      counts[file.language] = (counts[file.language] || 0) + 1;
+    }
+    return counts;
   }
 }

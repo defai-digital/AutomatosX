@@ -239,8 +239,8 @@ export declare const AgentSchema: z.ZodObject<{
     expertise: string[];
     allowedTools: string[];
     maxConcurrentTasks: number;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
 }, {
     name: string;
     id: string;
@@ -249,8 +249,8 @@ export declare const AgentSchema: z.ZodObject<{
     updatedAt: number;
     expertise: string[];
     allowedTools: string[];
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     maxConcurrentTasks?: number | undefined;
 }>;
 export type Agent = z.infer<typeof AgentSchema>;
@@ -270,16 +270,16 @@ export declare const CreateAgentSchema: z.ZodObject<{
     expertise: string[];
     allowedTools: string[];
     maxConcurrentTasks: number;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
 }, {
     name: string;
     id: string;
     capabilities: string[];
     expertise: string[];
     allowedTools: string[];
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     maxConcurrentTasks?: number | undefined;
 }>;
 export type CreateAgent = z.infer<typeof CreateAgentSchema>;
@@ -334,10 +334,10 @@ export declare const WorkflowSchema: z.ZodObject<{
     status: "pending" | "running" | "completed" | "failed" | "cancelled" | "paused";
     createdAt: number;
     updatedAt: number;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
     startedAt?: number | undefined;
     completedAt?: number | undefined;
+    metadata?: Record<string, unknown> | undefined;
     executionId?: string | undefined;
 }, {
     name: string;
@@ -346,10 +346,10 @@ export declare const WorkflowSchema: z.ZodObject<{
     status: "pending" | "running" | "completed" | "failed" | "cancelled" | "paused";
     createdAt: number;
     updatedAt: number;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
     startedAt?: number | undefined;
     completedAt?: number | undefined;
+    metadata?: Record<string, unknown> | undefined;
     executionId?: string | undefined;
 }>;
 export type Workflow = z.infer<typeof WorkflowSchema>;
@@ -362,14 +362,14 @@ export declare const CreateWorkflowSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     name: string;
     definition: string;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     executionId?: string | undefined;
 }, {
     name: string;
     definition: string;
-    metadata?: Record<string, unknown> | undefined;
     description?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     executionId?: string | undefined;
 }>;
 export type CreateWorkflow = z.infer<typeof CreateWorkflowSchema>;

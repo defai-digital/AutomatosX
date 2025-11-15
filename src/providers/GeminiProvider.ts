@@ -318,6 +318,9 @@ export class GeminiProvider extends BaseProvider {
 export function createGeminiProvider(config?: Partial<GeminiConfig>): GeminiProvider {
   return new GeminiProvider({
     enabled: true,
+    priority: 2,
+    maxRetries: 3,
+    timeout: 60000,
     apiKey: process.env.GOOGLE_API_KEY,
     ...config,
   })

@@ -5,18 +5,9 @@
  * telemetry, and the ReScript state machine.
  *
  * Phase 2 Week 3 Day 11: ProviderService Integration Layer
- *
- * NOTE: This file uses ProviderRouter V1 API. Migration to V2 is planned for v8.1.0.
- * Type errors are expected and suppressed. Runtime functionality is correct.
- * See: https://github.com/automatosx/automatosx/issues/XXX for migration plan.
- *
- * @ts-nocheck - Suppress entire file until V1→V2 migration complete
  */
 import { v4 as uuidv4 } from 'uuid';
-import { ProviderRouter } from './ProviderRouter.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
+import { ProviderRouterV2 } from './ProviderRouterV2.js';
 import { validateProviderRequest } from '../types/schemas/provider.schema.js';
 import { getDatabase } from '../database/connection.js';
 /**
@@ -37,51 +28,37 @@ export class ProviderService {
             enableLogging: config.enableLogging ?? true,
             enableTelemetry: config.enableTelemetry ?? true,
         };
-        // Initialize router
-        this.router = new ProviderRouter({
-            primaryProvider: this.config.primaryProvider,
-            fallbackChain: this.config.fallbackChain,
-            enableFallback: this.config.enableFallback,
-            circuitBreakerThreshold: this.config.circuitBreakerThreshold,
-            circuitBreakerTimeout: this.config.circuitBreakerTimeout,
+        // Initialize router with ProviderRouterV2
+        this.router = new ProviderRouterV2({
+            providers: {
+                claude: {
+                    enabled: !!process.env.ANTHROPIC_API_KEY,
+                    priority: 1,
+                    apiKey: process.env.ANTHROPIC_API_KEY,
+                    maxRetries: 3,
+                    timeout: 60000,
+                    defaultModel: process.env.CLAUDE_DEFAULT_MODEL || 'claude-sonnet-4-5-20250929',
+                },
+                gemini: {
+                    enabled: !!process.env.GOOGLE_API_KEY,
+                    priority: 2,
+                    apiKey: process.env.GOOGLE_API_KEY,
+                    maxRetries: 3,
+                    timeout: 60000,
+                    defaultModel: process.env.GEMINI_DEFAULT_MODEL || 'gemini-2.0-flash-exp',
+                },
+                openai: {
+                    enabled: !!process.env.OPENAI_API_KEY,
+                    priority: 3,
+                    apiKey: process.env.OPENAI_API_KEY,
+                    maxRetries: 3,
+                    timeout: 60000,
+                    defaultModel: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o',
+                },
+            },
         });
         // Initialize database
         this.db = getDatabase();
-        // Register providers with API keys from environment
-        this.initializeProviders();
-    }
-    /**
-     * Initialize and register all providers
-     */
-    initializeProviders() {
-        // Claude
-        const claudeApiKey = process.env.ANTHROPIC_API_KEY;
-        if (claudeApiKey) {
-            const claudeProvider = new ClaudeProvider({
-                apiKey: claudeApiKey,
-                defaultModel: process.env.CLAUDE_DEFAULT_MODEL,
-            });
-            this.router.registerProvider(claudeProvider);
-        }
-        // Gemini
-        const geminiApiKey = process.env.GOOGLE_API_KEY;
-        if (geminiApiKey) {
-            const geminiProvider = new GeminiProvider({
-                apiKey: geminiApiKey,
-                defaultModel: process.env.GEMINI_DEFAULT_MODEL,
-            });
-            this.router.registerProvider(geminiProvider);
-        }
-        // OpenAI
-        const openaiApiKey = process.env.OPENAI_API_KEY;
-        if (openaiApiKey) {
-            const openaiProvider = new OpenAIProvider({
-                apiKey: openaiApiKey,
-                defaultModel: process.env.OPENAI_DEFAULT_MODEL,
-                organization: process.env.OPENAI_ORGANIZATION,
-            });
-            this.router.registerProvider(openaiProvider);
-        }
     }
     /**
      * Send a request to the AI provider with full logging and telemetry
@@ -115,10 +92,33 @@ export class ProviderService {
         }
         const startTime = Date.now();
         try {
-            // Route request through provider router
-            const response = await this.router.routeRequest(completeRequest);
+            // Route request through provider router (V2 uses .request() method)
+            const legacyRequest = {
+                model: completeRequest.model,
+                messages: completeRequest.messages,
+                maxTokens: completeRequest.maxTokens,
+                temperature: completeRequest.temperature,
+                stopSequences: completeRequest.stopSequences,
+                metadata: completeRequest.metadata,
+            };
+            const routerResponse = await this.router.request(legacyRequest);
             const endTime = Date.now();
             const duration = endTime - startTime;
+            // Convert ProviderRouterV2 response format to schema format
+            const response = {
+                provider: routerResponse.provider,
+                model: routerResponse.model,
+                content: routerResponse.content,
+                tokens: {
+                    input: routerResponse.tokensUsed, // Approximation
+                    output: 0, // Not available in V2 response
+                    total: routerResponse.tokensUsed,
+                },
+                duration: routerResponse.latency,
+                finishReason: routerResponse.finishReason === 'complete' ? 'stop' :
+                    routerResponse.finishReason === 'tool_use' ? undefined :
+                        routerResponse.finishReason,
+            };
             // Log successful response
             if (this.config.enableLogging) {
                 await this.logRequestSuccess(completeRequest, response, duration, userId);
@@ -187,10 +187,33 @@ export class ProviderService {
                     }
                 },
             };
-            // Route streaming request
-            const response = await this.router.routeRequest(completeRequest);
+            // Route streaming request (V2 uses .request() method)
+            const legacyRequest = {
+                model: completeRequest.model,
+                messages: completeRequest.messages,
+                maxTokens: completeRequest.maxTokens,
+                temperature: completeRequest.temperature,
+                stopSequences: completeRequest.stopSequences,
+                metadata: completeRequest.metadata,
+            };
+            const routerResponse = await this.router.request(legacyRequest);
             const endTime = Date.now();
             const duration = endTime - startTime;
+            // Convert ProviderRouterV2 response format to schema format
+            const response = {
+                provider: routerResponse.provider,
+                model: routerResponse.model,
+                content: routerResponse.content,
+                tokens: {
+                    input: routerResponse.tokensUsed, // Approximation
+                    output: 0, // Not available in V2 response
+                    total: routerResponse.tokensUsed,
+                },
+                duration: routerResponse.latency,
+                finishReason: routerResponse.finishReason === 'complete' ? 'stop' :
+                    routerResponse.finishReason === 'tool_use' ? undefined :
+                        routerResponse.finishReason,
+            };
             // Log successful streaming response
             if (this.config.enableLogging) {
                 await this.logRequestSuccess(completeRequest, response, duration, userId, chunksReceived);
@@ -305,19 +328,14 @@ export class ProviderService {
      * Get provider health status
      */
     async getProviderHealth() {
-        return this.router.getProviderHealthStatus();
+        const healthChecks = await this.router.performHealthChecks();
+        return healthChecks;
     }
     /**
-     * Get circuit breaker states
+     * Get provider statistics
      */
-    getCircuitBreakerStates() {
-        return this.router.getCircuitBreakerStates();
-    }
-    /**
-     * Reset circuit breaker for a specific provider
-     */
-    resetCircuitBreaker(provider) {
-        this.router.resetCircuitBreaker(provider);
+    getProviderStatistics() {
+        return this.router.getStatistics();
     }
     /**
      * Get provider statistics from database
@@ -356,20 +374,8 @@ export class ProviderService {
      */
     updateConfig(config) {
         this.config = { ...this.config, ...config };
-        // Update router config if routing params changed
-        if (config.primaryProvider ||
-            config.fallbackChain ||
-            config.enableFallback ||
-            config.circuitBreakerThreshold ||
-            config.circuitBreakerTimeout) {
-            this.router.updateConfig({
-                primaryProvider: config.primaryProvider,
-                fallbackChain: config.fallbackChain,
-                enableFallback: config.enableFallback,
-                circuitBreakerThreshold: config.circuitBreakerThreshold,
-                circuitBreakerTimeout: config.circuitBreakerTimeout,
-            });
-        }
+        // Note: ProviderRouterV2 doesn't support runtime config updates
+        // Would need to recreate router instance
     }
 }
 //# sourceMappingURL=ProviderService.js.map

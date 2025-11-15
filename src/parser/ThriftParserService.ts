@@ -29,8 +29,8 @@ export class ThriftParserService extends BaseLanguageParser {
   readonly language = 'thrift';
   readonly extensions = ['.thrift'];
 
-  protected getGrammar(): Parser.Language {
-    return Thrift as Parser.Language;
+  constructor() {
+    super(Thrift as Parser.Language);
   }
 
   protected extractSymbol(node: Parser.SyntaxNode): Symbol | null {
@@ -244,12 +244,9 @@ export class ThriftParserService extends BaseLanguageParser {
 
       return {
         source: path,
-        symbols: [],
+        imported: [],
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
-        metadata: {
-          importType: 'include',
-        },
       };
     }
 
@@ -261,12 +258,9 @@ export class ThriftParserService extends BaseLanguageParser {
 
       return {
         source: path,
-        symbols: [],
+        imported: [],
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
-        metadata: {
-          importType: 'cpp_include',
-        },
       };
     }
 

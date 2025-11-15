@@ -26,8 +26,8 @@ export class PuppetParserService extends BaseLanguageParser {
   readonly language = 'puppet';
   readonly extensions = ['.pp'];
 
-  protected getGrammar(): Parser.Language {
-    return Puppet as Parser.Language;
+  constructor() {
+    super(Puppet as Parser.Language);
   }
 
   protected extractSymbol(node: Parser.SyntaxNode): Symbol | null {
@@ -184,9 +184,6 @@ export class PuppetParserService extends BaseLanguageParser {
         callee: functionName,
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
-        metadata: {
-          args,
-        },
       };
     }
     return null;
@@ -199,12 +196,9 @@ export class PuppetParserService extends BaseLanguageParser {
 
       return {
         source: nameNode.text,
-        symbols: [],
+        imported: [],
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
-        metadata: {
-          importType: 'include',
-        },
       };
     }
 
@@ -214,12 +208,9 @@ export class PuppetParserService extends BaseLanguageParser {
 
       return {
         source: nameNode.text,
-        symbols: [],
+        imported: [],
         line: node.startPosition.row + 1,
         column: node.startPosition.column,
-        metadata: {
-          importType: 'require',
-        },
       };
     }
 

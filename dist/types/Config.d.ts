@@ -65,20 +65,20 @@ export declare const IndexingConfigSchema: z.ZodObject<{
     followSymlinks: z.ZodDefault<z.ZodBoolean>;
     respectGitignore: z.ZodDefault<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
-    followSymlinks: boolean;
     excludePatterns: string[];
     maxFileSize: number;
     chunkSize: number;
     chunkOverlap: number;
     includePatterns: string[];
+    followSymlinks: boolean;
     respectGitignore: boolean;
 }, {
-    followSymlinks?: boolean | undefined;
     excludePatterns?: string[] | undefined;
     maxFileSize?: number | undefined;
     chunkSize?: number | undefined;
     chunkOverlap?: number | undefined;
     includePatterns?: string[] | undefined;
+    followSymlinks?: boolean | undefined;
     respectGitignore?: boolean | undefined;
 }>;
 export type IndexingConfig = z.infer<typeof IndexingConfigSchema>;
@@ -206,20 +206,20 @@ export declare const AutomatosXConfigSchema: z.ZodObject<{
         followSymlinks: z.ZodDefault<z.ZodBoolean>;
         respectGitignore: z.ZodDefault<z.ZodBoolean>;
     }, "strip", z.ZodTypeAny, {
-        followSymlinks: boolean;
         excludePatterns: string[];
         maxFileSize: number;
         chunkSize: number;
         chunkOverlap: number;
         includePatterns: string[];
+        followSymlinks: boolean;
         respectGitignore: boolean;
     }, {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     }>;
     database: z.ZodObject<{
@@ -318,12 +318,12 @@ export declare const AutomatosXConfigSchema: z.ZodObject<{
         maxFileSize?: number | undefined;
     }>;
     indexing: {
-        followSymlinks: boolean;
         excludePatterns: string[];
         maxFileSize: number;
         chunkSize: number;
         chunkOverlap: number;
         includePatterns: string[];
+        followSymlinks: boolean;
         respectGitignore: boolean;
     };
 }, {
@@ -358,12 +358,12 @@ export declare const AutomatosXConfigSchema: z.ZodObject<{
         maxLogSize?: number | undefined;
     };
     indexing: {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     };
     version?: string | undefined;
@@ -427,20 +427,20 @@ export declare const PartialConfigSchema: z.ZodObject<{
         followSymlinks: z.ZodOptional<z.ZodBoolean>;
         respectGitignore: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     }, {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     }>>;
     database: z.ZodOptional<z.ZodObject<{
@@ -539,12 +539,12 @@ export declare const PartialConfigSchema: z.ZodObject<{
         maxFileSize?: number | undefined;
     }> | undefined;
     indexing?: {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     } | undefined;
 }, {
@@ -586,12 +586,12 @@ export declare const PartialConfigSchema: z.ZodObject<{
         maxFileSize?: number | undefined;
     }> | undefined;
     indexing?: {
-        followSymlinks?: boolean | undefined;
         excludePatterns?: string[] | undefined;
         maxFileSize?: number | undefined;
         chunkSize?: number | undefined;
         chunkOverlap?: number | undefined;
         includePatterns?: string[] | undefined;
+        followSymlinks?: boolean | undefined;
         respectGitignore?: boolean | undefined;
     } | undefined;
 }>;

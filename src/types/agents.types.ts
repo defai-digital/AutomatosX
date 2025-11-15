@@ -29,12 +29,13 @@ export type AgentType =
   | 'database'
   | 'api'
   | 'testing'
-  | 'infrastructure';
+  | 'infrastructure'
+  | 'performance';
 
 /**
  * Task priority levels
  */
-export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+export type TaskPriority = 'low' | 'normal' | 'medium' | 'high' | 'critical';
 
 /**
  * Task status

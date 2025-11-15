@@ -283,14 +283,14 @@ export declare const ParserErrorSchema: z.ZodObject<{
     message: string;
     severity: "error" | "info" | "warning";
     column?: number | undefined;
-    line?: number | undefined;
     code?: string | undefined;
+    line?: number | undefined;
 }, {
     message: string;
     column?: number | undefined;
-    line?: number | undefined;
     code?: string | undefined;
     severity?: "error" | "info" | "warning" | undefined;
+    line?: number | undefined;
 }>;
 export type ParserError = z.infer<typeof ParserErrorSchema>;
 /**

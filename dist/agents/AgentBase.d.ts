@@ -23,6 +23,10 @@ export declare abstract class AgentBase extends EventEmitter {
      */
     getMetadata(): AgentMetadata;
     /**
+     * Get agent name
+     */
+    getName(): string;
+    /**
      * Execute a task
      * This is the main entry point for agent execution
      */

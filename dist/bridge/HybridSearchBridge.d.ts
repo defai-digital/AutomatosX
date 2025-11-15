@@ -32,6 +32,7 @@ export interface TSSearchResult {
  * Search options (TypeScript-side)
  */
 export interface TSSearchOptions {
+    conversationId?: string;
     limit?: number;
     minScore?: number;
     weights?: {

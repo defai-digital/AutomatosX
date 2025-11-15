@@ -299,6 +299,9 @@ export class ClaudeProvider extends BaseProvider {
 export function createClaudeProvider(config?: Partial<ClaudeConfig>): ClaudeProvider {
   return new ClaudeProvider({
     enabled: true,
+    priority: 1,
+    maxRetries: 3,
+    timeout: 60000,
     apiKey: process.env.ANTHROPIC_API_KEY,
     ...config,
   })

@@ -252,12 +252,14 @@ export class IterateEngine {
 
       if (checkpointId) {
         // Resume from checkpoint
-        result = await this.workflowEngine.resumeFromCheckpoint(checkpointId);
+        result = await this.workflowEngine.resumeWorkflow(checkpointId);
       } else {
         // Execute from start with strategy config
-        result = await this.workflowEngine.executeWorkflow(workflowPath, {
-          ...strategy.config,
-          _iterationNumber: iteration
+        result = await this.workflowEngine.executeWorkflowFromFile(workflowPath, {
+          context: {
+            ...strategy.config,
+            _iterationNumber: iteration
+          }
         });
       }
 
@@ -288,23 +290,18 @@ export class IterateEngine {
 
   /**
    * Create checkpoint
+   *
+   * TODO: Checkpointing in IterateEngine requires access to the WorkflowStateMachine
+   * which is only available inside WorkflowEngineV2. For now, checkpointing is disabled
+   * in iterate mode. Future improvement: expose checkpoint API on WorkflowEngineV2.
    */
   private async createCheckpoint(
     workflowPath: string,
     result: IterationResult
   ): Promise<string> {
-    const checkpoint = await this.checkpointService.createCheckpoint({
-      workflowPath,
-      status: result.success ? 'running' : 'failed',
-      progress: result.progress.completionPercent,
-      metadata: {
-        iteration: result.iteration,
-        strategy: result.strategy.name,
-        timestamp: new Date().toISOString()
-      }
-    });
-
-    return checkpoint.id;
+    // Disabled - CheckpointServiceV2 requires state machine access
+    // Return a placeholder checkpoint ID
+    return `iterate-checkpoint-${Date.now()}`;
   }
 
   /**

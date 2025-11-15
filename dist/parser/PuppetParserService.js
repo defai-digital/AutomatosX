@@ -23,8 +23,8 @@ import { BaseLanguageParser, SymbolKindValue } from './LanguageParser.js';
 export class PuppetParserService extends BaseLanguageParser {
     language = 'puppet';
     extensions = ['.pp'];
-    getGrammar() {
-        return Puppet;
+    constructor() {
+        super(Puppet);
     }
     extractSymbol(node) {
         switch (node.type) {
@@ -167,9 +167,6 @@ export class PuppetParserService extends BaseLanguageParser {
                 callee: functionName,
                 line: node.startPosition.row + 1,
                 column: node.startPosition.column,
-                metadata: {
-                    args,
-                },
             };
         }
         return null;
@@ -181,12 +178,9 @@ export class PuppetParserService extends BaseLanguageParser {
                 return null;
             return {
                 source: nameNode.text,
-                symbols: [],
+                imported: [],
                 line: node.startPosition.row + 1,
                 column: node.startPosition.column,
-                metadata: {
-                    importType: 'include',
-                },
             };
         }
         if (node.type === 'require') {
@@ -195,12 +189,9 @@ export class PuppetParserService extends BaseLanguageParser {
                 return null;
             return {
                 source: nameNode.text,
-                symbols: [],
+                imported: [],
                 line: node.startPosition.row + 1,
                 column: node.startPosition.column,
-                metadata: {
-                    importType: 'require',
-                },
             };
         }
         return null;

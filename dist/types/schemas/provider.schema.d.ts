@@ -396,13 +396,13 @@ export declare const RetryConfigSchema: z.ZodObject<{
     strategy: z.ZodDefault<z.ZodEnum<["exponential", "linear", "constant"]>>;
     backoffMultiplier: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    strategy: "constant" | "exponential" | "linear";
+    strategy: "constant" | "linear" | "exponential";
     initialDelayMs: number;
     maxDelayMs: number;
     backoffMultiplier: number;
     maxAttempts: number;
 }, {
-    strategy?: "constant" | "exponential" | "linear" | undefined;
+    strategy?: "constant" | "linear" | "exponential" | undefined;
     initialDelayMs?: number | undefined;
     maxDelayMs?: number | undefined;
     backoffMultiplier?: number | undefined;

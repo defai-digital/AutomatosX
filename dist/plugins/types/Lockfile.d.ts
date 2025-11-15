@@ -78,21 +78,15 @@ export declare const LockfileSchema: z.ZodObject<{
     }>;
     lockfileVersion: number;
     name?: string | undefined;
+    version?: string | undefined;
     metadata?: {
         generatedAt: string;
         generatedBy: string;
         nodeVersion?: string | undefined;
         automatosxVersion?: string | undefined;
     } | undefined;
-    version?: string | undefined;
 }, {
     name?: string | undefined;
-    metadata?: {
-        generatedAt: string;
-        generatedBy?: string | undefined;
-        nodeVersion?: string | undefined;
-        automatosxVersion?: string | undefined;
-    } | undefined;
     version?: string | undefined;
     dependencies?: Record<string, {
         version: string;
@@ -101,6 +95,12 @@ export declare const LockfileSchema: z.ZodObject<{
         dependencies?: Record<string, string> | undefined;
         optional?: boolean | undefined;
     }> | undefined;
+    metadata?: {
+        generatedAt: string;
+        generatedBy?: string | undefined;
+        nodeVersion?: string | undefined;
+        automatosxVersion?: string | undefined;
+    } | undefined;
     lockfileVersion?: number | undefined;
 }>;
 export type Lockfile = z.infer<typeof LockfileSchema>;

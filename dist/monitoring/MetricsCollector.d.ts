@@ -36,6 +36,10 @@ export declare class MetricsCollector extends EventEmitter {
         tenantId?: string;
     }): void;
     /**
+     * Record a metric (alias for record() for compatibility)
+     */
+    recordMetric(name: string, value: number, labels?: Record<string, string | number>): void;
+    /**
      * Flush metrics buffer to database
      */
     flush(): void;

@@ -179,7 +179,9 @@ export class CheckpointServiceV2 {
     }
 
     // Deserialize ReScript state machine
-    const machineCheckpoint: Checkpoint = JSON.parse(machineStateJson);
+    const machineCheckpoint: Checkpoint = typeof machineStateJson === 'string'
+      ? JSON.parse(machineStateJson)
+      : machineStateJson as Checkpoint;
     const machine = WorkflowStateMachineBridge.deserialize(machineCheckpoint);
 
     if (!machine) {

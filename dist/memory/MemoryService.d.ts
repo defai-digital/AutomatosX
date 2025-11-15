@@ -3,7 +3,7 @@
  * Orchestrates ConversationDAO and MessageDAO operations
  */
 import type { Database } from 'better-sqlite3';
-import { type Conversation, type Message, type CreateConversation, type CreateMessage, type ConversationWithMessages, type MemorySearchOptions, type MemorySearchResult, type ConversationListOptions, type ConversationListResult, type MessageListOptions, type MessageListResult, type MemoryStats } from '../types/schemas/memory.schema.js';
+import { type Conversation, type Message, type MessageRole, type CreateConversation, type CreateMessage, type ConversationWithMessages, type MemorySearchOptions, type MemorySearchResult, type ConversationListOptions, type ConversationListResult, type MessageListOptions, type MessageListResult, type MemoryStats } from '../types/schemas/memory.schema.js';
 export interface ConversationSearchOptions {
     query?: string;
     agentId?: string;
@@ -215,5 +215,19 @@ export declare class MemoryService {
         coveragePercent: number;
         currentModelVersion: string | null;
     }>;
+    /**
+     * Search memory - simplified interface for agent system
+     * Delegates to searchMessages with hybrid search
+     */
+    search(query: string): Promise<any[]>;
+    /**
+     * Create memory entry - simplified interface for agent system
+     * Delegates to addMessage
+     */
+    createEntry(data: {
+        content: string;
+        conversationId: string;
+        role?: MessageRole;
+    }): Promise<void>;
 }
 //# sourceMappingURL=MemoryService.d.ts.map

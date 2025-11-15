@@ -8,11 +8,11 @@ import { z } from 'zod';
 /**
  * Agent specialization types
  */
-export type AgentType = 'backend' | 'frontend' | 'security' | 'quality' | 'devops' | 'architecture' | 'data' | 'product' | 'datascience' | 'mobile' | 'cto' | 'ceo' | 'writer' | 'researcher' | 'standards' | 'database' | 'api' | 'testing' | 'infrastructure';
+export type AgentType = 'backend' | 'frontend' | 'security' | 'quality' | 'devops' | 'architecture' | 'data' | 'product' | 'datascience' | 'mobile' | 'cto' | 'ceo' | 'writer' | 'researcher' | 'standards' | 'database' | 'api' | 'testing' | 'infrastructure' | 'performance';
 /**
  * Task priority levels
  */
-export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+export type TaskPriority = 'low' | 'normal' | 'medium' | 'high' | 'critical';
 /**
  * Task status
  */
@@ -150,7 +150,7 @@ export declare const TaskSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     description: string;
-    priority: "low" | "medium" | "high" | "critical";
+    priority: "medium" | "low" | "high" | "critical";
     status: "pending" | "running" | "completed" | "failed" | "cancelled";
     createdAt: number;
     assignedAgent?: string | undefined;
@@ -161,7 +161,7 @@ export declare const TaskSchema: z.ZodObject<{
 }, {
     id: string;
     description: string;
-    priority: "low" | "medium" | "high" | "critical";
+    priority: "medium" | "low" | "high" | "critical";
     status: "pending" | "running" | "completed" | "failed" | "cancelled";
     createdAt: number;
     assignedAgent?: string | undefined;
@@ -232,39 +232,39 @@ export declare const TaskResultSchema: z.ZodObject<{
         type: "document" | "data" | "file" | "code" | "diagram";
         name: string;
         path?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
         content?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
     }, {
         type: "document" | "data" | "file" | "code" | "diagram";
         name: string;
         path?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
         content?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
     }>, "many">>;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
     success: boolean;
     data?: unknown;
-    metadata?: Record<string, unknown> | undefined;
     message?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     artifacts?: {
         type: "document" | "data" | "file" | "code" | "diagram";
         name: string;
         path?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
         content?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
     }[] | undefined;
 }, {
     success: boolean;
     data?: unknown;
-    metadata?: Record<string, unknown> | undefined;
     message?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
     artifacts?: {
         type: "document" | "data" | "file" | "code" | "diagram";
         name: string;
         path?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
         content?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
     }[] | undefined;
 }>;
 //# sourceMappingURL=agents.types.d.ts.map

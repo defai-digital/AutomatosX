@@ -36,6 +36,10 @@ export declare class IterateEngine {
     private executeIteration;
     /**
      * Create checkpoint
+     *
+     * TODO: Checkpointing in IterateEngine requires access to the WorkflowStateMachine
+     * which is only available inside WorkflowEngineV2. For now, checkpointing is disabled
+     * in iterate mode. Future improvement: expose checkpoint API on WorkflowEngineV2.
      */
     private createCheckpoint;
     /**

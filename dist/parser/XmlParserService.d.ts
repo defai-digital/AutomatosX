@@ -21,7 +21,7 @@ import { BaseLanguageParser, Symbol, Call, Import } from './LanguageParser.js';
 export declare class XmlParserService extends BaseLanguageParser {
     readonly language = "xml";
     readonly extensions: string[];
-    protected getGrammar(): Parser.Language;
+    constructor();
     protected extractSymbol(node: Parser.SyntaxNode): Symbol | null;
     /**
      * Extract XML element

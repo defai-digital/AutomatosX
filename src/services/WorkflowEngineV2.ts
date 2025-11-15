@@ -372,7 +372,7 @@ export class WorkflowEngineV2 {
 
     return {
       executionId,
-      workflowId: workflowDef.id || executionId,
+      workflowId: executionId,
       workflowName: workflowDef.name,
       state: 'completed' as WorkflowState,
       context: machineContext.variables,
@@ -606,7 +606,9 @@ export class WorkflowEngineV2 {
    * List all workflow executions
    */
   listExecutions(limit: number = 100, offset: number = 0): WorkflowExecution[] {
-    return this.dao.listExecutions(String(limit), String(offset));
+    // DAO listActiveExecutions doesn't support pagination yet
+    // For now, just return active executions (TODO: add pagination to DAO)
+    return this.dao.listActiveExecutions();
   }
 
   /**

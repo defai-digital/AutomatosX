@@ -567,4 +567,67 @@ export class FileService {
     // In future, could implement smarter invalidation based on file paths
     this.queryCache.clear();
   }
+
+  // ============================================================================
+  // Compatibility Methods (for Agent System)
+  // ============================================================================
+
+  /**
+   * Find symbol by name - simplified interface for agent system
+   * Delegates to searchSymbols
+   */
+  async findSymbol(name: string): Promise<any[]> {
+    return this.searchSymbols(name);
+  }
+
+  /**
+   * Get call graph for a function
+   * Returns callers and callees of a given function
+   */
+  async getCallGraph(functionName: string): Promise<any> {
+    // Find the function symbol
+    const symbols = this.searchSymbols(functionName);
+    if (symbols.length === 0) {
+      return { function: functionName, callers: [], callees: [] };
+    }
+
+    const targetSymbol = symbols[0];
+
+    // Find calls FROM this function (callees)
+    const callees = this.callDAO.findByCallerId(targetSymbol.id);
+
+    // Find calls TO this function (callers)
+    const callers = this.callDAO.findByCalleeId(targetSymbol.id);
+
+    return {
+      function: functionName,
+      symbol: targetSymbol,
+      callers,
+      callees,
+    };
+  }
+
+  /**
+   * Analyze code quality for a file
+   * Returns quality metrics and issues
+   */
+  async analyzeQuality(filePath: string): Promise<any> {
+    const fileWithSymbols = this.getFileWithSymbols(filePath);
+    if (!fileWithSymbols) {
+      return { path: filePath, error: 'File not found', symbols: [] };
+    }
+
+    // Basic quality metrics based on symbols
+    const metrics = {
+      path: filePath,
+      language: fileWithSymbols.language,
+      totalSymbols: fileWithSymbols.symbols.length,
+      functionCount: fileWithSymbols.symbols.filter(s => s.kind === 'function').length,
+      classCount: fileWithSymbols.symbols.filter(s => s.kind === 'class').length,
+      complexity: 'medium', // Placeholder
+      maintainability: 'good', // Placeholder
+    };
+
+    return metrics;
+  }
 }

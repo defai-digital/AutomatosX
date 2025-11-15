@@ -126,7 +126,7 @@ export abstract class SpecKitGenerator<TOptions extends GenerateOptions = Genera
       const generationTime = endTime - startTime;
 
       const metadata: GenerationMetadata = {
-        generator: this.generatorName.toLowerCase(),
+        generator: this.generatorName.toLowerCase() as 'adr' | 'prd' | 'api' | 'test' | 'migration',
         timestamp: new Date(),
         filesAnalyzed: analysis.files.length,
         patternsDetected: patterns.length,
@@ -161,7 +161,7 @@ export abstract class SpecKitGenerator<TOptions extends GenerateOptions = Genera
         outputPath: options.outputPath,
         content: '',
         metadata: {
-          generator: this.generatorName,
+          generator: this.generatorName.toLowerCase() as 'adr' | 'prd' | 'api' | 'test' | 'migration',
           timestamp: new Date(),
           filesAnalyzed: 0,
           patternsDetected: 0,

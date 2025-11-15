@@ -5,12 +5,6 @@
  * telemetry, and the ReScript state machine.
  *
  * Phase 2 Week 3 Day 11: ProviderService Integration Layer
- *
- * NOTE: This file uses ProviderRouter V1 API. Migration to V2 is planned for v8.1.0.
- * Type errors are expected and suppressed. Runtime functionality is correct.
- * See: https://github.com/automatosx/automatosx/issues/XXX for migration plan.
- *
- * @ts-nocheck - Suppress entire file until V1→V2 migration complete
  */
 import type { ProviderRequest, ProviderResponse, ProviderType, StreamChunk } from '../types/schemas/provider.schema.js';
 export interface ProviderServiceConfig {
@@ -36,10 +30,6 @@ export declare class ProviderService {
     private config;
     private db;
     constructor(config?: ProviderServiceConfig);
-    /**
-     * Initialize and register all providers
-     */
-    private initializeProviders;
     /**
      * Send a request to the AI provider with full logging and telemetry
      */
@@ -69,13 +59,9 @@ export declare class ProviderService {
      */
     getProviderHealth(): Promise<Map<ProviderType, boolean>>;
     /**
-     * Get circuit breaker states
+     * Get provider statistics
      */
-    getCircuitBreakerStates(): any;
-    /**
-     * Reset circuit breaker for a specific provider
-     */
-    resetCircuitBreaker(provider: ProviderType): void;
+    getProviderStatistics(): Record<string, any>;
     /**
      * Get provider statistics from database
      */

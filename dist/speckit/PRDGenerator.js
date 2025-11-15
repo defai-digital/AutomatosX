@@ -54,38 +54,45 @@ export class PRDGenerator extends SpecKitGenerator {
             feature.files.forEach(f => files.add(f));
             feature.dependencies.forEach(d => dependencies.add(d));
         }
-        return {
-            files: Array.from(files).map(path => ({
-                path,
-                language: this.inferLanguage(path),
-                lines: 0,
-                symbols: [],
-                imports: [],
-                exports: [],
-            })),
-            patterns: features.map(f => ({
-                type: 'feature',
+        const analyzedFiles = Array.from(files).map(path => ({
+            path,
+            language: this.inferLanguage(path),
+            lines: 0,
+            symbols: [],
+            imports: [],
+            exports: [],
+        }));
+        const detectedPatterns = features.map(f => {
+            const locations = f.files.map(file => ({
+                file,
+                line: 1,
+                context: f.category,
+            }));
+            const examples = [];
+            return {
+                type: f.category, // Use category as type
                 name: f.name,
                 description: f.description,
-                locations: f.files.map(file => ({
-                    file,
-                    line: 1,
-                    context: f.category,
-                })),
+                locations,
                 confidence: f.confidence,
-                examples: [],
-            })),
+                examples,
+            };
+        });
+        const deps = Array.from(dependencies).map(name => ({
+            name,
+            version: 'unknown',
+            type: 'npm',
+            usageCount: 1,
+        }));
+        return {
+            files: analyzedFiles,
+            patterns: detectedPatterns,
             stats: {
                 totalFiles: files.size,
                 totalLines: 0,
                 languages: {},
             },
-            dependencies: Array.from(dependencies).map(name => ({
-                name,
-                version: 'unknown',
-                type: 'npm',
-                usageCount: 1,
-            })),
+            dependencies: deps,
             architecture: [],
         };
     }
@@ -127,11 +134,7 @@ export class PRDGenerator extends SpecKitGenerator {
         // Build AI prompt
         const prompt = this.buildPRDPrompt(features, analysis, options);
         // Call AI provider
-        const content = await this.callAI(prompt, {
-            provider: options.provider,
-            temperature: 0.7,
-            maxTokens: 8000,
-        });
+        const content = await this.callAI(prompt, options);
         return content;
     }
     /**

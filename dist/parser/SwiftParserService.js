@@ -4,7 +4,7 @@
  * Swift language parser using Tree-sitter
  * Extracts symbols from Swift source code
  */
-import Swift from 'tree-sitter-swift';
+// import Swift from 'tree-sitter-swift'; // Disabled due to tree-sitter-swift installation issues on Node.js v24
 import { BaseLanguageParser } from './LanguageParser.js';
 /**
  * SwiftParserService - Extracts symbols from Swift code
@@ -22,7 +22,8 @@ export class SwiftParserService extends BaseLanguageParser {
     language = 'swift';
     extensions = ['.swift'];
     constructor() {
-        super(Swift);
+        // super(Swift as Parser.Language); // Disabled due to tree-sitter-swift installation issues on Node.js v24
+        throw new Error('SwiftParserService is currently disabled due to tree-sitter-swift installation issues on Node.js v24');
     }
     /**
      * Extract symbol from AST node

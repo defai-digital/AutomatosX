@@ -25,8 +25,8 @@ import { BaseLanguageParser, SymbolKindValue } from './LanguageParser.js';
 export class ThriftParserService extends BaseLanguageParser {
     language = 'thrift';
     extensions = ['.thrift'];
-    getGrammar() {
-        return Thrift;
+    constructor() {
+        super(Thrift);
     }
     extractSymbol(node) {
         switch (node.type) {
@@ -219,12 +219,9 @@ export class ThriftParserService extends BaseLanguageParser {
             const path = pathNode.text.replace(/['"]/g, '');
             return {
                 source: path,
-                symbols: [],
+                imported: [],
                 line: node.startPosition.row + 1,
                 column: node.startPosition.column,
-                metadata: {
-                    importType: 'include',
-                },
             };
         }
         if (node.type === 'cpp_include') {
@@ -234,12 +231,9 @@ export class ThriftParserService extends BaseLanguageParser {
             const path = pathNode.text.replace(/['"]/g, '');
             return {
                 source: path,
-                symbols: [],
+                imported: [],
                 line: node.startPosition.row + 1,
                 column: node.startPosition.column,
-                metadata: {
-                    importType: 'cpp_include',
-                },
             };
         }
         return null;

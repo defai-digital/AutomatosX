@@ -557,5 +557,31 @@ export class MemoryService {
     async getEmbeddingStats() {
         return this.embeddingDAO.getStats();
     }
+    // ============================================================================
+    // Compatibility Methods (for Agent System)
+    // ============================================================================
+    /**
+     * Search memory - simplified interface for agent system
+     * Delegates to searchMessages with hybrid search
+     */
+    async search(query) {
+        const result = await this.searchMessages({
+            query,
+            limit: 10,
+            mode: 'hybrid',
+        });
+        return result.messages;
+    }
+    /**
+     * Create memory entry - simplified interface for agent system
+     * Delegates to addMessage
+     */
+    async createEntry(data) {
+        await this.addMessage({
+            conversationId: data.conversationId,
+            role: data.role || 'user',
+            content: data.content,
+        });
+    }
 }
 //# sourceMappingURL=MemoryService.js.map

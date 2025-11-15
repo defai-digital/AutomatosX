@@ -23,7 +23,7 @@ import { BaseLanguageParser, Symbol, Call, Import } from './LanguageParser.js';
 export declare class PuppetParserService extends BaseLanguageParser {
     readonly language = "puppet";
     readonly extensions: string[];
-    protected getGrammar(): Parser.Language;
+    constructor();
     protected extractSymbol(node: Parser.SyntaxNode): Symbol | null;
     /**
      * Extract Puppet class definition

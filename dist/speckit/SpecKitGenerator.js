@@ -124,7 +124,7 @@ export class SpecKitGenerator {
                 outputPath: options.outputPath,
                 content: '',
                 metadata: {
-                    generator: this.generatorName,
+                    generator: this.generatorName.toLowerCase(),
                     timestamp: new Date(),
                     filesAnalyzed: 0,
                     patternsDetected: 0,

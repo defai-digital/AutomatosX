@@ -16,39 +16,92 @@ export class ADRGenerator extends SpecKitGenerator {
         this.log(options, 'Analyzing codebase for architectural patterns...');
         // Use PatternDetector to find patterns
         const detector = new PatternDetector(this.searchCode.bind(this));
-        let patterns;
+        let detectorPatterns;
         if (options.pattern) {
             // Detect specific pattern
             const result = await detector.detect(options.pattern);
-            patterns = result ? [result] : [];
+            detectorPatterns = result ? [result] : [];
         }
         else {
             // Detect all patterns
-            patterns = await detector.detectAll();
+            detectorPatterns = await detector.detectAll();
         }
-        this.log(options, `Found ${patterns.length} architectural patterns`);
+        this.log(options, `Found ${detectorPatterns.length} architectural patterns`);
+        // Convert file paths to AnalyzedFile objects
+        const uniqueFiles = [...new Set(detectorPatterns.flatMap((p) => p.files))];
+        const analyzedFiles = uniqueFiles.map(filePath => ({
+            path: filePath,
+            language: this.inferLanguage(filePath),
+            lines: 0, // Not available from pattern detection
+            symbols: [],
+            imports: [],
+            exports: [],
+        }));
+        // Convert DetectorPattern to speckit.types.DetectedPattern
+        const detectedPatterns = detectorPatterns.map((p) => {
+            const locations = p.files.map(file => ({
+                file,
+                line: 1,
+                context: p.description || '',
+            }));
+            const examples = p.examples.map(ex => ({
+                code: ex.code,
+                language: this.inferLanguage(ex.file),
+                explanation: ex.context || '',
+            }));
+            return {
+                type: p.type === 'design' ? 'design' : p.type === 'architectural' ? 'architectural' : 'integration',
+                name: p.name,
+                description: p.description || '',
+                locations,
+                confidence: p.confidence,
+                examples,
+            };
+        });
+        // Convert pattern info to ArchitecturalInsight[]
+        const architecturalInsights = detectorPatterns.map((p) => ({
+            category: p.type === 'design' ? 'pattern' : 'best-practice',
+            title: p.name,
+            description: p.description || `${p.name} pattern detected in ${p.files.length} files`,
+            impact: p.confidence > 0.7 ? 'high' : p.confidence > 0.5 ? 'medium' : 'low',
+            recommendation: p.benefits?.[0],
+        }));
         return {
-            files: [...new Set(patterns.flatMap((p) => p.files))],
-            patterns,
+            files: analyzedFiles,
+            patterns: detectedPatterns,
             stats: {
-                totalPatterns: patterns.length,
-                designPatterns: patterns.filter((p) => p.type === 'design').length,
-                architecturalPatterns: patterns.filter((p) => p.type === 'architectural')
-                    .length,
+                totalFiles: analyzedFiles.length,
+                totalLines: 0, // Not available from pattern detection
+                languages: this.countLanguages(analyzedFiles),
             },
             dependencies: [],
-            architecture: patterns.map((p) => ({
-                name: p.name,
-                type: p.type,
-                files: p.files,
-            })),
+            architecture: architecturalInsights,
         };
     }
     /**
      * Detect patterns (already done in analyze, just pass through)
      */
     async detect(analysis, options) {
-        return analysis.patterns || [];
+        // Convert back to DetectorPattern format for generateContent
+        return analysis.patterns.map(p => {
+            const files = [...new Set(p.locations.map(loc => loc.file))];
+            const examples = p.examples.map(ex => ({
+                file: files[0] || '',
+                line: 1,
+                code: ex.code,
+                context: ex.explanation,
+            }));
+            return {
+                name: p.name,
+                type: p.type,
+                files,
+                examples,
+                confidence: p.confidence,
+                description: p.description,
+                benefits: [],
+                tradeoffs: [],
+            };
+        });
     }
     /**
      * Generate ADR content using AI
@@ -166,6 +219,38 @@ Run with specific patterns if needed:
 ax speckit adr --pattern "Singleton"
 \`\`\`
 `;
+    }
+    /**
+     * Infer language from file extension
+     */
+    inferLanguage(filePath) {
+        const ext = filePath.split('.').pop()?.toLowerCase() || '';
+        const languageMap = {
+            'ts': 'typescript',
+            'js': 'javascript',
+            'tsx': 'typescript',
+            'jsx': 'javascript',
+            'py': 'python',
+            'go': 'go',
+            'rs': 'rust',
+            'java': 'java',
+            'cpp': 'cpp',
+            'c': 'c',
+            'cs': 'csharp',
+            'rb': 'ruby',
+            'php': 'php',
+        };
+        return languageMap[ext] || 'unknown';
+    }
+    /**
+     * Count files by language
+     */
+    countLanguages(files) {
+        const counts = {};
+        for (const file of files) {
+            counts[file.language] = (counts[file.language] || 0) + 1;
+        }
+        return counts;
     }
 }
 //# sourceMappingURL=ADRGenerator.js.map

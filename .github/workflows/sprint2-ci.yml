@@ -176,6 +176,7 @@ jobs:
 
     env:
       CXXFLAGS: "-std=c++20 -fexceptions"
+      npm_config_msvs_version: "2022"
 
     steps:
       - name: Checkout code
@@ -193,6 +194,8 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
+        env:
+          CL: "/std:c++20"
         run: pnpm install --frozen-lockfile
 
       - name: Build ReScript core

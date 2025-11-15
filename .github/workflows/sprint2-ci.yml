@@ -48,7 +48,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          CXXFLAGS: "-std=c++20"
+          CXXFLAGS: "-std=c++20 -fexceptions"
         run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
@@ -110,7 +110,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          CXXFLAGS: "-std=c++20"
+          CXXFLAGS: "-std=c++20 -fexceptions"
         run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
@@ -172,7 +172,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          CXXFLAGS: "-std=c++20"
+          CXXFLAGS: "-std=c++20 -fexceptions"
         run: npm ci --legacy-peer-deps
 
       - name: Build ReScript core
@@ -215,7 +215,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          CXXFLAGS: "-std=c++20"
+          CXXFLAGS: "-std=c++20 -fexceptions"
         run: npm ci --legacy-peer-deps
 
       - name: Build project

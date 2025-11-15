@@ -352,7 +352,11 @@ Solidity (Ethereum), Verilog, SystemVerilog, Julia, MATLAB, Regex
 ### Installation
 
 ```bash
-npm install -g automatosx-v2
+# Install globally
+npm install -g @defai.digital/automatosx
+
+# Or use npx (no installation required)
+npx @defai.digital/automatosx@latest <command>
 ```
 
 ### Basic Usage

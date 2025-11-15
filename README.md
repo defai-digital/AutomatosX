@@ -11,9 +11,9 @@
 [![Languages](https://img.shields.io/badge/languages-45-blue)](./src/parser)
 [![Agents](https://img.shields.io/badge/agents-21-purple)](./src/agents)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-8.0.8-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-8.0.9-blue.svg)](package.json)
 
-**🎉 v8.0.8 - CLI Auto-Linking & Developer Experience**
+**🎉 v8.0.9 - Clean Installation (No Warnings)**
 
 AutomatosX is a comprehensive code intelligence platform with AI-powered workflow automation:
 - **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 45 languages

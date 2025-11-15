@@ -66,6 +66,11 @@
     "node": ">=24.0.0",
     "pnpm": ">=9.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "node-gyp": "^10.3.1"
+    }
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
     "@derekstride/tree-sitter-sql": "^0.3.11",

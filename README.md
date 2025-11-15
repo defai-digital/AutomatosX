@@ -11,9 +11,9 @@
 [![Languages](https://img.shields.io/badge/languages-45-blue)](./src/parser)
 [![Agents](https://img.shields.io/badge/agents-21-purple)](./src/agents)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-8.0.7-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-8.0.8-blue.svg)](package.json)
 
-**🎉 v8.0.7 - Security Fix & Production Ready**
+**🎉 v8.0.8 - CLI Auto-Linking & Developer Experience**
 
 AutomatosX is a comprehensive code intelligence platform with AI-powered workflow automation:
 - **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 45 languages
@@ -61,22 +61,48 @@ See [INSTALLATION.md](./INSTALLATION.md) for detailed setup instructions.
 ## 🚀 Quick Start (Development)
 
 ```bash
+# Clone the repository
+git clone https://github.com/defai-digital/automatosx.git
+cd automatosx
+
 # Install dependencies
 pnpm install
 
 # Build the project
 pnpm run build
 
-# Launch Interactive CLI
-pnpm run cli -- cli
+# Link CLI binary (makes 'ax' command available globally)
+pnpm run link
 
-# Or use specific commands
+# Now you can use the CLI directly:
+ax find "getUserById"
+ax cli  # Launch interactive mode
+ax speckit spec "Build authentication API"
+
+# Or use via pnpm script:
 pnpm run cli -- find "getUserById"
-pnpm run cli -- speckit spec "Build authentication API"
-pnpm run cli -- gen plan workflows/cicd.yaml
 
 # Run tests (745+ tests)
 pnpm test
+```
+
+### Using the `ax` Command
+
+After `pnpm install` and `pnpm run build`, the `ax` binary is automatically linked globally via the `postinstall` script. This means you can use:
+
+```bash
+# These work anywhere on your system:
+ax find "Calculator"
+ax def "getUserById"
+ax flow "handleRequest"
+ax cli  # Interactive ChatGPT-style mode
+```
+
+**To unlink** (if you want to remove the global `ax` command):
+```bash
+pnpm run unlink
+# Or manually:
+pnpm unlink --global
 ```
 
 **Note**: Current build requires fixing TypeScript compilation errors (2-3 hours). Tests pass but CLI requires pre-compiled dist/ files.

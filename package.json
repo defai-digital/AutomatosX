@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.0.7",
+  "version": "8.0.8",
   "description": "Production-ready code intelligence platform with AI agents, workflow orchestration, interactive CLI, SpecKit generators, and autonomous retry system. 45 languages, 21 AI agents, 745+ tests.",
   "license": "Apache-2.0",
   "author": "DEFAI Private Limited",
@@ -26,6 +26,10 @@
     "build:cli": "pnpm run build:typescript && chmod +x dist/cli/index.js",
     "build:web": "vite build",
     "clean": "rm -rf packages/*/lib packages/*/node_modules node_modules dist",
+    "postinstall": "node scripts/link-binary.js",
+    "preuninstall": "pnpm unlink --global 2>/dev/null || true",
+    "link": "pnpm run build:cli && pnpm link --global",
+    "unlink": "pnpm unlink --global",
     "test": "vitest",
     "test:runtime": "vitest run src/__tests__/runtime",
     "test:web": "vitest run src/web/__tests__",

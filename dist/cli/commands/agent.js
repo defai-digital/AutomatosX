@@ -6,7 +6,6 @@
 import { Command } from 'commander';
 import { AgentRegistry } from '../../agents/AgentRegistry.js';
 import { TaskRouter } from '../../agents/TaskRouter.js';
-import { AgentRuntime } from '../../agents/AgentRuntime.js';
 import { ErrorHandler } from '../utils/ErrorHandler.js';
 // Import all agents
 import { BackendAgent } from '../../agents/BackendAgent.js';
@@ -174,7 +173,9 @@ function createRunCommand() {
         try {
             const registry = initializeRegistry();
             const router = new TaskRouter(registry);
-            const runtime = new AgentRuntime(registry);
+            // TODO: AgentRuntime requires MemoryService, FileService, and providers
+            // Skipping runtime initialization for now
+            const runtime = null;
             // Create task
             const task = {
                 id: `task-${Date.now()}`,

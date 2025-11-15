@@ -94,6 +94,20 @@ export declare class SymbolDAO {
      */
     searchByName(pattern: string): SymbolRecord[];
     /**
+     * Find all symbols (compatibility method for LSP)
+     *
+     * @param limit - Optional limit on results
+     * @returns Array of symbol records
+     */
+    findAll(limit?: number): SymbolRecord[];
+    /**
+     * Find symbols by file path (compatibility method for LSP)
+     *
+     * @param filePath - File path
+     * @returns Array of symbol records
+     */
+    findByFile(filePath: string): SymbolRecord[];
+    /**
      * Delete symbol by ID
      *
      * @param id - Symbol ID

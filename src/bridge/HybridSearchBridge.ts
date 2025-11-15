@@ -7,9 +7,9 @@
 //
 // ============================================================================
 
-import * as HybridSearchCore from '../../packages/rescript-core/src/memory/HybridSearchCore.gen.js';
-import * as HybridSearchTypes from '../../packages/rescript-core/src/memory/HybridSearchTypes.gen.js';
-import * as MessageTransform from '../../packages/rescript-core/src/memory/MessageTransform.gen.js';
+import * as HybridSearchCore from '../../packages/rescript-core/src/memory/HybridSearchCore.bs.js';
+import * as HybridSearchTypes from '../../packages/rescript-core/src/memory/HybridSearchTypes.bs.js';
+import * as MessageTransform from '../../packages/rescript-core/src/memory/MessageTransform.bs.js';
 import {
   shouldUseReScript,
   logFeatureFlagDecision,

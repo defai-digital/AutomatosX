@@ -1,4 +1,43 @@
-#Start(1763220831975)
+#Start(1763223077562)
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
 
   Warning number 26
   /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryFallback.res:360:11-20
@@ -13,7 +52,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -26,20 +65,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -51,21 +77,8 @@
   this open statement shadows the constructor Ok (which is later used)
 
 
-  Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -77,17 +90,16 @@
   this open statement shadows the constructor Error (which is later used)
 
 
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  Warning number 27
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:170:3-11
 
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
+  168 │ @genType
+  169 │ let storeEmbedding = (
+  170 │   embedding: validatedEmbedding<validated>,
+  171 │ ): Js.Promise.t<result<unit, string>> => {
+  172 │   // Simulate database storage
 
-  this open statement shadows the constructor Ok (which is later used)
+  unused variable embedding.
 
 
   Warning number 44
@@ -140,96 +152,6 @@
   416 │   "state"
 
   unused variable state.
-
-
-  Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:170:3-11
-
-  168 │ @genType
-  169 │ let storeEmbedding = (
-  170 │   embedding: validatedEmbedding<validated>,
-  171 │ ): Js.Promise.t<result<unit, string>> => {
-  172 │   // Simulate database storage
-
-  unused variable embedding.
 
 
   Warning number 44
@@ -294,6 +216,123 @@
   418 │   []
 
   unused variable convId.
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
 
 
   Warning number 44
@@ -526,45 +565,6 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 44
   /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
 
   11 │ 
@@ -602,4 +602,4 @@
 
   this open statement shadows the constructor Error (which is later used)
 
-#Done(1763220832065)
+#Done(1763223077645)

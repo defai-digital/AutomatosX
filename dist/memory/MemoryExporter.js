@@ -15,7 +15,13 @@ export class MemoryExporter {
      * Export conversations to JSON
      */
     async exportToJSON(filePath, options = {}) {
-        const exportData = await this.prepareExportData(options);
+        const fullOptions = {
+            includeArchived: false,
+            includeDeleted: false,
+            format: 'json',
+            ...options
+        };
+        const exportData = await this.prepareExportData(fullOptions);
         const json = JSON.stringify(exportData, null, 2);
         writeFileSync(filePath, json, 'utf-8');
         return {
@@ -31,7 +37,13 @@ export class MemoryExporter {
      * Export conversations to CSV
      */
     async exportToCSV(filePath, options = {}) {
-        const exportData = await this.prepareExportData(options);
+        const fullOptions = {
+            includeArchived: false,
+            includeDeleted: false,
+            format: 'csv',
+            ...options
+        };
+        const exportData = await this.prepareExportData(fullOptions);
         // Create CSV header
         const csvLines = [
             'ConversationID,AgentID,UserID,Title,State,MessageCount,TotalTokens,CreatedAt,UpdatedAt,MessageRole,MessageContent,MessageTokens,MessageCreatedAt',
@@ -74,7 +86,13 @@ export class MemoryExporter {
      * Export conversations to Markdown
      */
     async exportToMarkdown(filePath, options = {}) {
-        const exportData = await this.prepareExportData(options);
+        const fullOptions = {
+            includeArchived: false,
+            includeDeleted: false,
+            format: 'markdown',
+            ...options
+        };
+        const exportData = await this.prepareExportData(fullOptions);
         const mdLines = [
             '# Memory Export',
             '',

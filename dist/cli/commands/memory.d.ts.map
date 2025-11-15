@@ -1,1 +1,1 @@
-{"version":3,"file":"memory.d.ts","sourceRoot":"","sources":["../../../src/cli/commands/memory.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AAsDpC;;GAEG;AACH,wBAAgB,mBAAmB,IAAI,OAAO,CA6lB7C"}
+{"version":3,"file":"memory.d.ts","sourceRoot":"","sources":["../../../src/cli/commands/memory.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AAuDpC;;GAEG;AACH,wBAAgB,mBAAmB,IAAI,OAAO,CA8lB7C"}

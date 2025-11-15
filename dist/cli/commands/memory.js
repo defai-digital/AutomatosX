@@ -7,6 +7,7 @@ import { Command } from 'commander';
 import { getDatabase } from '../../database/connection.js';
 import { MemoryService } from '../../memory/MemoryService.js';
 import { MemoryExporter } from '../../memory/MemoryExporter.js';
+import { MemoryAnalytics } from '../../memory/MemoryAnalytics.js';
 import Table from 'cli-table3';
 import chalk from 'chalk';
 /**
@@ -445,7 +446,8 @@ Examples:
         try {
             const memoryService = getMemoryService();
             console.log(chalk.bold('\n📊 Memory System Statistics\n'));
-            const stats = await memoryService.getMemoryStats();
+            const analytics = new MemoryAnalytics(memoryService);
+            const stats = await analytics.getMemoryUsageMetrics();
             const embeddingStats = await memoryService.getEmbeddingStats();
             // Overview Table
             const overviewTable = new Table({

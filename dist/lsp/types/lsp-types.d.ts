@@ -176,12 +176,16 @@ export interface TextDocumentPositionParams {
     position: Position;
 }
 /**
+ * Reference context
+ */
+export interface ReferenceContext {
+    includeDeclaration: boolean;
+}
+/**
  * Reference params
  */
 export interface ReferenceParams extends TextDocumentPositionParams {
-    context: {
-        includeDeclaration: boolean;
-    };
+    context: ReferenceContext;
 }
 /**
  * Map symbol kind string to LSP SymbolKind enum

@@ -8,7 +8,7 @@ import type { ProviderRouterV2 } from '../../services/ProviderRouterV2.js';
 /**
  * Intent types for natural language routing
  */
-export type IntentType = 'memory-search' | 'workflow-execute' | 'agent-delegate' | 'chat';
+export type IntentType = 'memory-search' | 'workflow-execute' | 'agent-delegate' | 'chat' | 'rephrase' | 'symbol-search' | 'natural-language' | 'workflow-run' | 'agent-query' | 'file-search' | 'hybrid-search' | 'slash-command' | 'unknown';
 /**
  * Classification method used
  */

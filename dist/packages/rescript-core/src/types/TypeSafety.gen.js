@@ -1,0 +1,52 @@
+/* TypeScript file generated from TypeSafety.res by genType. */
+/* eslint-disable */
+/* tslint:disable */
+import * as TypeSafetyJS from './TypeSafety.bs.js';
+export const makeUserId = TypeSafetyJS.makeUserId;
+export const makeConversationId = TypeSafetyJS.makeConversationId;
+export const makeMessageId = TypeSafetyJS.makeMessageId;
+export const makeModelId = TypeSafetyJS.makeModelId;
+export const makeSessionId = TypeSafetyJS.makeSessionId;
+export const makeTokenId = TypeSafetyJS.makeTokenId;
+export const unsafeUserId = TypeSafetyJS.unsafeUserId;
+export const unsafeConversationId = TypeSafetyJS.unsafeConversationId;
+export const unsafeMessageId = TypeSafetyJS.unsafeMessageId;
+export const unsafeModelId = TypeSafetyJS.unsafeModelId;
+export const unsafeSessionId = TypeSafetyJS.unsafeSessionId;
+export const unsafeTokenId = TypeSafetyJS.unsafeTokenId;
+export const unwrapUserId = TypeSafetyJS.unwrapUserId;
+export const unwrapConversationId = TypeSafetyJS.unwrapConversationId;
+export const unwrapMessageId = TypeSafetyJS.unwrapMessageId;
+export const unwrapModelId = TypeSafetyJS.unwrapModelId;
+export const unwrapSessionId = TypeSafetyJS.unwrapSessionId;
+export const unwrapTokenId = TypeSafetyJS.unwrapTokenId;
+export const eqUserId = TypeSafetyJS.eqUserId;
+export const eqConversationId = TypeSafetyJS.eqConversationId;
+export const eqMessageId = TypeSafetyJS.eqMessageId;
+export const eqModelId = TypeSafetyJS.eqModelId;
+export const eqSessionId = TypeSafetyJS.eqSessionId;
+export const eqTokenId = TypeSafetyJS.eqTokenId;
+export const makeTokenCount = TypeSafetyJS.makeTokenCount;
+export const unwrapTokenCount = TypeSafetyJS.unwrapTokenCount;
+export const makeTimestamp = TypeSafetyJS.makeTimestamp;
+export const unwrapTimestamp = TypeSafetyJS.unwrapTimestamp;
+export const now = TypeSafetyJS.now;
+export const makePrice = TypeSafetyJS.makePrice;
+export const unwrapPrice = TypeSafetyJS.unwrapPrice;
+export const dollarsToPrice = TypeSafetyJS.dollarsToPrice;
+export const priceToDollars = TypeSafetyJS.priceToDollars;
+export const makeEmail = TypeSafetyJS.makeEmail;
+export const unwrapEmail = TypeSafetyJS.unwrapEmail;
+export const makePhoneNumber = TypeSafetyJS.makePhoneNumber;
+export const unwrapPhoneNumber = TypeSafetyJS.unwrapPhoneNumber;
+export const makeUrl = TypeSafetyJS.makeUrl;
+export const unwrapUrl = TypeSafetyJS.unwrapUrl;
+export const makeNonEmptyArray = TypeSafetyJS.makeNonEmptyArray;
+export const unwrapNonEmptyArray = TypeSafetyJS.unwrapNonEmptyArray;
+export const headNonEmpty = TypeSafetyJS.headNonEmpty;
+export const getUserConversations = TypeSafetyJS.getUserConversations;
+export const getConversationMessages = TypeSafetyJS.getConversationMessages;
+export const userIdToString = TypeSafetyJS.userIdToString;
+export const conversationIdToString = TypeSafetyJS.conversationIdToString;
+export const messageIdToString = TypeSafetyJS.messageIdToString;
+//# sourceMappingURL=TypeSafety.gen.js.map

@@ -363,6 +363,19 @@ export class ProviderRouterV2 extends EventEmitter {
         }
         return stats;
     }
+    /**
+     * Get health status for all providers (compatibility method)
+     */
+    async getHealth() {
+        return this.getStatistics();
+    }
+    /**
+     * Route request (V1 compatibility wrapper)
+     */
+    async route(request) {
+        // Convert V1-style request to V2 ProviderRequest format
+        return this.request(request);
+    }
 }
 /**
  * Factory function to create a ProviderRouterV2 instance with sensible defaults

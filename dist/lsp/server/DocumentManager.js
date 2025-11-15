@@ -137,20 +137,20 @@ export class DocumentManager {
                 return;
             }
             // Parse file
-            const parseResult = await parser.parse(filePath, text);
-            // Store tree and symbols
-            data.tree = parseResult.tree;
+            const parseResult = await parser.parse(filePath);
+            // Store tree and symbols (ParseResult doesn't have tree property)
+            data.tree = undefined; // Tree not available from ParseResult
             data.symbols = parseResult.symbols.map((symbol) => ({
                 name: symbol.name,
                 kind: symbol.kind,
-                filePath: symbol.filePath,
-                startLine: symbol.startLine,
-                startColumn: symbol.startColumn,
-                endLine: symbol.endLine,
-                endColumn: symbol.endColumn,
+                filePath: filePath, // Use filePath from function parameter
+                startLine: symbol.line,
+                startColumn: symbol.column,
+                endLine: symbol.endLine || 0, // Ensure number type
+                endColumn: symbol.endColumn || 0,
                 signature: symbol.signature,
-                docstring: symbol.docstring,
-                scope: symbol.scope,
+                docstring: symbol.metadata?.docstring, // Get from metadata
+                scope: symbol.metadata?.scope, // Get from metadata
             }));
         }
         catch (error) {

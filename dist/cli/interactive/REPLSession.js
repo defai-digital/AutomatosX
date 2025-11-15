@@ -255,7 +255,7 @@ export class REPLSession {
         }
         catch (error) {
             // Stop spinner with error
-            this.streamingHandler.stopError('Failed to get response');
+            this.streamingHandler.stopError(new Error('Failed to get response'));
             console.error(chalk.red('\n❌ Error:'), error.message);
         }
     }

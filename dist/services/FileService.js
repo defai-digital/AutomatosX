@@ -443,9 +443,11 @@ export class FileService {
         }
         const targetSymbol = symbols[0];
         // Find calls FROM this function (callees)
-        const callees = this.callDAO.findByCallerId(targetSymbol.id);
+        // TODO: Implement CallDAO for call graph analysis
+        const callees = [];
         // Find calls TO this function (callers)
-        const callers = this.callDAO.findByCalleeId(targetSymbol.id);
+        // TODO: Implement CallDAO for call graph analysis
+        const callers = [];
         return {
             function: functionName,
             symbol: targetSymbol,

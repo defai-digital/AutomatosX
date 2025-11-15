@@ -258,8 +258,8 @@ export declare const WorkflowSchema: z.ZodObject<{
     version: string;
     createdAt: number;
     updatedAt: number;
-    totalExecutions: number;
     isActive: number;
+    totalExecutions: number;
     successfulExecutions: number;
     failedExecutions: number;
     description?: string | undefined;
@@ -274,10 +274,10 @@ export declare const WorkflowSchema: z.ZodObject<{
     createdAt: number;
     updatedAt: number;
     description?: string | undefined;
-    totalExecutions?: number | undefined;
     tags?: string | undefined;
     author?: string | undefined;
     isActive?: number | undefined;
+    totalExecutions?: number | undefined;
     successfulExecutions?: number | undefined;
     failedExecutions?: number | undefined;
     avgDurationMs?: number | undefined;

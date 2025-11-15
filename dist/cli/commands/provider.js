@@ -56,7 +56,7 @@ function createHealthCommand() {
             console.log('\n' + table.toString() + '\n');
             if (options.verbose) {
                 console.log(chalk.bold('Circuit Breaker Details:\n'));
-                for (const [provider, state] of circuitStates) {
+                for (const [provider, state] of Object.entries(circuitStates)) {
                     console.log(chalk.cyan(`${provider}:`));
                     console.log(`  State: ${state.state}`);
                     console.log(`  Failures: ${state.failures}`);
@@ -216,7 +216,7 @@ function createCircuitBreakerCommand() {
             head: ['Provider', 'State', 'Failures', 'Last Failure'],
             style: { head: ['cyan'] },
         });
-        for (const [provider, state] of states) {
+        for (const [provider, state] of Object.entries(states)) {
             const stateColor = state.state === 'closed'
                 ? 'green'
                 : state.state === 'open'

@@ -74,5 +74,13 @@ export declare class ProviderService {
      * Update service configuration
      */
     updateConfig(config: Partial<ProviderServiceConfig>): void;
+    /**
+     * Get circuit breaker states (compatibility method)
+     */
+    getCircuitBreakerStates(): Record<string, any>;
+    /**
+     * Reset circuit breaker for a provider (compatibility method)
+     */
+    resetCircuitBreaker(providerName: string): void;
 }
 //# sourceMappingURL=ProviderService.d.ts.map

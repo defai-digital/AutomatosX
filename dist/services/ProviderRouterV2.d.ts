@@ -74,6 +74,7 @@ export interface RoutingDecision {
  */
 export interface ProviderRouterOptions {
     providers: Record<ProviderType, ProviderConfig>;
+    defaultProvider?: ProviderType;
     chaosMode?: boolean;
     telemetryEnabled?: boolean;
 }
@@ -173,6 +174,14 @@ export declare class ProviderRouterV2 extends EventEmitter {
      * Get routing statistics
      */
     getStatistics(): Record<string, any>;
+    /**
+     * Get health status for all providers (compatibility method)
+     */
+    getHealth(): Promise<Record<string, unknown>>;
+    /**
+     * Route request (V1 compatibility wrapper)
+     */
+    route(request: any): Promise<any>;
 }
 /**
  * Factory function to create a ProviderRouterV2 instance with sensible defaults

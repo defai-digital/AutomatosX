@@ -37,8 +37,8 @@ export declare class MemoryService {
      */
     updateConversation(id: string, updates: {
         title?: string;
-        state?: string;
-        metadata?: Record<string, string>;
+        state?: 'idle' | 'active' | 'searching' | 'archived' | 'deleted';
+        metadata?: Record<string, unknown>;
     }): Promise<Conversation>;
     /**
      * Archive conversation
@@ -217,7 +217,7 @@ export declare class MemoryService {
     }>;
     /**
      * Search memory - simplified interface for agent system
-     * Delegates to searchMessages with hybrid search
+     * Delegates to searchMessages
      */
     search(query: string): Promise<any[]>;
     /**

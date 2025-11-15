@@ -1,1 +1,1 @@
-{"version":3,"file":"perf.d.ts","sourceRoot":"","sources":["../../../src/cli/commands/perf.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAA;AAUnC;;GAEG;AACH,wBAAgB,iBAAiB,IAAI,OAAO,CAU3C;AAuQD,eAAe,iBAAiB,CAAA"}
+{"version":3,"file":"perf.d.ts","sourceRoot":"","sources":["../../../src/cli/commands/perf.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAA;AAWnC;;GAEG;AACH,wBAAgB,iBAAiB,IAAI,OAAO,CAU3C;AAuQD,eAAe,iBAAiB,CAAA"}

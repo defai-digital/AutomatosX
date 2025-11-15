@@ -150,9 +150,21 @@ export class StateMachineRuntime extends EventEmitter {
                 try {
                     machine.setContextData('attempt', attempt.toString());
                     this.emit('execution-attempt', { taskId, attempt: attempt + 1, maxRetries });
-                    response = await provider.request(request);
-                    machine.setContextData('tokens', response.usage.totalTokens.toString());
-                    machine.setContextData('latency', response.latency.toString());
+                    const providerResponse = await provider.request(request);
+                    response = {
+                        provider: providerResponse.provider,
+                        content: providerResponse.content,
+                        model: providerResponse.model,
+                        usage: {
+                            totalTokens: providerResponse.usage.totalTokens,
+                            inputTokens: providerResponse.usage.inputTokens,
+                            outputTokens: providerResponse.usage.outputTokens,
+                        },
+                        latency: providerResponse.latency,
+                        finishReason: providerResponse.finishReason,
+                    };
+                    machine.setContextData('tokens', providerResponse.usage.totalTokens.toString());
+                    machine.setContextData('latency', providerResponse.latency.toString());
                     break; // Success
                 }
                 catch (error) {

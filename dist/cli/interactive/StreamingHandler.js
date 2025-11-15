@@ -107,5 +107,24 @@ export class StreamingHandler {
             process.stdout.write('\n');
         }
     }
+    /**
+     * Stop streaming (alias for stopThinking)
+     */
+    stop() {
+        this.stopThinking();
+    }
+    /**
+     * Display complete response
+     */
+    displayResponse(response) {
+        process.stdout.write(response + '\n');
+    }
+    /**
+     * Stop and display error
+     */
+    stopError(error) {
+        this.stopThinking();
+        this.displayError(error);
+    }
 }
 //# sourceMappingURL=StreamingHandler.js.map

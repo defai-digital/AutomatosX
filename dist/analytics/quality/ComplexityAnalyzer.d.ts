@@ -31,11 +31,16 @@ export interface ComplexityMetrics {
     halstead: HalsteadMetrics;
     linesOfCode: number;
     maintainabilityIndex: number;
+    name?: string;
+    startLine?: number;
+    endLine?: number;
+    parameters?: number;
 }
 export interface FunctionComplexity extends ComplexityMetrics {
     name: string;
     startLine: number;
     endLine: number;
+    parameters?: number;
 }
 export interface FileComplexity {
     filePath: string;

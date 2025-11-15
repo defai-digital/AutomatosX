@@ -108,14 +108,16 @@ export class MemoryAnalytics {
      * Get top conversations by message count
      */
     async getTopConversationsByMessages(limit = 10) {
-        const conversations = await this.memoryService.listConversations({
+        const result = await this.memoryService.listConversations({
             limit: 1000,
             offset: 0,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
+            includeArchived: false,
+            includeDeleted: false,
         });
         const metrics = [];
-        for (const conv of conversations.conversations) {
+        for (const conv of result.conversations) {
             const metric = await this.getConversationMetrics(conv.id);
             if (metric) {
                 metrics.push(metric);
@@ -128,14 +130,16 @@ export class MemoryAnalytics {
      * Get top conversations by tokens
      */
     async getTopConversationsByTokens(limit = 10) {
-        const conversations = await this.memoryService.listConversations({
+        const result = await this.memoryService.listConversations({
             limit: 1000,
             offset: 0,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
+            includeArchived: false,
+            includeDeleted: false,
         });
         const metrics = [];
-        for (const conv of conversations.conversations) {
+        for (const conv of result.conversations) {
             const metric = await this.getConversationMetrics(conv.id);
             if (metric) {
                 metrics.push(metric);
@@ -180,14 +184,16 @@ export class MemoryAnalytics {
      * Get all agent metrics
      */
     async getAllAgentMetrics() {
-        const conversations = await this.memoryService.listConversations({
+        const result = await this.memoryService.listConversations({
             limit: 100,
             offset: 0,
             sortBy: 'createdAt',
             sortOrder: 'desc',
+            includeArchived: false,
+            includeDeleted: false,
         });
         // Get unique agents
-        const agentIds = [...new Set(conversations.conversations.map((c) => c.agentId))];
+        const agentIds = [...new Set(result.conversations.map((c) => c.agentId))];
         const metrics = [];
         for (const agentId of agentIds) {
             const metric = await this.getAgentMetrics(agentId);
@@ -203,14 +209,16 @@ export class MemoryAnalytics {
      * Get metrics for a time range
      */
     async getTimeRangeMetrics(startTime, endTime) {
-        const conversations = await this.memoryService.listConversations({
+        const result = await this.memoryService.listConversations({
             limit: 100,
             offset: 0,
             sortBy: 'createdAt',
             sortOrder: 'desc',
+            includeArchived: false,
+            includeDeleted: false,
         });
         // Filter by time range
-        const filteredConversations = conversations.conversations.filter((c) => c.createdAt >= startTime && c.createdAt <= endTime);
+        const filteredConversations = result.conversations.filter((c) => c.createdAt >= startTime && c.createdAt <= endTime);
         let totalMessages = 0;
         let totalTokens = 0;
         const activeAgents = new Set();

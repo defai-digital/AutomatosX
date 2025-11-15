@@ -145,7 +145,7 @@ export function getWordRangeAtPosition(content, position) {
  * Find node at position in Tree-sitter tree
  */
 export function findNodeAtPosition(rootNode, position) {
-    let currentNode = rootNode.descendantForPosition({ row: position.line, column: position.character }, { row: position.line, column: position.character });
+    let currentNode = rootNode.descendantForPosition({ row: position.line, column: position.character });
     return currentNode;
 }
 /**

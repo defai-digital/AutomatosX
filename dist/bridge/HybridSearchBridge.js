@@ -6,7 +6,7 @@
 // Includes feature flags, performance tracking, and automatic fallback
 //
 // ============================================================================
-import * as HybridSearchCore from '../../packages/rescript-core/src/memory/HybridSearchCore.gen.js';
+import * as HybridSearchCore from '../../packages/rescript-core/src/memory/HybridSearchCore.bs.js';
 import { shouldUseReScript, logFeatureFlagDecision, getFeatureFlags, } from './ReScriptFeatureFlags.js';
 // ============================================================================
 // CONVERSION FUNCTIONS (TypeScript ↔ ReScript)

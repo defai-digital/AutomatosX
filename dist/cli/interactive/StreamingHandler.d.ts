@@ -51,5 +51,17 @@ export declare class StreamingHandler {
      * Display progress bar
      */
     displayProgress(current: number, total: number, label?: string): void;
+    /**
+     * Stop streaming (alias for stopThinking)
+     */
+    stop(): void;
+    /**
+     * Display complete response
+     */
+    displayResponse(response: string): void;
+    /**
+     * Stop and display error
+     */
+    stopError(error: Error): void;
 }
 //# sourceMappingURL=StreamingHandler.d.ts.map

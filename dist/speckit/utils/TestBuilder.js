@@ -41,6 +41,8 @@ export class TestBuilder {
             content,
             testCount,
             framework: this.framework,
+            type: 'unit',
+            target: workflow.name,
         };
     }
     /**
@@ -64,6 +66,8 @@ export class TestBuilder {
             content,
             testCount,
             framework: this.framework,
+            type: 'integration',
+            target: workflow.name,
         };
     }
     /**
@@ -92,6 +96,8 @@ export class TestBuilder {
             content,
             testCount,
             framework: this.framework,
+            type: 'e2e',
+            target: workflow.name,
         };
     }
     /**

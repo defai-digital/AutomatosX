@@ -116,7 +116,7 @@ export class AgentRuntime extends EventEmitter {
             // Memory access
             memory: {
                 search: async (query) => {
-                    return this.memoryService.search(query, { limit: 10 });
+                    return this.memoryService.search(query);
                 },
                 recall: async (conversationId) => {
                     return this.memoryService.getConversation(conversationId);
@@ -124,7 +124,8 @@ export class AgentRuntime extends EventEmitter {
                 store: async (data) => {
                     await this.memoryService.createEntry({
                         content: JSON.stringify(data),
-                        metadata: { taskId: task.id, timestamp: Date.now() },
+                        conversationId: task.id,
+                        role: 'assistant',
                     });
                 },
             },
@@ -137,7 +138,8 @@ export class AgentRuntime extends EventEmitter {
                     return this.fileService.getCallGraph(functionName);
                 },
                 searchCode: async (query) => {
-                    return this.fileService.search(query);
+                    const response = this.fileService.search(query);
+                    return response.results;
                 },
                 analyzeQuality: async (filePath) => {
                     return this.fileService.analyzeQuality(filePath);
@@ -206,8 +208,10 @@ export class AgentRuntime extends EventEmitter {
             }
             const response = await selectedProvider.request({
                 messages: [{ role: 'user', content: prompt }],
-                maxTokens: options?.maxTokens,
-                temperature: options?.temperature,
+                maxTokens: options?.maxTokens || 4096,
+                temperature: options?.temperature || 1.0,
+                streaming: false,
+                timeout: 60000,
             });
             return response.content;
         }

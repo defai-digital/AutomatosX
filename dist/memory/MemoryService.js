@@ -85,6 +85,8 @@ export class MemoryService {
             offset: 0,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
+            includeArchived: false,
+            includeDeleted: false,
         }).conversations;
     }
     /**
@@ -562,13 +564,18 @@ export class MemoryService {
     // ============================================================================
     /**
      * Search memory - simplified interface for agent system
-     * Delegates to searchMessages with hybrid search
+     * Delegates to searchMessages
      */
     async search(query) {
         const result = await this.searchMessages({
             query,
             limit: 10,
-            mode: 'hybrid',
+            offset: 0,
+            includeArchived: false,
+            includeDeleted: false,
+            sortBy: 'relevance',
+            sortOrder: 'desc',
+            skipCount: false,
         });
         return result.messages;
     }

@@ -7,7 +7,7 @@
 //
 // ============================================================================
 
-import * as StatsAggregation from '../../packages/rescript-core/src/memory/StatsAggregation.gen.js';
+import * as StatsAggregation from '../../packages/rescript-core/src/memory/StatsAggregation.bs.js';
 import {
   shouldUseReScript,
   logFeatureFlagDecision,

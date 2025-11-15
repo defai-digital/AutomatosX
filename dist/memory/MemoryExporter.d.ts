@@ -23,19 +23,19 @@ export declare class MemoryExporter {
     /**
      * Export conversations to JSON
      */
-    exportToJSON(filePath: string, options?: MemoryExportOptions): Promise<ExportResult>;
+    exportToJSON(filePath: string, options?: Partial<MemoryExportOptions>): Promise<ExportResult>;
     /**
      * Export conversations to CSV
      */
-    exportToCSV(filePath: string, options?: MemoryExportOptions): Promise<ExportResult>;
+    exportToCSV(filePath: string, options?: Partial<MemoryExportOptions>): Promise<ExportResult>;
     /**
      * Export conversations to Markdown
      */
-    exportToMarkdown(filePath: string, options?: MemoryExportOptions): Promise<ExportResult>;
+    exportToMarkdown(filePath: string, options?: Partial<MemoryExportOptions>): Promise<ExportResult>;
     /**
      * Export conversations based on format
      */
-    export(filePath: string, format?: 'json' | 'csv' | 'markdown', options?: MemoryExportOptions): Promise<ExportResult>;
+    export(filePath: string, format?: 'json' | 'csv' | 'markdown', options?: Partial<MemoryExportOptions>): Promise<ExportResult>;
     /**
      * Import conversations from JSON
      */

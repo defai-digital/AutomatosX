@@ -62,6 +62,10 @@ export declare class WorkflowAgentBridge {
     private retryConfig;
     constructor(db?: Database.Database, registry?: AgentRegistry, router?: TaskRouter);
     /**
+     * Create a Task object from a description
+     */
+    private createTask;
+    /**
      * Execute a workflow step with 3-tier agent routing
      *
      * @param step - Workflow step definition

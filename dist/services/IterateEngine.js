@@ -200,13 +200,13 @@ export class IterateEngine {
             }
             return {
                 iteration,
-                success: result.success,
-                complete: result.status === 'completed',
+                success: result.state === 'completed',
+                complete: result.state === 'completed',
                 strategy,
                 progress: this.captureProgress(result),
                 duration: Date.now() - startTime,
-                cost: result.metadata?.cost || 0,
-                metadata: result.metadata || {}
+                cost: result.context.metadata?.cost || 0,
+                metadata: result.context.metadata || {}
             };
         }
         catch (error) {

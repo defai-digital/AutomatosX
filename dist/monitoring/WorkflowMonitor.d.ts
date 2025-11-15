@@ -64,6 +64,14 @@ export declare class WorkflowMonitor extends EventEmitter {
      */
     getRecentExecutions(limit?: number, tenantId?: string): WorkflowExecution[];
     /**
+     * Get completed workflow executions
+     */
+    getCompletedExecutions(limit?: number, tenantId?: string): WorkflowExecution[];
+    /**
+     * Get failed workflow executions
+     */
+    getFailedExecutions(limit?: number, tenantId?: string): WorkflowExecution[];
+    /**
      * Get workflow statistics
      */
     getWorkflowStats(tenantId?: string): WorkflowStats;

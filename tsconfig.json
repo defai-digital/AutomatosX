@@ -29,6 +29,8 @@
     "dist",
     "packages/*/lib",
     "packages/**/*.gen.tsx",
+    "packages/**/*.res",
+    "packages/**/*.resi",
     "packages/**/*.ts",
     "packages/**/*.tsx",
     "src/test-*.ts",

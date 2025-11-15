@@ -20,20 +20,20 @@
     "ax": "./dist/cli/index.js"
   },
   "scripts": {
-    "build:rescript": "npm run build --workspace=@automatosx/rescript-core",
+    "build:rescript": "pnpm --filter @automatosx/rescript-core build",
     "build:typescript": "tsc",
-    "build": "npm run build:rescript && npm run build:typescript",
-    "build:cli": "npm run build:typescript && chmod +x dist/cli/index.js",
+    "build": "pnpm run build:rescript && pnpm run build:typescript",
+    "build:cli": "pnpm run build:typescript && chmod +x dist/cli/index.js",
     "build:web": "vite build",
     "clean": "rm -rf packages/*/lib packages/*/node_modules node_modules dist",
     "test": "vitest",
     "test:runtime": "vitest run src/__tests__/runtime",
     "test:web": "vitest run src/web/__tests__",
     "bench": "vitest bench --run",
-    "dev": "npm run dev --workspace=@automatosx/rescript-core",
+    "dev": "pnpm --filter @automatosx/rescript-core dev",
     "dev:web": "vite",
     "preview:web": "vite preview",
-    "cli": "npm run build:cli && node dist/cli/index.js"
+    "cli": "pnpm run build:cli && node dist/cli/index.js"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -63,8 +63,9 @@
   },
   "engines": {
     "node": ">=24.0.0",
-    "npm": ">=10.0.0"
+    "pnpm": ">=9.0.0"
   },
+  "packageManager": "pnpm@9.0.0",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
     "@derekstride/tree-sitter-sql": "^0.3.11",

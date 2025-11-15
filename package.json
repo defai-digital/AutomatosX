@@ -53,6 +53,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^23.2.0",
+    "node-gyp": "^10.3.1",
     "prettier": "^3.6.2",
     "tree-sitter-cli": "^0.25.10",
     "tsx": "^4.20.6",

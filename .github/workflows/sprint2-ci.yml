@@ -194,8 +194,6 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        env:
-          CL: "/std:c++20"
         run: pnpm install --frozen-lockfile
 
       - name: Build ReScript core

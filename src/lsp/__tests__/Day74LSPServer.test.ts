@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
+import * as sqlite_vec from 'sqlite-vec';
 import { DocumentManager } from '../server/DocumentManager.js';
 import { IntegrationService } from '../server/IntegrationService.js';
 import { DefinitionProvider } from '../providers/DefinitionProvider.js';
@@ -136,6 +137,14 @@ function setupTestDatabase() {
 
   // Create fresh in-memory database for this test
   testDb = new Database(':memory:');
+
+  // Load sqlite-vec extension (required for message_embeddings table)
+  try {
+    sqlite_vec.load(testDb);
+  } catch (error) {
+    console.warn('Failed to load sqlite-vec in test:', error);
+  }
+
   runMigrations(testDb);
 
   // Set it as the global database for this test

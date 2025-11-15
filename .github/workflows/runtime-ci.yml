@@ -18,16 +18,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
         env:
           CXXFLAGS: "-std=c++20 -fexceptions"
-        run: npm ci --legacy-peer-deps
+        run: pnpm install --frozen-lockfile
 
       - name: Restore ReScript cache
         uses: actions/cache@v4
@@ -40,10 +45,10 @@ jobs:
             ${{ runner.os }}-rescript-
 
       - name: Build ReScript runtime
-        run: npm run build:rescript
+        run: pnpm run build:rescript
 
       - name: Build TypeScript artifacts
-        run: npm run build:typescript
+        run: pnpm run build:typescript
 
       - name: Verify build artifacts exist
         run: |

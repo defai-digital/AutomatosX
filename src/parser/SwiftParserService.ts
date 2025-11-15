@@ -6,7 +6,7 @@
  */
 
 import Parser from 'tree-sitter';
-import Swift from 'tree-sitter-swift';
+// import Swift from 'tree-sitter-swift'; // Disabled due to tree-sitter-swift installation issues on Node.js v24
 import { BaseLanguageParser, Symbol, SymbolKind } from './LanguageParser.js';
 
 /**
@@ -26,7 +26,8 @@ export class SwiftParserService extends BaseLanguageParser {
   readonly extensions = ['.swift'];
 
   constructor() {
-    super(Swift as Parser.Language);
+    // super(Swift as Parser.Language); // Disabled due to tree-sitter-swift installation issues on Node.js v24
+    throw new Error('SwiftParserService is currently disabled due to tree-sitter-swift installation issues on Node.js v24');
   }
 
   /**

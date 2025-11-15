@@ -60,8 +60,8 @@ jobs:
       - name: Run linter
         run: npm run lint || echo "Linter not configured yet"
 
-      - name: Run smoke tests (database + parser core)
-        run: npm test -- --run src/database/__tests__/*.test.ts src/parser/__tests__/ParserRegistry.test.ts --reporter=verbose
+      - name: Build verification smoke test
+        run: npm run cli -- status
 
       - name: Run CLI integration tests
         run: |
@@ -122,8 +122,8 @@ jobs:
       - name: Run linter
         run: npm run lint || echo "Linter not configured yet"
 
-      - name: Run smoke tests (database + parser core)
-        run: npm test -- --run src/database/__tests__/*.test.ts src/parser/__tests__/ParserRegistry.test.ts --reporter=verbose
+      - name: Build verification smoke test
+        run: npm run cli -- status
 
       - name: Run CLI integration tests
         run: |

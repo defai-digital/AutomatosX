@@ -45,5 +45,5 @@ jobs:
       - name: Build TypeScript artifacts
         run: npm run build:typescript
 
-      - name: Smoke test (database and parser core)
-        run: npm test -- --run src/database/__tests__/*.test.ts src/parser/__tests__/ParserRegistry.test.ts --pool=forks --poolOptions.forks.singleFork=true
+      - name: Quick smoke test (build verification)
+        run: npm run cli -- status

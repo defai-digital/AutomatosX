@@ -312,6 +312,40 @@ export class WorkflowMonitor extends EventEmitter {
         return rows.map(row => this.rowToExecution(row));
     }
     /**
+     * Get completed workflow executions
+     */
+    getCompletedExecutions(limit = 100, tenantId) {
+        let query = `
+      SELECT * FROM workflow_executions_monitor
+      WHERE status = 'completed'
+    `;
+        if (tenantId) {
+            query += ` AND tenant_id = ?`;
+        }
+        query += ` ORDER BY completed_at DESC LIMIT ?`;
+        const rows = tenantId
+            ? this.db.prepare(query).all(tenantId, limit)
+            : this.db.prepare(query).all(limit);
+        return rows.map(row => this.rowToExecution(row));
+    }
+    /**
+     * Get failed workflow executions
+     */
+    getFailedExecutions(limit = 100, tenantId) {
+        let query = `
+      SELECT * FROM workflow_executions_monitor
+      WHERE status = 'failed'
+    `;
+        if (tenantId) {
+            query += ` AND tenant_id = ?`;
+        }
+        query += ` ORDER BY started_at DESC LIMIT ?`;
+        const rows = tenantId
+            ? this.db.prepare(query).all(tenantId, limit)
+            : this.db.prepare(query).all(limit);
+        return rows.map(row => this.rowToExecution(row));
+    }
+    /**
      * Get workflow statistics
      */
     getWorkflowStats(tenantId) {

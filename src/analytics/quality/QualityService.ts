@@ -239,7 +239,7 @@ export class QualityService {
     const files: { filePath: string; language: Language }[] = [];
     const excludePatterns = this.options.excludePatterns || ['node_modules', '.git', 'dist', 'build', 'coverage'];
 
-    const languageExtensions: Record<Language, string[]> = {
+    const languageExtensions: Partial<Record<Language, string[]>> = {
       typescript: ['.ts', '.tsx'],
       javascript: ['.js', '.jsx', '.mjs'],
       python: ['.py'],

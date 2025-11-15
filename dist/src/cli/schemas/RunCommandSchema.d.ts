@@ -33,8 +33,8 @@ export declare const RunCommandSchema: z.ZodObject<z.objectUtil.extendShape<{
     streaming: boolean;
     maxRetries: number;
     debug: boolean;
-    task: string;
     quiet: boolean;
+    task: string;
     resumable: boolean;
     useMemory: boolean;
     memoryLimit: number;

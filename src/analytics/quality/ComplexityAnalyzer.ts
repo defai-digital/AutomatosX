@@ -45,12 +45,18 @@ export interface ComplexityMetrics {
   halstead: HalsteadMetrics;
   linesOfCode: number;
   maintainabilityIndex: number;
+  // Optional properties for FunctionComplexity compatibility
+  name?: string;
+  startLine?: number;
+  endLine?: number;
+  parameters?: number;
 }
 
 export interface FunctionComplexity extends ComplexityMetrics {
   name: string;
   startLine: number;
   endLine: number;
+  parameters?: number;  // Number of function parameters
 }
 
 export interface FileComplexity {

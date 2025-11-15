@@ -390,7 +390,7 @@ export class MonitoringAPI {
   private async getStats(req: Request, res: Response): Promise<void> {
     try {
       const stats = {
-        metrics: this.metrics.getMetricsCount(),
+        metrics: this.metrics.getMetricCount(),
         alerts: {
           active: this.alerting.getActiveAlertCount(),
           critical: this.alerting.getActiveAlertCount('critical'),
@@ -398,7 +398,7 @@ export class MonitoringAPI {
         },
         workflows: {
           active: this.workflows.getActiveExecutions().length,
-          totalCompleted: this.workflows.getWorkflowStats().totalExecutions,
+          totalCompleted: this.workflows.getWorkflowStats().total,
           avgDuration: this.workflows.getWorkflowStats().avgDuration,
         },
         traces: this.tracer.getTraceStats(),

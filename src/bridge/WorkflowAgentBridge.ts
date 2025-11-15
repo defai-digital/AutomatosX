@@ -16,7 +16,8 @@ import { getDatabase } from '../database/connection.js';
 import { AgentRegistry } from '../agents/AgentRegistry.js';
 import { TaskRouter } from '../agents/TaskRouter.js';
 import { AgentBase } from '../agents/AgentBase.js';
-import { type AgentType } from '../types/agents.types.js';
+import { type AgentType, type Task, type TaskPriority } from '../types/agents.types.js';
+import { randomUUID } from 'crypto';
 
 /**
  * Step execution result
@@ -99,6 +100,20 @@ export class WorkflowAgentBridge {
         'network_error',
         'temporary_unavailable',
       ],
+    };
+  }
+
+  /**
+   * Create a Task object from a description
+   */
+  private createTask(description: string, priority: TaskPriority = 'normal', context: Record<string, unknown> = {}): Task {
+    return {
+      id: randomUUID(),
+      description,
+      priority,
+      status: 'pending',
+      context,
+      createdAt: Date.now(),
     };
   }
 
@@ -188,11 +203,9 @@ export class WorkflowAgentBridge {
     }
 
     // Tier 3: Semantic matching via TaskRouter (60% confidence)
-    const semanticAgent = this.router.routeToAgent({
-      description: step.prompt,
-      context: {},
-      priority: 'normal',
-    });
+    const semanticAgent = this.router.routeToAgent(
+      this.createTask(step.prompt, 'normal', {})
+    );
 
     if (semanticAgent) {
       return {
@@ -356,18 +369,24 @@ export class WorkflowAgentBridge {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         // Execute step with agent
-        const result = await agent.execute({
-          description: step.prompt,
-          context: {
-            workflowContext: context,
-            stepKey: step.key,
-            stepName: step.name,
-            dependencies: step.dependencies || [],
-          },
-          priority: 'normal',
+        const task = this.createTask(step.prompt, 'normal', {
+          workflowContext: context,
+          stepKey: step.key,
+          stepName: step.name,
+          dependencies: step.dependencies || [],
         });
 
-        return result;
+        // Create empty AgentContext (minimal implementation)
+        const agentContext: any = {
+          task,
+          memory: { search: async () => [], recall: async () => null, store: async () => {} },
+          codeIntelligence: { findSymbol: async () => [], getCallGraph: async () => null, searchCode: async () => [], analyzeQuality: async () => null },
+          provider: { call: async () => '' },
+        };
+
+        const result = await agent.execute(task, agentContext);
+
+        return result.data as Record<string, unknown>;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
@@ -480,11 +499,7 @@ export class WorkflowAgentBridge {
     }
 
     // Add semantic suggestions from TaskRouter
-    const task = {
-      description: step.prompt,
-      context: {},
-      priority: 'normal' as const,
-    };
+    const task = this.createTask(step.prompt, 'normal', {});
 
     const semanticSuggestions = this.router.getSuggestedAgents(task, limit);
     for (const suggestion of semanticSuggestions) {

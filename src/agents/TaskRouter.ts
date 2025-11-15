@@ -82,7 +82,7 @@ export class TaskRouter {
     if (parsed.intent !== 'unknown') {
       const agentType = this.intentToAgentType.get(parsed.intent);
       if (agentType) {
-        const agent = this.registry.get(agentType);
+        const agent = this.registry.get(agentType as AgentType);
         if (agent) {
           return agent;
         }

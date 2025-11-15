@@ -49,7 +49,7 @@ export class TableFormatter {
       head: options.showHeader !== false
         ? columns.map(col => chalk.cyan.bold(col.header))
         : undefined,
-      colWidths: columns.map(col => col.width),
+      colWidths: columns.map(col => col.width ?? null),
       colAligns: columns.map(col => col.align || 'left') as Array<'left' | 'center' | 'right'>,
       chars: this.getTableChars(options.compact || false),
       style: {

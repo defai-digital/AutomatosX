@@ -123,7 +123,7 @@ function createRunCommand() {
                 const profilingResult = profiler.endCommand();
                 if (profilingResult) {
                     console.log('\n=== Profiling Results ===');
-                    console.log(PerformanceProfiler.formatResult(profilingResult));
+                    console.log(JSON.stringify(profilingResult, null, 2));
                 }
             }
         }

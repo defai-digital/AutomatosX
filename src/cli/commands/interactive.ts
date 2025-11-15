@@ -43,7 +43,11 @@ export function createInteractiveCommand(): Command {
 
         // Initialize provider router
         const providerRouter = new ProviderRouterV2({
-          providers: [],
+          providers: {
+            claude: { enabled: true, priority: 1, maxRetries: 3, timeout: 60000 },
+            gemini: { enabled: true, priority: 2, maxRetries: 3, timeout: 60000 },
+            openai: { enabled: true, priority: 3, maxRetries: 3, timeout: 60000 },
+          },
           defaultProvider: 'claude',
           chaosMode: false,
         });

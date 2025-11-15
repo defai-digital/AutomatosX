@@ -47,7 +47,7 @@ export async function statusCommand(rawArgs) {
         }
         // 3. Determine overall status
         const allHealthy = Object.values(healthStatus.checks).every((check) => check.status === 'healthy');
-        healthStatus.overall = allHealthy ? 'healthy' : 'degraded';
+        healthStatus.overall = (allHealthy ? 'healthy' : 'degraded');
         // 4. Display results
         if (args.format === 'json' || args.json) {
             console.log(JSON.stringify(healthStatus, null, 2));

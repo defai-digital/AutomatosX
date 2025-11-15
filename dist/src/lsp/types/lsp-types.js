@@ -110,7 +110,7 @@ export function mapSymbolKind(kind) {
         typeparameter: 26,
     };
     const normalized = kind.toLowerCase().replace(/[_-]/g, '');
-    return kindMap[normalized] ?? 12; // Default to Function
+    return (kindMap[normalized] ?? 12); // Default to Function
 }
 /**
  * Map symbol kind string to CompletionItemKind
@@ -144,7 +144,7 @@ export function mapCompletionItemKind(kind) {
         typeparameter: 25,
     };
     const normalized = kind.toLowerCase().replace(/[_-]/g, '');
-    return kindMap[normalized] ?? 6; // Default to Variable
+    return (kindMap[normalized] ?? 6); // Default to Variable
 }
 /**
  * Check if a range contains a position

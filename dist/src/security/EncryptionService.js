@@ -67,7 +67,7 @@ export class EncryptionService extends EventEmitter {
             // Encrypt
             let encrypted = cipher.update(plaintext, 'utf8', 'hex');
             encrypted += cipher.final('hex');
-            // Get authentication tag
+            // Get authentication tag (GCM mode only)
             const authTag = cipher.getAuthTag();
             // Combine IV, auth tag, and ciphertext
             const encryptedData = {

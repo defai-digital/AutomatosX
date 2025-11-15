@@ -97,27 +97,6 @@ export declare const SymbolSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     endLine?: number | undefined;
 }>;
 export type Symbol = z.infer<typeof SymbolSchema>;
-/**
- * Result of parsing a source file via Tree-sitter
- *
- * Validation rules:
- * - symbols: array of validated Symbol objects
- * - parseTime: non-negative number (milliseconds)
- * - nodeCount: non-negative integer (AST node count)
- * - parseTime < 60000ms (sanity check for infinite loops)
- *
- * @example Valid parse result
- * ```typescript
- * {
- *   symbols: [
- *     { name: 'User', kind: 'class', line: 1, column: 0 },
- *     { name: 'getUserById', kind: 'function', line: 10, column: 2 }
- *   ],
- *   parseTime: 12.5,
- *   nodeCount: 145
- * }
- * ```
- */
 export declare const ParseResultSchema: z.ZodEffects<z.ZodObject<{
     symbols: z.ZodArray<z.ZodEffects<z.ZodEffects<z.ZodObject<{
         name: z.ZodString;
@@ -309,7 +288,125 @@ export type ParserError = z.infer<typeof ParserErrorSchema>;
  * }
  * ```
  */
-export declare const ParseResultWithErrorsSchema: any;
+export declare const ParseResultWithErrorsSchema: z.ZodObject<z.objectUtil.extendShape<{
+    symbols: z.ZodArray<z.ZodEffects<z.ZodEffects<z.ZodObject<{
+        name: z.ZodString;
+        kind: z.ZodEnum<["function", "class", "interface", "type", "variable", "constant", "method", "enum", "struct", "trait", "module"]>;
+        line: z.ZodNumber;
+        column: z.ZodNumber;
+        endLine: z.ZodOptional<z.ZodNumber>;
+        endColumn: z.ZodOptional<z.ZodNumber>;
+        metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }>, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }>, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }, {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }>, "many">;
+    parseTime: z.ZodNumber;
+    nodeCount: z.ZodNumber;
+}, {
+    errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        message: z.ZodString;
+        line: z.ZodOptional<z.ZodNumber>;
+        column: z.ZodOptional<z.ZodNumber>;
+        severity: z.ZodDefault<z.ZodEnum<["error", "warning", "info"]>>;
+        code: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        message: string;
+        severity: "error" | "info" | "warning";
+        column?: number | undefined;
+        code?: string | undefined;
+        line?: number | undefined;
+    }, {
+        message: string;
+        column?: number | undefined;
+        code?: string | undefined;
+        severity?: "error" | "info" | "warning" | undefined;
+        line?: number | undefined;
+    }>, "many">>;
+}>, "strip", z.ZodTypeAny, {
+    symbols: {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }[];
+    parseTime: number;
+    nodeCount: number;
+    errors?: {
+        message: string;
+        severity: "error" | "info" | "warning";
+        column?: number | undefined;
+        code?: string | undefined;
+        line?: number | undefined;
+    }[] | undefined;
+}, {
+    symbols: {
+        name: string;
+        kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";
+        column: number;
+        line: number;
+        endColumn?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        endLine?: number | undefined;
+    }[];
+    parseTime: number;
+    nodeCount: number;
+    errors?: {
+        message: string;
+        column?: number | undefined;
+        code?: string | undefined;
+        severity?: "error" | "info" | "warning" | undefined;
+        line?: number | undefined;
+    }[] | undefined;
+}>;
 export type ParseResultWithErrors = z.infer<typeof ParseResultWithErrorsSchema>;
 /**
  * Validate a symbol kind

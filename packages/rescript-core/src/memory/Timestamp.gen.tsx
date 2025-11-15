@@ -3,6 +3,7 @@
 /* eslint-disable */
 /* tslint:disable */
 
+// @ts-ignore
 import * as TimestampJS from './Timestamp.bs.js';
 
 export abstract class milliseconds { protected opaque!: any }; /* simulate opaque types */

@@ -141,8 +141,8 @@ export class CostEstimator {
     const totalTokens = inputTokens + outputTokens;
 
     // Calculate costs
-    const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
-    const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
+    const inputCost = (inputTokens / 1_000_000) * (modelPricing as any).input;
+    const outputCost = (outputTokens / 1_000_000) * (modelPricing as any).output;
     const cost = inputCost + outputCost;
 
     const breakdown: CostBreakdown = {

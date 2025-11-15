@@ -241,7 +241,7 @@ export class PlanGenerator {
    * Generate phase description
    */
   private generatePhaseDescription(
-    steps: typeof WorkflowDefinition.prototype.steps,
+    steps: any[],
     parallelizable: boolean
   ): string {
     if (steps.length === 1) {

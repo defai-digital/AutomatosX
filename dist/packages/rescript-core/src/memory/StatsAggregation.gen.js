@@ -1,6 +1,7 @@
 /* TypeScript file generated from StatsAggregation.res by genType. */
 /* eslint-disable */
 /* tslint:disable */
+// @ts-ignore
 import * as StatsAggregationJS from './StatsAggregation.bs.js';
 export const buildConversationStatsQuery = StatsAggregationJS.buildConversationStatsQuery;
 export const buildGlobalStatsQuery = StatsAggregationJS.buildGlobalStatsQuery;

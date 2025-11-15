@@ -108,7 +108,7 @@ export class ProviderRateLimiter {
         const bucket = {
             id: uuidv4(),
             key,
-            type,
+            type: type,
             tokens: maxTokens,
             maxTokens,
             refillRate,

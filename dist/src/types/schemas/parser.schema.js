@@ -110,13 +110,12 @@ export const SymbolSchema = z
  * }
  * ```
  */
-export const ParseResultSchema = z
-    .object({
+const ParseResultBaseSchema = z.object({
     symbols: z.array(SymbolSchema),
     parseTime: z.number().nonnegative('Parse time must be non-negative'),
     nodeCount: z.number().int().nonnegative('Node count must be non-negative'),
-})
-    .refine((data) => {
+});
+export const ParseResultSchema = ParseResultBaseSchema.refine((data) => {
     // Validation: parseTime should be reasonable (< 60 seconds)
     // This catches potential infinite loops or hung parsers
     return data.parseTime < 60000;
@@ -193,7 +192,7 @@ export const ParserErrorSchema = z.object({
  * }
  * ```
  */
-export const ParseResultWithErrorsSchema = ParseResultSchema.merge(z.object({
+export const ParseResultWithErrorsSchema = ParseResultBaseSchema.merge(z.object({
     errors: z.array(ParserErrorSchema).optional(),
 }));
 // ============================================================================

@@ -3,6 +3,7 @@
 /* eslint-disable */
 /* tslint:disable */
 
+// @ts-ignore
 import * as StatsAggregationJS from './StatsAggregation.bs.js';
 
 export type conversationStats = {

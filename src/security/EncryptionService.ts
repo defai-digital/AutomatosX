@@ -113,8 +113,8 @@ export class EncryptionService extends EventEmitter {
       let encrypted = cipher.update(plaintext, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
-      // Get authentication tag
-      const authTag = cipher.getAuthTag();
+      // Get authentication tag (GCM mode only)
+      const authTag = (cipher as crypto.CipherGCM).getAuthTag();
 
       // Combine IV, auth tag, and ciphertext
       const encryptedData: EncryptedData = {
@@ -155,7 +155,7 @@ export class EncryptionService extends EventEmitter {
 
       // Create decipher
       const decipher = crypto.createDecipheriv(this.algorithm, this.key, iv);
-      decipher.setAuthTag(authTag);
+      (decipher as crypto.DecipherGCM).setAuthTag(authTag);
 
       // Decrypt
       let decrypted = decipher.update(encryptedData.ciphertext, 'hex', 'utf8');

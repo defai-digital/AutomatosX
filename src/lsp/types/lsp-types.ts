@@ -216,7 +216,7 @@ export interface ReferenceParams extends TextDocumentPositionParams {
  * Map symbol kind string to LSP SymbolKind enum
  */
 export function mapSymbolKind(kind: string): LSPSymbolKind {
-  const kindMap: Record<string, LSPSymbolKind> = {
+  const kindMap: Record<string, number> = {
     file: 1,
     module: 2,
     namespace: 3,
@@ -246,14 +246,14 @@ export function mapSymbolKind(kind: string): LSPSymbolKind {
   };
 
   const normalized = kind.toLowerCase().replace(/[_-]/g, '');
-  return kindMap[normalized] ?? 12; // Default to Function
+  return (kindMap[normalized] ?? 12) as LSPSymbolKind; // Default to Function
 }
 
 /**
  * Map symbol kind string to CompletionItemKind
  */
 export function mapCompletionItemKind(kind: string): LSPCompletionItemKind {
-  const kindMap: Record<string, LSPCompletionItemKind> = {
+  const kindMap: Record<string, number> = {
     text: 1,
     method: 2,
     function: 3,
@@ -282,7 +282,7 @@ export function mapCompletionItemKind(kind: string): LSPCompletionItemKind {
   };
 
   const normalized = kind.toLowerCase().replace(/[_-]/g, '');
-  return kindMap[normalized] ?? 6; // Default to Variable
+  return (kindMap[normalized] ?? 6) as LSPCompletionItemKind; // Default to Variable
 }
 
 /**

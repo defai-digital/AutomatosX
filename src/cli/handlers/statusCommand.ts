@@ -61,7 +61,7 @@ export async function statusCommand(rawArgs: unknown): Promise<void> {
     const allHealthy = Object.values(healthStatus.checks).every(
       (check: any) => check.status === 'healthy'
     )
-    healthStatus.overall = allHealthy ? 'healthy' : 'degraded'
+    healthStatus.overall = (allHealthy ? 'healthy' : 'degraded') as 'healthy'
 
     // 4. Display results
     if (args.format === 'json' || args.json) {

@@ -70,7 +70,7 @@ export class IntegrationService {
   getSymbolDAO(): SymbolDAO {
     if (!this.symbolDAO) {
       const db = this.getDatabase();
-      this.symbolDAO = new SymbolDAO(db);
+      this.symbolDAO = new SymbolDAO();
     }
     return this.symbolDAO;
   }

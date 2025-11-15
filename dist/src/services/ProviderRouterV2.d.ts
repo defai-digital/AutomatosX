@@ -74,6 +74,7 @@ export interface RoutingDecision {
  */
 export interface ProviderRouterOptions {
     providers: Record<ProviderType, ProviderConfig>;
+    defaultProvider?: ProviderType;
     chaosMode?: boolean;
     telemetryEnabled?: boolean;
 }

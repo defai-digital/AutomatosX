@@ -13,6 +13,7 @@
  * }
  * ```
  */
+// @ts-ignore
 import * as WorkflowStateMachine from '../../packages/rescript-core/src/workflow/WorkflowStateMachine.bs.js';
 /**
  * WorkflowStateMachineBridge - TypeScript wrapper for ReScript state machine

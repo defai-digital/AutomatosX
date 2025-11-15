@@ -1,6 +1,7 @@
 /* TypeScript file generated from MessageTransform.res by genType. */
 /* eslint-disable */
 /* tslint:disable */
+// @ts-ignore
 import * as MessageTransformJS from './MessageTransform.bs.js';
 export const messageFromDb = MessageTransformJS.messageFromDb;
 export const vectorResultFromDb = MessageTransformJS.vectorResultFromDb;

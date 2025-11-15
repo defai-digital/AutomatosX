@@ -41,6 +41,8 @@ export interface MemoryUsageMetrics {
     averageMessagesPerConversation: number;
     averageTokensPerMessage: number;
     storageEstimateMB: number;
+    oldestConversation?: number;
+    newestConversation?: number;
 }
 export interface AnalyticsEvent {
     eventType: 'conversation_created' | 'message_added' | 'search_performed' | 'conversation_archived' | 'conversation_deleted';

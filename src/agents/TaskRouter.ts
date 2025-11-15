@@ -6,7 +6,7 @@
 
 import { AgentRegistry } from './AgentRegistry.js';
 import { AgentBase } from './AgentBase.js';
-import { Task } from '../types/agents.types.js';
+import { Task, AgentType } from '../types/agents.types.js';
 
 export interface ParsedTask {
   originalDescription: string;

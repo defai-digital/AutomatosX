@@ -12,6 +12,7 @@ import {
   type BenchmarkWorkload,
 } from '../../performance/BenchmarkHarness.js'
 import { getProfiler } from '../../performance/CLIProfiler.js'
+import { PerformanceProfiler } from '../../utils/PerformanceProfiler.js'
 
 /**
  * Create perf command
@@ -146,7 +147,7 @@ function createRunCommand(): Command {
           const profilingResult = profiler.endCommand()
           if (profilingResult) {
             console.log('\n=== Profiling Results ===')
-            console.log(PerformanceProfiler.formatResult(profilingResult))
+            console.log(JSON.stringify(profilingResult, null, 2))
           }
         }
       } catch (error) {

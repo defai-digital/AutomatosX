@@ -14,6 +14,7 @@
  * ```
  */
 
+// @ts-ignore
 import * as WorkflowStateMachine from '../../packages/rescript-core/src/workflow/WorkflowStateMachine.bs.js';
 
 export type WorkflowState = 'idle' | 'parsing' | 'validating' | 'executing' | 'paused' | 'completed' | 'failed' | 'cancelled';

@@ -201,8 +201,8 @@ export class DAGGenerator {
 
       // Build node label with optional details
       let nodeLabel = label;
-      if (includeDetails && step.duration) {
-        const durationSec = Math.round(step.duration / 1000);
+      if (includeDetails && (step as any).duration) {
+        const durationSec = Math.round((step as any).duration / 1000);
         nodeLabel += `\\n(${durationSec}s)`;
       }
 

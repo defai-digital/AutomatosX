@@ -3,8 +3,10 @@
 /* eslint-disable */
 /* tslint:disable */
 
+// @ts-ignore
 import * as MessageTransformJS from './MessageTransform.bs.js';
 
+// @ts-ignore
 import type {Json_t as Js_Json_t} from './Js.gen';
 
 import type {messageRole as HybridSearchTypes_messageRole} from './HybridSearchTypes.gen';

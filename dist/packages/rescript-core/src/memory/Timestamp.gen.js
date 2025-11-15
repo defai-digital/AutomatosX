@@ -1,6 +1,7 @@
 /* TypeScript file generated from Timestamp.res by genType. */
 /* eslint-disable */
 /* tslint:disable */
+// @ts-ignore
 import * as TimestampJS from './Timestamp.bs.js';
 export class milliseconds {
     opaque;

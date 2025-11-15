@@ -127,22 +127,22 @@ export type Symbol = z.infer<typeof SymbolSchema>;
  * }
  * ```
  */
-export const ParseResultSchema = z
-  .object({
-    symbols: z.array(SymbolSchema),
-    parseTime: z.number().nonnegative('Parse time must be non-negative'),
-    nodeCount: z.number().int().nonnegative('Node count must be non-negative'),
-  })
-  .refine(
-    (data) => {
-      // Validation: parseTime should be reasonable (< 60 seconds)
-      // This catches potential infinite loops or hung parsers
-      return data.parseTime < 60000;
-    },
-    {
-      message: 'Parse time exceeds 60 seconds - possible infinite loop or hung parser',
-    }
-  );
+const ParseResultBaseSchema = z.object({
+  symbols: z.array(SymbolSchema),
+  parseTime: z.number().nonnegative('Parse time must be non-negative'),
+  nodeCount: z.number().int().nonnegative('Node count must be non-negative'),
+});
+
+export const ParseResultSchema = ParseResultBaseSchema.refine(
+  (data) => {
+    // Validation: parseTime should be reasonable (< 60 seconds)
+    // This catches potential infinite loops or hung parsers
+    return data.parseTime < 60000;
+  },
+  {
+    message: 'Parse time exceeds 60 seconds - possible infinite loop or hung parser',
+  }
+);
 
 export type ParseResult = z.infer<typeof ParseResultSchema>;
 
@@ -225,7 +225,7 @@ export type ParserError = z.infer<typeof ParserErrorSchema>;
  * }
  * ```
  */
-export const ParseResultWithErrorsSchema = ParseResultSchema.merge(
+export const ParseResultWithErrorsSchema = ParseResultBaseSchema.merge(
   z.object({
     errors: z.array(ParserErrorSchema).optional(),
   })

@@ -176,7 +176,6 @@ export function findNodeAtPosition(
   position: Position
 ): SyntaxNode | null {
   let currentNode = rootNode.descendantForPosition(
-    { row: position.line, column: position.character },
     { row: position.line, column: position.character }
   );
 

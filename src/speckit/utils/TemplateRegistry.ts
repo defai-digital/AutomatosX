@@ -51,7 +51,7 @@ export class TemplateRegistry {
     });
 
     // Helper: Conditional unless (opposite of if)
-    Handlebars.registerHelper('unless', function (conditional, options) {
+    Handlebars.registerHelper('unless', function (this: any, conditional: any, options: any) {
       if (!conditional) {
         return options.fn(this);
       }

@@ -116,7 +116,7 @@ export class AgentRuntime extends EventEmitter {
             // Memory access
             memory: {
                 search: async (query) => {
-                    return this.memoryService.search(query, { limit: 10 });
+                    return this.memoryService.search(query);
                 },
                 recall: async (conversationId) => {
                     return this.memoryService.getConversation(conversationId);

@@ -429,6 +429,11 @@ export class ClarificationHandler {
    */
   private formatIntentChoice(intent: IntentType): string {
     const descriptions: Record<IntentType, string> = {
+      'chat': 'General conversation',
+      'memory-search': 'Search conversation history',
+      'workflow-execute': 'Execute a workflow',
+      'agent-delegate': 'Delegate to an AI agent',
+      'rephrase': 'Rephrase or clarify',
       'symbol-search': 'Search for function/class definitions',
       'natural-language': 'Natural language query about code',
       'workflow-run': 'Run a workflow',

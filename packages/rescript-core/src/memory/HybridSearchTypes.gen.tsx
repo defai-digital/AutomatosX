@@ -3,8 +3,10 @@
 /* eslint-disable */
 /* tslint:disable */
 
+// @ts-ignore
 import * as HybridSearchTypesJS from './HybridSearchTypes.bs.js';
 
+// @ts-ignore
 import type {Json_t as Js_Json_t} from './Js.gen';
 
 import type {seconds as Timestamp_seconds} from './Timestamp.gen';

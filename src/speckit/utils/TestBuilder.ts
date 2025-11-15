@@ -56,6 +56,8 @@ export class TestBuilder {
       content,
       testCount,
       framework: this.framework,
+      type: 'unit' as const,
+      target: workflow.name,
     };
   }
 
@@ -86,6 +88,8 @@ export class TestBuilder {
       content,
       testCount,
       framework: this.framework,
+      type: 'integration' as const,
+      target: workflow.name,
     };
   }
 
@@ -123,6 +127,8 @@ export class TestBuilder {
       content,
       testCount,
       framework: this.framework,
+      type: 'e2e' as const,
+      target: workflow.name,
     };
   }
 

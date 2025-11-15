@@ -91,6 +91,7 @@ export interface RoutingDecision {
  */
 export interface ProviderRouterOptions {
   providers: Record<ProviderType, ProviderConfig>
+  defaultProvider?: ProviderType
   chaosMode?: boolean
   telemetryEnabled?: boolean
 }
@@ -540,7 +541,7 @@ export class ProviderRouterV2 extends EventEmitter {
    */
   async route(request: any): Promise<any> {
     // Convert V1-style request to V2 ProviderRequest format
-    return this.routeRequest(request);
+    return this.request(request);
   }
 }
 

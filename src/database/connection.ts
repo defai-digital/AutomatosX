@@ -160,7 +160,7 @@ function getCachedStatement(sql: string): Database.Statement {
     // Limit cache size to prevent memory bloat
     if (statementCache.size >= 100) {
       // Remove oldest entry (first in Map)
-      const firstKey = statementCache.keys().next().value;
+      const firstKey = statementCache.keys().next().value as string;
       statementCache.delete(firstKey);
     }
 

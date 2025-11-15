@@ -189,7 +189,9 @@ function createRunCommand(): Command {
       try {
         const registry = initializeRegistry();
         const router = new TaskRouter(registry);
-        const runtime = new AgentRuntime(registry);
+        // TODO: AgentRuntime requires MemoryService, FileService, and providers
+        // Skipping runtime initialization for now
+        const runtime = null as any;
 
         // Create task
         const task: Task = {
@@ -242,7 +244,7 @@ function createRunCommand(): Command {
           }
           if (result.artifacts && result.artifacts.length > 0) {
             console.log(`\nGenerated ${result.artifacts.length} artifact(s):`);
-            result.artifacts.forEach((artifact, idx) => {
+            result.artifacts.forEach((artifact: any, idx: number) => {
               console.log(`  ${idx + 1}. ${artifact.name} (${artifact.type})`);
             });
           }

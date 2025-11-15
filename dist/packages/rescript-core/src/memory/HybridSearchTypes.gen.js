@@ -1,6 +1,7 @@
 /* TypeScript file generated from HybridSearchTypes.res by genType. */
 /* eslint-disable */
 /* tslint:disable */
+// @ts-ignore
 import * as HybridSearchTypesJS from './HybridSearchTypes.bs.js';
 export const parseMessageRole = HybridSearchTypesJS.parseMessageRole;
 export const messageRoleToString = HybridSearchTypesJS.messageRoleToString;

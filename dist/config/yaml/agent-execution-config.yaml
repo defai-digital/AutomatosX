@@ -1,0 +1,40 @@
+# REFACTORING #19: Agent Execution Configuration
+# Configuration for AgentBase retry logic, timeouts, and backoff behavior
+# Controls execution resilience and failure handling
+
+version: "1.0"
+
+# Maximum number of retry attempts for failed tasks
+# Range: 1-10
+# Higher values = more resilient to transient failures
+# Lower values = faster failure detection
+maxRetries: 3
+
+# Task execution timeout in milliseconds (5 minutes)
+# Range: 30000-600000 (30 seconds to 10 minutes)
+# Adjust based on expected task complexity
+timeoutMs: 300000
+
+# Exponential backoff configuration
+backoff:
+  # Base delay in milliseconds for first retry
+  # Range: 100-5000
+  baseMs: 1000
+
+  # Maximum delay cap in milliseconds
+  # Range: 5000-60000 (5 seconds to 1 minute)
+  # Prevents excessive wait times on later retries
+  maxMs: 10000
+
+  # Backoff multiplier (exponential growth factor)
+  # Formula: delay = min(baseMs * (multiplier ^ attempt), maxMs)
+  # Default: 2 (doubles each retry)
+  multiplier: 2
+
+# Error handling configuration
+errors:
+  # Whether to log detailed error traces
+  logTraces: true
+
+  # Whether to emit error events for monitoring
+  emitEvents: true

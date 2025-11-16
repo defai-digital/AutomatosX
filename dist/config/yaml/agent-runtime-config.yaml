@@ -1,0 +1,83 @@
+# REFACTORING #33: Agent Runtime Configuration
+# Configuration for agent execution parameters, provider settings, and team collaboration
+# Externalizes hard-coded values for user customization
+
+version: "1.0"
+
+# Agent execution settings (AgentExecutor, AgentRuntime)
+execution:
+  # Maximum task description length for logs (truncates longer tasks with ellipsis)
+  maxTaskLogLength: 100
+
+  # AI provider defaults for agent execution
+  defaultTemperature: 0.7    # AgentExecutor default (creative/exploratory)
+  defaultMaxTokens: 8000     # AgentExecutor default
+
+# Agent runtime settings (AgentRuntime)
+runtime:
+  # Alternative AI provider defaults for direct runtime calls
+  defaultMaxTokens: 4096     # Fallback max tokens
+  defaultTemperature: 1.0    # Fallback temperature (fully creative)
+  defaultProviderTimeout: 60000  # 60 seconds in milliseconds
+
+# REFACTORING #36: AI Provider Temperature Profiles
+# Standardized temperature settings for different agent types
+# Used by AgentBase to configure AI provider behavior
+temperatureProfiles:
+  creative: 0.7      # For creative/exploratory agents (CEO, CTO, Product, Writer, Researcher)
+  balanced: 0.6      # For balanced agents (Frontend, Backend, Mobile, Data Science, Architecture)
+  precise: 0.5       # For precision-focused agents (Security, Standards, Quality, Testing, Performance)
+
+# REFACTORING #36: AI Provider Token Limits
+# Standardized max token limits for agent responses
+tokenLimits:
+  standard: 4000     # Standard token limit for most agents
+  fallback: 4000     # Fallback for callProvider
+
+# Team collaboration settings (TeamManager)
+team:
+  # Maximum depth for agent-to-agent delegation chains
+  maxDelegationDepth: 2
+
+  # Whether agents can write to shared team resources by default
+  canWriteToShared: false
+
+# Agent registry configuration (AgentRegistry)
+registry:
+  # Search scoring weights for agent selection
+  searchScoring:
+    nameMatch: 3         # Weight for agent name match
+    descriptionMatch: 2  # Weight for description match
+    capabilityMatch: 2   # Weight for capability name match
+    keywordMatch: 1      # Weight for capability keyword match
+    specializationMatch: 2  # Weight for specialization match
+
+  # Required agents for registry validation
+  requiredAgents:
+    - backend
+    - frontend
+    - security
+    - quality
+    - devops
+    - architecture
+    - data
+    - product
+
+# AI provider configuration (provider-config.ts)
+providers:
+  # Retry and timeout defaults for all providers
+  defaults:
+    maxRetries: 3
+    timeout: 60000  # 60 seconds in milliseconds
+    rateLimitPerMinute: 50
+
+  # Provider-specific overrides
+  gemini:
+    rateLimitPerMinute: 60  # Gemini has higher rate limit
+
+  # Default model names for each provider
+  models:
+    claude: "claude-3-5-sonnet-20241022"
+    gemini: "gemini-2.0-flash-exp"
+    openai: "gpt-4-turbo-preview"
+    codex: "gpt-4-turbo-preview"  # Codex uses OpenAI models

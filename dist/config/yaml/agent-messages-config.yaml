@@ -1,0 +1,84 @@
+# REFACTORING #23: Agent Messages Configuration
+# Configuration for error messages, log messages, and formatting templates
+# Supports i18n and consistent messaging across agent system
+
+version: "1.0"
+
+# Error messages for AgentBase
+errors:
+  taskTimeout: "Task execution timeout"
+  taskFailed: "Task failed after"  # Will be followed by retry count
+
+# File loading and validation errors (ProfileLoader, TeamManager, AbilitiesManager)
+fileErrors:
+  profileNotFound: "Agent profile not found"
+  teamNotFound: "Team configuration not found"
+  abilityNotFound: "Ability not found"
+  invalidProfile: "Invalid agent profile"
+  invalidTeam: "Invalid team configuration"
+  missingField: "missing required field"
+  invalidFieldType: "field must be an array"
+  failedToLoad: "Failed to load"
+  failedToList: "Failed to list"
+  failedToMerge: "Failed to merge with team"
+  usingProfileAsIs: "using agent profile as-is"
+
+# Registry and runtime errors (AgentRegistry, AgentRuntime)
+registry:
+  alreadyRegistered: "Agent already registered"
+  noSuitableAgent: "No suitable agent found for task"
+  unknownProvider: "Unknown provider"
+  taskExecutionFailed: "Task execution failed"
+  providerCallFailed: "Provider call failed"
+
+# Error messages for AgentCollaborator
+collaboration:
+  dependenciesNotMet: "Dependencies not met"
+  subtaskFailed: "Subtask failed"
+  allSubtasksFailed: "All subtasks failed"
+  agentNotFound: "Agent not found"
+  circularDependency: "Circular dependency detected"
+  dependencyNotFound: "Dependency not found"
+  taskProceedWithoutDependency: "Task will proceed without this dependency"
+
+# Log messages for AgentExecutor
+logging:
+  executingAgent: "Executing agent"
+  executionCompleted: "Agent execution completed"
+  executionFailed: "Agent execution failed"
+
+# REFACTORING #37: Agent-specific log message templates
+# Used by individual agents for consistent logging patterns
+agentLogs:
+  handling: "handling"          # "{AgentType} agent handling: {task}"
+  analyzing: "analyzing"        # "{AgentType} agent analyzing: {task}"
+  completed: "completed task successfully"
+  failed: "failed"              # "{AgentType} agent failed: {error}"
+  codeContextFailed: "Failed to gather code context"
+  memoryContextFailed: "Failed to gather memory context"
+
+# Message formatting templates
+formatting:
+  messageSeparator: "\n\n---\n\n"
+  taskHeader: "# User Task"
+  ellipsis: "..."
+  contextHeader: "# Execution Context"
+
+# Abilities presentation messages
+abilities:
+  header: "# Your Specialized Abilities"
+  intro: "You have access to the following specialized knowledge and capabilities:"
+  footer: "Use these abilities to provide expert-level assistance in your responses."
+  separator: "\n\n---\n\n"
+
+# REFACTORING #38: Context manager string templates
+# Used by ContextManager for formatting execution context
+context:
+  workingDirectory: "Working Directory"
+  environment: "Environment"
+  timestamp: "Timestamp"
+  relevantMemory: "Relevant Memory"
+  entries: "entries"
+  memoryNotImplemented: "Memory integration requested (not yet implemented)"
+  sessionNotImplemented: "Session integration requested"
+  sessionNotImplementedSuffix: "(not yet implemented)"

@@ -53,8 +53,9 @@
   "scripts": {
     "build:rescript": "npm run build --workspace=@automatosx/rescript-core",
     "build:typescript": "tsc",
-    "build": "npm run build:rescript && npm run build:typescript",
-    "build:cli": "npm run build:typescript && chmod +x dist/cli/index.js",
+    "build:copy-config": "mkdir -p dist/config/yaml && cp -r src/config/yaml/*.yaml dist/config/yaml/",
+    "build": "npm run build:rescript && npm run build:typescript && npm run build:copy-config",
+    "build:cli": "npm run build:typescript && npm run build:copy-config && chmod +x dist/cli/index.js",
     "build:web": "vite build",
     "clean": "rm -rf packages/*/lib packages/*/node_modules node_modules dist",
     "clean:tests": "find dist -type d -name '__tests__' -exec rm -rf {} + 2>/dev/null || true && find dist -type d -name '__benchmarks__' -exec rm -rf {} + 2>/dev/null || true && find dist -name '*.test.*' -delete && find dist -name '*.bench.*' -delete",

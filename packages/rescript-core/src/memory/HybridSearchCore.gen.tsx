@@ -3,7 +3,6 @@
 /* eslint-disable */
 /* tslint:disable */
 
-// @ts-ignore
 import * as HybridSearchCoreJS from './HybridSearchCore.bs.js';
 
 import type {message as HybridSearchTypes_message} from './HybridSearchTypes.gen';

@@ -1,75 +1,68 @@
+# This file is used alongside the "files" field in package.json
+# npm will include files listed in "files" but exclude patterns here
+
+# Test directories (all levels)
+**/__tests__/
+**/__benchmarks__/
+
+# Test files (all extensions)
+**/*.test.js
+**/*.test.d.ts
+**/*.test.ts
+**/*.test.js.map
+**/*.test.d.ts.map
+**/*.spec.js
+**/*.spec.d.ts
+**/*.spec.ts
+**/*.bench.js
+**/*.bench.d.ts
+
 # Development and CI files
 .github/
 .vscode/
 .specify/
 .claude/
 
-# Test files and coverage
-src/**/__tests__/
-src/**/*.test.ts
-src/**/*.spec.ts
+# Coverage
 coverage/
 .nyc_output/
+
+# Build configs
+tsconfig.json
 vitest.config.ts
 vitest.config.mts
-
-# Build tools
-tsconfig.json
 .prettierrc
 .prettierignore
 .eslintrc.*
 
-# Documentation archives (keep main docs, exclude archives)
+# Archives and temp
 automatosx/PRD/archive/
 automatosx/tmp/
 
-# Test databases
-*.test.db
-*.test.db-*
-test-*.db
-test-*.db-*
+# Source TypeScript (we ship compiled dist/)
+src/
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# But keep migrations
+!src/migrations/
 
-# Environment files
-.env*
-*.env
-.secrets
-
-# Git files
+# Git and editor
 .git/
 .gitignore
 .gitattributes
-
-# Editor files
 *.swp
 *.swo
 *~
 .DS_Store
 
-# Source maps (optional - remove if you want to include them)
-*.map
+# Logs
+*.log
 
-# License header template
-.license-header.ts
+# Environment
+.env*
+*.env
 
-# Node version files
-.nvmrc
-.node-version
-
-# Package manager files
+# Package manager
 .npmrc.example
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
-
-# Keep these essential files:
-# - dist/ (compiled output)
-# - .automatosx/ (runtime config)
-# - automatosx/PRD/*.md (main docs, not archives)
-# - scripts/ (postinstall, etc.)
-# - README.md, LICENSE, etc.

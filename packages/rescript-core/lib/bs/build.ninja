@@ -1,14 +1,14 @@
 rescript = 1
-g_finger := /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml/install.stamp
+g_finger := /Users/akiralam/code/automatosx/node_modules/@rescript/core/lib/ocaml/install.stamp
 rule astj
-  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe  -warn-error +101+8 -bs-v 11.1.4 -uncurried -bs-super-errors -absname -bs-ast -o $out $i
+  command = /Users/akiralam/code/automatosx/node_modules/rescript/darwinarm64/bsc.exe  -warn-error +101+8 -bs-v 11.1.4 -uncurried -bs-super-errors -absname -bs-ast -o $out $i
 o src/Hello.ast : astj ../../src/Hello.res
 rule deps
-  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsb_helper.exe -hash a61609fb759c06eaaecef6b19f7c6d78 $in
+  command = /Users/akiralam/code/automatosx/node_modules/rescript/darwinarm64/bsb_helper.exe -hash a61609fb759c06eaaecef6b19f7c6d78 $in
   restat = 1
 o src/Hello.d : deps src/Hello.ast
 rule mij
-  command = /Users/akiralam/code/automatosx2/node_modules/rescript/darwinarm64/bsc.exe -I src/types -I src/memory -I src/retry -I src/security -I src/bridge -I src/providers/__tests__ -I src/providers -I src/runtime -I src/state -I src/math -I src/concurrency -I src/__tests__/rescript-core -I src/__tests__ -I src/workflow -I src/rules -I src/events -I src/resource -I src/error -I src/domain -I src/validation -I src -I /Users/akiralam/code/automatosx2/node_modules/@rescript/core/lib/ocaml -bs-super-errors  -warn-error +101+8 -bs-gentype -uncurried -bs-package-name @automatosx/rescript-core -bs-package-output esmodule:$in_d:.bs.js -bs-v $g_finger $i
+  command = /Users/akiralam/code/automatosx/node_modules/rescript/darwinarm64/bsc.exe -I src/types -I src/memory -I src/retry -I src/security -I src/bridge -I src/providers/__tests__ -I src/providers -I src/runtime -I src/state -I src/math -I src/concurrency -I src/__tests__/rescript-core -I src/__tests__ -I src/workflow -I src/rules -I src/events -I src/resource -I src/error -I src/domain -I src/validation -I src -I /Users/akiralam/code/automatosx/node_modules/@rescript/core/lib/ocaml -bs-super-errors  -warn-error +101+8 -bs-gentype -uncurried -bs-package-name @automatosx/rescript-core -bs-package-output esmodule:$in_d:.bs.js -bs-v $g_finger $i
   dyndep = 1
   restat = 1
 o src/Hello.cmj src/Hello.cmi ../../src/Hello.bs.js : mij src/Hello.ast

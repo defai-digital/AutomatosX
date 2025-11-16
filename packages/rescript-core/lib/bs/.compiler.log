@@ -1,7 +1,7 @@
-#Start(1763223077562)
+#Start(1763328000848)
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -14,7 +14,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -27,7 +27,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -39,20 +39,8 @@
   this open statement shadows the constructor Ok (which is later used)
 
 
-  Warning number 26
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryFallback.res:360:11-20
-
-  358 ┆ }
-  359 ┆ 
-  360 ┆ let attemptEnd = getCurrentTime()
-  361 ┆ let delayMs = if attemptNumber < config.maxAttempts {
-  362 ┆   calculateDelay(config.strategy, attemptNumber)
-
-  unused variable attemptEnd.
-
-
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -65,7 +53,46 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/domain/DomainValidation.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 44
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -78,7 +105,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/validation/ValidationRules.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -91,7 +118,7 @@
 
 
   Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/validation/ValidationRules.res:170:3-11
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/validation/ValidationRules.res:170:3-11
 
   168 │ @genType
   169 │ let storeEmbedding = (
@@ -103,7 +130,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/state/StateManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -116,7 +143,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/state/StateManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -129,7 +156,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/state/StateManagement.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -142,7 +169,7 @@
 
 
   Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/state/StateManagement.res:414:22-26
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/state/StateManagement.res:414:22-26
 
   412 │ // Get state name as string (for debugging)
   413 │ @genType
@@ -155,7 +182,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/math/SafeMath.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -168,20 +195,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/math/SafeMath.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -193,33 +207,21 @@
   this open statement shadows the constructor Ok (which is later used)
 
 
-  Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:408:29-31
+  Warning number 45
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/math/SafeMath.res:13:1-18
 
-  406 │ // Example function: Get user's conversations (type-safe!)
-  407 │ @genType
-  408 │ let getUserConversations = (uid: userId): array<conversationId> => {
-  409 │   // Implementation would query database
-  410 │   // Return type is array<conversationId>, not array<string>
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
 
-  unused variable uid.
-
-
-  Warning number 27
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/types/TypeSafety.res:416:32-37
-
-  414 │ // Example function: Get messages in conversation (type-safe!)
-  415 │ @genType
-  416 │ let getConversationMessages = (convId: conversationId): array<messageI
-      │ d> => {
-  417 │   // Implementation would query database
-  418 │   []
-
-  unused variable convId.
+  this open statement shadows the constructor Error (which is later used)
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -232,7 +234,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -245,7 +247,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -258,85 +260,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/resource/ResourceManagement.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the type identifier result (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Ok (which is later used)
-
-
-  Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/concurrency/ConcurrencySafety.res:13:1-18
-
-  11 │ 
-  12 │ // Import ErrorHandling for Result types
-  13 │ open ErrorHandling
-  14 │ 
-  15 │ // ====================================================================
-     │ ========
-
-  this open statement shadows the constructor Error (which is later used)
-
-
-  Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
 
   4 │ 
   5 │ open Core__Option
@@ -349,7 +273,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
 
   4 │ 
   5 │ open Core__Option
@@ -362,7 +286,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:224:46-59
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:224:46-59
 
   222 ┆ let depLevels =
   223 ┆   task.dependencies->map(depId => {
@@ -375,7 +299,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:279:54-67
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:279:54-67
 
   277 ┆ | None => acc
   278 ┆ | Some(level) => {
@@ -388,7 +312,7 @@
 
 
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:6:1-16
 
   4 │ 
   5 │ open Core__Option
@@ -401,7 +325,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:321:61-74
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:321:61-74
 
   319 ┆ let depFinishes =
   320 ┆   task.dependencies->map(depId => {
@@ -415,7 +339,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:323:84-97
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:323:84-97
 
   321 ┆   let depStart = acc->Belt.Map.String.get(depId)->getWithDefault(0)
   322 ┆   let depTask = taskMap->Belt.Map.String.get(depId)
@@ -429,7 +353,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:360:47-60
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:360:47-60
 
   358 ┆ // Latest start is min(latest start of all dependents) - duration
   359 ┆ let depStarts = Belt.Array.map(dependents, dep => {
@@ -443,7 +367,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:388:62-75
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:388:62-75
 
   386 ┆ // Find project end time (max earliest finish)
   387 ┆ let projectEndTime = Belt.Array.reduce(executionOrder, 0, (acc, taskId
@@ -459,7 +383,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:389:102-115
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:389:102-115
 
   387 ┆ let projectEndTime = Belt.Array.reduce(executionOrder, 0, (acc, taskId
       ┆ ) => {
@@ -475,7 +399,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:397:65-78
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:397:65-78
 
   395 ┆ // Critical tasks have slack = 0 (earliest start === latest start)
   396 ┆ let criticalTasks = Belt.Array.keep(executionOrder, taskId => {
@@ -490,7 +414,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:398:61-74
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:398:61-74
 
   396 ┆ let criticalTasks = Belt.Array.keep(executionOrder, taskId => {
   397 ┆   let earliest = earliestStarts->Belt.Map.String.get(taskId)->getWithD
@@ -505,7 +429,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:485:56-69
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:485:56-69
 
   483 ┆ // Group by level
   484 ┆ let levels = plan.executionOrder->reduce(Belt.Map.Int.empty, (acc, tas
@@ -519,7 +443,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:486:50-63
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:486:50-63
 
   484 ┆ let levels = plan.executionOrder->reduce(Belt.Map.Int.empty, (acc, tas
       ┆ kId) => {
@@ -533,7 +457,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:544:66-79
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:544:66-79
 
   542 ┆ 
   543 ┆ let estimatedTotalTime = Belt.Array.reduce(executionOrder, 0, (acc, ta
@@ -549,7 +473,7 @@
 
 
   Warning number 3
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/workflow/TaskPlanner.res:545:106-119
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/workflow/TaskPlanner.res:545:106-119
 
   543 ┆ let estimatedTotalTime = Belt.Array.reduce(executionOrder, 0, (acc, ta
       ┆ skId) => {
@@ -564,8 +488,20 @@
   Use getOr instead
 
 
+  Warning number 26
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/retry/RetryFallback.res:360:11-20
+
+  358 ┆ }
+  359 ┆ 
+  360 ┆ let attemptEnd = getCurrentTime()
+  361 ┆ let delayMs = if attemptNumber < config.maxAttempts {
+  362 ┆   calculateDelay(config.strategy, attemptNumber)
+
+  unused variable attemptEnd.
+
+
   Warning number 44
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -578,7 +514,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -591,7 +527,7 @@
 
 
   Warning number 45
-  /Users/akiralam/code/automatosx2/packages/rescript-core/src/math/SafeMath.res:13:1-18
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/retry/RetryOrchestrator.res:13:1-18
 
   11 │ 
   12 │ // Import ErrorHandling for Result types
@@ -602,4 +538,68 @@
 
   this open statement shadows the constructor Error (which is later used)
 
-#Done(1763223077645)
+
+  Warning number 44
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the type identifier result (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Error (which is later used)
+
+
+  Warning number 45
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/types/TypeSafety.res:13:1-18
+
+  11 │ 
+  12 │ // Import ErrorHandling for Result types
+  13 │ open ErrorHandling
+  14 │ 
+  15 │ // ====================================================================
+     │ ========
+
+  this open statement shadows the constructor Ok (which is later used)
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/types/TypeSafety.res:408:29-31
+
+  406 │ // Example function: Get user's conversations (type-safe!)
+  407 │ @genType
+  408 │ let getUserConversations = (uid: userId): array<conversationId> => {
+  409 │   // Implementation would query database
+  410 │   // Return type is array<conversationId>, not array<string>
+
+  unused variable uid.
+
+
+  Warning number 27
+  /Users/akiralam/code/automatosx/packages/rescript-core/src/types/TypeSafety.res:416:32-37
+
+  414 │ // Example function: Get messages in conversation (type-safe!)
+  415 │ @genType
+  416 │ let getConversationMessages = (convId: conversationId): array<messageI
+      │ d> => {
+  417 │   // Implementation would query database
+  418 │   []
+
+  unused variable convId.
+
+#Done(1763328000986)

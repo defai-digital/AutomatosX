@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.0.23",
+  "version": "8.0.24",
   "type": "module",
   "description": "Production-ready code intelligence platform with AI agents, workflow orchestration, interactive CLI, SpecKit generators, and autonomous retry system. 44 languages, 21 AI agents, 745+ tests.",
   "license": "Apache-2.0",

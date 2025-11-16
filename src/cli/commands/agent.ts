@@ -178,6 +178,7 @@ function createDescribeCommand(): Command {
 /**
  * Command: ax run @<agent> "<task>"
  * Execute a task with a specific agent
+ * BUG FIX #35: Use AgentExecutor instead of null runtime
  */
 function createRunCommand(): Command {
   return new Command('run')
@@ -189,9 +190,10 @@ function createRunCommand(): Command {
       try {
         const registry = initializeRegistry();
         const router = new TaskRouter(registry);
-        // TODO: AgentRuntime requires MemoryService, FileService, and providers
-        // Skipping runtime initialization for now
-        const runtime = null as any;
+
+        // BUG FIX #35: Import and use AgentExecutor
+        const { AgentExecutor } = await import('../../agents/AgentExecutor.js');
+        const executor = new AgentExecutor(process.cwd());
 
         // Create task
         const task: Task = {
@@ -203,24 +205,27 @@ function createRunCommand(): Command {
         };
 
         // Determine agent
-        let agent;
+        let agentType: string;
+        let agentMetadata;
         if (options.agent) {
-          agent = registry.get(options.agent);
+          const agent = registry.get(options.agent);
           if (!agent) {
             console.error(`Agent not found: ${options.agent}`);
             process.exit(1);
           }
+          agentType = options.agent;
+          agentMetadata = agent.getMetadata();
         } else {
           const routedAgent = router.routeToAgent(task);
           if (!routedAgent) {
             console.error('Could not find suitable agent for this task');
             process.exit(1);
           }
-          agent = routedAgent;
+          agentMetadata = routedAgent.getMetadata();
+          agentType = agentMetadata.type;
         }
 
-        const agentMetadata = agent.getMetadata();
-        console.log(`\nRouted to: ${agentMetadata.name} (@${agentMetadata.type})`);
+        console.log(`\nRouted to: ${agentMetadata.name} (@${agentType})`);
 
         if (options.verbose) {
           const confidence = router.getRoutingConfidence(task);
@@ -230,28 +235,22 @@ function createRunCommand(): Command {
         console.log(`\nExecuting task: "${taskDescription}"`);
         console.log('─'.repeat(80));
 
-        // Execute task
-        const result = await runtime.executeTask(task, {
-          provider: 'claude',
-          maxRetries: 3,
-          timeout: 60000,
+        // BUG FIX #35: Execute task with AgentExecutor
+        const result = await executor.execute({
+          agent: agentType,
+          task: taskDescription,
+          verbose: options.verbose
         });
 
         if (result.success) {
           console.log('\n✅ Task completed successfully\n');
-          if (result.data) {
-            console.log(result.data);
-          }
-          if (result.artifacts && result.artifacts.length > 0) {
-            console.log(`\nGenerated ${result.artifacts.length} artifact(s):`);
-            result.artifacts.forEach((artifact: any, idx: number) => {
-              console.log(`  ${idx + 1}. ${artifact.name} (${artifact.type})`);
-            });
+          if (result.response) {
+            console.log(result.response);
           }
         } else {
           console.log('\n❌ Task failed');
-          if (result.message) {
-            console.log(`Error: ${result.message}`);
+          if (result.error) {
+            console.log(`Error: ${result.error.message}`);
           }
         }
 
@@ -264,6 +263,8 @@ function createRunCommand(): Command {
 
 /**
  * Register all agent commands
+ * BUG FIX #36: Remove duplicate 'run' command registration
+ * The 'run' command is already registered in src/cli/commands/run.ts
  */
 export function registerAgentCommands(program: Command): void {
   const agentCommand = new Command('agent')
@@ -272,8 +273,9 @@ export function registerAgentCommands(program: Command): void {
   agentCommand.addCommand(createListCommand());
   agentCommand.addCommand(createDescribeCommand());
 
-  // Also add standalone 'run' command to main program
-  program.addCommand(createRunCommand());
+  // BUG FIX #36: Don't register standalone 'run' command here
+  // It's already registered via createRunCommand() from src/cli/commands/run.ts
+  // program.addCommand(createRunCommand());
 
   program.addCommand(agentCommand);
 }

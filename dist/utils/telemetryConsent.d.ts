@@ -25,6 +25,8 @@ export declare function showTelemetryConsent(): Promise<void>;
  * Privacy by Default: Telemetry is disabled by default without prompting.
  * Users can enable it later with: ax telemetry enable
  *
+ * BUG FIX #37: Remove telemetry message to reduce noise
+ *
  * @returns Promise that resolves when consent check is complete
  */
 export declare function checkTelemetryConsent(): Promise<void>;

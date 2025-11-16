@@ -38,6 +38,7 @@ import { createProviderCommand } from './commands/provider.js';
 import { createMonitorCommand } from './commands/monitor.js';
 import { createWorkflowCommand } from './commands/workflow.js';
 import { createQueueCommand } from './commands/queue.js';
+import { createRunCommand } from './commands/run.js';
 import { registerAgentCommands } from './commands/agent.js';
 import { registerSpecKitCommands } from './commands/speckit.js';
 import { createGenCommands } from './commands/gen.js';
@@ -95,6 +96,8 @@ program.addCommand(createProviderCommand());
 program.addCommand(createMonitorCommand());
 program.addCommand(createWorkflowCommand());
 program.addCommand(createQueueCommand());
+// BUG FIX #36: Add run command registration
+program.addCommand(createRunCommand());
 // Add interactive CLI command
 program
     .command('cli')

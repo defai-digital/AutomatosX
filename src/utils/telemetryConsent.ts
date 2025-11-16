@@ -116,6 +116,8 @@ export async function showTelemetryConsent(): Promise<void> {
  * Privacy by Default: Telemetry is disabled by default without prompting.
  * Users can enable it later with: ax telemetry enable
  *
+ * BUG FIX #37: Remove telemetry message to reduce noise
+ *
  * @returns Promise that resolves when consent check is complete
  */
 export async function checkTelemetryConsent(): Promise<void> {
@@ -126,9 +128,7 @@ export async function checkTelemetryConsent(): Promise<void> {
     await service.initialize();
     await service.disable();
 
-    // Show one-time informational message
-    console.log('\n💡 Privacy by default: Telemetry is disabled');
-    console.log('   To help improve AutomatosX, run: ax telemetry enable');
-    console.log('   Learn more: ax telemetry --help\n');
+    // BUG FIX #37: Don't show telemetry message (silent disable)
+    // Message removed per user request to reduce noise
   }
 }

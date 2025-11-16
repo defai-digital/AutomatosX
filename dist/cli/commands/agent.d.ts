@@ -6,6 +6,8 @@
 import { Command } from 'commander';
 /**
  * Register all agent commands
+ * BUG FIX #36: Remove duplicate 'run' command registration
+ * The 'run' command is already registered in src/cli/commands/run.ts
  */
 export declare function registerAgentCommands(program: Command): void;
 //# sourceMappingURL=agent.d.ts.map

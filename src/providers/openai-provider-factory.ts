@@ -12,7 +12,8 @@
 import type { ProviderConfig } from '../types/provider.js';
 import type { IntegrationMode } from '../types/config.js';
 import { OpenAIProvider } from './openai-provider.js';
-import { OpenAISDKProvider } from './openai-sdk-provider.js';
+// v8.3.0: SDK provider removed - CLI only
+// import { OpenAISDKProvider } from './openai-sdk-provider.js';
 import {
   getModeWithAutoResolution,
   shouldShowWizard,
@@ -34,53 +35,14 @@ import { logger } from '../utils/logger.js';
 export function createOpenAIProviderSync(
   config: ProviderConfig,
   integrationMode?: IntegrationMode
-): OpenAIProvider | OpenAISDKProvider {
-  // Resolve mode using sync-safe heuristics
-  let resolvedMode: 'cli' | 'sdk' = 'cli'; // Default to CLI for safety
+): OpenAIProvider {
+  // v8.3.0: Always use CLI - SDK mode removed
+  logger.debug('Created OpenAI CLI provider (v8.3.0: CLI-only)', {
+    provider: config.name,
+    mode: 'cli'
+  });
 
-  if (integrationMode === 'sdk') {
-    resolvedMode = 'sdk';
-  } else if (integrationMode === 'cli') {
-    resolvedMode = 'cli';
-  } else if (integrationMode === 'auto' || !integrationMode) {
-    // Simple sync check: if API key exists, prefer SDK, otherwise CLI
-    const hasAPIKey = !!process.env.OPENAI_API_KEY;
-    resolvedMode = hasAPIKey ? 'sdk' : 'cli';
-
-    if (process.env.AUTOMATOSX_DEBUG === 'true') {
-      logger.debug('OpenAI integration mode auto-resolved (sync)', {
-        hasAPIKey,
-        resolvedMode,
-        provider: config.name
-      });
-    }
-  }
-
-  // Create appropriate provider
-  if (resolvedMode === 'sdk') {
-    const sdkConfig = {
-      apiKey: config.sdk?.apiKey || process.env.OPENAI_API_KEY,
-      organization: config.sdk?.organization,
-      baseURL: config.sdk?.baseURL,
-      timeout: config.sdk?.timeout || config.timeout,
-      maxRetries: config.sdk?.maxRetries || 2,
-      defaultModel: config.sdk?.defaultModel || 'gpt-4o'
-    };
-
-    logger.debug('Created OpenAI SDK provider (sync)', {
-      provider: config.name,
-      mode: 'sdk'
-    });
-
-    return new OpenAISDKProvider(config, sdkConfig);
-  } else {
-    logger.debug('Created OpenAI CLI provider (sync)', {
-      provider: config.name,
-      mode: 'cli'
-    });
-
-    return new OpenAIProvider(config);
-  }
+  return new OpenAIProvider(config);
 }
 
 /**
@@ -95,89 +57,14 @@ export async function createOpenAIProviderAsync(
   config: ProviderConfig,
   integrationMode?: IntegrationMode,
   interactive: boolean = false
-): Promise<OpenAIProvider | OpenAISDKProvider> {
-  // Resolve integration mode
-  let resolvedMode: 'cli' | 'sdk';
+): Promise<OpenAIProvider> {
+  // v8.3.0: Always use CLI - SDK mode removed
+  logger.info('Creating OpenAI CLI provider (v8.3.0: CLI-only)', {
+    provider: config.name,
+    mode: 'cli'
+  });
 
-  // v6.0.7: Check if wizard should be shown
-  const needsWizard = await shouldShowWizard(integrationMode, !integrationMode);
-
-  if (interactive && needsWizard) {
-    // Show wizard for interactive mode selection
-    const selectedMode = await showModeWizard(integrationMode, {
-      autoDetect: false,
-      verbose: process.env.AUTOMATOSX_DEBUG === 'true'
-    });
-
-    // Resolve 'auto' to actual mode
-    resolvedMode = await getModeWithAutoResolution(selectedMode);
-
-    logger.info('OpenAI integration mode selected via wizard', {
-      selectedMode,
-      resolvedMode,
-      provider: config.name
-    });
-  } else {
-    // Non-interactive: resolve mode automatically
-    resolvedMode = await getModeWithAutoResolution(integrationMode);
-
-    // v6.0.7: Log warnings for detected conflicts
-    if (needsWizard && !interactive) {
-      const env = await detectEnvironment();
-
-      if (integrationMode === 'sdk' && env.isBehindFirewall) {
-        logger.warn('OpenAI SDK mode configured but firewall detected', {
-          configuredMode: integrationMode,
-          resolvedMode,
-          canReachAPI: env.canReachAPI,
-          suggestion: 'Run "ax setup openai" to reconfigure'
-        });
-      } else if (integrationMode === 'cli' && !env.hasCodexCLI && env.hasAPIKey && env.canReachAPI) {
-        logger.warn('OpenAI CLI mode configured but Codex CLI not found', {
-          configuredMode: integrationMode,
-          resolvedMode,
-          hasCodexCLI: env.hasCodexCLI,
-          hasAPIKey: env.hasAPIKey,
-          suggestion: 'Run "ax setup openai" to switch to SDK mode'
-        });
-      }
-    }
-
-    if (process.env.AUTOMATOSX_DEBUG === 'true') {
-      logger.debug('OpenAI integration mode resolved', {
-        configuredMode: integrationMode,
-        resolvedMode,
-        provider: config.name
-      });
-    }
-  }
-
-  // Create appropriate provider instance
-  if (resolvedMode === 'sdk') {
-    logger.info('Creating OpenAI SDK provider', {
-      provider: config.name,
-      mode: 'sdk'
-    });
-
-    // Extract SDK configuration from provider config
-    const sdkConfig = {
-      apiKey: config.sdk?.apiKey || process.env.OPENAI_API_KEY,
-      organization: config.sdk?.organization,
-      baseURL: config.sdk?.baseURL,
-      timeout: config.sdk?.timeout || config.timeout,
-      maxRetries: config.sdk?.maxRetries || 2,
-      defaultModel: config.sdk?.defaultModel || 'gpt-4o'
-    };
-
-    return new OpenAISDKProvider(config, sdkConfig);
-  } else {
-    logger.info('Creating OpenAI CLI provider', {
-      provider: config.name,
-      mode: 'cli'
-    });
-
-    return new OpenAIProvider(config);
-  }
+  return new OpenAIProvider(config);
 }
 
 /**

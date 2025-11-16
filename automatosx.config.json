@@ -295,9 +295,7 @@
   },
   "router": {
     "healthCheckInterval": 60000,
-    "providerCooldownMs": 30000,
-    "enableFreeTierPrioritization": true,
-    "enableWorkloadAwareRouting": true
+    "providerCooldownMs": 30000
   },
-  "version": "7.1.2"
+  "version": "8.3.0"
 }

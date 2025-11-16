@@ -29,10 +29,53 @@ import type { RoutingConfig } from '../types/routing.js';
 import { getRoutingStrategyManager } from './routing-strategy.js';
 import { getProviderMetricsTracker } from './provider-metrics-tracker.js';
 
-// v8.3.0: Removed policy-driven routing, free-tier, workload analysis, cost tracking
+// Phase 2.2: Policy-driven routing - REMOVED in v8.3.0
+// TODO v8.3.0: Temporary stubs - will be removed in Phase 2
+class PolicyParser {
+  parsePolicy(yaml: any): any { return {}; }
+  parse(yaml: any): any { return { goal: 'balanced', constraints: {} }; }
+}
+class PolicyEvaluator {
+  constructor(metadata: any, tracker: any) {}
+  evaluateProviders(policy: any, providers: string[]): any {
+    return { passed: providers, filtered: [] };
+  }
+  filterProviders(policy: any, providers: string[]): any {
+    return { passed: providers, filtered: [] };
+  }
+  scoreProvider(policy: any, provider: string) { return 1.0; }
+  scoreProviders(policy: any, providers: string[]): any[] {
+    return providers.map((p: string) => ({ provider: p, score: 1.0, totalScore: 1.0 }));
+  }
+}
+const PROVIDER_METADATA: Record<string, any> = {
+  'claude': { costPerMToken: 0 },
+  'gemini': { costPerMToken: 0 },
+  'codex': { costPerMToken: 0 }
+};
+const getFreeTierManager = () => ({
+  quotaExceeded: (provider?: string) => false,
+  recordRequest: () => {},
+  getRemainingQuota: () => 1000,
+  hasFreeTier: (provider?: string) => false,
+  getQuota: (provider?: string) => ({
+    used: 0,
+    limit: 1000,
+    available: 1000,
+    requestsRemaining: 1000,
+    tokensRemaining: 1000000
+  }),
+  trackUsage: (provider?: string, tokens?: number, cost?: number) => {}
+});
 
-// Phase 2.3: Trace logging (simplified for v8.3.0)
+import { getCostTracker } from './cost-tracker.js';
+import type { SpecYAML } from '../types/spec-yaml.js';
+
+// Phase 2.3: Trace logging
 import { RouterTraceLogger, createTraceLogger } from './router-trace-logger.js';
+
+// Phase 3B: Workload-aware routing
+import { getWorkloadAnalyzer } from './workload/workload-analyzer.js';
 
 // Provider session management (provider override)
 import { getProviderSession } from './provider-session.js';
@@ -71,15 +114,12 @@ export class Router {
   // Phase 3: Multi-factor routing
   private useMultiFactorRouting: boolean = false;
 
-  // Phase 2.3: Trace logging (simplified for v8.3.0)
-  private tracer?: RouterTraceLogger;
+  // Phase 2.2: Policy-driven routing
+  private policyParser: PolicyParser;
+  private policyEvaluator: PolicyEvaluator;
 
-  // v8.3.0: Circuit breaker for simple failover
-  private circuitState: Map<string, {
-    failures: number;
-    lastFailure: number;
-    isOpen: boolean;
-  }> = new Map();
+  // Phase 2.3: Trace logging
+  private tracer?: RouterTraceLogger;
 
   constructor(config: RouterConfig) {
     // v6.3.1: Store config for feature flags
@@ -110,9 +150,17 @@ export class Router {
       });
     }
 
-    // v8.3.0: Removed policy-driven routing initialization
+    // Phase 2.2: Initialize policy-driven routing
+    this.policyParser = new PolicyParser();
+    // Initialize CostTracker with default config if not already initialized
+    const costTracker = getCostTracker({
+      enabled: true,
+      persistPath: '.automatosx/costs'
+    });
+    this.policyEvaluator = new PolicyEvaluator(PROVIDER_METADATA, costTracker);
+    logger.debug('Policy-driven routing initialized');
 
-    // Phase 2.3: Initialize trace logging (simplified for v8.3.0)
+    // Phase 2.3: Initialize trace logging
     // FIXED (v6.0.1): Correct default behavior - enabled by default if workspacePath provided
     if (config.workspacePath && config.enableTracing !== false) {
       this.tracer = createTraceLogger(config.workspacePath, config.enableTracing ?? true);
@@ -264,8 +312,163 @@ export class Router {
       throw ProviderError.noAvailableProviders();
     }
 
-    // v8.3.0: Simple priority-based failover (no policy evaluation, free-tier, or workload routing)
+    // Phase 2.2: Apply policy-driven routing if spec has policy
     let providersToTry = availableProviders;
+    if (request.spec?.policy) {
+      try {
+        const policy = this.policyParser.parse(request.spec);
+        const providerNames = availableProviders.map(p => p.name);
+
+        // Filter providers by policy constraints
+        const filterResult = await this.policyEvaluator.filterProviders(providerNames, policy);
+
+        // Log policy selection with trace logger
+        if (this.tracer) {
+          const selectedProvider = filterResult.passed.length > 0 ? filterResult.passed[0] : null;
+          this.tracer.logPolicySelection(policy, filterResult, selectedProvider ?? null);
+        }
+
+        // Apply filtered providers
+        if (filterResult.passed.length > 0) {
+          // Score remaining providers and select best match
+          const scoredProviders = this.policyEvaluator.scoreProviders(filterResult.passed, policy);
+
+          if (scoredProviders.length > 0) {
+            // Reorder providers by policy scores
+            const scoreMap = new Map(scoredProviders.map(s => [s.provider, s.totalScore]));
+            providersToTry = availableProviders
+              .filter(p => filterResult.passed.includes(p.name))
+              .sort((a, b) => {
+                const scoreA = scoreMap.get(a.name) ?? 0;
+                const scoreB = scoreMap.get(b.name) ?? 0;
+                return scoreB - scoreA; // Descending order
+              });
+
+            logger.info('Policy-driven routing applied', {
+              goal: policy.goal,
+              constraints: Object.keys(policy.constraints || {}).length,
+              providersBefore: availableProviders.length,
+              providersAfter: providersToTry.length,
+              topProvider: providersToTry[0]?.name,
+              filtered: filterResult.filtered.length
+            });
+          }
+        } else {
+          // No providers match policy - log warning and fall back to priority-based
+          logger.warn('No providers match policy constraints, using priority-based routing', {
+            goal: policy.goal,
+            filtered: filterResult.filtered
+          });
+
+          if (this.tracer) {
+            this.tracer.logError(
+              'No providers match policy constraints',
+              undefined,
+              { filtered: filterResult.filtered, goal: policy.goal }
+            );
+          }
+        }
+      } catch (error) {
+        // Policy parsing/evaluation failed - log error and fall back to priority-based
+        logger.error('Policy-driven routing failed, falling back to priority-based', {
+          error: (error as Error).message
+        });
+
+        if (this.tracer) {
+          this.tracer.logError(error as Error, undefined, { phase: 'policy-evaluation' });
+        }
+      }
+    }
+
+    // Phase 3A: Prioritize providers with free tier quota available (if enabled)
+    const enableFreeTierPrioritization = this.routerConfig?.enableFreeTierPrioritization ?? true;
+    if (enableFreeTierPrioritization) {
+      try {
+        const freeTierManager = getFreeTierManager();
+        const providersWithFreeTier: Provider[] = [];
+        const providersWithoutFreeTier: Provider[] = [];
+
+        for (const provider of providersToTry) {
+          if (freeTierManager.hasFreeTier(provider.name)) {
+            const quota = freeTierManager.getQuota(provider.name);
+            if (quota.available) {
+              providersWithFreeTier.push(provider);
+              logger.debug(`Provider ${provider.name} has free tier quota available`, {
+                requestsRemaining: quota.requestsRemaining,
+                tokensRemaining: quota.tokensRemaining
+              });
+            } else {
+              providersWithoutFreeTier.push(provider);
+            }
+          } else {
+            providersWithoutFreeTier.push(provider);
+          }
+        }
+
+        // Reorder: free tier first, then paid tier
+        if (providersWithFreeTier.length > 0) {
+          providersToTry = [...providersWithFreeTier, ...providersWithoutFreeTier];
+          logger.info('Free tier providers prioritized', {
+            freeTierProviders: providersWithFreeTier.map(p => p.name),
+            paidProviders: providersWithoutFreeTier.map(p => p.name)
+          });
+        }
+      } catch (error) {
+        // Free tier prioritization failed - log warning and continue
+        logger.warn('Free tier prioritization failed, continuing with existing order', {
+          error: (error as Error).message
+        });
+      }
+    }
+
+    // Phase 3B: Apply workload-aware routing (if enabled)
+    const enableWorkloadAwareRouting = this.routerConfig?.enableWorkloadAwareRouting ?? true;
+    if (enableWorkloadAwareRouting) {
+      try {
+        const analyzer = getWorkloadAnalyzer();
+        const workload = analyzer.analyze(request);
+        const recommendation = analyzer.recommend(workload);
+
+        // Reorder providers based on workload recommendation
+        if (recommendation.preferredProviders.length > 0) {
+          // Create a preference map (lower index = higher preference)
+          const preferenceMap = new Map<string, number>();
+          recommendation.preferredProviders.forEach((provider, index) => {
+            preferenceMap.set(provider, index);
+          });
+
+          // Sort providers by workload preference, fallback to current order
+          const originalOrder = providersToTry.map(p => p.name);
+          providersToTry = [...providersToTry].sort((a, b) => {
+            const prefA = preferenceMap.get(a.name) ?? 999;
+            const prefB = preferenceMap.get(b.name) ?? 999;
+
+            // If preferences are equal, maintain original order
+            if (prefA === prefB) {
+              return originalOrder.indexOf(a.name) - originalOrder.indexOf(b.name);
+            }
+
+            return prefA - prefB;
+          });
+
+          logger.info('Workload-aware routing applied', {
+            sizeClass: workload.sizeClass,
+            estimatedTokens: workload.estimatedTokens,
+            streaming: workload.requiresStreaming,
+            complexity: workload.complexity,
+            recommendation: recommendation.reason,
+            providersOrder: providersToTry.map(p => p.name),
+            costOptimized: recommendation.costOptimized,
+            speedOptimized: recommendation.speedOptimized
+          });
+        }
+      } catch (error) {
+        // Workload analysis failed - log warning and continue
+        logger.warn('Workload-aware routing failed, continuing with existing order', {
+          error: (error as Error).message
+        });
+      }
+    }
 
     // Phase 3: Reorder providers using multi-factor routing if enabled
     // Note: Policy-driven routing has already filtered providers above
@@ -401,7 +604,27 @@ export class Router {
         // Remove provider from penalty list on success
         this.penalizedProviders.delete(provider.name);
 
-        // v8.3.0: Free tier tracking removed
+        // Phase 3A: Track free tier usage if applicable
+        try {
+          const freeTierManager = getFreeTierManager();
+          if (freeTierManager.hasFreeTier(provider.name)) {
+            freeTierManager.trackUsage(
+              provider.name,
+              1, // 1 request
+              response.tokensUsed.total // total tokens used
+            );
+            logger.debug(`Free tier usage tracked for ${provider.name}`, {
+              requests: 1,
+              tokens: response.tokensUsed.total
+            });
+          }
+        } catch (error) {
+          // Non-critical error - log and continue
+          logger.warn('Failed to track free tier usage', {
+            provider: provider.name,
+            error: (error as Error).message
+          });
+        }
 
         // Phase 2.3: Log execution success
         if (this.tracer) {
@@ -900,9 +1123,34 @@ export class Router {
   }
 
   /**
-   * v8.3.0: Cost estimation removed - returns 0
+   * Estimate cost of a request based on tokens used
+   * Phase 3: Helper for metrics tracking
+   *
+   * FIXED (v6.0.1): Use actual provider costs from PROVIDER_METADATA
    */
   private estimateCost(providerName: string, tokensUsed: { prompt: number; completion: number; total: number }): number {
-    return 0; // v8.3.0: No cost tracking in CLI-only mode
+    // Look up actual provider costs from metadata registry
+    const metadata = PROVIDER_METADATA[providerName];
+
+    // v6.2.5: Bug fix #32 - Validate metadata and costPerToken exist
+    if (!metadata || !metadata.costPerToken ||
+        typeof metadata.costPerToken.input !== 'number' ||
+        typeof metadata.costPerToken.output !== 'number') {
+      // Fallback to average pricing if provider not found or missing cost data
+      logger.warn(`Provider metadata or cost data not found for: ${providerName}, using fallback costs`);
+      const inputCostPer1M = 2.50;   // Fallback: $2.50 per 1M input tokens
+      const outputCostPer1M = 10.00; // Fallback: $10.00 per 1M output tokens
+
+      const inputCost = (tokensUsed.prompt / 1_000_000) * inputCostPer1M;
+      const outputCost = (tokensUsed.completion / 1_000_000) * outputCostPer1M;
+
+      return inputCost + outputCost;
+    }
+
+    // Use actual provider costs from metadata
+    const inputCost = tokensUsed.prompt * metadata.costPerToken.input;
+    const outputCost = tokensUsed.completion * metadata.costPerToken.output;
+
+    return inputCost + outputCost;
   }
 }

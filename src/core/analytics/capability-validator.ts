@@ -8,7 +8,21 @@
  */
 
 import type { ProviderMetadata } from '@/types/provider-metadata.js';
-import { getProviderMetadata, PROVIDER_METADATA } from '@/core/provider-metadata-registry.js';
+// TODO v8.3.0: Provider metadata removed - stubbed for Phase 1
+const PROVIDER_METADATA: Record<string, any> = {};
+const getProviderMetadata = (name: string): ProviderMetadata | null => {
+  return {
+    name,
+    displayName: name,
+    costPerMToken: 0,
+    avgLatencyMs: 0,
+    features: {
+      streaming: false,
+      functionCalling: false,
+      vision: false
+    }
+  } as any;
+};
 import { logger } from '@/utils/logger.js';
 
 export interface ValidationResult {

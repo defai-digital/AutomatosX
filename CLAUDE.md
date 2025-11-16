@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v7.6.1) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX (v8.2.0) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
@@ -12,7 +12,7 @@ AutomatosX (v7.6.1) is an AI Agent Orchestration Platform that combines declarat
 - **Persistent Memory**: SQLite FTS5 full-text search (< 1ms) - perfect context with zero API costs
 - **Multi-Agent Orchestration**: 20 specialized agents that delegate tasks autonomously
 - **Complete Observability**: JSONL trace logging for every routing decision
-- **Interactive CLI**: ChatGPT-style conversational interface with full feature parity to Claude Code (v7.6.0+)
+- **AI Assistant Integration**: Works seamlessly with Claude Code, Gemini CLI, and OpenAI Codex
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -38,42 +38,23 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v7.6.1)
+### Current State (v8.2.0)
 
-- ✅ Production-ready with 2,325+ passing tests
-- ✅ Interactive CLI (`ax cli`) with full Claude Code feature parity (v7.6.0+)
-- ✅ **Phases 1-6 Complete**: File ops, code exec, testing, build systems, batch approval, structured logging, command history, provider transparency, memory suggestions, agent preview, cross-tool handoffs
-- ✅ Unified setup command (`ax setup` replaces `ax init`)
-- ✅ Natural language-first design (slash commands removed in v7.0.0)
+- ✅ Production-ready orchestration platform
+- ✅ 20+ specialized AI agents for different domains
 - ✅ Spec-Kit 100% complete (plans, DAGs, scaffolds, tests)
 - ✅ Policy-driven routing with free-tier optimization
+- ✅ Persistent memory with SQLite FTS5 search
+- ✅ Multi-provider support (Claude, Gemini, OpenAI)
+- ✅ Natural language integration with AI assistants
 - ⚠️ Cost estimation **disabled by default** (v6.5.11+) - enable in config if needed
 
-**Recent Changes (v7.6.0 - Phase 4-6 Complete):**
-- ✅ **Batch Approval System**: Group file operations by risk level (SAFE/LOW/MEDIUM/HIGH/CRITICAL)
-- ✅ **Structured Event Logging**: JSONL format with 8 categories (system, command, file, process, git, memory, agent, provider)
-- ✅ **Command History with Undo/Redo**: Reversible operations with automatic backups
-- ✅ **Session Persistence**: Auto-save with configurable intervals
-- ✅ **Provider Routing Transparency**: Real-time routing decision visibility
-- ✅ **Memory Search Suggestions**: Proactive context-based hints
-- ✅ **Agent Delegation Preview**: See what agents will do before execution
-- ✅ **Cross-Tool Hand-offs**: Seamless transitions to Claude Code, VS Code, Browser, Terminal, Git UI
-- ✅ ~25,000 lines of production code, 95%+ test coverage, zero breaking changes
-
-**Interactive CLI Features (v7.6.0+):**
-- 🤖 Natural conversations with multi-turn context
-- 🔄 Real-time streaming responses with cancellation support
-- 💾 Save/load conversations with auto-save
-- 🎯 Agent delegation via `@agent` syntax with preview
-- 📝 Complete slash command system (Phases 1-6)
-- 🎨 Markdown rendering with syntax highlighting
-- 🔐 5-tier risk classification with batch approvals
-- 📊 Structured JSONL logging for complete observability
-- ⏮️ Undo/Redo support for reversible operations
-- 🔄 Provider routing transparency and cost comparison
-- 💡 Context-aware memory suggestions
-- 🔮 Agent delegation preview with action inference
-- 🔗 Cross-tool hand-offs with platform detection
+**Recent Changes (v8.2.0 - Streamlined for AI Assistant Integration):**
+- 🔄 **Removed standalone chatbot**: Focus on integration with Claude Code, Gemini CLI, OpenAI Codex
+- ✅ **Streamlined CLI**: Direct command execution for agent orchestration
+- ✅ **AI Assistant First**: Best experience through your preferred AI assistant
+- ✅ **Reduced complexity**: ~25,000 lines of code removed, focused on core orchestration
+- ✅ **Better UX**: Use familiar AI tools instead of learning new interface
 
 ## Architecture Overview
 
@@ -223,66 +204,34 @@ ax init --force            # Reinitialize existing setup
 - Creates project-specific agent configurations
 - Suggests optimal AutomatosX setup for your project
 
-### Interactive CLI Architecture (`packages/cli-interactive/`)
+### AI Assistant Integration
 
-**Status**: ✅ **Phases 1-6 Complete (v7.6.0)** - Full Claude Code feature parity achieved with ~25,000 lines of production code and 2,325+ passing tests.
+AutomatosX is designed to work seamlessly with your preferred AI assistant:
 
-**Core Components:**
-- `repl.ts`: Main REPL loop with readline interface and state management
-- `renderer.ts`: Markdown rendering with syntax highlighting (marked + marked-terminal)
-- `commands.ts`: Base slash commands with extensibility
-- `provider-bridge.ts`: Multi-provider support (Claude, Gemini, OpenAI) with streaming
+**Supported Assistants:**
+- **Claude Code** - Primary integration with MCP support
+- **Gemini CLI** - Google's CLI with natural language support
+- **OpenAI Codex** - OpenAI's development assistant
 
-**Phase 1-3 Modules:**
-- `security-validator.ts`: Multi-layer path validation and security checks
-- `approval-system.ts`: Risk-based user approval prompts
-- `stream-buffer.ts`: Streaming response buffering with cancellation support
+**How It Works:**
+1. You interact with your AI assistant (Claude Code, Gemini CLI, etc.)
+2. The AI assistant invokes AutomatosX agents via CLI commands
+3. AutomatosX orchestrates multi-agent workflows and manages memory
+4. Results are returned to your AI assistant for natural conversation
 
-**Phase 4 Modules (UX Enhancements):**
-- `batch-approval.ts`: Group file operations by risk level for efficient approval
-- `structured-logging.ts`: JSONL event logging with 8 categories and 5 severity levels
-- `command-history.ts`: Undo/redo support with automatic backup creation
-- `session-persistence.ts`: Auto-save and session management
-- `phase4-integration.ts`: Integration layer for Phase 4 features
+**Example Workflow (via Claude Code):**
+```
+User: "Please work with ax agent backend to implement user authentication"
+Claude Code: Executes `ax run backend "implement user authentication"`
+AutomatosX: Routes to optimal provider, executes agent, saves to memory
+Claude Code: Displays results and continues conversation
+```
 
-**Phase 5 Modules (Advanced Features):**
-- `provider-transparency.ts`: Real-time routing decision display and cost comparison
-- `memory-suggestions.ts`: Proactive context-based memory hints
-- `agent-preview.ts`: Action inference and delegation preview
-- `cross-tool-handoffs.ts`: Seamless transitions to external tools
-- `phase5-integration.ts`: Integration layer for Phase 5 features
-
-**Key Features:**
-- Real-time streaming responses with progress indicators and cancellation
-- Multi-turn conversations with full context preservation and auto-save
-- Save/load conversations to SQLite database with session management
-- Agent delegation via `@agent` syntax with action preview
-- Markdown rendering with code block syntax highlighting
-- Comprehensive slash commands covering all workflows:
-  - **Core**: `/help`, `/exit`, `/clear`
-  - **Memory**: `/memory`, `/suggest-memory`
-  - **Agents**: `/agents`, `/preview`, `/compare-agents`
-  - **Providers**: `/providers`, `/provider-stats`
-  - **Sessions**: `/save`, `/load`, `/sessions`, `/export`
-  - **Batch Operations**: `/approve-batch`, `/reject-batch`, `/show-pending`
-  - **Logging**: `/logs`, `/timeline`, `/events`
-  - **History**: `/undo`, `/redo`, `/history`
-  - **Integrations**: `/open-in`, `/phase5-summary`
-
-**Testing Patterns:**
-- Mock provider responses for deterministic tests
-- Simulate streaming with chunked responses
-- Test conversation persistence and resumption
-- Verify markdown rendering output
-- Security validation test coverage
-
-**Common Issues:**
-- Streaming cancellation: Use AbortController properly in provider-bridge (Bug #8 fixed)
-- History sanitization: Clean ANSI codes before display (Bug #21 fixed)
-- Secret masking: Redact sensitive data in history (Bug #31 fixed)
-- Provider bridge errors: Check streaming state and error handling
-
-See [docs/cli-interactive.md](docs/cli-interactive.md) for full documentation.
+**Benefits:**
+- ✅ Use familiar AI interface you already know
+- ✅ No new commands or syntax to learn
+- ✅ Best-in-class AI conversation experience
+- ✅ AutomatosX focuses on orchestration, not UI
 
 ## Critical Development Patterns
 
@@ -382,26 +331,7 @@ src/
 └── workers/         # Worker pool for parallel execution
 
 packages/
-└── cli-interactive/ # Interactive CLI package (v7.6.0 - Phases 1-6 complete)
-    ├── src/
-    │   ├── repl.ts                  # Main REPL loop with Phase 4-6 integration
-    │   ├── renderer.ts              # Markdown renderer with syntax highlighting
-    │   ├── commands.ts              # All slash commands
-    │   ├── provider-bridge.ts       # Multi-provider streaming support
-    │   ├── security-validator.ts    # Path validation and security checks
-    │   ├── approval-system.ts       # Risk-based approval prompts
-    │   ├── stream-buffer.ts         # Streaming with cancellation
-    │   ├── batch-approval.ts        # Phase 4: Batch operations by risk
-    │   ├── structured-logging.ts    # Phase 4: JSONL event logging
-    │   ├── command-history.ts       # Phase 4: Undo/redo support
-    │   ├── session-persistence.ts   # Phase 4: Auto-save sessions
-    │   ├── phase4-integration.ts    # Phase 4: Integration layer
-    │   ├── provider-transparency.ts # Phase 5: Routing transparency
-    │   ├── memory-suggestions.ts    # Phase 5: Context-aware hints
-    │   ├── agent-preview.ts         # Phase 5: Action inference
-    │   ├── cross-tool-handoffs.ts   # Phase 5: External tool integration
-    │   └── phase5-integration.ts    # Phase 5: Integration layer
-    └── tests/                       # Comprehensive test suite (2,325+ tests)
+└── (removed in v8.2.0) # Standalone CLI removed - use AI assistants instead
 
 tests/
 ├── unit/            # Fast, mocked unit tests
@@ -452,22 +382,8 @@ tests/
 - Integration tests can be skipped: `SKIP_INTEGRATION_TESTS=true npm test`
 - Cleanup in afterEach hooks is **mandatory** to prevent resource leaks
 - **v5.7.0+**: Tests manage their own timers (no global fake timers)
-
-**Interactive CLI Testing (v7.6.0+)**:
-- 2,325+ tests across all Phase 1-6 modules
 - 95%+ test coverage with TypeScript strict mode
-- Mock provider responses for deterministic tests
-- Simulate streaming with chunked responses
-- Test conversation persistence and resumption
-- Verify markdown rendering output
-- Security validation test coverage
-- Batch approval workflow testing
-- Undo/redo operation verification
-- Structured logging validation
-- Provider transparency checks
-- Memory suggestion testing
-- Agent preview inference validation
-- Cross-tool hand-off testing
+- Core orchestration features have comprehensive test coverage
 
 ## Type Safety
 
@@ -504,40 +420,27 @@ ax free-tier status               # Check quota usage
 # Review logs: .automatosx/logs/router-trace-*.jsonl
 ```
 
-### Working with Interactive CLI (v7.6.0+)
+### Using AutomatosX with AI Assistants
 
+**Via Claude Code (Recommended):**
+```
+User: "Please work with ax backend agent to implement user authentication"
+Claude Code: Executes ax run backend "implement user authentication"
+AutomatosX: Orchestrates task, uses memory, returns results
+```
+
+**Via Gemini CLI:**
 ```bash
-# Start interactive mode
-ax cli
+gemini "Ask ax to help design the database schema"
+# Gemini invokes: ax run backend "design database schema"
+```
 
-# Within the CLI - Core Commands:
-ax> /help                        # Show all slash commands
-ax> /memory search "auth"        # Search memory
-ax> @backend implement feature   # Delegate to agent
-ax> /save session-name           # Save conversation
-ax> /load session-name           # Load conversation
-ax> /export                      # Export to markdown
-
-# Phase 4 Features - Batch Operations & History:
-ax> /show-pending                # View pending operations
-ax> /approve-batch               # Approve grouped operations
-ax> /reject-batch                # Reject grouped operations
-ax> /undo                        # Undo last operation
-ax> /redo                        # Redo undone operation
-ax> /history 10                  # Show last 10 commands
-ax> /logs                        # View structured logs
-ax> /timeline                    # View event timeline
-ax> /events system               # Filter events by category
-
-# Phase 5 Features - Advanced:
-ax> /provider-stats              # View provider metrics and routing
-ax> /suggest-memory              # Get context-based memory hints
-ax> /preview backend "task"      # Preview what agent will do
-ax> /compare-agents "task"       # Compare agent suitability
-ax> /open-in claude-code file.ts # Hand-off to external tool
-ax> /phase5-summary              # Session summary
-
-ax> /exit                        # Exit CLI
+**Direct CLI Usage:**
+```bash
+ax run backend "implement user authentication"
+ax memory search "authentication"
+ax session create "auth-work" backend security
+ax spec run workflow.ax.yaml
 ```
 
 ## Git Workflow & Handling Generated Files
@@ -793,50 +696,329 @@ gemini "Complex task..."
 
 ## Major Milestones
 
-### v7.6.0 - Phase 4-6 Complete: Full Claude Code Feature Parity
+### v8.2.0 - Streamlined for AI Assistant Integration
 
-**Achievement**: ~25,000 lines of production code, 2,325+ passing tests, 95%+ coverage, zero breaking changes
+**Major Change**: Removed standalone chatbot interface to focus on core orchestration
 
-**Phase 4 - UX Enhancements**:
-- Batch approval system with 5-tier risk classification
-- Structured JSONL event logging (8 categories, 5 levels)
-- Command history with undo/redo and automatic backups
-- Session persistence with auto-save
+**What Changed**:
+- 🔄 Removed `ax cli` interactive mode (~25,000 lines of code)
+- ✅ Focused on AI assistant integration (Claude Code, Gemini CLI, Codex)
+- ✅ Simplified UX - use familiar AI tools instead of learning new CLI
+- ✅ Reduced maintenance burden and complexity
+- ✅ Better separation of concerns: AutomatosX = orchestration, AI assistants = UI
 
-**Phase 5 - Advanced Features**:
-- Provider routing transparency with real-time cost comparison
-- Context-aware memory suggestions with keyword extraction
-- Agent delegation preview with action inference
-- Cross-tool hand-offs to Claude Code, VS Code, Browser, Terminal, Git UI
+**What Remains**:
+- ✅ All core CLI commands (ax run, ax memory, ax session, etc.)
+- ✅ 20+ specialized agents with persistent memory
+- ✅ Policy-driven routing and cost optimization
+- ✅ Spec-Kit workflow system
+- ✅ Multi-provider support with fallback
+- ✅ Complete observability and tracing
 
-**Phase 6 - Final Integration**:
-- Full REPL integration of all Phase 5 features
-- 10 new slash commands
-- Command tracking and auto-suggestions
-- Agent preview before delegation
+**Migration**: See `MIGRATION.md` for guidance on transitioning from v7.x
 
-**Performance Metrics**:
-- CLI startup: 42ms (88% improvement)
-- Runtime overhead: < 15ms per operation
-- Memory suggestions: < 5ms generation
-- Agent preview: < 10ms inference
-
-See `CHANGELOG.md` for complete details and `automatosx/PRD/` for implementation summaries.
-
-### v7.1.2 - Security & Stability Hardening
-
-**Critical Fixes**:
-- Stream cancellation in interactive CLI (AbortController handling)
-- History display sanitization (ANSI code cleanup)
-- Secret masking in conversation history
-- Spec-Kit prompt blocking issues
-
-**Security Hardening**:
-- Subprocess management improvements
-- Path traversal prevention enhancements
-- Critical file protection
-- Environment variable sanitization
+**Why This Change**:
+Users preferred using Claude Code, Gemini CLI, or Codex for conversations. The standalone chatbot duplicated functionality and added complexity. By removing it, AutomatosX becomes a pure orchestration platform that works **with** AI assistants rather than trying to replace them.
 
 ---
 
 For support, see [GitHub Issues](https://github.com/defai-digital/automatosx/issues) or email <support@defai.digital>.
+
+---
+
+# AutomatosX Integration
+
+This project uses [AutomatosX](https://github.com/defai-digital/automatosx) - an AI agent orchestration platform with persistent memory and multi-agent collaboration.
+
+## Quick Start
+
+### Available Commands
+
+```bash
+# List all available agents
+ax list agents
+
+# Run an agent with a task
+ax run <agent-name> "your task description"
+
+# Example: Ask the backend agent to create an API
+ax run backend "create a REST API for user management"
+
+# Search memory for past conversations
+ax memory search "keyword"
+
+# View system status
+ax status
+```
+
+### Using AutomatosX in Claude Code
+
+You can interact with AutomatosX agents directly in Claude Code using natural language:
+
+**Natural Language Examples**:
+```
+"Please work with ax agent backend to implement user authentication"
+"Ask the ax security agent to audit this code for vulnerabilities"
+"Have the ax quality agent write tests for this feature"
+"Use ax agent product to design this new feature"
+"Work with ax agent devops to set up the deployment pipeline"
+```
+
+Claude Code will understand your intent and invoke the appropriate AutomatosX agent for you. Just describe what you need in natural language - no special commands required!
+
+### Available Agents
+
+This project includes the following specialized agents:
+
+- **backend** (Bob) - Backend development (Go/Rust systems)
+- **frontend** (Frank) - Frontend development (React/Next.js/Swift)
+- **architecture** (Avery) - System architecture and ADR management
+- **fullstack** (Felix) - Full-stack development (Node.js/TypeScript)
+- **mobile** (Maya) - Mobile development (iOS/Android, Swift/Kotlin/Flutter)
+- **devops** (Oliver) - DevOps and infrastructure
+- **security** (Steve) - Security auditing and threat modeling
+- **data** (Daisy) - Data engineering and ETL
+- **quality** (Queenie) - QA and testing
+- **design** (Debbee) - UX/UI design
+- **writer** (Wendy) - Technical writing
+- **product** (Paris) - Product management
+- **cto** (Tony) - Technical strategy
+- **ceo** (Eric) - Business leadership
+- **researcher** (Rodman) - Research and analysis
+- **data-scientist** (Dana) - Machine learning and data science
+- **aerospace-scientist** (Astrid) - Aerospace engineering and mission design
+- **quantum-engineer** (Quinn) - Quantum computing and algorithms
+- **creative-marketer** (Candy) - Creative marketing and content strategy
+- **standard** (Stan) - Standards and best practices expert
+
+For a complete list with capabilities, run: `ax list agents --format json`
+
+## Key Features
+
+### 1. Persistent Memory
+
+AutomatosX agents remember all previous conversations and decisions:
+
+```bash
+# First task - design is saved to memory
+ax run product "Design a calculator with add/subtract features"
+
+# Later task - automatically retrieves the design from memory
+ax run backend "Implement the calculator API"
+```
+
+### 2. Multi-Agent Collaboration
+
+Agents can delegate tasks to each other automatically:
+
+```bash
+ax run product "Build a complete user authentication feature"
+# → Product agent designs the system
+# → Automatically delegates implementation to backend agent
+# → Automatically delegates security audit to security agent
+```
+
+### 3. Cross-Provider Support
+
+AutomatosX supports multiple AI providers with automatic fallback:
+- **Claude** (Anthropic) - Primary provider for Claude Code users
+- **Gemini** (Google) - Alternative provider
+- **OpenAI** (GPT) - Alternative provider
+
+Configuration is in `automatosx.config.json`.
+
+## Configuration
+
+### Project Configuration
+
+Edit `automatosx.config.json` to customize:
+
+```json
+{
+  "providers": {
+    "claude-code": {
+      "enabled": true,
+      "priority": 1
+    },
+    "gemini-cli": {
+      "enabled": true,
+      "priority": 2
+    }
+  },
+  "execution": {
+    "defaultTimeout": 1500000,  // 25 minutes
+    "maxRetries": 3
+  },
+  "memory": {
+    "enabled": true,
+    "maxEntries": 10000
+  }
+}
+```
+
+### Agent Customization
+
+Create custom agents in `.automatosx/agents/`:
+
+```bash
+ax agent create my-agent --template developer --interactive
+```
+
+### Workspace Conventions
+
+**IMPORTANT**: AutomatosX uses specific directories for organized file management. Please follow these conventions when working with agents:
+
+- **`automatosx/PRD/`** - Product Requirements Documents, design specs, and planning documents
+  - Use for: Architecture designs, feature specs, technical requirements
+  - Example: `automatosx/PRD/auth-system-design.md`
+
+- **`automatosx/tmp/`** - Temporary files, scratch work, and intermediate outputs
+  - Use for: Draft code, test outputs, temporary analysis
+  - Auto-cleaned periodically
+  - Example: `automatosx/tmp/draft-api-endpoints.ts`
+
+**Usage in Claude Code**:
+```
+"Please save the architecture design to automatosx/PRD/user-auth-design.md"
+"Put the draft implementation in automatosx/tmp/auth-draft.ts for review"
+"Work with ax agent backend to implement the spec in automatosx/PRD/api-spec.md"
+```
+
+These directories are automatically created by `ax setup` and included in `.gitignore` appropriately.
+
+## Memory System
+
+### Search Memory
+
+```bash
+# Search for past conversations
+ax memory search "authentication"
+ax memory search "API design"
+
+# List recent memories
+ax memory list --limit 10
+
+# Export memory for backup
+ax memory export > backup.json
+```
+
+### How Memory Works
+
+- **Automatic**: All agent conversations are saved automatically
+- **Fast**: SQLite FTS5 full-text search (< 1ms)
+- **Local**: 100% private, data never leaves your machine
+- **Cost**: $0 (no API calls for memory operations)
+
+## Advanced Usage
+
+### Parallel Execution (v5.6.0+)
+
+Run multiple agents in parallel for faster workflows:
+
+```bash
+ax run product "Design authentication system" --parallel
+```
+
+### Resumable Runs (v5.3.0+)
+
+For long-running tasks, enable checkpoints:
+
+```bash
+ax run backend "Refactor entire codebase" --resumable
+
+# If interrupted, resume with:
+ax resume <run-id>
+
+# List all runs
+ax runs list
+```
+
+### Streaming Output (v5.6.5+)
+
+See real-time output from AI providers:
+
+```bash
+ax run backend "Explain this codebase" --streaming
+```
+
+### Spec-Driven Development (v5.8.0+)
+
+For complex projects, use spec-driven workflows:
+
+```bash
+# Create spec from natural language
+ax spec create "Build authentication with database, API, JWT, and tests"
+
+# Or manually define in .specify/tasks.md
+ax spec run --parallel
+
+# Check progress
+ax spec status
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**"Agent not found"**
+```bash
+# List available agents
+ax list agents
+
+# Make sure agent name is correct
+ax run backend "task"  # ✓ Correct
+ax run Backend "task"  # ✗ Wrong (case-sensitive)
+```
+
+**"Provider not available"**
+```bash
+# Check system status
+ax status
+
+# View configuration
+ax config show
+```
+
+**"Out of memory"**
+```bash
+# Clear old memories
+ax memory clear --before "2024-01-01"
+
+# View memory stats
+ax cache stats
+```
+
+### Getting Help
+
+```bash
+# View command help
+ax --help
+ax run --help
+
+# Enable debug mode
+ax --debug run backend "task"
+
+# Search memory for similar past tasks
+ax memory search "similar task"
+```
+
+## Best Practices
+
+1. **Use Natural Language in Claude Code**: Let Claude Code coordinate with agents for complex tasks
+2. **Leverage Memory**: Reference past decisions and designs
+3. **Start Simple**: Test with small tasks before complex workflows
+4. **Review Configurations**: Check `automatosx.config.json` for timeouts and retries
+5. **Keep Agents Specialized**: Use the right agent for each task type
+
+## Documentation
+
+- **AutomatosX Docs**: https://github.com/defai-digital/automatosx
+- **Agent Directory**: `.automatosx/agents/`
+- **Configuration**: `automatosx.config.json`
+- **Memory Database**: `.automatosx/memory/memories.db`
+- **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
+
+## Support
+
+- Issues: https://github.com/defai-digital/automatosx/issues
+- NPM: https://www.npmjs.com/package/@defai.digital/automatosx

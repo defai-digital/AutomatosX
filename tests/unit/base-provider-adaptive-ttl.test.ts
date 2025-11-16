@@ -18,11 +18,20 @@ import { BaseProvider } from '../../src/providers/base-provider.js';
 
 // Mock concrete provider for testing
 class TestProvider extends BaseProvider {
-  get version(): string {
+  // v8.3.0: Implement abstract methods
+  protected async executeCLI(prompt: string): Promise<string> {
+    return `Mock response for: ${prompt}`;
+  }
+
+  protected async checkCLIAvailable(): Promise<boolean> {
+    return true;
+  }
+
+  override get version(): string {
     return '1.0.0';
   }
 
-  get capabilities(): ProviderCapabilities {
+  override get capabilities(): ProviderCapabilities {
     return {
       supportsStreaming: false,
       supportsEmbedding: false,
@@ -32,29 +41,11 @@ class TestProvider extends BaseProvider {
     };
   }
 
-  protected async executeRequest(request: ExecutionRequest): Promise<ExecutionResponse> {
-    return {
-      content: 'test response',
-      model: 'test-model',
-      tokensUsed: {
-        prompt: 10,
-        completion: 20,
-        total: 30
-      },
-      latencyMs: 100,
-      finishReason: 'stop'
-    };
-  }
-
-  protected async generateEmbeddingInternal(text: string): Promise<number[]> {
+  override async generateEmbedding(text: string): Promise<number[]> {
     return [0.1, 0.2, 0.3];
   }
 
-  protected buildCLIArgs(request: ExecutionRequest): string[] {
-    return ['--prompt', request.prompt];
-  }
-
-  supportsStreaming(): boolean {
+  override supportsStreaming(): boolean {
     return false;
   }
 

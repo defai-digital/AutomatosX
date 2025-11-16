@@ -13,11 +13,11 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v7.0.0 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready** | v8.2.0 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
 
-> 🎉 **NEW in v7.0.0**: Unified setup command (`ax setup`), natural language-first design (slash commands removed), enhanced force mode with complete cleanup. See [Migration from v6.x](#migration-from-v6x) for upgrade details.
+> 🎉 **NEW in v8.2.0**: Streamlined for AI assistant integration. Removed standalone chatbot (`ax cli`) - use Claude Code, Gemini CLI, or OpenAI Codex for conversations. AutomatosX now focuses purely on orchestration.  See [Migration from v7.x](#migration-from-v7x) for upgrade details.
 
-> ⚠️ **Note on Cost Estimation (v6.5.11+)**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`. See [Cost Estimation Configuration](#cost-estimation-configuration) for details.
+> ⚠️ **Note on Cost Estimation**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`.
 
 ---
 
@@ -81,83 +81,6 @@ ax run workflow.ax.yaml
 ```
 
 **Result**: Complete authentication system with database, API, security audit, and tests—generated and executed in minutes, not days.
-
----
-
-## 💬 **Interactive CLI** (New in v7.1.0!)
-
-Experience a ChatGPT-style conversational interface directly in your terminal:
-
-```bash
-# Start interactive mode
-ax cli
-
-╭─────────────────────────────────────────────────────╮
-│   AutomatosX Interactive CLI v7.1.0                 │
-│   Type /help for commands, /exit to quit            │
-│   Using: Gemini 2.5 Flash                           │
-╰─────────────────────────────────────────────────────╯
-
-ax> I need to implement JWT authentication
-
-AI: I'll help you implement JWT authentication. Let me search our
-    memory for existing auth patterns...
-
-    Found 2 relevant patterns. Would you like me to:
-    1. Show implementation plan
-    2. Delegate to backend agent
-    3. Start coding immediately
-
-ax> Delegate to backend agent
-
-AI: @backend implement JWT authentication with refresh tokens
-
-    [Backend agent working...]
-    ✓ Dependencies installed
-    ✓ Auth middleware created
-    ✓ Token refresh endpoint added
-    ✓ Tests generated
-
-ax> /save jwt-implementation
-Conversation saved: jwt-implementation
-
-ax> /exit
-```
-
-### Key Features
-
-- 🤖 **Natural Conversations** - Multi-turn discussions with full context
-- 🔄 **Real-time Streaming** - See responses as they're generated
-- 💾 **Save & Resume** - Continue conversations later with `/save` and `/load`
-- 🎯 **Agent Delegation** - Route tasks to specialists: `@backend`, `@security`, etc.
-- 📝 **13 Slash Commands** - `/help`, `/memory`, `/agents`, `/export`, and more
-- 🎨 **Beautiful Output** - Markdown rendering and syntax-highlighted code blocks
-- ⚡ **Fast & Efficient** - Powered by Gemini free tier (1,500 requests/day)
-
-### Quick Examples
-
-```bash
-# Start a coding session
-ax cli
-ax> @backend create a REST API for user management
-ax> @security audit the authentication code
-ax> /save user-management-api
-
-# Search your knowledge base
-ax cli
-ax> /memory search "authentication patterns"
-ax> Show me the JWT implementation we used last time
-
-# Work across sessions
-ax cli
-ax> /load user-management-api
-ax> Let's add rate limiting to these endpoints
-ax> /export  # Export to markdown for documentation
-```
-
-**📖 Full Guide**: [Interactive CLI Documentation](docs/cli-interactive.md)
-
-**Alternative Commands**: `ax interactive`, `ax chat`
 
 ---
 

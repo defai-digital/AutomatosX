@@ -49,8 +49,6 @@ import { doctorCommand } from './commands/doctor.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
-import { freeTierCommand } from './commands/free-tier.js';
-import { cliInteractiveCommand } from './commands/cli-interactive.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -145,11 +143,9 @@ globalTracker.mark('cli_start');
   .command(providerLimitsCommand)
   .command(providersCommand)
   .command(flagsCommand)
-  .command(freeTierCommand)
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)
-  .command(cliInteractiveCommand)
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

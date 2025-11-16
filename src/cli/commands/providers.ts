@@ -15,7 +15,17 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '@/core/config.js';
 import { detectProjectRoot } from '@/core/path-resolver.js';
-import { PROVIDER_METADATA, getProviderMetadata, getCheapestProvider, getFastestProvider, getMostReliableProvider } from '@/core/provider-metadata-registry.js';
+// TODO v8.3.0: Provider metadata removed - will simplify this command
+// Temporary stubs to keep command functional during Phase 1
+const PROVIDER_METADATA: Record<string, any> = {
+  'claude': { name: 'claude', displayName: 'Claude', costPerMToken: 0, avgLatencyMs: 0 },
+  'gemini': { name: 'gemini', displayName: 'Gemini', costPerMToken: 0, avgLatencyMs: 0 },
+  'codex': { name: 'codex', displayName: 'Codex', costPerMToken: 0, avgLatencyMs: 0 }
+};
+const getProviderMetadata = (name: string) => PROVIDER_METADATA[name] || null;
+const getCheapestProvider = () => 'gemini';
+const getFastestProvider = () => 'claude';
+const getMostReliableProvider = () => 'claude';
 import { getProviderLimitManager } from '@/core/provider-limit-manager.js';
 import { getProviderSession } from '@/core/provider-session.js';
 import { logger } from '@/utils/logger.js';

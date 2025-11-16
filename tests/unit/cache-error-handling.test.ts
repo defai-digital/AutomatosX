@@ -13,11 +13,20 @@ import { providerCache } from '../../src/core/provider-cache.js';
 
 // Test provider implementation
 class TestProvider extends BaseProvider {
-  get version(): string {
+  // v8.3.0: Implement abstract methods
+  protected async executeCLI(prompt: string): Promise<string> {
+    return `Mock response for: ${prompt}`;
+  }
+
+  protected async checkCLIAvailable(): Promise<boolean> {
+    return true;
+  }
+
+  override get version(): string {
     return '1.0.0';
   }
 
-  get capabilities() {
+  override get capabilities() {
     return {
       supportsStreaming: false,
       supportsEmbedding: false,
@@ -27,22 +36,8 @@ class TestProvider extends BaseProvider {
     };
   }
 
-  protected async executeRequest(): Promise<any> {
-    return {
-      content: 'test',
-      model: 'test',
-      tokensUsed: { prompt: 10, completion: 20, total: 30 },
-      latencyMs: 100,
-      finishReason: 'stop'
-    };
-  }
-
-  protected async generateEmbeddingInternal(): Promise<number[]> {
+  override async generateEmbedding(): Promise<number[]> {
     return [0.1, 0.2, 0.3];
-  }
-
-  protected buildCLIArgs(): string[] {
-    return [];
   }
 
   override supportsStreaming(): boolean {

@@ -125,7 +125,9 @@ ax cli  # Launch interactive mode
 
 **pnpm is only required for developers** contributing to the AutomatosX codebase.
 
-### ⚠️ Peer Dependency Warnings
+### ⚠️ Installation Warnings
+
+#### Peer Dependency Warnings
 
 When installing AutomatosX, you may see warnings about tree-sitter peer dependencies:
 
@@ -137,11 +139,38 @@ WARN  Issues with peer dependencies found
 
 **These warnings are harmless and can be safely ignored.** AutomatosX uses tree-sitter v0.25.0 (latest), while some language parser packages haven't updated their peer dependencies yet. Everything works correctly.
 
-**To suppress warnings**, copy `.npmrc.example` to `.npmrc`:
+#### pnpm Build Scripts Warning (pnpm v10+ users)
+
+If using pnpm v10+, you may see this security warning:
+
+```
+╭ Warning ───────────────────────────────────────────────────────────────╮
+│ Ignored build scripts: tree-sitter, better-sqlite3, ...               │
+│ Run "pnpm config set enable-pre-post-scripts true" to enable scripts  │
+╰────────────────────────────────────────────────────────────────────────╯
+```
+
+**This is expected behavior.** pnpm v10+ blocks build scripts by default for security.
+
+**Solutions:**
+
+**Option 1: Use npm** (recommended for end users):
+```bash
+npm install -g @defai.digital/automatosx
+```
+
+**Option 2: Enable pnpm scripts** (for developers):
+```bash
+pnpm config set enable-pre-post-scripts true
+# Then reinstall
+pnpm install
+```
+
+Native modules (tree-sitter parsers) will build automatically after enabling scripts.
+
+**To suppress all warnings**, copy `.npmrc.example` to `.npmrc`:
 ```bash
 cp .npmrc.example .npmrc
-# Or download directly
-curl -o .npmrc https://raw.githubusercontent.com/defai-digital/automatosx/main/.npmrc.example
 ```
 
 See [INSTALLATION.md](./INSTALLATION.md#peer-dependency-warnings) for details.

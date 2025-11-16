@@ -1,0 +1,128 @@
+# Dependencies
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+# Allow shared VS Code configuration (for team consistency)
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+.grok/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files and internal development artifacts
+tmp/
+temp/
+*.tmp
+
+# AutomatosX runtime (created by CLI)
+.automatosx/
+.automatosx-backups/
+
+# Workspace directories (v5.2.0+)
+# These are local-only directories for development planning
+automatosx/tmp/
+automatosx/PRD/
+automatosx/
+
+# Spec-Kit generated files (v5.8.3+)
+.specify/
+
+# === INTERNAL DOCUMENTATION (NEVER COMMIT TO PUBLIC REPO) ===
+
+# Product Requirements Documents (Internal Planning)
+PRD/
+
+# Internal release documentation
+RELEASE-CHECKLIST.md
+RELEASE-NOTES.md
+*-RELEASE-PLAN.md
+
+# Internal status tracking
+*-KICKOFF.md
+*-COMPLETE*.md
+*-STATUS.md
+*ULTRATHINK*.md
+*HEAVYTHINK*.md
+*DAY[0-9]*.md
+*-PHASE*.md
+
+# Internal analysis and planning
+*AUDIT*.md
+*ANALYSIS*.md
+*ASSESSMENT*.md
+
+# AI assistant runtime directories (user-specific)
+.claude/
+.gemini/
+
+# User-specific configuration and secrets
+**/config.local.json
+**/settings.local.json
+**/.secrets/
+**/secrets/
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# API keys and credentials (additional patterns)
+.api-keys
+.credentials
+credentials.json
+service-account*.json
+
+# Database files with potentially sensitive data
+*.db
+*.sqlite
+*.sqlite3
+!.automatosx/memory/memories.db  # Exception: Allow memory DB tracking if needed
+!**/*.test.db                     # Exception: Allow test databases
+
+# Personal notes and documentation
+PERSONAL*.md
+PRIVATE*.md
+TODO-*.md
+NOTES*.md
+
+# Work in progress
+WIP-*.md
+DRAFT-*.md
+
+# System and IDE specific (additional)
+.history/
+*.sublime-*
+# Note: .vscode/ shared config files are allowed via negation rules above

@@ -1,0 +1,523 @@
+/**
+ * Doctor Command - Pre-flight health checks and diagnostics
+ *
+ * Validates system setup and provides actionable fixes for common issues:
+ * - Provider CLI installation and authentication
+ * - Network connectivity
+ * - Configuration validity
+ * - File system permissions
+ *
+ * v6.0.7: Initial implementation for improved UX
+ */
+
+import type { CommandModule } from 'yargs';
+import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { access, constants } from 'fs/promises';
+import chalk from 'chalk';
+import ora from 'ora';
+import { loadConfig } from '../../core/config.js';
+import { PathResolver } from '../../core/path-resolver.js';
+import { logger } from '../../utils/logger.js';
+import { printError } from '../../utils/error-formatter.js';
+import type { AutomatosXConfig } from '../../types/config.js';
+
+interface DoctorOptions {
+  provider?: string;
+  verbose?: boolean;
+  fix?: boolean;
+}
+
+interface CheckResult {
+  name: string;
+  category: string;
+  passed: boolean;
+  message: string;
+  fix?: string;
+  details?: string;
+}
+
+export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
+  command: 'doctor [provider]',
+  describe: 'Run diagnostic checks and validate system setup',
+
+  builder: (yargs) => {
+    return yargs
+      .positional('provider', {
+        describe: 'Check specific provider (openai, gemini, claude) or all if omitted',
+        type: 'string',
+        choices: ['openai', 'gemini', 'claude']
+      })
+      .option('verbose', {
+        describe: 'Show detailed diagnostic information',
+        type: 'boolean',
+        alias: 'v',
+        default: false
+      })
+      .option('fix', {
+        describe: 'Attempt to auto-fix issues where possible',
+        type: 'boolean',
+        default: false
+      })
+      .example('ax doctor', 'Run all diagnostic checks')
+      .example('ax doctor openai', 'Check only OpenAI provider')
+      .example('ax doctor --verbose', 'Show detailed diagnostics')
+      .example('ax doctor --fix', 'Auto-fix issues where possible');
+  },
+
+  handler: async (argv) => {
+    try {
+      console.log(chalk.bold('\n🏥 AutomatosX Health Check\n'));
+
+      const workingDir = process.cwd();
+      const pathResolver = new PathResolver({
+        projectDir: workingDir,
+        workingDir,
+        agentWorkspace: ''
+      });
+
+      const results: CheckResult[] = [];
+
+      // Load configuration
+      let config: AutomatosXConfig | null = null;
+      try {
+        const detectedProjectDir = await pathResolver.detectProjectRoot();
+        config = await loadConfig(detectedProjectDir);
+      } catch (error) {
+        results.push({
+          name: 'Configuration',
+          category: 'Setup',
+          passed: false,
+          message: 'Configuration not found or invalid',
+          fix: 'Run: ax init',
+          details: (error as Error).message
+        });
+      }
+
+      // Check providers
+      const providersToCheck = argv.provider
+        ? [argv.provider]
+        : ['openai', 'gemini', 'claude'];
+
+      const verbose = argv.verbose ?? false;
+
+      for (const provider of providersToCheck) {
+        // Only check if enabled in config
+        if (config && !config.providers[provider as keyof typeof config.providers]?.enabled) {
+          if (verbose) {
+            console.log(chalk.dim(`⊘ ${provider}: Disabled in configuration (skipping)`));
+          }
+          continue;
+        }
+
+        console.log(chalk.bold(`\n${getProviderEmoji(provider)} ${capitalize(provider)} Provider`));
+
+        if (provider === 'openai') {
+          results.push(...await checkOpenAIProvider(verbose));
+        } else if (provider === 'gemini') {
+          results.push(...await checkGeminiProvider(verbose));
+        } else if (provider === 'claude') {
+          results.push(...await checkClaudeProvider(verbose));
+        }
+      }
+
+      // Check file system
+      console.log(chalk.bold('\n📁 File System'));
+      results.push(...await checkFileSystem(workingDir, verbose));
+
+      // Print summary
+      printSummary(results, verbose);
+
+      // Suggest fixes
+      const failedChecks = results.filter(r => !r.passed);
+      if (failedChecks.length > 0) {
+        console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+        failedChecks.forEach((check, i) => {
+          if (check.fix) {
+            console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+            console.log(chalk.white(`   ${check.fix}\n`));
+          }
+        });
+
+        // Exit with error code
+        process.exit(1);
+      } else {
+        console.log(chalk.bold.green('\n✅ All checks passed! Your system is ready.\n'));
+      }
+
+    } catch (error) {
+      printError(error as Error);
+      process.exit(1);
+    }
+  }
+};
+
+/**
+ * Check OpenAI Codex provider
+ */
+async function checkOpenAIProvider(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // Check 1: CLI Installation
+  const cliCheck = await checkCommand('codex', '--version');
+  results.push({
+    name: 'CLI Installation',
+    category: 'OpenAI',
+    passed: cliCheck.success,
+    message: cliCheck.success
+      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
+      : 'Codex CLI not found',
+    fix: cliCheck.success ? undefined : 'npm install -g @openai/codex-cli\n   OR: brew install --cask codex',
+    details: verbose ? cliCheck.error : undefined
+  });
+
+  // Check 2: Authentication (only if CLI is installed)
+  if (cliCheck.success) {
+    const authCheck = await checkOpenAIAuth();
+    results.push({
+      name: 'Authentication',
+      category: 'OpenAI',
+      passed: authCheck.success,
+      message: authCheck.message,
+      fix: authCheck.success ? undefined : authCheck.fix,
+      details: verbose ? authCheck.details : undefined
+    });
+  }
+
+  // Check 3: API Connectivity (only if CLI is installed)
+  if (cliCheck.success) {
+    const connCheck = await checkAPIConnectivity('https://api.openai.com/v1/models');
+    results.push({
+      name: 'API Connectivity',
+      category: 'OpenAI',
+      passed: connCheck.success,
+      message: connCheck.message,
+      fix: connCheck.success ? undefined : 'Check firewall/proxy settings\n   OR: export AUTOMATOSX_CLI_ONLY=true (for CLI-only mode)',
+      details: verbose ? connCheck.details : undefined
+    });
+  }
+
+  // Display results
+  results.forEach(r => displayCheck(r));
+
+  return results;
+}
+
+/**
+ * Check Gemini provider
+ */
+async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  const cliCheck = await checkCommand('gemini', '--version');
+  results.push({
+    name: 'CLI Installation',
+    category: 'Gemini',
+    passed: cliCheck.success,
+    message: cliCheck.success
+      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
+      : 'Gemini CLI not found',
+    fix: cliCheck.success ? undefined : 'Follow installation guide at: https://ai.google.dev/gemini-api/docs/cli',
+    details: verbose ? cliCheck.error : undefined
+  });
+
+  if (cliCheck.success) {
+    // Check auth via simple command
+    const authCheck = await checkCommand('gemini', 'models list');
+    results.push({
+      name: 'Authentication',
+      category: 'Gemini',
+      passed: authCheck.success,
+      message: authCheck.success ? 'Authenticated' : 'Authentication failed',
+      fix: authCheck.success ? undefined : 'Run: gemini auth login',
+      details: verbose ? authCheck.error : undefined
+    });
+  }
+
+  results.forEach(r => displayCheck(r));
+  return results;
+}
+
+/**
+ * Check Claude provider
+ */
+async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  const cliCheck = await checkCommand('claude', '--version');
+  results.push({
+    name: 'CLI Installation',
+    category: 'Claude',
+    passed: cliCheck.success,
+    message: cliCheck.success
+      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
+      : 'Claude CLI not found',
+    fix: cliCheck.success ? undefined : 'npm install -g @anthropic-ai/claude-cli',
+    details: verbose ? cliCheck.error : undefined
+  });
+
+  if (cliCheck.success) {
+    // Check if logged in
+    const authCheck = await checkCommand('claude', 'auth whoami');
+    results.push({
+      name: 'Authentication',
+      category: 'Claude',
+      passed: authCheck.success,
+      message: authCheck.success ? 'Authenticated' : 'Not authenticated',
+      fix: authCheck.success ? undefined : 'Run: claude auth login',
+      details: verbose ? authCheck.error : undefined
+    });
+  }
+
+  results.forEach(r => displayCheck(r));
+  return results;
+}
+
+/**
+ * Check file system setup
+ */
+async function checkFileSystem(workingDir: string, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // Check .automatosx directory
+  const automatosxDir = `${workingDir}/.automatosx`;
+  const automatosxExists = existsSync(automatosxDir);
+
+  results.push({
+    name: '.automatosx Directory',
+    category: 'FileSystem',
+    passed: automatosxExists,
+    message: automatosxExists ? 'Exists' : 'Not found',
+    fix: automatosxExists ? undefined : 'Run: ax init',
+    details: verbose ? `Path: ${automatosxDir}` : undefined
+  });
+
+  // Check memory directory
+  if (automatosxExists) {
+    const memoryDir = `${automatosxDir}/memory`;
+    const memoryExists = existsSync(memoryDir);
+
+    results.push({
+      name: 'Memory Directory',
+      category: 'FileSystem',
+      passed: memoryExists,
+      message: memoryExists ? 'Exists' : 'Not found',
+      fix: memoryExists ? undefined : 'Run: ax init',
+      details: verbose ? `Path: ${memoryDir}` : undefined
+    });
+  }
+
+  // Check write permissions
+  try {
+    await access(workingDir, constants.W_OK);
+    results.push({
+      name: 'Write Permissions',
+      category: 'FileSystem',
+      passed: true,
+      message: 'Working directory is writable',
+      details: verbose ? `Path: ${workingDir}` : undefined
+    });
+  } catch {
+    results.push({
+      name: 'Write Permissions',
+      category: 'FileSystem',
+      passed: false,
+      message: 'Working directory is not writable',
+      fix: 'Check directory permissions: ls -la',
+      details: verbose ? `Path: ${workingDir}` : undefined
+    });
+  }
+
+  results.forEach(r => displayCheck(r));
+  return results;
+}
+
+/**
+ * Check if command exists and works
+ */
+async function checkCommand(
+  command: string,
+  args: string
+): Promise<{ success: boolean; output?: string; error?: string }> {
+  try {
+    const output = execSync(`${command} ${args}`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    });
+    return { success: true, output };
+  } catch (error) {
+    return {
+      success: false,
+      error: (error as Error).message
+    };
+  }
+}
+
+/**
+ * Check OpenAI authentication
+ */
+async function checkOpenAIAuth(): Promise<{
+  success: boolean;
+  message: string;
+  fix?: string;
+  details?: string;
+}> {
+  // Check if OPENAI_API_KEY is set
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      success: true,
+      message: 'API key configured',
+      details: 'OPENAI_API_KEY environment variable is set'
+    };
+  }
+
+  // Try a simple codex command to test auth
+  try {
+    execSync('codex exec "test" --max-tokens 1', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 10000
+    });
+    return {
+      success: true,
+      message: 'Authenticated via CLI',
+      details: 'Successfully executed test command'
+    };
+  } catch (error) {
+    const errorMsg = (error as Error).message.toLowerCase();
+
+    if (errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+      return {
+        success: false,
+        message: 'Not authenticated',
+        fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
+        details: 'Test command returned unauthorized'
+      };
+    }
+
+    // Command failed but not due to auth
+    return {
+      success: false,
+      message: 'Cannot verify authentication',
+      fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
+      details: errorMsg
+    };
+  }
+}
+
+/**
+ * Check API connectivity
+ */
+async function checkAPIConnectivity(url: string): Promise<{
+  success: boolean;
+  message: string;
+  details?: string;
+}> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    return {
+      success: response.ok || response.status === 401, // 401 means we reached API
+      message: response.ok || response.status === 401 ? 'Connected' : `HTTP ${response.status}`,
+      details: `Status: ${response.status} ${response.statusText}`
+    };
+  } catch (error) {
+    const errorMsg = (error as Error).message;
+
+    if (errorMsg.includes('aborted')) {
+      return {
+        success: false,
+        message: 'Connection timeout',
+        details: 'Request timed out after 5 seconds'
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Cannot connect',
+      details: errorMsg
+    };
+  }
+}
+
+/**
+ * Display a single check result
+ */
+function displayCheck(result: CheckResult): void {
+  const spinner = ora();
+
+  if (result.passed) {
+    spinner.succeed(chalk.green(`${result.name}: ${result.message}`));
+  } else {
+    spinner.fail(chalk.red(`${result.name}: ${result.message}`));
+  }
+
+  if (result.details && result.details.length > 0) {
+    console.log(chalk.dim(`  └─ ${result.details}`));
+  }
+}
+
+/**
+ * Print summary of all checks
+ */
+function printSummary(results: CheckResult[], verbose: boolean): void {
+  const passed = results.filter(r => r.passed).length;
+  const failed = results.filter(r => !r.passed).length;
+  const total = results.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passed}/${total}`));
+
+  if (failed > 0) {
+    console.log(chalk.red(`✗ Failed: ${failed}/${total}`));
+  }
+
+  if (verbose) {
+    console.log('\nDetailed Results:');
+
+    const byCategory = results.reduce((acc, r) => {
+      if (!acc[r.category]) {
+        acc[r.category] = [];
+      }
+      acc[r.category]!.push(r);
+      return acc;
+    }, {} as Record<string, CheckResult[]>);
+
+    Object.entries(byCategory).forEach(([category, checks]) => {
+      console.log(chalk.bold(`\n${category}:`));
+      checks.forEach(check => {
+        const icon = check.passed ? '✓' : '✗';
+        const color = check.passed ? chalk.green : chalk.red;
+        console.log(color(`  ${icon} ${check.name}: ${check.message}`));
+      });
+    });
+  }
+}
+
+/**
+ * Get emoji for provider
+ */
+function getProviderEmoji(provider: string): string {
+  switch (provider) {
+    case 'openai': return '🤖';
+    case 'gemini': return '✨';
+    case 'claude': return '🧠';
+    default: return '🔧';
+  }
+}
+
+/**
+ * Capitalize first letter
+ */
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}

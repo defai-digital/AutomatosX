@@ -1,0 +1,244 @@
+{
+  "mcpServers": {
+    "automatosx": {
+      "command": "automatosx",
+      "args": ["mcp"],
+      "description": "AutomatosX AI Agent Orchestration Platform with persistent memory and multi-agent coordination",
+      "tools": [
+        {
+          "name": "run_agent",
+          "description": "Execute an AutomatosX agent with a specific task",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string",
+                "description": "The name of the agent to run (e.g., backend, Paris, Bob)"
+              },
+              "task": {
+                "type": "string",
+                "description": "The task for the agent to perform"
+              },
+              "provider": {
+                "type": "string",
+                "description": "Optional: Override the AI provider",
+                "enum": ["claude", "gemini", "openai"]
+              },
+              "no_memory": {
+                "type": "boolean",
+                "description": "Optional: Skip memory injection",
+                "default": false
+              }
+            },
+            "required": ["agent", "task"]
+          }
+        },
+        {
+          "name": "list_agents",
+          "description": "List all available AutomatosX agents",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "search_memory",
+          "description": "Search AutomatosX memory for relevant information",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum number of results",
+                "default": 10
+              }
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "get_status",
+          "description": "Get AutomatosX system status and configuration",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "session_create",
+          "description": "Create a new multi-agent session",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Session name/task description"
+              },
+              "agent": {
+                "type": "string",
+                "description": "Initiating agent name"
+              }
+            },
+            "required": ["name", "agent"]
+          }
+        },
+        {
+          "name": "session_list",
+          "description": "List all active sessions",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "session_status",
+          "description": "Get detailed status of a specific session",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Session ID"
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "session_complete",
+          "description": "Mark a session as completed",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Session ID"
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "session_fail",
+          "description": "Mark a session as failed with an error reason",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Session ID"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Failure reason"
+              }
+            },
+            "required": ["id", "reason"]
+          }
+        },
+        {
+          "name": "memory_add",
+          "description": "Add a new memory entry to the system",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string",
+                "description": "Memory content"
+              },
+              "metadata": {
+                "type": "object",
+                "description": "Optional metadata (agent, timestamp, etc.)",
+                "properties": {
+                  "agent": { "type": "string" },
+                  "timestamp": { "type": "string" }
+                }
+              }
+            },
+            "required": ["content"]
+          }
+        },
+        {
+          "name": "memory_list",
+          "description": "List memory entries with optional filtering",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string",
+                "description": "Filter by agent name"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum number of entries",
+                "default": 50
+              }
+            }
+          }
+        },
+        {
+          "name": "memory_delete",
+          "description": "Delete a specific memory entry by ID",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number",
+                "description": "Memory entry ID"
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        {
+          "name": "memory_export",
+          "description": "Export all memory entries to a JSON file",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Export file path (relative to .automatosx/memory/exports/)"
+              }
+            },
+            "required": ["path"]
+          }
+        },
+        {
+          "name": "memory_import",
+          "description": "Import memory entries from a JSON file",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Import file path"
+              }
+            },
+            "required": ["path"]
+          }
+        },
+        {
+          "name": "memory_stats",
+          "description": "Get detailed memory statistics",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "memory_clear",
+          "description": "Clear all memory entries from the database",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      ]
+    }
+  }
+}

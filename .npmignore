@@ -1,0 +1,78 @@
+# Development documentation and AI assistant configuration
+PRD/
+.claude/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Internal release documentation
+RELEASE-CHECKLIST.md
+RELEASE-NOTES.md
+BETA-TESTING.md
+E2E-TESTING.md
+
+# Development files
+.gitignore
+.gitattributes
+.editorconfig
+.prettierrc*
+.eslintrc*
+tsconfig.json
+vitest.config.ts
+
+# Source files (only publish dist/)
+src/
+tests/
+__tests__/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build artifacts
+*.tsbuildinfo
+
+# Documentation (keep only essential docs)
+docs/development/
+docs/internal/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AutomatosX specific
+.automatosx/
+.automatosx-backups/
+
+# Workspace directories (v5.2.0+)
+automatosx/tmp/
+automatosx/PRD/
+
+# Environment
+.env*

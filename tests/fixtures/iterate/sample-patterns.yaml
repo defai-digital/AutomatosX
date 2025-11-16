@@ -1,0 +1,99 @@
+# Sample Pattern Library for Iterate Mode Testing
+# This is a fixture for unit tests - not used in production
+#
+# Week 1 Scaffolding - Sample data only
+
+version: "1.0.0"
+description: "Test pattern library for iterate mode classifier"
+
+patterns:
+  confirmation_prompt:
+    - pattern: "\\b(should I|shall I|do you want me to)\\b.*proceed"
+      priority: 10
+      confidence: 0.9
+
+    - pattern: "\\b(continue|proceed|go ahead)\\s*\\?"
+      priority: 8
+      confidence: 0.85
+
+    - pattern: "\\bready to (start|begin|continue)"
+      priority: 7
+      confidence: 0.8
+
+  genuine_question:
+    - pattern: "\\b(which|what|how)\\b.*\\b(should|would|could)\\b"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\b(option A|option B|choice)\\b"
+      priority: 9
+      confidence: 0.9
+
+    - pattern: "\\bprefer\\s+(using|implementing)"
+      priority: 8
+      confidence: 0.85
+
+  status_update:
+    - pattern: "\\b(working on|implementing|creating|building)\\b"
+      priority: 10
+      confidence: 0.9
+
+    - pattern: "\\b(completed|finished|done with)\\b"
+      priority: 9
+      confidence: 0.85
+
+    - pattern: "\\bprogress:\\s+\\d+"
+      priority: 8
+      confidence: 0.8
+
+  blocking_request:
+    - pattern: "\\b(need|require)\\s+(your|user)\\s+(input|approval|confirmation)"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\bplease provide\\b"
+      priority: 9
+      confidence: 0.9
+
+    - pattern: "\\b(API key|credentials|password)\\s+required"
+      priority: 10
+      confidence: 0.95
+
+  error_signal:
+    - pattern: "\\b(error|failed|failure):\\s+"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\bexception\\s+thrown"
+      priority: 9
+      confidence: 0.9
+
+    - pattern: "\\b(cannot|can't|unable to)\\s+(find|locate|access)"
+      priority: 8
+      confidence: 0.85
+
+  completion_signal:
+    - pattern: "\\b(all tasks|everything)\\s+(completed|done|finished)"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\bsuccessfully completed"
+      priority: 9
+      confidence: 0.9
+
+    - pattern: "\\bno (more|further) tasks"
+      priority: 8
+      confidence: 0.85
+
+  rate_limit_or_context:
+    - pattern: "\\brate limit\\s+(exceeded|reached)"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\bcontext window\\s+(full|exceeded)"
+      priority: 10
+      confidence: 0.95
+
+    - pattern: "\\btoo many requests"
+      priority: 9
+      confidence: 0.9

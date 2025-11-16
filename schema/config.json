@@ -1,0 +1,703 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/defai-digital/automatosx/main/schema/config.json",
+  "title": "AutomatosX Configuration",
+  "description": "Configuration schema for AutomatosX v5.0+",
+  "type": "object",
+  "required": ["providers", "memory", "workspace", "logging"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "description": "Configuration version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "providers": {
+      "type": "object",
+      "description": "AI provider configurations",
+      "additionalProperties": {
+        "$ref": "#/definitions/ProviderConfig"
+      }
+    },
+    "execution": {
+      "$ref": "#/definitions/ExecutionConfig",
+      "description": "Execution parameters (timeout, retry logic, provider fallback)"
+    },
+    "orchestration": {
+      "$ref": "#/definitions/OrchestrationConfigSystem",
+      "description": "Multi-agent orchestration settings (session, delegation, workspace)"
+    },
+    "memory": {
+      "$ref": "#/definitions/MemoryConfig",
+      "description": "Memory storage and search configuration"
+    },
+    "abilities": {
+      "$ref": "#/definitions/AbilitiesConfig",
+      "description": "Ability loading and caching configuration"
+    },
+    "workspace": {
+      "$ref": "#/definitions/WorkspaceConfig",
+      "description": "Workspace configuration (legacy, for backward compatibility)"
+    },
+    "logging": {
+      "$ref": "#/definitions/LoggingConfig",
+      "description": "Logging configuration"
+    },
+    "performance": {
+      "$ref": "#/definitions/PerformanceConfig",
+      "description": "Performance optimization settings"
+    },
+    "advanced": {
+      "$ref": "#/definitions/AdvancedConfig",
+      "description": "Advanced configuration (embedding, security, development)"
+    },
+    "integration": {
+      "$ref": "#/definitions/IntegrationConfig",
+      "description": "Integration settings (VS Code, etc.)"
+    },
+    "cli": {
+      "$ref": "#/definitions/CLIConfig",
+      "description": "CLI command defaults"
+    },
+    "openai": {
+      "$ref": "#/definitions/OpenAIConfig",
+      "description": "OpenAI configuration (legacy, for backward compatibility)"
+    }
+  },
+  "definitions": {
+    "ProviderConfig": {
+      "type": "object",
+      "required": ["enabled", "priority", "timeout", "command"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this provider is enabled"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Provider priority (lower = higher priority)",
+          "minimum": 1
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Provider timeout in milliseconds",
+          "minimum": 1000
+        },
+        "command": {
+          "type": "string",
+          "description": "CLI command to invoke this provider"
+        },
+        "healthCheck": {
+          "$ref": "#/definitions/ProviderHealthCheckConfig"
+        },
+        "defaults": {
+          "$ref": "#/definitions/ProviderDefaultsConfig"
+        }
+      }
+    },
+    "ProviderHealthCheckConfig": {
+      "type": "object",
+      "required": ["enabled", "interval", "timeout"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "interval": {
+          "type": "integer",
+          "description": "Health check interval in milliseconds",
+          "minimum": 1000
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Health check timeout in milliseconds",
+          "minimum": 100
+        }
+      }
+    },
+    "ProviderDefaultsConfig": {
+      "type": "object",
+      "properties": {
+        "maxTokens": {
+          "type": "integer",
+          "description": "Default max output tokens",
+          "minimum": 1
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Default temperature (0-1)",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "topP": {
+          "type": "number",
+          "description": "Default top_p (0-1)",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "ExecutionConfig": {
+      "type": "object",
+      "required": ["defaultTimeout", "retry", "provider"],
+      "properties": {
+        "defaultTimeout": {
+          "type": "integer",
+          "description": "Default execution timeout in milliseconds",
+          "minimum": 1000
+        },
+        "retry": {
+          "$ref": "#/definitions/RetryConfig"
+        },
+        "provider": {
+          "$ref": "#/definitions/ExecutionProviderConfig"
+        }
+      }
+    },
+    "RetryConfig": {
+      "type": "object",
+      "required": ["maxAttempts", "initialDelay", "maxDelay", "backoffFactor"],
+      "properties": {
+        "maxAttempts": {
+          "type": "integer",
+          "description": "Maximum retry attempts",
+          "minimum": 1
+        },
+        "initialDelay": {
+          "type": "integer",
+          "description": "Initial retry delay in milliseconds",
+          "minimum": 100
+        },
+        "maxDelay": {
+          "type": "integer",
+          "description": "Maximum retry delay in milliseconds",
+          "minimum": 1000
+        },
+        "backoffFactor": {
+          "type": "number",
+          "description": "Exponential backoff multiplier",
+          "minimum": 1
+        },
+        "retryableErrors": {
+          "type": "array",
+          "description": "Error codes/messages that trigger retry",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ExecutionProviderConfig": {
+      "type": "object",
+      "required": ["maxWaitMs"],
+      "properties": {
+        "maxWaitMs": {
+          "type": "integer",
+          "description": "Max wait time for provider response in milliseconds",
+          "minimum": 1000
+        },
+        "fallbackDelay": {
+          "type": "integer",
+          "description": "Delay before trying fallback provider in milliseconds",
+          "minimum": 0
+        }
+      }
+    },
+    "OrchestrationConfigSystem": {
+      "type": "object",
+      "required": ["session", "delegation", "workspace"],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/SessionConfig"
+        },
+        "delegation": {
+          "$ref": "#/definitions/DelegationConfig"
+        },
+        "workspace": {
+          "$ref": "#/definitions/WorkspaceSystemConfig"
+        }
+      }
+    },
+    "SessionConfig": {
+      "type": "object",
+      "required": ["maxSessions", "maxMetadataSize", "saveDebounce", "cleanupAfterDays", "maxUuidAttempts", "persistPath"],
+      "properties": {
+        "maxSessions": {
+          "type": "integer",
+          "description": "Maximum sessions in memory",
+          "minimum": 1
+        },
+        "maxMetadataSize": {
+          "type": "integer",
+          "description": "Maximum metadata size in bytes",
+          "minimum": 1024
+        },
+        "saveDebounce": {
+          "type": "integer",
+          "description": "Save debounce delay in milliseconds",
+          "minimum": 0
+        },
+        "cleanupAfterDays": {
+          "type": "integer",
+          "description": "Cleanup old sessions after N days",
+          "minimum": 1
+        },
+        "maxUuidAttempts": {
+          "type": "integer",
+          "description": "Maximum UUID generation attempts",
+          "minimum": 1
+        },
+        "persistPath": {
+          "type": "string",
+          "description": "Session persistence path"
+        }
+      }
+    },
+    "DelegationConfig": {
+      "type": "object",
+      "required": ["maxDepth", "timeout", "enableCycleDetection"],
+      "properties": {
+        "maxDepth": {
+          "type": "integer",
+          "description": "Maximum delegation chain depth",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Delegation timeout in milliseconds",
+          "minimum": 1000
+        },
+        "enableCycleDetection": {
+          "type": "boolean",
+          "description": "Enable delegation cycle detection"
+        }
+      }
+    },
+    "WorkspaceSystemConfig": {
+      "type": "object",
+      "required": ["maxFileSize", "maxFiles", "cleanupAfterDays", "autoCleanup", "permissions", "basePath"],
+      "properties": {
+        "maxFileSize": {
+          "type": "integer",
+          "description": "Maximum file size in bytes",
+          "minimum": 1024
+        },
+        "maxFiles": {
+          "type": "integer",
+          "description": "Maximum files per workspace",
+          "minimum": 1
+        },
+        "cleanupAfterDays": {
+          "type": "integer",
+          "description": "Cleanup old workspaces after N days",
+          "minimum": 1
+        },
+        "autoCleanup": {
+          "type": "boolean",
+          "description": "Enable automatic cleanup"
+        },
+        "permissions": {
+          "type": "integer",
+          "description": "Unix permissions (e.g., 0o700)",
+          "minimum": 0
+        },
+        "basePath": {
+          "type": "string",
+          "description": "Base path for workspaces"
+        }
+      }
+    },
+    "MemoryConfig": {
+      "type": "object",
+      "required": ["maxEntries", "persistPath", "autoCleanup", "cleanupDays"],
+      "properties": {
+        "maxEntries": {
+          "type": "integer",
+          "description": "Maximum memory entries",
+          "minimum": 100
+        },
+        "persistPath": {
+          "type": "string",
+          "description": "Memory persistence path"
+        },
+        "autoCleanup": {
+          "type": "boolean",
+          "description": "Enable automatic cleanup"
+        },
+        "cleanupDays": {
+          "type": "integer",
+          "description": "Cleanup memories older than N days",
+          "minimum": 1
+        },
+        "search": {
+          "$ref": "#/definitions/MemorySearchConfig"
+        }
+      }
+    },
+    "MemorySearchConfig": {
+      "type": "object",
+      "required": ["defaultLimit", "maxLimit", "timeout"],
+      "properties": {
+        "defaultLimit": {
+          "type": "integer",
+          "description": "Default search result limit",
+          "minimum": 1
+        },
+        "maxLimit": {
+          "type": "integer",
+          "description": "Maximum search result limit",
+          "minimum": 1
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Search timeout in milliseconds",
+          "minimum": 100
+        }
+      }
+    },
+    "AbilitiesConfig": {
+      "type": "object",
+      "required": ["basePath", "fallbackPath", "cache", "limits"],
+      "properties": {
+        "basePath": {
+          "type": "string",
+          "description": "Base path for abilities"
+        },
+        "fallbackPath": {
+          "type": "string",
+          "description": "Fallback path for abilities"
+        },
+        "cache": {
+          "$ref": "#/definitions/AbilitiesCacheConfig"
+        },
+        "limits": {
+          "$ref": "#/definitions/AbilitiesLimitsConfig"
+        }
+      }
+    },
+    "AbilitiesCacheConfig": {
+      "type": "object",
+      "required": ["enabled", "maxEntries", "ttl", "maxSize", "cleanupInterval"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ttl": {
+          "type": "integer",
+          "description": "Time to live in milliseconds",
+          "minimum": 1000
+        },
+        "maxSize": {
+          "type": "integer",
+          "description": "Maximum cache size in bytes",
+          "minimum": 1024
+        },
+        "cleanupInterval": {
+          "type": "integer",
+          "description": "Cleanup interval in milliseconds",
+          "minimum": 1000
+        }
+      }
+    },
+    "AbilitiesLimitsConfig": {
+      "type": "object",
+      "required": ["maxFileSize"],
+      "properties": {
+        "maxFileSize": {
+          "type": "integer",
+          "description": "Maximum ability file size in bytes",
+          "minimum": 1024
+        }
+      }
+    },
+    "LoggingConfig": {
+      "type": "object",
+      "required": ["level", "path", "console"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "description": "Logging level"
+        },
+        "path": {
+          "type": "string",
+          "description": "Log file path"
+        },
+        "console": {
+          "type": "boolean",
+          "description": "Enable console logging"
+        },
+        "retention": {
+          "$ref": "#/definitions/LoggingRetentionConfig"
+        }
+      }
+    },
+    "LoggingRetentionConfig": {
+      "type": "object",
+      "required": ["maxSizeBytes", "maxAgeDays", "compress"],
+      "properties": {
+        "maxSizeBytes": {
+          "type": "integer",
+          "description": "Maximum log file size in bytes",
+          "minimum": 1024
+        },
+        "maxAgeDays": {
+          "type": "integer",
+          "description": "Maximum log age in days",
+          "minimum": 1
+        },
+        "compress": {
+          "type": "boolean",
+          "description": "Compress old logs"
+        }
+      }
+    },
+    "PerformanceConfig": {
+      "type": "object",
+      "required": ["profileCache", "teamCache", "providerCache", "rateLimit"],
+      "properties": {
+        "profileCache": {
+          "$ref": "#/definitions/CacheConfig"
+        },
+        "teamCache": {
+          "$ref": "#/definitions/CacheConfig"
+        },
+        "providerCache": {
+          "$ref": "#/definitions/CacheConfig"
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/RateLimitConfig"
+        }
+      }
+    },
+    "CacheConfig": {
+      "type": "object",
+      "required": ["enabled", "maxEntries", "ttl", "cleanupInterval"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ttl": {
+          "type": "integer",
+          "description": "Time to live in milliseconds",
+          "minimum": 1000
+        },
+        "cleanupInterval": {
+          "type": "integer",
+          "description": "Cleanup interval in milliseconds",
+          "minimum": 1000
+        }
+      }
+    },
+    "RateLimitConfig": {
+      "type": "object",
+      "required": ["enabled", "requestsPerMinute", "burstSize"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "requestsPerMinute": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "burstSize": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "AdvancedConfig": {
+      "type": "object",
+      "required": ["security", "development"],
+      "properties": {
+        "embedding": {
+          "$ref": "#/definitions/EmbeddingConfig"
+        },
+        "security": {
+          "$ref": "#/definitions/SecurityConfig"
+        },
+        "development": {
+          "$ref": "#/definitions/DevelopmentConfig"
+        }
+      }
+    },
+    "EmbeddingConfig": {
+      "type": "object",
+      "required": ["timeout", "retryDelay", "dimensions", "maxRetries"],
+      "properties": {
+        "timeout": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "retryDelay": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SecurityConfig": {
+      "type": "object",
+      "required": ["enablePathValidation", "allowedExtensions"],
+      "properties": {
+        "enablePathValidation": {
+          "type": "boolean"
+        },
+        "allowedExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "DevelopmentConfig": {
+      "type": "object",
+      "required": ["mockProviders", "profileMode"],
+      "properties": {
+        "mockProviders": {
+          "type": "boolean"
+        },
+        "profileMode": {
+          "type": "boolean"
+        }
+      }
+    },
+    "IntegrationConfig": {
+      "type": "object",
+      "required": ["vscode"],
+      "properties": {
+        "vscode": {
+          "$ref": "#/definitions/VSCodeIntegrationConfig"
+        }
+      }
+    },
+    "VSCodeIntegrationConfig": {
+      "type": "object",
+      "required": ["enabled", "apiPort", "autoStart", "outputPanel", "notifications"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "apiPort": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "autoStart": {
+          "type": "boolean"
+        },
+        "outputPanel": {
+          "type": "boolean"
+        },
+        "notifications": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CLIConfig": {
+      "type": "object",
+      "required": ["run", "session", "memory"],
+      "properties": {
+        "run": {
+          "$ref": "#/definitions/CLIRunConfig"
+        },
+        "session": {
+          "$ref": "#/definitions/CLISessionConfig"
+        },
+        "memory": {
+          "$ref": "#/definitions/CLIMemoryConfig"
+        }
+      }
+    },
+    "CLIRunConfig": {
+      "type": "object",
+      "required": ["defaultMemory", "defaultSaveMemory", "defaultFormat", "defaultVerbose"],
+      "properties": {
+        "defaultMemory": {
+          "type": "boolean"
+        },
+        "defaultSaveMemory": {
+          "type": "boolean"
+        },
+        "defaultFormat": {
+          "type": "string",
+          "enum": ["text", "json", "markdown"]
+        },
+        "defaultVerbose": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CLISessionConfig": {
+      "type": "object",
+      "required": ["defaultShowAgents"],
+      "properties": {
+        "defaultShowAgents": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CLIMemoryConfig": {
+      "type": "object",
+      "required": ["defaultLimit"],
+      "properties": {
+        "defaultLimit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "WorkspaceConfig": {
+      "type": "object",
+      "description": "Legacy workspace configuration (for backward compatibility)",
+      "required": ["basePath", "autoCleanup", "cleanupDays", "maxFiles"],
+      "properties": {
+        "basePath": {
+          "type": "string"
+        },
+        "autoCleanup": {
+          "type": "boolean"
+        },
+        "cleanupDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "OpenAIConfig": {
+      "type": "object",
+      "description": "OpenAI configuration (legacy, for backward compatibility)",
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

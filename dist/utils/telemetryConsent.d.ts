@@ -18,9 +18,12 @@ export declare function isTelemetryConfigured(): boolean;
  */
 export declare function showTelemetryConsent(): Promise<void>;
 /**
- * Check if telemetry consent is needed and show prompt if required
+ * Check if telemetry consent is needed and configure if required
  *
  * This should be called at the start of CLI execution (in src/cli/index.ts)
+ *
+ * Privacy by Default: Telemetry is disabled by default without prompting.
+ * Users can enable it later with: ax telemetry enable
  *
  * @returns Promise that resolves when consent check is complete
  */

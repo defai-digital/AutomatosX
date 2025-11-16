@@ -109,15 +109,26 @@ export async function showTelemetryConsent(): Promise<void> {
 }
 
 /**
- * Check if telemetry consent is needed and show prompt if required
+ * Check if telemetry consent is needed and configure if required
  *
  * This should be called at the start of CLI execution (in src/cli/index.ts)
+ *
+ * Privacy by Default: Telemetry is disabled by default without prompting.
+ * Users can enable it later with: ax telemetry enable
  *
  * @returns Promise that resolves when consent check is complete
  */
 export async function checkTelemetryConsent(): Promise<void> {
-  // Only show consent prompt if telemetry hasn't been configured yet
+  // Only configure if telemetry hasn't been configured yet
   if (!isTelemetryConfigured()) {
-    await showTelemetryConsent();
+    // Default to disabled (no prompt) - Privacy by Default
+    const service = getTelemetryService();
+    await service.initialize();
+    await service.disable();
+
+    // Show one-time informational message
+    console.log('\n💡 Privacy by default: Telemetry is disabled');
+    console.log('   To help improve AutomatosX, run: ax telemetry enable');
+    console.log('   Learn more: ax telemetry --help\n');
   }
 }

@@ -1,109 +1,145 @@
 # AutomatosX
 
-> Production-ready code intelligence platform with AI agents and workflow orchestration
+**From Idea to Production in Minutes: The AI Agent Platform with Persistent Memory**
 
+AutomatosX is the only AI CLI that combines intelligent code search, 21 specialized agents, and persistent memory. Search across 44 programming languages, delegate tasks to AI specialists, and build complete workflows—while the system remembers everything and optimizes every decision.
+
+[![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
+[![npm](https://img.shields.io/npm/dt/%40defai.digital%2Fautomatosx.svg?label=downloads&color=blue)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![Node.js](https://img.shields.io/badge/node.js-24.x-brightgreen)](https://nodejs.org/)
-[![Ubuntu](https://img.shields.io/badge/ubuntu-24.04%20LTS-orange)](https://ubuntu.com/)
-[![macOS](https://img.shields.io/badge/macOS-26%20Tahoe+-blue)](https://www.apple.com/macos/)
-[![Windows](https://img.shields.io/badge/windows-11-blue)](https://www.microsoft.com/windows/)
-[![Tests](https://img.shields.io/badge/tests-745+%20passing-brightgreen)](./src)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-green)](./src)
+[![Tests](https://img.shields.io/badge/tests-745+%20passing-brightgreen)](#)
 [![Languages](https://img.shields.io/badge/languages-44-blue)](./src/parser)
 [![Agents](https://img.shields.io/badge/agents-21-purple)](./src/agents)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-8.0.10-blue.svg)](package.json)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)](https://ubuntu.com/)
+[![macOS](https://img.shields.io/badge/macOS-26-blue)](https://www.apple.com/macos)
+[![Windows](https://img.shields.io/badge/Windows-11-blue)](https://www.microsoft.com/windows)
 
-**🎉 v8.0.10 - Ready for npm Publishing (No Warnings)**
+**Status**: ✅ **Production Ready** | v8.0.20 | 21 Specialized Agents | 44 Languages | 745+ Tests Passing
 
-AutomatosX is a comprehensive code intelligence platform with AI-powered workflow automation:
-- **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 44 languages
-- **AI Agent System** - 21 specialized agents for development tasks
-- **Multi-Provider AI** - Claude, Gemini, and OpenAI with automatic fallback
-- **Workflow Orchestration** - ReScript state machines for complex multi-step tasks
-- **Interactive CLI** - ChatGPT-style REPL with natural language interface
-- **SpecKit Generators** - Auto-generate workflows, plans, tests, and project scaffolds
-- **Iterate Mode** - Autonomous retry loops with 10 adaptive strategies
-- **Validation System** - Production-ready type-safe validation (488k ops/sec)
+---
 
-## 📋 Requirements
+## ⚡ New to AutomatosX? [Start Here: 60-Second Quickstart](#-quick-start-60-seconds-to-your-first-agent)
 
-- **Node.js**: v24.x or higher ([Download](https://nodejs.org/))
-- **pnpm**: v9.0.0 or higher ([Install instructions](#installing-pnpm))
-- **Supported Operating Systems**:
-  - **Ubuntu**: 24.04 LTS (Noble Numbat) or later
-  - **macOS**: 26 (Tahoe) or later
-  - **Windows**: 11 or later
+Get productive in under a minute! Install, run your first command, and see intelligent code search in action. **Perfect for first-time users.**
 
-### Installing pnpm
+---
 
-```bash
-# Via npm (recommended)
-npm install -g pnpm@9
+## 🚀 The Only AI Platform with Complete Code Intelligence & Agent Memory
 
-# Via Homebrew (macOS)
-brew install pnpm
+AutomatosX is **the only AI platform** that gives you:
 
-# Via winget (Windows)
-winget install -e --id pnpm.pnpm
+| Feature | What It Does | Your Benefit |
+|---------|--------------|--------------|
+| 📋 **44-Language Code Search** | Tree-sitter AST parsing with SQLite FTS5 full-text search. Find any symbol, function, or pattern. | Never manually grep again |
+| 💰 **Multi-Provider AI** | Claude, Gemini, and OpenAI with automatic fallback and health monitoring. | 99.9% uptime, zero vendor lock-in |
+| 🧠 **Persistent Memory** | Every conversation and code search is remembered. Agents get perfect context automatically. | Never repeat yourself again |
+| 🤝 **21 Specialized Agents** | Backend, Frontend, Security, DevOps, Quality, and 16 more experts collaborate on your behalf. | Focus on strategy, not micromanagement |
+| 🔍 **Lightning Fast** | Query caching delivers <1ms response time. Index 2000+ files/sec. | Ship features 10x faster |
 
-# Verify installation
-pnpm --version  # Should show 9.x.x
-```
+---
 
-**Why pnpm?** This project uses pnpm (not npm) because:
-- ✅ Better monorepo/workspace support
-- ✅ 2-3x faster installations
-- ✅ Smaller disk usage (40% reduction)
-- ✅ Stricter dependency resolution
-
-See [INSTALLATION.md](./INSTALLATION.md) for detailed setup instructions.
-
-## 🚀 Quick Start (Development)
+## ⚡ Quick Start: 60 Seconds to Your First Agent
 
 ```bash
-# Clone the repository
-git clone https://github.com/defai-digital/automatosx.git
-cd automatosx
+# 1. Install AutomatosX (one command)
+npm install -g @defai.digital/automatosx
 
-# Install dependencies
-pnpm install
-
-# Build the project
-pnpm run build
-
-# Link CLI binary (makes 'ax' command available globally)
-pnpm run link
-
-# Now you can use the CLI directly:
+# 2. Search your codebase instantly
 ax find "getUserById"
-ax cli  # Launch interactive mode
-ax speckit spec "Build authentication API"
 
-# Or use via npm script:
-npm run cli -- find "getUserById"
+# 3. Chat with AI agents
+ax cli
 
-# Run tests (745+ tests)
-npm test
+# AutomatosX automatically:
+#   ✅ Parses 44 programming languages
+#   ✅ Indexes your code with full-text search
+#   ✅ Connects to Claude/Gemini/OpenAI
+#   ✅ Remembers all conversations
+#   ✅ Delegates tasks to specialized agents
+
+# 4. Build complete workflows
+ax speckit spec "Build user authentication with tests"
 ```
 
-### Using the `ax` Command
+**Result**: Intelligent code search, AI-powered development, and persistent memory—in 60 seconds.
 
-After `npm install` and `npm run build`, the `ax` binary is automatically linked globally via the `postinstall` script. This means you can use:
+---
+
+## 💬 **Interactive CLI** - ChatGPT in Your Terminal
+
+Experience a ChatGPT-style conversational interface directly in your terminal:
 
 ```bash
-# These work anywhere on your system:
-ax find "Calculator"
-ax def "getUserById"
-ax flow "handleRequest"
-ax cli  # Interactive ChatGPT-style mode
+# Start interactive mode
+ax cli
+
+╭─────────────────────────────────────────────────────╮
+│   AutomatosX Interactive CLI v8.0.20                │
+│   Type /help for commands, /exit to quit            │
+│   Using: Claude Sonnet 3.5                          │
+╰─────────────────────────────────────────────────────╯
+
+ax> I need to implement JWT authentication
+
+AI: I'll help you implement JWT authentication. Let me search our
+    codebase for existing auth patterns...
+
+    Found 2 relevant patterns. Would you like me to:
+    1. Show implementation plan
+    2. Delegate to backend agent
+    3. Start coding immediately
+
+ax> Delegate to backend agent
+
+AI: @backend implement JWT authentication with refresh tokens
+
+    [Backend agent working...]
+    ✓ Dependencies installed
+    ✓ Auth middleware created
+    ✓ Token refresh endpoint added
+    ✓ Tests generated (12 passing)
+
+ax> /save jwt-implementation
+✓ Conversation saved: jwt-implementation
+
+ax> /exit
 ```
 
-**To unlink** (if you want to remove the global `ax` command):
+### Key Features
+
+- 🤖 **Natural Conversations** - Multi-turn discussions with full context
+- 🔄 **Real-time Streaming** - See responses as they're generated
+- 💾 **Save & Resume** - Continue conversations later with `/save` and `/load`
+- 🎯 **Agent Delegation** - Route tasks to specialists: `@backend`, `@security`, `@quality`
+- 📝 **15+ Slash Commands** - `/help`, `/memory`, `/agents`, `/workflow`, `/export`, and more
+- 🎨 **Beautiful Output** - Markdown rendering and syntax-highlighted code blocks
+- ⚡ **Fast & Efficient** - Powered by Claude, Gemini, or OpenAI
+
+### Quick Examples
+
 ```bash
-npm run unlink
-# Or manually:
-npm unlink -g @defai.digital/automatosx
+# Start a coding session
+ax cli
+ax> @backend create a REST API for user management
+ax> @security audit the authentication code
+ax> /save user-management-api
+
+# Search your knowledge base
+ax cli
+ax> /memory search "authentication patterns"
+ax> Show me the JWT implementation we used last time
+
+# Work across sessions
+ax cli
+ax> /load user-management-api
+ax> Let's add rate limiting to these endpoints
+ax> /export  # Export to markdown for documentation
 ```
+
+**Alternative Commands**: `ax interactive`, `ax chat`
+
+---
 
 ## 📦 Installation
 
@@ -117,7 +153,7 @@ npm install -g @defai.digital/automatosx
 # Verify installation
 ax --version
 
-# Use the CLI
+# Start using immediately
 ax find "getUserById"
 ax cli  # Launch interactive mode
 ```
@@ -132,45 +168,41 @@ cd automatosx
 npm install
 npm run build
 npm link
+
+# Now you can use the CLI directly:
+ax find "Calculator"
+ax cli  # Interactive mode
 ```
 
 ### ⚠️ Installation Warnings
 
-#### Peer Dependency Warnings
-
-When installing AutomatosX, you may see warnings about tree-sitter peer dependencies:
-
-```
-WARN  Issues with peer dependencies found
-├─┬ tree-sitter-c 0.24.1
-│ └── ✕ unmet peer tree-sitter@^0.22.4: found 0.25.0
-```
-
-**These warnings are harmless and can be safely ignored.** AutomatosX uses tree-sitter v0.25.0 (latest), while some language parser packages haven't updated their peer dependencies yet. Everything works correctly.
-
-#### pnpm Build Scripts Warning (pnpm v10+ users)
-
-cp .npmrc.example .npmrc
-```
-
-See [INSTALLATION.md](./INSTALLATION.md#peer-dependency-warnings) for details.
+When installing AutomatosX, you may see warnings about tree-sitter peer dependencies. **These warnings are harmless and can be safely ignored.** AutomatosX uses tree-sitter v0.22.4 (compatible with Node.js 24), while some language parser packages list different peer dependencies. Everything works correctly.
 
 ---
 
-See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
+## 📋 Requirements
+
+- **Node.js**: v24.x or higher ([Download](https://nodejs.org/))
+- **npm**: v10.0.0 or higher (included with Node.js)
+- **Supported Operating Systems**:
+  - **Ubuntu**: 24.04 LTS (Noble Numbat) or later
+  - **macOS**: 26 (Tahoe) or later
+  - **Windows**: 11 or later
+
+---
 
 ## ✨ Core Features
 
 ### 1. Code Intelligence Engine
 - 🔍 **Multi-language search** - 44 languages including TypeScript, Python, Go, Rust, Java, C++
-- ⚡ **Lightning fast** - Query caching delivers 10-100x speedup (<1ms cached, <5ms uncached)
+- ⚡ **Lightning fast** - Query caching delivers <1ms response (10-100x speedup)
 - 🎯 **Advanced filtering** - Filter by language, symbol kind, or file path
 - 📊 **Smart indexing** - Batch operations process 2000+ files/sec
 
 ### 2. AI Agent System (21 Specialized Agents)
 - 🤖 **Engineering Agents** - Backend, Frontend, DevOps, Security, Quality, Testing, Performance, Architecture
 - 🔧 **Technical Specialists** - API, Database, Data, DataScience, Mobile, Infrastructure, Standards
-- 👔 **Leadership Agents** - Product, CTO, CEO, Writer, Researcher, Community
+- 👔 **Leadership Agents** - Product, CTO, CEO, Writer, Researcher
 - 🔄 **Collaboration** - Agent-to-agent delegation and task coordination
 
 ### 3. Multi-Provider AI Integration
@@ -185,14 +217,7 @@ See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
 - 💾 **Checkpoint/Resume** - Resume long-running workflows from any point
 - 🎯 **ReScript State Machines** - Deterministic execution with type safety
 
-### 5. Interactive CLI Mode ⭐ NEW
-- 💬 **ChatGPT-style REPL** - Natural language conversations with AI
-- ⚡ **15+ slash commands** - `/agent`, `/workflow`, `/memory`, `/history`, `/save`
-- 🎨 **Rich UX** - Syntax highlighting, table formatting, progress indicators
-- 💾 **Auto-save** - Persistent conversations in SQLite
-- 🔄 **Context-aware** - Pronoun resolution and conversation memory
-
-### 6. SpecKit Auto-Generation ⭐ NEW
+### 5. SpecKit Auto-Generation ⭐ NEW
 - 📝 **Spec Generator** - Natural language → YAML workflows (AI-powered)
 - 📊 **Plan Generator** - Execution plans with cost/time estimates
 - 🌐 **DAG Generator** - Dependency graphs (ASCII/DOT/Mermaid)
@@ -200,21 +225,21 @@ See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
 - 🧪 **Test Generator** - Unit, integration, E2E test suites
 - 📚 **ADR/PRD Generators** - Architecture decisions and product requirements
 
-### 7. Iterate Mode ⭐ NEW
+### 6. Iterate Mode ⭐ NEW
 - 🔄 **Autonomous Retry** - Intelligent retry loops (max 10 iterations)
 - 🎯 **10 Strategies** - Timeout, fallback, parallel, circuit breaker, etc.
 - 🛡️ **Safety Levels** - Paranoid, normal, permissive with cost/time limits
 - 📊 **Telemetry** - Strategy analytics and recommendations
 - 🔍 **Error Analysis** - Classify and detect patterns (9 error types)
 
-### 8. Natural Language Interface ⭐ NEW
+### 7. Natural Language Interface ⭐ NEW
 - 🗣️ **Natural Commands** - `ax "run security audit"` → workflow execution
 - 🎯 **40+ Intent Patterns** - Pattern matching + LLM fallback
 - 🔍 **Entity Extraction** - Files, agents, filters, limits
 - ❓ **Clarification** - Interactive prompts for ambiguous queries
 - 📚 **Learning System** - Learns from user corrections
 
-### 9. Validation System ⭐ NEW
+### 8. Validation System ⭐ NEW
 - ✅ **Type-safe Validation** - Zod v4 with 20 schemas
 - ⚡ **Ultra-fast** - 488k ops/sec, <0.01ms per operation
 - 🎛️ **Feature Flags** - Disabled, log-only, enforce modes
@@ -222,191 +247,9 @@ See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
 - 🔄 **Sampling** - Gradual rollout (0-100%)
 - 🛡️ **Production-ready** - 213 tests passing, deployment scripts
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Application Layer                       │
-│  CLI • Web UI • LSP Server • VS Code Extension              │
-└───────────────┬─────────────────────────────────────────────┘
-                │
-    ┌───────────┴───────────┬─────────────────────────┐
-    │                       │                         │
-    ▼                       ▼                         ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│  Workflow        │  │  Agent           │  │  Code            │
-│  Engine          │──│  System          │──│  Intelligence    │
-│  (Orchestration) │  │  (21 Agents)     │  │  (45 Languages)  │
-└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
-         │                     │                      │
-         └─────────────────────┴──────────────────────┘
-                              │
-                ┌─────────────┴──────────────┐
-                │                            │
-                ▼                            ▼
-      ┌──────────────────┐        ┌──────────────────┐
-      │  Provider Router │        │  ReScript Core   │
-      │  (Multi-AI)      │        │  (State Machines)│
-      └──────────────────┘        └──────────────────┘
-                │                            │
-                └─────────────┬──────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │  SQLite Database │
-                    │  (FTS5 + Vector) │
-                    └──────────────────┘
-```
-
-## 🎯 Example Use Cases
-
-### 1. Multi-Agent Code Review
-```typescript
-// Security, Quality, and Architecture agents collaborate
-const runtime = new AgentRuntime(registry, router, db);
-
-await runtime.executeTask({
-  type: 'code-review',
-  description: 'Comprehensive security and quality review',
-  context: { repositoryPath: './src' },
-});
-```
-
-### 2. CI/CD Pipeline Workflow
-```yaml
-# workflows/cicd-pipeline.yaml
-name: cicd-pipeline
-steps:
-  - key: security-scan
-    agent: security
-  - key: run-tests
-    agent: testing
-    dependsOn: [security-scan]
-  - key: deploy
-    agent: devops
-    dependsOn: [run-tests]
-```
-
-```bash
-ax workflow execute workflows/cicd-pipeline.yaml
-```
-
-### 3. Provider Fallback
-```typescript
-// Automatically tries Claude → Gemini → OpenAI
-const router = new ProviderRouterV2({
-  providers: {
-    claude: { enabled: true, priority: 1 },
-    gemini: { enabled: true, priority: 2 },
-    openai: { enabled: true, priority: 3 }
-  }
-});
-
-const response = await router.request({
-  messages: [{ role: 'user', content: 'Explain this code' }]
-});
-```
-
-## 💬 Interactive CLI Mode
-
-AutomatosX includes a ChatGPT-style Interactive CLI for natural language conversations with AI assistants.
-
-### Quick Start
-
-```bash
-# Launch Interactive CLI
-ax cli
-
-# Set an agent for specialized help
-> /agent BackendAgent
-
-# Ask questions naturally
-> how do I implement rate limiting in Express?
-
-# Run workflows
-> /workflow run code-review
-
-# Save your session
-> /save my-session.json
-```
-
-### Features
-
-- 🤖 **Natural language conversations** with Claude, Gemini, and OpenAI
-- ⚡ **13 slash commands** for system control and automation
-- 💾 **Auto-save conversations** to SQLite (every 5 messages + on exit)
-- 🎯 **Agent collaboration** with 21 specialized AI personas
-- 🔄 **Workflow integration** for automated development tasks
-- ⌨️  **Tab autocomplete** and command history navigation
-- 🎨 **Professional UX** with color-coded output and loading indicators
-
-### Interactive Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/help` | Show all available commands | `/help` |
-| `/agent <name>` | Set active AI agent | `/agent BackendAgent` |
-| `/workflow run <name>` | Execute workflow | `/workflow run test-gen` |
-| `/history [limit]` | View conversation history | `/history 20` |
-| `/save <file>` | Export conversation to JSON | `/save session.json` |
-| `/load <file>` | Import conversation from JSON | `/load session.json` |
-| `/memory search <query>` | Search code index | `/memory search "login"` |
-| `/context` | Show conversation state | `/context` |
-| `/agents [filter]` | List all agents | `/agents backend` |
-| `/status` | System health check | `/status` |
-| `/config` | Show configuration | `/config` |
-| `/clear` | Clear terminal screen | `/clear` |
-| `/exit` | Exit CLI (auto-saves) | `/exit` |
-
-### Example Session
-
-```
-> /agent BackendAgent
-✓ Active agent set to: BackendAgent
-
-> how do I implement database connection pooling in Express?
-
-BackendAgent: For Express database connection pooling, I recommend using pg-pool
-for PostgreSQL or mysql2 pool for MySQL. Here's a complete example:
-
-[provides detailed code example with connection pool setup]
-
-> what about error handling?
-
-BackendAgent: Good question! For robust error handling with connection pools:
-
-1. Always use try-catch with async/await
-2. Implement retry logic for transient errors
-3. Set proper timeout values
-4. Monitor pool metrics
-
-[provides error handling code examples]
-
-> /save express-db-pooling-session.json
-✓ Conversation exported to: express-db-pooling-session.json
-
-> /exit
-Saving conversation to database...
-✓ Conversation saved
-👋 Exiting... Goodbye!
-```
-
-**[Full Interactive CLI Documentation →](docs/cli/interactive-mode.md)**
-
 ---
 
-## 🎨 System Capabilities
-
-### Code Intelligence
-- 🔍 **Multi-language search** - Natural language and symbol queries
-- 🎯 **Advanced filtering** - Filter by language, kind, file patterns
-- 📊 **Smart indexing** - Incremental updates, batch processing
-- 🌐 **Complete ecosystem coverage** - DevOps, Messaging, Frontend, Backend, Mobile, ML
-- 🎨 **Professional UX** - Color-coded output, progress indicators, helpful errors
-- ⚙️ **Flexible configuration** - Hierarchical config with environment variables
-- 🧪 **Production quality** - 165 tests passing, 85%+ coverage, zero known bugs
-
-## 🌍 Supported Languages (45)
+## 🌍 Supported Languages (44)
 
 ### Systems & Performance
 C, C++, Rust, Go, Zig, Objective-C, AssemblyScript, CUDA (NVIDIA/AMD ROCm HIP)
@@ -421,7 +264,7 @@ Python, Ruby, PHP, Java, Scala, C#, Bash, Zsh, Lua, Groovy, Perl
 Haskell, OCaml, Elm, Elixir, Gleam
 
 ### Data & Config
-SQL, JSON, YAML, TOML, Markdown, CSV
+SQL, JSON, YAML, TOML, Markdown, CSV, XML
 
 ### DevOps & Infrastructure
 HCL (Terraform), Puppet, Makefile
@@ -430,7 +273,7 @@ HCL (Terraform), Puppet, Makefile
 Thrift (Apache Thrift IDL)
 
 ### Specialized
-Solidity (Ethereum), Verilog, SystemVerilog, Julia, MATLAB, Regex
+Solidity (Ethereum), Verilog, Julia, MATLAB, Regex
 
 <details>
 <summary><b>📊 Framework Coverage by Ecosystem</b></summary>
@@ -441,42 +284,13 @@ Solidity (Ethereum), Verilog, SystemVerilog, Julia, MATLAB, Regex
 | **Backend** | 100% | NestJS, Express, Django, FastAPI, Flask, Spring Boot, Rails, Laravel, Phoenix |
 | **Mobile** | 100% | Flutter, SwiftUI, Jetpack Compose, React Native |
 | **ML/AI** | 100% | TensorFlow, PyTorch, HuggingFace, Qiskit, JAX, scikit-learn |
-| **DevOps** | 100% ✅ | Terraform, Puppet, Kubernetes, Ansible, Jenkins, GitHub Actions, GitLab CI |
-| **Messaging** | 100% ✅ | NATS, Kafka, Thrift, RabbitMQ, Redis, Apache Pulsar |
+| **DevOps** | 100% | Terraform, Puppet, Kubernetes, Ansible, Jenkins, GitHub Actions, GitLab CI |
+| **Messaging** | 100% | NATS, Kafka, Thrift, RabbitMQ, Redis, Apache Pulsar |
 | **Blockchain** | 100% | Ethereum, Hardhat, Truffle, Solidity |
 
 </details>
 
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Install globally
-npm install -g @defai.digital/automatosx
-
-# Or use npx (no installation required)
-npx @defai.digital/automatosx@latest <command>
-```
-
-### Basic Usage
-
-```bash
-# Index your codebase
-ax index ./src
-
-# Search for code
-ax find "getUserById"
-
-# Search with filters
-ax find "lang:python authentication"
-
-# Find symbol definition
-ax def getUserById
-
-# Show index statistics
-ax status
-```
+---
 
 ## 📚 Commands
 
@@ -487,7 +301,6 @@ ax status
 | `ax find <query>` | Search code with optional filters | `ax find "lang:python login"` |
 | `ax def <symbol>` | Find symbol definition | `ax def getUserById` |
 | `ax flow <function>` | Show call flow | `ax flow handleLogin` |
-| `ax lint [pattern]` | Code linting | `ax lint src/**/*.ts` |
 | `ax index [dir]` | Index codebase | `ax index ./src` |
 | `ax watch [dir]` | Auto-index with file watching | `ax watch ./src` |
 | `ax status` | Show index & cache statistics | `ax status --verbose` |
@@ -519,6 +332,8 @@ ax status
 | `ax workflow run --iterate` | Execute with retry mode | `ax workflow run cicd.yaml --iterate` |
 | `ax agent list` | List all available agents | `ax agent list --filter backend` |
 | `ax memory search <query>` | Search code memory | `ax memory search "authentication"` |
+
+---
 
 ## 🔎 Query Syntax
 
@@ -566,6 +381,8 @@ ax find "-file:*.spec.ts handleUser"      # Exclude spec files
 ax find "lang:python kind:function file:src/ authentication"
 ```
 
+---
+
 ## ⚙️ Configuration
 
 Create `automatosx.config.json` in your project root:
@@ -597,6 +414,11 @@ Create `automatosx.config.json` in your project root:
     "enableCache": true,
     "cacheMaxSize": 1000,
     "cacheTTL": 300000
+  },
+  "providers": {
+    "claude": { "enabled": true, "priority": 1 },
+    "gemini": { "enabled": true, "priority": 2 },
+    "openai": { "enabled": true, "priority": 3 }
   }
 }
 ```
@@ -611,9 +433,11 @@ export AUTOMATOSX_DATABASE_WAL=false
 export AUTOMATOSX_INDEXING_EXCLUDE_PATTERNS='["**/test/**"]'
 ```
 
+---
+
 ## 📈 Performance
 
-AutomatosX v8.0.0 delivers exceptional performance across all systems:
+AutomatosX delivers exceptional performance across all systems:
 
 | System | Metric | Value |
 |--------|--------|-------|
@@ -624,7 +448,6 @@ AutomatosX v8.0.0 delivers exceptional performance across all systems:
 | **Validation** | Single validation | <0.01ms |
 | | Batch (100 items) | <0.1ms |
 | | Throughput | 488,056 ops/sec |
-| | Error rate | 0% |
 | **Testing** | Total tests | 745+ passing |
 | | Test coverage | 85%+ |
 | | Test pass rate | 100% |
@@ -637,39 +460,53 @@ AutomatosX v8.0.0 delivers exceptional performance across all systems:
 4. **Watch mode** - Use for active development to keep index updated
 5. **Monitor cache** - Check hit rate with `ax status -v`
 
+---
+
 ## 🏗️ Architecture
 
-AutomatosX uses a multi-layer architecture:
-
 ```
-┌─────────────────────────────────────┐
-│         CLI Layer (Commander)        │
-│  (Commands, Args, Output Formatting) │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│      Service Layer (TypeScript)      │
-│ (FileService, ConfigLoader, Caching) │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│    Parser Layer (Tree-sitter)        │
-│  (TS/JS/Python AST → Symbol Extract) │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│    Database Layer (SQLite FTS5)      │
-│ (Files, Symbols, Chunks, Full-Text)  │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     Application Layer                       │
+│  CLI • Web UI • LSP Server • VS Code Extension              │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+    ┌───────────┴───────────┬─────────────────────────┐
+    │                       │                         │
+    ▼                       ▼                         ▼
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  Workflow        │  │  Agent           │  │  Code            │
+│  Engine          │──│  System          │──│  Intelligence    │
+│  (Orchestration) │  │  (21 Agents)     │  │  (44 Languages)  │
+└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+         │                     │                      │
+         └─────────────────────┴──────────────────────┘
+                              │
+                ┌─────────────┴──────────────┐
+                │                            │
+                ▼                            ▼
+      ┌──────────────────┐        ┌──────────────────┐
+      │  Provider Router │        │  ReScript Core   │
+      │  (Multi-AI)      │        │  (State Machines)│
+      └──────────────────┘        └──────────────────┘
+                │                            │
+                └─────────────┬──────────────┘
+                              │
+                              ▼
+                    ┌──────────────────┐
+                    │  SQLite Database │
+                    │  (FTS5 + Vector) │
+                    └──────────────────┘
 ```
 
 **Key Components**:
-- **Parser Layer**: Tree-sitter for AST parsing (44 languages: TypeScript, Python, Go, Rust, Java, C++, and 38 more)
+- **Parser Layer**: Tree-sitter for AST parsing (44 languages)
 - **Database Layer**: SQLite with FTS5 for full-text search and BM25 ranking
 - **Service Layer**: FileService orchestrates indexing and search
-- **Query Router**: Intelligent query intent detection (symbol vs natural language)
-- **Cache Layer**: LRU cache with TTL for query result caching
-- **Configuration**: Zod-based validation with hierarchical loading
+- **Agent System**: 21 specialized agents with memory and collaboration
+- **Provider Router**: Multi-AI with automatic fallback (Claude/Gemini/OpenAI)
+- **ReScript Core**: Deterministic state machines for workflow orchestration
+
+---
 
 ## 🧪 Testing
 
@@ -684,11 +521,11 @@ npm run test:coverage
 npm test FileService
 ```
 
-**Test Statistics v8.0.0**:
-- Total tests: 745+
-- Pass rate: 100%
-- Coverage: 85%+
-- Test categories:
+**Test Statistics v8.0.20**:
+- **Total tests**: 745+
+- **Pass rate**: 100%
+- **Coverage**: 85%+
+- **Test categories**:
   - Core: 165 tests (Parser, DAO, Service, Cache, Config, CLI)
   - SpecKit: 171 tests (5 generators + utilities)
   - Validation: 213 tests (ADR-014 system)
@@ -696,6 +533,8 @@ npm test FileService
   - Natural Language: 30 tests (intent, routing, clarification)
   - ReScript Core: 50 tests (state machines, workflow)
   - Additional: 13+ tests (LSP, Web UI, integrations)
+
+---
 
 ## 🛠️ Development
 
@@ -719,16 +558,64 @@ npm test
 npm run clean
 ```
 
+---
+
+## 🔒 Privacy & Telemetry
+
+**Privacy by Default**: AutomatosX does **NOT** collect any telemetry data by default.
+
+### Opt-in Telemetry (Optional)
+
+To help improve AutomatosX, you can optionally enable telemetry:
+
+```bash
+# Enable local-only telemetry (stored in SQLite)
+ax telemetry enable
+
+# Enable with anonymous remote submission
+ax telemetry enable --remote
+
+# View statistics
+ax telemetry stats
+
+# Disable anytime
+ax telemetry disable
+```
+
+### What We Collect (if enabled)
+
+✅ **We collect**:
+- Command usage (which commands you run)
+- Query performance (how long operations take)
+- Error occurrences (what errors happen)
+- Parser invocations (which languages are used)
+
+❌ **We NEVER collect**:
+- File paths or names
+- Code content
+- User identifiers
+- Personal information
+
+See [PRIVACY.md](./PRIVACY.md) for complete details.
+
+---
+
 ## 📖 Documentation
 
-- **[P1 Final Action Plan](./automatosx/PRD/p1-final-action-plan.md)** - Comprehensive implementation plan
+- **[FAQ](./FAQ.md)** - Frequently asked questions
+- **[INSTALLATION](./INSTALLATION.md)** - Detailed installation guide
 - **[CHANGELOG](./CHANGELOG.md)** - Version history and release notes
 - **[API Quick Reference](./API-QUICKREF.md)** - Command reference and examples
+- **[AGENTS](./AGENTS.md)** - Complete agent directory
+- **[CLAUDE.md](./CLAUDE.md)** - Developer guide for Claude Code users
+- **[PRIVACY.md](./PRIVACY.md)** - Privacy policy and data collection
+
+---
 
 ## 🗺️ Roadmap
 
-### v8.0.0 (Current - ✅ Complete)
-- ✅ 45 programming languages supported
+### v8.0.20 (Current - ✅ Complete)
+- ✅ 44 programming languages supported
 - ✅ 21 specialized AI agents
 - ✅ Multi-provider AI (Claude, Gemini, OpenAI)
 - ✅ Interactive CLI with natural language interface
@@ -736,6 +623,7 @@ npm run clean
 - ✅ Iterate Mode with 10 strategies
 - ✅ Validation system (ADR-014)
 - ✅ 745+ tests passing (100%)
+- ✅ Optimized npm package (2.5 MB, zero test files)
 
 ### v8.1.0 (Next - 4-6 weeks)
 - API Spec Generator (OpenAPI/Swagger)
@@ -757,14 +645,17 @@ npm run clean
 - ML semantic search with hybrid BM25+semantic scoring
 - Cross-project search
 - Enhanced LSP features
-- Protocol Buffers (.proto) support
 - Desktop application
 - Collaborative workflows
 - Enterprise SSO/RBAC
 
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+---
 
 ## 📄 License
 
@@ -790,6 +681,8 @@ Visit [https://license.defai.digital/automatox](https://license.defai.digital/au
 
 See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for detailed terms and FAQs.
 
+---
+
 ## 🙏 Acknowledgments
 
 Built with:
@@ -801,7 +694,7 @@ Built with:
 
 ---
 
-**AutomatosX.0.0** - Production-ready code intelligence
+**AutomatosX v8.0.20** - From Idea to Production in Minutes
 
 Copyright 2025 DEFAI Private Limited | Apache License 2.0
 

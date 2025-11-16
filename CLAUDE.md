@@ -706,6 +706,81 @@ Performance tips:
 5. Monitor cache hit rate with `ax status -v`
 6. Enable WAL mode for SQLite (enabled by default)
 
+## Privacy & Telemetry
+
+**Privacy by Default**: AutomatosX does **NOT** collect any telemetry data by default.
+
+### Current Behavior (v8.0.16+)
+
+On first run, AutomatosX automatically disables telemetry without prompting. You'll see:
+
+```
+💡 Privacy by default: Telemetry is disabled
+   To help improve AutomatosX, run: ax telemetry enable
+   Learn more: ax telemetry --help
+```
+
+This one-time message appears only on first execution. No data is collected unless you explicitly enable telemetry.
+
+### Opt-in Telemetry (Optional)
+
+To help improve AutomatosX, you can optionally enable telemetry:
+
+```bash
+# Enable local-only telemetry (stored in SQLite)
+ax telemetry enable
+
+# Enable with anonymous remote submission
+ax telemetry enable --remote
+
+# View statistics
+ax telemetry stats
+
+# Export data
+ax telemetry export > telemetry-data.json
+
+# Disable anytime
+ax telemetry disable
+
+# Check status
+ax telemetry status
+```
+
+### What We Collect (if enabled)
+
+✅ **We collect**:
+- Command usage (which commands you run)
+- Query performance (how long operations take)
+- Error occurrences (what errors happen)
+- Parser invocations (which languages are used)
+
+❌ **We NEVER collect**:
+- File paths or names
+- Code content
+- User identifiers (IP addresses, usernames, etc.)
+- Personal information
+
+### Environment Variable Override
+
+For CI/CD or automated environments:
+
+```bash
+# Disable telemetry completely (skip even the informational message)
+export AUTOMATOSX_TELEMETRY_ENABLED=false
+
+# Then run commands normally
+ax find "test"
+```
+
+### Telemetry Storage
+
+When enabled, telemetry data is stored locally in:
+- **Database**: `.automatosx/db/code-intelligence.db` (telemetry tables)
+- **Location**: Same database as code intelligence index
+- **Format**: SQLite with FTS5 for fast analytics
+
+See [PRIVACY.md](./PRIVACY.md) for complete privacy policy.
+
 ---
 
 # AutomatosX Integration

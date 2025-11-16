@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.0.18",
+  "version": "8.0.19",
   "type": "module",
   "description": "Production-ready code intelligence platform with AI agents, workflow orchestration, interactive CLI, SpecKit generators, and autonomous retry system. 44 languages, 21 AI agents, 745+ tests.",
   "license": "Apache-2.0",
@@ -20,6 +20,20 @@
   "bin": {
     "ax": "./dist/cli/index.js"
   },
+  "files": [
+    "dist/",
+    ".automatosx/",
+    "scripts/",
+    "src/migrations/",
+    "automatosx.config.json",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "FAQ.md",
+    "INSTALLATION.md",
+    "AGENTS.md",
+    "API-QUICKREF.md"
+  ],
   "scripts": {
     "build:rescript": "npm run build --workspace=@automatosx/rescript-core",
     "build:typescript": "tsc",

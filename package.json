@@ -86,7 +86,6 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@defai.digital/automatosx": "^5.8.5",
     "@iarna/toml": "^2.2.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

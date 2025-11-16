@@ -2,7 +2,7 @@
 
 **From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory**
 
-AutomatosX is the only AI CLI that combines declarative workflow specs, policy-driven cost optimization, and a persistent AI workforce. Write a YAML spec, and AutomatosX generates your entire project—plans, infrastructure, tests, and execution—while remembering everything and optimizing every API call.
+AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Elastic%202.0-orange.svg)](LICENSE)
@@ -13,11 +13,9 @@ AutomatosX is the only AI CLI that combines declarative workflow specs, policy-d
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.2.0 | 20 Specialized Agents | Spec-Kit 100% Complete | Policy-Driven Routing | Auto-Generation
+**Status**: ✅ **Production Ready** | v8.3.0 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
 
-> 🎉 **NEW in v8.2.0**: Streamlined for AI assistant integration. Removed standalone chatbot (`ax cli`) - use Claude Code, Gemini CLI, or OpenAI Codex for conversations. AutomatosX now focuses purely on orchestration.  See [Migration from v7.x](#migration-from-v7x) for upgrade details.
-
-> ⚠️ **Note on Cost Estimation**: Cost estimation is **disabled by default** due to frequent pricing changes. The cost optimization features described below are still functional (routing, free-tier prioritization, policy constraints), but specific dollar amounts are not shown unless you enable cost estimation in `automatosx.config.json`.
+> 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
 
 ---
 
@@ -34,10 +32,10 @@ AutomatosX is **the only AI platform** that gives you:
 | Feature | What It Does | Value |
 |---------|--------------|-------|
 | 📋 **Spec-Kit Integration** | Define workflows in YAML. Generate plans, DAGs, scaffolding, and tests automatically. | Ship projects 10x faster |
-| 💰 **Policy-Driven Routing** | Set cost/latency/privacy constraints. AutomatosX picks the optimal AI provider for every request. | Save 60-80% on AI costs |
 | 🧠 **Persistent Memory** | Every conversation is remembered. Agents get perfect context automatically. | Never repeat yourself again |
 | 🤝 **Multi-Agent Orchestration** | 20 specialized agents delegate tasks to each other. You manage the project, not the details. | Focus on strategy, not micromanagement |
-| 🔍 **Complete Observability** | Trace every routing decision, cost, and latency. Debug with confidence. | Production-grade reliability |
+| 🔧 **Pure CLI Wrapper** | Works with your existing `claude`, `gemini`, `codex` CLIs. No API keys needed. | Simple integration |
+| 🔍 **Complete Observability** | Trace every execution and decision. Debug with confidence. | Production-grade reliability |
 
 ---
 

@@ -40,7 +40,6 @@ import { RegexParserService } from './RegexParserService.js';
 import { CudaParserService } from './CudaParserService.js';
 // FPGA and scientific computing parsers
 import { VerilogParserService } from './VerilogParserService.js';
-import { SystemVerilogParserService } from './SystemVerilogParserService.js';
 import { JuliaParserService } from './JuliaParserService.js';
 import { MatlabParserService } from './MatlabParserService.js';
 // Major language parsers
@@ -152,7 +151,6 @@ export class ParserRegistry {
 
     // FPGA/Hardware description
     this.registerParser(new VerilogParserService());
-    this.registerParser(new SystemVerilogParserService());
 
     // Scientific computing
     this.registerParser(new JuliaParserService());

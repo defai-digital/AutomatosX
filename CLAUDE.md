@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-# AutomatosX v8.0.0 - Code Intelligence Platform
+# AutomatosX v8.0.16 - Code Intelligence Platform
 
-Production-ready code intelligence platform with AI agents, workflow orchestration, Tree-sitter parsing, SQLite FTS5 search, and 45+ language support.
+Production-ready code intelligence platform with AI agents, workflow orchestration, Tree-sitter parsing, SQLite FTS5 search, and 44 language support.
 
-**Current Status**: v8.0.0 - ✅ **PRODUCTION-READY** (pending build fixes)
+**Current Status**: v8.0.16 - ✅ **PRODUCTION-READY**
 
 **Completion**: 95% (all features implemented, 745+ tests passing)
 
 **Key Features**:
-- ✅ Code Intelligence (45 languages)
+- ✅ Code Intelligence (44 languages)
 - ✅ AI Agent System (21 agents)
 - ✅ Multi-Provider AI (Claude, Gemini, OpenAI)
 - ✅ Interactive CLI (ChatGPT-style REPL)
@@ -30,7 +30,7 @@ Production-ready code intelligence platform with AI agents, workflow orchestrati
 
 **Requirements**:
 - **Node.js**: v24.x (LTS recommended)
-- **npm**: v10.0.0 or higher
+- **pnpm**: v9.0.0 or higher (required for development)
 - **Operating Systems**:
   - Ubuntu 24.04 LTS (Noble Numbat) or later
   - macOS 26 (Tahoe) or later
@@ -40,88 +40,79 @@ Production-ready code intelligence platform with AI agents, workflow orchestrati
 - `automatosx/PRD/` - Product Requirements Documents, design specs (committed to git)
 - `automatosx/tmp/` - Temporary execution reports, meeting notes (NOT committed to git)
 
-## ⚠️ Known Build Issues (v8.0.0)
-
-**Status**: TypeScript compilation has 8 errors but **all tests pass** (745+)
-
-**Impact**: `npm run build` fails, but pre-compiled `dist/` files work correctly for CLI
-
-**Errors**:
-1. ReScript `.gen` files missing type declarations (6 errors)
-2. Provider type issues in ClaudeProvider and GeminiProvider (2 errors)
-
-**Workarounds**:
-- Tests work: `npm test` (745+ tests passing)
-- CLI works with pre-built dist: `node dist/cli/index.js <command>`
-- Features are functional, only TypeScript compilation affected
-
-**Fix Required**: 2-3 hours
-- Update tsconfig.json to exclude .gen files or add declarations
-- Fix spread type in ClaudeProvider
-- Fix usageMetadata access in GeminiProvider
-
-See `automatosx/tmp/PROJECT-STATUS-FINAL-REPORT.md` for details.
-
 ---
 
 ## Build & Development Commands
 
+**Important**: This project uses **pnpm** (not npm) for development. End users can install via npm globally, but contributors must use pnpm.
+
 ```bash
 # Build entire project (ReScript + TypeScript)
-# ⚠️ Currently fails with 8 TypeScript errors (non-critical)
-npm run build
+pnpm run build
 
 # Build ReScript core only
-npm run build:rescript
+pnpm run build:rescript
 
 # Build TypeScript layer only
-npm run build:typescript
+pnpm run build:typescript
 
 # Build and prepare CLI for execution
-npm run build:cli
+pnpm run build:cli
 
 # Build web UI
-npm run build:web
+pnpm run build:web
+
+# Link CLI globally (makes 'ax' command available)
+pnpm run link
+
+# Unlink CLI
+pnpm run unlink
 
 # Run all tests (745+ tests)
-npm test
+pnpm test
 
 # Run specific test file
-npm test -- src/services/__tests__/QueryRouter.test.ts
+pnpm test -- src/services/__tests__/QueryRouter.test.ts
 
 # Run with coverage
-npm run test:coverage
+pnpm run test:coverage
 
 # Run tests by category
-npm run test:runtime          # Runtime integration tests
-npm run test:web              # Web UI component tests
+pnpm run test:runtime          # Runtime integration tests
+pnpm run test:web              # Web UI component tests
 
 # Run SpecKit tests (ADR, PRD, API spec generators)
-npm test -- src/speckit/__tests__/SpecKitGenerator.test.ts
-npm test -- src/speckit/__tests__/ADRGenerator.test.ts
-npm test -- src/speckit/__tests__/PRDGenerator.test.ts
+pnpm test -- src/speckit/__tests__/SpecKitGenerator.test.ts
+pnpm test -- src/speckit/__tests__/ADRGenerator.test.ts
+pnpm test -- src/speckit/__tests__/PRDGenerator.test.ts
 
 # IMPORTANT: Run tests without watch mode to avoid cache issues
-npm test -- src/speckit/__tests__/ --run --no-watch
+pnpm test -- src/speckit/__tests__/ --run --no-watch
 
 # Run CLI (builds first)
-npm run cli -- <command> [args]
+pnpm run cli -- <command> [args]
 
 # CLI Examples
-npm run cli -- find "Calculator"
-npm run cli -- def "getUserById"
-npm run cli -- index ./src
-npm run cli -- status --verbose
+pnpm run cli -- find "Calculator"
+pnpm run cli -- def "getUserById"
+pnpm run cli -- index ./src
+pnpm run cli -- status --verbose
+pnpm run cli -- setup ./my-project  # NEW: Setup command
+
+# Or use linked binary directly:
+ax find "Calculator"
+ax setup ./my-project
+ax cli  # Interactive mode
 
 # Interactive CLI Mode
-npm run cli -- cli            # Launch ChatGPT-style interactive mode
+pnpm run cli -- cli            # Launch ChatGPT-style interactive mode
 
 # Web UI Development
-npm run dev:web              # Start Vite dev server on localhost:3000
-npm run preview:web          # Preview production build
+pnpm run dev:web              # Start Vite dev server on localhost:3000
+pnpm run preview:web          # Preview production build
 
 # Clean build artifacts
-npm run clean
+pnpm run clean
 ```
 
 ## Architecture Overview
@@ -138,7 +129,7 @@ npm run clean
 
 **TypeScript Layer** (`src/`)
 - CLI framework (Commander.js) with interactive mode
-- Code intelligence with SQLite + Tree-sitter (45 languages)
+- Code intelligence with SQLite + Tree-sitter (44 languages)
 - Service layer, file I/O, telemetry
 - LSP server for editor integration
 - Web UI with React + Redux + Material-UI
@@ -146,7 +137,7 @@ npm run clean
 
 ### Code Intelligence System Architecture
 
-The system has six major layers working together:
+The system has eight major layers working together:
 
 **1. Database Layer** (`src/database/`)
 - SQLite with FTS5 full-text search and BM25 ranking
@@ -159,10 +150,10 @@ The system has six major layers working together:
 - Vector storage: `sqlite-vec` and `sqlite-vss` for semantic search with embeddings
 
 **2. Parser Layer** (`src/parser/`)
-- `ParserRegistry` - Factory for 45+ language-specific parsers
+- `ParserRegistry` - Factory for 44 language-specific parsers
 - Each parser implements `LanguageParser` interface
 - Output: `ParseResult` with symbols, calls, imports, and metadata
-- Languages: TypeScript, JavaScript, Python, Go, Rust, Java, C++, C#, Haskell, OCaml, Elm, Elixir, Gleam, Swift, Kotlin, Dart, Ruby, PHP, Bash, Zsh, Lua, Perl, Groovy, C, Zig, CUDA, AssemblyScript, SQL, JSON, YAML, TOML, CSV, Markdown, XML, HCL (Terraform), Dockerfile, Makefile, Puppet, Solidity, Verilog, SystemVerilog, Thrift, Julia, MATLAB, Regex, HTML, R
+- Languages: TypeScript, JavaScript, Python, Go, Rust, Java, C++, C#, Haskell, OCaml, Elm, Elixir, Gleam, Swift, Kotlin, Dart, Ruby, PHP, Bash, Zsh, Lua, Perl, Groovy, C, Zig, CUDA, AssemblyScript, SQL, JSON, YAML, TOML, CSV, Markdown, XML, HCL (Terraform), Makefile, Puppet, Solidity, Verilog, Thrift, Julia, MATLAB, Regex, HTML
 
 **3. Service Layer** (`src/services/`)
 - `FileService` - High-level orchestration (indexing, search)
@@ -182,11 +173,20 @@ The system has six major layers working together:
   - `IterateEngine` - Main orchestrator for autonomous retry loops
 
 **4. CLI Layer** (`src/cli/`)
-- Commands: `find`, `def`, `flow`, `lint`, `index`, `watch`, `status`, `config`, `telemetry`, `memory`, `workflow`, `provider`, `monitor`, `analyze`, `perf`, `queue`, `ratelimit`, `agent`, `speckit`, `cli` (interactive)
+- Commands: `find`, `def`, `flow`, `lint`, `index`, `watch`, `status`, `config`, `telemetry`, `memory`, `workflow`, `provider`, `monitor`, `analyze`, `perf`, `queue`, `ratelimit`, `agent`, `speckit`, `cli` (interactive), `setup` (NEW)
 - Built with Commander.js
 - Color-coded output with Chalk, tables with cli-table3
 - Interactive mode: Inquirer for prompts, Ora for spinners
 - Commands registered in `src/cli/index.ts`
+- **Setup Command** (`src/cli/commands/setup.ts`):
+  - Initializes `.automatosx/` directory structure
+  - Copies example agents, abilities, teams, and templates
+  - Creates `automatosx.config.json`
+  - Sets up Claude Code integration (`.claude/` directory)
+  - Sets up Gemini CLI integration (`.gemini/` directory)
+  - Creates `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` integration guides
+  - Initializes git repository (for Codex CLI compatibility)
+  - Optional Spec-Kit initialization (`.specify/` directory)
 - **Interactive CLI** (`src/cli/interactive/`):
   - `REPLSession` - ChatGPT-style interactive mode with token streaming
   - `SlashCommandRegistry` - 15+ slash commands (/help, /clear, /history, /workflow, etc.)
@@ -220,6 +220,12 @@ The system has six major layers working together:
 - Agent registry with capability-based routing
 - Agent-to-agent delegation and collaboration
 - Integration with workflow engine
+- Key modules:
+  - `ProfileLoader` - Load agent YAML configurations
+  - `AbilitiesManager` - Manage agent capabilities
+  - `TeamManager` - Multi-agent collaboration
+  - `AgentExecutor` - Execute agent tasks with provider routing
+  - `ContextManager` - Manage conversation context
 
 **8. SpecKit System** (`src/speckit/`)
 - **Template Method Pattern**: `SpecKitGenerator` abstract base class defines 6-step pipeline
@@ -261,14 +267,19 @@ Workflow Def → WorkflowParser → WorkflowEngine → State Machine → Provide
 User Input → CLI → ConversationDAO → ProviderRouter → AI Provider → Response → MessageDAO → Display
 ```
 
+**Agent Execution**:
+```
+User Request → AgentExecutor → ProfileLoader → AbilitiesManager → ProviderRouter → AI Provider → Response
+```
+
 ## Testing Strategy
 
-Tests use **Vitest** with `.test.ts` suffix (195+ tests, 100% passing):
+Tests use **Vitest** with `.test.ts` suffix (745+ tests, 100% passing):
 
 - `src/database/dao/__tests__/` - DAO integration tests with in-memory SQLite
 - `src/services/__tests__/` - Service unit tests
   - **Iterate Mode**: `StrategySelector.test.ts` (24 tests), `FailureAnalyzer.test.ts` (34 tests), `SafetyEvaluator.test.ts` (24 tests), `IterateEngine.test.ts` (21 tests)
-- `src/parser/__tests__/` - Parser tests with fixture files (45 languages)
+- `src/parser/__tests__/` - Parser tests with fixture files (44 languages)
 - `src/cache/__tests__/` - Cache behavior tests
 - `src/__tests__/runtime/` - Runtime integration tests
 - `src/__tests__/rescript-core/` - ReScript bridge tests
@@ -280,7 +291,7 @@ Tests use **Vitest** with `.test.ts` suffix (195+ tests, 100% passing):
   - `NaturalLanguageRouter.test.ts` (30 tests) - Intent classification, routing, workflow name normalization
 
 **Test Configuration**:
-- Vitest config: `vitest.config.ts`
+- Vitest config: `vitest.config.mts`
 - Uses `jsdom` environment for React component tests
 - Pool: `forks` with `singleFork: true` (required for onnxruntime-node compatibility)
 - Path aliases: `@` → `./src`, `@web` → `./src/web`
@@ -297,16 +308,16 @@ Tests use **Vitest** with `.test.ts` suffix (195+ tests, 100% passing):
 **Solution**: ALWAYS run tests with `--run --no-watch` when debugging persistent failures:
 ```bash
 # DON'T use watch mode for critical debugging
-npm test -- src/speckit/__tests__/ADRGenerator.test.ts
+pnpm test -- src/speckit/__tests__/ADRGenerator.test.ts
 
 # DO use --run --no-watch for fresh module loading
-npm test -- src/speckit/__tests__/ADRGenerator.test.ts --run --no-watch
+pnpm test -- src/speckit/__tests__/ADRGenerator.test.ts --run --no-watch
 ```
 
 **Prevention**:
 - Kill watch mode processes before major debugging: `pkill -f "vitest"`
 - Clear node_modules cache if issues persist: `rm -rf node_modules/.vite`
-- Rebuild if necessary: `npm run build`
+- Rebuild if necessary: `pnpm run build`
 
 ### Dependency Injection for Testability
 
@@ -515,7 +526,7 @@ export AUTOMATOSX_DATABASE_WAL=false
 
 ### Adding a new language parser
 
-1. Install Tree-sitter grammar: `npm install tree-sitter-<language>`
+1. Install Tree-sitter grammar: `pnpm add tree-sitter-<language>`
 2. Create `src/parser/<Language>ParserService.ts` implementing `LanguageParser`
 3. Register in `ParserRegistry.ts` (add to `PARSERS` map)
 4. Add test fixtures in `src/parser/__tests__/fixtures/<language>/`
@@ -524,7 +535,7 @@ export AUTOMATOSX_DATABASE_WAL=false
 ### Adding a new CLI command
 
 1. Create `src/cli/commands/<command>.ts`
-2. Define command with Commander.js
+2. Define command with Commander.js (use `createCommand()` factory pattern)
 3. Add action handler with proper error handling
 4. Register in `src/cli/index.ts`
 5. Write tests in `src/cli/commands/__tests__/<command>.test.ts`
@@ -540,7 +551,7 @@ export AUTOMATOSX_DATABASE_WAL=false
 
 1. Create `packages/rescript-core/src/<module>/<Module>.res`
 2. Add exports to `packages/rescript-core/src/Index.res`
-3. Build ReScript: `npm run build:rescript`
+3. Build ReScript: `pnpm run build:rescript`
 4. Import in TypeScript via `.bs.js` file
 5. Write tests in `src/__tests__/rescript-core/<Module>.test.ts`
 
@@ -594,18 +605,18 @@ const machine = StateMachine.make(config);
 
 **Build failures**:
 ```bash
-npm run clean
-npm install
-npm run build
+pnpm run clean
+pnpm install
+pnpm run build
 ```
 
 **Test failures**:
 ```bash
 # Run tests with verbose output
-npm test -- --reporter=verbose
+pnpm test -- --reporter=verbose
 
 # Run single test file
-npm test -- src/database/dao/__tests__/FileDAO.test.ts
+pnpm test -- src/database/dao/__tests__/FileDAO.test.ts
 
 # Run with debugging
 node --inspect-brk node_modules/.bin/vitest
@@ -615,7 +626,7 @@ node --inspect-brk node_modules/.bin/vitest
 ```bash
 # Delete and recreate database
 rm -rf .automatosx/db/
-npm run cli -- index ./src
+pnpm run cli -- index ./src
 
 # Check database integrity
 sqlite3 .automatosx/db/code-intelligence.db "PRAGMA integrity_check;"
@@ -625,21 +636,21 @@ sqlite3 .automatosx/db/code-intelligence.db "PRAGMA integrity_check;"
 ```bash
 # Clean ReScript build
 cd packages/rescript-core
-npm run clean
-npm run build
+pnpm run clean
+pnpm run build
 cd ../..
 
 # Or from root
-npm run build:rescript
+pnpm run build:rescript
 ```
 
 **Parser errors** (Tree-sitter):
 ```bash
 # Reinstall Tree-sitter grammars
-npm rebuild tree-sitter
+pnpm rebuild tree-sitter
 
 # Check specific parser installation
-npm list tree-sitter-typescript
+pnpm list tree-sitter-typescript
 ```
 
 **SpecKit test failures**:
@@ -648,13 +659,13 @@ npm list tree-sitter-typescript
 pkill -f "vitest"
 
 # Run tests fresh without watch mode
-npm test -- src/speckit/__tests__/ADRGenerator.test.ts --run --no-watch
+pnpm test -- src/speckit/__tests__/ADRGenerator.test.ts --run --no-watch
 
 # If tests still fail with "this.getGeneratorType is not a function":
 # 1. Check source code - should use this.generatorName (not getGeneratorType())
-# 2. Rebuild TypeScript: npm run build:typescript
+# 2. Rebuild TypeScript: pnpm run build:typescript
 # 3. Clear Vite cache: rm -rf node_modules/.vite
-# 4. Run tests again: npm test -- src/speckit/__tests__/ --run --no-watch
+# 4. Run tests again: pnpm test -- src/speckit/__tests__/ --run --no-watch
 
 # Mock-related failures (PatternDetector/FeatureDetector):
 # 1. Check confidence thresholds in detector implementation
@@ -664,15 +675,27 @@ npm test -- src/speckit/__tests__/ADRGenerator.test.ts --run --no-watch
 # 5. Expand mock AI response to 120+ words to pass validation
 ```
 
+**pnpm vs npm**:
+```bash
+# If you see npm-related errors, make sure you're using pnpm:
+pnpm install       # NOT: npm install
+pnpm run build     # NOT: npm run build
+pnpm test          # NOT: npm test
+
+# If you accidentally ran npm commands, clean up:
+rm -rf node_modules package-lock.json
+pnpm install
+```
+
 ## Performance Characteristics
 
-Current metrics (v8.0.0):
+Current metrics (v8.0.12):
 - **Query latency (cached)**: <1ms
 - **Query latency (uncached)**: <5ms (P95)
 - **Indexing throughput**: 2000+ files/sec
 - **Cache hit rate**: 60%+ typical
 - **Test coverage**: 85%+
-- **Tests passing**: 165/165 (100%)
+- **Tests passing**: 745/745 (100%)
 - **Supported languages**: 45
 
 Performance tips:

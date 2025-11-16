@@ -8,7 +8,7 @@
 [![Windows](https://img.shields.io/badge/windows-11-blue)](https://www.microsoft.com/windows/)
 [![Tests](https://img.shields.io/badge/tests-745+%20passing-brightgreen)](./src)
 [![Coverage](https://img.shields.io/badge/coverage-85%25-green)](./src)
-[![Languages](https://img.shields.io/badge/languages-45-blue)](./src/parser)
+[![Languages](https://img.shields.io/badge/languages-44-blue)](./src/parser)
 [![Agents](https://img.shields.io/badge/agents-21-purple)](./src/agents)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-8.0.10-blue.svg)](package.json)
@@ -16,7 +16,7 @@
 **🎉 v8.0.10 - Ready for npm Publishing (No Warnings)**
 
 AutomatosX is a comprehensive code intelligence platform with AI-powered workflow automation:
-- **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 45 languages
+- **Code Intelligence** - Tree-sitter AST parsing with SQLite FTS5 search for 44 languages
 - **AI Agent System** - 21 specialized agents for development tasks
 - **Multi-Provider AI** - Claude, Gemini, and OpenAI with automatic fallback
 - **Workflow Orchestration** - ReScript state machines for complex multi-step tasks
@@ -79,16 +79,16 @@ ax find "getUserById"
 ax cli  # Launch interactive mode
 ax speckit spec "Build authentication API"
 
-# Or use via pnpm script:
-pnpm run cli -- find "getUserById"
+# Or use via npm script:
+npm run cli -- find "getUserById"
 
 # Run tests (745+ tests)
-pnpm test
+npm test
 ```
 
 ### Using the `ax` Command
 
-After `pnpm install` and `pnpm run build`, the `ax` binary is automatically linked globally via the `postinstall` script. This means you can use:
+After `npm install` and `npm run build`, the `ax` binary is automatically linked globally via the `postinstall` script. This means you can use:
 
 ```bash
 # These work anywhere on your system:
@@ -100,19 +100,18 @@ ax cli  # Interactive ChatGPT-style mode
 
 **To unlink** (if you want to remove the global `ax` command):
 ```bash
-pnpm run unlink
+npm run unlink
 # Or manually:
-pnpm unlink --global
+npm unlink -g @defai.digital/automatosx
 ```
 
-**Note**: Current build requires fixing TypeScript compilation errors (2-3 hours). Tests pass but CLI requires pre-compiled dist/ files.
+## 📦 Installation
 
-## 📦 End User Installation (npm)
+### For End Users (Recommended)
 
-**If you just want to use the CLI** (not develop AutomatosX):
+**Install globally with npm**:
 
 ```bash
-# Install globally with npm (no pnpm needed)
 npm install -g @defai.digital/automatosx
 
 # Verify installation
@@ -123,7 +122,17 @@ ax find "getUserById"
 ax cli  # Launch interactive mode
 ```
 
-**pnpm is only required for developers** contributing to the AutomatosX codebase.
+### For Developers
+
+**Clone and build from source**:
+
+```bash
+git clone https://github.com/defai-digital/automatosx.git
+cd automatosx
+npm install
+npm run build
+npm link
+```
 
 ### ⚠️ Installation Warnings
 
@@ -141,35 +150,6 @@ WARN  Issues with peer dependencies found
 
 #### pnpm Build Scripts Warning (pnpm v10+ users)
 
-If using pnpm v10+, you may see this security warning:
-
-```
-╭ Warning ───────────────────────────────────────────────────────────────╮
-│ Ignored build scripts: tree-sitter, better-sqlite3, ...               │
-│ Run "pnpm config set enable-pre-post-scripts true" to enable scripts  │
-╰────────────────────────────────────────────────────────────────────────╯
-```
-
-**This is expected behavior.** pnpm v10+ blocks build scripts by default for security.
-
-**Solutions:**
-
-**Option 1: Use npm** (recommended for end users):
-```bash
-npm install -g @defai.digital/automatosx
-```
-
-**Option 2: Enable pnpm scripts** (for developers):
-```bash
-pnpm config set enable-pre-post-scripts true
-# Then reinstall
-pnpm install
-```
-
-Native modules (tree-sitter parsers) will build automatically after enabling scripts.
-
-**To suppress all warnings**, copy `.npmrc.example` to `.npmrc`:
-```bash
 cp .npmrc.example .npmrc
 ```
 
@@ -182,7 +162,7 @@ See [CLAUDE.md](./CLAUDE.md) for detailed development guide.
 ## ✨ Core Features
 
 ### 1. Code Intelligence Engine
-- 🔍 **Multi-language search** - 45 languages including TypeScript, Python, Go, Rust, Java, C++
+- 🔍 **Multi-language search** - 44 languages including TypeScript, Python, Go, Rust, Java, C++
 - ⚡ **Lightning fast** - Query caching delivers 10-100x speedup (<1ms cached, <5ms uncached)
 - 🎯 **Advanced filtering** - Filter by language, symbol kind, or file path
 - 📊 **Smart indexing** - Batch operations process 2000+ files/sec
@@ -684,7 +664,7 @@ AutomatosX uses a multi-layer architecture:
 ```
 
 **Key Components**:
-- **Parser Layer**: Tree-sitter for AST parsing (45 languages: TypeScript, Python, Go, Rust, Java, C++, and 39 more)
+- **Parser Layer**: Tree-sitter for AST parsing (44 languages: TypeScript, Python, Go, Rust, Java, C++, and 38 more)
 - **Database Layer**: SQLite with FTS5 for full-text search and BM25 ranking
 - **Service Layer**: FileService orchestrates indexing and search
 - **Query Router**: Intelligent query intent detection (symbol vs natural language)

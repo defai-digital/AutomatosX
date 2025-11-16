@@ -6,9 +6,13 @@
  * This allows developers to use `ax` command directly instead of `pnpm run cli`
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { execSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const cliPath = path.join(__dirname, '../dist/cli/index.js');
 

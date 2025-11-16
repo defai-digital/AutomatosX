@@ -1,0 +1,69 @@
+# Engineering Team Configuration
+# Software engineers, data engineers, and infrastructure specialists
+
+name: engineering
+displayName: "Engineering Team"
+description: "Software engineers, data engineers, and infrastructure specialists"
+
+# Provider Configuration
+provider:
+  primary: codex
+  fallback: gemini
+  fallbackChain:
+    - codex
+    - gemini
+    - claude
+
+# Shared Abilities (all team members inherit these)
+sharedAbilities:
+  - our-coding-standards
+  - our-project-structure
+  - our-architecture-decisions
+  - code-generation
+  - refactoring
+  - testing
+
+# Team Capabilities (v4.11.0 - Self-assessment for intelligent delegation)
+capabilities:
+  canDo:
+    - Code implementation (TypeScript, Python, Go, Rust, etc.)
+    - Test-driven development (TDD)
+    - API design and implementation
+    - Bug fixing and debugging
+    - Performance optimization
+    - Architecture design
+    - Code refactoring
+    - Database design and optimization
+    - Infrastructure and DevOps automation
+    - CI/CD pipeline management
+
+  shouldDelegate:
+    - Documentation writing and review → writer (design team)
+    - User-facing content creation → writer (design team)
+    - README quality assessment → writer (design team)
+    - Product strategy and planning → product (design team)
+    - Business analysis → ceo (business team)
+    - Security audits (when specialized review needed) → security (core team)
+    - QA strategy and testing (when specialized review needed) → quality (core team)
+    - Code review (when independent review needed) → reviewer (core team)
+
+# Orchestration Defaults
+orchestration:
+  maxDelegationDepth: 2  # v4.11.0: Reduced from 3 to 2
+  canWriteToShared: true
+  canReadWorkspaces:
+    - backend
+    - frontend
+    - devops
+    - data
+    - data-pipeline
+    - security
+    - coder
+    - coder-lean
+
+# Metadata
+metadata:
+  color: "#3B82F6"
+  icon: "⚙️"
+  priority: 1
+version: "1.0.0"

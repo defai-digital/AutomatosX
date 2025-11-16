@@ -12,18 +12,18 @@ export type ChaosScenario = z.infer<typeof ChaosScenarioSchema>;
  * ax chaos enable --failure-rate 0.3 --scenarios provider-failure,network-latency
  * ```
  */
-export declare const ChaosEnableSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ChaosEnableSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     failureRate: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     scenarios: z.ZodOptional<z.ZodArray<z.ZodEnum<["provider-failure", "network-latency", "timeout", "memory-corruption", "disk-full", "cache-miss", "slow-query", "connection-error"]>, "many">>;
     seed: z.ZodOptional<z.ZodNumber>;
     minDelay: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     maxDelay: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     debug: boolean;
@@ -53,14 +53,14 @@ export type ChaosEnable = z.infer<typeof ChaosEnableSchema>;
  * ax chaos disable
  * ```
  */
-export declare const ChaosDisableSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ChaosDisableSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     reset: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     debug: boolean;
@@ -82,15 +82,15 @@ export type ChaosDisable = z.infer<typeof ChaosDisableSchema>;
  * ax chaos status --verbose
  * ```
  */
-export declare const ChaosStatusSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ChaosStatusSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     events: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     stats: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     stats: boolean;
@@ -116,18 +116,18 @@ export type ChaosStatus = z.infer<typeof ChaosStatusSchema>;
  * ax chaos test --iterations 100 --failure-rate 0.5
  * ```
  */
-export declare const ChaosTestSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ChaosTestSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     iterations: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     failureRate: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     scenario: z.ZodOptional<z.ZodEnum<["provider-failure", "network-latency", "timeout", "memory-corruption", "disk-full", "cache-miss", "slow-query", "connection-error"]>>;
     parallel: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     timeout: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     parallel: boolean;

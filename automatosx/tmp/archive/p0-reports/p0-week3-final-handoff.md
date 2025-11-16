@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Final Handoff Summary
+# AutomatosX Revamp — P0 Week 3 Final Handoff Summary
 
 ## Executive Summary
 

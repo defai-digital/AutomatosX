@@ -1,4 +1,4 @@
-# AutomatosX v2.0.0 Release Notes
+# AutomatosX.0.0 Release Notes
 
 **Release Date**: 2025-11-06
 **Type**: Major Release
@@ -8,7 +8,7 @@
 
 ## 🎉 Highlights
 
-AutomatosX v2.0 is a complete rewrite of the code intelligence engine, delivering:
+AutomatosX.0 is a complete rewrite of the code intelligence engine, delivering:
 
 - **🌍 Multi-language support** - TypeScript, JavaScript, and Python
 - **⚡ 10x performance boost** - Query caching, batch indexing, optimized database
@@ -446,7 +446,7 @@ export AUTOMATOSX_SEARCH_DEFAULT_LIMIT=25
 
 We'd love to hear from you! Please let us know:
 - What features you'd like to see (Go? Rust? ML search?)
-- How you're using AutomatosX v2
+- How you're using AutomatosX
 - Any bugs or issues you encounter
 - Suggestions for improvements
 
@@ -454,7 +454,7 @@ We'd love to hear from you! Please let us know:
 
 ## Contributors
 
-AutomatosX v2.0 was built with:
+AutomatosX.0 was built with:
 - **Claude Code** - AI-powered development assistant
 - **Phase 1 Team** - Strategic planning and execution
 - **Path B Strategy** - Pragmatic completion approach
@@ -482,7 +482,7 @@ Built with excellent open-source tools:
 
 ---
 
-**AutomatosX v2.0.0** - Production-Ready Code Intelligence
+**AutomatosX.0.0** - Production-Ready Code Intelligence
 
 🚀 **Ready to ship!**
 

@@ -2,7 +2,7 @@
 
 ## What Was Built
 
-A complete, production-ready VS Code extension for AutomatosX v2 with:
+A complete, production-ready VS Code extension for AutomatosX with:
 - 12 TypeScript source files
 - 3,092 lines of code
 - 45+ comprehensive tests

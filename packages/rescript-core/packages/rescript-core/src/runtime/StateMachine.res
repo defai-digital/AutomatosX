@@ -1,4 +1,4 @@
-// Runtime State Machine skeleton for AutomatosX v2
+// Runtime State Machine skeleton for AutomatosX
 // Provides typed states, events, effects, and transition outcomes
 
 open Belt

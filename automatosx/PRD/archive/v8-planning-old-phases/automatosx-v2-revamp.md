@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp – Product Requirements Document
+# AutomatosX Revamp – Product Requirements Document
 
 ## 1. Product Vision & Goals
 - Deliver a developer copilot that orchestrates multi-agent collaboration from a single CLI, reducing context switching and time-to-outcome for complex tasks.

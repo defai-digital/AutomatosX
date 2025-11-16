@@ -1,6 +1,6 @@
 # Phase 2 API Documentation
 
-**AutomatosX v2 - AI Provider Layer**
+**AutomatosX - AI Provider Layer**
 **Version**: 2.0.0
 **Date**: 2025-11-10
 

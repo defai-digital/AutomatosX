@@ -1,4 +1,4 @@
-# AutomatosX v2 — Sprint 3 Kickoff Plan
+# AutomatosX — Sprint 3 Kickoff Plan
 
 **Sprint:** Sprint 3 (P0 Week 5, Days 1-10)
 **Timeline:** Monday, February 3 - Friday, February 14, 2025
@@ -374,7 +374,7 @@ ax find "<script>alert('XSS')</script>"
 **External Dependency:** ⚠️ **Wendy available Days 3-10**
 
 **Description:**
-Create comprehensive developer documentation for AutomatosX v2: installation guide, CLI reference, VS Code extension guide, architecture overview, contributing guide.
+Create comprehensive developer documentation for AutomatosX: installation guide, CLI reference, VS Code extension guide, architecture overview, contributing guide.
 
 **Acceptance Criteria:**
 1. Documentation site live at docs.automatosx.dev (or GitHub Pages)
@@ -433,10 +433,10 @@ docs/
 **Dependencies:** ⚠️ **DEPENDS ON P0-S3-07 (Documentation) 50% complete**
 
 **Description:**
-Onboard 10 beta users to AutomatosX v2 with installation support, documentation access, feedback collection mechanism.
+Onboard 10 beta users to AutomatosX with installation support, documentation access, feedback collection mechanism.
 
 **Acceptance Criteria:**
-1. 10 beta users successfully installed AutomatosX v2
+1. 10 beta users successfully installed AutomatosX
 2. Each user completes onboarding checklist (installation, CLI usage, VS Code extension)
 3. Feedback survey sent and ≥8/10 responses collected
 4. Bug tracking: All critical bugs reported by beta users triaged and prioritized
@@ -545,7 +545,7 @@ Onboard 10 beta users to AutomatosX v2 with installation support, documentation 
 
 **Mitigation Strategies:**
 1. Pre-recruited 15 beta candidates (only need 10 confirmations)
-2. Incentive: Early access to AutomatosX v2, direct line to product team
+2. Incentive: Early access to AutomatosX, direct line to product team
 3. Internal users: 5 internal users guaranteed (Engineering, Product, QA)
 4. Backup plan: If <10 external users, increase internal users to 8 (total 10)
 5. Onboarding support: Paris + Queenie available for installation troubleshooting

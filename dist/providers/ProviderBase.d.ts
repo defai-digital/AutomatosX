@@ -15,10 +15,10 @@ export declare const ProviderRequestSchema: z.ZodObject<{
         content: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }>, "many">;
     maxTokens: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     temperature: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -29,7 +29,7 @@ export declare const ProviderRequestSchema: z.ZodObject<{
     temperature: number;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
     streaming: boolean;
     timeout: number;
@@ -37,7 +37,7 @@ export declare const ProviderRequestSchema: z.ZodObject<{
 }, {
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
     maxTokens?: number | undefined;
     temperature?: number | undefined;
@@ -57,13 +57,13 @@ export declare const ProviderResponseSchema: z.ZodObject<{
         outputTokens: z.ZodNumber;
         totalTokens: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        totalTokens: number;
         inputTokens: number;
         outputTokens: number;
+        totalTokens: number;
     }, {
-        totalTokens: number;
         inputTokens: number;
         outputTokens: number;
+        totalTokens: number;
     }>;
     finishReason: z.ZodOptional<z.ZodEnum<["stop", "length", "tool_use", "error"]>>;
     latency: z.ZodNumber;
@@ -73,9 +73,9 @@ export declare const ProviderResponseSchema: z.ZodObject<{
     content: string;
     model: string;
     usage: {
-        totalTokens: number;
         inputTokens: number;
         outputTokens: number;
+        totalTokens: number;
     };
     latency: number;
     finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;
@@ -84,9 +84,9 @@ export declare const ProviderResponseSchema: z.ZodObject<{
     content: string;
     model: string;
     usage: {
-        totalTokens: number;
         inputTokens: number;
         outputTokens: number;
+        totalTokens: number;
     };
     latency: number;
     finishReason?: "length" | "error" | "stop" | "tool_use" | undefined;

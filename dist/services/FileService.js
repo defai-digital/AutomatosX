@@ -319,6 +319,12 @@ export class FileService {
      */
     executeNaturalSearch(query, limit, filters) {
         const chunkResults = this.chunkDAO.search(query, limit, filters);
+        // BUG FIX #38: Return early if no results to avoid Math.max/min on empty array
+        // Math.max(...[]) returns -Infinity, Math.min(...[]) returns Infinity
+        // This would cause rankRange = -Infinity and produce NaN scores
+        if (chunkResults.length === 0) {
+            return [];
+        }
         // Normalize BM25 rank to 0-1 score (higher is better)
         const maxRank = Math.max(...chunkResults.map((r) => Math.abs(r.rank)));
         const minRank = Math.min(...chunkResults.map((r) => Math.abs(r.rank)));

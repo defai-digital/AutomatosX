@@ -1,4 +1,4 @@
-# AutomatosX v2 Runtime - Threat Model v1
+# AutomatosX Runtime - Threat Model v1
 
 **Document Version**: 1.0 (Day 3 Baseline)
 **Last Updated**: Sprint 1, Day 3
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This threat model establishes the **baseline security posture** for AutomatosX v2 Runtime state machine. It identifies attack surfaces, threat actors, attack vectors, and mitigation strategies for the runtime's state transition system.
+This threat model establishes the **baseline security posture** for AutomatosX Runtime state machine. It identifies attack surfaces, threat actors, attack vectors, and mitigation strategies for the runtime's state transition system.
 
 **Threat Model Scope**: Sprint 1 Day 3 baseline covers:
 - State transition attack surface (8 states, 7 event types)

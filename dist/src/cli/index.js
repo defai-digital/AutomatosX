@@ -17,7 +17,7 @@
 /**
  * index.ts
  *
- * AutomatosX v2 CLI Entry Point
+ * AutomatosX CLI Entry Point
  * Main command-line interface for code intelligence
  */
 import { Command } from 'commander';
@@ -75,7 +75,7 @@ async function initializeTelemetry() {
 const program = new Command();
 program
     .name('ax')
-    .description(chalk.bold('AutomatosX v2 - Code Intelligence CLI'))
+    .description(chalk.bold('AutomatosX - Code Intelligence CLI'))
     .version(packageJson.version, '-v, --version', 'Output the current version');
 // Add commands
 program.addCommand(createFindCommand());

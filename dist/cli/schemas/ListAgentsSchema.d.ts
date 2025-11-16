@@ -9,21 +9,21 @@ import { z } from 'zod';
  * - ax list agents --category development --format json
  * - ax list agents --enabled --sort-by priority --verbose
  */
-export declare const ListAgentsSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ListAgentsSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     category: z.ZodDefault<z.ZodOptional<z.ZodEnum<["development", "operations", "leadership", "creative", "science", "all"]>>>;
     enabled: z.ZodOptional<z.ZodBoolean>;
     sortBy: z.ZodDefault<z.ZodOptional<z.ZodEnum<["name", "category", "priority"]>>>;
     format: z.ZodDefault<z.ZodDefault<z.ZodEnum<["text", "json", "table", "yaml"]>>>;
     showCapabilities: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
-    category: "all" | "leadership" | "development" | "operations" | "creative" | "science";
+    category: "all" | "development" | "leadership" | "operations" | "creative" | "science";
     sortBy: "name" | "priority" | "category";
     format: "text" | "json" | "yaml" | "table";
     debug: boolean;
@@ -33,10 +33,10 @@ export declare const ListAgentsSchema: z.ZodObject<z.objectUtil.extendShape<{
 }, {
     verbose?: boolean | undefined;
     json?: boolean | undefined;
-    category?: "all" | "leadership" | "development" | "operations" | "creative" | "science" | undefined;
+    category?: "all" | "development" | "leadership" | "operations" | "creative" | "science" | undefined;
+    enabled?: boolean | undefined;
     sortBy?: "name" | "priority" | "category" | undefined;
     format?: "text" | "json" | "yaml" | "table" | undefined;
-    enabled?: boolean | undefined;
     debug?: boolean | undefined;
     quiet?: boolean | undefined;
     showCapabilities?: boolean | undefined;

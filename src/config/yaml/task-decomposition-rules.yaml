@@ -1,0 +1,76 @@
+# REFACTORING #17: Task Decomposition Rules
+# Configuration for AgentCollaborator task decomposition
+# Defines keyword patterns and their associated agent assignments
+
+version: "1.0"
+
+rules:
+  - id: database
+    keywords:
+      - database
+      - schema
+      - table
+      - sql
+      - query
+    agentType: database
+    description: "Design database schema and queries"
+    priority: 10
+    idSuffix: db
+
+  - id: api
+    keywords:
+      - api
+      - endpoint
+      - rest
+      - graphql
+      - route
+    agentType: api
+    description: "Design and implement API endpoints"
+    priority: 9
+    idSuffix: api
+    createDependency: true  # Depends on previous subtask
+
+  - id: security
+    keywords:
+      - security
+      - auth
+      - authentication
+      - authorization
+      - secure
+    agentType: security
+    description: "Implement security and authentication"
+    priority: 8
+    idSuffix: sec
+    createDependency: true
+
+  - id: testing
+    keywords:
+      - test
+      - testing
+      - tests
+      - coverage
+      - quality
+    agentType: quality
+    description: "Write comprehensive tests"
+    priority: 7
+    idSuffix: test
+    createDependency: true
+
+  - id: documentation
+    keywords:
+      - document
+      - documentation
+      - docs
+      - readme
+    agentType: writer
+    description: "Write documentation"
+    priority: 6
+    idSuffix: doc
+    createDependency: true
+
+# Default configuration when no rules match
+default:
+  agentType: backend
+  description: ""  # Use task description
+  priority: 10
+  idSuffix: main

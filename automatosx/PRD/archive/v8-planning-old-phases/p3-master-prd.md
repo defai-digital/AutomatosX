@@ -1,4 +1,4 @@
-# AutomatosX v2 - Phase 3 (P3) Master PRD
+# AutomatosX - Phase 3 (P3) Master PRD
 
 **Version**: 1.0.0
 **Date**: 2025-11-07
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Phase 3 (P3) focuses on **advanced features, observability, and scale** for AutomatosX v2. Building on the production-ready foundation from P0-P2, P3 introduces telemetry, experimental features framework, advanced migration tooling, additional language support, and query enhancements to solidify AutomatosX as a best-in-class code intelligence platform.
+Phase 3 (P3) focuses on **advanced features, observability, and scale** for AutomatosX. Building on the production-ready foundation from P0-P2, P3 introduces telemetry, experimental features framework, advanced migration tooling, additional language support, and query enhancements to solidify AutomatosX as a best-in-class code intelligence platform.
 
 **Key Objectives**:
 1. **Observability**: Telemetry and analytics for usage insights
@@ -91,7 +91,7 @@ Phase 3 (P3) focuses on **advanced features, observability, and scale** for Auto
 
 ### Vision Statement
 
-> "AutomatosX v2 Phase 3 transforms code intelligence from a functional tool into an **observable, scalable, and intelligent platform** that adapts to user needs, rolls out features safely, and provides insights that drive continuous improvement."
+> "AutomatosX Phase 3 transforms code intelligence from a functional tool into an **observable, scalable, and intelligent platform** that adapts to user needs, rolls out features safely, and provides insights that drive continuous improvement."
 
 ### Strategic Goals
 

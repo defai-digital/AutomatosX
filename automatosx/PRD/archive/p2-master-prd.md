@@ -1,4 +1,4 @@
-# Phase 2 (P2) Master PRD - AutomatosX v2
+# Phase 2 (P2) Master PRD - AutomatosX
 
 **Document Type**: Product Requirements Document
 **Status**: Draft
@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-**Phase 2 Vision**: Evolve AutomatosX v2 from a powerful code search tool into a comprehensive developer productivity platform with advanced intelligence, cross-project capabilities, and ecosystem integrations.
+**Phase 2 Vision**: Evolve AutomatosX from a powerful code search tool into a comprehensive developer productivity platform with advanced intelligence, cross-project capabilities, and ecosystem integrations.
 
 **Strategic Objectives**:
 1. **Maturity** - Complete deferred features, optimize performance, ensure enterprise-grade stability

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-AutomatosX v2 uses a hybrid ReScript + TypeScript architecture to combine functional programming guarantees (type safety, immutability) with pragmatic JavaScript ecosystem integration. This guide explains how to work with both languages seamlessly.
+AutomatosX uses a hybrid ReScript + TypeScript architecture to combine functional programming guarantees (type safety, immutability) with pragmatic JavaScript ecosystem integration. This guide explains how to work with both languages seamlessly.
 
 **Key Benefits**:
 - **Type Safety**: ReScript provides compile-time guarantees for state machines and workflows

@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Day 4 Health Check Outcomes (2025-01-23)
+# AutomatosX Revamp — P0 Week 3 Day 4 Health Check Outcomes (2025-01-23)
 
 ## 24-Hour Validation Stability and Governance Sign-Off Keep Sprint 2 on Track
 

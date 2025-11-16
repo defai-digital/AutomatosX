@@ -1,0 +1,29 @@
+# REFACTORING #18: Agent Scoring Configuration
+# Configuration for AgentBase capability scoring algorithm
+# Controls how agents are matched to tasks
+
+version: "1.0"
+
+# Minimum score required for an agent to be considered capable of handling a task
+# Range: 0.0 to 1.0
+# Lower values = more permissive (agents handle more diverse tasks)
+# Higher values = more restrictive (agents only handle specific tasks)
+minCapabilityScore: 0.3
+
+# Weight assigned when a keyword from agent capabilities matches the task description
+# Higher values give more importance to keyword matches
+keywordMatchWeight: 1
+
+# Weight assigned when a specialization from agent matches the task description
+# Higher values give more importance to specialization matches
+# Should be >= keywordMatchWeight since specializations are more specific
+specializationMatchWeight: 2
+
+# Divisor used to normalize the raw score to 0-1 range
+# Larger values = stricter normalization (harder to reach high scores)
+# Smaller values = looser normalization (easier to reach high scores)
+scoreNormalizationDivisor: 10
+
+# Message templates for agent delegation
+messages:
+  outsideSpecialization: "Outside {specialization} specialization. Consider @{suggestion} agent."

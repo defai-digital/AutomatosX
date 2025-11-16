@@ -1,4 +1,4 @@
-// Memory State Machine for AutomatosX v2
+// Memory State Machine for AutomatosX
 // Manages conversation and message lifecycle states
 
 module State = {

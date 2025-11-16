@@ -379,7 +379,7 @@ console.log(stats);
 4. Parse → Store → Query pipeline is functional
 5. All 28 tests pass (100% success rate)
 
-**AutomatosX v2 parser pipeline is working.** Ready to proceed to Phase 0.4 (CLI Command POC).
+**AutomatosX parser pipeline is working.** Ready to proceed to Phase 0.4 (CLI Command POC).
 
 ---
 

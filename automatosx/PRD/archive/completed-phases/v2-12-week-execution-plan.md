@@ -1,6 +1,6 @@
-# AutomatosX v2 — 12-Week Execution Plan
+# AutomatosX — 12-Week Execution Plan
 
-This plan decomposes the AutomatosX v2 PRD (`automatosx/PRD/automatosx-v2-completion-plan.md`) into actionable weekly execution steps across six sprints. It emphasizes user outcomes: reliable automation parity, extensible Plugin SDK, and production-ready delivery with clear gates, ownership, and measurable test growth.
+This plan decomposes the AutomatosX PRD (`automatosx/PRD/automatosx-v2-completion-plan.md`) into actionable weekly execution steps across six sprints. It emphasizes user outcomes: reliable automation parity, extensible Plugin SDK, and production-ready delivery with clear gates, ownership, and measurable test growth.
 
 ---
 

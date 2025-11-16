@@ -1,4 +1,4 @@
-# New Languages Added to AutomatosX v2
+# New Languages Added to AutomatosX
 **Date**: 2025-11-08
 **Status**: ✅ COMPLETE
 

@@ -39,10 +39,10 @@ export declare const MessageContentSchema: z.ZodObject<{
     content: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     content: string;
-    role: "user" | "assistant" | "system";
+    role: "system" | "user" | "assistant";
 }, {
     content: string;
-    role: "user" | "assistant" | "system";
+    role: "system" | "user" | "assistant";
 }>;
 export type MessageContent = z.infer<typeof MessageContentSchema>;
 export declare const ProviderRequestSchema: z.ZodObject<{
@@ -53,10 +53,10 @@ export declare const ProviderRequestSchema: z.ZodObject<{
         content: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }>, "many">;
     maxTokens: z.ZodOptional<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
@@ -89,11 +89,11 @@ export declare const ProviderRequestSchema: z.ZodObject<{
         conversationId?: string | undefined;
         userId?: string | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
     topP?: number | undefined;
@@ -107,11 +107,11 @@ export declare const ProviderRequestSchema: z.ZodObject<{
         userId?: string | undefined;
         tags?: string[] | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     stream?: boolean | undefined;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
@@ -120,7 +120,7 @@ export declare const ProviderRequestSchema: z.ZodObject<{
     stopSequences?: string[] | undefined;
 }>;
 export type ProviderRequest = z.infer<typeof ProviderRequestSchema>;
-export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const StreamingRequestSchema: z.ZodObject<{
     provider: z.ZodEnum<["claude", "gemini", "openai"]>;
     model: z.ZodString;
     messages: z.ZodArray<z.ZodObject<{
@@ -128,16 +128,15 @@ export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShap
         content: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }>, "many">;
     maxTokens: z.ZodOptional<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
     topP: z.ZodOptional<z.ZodNumber>;
     topK: z.ZodOptional<z.ZodNumber>;
-    stream: z.ZodDefault<z.ZodBoolean>;
     stopSequences: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     metadata: z.ZodObject<{
         requestId: z.ZodString;
@@ -155,9 +154,9 @@ export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShap
         userId?: string | undefined;
         tags?: string[] | undefined;
     }>;
-}, {
+} & {
     stream: z.ZodLiteral<true>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     stream: true;
     provider: "claude" | "gemini" | "openai";
     metadata: {
@@ -166,11 +165,11 @@ export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShap
         conversationId?: string | undefined;
         userId?: string | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
     topP?: number | undefined;
@@ -185,11 +184,11 @@ export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShap
         userId?: string | undefined;
         tags?: string[] | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
     topP?: number | undefined;
@@ -197,7 +196,7 @@ export declare const StreamingRequestSchema: z.ZodObject<z.objectUtil.extendShap
     stopSequences?: string[] | undefined;
 }>;
 export type StreamingRequest = z.infer<typeof StreamingRequestSchema>;
-export declare const NonStreamingRequestSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const NonStreamingRequestSchema: z.ZodObject<{
     provider: z.ZodEnum<["claude", "gemini", "openai"]>;
     model: z.ZodString;
     messages: z.ZodArray<z.ZodObject<{
@@ -205,16 +204,15 @@ export declare const NonStreamingRequestSchema: z.ZodObject<z.objectUtil.extendS
         content: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }, {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }>, "many">;
     maxTokens: z.ZodOptional<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
     topP: z.ZodOptional<z.ZodNumber>;
     topK: z.ZodOptional<z.ZodNumber>;
-    stream: z.ZodDefault<z.ZodBoolean>;
     stopSequences: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     metadata: z.ZodObject<{
         requestId: z.ZodString;
@@ -232,9 +230,9 @@ export declare const NonStreamingRequestSchema: z.ZodObject<z.objectUtil.extendS
         userId?: string | undefined;
         tags?: string[] | undefined;
     }>;
-}, {
+} & {
     stream: z.ZodLiteral<false>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     stream: false;
     provider: "claude" | "gemini" | "openai";
     metadata: {
@@ -243,11 +241,11 @@ export declare const NonStreamingRequestSchema: z.ZodObject<z.objectUtil.extendS
         conversationId?: string | undefined;
         userId?: string | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
     topP?: number | undefined;
@@ -262,11 +260,11 @@ export declare const NonStreamingRequestSchema: z.ZodObject<z.objectUtil.extendS
         userId?: string | undefined;
         tags?: string[] | undefined;
     };
+    model: string;
     messages: {
         content: string;
-        role: "user" | "assistant" | "system";
+        role: "system" | "user" | "assistant";
     }[];
-    model: string;
     maxTokens?: number | undefined;
     temperature?: number | undefined;
     topP?: number | undefined;
@@ -310,23 +308,23 @@ export declare const ProviderResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     provider: "claude" | "gemini" | "openai";
     content: string;
+    model: string;
     tokens: {
         total: number;
         output: number;
         input: number;
     };
-    model: string;
     duration: number;
     finishReason?: "length" | "error" | "stop" | "content_filter" | undefined;
 }, {
     provider: "claude" | "gemini" | "openai";
     content: string;
+    model: string;
     tokens: {
         total: number;
         output: number;
         input: number;
     };
-    model: string;
     duration: number;
     finishReason?: "length" | "error" | "stop" | "content_filter" | undefined;
 }>;
@@ -415,13 +413,13 @@ export declare const RetryInfoSchema: z.ZodObject<{
     delayMs: z.ZodOptional<z.ZodNumber>;
     lastError: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    maxAttempts: number;
     attempt: number;
+    maxAttempts: number;
     delayMs?: number | undefined;
     lastError?: string | undefined;
 }, {
-    maxAttempts: number;
     attempt: number;
+    maxAttempts: number;
     delayMs?: number | undefined;
     lastError?: string | undefined;
 }>;
@@ -431,8 +429,8 @@ export declare const FallbackConfigSchema: z.ZodObject<{
     providers: z.ZodArray<z.ZodEnum<["claude", "gemini", "openai"]>, "many">;
     modelMapping: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
-    enabled: boolean;
     providers: ("claude" | "gemini" | "openai")[];
+    enabled: boolean;
     modelMapping?: Record<string, string> | undefined;
 }, {
     providers: ("claude" | "gemini" | "openai")[];
@@ -548,9 +546,9 @@ export declare const ProviderContextSchema: z.ZodObject<{
     fallbackProvider: z.ZodOptional<z.ZodEnum<["claude", "gemini", "openai"]>>;
 }, "strip", z.ZodTypeAny, {
     provider: "claude" | "gemini" | "openai";
-    state: "completed" | "failed" | "idle" | "streaming" | "validating" | "requesting" | "rate_limited" | "retrying";
     model: string;
     maxRetries: number;
+    state: "completed" | "failed" | "streaming" | "idle" | "validating" | "requesting" | "rate_limited" | "retrying";
     metrics: {
         startTime: number;
         tokenCount: {
@@ -570,8 +568,8 @@ export declare const ProviderContextSchema: z.ZodObject<{
     fallbackProvider?: "claude" | "gemini" | "openai" | undefined;
 }, {
     provider: "claude" | "gemini" | "openai";
-    state: "completed" | "failed" | "idle" | "streaming" | "validating" | "requesting" | "rate_limited" | "retrying";
     model: string;
+    state: "completed" | "failed" | "streaming" | "idle" | "validating" | "requesting" | "rate_limited" | "retrying";
     metrics: {
         startTime: number;
         tokenCount: {
@@ -584,9 +582,9 @@ export declare const ProviderContextSchema: z.ZodObject<{
         totalDuration?: number | undefined;
     };
     requestId: string;
+    maxRetries?: number | undefined;
     conversationId?: string | undefined;
     userId?: string | undefined;
-    maxRetries?: number | undefined;
     tags?: string[] | undefined;
     retryAttempt?: number | undefined;
     fallbackProvider?: "claude" | "gemini" | "openai" | undefined;
@@ -628,18 +626,18 @@ export declare const ProviderLogSchema: z.ZodObject<{
     provider: "claude" | "gemini" | "openai";
     createdAt: Date;
     updatedAt: Date;
-    state: "completed" | "failed" | "idle" | "streaming" | "validating" | "requesting" | "rate_limited" | "retrying";
     model: string;
+    state: "completed" | "failed" | "streaming" | "idle" | "validating" | "requesting" | "rate_limited" | "retrying";
     startTime: number;
     tags: string[];
     requestId: string;
     retryAttempt: number;
     request: string;
     error?: string | undefined;
+    response?: string | undefined;
     conversationId?: string | undefined;
     userId?: string | undefined;
     duration?: number | undefined;
-    response?: string | undefined;
     endTime?: number | undefined;
     tokenCount?: {
         total: number;
@@ -651,17 +649,17 @@ export declare const ProviderLogSchema: z.ZodObject<{
     provider: "claude" | "gemini" | "openai";
     createdAt: Date;
     updatedAt: Date;
-    state: "completed" | "failed" | "idle" | "streaming" | "validating" | "requesting" | "rate_limited" | "retrying";
     model: string;
+    state: "completed" | "failed" | "streaming" | "idle" | "validating" | "requesting" | "rate_limited" | "retrying";
     startTime: number;
     requestId: string;
     retryAttempt: number;
     request: string;
     error?: string | undefined;
+    response?: string | undefined;
     conversationId?: string | undefined;
     userId?: string | undefined;
     duration?: number | undefined;
-    response?: string | undefined;
     endTime?: number | undefined;
     tags?: string[] | undefined;
     tokenCount?: {

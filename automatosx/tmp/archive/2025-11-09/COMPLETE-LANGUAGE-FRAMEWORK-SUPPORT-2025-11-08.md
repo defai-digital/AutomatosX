@@ -1,11 +1,11 @@
-# Complete Language & Framework Support - AutomatosX v2
+# Complete Language & Framework Support - AutomatosX
 **Date**: 2025-11-08
 **Total Languages**: 46
 **Status**: ✅ PRODUCTION READY
 
 ## Executive Summary
 
-AutomatosX v2 supports **46 programming languages** and **100+ frameworks/tools** across all major development ecosystems with **100% DevOps, Messaging, and Package Manager coverage**.
+AutomatosX supports **46 programming languages** and **100+ frameworks/tools** across all major development ecosystems with **100% DevOps, Messaging, and Package Manager coverage**.
 
 ## Programming Languages (46 Total)
 
@@ -412,4 +412,4 @@ AutomatosX v2 supports **46 programming languages** and **100+ frameworks/tools*
 - Protocol Buffers (.proto)
 - Binary model formats (expected)
 
-AutomatosX v2 provides **comprehensive language and framework support** across all major development ecosystems!
+AutomatosX provides **comprehensive language and framework support** across all major development ecosystems!

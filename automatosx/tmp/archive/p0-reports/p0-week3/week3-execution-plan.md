@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Execution Plan (Sprint 2 Kickoff)
+# AutomatosX Revamp — P0 Week 3 Execution Plan (Sprint 2 Kickoff)
 
 ## Week 3 Overview
 

@@ -1,4 +1,4 @@
-## AutomatosX v2 Revamp — P0 Sprint 1 Week 2 Day 8 Execution Outcomes (2025-01-15)
+## AutomatosX Revamp — P0 Sprint 1 Week 2 Day 8 Execution Outcomes (2025-01-15)
 Day 8 focused on validating parser throughput, ensuring infrastructure readiness, and landing QA gates for RunsCommand parity ahead of the mid-sprint health check.
 
 ---

@@ -8,7 +8,7 @@
 import * as Hello from '../packages/rescript-core/src/Hello.gen';
 import * as Index from '../packages/rescript-core/src/Index.gen';
 console.log('='.repeat(60));
-console.log('AutomatosX v2 - ReScript ↔ TypeScript Interop Test');
+console.log('AutomatosX - ReScript ↔ TypeScript Interop Test');
 console.log('='.repeat(60));
 console.log();
 // Test 1: Simple greet function

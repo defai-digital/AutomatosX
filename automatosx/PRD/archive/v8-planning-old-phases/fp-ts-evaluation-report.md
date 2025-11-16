@@ -1,7 +1,7 @@
-# fp-ts Integration Evaluation for AutomatosX v2 Code Intelligence Engine
+# fp-ts Integration Evaluation for AutomatosX Code Intelligence Engine
 
 ## Executive Summary
-- AutomatosX v2 currently relies on imperative error handling (342 `catch` blocks, 77 files with `null | undefined` unions, DAOs returning `T | undefined`). This leaks invariants across layers, complicates reasoning, and obscures faults that surface late in the runtime.
+- AutomatosX currently relies on imperative error handling (342 `catch` blocks, 77 files with `null | undefined` unions, DAOs returning `T | undefined`). This leaks invariants across layers, complicates reasoning, and obscures faults that surface late in the runtime.
 - Adopting `fp-ts` primitives (notably `Option`, `Either`, `TaskEither`, `pipe/flow`) would encode absence, failures, and async effects directly in the type system, aligning with our strict TypeScript posture (ADR-003) and lowering the probability of silent failures in the code-intel pipeline.
 - The most leverage comes from the DAO → Service → Parser chain: DAOs publish `Option/Either`, services orchestrate via `TaskEither`, and parser/router utilities expose composable `flow`s. This keeps error contracts close to the source and enables deterministic composition of indexing/query tasks.
 - Migration is feasible via staged refactors: begin with DAO surface areas (lowest blast radius), then propagate to orchestration services and parser infrastructure. Primary risks are learning curve, refactor churn, and mixed paradigms during the transition.

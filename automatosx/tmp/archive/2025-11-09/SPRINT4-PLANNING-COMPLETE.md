@@ -1,6 +1,6 @@
 # Sprint 4 Planning Summary
 
-- **Overview**: Sprint 4 covers Weeks 7-8 (Days 31-40) of the AutomatosX v2 execution plan.
+- **Overview**: Sprint 4 covers Weeks 7-8 (Days 31-40) of the AutomatosX execution plan.
 - **Mission**: Deliver the Plugin SDK Beta and build the foundational infrastructure for the Plugin Marketplace, moving the project to a GA-ready state.
 - **Test Targets**: Increase test count from 2,116 to 2,423, adding **307 new tests** at an average of 31 tests per day.
 

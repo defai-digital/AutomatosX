@@ -347,4 +347,4 @@ ax find "computeKernel"
 ✅ **Enhanced metadata** - GPU-specific qualifiers detected
 ✅ **Production ready** - All code compiled successfully
 
-AutomatosX v2 now supports **all major GPU computing frameworks** for NVIDIA, AMD, and Apple platforms!
+AutomatosX now supports **all major GPU computing frameworks** for NVIDIA, AMD, and Apple platforms!

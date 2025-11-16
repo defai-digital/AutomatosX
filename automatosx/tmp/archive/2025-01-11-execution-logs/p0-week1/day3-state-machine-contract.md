@@ -1,4 +1,4 @@
-# AutomatosX v2 Runtime - State Machine Contract
+# AutomatosX Runtime - State Machine Contract
 
 **Document Version**: 1.0
 **Last Updated**: Sprint 1, Day 3
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document formally specifies the **State Machine Contract** for AutomatosX v2 Runtime. It defines the complete state space, permissible transitions, guard conditions, effects, and error handling for runtime task orchestration.
+This document formally specifies the **State Machine Contract** for AutomatosX Runtime. It defines the complete state space, permissible transitions, guard conditions, effects, and error handling for runtime task orchestration.
 
 **Purpose**: Serve as the authoritative contract for:
 - Runtime state transitions (BOOTSTRAPPING → IDLE → PREPARING → EXECUTING → COMPLETED/FAILED/CANCELED)

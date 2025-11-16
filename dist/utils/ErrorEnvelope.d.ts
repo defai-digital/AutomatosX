@@ -42,14 +42,14 @@ export declare const ErrorEnvelopeSchema: z.ZodObject<{
         code: string;
         message: string;
         stackTrace?: string | undefined;
-        suggestions?: string[] | undefined;
         details?: unknown;
+        suggestions?: string[] | undefined;
     }, {
         code: string;
         message: string;
         stackTrace?: string | undefined;
-        suggestions?: string[] | undefined;
         details?: unknown;
+        suggestions?: string[] | undefined;
     }>;
     timestamp: z.ZodString;
     requestId: z.ZodOptional<z.ZodString>;
@@ -58,8 +58,8 @@ export declare const ErrorEnvelopeSchema: z.ZodObject<{
         code: string;
         message: string;
         stackTrace?: string | undefined;
-        suggestions?: string[] | undefined;
         details?: unknown;
+        suggestions?: string[] | undefined;
     };
     timestamp: string;
     requestId?: string | undefined;
@@ -68,8 +68,8 @@ export declare const ErrorEnvelopeSchema: z.ZodObject<{
         code: string;
         message: string;
         stackTrace?: string | undefined;
-        suggestions?: string[] | undefined;
         details?: unknown;
+        suggestions?: string[] | undefined;
     };
     timestamp: string;
     requestId?: string | undefined;

@@ -138,7 +138,7 @@ ax status -v           # Same as --verbose
 
 **Example Output**:
 ```
-📊 AutomatosX v2 Status
+📊 AutomatosX Status
 
 Index Status:
 ┌─────────────────────┬─────────────────┐

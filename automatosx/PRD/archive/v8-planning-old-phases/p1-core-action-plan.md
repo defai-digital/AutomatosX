@@ -1,4 +1,4 @@
-# AutomatosX v2 - P1 Core Action Plan
+# AutomatosX - P1 Core Action Plan
 
 **Version**: 1.0
 **Created**: 2025-11-10

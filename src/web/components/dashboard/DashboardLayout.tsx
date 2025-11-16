@@ -73,7 +73,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps): React.React
     <>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          AutomatosX v2
+          AutomatosX
         </Typography>
       </Toolbar>
       <Divider />

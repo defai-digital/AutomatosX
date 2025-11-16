@@ -2,7 +2,7 @@
 
 
 function greet(name) {
-  return "Hello, " + name + "! Welcome to AutomatosX v2 with ReScript.";
+  return "Hello, " + name + "! Welcome to AutomatosX with ReScript.";
 }
 
 function add(a, b) {
@@ -13,7 +13,7 @@ function getGreetingOrDefault(name) {
   if (name !== undefined) {
     return greet(name);
   } else {
-    return "Hello, Guest! Welcome to AutomatosX v2.";
+    return "Hello, Guest! Welcome to AutomatosX.";
   }
 }
 
@@ -21,7 +21,7 @@ function greetPerson(person) {
   return "Hello, " + person.name + "! You are " + String(person.age) + " years old.";
 }
 
-var welcomeMessage = "AutomatosX v2 - ReScript Core Runtime Initialized";
+var welcomeMessage = "AutomatosX - ReScript Core Runtime Initialized";
 
 export {
   greet ,

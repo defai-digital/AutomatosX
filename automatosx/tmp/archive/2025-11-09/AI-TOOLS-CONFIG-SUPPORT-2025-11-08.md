@@ -8,7 +8,7 @@ Comprehensive analysis of configuration file formats used by Claude Code, Gemini
 
 ## Key Finding
 
-**✅ All AI coding tools use file formats already supported by AutomatosX v2!**
+**✅ All AI coding tools use file formats already supported by AutomatosX!**
 
 No additional parsers needed - existing JSON, TOML, and Markdown parsers cover all configuration files.
 
@@ -367,7 +367,7 @@ Since .env files are simple key-value pairs, AutomatosX can:
 | **OpenAI Codex** | config.toml | TOML | ✅ Supported |
 | **MCP Servers** | mcp.json, embedded configs | JSON | ✅ Supported |
 
-## AutomatosX v2 Coverage
+## AutomatosX Coverage
 
 ### ✅ Already Supported Formats
 
@@ -481,7 +481,7 @@ ax find "server-filesystem" --lang json
 
 **All AI coding tool configurations are already supported!**
 
-AutomatosX v2 can index and search:
+AutomatosX can index and search:
 - ✅ Claude Code settings (JSON + Markdown)
 - ✅ Gemini CLI settings (JSON)
 - ✅ OpenAI Codex config (TOML)
@@ -510,4 +510,4 @@ AutomatosX v2 can index and search:
    - TOML parser: OpenAI Codex config.toml
 ⚠️ **.env files**: Simple format, text search sufficient
 
-AutomatosX v2 is fully equipped to handle all AI coding tool configurations out of the box!
+AutomatosX is fully equipped to handle all AI coding tool configurations out of the box!

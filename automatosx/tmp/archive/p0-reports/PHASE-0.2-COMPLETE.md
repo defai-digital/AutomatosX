@@ -324,7 +324,7 @@ fileDAO.delete(id);
 4. Hash utilities ensure content integrity
 5. All 24 tests pass (100% success rate)
 
-**AutomatosX v2 data layer is solid.** Ready to proceed to Phase 0.3 (Parser Pipeline POC).
+**AutomatosX data layer is solid.** Ready to proceed to Phase 0.3 (Parser Pipeline POC).
 
 ---
 

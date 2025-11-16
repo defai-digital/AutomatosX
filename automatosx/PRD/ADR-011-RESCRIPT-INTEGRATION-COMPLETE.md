@@ -10,7 +10,7 @@
 
 ## Context
 
-AutomatosX v2 aims to improve code quality and type safety by integrating ReScript (a type-safe functional language that compiles to JavaScript) alongside the existing TypeScript codebase. This ADR documents the integration strategy, implementation status, and lessons learned.
+AutomatosX aims to improve code quality and type safety by integrating ReScript (a type-safe functional language that compiles to JavaScript) alongside the existing TypeScript codebase. This ADR documents the integration strategy, implementation status, and lessons learned.
 
 ---
 

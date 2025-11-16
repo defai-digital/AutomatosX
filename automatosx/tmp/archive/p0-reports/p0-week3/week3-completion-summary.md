@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 (Sprint 2) Completion Summary
+# AutomatosX Revamp — P0 Week 3 (Sprint 2) Completion Summary
 
 ## Executive Summary
 

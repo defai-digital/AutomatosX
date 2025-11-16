@@ -61,7 +61,7 @@ AutomatosX indexes your codebase to provide:
                             language: 'bash',
                             code: 'ax --version',
                             explanation: 'Check that AutomatosX is installed correctly',
-                            output: 'AutomatosX v2.0.0',
+                            output: 'AutomatosX.0.0',
                         },
                     ],
                 },

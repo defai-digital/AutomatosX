@@ -1,4 +1,4 @@
-# AutomatosX v2.0.0 Release Checklist
+# AutomatosX.0.0 Release Checklist
 
 **Package**: automatosx-v2
 **Version**: 2.0.0
@@ -63,7 +63,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ```bash
 # Create annotated tag
-git tag -a v2.0.0 -m "AutomatosX v2.0.0 - Production Release
+git tag -a v2.0.0 -m "AutomatosX.0.0 - Production Release
 
 Highlights:
 - Multi-language code intelligence (TypeScript, JavaScript, Python)
@@ -149,7 +149,7 @@ git push origin v2.0.0
 
 1. Go to: https://github.com/YOUR-USERNAME/automatosx2/releases/new
 2. Select tag: v2.0.0
-3. Release title: **AutomatosX v2.0.0 - Production Release**
+3. Release title: **AutomatosX.0.0 - Production Release**
 4. Description: Copy from RELEASE-NOTES.md
 5. Attach: automatosx-v2-2.0.0.tgz (optional)
 6. Click "Publish release"
@@ -210,7 +210,7 @@ git push origin :refs/tags/v2.0.0
 ## Release Notes Template (for GitHub)
 
 ```markdown
-# AutomatosX v2.0.0 - Production Release 🚀
+# AutomatosX.0.0 - Production Release 🚀
 
 **Release Date**: 2025-11-06
 **Type**: Major Release
@@ -218,7 +218,7 @@ git push origin :refs/tags/v2.0.0
 
 ## 🎉 Highlights
 
-AutomatosX v2.0 is a complete rewrite delivering:
+AutomatosX.0 is a complete rewrite delivering:
 
 - **Multi-language support** - TypeScript, JavaScript, and Python
 - **10x performance boost** - Query caching, batch indexing, optimized database
@@ -320,7 +320,7 @@ MIT - See [LICENSE](LICENSE) for details
 
 ---
 
-**AutomatosX v2.0.0** - Production-Ready Code Intelligence
+**AutomatosX.0.0** - Production-Ready Code Intelligence
 
 Made with ❤️ by the AutomatosX team
 ```

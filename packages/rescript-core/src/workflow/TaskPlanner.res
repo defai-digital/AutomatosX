@@ -1,6 +1,6 @@
 // TaskPlanner.res
 // Day 62: Task Planning Engine - Dependency resolution, parallel planning, critical path analysis
-// AutomatosX v2 - Sprint 7, Week 1
+// AutomatosX - Sprint 7, Week 1
 
 open Core__Option
 open Core__Array

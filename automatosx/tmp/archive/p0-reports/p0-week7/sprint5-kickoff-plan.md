@@ -1,4 +1,4 @@
-# AutomatosX v2 — P0 Sprint 5 Kickoff Meeting Plan
+# AutomatosX — P0 Sprint 5 Kickoff Meeting Plan
 
 **Meeting Date:** Monday, March 3, 2025
 **Meeting Time:** 10:00 AM - 11:30 AM PT (90 minutes)
@@ -172,7 +172,7 @@ Sprint 5 represents a significant confidence milestone: our 4 consecutive 100% v
 **Priority:** P0 — CRITICAL (production expansion milestone)
 
 **Description:**
-Expand AutomatosX v2 production traffic from 5% to 10%, doubling our production footprint. This rollout builds on the successful 8-day Sprint 4 pilot (zero incidents, +2.1% variance) with proven monitoring, rollback, and escalation procedures.
+Expand AutomatosX production traffic from 5% to 10%, doubling our production footprint. This rollout builds on the successful 8-day Sprint 4 pilot (zero incidents, +2.1% variance) with proven monitoring, rollback, and escalation procedures.
 
 **Sprint 4 Context:**
 - 5% pilot: 8 days (Days 2-9), zero HIGH/CRITICAL incidents, variance +2.1%
@@ -837,7 +837,7 @@ Sprint 5 maintains the same 4 quality gates as Sprint 4, all of which were excee
 **Afternoon (1:00 PM - 5:00 PM):**
 - 1:00-3:00 PM: Internal Testing Phase Recruitment + Onboarding (Felix)
   - Recruit 5 internal testers (diverse codebases)
-  - Install AutomatosX v2, complete setup
+  - Install AutomatosX, complete setup
   - Distribute test plan (focus: 10% traffic stability, advanced features)
 - 3:00-5:00 PM: Internal Testing Execution (Felix)
   - 5 testers complete test plan (indexing, `ax find`, `ax def`, `ax flow`)

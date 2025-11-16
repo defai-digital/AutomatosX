@@ -1,4 +1,4 @@
-# AutomatosX v2 - Monitoring & Observability Guide
+# AutomatosX - Monitoring & Observability Guide
 
 **Version**: 2.0.0
 **Phase**: 6 Week 2 - Advanced Monitoring & Observability
@@ -22,7 +22,7 @@
 
 ## Overview
 
-AutomatosX v2 includes a comprehensive monitoring and observability system with:
+AutomatosX includes a comprehensive monitoring and observability system with:
 
 - **Metrics Collection**: Time-series metrics with percentile aggregation (P50, P95, P99)
 - **Distributed Tracing**: OpenTelemetry-style tracing for workflow execution paths

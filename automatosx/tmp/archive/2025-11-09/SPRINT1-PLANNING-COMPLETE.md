@@ -877,4 +877,4 @@ Successfully created comprehensive Sprint 1 planning documentation with megathin
 
 ---
 
-*Build the right thing, not just things right. Sprint 1 will stabilize the ReScript core runtime foundation for AutomatosX v2.*
+*Build the right thing, not just things right. Sprint 1 will stabilize the ReScript core runtime foundation for AutomatosX.*

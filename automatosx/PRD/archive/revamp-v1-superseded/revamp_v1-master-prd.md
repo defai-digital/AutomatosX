@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This PRD outlines the comprehensive migration strategy to combine the AI agent orchestration capabilities of AutomatosX v1 with the advanced code intelligence features of AutomatosX v2. The result will be a unified platform that provides both powerful code analysis AND intelligent AI agent collaboration.
+This PRD outlines the comprehensive migration strategy to combine the AI agent orchestration capabilities of AutomatosX v1 with the advanced code intelligence features of AutomatosX. The result will be a unified platform that provides both powerful code analysis AND intelligent AI agent collaboration.
 
 ### Vision
 
@@ -31,7 +31,7 @@ Create a single, powerful development platform where:
 
 ## Current State Analysis
 
-### AutomatosX v2 (Current - Code Intelligence Engine)
+### AutomatosX (Current - Code Intelligence Engine)
 
 **✅ Completed Features:**
 - Multi-language parsing (45+ languages via Tree-sitter)
@@ -100,7 +100,7 @@ Create a single, powerful development platform where:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     AutomatosX v2+                           │
+│                     AutomatosX+                           │
 │              (Code Intelligence + AI Agents)                 │
 └─────────────────────────────────────────────────────────────┘
                               │

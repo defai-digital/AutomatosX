@@ -167,7 +167,7 @@ Duration: 548ms
    - Use cases
 
 2. **Quick Start** - Get started quickly
-   - Installation (included in AutomatosX v2)
+   - Installation (included in AutomatosX)
    - Basic usage examples
    - First steps
 

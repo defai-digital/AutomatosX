@@ -34,7 +34,7 @@ export function createWatchCommand() {
             // Resolve directory
             const targetDir = directory;
             console.log();
-            console.log(chalk.bold(chalk.cyan('AutomatosX v2 - File Watcher')));
+            console.log(chalk.bold(chalk.cyan('AutomatosX - File Watcher')));
             console.log(chalk.dim('─'.repeat(60)));
             console.log();
             console.log(chalk.bold(`Watching: ${chalk.cyan(targetDir)}`));

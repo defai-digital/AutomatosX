@@ -507,7 +507,7 @@ error: This type constructor, `bigint`, can't be found.
 
 ---
 
-**Prepared By**: AutomatosX v2 Development Team
+**Prepared By**: AutomatosX Development Team
 **Sprint**: Sprint 3, Week 6, Day 26
 **Next**: Day 27 - Agent Parity Tests Part 1
 

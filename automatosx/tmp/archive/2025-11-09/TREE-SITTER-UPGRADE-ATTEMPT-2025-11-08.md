@@ -428,7 +428,7 @@ Even if core upgrade succeeded, 10 of 13 grammar packages need upgrades:
 **Future Action**: Revisit upgrade in P2 or when:
 - Node.js LTS (v20/v22) proven compatible with tree-sitter 0.25+
 - tree-sitter releases version with better build compatibility
-- AutomatosX v2 is stable in production
+- AutomatosX is stable in production
 - Dedicated sprint available for upgrade work
 
 ---

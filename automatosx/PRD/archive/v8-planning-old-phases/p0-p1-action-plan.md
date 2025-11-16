@@ -1,4 +1,4 @@
-# AutomatosX v2 - P0 + P1 Action Plan
+# AutomatosX - P0 + P1 Action Plan
 
 **Status**: Ready to Execute
 **Timeline**: 40 days (Days 81-120)

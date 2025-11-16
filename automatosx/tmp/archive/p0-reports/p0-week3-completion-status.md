@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Completion Status
+# AutomatosX Revamp — P0 Week 3 Completion Status
 
 ## Status: IN PROGRESS ⚙️
 

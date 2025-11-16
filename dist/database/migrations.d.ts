@@ -1,7 +1,7 @@
 /**
  * migrations.ts
  *
- * Database migration system for AutomatosX v2
+ * Database migration system for AutomatosX
  * Tracks and applies SQL migrations in order
  */
 import Database from 'better-sqlite3';

@@ -7,7 +7,7 @@
 
 ## What Was Delivered
 
-This planning phase produced a complete, actionable roadmap for AutomatosX v2 P1 Core based on metathinking analysis.
+This planning phase produced a complete, actionable roadmap for AutomatosX P1 Core based on metathinking analysis.
 
 ### Planning Documents Created
 

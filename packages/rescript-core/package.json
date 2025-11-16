@@ -1,7 +1,7 @@
 {
   "name": "@automatosx/rescript-core",
   "version": "2.0.0-alpha.0",
-  "description": "ReScript core runtime for AutomatosX v2",
+  "description": "ReScript core runtime for AutomatosX",
   "main": "./lib/js/src/Index.bs.js",
   "types": "./lib/js/src/Index.bs.d.ts",
   "scripts": {

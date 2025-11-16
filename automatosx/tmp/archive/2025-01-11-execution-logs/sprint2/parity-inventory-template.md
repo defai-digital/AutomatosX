@@ -1,4 +1,4 @@
-# AutomatosX v2 Agent Parity Inventory
+# AutomatosX Agent Parity Inventory
 
 **Sprint 2 Day 11 Deliverable**
 **Purpose**: Comprehensive catalog of 1,707 missing tests from v1 → v2, prioritized by user impact

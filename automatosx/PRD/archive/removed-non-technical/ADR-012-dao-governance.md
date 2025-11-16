@@ -3,13 +3,13 @@
 **Status:** Approved
 **Date:** January 23, 2025
 **Deciders:** Architecture Council (5/5 unanimous), Legal Team (approved), Avery (Architecture Lead)
-**Context:** AutomatosX v2 DAO governance structure for community-driven development
+**Context:** AutomatosX DAO governance structure for community-driven development
 
 ---
 
 ## Context and Problem Statement
 
-AutomatosX v2 introduces decentralized governance to enable community participation in product direction, feature prioritization, and treasury management. The DAO structure must balance decentralization with legal compliance, operational efficiency, and member liability protection.
+AutomatosX introduces decentralized governance to enable community participation in product direction, feature prioritization, and treasury management. The DAO structure must balance decentralization with legal compliance, operational efficiency, and member liability protection.
 
 **Key Requirements:**
 1. Legal entity structure with limited liability for token holders

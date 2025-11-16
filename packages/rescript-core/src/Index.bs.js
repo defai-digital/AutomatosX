@@ -12,7 +12,7 @@ var WorkflowTypes;
 
 var version = "2.0.0-alpha.0";
 
-var name = "AutomatosX v2 - ReScript Core";
+var name = "AutomatosX - ReScript Core";
 
 var makeStateMachine = StateMachineV2.make;
 

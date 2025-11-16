@@ -1,4 +1,4 @@
-# AutomatosX v2 CLI Documentation
+# AutomatosX CLI Documentation
 
 **Version**: 2.0.0
 **Sprint**: Sprint 2

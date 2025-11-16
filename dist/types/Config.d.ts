@@ -622,4 +622,9 @@ export interface ValidationResult {
     errors?: z.ZodError;
     config?: AutomatosXConfig;
 }
+/**
+ * Default configuration with all defaults applied
+ * Used by setup command and ConfigLoader
+ */
+export declare const DEFAULT_CONFIG: AutomatosXConfig;
 //# sourceMappingURL=Config.d.ts.map

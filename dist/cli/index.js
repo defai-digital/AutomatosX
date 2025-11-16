@@ -17,7 +17,7 @@
 /**
  * index.ts
  *
- * AutomatosX v2 CLI Entry Point
+ * AutomatosX CLI Entry Point
  * Main command-line interface for code intelligence
  */
 import { Command } from 'commander';
@@ -30,6 +30,7 @@ import { createIndexCommand } from './commands/index.js';
 import { createWatchCommand } from './commands/watch.js';
 import { createStatusCommand } from './commands/status.js';
 import { createConfigCommand } from './commands/config.js';
+import { createSetupCommand } from './commands/setup.js';
 import { createTelemetryCommand } from './commands/telemetry.js';
 import { createAnalyzeCommand } from './commands/analyze.js';
 import { createMemoryCommand } from './commands/memory.js';
@@ -75,7 +76,7 @@ async function initializeTelemetry() {
 const program = new Command();
 program
     .name('ax')
-    .description(chalk.bold('AutomatosX v2 - Code Intelligence CLI'))
+    .description(chalk.bold('AutomatosX - Code Intelligence CLI'))
     .version(packageJson.version, '-v, --version', 'Output the current version');
 // Add commands
 program.addCommand(createFindCommand());
@@ -86,6 +87,7 @@ program.addCommand(createIndexCommand());
 program.addCommand(createWatchCommand());
 program.addCommand(createStatusCommand());
 program.addCommand(createConfigCommand());
+program.addCommand(createSetupCommand());
 program.addCommand(createTelemetryCommand());
 program.addCommand(createAnalyzeCommand());
 program.addCommand(createMemoryCommand());

@@ -259,7 +259,7 @@ but cannot be named.
 ---
 
 **Document Version**: 1.0
-**Author**: AutomatosX v2 Team
+**Author**: AutomatosX Team
 **Status**: 🟡 AWAITING DECISION
 **Next Action**: Choose Option A, B, or C and proceed
 

@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 4 (Sprint 2 Completion) Summary
+# AutomatosX Revamp — P0 Week 4 (Sprint 2 Completion) Summary
 
 **Timeline:** Monday, January 27 - Friday, January 31, 2025 (Days 6-10 of Sprint 2)
 **Sprint Duration:** 10 days total (Week 3 Days 1-5 + Week 4 Days 6-10)

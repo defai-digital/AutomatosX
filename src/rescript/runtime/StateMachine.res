@@ -1,7 +1,7 @@
 // Sprint 1 Day 1: State Machine Skeleton
 // RE1 + ARCH: State variant module with typed transitions
 //
-// Purpose: Define core runtime states and transition logic for AutomatosX v2
+// Purpose: Define core runtime states and transition logic for AutomatosX
 // Architecture: Exhaustive pattern matching ensures all state transitions are explicit
 // Compliance: Zero warnings required for merge
 

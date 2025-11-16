@@ -1,4 +1,4 @@
-# AutomatosX v2 - P0 + P1 Complete PRD
+# AutomatosX - P0 + P1 Complete PRD
 
 **Version**: 2.0
 **Status**: Active Development
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-AutomatosX v2 is a production-ready code intelligence platform with AI-powered agents, multi-language support (45 languages), and comprehensive tooling. **P0 is complete** with core features operational. **P1 will add critical enhancements** to make the platform best-in-class.
+AutomatosX is a production-ready code intelligence platform with AI-powered agents, multi-language support (45 languages), and comprehensive tooling. **P0 is complete** with core features operational. **P1 will add critical enhancements** to make the platform best-in-class.
 
 **P0 Status**: ✅ **100% Complete**
 - Code intelligence (45 languages, Tree-sitter AST, SQLite FTS5)

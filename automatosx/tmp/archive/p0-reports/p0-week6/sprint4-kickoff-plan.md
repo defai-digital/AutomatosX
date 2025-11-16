@@ -1,4 +1,4 @@
-# AutomatosX v2 — P0 Sprint 4 Kickoff Meeting Plan
+# AutomatosX — P0 Sprint 4 Kickoff Meeting Plan
 
 **Meeting Date:** Monday, February 17, 2025
 **Meeting Time:** 10:00 AM - 11:30 AM PT (90 minutes)
@@ -13,7 +13,7 @@
 
 Sprint 4 marks the critical transition from beta testing to production rollout with a controlled 5% traffic pilot. This sprint focuses on three core objectives:
 
-1. **Production Pilot Rollout:** Deploy AutomatosX v2 to 5% of production traffic with comprehensive monitoring and rollback readiness
+1. **Production Pilot Rollout:** Deploy AutomatosX to 5% of production traffic with comprehensive monitoring and rollback readiness
 2. **Stabilization & Quality:** Address 2 P2 bugs from beta feedback, optimize 8 defects from Sprint 3, and maintain all quality gates
 3. **User Experience Enhancement:** Continue beta user support with office hours, improve onboarding, and gather production feedback
 
@@ -91,7 +91,7 @@ Sprint 4 builds on three consecutive 100% velocity sprints (Sprint 1, 2, 3) with
 ### Primary Goals (P0)
 
 **Goal 1: Successful Production Pilot Rollout**
-- Deploy AutomatosX v2 to 5% of production traffic by Day 2
+- Deploy AutomatosX to 5% of production traffic by Day 2
 - Achieve zero HIGH/CRITICAL incidents during 8-day pilot window (Days 2-9)
 - Maintain telemetry variance ≤5% from baseline
 - Complete 3 production readiness gates: monitoring, rollback, escalation
@@ -184,7 +184,7 @@ Complete the C++ modules implementation by resolving the cyclic imports edge cas
 **Priority:** P0 — CRITICAL (sprint primary goal)
 
 **Description:**
-Deploy AutomatosX v2 to 5% of production traffic with comprehensive monitoring, rollback readiness, and escalation procedures. This is the first production deployment of v2 following three sprints of beta testing.
+Deploy AutomatosX to 5% of production traffic with comprehensive monitoring, rollback readiness, and escalation procedures. This is the first production deployment of v2 following three sprints of beta testing.
 
 **Rollout Plan:**
 
@@ -1350,7 +1350,7 @@ Sprint 4 maintains the same 4 quality gates established in Sprint 1-3:
 
 **Key Messages:**
 
-1. **Sprint 4 is a Critical Milestone** — This sprint marks the transition from beta testing to production rollout. The 5% traffic pilot is our first real-world validation of AutomatosX v2 at scale.
+1. **Sprint 4 is a Critical Milestone** — This sprint marks the transition from beta testing to production rollout. The 5% traffic pilot is our first real-world validation of AutomatosX at scale.
 
 2. **Stability Over Velocity** — While we've achieved 100% velocity in Sprints 1-3, Sprint 4 prioritizes production stability. A reduced backlog (35 vs 40 points) and clear defer strategy (P0 > P1 > P2) ensure capacity for production support.
 

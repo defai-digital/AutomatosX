@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Day 1 Execution Outcomes (2025-01-20)
+# AutomatosX Revamp — P0 Week 3 Day 1 Execution Outcomes (2025-01-20)
 
 ## Sprint 2 Kickoff & Sprint 1 Retrospective
 

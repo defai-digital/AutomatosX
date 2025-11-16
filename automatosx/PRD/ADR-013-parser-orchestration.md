@@ -9,7 +9,7 @@
 
 ## Context and Problem Statement
 
-AutomatosX v2 requires code intelligence across multiple programming languages (13+ languages). This necessitates a unified parser orchestration strategy that can:
+AutomatosX requires code intelligence across multiple programming languages (13+ languages). This necessitates a unified parser orchestration strategy that can:
 1. Parse diverse language syntaxes efficiently
 2. Extract symbols, definitions, and code structure consistently
 3. Scale to support new languages without architectural changes

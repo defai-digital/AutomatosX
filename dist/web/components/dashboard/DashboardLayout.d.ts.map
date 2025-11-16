@@ -1,1 +1,0 @@
-{"version":3,"file":"DashboardLayout.d.ts","sourceRoot":"","sources":["../../../../src/web/components/dashboard/DashboardLayout.tsx"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,KAAK,MAAM,OAAO,CAAC;AA2C1B,UAAU,oBAAoB;IAC5B,QAAQ,EAAE,KAAK,CAAC,SAAS,CAAC;CAC3B;AAED,wBAAgB,eAAe,CAAC,EAAE,QAAQ,EAAE,EAAE,oBAAoB,GAAG,KAAK,CAAC,YAAY,CA8GtF;AAED,eAAe,eAAe,CAAC"}

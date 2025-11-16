@@ -1,4 +1,4 @@
-# AutomatosX v2 Implementation Plan
+# AutomatosX Implementation Plan
 
 Great architecture is invisible – it enables teams, evolves gracefully, and pays dividends over decades. This plan outlines how we evolve AutomatosX from v1 to v2 while preserving current capabilities, minimizing disruption, and laying an adaptable foundation for future tooling.
 

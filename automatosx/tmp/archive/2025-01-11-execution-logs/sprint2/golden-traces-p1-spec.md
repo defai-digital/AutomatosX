@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document specifies 20 P1 golden traces for AutomatosX v2. These traces complement the 10 P0 traces by covering:
+This document specifies 20 P1 golden traces for AutomatosX. These traces complement the 10 P0 traces by covering:
 - Provider fallback scenarios
 - Platform-specific behavior (Windows, Linux, macOS)
 - Edge cases and error conditions

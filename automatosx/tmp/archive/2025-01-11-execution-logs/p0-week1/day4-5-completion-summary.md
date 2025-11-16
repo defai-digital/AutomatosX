@@ -1,5 +1,5 @@
 # Sprint 1 Days 4-5 Completion Summary
-**AutomatosX v2 Runtime - Rule Engine Scaffold, Policy DSL, and P0 Security Mitigations**
+**AutomatosX Runtime - Rule Engine Scaffold, Policy DSL, and P0 Security Mitigations**
 
 **Date:** November 8, 2025
 **Phase:** P0 (Week 1, Days 4-5)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Successfully implemented Sprint 1 Days 4-5 objectives, delivering **Rule Engine scaffold**, **Policy DSL**, and **P0 security mitigations** for AutomatosX v2 Runtime. All ReScript modules compile with **zero warnings**, all tests pass (**102 runtime tests**), and security threats T1, T3, and T6 are now mitigated.
+Successfully implemented Sprint 1 Days 4-5 objectives, delivering **Rule Engine scaffold**, **Policy DSL**, and **P0 security mitigations** for AutomatosX Runtime. All ReScript modules compile with **zero warnings**, all tests pass (**102 runtime tests**), and security threats T1, T3, and T6 are now mitigated.
 
 **Key Metrics:**
 - **Lines of Code:** 2,573 total (1,044 ReScript + 1,529 TypeScript)

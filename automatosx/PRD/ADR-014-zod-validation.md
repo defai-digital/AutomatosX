@@ -9,7 +9,7 @@
 
 ## Context and Problem Statement
 
-AutomatosX v2 operates at critical boundaries where data integrity is essential:
+AutomatosX operates at critical boundaries where data integrity is essential:
 - **CLI Input**: User-provided arguments and flags
 - **Configuration Files**: `automatosx.config.json` and other configs
 - **Parser Output**: Symbols and chunks from language parsers

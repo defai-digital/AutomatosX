@@ -179,11 +179,11 @@ export declare const PluginManifestSchema: z.ZodObject<{
         automatosx: z.ZodOptional<z.ZodString>;
         node: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        node?: string | undefined;
         automatosx?: string | undefined;
+        node?: string | undefined;
     }, {
-        node?: string | undefined;
         automatosx?: string | undefined;
+        node?: string | undefined;
     }>>;
     keywords: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
 }, "strip", z.ZodTypeAny, {
@@ -212,8 +212,8 @@ export declare const PluginManifestSchema: z.ZodObject<{
         } | undefined;
     };
     engines: {
-        node?: string | undefined;
         automatosx?: string | undefined;
+        node?: string | undefined;
     };
     description?: string | undefined;
     author?: string | undefined;
@@ -249,8 +249,8 @@ export declare const PluginManifestSchema: z.ZodObject<{
         } | undefined;
     } | undefined;
     engines?: {
-        node?: string | undefined;
         automatosx?: string | undefined;
+        node?: string | undefined;
     } | undefined;
 }>;
 export type PluginManifest = z.infer<typeof PluginManifestSchema>;

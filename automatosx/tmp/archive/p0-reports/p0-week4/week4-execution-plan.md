@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 4 Execution Plan (Sprint 2 Completion)
+# AutomatosX Revamp — P0 Week 4 Execution Plan (Sprint 2 Completion)
 
 ## Week 4 Overview
 

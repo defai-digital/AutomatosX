@@ -1,6 +1,6 @@
 /**
  * AutomatosX VS Code Extension Entry Point
- * Day 76: VS Code Extension for AutomatosX v2
+ * Day 76: VS Code Extension for AutomatosX
  */
 
 import * as vscode from 'vscode';

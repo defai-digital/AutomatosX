@@ -17,7 +17,7 @@ This action plan provides tactical, day-by-day implementation guidance for Sprin
 - Integration points
 - Quality gates
 
-**Focus**: Building production-ready Web UI and LSP Server for AutomatosX v2.
+**Focus**: Building production-ready Web UI and LSP Server for AutomatosX.
 
 ---
 
@@ -320,7 +320,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     <Box>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          AutomatosX v2
+          AutomatosX
         </Typography>
       </Toolbar>
       <Divider />
@@ -865,7 +865,7 @@ import { App } from '../../web/App.js';
 describe('App Component', () => {
   it('should render without crashing', () => {
     render(<App />);
-    expect(screen.getByText(/AutomatosX v2/i)).toBeInTheDocument();
+    expect(screen.getByText(/AutomatosX/i)).toBeInTheDocument();
   });
 
   it('should render navigation menu', () => {

@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Day 2 Execution Outcomes (2025-01-21)
+# AutomatosX Revamp — P0 Week 3 Day 2 Execution Outcomes (2025-01-21)
 
 ## Telemetry Readiness, Parser Scale, and Governance Alignment
 

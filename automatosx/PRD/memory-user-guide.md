@@ -49,7 +49,7 @@ The AutomatosX Memory System provides persistent storage and intelligent retriev
 
 ### Installation
 
-The Memory System is included in AutomatosX v2. No additional installation required.
+The Memory System is included in AutomatosX. No additional installation required.
 
 ### Basic Usage
 

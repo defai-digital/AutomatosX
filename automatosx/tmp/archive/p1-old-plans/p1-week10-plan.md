@@ -599,7 +599,7 @@ Learn how to create your first code search index in 15 minutes.
 
 ## Prerequisites
 - Node.js 18+
-- AutomatosX v2 installed
+- AutomatosX installed
 
 ## Step 1: Install
 \`\`\`bash
@@ -1110,7 +1110,7 @@ describe('P1 Completion Integration Tests', () => {
 
 ### 🎉 Major Release: Phase 1 Complete
 
-AutomatosX v2.0 is a complete rewrite with ReScript core, TypeScript integration layer, and ML-powered semantic search.
+AutomatosX.0 is a complete rewrite with ReScript core, TypeScript integration layer, and ML-powered semantic search.
 
 ### ✨ Features
 

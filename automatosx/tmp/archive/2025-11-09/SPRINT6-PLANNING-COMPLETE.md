@@ -15,7 +15,7 @@
 - **Starting Point**: Production excellence achieved with 2,573 tests passing, production monitoring operational, community docs site live, 10+ community plugins
 
 ### Sprint 6 Scope
-Sprint 6 is the **FINAL sprint** of the 12-week AutomatosX v2 transformation roadmap. It focuses on:
+Sprint 6 is the **FINAL sprint** of the 12-week AutomatosX transformation roadmap. It focuses on:
 - **Advanced ecosystem features**: Enhanced plugin templates, marketplace analytics dashboard, community governance framework
 - **Maintenance automation**: Dependency updates with security scanning, comprehensive operations runbooks, disaster recovery procedures
 - **Long-term sustainability**: Migration documentation, knowledge transfer, automated backup and recovery
@@ -46,7 +46,7 @@ Sprint 6 is the **FINAL sprint** of the 12-week AutomatosX v2 transformation roa
 ## 3. Mission and Goals
 
 ### Mission Statement
-Complete the 12-week AutomatosX v2 roadmap with:
+Complete the 12-week AutomatosX roadmap with:
 1. **Ecosystem Maturity**: Thriving plugin ecosystem with 15+ community plugins, 200+ weekly active developers, advanced marketplace analytics, and community governance
 2. **Sustainability Planning**: Automated maintenance (dependency updates, security scanning), comprehensive runbooks, disaster recovery procedures, and upgrade paths
 3. **Comprehensive Handoff**: Complete documentation packages, training materials, stakeholder knowledge transfer, and production validation
@@ -88,7 +88,7 @@ Complete the 12-week AutomatosX v2 roadmap with:
 ### 4.5 Handoff Package
 - **Architecture Documentation**: Detailed runtime documentation (state machines, plugin lifecycle, workflow resolution), architecture diagrams, extension points
 - **Deployment Guides**: Production deployment procedures, infrastructure requirements, scaling recommendations, disaster recovery procedures
-- **Training Materials**: Video tutorials for key workflows, hands-on exercises, sample projects, training modules (AutomatosX v2 overview, CLI usage, plugin development, code intelligence)
+- **Training Materials**: Video tutorials for key workflows, hands-on exercises, sample projects, training modules (AutomatosX overview, CLI usage, plugin development, code intelligence)
 - **Operations Documentation**: Monitoring procedures, incident response playbooks, maintenance schedules
 
 ---
@@ -224,7 +224,7 @@ Complete the 12-week AutomatosX v2 roadmap with:
 
 ### Ecosystem Health
 - **Community Plugins**: 15+ published to marketplace (up from 10+)
-- **Weekly Active Developers**: 200+ using AutomatosX v2 (up from 100+)
+- **Weekly Active Developers**: 200+ using AutomatosX (up from 100+)
 - **Plugin Template Usage**: >50% of new plugins using enhanced templates
 - **Marketplace Engagement**: +25% discovery CTR maintained from Sprint 5
 
@@ -370,7 +370,7 @@ Complete the 12-week AutomatosX v2 roadmap with:
 
 ## 14. Final Roadmap Completion Status
 
-### 12-Week AutomatosX v2 Transformation — Complete ✅
+### 12-Week AutomatosX Transformation — Complete ✅
 
 #### Week-by-Week Completion
 - **Weeks 1-2 (Sprint 1)**: ReScript core runtime stabilization → Foundation complete ✅
@@ -437,7 +437,7 @@ Complete the 12-week AutomatosX v2 roadmap with:
 ### Post-Handoff Planning
 - **Support Transition**: Define post-handoff support model and SLAs
 - **Continuous Improvement**: Establish feedback loops for community and ecosystem growth
-- **Future Roadmap**: Plan for AutomatosX v2.1+ features and enhancements based on handoff insights
+- **Future Roadmap**: Plan for AutomatosX.1+ features and enhancements based on handoff insights
 - **Team Recognition**: Celebrate 12-week roadmap completion and recognize individual contributions
 
 ---
@@ -460,9 +460,9 @@ Complete the 12-week AutomatosX v2 roadmap with:
 
 ## 17. Conclusion
 
-**Sprint 6 planning is complete**, marking the **completion of all planning for the full 12-week AutomatosX v2 transformation roadmap**.
+**Sprint 6 planning is complete**, marking the **completion of all planning for the full 12-week AutomatosX transformation roadmap**.
 
-With comprehensive PRDs, detailed day-by-day action plans, and planning summaries for all 6 sprints (60 days), the team is fully equipped to execute the AutomatosX v2 transformation from foundation to production excellence to successful handoff.
+With comprehensive PRDs, detailed day-by-day action plans, and planning summaries for all 6 sprints (60 days), the team is fully equipped to execute the AutomatosX transformation from foundation to production excellence to successful handoff.
 
 **Key Highlights**:
 - ✅ All 6 sprints planned with detailed PRDs and action plans
@@ -484,6 +484,6 @@ With comprehensive PRDs, detailed day-by-day action plans, and planning summarie
 
 ---
 
-**12-Week AutomatosX v2 Transformation Roadmap Planning: COMPLETE** ✅
+**12-Week AutomatosX Transformation Roadmap Planning: COMPLETE** ✅
 
 **Next Milestone**: Begin Sprint 6 execution on Day 51 (after Sprint 5 completion) → Achieve 12-week roadmap completion on Day 60 🚀

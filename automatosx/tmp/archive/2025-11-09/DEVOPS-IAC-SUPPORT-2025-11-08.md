@@ -867,4 +867,4 @@ npm install @tree-sitter-grammars/tree-sitter-hcl@1.2.0 \
    - Container Orchestration (Kubernetes, Docker Compose)
    - Cloud Providers (AWS, Azure, GCP, DigitalOcean, Cloudflare)
 
-AutomatosX v2 now provides complete DevOps and Infrastructure as Code ecosystem support!
+AutomatosX now provides complete DevOps and Infrastructure as Code ecosystem support!

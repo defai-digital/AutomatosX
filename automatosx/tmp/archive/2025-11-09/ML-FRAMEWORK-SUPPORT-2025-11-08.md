@@ -4,13 +4,13 @@
 
 ## Summary
 
-Comprehensive analysis of TensorFlow, PyTorch, and ML ecosystem file formats to determine AutomatosX v2 support capabilities.
+Comprehensive analysis of TensorFlow, PyTorch, and ML ecosystem file formats to determine AutomatosX support capabilities.
 
 ## Key Finding
 
 **✅ All ML framework code and configurations are already fully supported!**
 
-ML frameworks use standard programming languages and configuration formats that AutomatosX v2 already parses.
+ML frameworks use standard programming languages and configuration formats that AutomatosX already parses.
 
 ## Detailed Analysis
 
@@ -513,7 +513,7 @@ message NodeProto {
 | **ONNX Models** | - | Binary (.onnx) | ⚠️ Binary Format |
 | **Protocol Buffers** | - | .proto files | ❌ Not on npm |
 
-## AutomatosX v2 Coverage
+## AutomatosX Coverage
 
 ### ✅ Fully Supported (100% Coverage)
 
@@ -628,7 +628,7 @@ ax find "parameters" --lang yaml
 
 **All ML framework code and configurations are already fully supported!**
 
-AutomatosX v2 can index and search:
+AutomatosX can index and search:
 - ✅ TensorFlow (Python, JS, C++, JSON configs)
 - ✅ PyTorch (Python, C++, YAML configs)
 - ✅ PyTorch Lightning (Python, YAML)
@@ -671,4 +671,4 @@ tree-sitter parsers exist on GitHub but not published to npm:
 ⚠️ **Binary model files** (.pt, .pth, .onnx, .pb) are not parseable (expected)
 ❌ **.proto files** - Parser exists on GitHub but not on npm
 
-AutomatosX v2 is fully equipped to handle all ML/AI development workflows with TensorFlow, PyTorch, and the entire ML ecosystem!
+AutomatosX is fully equipped to handle all ML/AI development workflows with TensorFlow, PyTorch, and the entire ML ecosystem!

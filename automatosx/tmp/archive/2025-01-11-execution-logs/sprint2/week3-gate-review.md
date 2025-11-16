@@ -279,7 +279,7 @@ Based on current velocity and remaining specifications:
 
 ---
 
-**Prepared By**: AutomatosX v2 Development Team
+**Prepared By**: AutomatosX Development Team
 **Reviewed By**: Sprint 2 Technical Lead
 **Approved By**: Project Architect
 

@@ -1,4 +1,4 @@
-# AutomatosX v2 - Future Development Roadmap
+# AutomatosX - Future Development Roadmap
 
 **Status**: Planning
 **Timeline**: Post-Sprint 8 (Days 81+)
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This document consolidates all planned future features for AutomatosX v2, organized by strategic themes rather than sprint boundaries. With Sprint 8 complete (Web UI, LSP Server, VS Code Extension), the following roadmap outlines the path to a world-class, AI-powered, enterprise-ready code intelligence platform.
+This document consolidates all planned future features for AutomatosX, organized by strategic themes rather than sprint boundaries. With Sprint 8 complete (Web UI, LSP Server, VS Code Extension), the following roadmap outlines the path to a world-class, AI-powered, enterprise-ready code intelligence platform.
 
 **Strategic Pillars**:
 1. **AI & Machine Learning** - Semantic search, code generation, intelligent assistance
@@ -865,7 +865,7 @@ ax plugin publish
 
 ## Conclusion
 
-This roadmap outlines an ambitious but achievable path to transform AutomatosX v2 from a powerful local tool into a world-class, AI-powered, enterprise-ready code intelligence platform. By focusing on five strategic pillars—AI/ML, Cloud Infrastructure, Developer Experience, Production Excellence, and Multi-Platform Support—we can deliver exceptional value to developers and organizations worldwide.
+This roadmap outlines an ambitious but achievable path to transform AutomatosX from a powerful local tool into a world-class, AI-powered, enterprise-ready code intelligence platform. By focusing on five strategic pillars—AI/ML, Cloud Infrastructure, Developer Experience, Production Excellence, and Multi-Platform Support—we can deliver exceptional value to developers and organizations worldwide.
 
 **Key Success Factors**:
 - **Incremental Delivery**: Ship features iteratively, gather feedback, iterate

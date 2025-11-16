@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Sprint 8 transforms AutomatosX v2 from a CLI-only tool into a comprehensive development platform with:
+Sprint 8 transforms AutomatosX from a CLI-only tool into a comprehensive development platform with:
 1. **Web-based dashboard** for visual analytics
 2. **Language Server Protocol (LSP)** implementation for editor integration
 3. **VS Code extension** for seamless IDE experience

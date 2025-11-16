@@ -9,12 +9,12 @@ import { z } from 'zod';
  * - ax memory search "API design" --agent backend --limit 20
  * - ax memory search "bug fixes" --date-from 2025-01-01T00:00:00Z --format json
  */
-export declare const MemorySearchSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const MemorySearchSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     query: z.ZodString;
     agent: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
     dateFrom: z.ZodOptional<z.ZodString>;
@@ -25,7 +25,7 @@ export declare const MemorySearchSchema: z.ZodObject<z.objectUtil.extendShape<{
     format: z.ZodDefault<z.ZodEnum<["text", "json", "table", "yaml"]>>;
     exactMatch: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     sortBy: z.ZodDefault<z.ZodOptional<z.ZodEnum<["relevance", "date", "agent"]>>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     query: string;

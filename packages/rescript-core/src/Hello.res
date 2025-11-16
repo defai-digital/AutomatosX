@@ -4,7 +4,7 @@
 // Simple greeting function
 @genType
 let greet = (name: string): string => {
-  `Hello, ${name}! Welcome to AutomatosX v2 with ReScript.`
+  `Hello, ${name}! Welcome to AutomatosX with ReScript.`
 }
 
 // Function to demonstrate ReScript's type safety
@@ -18,7 +18,7 @@ let add = (a: int, b: int): int => {
 let getGreetingOrDefault = (name: option<string>): string => {
   switch name {
   | Some(n) => greet(n)
-  | None => "Hello, Guest! Welcome to AutomatosX v2."
+  | None => "Hello, Guest! Welcome to AutomatosX."
   }
 }
 
@@ -36,4 +36,4 @@ let greetPerson = (person: person): string => {
 
 // Module-level message
 @genType
-let welcomeMessage = "AutomatosX v2 - ReScript Core Runtime Initialized"
+let welcomeMessage = "AutomatosX - ReScript Core Runtime Initialized"

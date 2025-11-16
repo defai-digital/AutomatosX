@@ -1,15 +1,15 @@
-# AutomatosX v2 - Privacy Policy & Telemetry
+# AutomatosX - Privacy Policy & Telemetry
 
 **Last Updated:** 2025-11-07
 **Version:** 2.0.0
 
 ## Overview
 
-AutomatosX v2 respects your privacy. This document explains what data is collected when telemetry is enabled, how it's used, and your choices.
+AutomatosX respects your privacy. This document explains what data is collected when telemetry is enabled, how it's used, and your choices.
 
 ## Privacy-First Design
 
-AutomatosX v2 telemetry is designed with **privacy as the default**:
+AutomatosX telemetry is designed with **privacy as the default**:
 
 - **Opt-in Required**: Telemetry is **disabled by default**. You must explicitly enable it.
 - **Local-Only Storage**: All telemetry data is stored **locally on your machine** in SQLite.
@@ -20,7 +20,7 @@ AutomatosX v2 telemetry is designed with **privacy as the default**:
 
 ## What Data is Collected
 
-When telemetry is **enabled**, AutomatosX v2 collects:
+When telemetry is **enabled**, AutomatosX collects:
 
 ### 1. Command Execution Metrics
 
@@ -121,7 +121,7 @@ When telemetry is **enabled**, AutomatosX v2 collects:
 
 ## What is NOT Collected
 
-AutomatosX v2 **never collects**:
+AutomatosX **never collects**:
 
 - ❌ **File paths or directory structures**
 - ❌ **File names**
@@ -143,7 +143,7 @@ AutomatosX v2 **never collects**:
 All telemetry data is stored **locally** on your machine:
 
 - **Database**: SQLite (`.automatosx/telemetry.db`)
-- **Location**: Same directory as your AutomatosX v2 index
+- **Location**: Same directory as your AutomatosX index
 - **Encryption**: Optional (if your filesystem uses encryption)
 - **Access**: Only you can read this data
 
@@ -161,7 +161,7 @@ If you enable **remote submission** (`--remote` flag):
 
 ## How Data is Used
 
-Telemetry data helps improve AutomatosX v2:
+Telemetry data helps improve AutomatosX:
 
 1. **Performance Optimization**: Identify slow operations and optimize algorithms
 2. **Error Detection**: Proactively identify and fix bugs
@@ -241,7 +241,7 @@ ax telemetry export --start 2025-01-01 --end 2025-01-31
 
 ## Third-Party Services
 
-AutomatosX v2 **does not** use third-party analytics services:
+AutomatosX **does not** use third-party analytics services:
 
 - ❌ No Google Analytics
 - ❌ No Mixpanel
@@ -260,7 +260,7 @@ All telemetry is **self-hosted** and under your control.
 
 ## GDPR & Privacy Regulations
 
-AutomatosX v2 telemetry is designed to comply with GDPR and other privacy regulations:
+AutomatosX telemetry is designed to comply with GDPR and other privacy regulations:
 
 - **Consent**: Required before any data collection (opt-in)
 - **Right to Access**: View all collected data (`ax telemetry stats`, `ax telemetry export`)
@@ -318,4 +318,4 @@ We are committed to:
 
 ---
 
-**Thank you for helping improve AutomatosX v2!** Your privacy is our priority.
+**Thank you for helping improve AutomatosX!** Your privacy is our priority.

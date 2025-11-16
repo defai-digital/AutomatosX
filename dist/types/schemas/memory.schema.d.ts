@@ -18,18 +18,18 @@ export declare const MessageSchema: z.ZodObject<{
     id: string;
     content: string;
     createdAt: number;
-    conversationId: string;
-    role: "function" | "user" | "assistant" | "system" | "tool";
     updatedAt: number;
+    role: "function" | "system" | "user" | "assistant" | "tool";
+    conversationId: string;
     metadata?: Record<string, unknown> | undefined;
     tokens?: number | undefined;
 }, {
     id: string;
     content: string;
     createdAt: number;
-    conversationId: string;
-    role: "function" | "user" | "assistant" | "system" | "tool";
     updatedAt: number;
+    role: "function" | "system" | "user" | "assistant" | "tool";
+    conversationId: string;
     metadata?: Record<string, unknown> | undefined;
     tokens?: number | undefined;
 }>;
@@ -42,14 +42,14 @@ export declare const CreateMessageSchema: z.ZodObject<{
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
     content: string;
+    role: "function" | "system" | "user" | "assistant" | "tool";
     conversationId: string;
-    role: "function" | "user" | "assistant" | "system" | "tool";
     metadata?: Record<string, unknown> | undefined;
     tokens?: number | undefined;
 }, {
     content: string;
+    role: "function" | "system" | "user" | "assistant" | "tool";
     conversationId: string;
-    role: "function" | "user" | "assistant" | "system" | "tool";
     metadata?: Record<string, unknown> | undefined;
     tokens?: number | undefined;
 }>;
@@ -72,10 +72,10 @@ export declare const ConversationSchema: z.ZodObject<{
     title: string;
     createdAt: number;
     updatedAt: number;
+    totalTokens: number;
     agentId: string;
     state: "idle" | "active" | "searching" | "archived" | "deleted";
     messageCount: number;
-    totalTokens: number;
     metadata?: Record<string, unknown> | undefined;
     userId?: string | undefined;
     archivedAt?: number | undefined;
@@ -85,10 +85,10 @@ export declare const ConversationSchema: z.ZodObject<{
     title: string;
     createdAt: number;
     updatedAt: number;
+    totalTokens: number;
     agentId: string;
     state: "idle" | "active" | "searching" | "archived" | "deleted";
     messageCount: number;
-    totalTokens: number;
     metadata?: Record<string, unknown> | undefined;
     userId?: string | undefined;
     archivedAt?: number | undefined;
@@ -129,7 +129,7 @@ export declare const UpdateConversationSchema: z.ZodObject<{
     state?: "idle" | "active" | "searching" | "archived" | "deleted" | undefined;
 }>;
 export type UpdateConversation = z.infer<typeof UpdateConversationSchema>;
-export declare const ConversationWithMessagesSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ConversationWithMessagesSchema: z.ZodObject<{
     id: z.ZodString;
     agentId: z.ZodString;
     userId: z.ZodOptional<z.ZodString>;
@@ -142,7 +142,7 @@ export declare const ConversationWithMessagesSchema: z.ZodObject<z.objectUtil.ex
     updatedAt: z.ZodNumber;
     archivedAt: z.ZodOptional<z.ZodNumber>;
     deletedAt: z.ZodOptional<z.ZodNumber>;
-}, {
+} & {
     messages: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         conversationId: z.ZodString;
@@ -156,40 +156,40 @@ export declare const ConversationWithMessagesSchema: z.ZodObject<z.objectUtil.ex
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }, {
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }>, "many">;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     id: string;
     title: string;
     createdAt: number;
     updatedAt: number;
-    agentId: string;
-    state: "idle" | "active" | "searching" | "archived" | "deleted";
-    messageCount: number;
-    totalTokens: number;
     messages: {
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];
+    totalTokens: number;
+    agentId: string;
+    state: "idle" | "active" | "searching" | "archived" | "deleted";
+    messageCount: number;
     metadata?: Record<string, unknown> | undefined;
     userId?: string | undefined;
     archivedAt?: number | undefined;
@@ -199,20 +199,20 @@ export declare const ConversationWithMessagesSchema: z.ZodObject<z.objectUtil.ex
     title: string;
     createdAt: number;
     updatedAt: number;
-    agentId: string;
-    state: "idle" | "active" | "searching" | "archived" | "deleted";
-    messageCount: number;
-    totalTokens: number;
     messages: {
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];
+    totalTokens: number;
+    agentId: string;
+    state: "idle" | "active" | "searching" | "archived" | "deleted";
+    messageCount: number;
     metadata?: Record<string, unknown> | undefined;
     userId?: string | undefined;
     archivedAt?: number | undefined;
@@ -296,8 +296,8 @@ export declare const AgentStateSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     createdAt: number;
-    conversationId: string;
     updatedAt: number;
+    conversationId: string;
     agentId: string;
     state: "completed" | "failed" | "idle" | "planning" | "validating_task" | "selecting_tools" | "executing_tools" | "processing_results" | "delegating" | "awaiting_delegation" | "completing" | "paused";
     taskQueue: string[];
@@ -306,8 +306,8 @@ export declare const AgentStateSchema: z.ZodObject<{
 }, {
     id: string;
     createdAt: number;
-    conversationId: string;
     updatedAt: number;
+    conversationId: string;
     agentId: string;
     state: "completed" | "failed" | "idle" | "planning" | "validating_task" | "selecting_tools" | "executing_tools" | "processing_results" | "delegating" | "awaiting_delegation" | "completing" | "paused";
     metadata?: Record<string, unknown> | undefined;
@@ -395,14 +395,14 @@ export declare const MemorySearchOptionsSchema: z.ZodObject<{
     sortBy: "createdAt" | "updatedAt" | "relevance";
     sortOrder: "asc" | "desc";
     skipCount: boolean;
+    role?: "function" | "system" | "user" | "assistant" | "tool" | undefined;
     conversationId?: string | undefined;
-    role?: "function" | "user" | "assistant" | "system" | "tool" | undefined;
     agentId?: string | undefined;
     userId?: string | undefined;
 }, {
     query: string;
+    role?: "function" | "system" | "user" | "assistant" | "tool" | undefined;
     conversationId?: string | undefined;
-    role?: "function" | "user" | "assistant" | "system" | "tool" | undefined;
     agentId?: string | undefined;
     userId?: string | undefined;
     limit?: number | undefined;
@@ -428,18 +428,18 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }, {
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }>, "many">;
@@ -461,10 +461,10 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -474,10 +474,10 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -492,9 +492,9 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];
@@ -505,10 +505,10 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -521,9 +521,9 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];
@@ -534,10 +534,10 @@ export declare const MemorySearchResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -612,7 +612,7 @@ export declare const MemoryExportOptionsSchema: z.ZodObject<{
 }>;
 export type MemoryExportOptions = z.infer<typeof MemoryExportOptionsSchema>;
 export declare const MemoryExportSchema: z.ZodObject<{
-    conversations: z.ZodArray<z.ZodObject<z.objectUtil.extendShape<{
+    conversations: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
         agentId: z.ZodString;
         userId: z.ZodOptional<z.ZodString>;
@@ -625,7 +625,7 @@ export declare const MemoryExportSchema: z.ZodObject<{
         updatedAt: z.ZodNumber;
         archivedAt: z.ZodOptional<z.ZodNumber>;
         deletedAt: z.ZodOptional<z.ZodNumber>;
-    }, {
+    } & {
         messages: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             conversationId: z.ZodString;
@@ -639,40 +639,40 @@ export declare const MemoryExportSchema: z.ZodObject<{
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }, {
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }>, "many">;
-    }>, "strip", z.ZodTypeAny, {
+    }, "strip", z.ZodTypeAny, {
         id: string;
         title: string;
         createdAt: number;
         updatedAt: number;
-        agentId: string;
-        state: "idle" | "active" | "searching" | "archived" | "deleted";
-        messageCount: number;
-        totalTokens: number;
         messages: {
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }[];
+        totalTokens: number;
+        agentId: string;
+        state: "idle" | "active" | "searching" | "archived" | "deleted";
+        messageCount: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -682,20 +682,20 @@ export declare const MemoryExportSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
-        agentId: string;
-        state: "idle" | "active" | "searching" | "archived" | "deleted";
-        messageCount: number;
-        totalTokens: number;
         messages: {
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }[];
+        totalTokens: number;
+        agentId: string;
+        state: "idle" | "active" | "searching" | "archived" | "deleted";
+        messageCount: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -770,20 +770,20 @@ export declare const MemoryExportSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
-        agentId: string;
-        state: "idle" | "active" | "searching" | "archived" | "deleted";
-        messageCount: number;
-        totalTokens: number;
         messages: {
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }[];
+        totalTokens: number;
+        agentId: string;
+        state: "idle" | "active" | "searching" | "archived" | "deleted";
+        messageCount: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -818,20 +818,20 @@ export declare const MemoryExportSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
-        agentId: string;
-        state: "idle" | "active" | "searching" | "archived" | "deleted";
-        messageCount: number;
-        totalTokens: number;
         messages: {
             id: string;
             content: string;
             createdAt: number;
-            conversationId: string;
-            role: "function" | "user" | "assistant" | "system" | "tool";
             updatedAt: number;
+            role: "function" | "system" | "user" | "assistant" | "tool";
+            conversationId: string;
             metadata?: Record<string, unknown> | undefined;
             tokens?: number | undefined;
         }[];
+        totalTokens: number;
+        agentId: string;
+        state: "idle" | "active" | "searching" | "archived" | "deleted";
+        messageCount: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -913,10 +913,10 @@ export declare const ConversationListResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -926,10 +926,10 @@ export declare const ConversationListResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -947,10 +947,10 @@ export declare const ConversationListResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -966,10 +966,10 @@ export declare const ConversationListResultSchema: z.ZodObject<{
         title: string;
         createdAt: number;
         updatedAt: number;
+        totalTokens: number;
         agentId: string;
         state: "idle" | "active" | "searching" | "archived" | "deleted";
         messageCount: number;
-        totalTokens: number;
         metadata?: Record<string, unknown> | undefined;
         userId?: string | undefined;
         archivedAt?: number | undefined;
@@ -992,10 +992,10 @@ export declare const MessageListOptionsSchema: z.ZodObject<{
     offset: number;
     sortBy: "createdAt" | "updatedAt";
     sortOrder: "asc" | "desc";
-    role?: "function" | "user" | "assistant" | "system" | "tool" | undefined;
+    role?: "function" | "system" | "user" | "assistant" | "tool" | undefined;
 }, {
     conversationId: string;
-    role?: "function" | "user" | "assistant" | "system" | "tool" | undefined;
+    role?: "function" | "system" | "user" | "assistant" | "tool" | undefined;
     limit?: number | undefined;
     offset?: number | undefined;
     sortBy?: "createdAt" | "updatedAt" | undefined;
@@ -1016,18 +1016,18 @@ export declare const MessageListResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }, {
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }>, "many">;
@@ -1040,9 +1040,9 @@ export declare const MessageListResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];
@@ -1055,9 +1055,9 @@ export declare const MessageListResultSchema: z.ZodObject<{
         id: string;
         content: string;
         createdAt: number;
-        conversationId: string;
-        role: "function" | "user" | "assistant" | "system" | "tool";
         updatedAt: number;
+        role: "function" | "system" | "user" | "assistant" | "tool";
+        conversationId: string;
         metadata?: Record<string, unknown> | undefined;
         tokens?: number | undefined;
     }[];

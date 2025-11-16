@@ -59,7 +59,7 @@
 
 **1. Create README.md** (1 hour):
 ```markdown
-# AutomatosX v2
+# AutomatosX
 
 Production-ready code intelligence for TypeScript & Python projects.
 
@@ -332,7 +332,7 @@ AUTOMATOSX_INDEXING_EXCLUDE_PATTERNS='["**/test/**"]'
 
 **4. Create RELEASE-NOTES.md** (30 min):
 ```markdown
-# AutomatosX v2.0.0 Release Notes
+# AutomatosX.0.0 Release Notes
 
 **Release Date**: 2025-11-06
 **Type**: Major Release
@@ -340,7 +340,7 @@ AUTOMATOSX_INDEXING_EXCLUDE_PATTERNS='["**/test/**"]'
 
 ## Highlights
 
-AutomatosX v2.0 represents a complete rewrite of the code intelligence engine with:
+AutomatosX.0 represents a complete rewrite of the code intelligence engine with:
 - **Multi-language support**: TypeScript, JavaScript, Python
 - **10x performance improvements**: Query caching, batch indexing, database indices
 - **Professional UX**: Enhanced error handling, recovery suggestions, progress indicators

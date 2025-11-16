@@ -1,4 +1,4 @@
-# Phase 2 Multi-Phase Action Plan - AutomatosX v2
+# Phase 2 Multi-Phase Action Plan - AutomatosX
 
 **Document Type**: Execution Roadmap
 **Status**: Draft

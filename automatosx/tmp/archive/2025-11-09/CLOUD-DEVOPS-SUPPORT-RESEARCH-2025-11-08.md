@@ -688,4 +688,4 @@ message GetUserRequest {
 ❌ **4 tools not available**: Dockerfile, Nginx, Protobuf, Bicep
 ⚠️ **Partial support**: Ansible (YAML only), Helm (YAML only, no Go templates)
 
-With the addition of Terraform/HCL and Groovy/Jenkins, AutomatosX v2 will have comprehensive DevOps ecosystem support!
+With the addition of Terraform/HCL and Groovy/Jenkins, AutomatosX will have comprehensive DevOps ecosystem support!

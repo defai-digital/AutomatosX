@@ -9,12 +9,12 @@ import { z } from 'zod';
  * - ax run backend "Fix login bug" --streaming --provider claude
  * - ax run product "Design pricing page" --parallel --resumable
  */
-export declare const RunCommandSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const RunCommandSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     agent: z.ZodEffects<z.ZodString, string, string>;
     task: z.ZodEffects<z.ZodString, string, string>;
     streaming: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
@@ -25,7 +25,7 @@ export declare const RunCommandSchema: z.ZodObject<z.objectUtil.extendShape<{
     useMemory: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     memoryLimit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
     maxRetries: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     parallel: boolean;
@@ -33,8 +33,8 @@ export declare const RunCommandSchema: z.ZodObject<z.objectUtil.extendShape<{
     streaming: boolean;
     maxRetries: number;
     debug: boolean;
-    quiet: boolean;
     task: string;
+    quiet: boolean;
     resumable: boolean;
     useMemory: boolean;
     memoryLimit: number;

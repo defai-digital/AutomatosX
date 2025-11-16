@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Evaluated three proposed language additions (Mojo, CUDA, HTML/CSS) for AutomatosX v2.
+Evaluated three proposed language additions (Mojo, CUDA, HTML/CSS) for AutomatosX.
 
 **Recommendations**:
 - ✅ **HTML**: STRONGLY RECOMMENDED (compatible, high value)
@@ -625,7 +625,7 @@ tree-sitter@0.25.0 (required) → Risk to 13 existing parsers
 - Sprint 15: +1 language (HTML) → **14 active languages**
 - P1 Phase: +2 languages (CUDA, CSS) → **16 active languages**
 
-This brings AutomatosX v2 to comprehensive coverage across:
+This brings AutomatosX to comprehensive coverage across:
 - Systems: C++, Rust, Go, CUDA
 - Web: TypeScript, JavaScript, HTML, CSS, PHP, Ruby, Python
 - Mobile: Kotlin, Swift, Java

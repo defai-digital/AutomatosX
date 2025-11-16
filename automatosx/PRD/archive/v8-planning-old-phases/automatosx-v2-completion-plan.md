@@ -1,7 +1,7 @@
-# AutomatosX v2 Completion Plan — Product Requirements Document
+# AutomatosX Completion Plan — Product Requirements Document
 
 ## 1. Executive Summary
-- **Vision**: Deliver AutomatosX v2 as a production-grade, privacy-first automation fabric that is faster, cheaper, and more extensible than v1 while matching feature parity and exceeding reliability benchmarks.
+- **Vision**: Deliver AutomatosX as a production-grade, privacy-first automation fabric that is faster, cheaper, and more extensible than v1 while matching feature parity and exceeding reliability benchmarks.
 - **Current Status**: Core foundations (Code Intelligence, Query Optimization, Privacy Telemetry, enhanced CLI UX) are complete with 13 language parsers, 716 total tests (97.2% pass), and 50–200x faster code queries (8–12 ms).
 - **Remaining Gap (≈50–60%)**: Missing 1,707 tests to reach full agent parity, ReScript runtime maturity (state machines, rule engine, planning, retry), Plugin SDK, production-grade deployment pipeline, and P2 advanced features (WASM sandbox, reranking, language filters, incremental indexing).
 - **Outcome**: Ship v2 GA within 12 weeks through staged execution that locks parity first, then extensibility, then advanced performance tooling—all without regressing cost, latency, or privacy guarantees.
@@ -132,4 +132,4 @@
 
 ---
 
-Build the right thing, not just things right. Completing AutomatosX v2 means shipping parity, extensibility, and production confidence together so users realize faster, cheaper, safer automation outcomes.
+Build the right thing, not just things right. Completing AutomatosX means shipping parity, extensibility, and production confidence together so users realize faster, cheaper, safer automation outcomes.

@@ -1,6 +1,6 @@
 # P0 Week 1 Day 2 – QA Feature Preservation Strategy Brief
 
-**Purpose:** Provide cross-functional guidance for preserving v1 feature fidelity throughout the AutomatosX v2 delivery runway.  
+**Purpose:** Provide cross-functional guidance for preserving v1 feature fidelity throughout the AutomatosX delivery runway.  
 **Audience:** QA, Architecture, Standards, Backend, Frontend, Mobile, DevRel, Program Leadership.  
 **Frame:** Guardrails for designing, automating, and governing tests tied to the 10 critical feature preservation items.
 

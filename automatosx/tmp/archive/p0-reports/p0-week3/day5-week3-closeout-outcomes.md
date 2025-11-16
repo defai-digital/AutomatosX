@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 3 Day 5 Closeout Outcomes (2025-01-24)
+# AutomatosX Revamp — P0 Week 3 Day 5 Closeout Outcomes (2025-01-24)
 
 ## 48-Hour Validation Success and Sprint 2 Velocity Target Exceeded Close Out Strong Week
 

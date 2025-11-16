@@ -27,7 +27,7 @@ export class HandoffDocGenerator extends EventEmitter {
                 {
                     id: 'intro',
                     title: 'Introduction',
-                    content: `AutomatosX v2 is a production-ready code intelligence system with Tree-sitter parsing, SQLite FTS5 search, and multi-language support.
+                    content: `AutomatosX is a production-ready code intelligence system with Tree-sitter parsing, SQLite FTS5 search, and multi-language support.
 
 This document provides a comprehensive overview of the system architecture, key components, and integration points.`,
                 },

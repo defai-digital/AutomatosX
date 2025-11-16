@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 1-3 Completeness Review
+# AutomatosX Revamp — P0 Week 1-3 Completeness Review
 
 ## Executive Summary
 

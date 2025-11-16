@@ -1,4 +1,4 @@
-## AutomatosX v2 Revamp — P0 Sprint 1 Week 2 Day 9 Execution Outcomes (2025-01-16)
+## AutomatosX Revamp — P0 Sprint 1 Week 2 Day 9 Execution Outcomes (2025-01-16)
 Day 9 centered on the mid-sprint health check, validating that velocity, quality, and risk posture remain on track ahead of the Day 10 demo push while confirming production readiness for telemetry and infrastructure changes.
 
 ---

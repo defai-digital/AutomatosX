@@ -37,7 +37,7 @@ export function createStatusCommand() {
             // Get index statistics
             const stats = fileService.getStats();
             const cacheStats = fileService.getCacheStats();
-            console.log(chalk.bold('\n📊 AutomatosX v2 Status\n'));
+            console.log(chalk.bold('\n📊 AutomatosX Status\n'));
             // Index Status Table
             const indexTable = new Table({
                 head: [chalk.cyan('Index Metric'), chalk.cyan('Value')],

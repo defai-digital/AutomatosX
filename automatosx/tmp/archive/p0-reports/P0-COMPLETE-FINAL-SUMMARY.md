@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Phase 0 (P0) of AutomatosX v2 has been successfully completed, delivering a fully functional code intelligence CLI with:
+Phase 0 (P0) of AutomatosX has been successfully completed, delivering a fully functional code intelligence CLI with:
 
 - **SQLite-based code indexing** with symbol extraction and full-text search
 - **Multi-language parser support** (TypeScript, JavaScript via Tree-sitter)
@@ -263,7 +263,7 @@ ax watch --extensions .ts,.tsx  # Custom extensions
 
 ## Complete CLI Interface
 
-AutomatosX v2 now provides **6 production-ready commands**:
+AutomatosX now provides **6 production-ready commands**:
 
 ```bash
 ax find <query>        # Search with auto-intent detection
@@ -577,7 +577,7 @@ When ready to proceed to Phase 1 (P1), the following enhancements are recommende
 
 ## Conclusion
 
-**Phase 0 (P0) of AutomatosX v2 is 100% complete** with all 8 planned phases delivered:
+**Phase 0 (P0) of AutomatosX is 100% complete** with all 8 planned phases delivered:
 
 ✅ ReScript foundation established
 ✅ SQLite database with FTS5 full-text search
@@ -594,7 +594,7 @@ The P0 deliverables provide a **solid, production-ready foundation** for code in
 - Query filters and syntax (P1.3)
 - Performance optimizations (P1.4)
 
-**AutomatosX v2 is ready for real-world use** and can immediately provide value for:
+**AutomatosX is ready for real-world use** and can immediately provide value for:
 - Code search and navigation
 - Symbol definition lookup
 - Call flow analysis

@@ -11,9 +11,9 @@
 
 ## Executive Summary
 
-Week 1 of Sprint 7 focuses exclusively on **completing the ReScript core architecture** - the deterministic, type-safe foundation that will power AutomatosX v2's workflow orchestration, state management, and event-driven capabilities.
+Week 1 of Sprint 7 focuses exclusively on **completing the ReScript core architecture** - the deterministic, type-safe foundation that will power AutomatosX's workflow orchestration, state management, and event-driven capabilities.
 
-This week transforms AutomatosX from a pure TypeScript codebase to a **true hybrid ReScript + TypeScript architecture**, fulfilling the original vision outlined in the AutomatosX v2 PRD.
+This week transforms AutomatosX from a pure TypeScript codebase to a **true hybrid ReScript + TypeScript architecture**, fulfilling the original vision outlined in the AutomatosX PRD.
 
 **Why This Week Matters**:
 - ReScript provides **mathematical correctness** through algebraic data types

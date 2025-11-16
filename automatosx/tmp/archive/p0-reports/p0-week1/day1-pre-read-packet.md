@@ -7,7 +7,7 @@
 ---
 
 ## 1. Executive Summary – v2 Revamp
-- AutomatosX v2 modernizes the platform around a ReScript core runtime, extended TypeScript integration layer, and deterministic validation pipeline (Zod) to enable predictable multi-agent orchestration.  
+- AutomatosX modernizes the platform around a ReScript core runtime, extended TypeScript integration layer, and deterministic validation pipeline (Zod) to enable predictable multi-agent orchestration.  
 - The SQLite FTS5-backed memory system (ADR-001) underpins both CLI workflows and upcoming code intelligence features, eliminating external dependencies while improving recall.  
 - CLI parity remains non-negotiable: v2 retains v1 ergonomics while introducing new commands (`ax find`, `ax def`, `ax flow`, `ax lint`) and lazy-loading performance optimizations (ADR-007).  
 - Success hinges on validating 223 modules across seven clusters for readiness, ensuring no regressions while enabling the code-intel expansion described in the implementation plan.

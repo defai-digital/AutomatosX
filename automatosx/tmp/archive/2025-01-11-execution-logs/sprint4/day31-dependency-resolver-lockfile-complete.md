@@ -467,7 +467,7 @@ class LockfileManager {
 
 ---
 
-**Prepared By**: AutomatosX v2 Development Team
+**Prepared By**: AutomatosX Development Team
 **Sprint**: Sprint 4, Week 7, Day 31
 **Status**: **10% COMPLETE**
 

@@ -1,6 +1,6 @@
 # API Quick Reference
 
-AutomatosX v2 CLI command reference and query syntax guide.
+AutomatosX CLI command reference and query syntax guide.
 
 ## Table of Contents
 
@@ -664,6 +664,6 @@ ax find "query"
 
 ---
 
-**AutomatosX v2.0.0** - API Quick Reference
+**AutomatosX.0.0** - API Quick Reference
 
 Last updated: 2025-11-06

@@ -1,7 +1,7 @@
 /**
  * hash.ts
  *
- * File hashing utilities for AutomatosX v2
+ * File hashing utilities for AutomatosX
  * Provides SHA-256 content hashing for file integrity
  */
 

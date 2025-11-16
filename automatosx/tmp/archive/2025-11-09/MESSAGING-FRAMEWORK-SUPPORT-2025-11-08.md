@@ -4,7 +4,7 @@
 
 ## Summary
 
-Comprehensive analysis of NATS, Kafka, NestJS, and major backend frameworks to determine AutomatosX v2 support capabilities.
+Comprehensive analysis of NATS, Kafka, NestJS, and major backend frameworks to determine AutomatosX support capabilities.
 
 ## Key Finding
 
@@ -610,7 +610,7 @@ public class UserController {
 | **Django** | Python | Python | ✅ Fully Supported |
 | **Spring Boot** | Java/Kotlin | YAML, .properties | ✅ Code + YAML supported |
 
-## AutomatosX v2 Coverage
+## AutomatosX Coverage
 
 ### ✅ Fully Supported
 
@@ -746,7 +746,7 @@ ax find "@Service" --lang java
 
 **All messaging systems and frameworks are already supported!**
 
-AutomatosX v2 can index and search:
+AutomatosX can index and search:
 - ✅ **NATS** - Go code + text search for .conf
 - ✅ **Kafka** - Java/Scala code + text search for .properties
 - ✅ **NestJS** - TypeScript + JSON configs
@@ -778,4 +778,4 @@ AutomatosX v2 can index and search:
 ⚠️ **Simple text configs** work with text search (no parser needed)
 ❌ **Zero additional parsers required**
 
-AutomatosX v2 is fully equipped to handle NATS, Kafka, NestJS, Express.js, FastAPI, Django, Spring Boot, and all major backend frameworks!
+AutomatosX is fully equipped to handle NATS, Kafka, NestJS, Express.js, FastAPI, Django, Spring Boot, and all major backend frameworks!

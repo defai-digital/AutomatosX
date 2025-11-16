@@ -42,7 +42,7 @@ export function createStatusCommand(): Command {
         const stats = fileService.getStats();
         const cacheStats = fileService.getCacheStats();
 
-        console.log(chalk.bold('\n📊 AutomatosX v2 Status\n'));
+        console.log(chalk.bold('\n📊 AutomatosX Status\n'));
 
         // Index Status Table
         const indexTable = new Table({

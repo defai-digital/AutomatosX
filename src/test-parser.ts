@@ -13,7 +13,7 @@ import { SymbolDAO } from './database/dao/SymbolDAO';
 import { FileService } from './services/FileService';
 
 console.log('='.repeat(70));
-console.log('AutomatosX v2 - Phase 0.3: Parser Pipeline POC Tests');
+console.log('AutomatosX - Phase 0.3: Parser Pipeline POC Tests');
 console.log('='.repeat(70));
 console.log();
 

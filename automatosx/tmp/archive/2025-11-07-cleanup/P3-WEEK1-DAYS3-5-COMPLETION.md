@@ -207,7 +207,7 @@ const exported = await service.exportData(yesterday, tomorrow);
 
 **User Experience**:
 ```
-📊 Welcome to AutomatosX v2!
+📊 Welcome to AutomatosX!
 
 To improve AutomatosX, we collect anonymous usage data.
 This data helps us understand how the tool is used and prioritize improvements.

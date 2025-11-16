@@ -223,7 +223,7 @@ Options:
 
 **Example Output**:
 ```
-AutomatosX v2 - File Watcher
+AutomatosX - File Watcher
 ────────────────────────────────────────────────────────────
 
 Watching: ./src

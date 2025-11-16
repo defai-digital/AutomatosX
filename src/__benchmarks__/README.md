@@ -1,6 +1,6 @@
 # Performance Benchmarks
 
-Comprehensive benchmark suite for AutomatosX v2 performance testing.
+Comprehensive benchmark suite for AutomatosX performance testing.
 
 ## Overview
 

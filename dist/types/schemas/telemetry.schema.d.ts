@@ -202,15 +202,15 @@ export declare const TelemetryEventRecordSchema: z.ZodObject<{
     created_at: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     id: number;
-    created_at: number;
     timestamp: number;
+    created_at: number;
     session_id: string;
     event_type: string;
     event_data: string | null;
 }, {
     id: number;
-    created_at: number;
     timestamp: number;
+    created_at: number;
     session_id: string;
     event_type: string;
     event_data: string | null;

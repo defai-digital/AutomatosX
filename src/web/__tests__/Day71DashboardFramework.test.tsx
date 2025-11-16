@@ -216,7 +216,7 @@ describe('Day 71: React Dashboard Framework', () => {
   describe('HomePage Component', () => {
     it('should render welcome message', () => {
       renderWithProviders(<HomePage />);
-      expect(screen.getByText(/Welcome to AutomatosX v2/i)).toBeInTheDocument();
+      expect(screen.getByText(/Welcome to AutomatosX/i)).toBeInTheDocument();
     });
 
     it('should render quality metrics card', () => {

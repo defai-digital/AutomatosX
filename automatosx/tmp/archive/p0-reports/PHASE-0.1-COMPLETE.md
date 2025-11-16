@@ -72,26 +72,26 @@ Created and ran comprehensive test (`test-interop.ts`) validating:
 $ npx tsx src/test-interop.ts
 
 ============================================================
-AutomatosX v2 - ReScript ↔ TypeScript Interop Test
+AutomatosX - ReScript ↔ TypeScript Interop Test
 ============================================================
 
 ✓ Test 1: Simple greet function
-  Result: "Hello, Developer! Welcome to AutomatosX v2 with ReScript."
+  Result: "Hello, Developer! Welcome to AutomatosX with ReScript."
 
 ✓ Test 2: Add function (int type safety)
   Result: 42 + 18 = 60
 
 ✓ Test 3: Option type (null safety)
-  With name: "Hello, Alice! Welcome to AutomatosX v2 with ReScript."
-  Without name: "Hello, Guest! Welcome to AutomatosX v2."
+  With name: "Hello, Alice! Welcome to AutomatosX with ReScript."
+  Without name: "Hello, Guest! Welcome to AutomatosX."
 
 ✓ Test 4: Record type (person)
   Result: "Hello, Bob Smith! You are 30 years old."
 
 ✓ Test 5: Module constants
-  Welcome message: "AutomatosX v2 - ReScript Core Runtime Initialized"
+  Welcome message: "AutomatosX - ReScript Core Runtime Initialized"
   Version: 2.0.0-alpha.0
-  Name: AutomatosX v2 - ReScript Core
+  Name: AutomatosX - ReScript Core
 
 ============================================================
 ✅ SUCCESS: All ReScript ↔ TypeScript interop tests passed!
@@ -210,7 +210,7 @@ npm run dev
 3. Type safety is maintained across the language boundary
 4. The build pipeline is fast and reliable
 
-**AutomatosX v2 foundation is solid.** Ready to proceed to Phase 0.2 (SQLite Foundation).
+**AutomatosX foundation is solid.** Ready to proceed to Phase 0.2 (SQLite Foundation).
 
 ---
 

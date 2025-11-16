@@ -386,7 +386,7 @@ describe('multi-step workflows', () => {
 
 ---
 
-**Prepared By**: AutomatosX v2 Development Team
+**Prepared By**: AutomatosX Development Team
 **Sprint**: Sprint 3, Week 6, Day 28
 **Status**: **80% COMPLETE**
 

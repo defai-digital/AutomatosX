@@ -3,7 +3,7 @@
 **Author:** Avery (Architecture)  
 **Collaborators:** Bob (Backend), Performance Engineer  
 **Status:** Draft for Day 3 sync  
-**Context:** Enables enriched parser metadata for Tree-sitter, SWC, Semgrep harmonization in AutomatosX v2 memory database.
+**Context:** Enables enriched parser metadata for Tree-sitter, SWC, Semgrep harmonization in AutomatosX memory database.
 
 ---
 

@@ -1,6 +1,6 @@
-# AutomatosX v2 Module Inventory & Status
+# AutomatosX Module Inventory & Status
 
-Living document tracking every v1 TypeScript module (223 files) and its migration path into the AutomatosX v2 architecture. Updated on demand; owners should revise status after each sprint review.
+Living document tracking every v1 TypeScript module (223 files) and its migration path into the AutomatosX architecture. Updated on demand; owners should revise status after each sprint review.
 
 ## Overview
 

@@ -36,7 +36,7 @@ export function isTelemetryConfigured() {
  * @returns Promise that resolves when the user has made a choice
  */
 export async function showTelemetryConsent() {
-    console.log('\n📊 Welcome to AutomatosX v2!\n');
+    console.log('\n📊 Welcome to AutomatosX!\n');
     console.log('To improve AutomatosX, we collect anonymous usage data.');
     console.log('This data helps us understand how the tool is used and prioritize improvements.\n');
     console.log('What we collect:');

@@ -9,7 +9,7 @@
 
 ## Context and Problem Statement
 
-AutomatosX v2 aims to introduce ReScript for deterministic state machine implementation and rule-based task orchestration. This ADR defines the integration strategy between ReScript code and the existing TypeScript codebase, ensuring type safety, maintainability, and gradual adoption.
+AutomatosX aims to introduce ReScript for deterministic state machine implementation and rule-based task orchestration. This ADR defines the integration strategy between ReScript code and the existing TypeScript codebase, ensuring type safety, maintainability, and gradual adoption.
 
 **Key Questions**:
 1. How do we compile ReScript code and make it accessible to TypeScript?

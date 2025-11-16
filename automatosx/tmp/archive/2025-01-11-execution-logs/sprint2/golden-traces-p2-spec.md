@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document specifies 10 P2 golden traces for AutomatosX v2. These traces provide extended coverage for:
+This document specifies 10 P2 golden traces for AutomatosX. These traces provide extended coverage for:
 - Advanced agent orchestration
 - Complex multi-step workflows
 - Integration scenarios

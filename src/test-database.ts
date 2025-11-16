@@ -11,7 +11,7 @@ import { FileDAO } from './database/dao/FileDAO';
 import { hashContent, verifyHash, shortHash } from './utils/hash';
 
 console.log('='.repeat(70));
-console.log('AutomatosX v2 - Phase 0.2: SQLite Foundation Tests');
+console.log('AutomatosX - Phase 0.2: SQLite Foundation Tests');
 console.log('='.repeat(70));
 console.log();
 
@@ -40,7 +40,7 @@ console.log('Phase 0.2.1: Hash Utilities');
 console.log('-'.repeat(70));
 
 test('hashContent generates SHA-256 hash', () => {
-  const content = 'Hello, AutomatosX v2!';
+  const content = 'Hello, AutomatosX!';
   const hash = hashContent(content);
   return hash.length === 64 && /^[a-f0-9]{64}$/.test(hash);
 });

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-P3 Week 1 successfully implemented the **complete telemetry foundation** for AutomatosX v2. All core components are built, compiling, and ready for testing and instrumentation.
+P3 Week 1 successfully implemented the **complete telemetry foundation** for AutomatosX. All core components are built, compiling, and ready for testing and instrumentation.
 
 **Work Completed**: 60% (6 files, 1,642 lines)
 **Work Remaining**: 40% (tests, instrumentation, consent)
@@ -176,7 +176,7 @@ export async function checkTelemetryConsent(): Promise<void> {
     return;
   }
 
-  console.log('\n📊 Welcome to AutomatosX v2!\n');
+  console.log('\n📊 Welcome to AutomatosX!\n');
   console.log('We collect anonymous usage data to improve the product.');
   console.log('Read our privacy policy: PRIVACY.md\n');
 

@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Phase 2 implements a multi-provider AI abstraction layer with automatic fallback, rate limiting, and streaming support. Following the proven ReScript + TypeScript + Zod architecture from AutomatosX v2, this phase creates a robust provider system supporting Claude (Anthropic), Gemini (Google), and OpenAI (GPT).
+Phase 2 implements a multi-provider AI abstraction layer with automatic fallback, rate limiting, and streaming support. Following the proven ReScript + TypeScript + Zod architecture from AutomatosX, this phase creates a robust provider system supporting Claude (Anthropic), Gemini (Google), and OpenAI (GPT).
 
 **Key Deliverables:**
 - ReScript state machine for provider request lifecycle
@@ -26,7 +26,7 @@ Phase 2 implements a multi-provider AI abstraction layer with automatic fallback
 
 ### Three-Layer Architecture
 
-Following AutomatosX v2's proven pattern:
+Following AutomatosX's proven pattern:
 
 ```
 ┌─────────────────────────────────────────────────────┐

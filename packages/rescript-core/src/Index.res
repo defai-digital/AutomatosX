@@ -16,7 +16,7 @@ module WorkflowTypes = WorkflowTypes
 let version = "2.0.0-alpha.0"
 
 @genType
-let name = "AutomatosX v2 - ReScript Core"
+let name = "AutomatosX - ReScript Core"
 
 // State Machine Factory Functions with @genType for TypeScript interop
 @genType

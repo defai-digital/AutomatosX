@@ -1,4 +1,4 @@
-# AutomatosX v2 - Phase 1 (P1) Kickoff Plan
+# AutomatosX - Phase 1 (P1) Kickoff Plan
 
 **Status**: Ready to Start
 **Duration**: 6 weeks (Weeks 5-10)

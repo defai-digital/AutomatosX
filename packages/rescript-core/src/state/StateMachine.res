@@ -1,4 +1,4 @@
-// Generic State Machine Framework for AutomatosX v2 Sprint 7 Day 61
+// Generic State Machine Framework for AutomatosX Sprint 7 Day 61
 // Provides type-safe, polymorphic state machines with guards, actions, and async support
 
 // Core types for the state machine

@@ -1,4 +1,4 @@
-# AutomatosX v2 Revamp — P0 Week 4 Day 6 Execution Outcomes (2025-01-27)
+# AutomatosX Revamp — P0 Week 4 Day 6 Execution Outcomes (2025-01-27)
 
 ## Sprint 2 Momentum Continues: TaskRunner Accepted, Incremental Indexing Launched
 

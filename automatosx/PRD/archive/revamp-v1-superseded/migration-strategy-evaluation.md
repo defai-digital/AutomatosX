@@ -20,7 +20,7 @@
 ### 方案 A：將 v1 遷移到 v2（在現有基礎上擴充）
 
 #### 實施方式
-在當前 AutomatosX v2 專案中，逐步加入 v1 的功能：
+在當前 AutomatosX 專案中，逐步加入 v1 的功能：
 
 ```
 automatosx2/  (當前專案)
@@ -246,7 +246,7 @@ automatosx-v3/  (全新專案)
 整合架構：
 
 ┌─────────────────┐         ┌─────────────────┐
-│  AutomatosX v1  │         │  AutomatosX v2  │
+│  AutomatosX v1  │         │  AutomatosX  │
 │  (AI 代理系統)   │◄───────►│  (程式碼智能)    │
 │                 │   API   │                 │
 │  - 記憶系統     │         │  - 程式碼搜尋   │

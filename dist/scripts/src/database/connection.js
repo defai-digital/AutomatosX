@@ -1,7 +1,7 @@
 /**
  * connection.ts
  *
- * Database connection manager for AutomatosX v2
+ * Database connection manager for AutomatosX
  * Manages SQLite database connection with better-sqlite3
  */
 import Database from 'better-sqlite3';

@@ -441,14 +441,14 @@ export declare const WorkflowEventSchema: z.ZodObject<{
     timestamp: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    executionId: string;
     timestamp: number;
+    executionId: string;
     eventType: "workflow_created" | "workflow_started" | "workflow_paused" | "workflow_resumed" | "workflow_completed" | "workflow_failed" | "workflow_cancelled" | "step_started" | "step_completed" | "step_failed" | "step_retried" | "step_skipped" | "state_transition" | "checkpoint_created" | "checkpoint_restored" | "error_occurred";
     eventData?: string | undefined;
 }, {
     id: string;
-    executionId: string;
     timestamp: number;
+    executionId: string;
     eventType: "workflow_created" | "workflow_started" | "workflow_paused" | "workflow_resumed" | "workflow_completed" | "workflow_failed" | "workflow_cancelled" | "step_started" | "step_completed" | "step_failed" | "step_retried" | "step_skipped" | "state_transition" | "checkpoint_created" | "checkpoint_restored" | "error_occurred";
     eventData?: string | undefined;
 }>;

@@ -1,0 +1,131 @@
+# Code Review Workflow
+# Automated code review with multiple specialized agents
+
+name: code-review-workflow
+description: Multi-agent code review workflow with security, quality, and backend analysis
+version: 1.0.0
+author: AutomatosX
+tags:
+  - code-review
+  - quality
+  - security
+
+config:
+  timeout: 300000  # 5 minutes
+  maxRetries: 2
+  parallelism: 3
+  continueOnError: false
+
+steps:
+  # Step 1: Parse changed files
+  - key: parse-changes
+    agent: backend
+    prompt: |
+      Analyze the following code changes and extract:
+      1. List of modified files
+      2. Type of changes (new feature, bug fix, refactor)
+      3. Affected modules and dependencies
+
+      Changes: {{changes}}
+
+      Return JSON format with files, changeType, and affectedModules.
+    dependencies: []
+    parallel: false
+    optional: false
+    timeoutMs: 30000
+
+  # Step 2: Security audit (parallel with quality check)
+  - key: security-audit
+    agent: security
+    prompt: |
+      Perform security audit on the code changes:
+
+      Files: {{parse-changes.files}}
+
+      Check for:
+      - SQL injection vulnerabilities
+      - XSS vulnerabilities
+      - Authentication/authorization issues
+      - Sensitive data exposure
+      - Insecure dependencies
+
+      Return JSON with findings array (severity, description, file, line).
+    dependencies:
+      - parse-changes
+    parallel: true
+    optional: false
+    timeoutMs: 60000
+    retryPolicy:
+      maxRetries: 2
+      retryDelayMs: 2000
+      retryBackoffMultiplier: 2.0
+
+  # Step 3: Quality analysis (parallel with security audit)
+  - key: quality-analysis
+    agent: quality
+    prompt: |
+      Analyze code quality for:
+
+      Files: {{parse-changes.files}}
+
+      Check for:
+      - Code complexity (cyclomatic complexity)
+      - Code duplication
+      - Test coverage gaps
+      - Code smells
+      - Best practices violations
+
+      Return JSON with metrics and issues.
+    dependencies:
+      - parse-changes
+    parallel: true
+    optional: false
+    timeoutMs: 60000
+
+  # Step 4: Backend review (parallel with security and quality)
+  - key: backend-review
+    agent: backend
+    prompt: |
+      Review backend implementation:
+
+      Files: {{parse-changes.files}}
+      Change Type: {{parse-changes.changeType}}
+
+      Review:
+      - API design and REST principles
+      - Database schema changes
+      - Error handling
+      - Performance considerations
+      - Scalability
+
+      Return JSON with feedback and suggestions.
+    dependencies:
+      - parse-changes
+    parallel: true
+    optional: false
+    timeoutMs: 60000
+
+  # Step 5: Aggregate results and generate report
+  - key: generate-report
+    agent: backend
+    prompt: |
+      Generate comprehensive code review report:
+
+      Security Findings: {{security-audit}}
+      Quality Analysis: {{quality-analysis}}
+      Backend Review: {{backend-review}}
+
+      Create a markdown report with:
+      1. Executive summary
+      2. Critical issues (must fix)
+      3. Recommendations
+      4. Approval decision (approve/request-changes/reject)
+
+      Return markdown formatted report.
+    dependencies:
+      - security-audit
+      - quality-analysis
+      - backend-review
+    parallel: false
+    optional: false
+    timeoutMs: 30000

@@ -14,7 +14,7 @@
 
 **revamp_v1** is the code name for the comprehensive migration project that combines:
 - **AutomatosX v1** - AI agent orchestration platform (20 specialized agents)
-- **AutomatosX v2** - Code intelligence engine (45+ language parsing, SQLite FTS5)
+- **AutomatosX** - Code intelligence engine (45+ language parsing, SQLite FTS5)
 
 Into a single, unified platform with both capabilities.
 

@@ -23,7 +23,7 @@ Phase 3 (P3) planning is complete with comprehensive PRD and action plan documen
 ## P3 Overview
 
 ### Vision
-> "Transform AutomatosX v2 from a functional tool into an **observable, scalable, and intelligent platform** that adapts to user needs, rolls out features safely, and provides insights that drive continuous improvement."
+> "Transform AutomatosX from a functional tool into an **observable, scalable, and intelligent platform** that adapts to user needs, rolls out features safely, and provides insights that drive continuous improvement."
 
 ### Timeline
 - **Duration**: 8 weeks

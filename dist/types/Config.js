@@ -164,4 +164,15 @@ export var ConfigSource;
     ConfigSource["ENV"] = "env";
     ConfigSource["RUNTIME"] = "runtime";
 })(ConfigSource || (ConfigSource = {}));
+/**
+ * Default configuration with all defaults applied
+ * Used by setup command and ConfigLoader
+ */
+export const DEFAULT_CONFIG = AutomatosXConfigSchema.parse({
+    search: {},
+    indexing: {},
+    database: {},
+    performance: {},
+    logging: {},
+});
 //# sourceMappingURL=Config.js.map

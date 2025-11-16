@@ -630,7 +630,7 @@ AutomatosX v8.0.0 delivers exceptional performance across all systems:
 
 ## 🏗️ Architecture
 
-AutomatosX v2 uses a multi-layer architecture:
+AutomatosX uses a multi-layer architecture:
 
 ```
 ┌─────────────────────────────────────┐
@@ -792,7 +792,7 @@ Built with:
 
 ---
 
-**AutomatosX v2.0.0** - Production-ready code intelligence
+**AutomatosX.0.0** - Production-ready code intelligence
 
 Copyright 2025 DEFAI Private Limited | Apache License 2.0
 

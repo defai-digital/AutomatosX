@@ -288,7 +288,7 @@ export type ParserError = z.infer<typeof ParserErrorSchema>;
  * }
  * ```
  */
-export declare const ParseResultWithErrorsSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const ParseResultWithErrorsSchema: z.ZodObject<{
     symbols: z.ZodArray<z.ZodEffects<z.ZodEffects<z.ZodObject<{
         name: z.ZodString;
         kind: z.ZodEnum<["function", "class", "interface", "type", "variable", "constant", "method", "enum", "struct", "trait", "module"]>;
@@ -348,7 +348,7 @@ export declare const ParseResultWithErrorsSchema: z.ZodObject<z.objectUtil.exten
     }>, "many">;
     parseTime: z.ZodNumber;
     nodeCount: z.ZodNumber;
-}, {
+} & {
     errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
         message: z.ZodString;
         line: z.ZodOptional<z.ZodNumber>;
@@ -368,7 +368,7 @@ export declare const ParseResultWithErrorsSchema: z.ZodObject<z.objectUtil.exten
         severity?: "error" | "info" | "warning" | undefined;
         line?: number | undefined;
     }>, "many">>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     symbols: {
         name: string;
         kind: "function" | "class" | "method" | "interface" | "type" | "variable" | "constant" | "enum" | "struct" | "trait" | "module";

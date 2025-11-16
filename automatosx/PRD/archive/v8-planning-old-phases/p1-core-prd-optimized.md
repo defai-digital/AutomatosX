@@ -1,4 +1,4 @@
-# AutomatosX v2 - P1 Core PRD (Optimized)
+# AutomatosX - P1 Core PRD (Optimized)
 
 **Version**: 2.0 (Metathinking-Optimized)
 **Status**: Ready for Execution

@@ -189,7 +189,7 @@
 
 ### What We're Building
 
-**Unified Platform:** Combine AutomatosX v1 (AI agent orchestration) + AutomatosX v2 (code intelligence)
+**Unified Platform:** Combine AutomatosX v1 (AI agent orchestration) + AutomatosX (code intelligence)
 
 **Key Features:**
 - ✅ Multi-language code parsing (45+ languages)

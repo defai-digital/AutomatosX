@@ -258,7 +258,7 @@
   - **TS3 (2h)**: Design operations runbooks structure and templates.
     - Create runbook categories: incident response, maintenance, deployment, monitoring.
     - Build runbook template with standard sections: overview, prerequisites, steps, rollback, verification.
-    - Draft initial runbooks: "Deploy AutomatosX v2", "Rollback Deployment", "Handle Plugin Sandbox Escape".
+    - Draft initial runbooks: "Deploy AutomatosX", "Rollback Deployment", "Handle Plugin Sandbox Escape".
 
 - **Quality Squad (QA1, QA2, QA3 — 6h focus)**
   - **QA1 (2.5h)**: Write 5 tests for dependency update automation.
@@ -771,7 +771,7 @@
     - Include operational procedures: monitoring, incident response, maintenance.
     - Write 3 tests for documentation validation (link checks, code example verification).
   - **TS2 (2h)**: Build training materials for stakeholders.
-    - Create training modules: AutomatosX v2 overview, CLI usage, plugin development, code intelligence.
+    - Create training modules: AutomatosX overview, CLI usage, plugin development, code intelligence.
     - Record video tutorials for key workflows.
     - Add hands-on exercises and sample projects.
     - Write 2 tests for training material accuracy.
@@ -913,7 +913,7 @@
 
 - **DevOps Squad (DO1, DO2 — 5.5h focus)**
   - **DO1 (3h)**: Execute production deployment dry run.
-    - Deploy AutomatosX v2 to staging environment.
+    - Deploy AutomatosX to staging environment.
     - Validate deployment scripts and automation.
     - Test rollback procedures.
   - **DO2 (2.5h)**: Final CI/CD pipeline validation.
@@ -1142,7 +1142,7 @@
 
 ### Ecosystem Metrics
 - **Community Plugins**: 15+ published to marketplace.
-- **Weekly Active Developers**: 200+ using AutomatosX v2.
+- **Weekly Active Developers**: 200+ using AutomatosX.
 - **Marketplace Engagement**: +25% discovery CTR vs. Sprint 5.
 
 ### Performance & Reliability

@@ -435,4 +435,4 @@ ax find "CNOT|Hadamard" --regex
 ❌ **Not Available**: Q#, QASM, Mojo, OpenCL, R (no parsers exist)
 📊 **Total Languages**: 30 → 34 (+13% increase)
 
-AutomatosX v2 now supports comprehensive hardware design (FPGA), scientific computing, and quantum development workflows!
+AutomatosX now supports comprehensive hardware design (FPGA), scientific computing, and quantum development workflows!

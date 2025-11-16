@@ -486,7 +486,7 @@ it('should validate request-response cycle', () => {
 
 ---
 
-**Prepared By**: AutomatosX v2 Development Team
+**Prepared By**: AutomatosX Development Team
 **Sprint**: Sprint 3, Week 6, Day 27
 **Status**: **70% COMPLETE**
 

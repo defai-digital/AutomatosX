@@ -206,7 +206,7 @@ lz4                 # Week 9 (compression)
 4. **Competitive positioning** - multi-language + ML search
 
 ✅ **Business Value**:
-- Can announce "AutomatosX v2.0 P1 Complete"
+- Can announce "AutomatosX.0 P1 Complete"
 - Full feature parity with competitors
 - Strong foundation for P2
 
@@ -281,7 +281,7 @@ Deferred (can be added later):
 4. **Stability**: Production-ready release
 
 ✅ **Business Positioning**:
-- "AutomatosX v2.0: Production-Ready Code Intelligence"
+- "AutomatosX.0: Production-Ready Code Intelligence"
 - Can add Go/Rust in v2.1, v2.2 (incremental releases)
 - ML search as "Pro" feature in future
 - Sustainable development velocity
@@ -829,7 +829,7 @@ Choose Strategic Pivot Path B if:
 - ✅ Ready to ship in 5 days
 
 **Market Positioning**:
-> "AutomatosX v2.0: Production-Ready Code Intelligence for TypeScript & Python. Battle-tested with 95% test coverage, 2-3x performance optimizations, and professional CLI experience."
+> "AutomatosX.0: Production-Ready Code Intelligence for TypeScript & Python. Battle-tested with 95% test coverage, 2-3x performance optimizations, and professional CLI experience."
 
 ### What You Sacrifice (Temporarily)
 

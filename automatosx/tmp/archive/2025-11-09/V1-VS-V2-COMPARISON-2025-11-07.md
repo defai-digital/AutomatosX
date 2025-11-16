@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-AutomatosX v2 is a **major architectural evolution** that transforms the platform from an **agent orchestration tool** into a **code intelligence platform with agent orchestration**. While v1 focused on multi-agent collaboration and workflow automation, v2 adds deep code understanding, AST-based search, and production-grade telemetry.
+AutomatosX is a **major architectural evolution** that transforms the platform from an **agent orchestration tool** into a **code intelligence platform with agent orchestration**. While v1 focused on multi-agent collaboration and workflow automation, v2 adds deep code understanding, AST-based search, and production-grade telemetry.
 
 **Key Transformation**:
 - **v1**: "Unified automation core that orchestrates AI agents"

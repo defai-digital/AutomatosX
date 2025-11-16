@@ -287,7 +287,7 @@ This is **unusual** but not unprecedented in semantic versioning. However, it cr
 - [ ] Community reports successful upgrades on macOS + Node.js v25
 
 **Project Readiness**:
-- [ ] AutomatosX v2 P0 complete
+- [ ] AutomatosX P0 complete
 - [ ] Test pass rate ≥ 99%
 - [ ] 2-day sprint available for upgrade work
 - [ ] Dedicated time for debugging

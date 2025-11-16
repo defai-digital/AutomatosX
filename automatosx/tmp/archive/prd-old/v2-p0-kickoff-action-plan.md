@@ -1,4 +1,4 @@
-# AutomatosX v2 – P0 Kickoff Action Plan
+# AutomatosX – P0 Kickoff Action Plan
 
 > Purpose: Convert the completed planning artifacts into executable tracks for the first program increment. Each initiative below is scoped for P0 readiness and provides clear ownership, sequencing, and success proof points.
 

@@ -9,12 +9,12 @@ import { z } from 'zod';
  * - ax status --verbose --format json
  * - ax status --check-providers --check-memory
  */
-export declare const StatusSchema: z.ZodObject<z.objectUtil.extendShape<{
+export declare const StatusSchema: z.ZodObject<{
     debug: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     verbose: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     quiet: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     json: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}, {
+} & {
     checkMemory: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     checkProviders: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     checkAgents: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
@@ -22,7 +22,7 @@ export declare const StatusSchema: z.ZodObject<z.objectUtil.extendShape<{
     checkFilesystem: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     format: z.ZodDefault<z.ZodDefault<z.ZodEnum<["text", "json", "table", "yaml"]>>>;
     showMetrics: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-}>, "strip", z.ZodTypeAny, {
+}, "strip", z.ZodTypeAny, {
     verbose: boolean;
     json: boolean;
     format: "text" | "json" | "yaml" | "table";

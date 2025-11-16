@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This PRD defines the Memory System for revamp_v1 following the proven AutomatosX v2 architecture pattern:
+This PRD defines the Memory System for revamp_v1 following the proven AutomatosX architecture pattern:
 
 1. **ReScript Core** - Deterministic state machines for conversation lifecycle
 2. **TypeScript Layer** - Service orchestration and database operations

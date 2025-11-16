@@ -1,0 +1,121 @@
+version: "1.0"
+
+metadata:
+  id: "customer-support-workflow"
+  name: "Customer Support Automation"
+  description: "Automated customer support workflow with inquiry classification, response generation, and escalation"
+  version: "1.0.0"
+  author: "Enterprise Team"
+  tags: ["customer-support", "automation", "production"]
+  created: "2025-10-30T00:00:00Z"
+
+actors:
+  - id: "coordinator"
+    agent: "product"
+    description: "Coordinates workflow and delegates to specialists"
+    permissions:
+      filesystem:
+        read: ["*.md", "docs/**"]
+        write: ["docs/**", "reports/**"]
+      network:
+        enabled: true
+        whitelist: ["api.internal.company.com"]
+        requireTls: true
+      environment:
+        read: ["NODE_ENV", "APP_VERSION"]
+    resources:
+      memory:
+        limit: "512MB"
+      cpu:
+        limit: 1.0
+    timeout: 600000  # 10 minutes
+
+  - id: "executor"
+    agent: "backend"
+    description: "Executes implementation tasks"
+    permissions:
+      filesystem:
+        read: ["src/**", "tests/**"]
+        write: ["src/**", "tests/**", "dist/**"]
+      network:
+        enabled: true
+        whitelist: ["*.company.com"]
+        requireTls: true
+    resources:
+      memory:
+        limit: "1GB"
+      cpu:
+        limit: 2.0
+    timeout: 900000  # 15 minutes
+
+providers:
+  primary:
+    name: "openai"
+    model: "gpt-4o"
+    budget:
+      softCap: 5.0
+      hardCap: 10.0
+      period: "daily"
+  fallback:
+    - name: "claude-code"
+      model: "claude-opus-4"
+    - name: "gemini-cli"
+      model: "gemini-2.0-flash-exp"
+
+policy:
+  goal: "balanced"
+  optimization:
+    weights:
+      cost: 0.3
+      latency: 0.4
+      reliability: 0.3
+  constraints:
+    cost:
+      maxPerRequest: 0.5
+      maxDaily: 20.0
+    latency:
+      p50: 2000
+      p95: 5000
+      p99: 10000
+    privacy:
+      dataClassification: "internal"
+      allowedClouds: ["aws", "gcp"]
+      allowedRegions: ["us-east", "us-west", "eu-west"]
+    reliability:
+      minAvailability: 0.995
+      maxErrorRate: 0.01
+
+observability:
+  metrics:
+    enabled: true
+    provider: "prometheus"
+  logs:
+    enabled: true
+    level: "info"
+    destination: ".automatosx/logs/spec-execution.log"
+  tracing:
+    enabled: true
+    provider: "opentelemetry"
+  audit:
+    enabled: true
+    destination: ".automatosx/logs/audit.log"
+
+recovery:
+  retry:
+    maxAttempts: 3
+    strategy: "exponential"
+    initialDelayMs: 1000
+  timeout:
+    request: 30000   # 30 seconds
+    task: 600000     # 10 minutes
+  failover:
+    enabled: true
+    strategy: "immediate"
+  circuit:
+    enabled: true
+    errorThreshold: 5
+    resetTimeoutMs: 60000  # 1 minute
+
+validation:
+  strictMode: false
+  customRules: []

@@ -1,501 +1,434 @@
-# AutomatosX - Examples
+# AutomatosX Examples
 
-**Version:** 8.0.0
+This directory contains example agents, abilities, and usage patterns to help you get started with AutomatosX.
 
-This directory contains practical examples demonstrating how to use AutomatosX's three core systems:
+## Directory Structure
 
-1. **AI Agent System** (21 specialized agents)
-2. **Multi-Provider Integration** (Claude, Gemini, OpenAI)
-3. **Workflow Orchestration** (ReScript state machines)
+```
+examples/
+├── agents/           # Example agent profiles (YAML)
+├── abilities/        # Example ability definitions (Markdown)
+├── use-cases/        # Complete usage scenarios
+└── README.md         # This file
+```
 
----
+## Quick Start
 
-## Prerequisites
+### 1. Using Example Agents
 
-### Environment Setup
+Copy an example agent to your project:
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+```bash
+# Copy all example agents
+cp -r examples/agents/* .automatosx/agents/
 
-2. **Build the project:**
-   ```bash
-   npm run build
-   ```
+# Or copy a specific agent
+cp examples/agents/backend.yaml .automatosx/agents/
 
-3. **Configure API keys:**
-   Create `.env` file in project root:
-   ```bash
-   ANTHROPIC_API_KEY=sk-ant-...
-   GOOGLE_API_KEY=AIza...
-   OPENAI_API_KEY=sk-proj-...  # Optional
-   ```
+# Test the agent
+automatosx run backend "Hello, introduce yourself"
+```
 
-4. **Initialize database:**
-   ```bash
-   npm run cli -- status
-   # This will create database and run migrations
-   ```
+### 2. Using Example Abilities
 
----
+Copy example abilities to your project:
+
+```bash
+# Copy all abilities
+cp -r examples/abilities/* .automatosx/abilities/
+
+# Or copy specific abilities
+cp examples/abilities/code-review.md .automatosx/abilities/
+cp examples/abilities/debugging.md .automatosx/abilities/
+```
+
+### 3. Customizing Agents
+
+Edit agent profiles to customize behavior:
+
+```bash
+# Edit agent profile
+vim .automatosx/agents/backend.yaml
+
+# Customize:
+# - name: Unique identifier
+# - description: Agent's purpose
+# - model: AI model to use
+# - temperature: Creativity level (0.0-1.0)
+# - abilities: List of abilities to enable
+# - systemPrompt: Detailed instructions
+```
+
+## Agent Names
+
+**AutomatosX agents have human-friendly names!** 🎉
+
+Instead of remembering technical roles, you can use memorable names:
+
+- 👨‍💻 **Bob** - Backend Engineer
+- 👨‍💻 **Frank** - Frontend Developer
+- 🔒 **Steve** - Security Engineer
+- 🎨 **Debbee** - UX/UI Designer
+- 📊 **Daisy** - Data Scientist
+
+See [AGENTS_INFO.md](./AGENTS_INFO.md) for the complete directory.
+
+## Available Agents
+
+### backend.yaml - Bob
+
+**Purpose**: Backend development specialist for API and server-side tasks
+
+**Best for**:
+
+- API design and implementation
+- Database modeling
+- Server-side logic
+
+**Example**:
+
+```bash
+# Using role name
+automatosx run backend "Create a REST API endpoint for user management"
+
+# Using display name (easier to remember!)
+automatosx run Bob "Create a REST API endpoint for user management"
+```
+
+### quality.yaml - Queenie
+
+**Purpose**: Quality assurance and code review
+
+**Best for**:
+
+- Code review and analysis
+- Debugging and testing
+- Quality assurance
+
+**Example**:
+
+```bash
+automatosx run backend "Create a React component for user authentication"
+```
+
+### quality.yaml
+
+**Purpose**: Code review and quality analysis
+
+**Best for**:
+
+- Reviewing pull requests
+- Finding bugs and issues
+- Suggesting improvements
+
+**Example**:
+
+```bash
+automatosx run quality "Review the code in src/components/Auth.tsx"
+```
+
+### debugger.yaml
+
+**Purpose**: Debugging and troubleshooting
+
+**Best for**:
+
+- Analyzing error messages
+- Finding root causes
+- Suggesting fixes
+
+**Example**:
+
+```bash
+automatosx run debugger "Help me debug this error: TypeError: Cannot read property 'name' of undefined"
+```
+
+### writer.yaml
+
+**Purpose**: Technical writing and documentation
+
+**Best for**:
+
+- Writing documentation
+- Creating tutorials
+- Explaining concepts
+
+**Example**:
+
+```bash
+automatosx run writer "Write API documentation for the User authentication module"
+```
+
+## Available Abilities
+
+### Code-Related
+
+- **code-generation.md**: Generate new code from requirements
+- **code-review.md**: Review code for quality and issues
+- **refactoring.md**: Improve existing code structure
+- **debugging.md**: Debug and fix code issues
+- **testing.md**: Write and improve tests
+
+### Analysis
+
+- **error-analysis.md**: Analyze error messages and logs
+- **performance-analysis.md**: Identify performance bottlenecks
+- **security-audit.md**: Check for security vulnerabilities
+
+### Documentation
+
+- **documentation.md**: Write technical documentation
+- **technical-writing.md**: Create technical content
+- **content-creation.md**: Generate articles and guides
+
+### Problem Solving
+
+- **problem-solving.md**: Break down and solve problems
+- **task-planning.md**: Plan and organize tasks
+- **troubleshooting.md**: Diagnose and fix issues
+- **best-practices.md**: Apply industry best practices
+
+## Usage Patterns
+
+### Pattern 1: Interactive Development
+
+```bash
+# Start with planning
+automatosx chat backend
+> "I need to build a REST API for user management"
+
+# Generate code
+automatosx run backend "Create Express.js routes for user CRUD operations"
+
+# Review code
+automatosx run quality "Review the user routes I just created"
+
+# Debug issues
+automatosx run debugger "The POST /users endpoint returns 500 error"
+```
+
+### Pattern 2: Code Review Workflow
+
+```bash
+# Review specific file
+automatosx run quality "Review src/api/users.ts"
+
+# Review entire directory
+automatosx run quality "Review all files in src/api/"
+
+# Security audit
+automatosx run quality "Check src/api/auth.ts for security issues" \
+  --abilities security-audit
+```
+
+### Pattern 3: Documentation Generation
+
+```bash
+# Generate README
+automatosx run writer "Create a README.md for this project"
+
+# API documentation
+automatosx run writer "Document all API endpoints in src/routes/"
+
+# Code comments
+automatosx run backend "Add JSDoc comments to src/utils/helpers.ts"
+```
+
+### Pattern 4: Learning and Exploration
+
+```bash
+# Understand codebase
+automatosx chat backend
+> "Explain the architecture of this project"
+
+# Learn specific concepts
+automatosx run backend "How does the authentication flow work?"
+
+# Get examples
+automatosx run backend "Show me examples of using the memory system"
+```
+
+## Creating Custom Agents
+
+### Step 1: Create Profile
+
+```yaml
+# .automatosx/agents/my-agent.yaml
+name: my-agent
+description: Custom agent for specific tasks
+model: claude-3-sonnet-20240229
+temperature: 0.7
+maxTokens: 4096
+timeout: 60000
+
+abilities:
+  - code-generation
+  - debugging
+  - best-practices
+
+systemPrompt: |
+  You are a specialized assistant for [your specific domain].
+
+  Your key responsibilities:
+  1. [Responsibility 1]
+  2. [Responsibility 2]
+  3. [Responsibility 3]
+
+  Guidelines:
+  - Follow [specific style guide]
+  - Prioritize [specific aspect]
+  - Always [specific behavior]
+```
+
+### Step 2: Test Agent
+
+```bash
+automatosx run my-agent "Test prompt"
+```
+
+### Step 3: Iterate
+
+- Test with various prompts
+- Adjust temperature for creativity
+- Add/remove abilities as needed
+- Refine systemPrompt for better results
+
+## Creating Custom Abilities
+
+### Step 1: Create Ability File
+
+```markdown
+<!-- .automatosx/abilities/my-ability.md -->
+# My Custom Ability
+
+Brief description of what this ability does.
+
+## Purpose
+
+Detailed explanation of when and why to use this ability.
+
+## Usage Guidelines
+
+1. First step
+2. Second step
+3. Third step
+
+## Best Practices
+
+- Best practice 1
+- Best practice 2
 
 ## Examples
 
-### 01. Multi-Agent Collaboration
+### Example 1: [Scenario]
+[Detailed example with input and expected output]
 
-**File:** `01-multi-agent-collaboration.ts`
+### Example 2: [Scenario]
+[Another example]
 
-**What it demonstrates:**
-- How to set up and register multiple agents
-- Agent collaboration on a complex task
-- Provider router integration
-- Task execution and result aggregation
+## Common Pitfalls
 
-**Run:**
-```bash
-npm run build
-node examples/01-multi-agent-collaboration.ts
+- Pitfall 1 and how to avoid it
+- Pitfall 2 and how to avoid it
 ```
 
-**Expected output:**
-```
-🤖 Multi-Agent Collaboration Example
-
-Setting up provider router...
-Initializing agent registry...
-  ✓ Registered Security Agent (vulnerability-scanning, owasp-top-10, secrets-detection)
-  ✓ Registered Quality Agent (code-review, linting, complexity-analysis)
-  ✓ Registered Architect Agent (system-design, architecture-review, design-patterns)
-  ✓ Registered Writer Agent (documentation, technical-writing, api-docs)
-
-📦 Analyzing repository: /Users/you/code/automatosx2
-
-🔒 Step 1: Security Analysis
-  → Provider selected: claude (Priority-based selection)
-  ✓ claude responded in 1234ms
-  ✓ Security analysis completed
-    - Duration: 2456ms
-    - Findings: 3 vulnerabilities detected
-
-📊 Step 2: Code Quality Analysis
-  → Provider selected: gemini (Priority-based selection)
-  ✓ gemini responded in 987ms
-  ✓ Quality analysis completed
-
-🏗️  Step 3: Architecture Review
-  ✓ Architecture review completed
-
-📝 Step 4: Report Generation
-  ✓ Report generated
-
-📈 Runtime Statistics:
-  - Total tasks executed: 4
-  - Successful: 4
-  - Failed: 0
-  - Average duration: 1567ms
-
-✨ Multi-agent collaboration completed!
-```
-
-**Key concepts:**
-- `AgentRegistry` - Central registry for all agents
-- `AgentRuntime` - Executes tasks using registered agents
-- `ProviderRouter` - Routes AI requests to providers
-- Task routing based on agent capabilities
-
----
-
-### 02. Workflow with Provider Fallback
-
-**File:** `02-workflow-with-fallback.ts`
-
-**What it demonstrates:**
-- Workflow definition and execution
-- Automatic provider fallback on failures
-- Checkpoint/resume capability
-- Provider health monitoring
-
-**Run:**
-```bash
-# Normal execution
-node examples/02-workflow-with-fallback.ts
-
-# Chaos mode (simulates random provider failures)
-CHAOS_MODE=true node examples/02-workflow-with-fallback.ts
-```
-
-**Expected output (chaos mode):**
-```
-🔄 Workflow with Provider Fallback Example
-
-Setting up provider router with fallback...
-
-📋 Workflow Definition:
-  - Name: code-review-with-fallback
-  - Steps: 4
-  - Dependency levels: 3
-
-🚀 Starting workflow execution...
-
-[Attempt 1] Trying claude (retry 1)...
-  ✗ claude failed: Chaos mode: Simulated failure for claude
-[Attempt 2] Trying claude (retry 2)...
-  ✗ claude failed: Chaos mode: Simulated failure for claude
-[Attempt 3] Trying gemini (retry 1)...
-  ✓ gemini succeeded in 1123ms
-
-[Attempt 4] Trying gemini (retry 1)...
-  ✗ gemini failed: Chaos mode: Simulated failure for gemini
-[Attempt 5] Trying openai (retry 1)...
-  ✓ openai succeeded in 1456ms
-
-✅ Workflow completed successfully!
-
-📊 Execution Summary:
-  - Duration: 15234ms
-  - Steps completed: 4/4
-  - Steps failed: 0
-
-💾 Checkpoint/Resume Capability:
-  Note: Checkpoints are created automatically after each level
-  To resume: const result = await engine.resumeWorkflow(checkpointId)
-
-🏥 Provider Health Status:
-  ✓ claude:
-     - Latency: 1234ms
-     - Error rate: 67%
-     - Requests: 3/min
-  ✓ gemini:
-     - Latency: 1123ms
-     - Error rate: 50%
-     - Requests: 2/min
-  ✓ openai:
-     - Latency: 1456ms
-     - Error rate: 0%
-     - Requests: 1/min
-```
-
-**Key concepts:**
-- `WorkflowEngineV2` - Orchestrates multi-step workflows
-- Provider fallback chain (Claude → Gemini → OpenAI)
-- Automatic retry with exponential backoff
-- Checkpoint creation for resume capability
-- Health monitoring and metrics
-
----
-
-## Workflow Examples
-
-See `../workflows/` directory for complete workflow definitions:
-
-### CI/CD Pipeline
-
-**File:** `../workflows/cicd-pipeline.yaml`
-
-Complete CI/CD pipeline with:
-- 15 steps across 10 stages
-- Security scanning, testing, quality checks
-- Parallel and sequential execution
-- Multi-environment deployment (staging → production)
-
-**Run:**
-```bash
-ax workflow execute workflows/cicd-pipeline.yaml \
-  --context '{"repository": "./", "branch": "main", "version": "1.2.3"}'
-```
-
-**Features demonstrated:**
-- Multi-stage workflows
-- Dependency management
-- Parallel step execution
-- Error handling with `continueOnError`
-- Multiple agent types (Security, Testing, Quality, DevOps, Infrastructure, Writer)
-
-### Technical Debt Analysis
-
-**File:** `../workflows/tech-debt-analysis.yaml`
-
-Comprehensive technical debt analysis with:
-- 24 steps across 10 stages
-- Multi-dimensional analysis (security, quality, performance, architecture)
-- Priority and ROI calculation
-- Executive summary generation
-
-**Run:**
-```bash
-ax workflow execute workflows/tech-debt-analysis.yaml \
-  --context '{"repository": "./", "targetVersion": "2.0.0"}'
-```
-
-**Features demonstrated:**
-- Complex dependency graphs
-- 12+ different agents collaborating
-- Financial impact analysis
-- Report generation at multiple levels (technical + executive)
-- Sprint planning and ticket generation
-
----
-
-## Running Examples
-
-### Method 1: Direct Execution
-
-```bash
-# Build first
-npm run build
-
-# Run example
-node examples/01-multi-agent-collaboration.ts
-```
-
-### Method 2: Using npm scripts
-
-Add to `package.json`:
-```json
-{
-  "scripts": {
-    "example:agents": "node examples/01-multi-agent-collaboration.ts",
-    "example:fallback": "node examples/02-workflow-with-fallback.ts"
-  }
-}
-```
-
-Then run:
-```bash
-npm run example:agents
-npm run example:fallback
-```
-
-### Method 3: CLI Workflows
-
-For YAML workflows, use the CLI:
-```bash
-# Execute workflow
-ax workflow execute workflows/cicd-pipeline.yaml
-
-# Monitor execution
-ax workflow status <execution-id>
-
-# Resume from checkpoint
-ax workflow resume <checkpoint-id>
-```
-
----
-
-## Creating Your Own Examples
-
-### Example Template
-
-```typescript
-/**
- * Example: Your Example Name
- *
- * Description of what this example demonstrates
- */
-
-import { AgentRegistry } from '../src/agents/AgentRegistry.js';
-import { ProviderRouterV2 } from '../src/services/ProviderRouterV2.js';
-import { getDatabase } from '../src/database/connection.js';
-
-async function yourExample() {
-  console.log('🚀 Your Example\n');
-
-  // 1. Setup
-  const db = getDatabase();
-  const router = new ProviderRouterV2({
-    providers: {
-      claude: {
-        enabled: true,
-        priority: 1,
-        apiKey: process.env.ANTHROPIC_API_KEY,
-        maxRetries: 3,
-        timeout: 60000,
-      }
-    }
-  });
-
-  // 2. Your implementation
-  // ...
-
-  // 3. Cleanup
-  db.close();
-}
-
-// Run
-if (import.meta.url === `file://${process.argv[1]}`) {
-  yourExample()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Example failed:', error);
-      process.exit(1);
-    });
-}
-
-export { yourExample };
-```
-
-### Workflow Template
+### Step 2: Reference in Agent
 
 ```yaml
-# Your Workflow Name
-name: your-workflow
-version: 1.0.0
-description: What this workflow does
-
-steps:
-  # Stage 1: First set of tasks
-  - key: step1
-    description: What this step does
-    agent: backend  # Which agent to use
-    action: action-name
-    provider: claude  # Optional: preferred provider
-    timeout: 30000
-    continueOnError: false
-
-  - key: step2
-    description: Another parallel step
-    agent: security
-    action: security-scan
-
-  # Stage 2: Depends on stage 1
-  - key: step3
-    description: Runs after step1 and step2
-    agent: quality
-    action: quality-check
-    dependsOn:
-      - step1
-      - step2
+# my-agent.yaml
+abilities:
+  - my-ability
 ```
 
----
+### Step 3: Test
+
+```bash
+automatosx run my-agent "Use my custom ability to..."
+```
+
+## Tips and Best Practices
+
+### Agent Design
+
+1. **Single Responsibility**: Each agent should have a clear, focused purpose
+2. **Descriptive Names**: Use names that clearly indicate the agent's role
+3. **Specific System Prompts**: Provide detailed instructions for consistent behavior
+4. **Appropriate Temperature**:
+   - 0.0-0.3: Deterministic, factual tasks
+   - 0.4-0.7: Balanced creativity and accuracy
+   - 0.8-1.0: Creative, varied outputs
+
+### Ability Design
+
+1. **Clear Purpose**: Each ability should solve a specific problem
+2. **Detailed Examples**: Show concrete usage patterns
+3. **Best Practices**: Include dos and don'ts
+4. **Composable**: Abilities should work well together
+
+### Usage Tips
+
+1. **Start Simple**: Begin with example agents, customize as needed
+2. **Iterate Quickly**: Test agents with real tasks, refine based on results
+3. **Use Memory**: Let agents remember context across sessions
+4. **Combine Abilities**: Mix and match abilities for complex tasks
+5. **Debug Mode**: Use `--debug` flag to see what's happening
 
 ## Troubleshooting
 
-### API Key Errors
+### Agent Not Found
 
-**Error:** `ProviderAuthError: Invalid API key`
-
-**Solution:**
 ```bash
-# Check environment variables
-echo $ANTHROPIC_API_KEY
-echo $GOOGLE_API_KEY
+# List available agents
+automatosx list agents
 
-# Test provider connection
-ax provider test claude
+# Verify agent file exists
+ls .automatosx/agents/
 ```
 
-### Build Errors
+### Abilities Not Working
 
-**Error:** `Cannot find module` or TypeScript errors
-
-**Solution:**
 ```bash
-# Clean and rebuild
-npm run clean
-npm install
-npm run build
+# List available abilities
+automatosx list abilities
+
+# Check agent profile includes the ability
+cat .automatosx/agents/my-agent.yaml
 ```
 
-### Database Errors
+### Unexpected Behavior
 
-**Error:** `database is locked` or migration errors
+1. Check agent's systemPrompt for clarity
+2. Adjust temperature (lower = more focused)
+3. Enable debug mode: `--debug`
+4. Review memory context: `automatosx memory list`
 
-**Solution:**
-```bash
-# Remove database and recreate
-rm -rf .automatosx/
-npm run cli -- status  # Recreates DB
+## Real-World Use Cases
 
-# Or manually run migrations
-node -e "import('./dist/database/migrations.js').then(m => m.runMigrations())"
-```
+See `examples/use-cases/` for complete scenarios:
 
-### Example Fails to Run
+- Web application development
+- API design and implementation
+- Code migration and refactoring
+- Security audit workflow
+- Documentation generation
 
-**Checklist:**
-1. ✓ Project is built (`npm run build`)
-2. ✓ API keys are set in `.env`
-3. ✓ Database is initialized (`ax status`)
-4. ✓ Running from project root directory
-5. ✓ Node.js version is 18+
+## Community Examples
+
+Share your agents and abilities:
+
+1. Fork the repository
+2. Add your examples to this directory
+3. Submit a pull request
+4. Include description and usage instructions
+
+## Resources
+
+- [Main Documentation](../README.md)
+- [Configuration Guide](../docs/configuration.md)
+- [API Reference](../docs/api.md)
+- [FAQ](../FAQ.md)
+- [Troubleshooting](../TROUBLESHOOTING.md)
 
 ---
 
-## Performance Tips
-
-### 1. Enable Caching
-
-```typescript
-import { WorkflowCache } from '../src/cache/WorkflowCache.js';
-
-const cache = new WorkflowCache({
-  maxSize: 1000,
-  ttl: 3600000, // 1 hour
-});
-
-const engine = new WorkflowEngineV2(db, cache);
-```
-
-### 2. Adjust Timeouts
-
-For long-running tasks:
-```yaml
-steps:
-  - key: slow-task
-    timeout: 300000  # 5 minutes
-```
-
-### 3. Parallel Execution
-
-Maximize parallelism by minimizing dependencies:
-```yaml
-# Good: 3 steps run in parallel
-steps:
-  - key: step1
-  - key: step2
-  - key: step3
-
-# Bad: All steps run sequentially
-steps:
-  - key: step1
-  - key: step2
-    dependsOn: [step1]
-  - key: step3
-    dependsOn: [step2]
-```
-
-### 4. Provider Selection
-
-Use faster/cheaper providers for simple tasks:
-```yaml
-steps:
-  - key: simple-task
-    provider: gemini  # Faster and cheaper
-  - key: complex-task
-    provider: claude  # More capable
-```
-
----
-
-## Next Steps
-
-1. **Run all examples** to understand each system
-2. **Review workflows** in `workflows/` directory
-3. **Read integration guide** at `automatosx/PRD/INTEGRATION-GUIDE.md`
-4. **Create custom agents** using examples as templates
-5. **Design workflows** for your use cases
-
-## Additional Resources
-
-- **Integration Guide:** `../automatosx/PRD/INTEGRATION-GUIDE.md`
-- **Agent Development:** `../docs/agent-development.md`
-- **Workflow Guide:** `../docs/workflow-development.md`
-- **API Reference:** `../docs/api-reference.md`
-
----
-
-**Questions?** Open an issue on GitHub or check the documentation.
-
-**Last Updated:** January 11, 2025
+**Need help?** Open an issue at [GitHub Issues](https://github.com/defai-digital/automatosx/issues) - for bugs, questions, or feature requests (use "enhancement" label for wishlist items).

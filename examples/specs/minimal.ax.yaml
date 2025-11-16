@@ -1,0 +1,21 @@
+version: "1.0"
+
+metadata:
+  id: "simple-calculator"
+  name: "Simple Calculator"
+  description: "A basic calculator that performs arithmetic operations"
+  version: "1.0.0"
+  author: "AutomatosX Team"
+  tags: []
+
+actors:
+  - id: "main-actor"
+    agent: "backend"
+    description: "Primary agent for task execution"
+    permissions:
+      filesystem:
+        read: []
+        write: []
+      network:
+        enabled: false
+    timeout: 300000  # 5 minutes

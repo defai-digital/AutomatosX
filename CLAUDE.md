@@ -453,6 +453,22 @@ tests/
 - Cleanup in afterEach hooks is **mandatory** to prevent resource leaks
 - **v5.7.0+**: Tests manage their own timers (no global fake timers)
 
+**Interactive CLI Testing (v7.6.0+)**:
+- 2,325+ tests across all Phase 1-6 modules
+- 95%+ test coverage with TypeScript strict mode
+- Mock provider responses for deterministic tests
+- Simulate streaming with chunked responses
+- Test conversation persistence and resumption
+- Verify markdown rendering output
+- Security validation test coverage
+- Batch approval workflow testing
+- Undo/redo operation verification
+- Structured logging validation
+- Provider transparency checks
+- Memory suggestion testing
+- Agent preview inference validation
+- Cross-tool hand-off testing
+
 ## Type Safety
 
 - Strict TypeScript mode enabled (`strict: true`, `noUncheckedIndexedAccess: true`)

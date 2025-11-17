@@ -27,7 +27,7 @@ export class OpenAIProvider extends BaseProvider {
    * Override executeCLI to use 'codex exec' subcommand for non-interactive execution
    * This avoids "stdout is not a terminal" errors while keeping CLI detection working
    */
-  protected async executeCLI(prompt: string): Promise<string> {
+  protected override async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests
     if (process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true') {
       logger.debug('Mock mode: returning test response');

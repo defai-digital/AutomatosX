@@ -512,20 +512,20 @@ describe('getProviderLimitManager', () => {
     ProviderLimitManager.resetInstance();
   });
 
-  it('should return singleton instance', () => {
-    const instance1 = getProviderLimitManager();
-    const instance2 = getProviderLimitManager();
+  it('should return singleton instance', async () => {
+    const instance1 = await getProviderLimitManager();
+    const instance2 = await getProviderLimitManager();
     expect(instance1).toBe(instance2);
   });
 
-  it('should use default directory', () => {
-    const instance = getProviderLimitManager();
+  it('should use default directory', async () => {
+    const instance = await getProviderLimitManager();
     expect(instance).toBeDefined();
   });
 
-  it('should accept custom directory', () => {
+  it('should accept custom directory', async () => {
     const customDir = './custom-state';
-    const instance = getProviderLimitManager(customDir);
+    const instance = await getProviderLimitManager(customDir);
     expect(instance).toBeDefined();
   });
 });

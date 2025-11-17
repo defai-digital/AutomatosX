@@ -96,10 +96,12 @@ export class Router {
     this.cache = config.cache;
 
     // v5.7.0: Initialize provider limit manager (non-blocking)
-    const limitManager = getProviderLimitManager();
-    void limitManager.initialize().catch(err => {
-      logger.warn('Failed to initialize ProviderLimitManager', { error: err.message });
-    });
+    void (async () => {
+      const limitManager = await getProviderLimitManager();
+      await limitManager.initialize().catch(err => {
+        logger.warn('Failed to initialize ProviderLimitManager', { error: err.message });
+      });
+    })();
 
     // Phase 3: Initialize multi-factor routing if strategy provided
     if (config.strategy) {
@@ -241,7 +243,7 @@ export class Router {
 
     if (availableProviders.length === 0) {
       // v5.7.0: Check if all providers are limited (quota exhausted)
-      const limitManager = getProviderLimitManager();
+      const limitManager = await getProviderLimitManager();
       const allProviders = this.providers;
       const limitedProviders = [];
 
@@ -453,7 +455,7 @@ export class Router {
         if (isRateLimitError) {
           // Rate limit error - record to limitManager and don't penalize
           const providerError = error as ProviderError;
-          const limitManager = getProviderLimitManager();
+          const limitManager = await getProviderLimitManager();
 
           // v6.5.16: Ensure limit is recorded (idempotent - safe to call even if already recorded)
           // Bug #11 fix: Wrap in try-catch to prevent masking the original provider error
@@ -582,7 +584,7 @@ export class Router {
 
     // v5.7.0: Check if all providers are limited (quota exhausted)
     // FIXED (Bug #5): Check ALL providers (not just attempted ones) for accurate soonest reset
-    const limitManager = getProviderLimitManager();
+    const limitManager = await getProviderLimitManager();
     const allProviders = this.providers;
     const limitedProviders = [];
 
@@ -624,7 +626,7 @@ export class Router {
    */
   async getAvailableProviders(): Promise<Provider[]> {
     const now = Date.now();
-    const limitManager = getProviderLimitManager();
+    const limitManager = await getProviderLimitManager();
 
     // Check availability in parallel
     const checks = this.providers.map(async provider => {
@@ -721,7 +723,7 @@ export class Router {
 
       try {
         // v5.7.0: Refresh expired provider limits (automatic recovery)
-        const limitManager = getProviderLimitManager();
+        const limitManager = await getProviderLimitManager();
         const restoredProviders = await limitManager.refreshExpired();
 
         if (restoredProviders.length > 0) {

@@ -53,7 +53,7 @@ export const providerLimitsCommand: CommandModule<Record<string, unknown>, Provi
 
   handler: async (argv) => {
     try {
-      const limitManager = getProviderLimitManager();
+      const limitManager = await getProviderLimitManager();
       await limitManager.initialize();
 
       const states = limitManager.getAllStates();

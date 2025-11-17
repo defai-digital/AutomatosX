@@ -404,7 +404,8 @@ describe('Router - Health Check Integration with Provider Cache', () => {
       healthCheckInterval: 5000 // 5 seconds
     });
 
-    await vi.advanceTimersByTimeAsync(100);
+    // Wait for router initialization (limit manager init is now synchronous in tests)
+    await vi.advanceTimersByTimeAsync(500);
     const initialCalls = provider.isAvailableCalls;
 
     // Advance through multiple intervals

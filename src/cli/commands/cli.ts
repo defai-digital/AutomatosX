@@ -46,17 +46,19 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
 
   handler: async (argv) => {
     try {
-      // Determine config path - check only settings.json in two locations
+      // Determine config path - check both settings.json and user-settings.json for backward compatibility
       let configPath = argv.config;
       if (!configPath) {
         const locations = [
           // 1. Project-specific .grok directory (current directory)
           join(process.cwd(), '.grok', 'settings.json'),
+          join(process.cwd(), '.grok', 'user-settings.json'), // Legacy filename
           // 2. User home directory .grok
           join(homedir(), '.grok', 'settings.json'),
+          join(homedir(), '.grok', 'user-settings.json'), // Legacy filename
         ];
 
-        // Find first existing settings.json file
+        // Find first existing config file
         for (const location of locations) {
           if (existsSync(location)) {
             configPath = location;
@@ -94,12 +96,15 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       }
 
       // Load config to verify it's valid
+      let config: any;
+      let isPlaceholder = false;
+
       try {
         const configContent = readFileSync(configPath, 'utf-8');
-        const config = JSON.parse(configContent);
+        config = JSON.parse(configContent);
 
         // Check for valid API key (not placeholder)
-        const isPlaceholder = config.apiKey && (
+        isPlaceholder = config.apiKey && (
           config.apiKey.includes('YOUR_') ||
           config.apiKey.includes('_KEY_HERE') ||
           config.apiKey === 'YOUR_XAI_API_KEY_HERE' ||
@@ -140,14 +145,22 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       // Build Grok CLI arguments
       const grokArgs: string[] = [];
 
-      // Add model if specified
-      if (argv.model) {
-        grokArgs.push('--model', argv.model);
+      // Pass config values as individual flags since Grok CLI doesn't support --config
+      // Extract values from the detected config file
+      if (config.apiKey && !isPlaceholder) {
+        grokArgs.push('--api-key', config.apiKey);
       }
 
-      // Always pass config path to Grok CLI so it uses the detected config
-      // instead of defaulting to user-settings.json
-      grokArgs.push('--config', configPath);
+      if (config.baseURL) {
+        grokArgs.push('--base-url', config.baseURL);
+      }
+
+      // Add model - prefer command line arg, then config file, then nothing
+      if (argv.model) {
+        grokArgs.push('--model', argv.model);
+      } else if (config.model) {
+        grokArgs.push('--model', config.model);
+      }
 
       // Add prompt if provided
       if (argv.prompt) {
@@ -166,9 +179,9 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       console.log(chalk.gray('\n   Press Ctrl+C to exit\n'));
 
       // Spawn Grok CLI process
+      // SECURITY: Do not use shell: true - Node handles argument escaping
       const grokProcess = spawn(grokCommand, grokArgs, {
         stdio: 'inherit',
-        shell: true,
         env: {
           ...process.env,
           GROK_CONFIG_PATH: configPath

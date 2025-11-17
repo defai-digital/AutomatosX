@@ -178,7 +178,7 @@ async function handleList(config: any, argv: ProvidersOptions): Promise<void> {
   const metadataProviders = Object.keys(PROVIDER_METADATA);
 
   // Get provider limit manager for usage info
-  const limitManager = getProviderLimitManager();
+  const limitManager = await getProviderLimitManager();
   await limitManager.initialize();
 
   // Build provider list

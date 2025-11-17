@@ -15,6 +15,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
+import { detectProjectRoot } from './path-resolver.js';
 import type { ProviderLimitTrackingConfig } from '../types/config.js';
 import { Mutex } from 'async-mutex';
 
@@ -529,7 +530,20 @@ export class ProviderLimitManager extends EventEmitter {
 
 /**
  * Get global singleton instance
+ *
+ * Automatically resolves project root to ensure state files are created in
+ * .automatosx/state/ relative to project root, not current working directory.
  */
-export function getProviderLimitManager(stateDirectory?: string): ProviderLimitManager {
+export async function getProviderLimitManager(stateDirectory?: string): Promise<ProviderLimitManager> {
+  if (!stateDirectory) {
+    // In test mode, use a simple relative path to avoid async I/O issues
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      stateDirectory = '.automatosx/state';
+    } else {
+      // Resolve project root to avoid creating state files in CWD
+      const projectRoot = await detectProjectRoot();
+      stateDirectory = path.join(projectRoot, '.automatosx', 'state');
+    }
+  }
   return ProviderLimitManager.getInstance(stateDirectory);
 }

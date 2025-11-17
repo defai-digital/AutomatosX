@@ -12,6 +12,7 @@
 import type { CommandModule } from 'yargs';
 import { PathResolver } from '../../core/path-resolver.js';
 import { WorkspaceManager } from '../../core/workspace-manager.js';
+import { BaseProvider } from '../../providers/base-provider.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { GrokProvider } from '../../providers/grok-provider.js';
@@ -95,7 +96,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       const tmpDir = join(detectedProjectDir, 'automatosx', 'tmp');
 
       // Initialize providers
-      const providers = [];
+      const providers: BaseProvider[] = [];
 
       if (providerConfigs['claude-code']?.enabled) {
         providers.push(new ClaudeProvider({
@@ -323,7 +324,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         // v5.7.0: Provider Limits Status
         console.log(chalk.cyan('Provider Limits:'));
         try {
-          const limitManager = getProviderLimitManager();
+          const limitManager = await getProviderLimitManager();
           await limitManager.initialize();
 
           const limitStates = limitManager.getAllStates();

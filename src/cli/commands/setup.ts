@@ -1131,6 +1131,7 @@ async function setupProjectGeminiMd(
  */
 async function setupGrokIntegration(projectDir: string, packageRoot: string): Promise<void> {
   const examplesBaseDir = join(packageRoot, 'examples/grok');
+  const templatesDir = join(packageRoot, 'templates/providers');
 
   // Create .grok directory structure
   const grokDir = join(projectDir, '.grok');
@@ -1152,6 +1153,44 @@ async function setupGrokIntegration(projectDir: string, packageRoot: string): Pr
   } catch (error) {
     // Non-critical error, just log it
     logger.warn('Failed to copy Grok settings template', {
+      error: (error as Error).message
+    });
+  }
+
+  // Copy Grok provider YAML templates to .automatosx/providers/
+  try {
+    const providersDir = join(projectDir, '.automatosx/providers');
+    await mkdir(providersDir, { recursive: true });
+
+    // Copy X.AI Grok template (default)
+    const xaiTemplateSource = join(templatesDir, 'grok.yaml.template');
+    const xaiTemplateTarget = join(providersDir, 'grok.yaml.template');
+    const xaiExists = await checkExists(xaiTemplateTarget);
+    if (!xaiExists) {
+      await copyFile(xaiTemplateSource, xaiTemplateTarget);
+      logger.info('Created .automatosx/providers/grok.yaml.template (X.AI Grok)', { path: xaiTemplateTarget });
+    }
+
+    // Copy Z.AI GLM 4.6 template
+    const zaiTemplateSource = join(templatesDir, 'grok-zai.yaml.template');
+    const zaiTemplateTarget = join(providersDir, 'grok-zai.yaml.template');
+    const zaiExists = await checkExists(zaiTemplateTarget);
+    if (!zaiExists) {
+      await copyFile(zaiTemplateSource, zaiTemplateTarget);
+      logger.info('Created .automatosx/providers/grok-zai.yaml.template (Z.AI GLM 4.6)', { path: zaiTemplateTarget });
+    }
+
+    // Copy README
+    const readmeSource = join(templatesDir, 'README.md');
+    const readmeTarget = join(providersDir, 'README.md');
+    const readmeExists = await checkExists(readmeTarget);
+    if (!readmeExists) {
+      await copyFile(readmeSource, readmeTarget);
+      logger.info('Created .automatosx/providers/README.md', { path: readmeTarget });
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to copy Grok provider YAML templates', {
       error: (error as Error).message
     });
   }

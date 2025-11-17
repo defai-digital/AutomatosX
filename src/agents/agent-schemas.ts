@@ -116,7 +116,7 @@ export const agentProfileSchema = z.object({
     .max(50)
     .regex(/^[a-zA-Z0-9_-]+$/, 'Agent name must be alphanumeric with dash/underscore only')
     .optional(), // Optional - uses filename if not provided
-  displayName: z.string().min(1).max(100).optional(),
+  displayName: z.string().max(100).optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be semver format').optional(),
   description: z.string().min(1),
 

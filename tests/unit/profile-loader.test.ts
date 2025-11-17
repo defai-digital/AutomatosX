@@ -44,7 +44,9 @@ maxTokens: 4096
 
       const profile = await loader.loadProfile('test');
 
-      expect(profile.name).toBe('Test Agent');
+      // Name preprocessing: invalid name "Test Agent" moved to displayName, filename used as name
+      expect(profile.name).toBe('test');
+      expect(profile.displayName).toBe('Test Agent');
       expect(profile.role).toBe('tester');
       expect(profile.description).toBe('A test agent');
       expect(profile.systemPrompt).toBe('You are a test agent');

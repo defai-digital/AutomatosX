@@ -122,7 +122,7 @@ export abstract class BaseProvider implements Provider {
         {
           timeout: this.config.timeout || 120000,
           maxBuffer: 10 * 1024 * 1024,
-          shell: true, // Enable shell to support complex commands
+          shell: '/bin/bash', // Enable shell to support complex commands
           env: {
             ...process.env,
             // Force non-interactive mode for CLIs

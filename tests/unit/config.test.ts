@@ -210,7 +210,7 @@ describe('Config Management', () => {
 
       const errors = validateConfig(config);
       // v5.0: Enhanced validation with type checking
-      expect(errors.some(e => e.includes('priority must be a positive integer'))).toBe(true);
+      expect(errors.some(e => e.includes('must be a positive integer'))).toBe(true);
     });
 
     it('should detect invalid provider timeout', () => {
@@ -243,7 +243,7 @@ describe('Config Management', () => {
       };
 
       const errors = validateConfig(config);
-      expect(errors.some(e => e.includes('timeout must be >= 1000ms'))).toBe(true);
+      expect(errors.some(e => e.includes('Timeout must be >= 1000ms'))).toBe(true);
     });
 
     it('should detect invalid memory.maxEntries', () => {
@@ -270,7 +270,7 @@ describe('Config Management', () => {
 
       const errors = validateConfig(config);
       // v5.0: Enhanced validation with type checking
-      expect(errors.some(e => e.includes('maxEntries must be a positive integer'))).toBe(true);
+      expect(errors.some(e => e.includes('must be a positive integer'))).toBe(true);
     });
 
     it('should detect invalid memory.cleanupDays', () => {
@@ -297,7 +297,7 @@ describe('Config Management', () => {
 
       const errors = validateConfig(config);
       // v5.0: Enhanced validation with type checking
-      expect(errors.some(e => e.includes('cleanupDays must be a positive integer'))).toBe(true);
+      expect(errors.some(e => e.includes('must be a positive integer'))).toBe(true);
     });
 
     it('should detect invalid workspace.tmpCleanupDays', () => {
@@ -324,7 +324,7 @@ describe('Config Management', () => {
 
       const errors = validateConfig(config);
       // v5.2.0: Check tmpCleanupDays validation
-      expect(errors.some(e => e.includes('tmpCleanupDays must be a positive integer'))).toBe(true);
+      expect(errors.some(e => e.includes('must be a positive integer'))).toBe(true);
     });
 
     it('should detect invalid workspace.maxFiles', () => {

@@ -539,7 +539,7 @@ export function safeValidateConfig(config: unknown) {
  * Nested objects now have defaults for required fields (e.g., memory.persistPath, memory.cleanupDays)
  * to enable partial updates.
  */
-export const partialConfigSchema = automatosXConfigSchema.partial().passthrough();
+export const partialConfigSchema = automatosXConfigSchema.deepPartial().passthrough();
 
 /**
  * Validate partial configuration

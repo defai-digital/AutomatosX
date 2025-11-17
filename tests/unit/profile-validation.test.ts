@@ -238,7 +238,7 @@ thinking_patterns: "not an array"
       await writeFile(join(testDir, 'test.yaml'), invalidProfile);
 
       await expect(loader.loadProfile('test')).rejects.toThrow(
-        'thinking_patterns must be an array'
+        /thinking_patterns.*Invalid input.*expected array/
       );
     });
 

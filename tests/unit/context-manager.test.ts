@@ -95,7 +95,9 @@ temperature: 0.7
     it('should create complete execution context', async () => {
       const context = await manager.createContext('test', 'Hello world');
 
-      expect(context.agent.name).toBe('Test Agent');
+      // Name is filename, displayName is the human-friendly name
+      expect(context.agent.name).toBe('test');
+      expect(context.agent.displayName).toBe('Test Agent');
       expect(context.task).toBe('Hello world');
       expect(context.provider).toBeDefined();
       expect(context.provider.name).toBe('claude');
@@ -109,7 +111,9 @@ temperature: 0.7
     it('should load agent profile', async () => {
       const context = await manager.createContext('test', 'Task');
 
-      expect(context.agent.name).toBe('Test Agent');
+      // Name is filename, displayName is the human-friendly name
+      expect(context.agent.name).toBe('test');
+      expect(context.agent.displayName).toBe('Test Agent');
       expect(context.agent.role).toBe('tester');
       expect(context.agent.description).toBe('A test agent');
       expect(context.agent.systemPrompt).toBe('You are a test agent');
@@ -154,7 +158,7 @@ temperature: 0.7
 
       expect(context.agentWorkspace).toBeDefined();
       expect(normalizePath(context.agentWorkspace)).toContain('.automatosx/workspaces');
-      expect(normalizePath(context.agentWorkspace)).toContain('test-agent'); // Agent name is sanitized to lowercase with dashes
+      expect(normalizePath(context.agentWorkspace)).toContain('test'); // Agent name from filename
     });
 
     it('should inject memory by default', async () => {

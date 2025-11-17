@@ -89,6 +89,36 @@
         "window": "daily",
         "resetHourUtc": 0
       }
+    },
+    "grok": {
+      "enabled": false,
+      "priority": 4,
+      "timeout": 2700000,
+      "command": "grok",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
+      }
     }
   },
   "execution": {

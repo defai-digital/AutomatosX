@@ -49,6 +49,7 @@ import { doctorCommand } from './commands/doctor.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
+import { cliCommand } from './commands/cli.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -81,6 +82,8 @@ globalTracker.mark('cli_start');
   .example('$0 provider-limits', 'Show provider usage limits')
   .example('$0 mcp', 'Start MCP server for Claude Code')
   .example('$0 update', 'Update to latest version')
+  .example('$0 cli', 'Launch Grok CLI with project context')
+  .example('$0 cli "Design API"', 'Send prompt to Grok CLI')
   .example('$0 gemini status', 'Show Gemini CLI integration status')
   .example('$0 spec run', 'Execute spec-driven tasks')
   .example('$0 spec status', 'Show spec task status')
@@ -124,6 +127,7 @@ globalTracker.mark('cli_start');
   .command(setupCommand)
   .command(initCommand)
   .command(configureCommand)
+  .command(cliCommand)
   .command(agentCommand)
   .command(listCommand)
   .command(runCommand)

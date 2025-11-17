@@ -37,7 +37,7 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       .option('config', {
         type: 'string',
         alias: 'c',
-        describe: 'Path to Grok config file (default: ~/.grok/config.json)'
+        describe: 'Path to Grok settings file (default: ./.grok/settings.json or ~/.grok/settings.json)'
       })
       .example('$0 cli', 'Launch Grok CLI interactively')
       .example('$0 cli "Design a REST API"', 'Send prompt directly to Grok')
@@ -46,19 +46,17 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
 
   handler: async (argv) => {
     try {
-      // Determine config path - check multiple locations in order of priority
+      // Determine config path - check only settings.json in two locations
       let configPath = argv.config;
       if (!configPath) {
         const locations = [
           // 1. Project-specific .grok directory (current directory)
-          join(process.cwd(), '.grok', 'config.json'),
           join(process.cwd(), '.grok', 'settings.json'),
           // 2. User home directory .grok
-          join(homedir(), '.grok', 'config.json'),
           join(homedir(), '.grok', 'settings.json'),
         ];
 
-        // Find first existing config file
+        // Find first existing settings.json file
         for (const location of locations) {
           if (existsSync(location)) {
             configPath = location;
@@ -66,9 +64,9 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
           }
         }
 
-        // Default to home directory config.json for error messages
+        // Default to home directory settings.json for error messages
         if (!configPath) {
-          configPath = join(homedir(), '.grok', 'config.json');
+          configPath = join(homedir(), '.grok', 'settings.json');
         }
       }
 
@@ -81,13 +79,17 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
         model: argv.model
       });
 
-      // Check if config exists
+      // Check if settings.json exists
       if (!existsSync(configPath)) {
-        console.log(chalk.yellow('\n⚠️  Grok config not found at:'), chalk.gray(configPath));
+        console.log(chalk.yellow('\n⚠️  Grok settings not found'));
+        console.log(chalk.gray('   Checked:'));
+        console.log(chalk.gray('   - ./.grok/settings.json (project)'));
+        console.log(chalk.gray('   - ~/.grok/settings.json (home)'));
         console.log(chalk.blue('\n💡 To set up Grok:'));
         console.log(chalk.gray('   1. Install Grok CLI: npm install -g @grok/cli'));
         console.log(chalk.gray('   2. Configure API key: grok config set api-key YOUR_KEY'));
-        console.log(chalk.gray('   3. Run ax cli again\n'));
+        console.log(chalk.gray('   3. This will create ~/.grok/settings.json'));
+        console.log(chalk.gray('   4. Run ax cli again\n'));
         process.exit(1);
       }
 
@@ -109,10 +111,11 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
           server: config.server || 'default'
         });
       } catch (error) {
-        console.log(chalk.red('\n❌ Invalid Grok config file at:'), chalk.gray(configPath));
+        console.log(chalk.red('\n❌ Invalid Grok settings file at:'), chalk.gray(configPath));
         console.log(chalk.gray('   Error:'), error instanceof Error ? error.message : String(error));
-        console.log(chalk.blue('\n💡 Try recreating your config:'));
-        console.log(chalk.gray('   grok config set api-key YOUR_KEY\n'));
+        console.log(chalk.blue('\n💡 Try recreating your settings:'));
+        console.log(chalk.gray('   grok config set api-key YOUR_KEY'));
+        console.log(chalk.gray('   This will recreate ~/.grok/settings.json\n'));
         process.exit(1);
       }
 

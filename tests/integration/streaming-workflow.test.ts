@@ -33,7 +33,8 @@ vi.mock('ora', () => {
   };
 });
 
-describe('Streaming Workflow Integration', () => {
+// v8.3.0: Skip streaming tests - feature removed in CLI-only refactoring
+describe.skip('Streaming Workflow Integration', () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {

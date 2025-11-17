@@ -231,6 +231,22 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ GEMINI.md configured'));
 
+      // Setup Grok CLI integration
+      console.log(chalk.cyan('🔌 Setting up Grok CLI integration...'));
+      const grokDir = join(projectDir, '.grok');
+      const grokDirExistedBefore = await checkExists(grokDir);
+      await setupGrokIntegration(projectDir, packageRoot);
+      // Only add to rollback if we created it (not if it pre-existed)
+      if (!grokDirExistedBefore) {
+        createdResources.push(grokDir);
+      }
+      console.log(chalk.green('   ✓ Grok CLI integration configured'));
+
+      // Setup project GROK.md with AutomatosX integration guide
+      console.log(chalk.cyan('📖 Setting up GROK.md with AutomatosX integration...'));
+      await setupProjectGrokMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ GROK.md configured'));
+
       // Setup project AGENTS.md with AutomatosX integration guide (AGENTS.md standard)
       console.log(chalk.cyan('📖 Setting up AGENTS.md with AutomatosX integration...'));
       await setupProjectAgentsMd(projectDir, packageRoot, argv.force ?? false);
@@ -305,6 +321,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.gray('  • Use natural language to work with ax agents'));
       console.log(chalk.gray('  • Example: "Use ax agent backend to create a REST API"'));
       console.log(chalk.gray('  • No special commands needed - just ask naturally!\n'));
+      console.log(chalk.cyan('Grok CLI Integration:'));
+      console.log(chalk.gray('  • Configure .grok/settings.json with your API key'));
+      console.log(chalk.gray('  • Supports X.AI (grok-3-fast) and Z.AI (glm-4.6)'));
+      console.log(chalk.gray('  • Enable in automatosx.config.json: "grok": { "enabled": true }'));
+      console.log(chalk.gray('  • See GROK.md for setup instructions\n'));
       console.log(chalk.cyan('OpenAI Codex Provider:'));
       console.log(chalk.gray('  • Use natural language to work with ax agents'));
       console.log(chalk.gray('  • Or use terminal: ax run <agent> "task"'));
@@ -1101,6 +1122,149 @@ async function setupProjectGeminiMd(
     logger.warn('Failed to setup GEMINI.md', {
       error: (error as Error).message,
       path: geminiMdPath
+    });
+  }
+}
+
+/**
+ * Setup Grok CLI integration files
+ */
+async function setupGrokIntegration(projectDir: string, packageRoot: string): Promise<void> {
+  const examplesBaseDir = join(packageRoot, 'examples/grok');
+  const templatesDir = join(packageRoot, 'templates/providers');
+
+  // Create .grok directory structure
+  const grokDir = join(projectDir, '.grok');
+  await mkdir(grokDir, { recursive: true });
+
+  // Copy settings.json template
+  try {
+    const settingsSource = join(examplesBaseDir, 'settings.json');
+    const settingsTarget = join(grokDir, 'settings.json');
+
+    // Only copy if it doesn't exist (don't overwrite user's config)
+    const exists = await checkExists(settingsTarget);
+    if (!exists) {
+      await copyFile(settingsSource, settingsTarget);
+      logger.info('Created .grok/settings.json template', { path: settingsTarget });
+    } else {
+      logger.info('.grok/settings.json already exists, skipping', { path: settingsTarget });
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to copy Grok settings template', {
+      error: (error as Error).message
+    });
+  }
+
+  // Copy Grok provider YAML templates to .automatosx/providers/
+  try {
+    const providersDir = join(projectDir, '.automatosx/providers');
+    await mkdir(providersDir, { recursive: true });
+
+    // Copy X.AI Grok template (default)
+    const xaiTemplateSource = join(templatesDir, 'grok.yaml.template');
+    const xaiTemplateTarget = join(providersDir, 'grok.yaml.template');
+    const xaiExists = await checkExists(xaiTemplateTarget);
+    if (!xaiExists) {
+      await copyFile(xaiTemplateSource, xaiTemplateTarget);
+      logger.info('Created .automatosx/providers/grok.yaml.template (X.AI Grok)', { path: xaiTemplateTarget });
+    }
+
+    // Copy Z.AI GLM 4.6 template
+    const zaiTemplateSource = join(templatesDir, 'grok-zai.yaml.template');
+    const zaiTemplateTarget = join(providersDir, 'grok-zai.yaml.template');
+    const zaiExists = await checkExists(zaiTemplateTarget);
+    if (!zaiExists) {
+      await copyFile(zaiTemplateSource, zaiTemplateTarget);
+      logger.info('Created .automatosx/providers/grok-zai.yaml.template (Z.AI GLM 4.6)', { path: zaiTemplateTarget });
+    }
+
+    // Copy README
+    const readmeSource = join(templatesDir, 'README.md');
+    const readmeTarget = join(providersDir, 'README.md');
+    const readmeExists = await checkExists(readmeTarget);
+    if (!readmeExists) {
+      await copyFile(readmeSource, readmeTarget);
+      logger.info('Created .automatosx/providers/README.md', { path: readmeTarget });
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to copy Grok provider YAML templates', {
+      error: (error as Error).message
+    });
+  }
+}
+
+/**
+ * Setup project GROK.md with AutomatosX integration guide
+ *
+ * This function creates or updates the project's GROK.md file to include
+ * AutomatosX integration instructions, helping users configure Grok CLI
+ * with either X.AI (grok-3-fast) or Z.AI (glm-4.6) endpoints.
+ */
+async function setupProjectGrokMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  const grokMdPath = join(projectDir, 'GROK.md');
+  const templatePath = join(packageRoot, 'examples/grok/GROK_INTEGRATION.md');
+
+  try {
+    // Read the template
+    const { readFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+
+    const exists = await checkExists(grokMdPath);
+
+    if (!exists) {
+      // Create new GROK.md with AutomatosX integration
+      const content = [
+        '# GROK.md',
+        '',
+        'This file provides guidance for Grok CLI integration with AutomatosX.',
+        '',
+        '---',
+        '',
+        template
+      ].join('\n');
+
+      await writeFile(grokMdPath, content, 'utf-8');
+      logger.info('Created GROK.md with AutomatosX integration', { path: grokMdPath });
+    } else {
+      // Update existing GROK.md
+      const existingContent = await readFile(grokMdPath, 'utf-8');
+
+      // Check if AutomatosX integration already exists
+      if (existingContent.includes('# Grok CLI Integration')) {
+        if (!force) {
+          logger.info('GROK.md already contains AutomatosX integration', { path: grokMdPath });
+          return;
+        }
+        // Force mode: replace existing AutomatosX section
+        const updatedContent = replaceAutomatosXSection(existingContent, template);
+        await writeFile(grokMdPath, updatedContent, 'utf-8');
+        logger.info('Updated AutomatosX integration in GROK.md', { path: grokMdPath });
+      } else {
+        // Append AutomatosX integration to existing content
+        const updatedContent = [
+          existingContent.trimEnd(),
+          '',
+          '---',
+          '',
+          template
+        ].join('\n');
+
+        await writeFile(grokMdPath, updatedContent, 'utf-8');
+        logger.info('Added AutomatosX integration to existing GROK.md', { path: grokMdPath });
+      }
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup GROK.md', {
+      error: (error as Error).message,
+      path: grokMdPath
     });
   }
 }

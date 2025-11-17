@@ -33,7 +33,15 @@ class MockProvider extends BaseProvider {
   }
 
   // v8.3.0: Implement abstract methods
-  protected async executeCLI(prompt: string): Promise<string> {
+  protected getCLICommand(): string {
+    return 'test-provider';
+  }
+
+  protected getMockResponse(): string {
+    return `[Mock Test Provider Response]\n\nThis is a mock response for testing purposes.`;
+  }
+
+  protected override async executeCLI(prompt: string): Promise<string> {
     this.executionCount++;
     if (this.mockExecuteError) {
       throw this.mockExecuteError;
@@ -41,7 +49,7 @@ class MockProvider extends BaseProvider {
     return this.mockExecuteResponse?.content || `Mock response for: ${prompt}`;
   }
 
-  protected async checkCLIAvailable(): Promise<boolean> {
+  protected override async checkCLIAvailable(): Promise<boolean> {
     return true;
   }
 

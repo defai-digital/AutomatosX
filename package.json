@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.3.0",
+  "version": "8.3.2",
   "description": "AI Agent Orchestration Platform",
   "type": "module",
   "publishConfig": {
@@ -95,6 +95,7 @@
     "chalk": "^5.6.2",
     "cli-highlight": "^2.1.11",
     "cli-table3": "^0.6.5",
+    "effect": "^3.19.3",
     "find-up": "^8.0.0",
     "inquirer": "^12.10.0",
     "js-yaml": "^4.1.0",
@@ -106,7 +107,8 @@
     "p-limit": "^7.2.0",
     "sqlite-vec": "^0.1.7-alpha.2",
     "yaml": "^2.8.1",
-    "yargs": "^18.0.0"
+    "yargs": "^18.0.0",
+    "zod": "^4.1.12"
   },
   "files": [
     "dist",

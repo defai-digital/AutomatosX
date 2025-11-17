@@ -84,8 +84,10 @@ RELEASE-NOTES.md
 *ASSESSMENT*.md
 
 # AI assistant runtime directories (user-specific)
+# These directories contain API keys, privacy data, and sensitive configuration
 .claude/
 .gemini/
+.grok/
 
 # User-specific configuration and secrets
 **/config.local.json

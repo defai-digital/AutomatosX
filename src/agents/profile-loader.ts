@@ -23,6 +23,7 @@ import {
   markCacheMiss,
   PerformanceTimer
 } from '../utils/performance-markers.js';
+import { safeValidateAgentProfile, validateAgentProfileFromYAML } from './agent-schemas.js';
 
 // Get the directory of this file for locating built-in agents
 const __filename = fileURLToPath(import.meta.url);
@@ -731,6 +732,18 @@ export class ProfileLoader {
     // FIX Bug #104: Validate data is a valid object before accessing properties
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new AgentValidationError(`Invalid profile data for ${name}: expected object, got ${typeof data}`);
+    }
+
+    // Validate with Zod schema first (early validation with better error messages)
+    const validationResult = safeValidateAgentProfile(data);
+    if (!validationResult.success) {
+      // Note: Zod v3.x uses 'issues' instead of 'errors'
+      const validationErrors = validationResult.error.issues.map(e =>
+        `${e.path.join('.')}: ${e.message}`
+      ).join('; ');
+      throw new AgentValidationError(
+        `Invalid profile for ${name}: ${validationErrors}`
+      );
     }
 
     let teamConfig: TeamConfig | undefined;

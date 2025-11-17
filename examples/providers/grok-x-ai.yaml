@@ -1,0 +1,46 @@
+# Grok Provider Example - X.AI Official Grok Model
+#
+# This example demonstrates using X.AI's official Grok model.
+# Grok is optimized for reasoning, analysis, and general tasks.
+#
+# Usage:
+#   1. Copy to .automatosx/providers/grok.yaml
+#   2. Set GROK_API_KEY environment variable (starts with "xai-")
+#   3. Run: ax doctor grok
+
+provider:
+  # Provider identification
+  name: grok
+  enabled: true
+  priority: 2
+
+  # X.AI endpoint (official Grok model)
+  baseUrl: https://api.x.ai/v1
+  apiKey: ${GROK_API_KEY}                            # X.AI API key (xai-...)
+  model: grok-beta                                    # X.AI Grok model
+
+  # Performance settings (higher timeout for longer context)
+  timeout: 180000                                     # 3 minutes (Grok can be slower)
+  maxRetries: 3
+
+# Rate limiting for X.AI
+rateLimits:
+  maxRequestsPerMinute: 60
+  maxTokensPerMinute: 200000                         # Higher token limit for Grok
+  maxConcurrentRequests: 5
+
+# Circuit breaker
+circuitBreaker:
+  failureThreshold: 3
+  resetTimeout: 60000
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "X.AI Grok configuration for reasoning and analysis"
+  tags:
+    - grok
+    - x-ai
+    - grok-beta
+    - reasoning
+  lastUpdated: "2025-11-16T00:00:00Z"

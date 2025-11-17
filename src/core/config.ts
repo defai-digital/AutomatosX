@@ -38,6 +38,8 @@ import {
 import { TTLCache } from './cache.js';
 import { calculateMaxConcurrentAgents } from '../utils/resource-calculator.js';
 import { PRECOMPILED_CONFIG } from '../config.generated.js';
+import { automatosXConfigSchema, safeValidateConfig } from './config-schemas.js';
+import { ZodError } from 'zod';
 
 /**
  * Configuration cache (process-level)
@@ -268,7 +270,37 @@ function mergeConfig(
 }
 
 /**
+ * Validate config using Zod (recommended approach)
+ *
+ * Uses Zod schemas for runtime validation with:
+ * - Better error messages with exact paths
+ * - Type inference and safety
+ * - Composable schemas with transformers
+ * - Automatic type coercion
+ *
+ * @param config - Configuration to validate
+ * @returns Array of validation error messages (empty if valid)
+ */
+export function validateConfigWithZod(config: AutomatosXConfig): string[] {
+  const result = safeValidateConfig(config);
+
+  if (result.success) {
+    return [];
+  }
+
+  // Convert Zod errors to user-friendly messages
+  // Note: Zod v3.x uses 'issues' instead of 'errors'
+  return result.error.issues.map(err => {
+    const path = err.path.join('.');
+    return `${path}: ${err.message}`;
+  });
+}
+
+/**
  * Validate config (comprehensive validation for v5.0+)
+ *
+ * Legacy validation function using manual checks.
+ * Consider using validateConfigWithZod() for better error messages.
  *
  * Validates all configuration values with:
  * - Security checks (path traversal, command injection, name injection)
@@ -277,6 +309,13 @@ function mergeConfig(
  * - Range validation (min/max values)
  */
 export function validateConfig(config: AutomatosXConfig): string[] {
+  // Try Zod validation first (better error messages)
+  const zodErrors = validateConfigWithZod(config);
+  if (zodErrors.length > 0) {
+    return zodErrors;
+  }
+
+  // Fallback to manual validation for backward compatibility
   const errors: string[] = [];
 
   // Validate providers

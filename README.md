@@ -5,7 +5,7 @@
 AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
-[![License](https://img.shields.io/badge/license-Elastic%202.0-orange.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-2,423+%20passing-brightgreen.svg)](#)
 [![npm](https://img.shields.io/npm/dt/%40defai.digital%2Fautomatosx.svg?label=total%20downloads&color=blue)](https://www.npmjs.com/package/@defai.digital/automatosx)
@@ -1129,8 +1129,106 @@ ax setup -f
   - [Gemini CLI](https://ai.google.dev/gemini-api/docs/cli) (recommended - cheapest)
   - [OpenAI Codex](https://platform.openai.com/docs/guides/code) (fastest)
   - [Claude Code](https://claude.ai/code) (most capable)
+  - [Grok CLI](#-grok-cli-configuration-new-in-v831) (X.AI or self-hosted GLM 4.6)
 
 [➡️ Full Installation Guide](docs/getting-started/installation.md)
+
+### 🤖 Grok CLI Configuration (New in v8.3.1)
+
+AutomatosX now supports Grok CLI with **two endpoints**:
+
+#### Option 1: X.AI Official Grok (Recommended)
+
+```bash
+# 1. Run setup to create .grok/settings.json
+ax setup
+
+# 2. Edit .grok/settings.json
+{
+  "baseURL": "https://api.x.ai/v1",
+  "model": "grok-3-fast",
+  "apiKey": "xai-your-key-here"
+}
+
+# 3. Enable in automatosx.config.json
+"grok": { "enabled": true }
+
+# 4. Verify
+ax doctor grok
+ax providers list
+```
+
+**Get X.AI API Key**: https://console.x.ai/api-keys
+
+#### Option 2: Z.AI GLM 4.6 (Code-Optimized)
+
+```bash
+# Edit .grok/settings.json
+{
+  "baseURL": "https://api.z.ai/api/coding/paas/v4",
+  "model": "glm-4.6",
+  "apiKey": "your-zai-key"
+}
+```
+
+**Get Z.AI API Key**: https://z.ai/developer
+
+#### Option 3: Self-Hosted GLM 4.6 API Server
+
+**Use your own local coding system with AutomatosX!**
+
+You can point AutomatosX to your own GLM 4.6 API server for complete control:
+
+```bash
+# Edit .grok/settings.json
+{
+  "baseURL": "http://localhost:8000/v1",  # Your local API server
+  "model": "glm-4.6",
+  "apiKey": "your-local-api-key"  # Optional if your server requires it
+}
+```
+
+**Benefits of Self-Hosted:**
+- 🏠 Complete data privacy - all processing stays local
+- 💰 No usage costs - run as much as you want
+- ⚡ Lower latency - no network round trips
+- 🔧 Full customization - fine-tune the model for your needs
+- 🔒 Enterprise security - meets corporate requirements
+
+**Popular GLM 4.6 API Server Implementations:**
+- [vLLM](https://github.com/vllm-project/vllm) - Fast inference server
+- [Text Generation Inference](https://github.com/huggingface/text-generation-inference) - HuggingFace's solution
+- [Ollama](https://ollama.ai) - Easy local deployment
+- Custom FastAPI/Flask wrapper around GLM 4.6
+
+**Example Docker Setup:**
+```bash
+# Run GLM 4.6 API server locally
+docker run -d \
+  -p 8000:8000 \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  vllm/vllm-openai:latest \
+  --model THUDM/glm-4-6 \
+  --port 8000
+
+# Configure AutomatosX to use it
+# Edit .grok/settings.json with baseURL: "http://localhost:8000/v1"
+```
+
+**📄 License Note for Self-Hosted/Commercial Use:**
+
+AutomatosX is licensed under Apache 2.0 for **non-commercial use**. For commercial use or to remove license restrictions:
+
+- 💼 **Commercial License**: Visit https://license.defai.digital/automatosx
+- 📋 **Custom Terms**: Available for enterprise deployments
+- 🤝 **Volume Discounts**: Contact us for team/organization pricing
+
+**See [GROK.md](GROK.md) for complete setup guide, including:**
+- Model comparison (grok-3-fast vs glm-4.6)
+- Environment variable configuration
+- Switching between endpoints
+- Troubleshooting guide
+- Cost optimization tips
 
 ---
 
@@ -1287,7 +1385,27 @@ npm run build
 
 ## 📄 License
 
-Elastic License 2.0 - See [LICENSE](LICENSE) for details.
+AutomatosX is dual-licensed:
+
+- **Apache License 2.0** - See [LICENSE](LICENSE) for code licensing
+- **Commercial License with OpenRAIL-M** - See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for commercial use and model restrictions
+
+### TL;DR - When Do You Need a Commercial License?
+
+**✅ FREE for**:
+- Research and academic use
+- Personal projects
+- Startups with < $2M revenue AND < $2M funding
+
+**❌ Commercial License Required for**:
+- Companies with ≥ $2M annual revenue OR ≥ $2M total funding
+- Competitive products against DEFAI's offerings
+- SaaS or managed services built on AutomatosX
+- Commercial redistribution or embedding
+
+**Learn more**: See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for full details.
+
+**Get a commercial license**: https://license.defai.digital/automatox
 
 Copyright 2025 DEFAI Private Limited
 

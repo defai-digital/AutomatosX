@@ -1,0 +1,192 @@
+# Grok Provider Configuration Template
+#
+# This template demonstrates the full configuration schema for the Grok provider.
+# Copy this file to grok.yaml and customize for your needs.
+#
+# Environment variables can be referenced using ${VAR_NAME} syntax.
+# Example: apiKey: ${GROK_API_KEY}
+#
+# Documentation: https://github.com/defai-digital/automatosx/blob/main/docs/providers/grok.md
+# Z.AI Backend: https://docs.z.ai/scenario-example/develop-tools/gork
+
+# ==========================================
+# PROVIDER CONFIGURATION (Required)
+# ==========================================
+provider:
+  # Provider name - must match whitelist in BaseProvider
+  # Allowed values: "grok"
+  name: grok
+
+  # Enable/disable this provider
+  enabled: true
+
+  # Priority for multi-provider routing (1 = highest priority)
+  # Lower numbers = higher priority
+  priority: 2
+
+  # Base URL for the API endpoint
+  # Z.AI GLM 4.6 (Code-optimized): https://api.z.ai/api/coding/paas/v4
+  # X.AI Grok (General): https://api.x.ai/v1
+  baseUrl: https://api.z.ai/api/coding/paas/v4
+
+  # API key - can be direct value or environment variable reference
+  # Recommended: Use ${GROK_API_KEY} to keep secrets out of config files
+  apiKey: ${GROK_API_KEY}
+
+  # Model to use
+  # Z.AI models: glm-4.6, glm-4-plus, glm-4-flash
+  # X.AI models: grok-beta
+  model: glm-4.6
+
+  # Request timeout in milliseconds (default: 120000 = 2 minutes)
+  timeout: 120000
+
+  # Maximum retry attempts on failure (default: 3)
+  maxRetries: 3
+
+  # Custom CLI path override (optional)
+  # If set, takes precedence over PATH detection
+  # Example: /usr/local/bin/grok
+  # customPath: /path/to/grok
+
+# ==========================================
+# RATE LIMITS (Optional)
+# ==========================================
+rateLimits:
+  # Maximum requests per minute
+  maxRequestsPerMinute: 60
+
+  # Maximum tokens per minute
+  maxTokensPerMinute: 100000
+
+  # Maximum concurrent requests
+  maxConcurrentRequests: 5
+
+# ==========================================
+# CIRCUIT BREAKER (Optional)
+# ==========================================
+circuitBreaker:
+  # Number of consecutive failures before opening circuit
+  failureThreshold: 3
+
+  # Time to wait before retrying (milliseconds)
+  resetTimeout: 60000
+
+  # Half-open state timeout (milliseconds)
+  # Optional - defaults to resetTimeout / 2
+  halfOpenTimeout: 30000
+
+# ==========================================
+# MCP TOOLS (Optional)
+# Model Context Protocol for extensibility
+# ==========================================
+mcp:
+  # Enable MCP tools support
+  enabled: false
+
+  # MCP server configurations
+  servers:
+    - name: filesystem
+      command: npx
+      args:
+        - -y
+        - "@modelcontextprotocol/server-filesystem"
+        - "/path/to/allowed/directory"
+      env:
+        LOG_LEVEL: info
+
+    - name: github
+      command: npx
+      args:
+        - -y
+        - "@modelcontextprotocol/server-github"
+      env:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+
+# ==========================================
+# MORPH AGENTS (Optional)
+# Custom agent definitions
+# ==========================================
+morph:
+  # Enable Morph custom agents
+  enabled: false
+
+  # Directory containing agent definitions
+  agentsDir: ./.automatosx/morph-agents
+
+  # Agent definitions
+  agents:
+    - name: code-reviewer
+      prompt: |
+        You are a senior code reviewer. Analyze code for:
+        - Security vulnerabilities
+        - Performance issues
+        - Code style and best practices
+        - Test coverage
+        Provide actionable feedback with examples.
+      capabilities:
+        - code-review
+        - security-audit
+        - performance-analysis
+
+    - name: documentation-writer
+      prompt: |
+        You are a technical documentation expert. Write clear, concise documentation that:
+        - Explains concepts simply
+        - Includes code examples
+        - Follows best practices
+        - Targets the appropriate audience
+      capabilities:
+        - technical-writing
+        - api-documentation
+        - user-guides
+
+# ==========================================
+# METADATA (Optional)
+# For organization and tracking
+# ==========================================
+metadata:
+  # Configuration version
+  version: "1.0.0"
+
+  # Description
+  description: "Grok provider configuration for Z.AI GLM 4.6 (code-optimized model)"
+
+  # Tags for organization
+  tags:
+    - grok
+    - z-ai
+    - glm-4.6
+    - code-generation
+
+  # Last updated timestamp (ISO 8601)
+  # Update this when you modify the configuration
+  lastUpdated: "2025-11-16T00:00:00Z"
+
+# ==========================================
+# USAGE NOTES
+# ==========================================
+#
+# 1. Environment Variables:
+#    - Set GROK_API_KEY in your shell or .env file
+#    - Example: export GROK_API_KEY="your-api-key-here"
+#
+# 2. Z.AI vs X.AI:
+#    - Z.AI: Code-optimized GLM 4.6 model, better for development tasks
+#    - X.AI: General-purpose Grok model, better for reasoning and chat
+#    - Change baseUrl and model to switch between them
+#
+# 3. Configuration Priority:
+#    - YAML config (this file) > JSON config > environment variables > defaults
+#
+# 4. Security Best Practices:
+#    - Never commit API keys to version control
+#    - Use environment variable interpolation: ${GROK_API_KEY}
+#    - Add *.yaml to .gitignore (templates are safe to commit)
+#
+# 5. Testing Your Configuration:
+#    - Validate: ax doctor grok
+#    - Test execution: ax run --provider grok "test task"
+#    - View logs: ax providers trace --provider grok
+#
+# ==========================================

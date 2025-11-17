@@ -1,0 +1,61 @@
+# Grok Provider Configuration (Z.AI GLM 4.6)
+#
+# This configuration uses Z.AI's GLM 4.6 model (free tier available).
+# GLM 4.6 is optimized for code generation and supports Chinese language.
+#
+# Quick Start:
+#   1. Copy: cp templates/providers/grok-zai.yaml.template .automatosx/providers/grok.yaml
+#   2. Get API key from https://z.ai
+#   3. Add your key to the file (replace YOUR_Z_AI_API_KEY_HERE)
+#   4. Test: ax doctor grok
+
+provider:
+  # Provider identification
+  name: grok
+  enabled: true
+  priority: 2  # Higher priority (good for free tier)
+
+  # Z.AI GLM 4.6 API
+  baseUrl: https://api.z.ai/api/coding/paas/v4
+  model: glm-4.6
+  apiKey: YOUR_Z_AI_API_KEY_HERE  # Replace with your Z.AI API key
+
+  # Performance settings
+  timeout: 120000  # 2 minutes
+  maxRetries: 3
+
+# Rate limiting
+rateLimits:
+  maxRequestsPerMinute: 60
+  maxTokensPerMinute: 100000
+  maxConcurrentRequests: 5
+
+# Circuit breaker (prevent cascading failures)
+circuitBreaker:
+  failureThreshold: 3
+  resetTimeout: 60000
+  halfOpenTimeout: 30000
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "Z.AI GLM 4.6 configuration for code generation"
+  tags:
+    - grok
+    - z-ai
+    - glm-4.6
+    - free-tier
+  lastUpdated: "2025-11-17T00:00:00Z"
+
+# Environment Variable Alternative:
+#
+# Instead of putting your API key in this file, you can use an environment variable:
+#
+# 1. Set environment variable:
+#    export GROK_API_KEY="your-z-ai-key"
+#    export GROK_BASE_URL="https://api.z.ai/api/coding/paas/v4"
+#
+# 2. Update this file to use environment variable:
+#    provider:
+#      apiKey: ${GROK_API_KEY}
+#      baseUrl: ${GROK_BASE_URL}

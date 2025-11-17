@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-11-16T23:53:05.442Z
+ * Generated: 2025-11-17T02:46:35.980Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -87,6 +87,36 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
+      }
+    },
+    "grok": {
+      "enabled": true,
+      "priority": 4,
+      "timeout": 2700000,
+      "command": "grok",
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -317,16 +347,18 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   },
   "router": {
     "healthCheckInterval": 60000,
-    "providerCooldownMs": 30000
+    "providerCooldownMs": 30000,
+    "enableFreeTierPrioritization": true,
+    "enableWorkloadAwareRouting": true
   },
-  "version": "8.3.0"
+  "version": "8.3.1"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-16T23:53:05.442Z',
+  generatedAt: '2025-11-17T02:46:35.980Z',
   sourceFile: 'automatosx.config.json',
-  version: '8.3.0'
+  version: '8.3.1'
 } as const;

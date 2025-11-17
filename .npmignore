@@ -1,6 +1,9 @@
 # Development documentation and AI assistant configuration
 PRD/
+# AI assistant runtime directories (contain API keys, privacy data, sensitive config)
 .claude/
+.gemini/
+.grok/
 AGENTS.md
 CLAUDE.md
 GEMINI.md

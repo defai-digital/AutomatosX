@@ -549,6 +549,7 @@ export interface OpenAIConfig {
 export interface RouterConfig {
   healthCheckInterval?: number;         // Background health check interval (ms), optional
   providerCooldownMs?: number;          // Cooldown period for failed providers (ms)
+  circuitBreakerThreshold?: number;     // v8.3.0: Circuit breaker failure threshold (default: 3)
   enableFreeTierPrioritization?: boolean;  // Enable prioritization of free tier providers (default: true)
   enableWorkloadAwareRouting?: boolean;    // Enable workload-aware provider routing (default: true)
 }
@@ -688,6 +689,22 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
       // v5.7.0: Usage limit tracking
       limitTracking: GLOBAL_PROVIDER_DEFAULTS.limitTracking  // OpenAI: daily limits
       // v5.0.5: Removed defaults - let provider CLI use optimal defaults
+    },
+    'grok': {
+      enabled: true,
+      priority: 4,
+      timeout: 2700000,  // 45 minutes
+      command: 'grok',
+      healthCheck: {
+        enabled: true,
+        interval: 300000,  // 5 minutes
+        timeout: 5000
+      },
+      // v8.3.2: Grok provider defaults
+      circuitBreaker: GLOBAL_PROVIDER_DEFAULTS.circuitBreaker,
+      processManagement: GLOBAL_PROVIDER_DEFAULTS.processManagement,
+      versionDetection: GLOBAL_PROVIDER_DEFAULTS.versionDetection,
+      limitTracking: GLOBAL_PROVIDER_DEFAULTS.limitTracking  // Grok: daily limits
     }
   },
 

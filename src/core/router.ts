@@ -42,6 +42,7 @@ export interface RouterConfig {
   fallbackEnabled: boolean;
   healthCheckInterval?: number;
   providerCooldownMs?: number; // Cooldown period for failed providers (default: 30000ms)
+  circuitBreakerThreshold?: number; // v8.3.0: Circuit breaker failure threshold (default: 3)
   cache?: ResponseCache; // Optional response cache
   strategy?: RoutingConfig; // Phase 3: Multi-factor routing configuration
   workspacePath?: string; // Phase 2.3: Workspace path for trace logging
@@ -54,7 +55,6 @@ export class Router {
   private providers: Provider[];
   private fallbackEnabled: boolean;
   private healthCheckInterval?: NodeJS.Timeout;
-  private penalizedProviders: Map<string, number>; // provider name -> penalty expiry timestamp
   private providerCooldownMs: number;
   private cache?: ResponseCache;
   private routerConfig: RouterConfig; // v6.3.1: Store config for feature flags
@@ -80,6 +80,7 @@ export class Router {
     lastFailure: number;
     isOpen: boolean;
   }> = new Map();
+  private circuitBreakerThreshold: number;
 
   constructor(config: RouterConfig) {
     // v6.3.1: Store config for feature flags
@@ -90,8 +91,8 @@ export class Router {
       return a.priority - b.priority;
     });
     this.fallbackEnabled = config.fallbackEnabled;
-    this.penalizedProviders = new Map();
     this.providerCooldownMs = config.providerCooldownMs ?? 30000; // Default: 30 seconds
+    this.circuitBreakerThreshold = config.circuitBreakerThreshold ?? 3; // Default: 3 failures
     this.cache = config.cache;
 
     // v5.7.0: Initialize provider limit manager (non-blocking)
@@ -273,11 +274,11 @@ export class Router {
       const strategyManager = getRoutingStrategyManager();
       const providerNames = providersToTry.map(p => p.name);
 
-      // Calculate health multipliers (1.0 for healthy, 0.5 for penalized)
+      // Calculate health multipliers (1.0 for healthy, 0.5 for circuit open)
       const healthMultipliers = new Map<string, number>();
       for (const provider of providersToTry) {
-        const isPenalized = this.penalizedProviders.has(provider.name);
-        healthMultipliers.set(provider.name, isPenalized ? 0.5 : 1.0);
+        const isCircuitOpen = this.isCircuitOpen(provider.name);
+        healthMultipliers.set(provider.name, isCircuitOpen ? 0.5 : 1.0);
       }
 
       // Get scores for all providers
@@ -398,19 +399,16 @@ export class Router {
           );
         }
 
-        // Remove provider from penalty list on success
-        this.penalizedProviders.delete(provider.name);
-
-        // v8.3.0: Free tier tracking removed
+        // v8.3.0: Reset circuit breaker on success
+        this.recordSuccess(provider.name);
 
         // Phase 2.3: Log execution success
         if (this.tracer) {
-          const estimatedCost = this.estimateCost(provider.name, response.tokensUsed);
           this.tracer.logExecution(
             provider.name,
             true, // success
             response.latencyMs,
-            estimatedCost,
+            0, // v8.3.0: No cost tracking in CLI-only mode
             response.tokensUsed
           );
         }
@@ -420,8 +418,6 @@ export class Router {
         // Metrics I/O (disk/network) should not delay response delivery to the user
         if (this.useMultiFactorRouting) {
           const metricsTracker = getProviderMetricsTracker();
-          // Estimate cost based on tokens (simplified - real cost would come from provider)
-          const estimatedCost = this.estimateCost(provider.name, response.tokensUsed);
 
           // Fire-and-forget: Don't await metrics recording
           void metricsTracker.recordRequest(
@@ -434,7 +430,7 @@ export class Router {
               completion: response.tokensUsed.completion,
               total: response.tokensUsed.total
             },
-            estimatedCost,
+            0, // v8.3.0: No cost tracking in CLI-only mode
             response.model
           ).catch((error) => {
             // Log but don't fail the request if metrics recording fails
@@ -510,11 +506,8 @@ export class Router {
             willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
           });
 
-          // Penalize failed provider (add cooldown period)
-          const penaltyExpiry = Date.now() + this.providerCooldownMs;
-          this.penalizedProviders.set(provider.name, penaltyExpiry);
-
-          logger.debug(`Provider ${provider.name} penalized until ${new Date(penaltyExpiry).toISOString()}`);
+          // v8.3.0: Record failure in circuit breaker
+          this.recordFailure(provider.name);
 
           // Phase 2.3: Log degradation (provider error)
           if (this.tracer) {
@@ -626,19 +619,12 @@ export class Router {
   /**
    * Get available providers sorted by priority
    * v5.7.0: Enhanced with provider limit detection
-   * Filters out penalized providers (those in cooldown period) and limited providers (quota exceeded)
+   * v8.3.0: Uses circuit breaker state instead of separate penalty tracking
+   * Filters out providers with open circuit breakers and limited providers (quota exceeded)
    */
   async getAvailableProviders(): Promise<Provider[]> {
     const now = Date.now();
     const limitManager = getProviderLimitManager();
-
-    // Clean up expired penalties
-    for (const [providerName, expiryTime] of this.penalizedProviders.entries()) {
-      if (now >= expiryTime) {
-        this.penalizedProviders.delete(providerName);
-        logger.debug(`Provider ${providerName} penalty expired`);
-      }
-    }
 
     // Check availability in parallel
     const checks = this.providers.map(async provider => {
@@ -652,11 +638,9 @@ export class Router {
           return null;
         }
 
-        // Skip penalized providers (existing logic)
-        if (this.penalizedProviders.has(provider.name)) {
-          const expiryTime = this.penalizedProviders.get(provider.name)!;
-          const remainingMs = expiryTime - now;
-          logger.debug(`Skipping penalized provider ${provider.name} (${Math.ceil(remainingMs / 1000)}s remaining)`);
+        // v8.3.0: Check circuit breaker state (replaces penalty check)
+        if (this.isCircuitOpen(provider.name)) {
+          logger.debug(`Skipping provider ${provider.name} (circuit breaker open)`);
           return null;
         }
 
@@ -842,8 +826,8 @@ export class Router {
       this.healthCheckInterval = undefined;
     }
 
-    // Clear penalty list
-    this.penalizedProviders.clear();
+    // v8.3.0: Clear circuit breaker state
+    this.circuitState.clear();
 
     // Phase 2.3: Close trace logger
     if (this.tracer) {
@@ -900,9 +884,57 @@ export class Router {
   }
 
   /**
-   * v8.3.0: Cost estimation removed - returns 0
+   * v8.3.0: Check if circuit breaker is open for a provider
    */
-  private estimateCost(providerName: string, tokensUsed: { prompt: number; completion: number; total: number }): number {
-    return 0; // v8.3.0: No cost tracking in CLI-only mode
+  private isCircuitOpen(providerName: string): boolean {
+    const state = this.circuitState.get(providerName);
+    if (!state || !state.isOpen) return false;
+
+    // Auto-close circuit after cooldown period
+    const cooldownMs = this.providerCooldownMs || 60000;
+    if (Date.now() - state.lastFailure > cooldownMs) {
+      state.isOpen = false;
+      state.failures = 0;
+      this.circuitState.set(providerName, state);
+      logger.info(`Circuit breaker closed for ${providerName} after cooldown`);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * v8.3.0: Record provider success - resets circuit breaker
+   */
+  private recordSuccess(providerName: string): void {
+    const state = this.circuitState.get(providerName);
+    if (state) {
+      state.failures = 0;
+      state.isOpen = false;
+      this.circuitState.set(providerName, state);
+      logger.debug(`Circuit breaker reset for ${providerName} after success`);
+    }
+  }
+
+  /**
+   * v8.3.0: Record provider failure - opens circuit after threshold
+   */
+  private recordFailure(providerName: string): void {
+    const state = this.circuitState.get(providerName) || {
+      failures: 0,
+      lastFailure: 0,
+      isOpen: false
+    };
+
+    state.failures++;
+    state.lastFailure = Date.now();
+
+    // Open circuit after configured threshold (default: 3 consecutive failures)
+    if (state.failures >= this.circuitBreakerThreshold) {
+      state.isOpen = true;
+      logger.warn(`Circuit breaker opened for ${providerName} after ${state.failures} failures (threshold: ${this.circuitBreakerThreshold})`);
+    }
+
+    this.circuitState.set(providerName, state);
   }
 }

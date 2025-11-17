@@ -27,15 +27,31 @@ import type {
 } from '../types/provider.js';
 import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { findOnPath } from '../core/cli-provider-detector.js';
+import {
+  safeValidateExecutionRequest,
+  safeValidateExecutionResponse,
+  safeValidateHealthStatus
+} from './provider-schemas.js';
+
+const execAsync = promisify(exec);
 
 export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
+   * v8.3.0: Support both old (claude-code, gemini-cli) and new (claude, gemini) names for backward compatibility
+   * v8.3.1: Added 'grok' for Grok CLI integration
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
+    'claude-code',   // Backward compatibility - maps to claude CLI
     'gemini',
+    'gemini-cli',    // Backward compatibility - maps to gemini CLI
+    'openai',
     'codex',
+    'grok',          // Grok CLI (Z.AI GLM 4.6 or X.AI Grok)
     'test-provider'  // For unit tests
   ] as const;
 
@@ -58,7 +74,8 @@ export abstract class BaseProvider implements Provider {
       );
     }
 
-    this.config = config;
+    // Normalize provider name to lowercase for consistency
+    this.config = { ...config, name: providerName };
     this.health = {
       available: false,
       latencyMs: 0,
@@ -69,15 +86,87 @@ export abstract class BaseProvider implements Provider {
   }
 
   /**
-   * Execute CLI command - must be implemented by subclasses
-   * Should invoke the provider's CLI: `provider-name "prompt"`
+   * Get the CLI command name for this provider
+   * Subclasses return: 'claude', 'gemini', 'codex'
    */
-  protected abstract executeCLI(prompt: string): Promise<string>;
+  protected abstract getCLICommand(): string;
 
   /**
-   * Check if CLI is available - must be implemented by subclasses
+   * Get mock response for testing
+   * Subclasses return provider-specific mock response
    */
-  protected abstract checkCLIAvailable(): Promise<boolean>;
+  protected abstract getMockResponse(): string;
+
+  /**
+   * Execute CLI command - Template method pattern
+   * Common logic here, provider-specific parts via getCLICommand() and getMockResponse()
+   */
+  protected async executeCLI(prompt: string): Promise<string> {
+    // Mock mode for tests - v8.3.0 Security Fix: Don't leak prompt content
+    if (process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true') {
+      logger.debug('Mock mode: returning test response');
+      return this.getMockResponse();
+    }
+
+    try {
+      const escapedPrompt = this.escapeShellArg(prompt);
+      const cliCommand = this.getCLICommand();
+
+      logger.debug(`Executing ${cliCommand} CLI`, {
+        command: cliCommand,
+        promptLength: prompt.length
+      });
+
+      const { stdout, stderr } = await execAsync(
+        `${cliCommand} ${escapedPrompt}`,
+        {
+          timeout: this.config.timeout || 120000,
+          maxBuffer: 10 * 1024 * 1024,
+          env: { ...process.env }
+        }
+      );
+
+      // Log stderr as warning if present (even on success)
+      if (stderr) {
+        logger.warn(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
+      }
+
+      if (!stdout) {
+        throw new Error(`${cliCommand} CLI returned empty output. stderr: ${stderr || 'none'}`);
+      }
+
+      logger.debug(`${cliCommand} CLI execution successful`, {
+        responseLength: stdout.trim().length
+      });
+
+      return stdout.trim();
+    } catch (error) {
+      logger.error(`${this.getCLICommand()} CLI execution failed`, { error });
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Check if CLI is available - Template method pattern
+   * Uses getCLICommand() to determine which CLI to check
+   */
+  protected async checkCLIAvailable(): Promise<boolean> {
+    try {
+      const cliCommand = this.getCLICommand();
+      const path = await findOnPath(cliCommand);
+      const available = path !== null;
+
+      logger.debug(`${cliCommand} CLI availability check`, {
+        available,
+        path: path || 'not found'
+      });
+
+      return available;
+    } catch (error) {
+      logger.debug(`${this.getCLICommand()} CLI availability check failed`, { error });
+      return false;
+    }
+  }
 
   /**
    * Get provider name
@@ -93,6 +182,19 @@ export abstract class BaseProvider implements Provider {
     const startTime = Date.now();
 
     try {
+      // Validate request with Zod
+      const requestValidation = safeValidateExecutionRequest(request);
+      if (!requestValidation.success) {
+        // Note: Zod v3.x uses 'issues' instead of 'errors'
+        const validationErrors = requestValidation.error.issues.map(e =>
+          `${e.path.join('.')}: ${e.message}`
+        ).join('; ');
+        throw new ProviderError(
+          `Invalid execution request: ${validationErrors}`,
+          ErrorCode.PROVIDER_EXEC_ERROR
+        );
+      }
+
       logger.debug(`Executing request with ${this.config.name}`, {
         prompt: request.prompt.substring(0, 100) + '...'
       });
@@ -109,7 +211,7 @@ export abstract class BaseProvider implements Provider {
       this.health.consecutiveFailures = 0;
       this.health.available = true;
 
-      return {
+      const response: ExecutionResponse = {
         content: result,
         model: 'default', // v8.3.0: CLI determines model
         tokensUsed: {
@@ -121,6 +223,18 @@ export abstract class BaseProvider implements Provider {
         finishReason: 'stop',
         cached: false
       };
+
+      // Validate response with Zod (ensure we're returning valid data)
+      const responseValidation = safeValidateExecutionResponse(response);
+      if (!responseValidation.success) {
+        logger.error('Invalid execution response generated', {
+          errors: responseValidation.error.errors,
+          response
+        });
+        // Still return the response but log the validation issue
+      }
+
+      return response;
     } catch (error) {
       this.health.consecutiveFailures++;
       this.health.available = false;
@@ -186,10 +300,18 @@ export abstract class BaseProvider implements Provider {
 
   /**
    * Escape shell command arguments to prevent injection
+   *
+   * v8.3.0 Security Fix: Use POSIX shell single-quote escaping
+   * Wraps argument in single quotes and escapes any existing single quotes
+   * This prevents command injection by ensuring the entire string is treated as a literal.
+   *
+   * Example: hello'world becomes 'hello'\''world'
    */
   protected escapeShellArg(arg: string): string {
-    // Replace quotes and backslashes
-    return arg.replace(/["'\\]/g, '\\$&');
+    // POSIX shell escaping: wrap in single quotes, escape existing single quotes
+    // Single quotes preserve literal value of all characters except single quote itself
+    // To include a single quote: end quote, add escaped quote, start new quote: '\''
+    return "'" + arg.replace(/'/g, "'\\''") + "'";
   }
 
   // v8.3.0: Stub implementations for backward compatibility with Provider interface

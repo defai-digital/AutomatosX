@@ -1,0 +1,52 @@
+# Grok Provider Configuration - X.AI Template
+#
+# This template configures Grok with X.AI's official Grok model endpoint.
+# Use this if you have an X.AI API key and want to use the official Grok model.
+#
+# Quick start:
+#   1. Copy: cp .automatosx/providers/grok-xai.yaml.template .automatosx/providers/grok.yaml
+#   2. Set API key: export GROK_API_KEY="xai-..."
+#   3. Test: ax doctor grok
+#
+# Documentation: https://x.ai/api
+
+provider:
+  name: grok
+  enabled: true
+  priority: 2
+
+  # X.AI official endpoint
+  baseUrl: https://api.x.ai/v1
+
+  # X.AI API key (starts with "xai-")
+  apiKey: ${GROK_API_KEY}
+
+  # X.AI Grok model
+  # Available models: grok-beta, grok-vision-beta
+  model: grok-beta
+
+  # X.AI has longer context, may need longer timeout
+  timeout: 180000  # 3 minutes
+
+  maxRetries: 3
+
+# X.AI rate limits (adjust based on your plan)
+rateLimits:
+  maxRequestsPerMinute: 60
+  maxTokensPerMinute: 200000
+  maxConcurrentRequests: 5
+
+# Circuit breaker for reliability
+circuitBreaker:
+  failureThreshold: 3
+  resetTimeout: 60000
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "Grok provider configuration for X.AI official Grok model"
+  tags:
+    - grok
+    - x-ai
+    - grok-beta
+  lastUpdated: "2025-11-16T00:00:00Z"

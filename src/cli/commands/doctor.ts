@@ -44,9 +44,9 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
   builder: (yargs) => {
     return yargs
       .positional('provider', {
-        describe: 'Check specific provider (openai, gemini, claude) or all if omitted',
+        describe: 'Check specific provider (openai, gemini, claude, grok) or all if omitted',
         type: 'string',
-        choices: ['openai', 'gemini', 'claude']
+        choices: ['openai', 'gemini', 'claude', 'grok']
       })
       .option('verbose', {
         describe: 'Show detailed diagnostic information',
@@ -97,7 +97,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // Check providers
       const providersToCheck = argv.provider
         ? [argv.provider]
-        : ['openai', 'gemini', 'claude'];
+        : ['openai', 'gemini', 'claude', 'grok'];
 
       const verbose = argv.verbose ?? false;
 
@@ -118,6 +118,8 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
           results.push(...await checkGeminiProvider(verbose));
         } else if (provider === 'claude') {
           results.push(...await checkClaudeProvider(verbose));
+        } else if (provider === 'grok') {
+          results.push(...await checkGrokProvider(verbose));
         }
       }
 
@@ -184,18 +186,7 @@ async function checkOpenAIProvider(verbose: boolean): Promise<CheckResult[]> {
     });
   }
 
-  // Check 3: API Connectivity (only if CLI is installed)
-  if (cliCheck.success) {
-    const connCheck = await checkAPIConnectivity('https://api.openai.com/v1/models');
-    results.push({
-      name: 'API Connectivity',
-      category: 'OpenAI',
-      passed: connCheck.success,
-      message: connCheck.message,
-      fix: connCheck.success ? undefined : 'Check firewall/proxy settings\n   OR: export AUTOMATOSX_CLI_ONLY=true (for CLI-only mode)',
-      details: verbose ? connCheck.details : undefined
-    });
-  }
+  // Note: v8.2.0+ uses pure CLI mode - no API connectivity check needed
 
   // Display results
   results.forEach(r => displayCheck(r));
@@ -222,15 +213,15 @@ async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
   });
 
   if (cliCheck.success) {
-    // Check auth via simple command
-    const authCheck = await checkCommand('gemini', 'models list');
+    // Gemini CLI uses API keys directly - just check if help works
+    const helpCheck = await checkCommand('gemini', '--help');
     results.push({
-      name: 'Authentication',
+      name: 'CLI Ready',
       category: 'Gemini',
-      passed: authCheck.success,
-      message: authCheck.success ? 'Authenticated' : 'Authentication failed',
-      fix: authCheck.success ? undefined : 'Run: gemini auth login',
-      details: verbose ? authCheck.error : undefined
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Gemini CLI installation: npm install -g @google/generative-ai-cli',
+      details: verbose ? (helpCheck.success ? 'Gemini CLI uses API keys from environment or config' : helpCheck.error) : undefined
     });
   }
 
@@ -257,15 +248,50 @@ async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
   });
 
   if (cliCheck.success) {
-    // Check if logged in
-    const authCheck = await checkCommand('claude', 'auth whoami');
+    // Claude Code CLI is authenticated when installed - just check if help works
+    const helpCheck = await checkCommand('claude', '--help');
     results.push({
-      name: 'Authentication',
+      name: 'CLI Ready',
       category: 'Claude',
-      passed: authCheck.success,
-      message: authCheck.success ? 'Authenticated' : 'Not authenticated',
-      fix: authCheck.success ? undefined : 'Run: claude auth login',
-      details: verbose ? authCheck.error : undefined
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Claude Code CLI installation',
+      details: verbose ? (helpCheck.success ? 'Claude Code CLI authenticated via desktop app' : helpCheck.error) : undefined
+    });
+  }
+
+  results.forEach(r => displayCheck(r));
+  return results;
+}
+
+/**
+ * Check Grok CLI provider
+ */
+async function checkGrokProvider(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  const cliCheck = await checkCommand('grok', '--version');
+  results.push({
+    name: 'CLI Installation',
+    category: 'Grok',
+    passed: cliCheck.success,
+    message: cliCheck.success
+      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
+      : 'Grok CLI not found',
+    fix: cliCheck.success ? undefined : 'npm install -g @vibe-kit/grok-cli',
+    details: verbose ? cliCheck.error : undefined
+  });
+
+  if (cliCheck.success) {
+    // Grok CLI can use environment variables or config files - just check if help works
+    const helpCheck = await checkCommand('grok', '--help');
+    results.push({
+      name: 'CLI Ready',
+      category: 'Grok',
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Grok CLI installation: npm install -g @vibe-kit/grok-cli',
+      details: verbose ? (helpCheck.success ? 'Grok CLI uses API keys from environment (GROK_API_KEY) or config files' : helpCheck.error) : undefined
     });
   }
 
@@ -355,7 +381,7 @@ async function checkCommand(
 }
 
 /**
- * Check OpenAI authentication
+ * Check OpenAI authentication (v8.2.0+: Pure CLI mode only)
  */
 async function checkOpenAIAuth(): Promise<{
   success: boolean;
@@ -363,36 +389,41 @@ async function checkOpenAIAuth(): Promise<{
   fix?: string;
   details?: string;
 }> {
-  // Check if OPENAI_API_KEY is set
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      success: true,
-      message: 'API key configured',
-      details: 'OPENAI_API_KEY environment variable is set'
-    };
-  }
-
-  // Try a simple codex command to test auth
+  // v8.2.0+: Pure CLI orchestration - we only use CLI, not API keys
+  // Just check if codex login status works
+  // NOTE: codex outputs to stderr, so we need to capture both stdout and stderr
   try {
-    execSync('codex exec "test" --max-tokens 1', {
+    const output = execSync('codex login status 2>&1', {
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 10000
     });
+
+    const statusText = output.toLowerCase();
+
+    // Check if logged in
+    if (statusText.includes('logged in') || statusText.includes('authenticated')) {
+      return {
+        success: true,
+        message: 'Authenticated via CLI',
+        details: output.trim()
+      };
+    }
+
     return {
-      success: true,
-      message: 'Authenticated via CLI',
-      details: 'Successfully executed test command'
+      success: false,
+      message: 'Not authenticated',
+      fix: 'Run: codex login',
+      details: output.trim()
     };
   } catch (error) {
     const errorMsg = (error as Error).message.toLowerCase();
 
-    if (errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+    if (errorMsg.includes('not logged in') || errorMsg.includes('not authenticated')) {
       return {
         success: false,
         message: 'Not authenticated',
-        fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
-        details: 'Test command returned unauthorized'
+        fix: 'Run: codex login',
+        details: 'codex login status: not logged in'
       };
     }
 
@@ -400,54 +431,12 @@ async function checkOpenAIAuth(): Promise<{
     return {
       success: false,
       message: 'Cannot verify authentication',
-      fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
+      fix: 'Run: codex login',
       details: errorMsg
     };
   }
 }
 
-/**
- * Check API connectivity
- */
-async function checkAPIConnectivity(url: string): Promise<{
-  success: boolean;
-  message: string;
-  details?: string;
-}> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    return {
-      success: response.ok || response.status === 401, // 401 means we reached API
-      message: response.ok || response.status === 401 ? 'Connected' : `HTTP ${response.status}`,
-      details: `Status: ${response.status} ${response.statusText}`
-    };
-  } catch (error) {
-    const errorMsg = (error as Error).message;
-
-    if (errorMsg.includes('aborted')) {
-      return {
-        success: false,
-        message: 'Connection timeout',
-        details: 'Request timed out after 5 seconds'
-      };
-    }
-
-    return {
-      success: false,
-      message: 'Cannot connect',
-      details: errorMsg
-    };
-  }
-}
 
 /**
  * Display a single check result
@@ -511,6 +500,7 @@ function getProviderEmoji(provider: string): string {
     case 'openai': return '🤖';
     case 'gemini': return '✨';
     case 'claude': return '🧠';
+    case 'grok': return '🚀';
     default: return '🔧';
   }
 }

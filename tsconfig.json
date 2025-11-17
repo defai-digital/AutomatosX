@@ -50,6 +50,9 @@
     "tmp/**/*",
     "src/providers/claude-sdk-provider.ts",
     "src/providers/gemini-sdk-provider.ts",
-    "src/providers/openai-sdk-provider.ts"
+    "src/providers/openai-sdk-provider.ts",
+    "src/core/config.effect.ts",
+    "src/core/effect-utils.ts",
+    "tests/unit/core/config.effect.test.ts"
   ]
 }

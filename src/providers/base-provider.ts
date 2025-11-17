@@ -228,7 +228,7 @@ export abstract class BaseProvider implements Provider {
       const responseValidation = safeValidateExecutionResponse(response);
       if (!responseValidation.success) {
         logger.error('Invalid execution response generated', {
-          errors: responseValidation.error.errors,
+          errors: responseValidation.error.issues,
           response
         });
         // Still return the response but log the validation issue

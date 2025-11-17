@@ -44,7 +44,7 @@ describe('Provider Schemas - Zod Validation', () => {
       const result = safeValidateExecutionRequest(request);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.errors[0].message).toContain('empty');
+        expect(result.error.issues[0]?.message).toContain('empty');
       }
     });
 
@@ -162,7 +162,7 @@ describe('Provider Schemas - Zod Validation', () => {
         lastCheckTime: Date.now()
       };
 
-      const result = safeValidateExecutionResponse(status);
+      const result = healthStatusSchema.safeParse(status);
       expect(result.success).toBe(true);
     });
 
@@ -174,7 +174,7 @@ describe('Provider Schemas - Zod Validation', () => {
         consecutiveFailures: 0
       };
 
-      const result = safeValidateExecutionResponse(status);
+      const result = healthStatusSchema.safeParse(status);
       expect(result.success).toBe(false);
     });
 
@@ -186,7 +186,7 @@ describe('Provider Schemas - Zod Validation', () => {
         consecutiveFailures: -1  // Must be non-negative
       };
 
-      const result = safeValidateExecutionResponse(status);
+      const result = healthStatusSchema.safeParse(status);
       expect(result.success).toBe(false);
     });
   });

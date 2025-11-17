@@ -27,7 +27,8 @@ import {
   withTimeout,
   withExponentialRetry
 } from './effect-utils.js';
-import { resolvePath, extname, existsSync } from '../utils/path-utils.js';
+import { existsSync } from 'node:fs';
+import { resolvePath, extname } from '../utils/path-utils.js';
 
 // ========================================
 // Config Service Interface
@@ -236,9 +237,7 @@ export const ConfigServiceLive = Layer.succeed(
 
         // Cache for 1 hour
         const cachedEffect = yield* _(
-          loadEffect.pipe(
-            Effect.cached(Duration.hours(1))
-          )
+          Effect.cached(loadEffect, Duration.hours(1))
         );
 
         return yield* _(cachedEffect);

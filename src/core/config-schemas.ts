@@ -506,11 +506,18 @@ export type AutomatosXConfigZod = z.infer<typeof automatosXConfigSchema>;
  * Validate configuration with detailed error messages
  *
  * @param config - Configuration object to validate
- * @returns Validated and typed configuration
- * @throws ZodError with detailed validation errors
+ * @returns Array of error messages (empty if valid)
  */
-export function validateConfigWithZod(config: unknown): AutomatosXConfigZod {
-  return automatosXConfigSchema.parse(config);
+export function validateConfigWithZod(config: unknown): string[] {
+  const result = automatosXConfigSchema.safeParse(config);
+  if (result.success) {
+    return [];
+  }
+  // Note: Zod v3.x uses 'issues' instead of 'errors'
+  return result.error.issues.map(err => {
+    const path = err.path.join('.');
+    return `${path}: ${err.message}`;
+  });
 }
 
 /**

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v8.2.0) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX (v8.4.1) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
@@ -38,7 +38,7 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v8.2.0)
+### Current State (v8.4.1)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
@@ -49,7 +49,7 @@ npm run release:check                      # Validate release readiness
 - ✅ Natural language integration with AI assistants
 - ⚠️ Cost estimation **disabled by default** (v6.5.11+) - enable in config if needed
 
-**Recent Changes (v8.2.0 - Streamlined for AI Assistant Integration):**
+**Recent Changes (v8.4.1 - Streamlined for AI Assistant Integration):**
 - 🔄 **Removed standalone chatbot**: Focus on integration with Claude Code, Gemini CLI, OpenAI Codex
 - ✅ **Streamlined CLI**: Direct command execution for agent orchestration
 - ✅ **AI Assistant First**: Best experience through your preferred AI assistant

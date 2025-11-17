@@ -87,7 +87,8 @@ export const providerLimitsCommand: CommandModule<Record<string, unknown>, Provi
         console.log(chalk.bold('📊 Provider Limits Status'));
         console.log();
 
-        if (states.size === 0) {
+        // Bug #v8.4.12: Don't show "all providers available" when manual override is active
+        if (states.size === 0 && !manualOverride) {
           console.log(chalk.green('  ✅ No limits detected. All providers available.'));
         } else {
           for (const [name, state] of states.entries()) {

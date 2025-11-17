@@ -427,17 +427,25 @@ export class WorkspaceManager {
   /**
    * Get workspace statistics
    *
+   * @param options - Options for getting stats
+   * @param options.readOnly - If true, don't create directories (Bug #v8.4.12)
    * @returns Workspace statistics
    *
    * @example
    * ```typescript
    * const stats = await workspaceManager.getStats();
    * console.log(`PRD files: ${stats.prdFiles}, Tmp files: ${stats.tmpFiles}`);
+   *
+   * // Read-only mode (for status checks)
+   * const stats = await workspaceManager.getStats({ readOnly: true });
    * ```
    */
-  async getStats(): Promise<WorkspaceStats> {
+  async getStats(options?: { readOnly?: boolean }): Promise<WorkspaceStats> {
     try {
-      await this.ensureDirectories();
+      // Bug #v8.4.12: Only create directories if not in read-only mode
+      if (!options?.readOnly) {
+        await this.ensureDirectories();
+      }
 
       const prdFiles = await this.listFiles(this.prdDir);
       const tmpFiles = await this.listFiles(this.tmpDir);

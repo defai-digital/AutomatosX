@@ -166,8 +166,9 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       const availableProvidersCount = providerHealth.filter(p => p.available).length;
 
       // v5.2.0: Collect workspace statistics using WorkspaceManager
+      // Bug #v8.4.12: Use read-only mode to avoid creating directories during status check
       const workspaceManager = new WorkspaceManager(detectedProjectDir);
-      const workspaceStats = await workspaceManager.getStats();
+      const workspaceStats = await workspaceManager.getStats({ readOnly: true });
 
       // Collect memory statistics
       const memoryStats = await getMemoryStatistics(memoryDir);
@@ -178,6 +179,87 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
 
       // Get project info
       const projectInfo = await getProjectInfo(detectedProjectDir);
+
+      // Bug #v8.4.12: Collect provider limit data for JSON output
+      let limitData: {
+        limits: Array<{
+          provider: string;
+          status: string;
+          window: string;
+          detectedAtMs: number;
+          resetAtMs: number;
+          remainingMs: number;
+          reason?: string;
+          manualHold: boolean;
+        }>;
+        manualOverride: {
+          provider: string;
+          expiresAtMs?: number;
+          remainingMs?: number;
+        } | null;
+        envOverrides: Array<{
+          name: string;
+          provider: string;
+          value: string;
+          valid: boolean;
+        }>;
+      } = {
+        limits: [],
+        manualOverride: null,
+        envOverrides: []
+      };
+
+      try {
+        const limitManager = await getProviderLimitManager();
+        await limitManager.initialize();
+        await limitManager.refreshExpired();
+
+        const limitStates = limitManager.getAllStates();
+        const manualOverride = limitManager.getManualOverride();
+        const now = Date.now();
+
+        // Collect limit states
+        limitData.limits = Array.from(limitStates.entries()).map(([name, state]) => ({
+          provider: name,
+          status: state.status,
+          window: state.window,
+          detectedAtMs: state.detectedAtMs,
+          resetAtMs: state.resetAtMs,
+          remainingMs: Math.max(0, state.resetAtMs - now),
+          reason: state.reason,
+          manualHold: state.manualHold
+        }));
+
+        // Collect manual override
+        if (manualOverride) {
+          limitData.manualOverride = {
+            provider: manualOverride.provider,
+            expiresAtMs: manualOverride.expiresAtMs,
+            remainingMs: manualOverride.expiresAtMs ? Math.max(0, manualOverride.expiresAtMs - now) : undefined
+          };
+        }
+
+        // Collect ENV overrides
+        const envVars = [
+          { name: 'CLAUDE_CLI', provider: 'claude-code' },
+          { name: 'GEMINI_CLI', provider: 'gemini-cli' },
+          { name: 'CODEX_CLI', provider: 'openai' }
+        ];
+
+        for (const { name, provider } of envVars) {
+          const value = process.env[name];
+          if (value) {
+            limitData.envOverrides.push({
+              name,
+              provider,
+              value,
+              valid: existsSync(value)
+            });
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to collect provider limit data', { error: (error as Error).message });
+      }
 
       // Build status object
       const status = {
@@ -229,6 +311,8 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
             lastCheck: undefined
           }
         },
+        // Bug #v8.4.12: Include provider limit data in JSON output
+        providerLimits: limitData,
         performance: {
           statusCheckMs: Date.now() - startTime
         }

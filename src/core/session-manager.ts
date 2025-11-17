@@ -114,7 +114,7 @@ export class SessionManager {
    *
    * @param config - Configuration options
    * @param config.persistencePath - Optional path to JSON file for persistence
-   * @param config.maxSessions - Maximum sessions to keep in memory (default: 100)
+   * @param config.maxSessions - Maximum sessions to keep in memory (default: 100, min: 1)
    *
    * @example
    * ```typescript
@@ -136,7 +136,16 @@ export class SessionManager {
    */
   constructor(config?: { persistencePath?: string; maxSessions?: number }) {
     this.persistencePath = config?.persistencePath;
-    this.MAX_SESSIONS = config?.maxSessions ?? 100;
+    // Bug #v8.4.12: Validate maxSessions is at least 1 to prevent bypass
+    const requestedMax = config?.maxSessions ?? 100;
+    if (requestedMax < 1) {
+      throw new SessionError(
+        `maxSessions must be at least 1, got ${requestedMax}`,
+        undefined,
+        'invalid_configuration'
+      );
+    }
+    this.MAX_SESSIONS = requestedMax;
   }
 
   /**

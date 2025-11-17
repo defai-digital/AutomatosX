@@ -263,7 +263,7 @@ export class SessionError extends Error {
   constructor(
     message: string,
     public readonly sessionId?: string,
-    public readonly reason?: 'not_found' | 'already_completed' | 'creation_failed' | 'invalid_format' | 'metadata_too_large'
+    public readonly reason?: 'not_found' | 'already_completed' | 'creation_failed' | 'invalid_format' | 'metadata_too_large' | 'invalid_configuration'
   ) {
     super(message);
     this.name = 'SessionError';

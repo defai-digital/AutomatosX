@@ -553,13 +553,14 @@ export class Router {
         }
 
         // v5.6.24: Lifecycle logging - Fallback triggered
-        if (attemptNumber < availableProviders.length) {
+        if (attemptNumber < providersToTry.length) {
           const reason = isRateLimitError ? 'usage limit hit' : 'error';
+          // Bug #v8.4.12: Use providersToTry (actual execution order) instead of availableProviders
           logger.info('🔄 Router: fallback triggered', {
             reason,
             failedProvider: provider.name,
-            nextProvider: availableProviders[attemptNumber]?.name,
-            remainingProviders: availableProviders.length - attemptNumber
+            nextProvider: providersToTry[attemptNumber]?.name,
+            remainingProviders: providersToTry.length - attemptNumber
           });
         }
 

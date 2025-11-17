@@ -290,6 +290,11 @@ export function validateConfigWithZod(config: AutomatosXConfig): string[] {
 
   // Convert Zod errors to user-friendly messages
   // Note: Zod v3.x uses 'issues' instead of 'errors'
+  // Guard against undefined issues array (defensive programming)
+  if (!result.error?.issues || !Array.isArray(result.error.issues)) {
+    return ['Configuration validation failed with unknown error structure'];
+  }
+
   return result.error.issues.map(err => {
     const path = err.path.join('.');
     return `${path}: ${err.message}`;

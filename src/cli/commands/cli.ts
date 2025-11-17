@@ -145,10 +145,9 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
         grokArgs.push('--model', argv.model);
       }
 
-      // Add config path if not default
-      if (argv.config) {
-        grokArgs.push('--config', argv.config);
-      }
+      // Always pass config path to Grok CLI so it uses the detected config
+      // instead of defaulting to user-settings.json
+      grokArgs.push('--config', configPath);
 
       // Add prompt if provided
       if (argv.prompt) {

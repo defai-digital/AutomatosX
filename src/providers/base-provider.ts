@@ -122,7 +122,19 @@ export abstract class BaseProvider implements Provider {
         {
           timeout: this.config.timeout || 120000,
           maxBuffer: 10 * 1024 * 1024,
-          env: { ...process.env }
+          shell: true, // Enable shell to support complex commands
+          env: {
+            ...process.env,
+            // Force non-interactive mode for CLIs
+            TERM: 'dumb',
+            NO_COLOR: '1',
+            // Disable TTY checks for codex and other CLIs
+            FORCE_COLOR: '0',
+            CI: 'true', // Many CLIs disable TTY checks in CI mode
+            NO_UPDATE_NOTIFIER: '1',
+            // Disable interactive prompts
+            DEBIAN_FRONTEND: 'noninteractive'
+          }
         }
       );
 

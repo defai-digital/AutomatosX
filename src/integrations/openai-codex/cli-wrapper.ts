@@ -169,6 +169,16 @@ export class CodexCLI {
       const child = spawn(this.config.command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: false,
+        env: {
+          ...process.env,
+          // Force non-interactive mode to avoid TTY checks
+          TERM: 'dumb',
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+          CI: 'true', // Many CLIs disable TTY checks in CI mode
+          NO_UPDATE_NOTIFIER: '1',
+          DEBIAN_FRONTEND: 'noninteractive'
+        }
       });
 
       this.activeProcesses.add(child);

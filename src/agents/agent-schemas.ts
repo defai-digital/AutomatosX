@@ -125,6 +125,9 @@ export const agentProfileSchema = z.object({
   expertise: z.array(z.string()).min(1).optional(),
   capabilities: z.array(z.string()).optional(),
 
+  // System prompt (required by profile-loader validateProfile, but optional here for flexibility)
+  systemPrompt: z.string().min(1).optional(),
+
   // Workflow
   workflow: z.array(stageSchema).min(1).optional(),
 
@@ -137,6 +140,29 @@ export const agentProfileSchema = z.object({
     abilitySelectionSchema // New format: { core: [...], taskBased: {...}, loadAll: true }
   ]).optional(),
 
+  // Ability selection strategy (v4.5.8+)
+  abilitySelection: abilitySelectionSchema.optional(),
+
+  // Thinking patterns
+  thinking_patterns: z.array(z.string()).optional(),
+
+  // Dependencies
+  dependencies: z.array(z.string()).optional(),
+
+  // Parallel execution
+  parallel: z.boolean().optional(),
+
+  // Model parameters (deprecated but still accepted)
+  temperature: z.number().min(0).max(2).optional(),
+  maxTokens: z.number().int().positive().optional(),
+
+  // Orchestration (v4.7.0+)
+  orchestration: z.object({
+    maxDelegationDepth: z.number().int().nonnegative().optional(),
+    canReadWorkspaces: z.array(z.string()).optional(),
+    canWriteToShared: z.boolean().optional()
+  }).optional(),
+
   // Selection metadata (v5.7.0+)
   selectionMetadata: selectionMetadataSchema.optional(),
 
@@ -147,6 +173,7 @@ export const agentProfileSchema = z.object({
   // Deprecated fields (accepted but ignored)
   model: z.string().optional(),
   provider: z.string().optional(),
+  fallbackProvider: z.string().optional(),
 
   // Additional metadata
   tags: z.array(z.string()).optional(),

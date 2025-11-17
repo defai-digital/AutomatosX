@@ -46,20 +46,29 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
 
   handler: async (argv) => {
     try {
-      // Determine config path - check for both config.json and settings.json
+      // Determine config path - check multiple locations in order of priority
       let configPath = argv.config;
       if (!configPath) {
-        const grokDir = join(homedir(), '.grok');
-        const configJson = join(grokDir, 'config.json');
-        const settingsJson = join(grokDir, 'settings.json');
+        const locations = [
+          // 1. Project-specific .grok directory (current directory)
+          join(process.cwd(), '.grok', 'config.json'),
+          join(process.cwd(), '.grok', 'settings.json'),
+          // 2. User home directory .grok
+          join(homedir(), '.grok', 'config.json'),
+          join(homedir(), '.grok', 'settings.json'),
+        ];
 
-        // Prefer config.json, fallback to settings.json
-        if (existsSync(configJson)) {
-          configPath = configJson;
-        } else if (existsSync(settingsJson)) {
-          configPath = settingsJson;
-        } else {
-          configPath = configJson; // Use config.json as default for error message
+        // Find first existing config file
+        for (const location of locations) {
+          if (existsSync(location)) {
+            configPath = location;
+            break;
+          }
+        }
+
+        // Default to home directory config.json for error messages
+        if (!configPath) {
+          configPath = join(homedir(), '.grok', 'config.json');
         }
       }
 

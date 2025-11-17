@@ -734,6 +734,22 @@ export class ProfileLoader {
       throw new AgentValidationError(`Invalid profile data for ${name}: expected object, got ${typeof data}`);
     }
 
+    // Preprocess: If name in YAML has invalid chars, move it to displayName and use filename
+    if (data.name && typeof data.name === 'string') {
+      // Check if name has invalid characters (spaces, etc.)
+      if (!/^[a-zA-Z0-9_-]+$/.test(data.name)) {
+        // Move invalid name to displayName if not already set
+        if (!data.displayName) {
+          data.displayName = data.name;
+        }
+        // Use filename as name instead
+        data.name = name;
+      }
+    } else if (!data.name) {
+      // If no name provided, use filename
+      data.name = name;
+    }
+
     // Validate with Zod schema first (early validation with better error messages)
     const validationResult = safeValidateAgentProfile(data);
     if (!validationResult.success) {

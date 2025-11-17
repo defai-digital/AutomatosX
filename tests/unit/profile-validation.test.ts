@@ -168,7 +168,7 @@ personality: "not an object"
       await writeFile(join(testDir, 'test.yaml'), invalidProfile);
 
       await expect(loader.loadProfile('test')).rejects.toThrow(
-        'personality must be an object'
+        /personality.*Invalid input.*expected object/
       );
     });
 
@@ -183,7 +183,7 @@ personality: [trait1, trait2]
       await writeFile(join(testDir, 'test.yaml'), invalidProfile);
 
       await expect(loader.loadProfile('test')).rejects.toThrow(
-        'personality must be an object'
+        /personality.*Invalid input.*expected object/
       );
     });
 
@@ -199,7 +199,7 @@ personality:
       await writeFile(join(testDir, 'test.yaml'), invalidProfile);
 
       await expect(loader.loadProfile('test')).rejects.toThrow(
-        'personality.traits must be an array'
+        /personality\.traits.*Invalid input.*expected array/
       );
     });
 

@@ -114,7 +114,8 @@ export const agentProfileSchema = z.object({
   name: z.string()
     .min(1)
     .max(50)
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Agent name must be alphanumeric with dash/underscore only'),
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Agent name must be alphanumeric with dash/underscore only')
+    .optional(), // Optional - uses filename if not provided
   displayName: z.string().min(1).max(100).optional(),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be semver format').optional(),
   description: z.string().min(1),
@@ -130,8 +131,11 @@ export const agentProfileSchema = z.object({
   // Personality
   personality: personalitySchema.optional(),
 
-  // Abilities
-  abilities: abilitySelectionSchema.optional(),
+  // Abilities - accepts both array (legacy) and object (new) formats
+  abilities: z.union([
+    z.array(z.string()), // Legacy format: ['ability1', 'ability2']
+    abilitySelectionSchema // New format: { core: [...], taskBased: {...}, loadAll: true }
+  ]).optional(),
 
   // Selection metadata (v5.7.0+)
   selectionMetadata: selectionMetadataSchema.optional(),

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "8.4.3",
+  "version": "8.4.8",
   "description": "AI Agent Orchestration Platform",
   "type": "module",
   "publishConfig": {

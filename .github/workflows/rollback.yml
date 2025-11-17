@@ -22,6 +22,8 @@ on:
         type: boolean
         default: false
 
+# Only run on manual workflow dispatch - do NOT run on push/pull_request
+
 permissions:
   contents: write
 

@@ -4,9 +4,10 @@ This guide explains how to integrate Grok CLI with AutomatosX for AI-powered dev
 
 ## Overview
 
-AutomatosX supports two Grok provider options:
+AutomatosX supports **three** Grok provider options:
 - **X.AI Official Grok** (grok-3-fast) - Fast, efficient, general-purpose
 - **Z.AI GLM 4.6** (glm-4.6) - Code-optimized for technical tasks
+- **Self-Hosted GLM 4.6** - Your own local API server for complete control
 
 ## Quick Setup
 
@@ -21,6 +22,11 @@ AutomatosX supports two Grok provider options:
 - Visit: https://z.ai/developer
 - Get your Z.AI API key
 - Copy your key
+
+**Option C: Self-Hosted GLM 4.6 (Complete Control)**
+- Set up your own GLM 4.6 API server (see [Self-Hosted Setup](#self-hosted-glm-46-configuration) below)
+- Point AutomatosX to your local/private server
+- Full data privacy and control
 
 ### 2. Configure Grok CLI
 
@@ -144,6 +150,227 @@ Change Grok priority in `automatosx.config.json`:
   }
 }
 ```
+
+## Self-Hosted GLM 4.6 Configuration
+
+**Use your own local coding system with AutomatosX for complete control!**
+
+### Benefits of Self-Hosted
+
+- 🏠 **Complete Data Privacy** - All processing stays on your infrastructure
+- 💰 **No Usage Costs** - Run unlimited tasks without API fees
+- ⚡ **Lower Latency** - No network round trips to external servers
+- 🔧 **Full Customization** - Fine-tune the model for your specific needs
+- 🔒 **Enterprise Security** - Meet strict corporate data requirements
+- 🌐 **Offline Operation** - Works without internet connectivity
+- 📊 **Resource Control** - Optimize for your hardware
+
+### Quick Setup: Docker
+
+The easiest way to run a self-hosted GLM 4.6 API server:
+
+```bash
+# 1. Pull and run vLLM server with GLM 4.6
+docker run -d \
+  --name glm-4-6-server \
+  --gpus all \
+  -p 8000:8000 \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  vllm/vllm-openai:latest \
+  --model THUDM/glm-4-6 \
+  --port 8000 \
+  --trust-remote-code
+
+# 2. Wait for model to load (check logs)
+docker logs -f glm-4-6-server
+
+# 3. Test the server
+curl http://localhost:8000/v1/models
+
+# 4. Configure AutomatosX
+# Edit .grok/settings.json:
+{
+  "baseURL": "http://localhost:8000/v1",
+  "model": "THUDM/glm-4-6",
+  "apiKey": "optional-if-your-server-requires-it"
+}
+
+# 5. Enable and test
+# Edit automatosx.config.json: "grok": { "enabled": true }
+ax doctor grok
+ax providers list
+```
+
+### Alternative Deployment Options
+
+#### Option 1: vLLM (Recommended - Fastest)
+
+```bash
+# Install vLLM
+pip install vllm
+
+# Start server
+python -m vllm.entrypoints.openai.api_server \
+  --model THUDM/glm-4-6 \
+  --port 8000 \
+  --trust-remote-code
+```
+
+**Pros**: Fastest inference, best GPU utilization
+**Cons**: Requires CUDA GPU
+
+#### Option 2: Text Generation Inference (HuggingFace)
+
+```bash
+# Using Docker
+docker run -d \
+  --gpus all \
+  -p 8000:80 \
+  -v $PWD/data:/data \
+  ghcr.io/huggingface/text-generation-inference:latest \
+  --model-id THUDM/glm-4-6 \
+  --port 80
+```
+
+**Pros**: Production-ready, great scaling
+**Cons**: More complex setup
+
+#### Option 3: Ollama (Easiest - Good for Development)
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull GLM model (if available)
+ollama pull glm-4
+
+# Run server
+ollama serve
+
+# Configure AutomatosX
+# Edit .grok/settings.json:
+{
+  "baseURL": "http://localhost:11434/v1",
+  "model": "glm-4",
+  "apiKey": "not-required"
+}
+```
+
+**Pros**: Simplest setup, works on CPU
+**Cons**: Slower inference, may not have latest GLM 4.6
+
+#### Option 4: Custom FastAPI Wrapper
+
+```python
+# server.py
+from fastapi import FastAPI
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import uvicorn
+
+app = FastAPI()
+model = AutoModelForCausalLM.from_pretrained("THUDM/glm-4-6", trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("THUDM/glm-4-6", trust_remote_code=True)
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: dict):
+    messages = request["messages"]
+    # ... implement OpenAI-compatible API
+    return {"choices": [...]}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+**Pros**: Full control, custom features
+**Cons**: Requires Python coding
+
+### Hardware Requirements
+
+| Deployment | GPU | RAM | Disk | Performance |
+|------------|-----|-----|------|-------------|
+| **vLLM** | NVIDIA A100 (40GB) | 64GB | 100GB | Excellent |
+| **vLLM** | NVIDIA RTX 4090 (24GB) | 32GB | 50GB | Very Good |
+| **TGI** | NVIDIA V100 (16GB) | 32GB | 50GB | Good |
+| **Ollama (CPU)** | None | 16GB | 20GB | Fair |
+| **Ollama (GPU)** | NVIDIA RTX 3090 (24GB) | 16GB | 20GB | Good |
+
+### Network Configuration
+
+If hosting on a separate server:
+
+```bash
+# .grok/settings.json
+{
+  "baseURL": "http://your-server-ip:8000/v1",  // Internal network
+  "model": "THUDM/glm-4-6",
+  "apiKey": "your-optional-auth-token"
+}
+
+# Or with domain name
+{
+  "baseURL": "https://glm.yourcompany.com/v1",  // HTTPS for security
+  "model": "THUDM/glm-4-6",
+  "apiKey": "production-api-key"
+}
+```
+
+### Testing Your Self-Hosted Server
+
+```bash
+# 1. Test model endpoint
+curl http://localhost:8000/v1/models
+
+# 2. Test completion
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "THUDM/glm-4-6",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+
+# 3. Test with AutomatosX
+ax doctor grok
+ax run backend "Write a hello function" --provider grok
+```
+
+### Production Considerations
+
+**Security:**
+- Add authentication (API keys, OAuth)
+- Use HTTPS with valid certificates
+- Implement rate limiting
+- Set up firewall rules
+
+**Monitoring:**
+- Track GPU utilization
+- Monitor response times
+- Log all requests
+- Set up alerts for failures
+
+**Scaling:**
+- Use load balancer for multiple instances
+- Implement request queuing
+- Add caching layer
+- Consider K8s for auto-scaling
+
+### 📄 License Note for Self-Hosted/Commercial Use
+
+**IMPORTANT**: AutomatosX is licensed under Apache 2.0 for **non-commercial use**.
+
+For commercial deployments or to remove license restrictions:
+
+- 💼 **Commercial License**: https://license.defai.digital/automatosx
+- 📋 **Enterprise Terms**: Custom agreements for large organizations
+- 🤝 **Volume Pricing**: Discounts for teams and multi-user deployments
+- 📞 **Support**: Priority support included with commercial licenses
+
+**What counts as commercial use?**
+- Using AutomatosX in a business/company setting
+- Generating revenue from AutomatosX-powered applications
+- Self-hosted deployments in production environments
+- Team/organization-wide deployments
+
+**Educational/Research Use**: Free under Apache 2.0 license
 
 ## Switching Between X.AI and Z.AI
 

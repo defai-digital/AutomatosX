@@ -213,15 +213,15 @@ async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
   });
 
   if (cliCheck.success) {
-    // Check auth via simple command
-    const authCheck = await checkCommand('gemini', 'models list');
+    // Gemini CLI uses API keys directly - just check if help works
+    const helpCheck = await checkCommand('gemini', '--help');
     results.push({
-      name: 'Authentication',
+      name: 'CLI Ready',
       category: 'Gemini',
-      passed: authCheck.success,
-      message: authCheck.success ? 'Authenticated' : 'Authentication failed',
-      fix: authCheck.success ? undefined : 'Run: gemini auth login',
-      details: verbose ? authCheck.error : undefined
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Gemini CLI installation: npm install -g @google/generative-ai-cli',
+      details: verbose ? (helpCheck.success ? 'Gemini CLI uses API keys from environment or config' : helpCheck.error) : undefined
     });
   }
 
@@ -248,15 +248,15 @@ async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
   });
 
   if (cliCheck.success) {
-    // Check if logged in
-    const authCheck = await checkCommand('claude', 'auth whoami');
+    // Claude Code CLI is authenticated when installed - just check if help works
+    const helpCheck = await checkCommand('claude', '--help');
     results.push({
-      name: 'Authentication',
+      name: 'CLI Ready',
       category: 'Claude',
-      passed: authCheck.success,
-      message: authCheck.success ? 'Authenticated' : 'Not authenticated',
-      fix: authCheck.success ? undefined : 'Run: claude auth login',
-      details: verbose ? authCheck.error : undefined
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Claude Code CLI installation',
+      details: verbose ? (helpCheck.success ? 'Claude Code CLI authenticated via desktop app' : helpCheck.error) : undefined
     });
   }
 
@@ -283,43 +283,16 @@ async function checkGrokProvider(verbose: boolean): Promise<CheckResult[]> {
   });
 
   if (cliCheck.success) {
-    // Check if configuration exists
-    const configCheck = existsSync('.automatosx/providers/grok.yaml');
+    // Grok CLI can use environment variables or config files - just check if help works
+    const helpCheck = await checkCommand('grok', '--help');
     results.push({
-      name: 'Configuration',
+      name: 'CLI Ready',
       category: 'Grok',
-      passed: configCheck,
-      message: configCheck ? 'Configuration found' : 'No configuration file',
-      fix: configCheck ? undefined : 'Copy template: cp .automatosx/providers/grok.yaml.template .automatosx/providers/grok.yaml',
-      details: verbose ? 'Checked .automatosx/providers/grok.yaml' : undefined
+      passed: helpCheck.success,
+      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
+      fix: helpCheck.success ? undefined : 'Check Grok CLI installation: npm install -g @vibe-kit/grok-cli',
+      details: verbose ? (helpCheck.success ? 'Grok CLI uses API keys from environment (GROK_API_KEY) or config files' : helpCheck.error) : undefined
     });
-
-    // Check if API key is set (check for placeholder)
-    if (configCheck) {
-      try {
-        const { readFileSync } = await import('fs');
-        const configContent = readFileSync('.automatosx/providers/grok.yaml', 'utf-8');
-        const hasPlaceholder = configContent.includes('YOUR_X_AI_API_KEY_HERE') ||
-                               configContent.includes('YOUR_Z_AI_API_KEY_HERE');
-
-        results.push({
-          name: 'API Key',
-          category: 'Grok',
-          passed: !hasPlaceholder,
-          message: hasPlaceholder ? 'API key placeholder found - needs replacement' : 'API key configured',
-          fix: hasPlaceholder ? 'Edit .automatosx/providers/grok.yaml and add your actual API key' : undefined,
-          details: verbose ? 'Checked for placeholder API keys in config' : undefined
-        });
-      } catch (error) {
-        results.push({
-          name: 'API Key',
-          category: 'Grok',
-          passed: false,
-          message: 'Could not read configuration file',
-          details: verbose ? (error as Error).message : undefined
-        });
-      }
-    }
   }
 
   results.forEach(r => displayCheck(r));

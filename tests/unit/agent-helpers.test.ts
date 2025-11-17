@@ -109,32 +109,20 @@ describe('Agent Helpers', () => {
   });
 
   // NOTE: Skipped due to process.chdir() not supported in Vitest worker threads
-  // Run with --pool=forks or --no-threads to test locally
-  // TODO v5.8: Refactor helpers to accept baseDir parameter
-  describe.skip('checkDisplayNameConflict', () => {
+  describe('checkDisplayNameConflict', () => {
     let testDir: string;
-    let originalCwd: string;
 
     beforeEach(async () => {
-      // Save original working directory
-      originalCwd = process.cwd();
-
       testDir = join(tmpdir(), `agent-test-${Date.now()}`);
       await mkdir(join(testDir, '.automatosx', 'agents'), { recursive: true });
-
-      // Change working directory to test directory
-      process.chdir(testDir);
     });
 
     afterEach(async () => {
-      // Restore original working directory
-      process.chdir(originalCwd);
-
       await rm(testDir, { recursive: true, force: true });
     });
 
     it('should return undefined for no conflicts', async () => {
-      const conflict = await checkDisplayNameConflict('NewAgent');
+      const conflict = await checkDisplayNameConflict('NewAgent', undefined, testDir);
       expect(conflict).toBeUndefined();
     });
 
@@ -148,7 +136,7 @@ systemPrompt: You are a backend developer
       `;
       await writeFile(join(testDir, '.automatosx', 'agents', 'backend.yaml'), agentYaml);
 
-      const conflict = await checkDisplayNameConflict('Bob');
+      const conflict = await checkDisplayNameConflict('Bob', undefined, testDir);
       expect(conflict).toBe('backend');
     });
 
@@ -162,10 +150,10 @@ systemPrompt: You are a backend developer
       `;
       await writeFile(join(testDir, '.automatosx', 'agents', 'backend.yaml'), agentYaml);
 
-      const conflict = await checkDisplayNameConflict('bob');
+      const conflict = await checkDisplayNameConflict('bob', undefined, testDir);
       expect(conflict).toBe('backend');
 
-      const conflict2 = await checkDisplayNameConflict('BOB');
+      const conflict2 = await checkDisplayNameConflict('BOB', undefined, testDir);
       expect(conflict2).toBe('backend');
     });
 
@@ -179,7 +167,7 @@ systemPrompt: You are a backend developer
       `;
       await writeFile(join(testDir, '.automatosx', 'agents', 'backend.yaml'), agentYaml);
 
-      const conflict = await checkDisplayNameConflict('Bob', 'backend');
+      const conflict = await checkDisplayNameConflict('Bob', 'backend', testDir);
       expect(conflict).toBeUndefined();
     });
   });
@@ -194,41 +182,30 @@ systemPrompt: You are a backend developer
       expect(templateNames).toContain('basic-agent');
     });
 
-    // NOTE: Skipped due to process.chdir() not supported in Vitest worker threads
-    // TODO v5.8: Refactor to accept baseDir parameter
-    it.skip('should include project templates if they exist', async () => {
-      const originalCwd = process.cwd();
+    it('should include project templates if they exist', async () => {
       const testDir = join(tmpdir(), `agent-test-${Date.now()}`);
 
       try {
         await mkdir(join(testDir, '.automatosx', 'templates'), { recursive: true });
-        process.chdir(testDir);
 
         // Create a custom template
         await writeFile(join(testDir, '.automatosx', 'templates', 'custom.yaml'), 'name: custom');
 
-        const templates = await listAvailableTemplates();
+        const templates = await listAvailableTemplates(testDir);
         const templateNames = templates.map(t => t.name);
         expect(templateNames).toContain('custom');
       } finally {
-        // Restore original working directory
-        process.chdir(originalCwd);
-
         await rm(testDir, { recursive: true, force: true });
       }
     });
   });
 
   describe('listAvailableTeams', () => {
-    // NOTE: Skipped due to process.chdir() not supported in Vitest worker threads
-    // TODO v5.8: Refactor to accept baseDir parameter
-    it.skip('should return default teams if no custom teams exist', async () => {
-      const originalCwd = process.cwd();
+    it('should return default teams if no custom teams exist', async () => {
       const testDir = join(tmpdir(), `agent-test-${Date.now()}`);
 
       try {
         await mkdir(join(testDir, '.automatosx', 'teams'), { recursive: true });
-        process.chdir(testDir);
 
         // Create default teams
         const coreTeam = `
@@ -251,16 +228,13 @@ provider:
       `;
         await writeFile(join(testDir, '.automatosx', 'teams', 'engineering.yaml'), engineeringTeam);
 
-        const teams = await listAvailableTeams();
+        const teams = await listAvailableTeams(testDir);
         expect(teams.length).toBeGreaterThan(0);
 
         const teamNames = teams.map(t => t.name);
         expect(teamNames).toContain('core');
         expect(teamNames).toContain('engineering');
       } finally {
-        // Restore original working directory
-        process.chdir(originalCwd);
-
         await rm(testDir, { recursive: true, force: true });
       }
     });

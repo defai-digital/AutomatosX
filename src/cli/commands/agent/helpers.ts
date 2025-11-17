@@ -36,12 +36,15 @@ export interface TeamInfo {
 
 /**
  * List available templates (project + built-in)
+ *
+ * @param baseDir - Base directory for project templates (defaults to process.cwd())
  */
-export async function listAvailableTemplates(): Promise<TemplateInfo[]> {
+export async function listAvailableTemplates(baseDir?: string): Promise<TemplateInfo[]> {
   const templates: TemplateInfo[] = [];
 
   // 1. Check project templates (.automatosx/templates/)
-  const projectTemplatesDir = join(process.cwd(), '.automatosx', 'templates');
+  const projectDir = baseDir || process.cwd();
+  const projectTemplatesDir = join(projectDir, '.automatosx', 'templates');
   if (existsSync(projectTemplatesDir)) {
     try {
       const files = await readdir(projectTemplatesDir);
@@ -101,9 +104,11 @@ export async function listAvailableTemplates(): Promise<TemplateInfo[]> {
 
 /**
  * List available teams
+ *
+ * @param baseDir - Base directory for project teams (defaults to process.cwd())
  */
-export async function listAvailableTeams(): Promise<TeamInfo[]> {
-  const projectDir = process.cwd();
+export async function listAvailableTeams(baseDir?: string): Promise<TeamInfo[]> {
+  const projectDir = baseDir || process.cwd();
   const teamsDir = join(projectDir, '.automatosx', 'teams');
 
   const teamManager = new TeamManager(teamsDir);
@@ -190,16 +195,21 @@ export function isValidAgentName(name: string): { valid: boolean; error?: string
 /**
  * Check if displayName conflicts with existing agents
  * Returns the conflicting agent name if found, undefined otherwise
+ *
+ * @param displayName - Display name to check for conflicts
+ * @param excludeAgentName - Agent name to exclude from check (for updates)
+ * @param baseDir - Base directory for project agents (defaults to process.cwd())
  */
 export async function checkDisplayNameConflict(
   displayName: string,
-  excludeAgentName?: string
+  excludeAgentName?: string,
+  baseDir?: string
 ): Promise<string | undefined> {
   if (!displayName) {
     return undefined;
   }
 
-  const projectDir = process.cwd();
+  const projectDir = baseDir || process.cwd();
   const agentsDir = join(projectDir, '.automatosx', 'agents');
   const profileLoader = new ProfileLoader(agentsDir);
 

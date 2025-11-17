@@ -98,11 +98,29 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
         const configContent = readFileSync(configPath, 'utf-8');
         const config = JSON.parse(configContent);
 
-        if (!config.apiKey && !process.env.GROK_API_KEY) {
-          console.log(chalk.yellow('\n⚠️  No API key found in Grok config'));
-          console.log(chalk.blue('\n💡 To configure your API key:'));
-          console.log(chalk.gray('   grok config set api-key YOUR_KEY\n'));
-          process.exit(1);
+        // Check for valid API key (not placeholder)
+        const isPlaceholder = config.apiKey && (
+          config.apiKey.includes('YOUR_') ||
+          config.apiKey.includes('_KEY_HERE') ||
+          config.apiKey === 'YOUR_XAI_API_KEY_HERE' ||
+          config.apiKey === 'YOUR_ZAI_API_KEY_HERE'
+        );
+
+        if (!config.apiKey || isPlaceholder) {
+          if (!process.env.GROK_API_KEY) {
+            console.log(chalk.yellow('\n⚠️  No valid API key found in Grok config'));
+            console.log(chalk.gray('   Config path:'), chalk.white(configPath));
+            if (isPlaceholder) {
+              console.log(chalk.gray('   Issue: API key is still a placeholder'));
+            }
+            console.log(chalk.blue('\n💡 To configure your API key:'));
+            console.log(chalk.gray('   Option 1: Set environment variable:'));
+            console.log(chalk.gray('     export GROK_API_KEY="your-actual-key"'));
+            console.log(chalk.gray('   Option 2: Update settings.json with real API key'));
+            console.log(chalk.gray('   Option 3: Use grok CLI directly:'));
+            console.log(chalk.gray('     grok config set api-key YOUR_KEY\n'));
+            process.exit(1);
+          }
         }
 
         logger.debug('Grok config loaded', {

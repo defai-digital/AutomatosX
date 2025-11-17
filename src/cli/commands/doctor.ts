@@ -44,9 +44,9 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
   builder: (yargs) => {
     return yargs
       .positional('provider', {
-        describe: 'Check specific provider (openai, gemini, claude) or all if omitted',
+        describe: 'Check specific provider (openai, gemini, claude, grok) or all if omitted',
         type: 'string',
-        choices: ['openai', 'gemini', 'claude']
+        choices: ['openai', 'gemini', 'claude', 'grok']
       })
       .option('verbose', {
         describe: 'Show detailed diagnostic information',
@@ -97,7 +97,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // Check providers
       const providersToCheck = argv.provider
         ? [argv.provider]
-        : ['openai', 'gemini', 'claude'];
+        : ['openai', 'gemini', 'claude', 'grok'];
 
       const verbose = argv.verbose ?? false;
 
@@ -118,6 +118,8 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
           results.push(...await checkGeminiProvider(verbose));
         } else if (provider === 'claude') {
           results.push(...await checkClaudeProvider(verbose));
+        } else if (provider === 'grok') {
+          results.push(...await checkGrokProvider(verbose));
         }
       }
 
@@ -256,6 +258,68 @@ async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
       fix: authCheck.success ? undefined : 'Run: claude auth login',
       details: verbose ? authCheck.error : undefined
     });
+  }
+
+  results.forEach(r => displayCheck(r));
+  return results;
+}
+
+/**
+ * Check Grok CLI provider
+ */
+async function checkGrokProvider(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  const cliCheck = await checkCommand('grok', '--version');
+  results.push({
+    name: 'CLI Installation',
+    category: 'Grok',
+    passed: cliCheck.success,
+    message: cliCheck.success
+      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
+      : 'Grok CLI not found',
+    fix: cliCheck.success ? undefined : 'npm install -g @vibe-kit/grok-cli',
+    details: verbose ? cliCheck.error : undefined
+  });
+
+  if (cliCheck.success) {
+    // Check if configuration exists
+    const configCheck = existsSync('.automatosx/providers/grok.yaml');
+    results.push({
+      name: 'Configuration',
+      category: 'Grok',
+      passed: configCheck,
+      message: configCheck ? 'Configuration found' : 'No configuration file',
+      fix: configCheck ? undefined : 'Copy template: cp .automatosx/providers/grok.yaml.template .automatosx/providers/grok.yaml',
+      details: verbose ? 'Checked .automatosx/providers/grok.yaml' : undefined
+    });
+
+    // Check if API key is set (check for placeholder)
+    if (configCheck) {
+      try {
+        const { readFileSync } = await import('fs');
+        const configContent = readFileSync('.automatosx/providers/grok.yaml', 'utf-8');
+        const hasPlaceholder = configContent.includes('YOUR_X_AI_API_KEY_HERE') ||
+                               configContent.includes('YOUR_Z_AI_API_KEY_HERE');
+
+        results.push({
+          name: 'API Key',
+          category: 'Grok',
+          passed: !hasPlaceholder,
+          message: hasPlaceholder ? 'API key placeholder found - needs replacement' : 'API key configured',
+          fix: hasPlaceholder ? 'Edit .automatosx/providers/grok.yaml and add your actual API key' : undefined,
+          details: verbose ? 'Checked for placeholder API keys in config' : undefined
+        });
+      } catch (error) {
+        results.push({
+          name: 'API Key',
+          category: 'Grok',
+          passed: false,
+          message: 'Could not read configuration file',
+          details: verbose ? (error as Error).message : undefined
+        });
+      }
+    }
   }
 
   results.forEach(r => displayCheck(r));
@@ -463,6 +527,7 @@ function getProviderEmoji(provider: string): string {
     case 'openai': return '🤖';
     case 'gemini': return '✨';
     case 'claude': return '🧠';
+    case 'grok': return '🚀';
     default: return '🔧';
   }
 }

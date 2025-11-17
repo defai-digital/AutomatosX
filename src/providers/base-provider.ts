@@ -30,6 +30,11 @@ import { ProviderError, ErrorCode } from '../utils/errors.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { findOnPath } from '../core/cli-provider-detector.js';
+import {
+  safeValidateExecutionRequest,
+  safeValidateExecutionResponse,
+  safeValidateHealthStatus
+} from './provider-schemas.js';
 
 const execAsync = promisify(exec);
 
@@ -37,6 +42,7 @@ export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
    * v8.3.0: Support both old (claude-code, gemini-cli) and new (claude, gemini) names for backward compatibility
+   * v8.3.1: Added 'grok' for Grok CLI integration
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
@@ -45,6 +51,7 @@ export abstract class BaseProvider implements Provider {
     'gemini-cli',    // Backward compatibility - maps to gemini CLI
     'openai',
     'codex',
+    'grok',          // Grok CLI (Z.AI GLM 4.6 or X.AI Grok)
     'test-provider'  // For unit tests
   ] as const;
 
@@ -175,6 +182,18 @@ export abstract class BaseProvider implements Provider {
     const startTime = Date.now();
 
     try {
+      // Validate request with Zod
+      const requestValidation = safeValidateExecutionRequest(request);
+      if (!requestValidation.success) {
+        const validationErrors = requestValidation.error.errors.map(e =>
+          `${e.path.join('.')}: ${e.message}`
+        ).join('; ');
+        throw new ProviderError(
+          `Invalid execution request: ${validationErrors}`,
+          ErrorCode.PROVIDER_EXEC_ERROR
+        );
+      }
+
       logger.debug(`Executing request with ${this.config.name}`, {
         prompt: request.prompt.substring(0, 100) + '...'
       });
@@ -191,7 +210,7 @@ export abstract class BaseProvider implements Provider {
       this.health.consecutiveFailures = 0;
       this.health.available = true;
 
-      return {
+      const response: ExecutionResponse = {
         content: result,
         model: 'default', // v8.3.0: CLI determines model
         tokensUsed: {
@@ -203,6 +222,18 @@ export abstract class BaseProvider implements Provider {
         finishReason: 'stop',
         cached: false
       };
+
+      // Validate response with Zod (ensure we're returning valid data)
+      const responseValidation = safeValidateExecutionResponse(response);
+      if (!responseValidation.success) {
+        logger.error('Invalid execution response generated', {
+          errors: responseValidation.error.errors,
+          response
+        });
+        // Still return the response but log the validation issue
+      }
+
+      return response;
     } catch (error) {
       this.health.consecutiveFailures++;
       this.health.available = false;

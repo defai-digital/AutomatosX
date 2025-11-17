@@ -1,0 +1,50 @@
+# Grok Provider Example - Z.AI GLM 4.6 (Code-Optimized)
+#
+# This example demonstrates using Z.AI's GLM 4.6 model with AutomatosX.
+# GLM 4.6 is optimized for coding tasks and technical work.
+#
+# Usage:
+#   1. Copy to .automatosx/providers/grok.yaml
+#   2. Set GROK_API_KEY environment variable
+#   3. Run: ax doctor grok
+
+provider:
+  # Provider identification
+  name: grok
+  enabled: true
+  priority: 2                                         # 1 = highest priority
+
+  # Z.AI endpoint (code-optimized model)
+  baseUrl: https://api.z.ai/api/coding/paas/v4
+  apiKey: ${GROK_API_KEY}                            # Reference environment variable
+  model: glm-4.6                                      # Code-optimized model
+
+  # Performance settings
+  timeout: 120000                                     # 2 minutes (suitable for most tasks)
+  maxRetries: 3                                       # Retry on transient failures
+
+  # Optional: Custom CLI path (if not in PATH)
+  # customPath: /usr/local/bin/grok
+
+# Rate limiting (recommended for production)
+rateLimits:
+  maxRequestsPerMinute: 60                           # Prevent quota exhaustion
+  maxTokensPerMinute: 100000                         # Token-based limiting
+  maxConcurrentRequests: 5                           # Parallel request limit
+
+# Circuit breaker (prevents cascading failures)
+circuitBreaker:
+  failureThreshold: 3                                # Open circuit after 3 failures
+  resetTimeout: 60000                                # Wait 60s before retry
+  halfOpenTimeout: 30000                             # Test period: 30s
+
+# Metadata (optional, for documentation)
+metadata:
+  version: "1.0.0"
+  description: "Z.AI GLM 4.6 configuration for coding tasks"
+  tags:
+    - grok
+    - z-ai
+    - glm-4.6
+    - code-generation
+  lastUpdated: "2025-11-16T00:00:00Z"

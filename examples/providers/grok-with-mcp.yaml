@@ -1,0 +1,86 @@
+# Grok Provider Example - With MCP Tools
+#
+# This example demonstrates using Grok with Model Context Protocol (MCP) tools.
+# MCP enables the model to interact with external systems (filesystem, GitHub, etc.)
+#
+# Usage:
+#   1. Install MCP servers: npm install -g @modelcontextprotocol/server-*
+#   2. Set environment variables: GROK_API_KEY, GITHUB_TOKEN
+#   3. Copy to .automatosx/providers/grok.yaml
+#   4. Run: ax run --provider grok backend "list files in src/"
+
+provider:
+  name: grok
+  enabled: true
+  priority: 2
+  baseUrl: https://api.z.ai/api/coding/paas/v4
+  apiKey: ${GROK_API_KEY}
+  model: glm-4.6
+  timeout: 120000
+  maxRetries: 3
+
+# MCP Tools Configuration
+mcp:
+  enabled: true
+  servers:
+    # Filesystem access (read/write files)
+    - name: filesystem
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-filesystem"
+        - "/Users/username/projects"              # Allowed directory
+      env:
+        LOG_LEVEL: info
+
+    # GitHub integration (issues, PRs, repos)
+    - name: github
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-github"
+      env:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}           # GitHub personal access token
+        LOG_LEVEL: info
+
+    # Slack integration (optional)
+    # - name: slack
+    #   command: npx
+    #   args:
+    #     - "-y"
+    #     - "@modelcontextprotocol/server-slack"
+    #   env:
+    #     SLACK_TOKEN: ${SLACK_TOKEN}
+    #     LOG_LEVEL: info
+
+    # PostgreSQL database (optional)
+    # - name: postgres
+    #   command: npx
+    #   args:
+    #     - "-y"
+    #     - "@modelcontextprotocol/server-postgres"
+    #   env:
+    #     DATABASE_URL: ${DATABASE_URL}
+    #     LOG_LEVEL: info
+
+# Rate limits
+rateLimits:
+  maxRequestsPerMinute: 60
+  maxTokensPerMinute: 100000
+  maxConcurrentRequests: 5
+
+# Circuit breaker
+circuitBreaker:
+  failureThreshold: 3
+  resetTimeout: 60000
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "Grok with MCP tools for extended capabilities"
+  tags:
+    - grok
+    - mcp
+    - filesystem
+    - github
+  lastUpdated: "2025-11-16T00:00:00Z"

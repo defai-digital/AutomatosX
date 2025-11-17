@@ -184,18 +184,7 @@ async function checkOpenAIProvider(verbose: boolean): Promise<CheckResult[]> {
     });
   }
 
-  // Check 3: API Connectivity (only if CLI is installed)
-  if (cliCheck.success) {
-    const connCheck = await checkAPIConnectivity('https://api.openai.com/v1/models');
-    results.push({
-      name: 'API Connectivity',
-      category: 'OpenAI',
-      passed: connCheck.success,
-      message: connCheck.message,
-      fix: connCheck.success ? undefined : 'Check firewall/proxy settings\n   OR: export AUTOMATOSX_CLI_ONLY=true (for CLI-only mode)',
-      details: verbose ? connCheck.details : undefined
-    });
-  }
+  // Note: v8.2.0+ uses pure CLI mode - no API connectivity check needed
 
   // Display results
   results.forEach(r => displayCheck(r));
@@ -355,7 +344,7 @@ async function checkCommand(
 }
 
 /**
- * Check OpenAI authentication
+ * Check OpenAI authentication (v8.2.0+: Pure CLI mode only)
  */
 async function checkOpenAIAuth(): Promise<{
   success: boolean;
@@ -363,36 +352,41 @@ async function checkOpenAIAuth(): Promise<{
   fix?: string;
   details?: string;
 }> {
-  // Check if OPENAI_API_KEY is set
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      success: true,
-      message: 'API key configured',
-      details: 'OPENAI_API_KEY environment variable is set'
-    };
-  }
-
-  // Try a simple codex command to test auth
+  // v8.2.0+: Pure CLI orchestration - we only use CLI, not API keys
+  // Just check if codex login status works
+  // NOTE: codex outputs to stderr, so we need to capture both stdout and stderr
   try {
-    execSync('codex exec "test" --max-tokens 1', {
+    const output = execSync('codex login status 2>&1', {
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 10000
     });
+
+    const statusText = output.toLowerCase();
+
+    // Check if logged in
+    if (statusText.includes('logged in') || statusText.includes('authenticated')) {
+      return {
+        success: true,
+        message: 'Authenticated via CLI',
+        details: output.trim()
+      };
+    }
+
     return {
-      success: true,
-      message: 'Authenticated via CLI',
-      details: 'Successfully executed test command'
+      success: false,
+      message: 'Not authenticated',
+      fix: 'Run: codex login',
+      details: output.trim()
     };
   } catch (error) {
     const errorMsg = (error as Error).message.toLowerCase();
 
-    if (errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+    if (errorMsg.includes('not logged in') || errorMsg.includes('not authenticated')) {
       return {
         success: false,
         message: 'Not authenticated',
-        fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
-        details: 'Test command returned unauthorized'
+        fix: 'Run: codex login',
+        details: 'codex login status: not logged in'
       };
     }
 
@@ -400,54 +394,12 @@ async function checkOpenAIAuth(): Promise<{
     return {
       success: false,
       message: 'Cannot verify authentication',
-      fix: 'Run: codex login\n   OR: export OPENAI_API_KEY="sk-..."',
+      fix: 'Run: codex login',
       details: errorMsg
     };
   }
 }
 
-/**
- * Check API connectivity
- */
-async function checkAPIConnectivity(url: string): Promise<{
-  success: boolean;
-  message: string;
-  details?: string;
-}> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    return {
-      success: response.ok || response.status === 401, // 401 means we reached API
-      message: response.ok || response.status === 401 ? 'Connected' : `HTTP ${response.status}`,
-      details: `Status: ${response.status} ${response.statusText}`
-    };
-  } catch (error) {
-    const errorMsg = (error as Error).message;
-
-    if (errorMsg.includes('aborted')) {
-      return {
-        success: false,
-        message: 'Connection timeout',
-        details: 'Request timed out after 5 seconds'
-      };
-    }
-
-    return {
-      success: false,
-      message: 'Cannot connect',
-      details: errorMsg
-    };
-  }
-}
 
 /**
  * Display a single check result

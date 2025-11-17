@@ -295,7 +295,10 @@
   },
   "router": {
     "healthCheckInterval": 60000,
-    "providerCooldownMs": 30000
+    "providerCooldownMs": 30000,
+    "circuitBreakerThreshold": 3,
+    "enableFreeTierPrioritization": true,
+    "enableWorkloadAwareRouting": true
   },
   "version": "8.3.0"
 }

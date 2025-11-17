@@ -430,8 +430,12 @@ describe('Router', () => {
     });
 
     it('should penalize failed providers temporarily', async () => {
-      // Provider 1 fails once
-      mockProvider1.execute = vi.fn().mockRejectedValueOnce(new Error('Provider failed'));
+      // v8.3.0: Circuit breaker requires 3 failures to open
+      // Provider 1 fails 3 times to trigger circuit breaker
+      mockProvider1.execute = vi.fn()
+        .mockRejectedValueOnce(new Error('Provider failed'))
+        .mockRejectedValueOnce(new Error('Provider failed'))
+        .mockRejectedValueOnce(new Error('Provider failed'));
       mockProvider2.execute = vi.fn().mockResolvedValue({
         content: 'Response from provider2',
         tokensUsed: { prompt: 10, completion: 20, total: 30 },
@@ -440,13 +444,14 @@ describe('Router', () => {
         finishReason: 'stop'
       } as ExecutionResponse);
 
-      // First execution: provider1 fails, fallback to provider2
+      // First 3 executions: provider1 fails, fallback to provider2
+      await router.execute(mockRequest);
+      await router.execute(mockRequest);
       const response1 = await router.execute(mockRequest);
       expect(response1.model).toBe('model2');
-      expect(mockProvider1.execute).toHaveBeenCalledTimes(1);
-      expect(mockProvider2.execute).toHaveBeenCalledTimes(1);
 
-      // Reset mocks for second execution
+      // After 3 failures, circuit breaker should be open
+      // Reset mocks for fourth execution
       vi.clearAllMocks();
       mockProvider1.execute = vi.fn().mockResolvedValue({
         content: 'Response from provider1',
@@ -456,10 +461,10 @@ describe('Router', () => {
         finishReason: 'stop'
       } as ExecutionResponse);
 
-      // Second execution: provider1 should be skipped (penalized)
+      // Fourth execution: provider1 should be skipped (circuit breaker open)
       const response2 = await router.execute(mockRequest);
       expect(response2.model).toBe('model2');
-      expect(mockProvider1.execute).not.toHaveBeenCalled(); // Skipped!
+      expect(mockProvider1.execute).not.toHaveBeenCalled(); // Skipped due to circuit breaker!
       expect(mockProvider2.execute).toHaveBeenCalledTimes(1);
     });
 

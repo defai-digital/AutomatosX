@@ -549,6 +549,7 @@ export interface OpenAIConfig {
 export interface RouterConfig {
   healthCheckInterval?: number;         // Background health check interval (ms), optional
   providerCooldownMs?: number;          // Cooldown period for failed providers (ms)
+  circuitBreakerThreshold?: number;     // v8.3.0: Circuit breaker failure threshold (default: 3)
   enableFreeTierPrioritization?: boolean;  // Enable prioritization of free tier providers (default: true)
   enableWorkloadAwareRouting?: boolean;    // Enable workload-aware provider routing (default: true)
 }

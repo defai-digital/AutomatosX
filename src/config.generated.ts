@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-11-17T02:01:03.876Z
+ * Generated: 2025-11-17T02:46:35.980Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -113,7 +113,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       }
     },
     "grok": {
-      "enabled": false,
+      "enabled": true,
       "priority": 4,
       "timeout": 2700000,
       "command": "grok",
@@ -348,7 +348,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000,
-    "circuitBreakerThreshold": 3,
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
@@ -359,7 +358,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-17T02:01:03.876Z',
+  generatedAt: '2025-11-17T02:46:35.980Z',
   sourceFile: 'automatosx.config.json',
   version: '8.3.1'
 } as const;

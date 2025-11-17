@@ -56,6 +56,9 @@ export const providerLimitsCommand: CommandModule<Record<string, unknown>, Provi
       const limitManager = await getProviderLimitManager();
       await limitManager.initialize();
 
+      // Bug #v8.4.11: Refresh expired limits before displaying
+      await limitManager.refreshExpired();
+
       const states = limitManager.getAllStates();
       const manualOverride = limitManager.getManualOverride();
       const now = Date.now();
@@ -69,7 +72,8 @@ export const providerLimitsCommand: CommandModule<Record<string, unknown>, Provi
             window: state.window,
             detectedAtMs: state.detectedAtMs,
             resetAtMs: state.resetAtMs,
-            remainingMs: state.resetAtMs - now,
+            // Bug #v8.4.11: Clamp negative remainingMs to 0
+            remainingMs: Math.max(0, state.resetAtMs - now),
             reason: state.reason,
             manualHold: state.manualHold
           })),
@@ -88,7 +92,8 @@ export const providerLimitsCommand: CommandModule<Record<string, unknown>, Provi
         } else {
           for (const [name, state] of states.entries()) {
             const resetDate = new Date(state.resetAtMs);
-            const remainingMs = state.resetAtMs - now;
+            // Bug #v8.4.11: Clamp negative remainingMs to 0
+            const remainingMs = Math.max(0, state.resetAtMs - now);
             const remainingStr = formatDuration(remainingMs);
 
             console.log(chalk.yellow(`  ⚠️  ${name}:`));

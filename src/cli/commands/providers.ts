@@ -479,7 +479,7 @@ async function handleSwitch(argv: ProvidersOptions): Promise<void> {
     process.exit(1);
   }
 
-  const providerSession = getProviderSession();
+  const providerSession = await getProviderSession();
   providerSession.setProvider(providerName, {
     reason: 'Manual CLI switch'
   });
@@ -493,7 +493,7 @@ async function handleSwitch(argv: ProvidersOptions): Promise<void> {
  * Handle 'ax providers reset' command
  */
 async function handleReset(): Promise<void> {
-  const providerSession = getProviderSession();
+  const providerSession = await getProviderSession();
 
   if (!providerSession.hasOverride()) {
     console.log(chalk.yellow('\n⚠️  No provider override active\n'));

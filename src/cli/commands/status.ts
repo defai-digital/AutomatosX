@@ -327,6 +327,9 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
           const limitManager = await getProviderLimitManager();
           await limitManager.initialize();
 
+          // Bug #v8.4.11: Refresh expired limits before displaying
+          await limitManager.refreshExpired();
+
           const limitStates = limitManager.getAllStates();
           const manualOverride = limitManager.getManualOverride();
           const now = Date.now();
@@ -337,7 +340,8 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
             // Show limited providers
             if (limitStates.size > 0) {
               for (const [name, state] of limitStates.entries()) {
-                const remainingMs = state.resetAtMs - now;
+                // Bug #v8.4.11: Clamp negative remainingMs to 0
+                const remainingMs = Math.max(0, state.resetAtMs - now);
                 const hours = Math.ceil(remainingMs / (1000 * 60 * 60));
                 console.log(chalk.yellow(`  ⚠️  ${name}: LIMITED (resets in ${hours}h)`));
 

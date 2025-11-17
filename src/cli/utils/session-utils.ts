@@ -8,6 +8,67 @@
 import { SessionManager } from '../../core/session-manager.js';
 import { PathResolver } from '../../core/path-resolver.js';
 import { join } from 'path';
+import { logger } from '../../utils/logger.js';
+
+// Global registry of active session managers (for cleanup on exit)
+const activeSessionManagers = new Set<SessionManager>();
+let exitHandlerInstalled = false;
+
+/**
+ * Install global exit handler to flush all session managers before process exit
+ * This ensures pending saves complete even when process.exit() is called
+ */
+function installExitHandler(): void {
+  if (exitHandlerInstalled) {
+    return;
+  }
+
+  const flushAllSessions = async () => {
+    if (activeSessionManagers.size === 0) {
+      return;
+    }
+
+    logger.debug('Flushing session managers before exit', {
+      count: activeSessionManagers.size
+    });
+
+    await Promise.all(
+      Array.from(activeSessionManagers).map(async (manager) => {
+        try {
+          await manager.flushSave();
+        } catch (error) {
+          logger.error('Failed to flush session manager on exit', {
+            error: (error as Error).message
+          });
+        }
+      })
+    );
+  };
+
+  // Register exit handlers
+  process.on('beforeExit', () => {
+    void flushAllSessions();
+  });
+
+  process.on('exit', () => {
+    // Synchronous flush attempt (best effort)
+    // Note: process.exit() doesn't wait for async operations
+    // The real fix is to remove process.exit() calls and let Node exit naturally
+  });
+
+  process.on('SIGINT', async () => {
+    await flushAllSessions();
+    process.exit(130); // Standard exit code for SIGINT
+  });
+
+  process.on('SIGTERM', async () => {
+    await flushAllSessions();
+    process.exit(143); // Standard exit code for SIGTERM
+  });
+
+  exitHandlerInstalled = true;
+  logger.debug('Session manager exit handler installed');
+}
 
 /**
  * Create SessionManager instance with persistence
@@ -31,6 +92,9 @@ import { join } from 'path';
  */
 export async function createSessionManager(): Promise<SessionManager> {
   try {
+    // Install exit handler on first session manager creation
+    installExitHandler();
+
     // v5.2: agentWorkspace path kept for PathResolver compatibility (directory not created)
     const projectDir = await new PathResolver({
       projectDir: process.cwd(),
@@ -43,6 +107,10 @@ export async function createSessionManager(): Promise<SessionManager> {
     });
 
     await sessionManager.initialize();
+
+    // Register for cleanup on exit
+    activeSessionManagers.add(sessionManager);
+
     return sessionManager;
   } catch (error) {
     const err = error as Error;

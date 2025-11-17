@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { logger } from '@/utils/logger.js';
+import { detectProjectRoot } from './path-resolver.js';
 
 /**
  * Provider session configuration stored in .automatosx/session/provider-override.json
@@ -163,9 +164,24 @@ const providerSessionInstances = new Map<string, ProviderSessionManager>();
 
 /**
  * Get or create provider session manager instance
+ *
+ * Automatically resolves project root to ensure session files are created in
+ * .automatosx/session/ relative to project root, not current working directory.
  */
-export function getProviderSession(workspacePath?: string): ProviderSessionManager {
-  const path = workspacePath || process.cwd();
+export async function getProviderSession(workspacePath?: string): Promise<ProviderSessionManager> {
+  let path: string;
+
+  if (workspacePath) {
+    path = workspacePath;
+  } else {
+    // In test mode, use a simple relative path to avoid async I/O issues
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      path = process.cwd();
+    } else {
+      // Resolve project root to avoid creating session files in CWD
+      path = await detectProjectRoot();
+    }
+  }
 
   if (!providerSessionInstances.has(path)) {
     providerSessionInstances.set(path, new ProviderSessionManager(path));

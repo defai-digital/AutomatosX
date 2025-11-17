@@ -682,7 +682,9 @@ export class SessionManager {
       });
 
     // Calculate how many to remove
-    const toRemoveCount = sessions.length - this.MAX_SESSIONS;
+    // Bug #v8.4.11: Ensure we remove at least 1 session when at capacity
+    // When size == MAX_SESSIONS, sessions.length - MAX_SESSIONS = 0, so nothing gets removed
+    const toRemoveCount = Math.max(1, sessions.length - this.MAX_SESSIONS);
     const toRemove = sessions.slice(0, toRemoveCount);
 
     // Remove selected sessions
@@ -825,10 +827,11 @@ export class SessionManager {
    * Flush pending save operation (wait for completion)
    *
    * Forces immediate save if there's a pending debounced save.
+   * This should be called before process exit to ensure all changes are persisted.
    *
-   * @private
+   * @public
    */
-  private async flushSave(): Promise<void> {
+  async flushSave(): Promise<void> {
     // If there's a debounced save pending, cancel it and do immediate save
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);

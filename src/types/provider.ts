@@ -38,6 +38,10 @@ export interface ProviderConfig {
   /** Minimum required version (semantic versioning) */
   minVersion?: string;
 
+  // v8.3.0: YAML configuration file support (Phase 1 - Grok Provider Integration)
+  /** Path to YAML configuration file (if using YAML-based config) */
+  configFile?: string;
+
   // v5.6.18: Process management and reliability
   circuitBreaker?: CircuitBreakerConfig;        // Circuit breaker configuration
   processManagement?: ProcessManagementConfig;  // Process lifecycle management

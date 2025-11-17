@@ -461,7 +461,7 @@ const cliConfigSchema = z.object({
 const routerConfigSchema = z.object({
   healthCheckInterval: intervalSchema,
   providerCooldownMs: positiveIntSchema,
-  circuitBreakerThreshold: positiveIntSchema.max(10),
+  circuitBreakerThreshold: positiveIntSchema.max(10).optional(),  // v8.3.2: Make optional to match interface
   enableFreeTierPrioritization: z.boolean().default(true),
   enableWorkloadAwareRouting: z.boolean().default(true)
 }).describe('Router configuration');

@@ -185,7 +185,8 @@ export abstract class BaseProvider implements Provider {
       // Validate request with Zod
       const requestValidation = safeValidateExecutionRequest(request);
       if (!requestValidation.success) {
-        const validationErrors = requestValidation.error.errors.map(e =>
+        // Note: Zod v3.x uses 'issues' instead of 'errors'
+        const validationErrors = requestValidation.error.issues.map(e =>
           `${e.path.join('.')}: ${e.message}`
         ).join('; ');
         throw new ProviderError(

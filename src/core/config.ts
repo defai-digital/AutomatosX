@@ -289,7 +289,8 @@ export function validateConfigWithZod(config: AutomatosXConfig): string[] {
   }
 
   // Convert Zod errors to user-friendly messages
-  return result.error.errors.map(err => {
+  // Note: Zod v3.x uses 'issues' instead of 'errors'
+  return result.error.issues.map(err => {
     const path = err.path.join('.');
     return `${path}: ${err.message}`;
   });

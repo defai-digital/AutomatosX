@@ -737,7 +737,8 @@ export class ProfileLoader {
     // Validate with Zod schema first (early validation with better error messages)
     const validationResult = safeValidateAgentProfile(data);
     if (!validationResult.success) {
-      const validationErrors = validationResult.error.errors.map(e =>
+      // Note: Zod v3.x uses 'issues' instead of 'errors'
+      const validationErrors = validationResult.error.issues.map(e =>
         `${e.path.join('.')}: ${e.message}`
       ).join('; ');
       throw new AgentValidationError(

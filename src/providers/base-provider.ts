@@ -119,6 +119,7 @@ export abstract class BaseProvider implements Provider {
   ] as const;
 
   protected config: ProviderConfig;
+  protected logger = logger;
   protected health: {
     available: boolean;
     latencyMs: number;

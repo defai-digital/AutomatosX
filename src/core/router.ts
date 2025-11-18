@@ -249,17 +249,17 @@ export class Router {
 
       for (const provider of allProviders) {
         const limitCheck = limitManager.isProviderLimited(provider.name);
-        if (limitCheck.isLimited && limitCheck.resetAtMsMs) {
+        if (limitCheck.isLimited && limitCheck.resetAtMs) {
           limitedProviders.push({
             name: provider.name,
-            resetAtMsMs: limitCheck.resetAtMsMs
+            resetAtMs: limitCheck.resetAtMs
           });
         }
       }
 
       // If all providers are limited, throw specialized error
       if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
-        const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMsMs));
+        const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
         throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
       }
 
@@ -489,27 +489,31 @@ export class Router {
           // v6.5.16: Ensure limit is recorded (idempotent - safe to call even if already recorded)
           // Bug #11 fix: Wrap in try-catch to prevent masking the original provider error
           // Bug #3 Fix: Always record limit hits, even if context incomplete (use defaults)
-          let resetAtMsMs = providerError.context?.resetAtMsMs;
-          let limitWindow = providerError.context?.limitWindow;
+          let resetAtMs: number;
+          let limitWindow: string;
 
           // Validate and provide defaults if context incomplete
-          if (typeof resetAtMsMs !== 'number') {
+          if (typeof providerError.context?.resetAtMs !== 'number') {
             // Default: 1 hour from now (conservative estimate)
-            resetAtMsMs = Date.now() + 3600000;
-            logger.warn('Rate limit error missing resetAtMsMs, using 1hr default', {
+            resetAtMs = Date.now() + 3600000;
+            logger.warn('Rate limit error missing resetAtMs, using 1hr default', {
               provider: provider.name,
               error: providerError.message,
-              defaultResetAt: new Date(resetAtMsMs).toISOString()
+              defaultResetAt: new Date(resetAtMs).toISOString()
             });
+          } else {
+            resetAtMs = providerError.context.resetAtMs;
           }
 
-          if (typeof limitWindow !== 'string') {
+          if (typeof providerError.context?.limitWindow !== 'string') {
             // Default: 'hour' window
             limitWindow = 'hour';
             logger.warn('Rate limit error missing limitWindow, using "hour" default', {
               provider: provider.name,
               error: providerError.message
             });
+          } else {
+            limitWindow = providerError.context.limitWindow;
           }
 
           // ALWAYS record limit hit (never skip silently)
@@ -517,11 +521,10 @@ export class Router {
             await limitManager.recordLimitHit(
               provider.name,
               limitWindow as 'daily' | 'weekly' | 'custom',
-              resetAtMsMs,
+              resetAtMs,
               {
                 reason: (providerError.context?.reason as string) || 'usage_limit_exceeded',
-                rawMessage: providerError.message,
-                contextIncomplete: !providerError.context?.resetAtMsMs || !providerError.context?.limitWindow
+                rawMessage: providerError.message
               }
             );
           } catch (limitError) {
@@ -535,7 +538,7 @@ export class Router {
           logger.warn('⚠️  Router: provider hit usage limit, auto-rotating', {
             provider: provider.name,
             attempt: attemptNumber,
-            resetAtMsMs: providerError.context?.resetAtMsMs,
+            resetAtMs: providerError.context?.resetAtMs,
             willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
           });
 
@@ -641,17 +644,17 @@ export class Router {
 
     for (const provider of allProviders) {
       const limitCheck = limitManager.isProviderLimited(provider.name);
-      if (limitCheck.isLimited && limitCheck.resetAtMsMs) {
+      if (limitCheck.isLimited && limitCheck.resetAtMs) {
         limitedProviders.push({
           name: provider.name,
-          resetAtMsMs: limitCheck.resetAtMsMs
+          resetAtMs: limitCheck.resetAtMs
         });
       }
     }
 
     // If all providers are limited, throw specialized error with correct soonest reset
     if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
-      const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMsMs));
+      const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
       throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
     }
 

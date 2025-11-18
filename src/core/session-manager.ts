@@ -11,6 +11,7 @@ import type { Session } from '../types/orchestration.js';
 import { SessionError } from '../types/orchestration.js';
 import { logger } from '../utils/logger.js';
 import { dirname, normalizePath } from '../utils/path-utils.js';
+import { JoinTaskInfoSchema, SessionManagerConfigSchema } from './session-manager-schemas.js';
 
 /**
  * Task metadata for session tracking

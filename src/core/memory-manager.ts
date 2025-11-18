@@ -1103,7 +1103,12 @@ export class MemoryManager implements IMemoryManager {
 
         if (shouldVacuum) {
           // Run VACUUM asynchronously to avoid blocking event loop
+          // BUG #2 FIX: Check database is still initialized before VACUUM
           setImmediate(() => {
+            if (!this.initialized) {
+              logger.debug('Skipping VACUUM - database already closed');
+              return;
+            }
             try {
               this.db.prepare('VACUUM').run();
               this.lastVacuumTime = Date.now();
@@ -1473,12 +1478,25 @@ export class MemoryManager implements IMemoryManager {
       const errors: Array<{ entry: unknown; error: string }> = [];
 
       // Track existing content hashes for duplicate detection
+      // BUG #3 FIX: Process existing entries in batches to avoid memory exhaustion
       const existingHashes = new Set<string>();
       if (skipDuplicates) {
-        const existing = this.db.prepare('SELECT content FROM memory_entries').all() as Array<{ content: string }>;
-        existing.forEach(row => {
-          existingHashes.add(this.hashContent(row.content));
-        });
+        const BATCH_SIZE = 1000;
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const batch = this.db
+            .prepare('SELECT content FROM memory_entries LIMIT ? OFFSET ?')
+            .all(BATCH_SIZE, offset) as Array<{ content: string }>;
+
+          batch.forEach(row => {
+            existingHashes.add(this.hashContent(row.content));
+          });
+
+          hasMore = batch.length === BATCH_SIZE;
+          offset += BATCH_SIZE;
+        }
       }
 
       // Process entries in batches

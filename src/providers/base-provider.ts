@@ -64,6 +64,8 @@ function execWithCleanup(
 
     // BUG #3 FIX: Ensure child process is killed on timeout
     const timeout = options.timeout || 120000;
+    let forceKillTimer: NodeJS.Timeout | null = null;
+
     const killTimer = setTimeout(() => {
       if (child.pid && !child.killed) {
         logger.warn('Killing child process due to timeout', {
@@ -72,19 +74,25 @@ function execWithCleanup(
         });
         child.kill('SIGTERM');
 
-        // Force kill after 5 seconds if SIGTERM doesn't work
-        setTimeout(() => {
+        // MEGATHINK BUG FIX: Track force-kill timer to prevent leak
+        forceKillTimer = setTimeout(() => {
           if (child.pid && !child.killed) {
             logger.warn('Force killing child process', { pid: child.pid });
             child.kill('SIGKILL');
           }
+          forceKillTimer = null;
         }, 5000);
       }
     }, timeout);
 
     // BUG #3 FIX: Also clear timer on exit event (defensive cleanup)
+    // MEGATHINK BUG FIX: Also clear force-kill timer
     child.on('exit', () => {
       clearTimeout(killTimer);
+      if (forceKillTimer) {
+        clearTimeout(forceKillTimer);
+        forceKillTimer = null;
+      }
     });
   });
 }
@@ -138,9 +146,17 @@ export abstract class BaseProvider implements Provider {
 
   /**
    * Get the CLI command name for this provider
-   * Subclasses return: 'claude', 'gemini', 'codex'
+   * Subclasses return: 'claude', 'gemini', 'codex', 'grok'
    */
   protected abstract getCLICommand(): string;
+
+  /**
+   * Get CLI arguments (optional, for providers that need special flags)
+   * Subclasses can override to add provider-specific arguments
+   */
+  protected getCLIArgs(): string[] {
+    return [];  // No args by default
+  }
 
   /**
    * Get mock response for testing
@@ -169,8 +185,11 @@ export abstract class BaseProvider implements Provider {
       });
 
       // BUG #3 FIX: Use execWithCleanup instead of execAsync to ensure process cleanup
+      // v8.4.16: Support provider-specific CLI arguments (e.g., grok -p)
+      const cliArgs = this.getCLIArgs();
+      const argsString = cliArgs.length > 0 ? cliArgs.join(' ') + ' ' : '';
       const { stdout, stderr } = await execWithCleanup(
-        `${cliCommand} ${escapedPrompt}`,
+        `${cliCommand} ${argsString}${escapedPrompt}`,
         {
           timeout: this.config.timeout || 120000,
           maxBuffer: 10 * 1024 * 1024,
@@ -268,6 +287,15 @@ export abstract class BaseProvider implements Provider {
       let fullPrompt = request.prompt;
       if (request.systemPrompt) {
         fullPrompt = `${request.systemPrompt}\n\n${request.prompt}`;
+      }
+
+      // DEBUG: Log the full prompt being sent (v8.4.16 debugging)
+      if (process.env.AUTOMATOSX_DEBUG_PROMPT === 'true') {
+        const fs = await import('fs');
+        const path = await import('path');
+        const debugPath = path.join(process.cwd(), 'automatosx/tmp/debug-prompt.txt');
+        fs.writeFileSync(debugPath, `=== FULL PROMPT SENT TO ${this.getCLICommand()} ===\n\n${fullPrompt}\n\n=== END PROMPT ===\n`);
+        logger.debug(`Full prompt saved to ${debugPath}`);
       }
 
       const result = await this.executeCLI(fullPrompt);

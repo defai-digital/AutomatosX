@@ -19,7 +19,7 @@ import { logger } from '../utils/logger.js';
 export class GrokProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
     super(config);
-    
+
     logger.debug('GrokProvider initialized', {
       name: config.name,
       enabled: config.enabled,
@@ -37,6 +37,14 @@ export class GrokProvider extends BaseProvider {
   protected getCLICommand(): string {
     // Allow custom command override via config (e.g., 'grok-z-ai' or 'grok-x-ai')
     return this.config.command || 'grok';
+  }
+
+  /**
+   * Get CLI arguments for headless mode
+   * Grok CLI requires -p flag for non-interactive mode
+   */
+  protected override getCLIArgs(): string[] {
+    return ['-p'];  // -p = prompt mode (headless, single execution)
   }
 
   /**

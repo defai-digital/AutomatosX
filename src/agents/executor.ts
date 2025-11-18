@@ -917,7 +917,7 @@ export class AgentExecutor {
   private buildPrompt(context: ExecutionContext): string {
     let prompt = '';
 
-    // v7.1.0: Add project context from ax.md (highest priority)
+    // v7.1.0: Add project context from AX.md (highest priority)
     if (context.projectContext?.contextPrompt) {
       prompt += context.projectContext.contextPrompt;
       prompt += '\n---\n\n';

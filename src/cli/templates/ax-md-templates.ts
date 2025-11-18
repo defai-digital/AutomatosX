@@ -1,5 +1,5 @@
 /**
- * ax.md Templates
+ * AX.md Templates
  *
  * Pre-built templates for different project sizes and needs
  *

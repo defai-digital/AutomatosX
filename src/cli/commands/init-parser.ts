@@ -1,5 +1,5 @@
 /**
- * AX.MD Parser - Extract structured data from existing AX.MD
+ * AX.md Parser - Extract structured data from existing AX.md
  *
  * Enables intelligent updates by understanding current content
  * @since v8.5.0
@@ -22,7 +22,7 @@ export interface ParsedAXMD {
 }
 
 /**
- * Parse existing AX.MD file to extract current state
+ * Parse existing AX.md file to extract current state
  */
 export function parseAXMD(content: string): ParsedAXMD {
   const result: ParsedAXMD = {
@@ -144,7 +144,7 @@ export function parseAXMD(content: string): ParsedAXMD {
 }
 
 /**
- * Compare parsed AX.MD with current project info to detect changes
+ * Compare parsed AX.md with current project info to detect changes
  */
 export interface DetectedChange {
   type: 'version' | 'dependency-added' | 'dependency-removed' | 'script-added' |

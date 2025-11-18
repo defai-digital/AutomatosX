@@ -65,7 +65,7 @@ globalTracker.mark('cli_start');
   .usage('$0 <command> [options]')
   .usage('\nAI Agent Orchestration Platform')
   .example('$0 setup', 'Set up project')
-  .example('$0 init', 'Initialize ax.md project context')
+  .example('$0 init', 'Initialize AX.md project context')
   .example('$0 agent create backend --template developer', 'Create agent from template')
   .example('$0 agent list', 'List all agents')
   .example('$0 run assistant "Hello"', 'Run assistant agent')

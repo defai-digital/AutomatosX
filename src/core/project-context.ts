@@ -1,7 +1,7 @@
 /**
  * Project Context Loader
  *
- * Loads and parses AX.MD project context files
+ * Loads and parses AX.md project context files
  * Provides project-specific instructions for AutomatosX CLI
  *
  * @since v7.1.0
@@ -20,7 +20,7 @@ const MAX_CONTEXT_SIZE = 100 * 1024;
 const DEFAULT_CACHE_TTL = 300_000;
 
 /**
- * Agent delegation rule parsed from AX.MD
+ * Agent delegation rule parsed from AX.md
  */
 export interface AgentRule {
   taskType: string;          // e.g., "backend", "frontend"
@@ -64,7 +64,7 @@ export interface ProjectConfig {
  * Complete project context
  */
 export interface ProjectContext {
-  markdown?: string;           // Raw AX.MD content
+  markdown?: string;           // Raw AX.md content
   config?: ProjectConfig;      // Parsed ax.config.yml
   agentRules?: AgentRule[];    // Extracted agent rules
   guardrails?: string[];       // Critical prohibitions
@@ -76,7 +76,7 @@ export interface ProjectContext {
 /**
  * Project Context Loader
  *
- * Loads AX.MD and ax.config.yml from project root
+ * Loads AX.md and ax.config.yml from project root
  * Provides caching and parsing
  */
 export class ProjectContextLoader {
@@ -111,9 +111,9 @@ export class ProjectContextLoader {
 
     const context: ProjectContext = {};
 
-    // Load AX.MD (Markdown)
+    // Load AX.md (Markdown)
     try {
-      const mdPath = path.join(this.projectRoot, 'AX.MD');
+      const mdPath = path.join(this.projectRoot, 'AX.md');
       const resolvedPath = await realpath(mdPath).catch(() => null);
 
       // BUG #34 FIX: Security - Use relative() for proper boundary check (prevents /repo vs /repo-archive)
@@ -124,13 +124,13 @@ export class ProjectContextLoader {
 
         // Security: Check file size
         if (stats.size > MAX_CONTEXT_SIZE) {
-          logger.warn('AX.MD too large, ignoring', {
+          logger.warn('AX.md too large, ignoring', {
             size: stats.size,
             limit: MAX_CONTEXT_SIZE
           });
         } else {
           context.markdown = await readFile(resolvedPath, 'utf-8');
-          logger.info('Loaded AX.MD', {
+          logger.info('Loaded AX.md', {
             size: stats.size,
             lines: context.markdown.split('\n').length
           });
@@ -144,9 +144,9 @@ export class ProjectContextLoader {
         }  // BUG #34 FIX: Close the boundary check if-statement
       }
     } catch (error) {
-      // AX.MD is optional, ignore if not found
+      // AX.md is optional, ignore if not found
       if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
-        logger.warn('Error loading AX.MD', { error });
+        logger.warn('Error loading AX.md', { error });
       }
     }
 
@@ -222,7 +222,7 @@ export class ProjectContextLoader {
    * Check if context exists (without loading)
    */
   async exists(): Promise<boolean> {
-    const mdPath = path.join(this.projectRoot, 'AX.MD');
+    const mdPath = path.join(this.projectRoot, 'AX.md');
     const ymlPath = path.join(this.projectRoot, 'ax.config.yml');
 
     const checkExists = async (filePath: string): Promise<boolean> => {

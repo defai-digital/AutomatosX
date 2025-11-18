@@ -237,7 +237,7 @@ export interface ExecutionContext {
   orchestration?: OrchestrationMetadata;  // Runtime orchestration info
   session?: Session;  // Current session (if part of multi-agent workflow)
 
-  // v7.1.0+ Project Context (from ax.md)
+  // v7.1.0+ Project Context (from AX.md)
   projectContext?: import('../core/project-context.js').ProjectContext;  // Project-specific instructions
 
   // v8.5.0+ Workspace Index (smart file selection)

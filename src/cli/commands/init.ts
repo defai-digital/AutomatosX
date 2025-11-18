@@ -1,7 +1,7 @@
 /**
  * Enhanced Init Command - Claude Code Quality
  *
- * Generates comprehensive AX.MD with:
+ * Generates comprehensive AX.md with:
  * - Multi-paragraph descriptions
  * - Categorized real commands
  * - File structure documentation
@@ -35,7 +35,7 @@ interface InitOptions {
 }
 
 /**
- * Generate enhanced AX.MD content (Claude Code quality)
+ * Generate enhanced AX.md content (Claude Code quality)
  */
 function generateAXMD(info: ProjectInfo): string {
   const today = new Date().toISOString().split('T')[0];
@@ -737,31 +737,31 @@ async function atomicWrite(filePath: string, content: string): Promise<void> {
 
 export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = {
   command: 'init',
-  describe: 'Initialize AX.MD project context file',
+  describe: 'Initialize AX.md project context file',
 
   builder: (yargs) => {
     return yargs
       .option('force', {
         alias: 'f',
-        describe: 'Regenerate AX.MD from scratch',
+        describe: 'Regenerate AX.md from scratch',
         type: 'boolean',
         default: false
       })
       .example([
-        ['$0 init', 'Create or update AX.MD with current project info'],
-        ['$0 init --force', 'Regenerate AX.MD from scratch']
+        ['$0 init', 'Create or update AX.md with current project info'],
+        ['$0 init --force', 'Regenerate AX.md from scratch']
       ]);
   },
 
   handler: async (argv) => {
     const projectDir = process.cwd();
-    const axMdPath = join(projectDir, 'AX.MD');
+    const axMdPath = join(projectDir, 'AX.md');
 
     try {
       // Detect current project info (enhanced)
       const projectInfo = await detectProjectInfo(projectDir);
 
-      // Check if AX.MD already exists
+      // Check if AX.md already exists
       const axMdExists = await access(axMdPath, constants.F_OK).then(() => true).catch(() => false);
 
       if (axMdExists && !argv.force) {
@@ -783,8 +783,8 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
 
         if (changes.length === 0) {
           // No changes detected
-          console.log(chalk.green('✓ AX.MD is up to date'));
-          logger.info('AX.MD unchanged', { projectName: projectInfo.name });
+          console.log(chalk.green('✓ AX.md is up to date'));
+          logger.info('AX.md unchanged', { projectName: projectInfo.name });
           return;
         }
 
@@ -799,16 +799,16 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
         const summary = formatChangeSummary(changes);
 
         // Claude Code style output
-        console.log(chalk.green(`✓ Updated AX.MD ${summary}`));
+        console.log(chalk.green(`✓ Updated AX.md ${summary}`));
 
-        logger.info('AX.MD updated', {
+        logger.info('AX.md updated', {
           projectName: projectInfo.name,
           changes: changes.length,
           changeTypes: changes.map(c => c.type)
         });
 
       } else {
-        // First time or --force: Create new AX.MD
+        // First time or --force: Create new AX.md
         const axMdContent = generateAXMD(projectInfo);
 
         // Atomic write
@@ -816,9 +816,9 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
 
         // Claude Code style output
         const projectType = projectInfo.framework || projectInfo.language;
-        console.log(chalk.green(`✓ Created AX.MD (${projectType} project)`));
+        console.log(chalk.green(`✓ Created AX.md (${projectType} project)`));
 
-        logger.info('AX.MD created', {
+        logger.info('AX.md created', {
           projectName: projectInfo.name,
           framework: projectInfo.framework,
           language: projectInfo.language,
@@ -828,8 +828,8 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
 
     } catch (error) {
       // Simple error message (Claude Code style)
-      console.log(chalk.red('✗ Error with AX.MD'));
-      logger.error('AX.MD initialization failed', { error });
+      console.log(chalk.red('✗ Error with AX.md'));
+      logger.error('AX.md initialization failed', { error });
 
       if (process.env.DEBUG || process.env.AUTOMATOSX_DEBUG) {
         printError(error);

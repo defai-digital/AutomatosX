@@ -63,6 +63,10 @@ ${generateTroubleshooting(info)}
 
 ${generateDevWorkflow(info)}
 
+${generateDatabaseSchema(info)}
+
+${generateAPIDocumentation(info)}
+
 ${generateAgentRules(info)}
 
 ${generateCodingConventions(info)}
@@ -383,6 +387,152 @@ function generateDevWorkflow(info: ProjectInfo): string {
     }
     if (info.scripts.test) {
       sections.push(`- Run all: \`${info.packageManager} test\``);
+    }
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * Generate Database Schema section
+ */
+function generateDatabaseSchema(info: ProjectInfo): string {
+  if (!info.databaseSchema || info.databaseSchema.models.length === 0) {
+    return '';  // Skip if no database schema
+  }
+
+  const sections: string[] = ['## Database Schema', ''];
+  const schema = info.databaseSchema;
+
+  // ORM info
+  if (schema.orm) {
+    sections.push(`**ORM:** ${schema.orm}`);
+    sections.push('');
+  }
+
+  // Models
+  if (schema.models.length > 0) {
+    sections.push('### Models');
+    sections.push('');
+
+    for (const model of schema.models.slice(0, 10)) {  // Show first 10 models
+      sections.push(`**${model.name}**`);
+
+      // Fields
+      if (model.fields.length > 0) {
+        for (const field of model.fields) {
+          let fieldDesc = `- \`${field.name}\`: ${field.type}`;
+          const attrs: string[] = [];
+
+          if (field.isPrimaryKey) attrs.push('PK');
+          if (field.isUnique) attrs.push('unique');
+          if (field.isOptional) attrs.push('optional');
+          if (field.defaultValue) attrs.push(`default: ${field.defaultValue}`);
+
+          if (attrs.length > 0) {
+            fieldDesc += ` (${attrs.join(', ')})`;
+          }
+
+          sections.push(fieldDesc);
+        }
+      }
+
+      // Relations
+      if (model.relations.length > 0) {
+        for (const rel of model.relations) {
+          sections.push(`- \`${rel.name}\`: ${rel.type} → ${rel.relatedModel}`);
+        }
+      }
+
+      sections.push('');
+    }
+
+    if (schema.models.length > 10) {
+      sections.push(`*... and ${schema.models.length - 10} more models*`);
+      sections.push('');
+    }
+  }
+
+  // Migrations
+  if (schema.migrations.directory && schema.migrations.files.length > 0) {
+    sections.push('### Migrations');
+    sections.push(`- Location: \`${schema.migrations.directory}\``);
+    sections.push(`- Total: ${schema.migrations.files.length} migrations`);
+
+    if (info.scripts['db:migrate'] || info.scripts['migrate'] || info.scripts['prisma:migrate']) {
+      const migrateCmd = info.scripts['db:migrate'] ? 'db:migrate' :
+                        info.scripts['migrate'] ? 'migrate' :
+                        'prisma:migrate';
+      sections.push(`- Run: \`${info.packageManager} run ${migrateCmd}\``);
+    }
+
+    sections.push('');
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * Generate API Documentation section
+ */
+function generateAPIDocumentation(info: ProjectInfo): string {
+  if (!info.apiDocumentation) {
+    return '';  // Skip if no API documentation
+  }
+
+  const sections: string[] = ['## API Documentation', ''];
+  const api = info.apiDocumentation;
+
+  // Framework
+  if (api.framework) {
+    sections.push(`**Framework:** ${api.framework}`);
+    sections.push('');
+  }
+
+  // OpenAPI spec
+  if (api.hasOpenAPI && api.openAPIPath) {
+    sections.push(`**OpenAPI Spec:** \`${api.openAPIPath}\``);
+    sections.push('');
+  }
+
+  // Endpoints
+  if (api.endpoints.length > 0) {
+    sections.push('### Endpoints');
+    sections.push('');
+
+    // Group by resource
+    const grouped = new Map<string, typeof api.endpoints>();
+    for (const endpoint of api.endpoints) {
+      const group = endpoint.group || 'other';
+      if (!grouped.has(group)) {
+        grouped.set(group, []);
+      }
+      grouped.get(group)?.push(endpoint);
+    }
+
+    // Display grouped endpoints
+    for (const [group, endpoints] of grouped) {
+      if (group !== 'other') {
+        sections.push(`**${group.charAt(0).toUpperCase() + group.slice(1)}**`);
+      }
+
+      for (const endpoint of endpoints.slice(0, 20)) {  // Limit to 20 per group
+        let line = `- \`${endpoint.method} ${endpoint.path}\``;
+        if (endpoint.description) {
+          line += ` - ${endpoint.description}`;
+        }
+        if (endpoint.auth) {
+          line += ' 🔒';
+        }
+        sections.push(line);
+      }
+
+      sections.push('');
+    }
+
+    if (api.endpoints.length > 20) {
+      sections.push(`*... and ${api.endpoints.length - 20} more endpoints*`);
+      sections.push('');
     }
   }
 

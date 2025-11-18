@@ -43,6 +43,8 @@ export interface ProjectInfo {
   keyComponents?: Component[];    // NEW: Main code components
   architectureFlow?: string;      // NEW: Architecture visualization
   gettingStarted?: GettingStarted;  // NEW: Getting started guide
+  databaseSchema?: DatabaseSchema;  // NEW: Database schema documentation
+  apiDocumentation?: APIDocumentation;  // NEW: API endpoint documentation
 }
 
 export interface CategorizedScripts {
@@ -98,6 +100,59 @@ export interface EnvVar {
   description: string;
 }
 
+export interface DatabaseSchema {
+  orm?: string;  // prisma, typeorm, sequelize
+  models: DatabaseModel[];
+  migrations: MigrationInfo;
+}
+
+export interface DatabaseModel {
+  name: string;
+  tableName?: string;
+  fields: ModelField[];
+  relations: ModelRelation[];
+}
+
+export interface ModelField {
+  name: string;
+  type: string;
+  isPrimaryKey?: boolean;
+  isUnique?: boolean;
+  isOptional?: boolean;
+  defaultValue?: string;
+}
+
+export interface ModelRelation {
+  name: string;
+  type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+  relatedModel: string;
+}
+
+export interface MigrationInfo {
+  directory?: string;
+  files: string[];
+  commands: {
+    migrate?: string;
+    rollback?: string;
+    status?: string;
+  };
+}
+
+export interface APIDocumentation {
+  hasOpenAPI: boolean;
+  openAPIPath?: string;
+  endpoints: APIEndpoint[];
+  framework?: string;  // express, fastify, next.js
+}
+
+export interface APIEndpoint {
+  method: string;  // GET, POST, PUT, DELETE, PATCH
+  path: string;
+  description?: string;
+  auth?: boolean;
+  group?: string;  // users, posts, auth
+}
+
 /**
  * Enhanced project detection with README parsing and structure analysis
  */
@@ -143,7 +198,13 @@ export async function detectProjectInfo(projectDir: string): Promise<ProjectInfo
   // 8. Detect getting started information
   info.gettingStarted = await detectGettingStarted(projectDir, info);
 
-  // 9. Ensure we have a description
+  // 9. Detect database schema
+  info.databaseSchema = await detectDatabaseSchema(projectDir, info);
+
+  // 10. Detect API documentation
+  info.apiDocumentation = await detectAPIDocumentation(projectDir, info);
+
+  // 11. Ensure we have a description
   if (!info.description) {
     info.description = generateDescription(info);
   }
@@ -932,4 +993,304 @@ function detectFirstRunCommand(info: ProjectInfo): string {
   }
 
   return `${pm} start`;
+}
+
+/**
+ * Detect database schema information
+ */
+async function detectDatabaseSchema(projectDir: string, info: ProjectInfo): Promise<DatabaseSchema | undefined> {
+  // Check for Prisma
+  const prismaSchemaPath = join(projectDir, 'prisma', 'schema.prisma');
+  if (existsSync(prismaSchemaPath)) {
+    return await detectPrismaSchema(projectDir, prismaSchemaPath, info);
+  }
+
+  // Check for TypeORM (future implementation)
+  // Check for Sequelize (future implementation)
+
+  return undefined;
+}
+
+/**
+ * Detect Prisma schema
+ */
+async function detectPrismaSchema(projectDir: string, schemaPath: string, info: ProjectInfo): Promise<DatabaseSchema> {
+  const models: DatabaseModel[] = [];
+  const migrations = await detectMigrations(projectDir, 'prisma/migrations');
+
+  try {
+    const schemaContent = await readFile(schemaPath, 'utf-8');
+
+    // Parse models using regex (simple approach)
+    const modelRegex = /model\s+(\w+)\s*{([^}]+)}/g;
+    let modelMatch;
+
+    while ((modelMatch = modelRegex.exec(schemaContent)) !== null) {
+      const modelName = modelMatch[1];
+      const modelBody = modelMatch[2];
+
+      if (!modelName) continue;
+
+      const fields: ModelField[] = [];
+      const relations: ModelRelation[] = [];
+
+      // Parse fields
+      const fieldLines = modelBody.split('\n').filter(line => line.trim() && !line.trim().startsWith('//'));
+
+      for (const line of fieldLines) {
+        const trimmed = line.trim();
+
+        // Skip empty lines and annotations
+        if (!trimmed || trimmed.startsWith('@@')) continue;
+
+        // Parse field: name Type @attributes
+        const fieldMatch = trimmed.match(/^(\w+)\s+(\w+)(\[\])?\s*(.*)?$/);
+        if (fieldMatch && fieldMatch[1] && fieldMatch[2]) {
+          const fieldName = fieldMatch[1];
+          const fieldType = fieldMatch[2] + (fieldMatch[3] || '');
+          const attributes = fieldMatch[4] || '';
+
+          // Check if it's a relation
+          const isRelation = attributes.includes('@relation');
+          if (isRelation) {
+            // Determine relation type
+            let relationType: 'one-to-one' | 'one-to-many' | 'many-to-many' = 'one-to-many';
+            if (fieldType.endsWith('[]')) {
+              relationType = 'one-to-many';
+            } else if (attributes.includes('fields:')) {
+              relationType = 'one-to-one';
+            }
+
+            relations.push({
+              name: fieldName,
+              type: relationType,
+              relatedModel: fieldType.replace('[]', '')
+            });
+          } else {
+            // Regular field
+            fields.push({
+              name: fieldName,
+              type: fieldType,
+              isPrimaryKey: attributes.includes('@id'),
+              isUnique: attributes.includes('@unique'),
+              isOptional: attributes.includes('?'),
+              defaultValue: attributes.includes('@default') ?
+                attributes.match(/@default\((.*?)\)/)?.[1] : undefined
+            });
+          }
+        }
+      }
+
+      models.push({
+        name: modelName,
+        tableName: modelName.toLowerCase(),
+        fields,
+        relations
+      });
+    }
+  } catch (error) {
+    // Ignore parsing errors
+  }
+
+  return {
+    orm: 'Prisma',
+    models,
+    migrations
+  };
+}
+
+/**
+ * Detect migration files and commands
+ */
+async function detectMigrations(projectDir: string, migrationsDir: string): Promise<MigrationInfo> {
+  const migrationPath = join(projectDir, migrationsDir);
+  const files: string[] = [];
+
+  if (existsSync(migrationPath)) {
+    try {
+      const entries = await readdir(migrationPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() || entry.name.endsWith('.sql')) {
+          files.push(entry.name);
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  return {
+    directory: files.length > 0 ? migrationsDir : undefined,
+    files: files.slice(0, 10),  // Show first 10 migrations
+    commands: {
+      migrate: undefined,  // Will be filled by package.json scripts
+      rollback: undefined,
+      status: undefined
+    }
+  };
+}
+
+/**
+ * Detect API documentation
+ */
+async function detectAPIDocumentation(projectDir: string, info: ProjectInfo): Promise<APIDocumentation | undefined> {
+  const endpoints: APIEndpoint[] = [];
+  let hasOpenAPI = false;
+  let openAPIPath: string | undefined;
+  let framework: string | undefined;
+
+  // Check for OpenAPI/Swagger spec
+  const openAPIFiles = ['openapi.yaml', 'openapi.json', 'swagger.yaml', 'swagger.json', 'docs/openapi.yaml'];
+  for (const file of openAPIFiles) {
+    if (existsSync(join(projectDir, file))) {
+      hasOpenAPI = true;
+      openAPIPath = file;
+      break;
+    }
+  }
+
+  // Detect framework
+  if (info.dependencies.includes('express')) {
+    framework = 'Express';
+  } else if (info.dependencies.includes('fastify')) {
+    framework = 'Fastify';
+  } else if (info.framework === 'Next.js') {
+    framework = 'Next.js';
+  }
+
+  // Detect Next.js API routes
+  if (info.framework === 'Next.js') {
+    const apiRoutes = await detectNextJSAPIRoutes(projectDir);
+    endpoints.push(...apiRoutes);
+  }
+
+  // Detect Express routes (simple detection)
+  if (info.dependencies.includes('express')) {
+    const expressRoutes = await detectExpressRoutes(projectDir);
+    endpoints.push(...expressRoutes);
+  }
+
+  // Only return if we found something
+  if (hasOpenAPI || endpoints.length > 0 || framework) {
+    return {
+      hasOpenAPI,
+      openAPIPath,
+      endpoints,
+      framework
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * Detect Next.js API routes
+ */
+async function detectNextJSAPIRoutes(projectDir: string): Promise<APIEndpoint[]> {
+  const endpoints: APIEndpoint[] = [];
+
+  // Check both pages/api and app/api
+  const apiDirs = ['pages/api', 'app/api', 'src/pages/api', 'src/app/api'];
+
+  for (const apiDir of apiDirs) {
+    const apiPath = join(projectDir, apiDir);
+    if (!existsSync(apiPath)) continue;
+
+    try {
+      const files = await readdir(apiPath, { withFileTypes: true, recursive: true });
+      for (const file of files) {
+        if (file.isFile() && (file.name.endsWith('.ts') || file.name.endsWith('.js'))) {
+          // Extract route path from file path
+          const routePath = file.name
+            .replace(/\.(ts|js)$/, '')
+            .replace(/\[([^\]]+)\]/g, ':$1')  // [id] → :id
+            .replace(/index$/, '');  // index → /
+
+          endpoints.push({
+            method: 'GET/POST',  // Next.js API routes handle multiple methods
+            path: `/api/${routePath}`,
+            group: routePath.split('/')[0] || 'api'
+          });
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  return endpoints;
+}
+
+/**
+ * Detect Express routes (simple regex-based detection)
+ */
+async function detectExpressRoutes(projectDir: string): Promise<APIEndpoint[]> {
+  const endpoints: APIEndpoint[] = [];
+  const srcDir = join(projectDir, 'src');
+
+  if (!existsSync(srcDir)) return endpoints;
+
+  try {
+    // Scan for route files
+    const routeFiles = await findFilesRecursive(srcDir, /route|controller|api/i, 3);
+
+    for (const file of routeFiles.slice(0, 10)) {  // Limit to 10 files
+      try {
+        const content = await readFile(file, 'utf-8');
+
+        // Simple regex to find router.get, app.post, etc.
+        const routeRegex = /(?:router|app)\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]/g;
+        let match;
+
+        while ((match = routeRegex.exec(content)) !== null) {
+          if (match[1] && match[2]) {
+            const method = match[1].toUpperCase();
+            const path = match[2];
+
+            endpoints.push({
+              method,
+              path,
+              group: path.split('/')[1] || 'api'
+            });
+          }
+        }
+      } catch {
+        // Ignore file read errors
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return endpoints;
+}
+
+/**
+ * Find files recursively matching pattern
+ */
+async function findFilesRecursive(dir: string, pattern: RegExp, maxDepth: number = 3, currentDepth: number = 0): Promise<string[]> {
+  if (currentDepth > maxDepth) return [];
+
+  const files: string[] = [];
+
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+
+      const fullPath = join(dir, entry.name);
+
+      if (entry.isFile() && pattern.test(entry.name)) {
+        files.push(fullPath);
+      } else if (entry.isDirectory()) {
+        const subFiles = await findFilesRecursive(fullPath, pattern, maxDepth, currentDepth + 1);
+        files.push(...subFiles);
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return files;
 }

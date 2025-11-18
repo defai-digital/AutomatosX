@@ -2,7 +2,7 @@
 
 **From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory**
 
-AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
+AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, `grok`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -13,9 +13,11 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.5.2 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
+**Status**: ✅ **Production Ready** | v8.6.0 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
 
-> 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
+> 🎉 **NEW in v8.6.0**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
+
+> 🔥 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, `grok`, and `codex` commands. Simpler, faster, easier to maintain.
 
 ---
 
@@ -34,8 +36,34 @@ AutomatosX is **the only AI platform** that gives you:
 | 📋 **Spec-Kit Integration** | Define workflows in YAML. Generate plans, DAGs, scaffolding, and tests automatically. | Ship projects 10x faster |
 | 🧠 **Persistent Memory** | Every conversation is remembered. Agents get perfect context automatically. | Never repeat yourself again |
 | 🤝 **Multi-Agent Orchestration** | 20 specialized agents delegate tasks to each other. You manage the project, not the details. | Focus on strategy, not micromanagement |
-| 🔧 **Pure CLI Wrapper** | Works with your existing `claude`, `gemini`, `codex` CLIs. No API keys needed. | Simple integration |
+| 🔧 **Pure CLI Wrapper** | Works with your existing `claude`, `gemini`, `grok`, `codex` CLIs. No API keys needed for CLI mode. | Simple integration |
 | 🔍 **Complete Observability** | Trace every execution and decision. Debug with confidence. | Production-grade reliability |
+| 🎯 **Enterprise MCP** | Production-ready MCP server management: lifecycle logging, auto-install, hot-reload, metrics, resource limits. | Mission-critical reliability |
+
+---
+
+## ⚡ Quick Summary
+
+```bash
+# Install
+npm i -g @defai.digital/automatosx
+
+# Initialize (REQUIRED - sets up agents and config)
+cd your-project && ax setup
+
+# Create workflow from natural language
+ax spec create "Build auth system with API, tests, security audit"
+
+# Execute workflow
+ax run workflow.ax.yaml
+
+# Debug with trace logs
+ax providers trace --follow
+
+# Result: Production-ready auth system in minutes
+```
+
+**AutomatosX**: The only AI platform with declarative workflows, persistent memory, and multi-agent orchestration wrapped around existing AI CLI tools.
 
 ---
 
@@ -64,17 +92,17 @@ ax spec create "Build user authentication with database, API, JWT, security audi
 
 # AutomatosX automatically:
 #   ✅ Generates a complete project spec (.specify/)
-#   ✅ Creates execution plan with cost estimates
+#   ✅ Creates execution plan
 #   ✅ Generates DAG for parallel execution
 #   ✅ Scaffolds project structure
 #   ✅ Generates comprehensive tests
-#   ✅ Executes with policy-optimized routing
+#   ✅ Executes with configured provider
 #   ✅ Tracks all decisions with trace logging
 
 # 5. View the generated plan
 ax gen plan workflow.ax.yaml
 
-# 6. Execute the workflow (with cost optimization)
+# 6. Execute the workflow
 ax run workflow.ax.yaml
 ```
 
@@ -121,18 +149,20 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 - 🔄 Coordinates multi-agent collaboration if needed
 - 📝 All decisions stored in memory for context
 
-**Workflow Creation and Execution**:
+### Natural Language Interaction Examples
+
+#### Workflow Creation and Execution
 
 ```
 # In Claude Code
 "Create an AutomatosX workflow spec for a REST API with authentication, database,
-and comprehensive tests. Then execute it with cost optimization."
+and comprehensive tests. Then execute it."
 
 "Generate a spec for refactoring the payment module with security audit and
 backwards compatibility tests. Use the backend and security agents."
 
 "Build a complete microservices architecture spec with service mesh, monitoring,
-and deployment configs. Execute with Gemini for cost savings."
+and deployment configs."
 ```
 
 ```
@@ -159,67 +189,31 @@ Facebook providers. Include security audit and integration tests."
 blue-green deployment strategy and rollback automation."
 ```
 
-**Multi-Agent Orchestration**:
+#### Multi-Agent Orchestration
 
 ```
 # In Claude Code
 "Use AutomatosX to build a complete e-commerce platform with requirements,
-architecture, API, database, React UI, security audit, and comprehensive tests.
-Use balanced policy for cost and speed."
+architecture, API, database, React UI, security audit, and comprehensive tests."
 
 "Work with AutomatosX to implement a data analytics pipeline with API,
 ETL, and data warehousing."
 ```
 
-**Long-Running Tasks with Iterate Mode**:
-
-Iterate mode is perfect for autonomous, repeating tasks without constant questions:
+#### Iterate Mode Tasks
 
 ```
-# In Claude Code - Autonomous Bug-Finding (The Real Power!)
+# In Claude Code - Autonomous Bug-Finding
 "Please use ax in iterate mode to find and fix bugs. Run 5 iterations."
 
-# This will autonomously:
-# - Iterate 1: Scan for parseInt/JSON.parse safety issues → Find & fix bugs
-# - Iterate 2: Check array access patterns → Find & fix bugs
-# - Iterate 3: Analyze async/await error handling → Find & fix bugs
-# - Iterate 4: Search for race conditions → Find & fix bugs
-# - Iterate 5: Verify resource cleanup → Find & fix bugs
-# NO questions asked - just autonomous work!
-```
-
-```
 # In Gemini CLI - Comprehensive Code Analysis
 "Use ax in iterate mode to analyze the entire codebase for
 performance issues. Set 120 minute timeout with balanced strictness."
 
-# This runs multiple analysis passes autonomously:
-# - Memory profiling across all modules
-# - Database query optimization
-# - API response time analysis
-# - Resource utilization patterns
-```
-
-```
 # In OpenAI Codex - Security Hardening
 "Use ax to run a comprehensive security audit in iterate mode
 with strict level. This is for production deployment."
-
-# Autonomous security iterations:
-# - SQL injection scanning
-# - XSS vulnerability detection
-# - Authentication bypass attempts
-# - Authorization flaw discovery
-# - Cryptography weakness analysis
 ```
-
-**Why Iterate Mode is Powerful**:
-
-- 🔄 **Autonomous Loops**: Repeats tasks without asking questions
-- 🎯 **Systematic**: Each iteration focuses on different aspects
-- 📊 **Comprehensive**: Covers more ground than manual analysis
-- ✅ **Auto-Fix**: Finds AND fixes issues autonomously
-- 🚀 **De Facto Best Practice**: Industry-standard autonomous workflows
 
 ### Why Natural Language?
 
@@ -228,7 +222,6 @@ with strict level. This is for production deployment."
 - ✅ **Flexible**: No need to remember exact command syntax
 - ✅ **Integrated**: Works directly in your AI assistant workflow
 - ✅ **Powerful**: Combines AI assistant capabilities with AutomatosX's memory and orchestration
-- ✅ **Cost-Optimized**: AutomatosX automatically selects the cheapest provider based on your constraints
 - ✅ **Production-Ready**: Full observability and trace logging for debugging
 
 ### Behind the Scenes
@@ -237,7 +230,7 @@ When you say "use AutomatosX to implement authentication", here's what happens:
 
 1. AI assistant calls `ax run "implement user authentication"`
 2. AutomatosX **automatically analyzes the task** and selects the best agent(s)
-3. Routes to the optimal provider based on policy (cost, latency, reliability)
+3. Routes to the configured provider
 4. Persistent memory ensures perfect context across all interactions
 5. Results are returned to your AI assistant with full context
 6. The conversation continues naturally
@@ -280,46 +273,6 @@ ax run backend "implement user authentication"
 **Note**: This only affects OpenAI provider. Claude and Gemini providers always use CLI mode by default.
 
 ---
-
-## 🤖 **NEW**: Iterate Mode - Autonomous Agent Execution (v6.5.0+)
-
-**The Future of AI Agent Automation**
-
-Iterate Mode enables agents to run autonomously without user intervention, automatically responding to confirmations while maintaining strict safety controls. This is perfect for long-running tasks, batch processing, or overnight automation.
-
-### Natural Language Usage (Recommended)
-
-Use iterate mode naturally through AI assistants - just ask them to use iterate mode:
-
-```
-# In Claude Code
-"Please use AutomatosX in iterate mode to refactor the entire authentication
-module. Set timeout to 60 minutes with balanced strictness."
-
-"Use AutomatosX to run a comprehensive security audit in iterate mode with
-strict level. This is for production code so be extra careful."
-
-"Have AutomatosX run in iterate mode to generate tests for all untested
-functions. Use dry-run first to preview what it will do."
-```
-
-```
-# In Gemini CLI
-"Use AutomatosX with iterate mode to implement the new payment gateway.
-Set a 90 minute timeout and use balanced strictness."
-
-"Run AutomatosX in iterate mode with strict level to audit the
-codebase for vulnerabilities. Do a dry-run first."
-```
-
-```
-# In OpenAI Codex
-"Work with AutomatosX in autonomous iterate mode to refactor database
-queries. Limit execution to 45 minutes with balanced strictness."
-
-"Use AutomatosX in iterate mode to optimize all SQL queries. Run in dry-run
-mode first to see the plan."
-```
 
 ### Direct CLI Usage
 
@@ -412,13 +365,6 @@ Then if it looks good, run it in iterate mode with paranoid strictness
 and a 30 minute timeout."
 ```
 
-The AI assistant will:
-
-1. Run dry-run first: `ax run backend "refactor authentication" --iterate --iterate-dry-run`
-2. Show you the preview
-3. Wait for your approval
-4. Execute with safety controls: `ax run backend "refactor authentication" --iterate --iterate-strictness paranoid --iterate-timeout 30`
-
 **More Natural Language Examples**:
 
 ```
@@ -487,7 +433,7 @@ ax spec create "Build auth system with API, tests, and security audit"
 
 # Result: Complete system generated and executed automatically
 #   - Persistent memory eliminates context repetition
-#   - Policy routing saves 60-80% on API costs
+#   - Pure CLI orchestration - simple and reliable
 #   - Parallel execution completes 3-5x faster
 #   - Auto-generated tests provide 60%+ baseline coverage
 ```
@@ -544,11 +490,11 @@ with permissions management, audit logging, and security tests."
 When you ask an AI assistant to create a spec, it uses `ax spec create "your description"` which:
 
 1. Generates a complete YAML workflow spec in `.specify/`
-2. Creates execution plan with cost estimates
+2. Creates execution plan
 3. Generates dependency DAG for parallel execution
 4. Scaffolds project structure
 5. Generates comprehensive test suite
-6. All optimized based on your policy constraints (cost, latency, privacy)
+6. Ready to execute with your configured provider
 
 ### 1. Define Your Workflow in YAML
 
@@ -557,16 +503,6 @@ When you ask an AI assistant to create a spec, it uses `ax spec create "your des
 metadata:
   id: user-auth-system
   name: User Authentication System
-
-# Policy-driven routing: Optimize for cost
-policy:
-  goal: cost
-  constraints:
-    cost:
-      maxPerRequest: 0.01
-      maxDaily: 0.50
-    latency:
-      p95: 5000
 
 actors:
   - id: backend
@@ -602,30 +538,29 @@ ax gen tests workflow.ax.yaml
 # Output: Unit, integration, E2E tests with policy assertions
 ```
 
-### 3. Execute with Policy Optimization
+### 3. Execute Workflow
 
 ```bash
-# Run workflow with cost optimization
+# Run workflow
 ax run workflow.ax.yaml
 
 # AutomatosX automatically:
-#   1. Filters providers by cost constraint ($0.01/request)
-#   2. Selects cheapest provider (Gemini: $0.000125/1K tokens)
-#   3. Executes actors in optimal order
-#   4. Logs all decisions to trace file
-#   5. Stays within budget ($0.50/day)
+#   1. Executes actors with configured provider
+#   2. Executes actors in optimal order
+#   3. Logs all executions to trace file
+#   4. Stores results in persistent memory
 ```
 
 ### 4. Debug with Complete Visibility
 
 ```bash
-# View all routing decisions
+# View all executions
 ax providers trace --follow
 
 # Output (real-time):
-# 18:26:49  POLICY       gemini-cli      goal=cost, passed=2/3
-# 18:26:50  SELECTION    gemini-cli      3 candidates → policy-based selection
-# 18:26:51  EXECUTION    gemini-cli      ✓ 1234ms, $0.000375
+# 18:26:49  EXECUTION    gemini-cli      Starting task...
+# 18:26:50  EXECUTION    gemini-cli      Processing...
+# 18:26:51  EXECUTION    gemini-cli      ✓ 1234ms, completed
 ```
 
 **The Complete Workflow**:
@@ -636,102 +571,57 @@ ax spec create "Build e-commerce checkout with Stripe, inventory, and fraud dete
   && ax run workflow.ax.yaml
 
 # AutomatosX handles:
-#   ✅ Cost optimization (saves 60-80% vs Claude/GPT)
+#   ✅ Pure CLI orchestration (simple and reliable)
 #   ✅ Parallel execution (3-5x faster)
 #   ✅ Persistent memory (zero context repetition)
 #   ✅ Auto-generated tests (60%+ coverage)
-#   ✅ Complete observability (trace every decision)
+#   ✅ Complete observability (trace every execution)
 ```
 
 ---
 
-## 💰 Policy-Driven Cost Optimization
+## 🔌 Provider Configuration
 
-> **Note**: Cost estimation is disabled by default (v6.5.11+). The routing and optimization features work the same, but cost estimates are not shown. See [Cost Estimation Configuration](#cost-estimation-configuration) to enable.
+AutomatosX is a pure CLI orchestration wrapper. It works with your existing AI CLI tools without requiring API keys (though API access is supported for some providers).
 
-AutomatosX is the **only AI platform with built-in cost optimization**. Define your budget and constraints—AutomatosX automatically routes every request to the optimal provider.
+### Supported Providers
 
-### How It Works
+| Provider | CLI Command | API Support | Notes |
+|----------|-------------|-------------|-------|
+| **Claude Code** | `claude` | ✅ Yes | Official Anthropic CLI |
+| **Gemini CLI** | `gemini` | ✅ Yes | Google's AI CLI |
+| **Grok CLI** | `grok` | ✅ Yes | X.AI or Z.AI GLM 4.6 |
+| **OpenAI Codex** | `codex` | ✅ Yes | OpenAI's development CLI |
 
-```yaml
-# Set your constraints in the spec
-policy:
-  goal: cost  # Options: cost, latency, reliability, balanced
-
-  constraints:
-    cost:
-      maxPerRequest: 0.01    # Max $0.01 per request
-      maxDaily: 1.00         # Max $1.00 per day
-
-    latency:
-      p95: 5000              # Max 5 seconds at P95
-
-    privacy:
-      allowedClouds: [gcp]   # Only Google Cloud providers
-```
-
-**AutomatosX Routes Intelligently**:
-
-| Provider | Cost/1M Tokens | Speed (P95) | Free Tier | When AutomatosX Uses It |
-|----------|----------------|-------------|-----------|-------------------------|
-| **Gemini CLI** | $0.125-$0.375 | 3000ms | **1,500 req/day** | Cost-optimized workflows (default) |
-| OpenAI (Codex) | $2.50-$10.00 | 2000ms | None | Speed-critical tasks |
-| Claude Code | $3.00-$15.00 | 2500ms | None | High-reliability tasks |
-
-**Real Savings** (1,000 requests/month, 10K tokens each):
+### Configuration
 
 ```bash
-# Traditional workflow (all Claude)
-Monthly cost: $90,000
-Annual cost:  $1,080,000
+# Configure default provider in automatosx.config.json
+{
+  "providers": {
+    "default": "gemini",  # or claude, grok, codex
+    "claude": { "enabled": true },
+    "gemini": { "enabled": true },
+    "grok": { "enabled": true },
+    "codex": { "enabled": true }
+  }
+}
 
-# Basic optimization (Gemini paid tier)
-Monthly cost: $2,500   (97% savings)
-Annual cost:  $30,000
+# Use specific provider for a task
+ax run backend "task" --provider gemini
+ax run security "audit" --provider claude
 
-# AutomatosX with free tier utilization
-Monthly cost: $50      (99.6% savings!)
-Annual cost:  $600
-
-💰 Total annual savings: $1,079,400
-```
-
-**How We Achieve 99.6% Reduction**:
-
-1. **Free Tier Utilization**: Automatic use of Gemini's 1,500 requests/day (100% free)
-2. **Workload-Aware Routing**: Large tasks → Gemini (96% cheaper)
-3. **Policy-Driven Selection**: Cost goals prioritize cheapest providers
-4. **Predictive Quota Management**: Maximize free tier before paid usage
-
-**Monitor Your Savings**:
-
-```bash
-# Check free tier utilization (Gemini)
-ax free-tier status
-# Shows: Daily requests/tokens used, % remaining, reset time
-
-# View routing decisions in real-time
-ax providers trace --follow
-# Shows: Policy evaluation, free tier checks, provider selection
-
-# View provider pricing and features
-ax providers info gemini-cli
-# Shows: Cost per 1M tokens, latency, free tier limits
-
-# List providers by cost
-ax providers list --sort cost
-# Shows: All providers ranked by cost (Gemini = cheapest)
-
-# Get usage summary
-ax free-tier summary
-# Shows: Weekly/monthly usage patterns, cost savings
+# Check provider status
+ax doctor          # Check all providers
+ax doctor grok     # Check specific provider
+ax providers list  # List available providers
 ```
 
 **Learn More**:
 
-- [Gemini Integration Guide](docs/providers/gemini.md) - Complete Gemini setup and optimization
-- [Provider Comparison](docs/providers/overview.md) - Detailed provider comparison matrix
-- [Cost Optimization Strategies](docs/providers/gemini.md#cost-optimization) - Advanced techniques
+- [Gemini Integration Guide](docs/providers/gemini.md) - Gemini CLI setup
+- [Grok Integration Guide](GROK.md) - Grok CLI setup (X.AI, Z.AI, or self-hosted)
+- [Provider Comparison](docs/providers/overview.md) - Provider comparison
 
 ---
 
@@ -830,82 +720,39 @@ Each agent is an expert in their domain:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  1. YAML Spec (workflow.ax.yaml)                           │
-│     • Define actors, policy, constraints                    │
+│     • Define actors and workflow steps                      │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  2. Spec-Kit Generation (ax gen)                           │
-│     • Plan: Cost estimates, resource requirements, risks    │
+│     • Plan: Execution plan with resource requirements       │
 │     • DAG: Dependency graph with change detection hash      │
 │     • Scaffold: Complete project structure                  │
-│     • Tests: Unit, integration, E2E with policy assertions  │
+│     • Tests: Unit, integration, E2E test suites            │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  3. Policy Evaluation (PolicyEvaluator)                     │
-│     • Filter providers by constraints (cost, latency,       │
-│       privacy, reliability)                                 │
-│     • Score providers by optimization weights               │
-│     • Select optimal provider                               │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  4. Router Execution (Router)                               │
-│     • Load providers in policy order                        │
-│     • Execute with selected provider                        │
+│  3. CLI Orchestration (Router)                             │
+│     • Execute with configured provider                      │
+│     • Wrap claude/gemini/grok/codex CLI calls              │
 │     • Fallback on failure                                   │
-│     • Log all decisions to trace file                       │
+│     • Log all executions to trace file                      │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  5. Memory & Context (MemoryManager)                        │
+│  4. Memory & Context (MemoryManager)                        │
 │     • Index: Save response to SQLite FTS5                   │
 │     • Retrieve: Search < 1ms for future tasks               │
 │     • Inject: Auto-add context to prompts                   │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  6. Observability (RouterTraceLogger)                       │
+│  5. Observability (RouterTraceLogger)                       │
 │     • Log: JSONL trace to .automatosx/logs/                │
 │     • View: ax providers trace --follow                     │
-│     • Debug: Complete visibility into all decisions         │
+│     • Debug: Complete visibility into all executions        │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-### Cost Estimation Configuration
-
-**As of v6.5.11**, cost estimation is **disabled by default** because users reported that pricing changes frequently, making estimates unreliable.
-
-#### How to Enable Cost Estimation
-
-Edit `automatosx.config.json`:
-
-```json
-{
-  "costEstimation": {
-    "enabled": true,  // Enable cost estimation
-    "disclaimer": "Cost estimates are approximate and may be outdated."
-  }
-}
-```
-
-#### When Disabled (Default)
-
-- ✅ Policy-driven routing **still works** (selects optimal provider)
-- ✅ Free-tier prioritization **still works** (uses Gemini free tier)
-- ✅ Provider selection **still works** (based on latency, reliability, privacy)
-- ❌ Cost estimates show "N/A" in CLI output
-- ❌ Cost constraints in specs are skipped (always pass)
-
-#### When Enabled
-
-- ✅ Cost estimates shown in `ax gen plan`, `ax providers info`, `ax providers trace`
-- ✅ Cost constraints enforced (maxPerRequest, maxDaily)
-- ⚠️ Pricing data from Oct 2024 (may be outdated)
-- ⚠️ Verify current pricing on provider websites:
-  - [OpenAI Pricing](https://openai.com/pricing)
-  - [Gemini Pricing](https://ai.google.dev/pricing)
-  - [Claude Pricing](https://anthropic.com/pricing)
 
 ---
 
@@ -918,15 +765,6 @@ Edit `automatosx.config.json`:
 metadata:
   id: ecommerce-checkout
   name: E-Commerce Checkout System
-
-policy:
-  goal: balanced  # Balance cost, speed, reliability
-  constraints:
-    cost:
-      maxPerRequest: 0.02
-      maxDaily: 2.00
-    latency:
-      p95: 3000
 
 actors:
   - id: backend
@@ -944,17 +782,16 @@ actors:
 
 ```bash
 # Generate and execute
-ax gen plan checkout.ax.yaml    # See cost: $0.012-$0.018
+ax gen plan checkout.ax.yaml     # Generate execution plan
 ax gen scaffold checkout.ax.yaml # Create project structure
 ax gen tests checkout.ax.yaml    # Generate test suite
-ax run checkout.ax.yaml          # Execute with cost optimization
+ax run checkout.ax.yaml          # Execute workflow
 
 # Result:
 #   - Complete Stripe integration
 #   - Fraud detection system
 #   - PCI compliant
 #   - 60%+ test coverage
-#   - Total cost: $0.015 (vs $0.20 with Claude)
 ```
 
 ### Example 2: Microservices API
@@ -971,10 +808,10 @@ ax spec create "Build microservices API with user service, auth service, API gat
 #   - Integration tests
 #   - Documentation
 
-# Execute with policy routing
+# Execute workflow
 ax run workflow.ax.yaml
 
-# Monitor costs and decisions
+# Monitor executions
 ax providers trace --follow
 ```
 
@@ -1021,6 +858,170 @@ ax run dag.json
 # → Warning: Spec has changed. Regenerate DAG? (Y/n)
 ```
 
+### 🎯 Enterprise MCP Server Management (Phase 4)
+
+**NEW in v8.6.0**: Production-ready Model Context Protocol (MCP) server orchestration with comprehensive lifecycle management, auto-installation, and enterprise-grade monitoring.
+
+#### **Phase 4A: Lifecycle Management**
+```bash
+# Start AutomatosX as MCP server for Claude Code
+ax mcp server
+
+# Monitor server status
+ax mcp status
+
+# View lifecycle events
+ax mcp logs --follow
+
+# All server events are logged to:
+# .automatosx/logs/mcp/lifecycle-events.jsonl
+```
+
+**Features**:
+- ✅ Comprehensive event logging (start/stop/restart/crash/health)
+- ✅ Automatic log rotation when file exceeds size limit
+- ✅ Event history retrieval for debugging
+- ✅ JSONL format for machine-readable logs
+
+#### **Phase 4B: Auto-Installation**
+```bash
+# Discover available MCP servers
+ax mcp discover
+
+# Install MCP server packages
+ax mcp install @modelcontextprotocol/server-filesystem
+ax mcp install @modelcontextprotocol/server-github
+ax mcp install @modelcontextprotocol/server-git
+
+# Install multiple packages in parallel
+ax mcp install --batch filesystem github git
+
+# Update installed servers
+ax mcp update @modelcontextprotocol/server-filesystem
+```
+
+**Features**:
+- ✅ NPM registry search and package discovery
+- ✅ One-command installation for MCP servers
+- ✅ Support for npm, yarn, and pnpm package managers
+- ✅ Batch installation for faster setup
+- ✅ Version management (update, uninstall)
+- ✅ Dry-run mode for testing installations
+
+#### **Phase 4C: Configuration Hot-Reload**
+```bash
+# Edit MCP configuration (changes apply automatically)
+vim automatosx.config.json
+
+# Configuration changes are detected and applied without restart!
+# - Server configurations updated
+# - Security limits adjusted
+# - Health check settings modified
+```
+
+**Features**:
+- ✅ Configuration hot-reload without server restart
+- ✅ File watching with debounced change detection (1 second)
+- ✅ Comprehensive validation with error and warning reporting
+- ✅ Change event notifications for dynamic updates
+- ✅ Default configuration fallback
+
+#### **Phase 4D: Performance Monitoring**
+```bash
+# View real-time metrics for all servers
+ax mcp metrics
+
+# Show detailed metrics for specific server
+ax mcp metrics filesystem-server
+
+# View metrics summary
+ax mcp metrics --summary
+
+# Export metrics history
+ax mcp metrics --export > metrics.json
+```
+
+**Metrics Collected**:
+- ✅ CPU usage percentage per server
+- ✅ Memory usage (MB) per server
+- ✅ Server uptime (seconds)
+- ✅ Total requests handled
+- ✅ Failed requests count
+- ✅ Average/min/max response times
+- ✅ Restart count
+- ✅ Time-series data with configurable retention (default: 24 hours)
+
+#### **Phase 4E: Resource Limits & Security**
+```bash
+# View current resource limits
+ax mcp limits
+
+# Set custom limits for specific server
+ax mcp limits filesystem-server --memory 1024 --cpu 75
+
+# Configure enforcement mode (warn/throttle/kill)
+ax config set mcp.security.enforcementMode throttle
+```
+
+**Security Features**:
+- ✅ Resource limit enforcement (CPU, memory)
+- ✅ Configurable enforcement modes:
+  - `warn` - Log violations only
+  - `throttle` - Temporarily pause violating processes (SIGSTOP/SIGCONT)
+  - `kill` - Terminate violating processes (SIGKILL)
+- ✅ Grace period before enforcement (default: 10 seconds)
+- ✅ Per-server limit overrides
+- ✅ Violation event logging and alerting
+- ✅ Filesystem and network restrictions
+
+#### **Configuration Example**
+```json
+{
+  "mcp": {
+    "enabled": true,
+    "servers": [
+      {
+        "name": "filesystem",
+        "command": "npx",
+        "args": ["@modelcontextprotocol/server-filesystem", "/allowed/path"],
+        "enabled": true
+      }
+    ],
+    "discovery": {
+      "enabled": true,
+      "packagePrefixes": ["@modelcontextprotocol/server-"]
+    },
+    "security": {
+      "limits": {
+        "maxServers": 10,
+        "maxMemoryPerServer": 512,
+        "maxCpuPerServer": 50
+      },
+      "filesystem": {
+        "allowedPaths": ["/home/user/data"],
+        "deniedPaths": ["/home/user/.ssh"]
+      }
+    },
+    "healthCheck": {
+      "enabled": true,
+      "intervalMs": 60000,
+      "restartOnFailure": true
+    },
+    "logging": {
+      "logServerOutput": true,
+      "logLevel": "info"
+    }
+  }
+}
+```
+
+#### **Performance Impact**
+- Memory overhead: ~8-10 MB (with 24h metrics retention)
+- CPU overhead: ~3-5% (periodic monitoring tasks)
+- Startup time: +50ms for Phase 4 initialization
+
+**Production-Ready**: All Phase 4 features are fully backward compatible and opt-in. Enable what you need, when you need it.
+
 ---
 
 ## 📖 Documentation
@@ -1036,8 +1037,7 @@ ax run dag.json
 
 - **[Spec-Kit Usage Guide](docs/guides/spec-kit-guide.md)** 📋 **[NEW]** - Complete YAML workflow guide with examples
 - **[Iteration Mode Guide](docs/guides/iteration-mode-guide.md)** 🔄 **[NEW]** - Multi-iteration autonomous analysis
-- **[Cost Calculation Configuration](docs/guides/cost-calculation-guide.md)** 💰 **[NEW]** - Enable/configure cost tracking
-- [Policy-Driven Routing](docs/providers/overview.md) - Cost/latency optimization with providers
+- [Provider Configuration](docs/providers/overview.md) - Multi-provider CLI orchestration
 - [Persistent Memory](docs/guides/agent-communication.md) - Context management
 - [Multi-Agent Orchestration](docs/guides/multi-agent-orchestration.md) - Team coordination
 
@@ -1063,24 +1063,27 @@ ax run dag.json
 |------------|------------|-------------|--------|----------------|
 | **Declarative Workflows** | ✅ YAML specs | ❌ | ❌ | ❌ |
 | **Auto-Generation** | ✅ Plans, DAGs, scaffolds, tests | ❌ | ❌ | ❌ |
-| **Policy-Driven Routing** | ✅ Cost/latency optimization | ❌ | ❌ | ❌ |
+| **CLI Orchestration** | ✅ Pure wrapper around AI CLIs | ❌ | ❌ | ❌ |
 | **Persistent Memory** | ✅ SQLite FTS5 < 1ms | ❌ | ❌ | ❌ |
 | **Multi-Agent Teams** | ✅ 20 specialists | ❌ | ❌ | ❌ |
-| **Cost Optimization** | ✅ 60-80% savings | ❌ | ❌ | ❌ |
-| **Complete Observability** | ✅ Trace logging | ❌ | ❌ | ❌ |
+| **Multi-Provider Support** | ✅ Claude, Gemini, Grok, Codex | ⚠️ Claude only | ⚠️ Limited | ⚠️ Limited |
+| **MCP Server Management** | ✅ Enterprise-grade (Phase 4) | ⚠️ Basic | ❌ | ❌ |
+| **Complete Observability** | ✅ Trace logging + metrics | ❌ | ❌ | ❌ |
 | **Parallel Execution** | ✅ DAG-based | ❌ | ❌ | ❌ |
 | **Local-First** | ✅ 100% private | ⚠️ Hybrid | ⚠️ Cloud | ⚠️ Cloud |
 
-**Bottom Line**: AutomatosX is the **only platform** that combines declarative workflows, cost optimization, persistent memory, and multi-agent orchestration in one tool.
+**Bottom Line**: AutomatosX is the **only platform** that combines declarative workflows, persistent memory, multi-agent orchestration, enterprise MCP management, and pure CLI orchestration in one tool.
 
 ---
 
 ## 🚦 Production Readiness
 
+✅ **v8.6.0 Released** - Enterprise MCP Phase 4 complete
 ✅ **v7.0.0 Released** - Natural language-first design, unified setup
-✅ **100% Complete** - Spec-Kit integration fully implemented
-✅ **2,423+ Tests Passing** - Comprehensive test coverage
+✅ **100% Complete** - Spec-Kit integration + MCP management fully implemented
+✅ **2,512+ Tests Passing** - Comprehensive test coverage
 ✅ **TypeScript Strict Mode** - Type-safe codebase
+✅ **Enterprise MCP** - Production-ready server lifecycle, metrics, security
 ✅ **Zero Resource Leaks** - Clean shutdown guaranteed
 ✅ **Cross-Platform** - macOS, Windows, Ubuntu
 ✅ **Local-First** - No cloud dependencies, 100% private
@@ -1098,7 +1101,7 @@ ax --version  # v7.0.0
 
 ### ⚠️ REQUIRED: Initialize Your Project
 
-**After installing, you MUST run `ax setup` to set up AutomatosX:**
+**After installing, you MUST run `ax setup` in your project directory to initialize the AutomatosX workspace:**
 
 ```bash
 # Navigate to your project directory
@@ -1121,6 +1124,16 @@ ax setup -f
 - ✅ Configures trace logging
 
 **Without running `ax setup`, AutomatosX commands will not work properly!**
+
+### ✨ Optional: AI-Powered Setup (v7.1.2+)
+
+For a more advanced, AI-driven setup, you can use the `ax init` command. It analyzes your project to create a tailored integration guide (`ax.md`) for AI assistants.
+
+```bash
+# Run the interactive, AI-powered initialization
+ax init
+```
+Use `ax setup` for the standard, essential setup. Use `ax init` for an enhanced AI integration experience.**
 
 ### Requirements
 
@@ -1241,30 +1254,32 @@ AutomatosX is licensed under Apache 2.0 for **non-commercial use**. For commerci
   - ✅ Natural language-only interaction
   - ✅ Enhanced force mode with complete cleanup
   - ✅ Removed slash command dependencies
+- ✅ **v8.3.0 - Major Simplification** (Latest)
+  - ✅ Removed policy routing, free-tier management (~36,000 lines)
+  - ✅ Pure CLI orchestration wrapper
+  - ✅ Streamlined architecture
+  - ✅ Focus on core features
 - ✅ Spec-Kit Integration (100%)
   - ✅ Plan generation
   - ✅ DAG generation
   - ✅ Scaffold generation
   - ✅ Test generation
   - ✅ Regeneration Detector (v6.5.6)
-- ✅ Policy-Driven Routing
-  - ✅ Cost/latency/privacy constraints
-  - ✅ Provider metadata registry
-  - ✅ Multi-factor scoring
+- ✅ CLI Orchestration
+  - ✅ Multi-provider support (Claude, Gemini, Grok, Codex)
+  - ✅ Pure CLI wrapper (no API key required for CLI mode)
+  - ✅ Fallback and retry logic
 - ✅ Router Trace Logging
   - ✅ JSONL format
   - ✅ Real-time following
   - ✅ Color-coded CLI
 
-### Coming Soon (v7.2.0)
+### Coming Soon (v8.6.0+)
 
-- ⏳ Advanced Conversation Features
-  - Full-text search across conversations
-  - Configurable themes and colors
-  - SQLite-backed persistence
-- ⏳ Cost-Aware Router
-  - Pre-execution cost warnings
-  - Budget protection
+- ⏳ Enhanced Spec Features
+  - Advanced DAG visualization
+  - Workflow templates library
+  - Interactive spec builder
 - ⏳ Enhanced Parallel Execution
   - Resource-aware scheduling
   - Priority-based execution
@@ -1340,8 +1355,8 @@ AutomatosX is licensed under Apache 2.0 for **non-commercial use**. For commerci
 - ✅ All agent functionality unchanged
 - ✅ Memory system works the same
 - ✅ Spec-Kit features unchanged
-- ✅ Policy-driven routing unchanged
-- ✅ Cost optimization unchanged
+- ✅ CLI orchestration works the same
+- ✅ Multi-provider support unchanged
 - ✅ CLI command syntax (except init→setup)
 
 ### Need Help?
@@ -1426,32 +1441,6 @@ If AutomatosX saves you time and money, give us a star! ⭐
 
 ---
 
-## 🎯 TL;DR
-
-```bash
-# Install
-npm i -g @defai.digital/automatosx
-
-# Initialize (REQUIRED - sets up agents and config)
-cd your-project && ax setup
-
-# Create workflow from natural language
-ax spec create "Build auth system with API, tests, security audit"
-
-# Execute with cost optimization
-ax run workflow.ax.yaml  # 60-80% cheaper than Claude/GPT
-
-# Debug with trace logs
-ax providers trace --follow
-
-# Result: Production-ready auth system in minutes
-```
-
-**AutomatosX**: The only AI platform with declarative workflows, cost optimization, persistent memory, and multi-agent orchestration.
-
-**Try it now**: `npm i -g @defai.digital/automatosx && cd your-project && ax setup`
-
----
 
 <p align="center">
   Made with ❤️ by <a href="https://defai.digital">DEFAI Digital</a>

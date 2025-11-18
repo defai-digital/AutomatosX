@@ -29,6 +29,7 @@ import type {
   CostTrackingConfig,
   CostExportFormat
 } from '../types/cost.js';
+import { CostEntrySchema, CostQuerySchema } from './cost-tracker-schemas.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -172,31 +173,9 @@ export class CostTracker extends EventEmitter {
       await this.initialize();
     }
 
-    // v6.2.4: Bug fix #25 - Input validation to prevent data corruption
-    if (!entry.provider || entry.provider.trim().length === 0) {
-      throw new Error('Provider name cannot be empty');
-    }
-    if (!entry.model || entry.model.trim().length === 0) {
-      throw new Error('Model name cannot be empty');
-    }
-    if (!Number.isFinite(entry.estimatedCostUsd)) {
-      throw new Error(`Invalid estimatedCostUsd value: ${entry.estimatedCostUsd}. Must be a finite number.`);
-    }
-    if (entry.estimatedCostUsd < 0) {
-      throw new Error(`Invalid estimatedCostUsd value: ${entry.estimatedCostUsd}. Cannot be negative.`);
-    }
-    if (!Number.isFinite(entry.promptTokens) || entry.promptTokens < 0) {
-      throw new Error(`Invalid promptTokens: ${entry.promptTokens}. Must be a non-negative finite number.`);
-    }
-    if (!Number.isFinite(entry.completionTokens) || entry.completionTokens < 0) {
-      throw new Error(`Invalid completionTokens: ${entry.completionTokens}. Must be a non-negative finite number.`);
-    }
-    if (!Number.isFinite(entry.totalTokens) || entry.totalTokens < 0) {
-      throw new Error(`Invalid totalTokens: ${entry.totalTokens}. Must be a non-negative finite number.`);
-    }
-    if (!Number.isFinite(entry.timestamp) || entry.timestamp <= 0) {
-      throw new Error(`Invalid timestamp: ${entry.timestamp}. Must be a positive finite number.`);
-    }
+    // v8.5.6: Zod validation replaces manual checks (Phase 1)
+    // Validates all fields with better error messages and type safety
+    const validated = CostEntrySchema.parse(entry);
 
     const stmt = this.db!.prepare(`
       INSERT INTO cost_entries (
@@ -207,27 +186,27 @@ export class CostTracker extends EventEmitter {
     `);
 
     stmt.run(
-      entry.timestamp,
-      entry.provider,
-      entry.model,
-      entry.sessionId || null,
-      entry.agent || null,
-      entry.promptTokens,
-      entry.completionTokens,
-      entry.totalTokens,
-      entry.estimatedCostUsd,
-      entry.requestId || null
+      validated.timestamp,
+      validated.provider,
+      validated.model,
+      validated.sessionId || null,
+      validated.agent || null,
+      validated.promptTokens,
+      validated.completionTokens,
+      validated.totalTokens,
+      validated.estimatedCostUsd,
+      validated.requestId || null
     );
 
     logger.debug('Cost recorded', {
-      provider: entry.provider,
-      model: entry.model,
-      cost: entry.estimatedCostUsd.toFixed(4),
-      tokens: entry.totalTokens
+      provider: validated.provider,
+      model: validated.model,
+      cost: validated.estimatedCostUsd.toFixed(4),
+      tokens: validated.totalTokens
     });
 
-    // Emit cost recorded event
-    this.emit('cost-recorded', entry);
+    // Emit cost recorded event (use validated data)
+    this.emit('cost-recorded', validated);
 
     // Check budgets if alerting enabled
     if (this.alertOnBudget) {
@@ -484,6 +463,11 @@ export class CostTracker extends EventEmitter {
     query?: CostQuery,
     suffix: string = ''
   ): { sql: string; params: any[] } {
+    // v8.5.6: Zod validation replaces manual checks (Phase 1)
+    // Validates query parameters with better error messages and type safety
+    // Note: Only validate if query is provided (undefined means no filters)
+    const validated = query ? CostQuerySchema.parse(query) : undefined;
+
     // VULNERABILITY FIX: Whitelist allowed characters in select and suffix
     // to prevent SQL injection.
     // Note: Allow empty string for select (used when only params are needed)
@@ -498,55 +482,45 @@ export class CostTracker extends EventEmitter {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    if (query?.provider) {
+    // Use validated data (Zod already validated all types, UUIDs, ranges)
+    if (validated?.provider) {
       conditions.push('provider = ?');
-      params.push(query.provider);
+      params.push(validated.provider);
     }
 
-    if (query?.model) {
+    if (validated?.model) {
       conditions.push('model = ?');
-      params.push(query.model);
+      params.push(validated.model);
     }
 
-    if (query?.sessionId) {
+    if (validated?.sessionId) {
       conditions.push('session_id = ?');
-      params.push(query.sessionId);
+      params.push(validated.sessionId);
     }
 
-    if (query?.agent) {
+    if (validated?.agent) {
       conditions.push('agent = ?');
-      params.push(query.agent);
+      params.push(validated.agent);
     }
 
-    // FIXED (Bug #45): Validate timestamp parameters before using in query
-    // Without validation, NaN/Infinity/huge negative timestamps bypass time filter unpredictably
-    if (query?.startTime !== undefined) {
-      if (typeof query.startTime !== 'number' || !Number.isFinite(query.startTime) || query.startTime < 0) {
-        throw new Error(`startTime must be a non-negative finite number (Unix timestamp), got ${query.startTime}`);
-      }
+    // Zod already validated timestamps (non-negative, startTime <= endTime)
+    if (validated?.startTime !== undefined) {
       conditions.push('timestamp >= ?');
-      params.push(query.startTime);
+      params.push(validated.startTime);
     }
 
-    if (query?.endTime !== undefined) {
-      if (typeof query.endTime !== 'number' || !Number.isFinite(query.endTime) || query.endTime < 0) {
-        throw new Error(`endTime must be a non-negative finite number (Unix timestamp), got ${query.endTime}`);
-      }
+    if (validated?.endTime !== undefined) {
       conditions.push('timestamp <= ?');
-      params.push(query.endTime);
+      params.push(validated.endTime);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // VULNERABILITY FIX: Use parameterized query for LIMIT to prevent SQL injection.
+    // Zod already validated limit (positive integer, max 10000)
     let limitClause = '';
-    if (query?.limit !== undefined) {
-      const limitValue = Number(query.limit);
-      if (!Number.isInteger(limitValue) || limitValue < 0 || limitValue > 10000) {
-        throw new Error(`Invalid limit value: ${query.limit}. Must be a positive integer <= 10000.`);
-      }
+    if (validated?.limit !== undefined) {
       limitClause = `LIMIT ?`;
-      params.push(limitValue);
+      params.push(validated.limit);
     }
 
     const sql = `SELECT ${select} FROM cost_entries ${where} ${suffix} ${limitClause}`.trim();

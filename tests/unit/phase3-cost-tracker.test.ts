@@ -111,7 +111,7 @@ describe('Phase 3: CostTracker', () => {
         completionTokens: 50,
         totalTokens: 150,
         estimatedCostUsd: 0.005,
-        sessionId: 'session-123',
+        sessionId: '550e8400-e29b-41d4-a716-446655440000', // v8.5.6: Use valid UUID v4 for Zod validation
         agent: 'backend'
       });
 

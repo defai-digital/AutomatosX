@@ -145,6 +145,13 @@ PRIVATE*.md
 TODO-*.md
 NOTES*.md
 
+# AI Assistant integration documentation (project-specific, not for public repo)
+AGENTS.md
+AX.MD
+ax.md
+GEMINI.md
+GROK.md
+
 # Work in progress
 WIP-*.md
 DRAFT-*.md

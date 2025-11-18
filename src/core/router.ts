@@ -636,6 +636,135 @@ export class Router {
       });
     }
 
+    // v9.0.0: Last resort - try unavailable providers if all available ones failed
+    const unavailableProviders = this.providers.filter(
+      p => !providersToTry.includes(p)
+    );
+
+    if (unavailableProviders.length > 0) {
+      logger.warn('🚨 Router: all available providers failed, trying unavailable providers as last resort', {
+        availableProvidersFailed: providersToTry.map(p => p.name),
+        unavailableProvidersToTry: unavailableProviders.map(p => p.name)
+      });
+
+      for (const provider of unavailableProviders) {
+        attemptNumber++;
+
+        try {
+          logger.info(`🔄 Last resort attempt: ${provider.name} (attempt ${attemptNumber})`);
+
+          // Check cache first (if enabled and available)
+          if (this.cache?.isEnabled) {
+            const modelParams = {
+              temperature: request.temperature,
+              maxTokens: request.maxTokens
+            };
+
+            const cachedContent = this.cache.get(
+              provider.name,
+              request.prompt,
+              modelParams
+            );
+
+            if (cachedContent) {
+              markCacheHit(ComponentType.ROUTER, 'execute', {
+                provider: provider.name,
+                attempt: attemptNumber,
+                lastResort: true
+              });
+
+              timer.end({ cached: true, provider: provider.name, lastResort: true });
+
+              return {
+                content: cachedContent,
+                model: request.model || 'cached',
+                latencyMs: 0,
+                tokensUsed: {
+                  prompt: 0,
+                  completion: 0,
+                  total: 0
+                },
+                finishReason: 'stop',
+                cached: true
+              };
+            }
+          }
+
+          const response = await provider.execute(request);
+
+          // Success! Log and return
+          logger.info(`✅ Router: last resort provider ${provider.name} succeeded`, {
+            attempt: attemptNumber,
+            wasMarkedUnavailable: true
+          });
+
+          this.recordSuccess(provider.name);
+
+          // Cache successful response (if cache is enabled)
+          if (this.cache?.isEnabled) {
+            const modelParams = {
+              temperature: request.temperature,
+              maxTokens: request.maxTokens
+            };
+
+            this.cache.set(
+              provider.name,
+              request.prompt,
+              response.content,
+              modelParams
+            );
+          }
+
+          // Log execution success
+          if (this.tracer) {
+            this.tracer.logExecution(
+              provider.name,
+              true, // success
+              response.latencyMs,
+              0, // v8.3.0: No cost tracking in CLI-only mode
+              response.tokensUsed
+            );
+          }
+
+          // Record metrics
+          if (this.useMultiFactorRouting) {
+            const metricsTracker = getProviderMetricsTracker();
+
+            void metricsTracker.recordRequest(
+              provider.name,
+              response.latencyMs,
+              true, // success
+              response.finishReason || 'stop',
+              {
+                prompt: response.tokensUsed.prompt,
+                completion: response.tokensUsed.completion,
+                total: response.tokensUsed.total
+              },
+              0, // v8.3.0: No cost tracking in CLI-only mode
+              response.model
+            ).catch((error) => {
+              logger.warn('Metrics recording failed (non-critical)', {
+                provider: provider.name,
+                error: (error as Error).message
+              });
+            });
+          }
+
+          return response;
+
+        } catch (error) {
+          lastError = error as Error;
+          logger.warn(`❌ Router: last resort provider ${provider.name} failed`, {
+            attempt: attemptNumber,
+            error: lastError.message
+          });
+
+          // Continue to next unavailable provider
+          continue;
+        }
+      }
+    }
+
     // v5.7.0: Check if all providers are limited (quota exhausted)
     // FIXED (Bug #5): Check ALL providers (not just attempted ones) for accurate soonest reset
     const limitManager = await getProviderLimitManager();
@@ -658,17 +787,29 @@ export class Router {
       throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
     }
 
-    // Otherwise, throw generic error (existing logic)
+    // Otherwise, throw generic error with helpful suggestions
+    const errorDetails = {
+      lastError: lastError?.message,
+      availableProviders: providersToTry.map(p => p.name),
+      unavailableProviders: unavailableProviders.map(p => p.name),
+      totalAttempts: attemptNumber
+    };
+
+    const suggestionMessage = unavailableProviders.length > 0
+      ? `\n\n💡 Suggestion: Install missing provider CLIs to enable fallback:\n${unavailableProviders.map(p => `  - ${p.name}`).join('\n')}\n\nRun 'ax doctor' to diagnose provider setup.`
+      : '';
+
     throw new ProviderError(
-      `All providers failed. Last error: ${lastError?.message || 'Unknown error'}`,
+      `All providers failed. Last error: ${lastError?.message || 'Unknown error'}${suggestionMessage}`,
       ErrorCode.PROVIDER_NO_AVAILABLE,
       [
-        'Check provider availability with "automatosx status"',
-        'Verify provider CLIs are installed and in PATH',
-        'Check provider configuration in automatosx.config.json',
-        'Review error logs for more details'
+        'Run "ax doctor" to diagnose provider issues',
+        'Install missing provider CLIs (claude, gemini, codex, grok)',
+        'Verify provider configuration in automatosx.config.json',
+        'Check if providers require authentication setup',
+        'Review error logs for more details: .automatosx/logs/'
       ],
-      { lastError: lastError?.message }
+      errorDetails
     );
   }
 

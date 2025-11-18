@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v8.5.8) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX (v9.0.0) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, grok, codex) for seamless orchestration.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
-- **Policy Router**: Optimize every request for cost/latency/reliability (saves 60-80% on AI costs)
+- **Pure CLI Wrapper**: Wraps around existing `claude`, `gemini`, `grok`, `codex` CLIs for simple integration
 - **Persistent Memory**: SQLite FTS5 full-text search (< 1ms) - perfect context with zero API costs
 - **Multi-Agent Orchestration**: 20 specialized agents that delegate tasks autonomously
-- **Complete Observability**: JSONL trace logging for every routing decision
-- **AI Assistant Integration**: Works seamlessly with Claude Code, Gemini CLI, and OpenAI Codex
+- **Token-Based Budgets**: Reliable budget control using token limits (no more unreliable cost estimates)
+- **Complete Observability**: JSONL trace logging for every execution decision
+- **AI Assistant Integration**: Works seamlessly with Claude Code, Gemini CLI, Grok CLI, and OpenAI Codex
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -51,43 +52,51 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v8.5.8)
+### Current State (v9.0.0)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
 - ✅ Spec-Kit 100% complete (plans, DAGs, scaffolds, tests)
-- ✅ Policy-driven routing with free-tier optimization
+- ✅ Pure CLI wrapper (no API keys needed for CLI mode)
 - ✅ Persistent memory with SQLite FTS5 search
-- ✅ Multi-provider support (Claude, Gemini, OpenAI)
+- ✅ Multi-provider support (Claude, Gemini, Grok, OpenAI Codex)
+- ✅ Token-based budget control (stable and reliable)
 - ✅ Natural language integration with AI assistants
-- ⚠️ Cost estimation **disabled by default** (v6.5.11+) - enable in config if needed
+- ✅ Enterprise MCP support with lifecycle logging
 
-**Recent Changes (v8.5.8 - Verbosity Control System):**
-- 🎯 **NEW: 3-Level Verbosity System**: Quiet (AI assistants), Normal (CLI), Verbose (debugging)
+**Breaking Changes (v9.0.0 - Token-Based Budgets):**
+- 🚨 **Cost-Based Tracking Removed**: ~1,200 lines of unreliable cost estimation code removed
+- ✅ **Token-Only Budgets**: Use `--iterate-max-tokens` instead of `--iterate-max-cost`
+- ✅ **Stable Tracking**: Token counts never change (unlike provider pricing)
+- ✅ **Accurate Limits**: Direct from provider API responses, no estimates
+- 📖 **Migration Guide**: See `docs/migration/v9-cost-to-tokens.md` for upgrade path
+- 🎯 **Zero Maintenance**: No more pricing updates or outdated cost estimates
+
+**Recent Changes (v8.6.0 - Token Budget System):**
+- 🎯 **Token-Based Limits**: `--iterate-max-tokens` and `--iterate-max-tokens-per-iteration`
+- 📊 **Progressive Warnings**: Alerts at 75% and 90% of token budget
+- 🔍 **Real-Time Tracking**: Accurate token usage from provider responses
+- ⚡ **Better Control**: Token limits more reliable than cost estimates
+
+**Previous Changes (v8.5.8 - Verbosity Control System):**
+- 🎯 **3-Level Verbosity System**: Quiet (AI assistants), Normal (CLI), Verbose (debugging)
 - 🤖 **Auto-Quiet Mode**: Automatically detects non-interactive contexts (Claude Code, CI, background)
 - 🔇 **60-80% Noise Reduction**: Minimal output for AI assistant integration
 - ⚡ **Smart Defaults**: `--quiet` flag, `AUTOMATOSX_VERBOSITY` env var, auto-detection
 - 📊 **Enhanced UX**: Execution timing in normal mode, debug summary in verbose mode
 
-**Previous Changes (v8.5.4 - Streamlined for AI Assistant Integration):**
-- 🔄 **Removed standalone chatbot**: Focus on integration with Claude Code, Gemini CLI, OpenAI Codex
-- ✅ **Streamlined CLI**: Direct command execution for agent orchestration
-- ✅ **AI Assistant First**: Best experience through your preferred AI assistant
-- ✅ **Reduced complexity**: ~25,000 lines of code removed, focused on core orchestration
-- ✅ **Better UX**: Use familiar AI tools instead of learning new interface
-
 ## Architecture Overview
 
-### Core Flow: YAML Spec → Generation → Policy Routing → Execution → Memory
+### Core Flow: YAML Spec → Generation → CLI Wrapper → Execution → Memory
 
 ```
 1. YAML Spec (workflow.ax.yaml)
    ↓
 2. Spec-Kit Generation (PlanGenerator, DagGenerator, ScaffoldGenerator, TestGenerator)
    ↓
-3. Policy Evaluation (PolicyEvaluator filters/scores providers by constraints)
+3. Provider CLI Selection (wraps existing claude/gemini/grok/codex commands)
    ↓
-4. Router Execution (selects optimal provider, logs decisions, handles fallback)
+4. Execution (runs provider CLI with task, handles output parsing)
    ↓
 5. Memory Indexing (saves to SQLite FTS5 for future context)
    ↓
@@ -96,12 +105,12 @@ npm run release:check                      # Validate release readiness
 
 ### Key System Components
 
-**1. Router (`src/core/router.ts`)**
-- Policy-driven provider selection via `PolicyEvaluator` and `PolicyParser`
-- Multi-provider routing with circuit breaker and fallback
-- Free-tier prioritization (Gemini 1,500 req/day)
-- Workload-aware routing (large tasks → cheaper providers)
-- Trace logging (`RouterTraceLogger`) in JSONL format
+**1. Provider CLI Wrappers (`src/integrations/`)**
+- Pure CLI wrappers around existing `claude`, `gemini`, `grok`, `codex` commands
+- No API keys needed for CLI mode (uses installed provider CLIs)
+- Stream parsing and output handling
+- Error handling and retry logic
+- Trace logging in JSONL format
 
 **2. Memory Manager (`src/core/memory-manager.ts`)**
 - SQLite + FTS5 for full-text search (no vector embeddings)
@@ -132,24 +141,22 @@ npm run release:check                      # Validate release readiness
 ### Provider Architecture
 
 **Base Provider (`src/providers/base-provider.ts`)**
-- Abstract base with rate limiting, retry logic, circuit breaker
-- Provider name whitelist: `claude`, `claude-code`, `gemini`, `gemini-cli`, `openai`, `codex`
+- Abstract base with retry logic and error handling
+- Provider name whitelist: `claude`, `claude-code`, `gemini`, `gemini-cli`, `grok`, `grok-cli`, `openai`, `codex`
 - Availability caching (60s TTL), version detection caching (5min TTL)
-- Cost tracking and usage stats
+- Token usage tracking (accurate from provider responses)
 
 **Implementations:**
 - `claude-provider.ts`: CLI-based Claude integration
-- `gemini-provider.ts`: CLI-based Gemini integration (lowest cost)
-- `openai-provider.ts`: OpenAI with CLI/SDK modes (`AX_CLI_ONLY` env var controls mode)
-
-**Provider Metadata Registry (`src/core/provider-metadata-registry.ts`)**
-- Centralized pricing, latency, free-tier limits
-- Used by PolicyEvaluator for constraint-based filtering
+- `gemini-provider.ts`: CLI-based Gemini integration
+- `grok-provider.ts`: CLI-based Grok integration (xAI)
+- `openai-provider.ts`: OpenAI Codex CLI integration
 
 **Integration Layer (`src/integrations/`)**
 - `claude-code/`: MCP manager, command manager, config manager
-- `gemini-cli/`: Command translator, file readers
-- `openai-codex/`: CLI wrapper, MCP support
+- `gemini-cli/`: Command translator, file readers, MCP support
+- `grok-cli/`: CLI wrapper, project instructions loader, user settings manager
+- `openai-codex/`: CLI wrapper, MCP support, AGENTS.md auto-injection, streaming progress
 
 ### Configuration System
 
@@ -230,8 +237,9 @@ AutomatosX is designed to work seamlessly with your preferred AI assistant:
 
 **Supported Assistants:**
 - **Claude Code** - Primary integration with MCP support
-- **Gemini CLI** - Google's CLI with natural language support
-- **OpenAI Codex** - OpenAI's development assistant
+- **Gemini CLI** - Google's CLI with natural language support and MCP
+- **Grok CLI** - xAI's CLI with project instructions and user settings
+- **OpenAI Codex** - OpenAI's development assistant with AGENTS.md auto-injection
 
 **How It Works:**
 1. You interact with your AI assistant (Claude Code, Gemini CLI, etc.)
@@ -749,40 +757,49 @@ git commit -m "chore: Regenerate config.generated.ts from schema"
 - Git hooks (Husky): Auto-sync on `npm version`
 - Release workflow: `npm version [patch|minor|major]` → auto-sync → commit → tag
 
-## Cost Estimation (v6.5.11+)
+## Token-Based Budget Control (v9.0.0+)
 
-**IMPORTANT**: Cost estimation is **disabled by default**.
+**BREAKING CHANGE**: Cost estimation has been **completely removed** in v9.0.0.
 
-Users reported pricing changes frequently, making estimates unreliable. Cost estimation can be optionally enabled in `automatosx.config.json`:
+AutomatosX now uses **token-based budgets** for reliable resource control:
 
-```json
-{
-  "costEstimation": {
-    "enabled": false,  // Set to true to enable
-    "disclaimer": "Cost estimates are approximate and may be outdated."
-  }
-}
+```bash
+# Token-based limits (NEW - v9.0.0+)
+ax run backend "task" --iterate-max-tokens 1000000
+ax run backend "task" --iterate-max-tokens-per-iteration 100000
+
+# Old cost-based flags REMOVED in v9.0.0:
+# ❌ --iterate-max-cost (removed)
+# ❌ maxEstimatedCostUsd (removed from config)
 ```
 
-**When disabled (default):**
-- Provider metadata returns $0 for all cost fields
-- PolicyEvaluator skips cost constraints (always passes)
-- PlanGenerator shows "N/A (cost estimation disabled)"
-- **Note**: Policy routing still works (selects optimal provider by latency/reliability/privacy)
+**Why Token-Based?**
+- ✅ **Stable**: Token counts never change (unlike provider pricing)
+- ✅ **Accurate**: Direct from provider API responses, no estimates
+- ✅ **Zero Maintenance**: No pricing updates needed
+- ✅ **Predictable**: Budget limits that actually work
 
-**When enabled:**
-- Full cost tracking and estimation
-- Pricing data from Oct 2024 (may be outdated)
-- Users should verify current pricing on provider websites
+**Migration:**
+- See `docs/migration/v9-cost-to-tokens.md` for complete migration guide
+- Replace `--iterate-max-cost 5.0` with `--iterate-max-tokens 1000000`
+- Update config: `maxEstimatedCostUsd` → `maxTotalTokens`
+- Calculate costs manually if needed: `tokens * price_per_1M_tokens`
+
+**Token Budget Features:**
+- Progressive warnings at 75% and 90% of budget
+- Real-time tracking from provider responses
+- Per-iteration and total token counters
+- Automatic pause when limit exceeded
 
 ## Performance Considerations
 
-- Router selects providers in < 5ms (with policy evaluation)
+- Provider CLI execution: Depends on underlying CLI performance
 - Memory search: < 1ms with FTS5 prepared statements
 - Delegation parsing: < 1ms per response (regex-based)
 - Provider availability check: Cached for 60s (adaptive TTL)
 - Config loading: Lazy with caching (5min TTL for profiles)
 - Database: Use prepared statements, avoid COUNT(*) in hot paths
+- Token tracking overhead: < 1ms per iteration
 
 ## Security Notes
 
@@ -796,11 +813,12 @@ Users reported pricing changes frequently, making estimates unreliable. Cost est
 
 - Node.js >= 20.0.0 required (ES2022 features)
 - SQLite must support FTS5 extension (usually built-in)
-- Provider CLIs must be installed separately (`gemini`, `claude`, `codex`)
+- Provider CLIs must be installed separately (`claude`, `gemini`, `grok`, `codex`)
 - Max delegation depth: 2 (configurable in `orchestration.delegation.maxDepth`)
 - Max concurrent agents: 4 (configurable in `execution.concurrency.maxConcurrentAgents`)
 - Memory max entries: 10,000 (auto-cleanup if exceeded)
 - Session persistence debounce: 1s (reduces I/O but delays saves)
+- Token budgets enforced via `maxTotalTokens` and `maxTokensPerIteration`
 
 ## Workspace Conventions
 
@@ -1123,13 +1141,54 @@ await monitor.watchAgent('writer', (status) => {
 
 ## Major Milestones
 
+### v9.0.0 - Token-Based Budgets (2025-11-18)
+
+**BREAKING CHANGE**: Cost estimation completely removed, replaced with token-based budgets
+
+**What Changed**:
+- 🚨 **Removed Cost Tracking**: ~1,200 lines of unreliable cost estimation code deleted
+- ✅ **Token-Only Budgets**: `--iterate-max-tokens` replaces `--iterate-max-cost`
+- ✅ **Stable Tracking**: Token counts never change (unlike provider pricing)
+- ✅ **Accurate Limits**: Direct from provider API responses, no estimates
+- ✅ **Zero Maintenance**: No more pricing updates needed
+- 📖 **Migration Guide**: `docs/migration/v9-cost-to-tokens.md` provides upgrade path
+
+**Breaking Changes**:
+- ❌ `--iterate-max-cost` flag removed (use `--iterate-max-tokens`)
+- ❌ `maxEstimatedCostUsd` config removed (use `maxTotalTokens`)
+- ❌ `cost_limit_exceeded` pause reason removed (use `token_limit_exceeded`)
+- ❌ `enableCostTracking` config removed
+- ❌ `warnAtCostPercent` config removed
+- ❌ CostTracker class and all cost estimation infrastructure removed
+
+**What Remains**:
+- ✅ All core CLI commands (ax run, ax memory, ax session, etc.)
+- ✅ 20+ specialized agents with persistent memory
+- ✅ Pure CLI wrapper architecture (simple integration)
+- ✅ Spec-Kit workflow system
+- ✅ Multi-provider support (Claude, Gemini, Grok, Codex)
+- ✅ Complete observability and tracing
+- ✅ Enterprise MCP support
+
+**Migration**:
+```bash
+# Old (v8.x)
+ax run backend "task" --iterate-max-cost 5.0
+
+# New (v9.0+)
+ax run backend "task" --iterate-max-tokens 1000000
+```
+
+**Why This Change**:
+Provider pricing changes frequently and unpredictably, making cost estimates unreliable and confusing. Token-based budgets are stable, accurate, and require zero maintenance. Users can calculate costs manually if needed using current provider pricing.
+
 ### v8.2.0 - Streamlined for AI Assistant Integration
 
 **Major Change**: Removed standalone chatbot interface to focus on core orchestration
 
 **What Changed**:
 - 🔄 Removed `ax cli` interactive mode (~25,000 lines of code)
-- ✅ Focused on AI assistant integration (Claude Code, Gemini CLI, Codex)
+- ✅ Focused on AI assistant integration (Claude Code, Gemini CLI, Grok, Codex)
 - ✅ Simplified UX - use familiar AI tools instead of learning new CLI
 - ✅ Reduced maintenance burden and complexity
 - ✅ Better separation of concerns: AutomatosX = orchestration, AI assistants = UI
@@ -1137,7 +1196,7 @@ await monitor.watchAgent('writer', (status) => {
 **What Remains**:
 - ✅ All core CLI commands (ax run, ax memory, ax session, etc.)
 - ✅ 20+ specialized agents with persistent memory
-- ✅ Policy-driven routing and cost optimization
+- ✅ Pure CLI wrapper (no API keys needed)
 - ✅ Spec-Kit workflow system
 - ✅ Multi-provider support with fallback
 - ✅ Complete observability and tracing
@@ -1145,7 +1204,7 @@ await monitor.watchAgent('writer', (status) => {
 **Migration**: See `MIGRATION.md` for guidance on transitioning from v7.x
 
 **Why This Change**:
-Users preferred using Claude Code, Gemini CLI, or Codex for conversations. The standalone chatbot duplicated functionality and added complexity. By removing it, AutomatosX becomes a pure orchestration platform that works **with** AI assistants rather than trying to replace them.
+Users preferred using Claude Code, Gemini CLI, Grok, or Codex for conversations. The standalone chatbot duplicated functionality and added complexity. By removing it, AutomatosX becomes a pure orchestration platform that works **with** AI assistants rather than trying to replace them.
 
 ---
 

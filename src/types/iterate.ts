@@ -94,9 +94,6 @@ export interface SafetyConfig {
   /** Dangerous operation risk levels */
   dangerousOperations: DangerousOperationsConfig;
 
-  /** Enable cost tracking and limits */
-  enableCostTracking: boolean;
-
   /** Enable time tracking and limits */
   enableTimeTracking: boolean;
 
@@ -131,9 +128,6 @@ export interface NotificationConfig {
   /** Warn at these time percentages (e.g., [75, 90, 95]) */
   warnAtTimePercent: number[];
 
-  /** Warn at these cost percentages (e.g., [75, 90]) */
-  warnAtCostPercent: number[];
-
   /** Pause iterate mode when genuine question detected */
   pauseOnGenuineQuestion: boolean;
 
@@ -157,8 +151,26 @@ export interface IterateDefaults {
   /** Maximum auto-responses per stage (default: 30) */
   maxAutoResponsesPerStage: number;
 
-  /** Maximum estimated cost in USD (default: 5.00) */
-  maxEstimatedCostUsd: number;
+  /**
+   * Maximum total tokens per run (default: 1,000,000)
+   * More reliable than cost limits as token counts don't change
+   * @since v8.6.0
+   */
+  maxTotalTokens?: number;
+
+  /**
+   * Maximum tokens per single iteration (default: 100,000)
+   * Prevents any single API call from consuming entire budget
+   * @since v8.6.0
+   */
+  maxTokensPerIteration?: number;
+
+  /**
+   * Warning thresholds for token usage as percentages (default: [75, 90])
+   * Emits warnings when token usage reaches these thresholds
+   * @since v8.6.0
+   */
+  warnAtTokenPercent?: number[];
 
   /** Auto-confirm checkpoints in stage execution (default: true) */
   autoConfirmCheckpoints: boolean;
@@ -210,7 +222,8 @@ export type ClassificationMethod =
   | 'pattern_library'    // Fast regex/keyword matching
   | 'contextual_rules'   // Conversation history analysis
   | 'provider_markers'   // Native AI annotations (e.g., Claude <THOUGHT>)
-  | 'semantic_scoring';  // ML-based classification (fallback)
+  | 'semantic_scoring'   // ML-based classification (fallback)
+  | 'cache';             // Cached result (v8.6.0+)
 
 /**
  * Classification result
@@ -287,7 +300,7 @@ export type PauseReason =
   | 'blocking_request'       // Needs data/clarification
   | 'high_risk_operation'    // Dangerous operation detected
   | 'time_limit_exceeded'    // Max duration reached
-  | 'cost_limit_exceeded'    // Max cost reached
+  | 'token_limit_exceeded'   // Max tokens reached (v8.6.0+)
   | 'iteration_limit_exceeded' // Max iterations reached
   | 'error_recovery_needed'  // Error requires user intervention
   | 'user_interrupt';        // User pressed Ctrl+C or Ctrl+Z
@@ -344,8 +357,17 @@ export interface IterateState {
   /** Auto-responses in current stage */
   currentStageAutoResponses: number;
 
-  /** Accumulated cost in USD */
-  totalCost: number;
+  /**
+   * Total tokens used across all iterations
+   * @since v8.6.0
+   */
+  totalTokens: number;
+
+  /**
+   * Tokens used in current stage
+   * @since v8.6.0
+   */
+  currentStageTokens: number;
 
   /** Classification history (recent N classifications) */
   classificationHistory: Classification[];
@@ -358,7 +380,7 @@ export interface IterateState {
 
   /** Last warning threshold reached */
   lastWarningThreshold?: {
-    type: 'time' | 'cost' | 'iterations';
+    type: 'time' | 'iterations' | 'tokens';
     percent: number;
     timestamp: string;
   };
@@ -383,8 +405,24 @@ export interface IterateStats {
   /** Total user interventions */
   totalUserInterventions: number;
 
-  /** Total cost in USD */
-  totalCost: number;
+  /**
+   * Total tokens used
+   * @since v8.6.0
+   */
+  totalTokens: number;
+
+  /**
+   * Average tokens per iteration
+   * @since v8.6.0
+   */
+  avgTokensPerIteration: number;
+
+  /**
+   * Total cost (USD)
+   * @deprecated Since v8.3.0 - Cost tracking removed, always returns 0
+   * @since v8.6.0 - Added back for backward compatibility
+   */
+  totalCost?: number;
 
   /** Classification accuracy (if ground truth available) */
   classificationAccuracy?: {
@@ -408,7 +446,7 @@ export interface IterateStats {
   };
 
   /** Stop reason */
-  stopReason: 'completion' | 'timeout' | 'cost_limit' | 'user_interrupt' | 'error';
+  stopReason: 'completion' | 'timeout' | 'token_limit' | 'user_interrupt' | 'error';
 
   /** Success rate (0-1) */
   successRate: number;

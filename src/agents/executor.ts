@@ -23,6 +23,7 @@ import { validateAndBuildTimeoutConfig } from '../utils/timeout-validator.js';
 import { formatError } from '../utils/error-formatter.js';
 import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger.js';
+import { VerbosityManager } from '../utils/verbosity-manager.js';
 import chalk from 'chalk';
 import ora from 'ora';
 import { DependencyGraphBuilder } from './dependency-graph.js';
@@ -372,10 +373,13 @@ export class AgentExecutor {
       this.displayExecutionInfo(context);
     }
 
-    // Create progress spinner
-    const spinner = showProgress
+    // v8.5.8: Create progress spinner (respects verbosity)
+    const verbosity = VerbosityManager.getInstance();
+    const shouldShowSpinner = showProgress && verbosity.shouldShow('showSpinner');
+
+    const spinner = shouldShowSpinner
       ? ora({
-          text: 'Executing agent...',
+          text: verbosity.isVerbose() ? 'Executing agent...' : 'Working...',
           spinner: 'dots'
         }).start()
       : null;
@@ -384,8 +388,8 @@ export class AgentExecutor {
       // Build prompt
       const prompt = this.buildPrompt(context);
 
-      // Update spinner
-      if (spinner) {
+      // Update spinner (only in verbose mode)
+      if (spinner && verbosity.isVerbose()) {
         spinner.text = `Executing with ${context.provider.name}...`;
       }
 

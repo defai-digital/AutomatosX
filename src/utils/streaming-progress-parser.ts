@@ -24,15 +24,22 @@ export class StreamingProgressParser {
   private spinner: Ora | null = null;
   private lastActivity: string = 'Starting...';
   private debugMode: boolean;
+  private quietMode: boolean; // v8.5.8: Suppress all output in quiet mode
 
-  constructor(debugMode: boolean = false) {
+  constructor(debugMode: boolean = false, quietMode: boolean = false) {
     this.debugMode = debugMode;
+    this.quietMode = quietMode;
   }
 
   /**
    * Initialize the progress spinner
    */
   start(initialMessage: string = 'Initializing agent...') {
+    // v8.5.8: Skip spinner in quiet mode
+    if (this.quietMode) {
+      return;
+    }
+
     if (!this.spinner) {
       this.spinner = ora({
         text: initialMessage,
@@ -135,6 +142,11 @@ export class StreamingProgressParser {
    * Update progress display
    */
   update(progress: ProgressUpdate) {
+    // v8.5.8: Skip updates in quiet mode
+    if (this.quietMode) {
+      return;
+    }
+
     if (!this.spinner) {
       this.start();
     }
@@ -172,6 +184,11 @@ export class StreamingProgressParser {
    * Mark as complete
    */
   succeed(message: string = 'Complete!') {
+    // v8.5.8: Skip success message in quiet mode
+    if (this.quietMode) {
+      return;
+    }
+
     if (this.spinner) {
       this.spinner.succeed(chalk.green(message));
       this.spinner = null;
@@ -182,9 +199,13 @@ export class StreamingProgressParser {
    * Mark as failed
    */
   fail(message: string = 'Failed!') {
+    // v8.5.8: Always show failures (even in quiet mode)
     if (this.spinner) {
       this.spinner.fail(chalk.red(message));
       this.spinner = null;
+    } else if (this.quietMode) {
+      // If no spinner but in quiet mode, still output error to stderr
+      console.error(chalk.red(`✖ ${message}`));
     }
   }
 

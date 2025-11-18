@@ -59,6 +59,105 @@ import type { AgentProfile } from '../types/agent.js';
 import { PathResolver } from '../core/path-resolver';
 ```
 
+**Runtime validation with Zod (REQUIRED for all scripts):**
+
+```typescript
+// ✅ Good: Use Zod for all external data validation
+import { z } from 'zod';
+
+const ConfigSchema = z.object({
+  workspaceRoot: z.string().min(1),
+  timeout: z.number().int().positive().default(30000),
+  maxRetries: z.number().int().min(0).max(5).default(3),
+  providers: z.array(z.string()).min(1),
+});
+
+type Config = z.infer<typeof ConfigSchema>;
+
+function loadConfig(data: unknown): Config {
+  return ConfigSchema.parse(data);
+}
+
+// ❌ Bad: No runtime validation (TypeScript types don't catch runtime errors)
+interface Config {
+  workspaceRoot: string;
+  timeout: number;
+  // ...
+}
+
+function loadConfig(data: any): Config {
+  return data as Config; // Unsafe!
+}
+```
+
+**When to use Zod in AutomatosX:**
+
+- ✅ **CLI argument parsing** - Validate all user input
+- ✅ **Configuration files** - Validate YAML/JSON configs
+- ✅ **API requests/responses** - Validate provider responses
+- ✅ **File I/O** - Validate file contents before processing
+- ✅ **Environment variables** - Validate at startup
+- ✅ **External scripts** - Always validate external data
+
+**Example: CLI argument validation**
+
+```typescript
+import { z } from 'zod';
+
+const RunCommandArgsSchema = z.object({
+  agent: z.string().min(1).max(50),
+  task: z.string().min(1),
+  timeout: z.number().int().positive().optional(),
+  verbose: z.boolean().default(false),
+  provider: z.enum(['claude', 'gemini', 'openai']).optional(),
+});
+
+export function validateRunArgs(argv: unknown) {
+  try {
+    return RunCommandArgsSchema.parse(argv);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.issues.map(
+        (issue) => `${issue.path.join('.')}: ${issue.message}`
+      );
+      throw new Error(`Invalid arguments:\n${messages.join('\n')}`);
+    }
+    throw error;
+  }
+}
+```
+
+**Example: Agent profile validation**
+
+```typescript
+import { z } from 'zod';
+
+const AgentProfileSchema = z.object({
+  name: z.string().min(1).max(50),
+  displayName: z.string().min(1).max(100),
+  description: z.string().min(1),
+  systemPrompt: z.string().min(1),
+  defaultProvider: z.enum(['claude', 'gemini', 'openai']).optional(),
+  timeout: z.number().int().positive().optional(),
+  abilities: z.array(z.string()).default([]),
+  stages: z.array(z.object({
+    name: z.string(),
+    prompt: z.string(),
+    checkpoints: z.array(z.string()).optional(),
+  })).optional(),
+});
+
+type AgentProfile = z.infer<typeof AgentProfileSchema>;
+
+export async function loadAgentProfile(path: string): Promise<AgentProfile> {
+  const raw = await readFile(path, 'utf-8');
+  const yaml = YAML.parse(raw);
+
+  // Validate and return typed profile
+  return AgentProfileSchema.parse(yaml);
+}
+```
+
 ## Code Quality Standards
 
 **Function size (<50 lines):**

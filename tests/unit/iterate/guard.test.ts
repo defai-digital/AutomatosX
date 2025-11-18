@@ -28,7 +28,6 @@ describe('DangerousOperationGuard', () => {
         shellCommands: 'MEDIUM',
         packageInstall: 'LOW'
       },
-      enableCostTracking: true,
       enableTimeTracking: true,
       enableIterationTracking: true
     };

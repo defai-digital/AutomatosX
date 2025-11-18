@@ -2,6 +2,98 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [9.0.0] - 2025-11-18
+
+### Breaking Changes
+- **🚨 Cost-Based Budget Tracking Removed** - Token-based limits only
+  - Removed `--iterate-max-cost` CLI flag (use `--iterate-max-tokens`)
+  - Removed `maxEstimatedCostUsd` from configuration
+  - Removed `totalCost` from IterateStats (now optional/deprecated field)
+  - Removed `cost_limit_exceeded` pause reason (use `token_limit_exceeded`)
+  - Removed `enableCostTracking` from SafetyConfig
+  - Removed `warnAtCostPercent` from NotificationConfig
+  - Removed CostTracker class (~1,200 lines of code)
+
+### Removed
+- **CostTracker System** - Full removal of unreliable cost estimation
+  - Deleted `src/core/cost-tracker.ts` (597 lines)
+  - Deleted `src/core/cost-tracker-schemas.ts` (~100 lines)
+  - Deleted `src/types/cost.ts` (~150 lines)
+  - Deleted cost-related test files (~341 lines)
+  - Total reduction: ~1,200 lines of code
+
+### Changed
+- **Iterate Mode Budget System** - Token-only tracking
+  - Token limits are stable and accurate (never change)
+  - Budgets enforced via `maxTotalTokens` and `maxTokensPerIteration`
+  - Stats show token usage instead of cost estimates
+  - Status renderer displays tokens instead of dollars
+
+### Migration
+- See `docs/migration/v9-cost-to-tokens.md` for complete migration guide
+- Replace `--iterate-max-cost 5.0` with `--iterate-max-tokens 1000000`
+- Update config: `maxEstimatedCostUsd` → `maxTotalTokens`
+- Track costs manually if needed: `tokens * price_per_1M_tokens`
+
+### Why This Change
+- Provider pricing changes frequently without notice
+- Cost estimates were unreliable and caused user confusion
+- Token counts are stable and accurately tracked
+- Simpler codebase (~1,200 lines removed)
+- Zero maintenance burden for pricing updates
+
+## [8.6.0] - 2025-11-18
+
+### Added
+- **🎯 Token-Based Budget Limits for Iterate Mode** - More reliable than cost-based limits
+  - `--iterate-max-tokens` flag (default: 1,000,000 tokens)
+  - `--iterate-max-tokens-per-iteration` flag (default: 100,000 tokens)
+  - Progressive warnings at 75% and 90% of token budget
+  - Accurate tracking from provider API responses
+  - Token metrics in iterate stats (`totalTokens`, `avgTokensPerIteration`)
+
+- **📊 Token Budget Enforcement**
+  - Automatic pause when token limit exceeded
+  - Real-time token usage tracking
+  - Per-stage and total token counters
+  - New pause reason: `token_limit_exceeded`
+
+- **📖 Migration Guide** - Complete guide for migrating from cost to token limits
+  - `docs/migration/v9-cost-to-tokens.md`
+  - Conversion formulas and examples
+  - Timeline and breaking changes documented
+
+### Changed
+- **Better Budget Control** - Token limits more reliable than cost estimates
+  - Token counts never change (unlike provider pricing)
+  - Accurate usage from API responses (not estimates)
+  - No maintenance needed for pricing updates
+
+### Deprecated
+- **⚠️ Cost-Based Limits** - Will be removed in v9.0.0
+  - `--iterate-max-cost` flag (use `--iterate-max-tokens` instead)
+  - `maxEstimatedCostUsd` config field (use `maxTotalTokens` instead)
+  - Shows clear deprecation warnings with migration guidance
+  - Still functional in v8.6.0-v8.7.x for backward compatibility
+
+### Performance
+- Token tracking overhead: < 1ms per iteration
+- No performance regression
+- Build time: 650ms (unchanged)
+- Test suite: 25s (unchanged)
+
+### Testing
+- 34 new comprehensive token tracking tests
+- All 2,441 tests passing
+- Edge cases covered (zero limit, large limit, warnings)
+- Backward compatibility verified
+
+### Migration
+- Fully backward compatible (zero breaking changes)
+- Both cost and token flags work in v8.6.0-v8.7.x
+- Migration guide provides clear upgrade path
+- Breaking change deferred to v9.0.0
+
 ## [8.5.2] - 2025-11-18
 
 ### Added

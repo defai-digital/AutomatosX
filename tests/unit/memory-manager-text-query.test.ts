@@ -183,7 +183,7 @@ describe('MemoryManager Text Query (FTS5)', () => {
         manager.search({
           limit: 5
         } as never) // Type assertion to bypass TypeScript check
-      ).rejects.toThrow('Search query must provide text for FTS5 search');
+      ).rejects.toThrow('Either text or embedding must be provided for search');
     });
 
     it('should handle empty search results gracefully', async () => {

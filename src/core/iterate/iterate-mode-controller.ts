@@ -8,7 +8,7 @@
  * - Wraps StageExecutionController execution path
  * - Coordinates with SessionManager for state persistence
  * - Subscribes to AgentExecutor hooks for response interception
- * - Integrates with Router CostTracker for budget enforcement
+ * - Enforces token-based budget limits (v9.0.0+)
  *
  * @module core/iterate/iterate-mode-controller
  * @since v6.4.0
@@ -31,6 +31,7 @@ import { logger } from '../../utils/logger.js';
 import { IterateError } from '../../types/iterate.js';
 import { IterateClassifier } from './iterate-classifier.js';
 import { IterateAutoResponder } from './iterate-auto-responder.js';
+import { IterateStatusRenderer } from '../../cli/renderers/iterate-status-renderer.js';
 import { randomUUID } from 'crypto';
 
 /**
@@ -59,6 +60,7 @@ export class IterateModeController {
   private state?: IterateState;
   private classifier: IterateClassifier;
   private responder: IterateAutoResponder;
+  private statusRenderer?: IterateStatusRenderer;
 
   /**
    * Create IterateModeController
@@ -68,10 +70,12 @@ export class IterateModeController {
    */
   constructor(
     config: IterateConfig,
-    sessionManager?: SessionManager
+    sessionManager?: SessionManager,
+    statusRenderer?: IterateStatusRenderer
   ) {
     this.config = config;
     this.sessionManager = sessionManager;
+    this.statusRenderer = statusRenderer;
 
     // Initialize classifier
     this.classifier = new IterateClassifier(config.classifier);
@@ -86,8 +90,9 @@ export class IterateModeController {
     logger.debug('IterateModeController created', {
       enabled: config.enabled,
       maxDuration: config.defaults.maxDurationMinutes,
-      maxCost: config.defaults.maxEstimatedCostUsd,
-      strictness: config.classifier.strictness
+      maxTokens: config.defaults.maxTotalTokens,
+      strictness: config.classifier.strictness,
+      hasStatusRenderer: !!statusRenderer
     });
   }
 
@@ -123,7 +128,7 @@ export class IterateModeController {
       task: context.task.substring(0, 100),
       sessionId,
       maxDuration: this.config.defaults.maxDurationMinutes,
-      maxCost: this.config.defaults.maxEstimatedCostUsd
+      maxTokens: this.config.defaults.maxTotalTokens
     });
 
     // Emit start event
@@ -136,7 +141,7 @@ export class IterateModeController {
         task: context.task,
         config: {
           maxDuration: this.config.defaults.maxDurationMinutes,
-          maxCost: this.config.defaults.maxEstimatedCostUsd,
+          maxTokens: this.config.defaults.maxTotalTokens,
           maxIterations: this.config.defaults.maxIterationsPerRun
         }
       }
@@ -152,8 +157,8 @@ export class IterateModeController {
         throw new IterateError('Time budget exceeded before execution', 'budget_exceeded');
       }
 
-      if (this.checkCostBudget()) {
-        throw new IterateError('Cost budget exceeded before execution', 'budget_exceeded');
+      if (this.checkTokenBudget()) {
+        throw new IterateError('Token budget exceeded before execution', 'budget_exceeded');
       }
 
       // Step 3: Return framework result
@@ -277,25 +282,39 @@ export class IterateModeController {
       method: classification.method
     });
 
-    // Step 2: Increment iteration counters
+    // Render classification status (v8.6.0 UX)
+    if (this.statusRenderer) {
+      this.statusRenderer.handleEvent({
+        type: 'classification',
+        classification,
+        response
+      });
+    }
+
+    // Step 2: Track tokens (v9.0.0 - token-based budgets only)
+    if (response.tokensUsed && response.tokensUsed.total) {
+      this.updateTokens(response.tokensUsed.total);
+    }
+
+    // Step 3: Increment iteration counters
     this.incrementIterations();
 
-    // Step 3: Check budget limits
+    // Step 4: Check budget limits (v9.0.0 - token and time budgets only)
+    if (this.checkTokenBudget()) {
+      return {
+        type: 'pause',
+        reason: 'Token budget exceeded',
+        pauseReason: 'token_limit_exceeded',
+        context: `Maximum token limit of ${this.config.defaults.maxTotalTokens} reached`
+      };
+    }
+
     if (this.checkTimeBudget()) {
       return {
         type: 'pause',
         reason: 'Time budget exceeded',
         pauseReason: 'time_limit_exceeded',
         context: `Maximum duration of ${this.config.defaults.maxDurationMinutes} minutes reached`
-      };
-    }
-
-    if (this.checkCostBudget()) {
-      return {
-        type: 'pause',
-        reason: 'Cost budget exceeded',
-        pauseReason: 'cost_limit_exceeded',
-        context: `Maximum cost of $${this.config.defaults.maxEstimatedCostUsd} reached`
       };
     }
 
@@ -333,7 +352,16 @@ export class IterateModeController {
       }
     }
 
-    // Step 6: Emit telemetry event
+    // Step 6: Render action status (v8.6.0 UX)
+    if (this.statusRenderer) {
+      this.statusRenderer.handleEvent({
+        type: 'action',
+        action,
+        stats: this.getStats()
+      });
+    }
+
+    // Step 7: Emit telemetry event
     this.emitEvent({
       type: 'iterate.classification',
       timestamp: new Date().toISOString(),
@@ -590,7 +618,9 @@ export class IterateModeController {
         totalIterations: 0,
         totalAutoResponses: 0,
         totalUserInterventions: 0,
-        totalCost: 0,
+        totalTokens: 0, // v9.0.0
+        avgTokensPerIteration: 0, // v9.0.0
+        totalCost: 0, // v8.5.8 - Deprecated, always 0 (cost tracking removed)
         classificationBreakdown: {
           confirmation_prompt: 0,
           status_update: 0,
@@ -643,12 +673,12 @@ export class IterateModeController {
     const userInterventions = breakdown.genuine_question + breakdown.blocking_request;
 
     // Determine stop reason
-    let stopReason: 'completion' | 'timeout' | 'cost_limit' | 'user_interrupt' | 'error' = 'completion';
+    let stopReason: 'completion' | 'timeout' | 'token_limit' | 'user_interrupt' | 'error' = 'completion';
     if (this.state.pauseReason) {
       if (this.state.pauseReason === 'time_limit_exceeded') {
         stopReason = 'timeout';
-      } else if (this.state.pauseReason === 'cost_limit_exceeded') {
-        stopReason = 'cost_limit';
+      } else if (this.state.pauseReason === 'token_limit_exceeded') {
+        stopReason = 'token_limit'; // v9.0.0
       } else if (this.state.pauseReason === 'user_interrupt') {
         stopReason = 'user_interrupt';
       } else if (this.state.pauseReason === 'error_recovery_needed') {
@@ -662,12 +692,19 @@ export class IterateModeController {
       ? (this.state.totalIterations - errorCount) / this.state.totalIterations
       : 1.0;
 
+    // v9.0.0: Calculate average tokens per iteration
+    const avgTokensPerIteration = this.state.totalIterations > 0
+      ? this.state.totalTokens / this.state.totalIterations
+      : 0;
+
     return {
       durationMs,
       totalIterations: this.state.totalIterations,
       totalAutoResponses: this.state.totalAutoResponses,
       totalUserInterventions: userInterventions,
-      totalCost: this.state.totalCost,
+      totalTokens: this.state.totalTokens, // v9.0.0
+      avgTokensPerIteration: Math.round(avgTokensPerIteration), // v9.0.0
+      totalCost: 0, // v8.5.8 - Deprecated, always 0 (cost tracking removed)
       classificationBreakdown: breakdown,
       avgClassificationLatencyMs: Math.round(avgLatency),
       safetyChecks: {
@@ -744,39 +781,53 @@ export class IterateModeController {
   }
 
   /**
-   * Check if cost budget exceeded
+   * Check if token budget exceeded
    *
-   * @returns True if cost budget exceeded
+   * @returns True if token budget exceeded
    * @private
+   * @since v8.6.0
    *
-   * **Phase 1 (Week 1)**: Placeholder
-   * **Phase 4 (Week 4)**: Real budget checking with state cost tracking
+   * More reliable than cost checking as token counts don't change
    */
-  private checkCostBudget(): boolean {
+  private checkTokenBudget(): boolean {
     if (!this.state) return false;
 
-    const currentCost = this.state.totalCost;
-    const maxCost = this.config.defaults.maxEstimatedCostUsd;
+    // Skip if token limits not configured (backward compatibility)
+    const maxTotalTokens = this.config.defaults.maxTotalTokens;
+    if (!maxTotalTokens) {
+      return false; // No token limit set, don't enforce
+    }
+
+    const currentTokens = this.state.totalTokens;
 
     // Check if budget exceeded
-    if (currentCost >= maxCost) {
-      logger.warn('Cost budget exceeded', {
-        currentCost,
-        maxCost,
+    if (currentTokens >= maxTotalTokens) {
+      logger.warn('Token budget exceeded', {
+        currentTokens,
+        maxTotalTokens,
         sessionId: this.state.sessionId
       });
       return true;
     }
 
     // Warning thresholds (75%, 90%)
-    const percentUsed = (currentCost / maxCost) * 100;
-    for (const threshold of this.config.notifications.warnAtCostPercent) {
+    const percentUsed = (currentTokens / maxTotalTokens) * 100;
+    const warnThresholds = this.config.defaults.warnAtTokenPercent || [75, 90];
+
+    for (const threshold of warnThresholds) {
       if (percentUsed >= threshold && percentUsed < threshold + 1) {
-        logger.warn(`Cost budget at ${threshold}% of limit`, {
-          currentCost,
-          maxCost,
-          percentUsed
+        logger.warn(`Token budget at ${threshold}% of limit`, {
+          currentTokens,
+          maxTotalTokens,
+          percentUsed: percentUsed.toFixed(1)
         });
+
+        // Update last warning threshold
+        this.state.lastWarningThreshold = {
+          type: 'tokens',
+          percent: threshold,
+          timestamp: new Date().toISOString()
+        };
       }
     }
 
@@ -842,14 +893,16 @@ export class IterateModeController {
       currentStageIterations: 0,
       totalAutoResponses: 0,
       currentStageAutoResponses: 0,
-      totalCost: 0,
+      totalTokens: 0, // v9.0.0: token-based tracking only
+      currentStageTokens: 0, // v9.0.0: per-stage token tracking
       classificationHistory: [],
       metadata: {}
     };
 
     logger.info('Iterate state initialized', {
       sessionId,
-      startedAt: this.state.startedAt
+      startedAt: this.state.startedAt,
+      maxTokens: this.config.defaults.maxTotalTokens
     });
   }
 
@@ -882,17 +935,28 @@ export class IterateModeController {
   }
 
   /**
-   * Update cost accumulator
+   * Update token counters
    *
-   * @param cost - Cost to add
+   * @param tokens - Token count to add
    * @private
+   * @since v8.6.0
+   *
+   * More reliable than cost tracking as token counts don't change with pricing
    */
-  private updateCost(cost: number): void {
+  private updateTokens(tokens: number): void {
     if (!this.state) {
       return;
     }
 
-    this.state.totalCost += cost;
+    this.state.totalTokens += tokens;
+    this.state.currentStageTokens += tokens;
+
+    logger.debug('Token usage updated', {
+      tokensAdded: tokens,
+      totalTokens: this.state.totalTokens,
+      currentStageTokens: this.state.currentStageTokens,
+      maxTotalTokens: this.config.defaults.maxTotalTokens
+    });
   }
 
   /**
@@ -915,4 +979,5 @@ export class IterateModeController {
         timestamp: c.timestamp
       }));
   }
+
 }

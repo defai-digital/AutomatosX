@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security Vulnerability Report
+    url: https://github.com/defai-digital/AutomatosX/security/advisories/new
+    about: Please report security vulnerabilities privately through our security advisory system
+  - name: 💬 GitHub Discussions
+    url: https://github.com/defai-digital/AutomatosX/discussions
+    about: Ask questions, share ideas, and discuss AutomatosX with the community
+  - name: 📖 Documentation
+    url: https://github.com/defai-digital/AutomatosX/blob/main/README.md
+    about: Check the documentation for answers to common questions
+  - name: 📧 Email Support
+    url: mailto:support@defai.digital
+    about: Contact us directly for other inquiries

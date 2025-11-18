@@ -20,6 +20,14 @@ import type {
 import { MemoryError } from '../types/memory.js';
 import { logger } from '../utils/logger.js';
 import { dirname, normalizePath } from '../utils/path-utils.js';
+import {
+  MemoryMetadataSchema,
+  MemorySearchQuerySchema,
+  GetAllOptionsSchema,
+  ExportOptionsSchema,
+  ImportOptionsSchema,
+  MemoryManagerConfigSchema
+} from './memory-manager-schemas.js';
 
 // v4.11.0: VECTOR_DIMENSIONS removed (FTS5 only, no vector search)
 
@@ -298,6 +306,16 @@ export class MemoryManager implements IMemoryManager {
       throw new MemoryError('Memory manager not initialized', 'DATABASE_ERROR');
     }
 
+    // v8.5.7 Phase 2: Validate metadata with Zod
+    try {
+      MemoryMetadataSchema.parse(metadata);
+    } catch (error: any) {
+      throw new MemoryError(
+        `Invalid metadata: ${error.message}`,
+        'VALIDATION_ERROR'
+      );
+    }
+
     // v4.11.0: Embedding validation removed (FTS5 only, no vector search)
     // Note: embedding parameter deprecated but kept for backward compatibility
 
@@ -395,6 +413,16 @@ export class MemoryManager implements IMemoryManager {
   async search(query: MemorySearchQuery): Promise<MemorySearchResult[]> {
     if (!this.initialized) {
       throw new MemoryError('Memory manager not initialized', 'DATABASE_ERROR');
+    }
+
+    // v8.5.7 Phase 2: Validate query with Zod
+    try {
+      MemorySearchQuerySchema.parse(query);
+    } catch (error: any) {
+      throw new MemoryError(
+        `Invalid search query: ${error.message}`,
+        'VALIDATION_ERROR'
+      );
     }
 
     // Use FTS5 for text search (no embedding needed)
@@ -665,6 +693,18 @@ export class MemoryManager implements IMemoryManager {
   }): Promise<MemoryEntry[]> {
     if (!this.initialized) {
       throw new MemoryError('Memory manager not initialized', 'DATABASE_ERROR');
+    }
+
+    // v8.5.7 Phase 2: Validate options with Zod
+    if (options) {
+      try {
+        GetAllOptionsSchema.parse(options);
+      } catch (error: any) {
+        throw new MemoryError(
+          `Invalid getAll options: ${error.message}`,
+          'VALIDATION_ERROR'
+        );
+      }
     }
 
     try {
@@ -1280,6 +1320,18 @@ export class MemoryManager implements IMemoryManager {
       throw new MemoryError('Memory manager not initialized', 'DATABASE_ERROR');
     }
 
+    // v8.5.7 Phase 2: Validate export options with Zod
+    if (options) {
+      try {
+        ExportOptionsSchema.parse(options);
+      } catch (error: any) {
+        throw new MemoryError(
+          `Invalid export options: ${error.message}`,
+          'VALIDATION_ERROR'
+        );
+      }
+    }
+
     const {
       includeEmbeddings = false,
       filters = {},
@@ -1425,6 +1477,18 @@ export class MemoryManager implements IMemoryManager {
   ): Promise<import('../types/memory.js').ImportResult> {
     if (!this.initialized) {
       throw new MemoryError('Memory manager not initialized', 'DATABASE_ERROR');
+    }
+
+    // v8.5.7 Phase 2: Validate import options with Zod
+    if (options) {
+      try {
+        ImportOptionsSchema.parse(options);
+      } catch (error: any) {
+        throw new MemoryError(
+          `Invalid import options: ${error.message}`,
+          'VALIDATION_ERROR'
+        );
+      }
     }
 
     const {

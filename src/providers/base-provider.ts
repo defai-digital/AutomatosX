@@ -36,6 +36,7 @@ import {
 import readline from 'readline';
 import chalk from 'chalk';
 import { StreamingProgressParser } from '../utils/streaming-progress-parser.js';
+import { VerbosityManager } from '../utils/verbosity-manager.js';
 
 /**
  * Execute command with proper process cleanup (BUG #3 FIX)
@@ -263,10 +264,14 @@ export abstract class BaseProvider implements Provider {
       const streamingEnabled = process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true';
       const debugMode = process.env.AUTOMATOSX_DEBUG === 'true';
 
+      // v8.5.8: Check verbosity to determine quiet mode
+      const verbosity = VerbosityManager.getInstance();
+      const quietMode = verbosity.isQuiet();
+
       // Create progress parser for user-friendly streaming (v8.5.1)
       let progressParser: StreamingProgressParser | null = null;
       if (streamingEnabled) {
-        progressParser = new StreamingProgressParser(debugMode);
+        progressParser = new StreamingProgressParser(debugMode, quietMode);
         progressParser.start(`Executing ${cliCommand}...`);
       }
 

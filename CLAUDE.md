@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v8.5.4) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX (v8.5.8) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
@@ -36,7 +36,14 @@ ax --debug <command>                       # CLI debug mode (enables verbose log
 export AUTOMATOSX_LOG_LEVEL=warn          # Default: only warnings and errors
 export AUTOMATOSX_LOG_LEVEL=info          # Verbose: shows all initialization logs
 export AUTOMATOSX_LOG_LEVEL=error         # Minimal: only errors
-ax --quiet <command>                       # Same as AUTOMATOSX_LOG_LEVEL=error
+
+# Verbosity control (v8.5.8+ - controls CLI output)
+ax run backend "task" --quiet             # Quiet mode (minimal output)
+ax run backend "task"                      # Normal mode (default, shows progress)
+ax run backend "task" --verbose            # Verbose mode (all details)
+export AUTOMATOSX_VERBOSITY=0              # Quiet mode via env var
+export AUTOMATOSX_VERBOSITY=1              # Normal mode via env var
+export AUTOMATOSX_VERBOSITY=2              # Verbose mode via env var
 
 # Release workflow
 npm run sync:all-versions                  # Sync versions across files
@@ -44,7 +51,7 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v8.5.4)
+### Current State (v8.5.8)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
@@ -55,7 +62,14 @@ npm run release:check                      # Validate release readiness
 - ✅ Natural language integration with AI assistants
 - ⚠️ Cost estimation **disabled by default** (v6.5.11+) - enable in config if needed
 
-**Recent Changes (v8.5.4 - Streamlined for AI Assistant Integration):**
+**Recent Changes (v8.5.8 - Verbosity Control System):**
+- 🎯 **NEW: 3-Level Verbosity System**: Quiet (AI assistants), Normal (CLI), Verbose (debugging)
+- 🤖 **Auto-Quiet Mode**: Automatically detects non-interactive contexts (Claude Code, CI, background)
+- 🔇 **60-80% Noise Reduction**: Minimal output for AI assistant integration
+- ⚡ **Smart Defaults**: `--quiet` flag, `AUTOMATOSX_VERBOSITY` env var, auto-detection
+- 📊 **Enhanced UX**: Execution timing in normal mode, debug summary in verbose mode
+
+**Previous Changes (v8.5.4 - Streamlined for AI Assistant Integration):**
 - 🔄 **Removed standalone chatbot**: Focus on integration with Claude Code, Gemini CLI, OpenAI Codex
 - ✅ **Streamlined CLI**: Direct command execution for agent orchestration
 - ✅ **AI Assistant First**: Best experience through your preferred AI assistant
@@ -238,6 +252,125 @@ Claude Code: Displays results and continues conversation
 - ✅ No new commands or syntax to learn
 - ✅ Best-in-class AI conversation experience
 - ✅ AutomatosX focuses on orchestration, not UI
+
+## Controlling Output Verbosity (v8.5.8+)
+
+AutomatosX provides three verbosity levels for different use cases, with automatic detection for non-interactive contexts.
+
+### Quiet Mode (Level 0) - For AI Assistants
+
+**Use When**: Running through Claude Code, background processes, CI environments
+
+```bash
+ax run backend "task" --quiet
+# OR
+ax run backend "task" -q
+# OR
+export AUTOMATOSX_VERBOSITY=0
+ax run backend "task"
+```
+
+**What's Shown**:
+- Only errors and final results
+- No banners, spinners, or progress indicators
+- Minimal whitespace for clean output
+
+**Auto-Enabled When**:
+- No TTY attached (piped output, background processes)
+- `CI=true` environment variable
+- `--iterate` or `--auto-continue` flags active
+
+**Perfect For**: AI assistant integration, automated scripts, log file generation
+
+### Normal Mode (Level 1) - Default for CLI
+
+**Use When**: Interactive terminal sessions, direct CLI use
+
+```bash
+ax run backend "task"
+# OR
+export AUTOMATOSX_VERBOSITY=1
+ax run backend "task"
+```
+
+**What's Shown**:
+- Welcome banner
+- Progress spinner ("Working...")
+- Final result with execution time
+- Completion message
+
+**What's Hidden**:
+- Complexity analysis
+- Provider details
+- Debug information
+
+**Perfect For**: Daily development workflows, manual testing
+
+### Verbose Mode (Level 2) - For Debugging
+
+**Use When**: Troubleshooting issues, debugging workflows
+
+```bash
+ax run backend "task" --verbose
+# OR
+ax run backend "task" -v
+# OR
+export AUTOMATOSX_VERBOSITY=2
+ax run backend "task"
+```
+
+**What's Shown**:
+- Everything from Normal mode
+- Complexity analysis for tasks
+- Provider selection details
+- Agent name resolution
+- Memory status
+- Execution summary with timing
+
+**Perfect For**: Debugging, understanding system behavior, performance analysis
+
+### Verbosity Priority Order
+
+When multiple flags are set, this priority order applies:
+
+1. `--verbosity=N` flag (highest priority)
+2. `--quiet` or `--verbose` flags
+3. `AUTOMATOSX_VERBOSITY` environment variable
+4. Auto-detection (based on TTY, CI, iterate mode)
+5. Default (Normal mode for interactive, Quiet for non-interactive)
+
+### Examples
+
+```bash
+# Quiet mode for Claude Code integration (automatic)
+# Claude Code runs without TTY → auto-quiet mode
+ax run backend "implement auth"
+
+# Explicit quiet mode for scripts
+ax run backend "analyze code" --quiet > report.txt
+
+# Normal mode for development (default in terminal)
+ax run backend "refactor module"
+# Output: Banner + "Working..." + result + "Complete (5.2s)"
+
+# Verbose mode for debugging
+ax run backend "debug issue" --verbose
+# Output: All details including complexity, provider, timing
+
+# Override auto-detection
+AUTOMATOSX_VERBOSITY=1 ax run backend "task"  # Force normal mode even in CI
+```
+
+### Backward Compatibility
+
+**Preserved**:
+- `--verbose` flag still works (maps to level 2)
+- `AUTOMATOSX_LOG_LEVEL` still controls internal logger (separate system)
+- All existing commands work unchanged
+
+**Breaking Change**:
+- Non-interactive contexts (no TTY) now default to quiet mode instead of normal mode
+- To restore old behavior: `export AUTOMATOSX_VERBOSITY=1`
 
 ## Critical Development Patterns
 

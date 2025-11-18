@@ -647,17 +647,16 @@ export class UnifiedMCPManager implements IMCPManager {
    */
   private async waitForExit(process: ChildProcess, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      let exitListener: () => void;
-
-      const timeout = setTimeout(() => {
-        process.removeListener('exit', exitListener);
-        reject(new Error(`Process did not exit within ${timeoutMs}ms`));
-      }, timeoutMs);
-
-      exitListener = () => {
+      const exitListener = () => {
         clearTimeout(timeout);
         resolve();
       };
+
+      const timeout = setTimeout(() => {
+        // FIXED: Remove event listener to prevent memory leak
+        process.removeListener('exit', exitListener);
+        reject(new Error(`Process did not exit within ${timeoutMs}ms`));
+      }, timeoutMs);
 
       process.once('exit', exitListener);
     });

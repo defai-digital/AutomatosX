@@ -14,7 +14,38 @@ Thank you for your interest in contributing to AutomatosX! This document provide
 
 ## Code of Conduct
 
-This project follows a Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+This project follows a Code of Conduct (see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+
+## Project Status & Contribution Policy
+
+AutomatosX is an **open source project** published for **transparency and community benefit**. While the entire codebase is public for review and learning:
+
+### What We Welcome ✅
+
+- **Bug Reports** - Please report issues via GitHub Issues
+- **Feature Suggestions** - Share your ideas for discussion
+- **Documentation Improvements** - Typos, clarifications, examples
+- **Security Reports** - See [SECURITY.md](SECURITY.md) for responsible disclosure
+- **Questions & Discussions** - Use GitHub Discussions
+- **Sharing & Using** - Use AutomatosX in your projects!
+
+### Current Development Model 🔧
+
+- This is **not actively seeking code contributions** at this time
+- The codebase is **fully transparent** for trust and verification
+- Development is primarily done by the core team
+- We may accept PRs on a case-by-case basis
+
+### Why This Approach?
+
+We believe in **radical transparency** - you should be able to:
+- ✅ Verify the code does what it claims
+- ✅ Audit security and privacy practices
+- ✅ Learn from the implementation
+- ✅ Trust that nothing harmful is hidden
+- ✅ Fork and modify for your own use (within license terms)
+
+This doesn't mean we don't value the community! Issues, discussions, and feedback are **highly appreciated** and help make AutomatosX better.
 
 ## Getting Started
 

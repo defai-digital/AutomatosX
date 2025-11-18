@@ -25,6 +25,10 @@ import { logger } from '../../utils/logger.js';
 import { writeAgentStatus } from '../../utils/agent-status-writer.js';
 import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
 import type { ExecutionHooks } from '../../agents/executor.js';
+// Note: CostTracker removed in v8.3.0 - cost tracking disabled in iterate mode
+// import { CostTracker } from '../../core/cost-tracker.js';
+import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
+import { VerbosityManager, VerbosityLevel } from '../../utils/verbosity-manager.js';
 import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
@@ -41,6 +45,8 @@ interface RunOptions {
   memory?: boolean;
   saveMemory?: boolean;
   verbose?: boolean;
+  quiet?: boolean; // v8.5.8: Quiet mode flag
+  verbosity?: number; // v8.5.8: Explicit verbosity level (0-2)
   format?: 'text' | 'json' | 'markdown';
   save?: string;
   timeout?: number;
@@ -63,9 +69,12 @@ interface RunOptions {
   // v6.4.0: Iterate mode (autonomous execution)
   iterate?: boolean;
   iterateTimeout?: number;
-  iterateMaxCost?: number;
   iterateStrictness?: 'paranoid' | 'balanced' | 'permissive';
   iterateDryRun?: boolean;
+  // v8.6.0: Token-based limits
+  iterateMaxTokens?: number;
+  iterateMaxTokensPerIteration?: number;
+  iterateWarnAtTokenPercent?: number[];
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -104,9 +113,20 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       })
       .option('verbose', {
         alias: 'v',
-        describe: 'Verbose output',
+        describe: 'Verbose output (level 2)',
         type: 'boolean',
         default: false
+      })
+      .option('quiet', {
+        alias: 'q',
+        describe: 'Quiet mode - minimal output (level 0)',
+        type: 'boolean',
+        default: false
+      })
+      .option('verbosity', {
+        describe: 'Output verbosity level (0=quiet, 1=normal, 2=verbose)',
+        type: 'number',
+        choices: [0, 1, 2]
       })
       .option('format', {
         describe: 'Output format',
@@ -188,8 +208,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: 'Max duration for iterate mode in minutes (default: 120)',
         type: 'number'
       })
-      .option('iterate-max-cost', {
-        describe: 'Max estimated cost in USD for iterate mode (default: 5.00)',
+      .option('iterate-max-tokens', {
+        describe: 'Max total tokens for iterate mode (default: 1,000,000)',
+        type: 'number'
+      })
+      .option('iterate-max-tokens-per-iteration', {
+        describe: 'Max tokens per single iteration (default: 100,000). Prevents runaway API calls.',
         type: 'number'
       })
       .option('iterate-strictness', {
@@ -205,6 +229,19 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
   },
 
   handler: async (argv) => {
+    // v8.5.8: Initialize verbosity manager early
+    // Priority: explicit --verbosity > --quiet/--verbose flags > auto-detection
+    let verbosityLevel: VerbosityLevel | undefined;
+    if (argv.verbosity !== undefined) {
+      verbosityLevel = argv.verbosity as VerbosityLevel;
+    } else if (argv.quiet) {
+      verbosityLevel = VerbosityLevel.QUIET;
+    } else if (argv.verbose) {
+      verbosityLevel = VerbosityLevel.VERBOSE;
+    }
+    // If no explicit level, VerbosityManager will auto-detect
+    const verbosity = VerbosityManager.getInstance(verbosityLevel);
+
     // Validate inputs
     if (!argv.agent || typeof argv.agent !== 'string') {
       console.log(chalk.red.bold('\n❌ Error: Agent name is required\n'));
@@ -232,8 +269,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
         if (skipPrompt) {
           // Autonomous mode or non-interactive: Skip complexity prompt entirely and continue with standard ax run
-          const reason = !process.stdin.isTTY ? 'non-interactive mode' : 'autonomous mode';
-          console.log(chalk.gray(`\n→ Complex task detected, continuing with standard ax run (${reason})...\n`));
+          // v8.5.8: Only show message in verbose mode to reduce noise
+          if (verbosity.shouldShow('showComplexityAnalysis')) {
+            const reason = !process.stdin.isTTY ? 'non-interactive mode' : 'autonomous mode';
+            console.log(chalk.gray(`\n→ Complex task detected, continuing with standard ax run (${reason})...\n`));
+          }
         } else {
           // Interactive mode: Show complexity analysis and prompt user
           // Show complexity analysis
@@ -348,7 +388,19 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       }
     }
 
-    console.log(chalk.blue.bold(`\n🤖 AutomatosX - Running ${argv.agent}\n`));
+    // v8.5.8: Show banner only in normal/verbose mode
+    if (verbosity.shouldShow('showBanner')) {
+      console.log(chalk.blue.bold(`\n🤖 AutomatosX - Running ${argv.agent}\n`));
+    }
+
+    // v8.5.8 Phase 3: Quiet mode optimizations
+    if (verbosity.isQuiet()) {
+      // Disable optional features that create noise
+      argv.showDependencyGraph = false;
+      argv.showTimeline = false;
+      argv.showCost = false;
+      argv.streaming = false;
+    }
 
     // Declare resources in outer scope for cleanup
     // v5.6.24: Use LazyMemoryManager for deferred initialization
@@ -388,9 +440,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         'willCreateLazyManager': memoryEnabled
       });
 
-      if (argv.verbose) {
+      // v8.5.8 Phase 3: Enhanced verbose output
+      if (verbosity.isVerbose()) {
         console.log(chalk.gray(`Project: ${projectDir}`));
         console.log(chalk.gray(`Working directory: ${process.cwd()}`));
+        console.log(chalk.gray(`Verbosity level: ${verbosity.getLevelName()}`));
+        console.log(chalk.gray(`Memory enabled: ${memoryEnabled}`));
         console.log();
       }
 
@@ -411,7 +466,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       try {
         resolvedAgentName = await profileLoader.resolveAgentName(argv.agent as string);
 
-        if (argv.verbose) {
+        // v8.5.8 Phase 3: Show resolution in verbose mode
+        if (verbosity.isVerbose()) {
           if (resolvedAgentName !== argv.agent) {
             console.log(chalk.gray(`Resolved agent: ${argv.agent} → ${resolvedAgentName}`));
           }
@@ -798,11 +854,13 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           { showPlan: true, verbose: argv.verbose }
         );
 
-        // Display result
-        console.log(chalk.green('\n✅ Execution completed successfully'));
-        if (result.checkpointPath) {
-          console.log(chalk.gray(`Checkpoint saved: ${result.runId}`));
-          console.log(chalk.gray(`Resume with: ax resume ${result.runId}`));
+        // Display result (v8.5.8 Phase 3: suppress in quiet mode)
+        if (!verbosity.isQuiet()) {
+          console.log(chalk.green('\n✅ Execution completed successfully'));
+          if (result.checkpointPath) {
+            console.log(chalk.gray(`Checkpoint saved: ${result.runId}`));
+            console.log(chalk.gray(`Resume with: ax resume ${result.runId}`));
+          }
         }
 
         // Save to memory if requested
@@ -849,11 +907,48 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         // Phase 1 (v8.6.0): Create iterate mode controller if --iterate or --auto-continue flag is set
         let iterateHooks: ExecutionHooks | undefined;
         if (argv.iterate || argv.autoContinue) {
+          // v8.6.0: Show deprecation warning if cost-based flag is used
+          if (argv.iterateMaxCost !== undefined) {
+            console.log(chalk.yellow('\n⚠️  Warning: --iterate-max-cost is deprecated and will be removed in v9.0.0'));
+            console.log(chalk.yellow('    Reason: Provider pricing changes frequently, making cost estimates unreliable\n'));
+            console.log(chalk.cyan('    Please use --iterate-max-tokens instead:'));
+            console.log(chalk.cyan(`      ax run ${argv.agent} "${argv.task}" --iterate --iterate-max-tokens 1000000\n`));
+            console.log(chalk.gray('    Learn more: https://docs.automatosx.com/migration/cost-to-tokens\n'));
+          }
+
+          // v8.6.0: Determine limits (prefer token-based over cost-based)
+          const maxTokens = argv.iterateMaxTokens || 1_000_000; // 1M tokens default
+          const maxTokensPerIteration = argv.iterateMaxTokensPerIteration || 100_000; // 100K per iteration
+          const maxCost = argv.iterateMaxCost; // Optional for backward compat
+
           logger.info('Iterate mode enabled', {
             timeout: argv.iterateTimeout || 120,
-            maxCost: argv.iterateMaxCost || 5.0,
+            maxTokens,
+            maxTokensPerIteration,
+            maxCost: maxCost !== undefined ? maxCost : 'not set (using token limits)',
             strictness: argv.iterateStrictness || 'balanced',
             dryRun: argv.iterateDryRun || false
+          });
+
+          // Note: Cost tracker removed in v8.3.0
+          // Cost tracking disabled in iterate mode - token limits used instead
+          // const costTracker = new CostTracker({
+          //   enabled: true,
+          //   persistPath: join(projectDir, '.automatosx', 'costs', 'iterate-costs.db'),
+          //   budgets: {
+          //     daily: {
+          //       limit: argv.iterateMaxCost || 5.0,
+          //       warningThreshold: 0.75
+          //     }
+          //   },
+          //   alertOnBudget: true
+          // });
+          // await costTracker.initialize();
+
+          // Create status renderer for real-time UX (v8.6.0 Phase 1)
+          const statusRenderer = new IterateStatusRenderer({
+            quiet: !!argv.quiet,
+            verbose: !!argv.verbose
           });
 
           // Create iterate mode controller with configuration
@@ -863,7 +958,10 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               enabled: true,
               defaults: {
                 maxDurationMinutes: argv.iterateTimeout || 120,
-                maxEstimatedCostUsd: argv.iterateMaxCost || 5.0,
+                // v9.0.0: Token-based limits only
+                maxTotalTokens: maxTokens,
+                maxTokensPerIteration: maxTokensPerIteration,
+                warnAtTokenPercent: [75, 90],
                 maxIterationsPerRun: 200,
                 maxIterationsPerStage: 50,
                 maxAutoResponsesPerStage: 30,
@@ -887,7 +985,6 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                   shellCommands: 'MEDIUM' as const,
                   packageInstall: 'MEDIUM' as const
                 },
-                enableCostTracking: true,
                 enableTimeTracking: true,
                 enableIterationTracking: true
               },
@@ -900,12 +997,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               },
               notifications: {
                 warnAtTimePercent: [75, 90],
-                warnAtCostPercent: [75, 90],
                 pauseOnGenuineQuestion: true,
                 pauseOnHighRiskOperation: true
               }
             },
-            sessionManager
+            sessionManager,
+            statusRenderer
           );
 
           // Create hook that delegates to controller
@@ -1091,7 +1188,26 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       // Ensure event loop completes all pending operations
       await new Promise(resolve => setImmediate(resolve));
 
-      console.log(chalk.green.bold('✅ Complete\n'));
+      // v8.5.8 Phase 3: Show completion message only in normal/verbose mode
+      if (!verbosity.isQuiet()) {
+        const executionTime = ((Date.now() - executionStartTime) / 1000).toFixed(1);
+        if (verbosity.isNormal()) {
+          // Normal mode: Simple completion with timing
+          console.log(chalk.green.bold(`✅ Complete`) + chalk.gray(` (${executionTime}s)\n`));
+        } else if (verbosity.isVerbose()) {
+          // Verbose mode: Detailed execution summary
+          console.log(chalk.green.bold('\n✅ Execution Complete'));
+          console.log(chalk.gray('─'.repeat(50)));
+          console.log(chalk.gray(`Agent: ${resolvedAgentName}`));
+          console.log(chalk.gray(`Provider: ${context?.provider?.name || 'unknown'}`));
+          console.log(chalk.gray(`Execution time: ${executionTime}s`));
+          if (memoryManager) {
+            console.log(chalk.gray(`Memory: enabled`));
+          }
+          console.log(chalk.gray('─'.repeat(50)));
+          console.log();
+        }
+      }
 
       // Graceful shutdown: cleanup all child processes before exit
       // Fixes: Background tasks hanging when run via Claude Code

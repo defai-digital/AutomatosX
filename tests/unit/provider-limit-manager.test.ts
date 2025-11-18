@@ -457,33 +457,10 @@ describe('ProviderLimitManager', () => {
       expect(duration).toBeLessThan(10); // < 10ms for 100 checks
     });
 
-    // NOTE: Flaky performance test - timing-dependent, can fail on slow systems
-    // TODO v5.8: Make performance test more robust or move to separate suite
-    it.skip('should have O(1) lookup time', async () => {
-      const resetAtMs = Date.now() + 3600000;
-
-      // Add 10 providers
-      for (let i = 0; i < 10; i++) {
-        await manager.recordLimitHit(`provider-${i}`, 'daily', resetAtMs);
-      }
-
-      const time1 = performance.now();
-      manager.isProviderLimited('provider-5');
-      const duration1 = performance.now() - time1;
-
-      // Add 90 more providers (100 total)
-      for (let i = 10; i < 100; i++) {
-        await manager.recordLimitHit(`provider-${i}`, 'daily', resetAtMs);
-      }
-
-      const time2 = performance.now();
-      manager.isProviderLimited('provider-5');
-      const duration2 = performance.now() - time2;
-
-      // Duration should be similar (O(1))
-      const ratio = duration2 / duration1;
-      expect(ratio).toBeLessThan(2); // Should not scale linearly
-    });
+    // REMOVED: Flaky O(1) performance test (v8.5.7)
+    // Reason: Performance tests are inherently flaky in CI environments
+    // Note: O(1) lookup complexity is guaranteed by JavaScript Map implementation
+    // The test was timing-dependent and could fail on slow systems or under load
   });
 
   describe('Error Handling', () => {

@@ -322,6 +322,11 @@ ax run "audit entire codebase for security vulnerabilities" --iterate --iterate-
 
 # Test execution plan without making changes (dry-run)
 ax run "plan database migration" --iterate --iterate-dry-run
+
+# Verbosity control (v8.5.8+)
+ax run backend "task" --quiet              # Minimal output (perfect for AI assistants)
+ax run backend "task"                       # Normal output (default, shows progress)
+ax run backend "task" --verbose             # All details (for debugging)
 ```
 
 ### Key Features
@@ -370,6 +375,8 @@ Iterate Mode includes comprehensive safety protections:
 # All iterate mode flags
 ax run agent "task" \
   --iterate                           # Enable iterate mode
+  --iterate-max-tokens 1000000        # Max total tokens (default: 1,000,000) [v8.6.0+]
+  --iterate-max-tokens-per-iteration 100000  # Max per iteration (default: 100,000) [v8.6.0+]
   --iterate-timeout 60                # Max duration in minutes (default: 120)
   --iterate-strictness balanced       # Safety level: paranoid|balanced|permissive
   --iterate-dry-run                   # Test mode - no actual changes

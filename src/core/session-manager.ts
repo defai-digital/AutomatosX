@@ -136,6 +136,19 @@ export class SessionManager {
    * ```
    */
   constructor(config?: { persistencePath?: string; maxSessions?: number }) {
+    // v8.5.7 Phase 2: Validate config with Zod
+    if (config) {
+      try {
+        SessionManagerConfigSchema.parse(config);
+      } catch (error: any) {
+        throw new SessionError(
+          `Invalid session manager config: ${error.message}`,
+          undefined,
+          'invalid_configuration'
+        );
+      }
+    }
+
     this.persistencePath = config?.persistencePath;
     // Bug #v8.4.12: Validate maxSessions is at least 1 to prevent bypass
     const requestedMax = config?.maxSessions ?? 100;

@@ -29,10 +29,11 @@ Steps to reproduce the behavior:
 
 ## Environment
 
-- **AutomatosX Version**: <!-- e.g., 4.0.0-alpha.1 -->
+- **AutomatosX Version**: <!-- e.g., 8.5.5 -->
 - **Node.js Version**: <!-- Run: node --version -->
 - **OS**: <!-- e.g., macOS 14.0, Ubuntu 22.04, Windows 11 -->
 - **Package Manager**: <!-- npm, pnpm, yarn -->
+- **AI Provider**: <!-- claude-code, gemini-cli, openai codex, etc. -->
 
 ## Configuration
 

@@ -23,6 +23,8 @@ import { createOpenAIProviderSync } from '../../providers/openai-provider-factor
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
 import { writeAgentStatus } from '../../utils/agent-status-writer.js';
+import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
+import type { ExecutionHooks } from '../../agents/executor.js';
 import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
@@ -843,6 +845,79 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           contextManager,
           profileLoader
         });
+
+        // Phase 1 (v8.6.0): Create iterate mode controller if --iterate or --auto-continue flag is set
+        let iterateHooks: ExecutionHooks | undefined;
+        if (argv.iterate || argv.autoContinue) {
+          logger.info('Iterate mode enabled', {
+            timeout: argv.iterateTimeout || 120,
+            maxCost: argv.iterateMaxCost || 5.0,
+            strictness: argv.iterateStrictness || 'balanced',
+            dryRun: argv.iterateDryRun || false
+          });
+
+          // Create iterate mode controller with configuration
+          // TODO (v8.6.1): Add iterate config to automatosx.config.json schema
+          const iterateController = new IterateModeController(
+            {
+              enabled: true,
+              defaults: {
+                maxDurationMinutes: argv.iterateTimeout || 120,
+                maxEstimatedCostUsd: argv.iterateMaxCost || 5.0,
+                maxIterationsPerRun: 200,
+                maxIterationsPerStage: 50,
+                maxAutoResponsesPerStage: 30,
+                autoConfirmCheckpoints: true
+              },
+              classifier: {
+                patternLibraryPath: join(projectDir, '.automatosx', 'iterate', 'patterns.yaml'),
+                strictness: (argv.iterateStrictness || 'balanced') as 'paranoid' | 'balanced' | 'permissive',
+                enableSemanticScoring: true,
+                semanticScoringThreshold: 0.80,
+                contextWindowMessages: 10
+              },
+              safety: {
+                enableDangerousOperationGuard: true,
+                riskTolerance: (argv.iterateStrictness || 'balanced') as 'paranoid' | 'balanced' | 'permissive',
+                dangerousOperations: {
+                  fileDelete: 'MEDIUM' as const,
+                  gitForce: 'HIGH' as const,
+                  writeOutsideWorkspace: 'HIGH' as const,
+                  secretsInCode: 'HIGH' as const,
+                  shellCommands: 'MEDIUM' as const,
+                  packageInstall: 'MEDIUM' as const
+                },
+                enableCostTracking: true,
+                enableTimeTracking: true,
+                enableIterationTracking: true
+              },
+              telemetry: {
+                level: 'info' as const,
+                logAutoResponses: true,
+                logClassifications: true,
+                logSafetyChecks: true,
+                emitMetrics: true
+              },
+              notifications: {
+                warnAtTimePercent: [75, 90],
+                warnAtCostPercent: [75, 90],
+                pauseOnGenuineQuestion: true,
+                pauseOnHighRiskOperation: true
+              }
+            },
+            sessionManager
+          );
+
+          // Create hook that delegates to controller
+          iterateHooks = {
+            onPostResponse: async (response) => {
+              return await iterateController.handleResponse(response);
+            }
+          };
+
+          logger.debug('Iterate mode controller created and wired');
+        }
+
         let result: ExecutionResult;
 
         if (argv.timeout) {
@@ -862,7 +937,9 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               maxConcurrentDelegations: config.execution?.maxConcurrentAgents,
               continueDelegationsOnFailure: true,
               showDependencyGraph: Boolean(argv.showDependencyGraph),
-              showTimeline: Boolean(argv.showTimeline)
+              showTimeline: Boolean(argv.showTimeline),
+              hooks: iterateHooks, // Phase 1 (v8.6.0): Wire iterate mode
+              iterateMode: Boolean(argv.iterate || argv.autoContinue)
             });
           } finally{
             clearTimeout(timeoutId);
@@ -880,7 +957,9 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             maxConcurrentDelegations: config.execution?.maxConcurrentAgents,
             continueDelegationsOnFailure: true,
             showDependencyGraph: Boolean(argv.showDependencyGraph),
-            showTimeline: Boolean(argv.showTimeline)
+            showTimeline: Boolean(argv.showTimeline),
+            hooks: iterateHooks, // Phase 1 (v8.6.0): Wire iterate mode
+            iterateMode: Boolean(argv.iterate || argv.autoContinue)
           });
         }
 

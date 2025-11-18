@@ -111,7 +111,7 @@ export class SimpleLogger implements Logger {
     const validLevels: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
     const level = (envLogLevel && validLevels.includes(envLogLevel))
       ? envLogLevel
-      : (config.level || 'info');
+      : (config.level || 'warn');  // Changed default from 'info' to 'warn' to reduce token usage
 
     this.config = {
       level,

@@ -1,7 +1,7 @@
 /**
  * Project Context Loader
  *
- * Loads and parses ax.md project context files
+ * Loads and parses AX.MD project context files
  * Provides project-specific instructions for AutomatosX CLI
  *
  * @since v7.1.0
@@ -20,7 +20,7 @@ const MAX_CONTEXT_SIZE = 100 * 1024;
 const DEFAULT_CACHE_TTL = 300_000;
 
 /**
- * Agent delegation rule parsed from ax.md
+ * Agent delegation rule parsed from AX.MD
  */
 export interface AgentRule {
   taskType: string;          // e.g., "backend", "frontend"
@@ -64,7 +64,7 @@ export interface ProjectConfig {
  * Complete project context
  */
 export interface ProjectContext {
-  markdown?: string;           // Raw ax.md content
+  markdown?: string;           // Raw AX.MD content
   config?: ProjectConfig;      // Parsed ax.config.yml
   agentRules?: AgentRule[];    // Extracted agent rules
   guardrails?: string[];       // Critical prohibitions
@@ -76,7 +76,7 @@ export interface ProjectContext {
 /**
  * Project Context Loader
  *
- * Loads ax.md and ax.config.yml from project root
+ * Loads AX.MD and ax.config.yml from project root
  * Provides caching and parsing
  */
 export class ProjectContextLoader {
@@ -111,9 +111,9 @@ export class ProjectContextLoader {
 
     const context: ProjectContext = {};
 
-    // Load ax.md (Markdown)
+    // Load AX.MD (Markdown)
     try {
-      const mdPath = path.join(this.projectRoot, 'ax.md');
+      const mdPath = path.join(this.projectRoot, 'AX.MD');
       const resolvedPath = await realpath(mdPath).catch(() => null);
 
       // BUG #34 FIX: Security - Use relative() for proper boundary check (prevents /repo vs /repo-archive)
@@ -124,13 +124,13 @@ export class ProjectContextLoader {
 
         // Security: Check file size
         if (stats.size > MAX_CONTEXT_SIZE) {
-          logger.warn('ax.md too large, ignoring', {
+          logger.warn('AX.MD too large, ignoring', {
             size: stats.size,
             limit: MAX_CONTEXT_SIZE
           });
         } else {
           context.markdown = await readFile(resolvedPath, 'utf-8');
-          logger.info('Loaded ax.md', {
+          logger.info('Loaded AX.MD', {
             size: stats.size,
             lines: context.markdown.split('\n').length
           });
@@ -144,9 +144,9 @@ export class ProjectContextLoader {
         }  // BUG #34 FIX: Close the boundary check if-statement
       }
     } catch (error) {
-      // ax.md is optional, ignore if not found
+      // AX.MD is optional, ignore if not found
       if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
-        logger.warn('Error loading ax.md', { error });
+        logger.warn('Error loading AX.MD', { error });
       }
     }
 
@@ -155,8 +155,10 @@ export class ProjectContextLoader {
       const ymlPath = path.join(this.projectRoot, 'ax.config.yml');
       const resolvedPath = await realpath(ymlPath).catch(() => null);
 
-      // Security: Ensure file is in project root
-      if (resolvedPath && resolvedPath.startsWith(this.projectRoot)) {
+      // BUG #34 FIX: Security - Use relative() for proper boundary check (prevents /repo vs /repo-archive)
+      if (resolvedPath) {
+        const rel = path.relative(this.projectRoot, resolvedPath);
+        if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
         const stats = await stat(resolvedPath);
 
         // Security: Check file size
@@ -180,6 +182,7 @@ export class ProjectContextLoader {
             context.metadata = { ...context.metadata, ...context.config.project };
           }
         }
+        }  // BUG #34 FIX: Close the boundary check if-statement
       }
     } catch (error) {
       // ax.config.yml is optional, ignore if not found
@@ -219,7 +222,7 @@ export class ProjectContextLoader {
    * Check if context exists (without loading)
    */
   async exists(): Promise<boolean> {
-    const mdPath = path.join(this.projectRoot, 'ax.md');
+    const mdPath = path.join(this.projectRoot, 'AX.MD');
     const ymlPath = path.join(this.projectRoot, 'ax.config.yml');
 
     const checkExists = async (filePath: string): Promise<boolean> => {
@@ -260,12 +263,13 @@ export class ProjectContextLoader {
     const section = match[1];
 
     // Parse lines like: "- Backend changes → @backend"
-    const lineRegex = /^[-*]\s+(.+?)\s+(→|->)+\s+(.+?)$/gm;
+    // Use non-capturing group for arrow to avoid shifting group numbers
+    const lineRegex = /^[-*]\s+(.+?)\s+(?:→|->)+\s+(.+?)$/gm;
     let lineMatch;
 
     while ((lineMatch = lineRegex.exec(section)) !== null) {
       const taskType = lineMatch[1]?.trim() ?? '';
-      const agentsText = lineMatch[3]?.trim() ?? ''; // Group 3 now (group 2 is the arrow)
+      const agentsText = lineMatch[2]?.trim() ?? ''; // Group 2 is now the agents (arrow is non-capturing)
 
       // Split multiple agents: "@backend, @security"
       const agents = agentsText.split(',').map(a => a.trim()).filter(Boolean);

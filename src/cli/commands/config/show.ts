@@ -78,7 +78,9 @@ function displayConfig(
   console.log(chalk.bold.white('└─────────────────────────────────────────────────────\n'));
 
   const providers = Object.entries(config.providers);
-  const maxNameLength = Math.max(...providers.map(([name]) => name.length));
+  const maxNameLength = providers.length > 0
+    ? Math.max(...providers.map(([name]) => name.length))
+    : 0;
 
   providers.forEach(([name, provider]) => {
     const status = provider.enabled ? chalk.green('✓ Enabled ') : chalk.gray('✗ Disabled');

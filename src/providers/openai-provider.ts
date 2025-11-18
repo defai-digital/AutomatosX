@@ -63,7 +63,9 @@ export class OpenAIProvider extends BaseProvider {
       );
 
       if (stderr) {
-        logger.warn('codex exec CLI stderr output', { stderr: stderr.trim() });
+        // codex CLI outputs session info to stderr (normal behavior)
+        // Only show in debug mode to reduce token usage
+        logger.debug('codex exec CLI stderr output', { stderr: stderr.trim() });
       }
 
       if (!stdout) {

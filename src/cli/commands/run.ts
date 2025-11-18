@@ -513,6 +513,23 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }));
       }
 
+      // v8.4.16: Add Grok provider support
+      if (config.providers['grok']?.enabled) {
+        const { GrokProvider } = await import('../../providers/grok-provider.js');
+        const grokConfig = config.providers['grok'];
+        providers.push(new GrokProvider({
+          name: 'grok',
+          enabled: true,
+          priority: grokConfig.priority,
+          timeout: grokConfig.timeout,
+          command: grokConfig.command,
+          // Phase 2: Enhanced CLI detection parameters
+          customPath: grokConfig.customPath,
+          versionArg: grokConfig.versionArg,
+          minVersion: grokConfig.minVersion
+        }));
+      }
+
       if (config.providers['openai']?.enabled) {
         const openaiConfig = config.providers['openai'];
         const providerConfig = {

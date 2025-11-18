@@ -60,10 +60,10 @@ function updateReadme(version, monthYear) {
   const readmePath = join(rootDir, 'README.md');
   let content = readFileSync(readmePath, 'utf8');
 
-  // Update status line (e.g., **Status**: ✅ Production Ready · v5.2.0 · October 2025)
-  // Also matches beta versions like v5.5.0-beta.0
-  const statusPattern = /\*\*Status\*\*: ✅ Production Ready · \*\*v[\d.]+(?:-[a-z]+\.\d+)?\*\* · \w+ \d{4}/;
-  const newStatus = `**Status**: ✅ Production Ready · **v${version}** · ${monthYear}`;
+  // Update status line (matches current format with pipe separators)
+  // Example: **Status**: ✅ **Production Ready** | v8.3.0 | 20 Specialized Agents...
+  const statusPattern = /\*\*Status\*\*: ✅ \*\*Production Ready\*\* \| v[\d.]+(?:-[a-z]+\.\d+)?\b/;
+  const newStatus = `**Status**: ✅ **Production Ready** | v${version}`;
 
   if (statusPattern.test(content)) {
     content = content.replace(statusPattern, newStatus);
@@ -82,22 +82,32 @@ function updateClaudeMd(version, monthYear) {
   let content = readFileSync(claudePath, 'utf8');
   let updated = false;
 
-  // Update **Current Version**: v5.2.2 (October 2025)
-  const versionPattern = /\*\*Current Version\*\*: v\d+\.\d+\.\d+ \(\w+ \d{4}\)/;
-  if (versionPattern.test(content)) {
+  // Update "AutomatosX (v8.2.0) is an AI Agent..."
+  const overviewPattern = /AutomatosX \(v\d+\.\d+\.\d+\) is an AI Agent/;
+  if (overviewPattern.test(content)) {
     content = content.replace(
-      versionPattern,
-      `**Current Version**: v${version} (${monthYear})`
+      overviewPattern,
+      `AutomatosX (v${version}) is an AI Agent`
     );
     updated = true;
   }
 
-  // Update ## Critical Development Notes (v5.2.2)
-  const notesPattern = /## Critical Development Notes \(v\d+\.\d+\.\d+\)/;
-  if (notesPattern.test(content)) {
+  // Update "### Current State (v8.2.0)"
+  const currentStatePattern = /### Current State \(v\d+\.\d+\.\d+\)/;
+  if (currentStatePattern.test(content)) {
     content = content.replace(
-      notesPattern,
-      `## Critical Development Notes (v${version})`
+      currentStatePattern,
+      `### Current State (v${version})`
+    );
+    updated = true;
+  }
+
+  // Update "**Recent Changes (v8.2.0 - ...)"
+  const recentChangesPattern = /\*\*Recent Changes \(v\d+\.\d+\.\d+ - /;
+  if (recentChangesPattern.test(content)) {
+    content = content.replace(
+      recentChangesPattern,
+      `**Recent Changes (v${version} - `
     );
     updated = true;
   }

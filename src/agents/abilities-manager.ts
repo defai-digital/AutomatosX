@@ -91,8 +91,9 @@ export class AbilitiesManager {
       }
     }
 
-    // If not found in any location, log warning and return empty string
-    logger.warn('Ability not found in any location', { name });
+    // If not found in any location, log debug and return empty string
+    // This is expected behavior - not all agents have all abilities
+    logger.debug('Ability not found in any location', { name });
     return ''; // Return empty string for missing abilities
   }
 

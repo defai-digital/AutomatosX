@@ -239,6 +239,9 @@ export interface ExecutionContext {
 
   // v7.1.0+ Project Context (from ax.md)
   projectContext?: import('../core/project-context.js').ProjectContext;  // Project-specific instructions
+
+  // v8.5.0+ Workspace Index (smart file selection)
+  relevantFiles?: string[];  // Relevant files selected from workspace index
 }
 
 /**

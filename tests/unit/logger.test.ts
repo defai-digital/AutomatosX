@@ -126,14 +126,17 @@ describe('SimpleLogger', () => {
   });
 
   describe('Configuration', () => {
-    it('should use default level "info" when not specified', () => {
+    it('should use default level "warn" when not specified', () => {
       const logger = new SimpleLogger();
 
       logger.debug('Debug');
       logger.info('Info');
+      logger.warn('Warn');
 
-      // Only info should be logged (to stderr), not debug
-      expect(consoleSpy.error).toHaveBeenCalledTimes(1); // Only info, not debug
+      // Only warn should be logged, not debug or info
+      // warn uses console.warn, not console.error
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1); // Only warn, not debug or info
+      expect(consoleSpy.error).toHaveBeenCalledTimes(0); // debug and info are suppressed
     });
 
     it('should disable console output when console is false', () => {

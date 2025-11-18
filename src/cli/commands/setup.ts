@@ -452,99 +452,85 @@ async function rollbackCreatedResources(resources: string[]): Promise<void> {
 }
 
 /**
- * Copy example teams to user's .automatosx directory (Fix P0-1)
+ * Generic helper to copy example files to user's .automatosx directory
+ * Reduces duplication across copyExampleTeams, copyExampleAgents, etc.
  */
-async function copyExampleTeams(baseDir: string, packageRoot: string): Promise<number> {
-  const examplesDir = join(packageRoot, 'examples/teams');
-  const targetDir = join(baseDir, 'teams');
+async function copyExampleFiles(
+  baseDir: string,
+  packageRoot: string,
+  config: {
+    exampleDir: string;    // 'teams', 'agents', 'abilities', 'templates'
+    targetDir: string;     // 'teams', 'agents', 'abilities', 'templates'
+    extension: string;     // '.yaml', '.md'
+    resourceName: string;  // 'team configuration', 'agent', 'ability', 'template'
+  }
+): Promise<number> {
+  const examplesDir = join(packageRoot, `examples/${config.exampleDir}`);
+  const targetDir = join(baseDir, config.targetDir);
 
   const files = await readdir(examplesDir);
   let count = 0;
 
   for (const file of files) {
-    if (file.endsWith('.yaml')) {
+    if (file.endsWith(config.extension)) {
       await copyFile(join(examplesDir, file), join(targetDir, file));
       count++;
     }
   }
 
   if (count === 0) {
-    throw new Error(`No team configuration files found in ${examplesDir}`);
+    throw new Error(`No ${config.resourceName} files found in ${examplesDir}`);
   }
 
   return count;
+}
+
+/**
+ * Copy example teams to user's .automatosx directory (Fix P0-1)
+ */
+async function copyExampleTeams(baseDir: string, packageRoot: string): Promise<number> {
+  return copyExampleFiles(baseDir, packageRoot, {
+    exampleDir: 'teams',
+    targetDir: 'teams',
+    extension: '.yaml',
+    resourceName: 'team configuration'
+  });
 }
 
 /**
  * Copy example agents to user's .automatosx directory (Fix P0-3: Fatal errors)
  */
 async function copyExampleAgents(baseDir: string, packageRoot: string): Promise<number> {
-  const examplesDir = join(packageRoot, 'examples/agents');
-  const targetDir = join(baseDir, 'agents');
-
-  const files = await readdir(examplesDir);
-  let count = 0;
-
-  for (const file of files) {
-    if (file.endsWith('.yaml')) {
-      await copyFile(join(examplesDir, file), join(targetDir, file));
-      count++;
-    }
-  }
-
-  if (count === 0) {
-    throw new Error(`No agent files found in ${examplesDir}`);
-  }
-
-  return count;
+  return copyExampleFiles(baseDir, packageRoot, {
+    exampleDir: 'agents',
+    targetDir: 'agents',
+    extension: '.yaml',
+    resourceName: 'agent'
+  });
 }
 
 /**
  * Copy example abilities to user's .automatosx directory (Fix P0-3: Fatal errors)
  */
 async function copyExampleAbilities(baseDir: string, packageRoot: string): Promise<number> {
-  const examplesDir = join(packageRoot, 'examples/abilities');
-  const targetDir = join(baseDir, 'abilities');
-
-  const files = await readdir(examplesDir);
-  let count = 0;
-
-  for (const file of files) {
-    if (file.endsWith('.md')) {
-      await copyFile(join(examplesDir, file), join(targetDir, file));
-      count++;
-    }
-  }
-
-  if (count === 0) {
-    throw new Error(`No ability files found in ${examplesDir}`);
-  }
-
-  return count;
+  return copyExampleFiles(baseDir, packageRoot, {
+    exampleDir: 'abilities',
+    targetDir: 'abilities',
+    extension: '.md',
+    resourceName: 'ability'
+  });
 }
 
 /**
  * Copy agent templates to user's .automatosx directory (Fix P0-3: Fatal errors)
  */
 async function copyExampleTemplates(baseDir: string, packageRoot: string): Promise<number> {
-  const examplesDir = join(packageRoot, 'examples/templates');
-  const targetDir = join(baseDir, 'templates');
-
-  const files = await readdir(examplesDir);
-  let count = 0;
-
-  for (const file of files) {
-    if (file.endsWith('.yaml')) {
-      await copyFile(join(examplesDir, file), join(targetDir, file));
-      count++;
-    }
-  }
-
-  if (count === 0) {
-    throw new Error(`No template files found in ${examplesDir}`);
-  }
-
-  return count;
+  return copyExampleFiles(baseDir, packageRoot, {
+    exampleDir: 'templates',
+    targetDir: 'templates',
+    extension: '.yaml',
+    resourceName: 'template'
+  });
 }
 
 /**
@@ -720,6 +706,82 @@ async function updateGitignore(projectDir: string): Promise<void> {
 }
 
 /**
+ * Generic helper to setup provider integration .md files
+ * Reduces duplication across setupProjectClaudeMd, setupProjectGeminiMd, etc.
+ */
+async function setupProjectProviderMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean,
+  config: {
+    fileName: string;        // 'CLAUDE.md', 'GEMINI.md', 'GROK.md'
+    templatePath: string;    // 'examples/claude/CLAUDE_INTEGRATION.md'
+    description: string;     // Provider-specific description
+    providerName: string;    // 'CLAUDE', 'GEMINI', 'GROK' (for logging)
+  }
+): Promise<void> {
+  const mdPath = join(projectDir, config.fileName);
+  const templatePath = join(packageRoot, config.templatePath);
+
+  try {
+    // Read the template
+    const { readFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+
+    const exists = await checkExists(mdPath);
+
+    if (!exists) {
+      // Create new .md file with AutomatosX integration
+      const content = [
+        `# ${config.fileName.replace('.md', '.md')}`,
+        '',
+        config.description,
+        '',
+        '---',
+        '',
+        template
+      ].join('\n');
+
+      await writeFile(mdPath, content, 'utf-8');
+      logger.info(`Created ${config.fileName} with AutomatosX integration`, { path: mdPath });
+    } else {
+      // Update existing .md file
+      const existingContent = await readFile(mdPath, 'utf-8');
+
+      // Check if AutomatosX integration already exists
+      if (existingContent.includes('# AutomatosX Integration')) {
+        if (!force) {
+          logger.info(`${config.fileName} already contains AutomatosX integration`, { path: mdPath });
+          return;
+        }
+        // Force mode: replace existing AutomatosX section
+        const updatedContent = replaceAutomatosXSection(existingContent, template);
+        await writeFile(mdPath, updatedContent, 'utf-8');
+        logger.info(`Updated AutomatosX integration in ${config.fileName}`, { path: mdPath });
+      } else {
+        // Append AutomatosX integration to existing content
+        const updatedContent = [
+          existingContent.trimEnd(),
+          '',
+          '---',
+          '',
+          template
+        ].join('\n');
+
+        await writeFile(mdPath, updatedContent, 'utf-8');
+        logger.info(`Added AutomatosX integration to existing ${config.fileName}`, { path: mdPath });
+      }
+    }
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn(`Failed to setup ${config.fileName}`, {
+      error: (error as Error).message,
+      path: mdPath
+    });
+  }
+}
+
+/**
  * Setup project CLAUDE.md with AutomatosX integration guide
  *
  * This function creates or updates the project's CLAUDE.md file to include
@@ -731,65 +793,12 @@ async function setupProjectClaudeMd(
   packageRoot: string,
   force: boolean
 ): Promise<void> {
-  const claudeMdPath = join(projectDir, 'CLAUDE.md');
-  const templatePath = join(packageRoot, 'examples/claude/CLAUDE_INTEGRATION.md');
-
-  try {
-    // Read the template
-    const { readFile } = await import('fs/promises');
-    const template = await readFile(templatePath, 'utf-8');
-
-    const exists = await checkExists(claudeMdPath);
-
-    if (!exists) {
-      // Create new CLAUDE.md with AutomatosX integration
-      const content = [
-        '# CLAUDE.md',
-        '',
-        'This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.',
-        '',
-        '---',
-        '',
-        template
-      ].join('\n');
-
-      await writeFile(claudeMdPath, content, 'utf-8');
-      logger.info('Created CLAUDE.md with AutomatosX integration', { path: claudeMdPath });
-    } else {
-      // Update existing CLAUDE.md
-      const existingContent = await readFile(claudeMdPath, 'utf-8');
-
-      // Check if AutomatosX integration already exists
-      if (existingContent.includes('# AutomatosX Integration')) {
-        if (!force) {
-          logger.info('CLAUDE.md already contains AutomatosX integration', { path: claudeMdPath });
-          return;
-        }
-        // Force mode: replace existing AutomatosX section
-        const updatedContent = replaceAutomatosXSection(existingContent, template);
-        await writeFile(claudeMdPath, updatedContent, 'utf-8');
-        logger.info('Updated AutomatosX integration in CLAUDE.md', { path: claudeMdPath });
-      } else {
-        // Append AutomatosX integration to existing content
-        const updatedContent = [
-          existingContent.trimEnd(),
-          '',
-          '---',
-          '',
-          template
-        ].join('\n');
-
-        await writeFile(claudeMdPath, updatedContent, 'utf-8');
-        logger.info('Added AutomatosX integration to existing CLAUDE.md', { path: claudeMdPath });
-      }
-    }
-  } catch (error) {
-    // Non-critical error, just log it
-    logger.warn('Failed to setup CLAUDE.md', {
-      error: (error as Error).message,
-      path: claudeMdPath
-    });
-  }
+  return setupProjectProviderMd(projectDir, packageRoot, force, {
+    fileName: 'CLAUDE.md',
+    templatePath: 'examples/claude/CLAUDE_INTEGRATION.md',
+    description: 'This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.',
+    providerName: 'CLAUDE'
+  });
 }
 
 /**
@@ -1065,65 +1074,12 @@ async function setupProjectGeminiMd(
   packageRoot: string,
   force: boolean
 ): Promise<void> {
-  const geminiMdPath = join(projectDir, 'GEMINI.md');
-  const templatePath = join(packageRoot, 'examples/gemini/GEMINI_INTEGRATION.md');
-
-  try {
-    // Read the template
-    const { readFile } = await import('fs/promises');
-    const template = await readFile(templatePath, 'utf-8');
-
-    const exists = await checkExists(geminiMdPath);
-
-    if (!exists) {
-      // Create new GEMINI.md with AutomatosX integration
-      const content = [
-        '# GEMINI.md',
-        '',
-        'This file provides guidance to Gemini CLI users when working with code in this repository.',
-        '',
-        '---',
-        '',
-        template
-      ].join('\n');
-
-      await writeFile(geminiMdPath, content, 'utf-8');
-      logger.info('Created GEMINI.md with AutomatosX integration', { path: geminiMdPath });
-    } else {
-      // Update existing GEMINI.md
-      const existingContent = await readFile(geminiMdPath, 'utf-8');
-
-      // Check if AutomatosX integration already exists
-      if (existingContent.includes('# AutomatosX Integration')) {
-        if (!force) {
-          logger.info('GEMINI.md already contains AutomatosX integration', { path: geminiMdPath });
-          return;
-        }
-        // Force mode: replace existing AutomatosX section
-        const updatedContent = replaceAutomatosXSection(existingContent, template);
-        await writeFile(geminiMdPath, updatedContent, 'utf-8');
-        logger.info('Updated AutomatosX integration in GEMINI.md', { path: geminiMdPath });
-      } else {
-        // Append AutomatosX integration to existing content
-        const updatedContent = [
-          existingContent.trimEnd(),
-          '',
-          '---',
-          '',
-          template
-        ].join('\n');
-
-        await writeFile(geminiMdPath, updatedContent, 'utf-8');
-        logger.info('Added AutomatosX integration to existing GEMINI.md', { path: geminiMdPath });
-      }
-    }
-  } catch (error) {
-    // Non-critical error, just log it
-    logger.warn('Failed to setup GEMINI.md', {
-      error: (error as Error).message,
-      path: geminiMdPath
-    });
-  }
+  return setupProjectProviderMd(projectDir, packageRoot, force, {
+    fileName: 'GEMINI.md',
+    templatePath: 'examples/gemini/GEMINI_INTEGRATION.md',
+    description: 'This file provides guidance to Gemini CLI users when working with code in this repository.',
+    providerName: 'GEMINI'
+  });
 }
 
 /**
@@ -1208,65 +1164,12 @@ async function setupProjectGrokMd(
   packageRoot: string,
   force: boolean
 ): Promise<void> {
-  const grokMdPath = join(projectDir, 'GROK.md');
-  const templatePath = join(packageRoot, 'examples/grok/GROK_INTEGRATION.md');
-
-  try {
-    // Read the template
-    const { readFile } = await import('fs/promises');
-    const template = await readFile(templatePath, 'utf-8');
-
-    const exists = await checkExists(grokMdPath);
-
-    if (!exists) {
-      // Create new GROK.md with AutomatosX integration
-      const content = [
-        '# GROK.md',
-        '',
-        'This file provides guidance for Grok CLI integration with AutomatosX.',
-        '',
-        '---',
-        '',
-        template
-      ].join('\n');
-
-      await writeFile(grokMdPath, content, 'utf-8');
-      logger.info('Created GROK.md with AutomatosX integration', { path: grokMdPath });
-    } else {
-      // Update existing GROK.md
-      const existingContent = await readFile(grokMdPath, 'utf-8');
-
-      // Check if AutomatosX integration already exists
-      if (existingContent.includes('# Grok CLI Integration')) {
-        if (!force) {
-          logger.info('GROK.md already contains AutomatosX integration', { path: grokMdPath });
-          return;
-        }
-        // Force mode: replace existing AutomatosX section
-        const updatedContent = replaceAutomatosXSection(existingContent, template);
-        await writeFile(grokMdPath, updatedContent, 'utf-8');
-        logger.info('Updated AutomatosX integration in GROK.md', { path: grokMdPath });
-      } else {
-        // Append AutomatosX integration to existing content
-        const updatedContent = [
-          existingContent.trimEnd(),
-          '',
-          '---',
-          '',
-          template
-        ].join('\n');
-
-        await writeFile(grokMdPath, updatedContent, 'utf-8');
-        logger.info('Added AutomatosX integration to existing GROK.md', { path: grokMdPath });
-      }
-    }
-  } catch (error) {
-    // Non-critical error, just log it
-    logger.warn('Failed to setup GROK.md', {
-      error: (error as Error).message,
-      path: grokMdPath
-    });
-  }
+  return setupProjectProviderMd(projectDir, packageRoot, force, {
+    fileName: 'GROK.md',
+    templatePath: 'examples/grok/GROK_INTEGRATION.md',
+    description: 'This file provides guidance for Grok CLI integration with AutomatosX.',
+    providerName: 'GROK'
+  });
 }
 
 /**

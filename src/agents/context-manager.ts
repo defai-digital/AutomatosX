@@ -6,6 +6,7 @@
  */
 
 import { join } from 'path';
+import { access } from 'fs/promises';
 import type {
   ExecutionContext,
   AgentProfile,
@@ -65,6 +66,13 @@ export class ContextManager {
    */
   private cachedProfileList: string[] | null = null;
 
+  /**
+   * v8.4.14: Cached ProjectContextLoader instance
+   * Performance: Reuse loader to utilize its internal cache (5min TTL)
+   * Previous issue: Creating new loader every time = cache miss every time
+   */
+  private projectContextLoader: ProjectContextLoader | null = null;
+
   constructor(config: ContextManagerConfig) {
     this.config = config;
   }
@@ -116,11 +124,13 @@ export class ContextManager {
 
     // Step 3-4: After profile loaded, select abilities and provider in parallel
     // v7.1.0: Also load project context in parallel
+    // v8.5.0: Also try to select relevant files from workspace index
     const selectedAbilities = this.selectAbilities(agent, task);
-    const [abilities, provider, projectContext] = await Promise.all([
+    const [abilities, provider, projectContext, relevantFiles] = await Promise.all([
       this.config.abilitiesManager.getAbilitiesText(selectedAbilities),
       this.selectProviderForAgent(agent, options),
-      this.loadProjectContext(projectDir)
+      this.loadProjectContext(projectDir),
+      this.selectRelevantFilesFromIndex(projectDir, task)
     ]);
 
     logger.debug('Abilities selected', {
@@ -128,6 +138,13 @@ export class ContextManager {
       selected: selectedAbilities.length,
       abilities: selectedAbilities
     });
+
+    if (relevantFiles && relevantFiles.length > 0) {
+      logger.debug('Relevant files selected from index', {
+        count: relevantFiles.length,
+        files: relevantFiles
+      });
+    }
 
     // 5. Get working directory (synchronous)
     const workingDir = process.cwd();
@@ -223,7 +240,8 @@ export class ContextManager {
       createdAt: new Date(),
       orchestration,
       session,
-      projectContext: projectContext || undefined
+      projectContext: projectContext || undefined,
+      relevantFiles: (relevantFiles && relevantFiles.length > 0) ? relevantFiles : undefined
     };
 
     // 10. Inject memory (if not skipped)
@@ -555,9 +573,9 @@ export class ContextManager {
   }
 
   /**
-   * Load project context from ax.md (v7.1.0+)
+   * Load project context from AX.MD (v7.1.0+)
    *
-   * Loads project-specific instructions from ax.md file if it exists.
+   * Loads project-specific instructions from AX.MD file if it exists.
    * Falls back gracefully if file doesn't exist.
    *
    * @param projectDir - Project root directory
@@ -565,18 +583,24 @@ export class ContextManager {
    */
   private async loadProjectContext(projectDir: string): Promise<import('../core/project-context.js').ProjectContext | null> {
     try {
-      const loader = new ProjectContextLoader(projectDir);
+      // v8.4.14: Reuse loader instance to utilize internal cache
+      // Previous issue: Creating new loader every time = lost cache = slow
+      if (!this.projectContextLoader) {
+        this.projectContextLoader = new ProjectContextLoader(projectDir);
+      }
+
+      const loader = this.projectContextLoader;
 
       // Check if context exists before loading (faster)
       const exists = await loader.exists();
       if (!exists) {
-        logger.debug('No ax.md found, skipping project context');
+        logger.debug('No AX.MD found, skipping project context');
         return null;
       }
 
       const context = await loader.load();
 
-      logger.info('Project context loaded from ax.md', {
+      logger.debug('Project context loaded from AX.MD', {
         hasMarkdown: !!context.markdown,
         hasConfig: !!context.config,
         agentRules: context.agentRules?.length ?? 0,
@@ -590,6 +614,49 @@ export class ContextManager {
         error: (error as Error).message
       });
       return null;
+    }
+  }
+
+  /**
+   * Select relevant files from workspace index
+   *
+   * v8.5.0: Smart file selection for context compression
+   * @param projectDir - Project root directory
+   * @param task - Task description for keyword extraction
+   * @returns Array of relevant file paths, or undefined if index not available
+   */
+  private async selectRelevantFilesFromIndex(
+    projectDir: string,
+    task: string
+  ): Promise<string[] | undefined> {
+    try {
+      const { WorkspaceIndexer } = await import('../core/workspace-indexer.js');
+      const indexPath = join(projectDir, '.automatosx', 'workspace', 'index.db');
+
+      // Check if index exists
+      const indexExists = await access(indexPath).then(() => true).catch(() => false);
+      if (!indexExists) {
+        logger.debug('No workspace index found, skipping file selection');
+        return undefined;
+      }
+
+      // Load indexer and select files
+      const indexer = new WorkspaceIndexer(projectDir, { dbPath: indexPath });
+      const files = await indexer.selectRelevantFiles(task, {
+        maxFiles: 10,
+        includeTests: false,
+        includeRecent: true
+      });
+
+      indexer.close();
+
+      return files.length > 0 ? files : undefined;
+    } catch (error) {
+      // Non-critical failure - continue without index
+      logger.debug('Failed to select files from index', {
+        error: (error as Error).message
+      });
+      return undefined;
     }
   }
 

@@ -9,7 +9,7 @@
  */
 
 import { watch } from 'fs';
-import { readFile, unlink, readdir } from 'fs/promises';
+import { readFile, unlink, readdir, rename } from 'fs/promises';
 import { join } from 'path';
 import type { AgentStatus } from '../utils/agent-status-writer.js';
 import { logger } from '../utils/logger.js';
@@ -34,12 +34,10 @@ export type AgentCompletionCallback = (status: AgentStatus) => void | Promise<vo
  * - Graceful shutdown
  */
 export class BackgroundAgentMonitor {
-  private watchers: Map<string, AbortController> = new Map();
   private fsWatcher: ReturnType<typeof watch> | null = null;
   private projectDir: string;
   private statusDir: string;
   private callbacks: Map<string, AgentCompletionCallback[]> = new Map();
-  private processing = false;
 
   /**
    * Create Background Agent Monitor
@@ -126,7 +124,7 @@ export class BackgroundAgentMonitor {
         this.statusDir,
         { persistent: false, recursive: false },
         (eventType, filename) => {
-          if (eventType === 'rename' && filename && filename.endsWith('.json')) {
+          if (eventType === 'rename' && filename) {
             // New file created or file removed
             this.processStatusFile(filename).catch(error => {
               logger.warn('Failed to process status file', {
@@ -156,52 +154,76 @@ export class BackgroundAgentMonitor {
    * Reads status file, invokes callbacks, and cleans up.
    */
   private async processStatusFile(filename: string): Promise<void> {
-    if (this.processing) return;
-    this.processing = true;
+    if (!filename.endsWith('.json')) {
+      return;
+    }
+
+    const filePath = join(this.statusDir, filename);
+    const processingPath = `${filePath}.processing`;
 
     try {
-      const filePath = join(this.statusDir, filename);
+      await rename(filePath, processingPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return; // File already processed
+      }
+      logger.debug(`Could not acquire lock on status file: ${filename}`, {
+        error: (error as Error).message
+      });
+      return;
+    }
 
-      // Extract agent name from filename (agentname-timestamp.json)
-      const match = filename.match(/^(.+)-\d+\.json$/);
-      if (!match || !match[1]) return;
-
-      const agentName = match[1];
-
-      // Check if we have callbacks for this agent
-      const callbacks = this.callbacks.get(agentName);
-      if (!callbacks || callbacks.length === 0) return;
-
-      // Read status file
-      const statusData = await readFile(filePath, 'utf-8');
+    try {
+      const statusData = await readFile(processingPath, 'utf-8');
       const status: AgentStatus = JSON.parse(statusData);
 
-      // Invoke all callbacks for this agent
-      await Promise.all(
-        callbacks.map(async (callback) => {
-          try {
-            await callback(status);
-          } catch (error) {
-            logger.warn('Agent completion callback failed', {
-              agent: agentName,
-              error: (error as Error).message
-            });
-          }
-        })
-      );
+      const match = filename.match(/^(.+?)-(\d+)(?:-\d+)?\.json$/);
+      if (!match || !match[1]) {
+        logger.warn(`Could not extract agent name from ${filename}, deleting.`);
+        return;
+      }
+      const agentName = match[1];
 
-      // Remove callbacks (one-time notification)
-      this.callbacks.delete(agentName);
-
-      // Clean up status file
-      await unlink(filePath);
-
-      logger.debug('Processed agent status file', {
-        agent: agentName,
-        status: status.status
-      });
+      const callbacks = this.callbacks.get(agentName);
+      if (callbacks && callbacks.length > 0) {
+        await Promise.all(
+          callbacks.map(async (callback) => {
+            try {
+              await callback(status);
+            } catch (error) {
+              logger.warn('Agent completion callback failed', {
+                agent: agentName,
+                error: (error as Error).message
+              });
+            }
+          })
+        );
+        this.callbacks.delete(agentName);
+        logger.debug('Processed agent status file', {
+          agent: agentName,
+          status: status.status
+        });
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        logger.warn(`Corrupt status file found, deleting: ${filename}`, {
+          error: error.message
+        });
+      } else {
+        logger.error(`Error processing status file: ${filename}`, {
+          error: (error as Error).message
+        });
+      }
     } finally {
-      this.processing = false;
+      try {
+        await unlink(processingPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          logger.warn(`Failed to clean up processing file: ${processingPath}`, {
+            error: (error as Error).message
+          });
+        }
+      }
     }
   }
 
@@ -217,15 +239,18 @@ export class BackgroundAgentMonitor {
       for (const file of files) {
         if (file.startsWith(`${agentName}-`) && file.endsWith('.json')) {
           await this.processStatusFile(file);
-          break; // Only process first match
+          // Since processStatusFile is now atomic, we can continue checking
+          // in case multiple files for the same agent exist for some reason.
         }
       }
     } catch (error) {
       // Directory might not exist yet - that's ok
-      logger.debug('No existing status files found', {
-        agent: agentName,
-        error: (error as Error).message
-      });
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.debug('Could not check existing status files', {
+          agent: agentName,
+          error: (error as Error).message
+        });
+      }
     }
   }
 
@@ -235,12 +260,6 @@ export class BackgroundAgentMonitor {
    * Closes file watcher and clears all callbacks.
    */
   async stop(): Promise<void> {
-    // Abort all watchers
-    for (const controller of this.watchers.values()) {
-      controller.abort();
-    }
-    this.watchers.clear();
-
     // Close fs watcher
     if (this.fsWatcher) {
       this.fsWatcher.close();

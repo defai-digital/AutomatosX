@@ -116,7 +116,7 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 
 **✨ Key Feature**: AutomatosX **automatically selects the best agent(s)** for your task. You don't need to specify which agent to use - just describe what you want!
 
-### Use with Claude Code, Gemini CLI, or OpenAI Codex
+### Use with Claude Code, Gemini CLI, Grok CLI, or OpenAI Codex
 
 **Natural Task Descriptions** (ax auto-selects agents for you):
 
@@ -133,6 +133,14 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 "Use ax to find and fix bugs in the authentication system"
 "Work with ax to optimize the database queries"
 "Use ax to build the login UI"
+```
+
+```
+# In Grok CLI
+"Use ax to analyze and refactor this codebase"
+"Work with ax to debug the performance bottleneck"
+"Use ax to review code quality and suggest improvements"
+"Have ax identify security vulnerabilities"
 ```
 
 ```
@@ -189,6 +197,18 @@ Facebook providers. Include security audit and integration tests."
 blue-green deployment strategy and rollback automation."
 ```
 
+```
+# In Grok CLI
+"Use AutomatosX to create a workflow for comprehensive code quality improvement.
+Include refactoring, performance optimization, and security hardening."
+
+"Generate and execute a spec for debugging and fixing production issues.
+Include root cause analysis, fix implementation, and regression tests."
+
+"Create a workflow for technical debt reduction with code analysis,
+refactoring strategy, and validation tests."
+```
+
 #### Multi-Agent Orchestration
 
 ```
@@ -198,6 +218,15 @@ architecture, API, database, React UI, security audit, and comprehensive tests."
 
 "Work with AutomatosX to implement a data analytics pipeline with API,
 ETL, and data warehousing."
+```
+
+```
+# In Grok CLI
+"Use AutomatosX to analyze and optimize the entire codebase with quality checks,
+security audits, performance profiling, and comprehensive refactoring."
+
+"Work with AutomatosX to debug complex multi-service issues with distributed
+tracing, log analysis, and performance optimization."
 ```
 
 #### Iterate Mode Tasks

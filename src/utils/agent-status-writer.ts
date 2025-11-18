@@ -55,11 +55,14 @@ export async function writeAgentStatus(
     // Get PID for filename and status data
     const pid = status.pid || process.pid;
 
+    // Sanitize agent name for use in filename
+    const sanitizedAgentName = status.agent.replace(/[^a-zA-Z0-9_-]/g, '_');
+
     // Generate unique status filename
     const timestamp = Date.now();
     const statusFile = join(
       statusDir,
-      `${status.agent}-${timestamp}-${pid}.json`
+      `${sanitizedAgentName}-${timestamp}-${pid}.json`
     );
 
     // Write status file
@@ -121,7 +124,7 @@ export async function cleanupOldStatusFiles(
     }
   } catch (error) {
     // Non-critical error - just log it
-    logger.debug('Failed to cleanup status files', {
+    logger.warn('Failed to cleanup status files', {
       error: (error as Error).message
     });
   }

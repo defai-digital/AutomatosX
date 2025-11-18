@@ -290,11 +290,14 @@ export class DatabaseConnectionPool {
    * @param fn - Function to execute with the connection
    * @returns Query result
    */
-  async execute<T>(readonly: boolean, fn: (db: Database.Database) => T): Promise<T> {
+  async execute<T>(
+    readonly: boolean,
+    fn: (db: Database.Database) => T | Promise<T>
+  ): Promise<T> {
     const conn = await this.acquire(readonly);
 
     try {
-      const result = fn(conn.db);
+      const result = await fn(conn.db);
       return result;
     } finally {
       await this.release(conn);

@@ -514,6 +514,42 @@ export class AgentExecutor {
         throw new Error('Provider returned undefined response');
       }
 
+      // Phase 1: Invoke onPostResponse hook for iterate mode (v8.6.0+)
+      if (options.hooks?.onPostResponse) {
+        logger.debug('Invoking onPostResponse hook for iterate mode');
+
+        try {
+          const action = await options.hooks.onPostResponse(response);
+
+          logger.debug('onPostResponse hook returned action', { action });
+
+          // Handle action from iterate mode controller
+          if (action.type === 'pause' || action.type === 'stop') {
+            logger.info('Execution paused/stopped by iterate mode', { action: action.type });
+
+            // Stop spinner if active
+            if (spinner) {
+              spinner.info(`Execution ${action.type}ed by iterate mode`);
+            }
+
+            // Return current response (controller will handle next steps)
+            return {
+              response,
+              duration,
+              context
+            };
+          }
+          // 'continue', 'retry' handled by controller externally
+
+        } catch (hookError) {
+          logger.error('onPostResponse hook failed', {
+            error: (hookError as Error).message,
+            stack: (hookError as Error).stack
+          });
+          // Continue execution even if hook fails (don't break user workflow)
+        }
+      }
+
       // Check for delegation requests in response (v4.7.2+)
       if (context.orchestration) {
         const delegations = await this.delegationParser.parse(response.content, context.agent.name);

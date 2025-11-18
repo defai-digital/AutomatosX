@@ -484,6 +484,17 @@ export class CostTracker extends EventEmitter {
     query?: CostQuery,
     suffix: string = ''
   ): { sql: string; params: any[] } {
+    // VULNERABILITY FIX: Whitelist allowed characters in select and suffix
+    // to prevent SQL injection.
+    // Note: Allow empty string for select (used when only params are needed)
+    const safeSelect = /^[a-zA-Z0-9_*,.\s()'/]*$/;
+    if (!safeSelect.test(select)) {
+      throw new Error(`Invalid characters in select clause: ${select}`);
+    }
+    if (suffix && !safeSelect.test(suffix)) {
+      throw new Error(`Invalid characters in suffix: ${suffix}`);
+    }
+
     const conditions: string[] = [];
     const params: any[] = [];
 
@@ -527,18 +538,18 @@ export class CostTracker extends EventEmitter {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // FIXED (Bug #9): Validate limit is a safe positive integer before interpolating
-    // Prevents SQL injection: getTotalCost({ limit: "10; DROP TABLE--" })
-    let limit = '';
+    // VULNERABILITY FIX: Use parameterized query for LIMIT to prevent SQL injection.
+    let limitClause = '';
     if (query?.limit !== undefined) {
       const limitValue = Number(query.limit);
       if (!Number.isInteger(limitValue) || limitValue < 0 || limitValue > 10000) {
         throw new Error(`Invalid limit value: ${query.limit}. Must be a positive integer <= 10000.`);
       }
-      limit = `LIMIT ${limitValue}`;
+      limitClause = `LIMIT ?`;
+      params.push(limitValue);
     }
 
-    const sql = `SELECT ${select} FROM cost_entries ${where} ${suffix} ${limit}`.trim();
+    const sql = `SELECT ${select} FROM cost_entries ${where} ${suffix} ${limitClause}`.trim();
 
     return { sql, params };
   }

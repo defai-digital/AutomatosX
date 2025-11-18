@@ -48,6 +48,14 @@ export async function writeAgentStatus(
   projectDir: string = process.cwd()
 ): Promise<void> {
   try {
+    // Validate agent name before proceeding
+    if (typeof status.agent !== 'string' || status.agent.trim() === '') {
+      logger.warn('Cannot write agent status: agent name is missing or invalid.', {
+        status
+      });
+      return;
+    }
+
     // Create status directory if it doesn't exist
     const statusDir = join(projectDir, '.automatosx', 'status');
     await mkdir(statusDir, { recursive: true });
@@ -118,8 +126,16 @@ export async function cleanupOldStatusFiles(
       const fileTimestamp = parseInt(match[1], 10);
       if (fileTimestamp < cutoff) {
         const filePath = join(statusDir, file);
-        await unlink(filePath);
-        logger.debug('Cleaned up old status file', { file });
+        try {
+          await unlink(filePath);
+          logger.debug('Cleaned up old status file', { file });
+        } catch (e: any) {
+          // If the file does not exist, it might have been deleted by another process.
+          // This is not an error in the context of cleanup.
+          if (e.code !== 'ENOENT') {
+            throw e; // Re-throw other errors
+          }
+        }
       }
     }
   } catch (error) {

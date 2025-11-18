@@ -193,7 +193,7 @@ export class UnifiedMCPManager implements IMCPManager {
       // Store server
       this.servers.set(config.name, serverProcess);
 
-      // Wait briefly to ensure process started successfully
+      // Wait briefly for process to initialize (MCP handshake handles actual readiness)
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check if process is still running
@@ -647,16 +647,22 @@ export class UnifiedMCPManager implements IMCPManager {
    */
   private async waitForExit(process: ChildProcess, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
+      let exitListener: () => void;
+
       const timeout = setTimeout(() => {
+        process.removeListener('exit', exitListener);
         reject(new Error(`Process did not exit within ${timeoutMs}ms`));
       }, timeoutMs);
 
-      process.on('exit', () => {
+      exitListener = () => {
         clearTimeout(timeout);
         resolve();
-      });
+      };
+
+      process.once('exit', exitListener);
     });
   }
+
 
   /**
    * Convert server process to status

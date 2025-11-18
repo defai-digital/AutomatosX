@@ -266,9 +266,9 @@ export function installExitHandlers(): void {
   };
 
   // Handle various exit signals
-  process.once('SIGTERM', () => exitHandler('SIGTERM'));
-  process.once('SIGINT', () => exitHandler('SIGINT'));
-  process.once('SIGHUP', () => exitHandler('SIGHUP'));
+  process.once('SIGTERM', async () => await exitHandler('SIGTERM'));
+  process.once('SIGINT', async () => await exitHandler('SIGINT'));
+  process.once('SIGHUP', async () => await exitHandler('SIGHUP'));
 
   // Handle uncaught exceptions
   process.once('uncaughtException', async (error) => {

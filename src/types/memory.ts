@@ -433,4 +433,5 @@ export type MemoryErrorCode =
   | 'PROVIDER_MISSING'
   | 'EMBEDDING_GENERATION_FAILED'
   | 'MEMORY_LIMIT'   // v5.0.8: Memory limit reached
-  | 'CONFIG_ERROR';  // v5.0.10 Phase 2: Invalid configuration
+  | 'CONFIG_ERROR'   // v5.0.10 Phase 2: Invalid configuration
+  | 'VALIDATION_ERROR';  // Input validation failed

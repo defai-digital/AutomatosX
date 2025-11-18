@@ -158,7 +158,7 @@ export abstract class BaseProvider implements Provider {
    * Get CLI arguments (optional, for providers that need special flags)
    * Subclasses can override to add provider-specific arguments
    */
-  protected getCLIArgs(): string[] {
+  protected getCLIArgs(): string[] | Promise<string[]> {
     return [];  // No args by default
   }
 
@@ -186,7 +186,7 @@ export abstract class BaseProvider implements Provider {
     try {
       const escapedPrompt = this.escapeShellArg(prompt);
       const cliCommand = this.getCLICommand();
-      const cliArgs = this.getCLIArgs();
+      const cliArgs = await this.getCLIArgs();
       const argsString = cliArgs.length > 0 ? cliArgs.join(' ') + ' ' : '';
       const fullCommand = `${cliCommand} ${argsString}${escapedPrompt}`;
 
@@ -576,7 +576,8 @@ export abstract class BaseProvider implements Provider {
       errorCode = ErrorCode.PROVIDER_NOT_FOUND;
     } else if (message.includes('timeout') || message.includes('ETIMEDOUT')) {
       errorCode = ErrorCode.PROVIDER_TIMEOUT;
-    } else if (message.includes('rate limit') || message.includes('quota')) {
+    } else if (this.detectRateLimitError(error)) {
+      // Bug #2 Fix: Use provider-specific error detection instead of simple string matching
       errorCode = ErrorCode.PROVIDER_RATE_LIMIT;
     }
 
@@ -584,6 +585,56 @@ export abstract class BaseProvider implements Provider {
       `${this.config.name} failed: ${message}`,
       errorCode
     );
+  }
+
+  /**
+   * Detect rate limit or quota exhaustion errors using provider-specific patterns
+   *
+   * Bug #2 Fix: Provider-specific error pattern matching
+   * Previously used simple string matching ("rate limit" or "quota") which missed
+   * provider-specific error formats like Gemini's "RESOURCE_EXHAUSTED".
+   *
+   * This method checks:
+   * - Error message against provider-specific patterns
+   * - HTTP status codes (429, 529)
+   * - Error codes from provider APIs
+   * - Generic fallback patterns
+   *
+   * @param error - The error to check
+   * @returns true if this is a rate limit or quota error
+   */
+  private detectRateLimitError(error: any): boolean {
+    // Import pattern registry dynamically to avoid circular dependency
+    const { isLimitError } = require('./error-patterns.js');
+
+    try {
+      // Use provider-specific detection from error-patterns.ts
+      const isLimited = isLimitError(error, this.config.name);
+
+      // Log detection for debugging
+      if (isLimited) {
+        this.logger.debug('Rate limit error detected', {
+          provider: this.config.name,
+          message: error?.message,
+          code: error?.code,
+          status: error?.status || error?.statusCode
+        });
+      }
+
+      return isLimited;
+    } catch (detectionError) {
+      // Fallback to simple string matching if detection fails
+      this.logger.warn('Rate limit detection failed, using fallback', {
+        provider: this.config.name,
+        error: detectionError
+      });
+
+      const message = (error?.message || '').toLowerCase();
+      return message.includes('rate limit') ||
+             message.includes('quota') ||
+             message.includes('resource_exhausted') ||
+             message.includes('too many requests');
+    }
   }
 
   /**

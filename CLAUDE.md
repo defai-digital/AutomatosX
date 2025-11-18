@@ -1615,13 +1615,62 @@ Show AutomatosX system status and health.
 
 ## Advanced Usage
 
-### Parallel Execution (v5.6.0+)
+### Parallel Execution
 
 Run multiple agents in parallel for faster workflows:
 
 ```bash
+# Method 1: Bash parallelization
+ax run backend "Implement API" &
+ax run frontend "Build UI" &
+ax run devops "Setup infra" &
+wait
+
+# Method 2: --parallel flag (enables parallel delegation)
 ax run product "Design authentication system" --parallel
+
+# Method 3: Spec-Kit DAG (automatic dependency resolution)
+ax spec run workflow.ax.yaml  # Tasks run in parallel where possible
 ```
+
+**See:** [docs/guides/parallel-execution.md](docs/guides/parallel-execution.md) for comprehensive guide
+
+### Background Agent Monitoring (v8.5.0+)
+
+Monitor background agents with zero polling using file-based notifications:
+
+```typescript
+import { BackgroundAgentMonitor } from '@defai.digital/automatosx';
+
+// Start background agent
+await Bash({
+  command: 'ax run backend "large refactor"',
+  run_in_background: true
+});
+
+// Monitor completion (10-50ms latency, zero polling!)
+const monitor = new BackgroundAgentMonitor();
+const status = await monitor.watchAgent('backend');
+console.log(`Completed in ${status.duration}ms`);
+```
+
+**See:** [docs/guides/background-agent-monitoring.md](docs/guides/background-agent-monitoring.md) for complete API
+
+### Claude Code Subagent Integration
+
+Leverage Claude Code's native subagents with AutomatosX:
+
+```
+User: "Work on backend, frontend, and testing in parallel using subagents"
+
+Claude Code automatically:
+  • Spawns 3 subagents
+  • Each calls AutomatosX agents independently
+  • All share AutomatosX memory for coordination
+  • Results reported back to main agent
+```
+
+**See:** [docs/guides/claude-code-subagent-integration.md](docs/guides/claude-code-subagent-integration.md) for patterns
 
 ### Resumable Runs (v5.3.0+)
 

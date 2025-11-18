@@ -1,3 +1,11 @@
+# ============================================================================
+# NPM PACKAGE CONFIGURATION
+# ============================================================================
+# NOTE: The "files" field in package.json takes precedence over .npmignore
+# Currently published: dist/, examples/, schema/, templates/, README.md, LICENSE, CHANGELOG.md
+# See package.json lines 113-120 for explicit list
+# ============================================================================
+
 # Development documentation and AI assistant configuration
 PRD/
 # AI assistant runtime directories (contain API keys, privacy data, sensitive config)
@@ -22,11 +30,21 @@ E2E-TESTING.md
 .eslintrc*
 tsconfig.json
 vitest.config.ts
+vitest.config.ci.ts
+vitest.setup.ts
+vitest.global-teardown.ts
+tsup.config.ts
+commitlint.config.js
 
 # Source files (only publish dist/)
 src/
 tests/
 __tests__/
+
+# IMPORTANT: schema/ and templates/ are INCLUDED via package.json "files" field
+# They are needed at runtime for:
+# - schema/: Configuration and spec validation (SpecSchemaValidator.ts)
+# - templates/: CLI commands (ax spec init, ax setup)
 
 # Testing
 coverage/

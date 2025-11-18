@@ -117,7 +117,13 @@
     "templates",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "FAQ.md",
+    "TROUBLESHOOTING.md",
+    "MIGRATION.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md"
   ],
   "keywords": [
     "ai",

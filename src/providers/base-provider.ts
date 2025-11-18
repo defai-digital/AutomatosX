@@ -28,15 +28,66 @@ import type {
 import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
 import { exec } from 'child_process';
-import { promisify } from 'util';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import {
   safeValidateExecutionRequest,
-  safeValidateExecutionResponse,
-  safeValidateHealthStatus
+  safeValidateExecutionResponse
 } from './provider-schemas.js';
 
-const execAsync = promisify(exec);
+/**
+ * Execute command with proper process cleanup (BUG #3 FIX)
+ * Wraps exec() to ensure child processes are killed on timeout
+ *
+ * Improvements:
+ * 1. Clears timer on both success and error paths
+ * 2. Uses SIGTERM → SIGKILL escalation pattern
+ * 3. Prevents zombie processes with proper cleanup
+ */
+function execWithCleanup(
+  command: string,
+  options: any
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = exec(command, options, (error, stdout, stderr) => {
+      // BUG #3 FIX: Clear timer on completion (success or error)
+      clearTimeout(killTimer);
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve({
+          stdout: stdout.toString(),
+          stderr: stderr.toString()
+        });
+      }
+    });
+
+    // BUG #3 FIX: Ensure child process is killed on timeout
+    const timeout = options.timeout || 120000;
+    const killTimer = setTimeout(() => {
+      if (child.pid && !child.killed) {
+        logger.warn('Killing child process due to timeout', {
+          pid: child.pid,
+          command: command.substring(0, 50)
+        });
+        child.kill('SIGTERM');
+
+        // Force kill after 5 seconds if SIGTERM doesn't work
+        setTimeout(() => {
+          if (child.pid && !child.killed) {
+            logger.warn('Force killing child process', { pid: child.pid });
+            child.kill('SIGKILL');
+          }
+        }, 5000);
+      }
+    }, timeout);
+
+    // BUG #3 FIX: Also clear timer on exit event (defensive cleanup)
+    child.on('exit', () => {
+      clearTimeout(killTimer);
+    });
+  });
+}
 
 export abstract class BaseProvider implements Provider {
   /**
@@ -117,7 +168,8 @@ export abstract class BaseProvider implements Provider {
         promptLength: prompt.length
       });
 
-      const { stdout, stderr } = await execAsync(
+      // BUG #3 FIX: Use execWithCleanup instead of execAsync to ensure process cleanup
+      const { stdout, stderr } = await execWithCleanup(
         `${cliCommand} ${escapedPrompt}`,
         {
           timeout: this.config.timeout || 120000,
@@ -138,9 +190,10 @@ export abstract class BaseProvider implements Provider {
         }
       );
 
-      // Log stderr as warning if present (even on success)
+      // Log stderr as debug if present (even on success)
+      // Many CLIs output informational messages to stderr, which is normal
       if (stderr) {
-        logger.warn(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
+        logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
       }
 
       if (!stdout) {
@@ -165,12 +218,12 @@ export abstract class BaseProvider implements Provider {
   protected async checkCLIAvailable(): Promise<boolean> {
     try {
       const cliCommand = this.getCLICommand();
-      const path = await findOnPath(cliCommand);
-      const available = path !== null;
+      const result = findOnPath(cliCommand);
+      const available = result.found;
 
       logger.debug(`${cliCommand} CLI availability check`, {
         available,
-        path: path || 'not found'
+        path: result.path || 'not found'
       });
 
       return available;

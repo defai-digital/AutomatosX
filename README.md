@@ -13,9 +13,9 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.6.0 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
+**Status**: ✅ **Production Ready** | v8.5.3 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
 
-> 🎉 **NEW in v8.6.0**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
+> 🎉 **NEW in v8.5.3**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
 
 > 🔥 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, `grok`, and `codex` commands. Simpler, faster, easier to maintain.
 
@@ -860,7 +860,7 @@ ax run dag.json
 
 ### 🎯 Enterprise MCP Server Management (Phase 4)
 
-**NEW in v8.6.0**: Production-ready Model Context Protocol (MCP) server orchestration with comprehensive lifecycle management, auto-installation, and enterprise-grade monitoring.
+**NEW in v8.5.3**: Production-ready Model Context Protocol (MCP) server orchestration with comprehensive lifecycle management, auto-installation, and enterprise-grade monitoring.
 
 #### **Phase 4A: Lifecycle Management**
 ```bash
@@ -1078,7 +1078,7 @@ ax config set mcp.security.enforcementMode throttle
 
 ## 🚦 Production Readiness
 
-✅ **v8.6.0 Released** - Enterprise MCP Phase 4 complete
+✅ **v8.5.3 Released** - Enterprise MCP Phase 4 complete
 ✅ **v7.0.0 Released** - Natural language-first design, unified setup
 ✅ **100% Complete** - Spec-Kit integration + MCP management fully implemented
 ✅ **2,512+ Tests Passing** - Comprehensive test coverage
@@ -1274,7 +1274,7 @@ AutomatosX is licensed under Apache 2.0 for **non-commercial use**. For commerci
   - ✅ Real-time following
   - ✅ Color-coded CLI
 
-### Coming Soon (v8.6.0+)
+### Coming Soon (v8.5.3+)
 
 - ⏳ Enhanced Spec Features
   - Advanced DAG visualization

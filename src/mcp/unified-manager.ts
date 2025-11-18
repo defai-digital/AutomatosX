@@ -28,28 +28,59 @@ import type {
   IMCPManager,
   KNOWN_MCP_SERVERS,
 } from './types-common.js';
+import { LifecycleLogger, getLifecycleLogger } from './lifecycle-logger.js';
+import { MetricsCollector, getMetricsCollector } from './metrics-collector.js';
+import { ResourceEnforcer, createResourceEnforcer } from './resource-enforcer.js';
 
 /**
  * Unified MCP Manager
  *
  * Provides complete MCP server lifecycle management for all providers.
+ * Now includes Phase 4 enhancements:
+ * - Lifecycle event logging
+ * - Performance metrics collection
+ * - Resource limit enforcement
  */
 export class UnifiedMCPManager implements IMCPManager {
   private servers: Map<string, MCPServerProcess> = new Map();
   private healthCheckInterval?: NodeJS.Timeout;
 
-  constructor(private config: UniversalMCPConfig) {}
+  // Phase 4 components
+  private lifecycleLogger: LifecycleLogger;
+  private metricsCollector: MetricsCollector;
+  private resourceEnforcer?: ResourceEnforcer;
+
+  constructor(private config: UniversalMCPConfig) {
+    // Initialize Phase 4 components
+    this.lifecycleLogger = getLifecycleLogger();
+    this.metricsCollector = getMetricsCollector();
+    this.resourceEnforcer = createResourceEnforcer(config) || undefined;
+  }
 
   /**
    * Initialize MCP manager
    *
    * Sets up health checking and discovers servers if configured.
+   * Phase 4: Also initializes lifecycle logging, metrics, and resource enforcement.
    */
   async initialize(): Promise<void> {
     logger.info('UnifiedMCPManager: Initializing', {
       serverCount: this.config.servers.length,
       discoveryEnabled: this.config.discovery?.enabled,
+      phase4Enabled: true,
     });
+
+    // Phase 4: Initialize lifecycle logger
+    await this.lifecycleLogger.initialize();
+
+    // Phase 4: Start metrics collection
+    this.metricsCollector.start();
+
+    // Phase 4: Start resource enforcement
+    if (this.resourceEnforcer) {
+      this.resourceEnforcer.start();
+      logger.info('UnifiedMCPManager: Resource enforcement enabled');
+    }
 
     // Auto-discover servers if enabled
     if (this.config.discovery?.enabled) {
@@ -61,7 +92,7 @@ export class UnifiedMCPManager implements IMCPManager {
       this.startHealthChecking();
     }
 
-    logger.info('UnifiedMCPManager: Initialized successfully');
+    logger.info('UnifiedMCPManager: Initialized successfully (Phase 4 enabled)');
   }
 
   /**
@@ -177,6 +208,19 @@ export class UnifiedMCPManager implements IMCPManager {
         pid: childProcess.pid,
       });
 
+      // Phase 4: Log lifecycle event
+      if (childProcess.pid) {
+        await this.lifecycleLogger.logServerStart(config.name, childProcess.pid);
+
+        // Phase 4: Register with resource enforcer
+        if (this.resourceEnforcer) {
+          this.resourceEnforcer.registerServer(config.name, serverProcess);
+        }
+
+        // Phase 4: Record metrics
+        this.metricsCollector.recordServerStart(config.name);
+      }
+
       return this.serverProcessToStatus(serverProcess);
     } catch (error) {
       logger.error('UnifiedMCPManager: Failed to start server', {
@@ -209,6 +253,7 @@ export class UnifiedMCPManager implements IMCPManager {
    * Stop a specific server
    *
    * @param serverName - Name of server to stop
+   * Phase 4: Enhanced with lifecycle logging and cleanup
    */
   async stopServer(serverName: string): Promise<void> {
     const serverProcess = this.servers.get(serverName);
@@ -219,6 +264,8 @@ export class UnifiedMCPManager implements IMCPManager {
       });
       return;
     }
+
+    const startTime = Date.now();
 
     logger.info('UnifiedMCPManager: Stopping server', {
       name: serverName,
@@ -235,15 +282,36 @@ export class UnifiedMCPManager implements IMCPManager {
       logger.info('UnifiedMCPManager: Server stopped gracefully', {
         name: serverName,
       });
+
+      // Phase 4: Log lifecycle event
+      const duration = Date.now() - startTime;
+      await this.lifecycleLogger.logServerStop(
+        serverName,
+        duration,
+        'graceful_shutdown'
+      );
     } catch (error) {
       // Force kill if graceful shutdown fails
       logger.warn('UnifiedMCPManager: Forcing server termination', {
         name: serverName,
       });
       serverProcess.process.kill('SIGKILL');
+
+      // Phase 4: Log forced termination
+      const duration = Date.now() - startTime;
+      await this.lifecycleLogger.logServerStop(
+        serverName,
+        duration,
+        'forced_kill'
+      );
     } finally {
       serverProcess.running = false;
       this.servers.delete(serverName);
+
+      // Phase 4: Unregister from resource enforcer
+      if (this.resourceEnforcer) {
+        this.resourceEnforcer.unregisterServer(serverName);
+      }
     }
   }
 
@@ -379,9 +447,75 @@ export class UnifiedMCPManager implements IMCPManager {
   }
 
   /**
+   * Get metrics for all servers (Phase 4D)
+   *
+   * @returns Array of server metrics
+   */
+  async getMetrics(): Promise<any[]> {
+    const metrics: any[] = [];
+
+    for (const [serverName, serverProcess] of this.servers) {
+      if (!serverProcess.running || !serverProcess.process.pid) {
+        continue;
+      }
+
+      const serverMetrics = await this.metricsCollector.collectServerMetrics(
+        serverName,
+        serverProcess.process.pid
+      );
+
+      metrics.push(serverMetrics);
+    }
+
+    return metrics;
+  }
+
+  /**
+   * Get metrics summary (Phase 4D)
+   *
+   * @returns Aggregated metrics summary
+   */
+  async getMetricsSummary(): Promise<any> {
+    const metrics = await this.getMetrics();
+    return this.metricsCollector.getMetricsSummary(metrics);
+  }
+
+  /**
+   * Get lifecycle event history (Phase 4A)
+   *
+   * @param serverName - Optional server name filter
+   * @param limit - Maximum number of events
+   * @returns Array of lifecycle events
+   */
+  async getLifecycleHistory(serverName?: string, limit: number = 100): Promise<any[]> {
+    return this.lifecycleLogger.getEventHistory(serverName, limit);
+  }
+
+  /**
+   * Get resource limits for server (Phase 4E)
+   *
+   * @param serverName - Server name
+   * @returns Resource limits
+   */
+  getResourceLimits(serverName: string): any {
+    return this.resourceEnforcer?.getLimits(serverName);
+  }
+
+  /**
+   * Set resource limits for server (Phase 4E)
+   *
+   * @param serverName - Server name
+   * @param limits - New resource limits
+   */
+  setResourceLimits(serverName: string, limits: any): void {
+    this.resourceEnforcer?.setLimits(serverName, limits);
+  }
+
+  /**
    * Cleanup resources
    *
    * Stops all servers and clears intervals.
+   * Phase 4: Also stops metrics, resource enforcement, and lifecycle logging.
    */
   async cleanup(): Promise<void> {
     logger.info('UnifiedMCPManager: Cleaning up');
@@ -392,10 +526,18 @@ export class UnifiedMCPManager implements IMCPManager {
       this.healthCheckInterval = undefined;
     }
 
+    // Phase 4: Stop metrics collection
+    this.metricsCollector.stop();
+
+    // Phase 4: Stop resource enforcement
+    if (this.resourceEnforcer) {
+      this.resourceEnforcer.stop();
+    }
+
     // Stop all servers
     await this.stopServers();
 
-    logger.info('UnifiedMCPManager: Cleanup complete');
+    logger.info('UnifiedMCPManager: Cleanup complete (Phase 4)');
   }
 
   // ========== Private Helper Methods ==========

@@ -74,8 +74,9 @@ temperature: 0.7
         killSignal: 'SIGINT'
       });
 
-      expect(result.stdout).toContain('AutomatosX');
-      expect(result.stdout).toContain('Complete');
+      // Quiet mode no longer shows "AutomatosX" branding
+      expect(result.stdout).toContain('📝 Result');
+      expect(result.stdout).toContain('[Mock');
     });
   });
 
@@ -129,8 +130,9 @@ temperature: 0.7
         killSignal: 'SIGINT'
       });
 
-      expect(result.stdout).toContain('AutomatosX');
-      expect(result.stdout).toContain('Complete');
+      // Quiet mode no longer shows "AutomatosX" branding
+      expect(result.stdout).toContain('📝 Result');
+      expect(result.stdout).toContain('[Mock');
     });
 
     it('should work with case-insensitive displayName', async () => {
@@ -161,8 +163,9 @@ temperature: 0.7
         killSignal: 'SIGINT'
       });
 
-      expect(result.stdout).toContain('AutomatosX');
-      expect(result.stdout).toContain('Complete');
+      // Quiet mode no longer shows "AutomatosX" branding
+      expect(result.stdout).toContain('📝 Result');
+      expect(result.stdout).toContain('[Mock');
     });
   });
 

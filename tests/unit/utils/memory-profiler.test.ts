@@ -5,26 +5,26 @@ describe('MemoryProfiler', () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.AUTOMATOSX_PROFILE;
+    originalEnv = process.env.AX_PROFILE;
   });
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.AUTOMATOSX_PROFILE;
+      delete process.env.AX_PROFILE;
     } else {
-      process.env.AUTOMATOSX_PROFILE = originalEnv;
+      process.env.AX_PROFILE = originalEnv;
     }
   });
 
   describe('constructor', () => {
-    it('should be enabled when AUTOMATOSX_PROFILE=true', () => {
-      process.env.AUTOMATOSX_PROFILE = 'true';
+    it('should be enabled when AX_PROFILE=true', () => {
+      process.env.AX_PROFILE = 'true';
       const profiler = new MemoryProfiler();
       expect(profiler.isEnabled()).toBe(true);
     });
 
-    it('should be disabled when AUTOMATOSX_PROFILE is not set', () => {
-      delete process.env.AUTOMATOSX_PROFILE;
+    it('should be disabled when AX_PROFILE is not set', () => {
+      delete process.env.AX_PROFILE;
       const profiler = new MemoryProfiler();
       expect(profiler.isEnabled()).toBe(false);
     });

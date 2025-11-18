@@ -14,7 +14,7 @@ import type { ProviderConfig } from '../../src/types/provider.js';
 describe('Grok Provider Routing Integration', () => {
   beforeEach(() => {
     // Enable mock mode for all providers
-    process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    process.env.AX_MOCK_PROVIDERS = 'true';
   });
 
   describe('Provider Instantiation', () => {

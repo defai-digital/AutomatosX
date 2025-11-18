@@ -420,7 +420,7 @@ tests/
 ## Testing Notes
 
 - Tests use Vitest with strict isolation (4 max threads, 4 max concurrency)
-- `AUTOMATOSX_MOCK_PROVIDERS=true` is set by default in tests
+- `AX_MOCK_PROVIDERS=true` is set by default in tests
 - Global setup: `vitest.setup.ts`, teardown: `vitest.global-teardown.ts`
 - Test timeout: 60s per test, 10s for teardown
 - Integration tests can be skipped: `SKIP_INTEGRATION_TESTS=true npm test`

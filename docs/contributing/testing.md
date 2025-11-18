@@ -208,7 +208,7 @@ const mockProvider: Provider = {
 };
 
 // Use environment variable for mock mode
-process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+process.env.AX_MOCK_PROVIDERS = 'true';
 ```
 
 ---
@@ -379,13 +379,13 @@ Error: OpenAI API key not configured. Set OPENAI_API_KEY environment variable...
 **Solution:**
 ```typescript
 // Set environment variable in test setup
-process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+process.env.AX_MOCK_PROVIDERS = 'true';
 
 // Or add to vitest.config.ts env section
 export default defineConfig({
   test: {
     env: {
-      AUTOMATOSX_MOCK_PROVIDERS: 'true'
+      AX_MOCK_PROVIDERS: 'true'
     }
   }
 });
@@ -445,7 +445,7 @@ npm run test:ci
 5. **Mock external dependencies** (providers, file system, network)
 6. **Test edge cases** (null, undefined, empty arrays, errors)
 7. **Add tests for bug fixes** (regression tests)
-8. **Use `AUTOMATOSX_MOCK_PROVIDERS=true`** for integration tests
+8. **Use `AX_MOCK_PROVIDERS=true`** for integration tests
 9. **Check coverage for new features** (`npm run test:coverage`)
 10. **Review test output in CI** (don't ignore CI failures)
 

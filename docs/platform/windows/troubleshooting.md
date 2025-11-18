@@ -228,7 +228,7 @@ npm install -g @openai/codex-cli
 npm install -g @google-ai/gemini-cli
 
 # Or use mock providers for testing
-set AUTOMATOSX_MOCK_PROVIDERS=true
+set AX_MOCK_PROVIDERS=true
 npx @defai.digital/automatosx run backend "test"
 ```
 
@@ -351,7 +351,7 @@ echo.
 
 echo [8] Environment Variables
 echo PATH=%PATH%
-echo AUTOMATOSX_MOCK_PROVIDERS=%AUTOMATOSX_MOCK_PROVIDERS%
+echo AX_MOCK_PROVIDERS=%AX_MOCK_PROVIDERS%
 echo.
 
 echo === End of Report ===
@@ -399,7 +399,7 @@ npx @defai.digital/automatosx setup
 
 ```bash
 # Test without real provider CLIs
-set AUTOMATOSX_MOCK_PROVIDERS=true
+set AX_MOCK_PROVIDERS=true
 npx @defai.digital/automatosx run backend "Test message"
 
 # If this works, the issue is with provider CLIs
@@ -506,7 +506,7 @@ npx @defai.digital/automatosx list agents
 
 ```bash
 # Should complete successfully
-set AUTOMATOSX_MOCK_PROVIDERS=true
+set AX_MOCK_PROVIDERS=true
 npx @defai.digital/automatosx run backend "Hello"
 ```
 
@@ -582,7 +582,7 @@ Please include the following in your issue:
 - [ ] Check PowerShell execution policy
 - [ ] Verify npm global path in PATH
 - [ ] Try ENV variable override for providers
-- [ ] Test with mock providers (`AUTOMATOSX_MOCK_PROVIDERS=true`)
+- [ ] Test with mock providers (`AX_MOCK_PROVIDERS=true`)
 - [ ] Check provider CLIs installed (via `where claude`, etc.)
 - [ ] Review Windows Defender exclusions
 - [ ] Enable long paths if needed (for deep directory structures)

@@ -38,16 +38,16 @@ describe.skip('Streaming Workflow Integration', () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.AUTOMATOSX_MOCK_PROVIDERS;
-    process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    originalEnv = process.env.AX_MOCK_PROVIDERS;
+    process.env.AX_MOCK_PROVIDERS = 'true';
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
     } else {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = originalEnv;
+      process.env.AX_MOCK_PROVIDERS = originalEnv;
     }
     vi.restoreAllMocks();
   });

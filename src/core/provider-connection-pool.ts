@@ -129,7 +129,7 @@ export class ProviderConnectionPool extends EventEmitter {
 
     // Skip warmup in mock/test mode to avoid API key requirement errors
     const isMockMode =
-      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.AX_MOCK_PROVIDERS === 'true' ||
       process.env.NODE_ENV === 'test' ||
       process.env.VITEST === 'true';
 
@@ -150,7 +150,7 @@ export class ProviderConnectionPool extends EventEmitter {
   async warmup(provider: string): Promise<void> {
     // Skip warmup in mock/test mode to avoid API key requirement errors
     const isMockMode =
-      process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true' ||
+      process.env.AX_MOCK_PROVIDERS === 'true' ||
       process.env.NODE_ENV === 'test' ||
       process.env.VITEST === 'true';
 

@@ -19,7 +19,7 @@ export class MemoryProfiler {
   private snapshots: MemorySnapshot[] = [];
   private readonly enabled: boolean;
 
-  constructor(enabled: boolean = process.env.AUTOMATOSX_PROFILE === 'true') {
+  constructor(enabled: boolean = process.env.AX_PROFILE === 'true') {
     this.enabled = enabled && typeof process.memoryUsage === 'function';
   }
 

@@ -26,7 +26,7 @@ describe.skipIf(SKIP_REAL_PROVIDER_TESTS)('Real Provider Integration', () => {
     // Initialize AutomatosX
     execSync(`node ${cliPath} init ${testDir}`, {
       stdio: 'pipe',
-      env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+      env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
     });
 
     // Create test agent profile
@@ -60,7 +60,7 @@ maxTokens: 50
         cwd: testDir,
         encoding: 'utf-8',
         stdio: 'pipe',
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
       }
     );
 
@@ -81,7 +81,7 @@ maxTokens: 50
           cwd: testDir,
           encoding: 'utf-8',
           stdio: 'pipe',
-          env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+          env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
         }
       );
 
@@ -101,7 +101,7 @@ maxTokens: 50
         cwd: testDir,
         encoding: 'utf-8',
         stdio: 'pipe',
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
       }
     );
 
@@ -118,7 +118,7 @@ maxTokens: 50
         cwd: testDir,
         encoding: 'utf-8',
         stdio: 'pipe',
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
       }
     );
 
@@ -140,7 +140,7 @@ maxTokens: 50
         cwd: testDir,
         encoding: 'utf-8',
         stdio: 'pipe',
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'false' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'false' }
       }
     );
 
@@ -192,7 +192,7 @@ maxTokens: 100
     // Run test
     console.log('\n3. Running agent with real provider...\n');
     const result = execSync(
-      `AUTOMATOSX_MOCK_PROVIDERS=false node ${cliPath} run manual-test "Hello! Please confirm you are using the real Claude provider."`,
+      `AX_MOCK_PROVIDERS=false node ${cliPath} run manual-test "Hello! Please confirm you are using the real Claude provider."`,
       {
         cwd: testDir,
         encoding: 'utf-8',

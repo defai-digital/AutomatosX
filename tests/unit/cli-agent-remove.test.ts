@@ -23,7 +23,7 @@ async function execCLI(args: string[], cwd?: string, input?: string): Promise<{
   return new Promise((resolve) => {
     const child = spawn('node', [CLI_PATH, ...args], {
       cwd: cwd || process.cwd(),
-      env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' }
+      env: { ...process.env, AX_MOCK_PROVIDERS: 'true' }
     });
 
     let stdout = '';

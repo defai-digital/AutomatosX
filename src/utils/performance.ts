@@ -26,7 +26,7 @@ export class PerformanceTracker {
   private enabled: boolean;
 
   constructor(enabled: boolean = false) {
-    this.enabled = enabled || process.env.AUTOMATOSX_PROFILE === 'true';
+    this.enabled = enabled || process.env.AX_PROFILE === 'true';
     this.startTime = performance.now();
   }
 
@@ -139,7 +139,7 @@ export class PerformanceTracker {
  * Global performance tracker instance
  */
 export const globalTracker = new PerformanceTracker(
-  process.env.AUTOMATOSX_PROFILE === 'true'
+  process.env.AX_PROFILE === 'true'
 );
 
 /**

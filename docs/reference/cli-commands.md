@@ -1235,7 +1235,7 @@ export GEMINI_API_KEY="..."
 export AUTOMATOSX_DEBUG=true
 
 # Mock providers (for testing)
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 
 # Custom config path
 export AUTOMATOSX_CONFIG_PATH="./custom-config.json"

@@ -458,7 +458,7 @@ See [Agent Templates Guide](./agent-templates.md) for details.
 |----------|-------------|---------|
 | `AUTOMATOSX_LOG_LEVEL` | Logging level | `info` |
 | `AUTOMATOSX_CONFIG` | Config file path | `automatosx.config.json` |
-| `AUTOMATOSX_MOCK_PROVIDERS` | Use mock providers | `false` |
+| `AX_MOCK_PROVIDERS` | Use mock providers | `false` |
 | `AUTOMATOSX_DISABLE_CACHE` | Disable caching | `false` |
 | `AUTOMATOSX_MEMORY_PATH` | Memory storage path | `.automatosx/memory` |
 | `AUTOMATOSX_NO_COLOR` | Disable colored output | `false` |
@@ -582,7 +582,7 @@ Different configs for different environments:
 # Development (verbose logging, mock providers)
 export AUTOMATOSX_CONFIG=automatosx.dev.json
 export AUTOMATOSX_LOG_LEVEL=debug
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 
 # Production (minimal logging, real providers)
 export AUTOMATOSX_CONFIG=automatosx.prod.json

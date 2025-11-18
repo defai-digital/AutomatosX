@@ -58,7 +58,7 @@ export default defineConfig({
 
     env: {
       // Always use mock providers in tests
-      AUTOMATOSX_MOCK_PROVIDERS: 'true'
+      AX_MOCK_PROVIDERS: 'true'
     },
     coverage: {
       provider: 'v8',

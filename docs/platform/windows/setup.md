@@ -282,13 +282,13 @@ If you don't have provider CLIs installed yet, you can test AutomatosX with mock
 
 **Windows Command Prompt**:
 ```cmd
-set AUTOMATOSX_MOCK_PROVIDERS=true
+set AX_MOCK_PROVIDERS=true
 ax run backend "Test message"
 ```
 
 **Windows PowerShell**:
 ```powershell
-$env:AUTOMATOSX_MOCK_PROVIDERS="true"
+$env:AX_MOCK_PROVIDERS="true"
 ax run backend "Test message"
 ```
 

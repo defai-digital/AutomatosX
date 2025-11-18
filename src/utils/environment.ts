@@ -125,8 +125,8 @@ export function getEnvironmentName(): string {
  * Should automatically enable mock providers
  *
  * Decision logic:
- * 1. If AUTOMATOSX_MOCK_PROVIDERS=true → always enable
- * 2. If AUTOMATOSX_MOCK_PROVIDERS=false → never enable (explicit override)
+ * 1. If AX_MOCK_PROVIDERS=true → always enable
+ * 2. If AX_MOCK_PROVIDERS=false → never enable (explicit override)
  * 3. If running in AI IDE → auto-enable (unless explicitly disabled)
  * 4. Otherwise → disabled (standalone CLI mode)
  *
@@ -140,7 +140,7 @@ export function getEnvironmentName(): string {
  * ```
  */
 export function shouldAutoEnableMockProviders(): boolean {
-  const explicitValue = process.env.AUTOMATOSX_MOCK_PROVIDERS;
+  const explicitValue = process.env.AX_MOCK_PROVIDERS;
 
   // Explicit true: always enable
   if (explicitValue === 'true' || explicitValue === '1') {
@@ -189,8 +189,8 @@ export function getProviderSuggestion(providerName: string): string {
     return (
       `Running inside ${envName}? External CLI not needed.\n` +
       `Try using mock providers:\n` +
-      `  • Windows CMD: set AUTOMATOSX_MOCK_PROVIDERS=true\n` +
-      `  • PowerShell: $env:AUTOMATOSX_MOCK_PROVIDERS="true"\n` +
+      `  • Windows CMD: set AX_MOCK_PROVIDERS=true\n` +
+      `  • PowerShell: $env:AX_MOCK_PROVIDERS="true"\n` +
       `  • Config: Add "execution": { "useMockProviders": true }\n` +
       `\n` +
       `Or use ${envName} directly without ax run command.`
@@ -205,7 +205,7 @@ export function getProviderSuggestion(providerName: string): string {
     `  • OpenAI: npm install -g @openai/codex-cli\n` +
     `\n` +
     `Or use mock providers for testing:\n` +
-    `  set AUTOMATOSX_MOCK_PROVIDERS=true`
+    `  set AX_MOCK_PROVIDERS=true`
   );
 }
 
@@ -228,7 +228,7 @@ export function logEnvironmentInfo(verbose = false): void {
   logger.info('Environment Detection', {
     environment: env,
     mockProviders: mockEnabled ? 'enabled' : 'disabled',
-    explicit: process.env.AUTOMATOSX_MOCK_PROVIDERS !== undefined
+    explicit: process.env.AX_MOCK_PROVIDERS !== undefined
   });
 
   if (verbose) {
@@ -237,7 +237,7 @@ export function logEnvironmentInfo(verbose = false): void {
       cursor: isCursorEnvironment(),
       vscode: isVSCodeCopilotEnvironment(),
       aiIDE: isAIIDEEnvironment(),
-      mockEnvVar: process.env.AUTOMATOSX_MOCK_PROVIDERS,
+      mockEnvVar: process.env.AX_MOCK_PROVIDERS,
       parentProcess: process.env._ || process.env.ComSpec
     });
   }

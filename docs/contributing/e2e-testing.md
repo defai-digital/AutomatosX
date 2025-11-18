@@ -38,7 +38,7 @@ export GOOGLE_API_KEY="your-key"
 export OPENAI_API_KEY="sk-..."
 
 # Run with real providers
-export AUTOMATOSX_MOCK_PROVIDERS=false
+export AX_MOCK_PROVIDERS=false
 npm test e2e
 
 # Or use the dedicated script
@@ -189,7 +189,7 @@ async function execCLI(args: string[]): Promise<{
       cwd: testDir,
       env: {
         ...process.env,
-        AUTOMATOSX_MOCK_PROVIDERS: 'true'
+        AX_MOCK_PROVIDERS: 'true'
       }
     });
 
@@ -275,7 +275,7 @@ afterEach(() => {
 ### Run with Real Providers
 
 ```bash
-export AUTOMATOSX_MOCK_PROVIDERS=false
+export AX_MOCK_PROVIDERS=false
 export ANTHROPIC_API_KEY="sk-ant-..."
 npm test e2e -- --grep "specific test"
 ```
@@ -309,7 +309,7 @@ CI configuration: `.github/workflows/ci.yml`
 - name: Run E2E tests
   run: npm run test:all
   env:
-    AUTOMATOSX_MOCK_PROVIDERS: 'true'
+    AX_MOCK_PROVIDERS: 'true'
 ```
 
 ## Manual E2E Testing

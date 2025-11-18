@@ -185,7 +185,7 @@ function runCLI(args: string[], cwd: string): Promise<{ code: number; stdout: st
   return new Promise((resolve) => {
     const child = spawn('node', [join(process.cwd(), 'dist', 'index.js'), ...args], {
       cwd,
-      env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' },
+      env: { ...process.env, AX_MOCK_PROVIDERS: 'true' },
       stdio: 'pipe'
     });
 

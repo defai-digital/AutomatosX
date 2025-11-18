@@ -36,7 +36,7 @@ describe('CLI Run Command Integration', () => {
           cwd: testDir,
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true'
+            AX_MOCK_PROVIDERS: 'true'
           }
         });
         expect.fail('Should have thrown error');
@@ -68,7 +68,7 @@ temperature: 0.7
         cwd: testDir,
         env: {
           ...process.env,
-          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          AX_MOCK_PROVIDERS: 'true'
         },
         timeout: 15000,
         killSignal: 'SIGINT'
@@ -123,7 +123,7 @@ temperature: 0.7
         cwd: testDir,
         env: {
           ...process.env,
-          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          AX_MOCK_PROVIDERS: 'true'
         },
         timeout: 15000,
         killSignal: 'SIGINT'
@@ -155,7 +155,7 @@ temperature: 0.7
         cwd: testDir,
         env: {
           ...process.env,
-          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          AX_MOCK_PROVIDERS: 'true'
         },
         timeout: 15000,
         killSignal: 'SIGINT'

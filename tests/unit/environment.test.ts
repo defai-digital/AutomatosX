@@ -205,50 +205,50 @@ describe('Environment Detection', () => {
   });
 
   describe('shouldAutoEnableMockProviders', () => {
-    it('should return true when AUTOMATOSX_MOCK_PROVIDERS=true', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    it('should return true when AX_MOCK_PROVIDERS=true', () => {
+      process.env.AX_MOCK_PROVIDERS = 'true';
       delete process.env.CLAUDE_CODE;
       expect(shouldAutoEnableMockProviders()).toBe(true);
     });
 
-    it('should return true when AUTOMATOSX_MOCK_PROVIDERS=1', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = '1';
+    it('should return true when AX_MOCK_PROVIDERS=1', () => {
+      process.env.AX_MOCK_PROVIDERS = '1';
       delete process.env.CLAUDE_CODE;
       expect(shouldAutoEnableMockProviders()).toBe(true);
     });
 
-    it('should return false when AUTOMATOSX_MOCK_PROVIDERS=false', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'false';
+    it('should return false when AX_MOCK_PROVIDERS=false', () => {
+      process.env.AX_MOCK_PROVIDERS = 'false';
       process.env.CLAUDE_CODE = 'true'; // Even in AI IDE
       expect(shouldAutoEnableMockProviders()).toBe(false);
     });
 
-    it('should return false when AUTOMATOSX_MOCK_PROVIDERS=0', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = '0';
+    it('should return false when AX_MOCK_PROVIDERS=0', () => {
+      process.env.AX_MOCK_PROVIDERS = '0';
       process.env.CLAUDE_CODE = 'true'; // Even in AI IDE
       expect(shouldAutoEnableMockProviders()).toBe(false);
     });
 
     it('should auto-enable in Claude Code environment (no explicit value)', () => {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
       process.env.CLAUDE_CODE = 'true';
       expect(shouldAutoEnableMockProviders()).toBe(true);
     });
 
     it('should auto-enable in Cursor environment (no explicit value)', () => {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
       process.env.CURSOR = 'true';
       expect(shouldAutoEnableMockProviders()).toBe(true);
     });
 
     it('should auto-enable in VS Code + Copilot environment (no explicit value)', () => {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
       process.env.COPILOT = 'true';
       expect(shouldAutoEnableMockProviders()).toBe(true);
     });
 
     it('should return false in standalone CLI mode (no explicit value)', () => {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
       delete process.env.CLAUDE_CODE;
       delete process.env.CURSOR;
       delete process.env.COPILOT;
@@ -258,7 +258,7 @@ describe('Environment Detection', () => {
     });
 
     it('should prioritize explicit false over auto-detection', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'false';
+      process.env.AX_MOCK_PROVIDERS = 'false';
       process.env.CLAUDE_CODE = 'true';
       process.env.CURSOR = 'true';
       process.env.COPILOT = 'true';
@@ -267,7 +267,7 @@ describe('Environment Detection', () => {
     });
 
     it('should prioritize explicit true over standalone mode', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       delete process.env.CLAUDE_CODE;
       delete process.env.CURSOR;
       delete process.env.COPILOT;
@@ -283,8 +283,8 @@ describe('Environment Detection', () => {
       const suggestion = getProviderSuggestion('claude');
 
       expect(suggestion).toContain('Running inside Claude Code');
-      expect(suggestion).toContain('set AUTOMATOSX_MOCK_PROVIDERS=true');
-      expect(suggestion).toContain('$env:AUTOMATOSX_MOCK_PROVIDERS="true"');
+      expect(suggestion).toContain('set AX_MOCK_PROVIDERS=true');
+      expect(suggestion).toContain('$env:AX_MOCK_PROVIDERS="true"');
       expect(suggestion).not.toContain('npm install');
     });
 
@@ -324,7 +324,7 @@ describe('Environment Detection', () => {
       const suggestion = getProviderSuggestion('claude');
 
       expect(suggestion).toContain('mock providers for testing');
-      expect(suggestion).toContain('set AUTOMATOSX_MOCK_PROVIDERS=true');
+      expect(suggestion).toContain('set AX_MOCK_PROVIDERS=true');
     });
   });
 
@@ -354,7 +354,7 @@ describe('Environment Detection', () => {
     });
 
     it('should handle truthy but non-"true" values', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'yes';
+      process.env.AX_MOCK_PROVIDERS = 'yes';
       // Should not match (only 'true' or '1' are valid)
       expect(shouldAutoEnableMockProviders()).toBe(false);
     });
@@ -365,14 +365,14 @@ describe('Environment Detection', () => {
 
   describe('Priority System', () => {
     it('should respect explicit false over AI IDE detection', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'false';
+      process.env.AX_MOCK_PROVIDERS = 'false';
       process.env.CLAUDE_CODE = 'true';
 
       expect(shouldAutoEnableMockProviders()).toBe(false);
     });
 
     it('should respect explicit true over standalone detection', () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       delete process.env.CLAUDE_CODE;
       delete process.env._;
 
@@ -380,7 +380,7 @@ describe('Environment Detection', () => {
     });
 
     it('should auto-enable only when no explicit value and AI IDE detected', () => {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
       process.env.CLAUDE_CODE = 'true';
 
       expect(shouldAutoEnableMockProviders()).toBe(true);

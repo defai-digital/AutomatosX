@@ -484,7 +484,7 @@ Experience a ChatGPT-style conversational interface in your terminal:
 
 7. **Provider Mode Default** [P1] - Fixed Interactive CLI defaulting to simulated mode instead of using real providers
    - Root cause: Inverted logic in `getProvider()` function - defaulted to mock mode even when real providers available
-   - Solution: Changed `useMock` logic to default to `false` (real providers), only use mock if explicitly requested via `AUTOMATOSX_MOCK_PROVIDERS=true`
+   - Solution: Changed `useMock` logic to default to `false` (real providers), only use mock if explicitly requested via `AX_MOCK_PROVIDERS=true`
    - Impact: CLI now uses real Gemini provider by default when available, better user experience
    - Tests unaffected (continue to use mock mode via environment variable)
 
@@ -5588,13 +5588,13 @@ Planned for future releases based on Phase 1 evaluation:
   - Integrated automatic environment detection
   - Auto-enables mock providers in AI IDE environments
   - Enhanced logging for debugging
-  - Backwards compatible with explicit `AUTOMATOSX_MOCK_PROVIDERS` setting
+  - Backwards compatible with explicit `AX_MOCK_PROVIDERS` setting
 
 #### Fixed
 
 - **Windows + Claude Code Integration**:
   - Fixed "claude: command not found" errors in Claude Code on Windows
-  - No more manual `AUTOMATOSX_MOCK_PROVIDERS=true` configuration needed
+  - No more manual `AX_MOCK_PROVIDERS=true` configuration needed
   - Automatic detection works across all Windows versions (10/11)
   - **Issue**: Windows users had to manually enable mock providers in AI IDEs
   - **Solution**: Automatic environment detection with zero configuration
@@ -5620,8 +5620,8 @@ Planned for future releases based on Phase 1 evaluation:
 **Environment Detection Priority**:
 
 ```typescript
-1. AUTOMATOSX_MOCK_PROVIDERS=true   → Force enable (highest)
-2. AUTOMATOSX_MOCK_PROVIDERS=false  → Force disable (override)
+1. AX_MOCK_PROVIDERS=true   → Force enable (highest)
+2. AX_MOCK_PROVIDERS=false  → Force disable (override)
 3. AI IDE detected                   → Auto-enable (smart default)
 4. Standalone CLI                    → Use real providers (fallback)
 ```
@@ -5644,12 +5644,12 @@ Planned for future releases based on Phase 1 evaluation:
 
 **100% Backward Compatible** - No action required:
 
-- Explicit `AUTOMATOSX_MOCK_PROVIDERS=true/false` still works (highest priority)
+- Explicit `AX_MOCK_PROVIDERS=true/false` still works (highest priority)
 - Standalone CLI mode unchanged (uses real providers)
 - Only new behavior: Auto-enable mock providers in AI IDEs when ENV not set
 
 **User Experience**:
-- **Before (v5.3.4)**: Required `set AUTOMATOSX_MOCK_PROVIDERS=true` on Windows + Claude Code
+- **Before (v5.3.4)**: Required `set AX_MOCK_PROVIDERS=true` on Windows + Claude Code
 - **After (v5.3.5)**: Works automatically, zero configuration needed
 
 #### Quality Metrics

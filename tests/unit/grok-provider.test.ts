@@ -25,7 +25,7 @@ describe('GrokProvider', () => {
     };
 
     // Enable mock mode
-    process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    process.env.AX_MOCK_PROVIDERS = 'true';
   });
 
   afterEach(() => {
@@ -62,7 +62,7 @@ describe('GrokProvider', () => {
 
   describe('Mock Mode', () => {
     it('should return mock response in mock mode', async () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       const provider = new GrokProvider(config);
 
       const request = {
@@ -80,7 +80,7 @@ describe('GrokProvider', () => {
     });
 
     it('should include execution metadata in response', async () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       const provider = new GrokProvider(config);
 
       const request = {
@@ -157,7 +157,7 @@ describe('GrokProvider', () => {
       const provider = new GrokProvider(config);
 
       // Temporarily disable mock mode to test real failures
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
 
       const request = {
         prompt: 'Test prompt',
@@ -174,7 +174,7 @@ describe('GrokProvider', () => {
       }
 
       // Restore mock mode
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
     });
 
     it('should update health status on failures', async () => {
@@ -233,7 +233,7 @@ describe('GrokProvider', () => {
 
   describe('X.AI vs Z.AI Support', () => {
     it('should work with X.AI Grok models', async () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       const provider = new GrokProvider(config);
 
       const request = {
@@ -247,7 +247,7 @@ describe('GrokProvider', () => {
     });
 
     it('should work with Z.AI GLM models', async () => {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+      process.env.AX_MOCK_PROVIDERS = 'true';
       const provider = new GrokProvider(config);
 
       const request = {

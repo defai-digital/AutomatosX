@@ -188,8 +188,8 @@ describe('Measure Functions', () => {
   describe('measureAsync', () => {
     it('should measure async function execution', async () => {
       // Enable global tracker for this test
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      process.env.AUTOMATOSX_PROFILE = 'true';
+      const originalEnv = process.env.AX_PROFILE;
+      process.env.AX_PROFILE = 'true';
 
       const result = await measureAsync('async_op', async () => {
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -200,15 +200,15 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv === undefined) {
-        delete process.env.AUTOMATOSX_PROFILE;
+        delete process.env.AX_PROFILE;
       } else {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
 
     it('should handle async function errors', async () => {
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      process.env.AUTOMATOSX_PROFILE = 'true';
+      const originalEnv = process.env.AX_PROFILE;
+      process.env.AX_PROFILE = 'true';
 
       await expect(
         measureAsync('async_error', async () => {
@@ -218,15 +218,15 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv === undefined) {
-        delete process.env.AUTOMATOSX_PROFILE;
+        delete process.env.AX_PROFILE;
       } else {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
 
     it('should skip measurement when disabled', async () => {
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      delete process.env.AUTOMATOSX_PROFILE;
+      const originalEnv = process.env.AX_PROFILE;
+      delete process.env.AX_PROFILE;
 
       const result = await measureAsync('disabled', async () => {
         return 'result';
@@ -236,15 +236,15 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv !== undefined) {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
   });
 
   describe('measureSync', () => {
     it('should measure sync function execution', () => {
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      process.env.AUTOMATOSX_PROFILE = 'true';
+      const originalEnv = process.env.AX_PROFILE;
+      process.env.AX_PROFILE = 'true';
 
       const result = measureSync('sync_op', () => {
         let sum = 0;
@@ -258,15 +258,15 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv === undefined) {
-        delete process.env.AUTOMATOSX_PROFILE;
+        delete process.env.AX_PROFILE;
       } else {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
 
     it('should handle sync function errors', () => {
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      process.env.AUTOMATOSX_PROFILE = 'true';
+      const originalEnv = process.env.AX_PROFILE;
+      process.env.AX_PROFILE = 'true';
 
       expect(() => {
         measureSync('sync_error', () => {
@@ -276,15 +276,15 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv === undefined) {
-        delete process.env.AUTOMATOSX_PROFILE;
+        delete process.env.AX_PROFILE;
       } else {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
 
     it('should skip measurement when disabled', () => {
-      const originalEnv = process.env.AUTOMATOSX_PROFILE;
-      delete process.env.AUTOMATOSX_PROFILE;
+      const originalEnv = process.env.AX_PROFILE;
+      delete process.env.AX_PROFILE;
 
       const result = measureSync('disabled', () => {
         return 'result';
@@ -294,7 +294,7 @@ describe('Measure Functions', () => {
 
       // Restore
       if (originalEnv !== undefined) {
-        process.env.AUTOMATOSX_PROFILE = originalEnv;
+        process.env.AX_PROFILE = originalEnv;
       }
     });
   });
@@ -306,24 +306,24 @@ describe('Global Tracker', () => {
     expect(globalTracker).toBeInstanceOf(PerformanceTracker);
   });
 
-  it('should respect AUTOMATOSX_PROFILE environment variable', () => {
-    const originalEnv = process.env.AUTOMATOSX_PROFILE;
+  it('should respect AX_PROFILE environment variable', () => {
+    const originalEnv = process.env.AX_PROFILE;
 
     // Test enabled
-    process.env.AUTOMATOSX_PROFILE = 'true';
+    process.env.AX_PROFILE = 'true';
     const enabledTracker = new PerformanceTracker();
     expect(enabledTracker.isEnabled()).toBe(true);
 
     // Test disabled
-    delete process.env.AUTOMATOSX_PROFILE;
+    delete process.env.AX_PROFILE;
     const disabledTracker = new PerformanceTracker();
     expect(disabledTracker.isEnabled()).toBe(false);
 
     // Restore
     if (originalEnv === undefined) {
-      delete process.env.AUTOMATOSX_PROFILE;
+      delete process.env.AX_PROFILE;
     } else {
-      process.env.AUTOMATOSX_PROFILE = originalEnv;
+      process.env.AX_PROFILE = originalEnv;
     }
   });
 });

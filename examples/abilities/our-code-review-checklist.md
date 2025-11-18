@@ -73,7 +73,7 @@
 
 - [ ] **Test quality** - Tests are meaningful and comprehensive
 - [ ] **Test coverage** - Coverage meets targets
-- [ ] **Mock providers** - Tests use AUTOMATOSX_MOCK_PROVIDERS=true
+- [ ] **Mock providers** - Tests use AX_MOCK_PROVIDERS=true
 
 ### Documentation
 

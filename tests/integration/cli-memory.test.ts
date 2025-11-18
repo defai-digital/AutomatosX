@@ -223,19 +223,19 @@ describe('CLI Memory Command Integration', () => {
         cliPath, 'memory', 'add',
         'JavaScript is a programming language',
         '--tags', 'programming'
-      ], { cwd: testDir, env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' } });
+      ], { cwd: testDir, env: { ...process.env, AX_MOCK_PROVIDERS: 'true' } });
 
       await execFileAsync('node', [
         cliPath, 'memory', 'add',
         'Python is also a programming language',
         '--tags', 'programming'
-      ], { cwd: testDir, env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' } });
+      ], { cwd: testDir, env: { ...process.env, AX_MOCK_PROVIDERS: 'true' } });
 
       await execFileAsync('node', [
         cliPath, 'memory', 'add',
         'The weather is nice today',
         '--tags', 'weather'
-      ], { cwd: testDir, env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' } });
+      ], { cwd: testDir, env: { ...process.env, AX_MOCK_PROVIDERS: 'true' } });
     });
 
     it('should search memories by query', async () => {
@@ -245,7 +245,7 @@ describe('CLI Memory Command Integration', () => {
         '--output', 'json'
       ], {
         cwd: testDir,
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'true' }
       });
 
       const results = JSON.parse(result.stdout.trim());
@@ -272,7 +272,7 @@ describe('CLI Memory Command Integration', () => {
         '--output', 'json'
       ], {
         cwd: testDir,
-        env: { ...process.env, AUTOMATOSX_MOCK_PROVIDERS: 'true' }
+        env: { ...process.env, AX_MOCK_PROVIDERS: 'true' }
       });
 
       const results = JSON.parse(result.stdout.trim());

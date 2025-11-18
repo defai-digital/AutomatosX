@@ -760,7 +760,7 @@ export AUTOMATOSX_DEBUG=true
 ax run backend "Task"
 
 # 使用 Mock Providers（測試用）
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 ax run backend "Test task"
 
 # 自訂配置路徑

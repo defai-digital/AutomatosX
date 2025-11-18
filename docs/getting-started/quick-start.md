@@ -153,9 +153,9 @@ Test AutomatosX without installing provider CLIs:
 
 ```bash
 # Set mock provider mode
-export AUTOMATOSX_MOCK_PROVIDERS=true  # macOS/Linux
-# Or: set AUTOMATOSX_MOCK_PROVIDERS=true  # Windows CMD
-# Or: $env:AUTOMATOSX_MOCK_PROVIDERS="true"  # Windows PowerShell
+export AX_MOCK_PROVIDERS=true  # macOS/Linux
+# Or: set AX_MOCK_PROVIDERS=true  # Windows CMD
+# Or: $env:AX_MOCK_PROVIDERS="true"  # Windows PowerShell
 
 # Run your first agent
 ax run backend "Explain TypeScript in one sentence"
@@ -398,7 +398,7 @@ gemini --version
 codex --version
 
 # Use mock provider for testing
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 ax run backend "test"
 ```
 
@@ -426,7 +426,7 @@ ax memory export > backup.json
 A: No, AutomatosX is a standalone CLI tool. It works inside Claude Code, VS Code, or any terminal.
 
 **Q: Can I use AutomatosX without provider CLIs?**
-A: Yes, use `AUTOMATOSX_MOCK_PROVIDERS=true` for testing. For real responses, install at least one provider CLI.
+A: Yes, use `AX_MOCK_PROVIDERS=true` for testing. For real responses, install at least one provider CLI.
 
 **Q: Which provider should I use?**
 A: **Gemini CLI** for cost savings (99.6% cheaper, free tier), **Claude Code** for quality, **OpenAI** for specific models. See [Provider Comparison](./provider-comparison.md).

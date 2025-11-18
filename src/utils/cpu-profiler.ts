@@ -20,7 +20,7 @@ export class CPUProfiler {
   private samples: CPUSample[] = [];
   private readonly enabled: boolean;
 
-  constructor(enabled: boolean = process.env.AUTOMATOSX_PROFILE === 'true') {
+  constructor(enabled: boolean = process.env.AX_PROFILE === 'true') {
     this.enabled = enabled && typeof process.cpuUsage === 'function';
   }
 

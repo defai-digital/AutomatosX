@@ -55,13 +55,13 @@ describe('CLI Run Command - Parallel Execution', () => {
     );
 
     // Set environment variable to use mock providers
-    process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    process.env.AX_MOCK_PROVIDERS = 'true';
     process.env.AUTOMATOSX_PROJECT_ROOT = testDir;
   });
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
-    delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+    delete process.env.AX_MOCK_PROVIDERS;
     delete process.env.AUTOMATOSX_PROJECT_ROOT;
   });
 
@@ -88,7 +88,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -123,7 +123,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -197,7 +197,7 @@ model:
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -214,7 +214,7 @@ model:
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -231,7 +231,7 @@ model:
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -295,7 +295,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -330,7 +330,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -350,7 +350,7 @@ systemPrompt: Test prompt
           {
             env: {
               ...process.env,
-              AUTOMATOSX_MOCK_PROVIDERS: 'true',
+              AX_MOCK_PROVIDERS: 'true',
               AUTOMATOSX_PROJECT_ROOT: testDir,
               NODE_ENV: 'test'
             }
@@ -388,7 +388,7 @@ systemPrompt: Test prompt
           {
             env: {
               ...process.env,
-              AUTOMATOSX_MOCK_PROVIDERS: 'true',
+              AX_MOCK_PROVIDERS: 'true',
               AUTOMATOSX_PROJECT_ROOT: testDir,
               NODE_ENV: 'test'
             }
@@ -426,7 +426,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -444,7 +444,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
@@ -468,7 +468,7 @@ systemPrompt: Test prompt
         {
           env: {
             ...process.env,
-            AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AX_MOCK_PROVIDERS: 'true',
             AUTOMATOSX_PROJECT_ROOT: testDir,
             AUTOMATOSX_QUIET: 'true',
             NODE_ENV: 'test'

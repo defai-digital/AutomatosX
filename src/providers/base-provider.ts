@@ -177,7 +177,7 @@ export abstract class BaseProvider implements Provider {
    */
   protected async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests - v8.3.0 Security Fix: Don't leak prompt content
-    if (process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true') {
+    if (process.env.AX_MOCK_PROVIDERS === 'true') {
       logger.debug('Mock mode: returning test response');
       return this.getMockResponse();
     }

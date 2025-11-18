@@ -53,7 +53,7 @@ You can use multiple providers simultaneously with automatic fallback.
 
 Short answer: Not yet in the open-source edition. AutomatosX Community relies on provider CLIs (Claude, Gemini, OpenAI) which require internet access.
 
-- Today (Community): The memory system is fully local, but model inference is done via cloud provider CLIs. Mock mode (`AUTOMATOSX_MOCK_PROVIDERS=true`) is available for testing, but it does not run a real model.
+- Today (Community): The memory system is fully local, but model inference is done via cloud provider CLIs. Mock mode (`AX_MOCK_PROVIDERS=true`) is available for testing, but it does not run a real model.
 - AutomatosX Pro: DEFAI offers offline model support (local inference) in the Pro edition.
 - Roadmap: We plan to release offline provider support to open source in v6.0.
 
@@ -78,7 +78,7 @@ ax run <agent> "task" --provider claude-code   # Force a specific provider
 ```
 
 Notes:
-- Mock mode (`AUTOMATOSX_MOCK_PROVIDERS=true`) returns mock responses but does not bypass provider availability checks. If no CLI is installed, providers remain unavailable.
+- Mock mode (`AX_MOCK_PROVIDERS=true`) returns mock responses but does not bypass provider availability checks. If no CLI is installed, providers remain unavailable.
 - Team-level `fallbackChain` (e.g., `openai → gemini-cli → claude`) ensures robust failover when the primary CLI is missing or unhealthy.
 
 ### How do I enable/disable providers?
@@ -230,13 +230,13 @@ No, you need at least one provider CLI installed and authenticated:
 
 - **Recommended**: Install `claude` CLI (most capable)
 - **Free option**: Gemini CLI offers generous free tier
-- **For testing**: Use mock providers (`AUTOMATOSX_MOCK_PROVIDERS=true`)
+- **For testing**: Use mock providers (`AX_MOCK_PROVIDERS=true`)
 
 **Important**: OpenAI Codex CLI requires your project to be a git repository (`git init`). Other providers don't have this requirement.
 
 ```bash
 # Test without real providers
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 ax run backend "Hello"
 ```
 
@@ -624,7 +624,7 @@ AutomatosX has built-in retry logic with exponential backoff.
 
 ```bash
 # Tests require mock providers
-export AUTOMATOSX_MOCK_PROVIDERS=true
+export AX_MOCK_PROVIDERS=true
 npm test
 ```
 

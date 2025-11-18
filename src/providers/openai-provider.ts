@@ -40,7 +40,7 @@ export class OpenAIProvider extends BaseProvider {
    */
   protected override async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests
-    if (process.env.AUTOMATOSX_MOCK_PROVIDERS === 'true') {
+    if (process.env.AX_MOCK_PROVIDERS === 'true') {
       logger.debug('Mock mode: returning test response');
       return this.getMockResponse();
     }

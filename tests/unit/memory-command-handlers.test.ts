@@ -3,7 +3,7 @@
  * Memory Command Handler Tests
  *
  * Tests actual handler execution for memory commands to improve coverage.
- * Uses AUTOMATOSX_MOCK_PROVIDERS to create real memory instances.
+ * Uses AX_MOCK_PROVIDERS to create real memory instances.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
@@ -30,16 +30,16 @@ describe('Memory Command Handlers', () => {
 
   beforeAll(() => {
     // Enable mock providers for all tests
-    originalEnv = process.env.AUTOMATOSX_MOCK_PROVIDERS;
-    process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    originalEnv = process.env.AX_MOCK_PROVIDERS;
+    process.env.AX_MOCK_PROVIDERS = 'true';
   });
 
   afterAll(() => {
     // Restore original env
     if (originalEnv !== undefined) {
-      process.env.AUTOMATOSX_MOCK_PROVIDERS = originalEnv;
+      process.env.AX_MOCK_PROVIDERS = originalEnv;
     } else {
-      delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+      delete process.env.AX_MOCK_PROVIDERS;
     }
   });
 

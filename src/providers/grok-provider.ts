@@ -73,6 +73,6 @@ Key features:
 For actual Grok responses, ensure:
 1. Grok CLI is installed (grok --version)
 2. API credentials are configured (if using X.AI)
-3. AUTOMATOSX_MOCK_PROVIDERS is not set to 'true'`;
+3. AX_MOCK_PROVIDERS is not set to 'true'`;
   }
 }

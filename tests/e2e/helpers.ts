@@ -166,7 +166,7 @@ export async function execCLI(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const execEnv = {
     ...process.env,
-    ...(options.mockProviders !== false && { AUTOMATOSX_MOCK_PROVIDERS: 'true' })
+    ...(options.mockProviders !== false && { AX_MOCK_PROVIDERS: 'true' })
   };
 
   // Add --config flag if not present and command needs it
@@ -214,7 +214,7 @@ export async function execCLIInteractive(
   return new Promise((resolve, reject) => {
     const execEnv = {
       ...process.env,
-      ...(options.mockProviders !== false && { AUTOMATOSX_MOCK_PROVIDERS: 'true' })
+      ...(options.mockProviders !== false && { AX_MOCK_PROVIDERS: 'true' })
     };
 
     const child = spawn('node', [env.cliPath, ...args], {

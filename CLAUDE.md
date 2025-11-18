@@ -291,21 +291,61 @@ stmt.get(id);
 // db.prepare(`SELECT * FROM memories WHERE id = ${id}`);
 ```
 
-### 5. Resource Management
+### 5. Runtime Validation with Zod
+
+```typescript
+import { z } from 'zod';
+
+// ✅ ALWAYS validate external data (API responses, config files, user input)
+const ProviderResponseSchema = z.object({
+  content: z.string(),
+  model: z.string(),
+  usage: z.object({
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative()
+  }).optional()
+});
+
+// Safe parsing (returns success/failure)
+const result = ProviderResponseSchema.safeParse(rawResponse);
+if (!result.success) {
+  logger.error('Invalid provider response', { error: result.error });
+  throw new ProviderError('Invalid response format');
+}
+const validated = result.data; // Type-safe!
+
+// ❌ Never trust external data without validation
+// const data = JSON.parse(rawData); // Unsafe! No runtime validation
+```
+
+**When to Use Zod:**
+- External API responses (provider APIs, MCP)
+- User configuration files (automatosx.config.json)
+- CLI arguments and environment variables
+- YAML spec file parsing
+- Any data from files, network, or user input
+
+**Benefits:**
+- Runtime type safety (TypeScript only validates at compile-time)
+- Better error messages with detailed validation failures
+- Type inference (schema → TypeScript types automatically)
+- Single source of truth for both validation and types
+
+### 6. Resource Management
 
 - Register cleanup handlers for intervals, timers, database connections
 - Use `installExitHandlers()` from `utils/process-manager.ts` for subprocess cleanup
 - Set busyTimeout (default 5s) for concurrent SQLite access
 - Debounce saves to reduce I/O (e.g., SessionManager uses 1s debounce)
 
-### 6. Error Handling
+### 7. Error Handling
 
 - Use typed errors: `ProviderError`, `SessionError`, `MemoryError`, `SpecError`
 - Include error codes for programmatic handling
 - Check `shouldRetryError()` from `providers/retry-errors.ts`
 - Circuit breaker: Providers have configurable failure thresholds (default 3)
 
-### 7. Performance Optimization
+### 8. Performance Optimization
 
 - Cache expensive operations (provider availability, version detection, profiles)
 - Use prepared statements for frequent SQLite queries
@@ -313,7 +353,7 @@ stmt.get(id);
 - Debounce I/O operations to reduce syscalls
 - Use adaptive caching with TTL adjustment based on access patterns
 
-### 8. Agent Profile Instructions (v8.4.15 Critical Insight)
+### 9. Agent Profile Instructions (v8.4.15 Critical Insight)
 
 **CRITICAL**: Keep agent system prompts simple - **NEVER mention sandboxes, permissions, or constraints**.
 
@@ -435,6 +475,61 @@ tests/
 - Path aliases: `@/*` → `src/*`, `@tests/*` → `tests/*`
 - Generated types: `src/config.generated.ts` built from JSON schema
 - Provider types: See `src/types/provider.ts` for core interfaces
+- **Runtime validation**: Use Zod for validating external inputs, API responses, and configuration
+
+### When to Use Zod
+
+**ALWAYS use Zod for:**
+- Validating external API responses (provider APIs, MCP responses)
+- Parsing user configuration files (automatosx.config.json, agent profiles)
+- Validating CLI arguments and options
+- Parsing YAML spec files (workflow.ax.yaml)
+- Validating environment variables
+- Any data from external sources (files, network, user input)
+
+**Example - Validating Provider Response:**
+```typescript
+import { z } from 'zod';
+
+const ProviderResponseSchema = z.object({
+  content: z.string(),
+  model: z.string(),
+  usage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number()
+  }).optional()
+});
+
+// Parse and validate
+const result = ProviderResponseSchema.safeParse(rawResponse);
+if (!result.success) {
+  throw new ProviderError(`Invalid response: ${result.error.message}`);
+}
+const validated = result.data; // Type-safe!
+```
+
+**Example - Validating Configuration:**
+```typescript
+const ConfigSchema = z.object({
+  providers: z.record(z.object({
+    enabled: z.boolean(),
+    priority: z.number().min(1),
+    timeout: z.number().optional()
+  })),
+  execution: z.object({
+    maxConcurrentAgents: z.number().min(1).max(10)
+  })
+});
+
+const config = ConfigSchema.parse(rawConfig); // Throws on invalid
+```
+
+**Why Zod?**
+- TypeScript types are compile-time only - they disappear at runtime
+- Zod validates at runtime AND provides TypeScript types
+- Prevents runtime errors from malformed data
+- Better error messages for debugging
+- Type inference from schemas (single source of truth)
 
 ## Common Workflows
 

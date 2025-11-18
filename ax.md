@@ -1,13 +1,13 @@
 # Project Context for @defai.digital/automatosx
 
 > Last updated: 2025-11-18
-> Project: @defai.digital/automatosx (v8.5.1)
+> Project: @defai.digital/automatosx (v8.5.2)
 
 ## Project Overview
 
 **From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory**
 
-AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
+AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, `grok`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -18,9 +18,9 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.5.1 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
+**Status**: ✅ **Production Ready** | v8.6.0 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
 
-> 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
+> 🎉 **NEW in v8.6.0**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
 
 **Key Features:**
 | Feature | Description | Default |
@@ -33,7 +33,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 | **Context History** | Maintains classification context for smarter decisions | Max 100 entries |
 | **Workspace Protection** | Prevents access to files outside project directory | Always active |
 
-**Version:** 8.5.1  
+**Version:** 8.5.2  
 **Language:** TypeScript  
 **Build Tool:** tsup  
 **Test Framework:** Vitest
@@ -62,12 +62,12 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 
 
 **Directories:**
-- `src/` - Source code (231 files)
+- `src/` - Source code (242 files)
 - `tests/` - Test files (148 files)
 - `docs/` - Documentation (42 files)
 - `dist/` - Build output (2 files)
 
-**Total Files:** 423
+**Total Files:** 434
 
 ## Getting Started
 

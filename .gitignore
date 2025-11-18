@@ -46,6 +46,20 @@ tmp/
 temp/
 *.tmp
 
+# Backup and test files
+*-backup.md
+*-improved.md
+test_*.txt
+*.tgz
+test-config/
+test-creds/
+test-key/
+test-session/
+--porcelain/
+echo/
+git/
+status/
+
 # AutomatosX runtime (created by CLI)
 .automatosx/
 .automatosx-backups/
@@ -68,6 +82,17 @@ PRD/
 RELEASE-CHECKLIST.md
 RELEASE-NOTES.md
 *-RELEASE-PLAN.md
+RELEASE_NOTES_v*.md
+
+# Deprecated and temporary documentation
+*_cli_streaming_report.md
+MCP_Documentation.md
+
+# Demo and verification scripts
+demo-*.sh
+verify-v*.sh
+test-*.sh
+test-*.js
 
 # Internal status tracking
 *-KICKOFF.md

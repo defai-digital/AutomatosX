@@ -163,7 +163,7 @@ AutomatosX is designed to work seamlessly with AI assistants using natural langu
 
 ```
 # In Claude Code
-"Create an AutomatosX workflow spec for a REST API with authentication, database,
+"Create an ax workflow spec for a REST API with authentication, database,
 and comprehensive tests. Then execute it."
 
 "Generate a spec for refactoring the payment module with security audit and
@@ -175,7 +175,7 @@ and deployment configs."
 
 ```
 # In Gemini CLI
-"Use AutomatosX to create and execute a workflow for migrating from MongoDB
+"Use ax to create and execute a workflow for migrating from MongoDB
 to PostgreSQL. Include data validation and rollback procedures."
 
 "Generate a spec for implementing rate limiting across all API endpoints.
@@ -187,7 +187,7 @@ generation, resolver tests, and performance benchmarks."
 
 ```
 # In OpenAI Codex
-"Work with AutomatosX to build a real-time notification system with WebSockets,
+"Work with ax to build a real-time notification system with WebSockets,
 Redis, and push notifications. Generate the full workflow spec."
 
 "Create and execute a spec for implementing OAuth2 with Google, GitHub, and
@@ -199,7 +199,7 @@ blue-green deployment strategy and rollback automation."
 
 ```
 # In Grok CLI
-"Use AutomatosX to create a workflow for comprehensive code quality improvement.
+"Use ax to create a workflow for comprehensive code quality improvement.
 Include refactoring, performance optimization, and security hardening."
 
 "Generate and execute a spec for debugging and fixing production issues.
@@ -213,19 +213,19 @@ refactoring strategy, and validation tests."
 
 ```
 # In Claude Code
-"Use AutomatosX to build a complete e-commerce platform with requirements,
+"Use ax to build a complete e-commerce platform with requirements,
 architecture, API, database, React UI, security audit, and comprehensive tests."
 
-"Work with AutomatosX to implement a data analytics pipeline with API,
+"Work with ax to implement a data analytics pipeline with API,
 ETL, and data warehousing."
 ```
 
 ```
 # In Grok CLI
-"Use AutomatosX to analyze and optimize the entire codebase with quality checks,
+"Use ax to analyze and optimize the entire codebase with quality checks,
 security audits, performance profiling, and comprehensive refactoring."
 
-"Work with AutomatosX to debug complex multi-service issues with distributed
+"Work with ax to debug complex multi-service issues with distributed
 tracing, log analysis, and performance optimization."
 ```
 
@@ -255,10 +255,10 @@ with strict level. This is for production deployment."
 
 ### Behind the Scenes
 
-When you say "use AutomatosX to implement authentication", here's what happens:
+When you say "use ax to implement authentication", here's what happens:
 
 1. AI assistant calls `ax run "implement user authentication"`
-2. AutomatosX **automatically analyzes the task** and selects the best agent(s)
+2. ax **automatically analyzes the task** and selects the best agent(s)
 3. Routes to the configured provider
 4. Persistent memory ensures perfect context across all interactions
 5. Results are returned to your AI assistant with full context
@@ -479,7 +479,7 @@ Most users interact with AutomatosX through AI assistants (Claude Code, Gemini C
 
 ```
 # In Claude Code
-"Create an AutomatosX workflow spec for building a complete authentication system
+"Create an ax workflow spec for building a complete authentication system
 with JWT, OAuth2, database integration, security audit, and comprehensive tests.
 Optimize for cost and generate the full project structure."
 
@@ -492,7 +492,7 @@ Include security review, performance optimization, and backwards compatibility t
 
 ```
 # In Gemini CLI
-"Use AutomatosX to create a spec for an e-commerce checkout flow with Stripe,
+"Use ax to create a spec for an e-commerce checkout flow with Stripe,
 inventory management, fraud detection, and integration tests."
 
 "Build me a spec for a data pipeline that ingests CSV files, transforms them,
@@ -504,13 +504,13 @@ backwards compatibility and comprehensive test coverage."
 
 ```
 # In OpenAI Codex
-"Work with AutomatosX to generate a spec for a real-time chat application
+"Work with ax to generate a spec for a real-time chat application
 with WebSocket support, message persistence, and E2E tests."
 
 "Create a spec for migrating from REST to GraphQL with schema generation,
 resolver implementation, and query performance tests."
 
-"Generate an AutomatosX workflow for implementing RBAC (role-based access control)
+"Generate an ax workflow for implementing RBAC (role-based access control)
 with permissions management, audit logging, and security tests."
 ```
 

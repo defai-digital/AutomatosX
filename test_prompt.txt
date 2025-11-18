@@ -1,3 +1,0 @@
-This is a test file to verify the prompt system is working correctly.
-Created: 2025-06-17
-System status: Operational

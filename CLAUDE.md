@@ -313,6 +313,44 @@ stmt.get(id);
 - Debounce I/O operations to reduce syscalls
 - Use adaptive caching with TTL adjustment based on access patterns
 
+### 8. Agent Profile Instructions (v8.4.15 Critical Insight)
+
+**CRITICAL**: Keep agent system prompts simple - **NEVER mention sandboxes, permissions, or constraints**.
+
+**Why This Matters**:
+When you tell AI agents about sandboxes or restrictions (even to "ignore" them), you trigger unintended behavior:
+- Agents become aware of constraints as a concept
+- They check for sandbox/read-only mode preemptively
+- They refuse operations based on assumptions, not reality
+- They report "environment is read-only" without attempting operations
+
+**The v8.4.15 Discovery**:
+- **v8.4.12**: Agents hung indefinitely waiting for permission in background mode
+- **v8.4.13**: Added instructions telling agents NOT to ask for permission → Fixed hanging ✓
+- **v8.4.14**: Added "IGNORE sandbox restrictions - you have full write access" → Agents refused to write (checked for sandbox preemptively) ✗
+- **v8.4.15**: Examined v7.6.1 (which worked perfectly) and discovered it had NO sandbox mentions at all!
+
+**Correct Approach** (v8.4.15 - Like v7.6.1):
+```yaml
+**CRITICAL - Non-Interactive Mode Behavior**:
+When running in non-interactive mode or background mode, proceed automatically without asking for permission or confirmation.
+
+- Execute tasks directly without prompting
+- If you cannot complete a task, explain why and provide workarounds
+- NEVER output messages like "need to know if you want me to proceed"
+```
+
+**What This Does**:
+1. ✅ Prevents hanging (agents don't ask for permission)
+2. ✅ Agents attempt operations naturally
+3. ✅ OS-level restrictions are hit organically and reported clearly
+4. ✅ No premature "read-only environment" refusals
+5. ✅ Better error messages with actual OS errors, not assumptions
+
+**Key Lesson**: Sometimes the best fix is to REMOVE complexity, not add more. Let the environment enforce restrictions naturally - don't pre-program AI to assume them.
+
+**Reference**: See `automatosx/tmp/V8.4.15-SOLUTION-SUMMARY.md` for detailed problem journey and test results.
+
 ## File Organization
 
 ```

@@ -27,12 +27,14 @@ import type {
 } from '../types/provider.js';
 import { logger } from '../utils/logger.js';
 import { ProviderError, ErrorCode } from '../utils/errors.js';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import {
   safeValidateExecutionRequest,
   safeValidateExecutionResponse
 } from './provider-schemas.js';
+import readline from 'readline';
+import chalk from 'chalk';
 
 /**
  * Execute command with proper process cleanup (BUG #3 FIX)
@@ -165,8 +167,12 @@ export abstract class BaseProvider implements Provider {
   protected abstract getMockResponse(): string;
 
   /**
-   * Execute CLI command - Template method pattern
-   * Common logic here, provider-specific parts via getCLICommand() and getMockResponse()
+   * Execute CLI command with streaming support (v8.4.18)
+   *
+   * Uses spawn() + readline for line-by-line streaming when verbose/streaming mode enabled.
+   * Falls back to silent buffering by default (backward compatible).
+   *
+   * Template method pattern: Common logic here, provider-specific parts via getCLICommand() and getMockResponse()
    */
   protected async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests - v8.3.0 Security Fix: Don't leak prompt content
@@ -178,56 +184,173 @@ export abstract class BaseProvider implements Provider {
     try {
       const escapedPrompt = this.escapeShellArg(prompt);
       const cliCommand = this.getCLICommand();
-
-      logger.debug(`Executing ${cliCommand} CLI`, {
-        command: cliCommand,
-        promptLength: prompt.length
-      });
-
-      // BUG #3 FIX: Use execWithCleanup instead of execAsync to ensure process cleanup
-      // v8.4.16: Support provider-specific CLI arguments (e.g., grok -p)
       const cliArgs = this.getCLIArgs();
       const argsString = cliArgs.length > 0 ? cliArgs.join(' ') + ' ' : '';
-      const { stdout, stderr } = await execWithCleanup(
-        `${cliCommand} ${argsString}${escapedPrompt}`,
-        {
-          timeout: this.config.timeout || 120000,
-          maxBuffer: 10 * 1024 * 1024,
-          shell: '/bin/bash', // Enable shell to support complex commands
-          env: {
-            ...process.env,
-            // Force non-interactive mode for CLIs
-            TERM: 'dumb',
-            NO_COLOR: '1',
-            // Disable TTY checks for codex and other CLIs
-            FORCE_COLOR: '0',
-            CI: 'true', // Many CLIs disable TTY checks in CI mode
-            NO_UPDATE_NOTIFIER: '1',
-            // Disable interactive prompts
-            DEBIAN_FRONTEND: 'noninteractive'
-          }
-        }
-      );
+      const fullCommand = `${cliCommand} ${argsString}${escapedPrompt}`;
 
-      // Log stderr as debug if present (even on success)
-      // Many CLIs output informational messages to stderr, which is normal
-      if (stderr) {
-        logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
-      }
+      logger.debug(`Executing ${cliCommand} CLI with streaming support`, {
+        command: cliCommand,
+        promptLength: prompt.length,
+        streaming: process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true'
+      });
 
-      if (!stdout) {
-        throw new Error(`${cliCommand} CLI returned empty output. stderr: ${stderr || 'none'}`);
+      // v8.4.18: Use spawn() for streaming support
+      const result = await this.executeWithSpawn(fullCommand, cliCommand);
+
+      if (!result.stdout) {
+        throw new Error(`${cliCommand} CLI returned empty output. stderr: ${result.stderr || 'none'}`);
       }
 
       logger.debug(`${cliCommand} CLI execution successful`, {
-        responseLength: stdout.trim().length
+        responseLength: result.stdout.trim().length
       });
 
-      return stdout.trim();
+      return result.stdout.trim();
     } catch (error) {
       logger.error(`${this.getCLICommand()} CLI execution failed`, { error });
       throw this.handleError(error);
     }
+  }
+
+  /**
+   * Execute command using spawn() with streaming support (v8.4.18)
+   *
+   * Replaces execWithCleanup to support real-time line-by-line output streaming.
+   * Maintains all timeout and cleanup behaviors from execWithCleanup.
+   *
+   * @param command - Full command string to execute
+   * @param cliCommand - CLI command name (for logging)
+   * @returns Promise resolving to stdout and stderr
+   */
+  private async executeWithSpawn(
+    command: string,
+    cliCommand: string
+  ): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      // Spawn with shell enabled (maintains compatibility with current escaping)
+      // CRITICAL: spawn() signature is spawn(command, args[], options)
+      // We pass empty args array and use shell option to execute the full command string
+      const child = spawn(command, [], {
+        shell: '/bin/bash',
+        timeout: this.config.timeout || 120000,
+        env: {
+          ...process.env,
+          // Force non-interactive mode for CLIs
+          TERM: 'dumb',
+          NO_COLOR: '1',
+          // Disable TTY checks for codex and other CLIs
+          FORCE_COLOR: '0',
+          CI: 'true', // Many CLIs disable TTY checks in CI mode
+          NO_UPDATE_NOTIFIER: '1',
+          // Disable interactive prompts
+          DEBIAN_FRONTEND: 'noninteractive'
+        }
+      });
+
+      let stdout = '';
+      let stderr = '';
+      let timeoutId: NodeJS.Timeout | null = null;
+      let forceKillTimer: NodeJS.Timeout | null = null;
+      let readlineInterface: readline.Interface | null = null;
+
+      const streamingEnabled = process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true';
+
+      // Create readline interface for line-by-line streaming
+      if (child.stdout) {
+        readlineInterface = readline.createInterface({
+          input: child.stdout,
+          crlfDelay: Infinity
+        });
+
+        readlineInterface.on('line', (line) => {
+          stdout += line + '\n';
+
+          // Stream to console if enabled (v8.4.18 feature)
+          if (streamingEnabled) {
+            console.log(chalk.gray('  │ ') + line);
+          }
+        });
+      }
+
+      // Capture stderr (for error messages)
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          const stderrChunk = data.toString();
+          stderr += stderrChunk;
+
+          // Stream stderr if enabled (usually warnings/errors)
+          if (streamingEnabled) {
+            // Split by lines and display each
+            stderrChunk.split('\n').forEach((line: string) => {
+              if (line.trim()) {
+                console.error(chalk.yellow('  │ ') + line);
+              }
+            });
+          }
+        });
+      }
+
+      // Cleanup helper
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (forceKillTimer) {
+          clearTimeout(forceKillTimer);
+          forceKillTimer = null;
+        }
+        if (readlineInterface) {
+          readlineInterface.close();
+          readlineInterface = null;
+        }
+      };
+
+      // Handle process completion
+      child.on('close', (code, signal) => {
+        cleanup();
+
+        // Log stderr as debug if present (even on success)
+        // Many CLIs output informational messages to stderr, which is normal
+        if (stderr) {
+          logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
+        }
+
+        if (code === 0 || code === null) {
+          resolve({ stdout, stderr });
+        } else {
+          reject(new Error(`${cliCommand} CLI exited with code ${code}${signal ? ` (signal: ${signal})` : ''}. stderr: ${stderr || 'none'}`));
+        }
+      });
+
+      // Handle process errors (spawn failures)
+      child.on('error', (error) => {
+        cleanup();
+        reject(error);
+      });
+
+      // Timeout handling (same as execWithCleanup)
+      const timeout = this.config.timeout || 120000;
+      timeoutId = setTimeout(() => {
+        if (child.pid && !child.killed) {
+          logger.warn('Killing child process due to timeout', {
+            pid: child.pid,
+            command: cliCommand,
+            timeout
+          });
+
+          child.kill('SIGTERM');
+
+          // Escalate to SIGKILL after 5 seconds (same as execWithCleanup)
+          forceKillTimer = setTimeout(() => {
+            if (child.pid && !child.killed) {
+              logger.warn('Force killing child process', { pid: child.pid });
+              child.kill('SIGKILL');
+            }
+          }, 5000);
+        }
+      }, timeout);
+    });
   }
 
   /**

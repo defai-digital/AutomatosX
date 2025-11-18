@@ -1,7 +1,7 @@
 # Project Context for @defai.digital/automatosx
 
 > Last updated: 2025-11-18
-> Project: @defai.digital/automatosx (v8.4.16)
+> Project: @defai.digital/automatosx (v8.5.0)
 
 ## Project Overview
 
@@ -18,7 +18,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.4.16 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
+**Status**: ✅ **Production Ready** | v8.4.17 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
 
 > 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
 
@@ -33,7 +33,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 | **Context History** | Maintains classification context for smarter decisions | Max 100 entries |
 | **Workspace Protection** | Prevents access to files outside project directory | Always active |
 
-**Version:** 8.4.16  
+**Version:** 8.5.0  
 **Language:** TypeScript  
 **Build Tool:** tsup  
 **Test Framework:** Vitest
@@ -68,6 +68,66 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 - `dist/` - Build output (2 files)
 
 **Total Files:** 422
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20.0.0+
+
+### First Time Setup
+1. Clone repository: `git clone https://github.com/defai-digital/automatosx`
+2. Install dependencies: `npm install`
+3. Start dev server: `npm run dev`
+
+
+## Troubleshooting
+
+### Common Issues
+
+**Problem**: `npm install` fails with EACCES
+**Solution**: Fix npm permissions: `sudo chown -R $USER ~/.npm`
+
+**Problem**: Port already in use
+**Solution**: Kill process: `lsof -ti:3000 | xargs kill`
+
+**Problem**: TypeScript errors after `git pull`
+**Solution**: Clean install: `rm -rf node_modules && npm install`
+
+### Debug Mode
+Run with verbose logging:
+```bash
+DEBUG=* npm run dev
+LOG_LEVEL=debug npm test
+```
+
+## Development Workflow
+
+### Daily Workflow
+1. Pull latest: `git pull origin main`
+2. Create feature branch: `git checkout -b feature/my-feature`
+3. Make changes
+4. Run tests: `npm test`
+5. Commit: `git commit -m "feat: add my feature"`
+6. Push: `git push origin feature/my-feature`
+7. Open PR on GitHub
+8. Wait for CI + reviews
+9. Merge to main (squash merge)
+
+### Code Review Process
+- Minimum 1 approval required
+- CI must pass (tests + lint)
+- No merge conflicts
+
+### Hot Reload
+
+### Testing Strategy
+- Unit tests: `npm run test:unit` (fast, no DB)
+- Integration tests: `npm run test:integration` (with test DB)
+- Run all: `npm test`
+
+
+
+
 
 ## Agent Delegation Rules
 

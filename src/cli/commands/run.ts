@@ -515,19 +515,30 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
       // v8.4.16: Add Grok provider support
       if (config.providers['grok']?.enabled) {
-        const { GrokProvider } = await import('../../providers/grok-provider.js');
-        const grokConfig = config.providers['grok'];
-        providers.push(new GrokProvider({
-          name: 'grok',
-          enabled: true,
-          priority: grokConfig.priority,
-          timeout: grokConfig.timeout,
-          command: grokConfig.command,
-          // Phase 2: Enhanced CLI detection parameters
-          customPath: grokConfig.customPath,
-          versionArg: grokConfig.versionArg,
-          minVersion: grokConfig.minVersion
-        }));
+        try {
+          const { GrokProvider } = await import('../../providers/grok-provider.js');
+          const grokConfig = config.providers['grok'];
+
+          // Validate grokConfig exists
+          if (grokConfig) {
+            providers.push(new GrokProvider({
+              name: 'grok',
+              enabled: true,
+              priority: grokConfig.priority ?? 4, // Default priority
+              timeout: grokConfig.timeout ?? 120000, // Default 2 minutes
+              command: grokConfig.command || 'grok',
+              // Phase 2: Enhanced CLI detection parameters
+              customPath: grokConfig.customPath,
+              versionArg: grokConfig.versionArg,
+              minVersion: grokConfig.minVersion
+            }));
+          } else {
+            logger.warn('Grok provider enabled but configuration is missing');
+          }
+        } catch (error) {
+          logger.error('Failed to initialize Grok provider', { error });
+          // Continue with other providers
+        }
       }
 
       if (config.providers['openai']?.enabled) {

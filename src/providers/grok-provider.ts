@@ -36,12 +36,18 @@ export class GrokProvider extends BaseProvider {
    */
   protected getCLICommand(): string {
     // Allow custom command override via config (e.g., 'grok-z-ai' or 'grok-x-ai')
-    return this.config.command || 'grok';
+    // Handle empty string explicitly
+    const command = this.config.command;
+    return command && command.trim() !== '' ? command : 'grok';
   }
 
   /**
    * Get CLI arguments for headless mode
    * Grok CLI requires -p flag for non-interactive mode
+   *
+   * NOTE: The -p flag is currently hardcoded. If Grok CLI changes
+   * its non-interactive flag in the future, this will need updating.
+   * Consider making this configurable if multiple Grok CLI versions exist.
    */
   protected override getCLIArgs(): string[] {
     return ['-p'];  // -p = prompt mode (headless, single execution)

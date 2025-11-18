@@ -1029,7 +1029,7 @@ async function detectPrismaSchema(projectDir: string, schemaPath: string, info: 
       const modelName = modelMatch[1];
       const modelBody = modelMatch[2];
 
-      if (!modelName) continue;
+      if (!modelName || !modelBody) continue;
 
       const fields: ModelField[] = [];
       const relations: ModelRelation[] = [];

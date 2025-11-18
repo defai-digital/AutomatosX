@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [8.5.0] - 2025-11-18
+
+### Added
+- **Real-time Streaming Output** - Line-by-line streaming for long-running agent tasks
+  - Implemented via `spawn()` + `readline` for real-time CLI output
+  - Enabled with `--verbose`, `--streaming`, or `AUTOMATOSX_SHOW_PROVIDER_OUTPUT=true`
+  - Shows progress with `  │ ` prefix for each line
+  - Works with all providers (Claude, Gemini, OpenAI, Grok)
+  - Backward compatible: default mode unchanged (silent until completion)
+
+### Fixed
+- **Critical**: Corrected `spawn()` function signature in BaseProvider
+  - Fixed: `spawn(command, [], options)` instead of `spawn(command, options)`
+  - Ensures proper shell execution and argument handling
+  - Maintains all timeout and cleanup behaviors
+
+### Technical Details
+- File: `src/providers/base-provider.ts`
+- Added: `executeWithSpawn()` method for streaming support
+- Uses: `child_process.spawn()`, `readline`, and `chalk`
+- Impact: Significantly better UX for tasks taking 60-300 seconds
+
 ## [8.3.0] - 2025-11-17
 
 ### Fixed

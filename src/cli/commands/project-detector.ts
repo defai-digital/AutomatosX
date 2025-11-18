@@ -42,6 +42,7 @@ export interface ProjectInfo {
   fileStructure?: FileStructure;  // NEW: Directory structure
   keyComponents?: Component[];    // NEW: Main code components
   architectureFlow?: string;      // NEW: Architecture visualization
+  gettingStarted?: GettingStarted;  // NEW: Getting started guide
 }
 
 export interface CategorizedScripts {
@@ -81,6 +82,20 @@ export interface Component {
   type: 'class' | 'function' | 'module';
   exports: string[];
   purpose?: string;
+}
+
+export interface GettingStarted {
+  prerequisites: string[];
+  setupSteps: string[];
+  envVars: EnvVar[];
+  firstRunCommand: string;
+}
+
+export interface EnvVar {
+  name: string;
+  example: string;
+  required: boolean;
+  description: string;
 }
 
 /**
@@ -125,7 +140,10 @@ export async function detectProjectInfo(projectDir: string): Promise<ProjectInfo
   // 7. Build comprehensive stack description
   info.stack = buildStackDescription(info);
 
-  // 8. Ensure we have a description
+  // 8. Detect getting started information
+  info.gettingStarted = await detectGettingStarted(projectDir, info);
+
+  // 9. Ensure we have a description
   if (!info.description) {
     info.description = generateDescription(info);
   }
@@ -716,4 +734,202 @@ function generateDescription(info: ProjectInfo): string {
   }
 
   return parts.join(' ');
+}
+
+/**
+ * Detect getting started information
+ */
+async function detectGettingStarted(projectDir: string, info: ProjectInfo): Promise<GettingStarted> {
+  return {
+    prerequisites: detectPrerequisites(projectDir, info),
+    setupSteps: generateSetupSteps(projectDir, info),
+    envVars: await parseEnvExample(projectDir),
+    firstRunCommand: detectFirstRunCommand(info)
+  };
+}
+
+/**
+ * Detect prerequisites for the project
+ */
+function detectPrerequisites(projectDir: string, info: ProjectInfo): string[] {
+  const prereqs: string[] = [];
+
+  // Node version from package.json
+  try {
+    const pkgJsonPath = join(projectDir, 'package.json');
+    if (existsSync(pkgJsonPath)) {
+      const pkgJson = require(pkgJsonPath);
+      if (pkgJson.engines?.node) {
+        prereqs.push(`Node.js ${pkgJson.engines.node}`);
+      } else {
+        prereqs.push('Node.js 20.0.0+');
+      }
+    }
+  } catch {
+    prereqs.push('Node.js 20.0.0+');
+  }
+
+  // Docker
+  if (existsSync(join(projectDir, 'docker-compose.yml')) ||
+      existsSync(join(projectDir, 'docker-compose.yaml')) ||
+      existsSync(join(projectDir, 'Dockerfile'))) {
+    prereqs.push('Docker 20.0+');
+  }
+
+  // Database
+  if (info.dependencies.includes('prisma') || info.dependencies.includes('@prisma/client')) {
+    prereqs.push('PostgreSQL 14+ (or compatible database)');
+  }
+  if (info.dependencies.includes('mongodb') || info.dependencies.includes('mongoose')) {
+    prereqs.push('MongoDB 6.0+');
+  }
+  if (info.dependencies.includes('pg') || info.dependencies.includes('postgres')) {
+    prereqs.push('PostgreSQL 14+');
+  }
+  if (info.dependencies.includes('mysql') || info.dependencies.includes('mysql2')) {
+    prereqs.push('MySQL 8.0+');
+  }
+
+  // Package manager
+  if (info.packageManager !== 'npm') {
+    prereqs.push(`${info.packageManager} package manager`);
+  }
+
+  return prereqs;
+}
+
+/**
+ * Generate setup steps
+ */
+function generateSetupSteps(projectDir: string, info: ProjectInfo): string[] {
+  const steps: string[] = [];
+  let stepNum = 1;
+
+  // Clone repository
+  if (info.repository) {
+    steps.push(`${stepNum++}. Clone repository: \`git clone ${info.repository}\``);
+  }
+
+  // Install dependencies
+  const installCmd = info.packageManager === 'npm' ? 'npm install' :
+                     info.packageManager === 'yarn' ? 'yarn install' :
+                     info.packageManager === 'pnpm' ? 'pnpm install' :
+                     'bun install';
+  steps.push(`${stepNum++}. Install dependencies: \`${installCmd}\``);
+
+  // Environment variables
+  if (existsSync(join(projectDir, '.env.example'))) {
+    steps.push(`${stepNum++}. Copy environment: \`cp .env.example .env\``);
+  }
+
+  // Docker setup
+  if (existsSync(join(projectDir, 'docker-compose.yml')) ||
+      existsSync(join(projectDir, 'docker-compose.yaml'))) {
+    steps.push(`${stepNum++}. Start services: \`docker-compose up -d\``);
+  }
+
+  // Database migrations
+  if (info.scripts['db:migrate']) {
+    steps.push(`${stepNum++}. Run migrations: \`${info.packageManager} run db:migrate\``);
+  } else if (info.scripts['migrate']) {
+    steps.push(`${stepNum++}. Run migrations: \`${info.packageManager} run migrate\``);
+  } else if (info.scripts['prisma:migrate']) {
+    steps.push(`${stepNum++}. Run migrations: \`${info.packageManager} run prisma:migrate\``);
+  }
+
+  // Database seed
+  if (info.scripts['db:seed']) {
+    steps.push(`${stepNum++}. Seed data (optional): \`${info.packageManager} run db:seed\``);
+  } else if (info.scripts['seed']) {
+    steps.push(`${stepNum++}. Seed data (optional): \`${info.packageManager} run seed\``);
+  }
+
+  // Build step (if required before dev)
+  const needsBuild = info.scripts.dev?.includes('tsc') ||
+                     info.scripts.start && !info.scripts.dev;
+  if (needsBuild && info.scripts.build) {
+    steps.push(`${stepNum++}. Build: \`${info.packageManager} run build\``);
+  }
+
+  // Start dev server
+  const devCmd = detectFirstRunCommand(info);
+  if (devCmd) {
+    steps.push(`${stepNum++}. Start dev server: \`${devCmd}\``);
+  }
+
+  // Access URL
+  if (info.framework === 'React' || info.framework === 'Vue' || info.framework === 'Next.js') {
+    steps.push(`${stepNum++}. Visit: http://localhost:3000`);
+  } else if (info.dependencies.includes('express') || info.dependencies.includes('fastify')) {
+    steps.push(`${stepNum++}. API available at: http://localhost:3000`);
+  }
+
+  return steps;
+}
+
+/**
+ * Parse .env.example file
+ */
+async function parseEnvExample(projectDir: string): Promise<EnvVar[]> {
+  const envExamplePath = join(projectDir, '.env.example');
+  if (!existsSync(envExamplePath)) {
+    return [];
+  }
+
+  try {
+    const content = await readFile(envExamplePath, 'utf-8');
+    const vars: EnvVar[] = [];
+    let currentComment = '';
+
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+
+      // Extract comments for descriptions
+      if (trimmed.startsWith('#')) {
+        currentComment = trimmed.substring(1).trim();
+        continue;
+      }
+
+      // Parse variable
+      const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+      if (match && match[1]) {
+        const name = match[1];
+        const example = match[2] || '';
+        const required = !currentComment.toLowerCase().includes('optional');
+
+        vars.push({
+          name,
+          example,
+          required,
+          description: currentComment || ''
+        });
+
+        currentComment = '';  // Reset for next variable
+      }
+    }
+
+    return vars;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Detect first run command
+ */
+function detectFirstRunCommand(info: ProjectInfo): string {
+  const pm = info.packageManager;
+
+  // Common dev commands
+  if (info.scripts.dev) {
+    return pm === 'npm' ? 'npm run dev' : `${pm} dev`;
+  }
+  if (info.scripts.start) {
+    return pm === 'npm' ? 'npm start' : `${pm} start`;
+  }
+  if (info.scripts.serve) {
+    return pm === 'npm' ? 'npm run serve' : `${pm} serve`;
+  }
+
+  return `${pm} start`;
 }

@@ -57,6 +57,12 @@ ${generateArchitecture(info)}
 
 ${generateFileStructure(info)}
 
+${generateGettingStarted(info)}
+
+${generateTroubleshooting(info)}
+
+${generateDevWorkflow(info)}
+
 ${generateAgentRules(info)}
 
 ${generateCodingConventions(info)}
@@ -193,6 +199,192 @@ function generateFileStructure(info: ProjectInfo): string {
 
   // Total
   sections.push(`\n**Total Files:** ${info.fileStructure.totalFiles}`);
+
+  return sections.join('\n');
+}
+
+/**
+ * Generate Getting Started section
+ */
+function generateGettingStarted(info: ProjectInfo): string {
+  if (!info.gettingStarted) {
+    return '';  // Skip if no getting started info
+  }
+
+  const sections: string[] = ['## Getting Started', ''];
+
+  // Prerequisites
+  if (info.gettingStarted.prerequisites.length > 0) {
+    sections.push('### Prerequisites');
+    for (const prereq of info.gettingStarted.prerequisites) {
+      sections.push(`- ${prereq}`);
+    }
+    sections.push('');
+  }
+
+  // First Time Setup
+  if (info.gettingStarted.setupSteps.length > 0) {
+    sections.push('### First Time Setup');
+    for (const step of info.gettingStarted.setupSteps) {
+      sections.push(step);
+    }
+    sections.push('');
+  }
+
+  // Environment Variables
+  if (info.gettingStarted.envVars.length > 0) {
+    sections.push('### Environment Variables');
+    sections.push('');
+
+    const required = info.gettingStarted.envVars.filter(v => v.required);
+    const optional = info.gettingStarted.envVars.filter(v => !v.required);
+
+    if (required.length > 0) {
+      sections.push('**Required:**');
+      for (const envVar of required) {
+        sections.push(`- \`${envVar.name}\`${envVar.description ? ` - ${envVar.description}` : ''}`);
+        if (envVar.example) {
+          sections.push(`  - Example: \`${envVar.example}\``);
+        }
+      }
+      sections.push('');
+    }
+
+    if (optional.length > 0) {
+      sections.push('**Optional:**');
+      for (const envVar of optional) {
+        sections.push(`- \`${envVar.name}\`${envVar.description ? ` - ${envVar.description}` : ''}`);
+        if (envVar.example) {
+          sections.push(`  - Example: \`${envVar.example}\``);
+        }
+      }
+      sections.push('');
+    }
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * Generate Troubleshooting section
+ */
+function generateTroubleshooting(info: ProjectInfo): string {
+  const sections: string[] = ['## Troubleshooting', ''];
+
+  sections.push('### Common Issues');
+  sections.push('');
+
+  // Generic issues
+  sections.push('**Problem**: `npm install` fails with EACCES');
+  sections.push('**Solution**: Fix npm permissions: `sudo chown -R $USER ~/.npm`');
+  sections.push('');
+
+  // Database issues
+  if (info.dependencies.includes('prisma') || info.dependencies.includes('typeorm') ||
+      info.dependencies.includes('pg') || info.dependencies.includes('mongodb')) {
+    sections.push('**Problem**: Database connection refused');
+    sections.push('**Solution**:');
+    sections.push('1. Check Docker is running: `docker ps`');
+    sections.push('2. Start services: `docker-compose up -d`');
+    if (info.scripts['db:ping']) {
+      sections.push(`3. Verify connection: \`${info.packageManager} run db:ping\``);
+    }
+    sections.push('');
+  }
+
+  // Port conflicts
+  sections.push('**Problem**: Port already in use');
+  sections.push('**Solution**: Kill process: `lsof -ti:3000 | xargs kill`');
+  sections.push('');
+
+  // TypeScript issues
+  if (info.hasTypeScript) {
+    sections.push('**Problem**: TypeScript errors after `git pull`');
+    sections.push('**Solution**: Clean install: `rm -rf node_modules && npm install`');
+    sections.push('');
+  }
+
+  // Framework-specific
+  if (info.framework === 'React' || info.framework === 'Next.js' || info.framework === 'Vue') {
+    sections.push('**Problem**: Hot reload not working');
+    sections.push('**Solution**: Check file watcher limits: `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf`');
+    sections.push('');
+  }
+
+  // Debug mode
+  sections.push('### Debug Mode');
+  sections.push('Run with verbose logging:');
+  sections.push('```bash');
+  sections.push('DEBUG=* npm run dev');
+  if (info.scripts.test) {
+    sections.push('LOG_LEVEL=debug npm test');
+  }
+  sections.push('```');
+
+  return sections.join('\n');
+}
+
+/**
+ * Generate Development Workflow section
+ */
+function generateDevWorkflow(info: ProjectInfo): string {
+  const sections: string[] = ['## Development Workflow', ''];
+
+  // Daily workflow
+  sections.push('### Daily Workflow');
+  sections.push('1. Pull latest: `git pull origin main`');
+  sections.push('2. Create feature branch: `git checkout -b feature/my-feature`');
+  sections.push('3. Make changes');
+  if (info.scripts.test) {
+    sections.push(`4. Run tests: \`${info.packageManager} test\``);
+  }
+  sections.push('5. Commit: `git commit -m "feat: add my feature"`');
+  sections.push('6. Push: `git push origin feature/my-feature`');
+  sections.push('7. Open PR on GitHub');
+  sections.push('8. Wait for CI + reviews');
+  sections.push('9. Merge to main (squash merge)');
+  sections.push('');
+
+  // Code review
+  sections.push('### Code Review Process');
+  sections.push('- Minimum 1 approval required');
+  sections.push('- CI must pass (tests + lint)');
+  sections.push('- No merge conflicts');
+  sections.push('');
+
+  // Hot reload
+  sections.push('### Hot Reload');
+  if (info.framework === 'React' || info.framework === 'Vue') {
+    if (info.buildTool === 'Vite') {
+      sections.push('- Frontend: Vite HMR (instant)');
+    } else {
+      sections.push('- Frontend: Hot module replacement enabled');
+    }
+  }
+  if (info.dependencies.includes('express') || info.dependencies.includes('fastify')) {
+    sections.push('- Backend: Nodemon (restart on save)');
+  }
+  if (info.framework === 'Next.js') {
+    sections.push('- Next.js Fast Refresh (instant updates)');
+  }
+  sections.push('');
+
+  // Testing strategy
+  if (info.testFramework) {
+    sections.push('### Testing Strategy');
+    if (info.scripts['test:unit']) {
+      sections.push(`- Unit tests: \`${info.packageManager} run test:unit\` (fast, no DB)`);
+    }
+    if (info.scripts['test:integration']) {
+      sections.push(`- Integration tests: \`${info.packageManager} run test:integration\` (with test DB)`);
+    }
+    if (info.scripts['test:e2e']) {
+      sections.push(`- E2E tests: \`${info.packageManager} run test:e2e\` (full stack)`);
+    }
+    if (info.scripts.test) {
+      sections.push(`- Run all: \`${info.packageManager} test\``);
+    }
+  }
 
   return sections.join('\n');
 }

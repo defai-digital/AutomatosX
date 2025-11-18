@@ -19,13 +19,24 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   protected getCLICommand(): string {
-    // Return just 'codex' for availability checks and version detection
-    return 'codex';
+    // Return 'codex exec' for streaming execution
+    return 'codex exec';
+  }
+
+  /**
+   * Get CLI arguments for Codex
+   * Enables JSONL streaming output for real-time progress
+   */
+  protected override getCLIArgs(): string[] {
+    return ['--json'];  // Output events as JSONL (streaming JSON)
   }
 
   /**
    * Override executeCLI to use 'codex exec' subcommand for non-interactive execution
    * This avoids "stdout is not a terminal" errors while keeping CLI detection working
+   *
+   * NOTE: This override is deprecated in favor of BaseProvider's streaming support.
+   * Keeping for backward compatibility but should use BaseProvider.executeCLI with getCLIArgs().
    */
   protected override async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests

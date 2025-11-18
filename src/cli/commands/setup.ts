@@ -210,6 +210,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       }
       console.log(chalk.green('   ✓ Claude Code integration configured'));
 
+      // Setup AutomatosX-Integration.md (canonical integration guide)
+      console.log(chalk.cyan('📖 Setting up AutomatosX-Integration.md (canonical guide)...'));
+      await setupAutomatosXIntegrationMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ AutomatosX-Integration.md configured'));
+
       // Setup project CLAUDE.md with AutomatosX integration guide
       console.log(chalk.cyan('📖 Setting up CLAUDE.md with AutomatosX integration...'));
       await setupProjectClaudeMd(projectDir, packageRoot, argv.force ?? false);
@@ -1242,6 +1247,43 @@ async function setupProjectAgentsMd(
     logger.warn('Failed to setup AGENTS.md', {
       error: (error as Error).message,
       path: agentsMdPath
+    });
+  }
+}
+
+/**
+ * Setup AutomatosX-Integration.md (canonical integration guide)
+ *
+ * This is the single source of truth for AutomatosX integration across all AI assistants.
+ * All AI-specific files (CLAUDE.md, GEMINI.md, CODEX.md, GROK.md) reference this file.
+ */
+async function setupAutomatosXIntegrationMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  const integrationMdPath = join(projectDir, 'AutomatosX-Integration.md');
+  const templatePath = join(packageRoot, 'examples/AutomatosX-Integration.md');
+
+  try {
+    const exists = await checkExists(integrationMdPath);
+
+    if (exists && !force) {
+      logger.info('AutomatosX-Integration.md already exists, skipping');
+      return;
+    }
+
+    // Read template file and write to project directory
+    const { readFile, writeFile } = await import('fs/promises');
+    const template = await readFile(templatePath, 'utf-8');
+    await writeFile(integrationMdPath, template, 'utf-8');
+
+    logger.info('Created AutomatosX-Integration.md from template');
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup AutomatosX-Integration.md', {
+      error: (error as Error).message,
+      path: integrationMdPath
     });
   }
 }

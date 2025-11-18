@@ -22,6 +22,7 @@ import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
+import { writeAgentStatus } from '../../utils/agent-status-writer.js';
 import chalk from 'chalk';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
@@ -354,6 +355,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
     let contextManager: ContextManager | undefined;
     let context: any;
     let resolvedAgentName: string = argv.agent as string; // Default to input, will be resolved later
+    const executionStartTime = Date.now();
 
     try {
       // 1. Detect project root directory
@@ -1032,6 +1034,17 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         process.stderr.end();
       }
 
+      // Write agent completion status for background notification system (v8.5.0)
+      await writeAgentStatus({
+        agent: resolvedAgentName,
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+        pid: process.pid,
+        duration: Date.now() - executionStartTime,
+        task: argv.task as string,
+        provider: argv.provider
+      });
+
       // Explicitly exit process to prevent hanging
       // (Required for integration tests and clean process termination)
       process.exit(0);
@@ -1088,6 +1101,18 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         if (process.stderr.writable) {
           process.stderr.end();
         }
+
+        // Write agent failure status for background notification system (v8.5.0)
+        await writeAgentStatus({
+          agent: resolvedAgentName,
+          status: 'failed',
+          timestamp: new Date().toISOString(),
+          pid: process.pid,
+          duration: Date.now() - executionStartTime,
+          error: err.message,
+          task: argv.task as string,
+          provider: argv.provider
+        });
       } catch (cleanupError) {
         const errMsg = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
         logger.debug('Cleanup error ignored', { error: errMsg });

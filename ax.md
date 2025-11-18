@@ -1,7 +1,7 @@
 # Project Context for @defai.digital/automatosx
 
 > Last updated: 2025-11-18
-> Project: @defai.digital/automatosx (v8.5.0)
+> Project: @defai.digital/automatosx (v8.5.1)
 
 ## Project Overview
 
@@ -18,7 +18,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.4.17 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
+**Status**: ✅ **Production Ready** | v8.5.1 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
 
 > 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
 
@@ -33,7 +33,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 | **Context History** | Maintains classification context for smarter decisions | Max 100 entries |
 | **Workspace Protection** | Prevents access to files outside project directory | Always active |
 
-**Version:** 8.5.0  
+**Version:** 8.5.1  
 **Language:** TypeScript  
 **Build Tool:** tsup  
 **Test Framework:** Vitest
@@ -62,12 +62,12 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 
 
 **Directories:**
-- `src/` - Source code (230 files)
+- `src/` - Source code (231 files)
 - `tests/` - Test files (148 files)
 - `docs/` - Documentation (42 files)
 - `dist/` - Build output (2 files)
 
-**Total Files:** 422
+**Total Files:** 423
 
 ## Getting Started
 

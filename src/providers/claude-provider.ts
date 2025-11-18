@@ -17,6 +17,17 @@ export class ClaudeProvider extends BaseProvider {
     return 'claude';
   }
 
+  /**
+   * Get CLI arguments for Claude Code
+   * Enables native streaming JSON output for real-time progress
+   */
+  protected override getCLIArgs(): string[] {
+    return [
+      '--print',  // Non-interactive mode
+      '--output-format', 'stream-json'  // Enable streaming JSON output
+    ];
+  }
+
   protected getMockResponse(): string {
     return `[Mock Claude Response]\n\nThis is a mock response for testing purposes.`;
   }

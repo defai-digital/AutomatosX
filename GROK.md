@@ -1,10 +1,10 @@
-# Grok CLI Integration with AutomatosX
+# GROK.md
 
-**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
-
-This file provides **Grok-specific** setup instructions and configuration details. For comprehensive AutomatosX documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
+This file provides guidance for Grok CLI integration with AutomatosX.
 
 ---
+
+# Grok CLI Integration with AutomatosX
 
 This guide explains how to integrate Grok CLI with AutomatosX for AI-powered development.
 
@@ -515,7 +515,3 @@ Edit `automatosx.config.json`:
 3. ✅ Enable in `automatosx.config.json`
 4. ✅ Test with `ax doctor grok`
 5. 🚀 Start using Grok with your agents!
-
----
-
-**For complete AutomatosX documentation** including all agents, commands, memory system, workflows, and best practices, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).

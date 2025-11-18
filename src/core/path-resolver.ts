@@ -29,11 +29,16 @@ function isWindowsPath(path: string): boolean {
 
 /**
  * Project root detection
- * Priority: .git > package.json > other markers > fallback to cwd
+ * Priority: AUTOMATOSX_PROJECT_ROOT env > .git > package.json > other markers > fallback to cwd
  */
 export async function detectProjectRoot(
   startDir: string = process.cwd()
 ): Promise<string> {
+  // Priority 0: Check for explicit override (for testing)
+  if (process.env.AUTOMATOSX_PROJECT_ROOT) {
+    return process.env.AUTOMATOSX_PROJECT_ROOT;
+  }
+
   // Priority 1: Find .git directory
   const gitDir = await findUp('.git', {
     cwd: startDir,

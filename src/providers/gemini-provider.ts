@@ -17,6 +17,17 @@ export class GeminiProvider extends BaseProvider {
     return 'gemini';
   }
 
+  /**
+   * Get CLI arguments for Gemini
+   * Enables auto-approval for edit tools and native streaming JSON output
+   */
+  protected override getCLIArgs(): string[] {
+    return [
+      '--approval-mode', 'auto_edit',  // Auto-approve file edit operations
+      '--output-format', 'stream-json'  // Enable streaming JSON output
+    ];
+  }
+
   protected getMockResponse(): string {
     return `[Mock Gemini Response]\n\nThis is a mock response for testing purposes.`;
   }

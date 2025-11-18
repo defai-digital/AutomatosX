@@ -1,5 +1,11 @@
 # AutomatosX Integration with OpenAI Codex
 
+**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
+
+This file provides **Codex-specific** setup instructions and configuration details. For comprehensive AutomatosX documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
+
+---
+
 This project uses [AutomatosX](https://github.com/defai-digital/automatosx) with OpenAI Codex CLI as a provider for AI-powered agent orchestration.
 
 ## Overview

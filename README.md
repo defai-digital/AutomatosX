@@ -13,7 +13,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v8.5.1 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
+**Status**: ✅ **Production Ready** | v8.5.2 | 20 Specialized Agents | Pure CLI Orchestration | Simplified Architecture
 
 > 🎉 **NEW in v8.3.0**: Major simplification! Removed ~36,000 lines of code including policy routing, free-tier management, and SDK providers. AutomatosX is now a pure CLI orchestration wrapper around `claude`, `gemini`, and `codex` commands. Simpler, faster, easier to maintain. See [Migration Guide](MIGRATION.md) for upgrade details.
 

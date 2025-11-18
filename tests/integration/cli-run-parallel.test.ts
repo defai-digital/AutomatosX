@@ -56,11 +56,13 @@ describe('CLI Run Command - Parallel Execution', () => {
 
     // Set environment variable to use mock providers
     process.env.AUTOMATOSX_MOCK_PROVIDERS = 'true';
+    process.env.AUTOMATOSX_PROJECT_ROOT = testDir;
   });
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
     delete process.env.AUTOMATOSX_MOCK_PROVIDERS;
+    delete process.env.AUTOMATOSX_PROJECT_ROOT;
   });
 
   describe('CLI --parallel Flag', () => {
@@ -76,8 +78,6 @@ version: 1.0.0
 description: Test agent
 role: Test role
 systemPrompt: Test prompt
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -89,6 +89,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -112,8 +113,6 @@ version: 1.0.0
 description: Test agent
 role: Test role
 systemPrompt: Test prompt
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -125,6 +124,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -160,8 +160,6 @@ version: 1.0.0
 description: Frontend developer
 role: Frontend Developer
 systemPrompt: You are a frontend developer
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -200,6 +198,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -216,6 +215,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -232,6 +232,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -285,8 +286,6 @@ version: 1.0.0
 description: Test agent
 role: Test role
 systemPrompt: Test prompt
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -297,6 +296,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -321,8 +321,6 @@ version: 1.0.0
 description: Test agent
 role: Test role
 systemPrompt: Test prompt
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -333,6 +331,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -352,6 +351,7 @@ model:
             env: {
               ...process.env,
               AUTOMATOSX_MOCK_PROVIDERS: 'true',
+              AUTOMATOSX_PROJECT_ROOT: testDir,
               NODE_ENV: 'test'
             }
           }
@@ -389,6 +389,7 @@ model:
             env: {
               ...process.env,
               AUTOMATOSX_MOCK_PROVIDERS: 'true',
+              AUTOMATOSX_PROJECT_ROOT: testDir,
               NODE_ENV: 'test'
             }
           }
@@ -414,8 +415,6 @@ version: 1.0.0
 description: Test agent
 role: Test role
 systemPrompt: Test prompt
-model:
-  provider: claude-code
 `,
         'utf-8'
       );
@@ -428,6 +427,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -445,6 +445,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             NODE_ENV: 'test'
           }
         }
@@ -468,6 +469,7 @@ model:
           env: {
             ...process.env,
             AUTOMATOSX_MOCK_PROVIDERS: 'true',
+            AUTOMATOSX_PROJECT_ROOT: testDir,
             AUTOMATOSX_QUIET: 'true',
             NODE_ENV: 'test'
           }

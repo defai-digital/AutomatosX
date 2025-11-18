@@ -18,7 +18,7 @@ import type { ExecutionResponse } from '../../types/provider.js';
 export type IterateStatusEvent =
   | { type: 'classification'; classification: Classification; response: ExecutionResponse }
   | { type: 'action'; action: IterateAction; stats: IterateStats }
-  | { type: 'budget-warning'; budgetType: 'time' | 'cost' | 'iterations'; percentUsed: number }
+  | { type: 'budget-warning'; budgetType: 'time' | 'tokens' | 'iterations'; percentUsed: number }
   | { type: 'iteration-complete'; stats: IterateStats };
 
 /**
@@ -29,7 +29,7 @@ export type IterateStatusEvent =
  * Features:
  * - Classification display with confidence scores
  * - Action taken (continue/pause/stop/retry)
- * - Budget usage indicators (time, cost, iterations)
+ * - Budget usage indicators (time, tokens, iterations)
  * - Color-coded output based on status
  * - Compact, single-line updates for minimal noise
  *
@@ -191,11 +191,11 @@ export class IterateStatusRenderer {
    *
    * Displays warning when budget thresholds are reached.
    *
-   * @param budgetType - Type of budget (time/cost/iterations)
+   * @param budgetType - Type of budget (time/tokens/iterations)
    * @param percentUsed - Percentage of budget used
    * @private
    */
-  private handleBudgetWarning(budgetType: 'time' | 'cost' | 'iterations', percentUsed: number): void {
+  private handleBudgetWarning(budgetType: 'time' | 'tokens' | 'iterations', percentUsed: number): void {
     const percent = Math.round(percentUsed);
     const icon = percent >= 90 ? '⚠️ ' : '⚡';
     const color = percent >= 90 ? chalk.red : chalk.yellow;
@@ -356,8 +356,8 @@ export class IterateStatusRenderer {
         return chalk.green('Task Completed');
       case 'timeout':
         return chalk.yellow('Time Limit Exceeded');
-      case 'cost_limit':
-        return chalk.yellow('Cost Limit Exceeded');
+      case 'token_limit':
+        return chalk.yellow('Token Limit Exceeded');
       case 'user_interrupt':
         return chalk.blue('User Interrupted');
       case 'error':

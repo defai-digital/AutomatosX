@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v8.5.3) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
+AutomatosX (v8.5.4) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, policy-driven cost optimization, and persistent memory. It's a production-ready CLI tool that intelligently routes AI requests across multiple providers (Claude, Gemini, OpenAI) based on cost, latency, and policy constraints.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
@@ -44,7 +44,7 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v8.5.3)
+### Current State (v8.5.4)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
@@ -55,7 +55,7 @@ npm run release:check                      # Validate release readiness
 - ✅ Natural language integration with AI assistants
 - ⚠️ Cost estimation **disabled by default** (v6.5.11+) - enable in config if needed
 
-**Recent Changes (v8.5.3 - Streamlined for AI Assistant Integration):**
+**Recent Changes (v8.5.4 - Streamlined for AI Assistant Integration):**
 - 🔄 **Removed standalone chatbot**: Focus on integration with Claude Code, Gemini CLI, OpenAI Codex
 - ✅ **Streamlined CLI**: Direct command execution for agent orchestration
 - ✅ **AI Assistant First**: Best experience through your preferred AI assistant
@@ -790,6 +790,106 @@ await Bash({
 - Filename pattern: `{agentName}-{timestamp}.json`
 
 **Note**: This feature is automatically enabled for all agent executions. Status files are created regardless of task success/failure, allowing you to track agent completion.
+
+### Polling Background Agents (CRITICAL GUIDANCE)
+
+When monitoring background agents with `BashOutput`, **DO NOT poll excessively**! Follow exponential backoff to reduce API calls and noise.
+
+**❌ BAD: Excessive Polling (Every 3-5 seconds)**
+```
+⏺ BashOutput - 0s
+⏺ BashOutput - 3s
+⏺ BashOutput - 6s
+⏺ BashOutput - 9s
+... (13 polls in 45 seconds!)
+```
+**Problems**: Wasteful API calls, noisy output, poor user experience
+
+**✅ GOOD: Exponential Backoff (Smart intervals)**
+```
+⏺ Start agent in background
+⏺ Wait 30s (let agent initialize)
+⏺ BashOutput - check 1 (30s)
+⏺ Wait 15s
+⏺ BashOutput - check 2 (45s)
+⏺ Wait 20s
+⏺ BashOutput - check 3 (65s)
+✅ Agent completes (68s)
+```
+**Benefits**: 3 polls vs 13, cleaner output, efficient
+
+**Polling Strategy - Exponential Backoff**:
+```
+First wait:  30 seconds (let agent start)
+Check 1:     30s total
+Wait:        +15s
+Check 2:     45s total
+Wait:        +20s
+Check 3:     65s total
+Wait:        +30s
+Check 4+:    Every 30s thereafter
+```
+
+**When to Use Each Approach**:
+
+1. **BackgroundAgentMonitor** (BEST - Zero Polling):
+   ```typescript
+   import { BackgroundAgentMonitor } from './core/background-agent-monitor.js';
+
+   const monitor = new BackgroundAgentMonitor();
+   const status = await monitor.watchAgent('writer');
+   // Automatic notification via file watching (10-50ms latency)
+   ```
+
+2. **SmartPoller** (GOOD - Exponential Backoff):
+   ```typescript
+   import { SmartPoller } from './utils/smart-poller.js';
+
+   const poller = new SmartPoller();
+   const result = await poller.poll(async () => {
+     const output = await BashOutput({ bash_id: shellId });
+     return output.status === 'completed' ? output : null;
+   });
+   ```
+
+3. **Manual Polling** (ACCEPTABLE - If necessary):
+   - Initial wait: 30 seconds minimum
+   - Subsequent checks: Every 15-30 seconds
+   - Max frequency: 1 check per 15 seconds
+   - Stop after: 5 minutes of no progress
+
+**Key Principles**:
+- **Trust the timeout system**: Agents have built-in timeouts (default 120 minutes)
+- **Be patient**: Wait 30-60s before first check
+- **Reduce noise**: Don't show every poll to user
+- **Use file notification when possible**: BackgroundAgentMonitor eliminates polling
+- **Only poll if needed**: For tasks <60s, just wait for completion
+
+**Example - Using BackgroundAgentMonitor**:
+```typescript
+import { BackgroundAgentMonitor } from './core/background-agent-monitor.js';
+
+// Start agent
+await Bash({
+  command: 'ax run writer "task"',
+  run_in_background: true
+});
+
+// Use file-based notification (no polling!)
+const monitor = new BackgroundAgentMonitor();
+await monitor.watchAgent('writer', (status) => {
+  console.log(`✅ ${status.agent} completed in ${status.duration}ms`);
+});
+
+// Agent completes → Status file created → Instant notification
+```
+
+**Anti-Patterns to Avoid**:
+- ❌ Polling every 3-5 seconds
+- ❌ Checking more than 4 times in first 2 minutes
+- ❌ Showing every poll result to user
+- ❌ Assuming agent is stuck before 5 minutes
+- ❌ Not using BackgroundAgentMonitor when available
 
 ---
 

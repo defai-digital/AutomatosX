@@ -455,7 +455,7 @@ export class ProviderError extends BaseError {
       [
         'Interactive login (recommended): codex login',
         'Manual API key: export OPENAI_API_KEY="sk-..."',
-        'CLI-only mode (no API access): export AUTOMATOSX_CLI_ONLY=true',
+        'CLI-only mode (no API access): export AX_CLI_ONLY=true',
         'Verify authentication: codex exec "test"'
       ],
       {
@@ -476,12 +476,12 @@ export class ProviderError extends BaseError {
       [
         'Check network connectivity',
         'Verify not behind restrictive firewall or proxy',
-        'Use CLI-only mode if behind firewall: export AUTOMATOSX_CLI_ONLY=true',
+        'Use CLI-only mode if behind firewall: export AX_CLI_ONLY=true',
         'Check OpenAI API status: https://status.openai.com'
       ],
       {
         providerName: 'openai',
-        cliOnlyMode: 'AUTOMATOSX_CLI_ONLY=true'
+        cliOnlyMode: 'AX_CLI_ONLY=true'
       }
     );
   }

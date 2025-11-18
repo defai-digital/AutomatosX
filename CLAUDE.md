@@ -126,7 +126,7 @@ npm run release:check                      # Validate release readiness
 **Implementations:**
 - `claude-provider.ts`: CLI-based Claude integration
 - `gemini-provider.ts`: CLI-based Gemini integration (lowest cost)
-- `openai-provider.ts`: OpenAI with CLI/SDK modes (`AUTOMATOSX_CLI_ONLY` env var controls mode)
+- `openai-provider.ts`: OpenAI with CLI/SDK modes (`AX_CLI_ONLY` env var controls mode)
 
 **Provider Metadata Registry (`src/core/provider-metadata-registry.ts`)**
 - Centralized pricing, latency, free-tier limits

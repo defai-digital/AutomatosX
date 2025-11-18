@@ -280,7 +280,7 @@ If you only have CLI tools installed and **no API access** (no API keys or restr
 
 ```bash
 # Set environment variable to enforce CLI-only mode
-export AUTOMATOSX_CLI_ONLY=true
+export AX_CLI_ONLY=true
 
 # Now all providers will use CLI integration (subprocess), never API
 ax run backend "implement user authentication"

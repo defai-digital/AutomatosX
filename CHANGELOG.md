@@ -1601,7 +1601,7 @@ Through heavy-thinking analysis and ax agent collaboration, identified and fixed
 **CLI-Only Mode for Users Without API Access**
 
 - **Environment Variable Override** (`src/cli/commands/run.ts` +17 lines)
-  - Added `AUTOMATOSX_CLI_ONLY=true` environment variable to force CLI mode
+  - Added `AX_CLI_ONLY=true` environment variable to force CLI mode
   - Overrides OpenAI provider from SDK mode to CLI mode when set
   - Prevents API connection attempts for users with CLI-only access
   - Eliminates "Unable to connect to API" errors and retry loops
@@ -1624,7 +1624,7 @@ Through heavy-thinking analysis and ax agent collaboration, identified and fixed
 
 - **Users affected**: CLI-only users (no API access, corporate networks, firewall restrictions)
 - **Breaking changes**: None
-- **Migration**: Optional - set `AUTOMATOSX_CLI_ONLY=true` if experiencing API connection issues
+- **Migration**: Optional - set `AX_CLI_ONLY=true` if experiencing API connection issues
 
 ## [6.0.1] - 2025-10-30
 

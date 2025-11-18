@@ -563,15 +563,15 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         };
 
         // Check for CLI-only mode enforcement (environment variable)
-        // Users with no API access can set AUTOMATOSX_CLI_ONLY=true to force CLI mode
-        const cliOnlyMode = process.env.AUTOMATOSX_CLI_ONLY === 'true';
+        // Users with no API access can set AX_CLI_ONLY=true to force CLI mode
+        const cliOnlyMode = process.env.AX_CLI_ONLY === 'true';
 
         // Check integration mode (v5.13.0 Phase 1)
         let integrationMode = openaiConfig.integration || 'cli';
 
         // Override to CLI mode if CLI-only enforcement is active
         if (cliOnlyMode && integrationMode === 'sdk') {
-          logger.info('⚠️  CLI-only mode enforced (AUTOMATOSX_CLI_ONLY=true)', {
+          logger.info('⚠️  CLI-only mode enforced (AX_CLI_ONLY=true)', {
             provider: 'openai',
             configuredMode: 'sdk',
             enforcedMode: 'cli'

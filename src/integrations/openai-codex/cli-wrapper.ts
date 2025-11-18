@@ -8,12 +8,15 @@
 
 import { spawn } from 'child_process';
 import { logger } from '../../utils/logger.js';
+import readline from 'readline';
 import type {
   CodexConfig,
   CodexExecutionOptions,
   CodexExecutionResult,
 } from './types.js';
 import { CodexError, CodexErrorType } from './types.js';
+import { CodexProgressRenderer } from './progress-renderer.js';
+import { getDefaultInjector } from './prompt-injector.js';
 
 /**
  * OpenAI Codex CLI Wrapper
@@ -34,25 +37,53 @@ export class CodexCLI {
    */
   async execute(options: CodexExecutionOptions): Promise<CodexExecutionResult> {
     const startTime = Date.now();
+    const streaming = options.streaming ?? this.config.streaming;
 
     try {
+      // Inject AGENTS.md content if available
+      const injector = getDefaultInjector({ projectRoot: options.cwd });
+      const enhancedPrompt = await injector.inject(options.prompt);
+
       logger.debug('CodexCLI.execute', {
         promptLength: options.prompt.length,
+        enhancedPromptLength: enhancedPrompt.length,
+        agentsMdInjected: enhancedPrompt.length > options.prompt.length,
         model: options.model || this.config.model,
-        streaming: options.streaming ?? this.config.streaming,
+        streaming,
       });
 
       const args = this.buildArgs(options);
-      const result = await this.spawnProcess(args, options.prompt, options.timeout);
 
-      const duration = Date.now() - startTime;
+      // Use streaming mode if enabled
+      if (streaming) {
+        const result = await this.spawnProcessWithStreaming(
+          args,
+          enhancedPrompt,
+          options.timeout,
+          options.progressRenderer
+        );
 
-      return {
-        content: result.stdout,
-        duration,
-        exitCode: result.exitCode,
-        tokenCount: this.extractTokenCount(result.stdout),
-      };
+        const duration = Date.now() - startTime;
+
+        return {
+          content: result.stdout,
+          duration,
+          exitCode: result.exitCode,
+          tokenCount: this.extractTokenCount(result.stdout),
+        };
+      } else {
+        // Standard non-streaming execution
+        const result = await this.spawnProcess(args, enhancedPrompt, options.timeout);
+
+        const duration = Date.now() - startTime;
+
+        return {
+          content: result.stdout,
+          duration,
+          exitCode: result.exitCode,
+          tokenCount: this.extractTokenCount(result.stdout),
+        };
+      }
     } catch (error) {
       const duration = Date.now() - startTime;
 
@@ -254,6 +285,145 @@ export class CodexCLI {
         this.activeProcesses.delete(child);
 
         if (!hasTimedOut) {
+          reject(
+            new CodexError(
+              CodexErrorType.CLI_NOT_FOUND,
+              `Failed to spawn codex: ${error.message}`,
+              { error }
+            )
+          );
+        }
+      });
+    });
+  }
+
+  /**
+   * Spawn codex process with streaming support
+   */
+  private async spawnProcessWithStreaming(
+    args: string[],
+    prompt: string,
+    timeout?: number,
+    renderer?: CodexProgressRenderer
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    return new Promise((resolve, reject) => {
+      let stdout = '';
+      let stderr = '';
+      let hasTimedOut = false;
+      let timeoutHandle: NodeJS.Timeout | null = null;
+
+      const child = spawn(this.config.command, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: false,
+        env: {
+          ...process.env,
+          TERM: 'dumb',
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+          CI: 'true',
+          NO_UPDATE_NOTIFIER: '1',
+          DEBIAN_FRONTEND: 'noninteractive'
+        }
+      });
+
+      this.activeProcesses.add(child);
+
+      // Setup timeout
+      const effectiveTimeout = timeout || this.config.timeout || 60000;
+      timeoutHandle = setTimeout(() => {
+        hasTimedOut = true;
+        child.kill('SIGTERM');
+
+        if (renderer) {
+          renderer.fail(`Timeout after ${effectiveTimeout}ms`);
+        }
+
+        reject(
+          new CodexError(
+            CodexErrorType.TIMEOUT,
+            `Codex execution timeout after ${effectiveTimeout}ms`,
+            { timeout: effectiveTimeout }
+          )
+        );
+      }, effectiveTimeout);
+
+      // Write prompt to stdin
+      if (prompt && child.stdin) {
+        child.stdin.write(prompt);
+        child.stdin.end();
+      }
+
+      // Process stdout line-by-line for streaming
+      if (child.stdout && renderer) {
+        const rl = readline.createInterface({
+          input: child.stdout,
+          crlfDelay: Infinity
+        });
+
+        rl.on('line', (line: string) => {
+          stdout += line + '\n';
+          // Feed line to progress renderer (it will parse JSONL events)
+          renderer.processLine(line);
+        });
+      } else if (child.stdout) {
+        // No renderer - just capture output
+        child.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+      }
+
+      // Capture stderr
+      if (child.stderr) {
+        child.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+      }
+
+      // Handle process exit
+      child.on('close', (code: number | null) => {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+          timeoutHandle = null;
+        }
+
+        this.activeProcesses.delete(child);
+
+        if (hasTimedOut) {
+          return; // Already rejected
+        }
+
+        if (code === 0) {
+          if (renderer) {
+            renderer.succeed('Execution complete');
+          }
+          resolve({ stdout, stderr, exitCode: code });
+        } else {
+          if (renderer) {
+            renderer.fail(`Process exited with code ${code}`);
+          }
+          reject(
+            new CodexError(
+              CodexErrorType.EXECUTION_FAILED,
+              `Codex process exited with code ${code}`,
+              { code, stderr }
+            )
+          );
+        }
+      });
+
+      // Handle spawn errors
+      child.on('error', (error: Error) => {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+          timeoutHandle = null;
+        }
+
+        this.activeProcesses.delete(child);
+
+        if (!hasTimedOut) {
+          if (renderer) {
+            renderer.fail(`Failed to spawn: ${error.message}`);
+          }
           reject(
             new CodexError(
               CodexErrorType.CLI_NOT_FOUND,

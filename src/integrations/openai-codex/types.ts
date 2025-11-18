@@ -62,6 +62,8 @@ export interface CodexExecutionOptions {
   timeout?: number;
   /** Working directory */
   cwd?: string;
+  /** Progress renderer for streaming mode */
+  progressRenderer?: any; // CodexProgressRenderer (avoid circular dep)
 }
 
 /**

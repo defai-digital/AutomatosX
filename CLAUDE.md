@@ -1346,6 +1346,273 @@ ax memory export > backup.json
 - **Local**: 100% private, data never leaves your machine
 - **Cost**: $0 (no API calls for memory operations)
 
+## Agent Coordination Patterns
+
+AutomatosX supports multiple agent coordination patterns for complex workflows:
+
+### Pattern 1: Sequential Delegation
+
+Tasks flow from one agent to another in sequence:
+
+```
+Product → Backend → Security → Quality
+```
+
+**Example:**
+```bash
+ax run product "Design authentication system"
+# Product agent designs, then automatically delegates to:
+# → Backend agent for implementation
+# → Security agent for audit
+# → Quality agent for testing
+```
+
+**Use When:** Tasks have clear dependencies and must be done in order.
+
+### Pattern 2: Parallel Execution
+
+Multiple agents work simultaneously on independent tasks:
+
+```
+Backend ║ Frontend ║ DevOps
+(Parallel execution with isolated contexts)
+```
+
+**Example:**
+```bash
+ax run backend "Implement API endpoints" --parallel &
+ax run frontend "Build UI components" --parallel &
+ax run devops "Configure deployment" --parallel &
+wait
+```
+
+**Use When:** Tasks are independent and can be parallelized for faster completion.
+
+### Pattern 3: Hierarchical Delegation
+
+Top-level task decomposes into subtasks handled by different agents:
+
+```
+CTO (Strategy)
+├── Backend (API Implementation)
+├── Frontend (UI Implementation)
+└── DevOps (Infrastructure)
+```
+
+**Example:**
+```bash
+ax run cto "Build complete user management system"
+# CTO breaks down into:
+# → Architecture defines system design
+# → Backend implements services
+# → Frontend builds interfaces
+# → DevOps sets up infrastructure
+```
+
+**Use When:** Complex projects need high-level coordination and task decomposition.
+
+### Pattern 4: Memory-Driven Coordination
+
+All agents search memory before executing and save results automatically:
+
+```
+1. Agent searches memory for related work
+2. Agent executes task with context
+3. Agent saves results to memory
+4. Next agent reuses accumulated knowledge
+```
+
+**Example:**
+```bash
+# Day 1: Product defines requirements
+ax run product "Design calculator with add/subtract features"
+
+# Day 2: Backend automatically finds product's design in memory
+ax run backend "Implement the calculator API"
+
+# Day 3: Quality finds both product & backend work in memory
+ax run quality "Test the calculator implementation"
+```
+
+**Use When:** Building on previous work or maintaining context across sessions.
+
+## Memory Integration Guide
+
+### Searching Memory
+
+Search the AutomatosX memory database to find past conversations and decisions:
+
+```bash
+# Search by keyword
+ax memory search "authentication"
+ax memory search "database schema"
+ax memory search "API design"
+
+# List recent memories
+ax memory list --limit 10
+
+# Search with context
+ax memory search "user management" --context
+```
+
+### Adding to Memory
+
+Manually add important information to memory:
+
+```bash
+# Add a note
+ax memory add "Decided to use JWT for authentication"
+
+# Add with tags
+ax memory add "Using PostgreSQL for production database" --tags "database,decision"
+
+# Add with context from file
+ax memory add --file docs/architecture.md
+```
+
+### Memory Best Practices
+
+1. **Search Before Starting**: Always search memory before beginning a new task
+   ```bash
+   ax memory search "related topic"
+   ```
+
+2. **Reference Past Decisions**: Link to previous architectural decisions
+   ```bash
+   # Memory will show: "3 days ago: Decided to use REST API instead of GraphQL"
+   ```
+
+3. **Save Implementation Patterns**: Document successful patterns for reuse
+   ```bash
+   ax memory add "Authentication pattern: JWT + refresh tokens + Redis cache"
+   ```
+
+4. **Document Why, Not Just What**: Save the reasoning behind decisions
+   ```bash
+   ax memory add "Chose PostgreSQL over MongoDB because we need ACID transactions for financial data"
+   ```
+
+5. **Use Descriptive Terms**: Make memories searchable with clear keywords
+   - ✅ Good: "user authentication JWT implementation security audit passed"
+   - ❌ Bad: "did the thing"
+
+### Example Queries
+
+```bash
+# Find authentication-related work
+ax memory search "auth"
+
+# Find database decisions
+ax memory search "database"
+
+# Find security audits
+ax memory search "security audit"
+
+# Find API design discussions
+ax memory search "API design"
+
+# Find specific agent's work
+ax memory search "backend implementation"
+```
+
+## Slash Commands Reference
+
+AutomatosX provides custom Claude Code slash commands for common workflows:
+
+### Available Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/agent` | Execute agent with memory injection | `/agent backend "implement auth"` |
+| `/memory-search` | Search AutomatosX memory | `/memory-search "authentication"` |
+| `/spec-run` | Execute YAML workflow | `/spec-run workflow.ax.yaml` |
+| `/status` | Show system status | `/status` |
+
+### Command Details
+
+#### `/agent [agent-name] [task]`
+
+Execute an AutomatosX agent with automatic memory context injection.
+
+```
+/agent backend "implement user authentication"
+/agent security "audit the auth implementation"
+/agent quality "write comprehensive tests"
+```
+
+**What it does:**
+- Searches memory for related tasks
+- Executes agent with context
+- Streams real-time output
+- Saves results to memory
+
+#### `/memory-search [query]`
+
+Quick search of the AutomatosX memory database.
+
+```
+/memory-search "authentication"
+/memory-search "API design"
+/memory-search "database schema"
+```
+
+**What it does:**
+- Performs full-text search (< 1ms)
+- Shows relevant memories with timestamps
+- Displays context from past work
+
+#### `/spec-run [spec-file]`
+
+Execute a YAML workflow specification.
+
+```
+/spec-run workflow.ax.yaml
+/spec-run specs/authentication-flow.ax.yaml
+```
+
+**What it does:**
+- Loads and validates YAML spec
+- Generates execution plan
+- Executes with policy routing
+- Tracks progress and errors
+
+#### `/status`
+
+Show AutomatosX system status and health.
+
+```
+/status
+```
+
+**What it shows:**
+- Agent availability
+- Memory statistics
+- Active sessions
+- Provider health
+- Cache metrics
+
+### Quick Reference Examples
+
+```bash
+# Start a task with agent
+/agent backend "implement JWT authentication"
+
+# Search for related work
+/memory-search "JWT authentication"
+
+# Check system status
+/status
+
+# Run a workflow spec
+/spec-run authentication-workflow.ax.yaml
+
+# Search memory during development
+/memory-search "database migrations"
+
+# Execute security audit
+/agent security "review authentication code"
+```
+
 ## Advanced Usage
 
 ### Parallel Execution (v5.6.0+)

@@ -35,6 +35,7 @@ import {
 } from './provider-schemas.js';
 import readline from 'readline';
 import chalk from 'chalk';
+import { StreamingProgressParser } from '../utils/streaming-progress-parser.js';
 
 /**
  * Execute command with proper process cleanup (BUG #3 FIX)
@@ -207,7 +208,13 @@ export abstract class BaseProvider implements Provider {
 
       return result.stdout.trim();
     } catch (error) {
-      logger.error(`${this.getCLICommand()} CLI execution failed`, { error });
+      const cliCommandName = this.getCLICommand();
+      logger.error(`${cliCommandName} CLI execution failed`, { 
+        error: error instanceof Error ? error.message : String(error),
+        command: cliCommandName,
+        promptLength: prompt.length,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw this.handleError(error);
     }
   }
@@ -254,6 +261,14 @@ export abstract class BaseProvider implements Provider {
       let readlineInterface: readline.Interface | null = null;
 
       const streamingEnabled = process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true';
+      const debugMode = process.env.AUTOMATOSX_DEBUG === 'true';
+
+      // Create progress parser for user-friendly streaming (v8.5.1)
+      let progressParser: StreamingProgressParser | null = null;
+      if (streamingEnabled) {
+        progressParser = new StreamingProgressParser(debugMode);
+        progressParser.start(`Executing ${cliCommand}...`);
+      }
 
       // Create readline interface for line-by-line streaming
       if (child.stdout) {
@@ -265,9 +280,23 @@ export abstract class BaseProvider implements Provider {
         readlineInterface.on('line', (line) => {
           stdout += line + '\n';
 
-          // Stream to console if enabled (v8.4.18 feature)
-          if (streamingEnabled) {
-            console.log(chalk.gray('  │ ') + line);
+          // Stream to console if enabled (v8.5.1: user-friendly progress)
+          if (streamingEnabled && progressParser) {
+            const progress = progressParser.parseLine(line);
+            if (progress) {
+              progressParser.update(progress);
+            }
+          }
+        });
+
+        // Handle readline errors to prevent uncaught exceptions
+        readlineInterface.on('error', (error) => {
+          logger.error('Readline interface error', { error });
+          if (progressParser) {
+            progressParser.update({
+              type: 'error',
+              message: 'Stream error occurred'
+            });
           }
         });
       }
@@ -279,19 +308,26 @@ export abstract class BaseProvider implements Provider {
           stderr += stderrChunk;
 
           // Stream stderr if enabled (usually warnings/errors)
-          if (streamingEnabled) {
-            // Split by lines and display each
+          if (streamingEnabled && progressParser) {
+            // Split by lines and display each as error/warning
             stderrChunk.split('\n').forEach((line: string) => {
               if (line.trim()) {
-                console.error(chalk.yellow('  │ ') + line);
+                // Show stderr in debug mode or as warnings
+                if (debugMode) {
+                  progressParser!.update({
+                    type: 'raw',
+                    message: chalk.yellow('[stderr] ') + line
+                  });
+                }
               }
             });
           }
         });
       }
 
-      // Cleanup helper
+      // Cleanup helper - ensures all resources are released
       const cleanup = () => {
+        // Clear timers first to prevent further execution
         if (timeoutId) {
           clearTimeout(timeoutId);
           timeoutId = null;
@@ -300,9 +336,15 @@ export abstract class BaseProvider implements Provider {
           clearTimeout(forceKillTimer);
           forceKillTimer = null;
         }
+        // Close readline interface to prevent memory leaks
         if (readlineInterface) {
-          readlineInterface.close();
-          readlineInterface = null;
+          try {
+            readlineInterface.close();
+          } catch (error) {
+            logger.debug('Error closing readline interface', { error });
+          } finally {
+            readlineInterface = null;
+          }
         }
       };
 
@@ -317,8 +359,16 @@ export abstract class BaseProvider implements Provider {
         }
 
         if (code === 0 || code === null) {
+          // Mark progress as complete (v8.5.1)
+          if (progressParser) {
+            progressParser.succeed(`${cliCommand} completed successfully`);
+          }
           resolve({ stdout, stderr });
         } else {
+          // Mark progress as failed (v8.5.1)
+          if (progressParser) {
+            progressParser.fail(`${cliCommand} failed with code ${code}`);
+          }
           reject(new Error(`${cliCommand} CLI exited with code ${code}${signal ? ` (signal: ${signal})` : ''}. stderr: ${stderr || 'none'}`));
         }
       });
@@ -326,7 +376,17 @@ export abstract class BaseProvider implements Provider {
       // Handle process errors (spawn failures)
       child.on('error', (error) => {
         cleanup();
-        reject(error);
+
+        // Mark progress as failed (v8.5.1)
+        if (progressParser) {
+          progressParser.fail(`Failed to spawn ${cliCommand}`);
+        }
+
+        logger.error('CLI process spawn error', {
+          command: cliCommand,
+          error: error.message
+        });
+        reject(new Error(`Failed to spawn ${cliCommand} CLI: ${error.message}`));
       });
 
       // Timeout handling (same as execWithCleanup)
@@ -484,8 +544,15 @@ export abstract class BaseProvider implements Provider {
    * Get health status
    */
   async healthCheck(): Promise<HealthStatus> {
-    await this.isAvailable();
-    return this.health;
+    const isAvailable = await this.isAvailable();
+    // Update health status based on availability check
+    return {
+      available: isAvailable,
+      latencyMs: this.health.latencyMs,
+      errorRate: isAvailable ? 0 : 1,
+      consecutiveFailures: isAvailable ? 0 : this.health.consecutiveFailures + 1,
+      lastCheckTime: Date.now()
+    };
   }
 
   /**
@@ -658,7 +725,7 @@ export abstract class BaseProvider implements Provider {
         consecutiveSuccesses: this.health.consecutiveFailures === 0 ? 1 : 0,
         lastCheckTime: this.health.lastCheck,
         lastCheckDuration: 0,
-        uptime: Date.now() - this.health.lastCheck
+        uptime: this.health.lastCheck > 0 ? Date.now() - this.health.lastCheck : 0
       }
     };
   }

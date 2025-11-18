@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [8.5.1] - 2025-11-18
+
+### Added
+- **Enhanced Streaming with Progress Indicators** - User-friendly progress display
+  - New `StreamingProgressParser` class for parsing CLI output
+  - Replaces raw JSON output with spinner-based progress indicators
+  - Shows activity messages like "⠙ Reading project files..." instead of JSON
+  - Tool call mapping: converts function names to friendly messages
+  - Debug mode support: `AUTOMATOSX_DEBUG=true` for raw JSON output
+  - Success/failure markers with color-coded completion messages
+
+### Changed
+- **Streaming UX Improvement** - Better visual feedback during agent execution
+  - JSON protocol messages parsed into meaningful progress updates
+  - Ora spinner integration for animated progress display
+  - Context-aware messages based on tool calls and responses
+  - Stderr handling improved for debug mode
+
+### Technical Details
+- File: `src/utils/streaming-progress-parser.ts` (new)
+- Updated: `src/providers/base-provider.ts` to integrate progress parser
+- Uses: `ora` for spinners, `chalk` for colors
+- Modes: friendly progress (default) or raw JSON (debug mode)
+
 ## [8.5.0] - 2025-11-18
 
 ### Added

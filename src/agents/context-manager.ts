@@ -288,16 +288,31 @@ export class ContextManager {
 
     const searchQuery = query || context.task;
 
+    // v9.0.0+: Truncate query to max length (Zod validation limit)
+    // Memory search has a 1000 character limit for the search text
+    const MAX_QUERY_LENGTH = 1000;
+    const truncatedQuery = searchQuery.length > MAX_QUERY_LENGTH
+      ? searchQuery.substring(0, MAX_QUERY_LENGTH)
+      : searchQuery;
+
+    if (truncatedQuery !== searchQuery) {
+      logger.debug('Memory search query truncated', {
+        originalLength: searchQuery.length,
+        truncatedLength: truncatedQuery.length,
+        maxLength: MAX_QUERY_LENGTH
+      });
+    }
+
     try {
       const results = await this.config.memoryManager.search({
-        text: searchQuery,
+        text: truncatedQuery,  // Use truncated query
         limit
       });
 
       context.memory = results.map(r => r.entry);
 
       logger.debug('Memory injected', {
-        query: searchQuery,
+        query: truncatedQuery.substring(0, 100) + (truncatedQuery.length > 100 ? '...' : ''),
         count: context.memory.length
       });
 
@@ -405,6 +420,10 @@ export class ContextManager {
             const provider = await this.tryGetProvider(providerName);
             if (provider) {
               if (providerName !== teamConfig.provider.primary) {
+                // v9.0.0+: Always log fallback usage (even in quiet mode)
+                // This is important information users should see
+                console.log(`ℹ️  Using fallback provider: ${providerName} (primary ${teamConfig.provider.primary} unavailable)`);
+
                 logger.info('Team primary provider unavailable, using fallback', {
                   team: teamConfig.name,
                   primary: teamConfig.provider.primary,
@@ -412,6 +431,14 @@ export class ContextManager {
                 });
               }
               return provider;
+            } else {
+              // v9.0.0+: Log failed provider attempts for debugging
+              const remainingProviders = providersToTry.slice(providersToTry.indexOf(providerName) + 1);
+              logger.info('Provider unavailable, trying next in fallback chain', {
+                tried: providerName,
+                remaining: remainingProviders.length,
+                remainingProviders: remainingProviders
+              });
             }
           }
 

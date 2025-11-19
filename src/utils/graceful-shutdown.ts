@@ -187,20 +187,49 @@ export const shutdownManager = new GracefulShutdownManager();
 
 /**
  * Setup graceful shutdown for common signals
+ * BUG FIX (v9.0.1): Added timeout protection to prevent hanging shutdowns
  */
 export function setupGracefulShutdown(
   options: Partial<ShutdownOptions> = {}
 ): void {
+  // BUG FIX: Wrapper to add timeout protection to shutdown calls
+  const shutdownWithTimeout = async (signal: string) => {
+    const shutdownTimeout = options.timeout ?? DEFAULT_SHUTDOWN_OPTIONS.timeout;
+    const forceExit = options.forceExitOnTimeout ?? DEFAULT_SHUTDOWN_OPTIONS.forceExitOnTimeout;
+
+    const shutdownPromise = shutdownManager.shutdown(signal, options);
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Shutdown timeout after ${shutdownTimeout}ms`));
+      }, shutdownTimeout);
+    });
+
+    try {
+      await Promise.race([shutdownPromise, timeoutPromise]);
+      logger.info('Graceful shutdown completed successfully', { signal });
+    } catch (error) {
+      logger.error('Shutdown failed or timed out', {
+        signal,
+        error: error instanceof Error ? error.message : String(error)
+      });
+
+      if (forceExit) {
+        logger.warn('Forcing process exit due to shutdown timeout/failure');
+        process.exit(1);
+      }
+    }
+  };
+
   // Handle SIGINT (Ctrl+C)
   process.on('SIGINT', async () => {
     logger.info('Received SIGINT signal');
-    await shutdownManager.shutdown('SIGINT', options);
+    await shutdownWithTimeout('SIGINT');
   });
 
   // Handle SIGTERM (e.g., from Docker, Kubernetes)
   process.on('SIGTERM', async () => {
     logger.info('Received SIGTERM signal');
-    await shutdownManager.shutdown('SIGTERM', options);
+    await shutdownWithTimeout('SIGTERM');
   });
 
   // Handle uncaught exceptions
@@ -209,7 +238,9 @@ export function setupGracefulShutdown(
       error: error.message,
       stack: error.stack
     });
-    await shutdownManager.shutdown('uncaughtException', options);
+    await shutdownWithTimeout('uncaughtException');
+    // Force exit after uncaught exception
+    process.exit(1);
   });
 
   // Handle unhandled promise rejections
@@ -217,11 +248,15 @@ export function setupGracefulShutdown(
     logger.error('Unhandled promise rejection', {
       reason: reason instanceof Error ? reason.message : String(reason)
     });
-    await shutdownManager.shutdown('unhandledRejection', options);
+    await shutdownWithTimeout('unhandledRejection');
+    // Force exit after unhandled rejection
+    process.exit(1);
   });
 
   logger.info('Graceful shutdown handlers registered', {
-    signals: ['SIGINT', 'SIGTERM', 'uncaughtException', 'unhandledRejection']
+    signals: ['SIGINT', 'SIGTERM', 'uncaughtException', 'unhandledRejection'],
+    timeout: options.timeout ?? DEFAULT_SHUTDOWN_OPTIONS.timeout,
+    forceExitOnTimeout: options.forceExitOnTimeout ?? DEFAULT_SHUTDOWN_OPTIONS.forceExitOnTimeout
   });
 }
 

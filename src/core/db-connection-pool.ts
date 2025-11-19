@@ -109,6 +109,7 @@ export class DatabaseConnectionPool {
   private healthCheckInterval?: NodeJS.Timeout;
   private shutdownRequested = false;
   private acquisitionMutex = new Mutex(); // Ensures atomic acquire/release operations
+  private cleanupRegistered = false; // BUG FIX (v9.0.1): Track cleanup registration
 
   constructor(config: ConnectionPoolConfig) {
     // v5.6.24 P1-3: Calculate optimal pool size (CPU-based if autoDetect enabled)
@@ -133,14 +134,8 @@ export class DatabaseConnectionPool {
     // Start health checks
     this.startHealthChecks();
 
-    // Bug #42: Register shutdown handler to cleanup health check interval
-    import('../utils/process-manager.js').then(({ processManager }) => {
-      processManager.onShutdown(async () => {
-        await this.shutdown();
-      });
-    }).catch(() => {
-      logger.debug('DatabaseConnectionPool: process-manager not available for shutdown handler');
-    });
+    // BUG FIX (v9.0.1): Enhanced cleanup registration with multiple fallbacks
+    this.registerCleanup();
 
     logger.debug('Database connection pool initialized', {
       dbPath: this.config.dbPath,
@@ -149,6 +144,51 @@ export class DatabaseConnectionPool {
       autoDetect: this.config.autoDetect,
       cpuMultiplier: this.config.cpuMultiplier
     });
+  }
+
+  /**
+   * Register cleanup handlers with multiple fallbacks
+   * BUG FIX (v9.0.1): Ensures health check intervals are always cleared
+   */
+  private registerCleanup(): void {
+    if (this.cleanupRegistered) {
+      return;
+    }
+    this.cleanupRegistered = true;
+
+    // Primary: Process manager shutdown handler
+    import('../utils/process-manager.js')
+      .then(({ processManager }) => {
+        processManager.onShutdown(async () => {
+          await this.shutdown();
+        });
+        logger.debug('[DB Pool] Cleanup registered via process-manager');
+      })
+      .catch(() => {
+        logger.debug('[DB Pool] process-manager not available for shutdown handler');
+      });
+
+    // Fallback 1: beforeExit event (normal exit)
+    const beforeExitHandler = () => {
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+        this.healthCheckInterval = undefined;
+        logger.debug('[DB Pool] Health check interval cleared (beforeExit)');
+      }
+    };
+    process.once('beforeExit', beforeExitHandler);
+
+    // Fallback 2: exit event (last resort)
+    const exitHandler = () => {
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+        this.healthCheckInterval = undefined;
+        logger.debug('[DB Pool] Health check interval cleared (exit)');
+      }
+    };
+    process.once('exit', exitHandler);
+
+    logger.debug('[DB Pool] Cleanup handlers registered (primary + 2 fallbacks)');
   }
 
   /**
@@ -195,16 +235,29 @@ export class DatabaseConnectionPool {
       }
 
       // FIXED (v6.5.13 Bug #130): Prevent race condition by tracking resolution
+      // BUG FIX (v9.0.1): Added cleanup of listeners in resolve/reject to prevent memory leaks
       let resolved = false;
+      const cleanupListeners = () => {
+        if (queueEntry.timeoutId) {
+          clearTimeout(queueEntry.timeoutId);
+          queueEntry.timeoutId = undefined;
+        }
+        if (queueEntry.abortHandler && queueEntry.signal) {
+          queueEntry.signal.removeEventListener('abort', queueEntry.abortHandler);
+          queueEntry.abortHandler = undefined;
+        }
+      };
       const safeResolve = (conn: PooledConnection) => {
         if (!resolved) {
           resolved = true;
+          cleanupListeners();
           resolve(conn);
         }
       };
       const safeReject = (error: Error) => {
         if (!resolved) {
           resolved = true;
+          cleanupListeners();
           reject(error);
         }
       };
@@ -445,61 +498,77 @@ export class DatabaseConnectionPool {
 
   /**
    * Process the wait queue
+   *
+   * BUG FIX (v9.0.1): Converted from recursive to iterative to prevent stack overflow
    */
   private async processWaitQueue(): Promise<void> {
-    if (this.waitQueue.length === 0) {
-      return;
+    // BUG FIX: Use iterative loop instead of recursion to prevent stack overflow
+    const MAX_PROCESSING_ITERATIONS = 1000;
+    let iterations = 0;
+
+    while (this.waitQueue.length > 0 && iterations < MAX_PROCESSING_ITERATIONS) {
+      iterations++;
+
+      // Mutex-protected operation to prevent race conditions
+      const processed = await this.acquisitionMutex.runExclusive(() => {
+        // Find first waiting request that can be satisfied
+        for (let i = 0; i < this.waitQueue.length; i++) {
+          const entry = this.waitQueue[i];
+          if (!entry) {
+            continue;
+          }
+
+          const pool = entry.readonly ? this.readPool : this.writePool;
+          const idleConn = pool.find(c => !c.busy);
+
+          if (idleConn) {
+            // Remove from queue
+            this.waitQueue.splice(i, 1);
+
+            // Clear timeout to prevent memory leak
+            if (entry.timeoutId) {
+              clearTimeout(entry.timeoutId);
+            }
+
+            // CRITICAL: Remove abort listener to prevent memory leak
+            if (entry.abortHandler && entry.signal) {
+              entry.signal.removeEventListener('abort', entry.abortHandler);
+            }
+
+            // Acquire connection
+            idleConn.busy = true;
+            idleConn.lastUsed = Date.now();
+            idleConn.queryCount++;
+
+            logger.debug('Connection allocated from wait queue', {
+              readonly: entry.readonly,
+              waitedFor: Date.now() - entry.requestedAt,
+              queueLength: this.waitQueue.length
+            });
+
+            // Resolve promise outside the mutex
+            entry.resolve(idleConn);
+
+            return true; // Indicate we processed an entry
+          }
+        }
+        return false; // No entry processed
+      });
+
+      // If no entry was processed, no idle connections available - exit loop
+      if (!processed) {
+        break;
+      }
     }
 
-    // Mutex-protected operation to prevent race conditions
-    const processed = await this.acquisitionMutex.runExclusive(() => {
-      // Find first waiting request that can be satisfied
-      for (let i = 0; i < this.waitQueue.length; i++) {
-        const entry = this.waitQueue[i];
-        if (!entry) {
-          continue;
-        }
-
-        const pool = entry.readonly ? this.readPool : this.writePool;
-        const idleConn = pool.find(c => !c.busy);
-
-        if (idleConn) {
-          // Remove from queue
-          this.waitQueue.splice(i, 1);
-
-          // Clear timeout to prevent memory leak
-          if (entry.timeoutId) {
-            clearTimeout(entry.timeoutId);
-          }
-
-          // CRITICAL: Remove abort listener to prevent memory leak
-          if (entry.abortHandler && entry.signal) {
-            entry.signal.removeEventListener('abort', entry.abortHandler);
-          }
-
-          // Acquire connection
-          idleConn.busy = true;
-          idleConn.lastUsed = Date.now();
-          idleConn.queryCount++;
-
-          logger.debug('Connection allocated from wait queue', {
-            readonly: entry.readonly,
-            waitedFor: Date.now() - entry.requestedAt,
-            queueLength: this.waitQueue.length
-          });
-
-          // Resolve promise outside the mutex
-          entry.resolve(idleConn);
-
-          return true; // Indicate we processed an entry
-        }
-      }
-      return false; // No entry processed
-    });
-
-    // Continue processing queue if we satisfied a request (iterative approach)
-    if (processed) {
-      await this.processWaitQueue();
+    // BUG FIX: Warn if iteration limit reached (indicates possible issue)
+    if (iterations >= MAX_PROCESSING_ITERATIONS) {
+      logger.error('[DB Pool] Maximum queue processing iterations reached', {
+        iterations,
+        queueLength: this.waitQueue.length,
+        readPoolIdle: this.readPool.filter(c => !c.busy).length,
+        writePoolIdle: this.writePool.filter(c => !c.busy).length
+      });
     }
   }
 

@@ -8,6 +8,7 @@
 import { join } from 'path';
 import Ajv, { type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
+import { Mutex } from 'async-mutex'; // BUG FIX (v9.0.1): Added for initialization mutex
 import { getVersion } from '../utils/version.js';
 import type {
   JsonRpcRequest,
@@ -69,6 +70,7 @@ export class McpServer {
   private toolSchemas: McpTool[] = [];
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
+  private initializationMutex = new Mutex(); // BUG FIX (v9.0.1): Prevent concurrent initialization
   private version: string;
   private ajv: Ajv;
   private compiledValidators = new Map<string, ValidateFunction>();
@@ -332,26 +334,34 @@ export class McpServer {
 
   /**
    * Handle initialize request
+   * BUG FIX (v9.0.1): Added mutex to prevent concurrent initialization race conditions
    */
   private async handleInitialize(request: McpInitializeRequest, id: string | number | null): Promise<JsonRpcResponse> {
     logger.info('[MCP Server] Initialize request received', { clientInfo: request.params.clientInfo });
 
-    if (!this.initialized) {
+    // BUG FIX: Use mutex to prevent concurrent initialization attempts
+    await this.initializationMutex.runExclusive(async () => {
+      if (!this.initialized) {
         if (!this.initializationPromise) {
-            this.initializationPromise = (async () => {
-                try {
-                    await this.initializeServices();
-                    this.registerTools();
-                    this.initialized = true;
-                    logger.info('[MCP Server] Initialization complete');
-                } catch (error) {
-                    this.initializationPromise = null; // Allow retry on failure
-                    throw error;
-                }
-            })();
+          logger.info('[MCP Server] Starting initialization (mutex-protected)');
+          this.initializationPromise = (async () => {
+            try {
+              await this.initializeServices();
+              this.registerTools();
+              this.initialized = true;
+              logger.info('[MCP Server] Initialization complete');
+            } catch (error) {
+              logger.error('[MCP Server] Initialization failed', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+              this.initializationPromise = null; // Allow retry on failure
+              throw error;
+            }
+          })();
         }
         await this.initializationPromise;
-    }
+      }
+    });
 
     const response: McpInitializeResponse = {
       protocolVersion: '2024-11-05',
@@ -439,15 +449,38 @@ export class McpServer {
 
   /**
    * Start stdio server with Content-Length framing
+   *
+   * BUG FIX (v9.0.1): Added iteration limit and buffer size checks to prevent infinite loops
    */
   async start(): Promise<void> {
     logger.info('[MCP Server] Starting stdio JSON-RPC server...');
     let buffer = '';
     let contentLength: number | null = null;
 
+    // Safety limits to prevent infinite loops and excessive memory usage
+    const MAX_ITERATIONS_PER_CHUNK = 100;
+    const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
     process.stdin.on('data', async (chunk: Buffer) => {
       buffer += chunk.toString('utf-8');
-      while (true) {
+
+      // BUG FIX: Check buffer size to prevent memory exhaustion
+      if (buffer.length > MAX_BUFFER_SIZE) {
+        logger.error('[MCP Server] Buffer size exceeded maximum', {
+          bufferSize: buffer.length,
+          maxSize: MAX_BUFFER_SIZE
+        });
+        buffer = ''; // Reset buffer
+        contentLength = null;
+        return;
+      }
+
+      // BUG FIX: Add iteration counter to prevent infinite loops
+      let iterations = 0;
+      while (iterations < MAX_ITERATIONS_PER_CHUNK) {
+        iterations++;
+
         if (contentLength === null) {
           const headerEndIndex = buffer.indexOf('\r\n\r\n');
           if (headerEndIndex === -1) break;
@@ -456,6 +489,14 @@ export class McpServer {
             const [key, value] = line.split(':', 2).map(s => s.trim());
             if (key && key.toLowerCase() === 'content-length' && value) {
               contentLength = parseInt(value, 10);
+
+              // BUG FIX: Validate content length
+              if (isNaN(contentLength) || contentLength <= 0 || contentLength > MAX_MESSAGE_SIZE) {
+                logger.error('[MCP Server] Invalid Content-Length', { contentLength });
+                buffer = buffer.slice(headerEndIndex + 4);
+                contentLength = null;
+                continue;
+              }
             }
           }
           if (contentLength === null) {
@@ -484,6 +525,14 @@ export class McpServer {
           logger.error('[MCP Server] Failed to parse or handle request', { jsonMessage, error });
           this.writeResponse({ jsonrpc: '2.0', id: null, error: { code: McpErrorCode.ParseError, message: 'Parse error: Invalid JSON' } });
         }
+      }
+
+      // BUG FIX: Warn if iteration limit reached
+      if (iterations >= MAX_ITERATIONS_PER_CHUNK) {
+        logger.warn('[MCP Server] Maximum iterations reached in message processing', {
+          iterations,
+          bufferSize: buffer.length
+        });
       }
     });
 

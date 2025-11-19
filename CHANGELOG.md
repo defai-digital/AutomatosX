@@ -134,7 +134,7 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
 - All 2507+ tests passing (100% success rate)
 - Zero breaking changes
 
-### Changed - Phase 6: PromptHelper Extension
+### Changed - Phase 6: PromptHelper Extension (Config/Runs/Update Commands)
 - **src/cli/commands/config/reset.ts** - Applied PromptHelper
   - Replaced manual readline management in confirmation prompt
   - Automatic cleanup via try-finally pattern
@@ -160,9 +160,40 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
 - All 2507+ tests passing (100% success rate)
 - Zero breaking changes
 
+### Changed - Phase 7: PromptHelper Extension (Setup/Spec Commands)
+- **src/cli/commands/setup.ts** - Applied PromptHelper
+  - Replaced manual readline/promises import in `maybeInitializeSpecKit()` function
+  - Replaced 9 lines of readline management → try-finally pattern
+  - Simplified Spec-Kit initialization prompt
+  - Automatic cleanup in both success and error paths
+  - ✅ All tests passing
+
+- **src/cli/commands/spec.ts** - Applied PromptHelper
+  - Replaced manual readline management in `handleCreate()` function
+  - Removed manual question wrapper function (15 lines)
+  - Simplified project description prompt
+  - Consistent error handling across spec creation
+  - ✅ All tests passing
+
+**Phase 7 Summary:**
+- 2 CLI command files refactored with PromptHelper
+- Eliminated 24 lines of manual readline management
+- setup.ts: Simplified Spec-Kit initialization prompt flow
+- spec.ts: Removed custom question() wrapper, now uses PromptHelper directly
+- All 2507+ tests passing (100% success rate)
+- Zero breaking changes
+
+**Cumulative Progress (Phases 1-7):**
+- 5 utilities created (1,083 lines of reusable code)
+- 8 files refactored (6 DatabaseFactory + 7 PromptHelper)
+- DatabaseFactory: 6/6 priority files complete (100%)
+- PromptHelper: 7/12 files complete (58% - all simple patterns done)
+- All 2507+ tests passing consistently
+- Zero breaking changes maintained
+
 ### Next Steps (Optional - Incremental Adoption)
 Files can gradually migrate to new utilities:
-- **PromptHelper**: ✅ agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts (done), run.ts, setup.ts, spec.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (7 files remaining)
+- **PromptHelper**: ✅ agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts, setup.ts, spec.ts (7 done), run.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (5 files remaining - complex patterns)
 - **DatabaseFactory**: ✅ All 6 priority files refactored (memory-manager.ts, response-cache.ts, workspace-indexer.ts, provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts)
 - **Note**: db-connection-pool.ts intentionally skipped (requires custom readonly mode and pragma settings)
 

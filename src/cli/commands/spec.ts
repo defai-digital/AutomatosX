@@ -32,7 +32,7 @@ import type {
   TaskFilter,
   SpecTask
 } from '../../types/spec.js';
-import readline from 'readline';
+import { PromptHelper } from '../../utils/prompt-helper.js';
 import { handleSpecInit } from './spec/init.js';
 import { handleSpecExplain } from './spec/explain.js';
 
@@ -283,31 +283,20 @@ async function handleCreate(
   console.log(chalk.blue.bold('\n🎨 Spec-Kit: Create from Natural Language\n'));
 
   // Get description from argv or prompt
+  // v9.0.2: Refactored to use PromptHelper for automatic cleanup
   let description = argv.description;
 
   if (!description) {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    const question = (query: string): Promise<string> => {
-      return new Promise((resolve) => {
-        rl.question(query, (answer) => {
-          resolve(answer);
-        });
-      });
-    };
-
+    const prompt = new PromptHelper();
     try {
-      description = await question(
+      description = await prompt.question(
         chalk.cyan('Describe your project (e.g., "Build authentication with database, API, JWT, audit, and tests"): ')
       );
-      rl.close();
     } catch (error) {
-      rl.close();
       console.error(chalk.red('✗ Failed to read input'));
       process.exit(1);
+    } finally {
+      prompt.close();
     }
   }
 

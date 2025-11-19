@@ -12,6 +12,7 @@ import { DEFAULT_CONFIG } from '../../types/config.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { logger } from '../../utils/logger.js';
 import { printError } from '../../utils/error-formatter.js';
+import { PromptHelper } from '../../utils/prompt-helper.js';
 
 // Get the directory of this file for locating examples
 const __filename = fileURLToPath(import.meta.url);
@@ -891,6 +892,7 @@ async function maybeInitializeSpecKit(
   }
 
   // Interactive prompt if running in TTY
+  // v9.0.2: Refactored to use PromptHelper for automatic cleanup
   if (process.stdout.isTTY && process.stdin.isTTY) {
     console.log(chalk.cyan('\n📋 GitHub Spec-Kit Integration'));
     console.log(chalk.gray('   Spec-Kit enables spec-driven development workflows.'));
@@ -898,25 +900,23 @@ async function maybeInitializeSpecKit(
     console.log(chalk.gray('   for structured planning and task management.\n'));
 
     try {
-      const readline = await import('readline/promises');
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-      });
+      const prompt = new PromptHelper();
+      try {
+        const answer = await prompt.question(
+          chalk.cyan('   Initialize Spec-Kit now? (y/N): ')
+        );
 
-      const answer = await rl.question(
-        chalk.cyan('   Initialize Spec-Kit now? (y/N): ')
-      );
-      rl.close();
+        const shouldInit = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 
-      const shouldInit = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-
-      if (shouldInit) {
-        console.log(chalk.cyan('\n   Initializing Spec-Kit...'));
-        return await initializeSpecKit(projectDir);
-      } else {
-        logger.info('User declined Spec-Kit initialization');
-        return false;
+        if (shouldInit) {
+          console.log(chalk.cyan('\n   Initializing Spec-Kit...'));
+          return await initializeSpecKit(projectDir);
+        } else {
+          logger.info('User declined Spec-Kit initialization');
+          return false;
+        }
+      } finally {
+        prompt.close();
       }
     } catch (error) {
       // Error in interactive prompt, skip initialization

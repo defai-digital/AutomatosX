@@ -15,9 +15,8 @@
 
 import Database from 'better-sqlite3';
 import { createHash } from 'crypto';
-import { existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { DatabaseFactory } from '../utils/db-factory.js';
 
 /**
  * Cache entry structure
@@ -171,17 +170,11 @@ export class ResponseCache {
     }
 
     try {
-      // Ensure directory exists
-      const dbDir = dirname(this.config.dbPath);
-      if (!existsSync(dbDir)) {
-        mkdirSync(dbDir, { recursive: true });
-      }
-
-      // Open database
-      this.db = new Database(this.config.dbPath);
-
-      // Enable WAL mode for better concurrency
-      this.db.pragma('journal_mode = WAL');
+      // v9.0.2: Use DatabaseFactory for standardized initialization
+      this.db = DatabaseFactory.create(this.config.dbPath, {
+        enableWal: true,
+        createDir: true
+      });
 
       // Create cache table
       this.db.exec(`

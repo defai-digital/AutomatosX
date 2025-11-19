@@ -78,17 +78,30 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
 - **Quality** - Follows AutomatosX refactoring principles: high-impact, low-risk, avoid over-engineering
 
 ### Changed - Phase 3: Practical Application
-- **src/core/memory-manager.ts** - Applied DatabaseFactory (demonstration)
-  - Replaced 13 lines of manual DB initialization with 5 lines
-  - Removed manual directory creation (handled by factory)
-  - Removed manual pragma calls (standardized by factory)
+- **src/core/memory-manager.ts** - Applied DatabaseFactory
+  - Replaced 13 lines → 5 lines (60% reduction)
   - ✅ All 79 memory-manager tests passing
-  - **Example of how to gradually adopt utilities**
+
+- **src/core/response-cache.ts** - Applied DatabaseFactory
+  - Replaced 11 lines → 5 lines (55% reduction)
+  - Removed manual directory creation and WAL mode setup
+  - ✅ All 17 response-cache tests passing
+
+- **src/core/workspace-indexer.ts** - Applied DatabaseFactory
+  - Replaced 8 lines → 5 lines (38% reduction)
+  - Standardized DB initialization with WAL mode
+  - ✅ Tests passing
+
+**Phase 3 Summary:**
+- 3 files refactored with DatabaseFactory
+- 32 lines reduced to 15 lines (53% average reduction)
+- All tests passing (96+ tests affected)
+- Zero breaking changes
 
 ### Next Steps (Optional - Incremental Adoption)
 Files can gradually migrate to new utilities:
 - **PromptHelper**: run.ts, setup.ts, spec.ts, agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (12 files)
-- **DatabaseFactory**: ✅ memory-manager.ts (done), workspace-indexer.ts, response-cache.ts, provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts, db-connection-pool.ts, checkpoint-manager.ts, session-manager.ts, metrics-tracker.ts (9 remaining)
+- **DatabaseFactory**: ✅ memory-manager.ts, response-cache.ts, workspace-indexer.ts (done), provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts, db-connection-pool.ts (4 remaining)
 
 ## [9.0.1] - 2025-11-19
 

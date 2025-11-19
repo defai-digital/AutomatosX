@@ -14,6 +14,7 @@ import { statSync, existsSync, mkdirSync } from 'fs';
 import { join, parse, dirname } from 'path';
 import { createHash } from 'crypto';
 import { logger } from '../utils/logger.js';
+import { DatabaseFactory } from '../utils/db-factory.js';
 
 /**
  * File metadata stored in index
@@ -142,14 +143,11 @@ export class WorkspaceIndexer {
     // Database path: .automatosx/workspace/index.db
     const dbPath = options?.dbPath || join(projectRoot, '.automatosx', 'workspace', 'index.db');
 
-    // Ensure directory exists
-    const dbDir = dirname(dbPath);
-    if (!existsSync(dbDir)) {
-      logger.debug('Creating workspace directory', { path: dbDir });
-      mkdirSync(dbDir, { recursive: true });
-    }
-
-    this.db = new Database(dbPath);
+    // v9.0.2: Use DatabaseFactory for standardized initialization
+    this.db = DatabaseFactory.create(dbPath, {
+      enableWal: true,
+      createDir: true
+    });
     this.ignorePatterns = DEFAULT_IGNORE_PATTERNS;
 
     this.initSchema();

@@ -8,6 +8,7 @@ import { promisify } from 'util';
 import chalk from 'chalk';
 import { logger } from '../../utils/logger.js';
 import { printError } from '../../utils/error-formatter.js';
+import { PromptHelper } from '../../utils/prompt-helper.js';
 
 const execAsync = promisify(exec);
 
@@ -71,21 +72,18 @@ export const updateCommand: CommandModule<Record<string, unknown>, UpdateOptions
         }
 
         // Confirm update
+        // v9.0.2: Refactored to use PromptHelper for automatic cleanup
         if (!argv.yes) {
-          const readline = await import('readline');
-          const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
+          const prompt = new PromptHelper();
+          try {
+            const answer = await prompt.question(chalk.yellow('Would you like to update now? (y/N) '));
 
-          const answer = await new Promise<string>((resolve) => {
-            rl.question(chalk.yellow('Would you like to update now? (y/N) '), resolve);
-          });
-          rl.close();
-
-          if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
-            console.log(chalk.gray('\nUpdate cancelled.\n'));
-            return;
+            if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+              console.log(chalk.gray('\nUpdate cancelled.\n'));
+              return;
+            }
+          } finally {
+            prompt.close();
           }
         }
 

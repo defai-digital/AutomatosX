@@ -11,6 +11,7 @@ import { printError } from '../../../utils/error-formatter.js';
 import { printSuccess } from '../../../utils/message-formatter.js';
 import { logger } from '../../../utils/logger.js';
 import { resolveConfigPath } from './utils.js';
+import { PromptHelper } from '../../../utils/prompt-helper.js';
 
 interface ResetOptions {
   verbose?: boolean;
@@ -42,27 +43,22 @@ export const resetCommand: CommandModule<{}, ResetOptions> = {
       const configPath = resolveConfigPath((argv as any).config || (argv as any).c);
 
       // Confirm reset
+      // v9.0.2: Refactored to use PromptHelper for automatic cleanup
       if (!argv.confirm) {
         console.log(chalk.yellow('\n⚠️  This will reset your configuration to defaults'));
         console.log(chalk.gray(`   Config file: ${configPath}`));
         console.log(chalk.gray('   Use --confirm to skip this prompt\n'));
 
-        const readline = await import('readline');
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout
-        });
+        const prompt = new PromptHelper();
+        try {
+          const answer = await prompt.question('Are you sure? (y/N): ');
 
-        const answer = await new Promise<string>(resolve => {
-          rl.question('Are you sure? (y/N): ', answer => {
-            rl.close();
-            resolve(answer);
-          });
-        });
-
-        if (answer.toLowerCase() !== 'y') {
-          console.log(chalk.gray('\nReset cancelled\n'));
-          process.exit(0);
+          if (answer.toLowerCase() !== 'y') {
+            console.log(chalk.gray('\nReset cancelled\n'));
+            process.exit(0);
+          }
+        } finally {
+          prompt.close();
         }
       }
 

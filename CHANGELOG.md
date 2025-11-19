@@ -134,9 +134,35 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
 - All 2507+ tests passing (100% success rate)
 - Zero breaking changes
 
+### Changed - Phase 6: PromptHelper Extension
+- **src/cli/commands/config/reset.ts** - Applied PromptHelper
+  - Replaced manual readline management in confirmation prompt
+  - Automatic cleanup via try-finally pattern
+  - Consistent with other CLI commands
+  - ✅ All tests passing
+
+- **src/cli/commands/runs.ts** - Applied PromptHelper
+  - Replaced manual readline management in delete confirmation
+  - Simplified async promise wrapping
+  - Eliminated manual close() calls
+  - ✅ All tests passing
+
+- **src/cli/commands/update.ts** - Applied PromptHelper
+  - Replaced manual readline management in update confirmation
+  - Consistent cleanup behavior
+  - Reduced code complexity
+  - ✅ All tests passing
+
+**Phase 6 Summary:**
+- 3 CLI command files refactored with PromptHelper
+- Eliminated 9 lines of manual readline management per file
+- Consistent confirmation pattern across all CLI commands
+- All 2507+ tests passing (100% success rate)
+- Zero breaking changes
+
 ### Next Steps (Optional - Incremental Adoption)
 Files can gradually migrate to new utilities:
-- **PromptHelper**: ✅ agent/create.ts, agent/remove.ts (done), run.ts, setup.ts, spec.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (10 files remaining)
+- **PromptHelper**: ✅ agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts (done), run.ts, setup.ts, spec.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (7 files remaining)
 - **DatabaseFactory**: ✅ All 6 priority files refactored (memory-manager.ts, response-cache.ts, workspace-indexer.ts, provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts)
 - **Note**: db-connection-pool.ts intentionally skipped (requires custom readonly mode and pragma settings)
 

@@ -11,6 +11,7 @@ import { detectProjectRoot } from '../../core/path-resolver.js';
 import { loadConfig } from '../../core/config.js';
 import { logger } from '../../utils/logger.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
+import { PromptHelper } from '../../utils/prompt-helper.js';
 
 // ============================================================================
 // List Runs Command
@@ -284,6 +285,7 @@ const deleteRunCommand: CommandModule<Record<string, unknown>, DeleteRunOptions>
       const checkpoint = await checkpointManager.loadCheckpoint(runId);
 
       // Confirm deletion (unless --force)
+      // v9.0.2: Refactored to use PromptHelper for automatic cleanup
       if (!argv.force) {
         console.log(chalk.yellow('\n⚠️  Warning: This action cannot be undone.\n'));
         console.log(`  Run ID: ${runId}`);
@@ -291,22 +293,16 @@ const deleteRunCommand: CommandModule<Record<string, unknown>, DeleteRunOptions>
         console.log(`  Task: ${checkpoint.task}`);
         console.log();
 
-        // Use readline for simple confirmation
-        const readline = await import('readline');
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout
-        });
+        const prompt = new PromptHelper();
+        try {
+          const answer = await prompt.question(chalk.yellow('Delete this checkpoint? (yes/no): '));
 
-        const answer = await new Promise<string>((resolve) => {
-          rl.question(chalk.yellow('Delete this checkpoint? (yes/no): '), resolve);
-        });
-
-        rl.close();
-
-        if (answer.toLowerCase() !== 'yes' && answer.toLowerCase() !== 'y') {
-          console.log('\nCancelled.');
-          return;
+          if (answer.toLowerCase() !== 'yes' && answer.toLowerCase() !== 'y') {
+            console.log('\nCancelled.');
+            return;
+          }
+        } finally {
+          prompt.close();
         }
       }
 

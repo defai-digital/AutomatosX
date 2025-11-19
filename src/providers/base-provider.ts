@@ -185,20 +185,33 @@ export abstract class BaseProvider implements Provider {
     }
 
     try {
-      const escapedPrompt = this.escapeShellArg(prompt);
       const cliCommand = this.getCLICommand();
       const cliArgs = await this.getCLIArgs();
       const argsString = cliArgs.length > 0 ? cliArgs.join(' ') + ' ' : '';
+
+      // v9.0.3 Windows Fix: Check if command would exceed Windows limit (8191 chars)
+      // Use stdin for long prompts instead of command-line arguments
+      const escapedPrompt = this.escapeShellArg(prompt);
       const fullCommand = `${cliCommand} ${argsString}${escapedPrompt}`;
+      const commandLength = fullCommand.length;
+
+      // Windows cmd.exe limit: 8191 characters
+      // Use stdin if command exceeds 7000 chars (safety buffer for shell overhead)
+      const isWindows = process.platform === 'win32';
+      const useStdin = isWindows && commandLength > 7000;
 
       logger.debug(`Executing ${cliCommand} CLI with streaming support`, {
         command: cliCommand,
         promptLength: prompt.length,
+        commandLength,
+        useStdin,
         streaming: process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true'
       });
 
-      // v8.4.18: Use spawn() for streaming support
-      const result = await this.executeWithSpawn(fullCommand, cliCommand);
+      // v9.0.3 Windows Fix: Use stdin for long prompts on Windows
+      const result = useStdin
+        ? await this.executeWithStdin(cliCommand, argsString.trim(), prompt)
+        : await this.executeWithSpawn(fullCommand, cliCommand);
 
       if (!result.stdout) {
         throw new Error(`${cliCommand} CLI returned empty output. stderr: ${result.stderr || 'none'}`);
@@ -211,7 +224,7 @@ export abstract class BaseProvider implements Provider {
       return result.stdout.trim();
     } catch (error) {
       const cliCommandName = this.getCLICommand();
-      logger.error(`${cliCommandName} CLI execution failed`, { 
+      logger.error(`${cliCommandName} CLI execution failed`, {
         error: error instanceof Error ? error.message : String(error),
         command: cliCommandName,
         promptLength: prompt.length,
@@ -239,8 +252,9 @@ export abstract class BaseProvider implements Provider {
       // Spawn with shell enabled (maintains compatibility with current escaping)
       // CRITICAL: spawn() signature is spawn(command, args[], options)
       // We pass empty args array and use shell option to execute the full command string
+      // v9.0.3 Windows Fix: Use auto-detected shell instead of hardcoded /bin/bash
       const child = spawn(command, [], {
-        shell: '/bin/bash',
+        shell: true,  // Auto-detects: cmd.exe on Windows, /bin/sh on Unix
         timeout: this.config.timeout || 120000,
         env: {
           ...process.env,
@@ -408,6 +422,213 @@ export abstract class BaseProvider implements Provider {
           child.kill('SIGTERM');
 
           // Escalate to SIGKILL after 5 seconds (same as execWithCleanup)
+          forceKillTimer = setTimeout(() => {
+            if (child.pid && !child.killed) {
+              logger.warn('Force killing child process', { pid: child.pid });
+              child.kill('SIGKILL');
+            }
+          }, 5000);
+        }
+      }, timeout);
+    });
+  }
+
+  /**
+   * Execute command with prompt passed via stdin (v9.0.3)
+   *
+   * Solves Windows command-line length limit (8191 chars) by passing
+   * the prompt via stdin instead of as a command-line argument.
+   *
+   * @param cliCommand - CLI command name (e.g., 'gemini')
+   * @param cliArgs - CLI arguments (e.g., '--approval-mode auto_edit')
+   * @param prompt - Prompt to send via stdin
+   * @returns Promise resolving to stdout and stderr
+   */
+  private async executeWithStdin(
+    cliCommand: string,
+    cliArgs: string,
+    prompt: string
+  ): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      // Build command with args but without prompt (will come via stdin)
+      const commandArgs = cliArgs ? cliArgs.split(' ').filter(Boolean) : [];
+
+      logger.debug(`Executing ${cliCommand} CLI with stdin`, {
+        command: cliCommand,
+        args: commandArgs,
+        promptLength: prompt.length
+      });
+
+      // Spawn process (no shell needed - direct command execution)
+      const child = spawn(cliCommand, commandArgs, {
+        timeout: this.config.timeout || 120000,
+        env: {
+          ...process.env,
+          // Force non-interactive mode for CLIs
+          TERM: 'dumb',
+          NO_COLOR: '1',
+          FORCE_COLOR: '0',
+          CI: 'true',
+          NO_UPDATE_NOTIFIER: '1',
+          DEBIAN_FRONTEND: 'noninteractive'
+        }
+      });
+
+      let stdout = '';
+      let stderr = '';
+      let timeoutId: NodeJS.Timeout | null = null;
+      let forceKillTimer: NodeJS.Timeout | null = null;
+      let readlineInterface: readline.Interface | null = null;
+
+      const streamingEnabled = process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true';
+      const debugMode = process.env.AUTOMATOSX_DEBUG === 'true';
+      const verbosity = VerbosityManager.getInstance();
+      const quietMode = verbosity.isQuiet();
+
+      // Create progress parser for user-friendly streaming
+      let progressParser: StreamingProgressParser | null = null;
+      if (streamingEnabled) {
+        progressParser = new StreamingProgressParser(debugMode, quietMode);
+        progressParser.start(`Executing ${cliCommand}...`);
+      }
+
+      // Write prompt to stdin
+      if (child.stdin) {
+        try {
+          child.stdin.write(prompt);
+          child.stdin.end(); // Signal EOF
+        } catch (error) {
+          logger.error('Failed to write to stdin', {
+            command: cliCommand,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      // Create readline interface for line-by-line streaming
+      if (child.stdout) {
+        readlineInterface = readline.createInterface({
+          input: child.stdout,
+          crlfDelay: Infinity
+        });
+
+        readlineInterface.on('line', (line) => {
+          stdout += line + '\n';
+
+          // Stream to console if enabled
+          if (streamingEnabled && progressParser) {
+            const progress = progressParser.parseLine(line);
+            if (progress) {
+              progressParser.update(progress);
+            }
+          }
+        });
+
+        // Handle readline errors
+        readlineInterface.on('error', (error) => {
+          if (error.message !== 'Readable stream already read') {
+            logger.debug('Readline error (non-fatal)', {
+              error: error.message,
+              message: 'Stream error occurred'
+            });
+          }
+        });
+      }
+
+      // Capture stderr output
+      if (child.stderr) {
+        // Add readline interface for stderr streaming
+        const stderrInterface = readline.createInterface({
+          input: child.stderr,
+          crlfDelay: Infinity
+        });
+
+        stderrInterface.on('line', (line) => {
+          stderr += line + '\n';
+
+          // Stream stderr to console if streaming enabled and debug mode
+          if (streamingEnabled && debugMode) {
+            if (!quietMode) {
+              console.log(chalk.yellow('[stderr] ') + line);
+            } else {
+              logger.debug('Provider stderr', {
+                message: chalk.yellow('[stderr] ') + line
+              });
+            }
+          }
+        });
+      }
+
+      // Cleanup function
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (forceKillTimer) {
+          clearTimeout(forceKillTimer);
+          forceKillTimer = null;
+        }
+        // Close readline interface to prevent memory leaks
+        if (readlineInterface) {
+          try {
+            readlineInterface.close();
+          } catch (error) {
+            // Ignore cleanup errors
+          } finally {
+            readlineInterface = null;
+          }
+        }
+      };
+
+      // Handle process exit
+      child.on('close', (code, signal) => {
+        cleanup();
+
+        if (stderr) {
+          logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
+        }
+
+        if (code === 0) {
+          if (progressParser) {
+            progressParser.succeed(`${cliCommand} completed successfully`);
+          }
+          resolve({ stdout, stderr });
+        } else {
+          if (progressParser) {
+            progressParser.fail(`${cliCommand} failed with code ${code}`);
+          }
+          reject(new Error(`${cliCommand} CLI exited with code ${code}${signal ? ` (signal: ${signal})` : ''}. stderr: ${stderr || 'none'}`));
+        }
+      });
+
+      // Handle process errors (spawn failures)
+      child.on('error', (error) => {
+        cleanup();
+
+        if (progressParser) {
+          progressParser.fail(`Failed to spawn ${cliCommand}`);
+        }
+
+        logger.error('CLI process spawn error', {
+          command: cliCommand,
+          error: error.message
+        });
+        reject(new Error(`Failed to spawn ${cliCommand} CLI: ${error.message}`));
+      });
+
+      // Timeout handling
+      const timeout = this.config.timeout || 120000;
+      timeoutId = setTimeout(() => {
+        if (child.pid && !child.killed) {
+          logger.warn('Killing child process due to timeout', {
+            pid: child.pid,
+            command: cliCommand,
+            timeout
+          });
+
+          child.kill('SIGTERM');
+          // Force kill after 5 seconds if SIGTERM doesn't work
           forceKillTimer = setTimeout(() => {
             if (child.pid && !child.killed) {
               logger.warn('Force killing child process', { pid: child.pid });
@@ -642,16 +863,41 @@ export abstract class BaseProvider implements Provider {
    * Escape shell command arguments to prevent injection
    *
    * v8.3.0 Security Fix: Use POSIX shell single-quote escaping
-   * Wraps argument in single quotes and escapes any existing single quotes
+   * v9.0.3 Windows Fix: Platform-aware escaping
+   *
+   * Windows (cmd.exe):
+   * - Uses double quotes instead of single quotes
+   * - Escapes double quotes with backslash
+   * - Escapes percent signs (cmd variable expansion)
+   *
+   * Unix (bash/sh):
+   * - Uses single quotes
+   * - Escapes single quotes with '\''
+   *
    * This prevents command injection by ensuring the entire string is treated as a literal.
    *
-   * Example: hello'world becomes 'hello'\''world'
+   * Examples:
+   * - Unix: hello'world → 'hello'\''world'
+   * - Windows: hello"world → "hello\"world"
    */
   protected escapeShellArg(arg: string): string {
-    // POSIX shell escaping: wrap in single quotes, escape existing single quotes
-    // Single quotes preserve literal value of all characters except single quote itself
-    // To include a single quote: end quote, add escaped quote, start new quote: '\''
-    return "'" + arg.replace(/'/g, "'\\''") + "'";
+    const isWindows = process.platform === 'win32';
+
+    if (isWindows) {
+      // Windows cmd.exe escaping
+      // 1. Escape double quotes with backslash
+      // 2. Escape percent signs (prevent variable expansion)
+      // 3. Wrap in double quotes
+      return '"' + arg
+        .replace(/"/g, '\\"')      // Escape double quotes
+        .replace(/%/g, '%%')        // Escape percent signs
+        + '"';
+    } else {
+      // POSIX shell escaping: wrap in single quotes, escape existing single quotes
+      // Single quotes preserve literal value of all characters except single quote itself
+      // To include a single quote: end quote, add escaped quote, start new quote: '\''
+      return "'" + arg.replace(/'/g, "'\\''") + "'";
+    }
   }
 
   // v8.3.0: Stub implementations for backward compatibility with Provider interface

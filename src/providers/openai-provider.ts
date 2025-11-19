@@ -54,12 +54,15 @@ export class OpenAIProvider extends BaseProvider {
         promptLength: prompt.length
       });
 
+      // v9.0.3 Windows Fix: Detect correct shell for platform
+      const shell = process.platform === 'win32' ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
+
       const { stdout, stderr } = await execAsync(
         `${cliCommand} ${escapedPrompt}`,
         {
           timeout: this.config.timeout || 120000,
           maxBuffer: 10 * 1024 * 1024,
-          shell: '/bin/bash',
+          shell,  // Platform-specific shell
           env: {
             ...process.env,
             // Force non-interactive mode for CLIs

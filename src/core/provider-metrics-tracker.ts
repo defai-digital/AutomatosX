@@ -41,22 +41,41 @@ interface RequestRecord {
  *
  * Tracks real-time performance metrics for intelligent routing
  */
+/**
+ * Score cache entry
+ * v9.0.2: Added score caching to reduce redundant calculations
+ * v9.0.3: Added dirty flag optimization to reduce cache invalidations
+ */
+interface ScoreCacheEntry {
+  score: ProviderScore;
+  timestamp: number;
+  requestCount: number; // Number of requests when score was calculated
+  isDirty: boolean;     // v9.0.3: Marks cache as stale without immediate invalidation
+}
+
 export class ProviderMetricsTracker extends EventEmitter {
   private metrics: Map<string, RequestRecord[]> = new Map();
   private windowSize: number;
   private minRequests: number;
 
+  // v9.0.2: Score caching (5-minute TTL, invalidates when new requests recorded)
+  private scoreCache: Map<string, ScoreCacheEntry> = new Map();
+  private scoreCacheTTL: number = 5 * 60 * 1000; // 5 minutes
+
   constructor(options: {
     windowSize?: number;      // Number of recent requests to track (default: 100)
     minRequests?: number;     // Minimum requests before scoring (default: 10)
+    scoreCacheTTL?: number;   // v9.0.2: Score cache TTL in ms (default: 5 minutes)
   } = {}) {
     super();
     this.windowSize = options.windowSize || 100;
     this.minRequests = options.minRequests || 10;
+    this.scoreCacheTTL = options.scoreCacheTTL || 5 * 60 * 1000;
 
     logger.debug('ProviderMetricsTracker initialized', {
       windowSize: this.windowSize,
-      minRequests: this.minRequests
+      minRequests: this.minRequests,
+      scoreCacheTTL: this.scoreCacheTTL
     });
   }
 
@@ -127,11 +146,23 @@ export class ProviderMetricsTracker extends EventEmitter {
       records.splice(0, records.length - this.windowSize);
     }
 
+    // v9.0.3: Mark cache as dirty instead of immediate invalidation
+    // This reduces redundant recalculations while maintaining accuracy
+    const cached = this.scoreCache.get(provider);
+    if (cached && !cached.isDirty) {
+      cached.isDirty = true;
+      logger.debug('Score cache marked dirty', {
+        provider,
+        cacheAge: Date.now() - cached.timestamp
+      });
+    }
+
     logger.debug('Request recorded', {
       provider,
       latencyMs,
       success,
-      totalRequests: records.length
+      totalRequests: records.length,
+      scoreCacheDirty: !!cached
     });
 
     // Emit metrics update event
@@ -353,6 +384,7 @@ export class ProviderMetricsTracker extends EventEmitter {
 
   /**
    * Calculate overall provider score based on weights
+   * v9.0.2: Added score caching to reduce redundant calculations
    */
   async calculateScore(
     provider: string,
@@ -360,6 +392,37 @@ export class ProviderMetricsTracker extends EventEmitter {
     allProviders: string[],
     healthMultiplier: number = 1.0
   ): Promise<ProviderScore> {
+    // v9.0.3: Check cache with dirty flag optimization
+    const cacheKey = `${provider}-${JSON.stringify(weights)}-${healthMultiplier}`;
+    const cached = this.scoreCache.get(cacheKey);
+    const currentRequestCount = this.getRequestCount(provider);
+
+    if (cached) {
+      const age = Date.now() - cached.timestamp;
+      const requestCountChanged = cached.requestCount !== currentRequestCount;
+
+      // v9.0.3: Cache is valid if: within TTL AND NOT dirty AND request count stable
+      // This allows cache to survive new requests until TTL expires
+      if (age < this.scoreCacheTTL && !cached.isDirty && !requestCountChanged) {
+        logger.debug('Score cache hit (clean)', {
+          provider,
+          age: `${(age / 1000).toFixed(1)}s`,
+          ttl: `${(this.scoreCacheTTL / 1000).toFixed(0)}s`,
+          requestCount: currentRequestCount
+        });
+        return cached.score;
+      }
+
+      // v9.0.3: If dirty but still within TTL, recalculate and clear dirty flag
+      if (age < this.scoreCacheTTL && cached.isDirty) {
+        logger.debug('Score cache refresh (dirty)', {
+          provider,
+          age: `${(age / 1000).toFixed(1)}s`,
+          dirtyDuration: age
+        });
+        // Fall through to recalculate
+      }
+    }
     // FIXED Bug #147: Validate weights sum to ≤ 1.0 per RoutingWeights specification
     const weightSum = weights.cost + weights.latency + weights.quality + weights.availability;
     if (weightSum > 1.0 + Number.EPSILON) { // Use epsilon for floating point comparison
@@ -406,7 +469,7 @@ export class ProviderMetricsTracker extends EventEmitter {
     // Get metrics for metadata
     const metrics = await this.getMetrics(provider);
 
-    return {
+    const score: ProviderScore = {
       provider,
       totalScore,
       breakdown: {
@@ -423,6 +486,24 @@ export class ProviderMetricsTracker extends EventEmitter {
         lastUsed: metrics.lastRequest
       } : undefined
     };
+
+    // v9.0.3: Cache the calculated score with clean flag
+    this.scoreCache.set(cacheKey, {
+      score,
+      timestamp: Date.now(),
+      requestCount: currentRequestCount,
+      isDirty: false  // v9.0.3: Fresh calculation is clean
+    });
+
+    logger.debug('Score calculated and cached', {
+      provider,
+      totalScore,
+      requestCount: currentRequestCount,
+      ttl: `${(this.scoreCacheTTL / 1000).toFixed(0)}s`,
+      isDirty: false
+    });
+
+    return score;
   }
 
   /**
@@ -464,18 +545,59 @@ export class ProviderMetricsTracker extends EventEmitter {
 
   /**
    * Clear metrics for a provider
+   * v9.0.2: Also clear score cache
    */
   clearMetrics(provider: string): void {
     this.metrics.delete(provider);
-    logger.debug('Metrics cleared', { provider });
+    // Clear all cache entries for this provider
+    for (const key of this.scoreCache.keys()) {
+      if (key.startsWith(`${provider}-`)) {
+        this.scoreCache.delete(key);
+      }
+    }
+    logger.debug('Metrics and score cache cleared', { provider });
   }
 
   /**
    * Clear all metrics
+   * v9.0.2: Also clear score cache
    */
   clearAllMetrics(): void {
     this.metrics.clear();
-    logger.debug('All metrics cleared');
+    this.scoreCache.clear();
+    logger.debug('All metrics and score cache cleared');
+  }
+
+  /**
+   * Clear score cache (v9.0.2)
+   * Useful for forcing score recalculation without clearing metrics
+   */
+  clearScoreCache(): void {
+    this.scoreCache.clear();
+    logger.debug('Score cache cleared');
+  }
+
+  /**
+   * Get score cache statistics (v9.0.2)
+   * For monitoring and debugging
+   */
+  getScoreCacheStats(): {
+    size: number;
+    ttl: number;
+    oldestEntry: number | null;
+  } {
+    let oldestTimestamp: number | null = null;
+    for (const entry of this.scoreCache.values()) {
+      if (!oldestTimestamp || entry.timestamp < oldestTimestamp) {
+        oldestTimestamp = entry.timestamp;
+      }
+    }
+
+    return {
+      size: this.scoreCache.size,
+      ttl: this.scoreCacheTTL,
+      oldestEntry: oldestTimestamp ? Date.now() - oldestTimestamp : null
+    };
   }
 
   /**

@@ -8,9 +8,9 @@ import { unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
-import * as readline from 'readline';
 import { ProfileLoader } from '../../../agents/profile-loader.js';
 import { TeamManager } from '../../../core/team-manager.js';
+import { PromptHelper } from '../../../utils/prompt-helper.js';
 
 interface RemoveOptions {
   agent: string;
@@ -117,17 +117,14 @@ export const removeCommand: CommandModule<{}, RemoveOptions> = {
 
 /**
  * Ask for user confirmation
+ * v9.0.2: Refactored to use PromptHelper for automatic cleanup
  */
-function askConfirmation(question: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  return new Promise(resolve => {
-    rl.question(chalk.yellow(`\n${question} (y/N): `), answer => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
+async function askConfirmation(question: string): Promise<boolean> {
+  const prompt = new PromptHelper();
+  try {
+    const answer = await prompt.question(chalk.yellow(`\n${question} (y/N): `));
+    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+  } finally {
+    prompt.close();
+  }
 }

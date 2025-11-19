@@ -9,8 +9,8 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { load as loadYaml } from 'js-yaml';
 import chalk from 'chalk';
-import * as readline from 'readline';
 import { TemplateEngine, type TemplateVariables } from '../../../agents/template-engine.js';
+import { PromptHelper } from '../../../utils/prompt-helper.js';
 import {
   listAvailableTemplates,
   listAvailableTeams,
@@ -292,21 +292,18 @@ function extractDefault(value: string): string | undefined {
 
 /**
  * Ask user for input
+ * v9.0.2: Refactored to use PromptHelper for automatic cleanup
  */
-function ask(question: string, defaultValue?: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+async function ask(question: string, defaultValue?: string): Promise<string> {
+  const prompt = new PromptHelper();
+  try {
+    const displayPrompt = defaultValue
+      ? `${question} [${chalk.gray(defaultValue)}]: `
+      : `${question}: `;
 
-  const prompt = defaultValue
-    ? `${question} [${chalk.gray(defaultValue)}]: `
-    : `${question}: `;
-
-  return new Promise(resolve => {
-    rl.question(prompt, answer => {
-      rl.close();
-      resolve(answer.trim() || defaultValue || '');
-    });
-  });
+    const answer = await prompt.question(displayPrompt);
+    return answer.trim() || defaultValue || '';
+  } finally {
+    prompt.close();
+  }
 }

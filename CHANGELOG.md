@@ -114,9 +114,29 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
 - All 2507+ tests passing (100% success rate)
 - Zero breaking changes
 
+### Changed - Phase 5: PromptHelper Application
+- **src/cli/commands/agent/create.ts** - Applied PromptHelper
+  - Replaced manual readline management in `ask()` function
+  - Automatic cleanup via try-finally pattern
+  - Eliminated resource leak risks
+  - ✅ All 23 agent create tests passing
+
+- **src/cli/commands/agent/remove.ts** - Applied PromptHelper
+  - Replaced manual readline management in `askConfirmation()` function
+  - Consistent cleanup behavior
+  - Simplified error handling
+  - ✅ All 25 agent remove tests passing
+
+**Phase 5 Summary:**
+- 2 CLI command files refactored with PromptHelper
+- Eliminated manual readline interface management
+- Automatic resource cleanup (prevents Bug #91 class issues)
+- All 2507+ tests passing (100% success rate)
+- Zero breaking changes
+
 ### Next Steps (Optional - Incremental Adoption)
 Files can gradually migrate to new utilities:
-- **PromptHelper**: run.ts, setup.ts, spec.ts, agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (12 files remaining)
+- **PromptHelper**: ✅ agent/create.ts, agent/remove.ts (done), run.ts, setup.ts, spec.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (10 files remaining)
 - **DatabaseFactory**: ✅ All 6 priority files refactored (memory-manager.ts, response-cache.ts, workspace-indexer.ts, provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts)
 - **Note**: db-connection-pool.ts intentionally skipped (requires custom readonly mode and pragma settings)
 

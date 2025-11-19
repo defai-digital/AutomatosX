@@ -20,6 +20,7 @@ import type {
 import { MemoryError } from '../types/memory.js';
 import { logger } from '../utils/logger.js';
 import { dirname, normalizePath } from '../utils/path-utils.js';
+import { DatabaseFactory } from '../utils/db-factory.js';
 import {
   MemoryMetadataSchema,
   MemorySearchQuerySchema,
@@ -133,16 +134,12 @@ export class MemoryManager implements IMemoryManager {
     // Validate cleanup configuration
     this.validateCleanupConfig();
 
-    // Ensure directory exists
-    const dir = dirname(this.config.dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-
-    // Initialize database
-    this.db = new Database(this.config.dbPath);
-    this.db.pragma('journal_mode = WAL');
-    this.db.pragma(`busy_timeout = ${this.config.busyTimeout}`);  // v5.6.18: Configurable lock timeout
+    // v9.0.2: Use DatabaseFactory for standardized initialization
+    this.db = DatabaseFactory.create(this.config.dbPath, {
+      busyTimeout: this.config.busyTimeout,
+      enableWal: true,
+      createDir: true
+    });
   }
 
   /**

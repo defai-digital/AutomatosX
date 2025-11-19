@@ -15,8 +15,6 @@
  */
 
 import Database from 'better-sqlite3';
-import { existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
 import type {
   UsageEntry,
   UsageTrends,
@@ -25,6 +23,7 @@ import type {
   PredictiveLimitConfig
 } from '../types/usage.js';
 import { logger } from '../utils/logger.js';
+import { DatabaseFactory } from '../utils/db-factory.js';
 
 /**
  * Predictive Limit Manager
@@ -59,15 +58,11 @@ export class PredictiveLimitManager {
     // v6.2.2: Bug fix #20 - Wrap in try-catch to prevent memory leaks on error
     // If initialization fails partway through, close any open connection to prevent leaks
     try {
-      // Ensure directory exists
-      const dir = dirname(this.dbPath);
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
-
-      // Open database
-      this.usageDb = new Database(this.dbPath);
-      this.usageDb.pragma('journal_mode = WAL');
+      // v9.0.2: Use DatabaseFactory for standardized initialization
+      this.usageDb = DatabaseFactory.create(this.dbPath, {
+        enableWal: true,
+        createDir: true
+      });
 
       // Create schema
       this.usageDb.exec(`

@@ -92,16 +92,33 @@ Based on comprehensive codebase analysis (90,066 lines across 200+ files):
   - Standardized DB initialization with WAL mode
   - ✅ Tests passing
 
-**Phase 3 Summary:**
-- 3 files refactored with DatabaseFactory
-- 32 lines reduced to 15 lines (53% average reduction)
-- All tests passing (96+ tests affected)
+### Changed - Phase 4: Extended Application
+- **src/core/analytics/provider-analytics.ts** - Applied DatabaseFactory
+  - Replaced 4 lines → 5 lines (standardized initialization)
+  - Added WAL mode for concurrent access
+  - ✅ All tests passing
+
+- **src/core/telemetry/TelemetryCollector.ts** - Applied DatabaseFactory
+  - Replaced 14 lines → 5 lines (64% reduction)
+  - Standardized busyTimeout (5s) and WAL mode
+  - ✅ All tests passing
+
+- **src/core/predictive-limit-manager.ts** - Applied DatabaseFactory
+  - Replaced 7 lines → 5 lines (29% reduction)
+  - Consistent directory creation and WAL mode
+  - ✅ All tests passing
+
+**Phase 3 & 4 Summary:**
+- 6 files refactored with DatabaseFactory
+- 57 lines reduced to 30 lines (47% average reduction)
+- All 2507+ tests passing (100% success rate)
 - Zero breaking changes
 
 ### Next Steps (Optional - Incremental Adoption)
 Files can gradually migrate to new utilities:
-- **PromptHelper**: run.ts, setup.ts, spec.ts, agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (12 files)
-- **DatabaseFactory**: ✅ memory-manager.ts, response-cache.ts, workspace-indexer.ts (done), provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts, db-connection-pool.ts (4 remaining)
+- **PromptHelper**: run.ts, setup.ts, spec.ts, agent/create.ts, agent/remove.ts, config/reset.ts, runs.ts, update.ts, prompt-manager.ts, RegenerationDetector.ts, base-provider.ts, cli-wrapper.ts (12 files remaining)
+- **DatabaseFactory**: ✅ All 6 priority files refactored (memory-manager.ts, response-cache.ts, workspace-indexer.ts, provider-analytics.ts, predictive-limit-manager.ts, TelemetryCollector.ts)
+- **Note**: db-connection-pool.ts intentionally skipped (requires custom readonly mode and pragma settings)
 
 ## [9.0.1] - 2025-11-19
 

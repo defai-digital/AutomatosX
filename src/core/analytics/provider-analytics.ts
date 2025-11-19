@@ -9,9 +9,9 @@
 
 import Database from 'better-sqlite3';
 import { join } from 'path';
-import { mkdirSync } from 'fs';
 import { logger } from '@/utils/logger.js';
 import { getPercentile } from '@/utils/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
+import { DatabaseFactory } from '@/utils/db-factory.js';
 
 export interface ProviderExecutionEvent {
   provider: string;
@@ -90,11 +90,14 @@ export class ProviderAnalytics {
   private dbPath: string;
 
   constructor(workspacePath: string = process.cwd()) {
-    const analyticsDir = join(workspacePath, '.automatosx', 'analytics');
-    mkdirSync(analyticsDir, { recursive: true });
+    this.dbPath = join(workspacePath, '.automatosx', 'analytics', 'provider-metrics.db');
 
-    this.dbPath = join(analyticsDir, 'provider-metrics.db');
-    this.db = new Database(this.dbPath);
+    // v9.0.2: Use DatabaseFactory for standardized initialization
+    this.db = DatabaseFactory.create(this.dbPath, {
+      enableWal: true,
+      createDir: true
+    });
+
     this.initialize();
   }
 

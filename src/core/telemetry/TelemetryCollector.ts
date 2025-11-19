@@ -14,8 +14,8 @@
 
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
-import { existsSync, mkdirSync, statSync } from 'fs';
-import { dirname, join } from 'path';
+import { existsSync, statSync } from 'fs';
+import { join } from 'path';
 import type {
   TelemetryEvent,
   TelemetryOptions,
@@ -23,6 +23,7 @@ import type {
   TelemetryEventType
 } from '../../types/telemetry.js';
 import { logger } from '../../utils/logger.js';
+import { DatabaseFactory } from '../../utils/db-factory.js';
 
 /**
  * Default telemetry options
@@ -101,21 +102,12 @@ export class TelemetryCollector {
    * Initialize SQLite database with schema
    */
   private initializeDatabase(): Database.Database {
-    // Ensure directory exists
-    const dbDir = dirname(this.options.dbPath);
-    if (!existsSync(dbDir)) {
-      mkdirSync(dbDir, { recursive: true });
-    }
-
-    // Open database
-    const db = new Database(this.options.dbPath);
-
-    // Enable WAL mode for better concurrent access
-    db.pragma('journal_mode = WAL');
-
-    // Set busy timeout to handle lock contention (5 seconds)
-    // This prevents "database is locked" errors when multiple processes access the DB
-    db.pragma('busy_timeout = 5000');
+    // v9.0.2: Use DatabaseFactory for standardized initialization
+    const db = DatabaseFactory.create(this.options.dbPath, {
+      enableWal: true,
+      busyTimeout: 5000,
+      createDir: true
+    });
 
     // Create telemetry_events table
     db.exec(`

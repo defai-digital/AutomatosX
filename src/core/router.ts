@@ -28,6 +28,7 @@ import {
 import type { RoutingConfig } from '../types/routing.js';
 import { getRoutingStrategyManager } from './routing-strategy.js';
 import { getProviderMetricsTracker } from './provider-metrics-tracker.js';
+import { CircuitBreaker } from './circuit-breaker.js';
 
 // v8.3.0: Removed policy-driven routing, free-tier, workload analysis, cost tracking
 
@@ -74,13 +75,8 @@ export class Router {
   // Phase 2.3: Trace logging (simplified for v8.3.0)
   private tracer?: RouterTraceLogger;
 
-  // v8.3.0: Circuit breaker for simple failover
-  private circuitState: Map<string, {
-    failures: number;
-    lastFailure: number;
-    isOpen: boolean;
-  }> = new Map();
-  private circuitBreakerThreshold: number;
+  // v9.0.2: Extracted circuit breaker (better modularity and testability)
+  private circuitBreaker: CircuitBreaker;
 
   constructor(config: RouterConfig) {
     // v6.3.1: Store config for feature flags
@@ -92,8 +88,13 @@ export class Router {
     });
     this.fallbackEnabled = config.fallbackEnabled;
     this.providerCooldownMs = config.providerCooldownMs ?? 30000; // Default: 30 seconds
-    this.circuitBreakerThreshold = config.circuitBreakerThreshold ?? 3; // Default: 3 failures
     this.cache = config.cache;
+
+    // v9.0.2: Initialize circuit breaker with config
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: config.circuitBreakerThreshold ?? 3,
+      cooldownMs: config.providerCooldownMs ?? 30000
+    });
 
     // v5.7.0: Initialize provider limit manager (non-blocking)
     void (async () => {
@@ -279,7 +280,7 @@ export class Router {
       // Calculate health multipliers (1.0 for healthy, 0.5 for circuit open)
       const healthMultipliers = new Map<string, number>();
       for (const provider of providersToTry) {
-        const isCircuitOpen = this.isCircuitOpen(provider.name);
+        const isCircuitOpen = this.circuitBreaker.isOpen(provider.name);
         healthMultipliers.set(provider.name, isCircuitOpen ? 0.5 : 1.0);
       }
 
@@ -430,8 +431,8 @@ export class Router {
           );
         }
 
-        // v8.3.0: Reset circuit breaker on success
-        this.recordSuccess(provider.name);
+        // v9.0.2: Reset circuit breaker on success
+        this.circuitBreaker.recordSuccess(provider.name);
 
         // Phase 2.3: Log execution success
         if (this.tracer) {
@@ -561,8 +562,8 @@ export class Router {
             willFallback: this.fallbackEnabled && attemptNumber < availableProviders.length
           });
 
-          // v8.3.0: Record failure in circuit breaker
-          this.recordFailure(provider.name);
+          // v9.0.2: Record failure in circuit breaker
+          this.circuitBreaker.recordFailure(provider.name);
 
           // Phase 2.3: Log degradation (provider error)
           if (this.tracer) {
@@ -698,7 +699,7 @@ export class Router {
             wasMarkedUnavailable: true
           });
 
-          this.recordSuccess(provider.name);
+          this.circuitBreaker.recordSuccess(provider.name);
 
           // Cache successful response (if cache is enabled)
           if (this.cache?.isEnabled) {
@@ -835,8 +836,8 @@ export class Router {
           return null;
         }
 
-        // v8.3.0: Check circuit breaker state (replaces penalty check)
-        if (this.isCircuitOpen(provider.name)) {
+        // v9.0.2: Check circuit breaker state (replaces penalty check)
+        if (this.circuitBreaker.isOpen(provider.name)) {
           logger.debug(`Skipping provider ${provider.name} (circuit breaker open)`);
           return null;
         }
@@ -1023,14 +1024,22 @@ export class Router {
       this.healthCheckInterval = undefined;
     }
 
-    // v8.3.0: Clear circuit breaker state
-    this.circuitState.clear();
+    // v9.0.2: Reset all circuit breakers
+    this.circuitBreaker.resetAll();
 
     // Phase 2.3: Close trace logger
     if (this.tracer) {
       this.tracer.close();
       logger.debug('Router trace logger closed');
     }
+  }
+
+  /**
+   * Get circuit breaker stats for observability
+   * v9.0.2: New API for circuit breaker monitoring
+   */
+  getCircuitBreakerStats(): Map<string, import('./circuit-breaker.js').CircuitStats> {
+    return this.circuitBreaker.getAllStats();
   }
 
   /**
@@ -1078,60 +1087,5 @@ export class Router {
         };
       })
     };
-  }
-
-  /**
-   * v8.3.0: Check if circuit breaker is open for a provider
-   */
-  private isCircuitOpen(providerName: string): boolean {
-    const state = this.circuitState.get(providerName);
-    if (!state || !state.isOpen) return false;
-
-    // Auto-close circuit after cooldown period
-    const cooldownMs = this.providerCooldownMs || 60000;
-    if (Date.now() - state.lastFailure > cooldownMs) {
-      state.isOpen = false;
-      state.failures = 0;
-      this.circuitState.set(providerName, state);
-      logger.info(`Circuit breaker closed for ${providerName} after cooldown`);
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * v8.3.0: Record provider success - resets circuit breaker
-   */
-  private recordSuccess(providerName: string): void {
-    const state = this.circuitState.get(providerName);
-    if (state) {
-      state.failures = 0;
-      state.isOpen = false;
-      this.circuitState.set(providerName, state);
-      logger.debug(`Circuit breaker reset for ${providerName} after success`);
-    }
-  }
-
-  /**
-   * v8.3.0: Record provider failure - opens circuit after threshold
-   */
-  private recordFailure(providerName: string): void {
-    const state = this.circuitState.get(providerName) || {
-      failures: 0,
-      lastFailure: 0,
-      isOpen: false
-    };
-
-    state.failures++;
-    state.lastFailure = Date.now();
-
-    // Open circuit after configured threshold (default: 3 consecutive failures)
-    if (state.failures >= this.circuitBreakerThreshold) {
-      state.isOpen = true;
-      logger.warn(`Circuit breaker opened for ${providerName} after ${state.failures} failures (threshold: ${this.circuitBreakerThreshold})`);
-    }
-
-    this.circuitState.set(providerName, state);
   }
 }

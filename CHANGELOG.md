@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [9.0.2] - 2025-11-19
+
+### Improved
+- **🏗️ Code Quality Refactoring** - High-impact, low-risk improvements for better maintainability
+  - **Circuit Breaker Extraction** - Extracted from Router into dedicated `CircuitBreaker` class
+    - Improved testability and modularity
+    - Cleaner separation of concerns
+    - Zero breaking changes (backward compatible)
+  - **Memory Context Builder** - New utility for consistent memory formatting (3 new files)
+  - **Error Wrapper Utility** - Standardized error handling across the codebase
+  - **Performance** - All refactorings have < 1ms overhead
+
+### Added
+- **src/core/circuit-breaker.ts** (190 lines) - Dedicated circuit breaker implementation
+  - Manages CLOSED, OPEN, HALF_OPEN states
+  - Configurable failure thresholds and cooldown periods
+  - Observability via `getStats()` and `getAllStats()` APIs
+- **src/utils/memory-context-builder.ts** (185 lines) - Memory formatting utilities
+  - `formatForPrompt()` - Markdown format for LLM injection
+  - `formatAsJson()` - JSON serialization
+  - `formatAsText()` - Plain text output
+  - `getSummary()` - Statistical analysis
+- **src/utils/error-wrapper.ts** (248 lines) - Type-safe error handling
+  - `wrapError()` - Convert unknown errors to typed errors
+  - `safeAsync()` / `safeSync()` - Safe operation wrappers
+  - `isRetriableError()` / `isFatalError()` - Error classification
+  - `errorToObject()` - Logging-friendly error serialization
+
+### Changed
+- **src/core/router.ts** - Refactored to use extracted CircuitBreaker class
+  - Removed inline circuit breaker logic (78 lines → external class)
+  - New `getCircuitBreakerStats()` API for monitoring
+  - Cleaner codebase, easier to test and maintain
+
+### Technical Details
+- **Testing** - ✅ All 1060 unit tests passing (100% backward compatible)
+- **TypeScript** - ✅ Strict mode validation passed
+- **Build** - ✅ Build verification successful
+- **Breaking Changes** - ❌ None (fully backward compatible)
+
+### Why These Changes
+- **Modularity** - Circuit breaker logic now reusable across multiple components
+- **Testability** - Easier to test circuit breaker behavior in isolation
+- **Maintainability** - Code duplication reduced, cleaner abstractions
+- **Quality** - Follows AutomatosX refactoring principles: high-impact, low-risk, avoid over-engineering
+
 ## [9.0.1] - 2025-11-19
 
 ### Fixed

@@ -6,7 +6,7 @@
  *
  * To modify config, edit automatosx.config.json instead.
  *
- * Generated: 2025-11-20T18:22:07.978Z
+ * Generated: 2025-11-20T18:28:12.302Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -87,36 +87,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "priority": 1,
       "timeout": 2700000,
       "command": "codex",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-      "processManagement": {
-        "gracefulShutdownTimeout": 5000,
-        "forceKillDelay": 1000
-      },
-      "versionDetection": {
-        "timeout": 5000,
-        "forceKillDelay": 1000,
-        "cacheEnabled": true
-      },
-      "limitTracking": {
-        "enabled": true,
-        "window": "daily",
-        "resetHourUtc": 0
-      }
-    },
-    "grok": {
-      "enabled": true,
-      "priority": 4,
-      "timeout": 2700000,
-      "command": "grok",
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -358,7 +328,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-20T18:22:07.978Z',
+  generatedAt: '2025-11-20T18:28:12.302Z',
   sourceFile: 'automatosx.config.json',
   version: '9.1.0'
 } as const;

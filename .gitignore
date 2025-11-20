@@ -113,6 +113,7 @@ test-*.js
 .claude/
 .gemini/
 .grok/
+.ax-cli/
 
 # User-specific configuration and secrets
 **/config.local.json

@@ -13,7 +13,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v9.0.3 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
+**Status**: ✅ **Production Ready** | v9.1.0 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
 
 > 🎉 **NEW in v8.5.3**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
 
@@ -1173,7 +1173,7 @@ Use `ax setup` for the standard, essential setup. Use `ax init` for an enhanced 
 
 ### Requirements
 
-- **Node.js**: >= 20.0.0
+- **Node.js**: >= 24.0.0
 - **AI Providers**: At least one:
   - [Gemini CLI](https://ai.google.dev/gemini-api/docs/cli) (recommended - cheapest)
   - [OpenAI Codex](https://platform.openai.com/docs/guides/code) (fastest)

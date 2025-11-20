@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v9.0.3) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, grok, codex) for seamless orchestration.
+AutomatosX (v9.1.0) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, grok, codex) for seamless orchestration.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
@@ -61,7 +61,7 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v9.0.3)
+### Current State (v9.1.0)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
@@ -81,7 +81,7 @@ npm run release:check                      # Validate release readiness
 - 📖 **Migration Guide**: See `docs/migration/v9-cost-to-tokens.md` for upgrade path
 - 🎯 **Zero Maintenance**: No more pricing updates or outdated cost estimates
 
-**Recent Changes (v9.0.3 - Token Budget System):**
+**Recent Changes (v9.1.0 - Token Budget System):**
 - 🎯 **Token-Based Limits**: `--iterate-max-tokens` and `--iterate-max-tokens-per-iteration`
 - 📊 **Progressive Warnings**: Alerts at 75% and 90% of token budget
 - 🔍 **Real-Time Tracking**: Accurate token usage from provider responses
@@ -844,7 +844,7 @@ ax run backend "task" --iterate-max-tokens-per-iteration 100000
 
 ## Known Constraints
 
-- Node.js >= 20.0.0 required (ES2022 features)
+- Node.js >= 24.0.0 required (ES2022 features)
 - SQLite must support FTS5 extension (usually built-in)
 - Provider CLIs must be installed separately (`claude`, `gemini`, `grok`, `codex`)
 - Max delegation depth: 2 (configurable in `orchestration.delegation.maxDepth`)

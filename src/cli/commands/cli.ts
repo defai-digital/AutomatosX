@@ -36,7 +36,7 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       .option('model', {
         type: 'string',
         alias: 'm',
-        describe: 'AI model to use (e.g., glm-4-plus, grok-2, gpt-4)'
+        describe: 'AI model to use (e.g., glm-4.6, grok-2, gpt-4)'
       })
       .option('provider', {
         type: 'string',
@@ -64,7 +64,7 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       })
       .example('$0 cli', 'Launch ax-cli interactively')
       .example('$0 cli "Design a REST API"', 'Send prompt directly to AI')
-      .example('$0 cli --model glm-4-plus', 'Use specific GLM model')
+      .example('$0 cli --model glm-4.6', 'Use specific GLM model')
       .example('$0 cli --provider xai --model grok-2', 'Use xAI Grok provider');
   },
 

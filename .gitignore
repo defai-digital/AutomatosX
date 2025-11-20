@@ -29,7 +29,6 @@ Thumbs.db
 !.vscode/launch.json
 !.vscode/tasks.json
 .idea/
-.grok/
 *.swp
 *.swo
 *~
@@ -114,6 +113,10 @@ test-*.js
 .gemini/
 .grok/
 .ax-cli/
+
+# BUT allow README files in these directories for documentation
+!.grok/README.md
+!.ax-cli/README.md
 
 # User-specific configuration and secrets
 **/config.local.json

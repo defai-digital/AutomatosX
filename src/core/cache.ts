@@ -320,6 +320,11 @@ export class TTLCache<T> {
    * Evict the oldest (LRU) entry
    */
   private evictOldest(): void {
+    // FIXED: Check if cache has entries before accessing
+    if (this.cache.size === 0) {
+      return;
+    }
+    
     const firstKey = this.cache.keys().next().value;
     if (firstKey) {
       const entry = this.cache.get(firstKey);

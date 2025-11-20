@@ -573,30 +573,32 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }));
       }
 
-      // v8.4.16: Add Grok provider support
-      if (config.providers['grok']?.enabled) {
+      // v11.0.0: Add GLM provider support via ax-cli
+      if (config.providers['glm']?.enabled) {
         try {
-          const { GrokProvider } = await import('../../providers/grok-provider.js');
-          const grokConfig = config.providers['grok'];
+          const { GlmProvider } = await import('../../providers/glm-provider.js');
+          const glmConfig = config.providers['glm'] as any; // Cast to access new fields
 
-          // Validate grokConfig exists
-          if (grokConfig) {
-            providers.push(new GrokProvider({
-              name: 'grok',
+          // Validate glmConfig exists
+          if (glmConfig) {
+            providers.push(new GlmProvider({
+              name: 'glm',
               enabled: true,
-              priority: grokConfig.priority ?? 4, // Default priority
-              timeout: grokConfig.timeout ?? 120000, // Default 2 minutes
-              command: grokConfig.command || 'grok',
+              priority: glmConfig.priority ?? 4, // Default priority
+              timeout: glmConfig.timeout ?? 120000, // Default 2 minutes
+              command: glmConfig.command || 'ax-cli', // v11.0.0: ax-cli only
               // Phase 2: Enhanced CLI detection parameters
-              customPath: grokConfig.customPath,
-              versionArg: grokConfig.versionArg,
-              minVersion: grokConfig.minVersion
+              customPath: glmConfig.customPath,
+              versionArg: glmConfig.versionArg,
+              minVersion: glmConfig.minVersion,
+              // v11.0.0: Simplified ax-cli configuration
+              axCli: glmConfig.axCli
             }));
           } else {
-            logger.warn('Grok provider enabled but configuration is missing');
+            logger.warn('GLM provider enabled but configuration is missing');
           }
         } catch (error) {
-          logger.error('Failed to initialize Grok provider', { error });
+          logger.error('Failed to initialize GLM provider', { error });
           // Continue with other providers
         }
       }

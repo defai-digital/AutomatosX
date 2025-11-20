@@ -13,31 +13,40 @@ import { statusCommand } from '../../src/cli/commands/status.js';
 import { detectProjectRoot } from '../../src/core/path-resolver.js';
 
 // Mock all dependencies
-vi.mock('../../src/core/config.js', () => ({
-  loadConfig: vi.fn().mockResolvedValue({
-    providers: {
-      'claude-code': {
-        enabled: true,
-        priority: 1,
-        timeout: 30000,
-        command: 'claude'
+vi.mock('../../src/core/config.js', async () => {
+  const actual = await vi.importActual('../../src/core/config.js') as any;
+  return {
+    ...actual,
+    loadConfig: vi.fn().mockResolvedValue({
+      providers: {
+        'claude-code': {
+          enabled: true,
+          priority: 1,
+          timeout: 30000,
+          command: 'claude'
+        },
+        'gemini-cli': {
+          enabled: true,
+          priority: 2,
+          timeout: 30000,
+          command: 'gemini'
+        }
       },
-      'gemini-cli': {
-        enabled: true,
-        priority: 2,
-        timeout: 30000,
-        command: 'gemini'
+      logging: {
+        level: 'info'
+      },
+      memory: {
+        maxEntries: 10000,
+        cleanupDays: 30
       }
-    },
-    logging: {
-      level: 'info'
-    },
-    memory: {
-      maxEntries: 10000,
-      cleanupDays: 30
+    }),
+    // Mock DEFAULT_CONFIG to have no providers (prevents provider instantiation on error fallback)
+    DEFAULT_CONFIG: {
+      ...actual.DEFAULT_CONFIG,
+      providers: {}
     }
-  })
-}));
+  };
+});
 
 vi.mock('../../src/core/path-resolver.js', async () => {
   const actual = await vi.importActual('../../src/core/path-resolver.js') as any;
@@ -86,6 +95,32 @@ vi.mock('../../src/providers/gemini-provider.js', () => ({
       consecutiveFailures: 0,
       latencyMs: 200,
       errorRate: 0.02
+    })
+  }))
+}));
+
+vi.mock('../../src/providers/grok-provider.js', () => ({
+  GrokProvider: vi.fn().mockImplementation(() => ({
+    name: 'grok',
+    priority: 3,
+    isAvailable: vi.fn().mockResolvedValue(true),
+    getHealth: vi.fn().mockResolvedValue({
+      consecutiveFailures: 0,
+      latencyMs: 180,
+      errorRate: 0.015
+    })
+  }))
+}));
+
+vi.mock('../../src/providers/openai-provider-factory.js', () => ({
+  createOpenAIProviderSync: vi.fn().mockImplementation(() => ({
+    name: 'openai',
+    priority: 4,
+    isAvailable: vi.fn().mockResolvedValue(true),
+    getHealth: vi.fn().mockResolvedValue({
+      consecutiveFailures: 0,
+      latencyMs: 160,
+      errorRate: 0.01
     })
   }))
 }));
@@ -332,8 +367,6 @@ describe('Status Command', () => {
       expect(status).toHaveProperty('performance');
     });
 
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
-    // Test reads from actual project directory instead of test directory
     it('should include accurate directory information in JSON', async () => {
       const agentsDir = join(automatosxDir, 'agents');
       await mkdir(agentsDir, { recursive: true });
@@ -353,7 +386,6 @@ describe('Status Command', () => {
   });
 
   describe('Handler - Resource Counting', () => {
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
     it('should count agents correctly', async () => {
       const agentsDir = join(automatosxDir, 'agents');
       await mkdir(agentsDir, { recursive: true });
@@ -370,7 +402,6 @@ describe('Status Command', () => {
       expect(status.directories.agents.count).toBe(2);
     });
 
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
     it('should count abilities correctly', async () => {
       const abilitiesDir = join(automatosxDir, 'abilities');
       await mkdir(abilitiesDir, { recursive: true });
@@ -387,7 +418,6 @@ describe('Status Command', () => {
       expect(status.directories.abilities.count).toBe(2);
     });
 
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
     it('should handle empty resource directories', async () => {
       await mkdir(join(automatosxDir, 'agents'), { recursive: true });
       await mkdir(join(automatosxDir, 'abilities'), { recursive: true });
@@ -403,7 +433,6 @@ describe('Status Command', () => {
   });
 
   describe('Handler - Workspace Statistics', () => {
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
     it('should calculate workspace statistics', async () => {
       const workspacesDir = join(automatosxDir, 'workspaces');
       await mkdir(join(workspacesDir, 'workspace1'), { recursive: true });
@@ -459,7 +488,6 @@ describe('Status Command', () => {
       expect(status.directories.memory.sizeBytes).toBeGreaterThan(0);
     });
 
-    // TODO: Fix test isolation - detectProjectRoot mock not working correctly
     it('should handle missing memory directory', async () => {
       // Don't create memory directory
       await statusCommand.handler({ json: true, _: [], $0: '' });
@@ -490,7 +518,6 @@ describe('Status Command', () => {
       expect(status.configuration.configExists).toBe(true);
     });
 
-    // TODO: Fix test isolation - real config file exists in project
     it('should handle missing config file', async () => {
       await mkdir(join(automatosxDir, 'agents'), { recursive: true });
 
@@ -517,7 +544,6 @@ describe('Status Command', () => {
   });
 
   describe('Handler - System Health', () => {
-    // TODO: Fix test - health status check needs better assertion
     it('should show healthy status when all checks pass', async () => {
       // Create all required directories
       await mkdir(join(automatosxDir, 'agents'), { recursive: true });

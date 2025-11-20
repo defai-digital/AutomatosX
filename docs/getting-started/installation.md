@@ -8,13 +8,13 @@ Before installing AutomatosX, ensure you have the following:
 
 ### Node.js
 
-AutomatosX requires **Node.js 20 or later**.
+AutomatosX requires **Node.js 24 or later**.
 
 Check your Node.js version:
 
 ```bash
 node --version
-# Should output: v20.0.0 or higher
+# Should output: v24.0.0 or higher
 ```
 
 Don't have Node.js? Download from [nodejs.org](https://nodejs.org/) or use a version manager:
@@ -22,8 +22,8 @@ Don't have Node.js? Download from [nodejs.org](https://nodejs.org/) or use a ver
 **Using nvm** (recommended):
 
 ```bash
-nvm install 20
-nvm use 20
+nvm install 24
+nvm use 24
 ```
 
 **Using fnm**:
@@ -343,14 +343,14 @@ Now that AutomatosX is installed:
 
 ### Minimum
 
-- **Node.js**: 20.0.0 or later
+- **Node.js**: 24.0.0 or later
 - **RAM**: 512 MB
 - **Disk Space**: 100 MB
 - **OS**: macOS, Linux, Windows (WSL recommended)
 
 ### Recommended
 
-- **Node.js**: 20.11.0 or later
+- **Node.js**: 24.11.0 or later
 - **RAM**: 2 GB
 - **Disk Space**: 500 MB (with agents and memory)
 - **OS**: macOS or Linux (native)
@@ -362,7 +362,7 @@ Now that AutomatosX is installed:
 Works out of the box. Install via Homebrew:
 
 ```bash
-brew install node@20
+brew install node@24
 npm install @defai.digital/automatosx
 ```
 

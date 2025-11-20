@@ -39,7 +39,7 @@ actors:
         write: ["src/**", "tests/**", "dist/**"]
       network:
         enabled: true
-        whitelist: ["*.company.com"]
+        whitelist: ["company.com"]
         requireTls: true
     resources:
       memory:

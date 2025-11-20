@@ -19,7 +19,7 @@ AutomatosX is a **CLI-based AI agent orchestration platform** that allows you to
 
 ## Prerequisites
 
-- **Node.js** 20.0.0 or higher installed
+- **Node.js** 24.0.0 or higher installed
 - **npm** or **pnpm** package manager
 - **Optional**: Claude Code, VS Code, or any terminal environment
 
@@ -27,7 +27,7 @@ AutomatosX is a **CLI-based AI agent orchestration platform** that allows you to
 
 ```bash
 node --version
-# Should show: v20.0.0 or higher
+# Should show: v24.0.0 or higher
 ```
 
 **Windows Users**: See [Windows Setup Guide](../platform/windows/setup.md) for PATH configuration and troubleshooting.

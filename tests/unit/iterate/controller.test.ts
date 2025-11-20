@@ -195,30 +195,45 @@ describe('IterateModeController', () => {
     });
   });
 
-  // TODO (Week 3): Add tests for orchestration loop
-  // - Test execution with hooks
-  // - Test response classification integration
-  // - Test auto-response generation
-  // - Test state persistence
-  // - Test budget monitoring
-  // - Test pause/resume flow
+  // Phase 3 & 4 (Weeks 3-4): Advanced orchestration and integration tests
+  // Placeholder for comprehensive testing when orchestration loop is fully implemented
+  describe.skip('Orchestration Loop - Phase 3', () => {
+    it('should execute with hooks and state persistence', () => {
+      // Test execution with hooks, state persistence, pause/resume flow
+    });
 
-  // TODO (Week 3): Add tests for state management
-  // - Test state initialization
-  // - Test counter updates
-  // - Test classification history tracking
-  // - Test cost accumulation
+    it('should integrate response classification and auto-response generation', () => {
+      // Test classification integration and auto-response generation
+    });
 
-  // TODO (Week 4): Add tests for budget enforcement
-  // - Test time budget warnings and limits
-  // - Test cost budget warnings and limits
-  // - Test iteration limits per stage and per run
-  // - Test auto-response limits
+    it('should track state changes (counters, history, costs)', () => {
+      // Test state initialization, updates, classification history tracking
+    });
 
-  // TODO (Week 4): Add integration tests
-  // - Test with real SessionManager
-  // - Test with real CostTracker
-  // - Test end-to-end flow with mocked provider
+    it('should monitor budgets in real-time', () => {
+      // Test budget monitoring and warnings
+    });
+  });
+
+  describe.skip('Budget Enforcement - Phase 4', () => {
+    it('should enforce time budget limits', () => {
+      // Test time budget warnings and limits
+    });
+
+    it('should enforce iteration limits (per-stage and per-run)', () => {
+      // Test iteration limits and auto-response limits
+    });
+  });
+
+  describe.skip('Integration Tests - Phase 4', () => {
+    it('should integrate with real SessionManager and CostTracker', () => {
+      // Test with real components
+    });
+
+    it('should handle end-to-end flow with mocked provider', () => {
+      // Full E2E test
+    });
+  });
 
   // ============================================================================
   // v8.6.0: Token-Based Budget Tests

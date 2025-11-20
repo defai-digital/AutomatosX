@@ -9,7 +9,7 @@
 
 import type { SpecYAML } from '@/types/spec-yaml.js';
 import type { ProviderMetadataRegistry } from '@/types/provider-metadata.js';
-// TODO v8.3.0: Provider metadata removed - stubbed for Phase 1
+// v9.0.2: Empty metadata registry since cost tracking was removed in v8.3.0
 const PROVIDER_METADATA: any = {};
 import { logger } from '@/utils/logger.js';
 import { PRECOMPILED_CONFIG } from '@/config.generated.js';

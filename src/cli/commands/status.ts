@@ -15,7 +15,7 @@ import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { BaseProvider } from '../../providers/base-provider.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
-import { GrokProvider } from '../../providers/grok-provider.js';
+import { GlmProvider, type GlmProviderConfig } from '../../providers/glm-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config.js';
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -140,13 +140,15 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         providers.push(provider);
       }
 
-      if (providerConfigs['grok']?.enabled) {
-        providers.push(new GrokProvider({
-          name: 'grok',
+      if (providerConfigs['glm']?.enabled) {
+        const glmConfig = providerConfigs['glm'] as GlmProviderConfig;
+        providers.push(new GlmProvider({
+          name: 'glm',
           enabled: true,
-          priority: providerConfigs['grok'].priority,
-          timeout: providerConfigs['grok'].timeout,
-          command: providerConfigs['grok'].command
+          priority: glmConfig.priority,
+          timeout: glmConfig.timeout,
+          command: glmConfig.command,
+          ...(glmConfig.axCli && { axCli: glmConfig.axCli })
         }));
       }
 

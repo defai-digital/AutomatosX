@@ -18,34 +18,30 @@ export const VALIDATION_LIMITS = {
   MAX_FILE_SIZE: 104857600,     // 100 MB (workspace, abilities)
   MAX_CACHE_SIZE: 524288000,    // 500 MB (cache storage)
   MAX_SESSIONS: 10000,          // 10k concurrent sessions
-  MAX_TTL: 86400000,            // 24 hours (cache TTL)
 
-  // String/array limits (prevent memory exhaustion)
-  MAX_STRING_LENGTH: 1000,      // Max length for string fields
-  MAX_ARRAY_LENGTH: 100,        // Max array items
-  MAX_COMMAND_LENGTH: 100,      // Max command string length
-  MAX_NAME_LENGTH: 50,          // Max name length (providers, agents)
+  // Performance limits (prevent resource exhaustion)
+  MAX_CONCURRENT_AGENTS: 100,   // Maximum concurrent agents
+  MAX_CPU_PERCENT: 80,          // Maximum CPU usage percent
+  MAX_MEMORY_MB: 2048,          // Maximum memory usage in MB
 
-  // Config file limits
-  MAX_CONFIG_FILE_SIZE: 1024 * 1024,  // 1 MB config file
+  // Config validation limits
+  MAX_CONFIG_FILE_SIZE: 1048576, // 1MB max config file size
+  MAX_NAME_LENGTH: 50,          // Max name length for agents/providers
+  MAX_COMMAND_LENGTH: 100,      // Max command length
+  MAX_ARRAY_LENGTH: 10000,      // Max array elements in config
 
-  // Port ranges (security)
-  MIN_PORT: 1024,               // Avoid privileged ports
-  MAX_PORT: 65535,              // Max valid port
+  // Path and file limits
+  MIN_FILE_SIZE: 1,             // Minimum file size in bytes
+  MIN_TIMEOUT: 1000,            // Minimum timeout in ms (1 second)
+  MIN_INTERVAL: 100,            // Minimum interval in ms
+  MIN_BACKOFF_FACTOR: 1.0,      // Minimum backoff multiplier
+  MAX_BACKOFF_FACTOR: 5.0,       // Maximum backoff multiplier
+  MAX_TTL: 86400000,            // Maximum TTL in ms (24 hours)
+  MIN_BYTES: 1,                 // Minimum bytes for file sizes
 
-  // Minimum values (sanity checks)
-  MIN_TIMEOUT: 1000,            // 1 second
-  MIN_INTERVAL: 1000,           // 1 second
-  MIN_DELAY: 0,                 // Can be 0
-  MIN_FILE_SIZE: 1024,          // 1 KB
-  MIN_ENTRIES: 1,               // At least 1
-  MIN_DAYS: 1,                  // At least 1 day
-  MIN_BYTES: 1024,              // 1 KB
-
-  // Ratio limits
-  MIN_BACKOFF_FACTOR: 1,        // Linear at minimum
-  MAX_BACKOFF_FACTOR: 10,       // Reasonable exponential growth
-  MAX_CONCURRENT_AGENTS: 32     // Cap parallel agent execution to protect resources
+  // Network limits
+  MIN_PORT: 1024,               // Minimum port number
+  MAX_PORT: 65535               // Maximum port number
 } as const;
 
 /**
@@ -71,23 +67,26 @@ export function isValidRelativePath(path: string): boolean {
     return false;
   }
 
+  // Normalize path separators first (Windows uses backslashes)
+  const normalizedPath = path.replace(/\\/g, '/');
+
   // No absolute Unix paths
-  if (path.startsWith('/')) {
+  if (normalizedPath.startsWith('/')) {
     return false;
   }
 
   // No parent directory traversal
-  if (path.includes('..')) {
+  if (normalizedPath.includes('..')) {
     return false;
   }
 
   // No absolute Windows paths (C:, D:, etc.)
-  if (/^[a-zA-Z]:/.test(path)) {
+  if (/^[a-zA-Z]:/.test(normalizedPath)) {
     return false;
   }
 
   // No UNC paths (\\server\share)
-  if (path.startsWith('\\\\')) {
+  if (normalizedPath.startsWith('//')) {
     return false;
   }
 

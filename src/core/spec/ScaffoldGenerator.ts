@@ -352,7 +352,7 @@ export class ScaffoldGenerator {
       devDependencies: {
         vitest: '^1.0.0',
         '@vitest/coverage-v8': '^1.0.0',
-        '@types/node': '^20.0.0'
+        '@types/node': '^24.0.0'
       },
       keywords: [
         'automatosx',

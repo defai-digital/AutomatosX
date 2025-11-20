@@ -8,7 +8,7 @@
 
 Before you begin, ensure you have:
 
-- **Node.js >= 20.0.0** ([Download](https://nodejs.org/))
+- **Node.js >= 24.0.0** ([Download](https://nodejs.org/))
 - **One AI provider CLI** installed:
   - **Gemini CLI** (recommended, free): `npm install -g @google/gemini-cli`
   - **Claude Code**: Already configured if you're using it now

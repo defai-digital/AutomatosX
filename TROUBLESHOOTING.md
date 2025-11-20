@@ -100,14 +100,14 @@ ax --version
 # Check your Node version
 node --version
 
-# AutomatosX requires Node.js 20 or higher
-# Install Node 20+ using nvm (recommended)
-nvm install 20
-nvm use 20
+# AutomatosX requires Node.js 24 or higher
+# Install Node 24+ using nvm (recommended)
+nvm install 24
+nvm use 24
 
 # Or use n
 npm install -g n
-n 20
+n 24
 ```
 
 ### Error: SQLite compilation fails

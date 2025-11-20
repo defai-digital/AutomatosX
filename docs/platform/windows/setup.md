@@ -15,7 +15,7 @@ Before installing AutomatosX, ensure you have:
 
 ### Required
 
-- ✅ **Node.js v20.0.0 or higher**
+- ✅ **Node.js v24.0.0 or higher**
   - Download: https://nodejs.org/
   - Verify: `node --version`
 

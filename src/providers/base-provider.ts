@@ -105,7 +105,7 @@ export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
    * v8.3.0: Support both old (claude-code, gemini-cli) and new (claude, gemini) names for backward compatibility
-   * v8.3.1: Added 'grok' for Grok CLI integration
+   * v11.0.0: Replaced 'grok' with 'glm' (Zhipu AI GLM via ax-cli)
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
@@ -114,7 +114,7 @@ export abstract class BaseProvider implements Provider {
     'gemini-cli',    // Backward compatibility - maps to gemini CLI
     'openai',
     'codex',
-    'grok',          // Grok CLI (Z.AI GLM 4.6 or X.AI Grok)
+    'glm',           // v11.0.0: Zhipu AI GLM via ax-cli (replaces grok)
     'test-provider'  // For unit tests
   ] as const;
 

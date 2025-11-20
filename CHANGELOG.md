@@ -9909,7 +9909,7 @@ AutomatosX v4.0.0 is a **complete rewrite from the ground up**, addressing the c
 - Package size: 210.4 KB (tarball)
 - Unpacked: 879.7 KB
 - Files: 53
-- Node.js: ≥20.0.0
+- Node.js: ≥24.0.0
 
 ### 🙏 Contributors
 

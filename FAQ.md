@@ -164,7 +164,7 @@ For comprehensive Windows troubleshooting, see the [Windows Troubleshooting Guid
 
 ### What are the system requirements?
 
-- **Node.js**: 20.0.0 or higher
+- **Node.js**: 24.0.0 or higher
 - **OS**: macOS, Linux, or Windows
 - **Memory**: 512MB RAM minimum, 2GB recommended
 - **Disk**: 100MB for installation

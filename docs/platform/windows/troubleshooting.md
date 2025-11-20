@@ -13,7 +13,7 @@ This guide provides comprehensive troubleshooting solutions for AutomatosX on Wi
 
 Before diving into detailed troubleshooting, verify these essentials:
 
-- ✅ **Node.js**: v20.0.0 or higher installed
+- ✅ **Node.js**: v24.0.0 or higher installed
 - ✅ **AutomatosX**: Latest version (v5.3.1+)
 - ✅ **Setup**: Run `ax setup` in your project directory
 - ✅ **Provider CLIs**: At least one provider CLI installed (Claude, Gemini, or OpenAI)

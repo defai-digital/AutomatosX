@@ -57,7 +57,7 @@ This doesn't mean we don't value the community! Issues, discussions, and feedbac
 
 ### Prerequisites
 
-- Node.js 20.0.0 or later
+- Node.js 24.0.0 or later
 - npm, pnpm, or yarn
 
 ### Installation

@@ -15,17 +15,46 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '@/core/config.js';
 import { detectProjectRoot } from '@/core/path-resolver.js';
-// TODO v8.3.0: Provider metadata removed - will simplify this command
-// Temporary stubs to keep command functional during Phase 1
-const PROVIDER_METADATA: Record<string, any> = {
-  'claude': { name: 'claude', displayName: 'Claude', costPerMToken: 0, avgLatencyMs: 0 },
-  'gemini': { name: 'gemini', displayName: 'Gemini', costPerMToken: 0, avgLatencyMs: 0 },
-  'codex': { name: 'codex', displayName: 'Codex', costPerMToken: 0, avgLatencyMs: 0 }
+// v9.0.2: Simplified provider metadata since cost tracking was removed in v8.3.0
+// These stubs provide basic display names and feature flags for CLI commands
+interface SimpleProviderMetadata {
+  name: string;
+  displayName: string;
+  features?: {
+    streaming?: boolean;
+    functionCalling?: boolean;
+    vision?: boolean;
+  };
+  reliability?: {
+    availability: number;
+    errorRate: number;
+  };
+  latencyEstimate?: {
+    p50: number;
+    p95: number;
+    p99: number;
+  };
+  costPerToken?: {
+    input: number;
+    output: number;
+  };
+  cloud?: string;
+  regions?: string[];
+}
+const PROVIDER_METADATA: Record<string, SimpleProviderMetadata> = {
+  'claude': { name: 'claude', displayName: 'Claude', features: { streaming: true, functionCalling: true, vision: false } },
+  'claude-code': { name: 'claude-code', displayName: 'Claude Code', features: { streaming: true, functionCalling: true, vision: true } },
+  'gemini': { name: 'gemini', displayName: 'Gemini', features: { streaming: true, functionCalling: true, vision: true } },
+  'gemini-cli': { name: 'gemini-cli', displayName: 'Gemini CLI', features: { streaming: true, functionCalling: true, vision: true } },
+  'glm': { name: 'glm', displayName: 'GLM (Zhipu AI)', features: { streaming: true, functionCalling: true, vision: false } },
+  'codex': { name: 'codex', displayName: 'OpenAI Codex', features: { streaming: true, functionCalling: true, vision: false } }
 };
-const getProviderMetadata = (name: string) => PROVIDER_METADATA[name] || null;
-const getCheapestProvider = () => 'gemini';
-const getFastestProvider = () => 'claude';
-const getMostReliableProvider = () => 'claude';
+const getProviderMetadata = (name: string): SimpleProviderMetadata =>
+  PROVIDER_METADATA[name] || { name, displayName: name, features: {} };
+// Simple heuristics (not based on cost/latency since that was removed)
+const getCheapestProvider = () => 'gemini-cli'; // Free tier available
+const getFastestProvider = () => 'claude-code'; // Generally fast
+const getMostReliableProvider = () => 'claude-code'; // Generally reliable
 import { getProviderLimitManager } from '@/core/provider-limit-manager.js';
 import { getProviderSession } from '@/core/provider-session.js';
 import { logger } from '@/utils/logger.js';
@@ -412,42 +441,46 @@ async function handleInfo(argv: ProvidersOptions): Promise<void> {
   }
 
   // Display detailed info
-  console.log(chalk.blue('Cloud & Infrastructure:'));
-  console.log(chalk.gray(`  Cloud Provider: ${metadata.cloud}`));
-  console.log(chalk.gray(`  Available Regions: ${metadata.regions.join(', ')}\n`));
-
-  console.log(chalk.blue('Pricing:'));
-
-  // Check if cost estimation is disabled
-  const isCostDisabled = metadata.costPerToken.input === 0 && metadata.costPerToken.output === 0;
-  if (isCostDisabled) {
-    console.log(chalk.gray(`  Cost estimation is disabled`));
-    console.log(chalk.gray(`  To enable, set costEstimation.enabled = true in automatosx.config.json\n`));
-  } else {
-    console.log(chalk.gray(`  Input Tokens: $${(metadata.costPerToken.input * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.input.toFixed(6)} per token)`));
-    console.log(chalk.gray(`  Output Tokens: $${(metadata.costPerToken.output * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.output.toFixed(6)} per token)`));
-    const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
-    console.log(chalk.gray(`  Average: $${(avgCost * 1000000).toFixed(2)} per 1M tokens\n`));
+  if (metadata.cloud || metadata.regions) {
+    console.log(chalk.blue('Cloud & Infrastructure:'));
+    if (metadata.cloud) console.log(chalk.gray(`  Cloud Provider: ${metadata.cloud}`));
+    if (metadata.regions) console.log(chalk.gray(`  Available Regions: ${metadata.regions.join(', ')}\n`));
   }
 
-  console.log(chalk.blue('Performance:'));
-  console.log(chalk.gray(`  P50 Latency: ${metadata.latencyEstimate.p50}ms`));
-  console.log(chalk.gray(`  P95 Latency: ${metadata.latencyEstimate.p95}ms`));
-  console.log(chalk.gray(`  P99 Latency: ${metadata.latencyEstimate.p99}ms\n`));
+  if (metadata.costPerToken) {
+    console.log(chalk.blue('Pricing:'));
+    const isCostDisabled = metadata.costPerToken.input === 0 && metadata.costPerToken.output === 0;
+    if (isCostDisabled) {
+      console.log(chalk.gray(`  Cost estimation is disabled`));
+      console.log(chalk.gray(`  To enable, set costEstimation.enabled = true in automatosx.config.json\n`));
+    } else {
+      console.log(chalk.gray(`  Input Tokens: $${(metadata.costPerToken.input * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.input.toFixed(6)} per token)`));
+      console.log(chalk.gray(`  Output Tokens: $${(metadata.costPerToken.output * 1000).toFixed(3)} per 1K tokens ($${metadata.costPerToken.output.toFixed(6)} per token)`));
+      const avgCost = (metadata.costPerToken.input + metadata.costPerToken.output) / 2;
+      console.log(chalk.gray(`  Average: $${(avgCost * 1000000).toFixed(2)} per 1M tokens\n`));
+    }
+  }
+
+  if (metadata.latencyEstimate) {
+    console.log(chalk.blue('Performance:'));
+    console.log(chalk.gray(`  P50 Latency: ${metadata.latencyEstimate.p50}ms`));
+    console.log(chalk.gray(`  P95 Latency: ${metadata.latencyEstimate.p95}ms`));
+    console.log(chalk.gray(`  P99 Latency: ${metadata.latencyEstimate.p99}ms\n`));
+  }
 
   console.log(chalk.blue('Reliability:'));
-  console.log(chalk.gray(`  Availability: ${(metadata.reliability.availability * 100).toFixed(2)}%`));
-  console.log(chalk.gray(`  Error Rate: ${(metadata.reliability.errorRate * 100).toFixed(2)}%\n`));
+  console.log(chalk.gray(`  Availability: ${(metadata.reliability?.availability ?? 0 * 100).toFixed(2)}%`));
+  console.log(chalk.gray(`  Error Rate: ${(metadata.reliability?.errorRate ?? 0 * 100).toFixed(2)}%\n`));
 
   console.log(chalk.blue('Features:'));
-  console.log(chalk.gray(`  Streaming: ${metadata.features.streaming ? '✓' : '✗'}`));
-  console.log(chalk.gray(`  Vision: ${metadata.features.vision ? '✓' : '✗'}`));
-  console.log(chalk.gray(`  Function Calling: ${metadata.features.functionCalling ? '✓' : '✗'}\n`));
+  console.log(chalk.gray(`  Streaming: ${metadata.features?.streaming ? '✓' : '✗'}`));
+  console.log(chalk.gray(`  Vision: ${metadata.features?.vision ? '✓' : '✗'}`));
+  console.log(chalk.gray(`  Function Calling: ${metadata.features?.functionCalling ? '✓' : '✗'}\n`));
 
   // Show feature flag info for providers with gradual rollout
   if (providerName === 'gemini-cli') {
     const baseMetadata = PROVIDER_METADATA[providerName];
-    if (baseMetadata && baseMetadata.features.streaming !== metadata.features.streaming) {
+    if (baseMetadata?.features && metadata.features && baseMetadata.features.streaming !== metadata.features.streaming) {
       console.log(chalk.yellow('⚠️  Feature Flag Active:'));
       console.log(chalk.gray('  Gemini streaming is controlled by gradual rollout'));
       console.log(chalk.gray('  Check current rollout: ax flags list\n'));

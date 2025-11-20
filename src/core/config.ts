@@ -120,6 +120,7 @@ async function loadConfigUncached(projectDir: string): Promise<AutomatosXConfig>
   }
 
   // Try user home config
+  // Note: On Windows, USERPROFILE is used instead of HOME
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
   const userConfigs = [
     resolvePath(homeDir, '.automatosx', 'config.yaml'),

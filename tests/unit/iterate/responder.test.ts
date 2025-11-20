@@ -189,27 +189,23 @@ describe('IterateAutoResponder', () => {
     });
   });
 
-  // TODO (Week 3): Add tests for template system
-  // - Test template loading from YAML
-  // - Test template validation
-  // - Test template selection (priority-based)
-  // - Test template randomization
-  // - Test provider-specific templates
+  // Phase 3 (Week 3): Advanced template system tests
+  // Placeholder for comprehensive template testing when template library is implemented
+  describe.skip('Template System - Phase 3', () => {
+    it('should load and validate templates from YAML', () => {
+      // Test template loading, validation, and selection logic
+    });
 
-  // TODO (Week 3): Add tests for variable substitution
-  // - Test {{variable}} replacement
-  // - Test missing variables
-  // - Test nested variables
-  // - Test context-aware variables
+    it('should perform variable substitution correctly', () => {
+      // Test {{variable}} replacement, missing variables, nested variables
+    });
 
-  // TODO (Week 3): Add tests for provider formatting
-  // - Test Claude-specific formatting
-  // - Test Gemini-specific formatting
-  // - Test OpenAI-specific formatting
+    it('should apply provider-specific formatting', () => {
+      // Test Claude, Gemini, OpenAI-specific formatting
+    });
 
-  // TODO (Week 3): Add tests for edge cases
-  // - Empty templates
-  // - Malformed templates
-  // - Missing template for classification type
-  // - Template with invalid syntax
+    it('should handle edge cases (empty, malformed, missing templates)', () => {
+      // Comprehensive edge case coverage
+    });
+  });
 });

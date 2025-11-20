@@ -22,7 +22,7 @@ import { McpServer } from '../../mcp/server.js';
 import { logger } from '../../utils/logger.js';
 import { YamlConfigLoader } from '../../core/config-loaders/yaml-config-loader.js';
 import { getDefaultGeminiMCPManager } from '../../integrations/gemini-cli/mcp-manager.js';
-import { getDefaultGrokMCPManager } from '../../integrations/grok-cli/mcp-manager.js';
+// Grok MCP manager removed in v11.0.0 (Grok provider removed)
 import { getDefaultMCPManager as getCodexMCPManager } from '../../integrations/openai-codex/mcp-manager.js';
 import { defaultMCPManager as getClaudeMCPManager } from '../../integrations/claude-code/mcp-manager.js';
 import { KNOWN_MCP_SERVERS } from '../../mcp/types-common.js';
@@ -129,18 +129,7 @@ const statusCommand: CommandModule<object, McpStatusArgs> = {
         }
       }
 
-      // Get Grok MCP status
-      if (!argv.provider || argv.provider === 'grok') {
-        try {
-          const grokManager = getDefaultGrokMCPManager();
-          await grokManager.initialize();
-          const statuses = await grokManager.getStatus();
-
-          statuses.forEach(s => allStatuses.push({ provider: 'grok', ...s }));
-        } catch (error) {
-          logger.debug('Grok MCP not available', { error });
-        }
-      }
+      // Grok MCP removed in v11.0.0
 
       // Output
       if (argv.json) {
@@ -250,25 +239,7 @@ const healthCommand: CommandModule<object, McpStatusArgs> = {
         }
       }
 
-      // Check Grok
-      if (!argv.provider || argv.provider === 'grok') {
-        try {
-          const grokManager = getDefaultGrokMCPManager();
-          await grokManager.initialize();
-          const results = await grokManager.getStatus();
-
-          results.forEach(r =>
-            allResults.push({
-              provider: 'grok',
-              serverName: r.name,
-              healthy: r.running,
-              timestamp: new Date(),
-            })
-          );
-        } catch (error) {
-          logger.debug('Grok health check failed', { error });
-        }
-      }
+      // Grok health check removed in v11.0.0
 
       // Output
       if (argv.json) {
@@ -365,18 +336,7 @@ const toolsCommand: CommandModule<object, McpStatusArgs> = {
         }
       }
 
-      // Get Grok tools
-      if (!argv.provider || argv.provider === 'grok') {
-        try {
-          const grokManager = getDefaultGrokMCPManager();
-          await grokManager.initialize();
-          const tools = await grokManager.discoverTools();
-
-          tools.forEach(t => allTools.push({ provider: 'grok', ...t }));
-        } catch (error) {
-          logger.debug('Grok tools not available', { error });
-        }
-      }
+      // Grok tools discovery removed in v11.0.0
 
       // Output
       if (argv.json) {

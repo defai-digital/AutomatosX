@@ -200,27 +200,35 @@ describe('DangerousOperationGuard', () => {
     });
   });
 
-  // TODO (Week 4): Add tests for actual risk detection
-  // - Test dangerous shell command patterns (rm -rf, sudo, etc.)
-  // - Test file operations outside workspace
-  // - Test git force operations
-  // - Test secret patterns (API keys, tokens, passwords)
-  // - Test risk level classification
-  // - Test confirmation requirement logic
+  // Phase 4 (Week 4): Advanced risk detection tests
+  // Placeholder for comprehensive risk detection testing when feature is fully implemented
+  describe.skip('Risk Detection - Phase 4', () => {
+    it('should detect dangerous shell command patterns', () => {
+      // Test patterns: rm -rf, sudo, chmod, curl | sh, etc.
+    });
 
-  // TODO (Week 4): Add tests for risk tolerance
-  // - Test paranoid mode (MEDIUM and HIGH require confirmation)
-  // - Test balanced mode (only HIGH requires confirmation)
-  // - Test permissive mode (nothing requires confirmation)
+    it('should validate file operations within workspace boundaries', () => {
+      // Test path resolution and workspace boundary checking
+    });
 
-  // TODO (Week 4): Add tests for workspace validation
-  // - Test path resolution
-  // - Test workspace boundary checking
-  // - Test hidden/system file detection
+    it('should detect git force operations and destructive commands', () => {
+      // Test: git push --force, git reset --hard, etc.
+    });
 
-  // TODO (Week 4): Add tests for edge cases
-  // - Empty commands/paths/content
-  // - Very long inputs
-  // - Special characters and unicode
-  // - Obfuscated dangerous commands
+    it('should scan for secrets (API keys, tokens, passwords)', () => {
+      // Test secret pattern detection
+    });
+
+    it('should classify risk levels correctly', () => {
+      // Test LOW, MEDIUM, HIGH risk classification
+    });
+
+    it('should apply risk tolerance settings (paranoid, balanced, permissive)', () => {
+      // Test confirmation requirements based on risk tolerance
+    });
+
+    it('should handle edge cases (empty inputs, long strings, unicode, obfuscation)', () => {
+      // Comprehensive edge case coverage
+    });
+  });
 });

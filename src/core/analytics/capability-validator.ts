@@ -8,14 +8,15 @@
  */
 
 import type { ProviderMetadata } from '@/types/provider-metadata.js';
-// TODO v8.3.0: Provider metadata removed - stubbed for Phase 1
+// v9.0.2: Simplified stub since cost tracking was removed in v8.3.0
 const PROVIDER_METADATA: Record<string, any> = {};
 const getProviderMetadata = (name: string): ProviderMetadata | null => {
+  // Return minimal metadata for validation purposes
   return {
     name,
     displayName: name,
-    costPerMToken: 0,
-    avgLatencyMs: 0,
+    costPerMToken: 0, // Deprecated but kept for type compatibility
+    avgLatencyMs: 0,  // Deprecated but kept for type compatibility
     features: {
       streaming: false,
       functionCalling: false,

@@ -138,24 +138,31 @@ describe('IterateClassifier', () => {
     });
   });
 
-  // TODO (Week 2): Add tests for actual classification logic
-  // - Test pattern matching for each classification type
-  // - Test contextual rules
-  // - Test provider-specific markers
-  // - Test semantic scoring (if enabled)
-  // - Test accuracy thresholds
-  // - Test performance benchmarks (< 100ms target)
+  // Phase 2 (Week 2): Advanced classification tests
+  // Placeholder for comprehensive testing when pattern library and semantic analysis are implemented
+  describe.skip('Classification Logic - Phase 2', () => {
+    it('should match patterns for each classification type', () => {
+      // Test pattern matching: confirmation_prompt, clarification_request, error_message, etc.
+    });
 
-  // TODO (Week 2): Add tests for pattern library loading
-  // - Test YAML parsing
-  // - Test pattern validation
-  // - Test regex compilation
-  // - Test pattern priority ordering
+    it('should load and validate pattern library from YAML', () => {
+      // Test YAML parsing, validation, regex compilation, priority ordering
+    });
 
-  // TODO (Week 2): Add tests for edge cases
-  // - Empty messages
-  // - Very long messages (> 10K chars)
-  // - Special characters and unicode
-  // - Multiple matches (priority selection)
-  // - No matches (fallback behavior)
+    it('should apply contextual rules and provider-specific markers', () => {
+      // Test context-aware classification
+    });
+
+    it('should perform semantic scoring when enabled', () => {
+      // Test semantic analysis (if implemented)
+    });
+
+    it('should meet performance benchmarks (< 100ms)', () => {
+      // Test classification speed
+    });
+
+    it('should handle edge cases (empty, long text, unicode, multiple/no matches)', () => {
+      // Comprehensive edge case coverage
+    });
+  });
 });

@@ -823,11 +823,11 @@ function detectPrerequisites(projectDir: string, info: ProjectInfo): string[] {
       if (pkgJson.engines?.node) {
         prereqs.push(`Node.js ${pkgJson.engines.node}`);
       } else {
-        prereqs.push('Node.js 20.0.0+');
+        prereqs.push('Node.js 24.0.0+');
       }
     }
   } catch {
-    prereqs.push('Node.js 20.0.0+');
+    prereqs.push('Node.js 24.0.0+');
   }
 
   // Docker

@@ -197,6 +197,16 @@ export interface ProviderConfig {
   // v6.0.7 Phase 3: Sandbox security configuration
   /** Sandbox mode configuration for file system access control */
   sandbox?: SandboxConfig;
+
+  // v9.1.0: GLM provider configuration (ax-cli)
+  axCli?: {
+    provider?: 'glm' | 'xai' | 'openai' | 'anthropic' | 'ollama';
+    model?: string;
+    maxToolRounds?: number;
+    apiKey?: string;
+    baseUrl?: string;
+    configPath?: string;
+  };
 }
 
 // ========================================

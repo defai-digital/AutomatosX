@@ -44,9 +44,9 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
   builder: (yargs) => {
     return yargs
       .positional('provider', {
-        describe: 'Check specific provider (openai, gemini, claude, grok) or all if omitted',
+        describe: 'Check specific provider (openai, gemini, claude) or all if omitted',
         type: 'string',
-        choices: ['openai', 'gemini', 'claude', 'grok']
+        choices: ['openai', 'gemini', 'claude']
       })
       .option('verbose', {
         describe: 'Show detailed diagnostic information',
@@ -97,7 +97,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // Check providers
       const providersToCheck = argv.provider
         ? [argv.provider]
-        : ['openai', 'gemini', 'claude', 'grok'];
+        : ['openai', 'gemini', 'claude'];
 
       const verbose = argv.verbose ?? false;
 
@@ -118,8 +118,6 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
           results.push(...await checkGeminiProvider(verbose));
         } else if (provider === 'claude') {
           results.push(...await checkClaudeProvider(verbose));
-        } else if (provider === 'grok') {
-          results.push(...await checkGrokProvider(verbose));
         }
       }
 
@@ -257,41 +255,6 @@ async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
       message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
       fix: helpCheck.success ? undefined : 'Check Claude Code CLI installation',
       details: verbose ? (helpCheck.success ? 'Claude Code CLI authenticated via desktop app' : helpCheck.error) : undefined
-    });
-  }
-
-  results.forEach(r => displayCheck(r));
-  return results;
-}
-
-/**
- * Check Grok CLI provider
- */
-async function checkGrokProvider(verbose: boolean): Promise<CheckResult[]> {
-  const results: CheckResult[] = [];
-
-  const cliCheck = await checkCommand('grok', '--version');
-  results.push({
-    name: 'CLI Installation',
-    category: 'Grok',
-    passed: cliCheck.success,
-    message: cliCheck.success
-      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
-      : 'Grok CLI not found',
-    fix: cliCheck.success ? undefined : 'npm install -g @vibe-kit/grok-cli',
-    details: verbose ? cliCheck.error : undefined
-  });
-
-  if (cliCheck.success) {
-    // Grok CLI can use environment variables or config files - just check if help works
-    const helpCheck = await checkCommand('grok', '--help');
-    results.push({
-      name: 'CLI Ready',
-      category: 'Grok',
-      passed: helpCheck.success,
-      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
-      fix: helpCheck.success ? undefined : 'Check Grok CLI installation: npm install -g @vibe-kit/grok-cli',
-      details: verbose ? (helpCheck.success ? 'Grok CLI uses API keys from environment (GROK_API_KEY) or config files' : helpCheck.error) : undefined
     });
   }
 
@@ -500,7 +463,6 @@ function getProviderEmoji(provider: string): string {
     case 'openai': return '🤖';
     case 'gemini': return '✨';
     case 'claude': return '🧠';
-    case 'grok': return '🚀';
     default: return '🔧';
   }
 }

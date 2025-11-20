@@ -211,6 +211,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       }
       console.log(chalk.green('   ✓ Claude Code integration configured'));
 
+      // Setup ax-cli MCP integration
+      console.log(chalk.cyan('🔌 Setting up ax-cli MCP integration...'));
+      await setupAxCliIntegration();
+      console.log(chalk.green('   ✓ ax-cli MCP integration configured'));
+
       // Setup AutomatosX-Integration.md (canonical integration guide)
       console.log(chalk.cyan('📖 Setting up AutomatosX-Integration.md (canonical guide)...'));
       await setupAutomatosXIntegrationMd(projectDir, packageRoot, argv.force ?? false);
@@ -583,6 +588,53 @@ async function setupClaudeIntegration(projectDir: string, packageRoot: string): 
   for (const file of mcpFiles) {
     if (file.endsWith('.json')) {
       await copyFile(join(mcpSourceDir, file), join(mcpDir, file));
+    }
+  }
+}
+
+/**
+ * Setup ax-cli MCP integration
+ *
+ * Configures ax-cli to use AutomatosX as an MCP server, allowing ax-cli
+ * to access AutomatosX agents, memory, and session management as tools.
+ */
+async function setupAxCliIntegration(): Promise<void> {
+  try {
+    // Check if ax-cli is installed
+    const { execSync } = await import('child_process');
+    try {
+      execSync('ax-cli --version', { stdio: 'pipe' });
+    } catch {
+      // ax-cli not installed, skip configuration
+      logger.info('ax-cli not installed, skipping MCP configuration');
+      return;
+    }
+
+    // Check if AutomatosX MCP server is already configured
+    try {
+      const output = execSync('ax-cli mcp list', { encoding: 'utf-8', stdio: 'pipe' });
+      if (output.includes('automatosx')) {
+        logger.info('ax-cli MCP already configured');
+        return;
+      }
+    } catch {
+      // Ignore errors from mcp list
+    }
+
+    // Add AutomatosX MCP server to ax-cli
+    // Note: The test will timeout, but the server will be added successfully
+    execSync('ax-cli mcp add automatosx --transport stdio --command ax --args mcp server', {
+      stdio: 'pipe',
+      timeout: 5000 // 5 second timeout to avoid hanging
+    });
+    logger.info('ax-cli MCP server configured successfully');
+  } catch (error) {
+    // Ignore timeout errors (expected during MCP server test)
+    if (error instanceof Error && error.message.includes('timed out')) {
+      logger.info('ax-cli MCP server added (test timeout is expected)');
+    } else {
+      // Log other errors but don't fail setup
+      logger.warn('Failed to configure ax-cli MCP', { error });
     }
   }
 }

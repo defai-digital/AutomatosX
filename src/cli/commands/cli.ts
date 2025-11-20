@@ -1,8 +1,8 @@
 /**
- * CLI Command - Launch Grok CLI with AutomatosX integration
+ * CLI Command - Launch ax-cli with AutomatosX integration
  *
- * This command launches the Grok CLI using the configuration from ~/.grok/
- * providing seamless integration between AutomatosX and Grok.
+ * This command launches ax-cli (Enterprise-Class AI CLI) with multi-provider support.
+ * Provides seamless integration between AutomatosX and ax-cli for interactive AI sessions.
  */
 
 import type { CommandModule } from 'yargs';
@@ -16,202 +16,159 @@ import { logger } from '../../utils/logger.js';
 interface CliCommandArgs {
   prompt?: string;
   model?: string;
-  config?: string;
+  provider?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  directory?: string;
+  maxToolRounds?: number;
 }
 
 export const cliCommand: CommandModule<{}, CliCommandArgs> = {
   command: 'cli [prompt]',
-  describe: 'Launch Grok CLI with AutomatosX integration',
+  describe: 'Launch ax-cli with multi-provider AI support',
 
   builder: (yargs) => {
     return yargs
       .positional('prompt', {
         type: 'string',
-        describe: 'Optional initial prompt to send to Grok'
+        describe: 'Optional initial prompt to send to AI'
       })
       .option('model', {
         type: 'string',
         alias: 'm',
-        describe: 'Grok model to use (e.g., grok-2)'
+        describe: 'AI model to use (e.g., glm-4-plus, grok-2, gpt-4)'
       })
-      .option('config', {
+      .option('provider', {
         type: 'string',
-        alias: 'c',
-        describe: 'Path to Grok settings file (default: ./.grok/settings.json or ~/.grok/settings.json)'
+        alias: 'p',
+        describe: 'AI provider (glm, xai, openai, anthropic, ollama)'
       })
-      .example('$0 cli', 'Launch Grok CLI interactively')
-      .example('$0 cli "Design a REST API"', 'Send prompt directly to Grok')
-      .example('$0 cli --model grok-2', 'Use specific Grok model');
+      .option('api-key', {
+        type: 'string',
+        alias: 'k',
+        describe: 'AI API key (or set YOUR_API_KEY env var)'
+      })
+      .option('base-url', {
+        type: 'string',
+        alias: 'u',
+        describe: 'AI API base URL (or set AI_BASE_URL env var)'
+      })
+      .option('directory', {
+        type: 'string',
+        alias: 'd',
+        describe: 'Set working directory'
+      })
+      .option('max-tool-rounds', {
+        type: 'number',
+        describe: 'Maximum number of tool execution rounds (default: 400)'
+      })
+      .example('$0 cli', 'Launch ax-cli interactively')
+      .example('$0 cli "Design a REST API"', 'Send prompt directly to AI')
+      .example('$0 cli --model glm-4-plus', 'Use specific GLM model')
+      .example('$0 cli --provider xai --model grok-2', 'Use xAI Grok provider');
   },
 
   handler: async (argv) => {
     try {
-      // Determine config path - check both settings.json and user-settings.json for backward compatibility
-      let configPath = argv.config;
-      if (!configPath) {
-        const locations = [
-          // 1. Project-specific .grok directory (current directory)
-          join(process.cwd(), '.grok', 'settings.json'),
-          join(process.cwd(), '.grok', 'user-settings.json'), // Legacy filename
-          // 2. User home directory .grok
-          join(homedir(), '.grok', 'settings.json'),
-          join(homedir(), '.grok', 'user-settings.json'), // Legacy filename
-        ];
+      // Check if ax-cli is installed
+      const axCliCommand = process.platform === 'win32' ? 'ax-cli.cmd' : 'ax-cli';
 
-        // Find first existing config file
-        for (const location of locations) {
-          if (existsSync(location)) {
-            configPath = location;
-            break;
-          }
-        }
-
-        // Default to home directory settings.json for error messages
-        if (!configPath) {
-          configPath = join(homedir(), '.grok', 'settings.json');
-        }
-      }
-
-      // Check if Grok CLI is installed
-      const grokCommand = process.platform === 'win32' ? 'grok.cmd' : 'grok';
-
-      logger.info('Launching Grok CLI', {
-        configPath,
+      logger.info('Launching ax-cli', {
         hasPrompt: !!argv.prompt,
-        model: argv.model
+        model: argv.model,
+        provider: argv.provider
       });
 
-      // Check if settings.json exists
-      if (!existsSync(configPath)) {
-        console.log(chalk.yellow('\n⚠️  Grok settings not found'));
-        console.log(chalk.gray('   Checked:'));
-        console.log(chalk.gray('   - ./.grok/settings.json (project)'));
-        console.log(chalk.gray('   - ~/.grok/settings.json (home)'));
-        console.log(chalk.blue('\n💡 To set up Grok:'));
-        console.log(chalk.gray('   1. Install Grok CLI: npm install -g @grok/cli'));
-        console.log(chalk.gray('   2. Configure API key: grok config set api-key YOUR_KEY'));
-        console.log(chalk.gray('   3. This will create ~/.grok/settings.json'));
-        console.log(chalk.gray('   4. Run ax cli again\n'));
-        process.exit(1);
+      // Build ax-cli arguments
+      const axCliArgs: string[] = [];
+
+      // Add directory option
+      if (argv.directory) {
+        axCliArgs.push('--directory', argv.directory);
       }
 
-      // Load config to verify it's valid
-      let config: any;
-      let isPlaceholder = false;
-
-      try {
-        const configContent = readFileSync(configPath, 'utf-8');
-        config = JSON.parse(configContent);
-
-        // Check for valid API key (not placeholder)
-        isPlaceholder = config.apiKey && (
-          config.apiKey.includes('YOUR_') ||
-          config.apiKey.includes('_KEY_HERE') ||
-          config.apiKey === 'YOUR_XAI_API_KEY_HERE' ||
-          config.apiKey === 'YOUR_ZAI_API_KEY_HERE'
-        );
-
-        if (!config.apiKey || isPlaceholder) {
-          if (!process.env.GROK_API_KEY) {
-            console.log(chalk.yellow('\n⚠️  No valid API key found in Grok config'));
-            console.log(chalk.gray('   Config path:'), chalk.white(configPath));
-            if (isPlaceholder) {
-              console.log(chalk.gray('   Issue: API key is still a placeholder'));
-            }
-            console.log(chalk.blue('\n💡 To configure your API key:'));
-            console.log(chalk.gray('   Option 1: Set environment variable:'));
-            console.log(chalk.gray('     export GROK_API_KEY="your-actual-key"'));
-            console.log(chalk.gray('   Option 2: Update settings.json with real API key'));
-            console.log(chalk.gray('   Option 3: Use grok CLI directly:'));
-            console.log(chalk.gray('     grok config set api-key YOUR_KEY\n'));
-            process.exit(1);
-          }
-        }
-
-        logger.debug('Grok config loaded', {
-          hasApiKey: !!config.apiKey,
-          model: config.defaultModel || 'not set',
-          server: config.server || 'default'
-        });
-      } catch (error) {
-        console.log(chalk.red('\n❌ Invalid Grok settings file at:'), chalk.gray(configPath));
-        console.log(chalk.gray('   Error:'), error instanceof Error ? error.message : String(error));
-        console.log(chalk.blue('\n💡 Try recreating your settings:'));
-        console.log(chalk.gray('   grok config set api-key YOUR_KEY'));
-        console.log(chalk.gray('   This will recreate ~/.grok/settings.json\n'));
-        process.exit(1);
+      // Add API key option
+      if (argv.apiKey) {
+        axCliArgs.push('--api-key', argv.apiKey);
       }
 
-      // Build Grok CLI arguments
-      const grokArgs: string[] = [];
-
-      // Pass config values as individual flags since Grok CLI doesn't support --config
-      // Extract values from the detected config file
-      if (config.apiKey && !isPlaceholder) {
-        grokArgs.push('--api-key', config.apiKey);
+      // Add base URL option
+      if (argv.baseUrl) {
+        axCliArgs.push('--base-url', argv.baseUrl);
       }
 
-      if (config.baseURL) {
-        grokArgs.push('--base-url', config.baseURL);
-      }
-
-      // Add model - prefer command line arg, then config file, then nothing
+      // Add model option
       if (argv.model) {
-        grokArgs.push('--model', argv.model);
-      } else if (config.model) {
-        grokArgs.push('--model', config.model);
+        axCliArgs.push('--model', argv.model);
       }
 
-      // Add prompt if provided
+      // Add max tool rounds option
+      if (argv.maxToolRounds) {
+        axCliArgs.push('--max-tool-rounds', String(argv.maxToolRounds));
+      }
+
+      // Add prompt if provided (non-interactive mode)
       if (argv.prompt) {
-        grokArgs.push(argv.prompt);
+        axCliArgs.push('--prompt', argv.prompt);
       }
 
       // Display launch message
-      console.log(chalk.blue('\n🚀 Launching Grok CLI...'));
+      console.log(chalk.blue('\n🚀 Launching ax-cli...'));
       if (argv.prompt) {
         console.log(chalk.gray('   Prompt:'), chalk.white(argv.prompt));
       }
       if (argv.model) {
         console.log(chalk.gray('   Model:'), chalk.white(argv.model));
       }
-      console.log(chalk.gray('   Config:'), chalk.white(configPath));
+      if (argv.provider) {
+        console.log(chalk.gray('   Provider:'), chalk.white(argv.provider));
+      }
+      if (argv.directory) {
+        console.log(chalk.gray('   Directory:'), chalk.white(argv.directory));
+      }
       console.log(chalk.gray('\n   Press Ctrl+C to exit\n'));
 
-      // Spawn Grok CLI process
+      // Build environment variables
+      const env: NodeJS.ProcessEnv = {
+        ...process.env
+      };
+
+      // Set provider via environment variable if specified
+      if (argv.provider) {
+        env.AI_PROVIDER = argv.provider;
+      }
+
+      // Spawn ax-cli process
       // SECURITY: Do not use shell: true - Node handles argument escaping
-      const grokProcess = spawn(grokCommand, grokArgs, {
+      const axCliProcess = spawn(axCliCommand, axCliArgs, {
         stdio: 'inherit',
-        env: {
-          ...process.env,
-          GROK_CONFIG_PATH: configPath
-        }
+        env
       });
 
       // Handle process events
-      grokProcess.on('error', (error) => {
+      axCliProcess.on('error', (error) => {
         if ((error as any).code === 'ENOENT') {
-          console.log(chalk.red('\n❌ Grok CLI not found'));
-          console.log(chalk.blue('\n💡 To install Grok CLI:'));
-          console.log(chalk.gray('   npm install -g @grok/cli'));
-          console.log(chalk.gray('\n   Or visit: https://grok.x.ai/cli\n'));
+          console.log(chalk.red('\n❌ ax-cli not found'));
+          console.log(chalk.blue('\n💡 To install ax-cli:'));
+          console.log(chalk.gray('   npm install -g @defai.digital/ax-cli'));
+          console.log(chalk.gray('\n   Or visit: https://github.com/defai-digital/ax-cli\n'));
         } else {
-          console.log(chalk.red('\n❌ Error launching Grok CLI:'), error.message);
+          console.log(chalk.red('\n❌ Error launching ax-cli:'), error.message);
         }
         process.exit(1);
       });
 
-      grokProcess.on('exit', (code) => {
+      axCliProcess.on('exit', (code) => {
         if (code !== 0 && code !== null) {
-          logger.debug('Grok CLI exited with code', { code });
+          logger.debug('ax-cli exited with code', { code });
         }
         process.exit(code || 0);
       });
 
       // Handle termination signals
       const cleanup = () => {
-        if (!grokProcess.killed) {
-          grokProcess.kill('SIGTERM');
+        if (!axCliProcess.killed) {
+          axCliProcess.kill('SIGTERM');
         }
       };
 
@@ -220,13 +177,13 @@ export const cliCommand: CommandModule<{}, CliCommandArgs> = {
       process.on('exit', cleanup);
 
     } catch (error) {
-      logger.error('Failed to launch Grok CLI', { error });
-      console.log(chalk.red('\n❌ Failed to launch Grok CLI'));
+      logger.error('Failed to launch ax-cli', { error });
+      console.log(chalk.red('\n❌ Failed to launch ax-cli'));
       if (error instanceof Error) {
         console.log(chalk.gray('   Error:'), error.message);
       }
-      console.log(chalk.blue('\n💡 Try running Grok directly:'));
-      console.log(chalk.gray('   grok "your prompt"\n'));
+      console.log(chalk.blue('\n💡 Try running ax-cli directly:'));
+      console.log(chalk.gray('   ax-cli "your prompt"\n'));
       process.exit(1);
     }
   }

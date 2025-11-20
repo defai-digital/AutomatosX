@@ -115,6 +115,7 @@
     "examples",
     "schema",
     "templates",
+    ".github/assets",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",

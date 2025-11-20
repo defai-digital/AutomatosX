@@ -1,6 +1,6 @@
-# AutomatosX
+<h1><img src=".github/assets/axlogo.png" alt="AutomatosX Logo" width="36" /> <span style="font-size: 1.5em;">AutomatosX</span></h1>
 
-**From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory**
+*From Idea to Production in Minutes: The AI Workforce Platform with Persistent Memory*
 
 AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `claude`, `gemini`, `grok`, and `codex` commands to provide multi-agent orchestration, persistent memory, and workflow automation. Simple, focused, and easy to integrate with your existing AI workflow.
 

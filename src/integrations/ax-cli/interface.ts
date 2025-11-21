@@ -1,11 +1,14 @@
 /**
- * Unified adapter interface for Grok CLI implementations (v10.0.0)
+ * Unified adapter interface for ax-cli (v10.0.0)
  *
- * Supports both:
- * - ax-cli (multi-provider, JSONL output)
- * - @vibe-kit/grok-cli (xAI only, plain text output)
+ * Supports ax-cli (multi-provider, JSONL output):
+ * - GLM (Z.AI)
+ * - xAI Grok models
+ * - OpenAI models
+ * - Anthropic Claude models
+ * - Ollama local models
  *
- * @module integrations/grok-cli/adapter-interface
+ * @module integrations/ax-cli/interface
  */
 
 import type { ExecutionResponse } from '../../types/provider.js';
@@ -62,10 +65,10 @@ export interface GrokOptions {
 }
 
 /**
- * Unified adapter interface for Grok CLI implementations
+ * Adapter interface for ax-cli
  *
- * Provides a common interface for both ax-cli and grok-cli,
- * allowing AutomatosX to use either implementation seamlessly.
+ * Provides a common interface for the ax-cli multi-provider CLI,
+ * allowing AutomatosX to use it seamlessly for AI orchestration.
  */
 export interface GrokCliAdapter {
   /**
@@ -102,7 +105,7 @@ export interface GrokCliAdapter {
   /**
    * Get adapter display name
    *
-   * @returns Human-readable adapter name (e.g., "ax-cli (multi-provider)", "grok-cli (xAI)")
+   * @returns Human-readable adapter name (e.g., "ax-cli (multi-provider)")
    */
   getDisplayName(): string;
 }

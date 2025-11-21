@@ -1,7 +1,7 @@
 /**
  * AxCliAdapter - Adapter for ax-cli (multi-provider CLI) (v10.0.0)
  *
- * Wraps ax-cli execution with standardized GrokCliAdapter interface.
+ * Wraps ax-cli execution with standardized adapter interface.
  * Supports multiple AI providers: GLM, xAI, OpenAI, Anthropic, Ollama.
  *
  * ax-cli v2.5.1+ features:

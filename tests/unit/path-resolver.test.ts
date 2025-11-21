@@ -9,9 +9,14 @@ import { PathError } from '../../src/types/path.js';
 
 describe('PathResolver', () => {
   let resolver: PathResolver;
-  const projectDir = '/path/to/project';
-  const workingDir = '/path/to/project/src';
-  const agentWorkspace = '/path/to/project/.automatosx/workspaces/test';
+
+  // Use platform-specific paths to avoid Windows drive letter issues
+  const isWindows = process.platform === 'win32';
+  const projectDir = isWindows ? 'C:\\path\\to\\project' : '/path/to/project';
+  const workingDir = isWindows ? 'C:\\path\\to\\project\\src' : '/path/to/project/src';
+  const agentWorkspace = isWindows
+    ? 'C:\\path\\to\\project\\.automatosx\\workspaces\\test'
+    : '/path/to/project/.automatosx/workspaces/test';
 
   beforeEach(() => {
     resolver = new PathResolver({
@@ -211,12 +216,18 @@ describe('detectProjectRoot', () => {
   });
 
   it('should fallback to start directory if no markers found', async () => {
-    // Use a deeply nested path to avoid finding markers in /tmp
-    const tmpDir = '/tmp/no-project-markers/deeply/nested/path/without/markers';
+    // Use platform-specific temp path
+    const isWindows = process.platform === 'win32';
+    // Use a deeply nested path to avoid finding markers in temp directory
+    const tmpDir = isWindows
+      ? 'C:\\Temp\\no-project-markers\\deeply\\nested\\path\\without\\markers'
+      : '/tmp/no-project-markers/deeply/nested/path/without/markers';
+    const tmpRoot = isWindows ? 'C:\\Temp' : '/tmp';
+
     const root = await detectProjectRoot(tmpDir);
     // Since findUp searches upwards, if no markers are found, it should return the start directory
-    // However, if /tmp contains markers, it will return /tmp
-    // This test verifies the fallback behavior, accepting either the start dir or /tmp
-    expect([tmpDir, '/tmp']).toContain(root);
+    // However, if temp dir contains markers, it will return temp root
+    // This test verifies the fallback behavior, accepting either the start dir or temp root
+    expect([tmpDir, tmpRoot]).toContain(root);
   });
 });

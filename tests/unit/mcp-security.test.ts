@@ -113,8 +113,11 @@ describe('MCP Security - Path Traversal Prevention', () => {
       // On Windows, it would be split properly
       if (process.platform === 'win32') {
         expect(normalizePath(result)).toContain('file.json');
-        expect(normalizePath(result)).not.toContain('C:');
-        expect(normalizePath(result)).not.toContain('Users');
+        // The extracted path should not contain the original Windows path's Users directory
+        // Note: The result WILL contain C: if testDir is on C: drive (that's expected)
+        // We're checking that the INPUT path's directory (C:\Users\) was stripped
+        expect(normalizePath(result)).not.toContain('C:\\Users');
+        expect(normalizePath(result)).not.toContain('C:/Users');
       } else {
         // On Unix, backslash is a valid filename character
         // So 'C:\Users\file.json' becomes the entire filename

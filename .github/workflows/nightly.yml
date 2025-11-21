@@ -7,6 +7,11 @@ on:
   # Allow manual workflow dispatch for testing
   workflow_dispatch:
 
+# Permissions required for creating issues on failure
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   comprehensive-tests:
     name: Comprehensive Tests on ${{ matrix.os }}

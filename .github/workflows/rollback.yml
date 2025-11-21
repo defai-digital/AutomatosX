@@ -123,48 +123,12 @@ jobs:
       - name: Create rollback issue
         run: |
           echo "📝 Creating rollback tracking issue..."
-
-          ISSUE_BODY=$(cat <<'EOF'
-## 🔄 Rollback: v${{ inputs.version }}
-
-**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-**Reason**: ${{ inputs.reason }}
-**Triggered by**: @${{ github.actor }}
-
-### Actions Performed
-
-${{ inputs.skip_npm == false && '- ❌ Unpublished from npm: @defai.digital/automatosx@${{ inputs.version }}' || '- ⏭️  Skipped npm unpublish' }}
-${{ inputs.skip_github == false && '- ❌ Deleted GitHub Release: v${{ inputs.version }}' || '- ⏭️  Skipped GitHub Release deletion' }}
-
-### Recommended Next Steps
-
-1. **Investigate root cause** of the issue that triggered rollback
-2. **Fix the issue** in a new branch
-3. **Run full test suite** to verify the fix
-4. **Release new version** (v${{ inputs.version }}+1 or patch version)
-
-### Timeline
-
-- **Rollback initiated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-- **Target fix date**: _To be determined_
-
-### Related Links
-
-- **Rollback workflow**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-- **Original release**: https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }} (if not deleted)
-
----
-
-**⚠️ IMPORTANT**: Users who installed v${{ inputs.version }} should upgrade to the next stable version once available.
-EOF
-          )
-
+          ROLLBACK_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           gh issue create \
-            --title "🔄 Rollback: v${{ inputs.version }} - ${{ inputs.reason }}" \
-            --body "$ISSUE_BODY" \
-            --label "rollback,urgent" \
+            --title "Rollback v${{ inputs.version }}" \
+            --body "Rollback version ${{ inputs.version }} at ${ROLLBACK_DATE}. Reason: ${{ inputs.reason }}. See workflow run for details." \
+            --label "rollback" \
             --assignee "${{ github.actor }}"
-
           echo "✅ Rollback tracking issue created"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

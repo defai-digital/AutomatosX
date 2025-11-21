@@ -905,4 +905,4 @@ ax memory search "similar task"
 
 ---
 
-**This is the complete AutomatosX Integration Guide. For AI-specific tips and setup instructions, see the respective integration files (CLAUDE.md, GEMINI.md, CODEX.md, GROK.md).**
+**This is the complete AutomatosX Integration Guide. For AI-specific tips and setup instructions, see the respective integration files (CLAUDE.md, GEMINI.md, CODEX.md).**

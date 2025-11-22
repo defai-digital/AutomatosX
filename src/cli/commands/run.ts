@@ -573,10 +573,10 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }));
       }
 
-      // v11.0.0: Add GLM provider support via ax-cli
+      // v11.0.0: Add GLM provider support via ax-cli (renamed to ax-cli-provider in v9.2.0)
       if (config.providers['glm']?.enabled) {
         try {
-          const { GlmProvider } = await import('../../providers/glm-provider.js');
+          const { AxCliProvider, GlmProvider } = await import('../../providers/ax-cli-provider.js');
           const glmConfig = config.providers['glm'] as any; // Cast to access new fields
 
           // Validate glmConfig exists

@@ -143,7 +143,7 @@ This command creates:
 <details>
 <summary>Default Configuration (v5.2+)</summary>
 
-Configuration is managed through `automatosx.config.json` in the project root.
+Configuration is managed through `ax.config.json` in the project root.
 
 Key sections:
 - **providers**: Provider CLI configuration (timeout, health checks)
@@ -157,7 +157,7 @@ Key sections:
 
 Use `ax config show` to view full configuration, or `ax config get <key>` to get specific values.
 
-See `automatosx.config.json` in the project root for complete default values.
+See `ax.config.json` in the project root for complete default values.
 
 </details>
 

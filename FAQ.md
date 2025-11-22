@@ -1,6 +1,6 @@
 # Frequently Asked Questions (FAQ)
 
-Note: This FAQ applies to AutomatosX v5.6.0 (last updated 2025-10-17). For detailed release notes, see CHANGELOG.md.
+Note: This FAQ applies to AutomatosX v9.2.0 (last updated 2025-11-22). For detailed release notes, see [GitHub Releases](https://github.com/defai-digital/automatosx/releases).
 
 ## Contents
 - [General Questions](#general-questions)
@@ -31,11 +31,11 @@ Note: This FAQ applies to AutomatosX v5.6.0 (last updated 2025-10-17). For detai
 
 AutomatosX is an AI agent orchestration platform that allows you to create, configure, and run AI agents with different capabilities and behaviors. It supports multiple AI providers (Claude, Gemini, Codex) with intelligent fallback, and features a powerful memory system with SQLite FTS5 full-text search.
 
-<!-- Version-specific release notes removed to keep FAQ focused. See CHANGELOG.md for details. -->
+<!-- Version-specific release notes removed to keep FAQ focused. See GitHub Releases for details. -->
 
 ### Can I migrate from older major versions?
 
-Major version upgrades may include breaking changes (database schema, configuration format, directory structure). The recommended approach is to set up a fresh project and reconfigure agents/teams. For specifics, refer to the Migration notes in CHANGELOG.md.
+Major version upgrades may include breaking changes (database schema, configuration format, directory structure). The recommended approach is to set up a fresh project and reconfigure agents/teams. For specifics, refer to the Migration notes in [GitHub Releases](https://github.com/defai-digital/automatosx/releases).
 
 ### What AI providers are supported?
 
@@ -83,7 +83,7 @@ Notes:
 
 ### How do I enable/disable providers?
 
-Edit `automatosx.config.json` and toggle the `enabled` flag under `providers`:
+Edit `ax.config.json` and toggle the `enabled` flag under `providers`:
 
 ```json
 {
@@ -97,7 +97,7 @@ Edit `automatosx.config.json` and toggle the `enabled` flag under `providers`:
 
 Troubleshooting checklist:
 - Ensure the CLI is installed and in `PATH` (`claude --version`, `gemini --version`, `codex --version`).
-- Verify the provider is `enabled` in `automatosx.config.json`.
+- Verify the provider is `enabled` in `ax.config.json`.
 - Use `--provider` to override selection temporarily.
 
 ### Does AutomatosX require Claude Code? Can Gemini or OpenAI Codex be the primary?
@@ -247,7 +247,7 @@ ax run backend "Hello"
 AutomatosX looks for config in this order:
 
 1. `.automatosx/config.json` (project-specific) ⭐ **Recommended**
-2. `automatosx.config.json` (project root)
+2. `ax.config.json` (project root)
 3. `~/.automatosx/config.json` (user global)
 
 Create project-specific config:
@@ -812,7 +812,7 @@ npm test memory-manager
 ### Where is the documentation?
 
 - **README.md**: Quick start and overview
-- **CHANGELOG.md**: Version history
+- **[GitHub Releases](https://github.com/defai-digital/automatosx/releases)**: Version history and release notes
 - **FAQ.md**: This file
 - **TROUBLESHOOTING.md**: Problem solving guide
 - **API docs**: In `docs/` directory

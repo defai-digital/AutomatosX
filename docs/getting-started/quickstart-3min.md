@@ -415,7 +415,7 @@ ax run auth-system.yaml --parallel --streaming
 ### Documentation
 - **Main Docs**: `docs/` directory
 - **Examples**: `examples/` directory
-- **Configuration**: `automatosx.config.json`
+- **Configuration**: `ax.config.json`
 
 ### Commands
 ```bash

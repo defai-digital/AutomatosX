@@ -1,12 +1,14 @@
 /**
- * Unified adapter interface for ax-cli (v10.0.0)
+ * Unified adapter interface for ax-cli (v9.2.0)
  *
  * Supports ax-cli (multi-provider, JSONL output):
- * - GLM (Z.AI)
+ * - GLM (Zhipu AI)
  * - xAI Grok models
  * - OpenAI models
  * - Anthropic Claude models
  * - Ollama local models
+ * - DeepSeek (future)
+ * - Llama (future)
  *
  * @module integrations/ax-cli/interface
  */
@@ -14,9 +16,9 @@
 import type { ExecutionResponse } from '../../types/provider.js';
 
 /**
- * Options for Grok CLI execution
+ * Options for ax-cli execution (multi-provider)
  */
-export interface GrokOptions {
+export interface AxCliOptions {
   /** AI model to use (e.g., 'grok-2', 'glm-4.6') */
   model?: string;
 
@@ -65,12 +67,12 @@ export interface GrokOptions {
 }
 
 /**
- * Adapter interface for ax-cli
+ * Adapter interface for ax-cli (multi-provider)
  *
  * Provides a common interface for the ax-cli multi-provider CLI,
  * allowing AutomatosX to use it seamlessly for AI orchestration.
  */
-export interface GrokCliAdapter {
+export interface IAxCliAdapter {
   /**
    * Execute a prompt using the CLI
    *
@@ -79,7 +81,7 @@ export interface GrokCliAdapter {
    * @returns Provider response with content and metadata
    * @throws Error if execution fails
    */
-  execute(prompt: string, options: GrokOptions): Promise<ExecutionResponse>;
+  execute(prompt: string, options: AxCliOptions): Promise<ExecutionResponse>;
 
   /**
    * Check if the CLI is available in PATH
@@ -109,3 +111,18 @@ export interface GrokCliAdapter {
    */
   getDisplayName(): string;
 }
+
+/**
+ * @deprecated Use AxCliOptions instead. Will be removed in v10.0.0.
+ */
+export type GrokOptions = AxCliOptions;
+
+/**
+ * @deprecated Use IAxCliAdapter instead. Will be removed in v10.0.0.
+ */
+export type AxCliAdapter = IAxCliAdapter;
+
+/**
+ * @deprecated Use IAxCliAdapter instead. Will be removed in v10.0.0.
+ */
+export type GrokCliAdapter = IAxCliAdapter;

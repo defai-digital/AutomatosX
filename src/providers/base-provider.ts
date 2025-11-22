@@ -105,7 +105,8 @@ export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
    * v8.3.0: Support both old (claude-code, gemini-cli) and new (claude, gemini) names for backward compatibility
-   * v11.0.0: Replaced 'grok' with 'glm' (Zhipu AI GLM via ax-cli)
+   * v9.2.0: Added 'ax-cli' (multi-model provider: GLM, xAI, OpenAI, Anthropic, Ollama)
+   * v9.2.0: 'glm' is deprecated, use 'ax-cli' instead (kept for backward compatibility)
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
@@ -114,7 +115,8 @@ export abstract class BaseProvider implements Provider {
     'gemini-cli',    // Backward compatibility - maps to gemini CLI
     'openai',
     'codex',
-    'glm',           // v11.0.0: Zhipu AI GLM via ax-cli (replaces grok)
+    'ax-cli',        // v9.2.0: Multi-model provider via ax-cli (GLM, xAI, OpenAI, Anthropic, Ollama, DeepSeek, Llama)
+    'glm',           // v9.2.0: DEPRECATED - use 'ax-cli' instead (kept for backward compatibility)
     'test-provider'  // For unit tests
   ] as const;
 
@@ -151,7 +153,7 @@ export abstract class BaseProvider implements Provider {
 
   /**
    * Get the CLI command name for this provider
-   * Subclasses return: 'claude', 'gemini', 'codex', 'grok'
+   * Subclasses return: 'claude', 'gemini', 'codex'
    */
   protected abstract getCLICommand(): string;
 

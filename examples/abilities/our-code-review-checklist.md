@@ -79,7 +79,7 @@
 
 - [ ] **JSDoc complete** - Public APIs have JSDoc
 - [ ] **README updated** - If adding features, update README
-- [ ] **CHANGELOG updated** - Add entry to CHANGELOG.md
+- [ ] **CHANGELOG updated** - Add entry to GitHub Releases (https://github.com/defai-digital/automatosx/releases)
 
 ### Performance & Size
 

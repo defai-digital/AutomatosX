@@ -84,7 +84,7 @@ ax run backend "Draft implementation" --output automatosx/tmp/draft.ts
 
 ## Configuration & Troubleshooting
 
-- Primary configuration file: `automatosx.config.json`; view via `ax config show`.
+- Primary configuration file: `ax.config.json`; view via `ax config show`.
 - **Agent not found**: verify case-sensitive names with `ax list agents`.
 - **Provider unavailable**: inspect `ax status` and `ax config show` for provider priorities.
 - **Memory pressure**: run `ax cache stats` or clear old entries (`ax memory clear --before "2024-01-01"`).

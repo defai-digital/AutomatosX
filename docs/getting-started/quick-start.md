@@ -99,7 +99,7 @@ your-project/
 │   ├── teams/            # 5 team configurations
 │   ├── templates/        # 9 agent templates
 │   └── memory/           # SQLite FTS5 database
-├── automatosx.config.json  # Project configuration
+├── ax.config.json  # Project configuration
 ├── AGENTS.md             # AI assistant integration (universal standard)
 ├── CLAUDE.md             # Claude Code integration guide
 ├── GEMINI.md             # Gemini CLI integration guide
@@ -435,7 +435,7 @@ A: **Gemini CLI** for cost savings (99.6% cheaper, free tier), **Claude Code** f
 A: Run `ax update` or `npm install -g @defai.digital/automatosx@latest`.
 
 **Q: Where is my data stored?**
-A: All data is stored in `.automatosx/` directory in your project root. Configuration: `automatosx.config.json`. Memory: `.automatosx/memory/`. 100% local, no external API calls for memory operations.
+A: All data is stored in `.automatosx/` directory in your project root. Configuration: `ax.config.json`. Memory: `.automatosx/memory/`. 100% local, no external API calls for memory operations.
 
 **Q: How do I create a custom agent?**
 A: Use `ax agent create <name> --template <template>` for quick creation. See [Creating Your First Agent](../tutorials/first-agent.md) tutorial.

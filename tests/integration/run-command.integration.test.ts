@@ -42,7 +42,7 @@ temperature: 0.7
 
     // Create config
     await writeFile(
-      join(testDir, 'automatosx.config.json'),
+      join(testDir, 'ax.config.json'),
       JSON.stringify({
         providers: {
           'claude-code': {
@@ -136,7 +136,7 @@ temperature: 0.7
 
     it('should handle configuration errors', async () => {
       // Remove config
-      await rm(join(testDir, 'automatosx.config.json'));
+      await rm(join(testDir, 'ax.config.json'));
 
       const result = await runCLI(['run', 'test', 'Task'], testDir);
 
@@ -145,7 +145,7 @@ temperature: 0.7
 
       // Restore config for other tests
       await writeFile(
-        join(testDir, 'automatosx.config.json'),
+        join(testDir, 'ax.config.json'),
         JSON.stringify({
           providers: {
             'claude-code': {

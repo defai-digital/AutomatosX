@@ -21,15 +21,17 @@ export async function checkExists(path: string): Promise<boolean> {
 }
 
 /**
- * Find config file in priority order
+ * Find config file in priority order (v9.2.0+)
  *
  * Priority:
  *   1. --config CLI arg
  *   2. AUTOMATOSX_CONFIG env var
- *   3. automatosx.config.yaml (project root)
- *   4. automatosx.config.json (project root)
- *   5. .automatosx/config.yaml (hidden dir)
- *   6. .automatosx/config.json (hidden dir)
+ *   3. ax.config.yaml (project root) - NEW in v9.2.0
+ *   4. ax.config.json (project root) - NEW in v9.2.0
+ *   5. automatosx.config.yaml (project root) - DEPRECATED, removed in v10.0.0
+ *   6. automatosx.config.json (project root) - DEPRECATED, removed in v10.0.0
+ *   7. .automatosx/config.yaml (hidden dir)
+ *   8. .automatosx/config.json (hidden dir)
  */
 export function resolveConfigPath(cliArg?: string): string {
   // 1. CLI argument (highest priority)
@@ -42,10 +44,15 @@ export function resolveConfigPath(cliArg?: string): string {
     return resolve(process.env.AUTOMATOSX_CONFIG);
   }
 
-  // 3-6. Check in priority order
+  // 3-8. Check in priority order (new names first, then deprecated names for backward compat)
   const candidates = [
+    // NEW (v9.2.0+): Shorter config names
+    resolve(process.cwd(), 'ax.config.yaml'),
+    resolve(process.cwd(), 'ax.config.json'),
+    // DEPRECATED: Old long names (backward compatibility, removed in v10.0.0)
     resolve(process.cwd(), 'automatosx.config.yaml'),
     resolve(process.cwd(), 'automatosx.config.json'),
+    // Hidden directory configs
     resolve(process.cwd(), '.automatosx', 'config.yaml'),
     resolve(process.cwd(), '.automatosx', 'config.json')
   ];
@@ -56,8 +63,8 @@ export function resolveConfigPath(cliArg?: string): string {
     }
   }
 
-  // Default to YAML in project root (for error messages)
-  return resolve(process.cwd(), 'automatosx.config.yaml');
+  // Default to new YAML name in project root (for error messages)
+  return resolve(process.cwd(), 'ax.config.yaml');
 }
 
 /**

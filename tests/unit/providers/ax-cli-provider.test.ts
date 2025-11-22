@@ -1,5 +1,5 @@
 /**
- * Unit tests for GlmProvider (v9.1.0)
+ * Unit tests for AxCliProvider (v9.2.0)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -23,12 +23,12 @@ vi.mock('util', () => ({
   })
 }));
 
-import { GlmProvider } from '../../../src/providers/glm-provider.js';
-import type { GlmProviderConfig } from '../../../src/providers/glm-provider.js';
+import { AxCliProvider } from '../../../src/providers/ax-cli-provider.js';
+import type { AxCliProviderConfig } from '../../../src/providers/ax-cli-provider.js';
 
-describe('GlmProvider', () => {
-  const baseConfig: GlmProviderConfig = {
-    name: 'glm',
+describe('AxCliProvider', () => {
+  const baseConfig: AxCliProviderConfig = {
+    name: 'ax-cli',
     enabled: true,
     priority: 4,
     timeout: 120000,
@@ -40,15 +40,15 @@ describe('GlmProvider', () => {
   });
 
   describe('constructor', () => {
-    it('should initialize with GLM defaults', () => {
-      const provider = new GlmProvider(baseConfig);
+    it('should initialize with ax-cli defaults', () => {
+      const provider = new AxCliProvider(baseConfig);
 
       expect(provider).toBeDefined();
-      expect(provider.name).toBe('glm');
+      expect(provider.name).toBe('ax-cli');
     });
 
     it('should initialize with custom ax-cli config', () => {
-      const config: GlmProviderConfig = {
+      const config: AxCliProviderConfig = {
         ...baseConfig,
         axCli: {
           provider: 'glm',
@@ -57,13 +57,13 @@ describe('GlmProvider', () => {
         }
       };
 
-      const provider = new GlmProvider(config);
+      const provider = new AxCliProvider(config);
 
       expect(provider).toBeDefined();
     });
 
     it('should support custom provider via ax-cli', () => {
-      const config: GlmProviderConfig = {
+      const config: AxCliProviderConfig = {
         ...baseConfig,
         axCli: {
           provider: 'xai',  // User can configure Grok
@@ -71,7 +71,7 @@ describe('GlmProvider', () => {
         }
       };
 
-      const provider = new GlmProvider(config);
+      const provider = new AxCliProvider(config);
 
       expect(provider).toBeDefined();
     });
@@ -79,7 +79,7 @@ describe('GlmProvider', () => {
 
   describe('isAvailable', () => {
     it('should check ax-cli availability', async () => {
-      const provider = new GlmProvider(baseConfig);
+      const provider = new AxCliProvider(baseConfig);
 
       const available = await provider.isAvailable();
 
@@ -89,7 +89,7 @@ describe('GlmProvider', () => {
 
   describe('getVersion', () => {
     it('should return ax-cli version or unknown', async () => {
-      const provider = new GlmProvider(baseConfig);
+      const provider = new AxCliProvider(baseConfig);
 
       const version = await provider.getVersion();
 
@@ -101,7 +101,7 @@ describe('GlmProvider', () => {
 
   describe('getCLICommand', () => {
     it('should return ax-cli command', () => {
-      const provider = new GlmProvider(baseConfig);
+      const provider = new AxCliProvider(baseConfig);
 
       const command = provider.getCLICommand();
 
@@ -116,7 +116,7 @@ describe('GlmProvider', () => {
       ];
 
       providers.forEach(providerName => {
-        const config: GlmProviderConfig = {
+        const config: AxCliProviderConfig = {
           ...baseConfig,
           axCli: {
             provider: providerName,
@@ -124,13 +124,13 @@ describe('GlmProvider', () => {
           }
         };
 
-        const provider = new GlmProvider(config);
+        const provider = new AxCliProvider(config);
         expect(provider).toBeDefined();
       });
     });
 
     it('should support API key override', () => {
-      const config: GlmProviderConfig = {
+      const config: AxCliProviderConfig = {
         ...baseConfig,
         axCli: {
           provider: 'glm',
@@ -138,12 +138,12 @@ describe('GlmProvider', () => {
         }
       };
 
-      const provider = new GlmProvider(config);
+      const provider = new AxCliProvider(config);
       expect(provider).toBeDefined();
     });
 
     it('should support base URL override', () => {
-      const config: GlmProviderConfig = {
+      const config: AxCliProviderConfig = {
         ...baseConfig,
         axCli: {
           provider: 'glm',
@@ -151,12 +151,12 @@ describe('GlmProvider', () => {
         }
       };
 
-      const provider = new GlmProvider(config);
+      const provider = new AxCliProvider(config);
       expect(provider).toBeDefined();
     });
 
     it('should support max tool rounds configuration', () => {
-      const config: GlmProviderConfig = {
+      const config: AxCliProviderConfig = {
         ...baseConfig,
         axCli: {
           provider: 'glm',
@@ -164,7 +164,7 @@ describe('GlmProvider', () => {
         }
       };
 
-      const provider = new GlmProvider(config);
+      const provider = new AxCliProvider(config);
       expect(provider).toBeDefined();
     });
   });

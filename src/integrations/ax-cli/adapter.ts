@@ -12,7 +12,7 @@
  * @module integrations/ax-cli/adapter
  */
 
-import type { GrokCliAdapter, GrokOptions } from './interface.js';
+import type { IAxCliAdapter, AxCliOptions } from './interface.js';
 import type { ExecutionResponse } from '../../types/provider.js';
 import { AxCliCommandBuilder } from './command-builder.js';
 import { AxCliResponseParser } from './response-parser.js';
@@ -33,7 +33,7 @@ const execAsync = promisify(exec);
  * - IDE integration (v2.5.1+): JSON output, VSCode optimization
  * - Context enrichment (v2.5.1+): file content, selections, git diff
  */
-export class AxCliAdapter implements GrokCliAdapter {
+export class AxCliAdapter implements IAxCliAdapter {
   private readonly command: string = 'ax-cli';
   private readonly commandBuilder: AxCliCommandBuilder;
   private readonly responseParser: AxCliResponseParser;
@@ -55,7 +55,7 @@ export class AxCliAdapter implements GrokCliAdapter {
    * @returns Provider response with parsed content
    * @throws Error if execution fails or response is invalid
    */
-  async execute(prompt: string, options: GrokOptions): Promise<ExecutionResponse> {
+  async execute(prompt: string, options: AxCliOptions): Promise<ExecutionResponse> {
     const startTime = Date.now();  // Track latency
     const { command, args, fullCommand } = this.commandBuilder.build(prompt, options);
     const timeout = options.timeout || 120000; // Default 2 minutes

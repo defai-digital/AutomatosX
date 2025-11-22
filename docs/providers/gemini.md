@@ -69,7 +69,7 @@ gemini whoami
 ax providers list
 
 # Gemini should appear if installed correctly
-# If not, add to automatosx.config.json:
+# If not, add to ax.config.json:
 ```
 
 ```json
@@ -472,7 +472,7 @@ gemini whoami
 ax free-tier status
 
 # Check tracking config
-cat automatosx.config.json | grep -A3 "limitTracking"
+cat ax.config.json | grep -A3 "limitTracking"
 
 # Should show:
 # "limitTracking": {

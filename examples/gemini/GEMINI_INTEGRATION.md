@@ -98,7 +98,7 @@ Gemini is typically configured with high priority for Gemini CLI users:
 }
 ```
 
-Edit `automatosx.config.json` to customize.
+Edit `ax.config.json` to customize.
 
 ---
 
@@ -224,7 +224,7 @@ For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md
 - **Complete Guide**: [AutomatosX-Integration.md](../AutomatosX-Integration.md) ← **Read this!**
 - **GitHub**: https://github.com/defai-digital/automatosx
 - **Agent Profiles**: `.automatosx/agents/`
-- **Configuration**: `automatosx.config.json`
+- **Configuration**: `ax.config.json`
 
 ## Support
 

@@ -13,7 +13,7 @@ AutomatosX is a pure CLI orchestration platform for AI agents. It wraps around `
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v9.1.1 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
+**Status**: ✅ **Production Ready** | v9.2.0 | 20 Specialized Agents | Pure CLI Orchestration | Enterprise MCP Support
 
 > 🎉 **NEW in v8.5.3**: **Phase 4 MCP Complete!** Production-ready Model Context Protocol (MCP) server management with lifecycle logging, auto-installation, configuration hot-reload, performance monitoring, and resource enforcement. Transform your AI workflow with enterprise-grade server orchestration.
 
@@ -83,7 +83,7 @@ ax setup
 # ⚠️ IMPORTANT: You MUST run 'ax setup' before using AutomatosX
 # This command:
 #   - Creates .automatosx/ directory with all 20 specialized agents
-#   - Sets up configuration files (automatosx.config.json)
+#   - Sets up configuration files (ax.config.json)
 #   - Initializes memory database and session management
 #   - Configures the CLI environment for optimal performance
 
@@ -632,7 +632,7 @@ AutomatosX is a pure CLI orchestration wrapper. It works with your existing AI C
 ### Configuration
 
 ```bash
-# Configure default provider in automatosx.config.json
+# Configure default provider in ax.config.json
 {
   "providers": {
     "default": "gemini",  # or claude, grok, codex
@@ -947,7 +947,7 @@ ax mcp update @modelcontextprotocol/server-filesystem
 #### **Phase 4C: Configuration Hot-Reload**
 ```bash
 # Edit MCP configuration (changes apply automatically)
-vim automatosx.config.json
+vim ax.config.json
 
 # Configuration changes are detected and applied without restart!
 # - Server configurations updated
@@ -1154,7 +1154,7 @@ ax setup -f
 
 - ✅ Creates `.automatosx/` directory structure
 - ✅ Installs all 20 specialized agents (backend, frontend, security, etc.)
-- ✅ Generates `automatosx.config.json` with optimal defaults
+- ✅ Generates `ax.config.json` with optimal defaults
 - ✅ Initializes SQLite memory database
 - ✅ Sets up session management
 - ✅ Configures trace logging
@@ -1300,7 +1300,7 @@ Use `ax setup` for the standard, essential setup. Use `ax init` for an enhanced 
 
 ### Need Help?
 
-- [CHANGELOG.md](CHANGELOG.md) - Full v7.0.0 changes
+- [GitHub Releases (https://github.com/defai-digital/automatosx/releases)](GitHub Releases (https://github.com/defai-digital/automatosx/releases)) - Full v7.0.0 changes
 - [GitHub Issues](https://github.com/defai-digital/automatosx/issues) - Report migration issues
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common problems
 

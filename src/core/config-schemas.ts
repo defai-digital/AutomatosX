@@ -21,6 +21,7 @@ import { VALIDATION_LIMITS } from './validation-limits.js';
 /**
  * Provider name whitelist for security
  * Prevents command injection via provider names
+ * v9.2.0: Added 'ax-cli', deprecated 'glm' (kept for backward compatibility)
  */
 const providerNameSchema = z.enum([
   'claude',
@@ -29,7 +30,8 @@ const providerNameSchema = z.enum([
   'gemini-cli',
   'openai',
   'codex',
-  'grok',
+  'ax-cli',        // v9.2.0: Multi-model provider (GLM, xAI, OpenAI, Anthropic, Ollama, DeepSeek, Llama)
+  'glm',           // v9.2.0: DEPRECATED - use 'ax-cli' instead
   'test-provider'
 ]).describe('Provider name (whitelisted for security)');
 

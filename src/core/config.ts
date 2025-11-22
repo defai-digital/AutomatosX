@@ -1,11 +1,14 @@
 /**
- * Configuration Management - v5.0+
+ * Configuration Management - v9.2.0+
  *
  * Supports both YAML and JSON configuration files.
- * Priority: .automatosx/config.yaml > automatosx.config.yaml >
- *           .automatosx/config.json > automatosx.config.json >
+ * Priority: .automatosx/config.yaml > ax.config.yaml > automatosx.config.yaml (deprecated) >
+ *           .automatosx/config.json > ax.config.json > automatosx.config.json (deprecated) >
  *           ~/.automatosx/config.yaml > ~/.automatosx/config.json >
  *           DEFAULT_CONFIG
+ *
+ * v9.2.0: ax.config.{yaml,json} is now the preferred config filename.
+ *         automatosx.config.{yaml,json} is deprecated but still supported.
  */
 
 import { readFile, writeFile } from 'fs/promises';
@@ -70,14 +73,16 @@ export function clearConfigCache(): void {
  * Checks cache first to avoid repeated file system access and parsing.
  * Cache TTL: 60 seconds.
  *
- * Priority:
+ * Priority (v9.2.0):
  *   1. .automatosx/config.yaml (highest)
  *   2. .automatosx/config.json
- *   3. automatosx.config.yaml
- *   4. automatosx.config.json
- *   5. ~/.automatosx/config.yaml
- *   6. ~/.automatosx/config.json
- *   7. DEFAULT_CONFIG (fallback)
+ *   3. ax.config.yaml
+ *   4. ax.config.json
+ *   5. automatosx.config.yaml (deprecated)
+ *   6. automatosx.config.json (deprecated)
+ *   7. ~/.automatosx/config.yaml
+ *   8. ~/.automatosx/config.json
+ *   9. DEFAULT_CONFIG (fallback)
  */
 export async function loadConfig(projectDir: string): Promise<AutomatosXConfig> {
   // Check cache first
@@ -104,17 +109,28 @@ export async function loadConfig(projectDir: string): Promise<AutomatosXConfig> 
  * you specifically need to bypass the cache.
  */
 async function loadConfigUncached(projectDir: string): Promise<AutomatosXConfig> {
-  // Try project configs in priority order
-  const projectConfigs = [
-    resolvePath(projectDir, '.automatosx', 'config.yaml'),
-    resolvePath(projectDir, '.automatosx', 'config.json'),
-    resolvePath(projectDir, 'automatosx.config.yaml'),
-    resolvePath(projectDir, 'automatosx.config.json')
+  // Try project configs in priority order (v9.2.0: ax.config.json is preferred)
+  const projectConfigs: Array<{ path: string; deprecated?: boolean }> = [
+    { path: resolvePath(projectDir, '.automatosx', 'config.yaml') },
+    { path: resolvePath(projectDir, '.automatosx', 'config.json') },
+    { path: resolvePath(projectDir, 'ax.config.yaml') },
+    { path: resolvePath(projectDir, 'ax.config.json') },
+    { path: resolvePath(projectDir, 'automatosx.config.yaml'), deprecated: true },
+    { path: resolvePath(projectDir, 'automatosx.config.json'), deprecated: true }
   ];
 
-  for (const configPath of projectConfigs) {
+  for (const { path: configPath, deprecated } of projectConfigs) {
     if (existsSync(configPath)) {
       logger.debug('Loading config from path', { path: normalizePath(configPath) });
+
+      // Show deprecation warning for old filenames
+      if (deprecated) {
+        logger.warn('⚠️  DEPRECATED: automatosx.config.{yaml,json} is deprecated.');
+        logger.warn('   Please rename to ax.config.{yaml,json} for future compatibility.');
+        logger.warn('   Migration: mv automatosx.config.json ax.config.json');
+        logger.warn('   Support will be removed in v10.0.0.');
+      }
+
       return await loadConfigFile(configPath);
     }
   }

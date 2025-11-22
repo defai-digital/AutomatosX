@@ -263,7 +263,7 @@ describe('Status Command', () => {
 
       // Create config file
       await writeFile(
-        join(testDir, 'automatosx.config.json'),
+        join(testDir, 'ax.config.json'),
         JSON.stringify({ providers: {} }, null, 2),
         'utf-8'
       );
@@ -505,7 +505,7 @@ describe('Status Command', () => {
       await mkdir(join(automatosxDir, 'agents'), { recursive: true });
 
       await writeFile(
-        join(testDir, 'automatosx.config.json'),
+        join(testDir, 'ax.config.json'),
         JSON.stringify({ providers: {} }, null, 2),
         'utf-8'
       );

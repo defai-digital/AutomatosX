@@ -76,7 +76,7 @@ Creates the following structure:
 
 ```
 project/
-├── automatosx.config.json      # Configuration file
+├── ax.config.json      # Configuration file
 └── .automatosx/
     ├── agents/                 # Agent profiles (5 examples)
     │   ├── assistant.yaml
@@ -130,7 +130,7 @@ automatosx setup --config ./my-config.json
 ✅ AutomatosX initialized successfully!
 
 Next steps:
-  1. Review automatosx.config.json
+  1. Review ax.config.json
   2. Explore example agents: automatosx list agents
   3. Run an agent: automatosx run assistant "Hello!"
 
@@ -515,7 +515,7 @@ automatosx status --check-providers
 📊 System Health: ✅ HEALTHY
 
 Configuration:
-  Config File: /project/automatosx.config.json
+  Config File: /project/ax.config.json
   Status: ✅ Valid
 
 Providers:

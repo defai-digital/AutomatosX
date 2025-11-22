@@ -90,7 +90,7 @@ GOOGLE_API_KEY=your-key-here
 
 #### 4. File Operations
 
-AutomatosX respects path validation settings in `automatosx.config.json`:
+AutomatosX respects path validation settings in `ax.config.json`:
 
 ```json
 {
@@ -109,7 +109,7 @@ AutomatosX respects path validation settings in `automatosx.config.json`:
 - Verify package provenance before installation
 - Use `npm ci` instead of `npm install` in CI/CD
 - Enable dependency scanning (Dependabot)
-- Review the CHANGELOG.md for security updates
+- Review the GitHub Releases (https://github.com/defai-digital/automatosx/releases) for security updates
 
 #### 6. Memory Database
 
@@ -144,7 +144,7 @@ AutomatosX respects path validation settings in `automatosx.config.json`:
 Security updates are published via:
 
 1. **GitHub Security Advisories**
-2. **Release notes** in `CHANGELOG.md`
+2. **Release notes** in `GitHub Releases (https://github.com/defai-digital/automatosx/releases)`
 3. **npm security advisories**
 
 To stay informed:

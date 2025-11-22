@@ -529,7 +529,7 @@ wait
 
 ### Concurrency Limits
 
-Configure max concurrent agents in `automatosx.config.json`:
+Configure max concurrent agents in `ax.config.json`:
 
 ```json
 {

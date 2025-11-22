@@ -126,7 +126,7 @@ describe('List Command', () => {
       };
 
       await writeFile(
-        join(testDir, 'automatosx.config.json'),
+        join(testDir, 'ax.config.json'),
         JSON.stringify(config, null, 2),
         'utf-8'
       );

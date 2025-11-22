@@ -194,7 +194,7 @@ ax init /path/to/project --force
 2. ✅ Installs/updates 5 example agents
 3. ✅ Installs/updates 15 example abilities
 4. ✅ Installs/updates 5 agent templates (v5.0+)
-5. ✅ Creates/updates `automatosx.config.json`
+5. ✅ Creates/updates `ax.config.json`
 6. ✅ Sets up Claude Code integration (`.claude/` directory)
 7. ✅ Updates `.gitignore` with AutomatosX entries
 
@@ -269,7 +269,7 @@ codex --version
 **Explanation**: AutomatosX loads config in this priority order:
 
 1. `.automatosx/config.json` (project-specific)
-2. `automatosx.config.json` (project root)
+2. `ax.config.json` (project root)
 3. `~/.automatosx/config.json` (user global)
 
 **Solution**:
@@ -404,7 +404,7 @@ ax free-tier status
 
 # If exhausted, wait for midnight UTC reset
 # Or enable fallback providers:
-# Edit automatosx.config.json:
+# Edit ax.config.json:
 {
   "providers": {
     "gemini-cli": { "priority": 1 },
@@ -413,7 +413,7 @@ ax free-tier status
 }
 
 # Check tracking is enabled
-cat automatosx.config.json | grep -A3 "limitTracking"
+cat ax.config.json | grep -A3 "limitTracking"
 # Should show: "enabled": true, "window": "daily"
 ```
 
@@ -556,7 +556,7 @@ ax providers test --provider gemini-cli
 # If test fails:
 # 1. Check installation: gemini --version
 # 2. Check authentication: gemini whoami
-# 3. Check config: cat automatosx.config.json | grep -A5 "gemini-cli"
+# 3. Check config: cat ax.config.json | grep -A5 "gemini-cli"
 
 # View routing trace to debug
 ax providers trace --follow

@@ -210,7 +210,7 @@ Impact: ✅ Positive - Better agent capability
 
 #### Scenario 2: Custom maxTokens for Cost Control
 ```
-Before: Custom setting in automatosx.config.json
+Before: Custom setting in ax.config.json
 After:  Still works - no change needed
 Impact: ✅ No impact - your settings preserved
 ```
@@ -258,7 +258,7 @@ provider:
     temperature: 0  # QA needs determinism
 
 # ❌ Bad: Global restriction
-# automatosx.config.json
+# ax.config.json
 {
   "providers": {
     "openai": {

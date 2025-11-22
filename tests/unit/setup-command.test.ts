@@ -59,7 +59,7 @@ describe('Setup Command', () => {
       // Therefore we don't check for automatosx/PRD/ or automatosx/tmp/ here
 
       // Verify config file
-      const configPath = join(testDir, 'automatosx.config.json');
+      const configPath = join(testDir, 'ax.config.json');
       await expect(pathExists(configPath)).resolves.toBe(true);
 
       const config = JSON.parse(await readFile(configPath, 'utf-8'));

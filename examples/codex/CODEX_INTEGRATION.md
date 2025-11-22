@@ -60,7 +60,7 @@ ax status
 ax provider-limits
 ```
 
-**Provider Priority**: Codex is configured with priority 1 (highest) in `automatosx.config.json`
+**Provider Priority**: Codex is configured with priority 1 (highest) in `ax.config.json`
 
 ```json
 {
@@ -79,7 +79,7 @@ ax provider-limits
 
 ### Configuration File
 
-Edit `automatosx.config.json` to customize Codex provider settings:
+Edit `ax.config.json` to customize Codex provider settings:
 
 ```json
 {
@@ -192,7 +192,7 @@ $ ax run backend "implement authentication API"
 ✓ Task completed successfully with gemini-cli
 ```
 
-**Provider Priority** (configured in `automatosx.config.json`):
+**Provider Priority** (configured in `ax.config.json`):
 1. **OpenAI Codex** (priority: 1) - Primary
 2. **Gemini CLI** (priority: 2) - First fallback
 3. **Claude Code** (priority: 3) - Second fallback
@@ -249,7 +249,7 @@ Codex CLI can run as an MCP (Model Context Protocol) server:
 # Start Codex as MCP server
 codex mcp-server
 
-# Or configure in automatosx.config.json
+# Or configure in ax.config.json
 {
   "providers": {
     "openai": {
@@ -474,7 +474,7 @@ npm run example:codex
 1. **Use Terminal CLI**: Primary interface is `ax` commands, not direct Codex CLI
 2. **Leverage Memory**: Reference past decisions and designs
 3. **Start Simple**: Test with small tasks before complex workflows
-4. **Review Configurations**: Check `automatosx.config.json` for timeouts and retries
+4. **Review Configurations**: Check `ax.config.json` for timeouts and retries
 5. **Keep Agents Specialized**: Use the right agent for each task type
 6. **Monitor Provider Limits**: Use `ax provider-limits` to check quota
 7. **Enable Fallbacks**: Configure backup providers (Gemini, Claude) for reliability
@@ -484,7 +484,7 @@ npm run example:codex
 - **AutomatosX Docs**: https://github.com/defai-digital/automatosx
 - **Codex CLI Docs**: https://docs.openai.com/codex-cli
 - **Agent Directory**: `.automatosx/agents/`
-- **Configuration**: `automatosx.config.json`
+- **Configuration**: `ax.config.json`
 - **Memory Database**: `.automatosx/memory/memories.db`
 - **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
 - **Code Examples**: `examples/codex/usage-examples.ts`

@@ -36,7 +36,7 @@ describe('CLI Run Command - Parallel Execution', () => {
 
     // Create basic config with mock provider
     await writeFile(
-      join(testDir, 'automatosx.config.json'),
+      join(testDir, 'ax.config.json'),
       JSON.stringify({
         providers: {
           'claude-code': {
@@ -257,7 +257,7 @@ model:
     it('should respect maxConcurrentAgents from config', async () => {
       // Update config with low concurrency limit
       await writeFile(
-        join(testDir, 'automatosx.config.json'),
+        join(testDir, 'ax.config.json'),
         JSON.stringify({
           providers: {
             'claude-code': {
@@ -308,7 +308,7 @@ systemPrompt: Test prompt
 
     it('should work without explicit config file', async () => {
       // Remove config file
-      await rm(join(testDir, 'automatosx.config.json'), { force: true });
+      await rm(join(testDir, 'ax.config.json'), { force: true });
 
       // Create agents
       const agentsDir = join(automatosxDir, 'agents');

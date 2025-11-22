@@ -74,7 +74,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
   handler: async (argv) => {
     const projectDir = resolve(argv.path || '.');
     const automatosxDir = join(projectDir, '.automatosx');
-    const configPath = join(projectDir, 'automatosx.config.json');
+    const configPath = join(projectDir, 'ax.config.json'); // v9.2.0: Renamed from automatosx.config.json
 
     // Get version from package.json dynamically
     const packageRoot = getPackageRoot();
@@ -268,7 +268,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX set up successfully!\n'));
       console.log(chalk.gray('Next steps:'));
-      console.log(chalk.gray('  1. Review automatosx.config.json'));
+      console.log(chalk.gray('  1. Review ax.config.json')); // v9.2.0: Updated config filename
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
       console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
 
@@ -719,7 +719,8 @@ async function updateGitignore(projectDir: string): Promise<void> {
     '.automatosx/memory/',
     '.automatosx/logs/',
     'automatosx/tmp/  # v5.2: Temporary files',
-    'automatosx.config.json  # Optional: remove to track config',
+    'ax.config.json  # v9.2.0: Optional - remove to track config',
+    'automatosx.config.json  # DEPRECATED: old config name (backward compat)',
     ''
   ].join('\n');
 
@@ -1209,7 +1210,7 @@ async function setupAutomatosXIntegrationMd(
   force: boolean
 ): Promise<void> {
   const integrationMdPath = join(projectDir, 'AutomatosX-Integration.md');
-  const templatePath = join(packageRoot, 'examples/AutomatosX-Integration.md');
+  const templatePath = join(packageRoot, 'docs/AutomatosX-Integration.md'); // BUGFIX: Changed from examples/ to docs/
 
   try {
     const exists = await checkExists(integrationMdPath);

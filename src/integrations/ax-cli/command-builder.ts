@@ -10,7 +10,7 @@
  * @module integrations/ax-cli/command-builder
  */
 
-import type { GrokOptions } from './interface.js';
+import type { AxCliOptions } from './interface.js';
 import type { AxCliCommand } from './types.js';
 import { logger } from '../../utils/logger.js';
 
@@ -40,7 +40,7 @@ export class AxCliCommandBuilder {
    * @returns Command object with args and full command string
    * @throws Error if prompt exceeds maximum length
    */
-  build(prompt: string, options: GrokOptions): AxCliCommand {
+  build(prompt: string, options: AxCliOptions): AxCliCommand {
     // Validate prompt length (Bug #11 fix)
     if (prompt.length > AxCliCommandBuilder.MAX_PROMPT_LENGTH) {
       throw new Error(
@@ -163,7 +163,7 @@ export class AxCliCommandBuilder {
    * @param options - Execution options
    * @returns Environment variable object
    */
-  buildEnv(options: GrokOptions): Record<string, string> {
+  buildEnv(options: AxCliOptions): Record<string, string> {
     const env: Record<string, string> = {};
 
     if (options.apiKey) {

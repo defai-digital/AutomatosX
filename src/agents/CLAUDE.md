@@ -11,7 +11,7 @@ This file provides guidance for working with AutomatosX agents: profiles, delega
 1. **DelegationParser** (`delegation-parser.ts`) - Parses delegation syntax
 2. **ProfileLoader** (`profile-loader.ts`) - Loads agent profiles
 3. **Agent Templates** (`.automatosx/agents/`) - Agent definitions
-4. **Team Configs** (`automatosx.config.json`) - Team settings
+4. **Team Configs** (`ax.config.json`) - Team settings
 
 ### Agent Profile Structure
 

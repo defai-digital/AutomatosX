@@ -47,7 +47,7 @@ describe('Config Management', () => {
         }
       };
 
-      const configPath = join(testDir, 'automatosx.config.json');
+      const configPath = join(testDir, 'ax.config.json');
       await writeFile(configPath, JSON.stringify(projectConfig), 'utf-8');
 
       const config = await loadConfig(testDir);
@@ -76,7 +76,7 @@ describe('Config Management', () => {
         }
       };
 
-      const configPath = join(testDir, 'automatosx.config.json');
+      const configPath = join(testDir, 'ax.config.json');
       await writeFile(configPath, JSON.stringify(userConfig), 'utf-8');
 
       const config = await loadConfig(testDir);
@@ -97,7 +97,7 @@ describe('Config Management', () => {
         }
       };
 
-      const configPath = join(testDir, 'automatosx.config.json');
+      const configPath = join(testDir, 'ax.config.json');
       await writeFile(configPath, JSON.stringify(partialConfig), 'utf-8');
 
       const config = await loadConfig(testDir);

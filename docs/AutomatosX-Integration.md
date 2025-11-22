@@ -270,7 +270,7 @@ AutomatosX supports multiple AI providers with intelligent routing.
 
 ### Provider Priority
 
-Configured in `automatosx.config.json`:
+Configured in `ax.config.json`:
 
 ```json
 {
@@ -432,7 +432,7 @@ ax run backend "Implement the spec from automatosx/PRD/auth-design.md in src/aut
 
 ### Main Configuration File
 
-Edit `automatosx.config.json` to customize behavior:
+Edit `ax.config.json` to customize behavior:
 
 ```json
 {
@@ -651,7 +651,7 @@ ax memory export > backup-$(date +%Y%m%d).json
 # Increase timeout for specific run
 ax run backend "complex task" --timeout 300000
 
-# Or edit automatosx.config.json:
+# Or edit ax.config.json:
 # "execution": { "defaultTimeout": 300000 }
 ```
 
@@ -699,7 +699,7 @@ ax run backend "task" --provider grok --streaming
 
 Cost estimation is **disabled by default** (pricing changes frequently).
 
-To enable, edit `automatosx.config.json`:
+To enable, edit `ax.config.json`:
 ```json
 {
   "costEstimation": {
@@ -856,7 +856,7 @@ ax session create work backend quality
 
 **Internal Configuration & Definitions:**
 - **Agent Profiles**: `.automatosx/agents/` (definitions of specialized agents)
-- **Project Configuration**: `automatosx.config.json` (main project settings)
+- **Project Configuration**: `ax.config.json` (main project settings)
 
 ### Getting Help
 

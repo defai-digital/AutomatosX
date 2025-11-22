@@ -55,7 +55,7 @@ export OPENAI_API_KEY="your-api-key-here"
 
 ### Basic Configuration
 
-OpenAI Codex provider is pre-configured in `automatosx.config.json`:
+OpenAI Codex provider is pre-configured in `ax.config.json`:
 
 ```json
 {

@@ -22,7 +22,7 @@ The `sync-all-versions.js` tool synchronizes version references in documentation
 - `package.json` - Managed by `npm version` commands
 
 ⚠️ **Manual Updates Required**:
-1. `CHANGELOG.md` - Release notes (content-specific)
+1. `GitHub Releases (https://github.com/defai-digital/automatosx/releases)` - Release notes (content-specific)
 
 **Note**: `version.json` has been removed in v5.3.7 to simplify version management.
 
@@ -80,7 +80,7 @@ npm run sync:all-versions
 # 3. Review changes
 git diff
 
-# 4. Update CHANGELOG.md (manual)
+# 4. Update GitHub Releases (https://github.com/defai-digital/automatosx/releases) (manual)
 # Add release notes for the new version
 
 # 5. Update test count badges (manual)
@@ -150,8 +150,8 @@ VERSION=$(node -p "require('./package.json').version")
 echo "Current version: $VERSION"
 grep -n "$VERSION" README.md CLAUDE.md
 
-# 3. Check CHANGELOG.md has entry
-grep "## \[$VERSION\]" CHANGELOG.md
+# 3. Check GitHub Releases (https://github.com/defai-digital/automatosx/releases) has entry
+grep "## \[$VERSION\]" GitHub Releases (https://github.com/defai-digital/automatosx/releases)
 # If not found, add release notes manually
 
 # 4. Run tests
@@ -169,7 +169,7 @@ npm run typecheck
 
 ### Manual Updates Required
 
-1. **CHANGELOG.md**
+1. **GitHub Releases (https://github.com/defai-digital/automatosx/releases)**
    - Tool checks if version exists but doesn't create entries
    - You must manually write release notes
 
@@ -232,7 +232,7 @@ echo "✅ Version consistency verified"
 - [x] **Test count badges** (optional) - If tests are run first
 
 ### Manual Updates Required
-- [ ] **CHANGELOG.md** - Release notes (content-specific)
+- [ ] **GitHub Releases (https://github.com/defai-digital/automatosx/releases)** - Release notes (content-specific)
 - [ ] **GitHub Release Notes** - When creating releases
 
 ### Removed (Simplified in v2.0)
@@ -247,7 +247,7 @@ echo "✅ Version consistency verified"
 - ✅ Use package.json as single source of truth
 - ✅ Update README.md status line
 - ✅ Update CLAUDE.md version headers
-- ✅ Check CHANGELOG.md has entry
+- ✅ Check GitHub Releases (https://github.com/defai-digital/automatosx/releases) has entry
 - ✅ Colorful console output
 - ✅ Automatically run tests and update test counts (optional)
 - ✅ **SIMPLIFIED**: Removed version.json and sync-version.js
@@ -260,7 +260,7 @@ echo "✅ Version consistency verified"
 
 ### Future Enhancements (v3.0)
 - [ ] Calculate coverage percentage and update badges automatically
-- [ ] Interactive mode for CHANGELOG.md entries
+- [ ] Interactive mode for GitHub Releases (https://github.com/defai-digital/automatosx/releases) entries
 - [ ] Dry-run mode for verification
 - [ ] Automatic git commit after sync
 - [ ] GitHub release notes generation
@@ -309,10 +309,10 @@ git commit -m "chore: prepare release v5.2.3"
 **Cause**: CLAUDE.md header format changed
 **Fix**: Update regex patterns in `tools/sync-all-versions.js` lines ~114-120
 
-### "CHANGELOG.md does not have entry"
+### "GitHub Releases (https://github.com/defai-digital/automatosx/releases) does not have entry"
 
 **Expected**: Tool only checks, doesn't create entries
-**Action**: Manually add release notes to CHANGELOG.md
+**Action**: Manually add release notes to GitHub Releases (https://github.com/defai-digital/automatosx/releases)
 
 ### Test counts are outdated
 
@@ -340,8 +340,8 @@ Running tests to get count...
 
 ✓ Updated test counts in README.md (1,735 tests)
 
-⚠ CHANGELOG.md does not have entry for v5.3.7
-  → Please add release notes to CHANGELOG.md
+⚠ GitHub Releases (https://github.com/defai-digital/automatosx/releases) does not have entry for v5.3.7
+  → Please add release notes to GitHub Releases (https://github.com/defai-digital/automatosx/releases)
 
 ✨ Version sync completed successfully!
 
@@ -363,7 +363,7 @@ After running the tool and following next steps:
 ✅ All tests passing (1,538/1,538)
 ✅ TypeScript check passing (0 errors)
 ✅ Version consistent across all files
-✅ CHANGELOG.md has release notes
+✅ GitHub Releases (https://github.com/defai-digital/automatosx/releases) has release notes
 ✅ Test count badges updated
 ✅ Git commit created with clear message
 ✅ Git tag created (e.g., v5.2.3)

@@ -115,7 +115,7 @@ import type { Provider } from '../types/provider.js';
 **Priority order:**
 
 1. `.automatosx/config.json` (project-specific, created by `ax setup`)
-2. `automatosx.config.json` (project root, manually created)
+2. `ax.config.json` (project root, manually created)
 3. `~/.automatosx/config.json` (user global)
 4. `DEFAULT_CONFIG` (defaults in `src/types/config.ts`)
 

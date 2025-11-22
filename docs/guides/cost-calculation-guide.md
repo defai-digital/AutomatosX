@@ -98,7 +98,7 @@ Cache Statistics
 
 ### Step 1: Edit Configuration
 
-Open `automatosx.config.json` in your project root:
+Open `ax.config.json` in your project root:
 
 ```json
 {
@@ -404,7 +404,7 @@ In your project README, document:
 ```markdown
 ## Cost Estimation
 
-This project has cost estimation **enabled** (see automatosx.config.json).
+This project has cost estimation **enabled** (see ax.config.json).
 
 **Last Updated**: 2025-11-01
 **Pricing Data Source**: Provider official websites
@@ -434,7 +434,7 @@ This project has cost estimation **enabled** (see automatosx.config.json).
 **Check:**
 ```bash
 # Verify cost estimation is enabled
-grep -A 2 "costEstimation" automatosx.config.json
+grep -A 2 "costEstimation" ax.config.json
 ```
 
 **Expected** (if you want constraints enforced):
@@ -468,7 +468,7 @@ If Gemini is available, it should be automatically prioritized.
 **Debug:**
 ```bash
 # Check config is valid
-cat automatosx.config.json | jq .
+cat ax.config.json | jq .
 
 # Reload configuration
 ax restart  # If using daemon
@@ -494,7 +494,7 @@ Cost estimation was always active:
 
 Cost estimation is opt-in:
 
-**Step 1**: Add to `automatosx.config.json`:
+**Step 1**: Add to `ax.config.json`:
 ```json
 {
   "costEstimation": {

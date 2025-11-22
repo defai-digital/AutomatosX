@@ -87,7 +87,7 @@ ax setup
 
 # This creates:
 # - .automatosx/ directory with agents, memory, logs
-# - automatosx.config.json with Codex configured
+# - ax.config.json with Codex configured
 # - automatosx/PRD/ and automatosx/tmp/ workspace directories
 # - .gitignore with proper exclusions
 # - Git repository (if not already initialized)
@@ -157,7 +157,7 @@ codex mcp-server
 
 ### Provider Settings
 
-Edit `automatosx.config.json`:
+Edit `ax.config.json`:
 
 ```json
 {

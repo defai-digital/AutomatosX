@@ -131,7 +131,7 @@ claude whoami
 
 ### Basic Configuration
 
-Claude Code provider is pre-configured in `automatosx.config.json`:
+Claude Code provider is pre-configured in `ax.config.json`:
 
 ```json
 {

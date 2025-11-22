@@ -103,13 +103,13 @@ AutomatosX supports multiple AI providers with automatic fallback:
 - **Gemini** (Google) - Alternative provider
 - **OpenAI** (GPT) - Alternative provider
 
-Configuration is in `automatosx.config.json`.
+Configuration is in `ax.config.json`.
 
 ## Configuration
 
 ### Project Configuration
 
-Edit `automatosx.config.json` to customize:
+Edit `ax.config.json` to customize:
 
 ```json
 {
@@ -285,14 +285,14 @@ ax memory search "similar task"
 1. **Use Natural Language in Claude Code**: Let Claude Code coordinate with agents for complex tasks
 2. **Leverage Memory**: Reference past decisions and designs
 3. **Start Simple**: Test with small tasks before complex workflows
-4. **Review Configurations**: Check `automatosx.config.json` for timeouts and retries
+4. **Review Configurations**: Check `ax.config.json` for timeouts and retries
 5. **Keep Agents Specialized**: Use the right agent for each task type
 
 ## Documentation
 
 - **AutomatosX Docs**: https://github.com/defai-digital/automatosx
 - **Agent Directory**: `.automatosx/agents/`
-- **Configuration**: `automatosx.config.json`
+- **Configuration**: `ax.config.json`
 - **Memory Database**: `.automatosx/memory/memories.db`
 - **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
 

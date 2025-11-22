@@ -805,8 +805,8 @@ export class Router {
       ErrorCode.PROVIDER_NO_AVAILABLE,
       [
         'Run "ax doctor" to diagnose provider issues',
-        'Install missing provider CLIs (claude, gemini, codex, grok)',
-        'Verify provider configuration in automatosx.config.json',
+        'Install missing provider CLIs (claude, gemini, codex)',
+        'Verify provider configuration in ax.config.json', // v9.2.0: Updated filename
         'Check if providers require authentication setup',
         'Review error logs for more details: .automatosx/logs/'
       ],

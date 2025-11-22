@@ -142,7 +142,7 @@ npm run test:coverage
 2. **Type check**: `npm run typecheck`
 3. **Build**: `npm run build`
 4. **Update documentation** if needed
-5. **Update CHANGELOG.md** with your changes
+5. **Update GitHub Releases (https://github.com/defai-digital/automatosx/releases)** with your changes
 
 ### Commit Messages
 
@@ -209,7 +209,7 @@ Git hooks will validate your commit messages:
 
 #### Benefits
 
-- 📝 Automated CHANGELOG generation
+- 📝 Automated GitHub release notes
 - 🏷️ Semantic version automation
 - 📊 Clear commit history
 - 🤝 Better collaboration
@@ -258,7 +258,7 @@ Git hooks will validate your commit messages:
    ## Checklist
    - [ ] Code follows project style
    - [ ] Documentation updated
-   - [ ] CHANGELOG.md updated
+   - [ ] GitHub Releases (https://github.com/defai-digital/automatosx/releases) updated
    - [ ] No breaking changes (or documented)
    ```
 
@@ -420,7 +420,7 @@ By contributing, you agree that your contributions will be licensed under the El
 
 Contributors will be recognized in:
 
-- CHANGELOG.md
+- GitHub Releases (https://github.com/defai-digital/automatosx/releases)
 - GitHub contributors page
 - Release notes (for significant contributions)
 

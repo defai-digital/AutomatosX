@@ -1,29 +1,35 @@
 /**
- * GlmProvider - Zhipu AI GLM Provider via ax-cli (v9.1.0)
+ * AxCliProvider - Multi-Provider via ax-cli (v9.2.0)
  *
- * Provides access to Zhipu AI GLM models through ax-cli.
+ * Provides access to multiple AI models through ax-cli.
+ * Default provider: GLM (Zhipu AI)
  * Default model: glm-4.6
  *
- * ax-cli supports multiple providers:
+ * Supported providers via ax-cli:
  * - GLM (Zhipu AI) - default
  * - xAI (Grok)
  * - OpenAI
  * - Anthropic
  * - Ollama
+ * - DeepSeek (future)
+ * - Llama (future)
  *
- * @module providers/glm-provider
+ * @module providers/ax-cli-provider
  */
 
 import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
-import { AxCliAdapter } from '../integrations/ax-cli/adapter.js';
-import type { GrokOptions } from '../integrations/ax-cli/interface.js';
+import { HybridAxCliAdapter, type AdapterMode } from '../integrations/ax-cli-sdk/hybrid-adapter.js';
+import type { AxCliOptions } from '../integrations/ax-cli/interface.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Extended provider config for GLM
+ * Extended provider config for ax-cli
  */
-export interface GlmProviderConfig extends ProviderConfig {
+export interface AxCliProviderConfig extends ProviderConfig {
+  /** Execution mode: "sdk", "cli", or "auto" (default: "auto") */
+  mode?: AdapterMode;
+
   /** ax-cli specific configuration */
   axCli?: {
     /** Provider for ax-cli (default: 'glm') */
@@ -39,41 +45,65 @@ export interface GlmProviderConfig extends ProviderConfig {
     /** Base URL override */
     baseUrl?: string;
   };
+
+  /** ax-cli SDK-specific configuration (only used when mode="sdk" or "auto") */
+  axCliSdk?: {
+    /** Enable streaming events */
+    streamingEnabled?: boolean;
+    /** Reuse agent instances between calls */
+    reuseEnabled?: boolean;
+  };
 }
 
 /**
- * GLM Provider using ax-cli
+ * AxCli Provider - Multi-Model AI Provider
  *
- * Simple, single-CLI provider for Zhipu AI GLM models.
+ * Model-agnostic provider supporting multiple AI models through ax-cli.
  *
  * **Default Configuration**:
  * - Provider: glm (Zhipu AI)
  * - Model: glm-4.6
  * - CLI: ax-cli
  *
- * **User Flexibility**:
- * Users can configure ax-cli to use other providers (Grok, OpenAI, etc.)
- * by setting `axCli.provider` in configuration or via `~/.ax-cli/config.json`.
+ * **Supported Models**:
+ * Users can configure ax-cli to use different models:
+ * - GLM (Zhipu AI) - default
+ * - xAI (Grok)
+ * - OpenAI (GPT)
+ * - Anthropic (Claude)
+ * - Ollama (local models)
+ * - DeepSeek (future)
+ * - Llama (future)
+ *
+ * **Configuration**:
+ * Set `axCli.provider` in configuration or via `~/.ax-cli/config.json`.
  *
  * Features:
  * - Direct ax-cli integration
  * - No fallback complexity
  * - Full ax-cli v2.5.1+ feature support
- * - Multi-provider capability
+ * - Multi-model capability
  */
-export class GlmProvider extends BaseProvider {
-  private adapter: AxCliAdapter;
-  protected override config: GlmProviderConfig;
+export class AxCliProvider extends BaseProvider {
+  private adapter: HybridAxCliAdapter;
+  protected override config: AxCliProviderConfig;
 
-  constructor(config: GlmProviderConfig) {
+  constructor(config: AxCliProviderConfig) {
     super(config);
     this.config = config;
-    this.adapter = new AxCliAdapter();
 
-    logger.info('GlmProvider initialized', {
+    // Initialize hybrid adapter with mode selection
+    const mode = config.mode || 'auto';  // Default to auto mode
+    this.adapter = new HybridAxCliAdapter({
+      mode,
+      sdk: config.axCliSdk
+    });
+
+    logger.info('AxCliProvider initialized', {
+      mode,
       provider: config.axCli?.provider || 'glm',
       model: config.axCli?.model || 'glm-4.6',
-      command: this.adapter.getCommand()
+      sdkOptions: config.axCliSdk
     });
   }
 
@@ -88,7 +118,7 @@ export class GlmProvider extends BaseProvider {
     const axCliConfig = this.config.axCli || {};
 
     // Build execution options with GLM defaults
-    const options: GrokOptions = {
+    const options: AxCliOptions = {
       provider: axCliConfig.provider || 'glm',
       model: request.model || axCliConfig.model || 'glm-4.6',
       maxToolRounds: axCliConfig.maxToolRounds || 400,
@@ -167,12 +197,28 @@ export class GlmProvider extends BaseProvider {
   }
 
   /**
-   * Get CLI command
+   * Get CLI command (or "ax-cli-sdk" if using SDK mode)
    *
-   * @returns CLI command name ("ax-cli")
+   * @returns Command name ("ax-cli" or "ax-cli-sdk")
    */
   public getCLICommand(): string {
     return this.adapter.getCommand();
+  }
+
+  /**
+   * Get active execution mode
+   *
+   * @returns Active mode ("sdk" or "cli") or null if not initialized
+   */
+  public getActiveMode(): 'sdk' | 'cli' | null {
+    return this.adapter.getActiveMode();
+  }
+
+  /**
+   * Force switch to CLI mode (for debugging or fallback)
+   */
+  public switchToCliMode(): void {
+    this.adapter.switchToCliMode();
   }
 
   /**
@@ -181,6 +227,16 @@ export class GlmProvider extends BaseProvider {
    * @returns Mock response content
    */
   protected override getMockResponse(): string {
-    return 'Mock GLM response for testing';
+    return 'Mock ax-cli response for testing';
   }
 }
+
+/**
+ * @deprecated Use AxCliProvider instead. Will be removed in v10.0.0.
+ */
+export const GlmProvider = AxCliProvider;
+
+/**
+ * @deprecated Use AxCliProviderConfig instead. Will be removed in v10.0.0.
+ */
+export type GlmProviderConfig = AxCliProviderConfig;

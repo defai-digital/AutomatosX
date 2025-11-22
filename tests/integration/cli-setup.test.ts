@@ -39,7 +39,7 @@ describe('CLI: init command', () => {
     await expect(pathExists(join(automatosxDir, 'logs'))).resolves.toBe(true);
 
     // Verify config file
-    const configPath = join(testDir, 'automatosx.config.json');
+    const configPath = join(testDir, 'ax.config.json');
     await expect(pathExists(configPath)).resolves.toBe(true);
   }, 10000);
 

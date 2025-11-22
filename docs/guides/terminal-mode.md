@@ -84,7 +84,7 @@ ax setup ./my-ai-project
 ├── workspaces/      # 代理工作區
 └── logs/            # 系統日誌
 
-automatosx.config.json   # 專案配置檔案
+ax.config.json   # 專案配置檔案
 ```
 
 ### 3. 設定 AI Provider CLI
@@ -518,7 +518,7 @@ I need devops to deploy this to staging
 
 ### 委派配置
 
-在 `automatosx.config.json` 中配置委派行為：
+在 `ax.config.json` 中配置委派行為：
 
 ```json
 {
@@ -578,7 +578,7 @@ ax config reset memory
 AutomatosX 按以下優先順序載入配置：
 
 1. `.automatosx/config.json` - 專案特定（由 `ax setup` 創建）
-2. `automatosx.config.json` - 專案根目錄（手動創建）
+2. `ax.config.json` - 專案根目錄（手動創建）
 3. `~/.automatosx/config.json` - 使用者全域
 4. 內建預設值 - `src/types/config.ts`
 
@@ -729,7 +729,7 @@ ax run backend "Task" --provider openai
 
 ### Provider 優先順序
 
-在 `automatosx.config.json` 中設定：
+在 `ax.config.json` 中設定：
 
 ```json
 {
@@ -911,7 +911,7 @@ ax setup
 ax config set execution.defaultTimeout 1500000
 
 # 或在配置檔案中設定
-# automatosx.config.json
+# ax.config.json
 {
   "execution": {
     "defaultTimeout": 1500000
@@ -936,7 +936,7 @@ ax memory export ./memory-backup.json
 ```bash
 # 在 home 目錄創建全域配置
 mkdir -p ~/.automatosx
-cp automatosx.config.json ~/.automatosx/config.json
+cp ax.config.json ~/.automatosx/config.json
 
 # 所有專案會繼承這個配置（除非有專案特定配置）
 ```

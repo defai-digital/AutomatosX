@@ -109,14 +109,14 @@ test-*.js
 
 # AI assistant runtime directories (user-specific)
 # These directories contain API keys, privacy data, and sensitive configuration
+# CRITICAL: These directories MUST be completely excluded from git
 .claude/
 .gemini/
 .grok/
 .ax-cli/
 
-# BUT allow README files in these directories for documentation
-!.grok/README.md
-!.ax-cli/README.md
+# SECURITY: Do NOT allow ANY files from these directories, even READMEs
+# (Previously allowed .grok/README.md and .ax-cli/README.md - REMOVED for security)
 
 # User-specific configuration and secrets
 **/config.local.json
@@ -132,16 +132,28 @@ test-*.js
 
 # API keys and credentials (additional patterns)
 .api-keys
+.api-key
 .credentials
 credentials.json
 service-account*.json
+**/api-keys/
+**/api-key/
+api-key.txt
+api-keys.txt
+*.apikey
+*-apikey.json
+auth-token*.json
+bearer-token*.json
 
 # Database files with potentially sensitive data
 *.db
 *.sqlite
 *.sqlite3
-!.automatosx/memory/memories.db  # Exception: Allow memory DB tracking if needed
+*.db-shm
+*.db-wal
 !**/*.test.db                     # Exception: Allow test databases
+!**/*-fixture.db                  # Exception: Allow fixture databases
+!**/*-example.db                  # Exception: Allow example databases
 
 # Personal notes and documentation
 PERSONAL*.md
@@ -163,3 +175,40 @@ DRAFT-*.md
 .history/
 *.sublime-*
 # Note: .vscode/ shared config files are allowed via negation rules above
+
+# User session and cache data
+.sessions/
+sessions/
+.cache/
+cache/
+*.session
+*.cache
+.user-data/
+user-data/
+
+# Provider-specific runtime data
+.anthropic/
+.openai/
+.google/
+.xai/
+
+# Local development and testing artifacts
+*.local
+*.dev
+*-local.*
+*-dev.*
+local-*/
+dev-*/
+
+# Backup and snapshot files
+*.backup
+*.bak
+*-backup/
+backups/
+snapshots/
+*.snapshot
+
+# Lock files for user-specific tools (keep package manager locks)
+.yarn-lock.json
+.pnpm-lock.yaml
+# Note: package-lock.json, yarn.lock, pnpm-lock.yaml handled separately

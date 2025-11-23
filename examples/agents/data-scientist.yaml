@@ -83,7 +83,7 @@ abilitySelection:
     "model-deployment": [production-ml, code-generation]
     "model-serving": [production-ml, code-generation]
     mlops: [production-ml, model-monitoring]
-    inference: [production-ml, ml-modeling]
+    "ml-inference": [production-ml, ml-modeling]
     "real-time": [production-ml, code-generation]
     api: [production-ml, code-generation]
     endpoint: [production-ml, code-generation]

@@ -21,11 +21,16 @@ import { PathResolver } from '../../core/path-resolver.js';
 import { logger } from '../../utils/logger.js';
 import { printError } from '../../utils/error-formatter.js';
 import type { AutomatosXConfig } from '../../types/config.js';
+import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
+import { ProfileLoader } from '../../agents/profile-loader.js';
+import { TeamManager } from '../../core/team-manager.js';
+import { join } from 'path';
 
 interface DoctorOptions {
   provider?: string;
   verbose?: boolean;
   fix?: boolean;
+  claudeCode?: boolean;
 }
 
 interface CheckResult {
@@ -59,14 +64,26 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
+      .option('claude-code', {
+        describe: 'Run Claude Code integration diagnostics',
+        type: 'boolean',
+        default: false
+      })
       .example('ax doctor', 'Run all diagnostic checks')
       .example('ax doctor openai', 'Check only OpenAI provider')
       .example('ax doctor --verbose', 'Show detailed diagnostics')
-      .example('ax doctor --fix', 'Auto-fix issues where possible');
+      .example('ax doctor --fix', 'Auto-fix issues where possible')
+      .example('ax doctor --claude-code', 'Check Claude Code integration');
   },
 
   handler: async (argv) => {
     try {
+      // If --claude-code flag is set, run Claude Code diagnostics only
+      if (argv.claudeCode) {
+        await runClaudeCodeDiagnostics(argv.verbose ?? false);
+        return;
+      }
+
       console.log(chalk.bold('\n🏥 AutomatosX Health Check\n'));
 
       const workingDir = process.cwd();
@@ -472,4 +489,142 @@ function getProviderEmoji(provider: string): string {
  */
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Run Claude Code integration diagnostics
+ */
+async function runClaudeCodeDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 Claude Code Integration Diagnostics\n'));
+
+  const workingDir = process.cwd();
+  const automatosxDir = join(workingDir, '.automatosx');
+
+  // Check if .automatosx exists
+  if (!existsSync(automatosxDir)) {
+    console.log(chalk.red('✗ .automatosx directory not found'));
+    console.log(chalk.yellow('\n💡 Setup Required:\n'));
+    console.log(chalk.white('   Run: ax setup'));
+    process.exit(1);
+  }
+
+  // Initialize ProfileLoader and TeamManager
+  const teamManager = new TeamManager(join(automatosxDir, 'teams'));
+  const profileLoader = new ProfileLoader(
+    join(automatosxDir, 'agents'),
+    undefined,
+    teamManager
+  );
+
+  // Create setup helper
+  const setupHelper = new ClaudeCodeSetupHelper({
+    projectDir: workingDir,
+    profileLoader
+  });
+
+  // Run diagnostics
+  const diagnostics = await setupHelper.runDiagnostics();
+
+  // Display results
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string }> = [];
+
+  // Claude Code CLI
+  checks.push({
+    name: 'Claude Code CLI',
+    passed: diagnostics.claudeCodeInstalled,
+    message: diagnostics.claudeCodeInstalled
+      ? `Installed (${diagnostics.claudeCodeVersion})`
+      : 'Not found',
+    fix: diagnostics.claudeCodeInstalled ? undefined : 'Install from: https://code.claude.com'
+  });
+
+  // MCP Server
+  checks.push({
+    name: 'MCP Server Binary',
+    passed: diagnostics.mcpServerAvailable,
+    message: diagnostics.mcpServerAvailable ? 'Available (automatosx-mcp)' : 'Not found',
+    fix: diagnostics.mcpServerAvailable ? undefined : 'Run: npm install'
+  });
+
+  // MCP Registration
+  checks.push({
+    name: 'MCP Registration',
+    passed: diagnostics.mcpServerRegistered,
+    message: diagnostics.mcpServerRegistered ? 'Registered with Claude Code' : 'Not registered',
+    fix: diagnostics.mcpServerRegistered ? undefined : 'Run: ax setup --claude-code'
+  });
+
+  // Manifests
+  checks.push({
+    name: 'Manifests',
+    passed: diagnostics.manifestsGenerated,
+    message: diagnostics.manifestsGenerated ? 'Generated (20 files)' : 'Not generated',
+    fix: diagnostics.manifestsGenerated ? undefined : 'Run: npm run generate:claude-manifests'
+  });
+
+  // Manifest Validation
+  if (diagnostics.manifestsGenerated) {
+    checks.push({
+      name: 'Manifest Validation',
+      passed: diagnostics.manifestsValid,
+      message: diagnostics.manifestsValid ? 'Valid' : 'Invalid',
+      fix: diagnostics.manifestsValid ? undefined : 'Run: npm run generate:claude-manifests'
+    });
+  }
+
+  // Display checks
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+  });
+
+  // Display errors and warnings
+  if (diagnostics.errors.length > 0) {
+    console.log(chalk.bold.red('\n❌ Errors:\n'));
+    diagnostics.errors.forEach((error, i) => {
+      console.log(chalk.red(`${i + 1}. ${error}`));
+    });
+  }
+
+  if (diagnostics.warnings.length > 0 && verbose) {
+    console.log(chalk.bold.yellow('\n⚠️  Warnings:\n'));
+    diagnostics.warnings.forEach((warning, i) => {
+      console.log(chalk.yellow(`${i + 1}. ${warning}`));
+    });
+  }
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    // Suggest fixes
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! Claude Code integration is ready.\n'));
+
+    // Show next steps
+    console.log(chalk.cyan('Next Steps:'));
+    console.log(chalk.gray('  1. Restart Claude Code to activate integration'));
+    console.log(chalk.gray('  2. Use slash commands: /agent-backend, /agent-frontend, etc.'));
+    console.log(chalk.gray('  3. Use skill: /automatosx for orchestration\n'));
+  }
 }

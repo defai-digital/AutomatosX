@@ -13,7 +13,7 @@
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v9.2.4 | Enterprise MCP Support | Multi-Provider Orchestration
+**Status**: ✅ **Production Ready** | v10.0.0 | Native Claude Code Integration | Enterprise MCP Support
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
@@ -107,12 +107,34 @@ npm install -g @defai.digital/automatosx
 
 ### Step 2: Initialize in Your Project
 
+**Option A: With Claude Code Native Integration** (Recommended)
+
+```bash
+cd your-project
+ax setup --claude-code
+```
+
+**What you get**:
+- ✅ 18 slash commands (`/agent-backend`, `/agent-frontend`, etc.)
+- ✅ Multi-agent orchestration (`/automatosx`)
+- ✅ MCP server with 17 tools
+- ✅ Auto-generated manifests
+- ✅ One-command diagnostics (`ax doctor --claude-code`)
+
+**Option B: Invisible Mode** (Original)
+
 ```bash
 cd your-project
 ax setup
 ```
 
-**That's it!** AutomatosX is now running invisibly. Keep using Claude Code/Codex naturally.
+**What you get**:
+- ✅ Invisible integration (no new commands)
+- ✅ Automatic multi-agent delegation
+- ✅ Persistent memory
+- ✅ Cost optimization
+
+**That's it!** AutomatosX is now running. Keep using Claude Code naturally.
 
 ### Step 3: Use Claude Code Naturally (No New Commands!)
 

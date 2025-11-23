@@ -13,6 +13,9 @@ import type { AutomatosXConfig } from '../../types/config.js';
 import { logger } from '../../utils/logger.js';
 import { printError } from '../../utils/error-formatter.js';
 import { PromptHelper } from '../../utils/prompt-helper.js';
+import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
+import { ProfileLoader } from '../../agents/profile-loader.js';
+import { TeamManager } from '../../core/team-manager.js';
 
 // Get the directory of this file for locating examples
 const __filename = fileURLToPath(import.meta.url);
@@ -42,6 +45,7 @@ interface SetupOptions {
   path?: string;
   specKit?: boolean;
   skipSpecKit?: boolean;
+  claudeCode?: boolean;
 }
 
 export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> = {
@@ -68,6 +72,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       .option('skip-spec-kit', {
         describe: 'Skip Spec-Kit initialization (useful for CI/CD)',
         type: 'boolean'
+      })
+      .option('claude-code', {
+        describe: 'Setup Claude Code integration (generates manifests and registers MCP server)',
+        type: 'boolean',
+        default: false
       });
   },
 
@@ -265,12 +274,56 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       // Initialize Spec-Kit (optional, interactive or via flags)
       const specKitInitialized = await maybeInitializeSpecKit(projectDir, argv);
 
+      // Claude Code integration setup (if requested)
+      let claudeCodeSetupSucceeded = false;
+      if (argv.claudeCode) {
+        console.log(chalk.blue('\n🔧 Setting up Claude Code integration...\n'));
+
+        try {
+          const teamManager = new TeamManager(join(automatosxDir, 'teams'));
+          const profileLoader = new ProfileLoader(
+            join(automatosxDir, 'agents'),
+            undefined,
+            teamManager
+          );
+
+          const setupHelper = new ClaudeCodeSetupHelper({
+            projectDir,
+            profileLoader
+          });
+
+          await setupHelper.setup();
+          claudeCodeSetupSucceeded = true;
+          console.log(chalk.green('   ✓ Claude Code integration configured'));
+        } catch (error) {
+          console.log(chalk.yellow(`   ⚠ Claude Code setup failed: ${error instanceof Error ? error.message : String(error)}`));
+          console.log(chalk.gray('     You can run setup later with: ax setup --claude-code'));
+        }
+      }
+
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX set up successfully!\n'));
       console.log(chalk.gray('Next steps:'));
       console.log(chalk.gray('  1. Review ax.config.json')); // v9.2.0: Updated config filename
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
       console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
+
+      if (claudeCodeSetupSucceeded) {
+        console.log(chalk.cyan('Claude Code Integration:'));
+        console.log(chalk.gray('  • MCP server registered with Claude Code'));
+        console.log(chalk.gray('  • Auto-generated slash commands: /agent-<name>'));
+        console.log(chalk.gray('  • Skill available: /automatosx'));
+        console.log(chalk.gray('  • Restart Claude Code to activate integration\n'));
+      } else if (argv.claudeCode) {
+        // Setup was attempted but failed
+        console.log(chalk.yellow('Claude Code Integration (failed):'));
+        console.log(chalk.gray('  • Run diagnostics: ax doctor --claude-code'));
+        console.log(chalk.gray('  • Retry setup: ax setup --claude-code\n'));
+      } else {
+        // Not attempted
+        console.log(chalk.cyan('Claude Code Integration (optional):'));
+        console.log(chalk.gray('  • Setup with: ax setup --claude-code\n'));
+      }
 
       if (specKitInitialized) {
         console.log(chalk.cyan('Spec-Driven Development:'));

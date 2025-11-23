@@ -10,7 +10,6 @@
 // Core classes
 export { CodexCLI, getDefaultCLI } from './cli-wrapper.js';
 export { CodexMCPManager, getDefaultMCPManager } from './mcp-manager.js';
-export { CodexBridge, getDefaultBridge } from './bridge.js';
 
 // Type definitions
 export type {

@@ -16,6 +16,7 @@ import { PromptHelper } from '../../utils/prompt-helper.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
+import { ProviderDetector } from '../../core/provider-detector.js';
 
 // Get the directory of this file for locating examples
 const __filename = fileURLToPath(import.meta.url);
@@ -159,6 +160,50 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await validateEnvironment(packageRoot);
       console.log(chalk.green('   ✓ Environment validation passed'));
 
+      // Detect installed AI providers
+      console.log(chalk.cyan('🔍 Detecting installed AI providers...'));
+      const detector = new ProviderDetector();
+      const providers = await detector.detectAll();
+      const foundProviders = Object.entries(providers)
+        .filter(([_, installed]) => installed)
+        .map(([name]) => ProviderDetector.formatProviderName(name));
+
+      if (foundProviders.length === 0) {
+        console.log(chalk.yellow('   ⚠️  No AI provider CLIs detected!'));
+        console.log('');
+        console.log(chalk.gray('   AutomatosX works WITH existing AI assistants.'));
+        console.log(chalk.gray('   Please install one of:'));
+        console.log(chalk.gray('     - Claude Code'));
+        console.log(chalk.gray('     - Gemini CLI'));
+        console.log(chalk.gray('     - OpenAI Codex'));
+        console.log(chalk.gray('     - ax-cli (optional)'));
+        console.log('');
+        console.log(chalk.cyan('   💡 After installing, run "ax setup" again to configure.\n'));
+
+        // Interactive prompt to continue or exit
+        if (process.stdout.isTTY && process.stdin.isTTY) {
+          const prompt = new PromptHelper();
+          try {
+            const answer = await prompt.question(
+              chalk.cyan('   Continue setup without provider integration? (y/N): ')
+            );
+            const shouldContinue = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+
+            if (!shouldContinue) {
+              prompt.close();
+              process.exit(0);
+            }
+          } finally {
+            prompt.close();
+          }
+        } else {
+          // Non-interactive mode: continue but warn
+          console.log(chalk.yellow('   ⚠️  Continuing setup without provider integration\n'));
+        }
+      } else {
+        console.log(chalk.green(`   ✓ Found: ${foundProviders.join(', ')}`));
+      }
+
       // Check if already initialized
       const exists = await checkExists(automatosxDir);
       if (exists && !argv.force) {
@@ -209,16 +254,18 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       createdResources.push(configPath);
       console.log(chalk.green('   ✓ Configuration created'));
 
-      // Setup Claude Code integration
-      console.log(chalk.cyan('🔌 Setting up Claude Code integration...'));
-      const claudeDir = join(projectDir, '.claude');
-      const claudeDirExistedBefore = await checkExists(claudeDir);
-      await setupClaudeIntegration(projectDir, packageRoot);
-      // Only add to rollback if we created it (not if it pre-existed)
-      if (!claudeDirExistedBefore) {
-        createdResources.push(claudeDir);
+      // Setup Claude Code integration (ONLY if detected)
+      if (providers['claude-code']) {
+        console.log(chalk.cyan('🔌 Setting up Claude Code integration...'));
+        const claudeDir = join(projectDir, '.claude');
+        const claudeDirExistedBefore = await checkExists(claudeDir);
+        await setupClaudeIntegration(projectDir, packageRoot);
+        // Only add to rollback if we created it (not if it pre-existed)
+        if (!claudeDirExistedBefore) {
+          createdResources.push(claudeDir);
+        }
+        console.log(chalk.green('   ✓ Claude Code integration configured'));
       }
-      console.log(chalk.green('   ✓ Claude Code integration configured'));
 
       // Setup ax-cli MCP integration
       console.log(chalk.cyan('🔌 Setting up ax-cli MCP integration...'));
@@ -235,16 +282,18 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await setupProjectClaudeMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ CLAUDE.md configured'));
 
-      // Setup Gemini CLI integration
-      console.log(chalk.cyan('🔌 Setting up Gemini CLI integration...'));
-      const geminiDir = join(projectDir, '.gemini');
-      const geminiDirExistedBefore = await checkExists(geminiDir);
-      await setupGeminiIntegration(projectDir, packageRoot);
-      // Only add to rollback if we created it (not if it pre-existed)
-      if (!geminiDirExistedBefore) {
-        createdResources.push(geminiDir);
+      // Setup Gemini CLI integration (ONLY if detected)
+      if (providers['gemini-cli']) {
+        console.log(chalk.cyan('🔌 Setting up Gemini CLI integration...'));
+        const geminiDir = join(projectDir, '.gemini');
+        const geminiDirExistedBefore = await checkExists(geminiDir);
+        await setupGeminiIntegration(projectDir, packageRoot);
+        // Only add to rollback if we created it (not if it pre-existed)
+        if (!geminiDirExistedBefore) {
+          createdResources.push(geminiDir);
+        }
+        console.log(chalk.green('   ✓ Gemini CLI integration configured'));
       }
-      console.log(chalk.green('   ✓ Gemini CLI integration configured'));
 
       // Setup project GEMINI.md with AutomatosX integration guide
       console.log(chalk.cyan('📖 Setting up GEMINI.md with AutomatosX integration...'));
@@ -262,9 +311,21 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.green('   ✓ Workspace directories created'));
 
       // Initialize git repository if needed (for Codex CLI compatibility)
-      console.log(chalk.cyan('🔧 Initializing git repository...'));
-      await initializeGitRepository(projectDir);
-      console.log(chalk.green('   ✓ Git repository initialized'));
+      if (providers['codex']) {
+        console.log(chalk.cyan('🔌 Setting up OpenAI Codex integration...'));
+        console.log(chalk.cyan('   🔧 Initializing git repository (required by Codex)...'));
+        await initializeGitRepository(projectDir);
+        console.log(chalk.green('   ✓ OpenAI Codex integration configured'));
+      } else {
+        // Still initialize git for general use, but not as a "provider integration"
+        const gitDir = join(projectDir, '.git');
+        const isGitRepo = await checkExists(gitDir);
+        if (!isGitRepo) {
+          console.log(chalk.cyan('🔧 Initializing git repository...'));
+          await initializeGitRepository(projectDir);
+          console.log(chalk.green('   ✓ Git repository initialized'));
+        }
+      }
 
       // Create .gitignore entry
       console.log(chalk.cyan('📝 Updating .gitignore...'));
@@ -303,6 +364,14 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
 
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX set up successfully!\n'));
+
+      // Show configured providers
+      if (foundProviders.length > 0) {
+        console.log(chalk.cyan(`Configured for: ${foundProviders.join(', ')}\n`));
+      } else {
+        console.log(chalk.yellow('⚠️  No AI providers configured\n'));
+      }
+
       console.log(chalk.gray('Next steps:'));
       console.log(chalk.gray('  1. Review ax.config.json')); // v9.2.0: Updated config filename
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
@@ -361,24 +430,48 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.gray('  • security            - Steve (Security Engineer)'));
       console.log(chalk.gray('  • stan                - Peter (Best Practices Expert)'));
       console.log(chalk.gray('  • writer              - Wendy (Technical Writer)\n'));
-      console.log(chalk.cyan('Claude Code Integration:'));
-      console.log(chalk.gray('  • Use natural language to work with ax agents'));
-      console.log(chalk.gray('  • Example: "Ask ax agent backend to create a REST API"'));
-      console.log(chalk.gray('  • MCP tools available in .claude/mcp/\n'));
-      console.log(chalk.cyan('Gemini CLI Integration:'));
-      console.log(chalk.gray('  • Use natural language to work with ax agents'));
-      console.log(chalk.gray('  • Example: "Use ax agent backend to create a REST API"'));
-      console.log(chalk.gray('  • No special commands needed - just ask naturally!\n'));
-      console.log(chalk.cyan('ax-cli Integration:'));
-      console.log(chalk.gray('  • Multi-provider AI CLI (GLM, xAI, OpenAI, Anthropic, Ollama)'));
-      console.log(chalk.gray('  • Use: ax cli "your task"'));
-      console.log(chalk.gray('  • AutomatosX MCP server configured for agent access'));
-      console.log(chalk.gray('  • See .ax-cli/README.md for configuration\n'));
-      console.log(chalk.cyan('OpenAI Codex Provider:'));
-      console.log(chalk.gray('  • Use natural language to work with ax agents'));
-      console.log(chalk.gray('  • Or use terminal: ax run <agent> "task"'));
-      console.log(chalk.gray('  • Git repository initialized for Codex compatibility'));
-      console.log(chalk.gray('  • See examples/codex/ for integration details\n'));
+      // Show provider-specific integration guides (only for detected providers)
+      if (providers['claude-code']) {
+        console.log(chalk.cyan('Claude Code Integration:'));
+        console.log(chalk.gray('  • Use natural language to work with ax agents'));
+        console.log(chalk.gray('  • Example: "Ask ax agent backend to create a REST API"'));
+        console.log(chalk.gray('  • MCP tools available in .claude/mcp/\n'));
+      }
+
+      if (providers['gemini-cli']) {
+        console.log(chalk.cyan('Gemini CLI Integration:'));
+        console.log(chalk.gray('  • Use natural language to work with ax agents'));
+        console.log(chalk.gray('  • Example: "Use ax agent backend to create a REST API"'));
+        console.log(chalk.gray('  • No special commands needed - just ask naturally!\n'));
+      }
+
+      if (providers['ax-cli']) {
+        console.log(chalk.cyan('ax-cli Integration:'));
+        console.log(chalk.gray('  • Multi-provider AI CLI (GLM, xAI, OpenAI, Anthropic, Ollama)'));
+        console.log(chalk.gray('  • Use: ax cli "your task"'));
+        console.log(chalk.gray('  • AutomatosX MCP server configured for agent access'));
+        console.log(chalk.gray('  • See .ax-cli/README.md for configuration\n'));
+      }
+
+      if (providers['codex']) {
+        console.log(chalk.cyan('OpenAI Codex Integration:'));
+        console.log(chalk.gray('  • Use natural language to work with ax agents'));
+        console.log(chalk.gray('  • Or use terminal: ax run <agent> "task"'));
+        console.log(chalk.gray('  • Git repository initialized for Codex compatibility\n'));
+      }
+
+      // Show what's NOT configured
+      const notFoundProviders = Object.entries(providers)
+        .filter(([_, installed]) => !installed)
+        .map(([name]) => ProviderDetector.formatProviderName(name));
+
+      if (notFoundProviders.length > 0) {
+        console.log(chalk.gray('Other AI assistants (not configured):'));
+        for (const providerName of notFoundProviders) {
+          console.log(chalk.gray(`  • ${providerName} - install and run "ax setup" again`));
+        }
+        console.log('');
+      }
 
       logger.info('AutomatosX set up', {
         projectDir,

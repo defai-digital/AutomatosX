@@ -26,7 +26,7 @@ AutomatosX is an **open source project** published for **transparency and commun
 - **Feature Suggestions** - Share your ideas for discussion
 - **Documentation Improvements** - Typos, clarifications, examples
 - **Security Reports** - See [SECURITY.md](SECURITY.md) for responsible disclosure
-- **Questions & Discussions** - Use GitHub Discussions
+- **Questions & Help** - Open a GitHub Issue with the `question` label
 - **Sharing & Using** - Use AutomatosX in your projects!
 
 ### Current Development Model 🔧
@@ -45,7 +45,7 @@ We believe in **radical transparency** - you should be able to:
 - ✅ Trust that nothing harmful is hidden
 - ✅ Fork and modify for your own use (within license terms)
 
-This doesn't mean we don't value the community! Issues, discussions, and feedback are **highly appreciated** and help make AutomatosX better.
+This doesn't mean we don't value the community! Issues, questions, and feedback are **highly appreciated** and help make AutomatosX better.
 
 ## Getting Started
 

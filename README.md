@@ -666,22 +666,43 @@ npm test
 
 ---
 
-## 📄 License
+## 📦 Editions & Licensing
 
-AutomatosX is dual-licensed:
+AutomatosX uses an **open-core model** with three editions:
 
-- **Apache License 2.0** - See [LICENSE](LICENSE)
-- **Commercial License with OpenRAIL-M** - See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+| Edition | License | Price | Best For |
+|---------|---------|-------|----------|
+| **Open Source** | Apache 2.0 | Free Forever | Everyone (individuals, startups, enterprises) |
+| **Pro** | Commercial EULA | Contact Sales | Teams needing priority support + LTS |
+| **Enterprise** | Enterprise Agreement | Contact Sales | Regulated industries + compliance needs |
 
-**TL;DR**:
-- ✅ FREE for research, academic, personal projects, startups < $2M revenue
-- ❌ Commercial license required for companies ≥ $2M revenue/funding
+### Open Source Edition (This Repo)
 
-**Need a commercial license?**
-- Email: <sales@defai.digital>
-- Subject: "AutomatosX Commercial License Inquiry"
+**License**: [Apache License 2.0](LICENSE) - Free forever, no revenue limits
 
-Copyright 2025 DEFAI Private Limited
+**What's Included**:
+- ✅ Full source code on GitHub
+- ✅ Core orchestration engine + 20+ AI agents
+- ✅ Persistent memory system (SQLite FTS5)
+- ✅ Multi-provider routing (Claude, Gemini, OpenAI Codex)
+- ✅ Workflow specs and execution
+- ✅ Community support (GitHub Issues)
+
+**Who Can Use**: Anyone, for any purpose (personal, commercial, research)
+
+### Pro & Enterprise Editions
+
+**Additional Features**: Advanced workflows, team collaboration, premium agent packs, SSO/RBAC, audit logging, self-hosted deployment, white-label options, priority support (1-day SLA), long-term support (LTS), custom SLA (24/7 available)
+
+**Get Started**: Contact <sales@defai.digital> for pricing
+
+**Learn More**: See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for detailed edition comparison
+
+---
+
+**Copyright 2025 DEFAI Private Limited**
+
+**Note**: We removed revenue thresholds ($2M limit) and OpenRAIL-M references in v3.0 (November 2025). Open Source Edition is now truly free for everyone - no limits, no tracking. If you need extra features or guaranteed support, explore Pro/Enterprise editions.
 
 ---
 

@@ -113,8 +113,8 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
     }
 
     logger.debug('Executing via SDK', {
-      model: options.model,
-      promptLength: prompt.length
+      promptLength: prompt.length,
+      note: 'Model configured via ax-cli setup'
     });
 
     return await this.sdkAdapter.execute(prompt, options);
@@ -129,7 +129,7 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
     }
 
     logger.debug('Executing via CLI', {
-      model: options.model,
+      model: options.model || '(from ax-cli setup)',
       promptLength: prompt.length
     });
 

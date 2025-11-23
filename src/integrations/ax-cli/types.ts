@@ -42,9 +42,15 @@ export const AxCliConfigSchema = z.object({
 export type AxCliConfig = z.infer<typeof AxCliConfigSchema>;
 
 /**
- * Supported providers in ax-cli
+ * Provider name for ax-cli
+ *
+ * Note: The actual provider (GLM, Grok, OpenAI, etc.) is configured via
+ * `ax-cli setup` and stored in ~/.ax-cli/config.json. AutomatosX should
+ * not hardcode provider names.
+ *
+ * @deprecated Provider selection is handled by ax-cli setup, not by AutomatosX
  */
-export type AxCliProvider = 'xai' | 'glm' | 'openai' | 'anthropic' | 'ollama';
+export type AxCliProvider = string;
 
 /**
  * ax-cli command build result

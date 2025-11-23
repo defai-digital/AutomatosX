@@ -573,32 +573,36 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }));
       }
 
-      // v11.0.0: Add GLM provider support via ax-cli (renamed to ax-cli-provider in v9.2.0)
-      if (config.providers['glm']?.enabled) {
-        try {
-          const { AxCliProvider, GlmProvider } = await import('../../providers/ax-cli-provider.js');
-          const glmConfig = config.providers['glm'] as any; // Cast to access new fields
+      // ax-cli provider (provider-agnostic, configured via ax-cli setup)
+      // Supports backward compatibility with 'glm' config key
+      const axCliConfigKey = config.providers['ax-cli'] ? 'ax-cli' :
+                            config.providers['glm'] ? 'glm' : null;
 
-          // Validate glmConfig exists
-          if (glmConfig) {
-            providers.push(new GlmProvider({
-              name: 'glm',
-              enabled: true,
-              priority: glmConfig.priority ?? 4, // Default priority
-              timeout: glmConfig.timeout ?? 120000, // Default 2 minutes
-              command: glmConfig.command || 'ax-cli', // v11.0.0: ax-cli only
-              // Phase 2: Enhanced CLI detection parameters
-              customPath: glmConfig.customPath,
-              versionArg: glmConfig.versionArg,
-              minVersion: glmConfig.minVersion,
-              // v11.0.0: Simplified ax-cli configuration
-              axCli: glmConfig.axCli
-            }));
-          } else {
-            logger.warn('GLM provider enabled but configuration is missing');
+      if (axCliConfigKey && config.providers[axCliConfigKey]?.enabled) {
+        try {
+          const { AxCliProvider } = await import('../../providers/ax-cli-provider.js');
+          const axCliConfig = config.providers[axCliConfigKey] as any;
+
+          // axCliConfig is guaranteed to exist here (checked in outer if)
+          providers.push(new AxCliProvider({
+            name: 'ax-cli',
+            enabled: true,
+            priority: axCliConfig.priority ?? 4,
+            timeout: axCliConfig.timeout ?? 120000,
+            command: axCliConfig.command || 'ax-cli',
+            mode: axCliConfig.mode || 'auto',
+            customPath: axCliConfig.customPath,
+            versionArg: axCliConfig.versionArg,
+            minVersion: axCliConfig.minVersion,
+            axCli: axCliConfig.axCli,
+            axCliSdk: axCliConfig.axCliSdk
+          }));
+
+          if (axCliConfigKey === 'glm') {
+            logger.warn('Using deprecated "glm" provider config. Please rename to "ax-cli" in ax.config.json');
           }
         } catch (error) {
-          logger.error('Failed to initialize GLM provider', { error });
+          logger.error('Failed to initialize ax-cli provider', { error });
           // Continue with other providers
         }
       }

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "9.2.1",
+  "version": "9.2.3",
   "description": "AI Agent Orchestration Platform",
   "type": "module",
   "publishConfig": {
@@ -86,7 +86,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@defai.digital/ax-cli": "^3.4.6",
+    "@defai.digital/ax-cli": "^3.6.2",
     "@iarna/toml": "^2.2.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

@@ -1,5 +1,40 @@
 {
   "providers": {
+    "ax-cli": {
+      "enabled": true,
+      "priority": 4,
+      "timeout": 2700000,
+      "command": "ax-cli",
+      "mode": "auto",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
+      },
+      "axCliSdk": {
+        "streamingEnabled": true,
+        "reuseEnabled": true
+      }
+    },
     "claude-code": {
       "enabled": true,
       "priority": 3,

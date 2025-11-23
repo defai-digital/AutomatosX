@@ -10,14 +10,14 @@ async function investigateTokens() {
   console.log('=== Investigating Token Usage ===\n');
 
   try {
-    // Initialize SDK
+    // Initialize SDK (deprecated - SDK handles initialization automatically)
     console.log('1. Initializing SDK...');
-    await initializeSDK({ model: 'glm-4.6' });
+    await initializeSDK();
     console.log('   ✅ SDK initialized\n');
 
-    // Create agent
+    // Create agent (credentials from ax-cli setup)
     console.log('2. Creating agent...');
-    const agent = await createAgent({ model: 'glm-4.6' });
+    const agent = await createAgent({ maxToolRounds: 10 });
     console.log('   ✅ Agent created\n');
 
     // Check agent methods for token-related APIs

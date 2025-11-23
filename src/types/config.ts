@@ -198,14 +198,31 @@ export interface ProviderConfig {
   /** Sandbox mode configuration for file system access control */
   sandbox?: SandboxConfig;
 
-  // v9.1.0: GLM provider configuration (ax-cli)
+  // v9.1.0: ax-cli provider configuration
   axCli?: {
-    provider?: 'glm' | 'xai' | 'openai' | 'anthropic' | 'ollama';
+    /**
+     * Provider name (optional)
+     *
+     * @deprecated Configure provider via `ax-cli setup` instead
+     */
+    provider?: string;
     model?: string;
     maxToolRounds?: number;
     apiKey?: string;
     baseUrl?: string;
     configPath?: string;
+  };
+
+  // v9.2.0: ax-cli execution mode
+  /** Execution mode for ax-cli provider: "sdk", "cli", or "auto" (default: "auto") */
+  mode?: 'sdk' | 'cli' | 'auto';
+
+  // v9.2.0: ax-cli SDK-specific configuration
+  axCliSdk?: {
+    /** Enable streaming events */
+    streamingEnabled?: boolean;
+    /** Reuse agent instances between calls */
+    reuseEnabled?: boolean;
   };
 }
 

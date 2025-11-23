@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-11-22T08:01:45.170Z
+ * Generated: 2025-11-23T00:25:59.511Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -23,6 +23,41 @@ import type { AutomatosXConfig } from './types/config.js';
  */
 export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   "providers": {
+    "ax-cli": {
+      "enabled": true,
+      "priority": 4,
+      "timeout": 2700000,
+      "command": "ax-cli",
+      "mode": "auto",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "daily",
+        "resetHourUtc": 0
+      },
+      "axCliSdk": {
+        "streamingEnabled": true,
+        "reuseEnabled": true
+      }
+    },
     "claude-code": {
       "enabled": true,
       "priority": 3,
@@ -329,7 +364,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-11-22T08:01:45.170Z',
+  generatedAt: '2025-11-23T00:25:59.511Z',
   sourceFile: 'automatosx.config.json',
   version: '9.1.1'
 } as const;

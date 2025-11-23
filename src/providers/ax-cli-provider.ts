@@ -1,18 +1,11 @@
 /**
- * AxCliProvider - Multi-Provider via ax-cli (v9.2.0)
+ * AxCliProvider - Provider-Agnostic AI Access via ax-cli (v9.2.0+)
  *
- * Provides access to multiple AI models through ax-cli.
- * Default provider: GLM (Zhipu AI)
- * Default model: glm-4.6
+ * Provides access to AI models through ax-cli SDK, which supports multiple providers.
+ * The actual provider (GLM, Grok, OpenAI, DeepSeek, etc.) is configured via `ax-cli setup`
+ * and stored in ~/.ax-cli/config.json.
  *
- * Supported providers via ax-cli:
- * - GLM (Zhipu AI) - default
- * - xAI (Grok)
- * - OpenAI
- * - Anthropic
- * - Ollama
- * - DeepSeek (future)
- * - Llama (future)
+ * AutomatosX is provider-agnostic and does not need to know which provider ax-cli uses.
  *
  * @module providers/ax-cli-provider
  */
@@ -32,17 +25,22 @@ export interface AxCliProviderConfig extends ProviderConfig {
 
   /** ax-cli specific configuration */
   axCli?: {
-    /** Provider for ax-cli (default: 'glm') */
-    provider?: 'glm' | 'xai' | 'openai' | 'anthropic' | 'ollama';
-    /** Model name (default: 'glm-4.6') */
+    /**
+     * Provider name (optional, deprecated)
+     *
+     * @deprecated Configure provider via `ax-cli setup` instead.
+     * The provider is stored in ~/.ax-cli/config.json and managed by ax-cli SDK.
+     */
+    provider?: string;
+    /** Model name (optional override) */
     model?: string;
     /** Config file path (default: ~/.ax-cli/config.json) */
     configPath?: string;
     /** Max tool execution rounds */
     maxToolRounds?: number;
-    /** API key override */
+    /** API key override (optional) */
     apiKey?: string;
-    /** Base URL override */
+    /** Base URL override (optional) */
     baseUrl?: string;
   };
 
@@ -56,33 +54,25 @@ export interface AxCliProviderConfig extends ProviderConfig {
 }
 
 /**
- * AxCli Provider - Multi-Model AI Provider
+ * AxCli Provider - Provider-Agnostic AI Access
  *
- * Model-agnostic provider supporting multiple AI models through ax-cli.
- *
- * **Default Configuration**:
- * - Provider: glm (Zhipu AI)
- * - Model: glm-4.6
- * - CLI: ax-cli
- *
- * **Supported Models**:
- * Users can configure ax-cli to use different models:
- * - GLM (Zhipu AI) - default
- * - xAI (Grok)
- * - OpenAI (GPT)
- * - Anthropic (Claude)
- * - Ollama (local models)
- * - DeepSeek (future)
- * - Llama (future)
+ * Provider-agnostic interface to AI models via ax-cli SDK.
  *
  * **Configuration**:
- * Set `axCli.provider` in configuration or via `~/.ax-cli/config.json`.
+ * The provider and model are configured via `ax-cli setup` command, which stores
+ * settings in ~/.ax-cli/config.json. AutomatosX does not need to know which
+ * provider ax-cli uses (GLM, Grok, OpenAI, DeepSeek, Llama, etc.).
  *
- * Features:
- * - Direct ax-cli integration
- * - No fallback complexity
- * - Full ax-cli v2.5.1+ feature support
- * - Multi-model capability
+ * **Setup**:
+ * ```bash
+ * ax-cli setup  # Configure provider, model, API key, base URL
+ * ```
+ *
+ * **Features**:
+ * - Provider-agnostic (ax-cli handles provider routing)
+ * - Automatic provider detection from ax-cli setup
+ * - Full ax-cli SDK feature support
+ * - No hardcoded provider references
  */
 export class AxCliProvider extends BaseProvider {
   private adapter: HybridAxCliAdapter;
@@ -101,9 +91,9 @@ export class AxCliProvider extends BaseProvider {
 
     logger.info('AxCliProvider initialized', {
       mode,
-      provider: config.axCli?.provider || 'glm',
-      model: config.axCli?.model || 'glm-4.6',
-      sdkOptions: config.axCliSdk
+      model: config.axCli?.model || '(from ax-cli setup)',
+      sdkOptions: config.axCliSdk,
+      note: 'Provider configured via ax-cli setup'
     });
   }
 
@@ -117,20 +107,21 @@ export class AxCliProvider extends BaseProvider {
   override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
     const axCliConfig = this.config.axCli || {};
 
-    // Build execution options with GLM defaults
+    // Build execution options (provider is configured via ax-cli setup)
     const options: AxCliOptions = {
-      provider: axCliConfig.provider || 'glm',
-      model: request.model || axCliConfig.model || 'glm-4.6',
+      model: request.model || axCliConfig.model,  // Optional model override
       maxToolRounds: axCliConfig.maxToolRounds || 400,
       timeout: this.config.timeout,
-      apiKey: axCliConfig.apiKey,
-      baseUrl: axCliConfig.baseUrl
+      // Note: apiKey and baseUrl are ignored by SDK adapter (v3.7.0+)
+      // SDK loads credentials from ax-cli setup (~/.ax-cli/config.json)
+      apiKey: axCliConfig.apiKey,      // Only used by CLI adapter (deprecated)
+      baseUrl: axCliConfig.baseUrl     // Only used by CLI adapter (deprecated)
     };
 
     logger.debug('Executing task via ax-cli', {
-      provider: options.provider,
-      model: options.model,
-      promptLength: request.prompt.length
+      model: options.model || '(from ax-cli setup)',
+      promptLength: request.prompt.length,
+      note: 'Provider configured via ax-cli setup'
     });
 
     try {
@@ -147,8 +138,7 @@ export class AxCliProvider extends BaseProvider {
     } catch (error) {
       logger.error('Task execution failed', {
         error: error instanceof Error ? error.message : String(error),
-        provider: options.provider,
-        model: options.model
+        model: options.model || '(from ax-cli setup)'
       });
 
       throw error;
@@ -232,11 +222,14 @@ export class AxCliProvider extends BaseProvider {
 }
 
 /**
- * @deprecated Use AxCliProvider instead. Will be removed in v10.0.0.
+ * @deprecated GlmProvider is deprecated. Use AxCliProvider instead.
+ * Configure the provider via `ax-cli setup`, not through provider-specific classes.
+ * This alias will be removed in a future version.
  */
 export const GlmProvider = AxCliProvider;
 
 /**
- * @deprecated Use AxCliProviderConfig instead. Will be removed in v10.0.0.
+ * @deprecated GlmProviderConfig is deprecated. Use AxCliProviderConfig instead.
+ * This type will be removed in a future version.
  */
 export type GlmProviderConfig = AxCliProviderConfig;

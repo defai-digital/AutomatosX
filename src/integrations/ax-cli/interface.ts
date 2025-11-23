@@ -1,19 +1,33 @@
 /**
- * Unified adapter interface for ax-cli (v9.2.0)
+ * Unified adapter interface for ax-cli (v9.2.0+)
  *
- * Supports ax-cli (multi-provider, JSONL output):
- * - GLM (Zhipu AI)
- * - xAI Grok models
- * - OpenAI models
- * - Anthropic Claude models
- * - Ollama local models
- * - DeepSeek (future)
- * - Llama (future)
+ * Supports ax-cli (provider-agnostic, JSONL output).
+ * The actual provider is configured via `ax-cli setup` and stored in ~/.ax-cli/config.json.
+ *
+ * Supported providers are determined by ax-cli, not by AutomatosX.
  *
  * @module integrations/ax-cli/interface
  */
 
 import type { ExecutionResponse } from '../../types/provider.js';
+
+/**
+ * Streaming chunk types from SDK
+ */
+export interface StreamChunk {
+  type: 'content' | 'thinking' | 'tool';
+  content?: string;
+  tool?: string;
+  timestamp: string;
+}
+
+/**
+ * Tool invocation data from SDK
+ */
+export interface ToolInvocation {
+  name: string;
+  args?: any;
+}
 
 /**
  * Options for ax-cli execution (multi-provider)
@@ -22,8 +36,15 @@ export interface AxCliOptions {
   /** AI model to use (e.g., 'grok-2', 'glm-4.6') */
   model?: string;
 
-  /** Provider name (ax-cli only: 'xai', 'glm', 'openai', 'anthropic', 'ollama') */
-  provider?: 'xai' | 'glm' | 'openai' | 'anthropic' | 'ollama';
+  /**
+   * Provider name (optional)
+   *
+   * Note: Provider is configured via `ax-cli setup` and stored in ~/.ax-cli/config.json.
+   * This parameter is deprecated and will be removed in future versions.
+   *
+   * @deprecated Configure provider via `ax-cli setup` instead
+   */
+  provider?: string;
 
   /** Maximum tokens in response */
   maxTokens?: number;
@@ -64,6 +85,13 @@ export interface AxCliOptions {
 
   /** Optimize output for VSCode integration (ax-cli v2.5.1+) */
   vscode?: boolean;
+
+  // Streaming callbacks (SDK mode only)
+  /** Callback for streaming content chunks */
+  onStream?: (chunk: StreamChunk) => void;
+
+  /** Callback for tool invocations */
+  onTool?: (tool: ToolInvocation) => void;
 }
 
 /**
@@ -113,16 +141,18 @@ export interface IAxCliAdapter {
 }
 
 /**
- * @deprecated Use AxCliOptions instead. Will be removed in v10.0.0.
+ * @deprecated Use AxCliOptions instead. Provider-specific types are deprecated.
+ * Configure provider via `ax-cli setup`.
  */
 export type GrokOptions = AxCliOptions;
 
 /**
- * @deprecated Use IAxCliAdapter instead. Will be removed in v10.0.0.
+ * @deprecated Use IAxCliAdapter instead.
  */
 export type AxCliAdapter = IAxCliAdapter;
 
 /**
- * @deprecated Use IAxCliAdapter instead. Will be removed in v10.0.0.
+ * @deprecated Use IAxCliAdapter instead. Provider-specific types are deprecated.
+ * Configure provider via `ax-cli setup`.
  */
 export type GrokCliAdapter = IAxCliAdapter;

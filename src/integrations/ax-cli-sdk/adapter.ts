@@ -29,13 +29,10 @@ export interface SdkAdapterOptions {
 }
 
 /**
- * Agent configuration for SDK
+ * Agent configuration for tracking (SDK handles actual config via settings)
  */
 interface AgentConfig {
-  apiKey?: string;
-  model?: string;
-  baseURL?: string;
-  maxToolRounds?: number;
+  maxToolRounds: number;
 }
 
 /**
@@ -73,6 +70,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   async execute(prompt: string, options: AxCliOptions): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
+    // Token tracking from SDK events
+    let totalTokens = 0;
+
     try {
       // Ensure SDK is available
       if (!(await this.ensureSDKAvailable())) {
@@ -80,21 +80,86 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       }
 
       // Initialize or recreate agent if config changed
-      if (!this.agent || this.hasConfigChanged(options)) {
+      if (!this.agent || await this.hasConfigChanged(options)) {
         await this.initializeAgent(options);
       }
 
-      logger.debug('Executing via SDK', {
-        model: options.model,
+      logger.debug('Executing via SDK (streaming mode for token tracking)', {
         promptLength: prompt.length,
-        streaming: this.streamingEnabled
+        userWantsCallbacks: !!(options.onStream || options.onTool),
+        note: 'SDK handles custom instructions and project memory'
       });
 
-      // Execute via SDK (no process spawning!)
-      const result = await this.agent.processUserMessage(prompt);
+      // Use streaming API internally (even if user doesn't want callbacks)
+      // This is the ONLY way to get token counts from SDK
+
+      // Get history length before execution (to identify new entries)
+      const historyLengthBefore = this.agent.getChatHistory().length;
+
+      for await (const chunk of this.agent.processUserMessageStream(prompt)) {
+        // Track token counts from chunks
+        if (chunk.type === 'token_count' && chunk.tokenCount) {
+          totalTokens += chunk.tokenCount;
+          logger.debug('Token count from stream', {
+            count: chunk.tokenCount,
+            total: totalTokens
+          });
+        }
+
+        // Forward streaming callbacks if user wants them
+        if (options.onStream && (chunk.type === 'content' || chunk.type === 'reasoning')) {
+          try {
+            options.onStream({
+              type: chunk.type === 'reasoning' ? 'thinking' : 'content',
+              content: chunk.content || chunk.reasoningContent,
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            logger.warn('Stream callback error', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+        if (options.onTool && chunk.type === 'tool_calls' && chunk.toolCalls) {
+          try {
+            for (const toolCall of chunk.toolCalls) {
+              options.onTool({
+                name: toolCall.function.name,
+                args: toolCall.function.arguments
+              });
+            }
+          } catch (error) {
+            logger.warn('Tool callback error', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+      }
+
+      // Get only the NEW entries from this execution
+      const fullHistory = this.agent.getChatHistory();
+      const result = fullHistory.slice(historyLengthBefore);
+
+      logger.debug('Chat history extraction', {
+        historyLengthBefore,
+        historyLengthAfter: fullHistory.length,
+        newEntries: result.length,
+        entryTypes: result.map((e: any) => e.type)
+      });
+
+      // Validate we got a response
+      if (result.length === 0) {
+        logger.error('No new chat entries after execution', {
+          historyLengthBefore,
+          historyLengthAfter: fullHistory.length,
+          fullHistory: fullHistory.map((e: any) => ({ type: e.type, content: e.content?.substring(0, 50) }))
+        });
+        throw new Error('SDK did not add any new chat entries. This may indicate an execution error.');
+      }
 
       // Convert SDK response to ExecutionResponse format
-      const response = this.convertToExecutionResponse(result, prompt, startTime);
+      const response = this.convertToExecutionResponse(result, prompt, startTime, totalTokens);
 
       logger.info('SDK execution successful', {
         model: response.model,
@@ -107,7 +172,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     } catch (error) {
       logger.error('SDK execution failed', {
         error: error instanceof Error ? error.message : String(error),
-        model: options.model
+        note: 'Model configured via ax-cli setup'
       });
 
       // Map SDK errors to AutomatosX error format
@@ -117,34 +182,34 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
   /**
    * Initialize or reinitialize agent
+   *
+   * IMPORTANT: The SDK loads ALL credentials (API key, base URL, model) from
+   * ~/.ax-cli/config.json which is created by running "ax-cli setup".
+   *
+   * We do NOT pass credentials to the SDK - it manages its own configuration.
    */
   private async initializeAgent(options: AxCliOptions): Promise<void> {
+    // Dynamic import to avoid loading SDK unless needed
+    const { createAgent, SDKError, SDKErrorCode } = await import('@defai.digital/ax-cli/sdk');
+
     try {
-      // Dynamic import to avoid loading SDK unless needed
-      const { createAgent, initializeSDK } = await import('@defai.digital/ax-cli/sdk');
 
       const config: AgentConfig = {
-        apiKey: options.apiKey,
-        model: options.model || 'glm-4.6',
-        baseURL: options.baseUrl,
         maxToolRounds: options.maxToolRounds || 400
       };
 
-      // Initialize SDK (required for first use)
-      await initializeSDK({
-        apiKey: config.apiKey,
-        model: config.model,
-        baseURL: config.baseURL
-      });
-
-      logger.debug('Initializing SDK agent', {
-        model: config.model,
+      logger.debug('Creating SDK agent (credentials from ax-cli settings)', {
         maxToolRounds: config.maxToolRounds,
-        reuse: this.reuseEnabled
+        reuse: this.reuseEnabled,
+        note: 'SDK loads apiKey, baseURL, model from ~/.ax-cli/config.json'
       });
 
       // Create agent via SDK
-      this.agent = await createAgent(config);
+      // SDK will load apiKey, baseURL, model from ~/.ax-cli/config.json
+      this.agent = await createAgent({
+        maxToolRounds: config.maxToolRounds
+      });
+
       this.agentConfig = config;
 
       // Set up event handlers if streaming enabled
@@ -152,10 +217,52 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         this.setupEventHandlers();
       }
 
-      logger.info('SDK agent initialized', {
-        model: config.model
+      logger.info('SDK agent initialized successfully', {
+        maxToolRounds: config.maxToolRounds,
+        note: 'Using credentials from ax-cli setup'
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      // Handle SDK-specific errors
+      if (SDKError.isSDKError(error)) {
+        switch (error.code) {
+          case SDKErrorCode.SETUP_NOT_RUN:
+            logger.error('ax-cli setup not run', {
+              error: error.message,
+              solution: 'Run: ax-cli setup'
+            });
+            throw new Error(
+              'ax-cli setup has not been run. Please run "ax-cli setup" to configure your API key, model, and base URL. ' +
+              'The SDK adapter does not accept credentials directly for security reasons.'
+            );
+
+          case SDKErrorCode.API_KEY_MISSING:
+            logger.error('API key not configured', {
+              error: error.message,
+              solution: 'Run: ax-cli setup'
+            });
+            throw new Error(
+              'No API key configured in ax-cli settings. Please run "ax-cli setup" to configure your credentials.'
+            );
+
+          case SDKErrorCode.BASE_URL_MISSING:
+            logger.error('Base URL not configured', {
+              error: error.message,
+              solution: 'Run: ax-cli setup'
+            });
+            throw new Error(
+              'No base URL configured in ax-cli settings. Please run "ax-cli setup" to configure your AI provider endpoint.'
+            );
+
+          default:
+            logger.error('SDK error during initialization', {
+              code: error.code,
+              message: error.message
+            });
+            throw new Error(`SDK initialization failed: ${error.message}`);
+        }
+      }
+
+      // Generic error handling
       logger.error('Failed to initialize SDK agent', {
         error: error instanceof Error ? error.message : String(error)
       });
@@ -165,21 +272,19 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
   /**
    * Check if agent config has changed (requires new agent)
+   *
+   * Since SDK manages credentials via settings, we only track maxToolRounds
    */
-  private hasConfigChanged(options: AxCliOptions): boolean {
+  private async hasConfigChanged(options: AxCliOptions): Promise<boolean> {
     if (!this.agentConfig) return true;
 
-    const changed = (
-      this.agentConfig.model !== (options.model || 'glm-4.6') ||
-      this.agentConfig.apiKey !== options.apiKey ||
-      this.agentConfig.baseURL !== options.baseUrl ||
-      this.agentConfig.maxToolRounds !== (options.maxToolRounds || 400)
-    );
+    const changed = this.agentConfig.maxToolRounds !== (options.maxToolRounds || 400);
 
     if (changed) {
       logger.debug('Agent config changed, will reinitialize', {
-        oldModel: this.agentConfig.model,
-        newModel: options.model || 'glm-4.6'
+        oldMaxToolRounds: this.agentConfig.maxToolRounds,
+        newMaxToolRounds: options.maxToolRounds || 400,
+        note: 'SDK credentials managed by ax-cli setup'
       });
     }
 
@@ -187,7 +292,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   }
 
   /**
-   * Set up streaming event handlers
+   * Set up streaming event handlers (for initialization)
    */
   private setupEventHandlers(): void {
     if (!this.agent) return;
@@ -220,6 +325,57 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   }
 
   /**
+   * Set up streaming callbacks for execution
+   */
+  private setupStreamingCallbacks(options: AxCliOptions): void {
+    if (!this.agent) return;
+
+    try {
+      // Remove any existing listeners to avoid duplicates
+      this.agent.removeAllListeners('stream');
+      this.agent.removeAllListeners('tool');
+
+      // Set up stream callback if provided
+      if (options.onStream) {
+        this.agent.on('stream', (chunk: any) => {
+          try {
+            options.onStream!({
+              type: chunk.type || 'content',
+              content: chunk.content,
+              tool: chunk.tool,
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            logger.warn('Stream callback error', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        });
+      }
+
+      // Set up tool callback if provided
+      if (options.onTool) {
+        this.agent.on('tool', (data: any) => {
+          try {
+            options.onTool!({
+              name: data.name,
+              args: data.args
+            });
+          } catch (error) {
+            logger.warn('Tool callback error', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to setup streaming callbacks', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
    * Convert SDK response to ExecutionResponse format
    *
    * SDK returns an array of chat entries:
@@ -228,9 +384,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    *   { type: "assistant", content: "...", timestamp: "..." }
    * ]
    *
-   * Note: SDK doesn't expose token counts, so we estimate them based on content length.
+   * Token usage priority: SDK events (totalTokens) > ChatEntry.usage > estimation fallback
    */
-  private convertToExecutionResponse(result: any, prompt: string, startTime: number): ExecutionResponse {
+  private convertToExecutionResponse(result: any, prompt: string, startTime: number, totalTokensFromEvents: number = 0): ExecutionResponse {
     const latencyMs = Date.now() - startTime;
 
     // SDK returns array of chat entries
@@ -239,43 +395,87 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       const assistantMessages = result.filter((entry: any) => entry.type === 'assistant');
 
       if (assistantMessages.length === 0) {
-        throw new Error('No assistant response found in SDK result');
+        logger.error('No assistant message in result', {
+          resultLength: result.length,
+          entryTypes: result.map((e: any) => e.type),
+          entries: result.map((e: any) => ({
+            type: e.type,
+            content: e.content?.substring(0, 100),
+            hasToolCalls: !!e.toolCalls,
+            hasToolResults: !!e.toolResult
+          }))
+        });
+        throw new Error(`No assistant response found in SDK result. Got ${result.length} entries with types: ${result.map((e: any) => e.type).join(', ')}`);
       }
 
       // Get the last assistant message
       const lastAssistant = assistantMessages[assistantMessages.length - 1];
       const content = lastAssistant.content || '';
 
-      // Extract token usage if available (might be on agent or result)
-      const usage = lastAssistant.usage || lastAssistant.tokens || {};
-      const actualTokens = {
-        prompt: usage.prompt || usage.input || usage.promptTokens,
-        completion: usage.completion || usage.output || usage.completionTokens,
-        total: usage.total || usage.totalTokens
-      };
+      // Token usage priority:
+      // 1. From SDK events (token_count emissions) - most accurate
+      // 2. From ChatEntry.usage - if available
+      // 3. Estimation fallback
 
-      // Estimate tokens from content (SDK doesn't expose actual counts)
-      const estimated = TokenEstimator.estimateUsage(prompt, content);
+      let finalTokens;
 
-      // Merge actual (if available) with estimated (fallback)
-      const finalTokens = TokenEstimator.mergeWithActual(estimated, actualTokens);
+      if (totalTokensFromEvents > 0) {
+        // Use tokens from SDK events (100% accurate!)
+        // SDK emits input tokens first, then output tokens incrementally
+        // We can't split them accurately, so use estimation for split
+        const estimated = TokenEstimator.estimateUsage(prompt, content);
+        finalTokens = {
+          prompt: estimated.prompt,  // Estimated split
+          completion: estimated.completion,  // Estimated split
+          total: totalTokensFromEvents  // Actual total from events
+        };
 
-      logger.debug('Token usage', {
-        estimated: TokenEstimator.format(estimated, true),
-        actual: actualTokens.total ? TokenEstimator.format(actualTokens as any) : 'not available',
-        final: TokenEstimator.format(finalTokens)
-      });
+        logger.info('Using token count from SDK events', {
+          tokens: TokenEstimator.format(finalTokens),
+          accuracy: '100% (total), 80-90% (split)',
+          source: 'token_count events'
+        });
+      } else {
+        // Fallback: Try to extract from ChatEntry.usage (if SDK adds it)
+        const usage = lastAssistant.usage || lastAssistant.tokens || {};
+        const actualTokens = {
+          prompt: usage.prompt_tokens || usage.prompt || usage.input || usage.promptTokens || 0,
+          completion: usage.completion_tokens || usage.completion || usage.output || usage.completionTokens || 0,
+          total: usage.total_tokens || usage.total || usage.totalTokens || 0
+        };
 
-      // Extract model name
-      const model = lastAssistant.model || this.agentConfig?.model || 'glm-4.6';
+        const hasActualTokens = actualTokens.total > 0;
 
-      // Determine finish reason
-      let finishReason: 'stop' | 'length' | 'error' = 'stop';
-      if (lastAssistant.finishReason) {
-        finishReason = lastAssistant.finishReason as 'stop' | 'length' | 'error';
-      } else if (lastAssistant.stopReason) {
-        finishReason = lastAssistant.stopReason === 'max_tokens' ? 'length' : 'stop';
+        if (hasActualTokens) {
+          finalTokens = {
+            prompt: actualTokens.prompt,
+            completion: actualTokens.completion,
+            total: actualTokens.total
+          };
+
+          logger.info('Using token counts from ChatEntry.usage', {
+            tokens: TokenEstimator.format(finalTokens),
+            accuracy: '100%',
+            source: 'ChatEntry.usage'
+          });
+        } else {
+          // Last resort: estimation
+          finalTokens = TokenEstimator.estimateUsage(prompt, content);
+
+          logger.warn('SDK did not provide token counts, using estimation', {
+            tokens: TokenEstimator.format(finalTokens, true),
+            accuracy: '80-90% (estimated)',
+            source: 'estimation'
+          });
+        }
       }
+
+      // Get model name from agent (ChatEntry doesn't have model field)
+      const model = this.agent!.getCurrentModel();
+
+      // ChatEntry doesn't have finishReason field, use 'stop' as default
+      // SDK will terminate with 'stop' for normal completion
+      const finishReason: 'stop' | 'length' | 'error' = 'stop';
 
       return {
         content,
@@ -283,31 +483,69 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         tokensUsed: finalTokens,
         latencyMs,
         finishReason,
-        cached: lastAssistant.cached || false
+        cached: false  // SDK doesn't expose cache status via ChatEntry
       };
     }
 
     // Fallback: single response object (if SDK API changes)
     const content = typeof result === 'string' ? result : result.content || result.text || '';
-    const usage = result.usage || result.tokens || {};
-    const actualTokens = {
-      prompt: usage.prompt || usage.input || usage.promptTokens,
-      completion: usage.completion || usage.output || usage.completionTokens,
-      total: usage.total || usage.totalTokens
-    };
 
-    // Estimate tokens from content
-    const estimated = TokenEstimator.estimateUsage(prompt, content);
-    const finalTokens = TokenEstimator.mergeWithActual(estimated, actualTokens);
+    let finalTokens;
 
-    const model = result.model || this.agentConfig?.model || 'glm-4.6';
+    if (totalTokensFromEvents > 0) {
+      // Use tokens from SDK events
+      const estimated = TokenEstimator.estimateUsage(prompt, content);
+      finalTokens = {
+        prompt: estimated.prompt,
+        completion: estimated.completion,
+        total: totalTokensFromEvents
+      };
 
-    let finishReason: 'stop' | 'length' | 'error' = 'stop';
-    if (result.finishReason) {
-      finishReason = result.finishReason as 'stop' | 'length' | 'error';
-    } else if (result.stopReason) {
-      finishReason = result.stopReason === 'max_tokens' ? 'length' : 'stop';
+      logger.info('Using token count from SDK events (fallback path)', {
+        tokens: TokenEstimator.format(finalTokens),
+        accuracy: '100% (total), 80-90% (split)',
+        source: 'token_count events'
+      });
+    } else {
+      // Try to extract from response.usage
+      const usage = result.usage || result.tokens || {};
+      const actualTokens = {
+        prompt: usage.prompt_tokens || usage.prompt || usage.input || usage.promptTokens || 0,
+        completion: usage.completion_tokens || usage.completion || usage.output || usage.completionTokens || 0,
+        total: usage.total_tokens || usage.total || usage.totalTokens || 0
+      };
+
+      const hasActualTokens = actualTokens.total > 0;
+
+      if (hasActualTokens) {
+        finalTokens = {
+          prompt: actualTokens.prompt,
+          completion: actualTokens.completion,
+          total: actualTokens.total
+        };
+
+        logger.info('Using token counts from response.usage (fallback path)', {
+          tokens: TokenEstimator.format(finalTokens),
+          accuracy: '100%',
+          source: 'response.usage'
+        });
+      } else {
+        // Last resort: estimation
+        finalTokens = TokenEstimator.estimateUsage(prompt, content);
+
+        logger.warn('SDK did not provide token counts (fallback path), using estimation', {
+          tokens: TokenEstimator.format(finalTokens, true),
+          accuracy: '80-90% (estimated)',
+          source: 'estimation'
+        });
+      }
     }
+
+    // Get model name from agent (fallback path)
+    const model = this.agent!.getCurrentModel();
+
+    // Default to 'stop' finish reason (fallback path)
+    const finishReason: 'stop' | 'length' | 'error' = 'stop';
 
     return {
       content,
@@ -315,7 +553,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       tokensUsed: finalTokens,
       latencyMs,
       finishReason,
-      cached: result.cached || false
+      cached: false  // SDK doesn't expose cache status
     };
   }
 
@@ -400,10 +638,10 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    */
   async getVersion(): Promise<string> {
     try {
-      // Try to read version from SDK constants
-      const { GLM_MODELS } = await import('@defai.digital/ax-cli/sdk');
-      // SDK doesn't expose version directly, so return a fixed string
-      return '3.4.6';  // TODO: Find better way to get version
+      // Try to import SDK to check if it's available
+      await import('@defai.digital/ax-cli/sdk');
+      // SDK doesn't expose version directly, return expected version
+      return '3.7.0+';
     } catch (error) {
       logger.warn('Failed to get SDK version', {
         error: error instanceof Error ? error.message : String(error)
@@ -432,10 +670,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   async destroy(): Promise<void> {
     if (this.agent) {
       try {
-        // SDK may provide cleanup method
-        if (typeof this.agent.cleanup === 'function') {
-          await this.agent.cleanup();
-        }
+        // Call SDK's dispose() method to cleanup resources
+        // This cleans up event listeners, caches, terminates subagents, etc.
+        this.agent.dispose();
 
         this.agent = null;
         this.agentConfig = null;

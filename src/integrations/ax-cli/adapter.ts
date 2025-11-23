@@ -1,8 +1,8 @@
 /**
- * AxCliAdapter - Adapter for ax-cli (multi-provider CLI) (v10.0.0)
+ * AxCliAdapter - Adapter for ax-cli (provider-agnostic CLI) (v10.0.0)
  *
  * Wraps ax-cli execution with standardized adapter interface.
- * Supports multiple AI providers: GLM, xAI, OpenAI, Anthropic, Ollama.
+ * Supports multiple AI providers configured via `ax-cli setup`.
  *
  * ax-cli v2.5.1+ features:
  * - IDE integration (--json, --vscode)
@@ -23,10 +23,10 @@ import { logger } from '../../utils/logger.js';
 const execAsync = promisify(exec);
 
 /**
- * Adapter for ax-cli (multi-provider CLI)
+ * Adapter for ax-cli (provider-agnostic CLI)
  *
  * Features:
- * - Multi-provider support (GLM, xAI, OpenAI, Anthropic, Ollama)
+ * - Provider-agnostic (configured via ax-cli setup)
  * - JSONL response parsing
  * - Configurable timeout and tool rounds
  * - Shell-safe command building

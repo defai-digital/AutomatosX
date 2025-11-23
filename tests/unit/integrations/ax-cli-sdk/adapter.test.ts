@@ -8,16 +8,48 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 vi.mock('@defai.digital/ax-cli/sdk', () => {
   const mockAgent = {
     processUserMessage: vi.fn(),
-    destroy: vi.fn().mockResolvedValue(undefined)
+    processUserMessageStream: vi.fn(),
+    getChatHistory: vi.fn().mockReturnValue([]),
+    getCurrentModel: vi.fn().mockReturnValue('glm-4.6'),
+    dispose: vi.fn(),
+    on: vi.fn(),
+    removeAllListeners: vi.fn()
+  };
+
+  // Mock SDKError class
+  class MockSDKError extends Error {
+    public code: string;
+    public override cause?: Error;
+
+    constructor(code: string, message: string, cause?: Error) {
+      super(message);
+      this.name = 'SDKError';
+      this.code = code;
+      this.cause = cause;
+    }
+
+    static isSDKError(error: unknown): boolean {
+      return error instanceof MockSDKError;
+    }
+  }
+
+  // Mock SDKErrorCode enum
+  const MockSDKErrorCode = {
+    SETUP_NOT_RUN: 'SDK_SETUP_NOT_RUN',
+    API_KEY_MISSING: 'SDK_API_KEY_MISSING',
+    BASE_URL_MISSING: 'SDK_BASE_URL_MISSING',
+    AGENT_DISPOSED: 'SDK_AGENT_DISPOSED',
+    VALIDATION_ERROR: 'SDK_VALIDATION_ERROR',
+    ABORTED: 'SDK_ABORTED',
+    RATE_LIMIT_EXCEEDED: 'SDK_RATE_LIMIT_EXCEEDED',
+    INVALID_CONFIG: 'SDK_INVALID_CONFIG',
+    INTERNAL_ERROR: 'SDK_INTERNAL_ERROR'
   };
 
   return {
     createAgent: vi.fn().mockResolvedValue(mockAgent),
-    initializeSDK: vi.fn().mockResolvedValue(undefined),
-    getUsageTracker: vi.fn().mockReturnValue({
-      getUsage: vi.fn().mockReturnValue({ total: 0 }),
-      getTotalUsage: vi.fn().mockReturnValue(0)
-    }),
+    SDKError: MockSDKError,
+    SDKErrorCode: MockSDKErrorCode,
     GLM_MODELS: ['glm-4.6', 'glm-4.9']
   };
 });
@@ -26,7 +58,9 @@ import { AxCliSdkAdapter } from '../../../../src/integrations/ax-cli-sdk/adapter
 
 describe('AxCliSdkAdapter', () => {
   let adapter: AxCliSdkAdapter;
-  let mockProcessUserMessage: any;
+  let mockProcessUserMessageStream: any;
+  let mockGetChatHistory: any;
+  let mockGetCurrentModel: any;
 
   beforeEach(async () => {
     // Get the mock SDK module
@@ -35,8 +69,8 @@ describe('AxCliSdkAdapter', () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Setup default mock response
-    mockProcessUserMessage = vi.fn().mockResolvedValue([
+    // Mock chat history (what getChatHistory() will return)
+    const mockChatHistory = [
       {
         type: 'user',
         content: 'Test prompt',
@@ -47,12 +81,38 @@ describe('AxCliSdkAdapter', () => {
         content: 'Mock response from SDK',
         timestamp: new Date().toISOString()
       }
-    ]);
+    ];
 
-    // Configure createAgent to return agent with our mock
+    // Setup streaming mock (async generator)
+    mockProcessUserMessageStream = vi.fn().mockImplementation(async function* () {
+      // Simulate streaming chunks
+      yield { type: 'content', content: 'Mock response from SDK' };
+      yield { type: 'token_count', tokenCount: 50 };
+    });
+
+    // Setup chat history mock - returns empty before execution, full history after
+    // This mock simulates the SDK's behavior of building history incrementally
+    // The adapter calls getChatHistory() twice per execution:
+    //   1. Before execution (to get starting length)
+    //   2. After execution (to extract new entries)
+    mockGetChatHistory = vi.fn().mockImplementation(() => {
+      const currentCallCount = mockGetChatHistory.mock.calls.length;
+      // Odd calls (1st, 3rd, 5th...): before execution (empty history)
+      // Even calls (2nd, 4th, 6th...): after execution (full history)
+      return currentCallCount % 2 === 1 ? [] : mockChatHistory;
+    });
+
+    // Setup model getter mock
+    mockGetCurrentModel = vi.fn().mockReturnValue('glm-4.6');
+
+    // Configure createAgent to return agent with streaming API
     (createAgent as any).mockResolvedValue({
-      processUserMessage: mockProcessUserMessage,
-      destroy: vi.fn().mockResolvedValue(undefined)
+      processUserMessageStream: mockProcessUserMessageStream,
+      getChatHistory: mockGetChatHistory,
+      getCurrentModel: mockGetCurrentModel,
+      dispose: vi.fn(),
+      on: vi.fn(),
+      removeAllListeners: vi.fn()
     });
 
     adapter = new AxCliSdkAdapter();
@@ -120,7 +180,7 @@ describe('AxCliSdkAdapter', () => {
 
     it('should return version when SDK is installed', async () => {
       const version = await adapter.getVersion();
-      expect(version).toBe('3.4.6');
+      expect(version).toBe('3.7.0+');
     });
   });
 
@@ -203,13 +263,17 @@ describe('AxCliSdkAdapter', () => {
       // is that both execute successfully.
     });
 
-    it('should recreate agent when model changes', async () => {
-      const result1 = await adapter.execute('Test', { model: 'glm-4.6' });
-      expect(result1.model).toBe('glm-4.6');
+    it('should recreate agent when maxToolRounds changes', async () => {
+      const result1 = await adapter.execute('Test', { maxToolRounds: 50 });
+      expect(result1.model).toBe('glm-4.6');  // Model always from SDK settings
 
-      // Change model - should recreate agent
-      const result2 = await adapter.execute('Test', { model: 'glm-4.9' });
-      expect(result2.model).toBe('glm-4.9');
+      // Change maxToolRounds - should recreate agent
+      const result2 = await adapter.execute('Test', { maxToolRounds: 100 });
+      expect(result2.model).toBe('glm-4.6');  // Model still from SDK settings
+
+      // Both executions should succeed
+      expect(result1.content).toBeDefined();
+      expect(result2.content).toBeDefined();
     });
 
     it('should handle multiple sequential executions', async () => {

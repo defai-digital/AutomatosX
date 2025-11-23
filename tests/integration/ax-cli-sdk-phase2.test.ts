@@ -21,7 +21,15 @@ describe('ax-cli SDK Phase 2 Integration', () => {
   const userConfigPath = join(homedir(), '.ax-cli', 'config.json');
   let originalUserConfig: string | null = null;
 
+  // Skip all tests if in mock mode (these are true integration tests)
+  const skipTests = process.env.AX_MOCK_PROVIDERS === 'true';
+
   beforeEach(() => {
+    if (skipTests) {
+      console.log('⏭️  Skipping Phase 2 integration tests (AX_MOCK_PROVIDERS=true)');
+      return;
+    }
+
     // Create .ax-cli directory for project-level tests
     if (!existsSync(axCliDir)) {
       mkdirSync(axCliDir, { recursive: true });
@@ -43,6 +51,8 @@ describe('ax-cli SDK Phase 2 Integration', () => {
   });
 
   afterEach(async () => {
+    if (skipTests) return;
+
     // Cleanup test files
     const testFiles = [
       join(axCliDir, 'CUSTOM.md'),
@@ -69,11 +79,13 @@ describe('ax-cli SDK Phase 2 Integration', () => {
       }
     }
 
-    await adapter.destroy();
+    if (adapter) {
+      await adapter.destroy();
+    }
   });
 
   describe('1. Model Selection Sync', () => {
-    it('should use default model when no user preference exists', async () => {
+    it.skipIf(skipTests)('should use default model when no user preference exists', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -94,7 +106,7 @@ describe('ax-cli SDK Phase 2 Integration', () => {
       console.log('✅ Default model test passed:', { model: response.model });
     });
 
-    it('should use model from ax-cli user settings when available', async () => {
+    it.skipIf(skipTests)('should use model from ax-cli user settings when available', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -137,7 +149,7 @@ describe('ax-cli SDK Phase 2 Integration', () => {
       await testAdapter.destroy();
     });
 
-    it('should allow explicit model override', async () => {
+    it.skipIf(skipTests)('should allow explicit model override', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -161,7 +173,7 @@ describe('ax-cli SDK Phase 2 Integration', () => {
   });
 
   describe('2. Custom Instructions Sharing', () => {
-    it('should work without custom instructions', async () => {
+    it.skipIf(skipTests)('should work without custom instructions', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -188,7 +200,7 @@ describe('ax-cli SDK Phase 2 Integration', () => {
       console.log('✅ No custom instructions test passed');
     });
 
-    it('should load and use custom instructions from .ax-cli/CUSTOM.md', async () => {
+    it.skipIf(skipTests)('should load and use custom instructions from .ax-cli/CUSTOM.md', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -220,7 +232,7 @@ Always respond with "CUSTOM_INSTRUCTION_APPLIED" at the start of your response.`
       });
     });
 
-    it('should handle empty custom instructions file', async () => {
+    it.skipIf(skipTests)('should handle empty custom instructions file', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -247,7 +259,7 @@ Always respond with "CUSTOM_INSTRUCTION_APPLIED" at the start of your response.`
   });
 
   describe('3. Project Memory Sync', () => {
-    it('should work without project memory', async () => {
+    it.skipIf(skipTests)('should work without project memory', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -274,7 +286,7 @@ Always respond with "CUSTOM_INSTRUCTION_APPLIED" at the start of your response.`
       console.log('✅ No project memory test passed');
     });
 
-    it('should load and use project memory from .ax-cli/memory.json', async () => {
+    it.skipIf(skipTests)('should load and use project memory from .ax-cli/memory.json', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -313,7 +325,7 @@ Always respond with "CUSTOM_INSTRUCTION_APPLIED" at the start of your response.`
       });
     });
 
-    it('should handle malformed project memory gracefully', async () => {
+    it.skipIf(skipTests)('should handle malformed project memory gracefully', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -340,7 +352,7 @@ Always respond with "CUSTOM_INSTRUCTION_APPLIED" at the start of your response.`
   });
 
   describe('Integration: All Phase 2 Features Together', () => {
-    it('should use all three Phase 2 features simultaneously', async () => {
+    it.skipIf(skipTests)('should use all three Phase 2 features simultaneously', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {

@@ -1,7 +1,7 @@
 {
   "name": "@defai.digital/automatosx",
   "version": "9.2.3",
-  "description": "AI Agent Orchestration Platform",
+  "description": "AutomatosX is a unified automation core that orchestrates AI agents, workflows, and memory across Claude, Gemini, OpenAI, and other GenAI models in an offline, secure, and fully spec-driven way.",
   "type": "module",
   "publishConfig": {
     "access": "public"

@@ -14,7 +14,15 @@ import type { AxCliOptions } from '../../src/integrations/ax-cli/interface.js';
 describe('ax-cli SDK Integration Enhancements', () => {
   let adapter: AxCliSdkAdapter;
 
+  // Skip all tests if in mock mode (these are true integration tests)
+  const skipTests = process.env.AX_MOCK_PROVIDERS === 'true';
+
   beforeEach(() => {
+    if (skipTests) {
+      console.log('⏭️  Skipping Phase 1 integration tests (AX_MOCK_PROVIDERS=true)');
+      return;
+    }
+
     adapter = new AxCliSdkAdapter({
       reuseEnabled: true,
       streamingEnabled: false
@@ -22,11 +30,13 @@ describe('ax-cli SDK Integration Enhancements', () => {
   });
 
   afterEach(async () => {
-    await adapter.destroy();
+    if (adapter) {
+      await adapter.destroy();
+    }
   });
 
   describe('1. Token Usage Accuracy', () => {
-    it('should use actual token counts from SDK when available', async () => {
+    it.skipIf(skipTests)('should use actual token counts from SDK when available', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -61,7 +71,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
       });
     });
 
-    it('should fallback to estimation when SDK does not provide tokens', async () => {
+    it.skipIf(skipTests)('should fallback to estimation when SDK does not provide tokens', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -86,7 +96,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
   });
 
   describe('2. Shared MCP Configuration', () => {
-    it('should load MCP servers from ax-cli config', async () => {
+    it.skipIf(skipTests)('should load MCP servers from ax-cli config', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -112,7 +122,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
       console.log('✅ MCP configuration loading test passed');
     });
 
-    it('should handle missing MCP config gracefully', async () => {
+    it.skipIf(skipTests)('should handle missing MCP config gracefully', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -133,7 +143,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
   });
 
   describe('3. Streaming Events', () => {
-    it('should trigger onStream callback for content chunks', async () => {
+    it.skipIf(skipTests)('should trigger onStream callback for content chunks', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -172,7 +182,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
       }
     });
 
-    it('should trigger onTool callback for tool invocations', async () => {
+    it.skipIf(skipTests)('should trigger onTool callback for tool invocations', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -210,7 +220,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
       }
     });
 
-    it('should handle streaming callbacks without errors', async () => {
+    it.skipIf(skipTests)('should handle streaming callbacks without errors', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {
@@ -242,7 +252,7 @@ describe('ax-cli SDK Integration Enhancements', () => {
   });
 
   describe('Integration: All Features Together', () => {
-    it('should use all three features simultaneously', async () => {
+    it.skipIf(skipTests)('should use all three features simultaneously', async () => {
       // Skip if SDK not available
       const isAvailable = await adapter.isAvailable();
       if (!isAvailable) {

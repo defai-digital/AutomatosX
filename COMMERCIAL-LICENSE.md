@@ -325,9 +325,9 @@ Commercial license pricing is based on:
 - **Professional**: $15,000 - $50,000/year (SaaS, < 1,000 users)
 - **Enterprise**: $50,000+/year (unlimited, custom terms)
 
-**Get a Quote**: https://license.defai.digital/automatox
+**Get a Quote**: Contact sales@defai.digital for pricing and distribution
 
-**Contact**: licensing@defai.digital
+**Contact**: sales@defai.digital or licensing@defai.digital
 
 ---
 
@@ -514,7 +514,7 @@ DEFAI may update these commercial terms to:
 
 **General Licensing Questions**: licensing@defai.digital
 
-**Commercial License Quotes**: https://license.defai.digital/automatox
+**Commercial License Quotes**: Contact sales@defai.digital for pricing and distribution
 
 **Technical Support** (commercial customers): support@defai.digital
 

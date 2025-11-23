@@ -190,10 +190,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    */
   private async initializeAgent(options: AxCliOptions): Promise<void> {
     // Dynamic import to avoid loading SDK unless needed
-    const { createAgent, SDKError, SDKErrorCode } = await import('@defai.digital/ax-cli/sdk');
+    const { createAgent } = await import('@defai.digital/ax-cli/sdk');
 
     try {
-
       const config: AgentConfig = {
         maxToolRounds: options.maxToolRounds || 400
       };
@@ -221,52 +220,48 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         maxToolRounds: config.maxToolRounds,
         note: 'Using credentials from ax-cli setup'
       });
-    } catch (error: unknown) {
-      // Handle SDK-specific errors
-      if (SDKError.isSDKError(error)) {
-        switch (error.code) {
-          case SDKErrorCode.SETUP_NOT_RUN:
-            logger.error('ax-cli setup not run', {
-              error: error.message,
-              solution: 'Run: ax-cli setup'
-            });
-            throw new Error(
-              'ax-cli setup has not been run. Please run "ax-cli setup" to configure your API key, model, and base URL. ' +
-              'The SDK adapter does not accept credentials directly for security reasons.'
-            );
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
 
-          case SDKErrorCode.API_KEY_MISSING:
-            logger.error('API key not configured', {
-              error: error.message,
-              solution: 'Run: ax-cli setup'
-            });
-            throw new Error(
-              'No API key configured in ax-cli settings. Please run "ax-cli setup" to configure your credentials.'
-            );
+      // Check for common setup issues in error message
+      const errorMsg = error.message.toLowerCase();
 
-          case SDKErrorCode.BASE_URL_MISSING:
-            logger.error('Base URL not configured', {
-              error: error.message,
-              solution: 'Run: ax-cli setup'
-            });
-            throw new Error(
-              'No base URL configured in ax-cli settings. Please run "ax-cli setup" to configure your AI provider endpoint.'
-            );
+      if (errorMsg.includes('setup') || errorMsg.includes('not configured')) {
+        logger.error('ax-cli setup required', {
+          error: error.message,
+          solution: 'Run: ax-cli setup'
+        });
+        throw new Error(
+          'ax-cli setup has not been run. Please run "ax-cli setup" to configure your API key, model, and base URL. ' +
+          `Original error: ${error.message}`
+        );
+      }
 
-          default:
-            logger.error('SDK error during initialization', {
-              code: error.code,
-              message: error.message
-            });
-            throw new Error(`SDK initialization failed: ${error.message}`);
-        }
+      if (errorMsg.includes('api key') || errorMsg.includes('apikey')) {
+        logger.error('API key not configured', {
+          error: error.message,
+          solution: 'Run: ax-cli setup'
+        });
+        throw new Error(
+          `No API key configured in ax-cli settings. Please run "ax-cli setup" to configure your credentials. Original error: ${error.message}`
+        );
+      }
+
+      if (errorMsg.includes('base url') || errorMsg.includes('baseurl') || errorMsg.includes('endpoint')) {
+        logger.error('Base URL not configured', {
+          error: error.message,
+          solution: 'Run: ax-cli setup'
+        });
+        throw new Error(
+          `No base URL configured in ax-cli settings. Please run "ax-cli setup" to configure your AI provider endpoint. Original error: ${error.message}`
+        );
       }
 
       // Generic error handling
       logger.error('Failed to initialize SDK agent', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error.message
       });
-      throw new Error(`Failed to initialize SDK agent: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to initialize SDK agent: ${error.message}`);
     }
   }
 

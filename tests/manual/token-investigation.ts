@@ -4,7 +4,7 @@
  * Investigates how to get token usage from ax-cli SDK
  */
 
-import { createAgent, initializeSDK, getUsageTracker } from '@defai.digital/ax-cli/sdk';
+import { createAgent, getUsageTracker } from '@defai.digital/ax-cli/sdk';
 
 async function investigateTokens() {
   console.log('=== Investigating Token Usage ===\n');
@@ -12,8 +12,8 @@ async function investigateTokens() {
   try {
     // Initialize SDK (deprecated - SDK handles initialization automatically)
     console.log('1. Initializing SDK...');
-    await initializeSDK();
-    console.log('   ✅ SDK initialized\n');
+    // Note: initializeSDK() is deprecated - SDK auto-initializes on first use
+    console.log('   ⏭️  Skipping (deprecated - auto-initializes)\n');
 
     // Create agent (credentials from ax-cli setup)
     console.log('2. Creating agent...');

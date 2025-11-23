@@ -29,13 +29,28 @@ describe('ProviderLimitManager', () => {
   });
 
   afterEach(async () => {
-    // Clean up
-    try {
-      if (existsSync(testStateDir)) {
-        await fs.rm(testStateDir, { recursive: true, force: true });
+    // Clean up - with retry logic for race conditions
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        if (existsSync(testStateDir)) {
+          // Wait a bit for any pending I/O operations to complete
+          await new Promise(resolve => setTimeout(resolve, 50));
+          await fs.rm(testStateDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+        }
+        break;
+      } catch (error: any) {
+        retries--;
+        if (retries === 0) {
+          // Only log error after all retries - don't throw to avoid breaking other tests
+          if (error.code !== 'ENOENT' && error.code !== 'ENOTEMPTY') {
+            console.warn('Test cleanup warning:', error.message);
+          }
+        } else {
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
-    } catch {
-      // Ignore cleanup errors
     }
 
     // Reset singleton

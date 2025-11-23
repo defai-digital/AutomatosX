@@ -1,7 +1,7 @@
 {
   "name": "@defai.digital/automatosx",
   "version": "10.0.0",
-  "description": "AutomatosX is a unified automation core that orchestrates AI agents, workflows, and memory",
+  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, OpenAI Codex, and ax-cli",
   "type": "module",
   "publishConfig": {
     "access": "public"

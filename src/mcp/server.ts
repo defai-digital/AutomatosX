@@ -36,6 +36,7 @@ import { ProfileLoader } from '../agents/profile-loader.js';
 import { AbilitiesManager } from '../agents/abilities-manager.js';
 import { TeamManager } from '../core/team-manager.js';
 import { PathResolver } from '../core/path-resolver.js';
+import { ConversationContextStore } from '../core/conversation-context-store.js';
 
 // Import tool handlers - Phase 1
 import { createRunAgentHandler } from './tools/run-agent.js';
@@ -58,6 +59,13 @@ import { createMemoryExportHandler } from './tools/memory-export.js';
 import { createMemoryImportHandler } from './tools/memory-import.js';
 import { createMemoryStatsHandler } from './tools/memory-stats.js';
 import { createMemoryClearHandler } from './tools/memory-clear.js';
+
+// Import tool handlers - Phase 3.1: Context Sharing
+import { createGetConversationContextHandler } from './tools/get-conversation-context.js';
+import { createInjectConversationContextHandler } from './tools/inject-conversation-context.js';
+
+// Import tool handlers - Phase 3.1: Tool Chaining
+import { createImplementAndDocumentHandler } from './tools/implement-and-document.js';
 
 export interface McpServerOptions {
   debug?: boolean;
@@ -83,6 +91,7 @@ export class McpServer {
   private contextManager!: ContextManager;
   private profileLoader!: ProfileLoader;
   private pathResolver!: PathResolver;
+  private contextStore!: ConversationContextStore;
 
   constructor(options: McpServerOptions = {}) {
     if (options.debug) {
@@ -181,6 +190,14 @@ export class McpServer {
       sessionManager: this.sessionManager,
       workspaceManager: this.workspaceManager
     });
+
+    // Initialize ConversationContextStore (Phase 3.1)
+    this.contextStore = new ConversationContextStore({
+      storePath: join(projectDir, '.automatosx', 'context'),
+      maxEntries: 100,
+      ttlMs: 24 * 60 * 60 * 1000  // 24 hours
+    });
+    await this.contextStore.initialize();
 
     logger.info('[MCP Server] Services initialized successfully');
   }
@@ -300,6 +317,26 @@ export class McpServer {
         name: 'memory_clear',
         description: 'Clear all memory entries from the database',
         inputSchema: { type: 'object', properties: {} }
+    });
+
+    // Phase 3.1: Context Sharing
+    register('get_conversation_context', createGetConversationContextHandler({ contextStore: this.contextStore }), {
+        name: 'get_conversation_context',
+        description: 'Retrieve conversation context from the shared context store',
+        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Optional: Context ID to retrieve' }, source: { type: 'string', description: 'Optional: Filter by source (e.g., gemini-cli)' }, limit: { type: 'number', description: 'Optional: Max results (default: 10)', default: 10 } } }
+    });
+
+    register('inject_conversation_context', createInjectConversationContextHandler({ contextStore: this.contextStore }), {
+        name: 'inject_conversation_context',
+        description: 'Inject conversation context into the shared context store',
+        inputSchema: { type: 'object', properties: { source: { type: 'string', description: 'Source assistant (e.g., gemini-cli, claude-code)' }, content: { type: 'string', description: 'Context content' }, metadata: { type: 'object', description: 'Optional metadata', properties: { topic: { type: 'string' }, participants: { type: 'array', items: { type: 'string' } }, tags: { type: 'array', items: { type: 'string' } } } } }, required: ['source', 'content'] }
+    });
+
+    // Phase 3.1: Tool Chaining
+    register('implement_and_document', createImplementAndDocumentHandler({ contextManager: this.contextManager, executorConfig: { sessionManager: this.sessionManager, workspaceManager: this.workspaceManager, contextManager: this.contextManager, profileLoader: this.profileLoader } }), {
+        name: 'implement_and_document',
+        description: 'Implement code and generate documentation atomically to prevent documentation drift',
+        inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'Task description' }, agent: { type: 'string', description: 'Optional: Agent to use (default: backend)' }, documentation: { type: 'object', description: 'Documentation options', properties: { format: { type: 'string', enum: ['markdown', 'jsdoc'], description: 'Doc format (default: markdown)' }, outputPath: { type: 'string', description: 'Optional: Custom doc output path' }, updateChangelog: { type: 'boolean', description: 'Update CHANGELOG.md (default: true)', default: true } } }, provider: { type: 'string', enum: ['claude', 'gemini', 'openai'], description: 'Optional: AI provider override' } }, required: ['task'] }
     });
 
     logger.info('[MCP Server] Registered tools', {

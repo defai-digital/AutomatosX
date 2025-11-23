@@ -16,6 +16,8 @@ build/
 # Testing
 coverage/
 .nyc_output/
+tests/fixtures/test-state-*/
+tests/fixtures/test-*/
 
 # OS files
 .DS_Store

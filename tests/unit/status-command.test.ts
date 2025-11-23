@@ -39,7 +39,15 @@ vi.mock('../../src/core/config.js', async () => {
         maxEntries: 10000,
         cleanupDays: 30
       }
-    }),
+    })
+  };
+});
+
+// Mock DEFAULT_CONFIG from types/config.ts (status.ts imports it from here)
+vi.mock('../../src/types/config.ts', async () => {
+  const actual = await vi.importActual('../../src/types/config.ts') as any;
+  return {
+    ...actual,
     // Mock DEFAULT_CONFIG to have no providers (prevents provider instantiation on error fallback)
     DEFAULT_CONFIG: {
       ...actual.DEFAULT_CONFIG,
@@ -576,25 +584,23 @@ describe('Status Command', () => {
       const { loadConfig } = await import('../../src/core/config.js');
       vi.mocked(loadConfig).mockRejectedValueOnce(new Error('Config error'));
 
-      try {
-        await statusCommand.handler({ _: [], $0: '' });
-        // Should throw process.exit(1)
-        expect(true).toBe(false); // Should not reach here
-      } catch (error) {
-        expect((error as Error).message).toContain('process.exit(1)');
-      }
+      // Status command should gracefully fallback to DEFAULT_CONFIG (which is mocked to have no providers)
+      // It should succeed, not throw an error
+      await expect(statusCommand.handler({ _: [], $0: '' })).resolves.not.toThrow();
+
+      // Verify console.log was called (status output was displayed)
+      expect(consoleLogSpy).toHaveBeenCalled();
     });
 
     it('should display error with verbose flag', async () => {
       const { loadConfig } = await import('../../src/core/config.js');
       vi.mocked(loadConfig).mockRejectedValueOnce(new Error('Verbose error test'));
 
-      try {
-        await statusCommand.handler({ verbose: true, _: [], $0: '' });
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toContain('process.exit(1)');
-      }
+      // Status command should gracefully fallback to DEFAULT_CONFIG and succeed
+      await expect(statusCommand.handler({ verbose: true, _: [], $0: '' })).resolves.not.toThrow();
+
+      // Verify console.log was called (verbose status output was displayed)
+      expect(consoleLogSpy).toHaveBeenCalled();
     });
   });
 });

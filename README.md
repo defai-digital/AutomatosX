@@ -13,7 +13,7 @@
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v9.2.3 | Enterprise MCP Support | Multi-Provider Orchestration
+**Status**: ✅ **Production Ready** | v9.2.4 | Enterprise MCP Support | Multi-Provider Orchestration
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

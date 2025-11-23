@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "9.2.3",
+  "version": "9.2.4",
   "description": "AutomatosX is a unified automation core that orchestrates AI agents, workflows, and memory",
   "type": "module",
   "publishConfig": {

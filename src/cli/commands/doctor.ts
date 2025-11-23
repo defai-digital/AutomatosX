@@ -24,6 +24,7 @@ import type { AutomatosXConfig } from '../../types/config.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
+import { ProviderDetector } from '../../core/provider-detector.js';
 import { join } from 'path';
 
 interface DoctorOptions {
@@ -95,6 +96,10 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
 
       const results: CheckResult[] = [];
 
+      // Check Node.js version (v10.1.0+)
+      console.log(chalk.bold('⚙️  System Requirements'));
+      results.push(...await checkNodeVersion(argv.verbose ?? false));
+
       // Load configuration
       let config: AutomatosXConfig | null = null;
       try {
@@ -106,35 +111,70 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
           category: 'Setup',
           passed: false,
           message: 'Configuration not found or invalid',
-          fix: 'Run: ax init',
+          fix: 'Run: ax setup',
           details: (error as Error).message
         });
       }
 
-      // Check providers
-      const providersToCheck = argv.provider
-        ? [argv.provider]
-        : ['openai', 'gemini', 'claude'];
+      // Detect all installed AI providers
+      console.log(chalk.bold('\n🔍 AI Provider Detection'));
+      const detector = new ProviderDetector();
+      const detectedProviders = await detector.detectAllWithInfo();
 
+      // Display detection results
+      for (const providerInfo of detectedProviders) {
+        const spinner = ora();
+        if (providerInfo.detected) {
+          const versionStr = providerInfo.version ? ` (${providerInfo.version})` : '';
+          spinner.succeed(chalk.green(`${ProviderDetector.formatProviderName(providerInfo.name)}: Installed${versionStr}`));
+        } else {
+          spinner.info(chalk.gray(`${ProviderDetector.formatProviderName(providerInfo.name)}: Not installed`));
+        }
+      }
+
+      const foundProviders = detectedProviders.filter(p => p.detected);
+      const notFoundProviders = detectedProviders.filter(p => !p.detected);
+
+      console.log('');
+      if (foundProviders.length > 0) {
+        console.log(chalk.green(`✓ Detected ${foundProviders.length} AI provider(s)`));
+      }
+      if (notFoundProviders.length > 0) {
+        console.log(chalk.gray(`  ${notFoundProviders.length} provider(s) not installed`));
+      }
+
+      // Check specific provider if requested
       const verbose = argv.verbose ?? false;
 
-      for (const provider of providersToCheck) {
-        // Only check if enabled in config
-        if (config && !config.providers[provider as keyof typeof config.providers]?.enabled) {
-          if (verbose) {
-            console.log(chalk.dim(`⊘ ${provider}: Disabled in configuration (skipping)`));
+      if (argv.provider) {
+        const providerMap: Record<string, string> = {
+          'openai': 'codex',
+          'gemini': 'gemini-cli',
+          'claude': 'claude-code'
+        };
+
+        const providerKey = providerMap[argv.provider];
+        const provider = detectedProviders.find(p => p.name === providerKey);
+
+        if (provider && provider.detected) {
+          console.log(chalk.bold(`\n${getProviderEmoji(argv.provider)} ${capitalize(argv.provider)} Provider Details`));
+
+          if (argv.provider === 'openai') {
+            results.push(...await checkOpenAIProvider(verbose));
+          } else if (argv.provider === 'gemini') {
+            results.push(...await checkGeminiProvider(verbose));
+          } else if (argv.provider === 'claude') {
+            results.push(...await checkClaudeProvider(verbose));
           }
-          continue;
-        }
-
-        console.log(chalk.bold(`\n${getProviderEmoji(provider)} ${capitalize(provider)} Provider`));
-
-        if (provider === 'openai') {
-          results.push(...await checkOpenAIProvider(verbose));
-        } else if (provider === 'gemini') {
-          results.push(...await checkGeminiProvider(verbose));
-        } else if (provider === 'claude') {
-          results.push(...await checkClaudeProvider(verbose));
+        } else {
+          console.log(chalk.yellow(`\n⚠️  ${capitalize(argv.provider)} CLI not found`));
+          results.push({
+            name: `${capitalize(argv.provider)} CLI`,
+            category: 'Provider',
+            passed: false,
+            message: 'Not installed',
+            fix: getProviderInstallCommand(argv.provider)
+          });
         }
       }
 
@@ -168,6 +208,69 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
     }
   }
 };
+
+/**
+ * Check Node.js version (v10.1.0+)
+ */
+async function checkNodeVersion(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  try {
+    const nodeVersion = process.version; // e.g., "v24.0.0"
+    const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0] || '0', 10);
+
+    const isSupported = majorVersion >= 24;
+
+    results.push({
+      name: 'Node.js Version',
+      category: 'System',
+      passed: isSupported,
+      message: isSupported
+        ? `${nodeVersion} (supported)`
+        : `${nodeVersion} (requires Node.js 24+)`,
+      fix: isSupported ? undefined : 'Install Node.js 24 or later from: https://nodejs.org',
+      details: verbose ? `Detected: ${nodeVersion}, Required: >=24.0.0` : undefined
+    });
+
+    displayCheck(results[0]!);
+
+    // Warning for unsupported versions, but allow execution
+    if (!isSupported) {
+      console.log(chalk.yellow('   ⚠️  Warning: AutomatosX supports Node.js 24+'));
+      console.log(chalk.yellow('   ⚠️  Execution will continue, but issues may occur\n'));
+    }
+
+  } catch (error) {
+    results.push({
+      name: 'Node.js Version',
+      category: 'System',
+      passed: false,
+      message: 'Could not detect Node.js version',
+      fix: 'Ensure Node.js is properly installed',
+      details: verbose ? (error as Error).message : undefined
+    });
+
+    displayCheck(results[0]!);
+  }
+
+  return results;
+}
+
+/**
+ * Get provider installation command
+ */
+function getProviderInstallCommand(provider: string): string {
+  switch (provider) {
+    case 'openai':
+      return 'npm install -g @openai/codex-cli\n   OR: brew install --cask codex';
+    case 'gemini':
+      return 'Follow installation guide at: https://ai.google.dev/gemini-api/docs/cli';
+    case 'claude':
+      return 'Install from: https://claude.com/code\n   OR: npm install -g @anthropic-ai/claude-cli';
+    default:
+      return 'Check provider documentation for installation instructions';
+  }
+}
 
 /**
  * Check OpenAI Codex provider

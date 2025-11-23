@@ -1276,9 +1276,22 @@ async function setupGeminiMCPConfig(projectDir: string, packageRoot: string): Pr
     // Determine AutomatosX MCP server path
     // Check if running from global install vs local
     const globalMcpPath = join(packageRoot, 'dist', 'mcp', 'index.js');
-    const mcpServerPath = await checkExists(globalMcpPath)
-      ? globalMcpPath
-      : join(projectDir, 'node_modules', '@defai.digital', 'automatosx', 'dist', 'mcp', 'index.js');
+    const localMcpPath = join(projectDir, 'node_modules', '@defai.digital', 'automatosx', 'dist', 'mcp', 'index.js');
+
+    // BUGFIX: Verify both paths exist before choosing one
+    let mcpServerPath: string;
+    if (await checkExists(globalMcpPath)) {
+      mcpServerPath = globalMcpPath;
+    } else if (await checkExists(localMcpPath)) {
+      mcpServerPath = localMcpPath;
+    } else {
+      // Neither global nor local installation found - skip MCP setup
+      logger.warn('AutomatosX MCP server not found, skipping Gemini CLI MCP configuration', {
+        globalPath: globalMcpPath,
+        localPath: localMcpPath
+      });
+      return;
+    }
 
     // Read existing MCP servers config if it exists
     let mcpConfig: Record<string, unknown> = {};

@@ -654,7 +654,7 @@ ax run backend "implement encryption module"
 - ✅ **Custom agent packs** - Create team-specific roles and expertise profiles
 
 **Provider & Configuration**:
-- ✅ **Per-project provider profiles** - Different Claude/Gemini/Grok/local configs per project
+- ✅ **Per-project provider profiles** - Different Claude/Gemini/local configs per project
 - ✅ **Local memory encryption** - Secure persistent memory with encryption at rest
 - ✅ **Backup & restore** - Export/import workflows and memory for disaster recovery
 

@@ -63,6 +63,11 @@ status/
 .automatosx/
 .automatosx-backups/
 
+# Checkpoint files (resumable execution state)
+checkpoints/
+*.checkpoint
+*.checkpoint.json
+
 # Workspace directories (v5.2.0+)
 # These are local-only directories for development planning
 automatosx/tmp/

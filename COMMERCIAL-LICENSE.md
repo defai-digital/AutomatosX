@@ -2,568 +2,360 @@
 
 ## Overview
 
-AutomatosX is dual-licensed under:
-- **Apache License 2.0** (for source code) - See [LICENSE](./LICENSE)
-- **Commercial License** (for business use restrictions) - This document
+AutomatosX uses an **open-core + commercial editions** business model:
 
-This structure ensures:
-- ✅ Open source code under Apache 2.0
-- ✅ Free use for small teams, research, and personal projects
-- ✅ Sustainable revenue from enterprise usage
+- **Open Source Edition**: Apache License 2.0 - Free forever
+- **AutomatosX Pro Edition**: Commercial EULA - Paid software
+- **AutomatosX Enterprise Edition**: Enterprise Agreement - Paid software
 
----
-
-## Free Usage (No Commercial License Required)
-
-You may use AutomatosX **for free** under the following conditions:
-
-### ✅ Research and Academic Use
-- Educational institutions
-- Non-commercial research projects
-- Academic publications and studies
-- **Always free, no restrictions**
-
-### ✅ Personal Use
-- Individual developers working on personal projects
-- Non-commercial hobby projects
-- Learning and experimentation
-- **Always free, no restrictions**
-
-### ✅ Startups and Small Businesses
-Organizations that meet **BOTH** of the following criteria:
-- Annual revenue < $2,000,000 USD **AND**
-- Total funding raised < $2,000,000 USD
-
-**Note**: Once your organization exceeds **either** threshold, you must obtain a commercial license within 30 days.
+This document describes the commercial licensing for **Pro** and **Enterprise** editions only. The **Open Source Edition** is governed solely by the [Apache License 2.0](./LICENSE).
 
 ---
 
-## When a Commercial License is Required
+## Important: This License Does NOT Apply to Open Source Edition
 
-A **commercial license is required** if you:
+**If you are using the open source version from GitHub**, you are covered by Apache License 2.0 **only**. This commercial license document:
 
-### ❌ Exceed Revenue/Funding Thresholds
-- Annual revenue ≥ $2,000,000 USD, **OR**
-- Total funding raised ≥ $2,000,000 USD
+- ❌ Does NOT restrict your use of the open source edition
+- ❌ Does NOT impose any fees or obligations on open source users
+- ❌ Does NOT change the terms of Apache License 2.0
 
-### ❌ Competitive Use Against DEFAI
-You **cannot** use AutomatosX without a commercial license to:
-- Build products that directly compete with DEFAI's commercial offerings
-- Offer services that compete with DEFAI's API services
-- Create derivative works that compete with AutomatosX itself
-
-**DEFAI's Commercial Offerings** (as of January 2025):
-1. **AutomatosX Platform**: AI agent orchestration and workflow automation
-2. **AutomatosX Cloud**: Managed hosting and enterprise services (if/when launched)
-3. **DEFAI API Services**: AI routing and orchestration APIs (if/when launched)
-4. **Future offerings**: Any products or services announced by DEFAI
-
-**Examples of Competitive Use** (requires commercial license):
-- ❌ Building "CompetitorX" - an AI orchestration platform
-- ❌ Offering "Orchestration-as-a-Service" using AutomatosX
-- ❌ Creating a fork called "BetterAutomatosX" for commercial sale
-- ❌ White-labeling AutomatosX and selling it as your product
-
-**Examples of NON-Competitive Use** (may be free tier):
-- ✅ Building a CRM using AutomatosX for workflow automation
-- ✅ Creating internal tools for your company's operations
-- ✅ Using AutomatosX to power chatbots or AI assistants
-- ✅ Building domain-specific applications (e.g., healthcare AI, fintech automation)
-
-**Gray Areas** (contact us to clarify):
-- Using AutomatosX to build AI workflow features in your product
-- Offering consulting services that include AutomatosX setup
-- Creating plugins or extensions for AutomatosX (usually permitted)
-
-### ❌ Managed Services / SaaS
-You **cannot** without a commercial license:
-- Offer AutomatosX as a hosted or managed service
-- Provide SaaS offerings built on AutomatosX
-- Sell access to AutomatosX functionality as a service
-
-### ❌ Commercial Product Embedding
-You **cannot** without a commercial license:
-- Embed AutomatosX in commercial products for redistribution
-- Bundle AutomatosX with commercial software sold to customers
-- Use AutomatosX as a core component of a commercial offering
+**This document is** for users who:
+- ✅ Purchase AutomatosX Pro (paid software with additional features)
+- ✅ Sign an Enterprise Agreement for AutomatosX Enterprise
+- ✅ Need to understand what commercial editions offer
 
 ---
 
-## Commercial License Benefits
+## Three Editions Explained
 
-Commercial licenses include:
+### 1. AutomatosX Open Source Edition
 
-### ✅ Extended Rights
-- Remove revenue/funding restrictions
-- Commercial redistribution rights
-- SaaS and managed service permissions
-- Competitive use permissions (case-by-case basis)
+**License**: Apache License 2.0 (see [LICENSE](./LICENSE))
 
-### ✅ Priority Support
-- Dedicated support channel
-- Faster response times (SLA-backed)
-- Architecture review and guidance
-- Performance optimization consulting
-
-### ✅ Custom Deployments
-- On-premises deployment assistance
-- Custom integration support
-- White-label options (enterprise tier)
-- Custom feature development (enterprise tier)
-
-### ✅ Legal Protections
-- Indemnification coverage
-- Patent protection
-- Commercial use warranties
-- Liability coverage
-
-### ✅ Maintenance, Patching, and Updates
-- **Security patches**: Guaranteed timelines for critical vulnerabilities
-- **Bug fix priority**: Commercial users prioritized in fix queue
-- **Version support**: Long-term support for older versions
-- **Regular updates**: Quarterly maintenance releases
-- **SLA-backed support**: Response time guarantees (see Support SLAs below)
-
----
-
-## Maintenance, Patching, and Updates
-
-### Free Tier (No Commercial License)
-
-**Included**:
-- ✅ Access to public releases on GitHub
+**What's Included**:
+- ✅ Full source code on GitHub
+- ✅ Core orchestration engine
+- ✅ 20+ specialized AI agents
+- ✅ Persistent memory system (SQLite FTS5)
+- ✅ Multi-provider routing (Claude, Gemini, OpenAI Codex)
+- ✅ Workflow specs and execution
 - ✅ Community support (GitHub Issues)
-- ✅ Security patches for critical vulnerabilities (best-effort)
-- ✅ Bug fixes in new releases
 
-**NOT Included**:
-- ❌ Guaranteed response times or SLAs
-- ❌ Backported patches for older versions
-- ❌ Priority bug fixes
-- ❌ Custom patches for your environment
-- ❌ Proactive security notifications
+**Who Can Use**:
+- ✅ Anyone, for any purpose (personal, commercial, research)
+- ✅ Free forever, no revenue limits
+- ✅ No registration or tracking required
+- ✅ Modify, fork, redistribute under Apache 2.0
 
-**Timeline**: Best-effort basis. No guarantees on fix timeline or backward compatibility.
-
----
-
-### Commercial License (Standard Tier)
-
-**Price**: $5,000 - $15,000/year
-
-**Maintenance Included**:
-- ✅ **Guaranteed security patches** within 14 days of disclosure
-- ✅ **Priority bug fixes**: Commercial users prioritized in fix queue
-- ✅ **Quarterly maintenance releases**: Regular updates with improvements
-- ✅ **Version support**: N-1 versions (current + 1 previous major version)
-- ✅ **Email support**: Direct access to engineering team
-- ✅ **Standard SLA**: 2 business day response time
-
-**Timeline Guarantees**:
-- 🔴 **Critical security vulnerabilities**: Patch within 14 days
-- 🟡 **High-priority bugs**: Fix in next minor release (4-8 weeks)
-- 🟢 **Low-priority bugs**: Fix in next quarterly release (up to 12 weeks)
-
-**Support Channels**:
-- Email: support@defai.digital
-- Response time: 2 business days
-- Coverage: Monday-Friday, 9 AM - 5 PM UTC
+**What You Get**:
+- Source code: GitHub repository
+- Support: Community (best-effort)
+- Updates: Public releases
+- SLA: None
 
 ---
 
-### Commercial License (Professional Tier)
+### 2. AutomatosX Pro Edition
 
-**Price**: $15,000 - $50,000/year
+**License**: Commercial EULA (proprietary software)
 
-**Maintenance Included** (all Standard benefits plus):
-- ✅ **Faster security patches**: Within 7 days (vs. 14 days for Standard)
-- ✅ **Expedited bug fixes**: Priority queue for faster resolution
-- ✅ **Monthly maintenance releases**: More frequent updates
-- ✅ **Extended version support**: N-2 versions (current + 2 previous)
-- ✅ **Slack/Teams support**: Direct channel to engineering team
-- ✅ **Priority SLA**: 1 business day response time
-- ✅ **Emergency hotline**: For critical production issues
+**Price**: Contact sales@defai.digital for pricing
 
-**Timeline Guarantees**:
-- 🔴 **Critical security vulnerabilities**: Patch within 7 days
-- 🟡 **High-priority bugs**: Fix in next patch release (2-4 weeks)
-- 🟢 **Low-priority bugs**: Fix in next monthly release (up to 4 weeks)
+**Additional Features** (beyond Open Source):
+- ✅ **Advanced Workflow Engine**: Multi-stage pipelines with checkpointing
+- ✅ **Team Collaboration**: Shared agents, memory, and sessions
+- ✅ **Premium Agent Packs**: Industry-specific agents (finance, healthcare, legal)
+- ✅ **Enhanced Observability**: Advanced metrics, dashboards, alerting
+- ✅ **Priority Support**: Email + Slack/Teams, 1-business-day SLA
+- ✅ **Long-Term Support (LTS)**: N-2 version support (2 years)
+- ✅ **Migration Tools**: Upgrade assistant, compatibility checker
 
-**Support Channels**:
-- Email: support@defai.digital
-- Slack/Teams: Private channel with engineering team
-- Emergency hotline: For P0/P1 issues
-- Response time: 1 business day (8 hours for critical)
-- Coverage: Monday-Friday, 9 AM - 5 PM UTC + emergency coverage
+**Who Should Buy**:
+- Startups and SMEs building AI-powered products
+- Consultancies delivering AI solutions to clients
+- Teams needing faster support and guaranteed updates
+- Companies requiring LTS for production stability
 
----
+**What You Get**:
+- Software: Binary distribution via private npm registry
+- Support: Email + Slack/Teams (1-business-day SLA)
+- Updates: Monthly releases + security patches
+- SLA: Standard support SLA
 
-### Commercial License (Enterprise Tier)
-
-**Price**: $50,000+/year (custom pricing)
-
-**Maintenance Included** (all Professional benefits plus):
-- ✅ **Critical security patches**: Within 48 hours (vs. 7 days for Professional)
-- ✅ **Custom backports**: Security patches for older versions (N-3 or custom)
-- ✅ **Continuous maintenance**: Monthly or on-demand releases as needed
-- ✅ **Extended LTS**: Support for N-3 versions or custom requirements
-- ✅ **24/7 support**: Round-the-clock availability for critical issues
-- ✅ **Dedicated account manager**: Single point of contact
-- ✅ **Proactive monitoring**: We notify you of issues before you discover them
-- ✅ **Custom SLA**: Negotiable response times and resolution commitments
-
-**Timeline Guarantees**:
-- 🔴 **Critical security vulnerabilities**: Hotfix within 48 hours
-- 🟡 **High-priority bugs**: Hotfix within 1-2 weeks
-- 🟢 **Low-priority bugs**: Fix in next monthly release (up to 4 weeks)
-
-**Support Channels**:
-- 24/7 hotline: Dedicated number for enterprise customers
-- Email: enterprise-support@defai.digital
-- Slack/Teams: Dedicated private channel
-- Video calls: Scheduled or emergency on-demand
-- Response time: 4 hours (critical P0), 8 hours (high P1), 1 day (normal P2)
-- Coverage: 24/7/365 with follow-the-sun support
+**How to Purchase**:
+1. Contact sales@defai.digital
+2. Review and sign commercial EULA
+3. Receive license key + access credentials
+4. Install Pro edition from private registry
 
 ---
 
-### What "Maintenance" Covers
+### 3. AutomatosX Enterprise Edition
 
-**Security Patches**:
-- 🔒 Critical vulnerabilities (CVE-level security issues)
-- 🔒 Dependency security updates (npm audit fixes)
-- 🔒 Authentication/authorization bugs
-- 🔒 Data exposure or privacy risks
+**License**: Enterprise Agreement (custom negotiated terms)
 
-**Bug Fixes**:
-- 🐛 Application crashes or data loss bugs
-- 🐛 Incorrect behavior (deviations from documentation)
-- 🐛 Performance regressions
-- 🐛 Provider integration breakages (Claude, Gemini, OpenAI)
+**Price**: Contact sales@defai.digital for custom pricing
 
-**Version Updates**:
-- 📦 Minor version updates (e.g., 8.3.x → 8.4.0) with new features
-- 📦 Patch version updates (e.g., 8.3.1 → 8.3.2) with bug fixes
-- 📦 Dependency updates (security or compatibility)
-- 📦 Breaking change migration guides (for major versions)
+**Additional Features** (beyond Pro):
+- ✅ **SSO & RBAC**: SAML/OIDC integration, role-based access control
+- ✅ **Audit Logging**: Complete audit trail for compliance (SOC 2, HIPAA, GDPR)
+- ✅ **Self-Hosted Deployment**: On-premises or private cloud deployment
+- ✅ **SIEM Integration**: Splunk, DataDog, ELK stack connectors
+- ✅ **Custom SLA**: Negotiable response times (24/7 support available)
+- ✅ **Dedicated Account Manager**: Single point of contact
+- ✅ **Custom Feature Development**: Tailored features for your needs
+- ✅ **White-Label Options**: Remove branding, custom UI/UX
+- ✅ **Extended LTS**: N-3 version support + custom backports
 
-**What's NOT Covered** (even with commercial license):
-- ❌ Custom feature development (unless Enterprise tier with custom agreement)
-- ❌ Issues caused by user modifications to AutomatosX code
-- ❌ Third-party provider outages (Claude API down, Gemini API limits, etc.)
-- ❌ User environment issues (incompatible OS, Node.js version, etc.)
-- ❌ Training, consulting, or implementation services (separate engagement)
+**Who Should Buy**:
+- Regulated industries (finance, healthcare, government)
+- Large enterprises with compliance requirements
+- Companies needing on-premises deployment
+- Organizations requiring 24/7 support and custom SLA
 
----
+**What You Get**:
+- Software: Self-hosted deployment + source access (optional)
+- Support: 24/7 hotline + dedicated account manager
+- Updates: Custom release cadence + custom backports
+- SLA: Custom SLA (24/7 support available)
+- Services: Architecture review, custom development, training
 
-### Long-Term Support (LTS) Policy
-
-**Free Tier**: No LTS. Only latest version receives updates.
-
-**Commercial Standard**: N-1 support
-- **Current version** (e.g., 9.0.x): Full support (features + fixes)
-- **Previous major** (e.g., 8.x.x): Security patches + critical bug fixes only
-- **Example**: If current is 9.0.0, we support 9.x.x and 8.x.x
-
-**Commercial Professional**: N-2 support
-- **Current version** (e.g., 9.x.x): Full support
-- **Previous major** (e.g., 8.x.x): Security + critical bugs
-- **Two versions back** (e.g., 7.x.x): Security patches only
-- **Example**: If current is 9.0.0, we support 9.x.x, 8.x.x, and 7.x.x
-
-**Commercial Enterprise**: N-3 support + Custom LTS
-- **Current + 3 previous major versions**: Minimum guaranteed
-- **Custom LTS**: Pin to specific version for extended period (e.g., stay on 7.x for 2+ years)
-- **Backport SLA**: Custom backports negotiable
-- **Example**: If current is 9.0.0, we support 9.x.x, 8.x.x, 7.x.x, and 6.x.x (or custom)
-
-**LTS Timeline**:
-- **Major version support**: 2 years for Enterprise, 1 year for Professional, 6 months for Standard
-- **EOL notification**: 6 months advance notice before version reaches end-of-life
-- **Migration assistance**: Included for commercial customers upgrading major versions
+**How to Purchase**:
+1. Contact sales@defai.digital
+2. Schedule discovery call and requirements review
+3. Receive custom proposal and pricing
+4. Negotiate and sign Enterprise Agreement
+5. Deployment and onboarding assistance
 
 ---
 
-### Support Escalation Levels
+## Commercial EULA Summary
 
-**Level 1: Community Support** (Free Tier)
-- GitHub Issues, Discussions, and community Discord
-- Documentation, guides, and examples
-- **Response**: Best-effort (1-7 days, no guarantee)
-- **Escalation**: None
+**Note**: This is a high-level summary. Actual Pro/Enterprise customers receive a complete End-User License Agreement (EULA) upon purchase.
 
-**Level 2: Standard Support** (Commercial Standard)
-- Email support with engineering team
-- Bug fix priority in queue
-- **Response**: 2 business days guaranteed
-- **Escalation**: To senior engineer if unresolved in 5 days
+### License Grant
 
-**Level 3: Priority Support** (Commercial Professional)
-- Email + Slack/Teams direct channel
-- Emergency hotline for critical issues
-- **Response**: 1 business day (8 hours for critical P1)
-- **Escalation**: To engineering lead within 24 hours if needed
+**Pro Edition**: Non-exclusive, non-transferable license to use AutomatosX Pro software according to your license tier.
 
-**Level 4: Enterprise Support** (Commercial Enterprise)
-- 24/7 hotline with dedicated account manager
-- Proactive monitoring and alerts
-- **Response**: 4 hours (P0 critical), 8 hours (P1 high), 1 day (P2 normal)
-- **Escalation**: Direct to CTO or VP Engineering for unresolved P0 issues
+**Enterprise Edition**: Negotiated license terms (may include source code access, modification rights, redistribution rights on case-by-case basis).
 
----
+### Restrictions
 
-## Pricing
+Unless explicitly granted in your license agreement, you **may not**:
 
-Commercial license pricing is based on:
-- **Organization size** (revenue, employees)
-- **Use case** (internal use vs. redistribution vs. SaaS)
-- **Support level** required (standard, priority, enterprise)
-- **Deployment scale** (users, requests/month)
+- ❌ Reverse engineer, decompile, or disassemble the software (except as required by law)
+- ❌ Transfer, sublicense, or rent the software to third parties
+- ❌ Remove or modify copyright notices, trademarks, or license information
+- ❌ Use the software to build competing products
+- ❌ Exceed license limits (seats, nodes, request volume as defined in your agreement)
 
-**Typical Pricing**:
-- **Standard**: $5,000 - $15,000/year (internal use, < 100 users)
-- **Professional**: $15,000 - $50,000/year (SaaS, < 1,000 users)
-- **Enterprise**: $50,000+/year (unlimited, custom terms)
+### Term and Termination
 
-**Get a Quote**: Contact sales@defai.digital for pricing and distribution
+- **Term**: Typically annual subscription (renewed yearly)
+- **Termination for Breach**: Immediate if you violate license terms
+- **Effect of Termination**: Must cease use and destroy all copies
+- **Survival**: Confidentiality, IP rights, and limitation of liability survive termination
 
-**Contact**: sales@defai.digital or licensing@defai.digital
+### Warranty Disclaimer
 
----
-
-## Compliance and Enforcement
-
-### Self-Reporting
-
-Organizations that exceed the free-tier thresholds must:
-1. **Self-report** within 30 days of exceeding limits
-2. **Obtain** appropriate commercial license
-3. **Maintain** compliance documentation
-
-### Audits
-
-DEFAI reserves the right to:
-- Request usage documentation (with reasonable notice)
-- Conduct compliance audits (annually for enterprise users)
-- Verify revenue/funding information via public sources
-
-### Violations
-
-Unlicensed commercial use may result in:
-- **License termination** (immediate)
-- **Legal action** for damages (back-licensing fees + penalties)
-- **Injunctive relief** (cease-and-desist)
-- **Public disclosure** of violation (for competitive use)
-
----
-
-## Model Weights and Future AI Components
-
-### Current Status (v8.3.1+)
-
-**AutomatosX does NOT currently include**:
-- Pre-trained model weights
-- Learned routing policies (uses code-based policies)
-- Embedding models (uses SQLite FTS5 for search)
-- Neural network parameters
-
-**Current licensing**: Apache 2.0 for all code. No separate model licensing needed.
-
-### Future: If Models Are Added
-
-If future versions of AutomatosX include **pre-trained models or trained weights**, those components will be **separately licensed** under **OpenRAIL-M** (Responsible AI License - Model) or similar responsible AI licensing terms.
-
-**Why separate licensing for models**:
-- Code (Apache 2.0): Permissive software license
-- Models (OpenRAIL-M): Responsible AI use restrictions
-
-**OpenRAIL-M Key Principles** (if applicable):
-1. **Open access**: Models can be used, modified, and shared
-2. **Responsible use**: Restrictions on harmful applications
-3. **Downstream responsibility**: Users must pass on use restrictions
-
-**Prohibited Uses** (if models included):
-- Generating harmful, misleading, or illegal content
-- Creating deepfakes or non-consensual content
-- Surveillance or privacy violations
-- Discrimination or bias amplification
-- Malicious code generation
-- Weaponization or harm to individuals
-
-**Current Action Required**: **None** - no models in current version.
-
-**If models added**: This document will be updated with specific OpenRAIL-M terms and model-specific restrictions.
-
----
-
-## Attribution (Optional but Encouraged)
-
-While not required for free-tier users, we encourage:
-
-### Code Attribution
-```typescript
-/*
- * This project uses AutomatosX by DEFAI Private Limited
- * https://github.com/defai-digital/automatosx
- * Licensed under Apache License 2.0
- */
+```
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 ```
 
-### Documentation
-```markdown
-Built with [AutomatosX](https://github.com/defai-digital/automatosx) by DEFAI
+**Exception**: Enterprise customers may negotiate warranty terms in Enterprise Agreement.
+
+### Limitation of Liability
+
+```
+IN NO EVENT SHALL DEFAI BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING LOST PROFITS,
+DATA LOSS, OR BUSINESS INTERRUPTION) ARISING OUT OF USE OF THE SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 ```
 
-### Public Recognition
-If AutomatosX significantly contributes to your project, consider:
-- Mentioning in README.md
-- Blog post about your implementation
-- Conference talk or case study
-- GitHub star ⭐ (helps others discover AutomatosX)
+**Cap**: Total liability limited to fees paid in the 12 months prior to claim.
+
+**Exception**: Enterprise customers may negotiate liability caps in Enterprise Agreement.
+
+### Indemnification
+
+**Pro Edition**: Limited indemnification for IP infringement claims (subject to conditions).
+
+**Enterprise Edition**: Negotiable indemnification terms (can include broader coverage, higher caps).
+
+### Governing Law
+
+- **Jurisdiction**: Singapore
+- **Dispute Resolution**: Arbitration under SIAC rules
+- **Language**: English
+
+---
+
+## Edition Comparison Table
+
+| Feature | Open Source | Pro | Enterprise |
+|---------|------------|-----|------------|
+| **License** | Apache 2.0 | Commercial EULA | Enterprise Agreement |
+| **Price** | Free | Contact Sales | Contact Sales |
+| **Core Orchestration** | ✅ | ✅ | ✅ |
+| **20+ AI Agents** | ✅ | ✅ | ✅ |
+| **Memory System** | ✅ | ✅ | ✅ |
+| **Multi-Provider Routing** | ✅ | ✅ | ✅ |
+| **Advanced Workflows** | ❌ | ✅ | ✅ |
+| **Team Collaboration** | ❌ | ✅ | ✅ |
+| **Premium Agent Packs** | ❌ | ✅ | ✅ |
+| **SSO & RBAC** | ❌ | ❌ | ✅ |
+| **Audit Logging** | ❌ | ❌ | ✅ |
+| **Self-Hosted** | ❌ | ❌ | ✅ |
+| **SIEM Integration** | ❌ | ❌ | ✅ |
+| **White-Label** | ❌ | ❌ | ✅ |
+| **Support** | Community | Priority (1-day SLA) | 24/7 + Dedicated AM |
+| **Updates** | Public releases | Monthly + Security | Custom cadence |
+| **LTS** | None | N-2 (2 years) | N-3 + Custom |
+| **SLA** | None | Standard | Custom |
 
 ---
 
 ## Frequently Asked Questions
 
-### Q: I'm a solo developer making $0 revenue. Do I need a license?
-**A**: No. Personal use is always free.
+### Q: Do I need a commercial license to use AutomatosX?
 
-### Q: My startup has $1.5M revenue and $500K funding. Do I need a license?
-**A**: No, as long as you're under $2M revenue **AND** $2M funding.
+**A**: **No**, not if you're using the **Open Source Edition** from GitHub. That's free forever under Apache 2.0.
 
-### Q: We raised $3M in funding but have $0 revenue. Need a license?
-**A**: Yes. You exceed the $2M funding threshold.
+You only need a commercial license if you:
+- ✅ Want additional features in Pro/Enterprise editions
+- ✅ Need priority support and guaranteed SLAs
+- ✅ Require LTS for production stability
+- ✅ Need compliance features (SSO, audit logs, SIEM)
 
-### Q: Can I use AutomatosX internally at my $10M company?
-**A**: Yes, but you need a commercial license (exceed $2M revenue threshold).
+### Q: Can I use Open Source Edition in my commercial product?
 
-### Q: Can I build a competing AI orchestration platform?
-**A**: Not without a commercial license. Competitive use requires special licensing.
+**A**: **Yes**, absolutely! Apache License 2.0 allows commercial use, modification, and redistribution. You don't owe us anything, and there are no revenue limits.
 
-### Q: Can I offer AutomatosX as a SaaS?
-**A**: Not without a commercial license, regardless of your revenue.
+### Q: What's the difference between this and the old COMMERCIAL-LICENSE.md?
 
-### Q: I'm a university researcher. Is this free?
-**A**: Yes. Research and academic use is always free, no revenue limits.
+**A**: The old version (v2.0) included confusing references to revenue thresholds ($2M+) and OpenRAIL-M model licensing. **We've simplified**:
 
-### Q: Can I modify the code?
-**A**: Yes. Apache 2.0 allows modifications. But commercial use restrictions still apply to modified versions.
+- ✅ **Open Source = Always Free** (no revenue limits, no thresholds)
+- ✅ **Pro/Enterprise = Paid Software** (clear feature differentiation)
+- ✅ **No OpenRAIL-M** (we don't distribute AI models, so it's not applicable)
 
-### Q: What if I contribute code back?
-**A**: Contributions are welcome! Apache 2.0 governs contributions. You grant DEFAI rights to use your contribution, but you retain copyright. We may require a CLA (Contributor License Agreement) for significant contributions.
+### Q: Why did you remove OpenRAIL-M?
 
-### Q: What about OpenRAIL-M? Does it apply to me?
-**A**: Not currently. AutomatosX v8.3.1+ contains NO models, so OpenRAIL-M does not apply. If future versions include models, those will be separately licensed.
+**A**: OpenRAIL-M is a license for **AI model weights** (neural network parameters). AutomatosX is **pure software** (TypeScript code, no models). Including OpenRAIL-M would:
 
-### Q: Can I use AutomatosX in a closed-source product?
-**A**: Yes (Apache 2.0 allows this), BUT:
-- If your company ≥ $2M revenue/funding → commercial license required
-- If offering as SaaS → commercial license required
-- You must still include Apache 2.0 license text and attribution
+- ❌ Confuse users ("Do I need to follow OpenRAIL-M?")
+- ❌ Create legal uncertainty (OpenRAIL-M is untested for software)
+- ❌ Serve no purpose (we have zero model weights to license)
 
----
+**If we ever distribute models in the future**, we'll add appropriate model licensing. But currently, it's just software.
 
-## License Transitions
+### Q: What happened to the $2M revenue threshold?
 
-### Startup → Enterprise
+**A**: We removed it. The old licensing model said "if your company makes >$2M/year, you need a commercial license." This caused confusion:
 
-When your startup grows beyond free tier:
+- Users thought they **couldn't** use open source at scale
+- Legal teams were uncertain about compliance
+- It misaligned with our **open-core** strategy
 
-1. **Monitor** your revenue and funding quarterly
-2. **Contact us** 30 days **before** exceeding thresholds (proactive licensing)
-3. **Negotiate** smooth transition (we offer startup-friendly pricing)
-4. **Retroactive licensing** available (case-by-case, for accidental violations)
+**New model**:
+- **Open Source Edition**: Free forever, any revenue
+- **Pro/Enterprise Editions**: Paid software with extra features
 
-**Startup-Friendly Approach**:
-- We understand growth happens fast
-- First-time violations: 90-day grace period (if you contact us proactively)
-- Discounted pricing for recent graduates from free tier
-- Payment plans available for startups
+If you need Pro/Enterprise features, you buy them. If not, use Open Source for free.
 
-### Academic → Commercial
+### Q: Can I still get support as an Open Source user?
 
-Transitioning research to commercial product:
+**A**: Yes, via **community support**:
+- GitHub Issues (bug reports, feature requests, questions)
+- Email: support@defai.digital (community support, best-effort)
 
-1. **Contact us** when commercialization begins (before revenue)
-2. **Separate pricing** for research spinouts (academic discount)
-3. **Founders' discount** programs available (up to 50% off first year)
-4. **Deferred payment** options (pay after first revenue milestone)
+This is **best-effort** support (no SLA). For guaranteed response times, upgrade to Pro or Enterprise.
 
----
+### Q: What if I want to build a competing product using AutomatosX?
 
-## Updates to This License
+**A**: You can fork the Open Source Edition under Apache 2.0 and build whatever you want. We don't restrict competitive use.
 
-DEFAI may update these commercial terms to:
-- Adjust revenue/funding thresholds
-- Clarify prohibited uses
-- Add new use cases (e.g., AI training data)
-- Update pricing
+**However**:
+- You can't use Pro/Enterprise editions to compete (those are proprietary software)
+- You can't use our trademarks without permission
+- You must comply with Apache 2.0 (attribution, license inclusion)
 
-**Change Process**:
-1. **Published** in this repository (GitHub)
-2. **Announced** via release notes and email (if registered)
-3. **Effective** 30 days after publication
+### Q: How do I purchase Pro or Enterprise?
 
-**Grandfather Clause**: Existing free-tier users can continue under current terms for **6 months** after any restrictive changes.
+**A**: Contact sales@defai.digital with:
 
-**No retroactive restrictions**: Changes only apply to new versions. Your version remains under the terms at time of release.
+1. Your use case (what are you building?)
+2. Team size and expected usage
+3. Support requirements (SLA, response time)
+4. Compliance needs (if any)
+
+We'll send you a custom quote and EULA for review.
+
+### Q: Do you offer startup discounts?
+
+**A**: Yes! Contact sales@defai.digital and mention you're a startup. We offer:
+- Discounted pricing for early-stage startups
+- Deferred payment options
+- Startup partner programs
+
+### Q: Can I try Pro/Enterprise before buying?
+
+**A**: Yes, we offer **30-day trials** of Pro Edition. Contact sales@defai.digital to request access.
+
+### Q: What's the refund policy?
+
+**A**: Enterprise customers negotiate refund terms in their agreement.
+
+For Pro Edition:
+- **30-day money-back guarantee** if you're not satisfied
+- Contact support@defai.digital within 30 days of purchase
 
 ---
 
 ## Contact
 
-**General Licensing Questions**: licensing@defai.digital
+**Sales Inquiries** (Pro/Enterprise pricing):
+- Email: sales@defai.digital
+- Website: https://defai.digital
 
-**Commercial License Quotes**: Contact sales@defai.digital for pricing and distribution
+**Licensing Questions** (legal, compliance):
+- Email: licensing@defai.digital
 
-**Technical Support** (commercial customers): support@defai.digital
+**Technical Support** (paying customers only):
+- Email: support@defai.digital
 
-**Partnership Inquiries**: partnerships@defai.digital
-
-**Website**: https://defai.digital
-
-**GitHub Issues**: https://github.com/defai-digital/automatosx/issues
+**Open Source Community**:
+- GitHub Issues: https://github.com/defai-digital/automatosx/issues
+- Email: support@defai.digital
 
 ---
 
 ## Legal
 
-### Relationship to Apache 2.0
+This document is **informational only**. It is NOT a legal contract.
 
-This document **supplements**, but does **not replace**, the Apache License 2.0 (see [LICENSE](./LICENSE)).
+**For Open Source users**: Your rights and obligations are defined by the [Apache License 2.0](./LICENSE).
 
-**In case of conflict**:
-1. Apache 2.0 governs **code licensing** (use, modify, distribute)
-2. This document governs **commercial use restrictions** (who can use commercially)
-3. **Both must be satisfied** for lawful use
+**For Pro/Enterprise users**: Your rights and obligations are defined by the **EULA** or **Enterprise Agreement** you sign upon purchase.
 
-**Example**: You can modify the code (Apache 2.0 permits), but if you're a $10M company, you still need a commercial license to use it.
-
-### Governing Law
-
-**Jurisdiction**: Laws of Singapore
-
-**Dispute Resolution**: Arbitration in Singapore under SIAC (Singapore International Arbitration Centre) rules
-
-**Language**: English
-
-### Severability
-
-If any provision of this license is found to be unenforceable, the remaining provisions remain in full force.
-
-### Entire Agreement
-
-This document, together with the Apache License 2.0, constitutes the entire agreement for use of AutomatosX.
+In case of conflict, signed agreements take precedence over this document.
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: November 2025
 
-**Version**: 2.0 (Simplified - Removed active OpenRAIL-M clauses)
+**Version**: 3.0 (Rewritten for Open-Core Model)
 
-**Effective Date**: Retroactive to all versions since v8.0.0
-
-**Change from v1.0**: Clarified that OpenRAIL-M is only for future models (not currently applicable). Simplified structure for software-only licensing.
+**Changes from v2.0**:
+- ✅ Removed revenue/funding thresholds ($2M limit)
+- ✅ Removed OpenRAIL-M references (not applicable to software)
+- ✅ Clarified open-core model (Open Source vs. Pro vs. Enterprise)
+- ✅ Simplified structure (removed confusing use-case restrictions)
+- ✅ Added edition comparison table
 
 ---
 

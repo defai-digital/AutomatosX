@@ -31,7 +31,24 @@ describe('Setup Command', () => {
   });
 
   afterEach(async () => {
-    await rm(testDir, { recursive: true, force: true });
+    // Retry cleanup to handle race conditions with file handles
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await rm(testDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+        break;
+      } catch (error: any) {
+        retries--;
+        if (retries === 0 || error.code !== 'ENOTEMPTY') {
+          // Only ignore ENOTEMPTY errors after all retries
+          if (error.code !== 'ENOTEMPTY') {
+            throw error;
+          }
+        }
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();

@@ -9,7 +9,7 @@ export default defineConfig([
     splitting: false,
     sourcemap: false,  // Disabled to reduce package size (~25% reduction)
     treeshake: true,   // Enable tree shaking for optimization
-    clean: true,
+    clean: false,      // IMPORTANT: Disabled to avoid race condition with parallel builds on Windows
     shims: true,
     outDir: 'dist',
     target: 'node20',

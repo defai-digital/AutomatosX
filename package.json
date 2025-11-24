@@ -17,7 +17,8 @@
   "scripts": {
     "prebuild:config": "node tools/prebuild-config.cjs",
     "generate:claude-manifests": "tsx tools/generate-claude-manifests.ts",
-    "build": "npm run prebuild:config && tsup",
+    "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean:dist && npm run prebuild:config && tsup",
     "dev": "tsx src/cli/index.ts",
     "test": "npm run test:unit && npm run test:integration && npm run test:smoke",
     "test:unit": "vitest run tests/unit",

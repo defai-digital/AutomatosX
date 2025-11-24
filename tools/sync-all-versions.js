@@ -220,6 +220,24 @@ function updateTestCounts(testCount) {
 }
 
 /**
+ * Update ax.config.json version field
+ */
+function updateAxConfig(version) {
+  const configPath = join(rootDir, 'ax.config.json');
+  let content = readFileSync(configPath, 'utf8');
+
+  // Update version field in JSON
+  const versionPattern = /"version":\s*"[\d.]+"/;
+  if (versionPattern.test(content)) {
+    content = content.replace(versionPattern, `"version": "${version}"`);
+    writeFileSync(configPath, content);
+    console.log(`${colors.green}✓${colors.reset} Updated ax.config.json version`);
+  } else {
+    console.log(`${colors.yellow}⚠${colors.reset} Could not find version field in ax.config.json`);
+  }
+}
+
+/**
  * Main execution
  */
 function main() {
@@ -241,6 +259,7 @@ function main() {
     // Update documentation files only (package.json managed by npm version)
     updateReadme(currentVersion, monthYear);
     updateClaudeMd(currentVersion, monthYear);
+    updateAxConfig(currentVersion);
 
     console.log();
 

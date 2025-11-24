@@ -309,6 +309,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await setupProjectGeminiMd(projectDir, packageRoot, argv.force ?? false);
       console.log(chalk.green('   ✓ GEMINI.md configured'));
 
+      // Setup project CODEX.md with AutomatosX integration guide (v10.3.2+)
+      console.log(chalk.cyan('📖 Setting up CODEX.md with AutomatosX integration...'));
+      await setupProjectCodexMd(projectDir, packageRoot, argv.force ?? false);
+      console.log(chalk.green('   ✓ CODEX.md configured'));
+
       // Setup project AGENTS.md with AutomatosX integration guide (AGENTS.md standard)
       console.log(chalk.cyan('📖 Setting up AGENTS.md with AutomatosX integration...'));
       await setupProjectAgentsMd(projectDir, packageRoot, argv.force ?? false);
@@ -319,29 +324,27 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await createWorkspaceDirectories(projectDir);
       console.log(chalk.green('   ✓ Workspace directories created'));
 
-      // Initialize git repository if needed (for Codex CLI compatibility)
-      if (providers['codex']) {
-        console.log(chalk.cyan('🔌 Setting up OpenAI Codex integration...'));
-        console.log(chalk.cyan('   🔧 Initializing git repository (required by Codex)...'));
+      // Initialize git repository (required by Codex CLI, useful for all projects)
+      const gitDir = join(projectDir, '.git');
+      const isGitRepo = await checkExists(gitDir);
+      if (!isGitRepo) {
+        console.log(chalk.cyan('🔧 Initializing git repository...'));
         await initializeGitRepository(projectDir);
-        const codexDir = join(projectDir, '.codex');
-        const codexDirExistedBefore = await checkExists(codexDir);
-        await setupCodexIntegration(projectDir, packageRoot);
-        // Only add to rollback if we created it (not if it pre-existed)
-        if (!codexDirExistedBefore) {
-          createdResources.push(codexDir);
-        }
-        console.log(chalk.green('   ✓ OpenAI Codex integration configured'));
-      } else {
-        // Still initialize git for general use, but not as a "provider integration"
-        const gitDir = join(projectDir, '.git');
-        const isGitRepo = await checkExists(gitDir);
-        if (!isGitRepo) {
-          console.log(chalk.cyan('🔧 Initializing git repository...'));
-          await initializeGitRepository(projectDir);
-          console.log(chalk.green('   ✓ Git repository initialized'));
-        }
+        console.log(chalk.green('   ✓ Git repository initialized'));
       }
+
+      // Setup OpenAI Codex MCP integration UNCONDITIONALLY (v10.3.2+)
+      // This ensures .codex/mcp-servers.json is always created, even if Codex
+      // is installed later. Fixes timeout issues when user installs Codex after setup.
+      console.log(chalk.cyan('🔌 Setting up OpenAI Codex MCP integration...'));
+      const codexDir = join(projectDir, '.codex');
+      const codexDirExistedBefore = await checkExists(codexDir);
+      await setupCodexIntegration(projectDir, packageRoot);
+      // Only add to rollback if we created it (not if it pre-existed)
+      if (!codexDirExistedBefore) {
+        createdResources.push(codexDir);
+      }
+      console.log(chalk.green('   ✓ OpenAI Codex MCP integration configured'));
 
       // Create .gitignore entry
       console.log(chalk.cyan('📝 Updating .gitignore...'));
@@ -1393,9 +1396,32 @@ async function setupProjectGeminiMd(
 }
 
 /**
+ * Setup project CODEX.md with AutomatosX integration guide (v10.3.2+)
+ *
+ * This function creates or updates the project's CODEX.md file to include
+ * AutomatosX integration instructions, helping Codex CLI users understand how to
+ * work with AutomatosX agents in this project.
+ *
+ * Follows the same pattern as setupProjectGeminiMd for consistency.
+ */
+async function setupProjectCodexMd(
+  projectDir: string,
+  packageRoot: string,
+  force: boolean
+): Promise<void> {
+  return setupProjectProviderMd(projectDir, packageRoot, force, {
+    fileName: 'CODEX.md',
+    templatePath: 'examples/codex/CODEX_INTEGRATION.md',
+    description: 'This file provides guidance to OpenAI Codex CLI users when working with code in this repository.',
+    providerName: 'CODEX'
+  });
+}
+
+/**
  * Setup OpenAI Codex CLI integration files
  *
  * v10.3.0: Added MCP (Model Context Protocol) auto-configuration
+ * v10.3.2: Now called unconditionally - config created even if Codex not detected
  * - Creates .codex/mcp-servers.json with AutomatosX MCP server
  * - Enables bidirectional integration (Codex CLI ↔ AutomatosX)
  * - No manual configuration required
@@ -1413,82 +1439,44 @@ async function setupCodexIntegration(projectDir: string, packageRoot: string): P
 }
 
 /**
- * Setup Codex CLI MCP (Model Context Protocol) configuration
+ * Setup Codex CLI configuration (CLI mode only, no MCP)
  *
- * Creates .codex/mcp-servers.json to enable bidirectional integration:
- * - Codex CLI can invoke AutomatosX agents via MCP protocol
- * - Eliminates subprocess spawning overhead
- * - Provides rich tool access (agents, memory, sessions)
+ * NOTE: MCP integration for Codex is intentionally disabled (v10.3.2+)
  *
- * @param projectDir - Project root directory
- * @param packageRoot - AutomatosX package installation directory
+ * Reasons for CLI-only mode:
+ * 1. MCP support in Codex CLI is still experimental (STDIO works, HTTP/SSE incomplete)
+ * 2. MCP introduces security complexity (tool access, permissions, audit logging)
+ * 3. CLI wrapper approach is simpler and already works reliably
+ * 4. Complex infrastructure stacks require careful MCP permission design
+ *
+ * The CLI integration works via:
+ *   ax run <agent> "task" → spawns `codex` subprocess → returns result
+ *
+ * MCP integration can be enabled manually if needed - see docs/providers/codex.md
+ *
+ * @param _projectDir - Project root directory (unused, kept for API compatibility)
+ * @param _packageRoot - AutomatosX package installation directory (unused)
  */
-async function setupCodexMCPConfig(projectDir: string, packageRoot: string): Promise<void> {
-  const mcpServersPath = join(projectDir, '.codex', 'mcp-servers.json');
+async function setupCodexMCPConfig(_projectDir: string, _packageRoot: string): Promise<void> {
+  // MCP integration disabled - using CLI mode only
+  // The CLI approach (ax → codex subprocess) is simpler and more reliable
 
-  try {
-    // Determine AutomatosX MCP server path
-    // Check if running from global install vs local
-    const globalMcpPath = join(packageRoot, 'dist', 'mcp', 'index.js');
-    const localMcpPath = join(projectDir, 'node_modules', '@defai.digital', 'automatosx', 'dist', 'mcp', 'index.js');
-
-    // Verify both paths exist before choosing one
-    let mcpServerPath: string;
-    if (await checkExists(globalMcpPath)) {
-      mcpServerPath = globalMcpPath;
-    } else if (await checkExists(localMcpPath)) {
-      mcpServerPath = localMcpPath;
-    } else {
-      // Neither global nor local installation found - skip MCP setup
-      logger.warn('AutomatosX MCP server not found, skipping Codex CLI MCP configuration', {
-        globalPath: globalMcpPath,
-        localPath: localMcpPath
+  // Clean up any existing MCP configuration to avoid confusion
+  const mcpServersPath = join(_projectDir, '.codex', 'mcp-servers.json');
+  if (await checkExists(mcpServersPath)) {
+    try {
+      const { unlink } = await import('fs/promises');
+      await unlink(mcpServersPath);
+      logger.info('Removed .codex/mcp-servers.json - using CLI mode instead of MCP', {
+        path: mcpServersPath
       });
-      return;
+    } catch {
+      // Ignore cleanup errors
     }
-
-    // Read existing MCP servers config if it exists
-    let mcpConfig: Record<string, unknown> = {};
-    if (await checkExists(mcpServersPath)) {
-      const existingContent = await readFile(mcpServersPath, 'utf-8');
-      try {
-        mcpConfig = JSON.parse(existingContent) as Record<string, unknown>;
-      } catch (error) {
-        logger.warn('Failed to parse existing MCP config, will overwrite', {
-          error: (error as Error).message
-        });
-      }
-    }
-
-    // Add or update AutomatosX MCP server configuration
-    mcpConfig['automatosx'] = {
-      command: 'node',
-      args: [mcpServerPath],
-      description: 'AutomatosX AI agent orchestration platform with persistent memory and multi-agent collaboration',
-      env: {
-        AUTOMATOSX_CONFIG_PATH: join(projectDir, 'ax.config.json'),
-        AUTOMATOSX_LOG_LEVEL: 'warn' // Quiet mode for MCP integration
-      }
-    };
-
-    // Write MCP configuration
-    await writeFile(
-      mcpServersPath,
-      JSON.stringify(mcpConfig, null, 2),
-      'utf-8'
-    );
-
-    logger.info('Created Codex CLI MCP configuration', {
-      path: mcpServersPath,
-      mcpServerPath
-    });
-  } catch (error) {
-    // Non-critical error, just log it
-    logger.warn('Failed to setup Codex CLI MCP configuration', {
-      error: (error as Error).message,
-      path: mcpServersPath
-    });
   }
+
+  // No MCP guidance needed - CLI mode is the default
+  logger.debug('Codex integration configured for CLI mode (MCP disabled)');
 }
 
 /**

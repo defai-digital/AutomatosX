@@ -32,6 +32,7 @@ interface DoctorOptions {
   verbose?: boolean;
   fix?: boolean;
   claudeCode?: boolean;
+  codex?: boolean;
 }
 
 interface CheckResult {
@@ -70,11 +71,17 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
+      .option('codex', {
+        describe: 'Run OpenAI Codex MCP integration diagnostics',
+        type: 'boolean',
+        default: false
+      })
       .example('ax doctor', 'Run all diagnostic checks')
       .example('ax doctor openai', 'Check only OpenAI provider')
       .example('ax doctor --verbose', 'Show detailed diagnostics')
       .example('ax doctor --fix', 'Auto-fix issues where possible')
-      .example('ax doctor --claude-code', 'Check Claude Code integration');
+      .example('ax doctor --claude-code', 'Check Claude Code integration')
+      .example('ax doctor --codex', 'Check Codex MCP configuration');
   },
 
   handler: async (argv) => {
@@ -82,6 +89,12 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // If --claude-code flag is set, run Claude Code diagnostics only
       if (argv.claudeCode) {
         await runClaudeCodeDiagnostics(argv.verbose ?? false);
+        return;
+      }
+
+      // If --codex flag is set, run Codex MCP diagnostics only
+      if (argv.codex) {
+        await runCodexDiagnostics(argv.verbose ?? false);
         return;
       }
 
@@ -729,5 +742,143 @@ async function runClaudeCodeDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.gray('  1. Restart Claude Code to activate integration'));
     console.log(chalk.gray('  2. Use slash commands: /agent-backend, /agent-frontend, etc.'));
     console.log(chalk.gray('  3. Use skill: /automatosx for orchestration\n'));
+  }
+}
+
+/**
+ * Run OpenAI Codex CLI integration diagnostics
+ *
+ * NOTE: MCP integration is disabled in v10.3.2+
+ * AutomatosX uses CLI mode (subprocess) for Codex integration.
+ */
+async function runCodexDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 OpenAI Codex CLI Integration Diagnostics\n'));
+
+  const workingDir = process.cwd();
+  const automatosxDir = join(workingDir, '.automatosx');
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // Check 1: Codex CLI Installation
+  const codexCheck = await checkCommand('codex', '--version');
+  checks.push({
+    name: 'Codex CLI',
+    passed: codexCheck.success,
+    message: codexCheck.success
+      ? `Installed (${codexCheck.output?.trim() || 'version unknown'})`
+      : 'Not found',
+    fix: codexCheck.success ? undefined : 'npm install -g @openai/codex-cli',
+    details: verbose && !codexCheck.success ? codexCheck.error : undefined
+  });
+
+  // Check 2: Codex CLI authentication
+  if (codexCheck.success) {
+    const authCheck = await checkOpenAIAuth();
+    checks.push({
+      name: 'Codex Authentication',
+      passed: authCheck.success,
+      message: authCheck.message,
+      fix: authCheck.success ? undefined : authCheck.fix,
+      details: verbose ? authCheck.details : undefined
+    });
+  }
+
+  // Check 3: .automatosx directory
+  const automatosxExists = existsSync(automatosxDir);
+  checks.push({
+    name: 'AutomatosX Setup',
+    passed: automatosxExists,
+    message: automatosxExists ? 'Initialized (.automatosx/)' : 'Not initialized',
+    fix: automatosxExists ? undefined : 'Run: ax setup'
+  });
+
+  // Check 4: OpenAI provider configured in ax.config.json
+  let providerConfigured = false;
+  const configPath = join(workingDir, 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const { readFile } = await import('fs/promises');
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerConfigured = config?.providers?.openai?.enabled === true;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerConfigured,
+    message: providerConfigured ? 'OpenAI provider enabled in ax.config.json' : 'OpenAI provider not configured',
+    fix: providerConfigured ? undefined : 'Run: ax setup',
+    details: verbose ? 'CLI mode uses `codex` subprocess for execution' : undefined
+  });
+
+  // Check 5: Test CLI execution (simple version check)
+  let cliWorks = false;
+  if (codexCheck.success) {
+    try {
+      const { execSync } = await import('child_process');
+      const output = execSync('codex --help 2>&1', { encoding: 'utf-8', timeout: 5000 });
+      cliWorks = output.includes('codex') || output.includes('Usage');
+    } catch {
+      cliWorks = false;
+    }
+  }
+
+  checks.push({
+    name: 'CLI Execution',
+    passed: cliWorks,
+    message: cliWorks ? 'CLI responds correctly' : 'CLI not responding',
+    fix: cliWorks ? undefined : 'Check Codex CLI installation: codex --help',
+    details: verbose && cliWorks ? 'Integration uses: ax run <agent> "task" → codex subprocess' : undefined
+  });
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    // Suggest fixes
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! Codex CLI integration is ready.\n'));
+
+    // Show usage
+    console.log(chalk.cyan('Usage:'));
+    console.log(chalk.gray('  ax run backend "implement feature"     # Uses Codex as provider'));
+    console.log(chalk.gray('  ax run quality "review code"           # Codex executes the task'));
+    console.log(chalk.gray('  AUTOMATOSX_PROVIDER=openai ax run ...  # Force Codex provider\n'));
+
+    console.log(chalk.cyan('Note:'));
+    console.log(chalk.gray('  MCP integration is disabled (v10.3.2+). Using CLI mode instead.'));
+    console.log(chalk.gray('  This is simpler and more reliable for production use.\n'));
   }
 }

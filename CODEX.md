@@ -1,3 +1,9 @@
+# CODEX.md
+
+This file provides guidance to OpenAI Codex CLI users when working with code in this repository.
+
+---
+
 # AutomatosX Integration with OpenAI Codex
 
 **IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.

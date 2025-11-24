@@ -19,8 +19,9 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   protected getCLICommand(): string {
-    // Return 'codex exec' for streaming execution
-    return 'codex exec';
+    // Return 'codex' as the base command (not 'codex exec')
+    // The 'exec' subcommand is added in executeCLI() when building the full command
+    return 'codex';
   }
 
   /**

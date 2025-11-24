@@ -269,8 +269,17 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
 
       // Setup ax-cli MCP integration
       console.log(chalk.cyan('🔌 Setting up ax-cli MCP integration...'));
-      await setupAxCliIntegration();
-      console.log(chalk.green('   ✓ ax-cli MCP integration configured'));
+      const axCliConfigured = await setupAxCliIntegration();
+      if (axCliConfigured === 'already_configured') {
+        console.log(chalk.green('   ✓ ax-cli MCP already configured'));
+      } else if (axCliConfigured === 'not_installed') {
+        console.log(chalk.gray('   ℹ ax-cli not installed, skipping'));
+      } else if (axCliConfigured === 'manual_required') {
+        console.log(chalk.yellow('   ⚠ ax-cli detected - manual MCP configuration required'));
+        console.log(chalk.gray('     Run: ax-cli mcp add automatosx --transport stdio --command ax --args mcp server'));
+      } else {
+        console.log(chalk.green('   ✓ ax-cli MCP integration configured'));
+      }
 
       // Setup AutomatosX-Integration.md (canonical integration guide)
       console.log(chalk.cyan('📖 Setting up AutomatosX-Integration.md (canonical guide)...'));
@@ -456,7 +465,15 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.cyan('ax-cli Integration:'));
         console.log(chalk.gray('  • Multi-provider AI CLI (GLM, xAI, OpenAI, Anthropic, Ollama)'));
         console.log(chalk.gray('  • Use: ax cli "your task"'));
-        console.log(chalk.gray('  • AutomatosX MCP server configured for agent access'));
+        if (axCliConfigured === 'manual_required') {
+          console.log(chalk.yellow('  • Manual MCP configuration required (see above)'));
+        } else if (axCliConfigured === 'already_configured') {
+          console.log(chalk.gray('  • AutomatosX MCP server already configured'));
+        } else if (axCliConfigured === 'not_installed') {
+          console.log(chalk.gray('  • ax-cli detected but MCP not configured'));
+        } else {
+          console.log(chalk.gray('  • AutomatosX MCP server configured for agent access'));
+        }
         console.log(chalk.gray('  • See .ax-cli/README.md for configuration\n'));
       }
 
@@ -739,8 +756,10 @@ async function setupClaudeIntegration(projectDir: string, packageRoot: string): 
  * Now it skips ax-cli integration to avoid blocking the setup process.
  * Users can manually configure ax-cli MCP if needed:
  *   ax-cli mcp add automatosx --transport stdio --command ax --args mcp server
+ *
+ * @returns Status string: 'not_installed' | 'already_configured' | 'manual_required' | 'error'
  */
-async function setupAxCliIntegration(): Promise<void> {
+async function setupAxCliIntegration(): Promise<string> {
   try {
     // Check if ax-cli is installed
     const { execSync } = await import('child_process');
@@ -749,7 +768,7 @@ async function setupAxCliIntegration(): Promise<void> {
     } catch {
       // ax-cli not installed, skip configuration
       logger.info('ax-cli not installed, skipping MCP configuration');
-      return;
+      return 'not_installed';
     }
 
     // Check if AutomatosX MCP server is already configured
@@ -757,7 +776,7 @@ async function setupAxCliIntegration(): Promise<void> {
       const output = execSync('ax-cli mcp list', { encoding: 'utf-8', stdio: 'pipe', timeout: 2000 });
       if (output.includes('automatosx')) {
         logger.info('ax-cli MCP already configured');
-        return;
+        return 'already_configured';
       }
     } catch {
       // Ignore errors from mcp list
@@ -767,7 +786,7 @@ async function setupAxCliIntegration(): Promise<void> {
     // Users should manually configure if they want ax-cli integration
     logger.info('ax-cli detected. Manual MCP configuration required:');
     logger.info('  Run: ax-cli mcp add automatosx --transport stdio --command ax --args mcp server');
-    return;
+    return 'manual_required';
 
     // OLD CODE (commented out to prevent hanging):
     // Add AutomatosX MCP server to ax-cli
@@ -777,9 +796,11 @@ async function setupAxCliIntegration(): Promise<void> {
     //   timeout: 5000 // 5 second timeout to avoid hanging
     // });
     // logger.info('ax-cli MCP server configured successfully');
+    // return 'configured';
   } catch (error) {
     // Log errors but don't fail setup
     logger.warn('Failed to configure ax-cli MCP', { error });
+    return 'error';
   }
 }
 

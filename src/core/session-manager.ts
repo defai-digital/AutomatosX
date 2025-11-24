@@ -931,6 +931,18 @@ export class SessionManager {
           count: sessionsArray.length
         });
       } catch (renameError) {
+        // Handle race condition: temp file might have been deleted by another process
+        const error = renameError as NodeJS.ErrnoException;
+        if (error.code === 'ENOENT') {
+          // Temp file was deleted before rename - this can happen in concurrent scenarios
+          // Log warning but don't throw (session data is still in memory)
+          logger.warn('Temp file deleted before rename (race condition), skipping save', {
+            tempPath: normalizePath(tempPath),
+            persistPath: normalizePath(this.persistencePath)
+          });
+          return; // Don't throw - just skip this save attempt
+        }
+
         // Clean up temp file if rename failed (prevents accumulation)
         try {
           await unlink(tempPath);

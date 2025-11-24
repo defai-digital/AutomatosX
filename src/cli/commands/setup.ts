@@ -315,6 +315,13 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.cyan('🔌 Setting up OpenAI Codex integration...'));
         console.log(chalk.cyan('   🔧 Initializing git repository (required by Codex)...'));
         await initializeGitRepository(projectDir);
+        const codexDir = join(projectDir, '.codex');
+        const codexDirExistedBefore = await checkExists(codexDir);
+        await setupCodexIntegration(projectDir, packageRoot);
+        // Only add to rollback if we created it (not if it pre-existed)
+        if (!codexDirExistedBefore) {
+          createdResources.push(codexDir);
+        }
         console.log(chalk.green('   ✓ OpenAI Codex integration configured'));
       } else {
         // Still initialize git for general use, but not as a "provider integration"
@@ -1355,6 +1362,105 @@ async function setupProjectGeminiMd(
     description: 'This file provides guidance to Gemini CLI users when working with code in this repository.',
     providerName: 'GEMINI'
   });
+}
+
+/**
+ * Setup OpenAI Codex CLI integration files
+ *
+ * v10.3.0: Added MCP (Model Context Protocol) auto-configuration
+ * - Creates .codex/mcp-servers.json with AutomatosX MCP server
+ * - Enables bidirectional integration (Codex CLI ↔ AutomatosX)
+ * - No manual configuration required
+ */
+async function setupCodexIntegration(projectDir: string, packageRoot: string): Promise<void> {
+  // Create .codex directory structure
+  const codexDir = join(projectDir, '.codex');
+  await mkdir(codexDir, { recursive: true });
+
+  // Setup MCP server configuration for Codex CLI
+  await setupCodexMCPConfig(projectDir, packageRoot);
+
+  // Note: Codex CLI users should use natural language to interact with AutomatosX
+  // No custom slash commands needed - just talk naturally to work with ax agents
+}
+
+/**
+ * Setup Codex CLI MCP (Model Context Protocol) configuration
+ *
+ * Creates .codex/mcp-servers.json to enable bidirectional integration:
+ * - Codex CLI can invoke AutomatosX agents via MCP protocol
+ * - Eliminates subprocess spawning overhead
+ * - Provides rich tool access (agents, memory, sessions)
+ *
+ * @param projectDir - Project root directory
+ * @param packageRoot - AutomatosX package installation directory
+ */
+async function setupCodexMCPConfig(projectDir: string, packageRoot: string): Promise<void> {
+  const mcpServersPath = join(projectDir, '.codex', 'mcp-servers.json');
+
+  try {
+    // Determine AutomatosX MCP server path
+    // Check if running from global install vs local
+    const globalMcpPath = join(packageRoot, 'dist', 'mcp', 'index.js');
+    const localMcpPath = join(projectDir, 'node_modules', '@defai.digital', 'automatosx', 'dist', 'mcp', 'index.js');
+
+    // Verify both paths exist before choosing one
+    let mcpServerPath: string;
+    if (await checkExists(globalMcpPath)) {
+      mcpServerPath = globalMcpPath;
+    } else if (await checkExists(localMcpPath)) {
+      mcpServerPath = localMcpPath;
+    } else {
+      // Neither global nor local installation found - skip MCP setup
+      logger.warn('AutomatosX MCP server not found, skipping Codex CLI MCP configuration', {
+        globalPath: globalMcpPath,
+        localPath: localMcpPath
+      });
+      return;
+    }
+
+    // Read existing MCP servers config if it exists
+    let mcpConfig: Record<string, unknown> = {};
+    if (await checkExists(mcpServersPath)) {
+      const existingContent = await readFile(mcpServersPath, 'utf-8');
+      try {
+        mcpConfig = JSON.parse(existingContent) as Record<string, unknown>;
+      } catch (error) {
+        logger.warn('Failed to parse existing MCP config, will overwrite', {
+          error: (error as Error).message
+        });
+      }
+    }
+
+    // Add or update AutomatosX MCP server configuration
+    mcpConfig['automatosx'] = {
+      command: 'node',
+      args: [mcpServerPath],
+      description: 'AutomatosX AI agent orchestration platform with persistent memory and multi-agent collaboration',
+      env: {
+        AUTOMATOSX_CONFIG_PATH: join(projectDir, 'ax.config.json'),
+        AUTOMATOSX_LOG_LEVEL: 'warn' // Quiet mode for MCP integration
+      }
+    };
+
+    // Write MCP configuration
+    await writeFile(
+      mcpServersPath,
+      JSON.stringify(mcpConfig, null, 2),
+      'utf-8'
+    );
+
+    logger.info('Created Codex CLI MCP configuration', {
+      path: mcpServersPath,
+      mcpServerPath
+    });
+  } catch (error) {
+    // Non-critical error, just log it
+    logger.warn('Failed to setup Codex CLI MCP configuration', {
+      error: (error as Error).message,
+      path: mcpServersPath
+    });
+  }
 }
 
 /**

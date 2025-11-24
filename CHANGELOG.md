@@ -5,6 +5,50 @@ All notable changes to AutomatosX will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.3.3] - 2025-11-24
+
+### Added - ax-cli SDK Advanced Features 🚀
+
+**Major Enhancement**: Comprehensive ax-cli SDK integration with parallel execution, checkpoint/resume, and unified instructions.
+
+#### SubagentAdapter - Parallel Multi-Agent Execution
+- **`executeParallelTasks()`** - Run multiple agents concurrently with configurable concurrency
+- **`executeSequentialTasks()`** - Run agents sequentially with automatic context propagation
+- **SubagentRole mapping** - Auto-maps AutomatosX agents to ax-cli roles (developer, tester, auditor, etc.)
+- **Priority-based scheduling** - Execute tasks in priority order
+- **Shared context** - Propagate results between parallel batches
+
+#### CheckpointAdapter - Resumable Workflows
+- **`saveCheckpoint()`** - Save workflow state after each phase
+- **`loadCheckpoint()`** - Resume interrupted workflows from last checkpoint
+- **`getRemainingPhases()`** - Get uncompleted phases for a workflow
+- **Token tracking** - Accumulate token usage across workflow phases
+- **Automatic cleanup** - Manage checkpoint retention (configurable max)
+
+#### InstructionsBridge - Unified Agent Instructions
+- **`getAgentInstructions()`** - Merge AutomatosX agent profiles with ax-cli custom instructions
+- **`syncAgentToAxCli()`** - Export agent profiles to ax-cli CUSTOM.md
+- **3-source merging** - Combines agent profile + ax-cli custom + project memory
+- **Context length management** - Automatic truncation with configurable limits
+- **Caching** - 5-minute TTL cache for performance
+
+### Changed
+- **AxCliSdkAdapter** - Integrated new adapters with convenience methods
+- **HybridAxCliAdapter** - Added `getSdkAdapter()` for advanced feature access
+- **AxCliProvider** - Exposed all new SDK capabilities to API consumers
+- **CLAUDE.md** - Documented v10.3.3 features with comprehensive examples
+
+### Technical Implementation
+- **src/integrations/ax-cli-sdk/subagent-adapter.ts** (540 lines) - Parallel execution
+- **src/integrations/ax-cli-sdk/checkpoint-adapter.ts** (527 lines) - Resumable workflows
+- **src/integrations/ax-cli-sdk/instructions-bridge.ts** (488 lines) - Unified instructions
+- **src/integrations/ax-cli-sdk/adapter.ts** (885 lines) - Updated with new integrations
+- **src/providers/ax-cli-provider.ts** (401 lines) - Exposed SDK capabilities
+
+### Total
+- **~1,555 lines** of new adapter code
+- **~4,000+ lines** total ax-cli SDK integration code
+
 ## [10.0.0] - 2025-11-23
 
 ### Added - Claude Code Native Integration 🎉

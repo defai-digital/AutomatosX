@@ -1,11 +1,16 @@
 /**
- * AxCliProvider - Provider-Agnostic AI Access via ax-cli (v9.2.0+)
+ * AxCliProvider - Provider-Agnostic AI Access via ax-cli (v10.4.0)
  *
  * Provides access to AI models through ax-cli SDK, which supports multiple providers.
  * The actual provider (GLM, Grok, OpenAI, DeepSeek, etc.) is configured via `ax-cli setup`
  * and stored in ~/.ax-cli/config.json.
  *
  * AutomatosX is provider-agnostic and does not need to know which provider ax-cli uses.
+ *
+ * New in v10.4.0:
+ * - SubagentAdapter for parallel multi-agent execution
+ * - CheckpointAdapter for resumable workflows
+ * - InstructionsBridge for unified agent instructions
  *
  * @module providers/ax-cli-provider
  */
@@ -15,6 +20,7 @@ import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../typ
 import { HybridAxCliAdapter, type AdapterMode } from '../integrations/ax-cli-sdk/hybrid-adapter.js';
 import type { AxCliOptions } from '../integrations/ax-cli/interface.js';
 import { logger } from '../utils/logger.js';
+import type { SubagentTask, SubagentResult, OrchestratorOptions, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
 
 /**
  * Extended provider config for ax-cli
@@ -211,6 +217,154 @@ export class AxCliProvider extends BaseProvider {
     this.adapter.switchToCliMode();
   }
 
+  // ==========================================
+  // SDK Advanced Features (v10.4.0)
+  // ==========================================
+
+  /**
+   * Execute multiple tasks in parallel using subagents
+   *
+   * Requires SDK mode (mode="sdk" or "auto" with SDK available)
+   *
+   * @example
+   * ```typescript
+   * const results = await provider.executeParallelTasks([
+   *   { task: 'Implement API', config: { role: 'developer' } },
+   *   { task: 'Write tests', config: { role: 'tester' } },
+   *   { task: 'Security audit', config: { role: 'auditor' } }
+   * ]);
+   * ```
+   */
+  async executeParallelTasks(tasks: SubagentTask[], options?: OrchestratorOptions): Promise<SubagentResult[]> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.executeParallelTasks(tasks);
+  }
+
+  /**
+   * Execute tasks sequentially with context propagation
+   *
+   * @example
+   * ```typescript
+   * const results = await provider.executeSequentialTasks([
+   *   { task: 'Design API', config: { role: 'architect' } },
+   *   { task: 'Implement design', config: { role: 'developer' } },
+   *   { task: 'Review implementation', config: { role: 'reviewer' } }
+   * ]);
+   * ```
+   */
+  async executeSequentialTasks(tasks: SubagentTask[]): Promise<SubagentResult[]> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.executeSequentialTasks(tasks);
+  }
+
+  /**
+   * Save a checkpoint for a workflow (for resumable execution)
+   *
+   * @example
+   * ```typescript
+   * await provider.saveCheckpoint('auth-workflow', {
+   *   phase: 2,
+   *   completedTasks: ['design', 'implement'],
+   *   context: 'OAuth integration complete...'
+   * });
+   * ```
+   */
+  async saveCheckpoint(workflowId: string, data: Partial<Checkpoint>): Promise<Checkpoint> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.saveCheckpoint(workflowId, data);
+  }
+
+  /**
+   * Load the latest checkpoint for a workflow
+   *
+   * @example
+   * ```typescript
+   * const checkpoint = await provider.loadCheckpoint('auth-workflow');
+   * if (checkpoint) {
+   *   console.log(`Resuming from phase ${checkpoint.phase}`);
+   * }
+   * ```
+   */
+  async loadCheckpoint(workflowId: string): Promise<Checkpoint | null> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.loadCheckpoint(workflowId);
+  }
+
+  /**
+   * Check if a workflow can be resumed from a checkpoint
+   */
+  async canResumeWorkflow(workflowId: string): Promise<boolean> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      return false;  // Can't resume without SDK
+    }
+    return sdkAdapter.canResumeWorkflow(workflowId);
+  }
+
+  /**
+   * Get remaining phases for a workflow based on checkpoint
+   */
+  async getRemainingPhases(workflowId: string, workflow: Workflow): Promise<import('../integrations/ax-cli-sdk/checkpoint-adapter.js').WorkflowPhase[]> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.getRemainingPhases(workflowId, workflow);
+  }
+
+  /**
+   * Get combined instructions for an agent (merges profile + ax-cli custom instructions)
+   *
+   * @example
+   * ```typescript
+   * const instructions = await provider.getAgentInstructions('backend');
+   * console.log(instructions.systemPrompt); // Merged instructions
+   * ```
+   */
+  async getAgentInstructions(agentName: string, additionalContext?: string): Promise<CombinedInstructions> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.getAgentInstructions(agentName, additionalContext);
+  }
+
+  /**
+   * Sync an AutomatosX agent profile to ax-cli custom instructions
+   *
+   * @example
+   * ```typescript
+   * await provider.syncAgentToAxCli('backend');
+   * // Now ax-cli will use the backend agent's instructions
+   * ```
+   */
+  async syncAgentToAxCli(agentName: string): Promise<void> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+    }
+    return sdkAdapter.syncAgentToAxCli(agentName);
+  }
+
+  /**
+   * Check if SDK advanced features are available
+   */
+  hasAdvancedFeatures(): boolean {
+    return this.adapter.getSdkAdapter() !== null;
+  }
+
   /**
    * Get mock response for testing
    *
@@ -220,6 +374,18 @@ export class AxCliProvider extends BaseProvider {
     return 'Mock ax-cli response for testing';
   }
 }
+
+// Re-export types for convenience
+export type {
+  SubagentTask,
+  SubagentResult,
+  OrchestratorOptions,
+  Checkpoint,
+  Workflow,
+  CheckpointOptions,
+  CombinedInstructions,
+  InstructionsBridgeOptions
+};
 
 /**
  * @deprecated GlmProvider is deprecated. Use AxCliProvider instead.

@@ -320,6 +320,21 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
   }
 
   /**
+   * Get SDK adapter for advanced features (v10.4.0)
+   *
+   * Returns the underlying SDK adapter if available, otherwise null.
+   * This allows access to SDK-specific features like:
+   * - SubagentAdapter for parallel execution
+   * - CheckpointAdapter for resumable workflows
+   * - InstructionsBridge for unified instructions
+   *
+   * @returns SDK adapter or null if not available
+   */
+  getSdkAdapter(): AxCliSdkAdapter | null {
+    return this.sdkAdapter;
+  }
+
+  /**
    * Cleanup resources
    */
   async destroy(): Promise<void> {

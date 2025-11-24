@@ -1,5 +1,5 @@
 /**
- * AxCliSdkAdapter - SDK-based execution adapter (v9.2.0)
+ * AxCliSdkAdapter - SDK-based execution adapter (v10.4.0)
  *
  * Provides 10-40x performance improvement over CLI process spawning by
  * using the ax-cli SDK directly in-process.
@@ -9,6 +9,11 @@
  * - Subsequent calls: ~5ms (direct function call)
  * - vs CLI: 50-200ms overhead per call
  *
+ * New in v10.4.0:
+ * - SubagentAdapter for parallel multi-agent execution
+ * - CheckpointAdapter for resumable workflows
+ * - InstructionsBridge for unified agent instructions
+ *
  * @module integrations/ax-cli-sdk/adapter
  */
 
@@ -16,6 +21,9 @@ import type { AxCliAdapter, AxCliOptions } from '../ax-cli/interface.js';
 import type { ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../utils/logger.js';
 import { TokenEstimator } from './token-estimator.js';
+import { SubagentAdapter, type SubagentTask, type SubagentResult, type OrchestratorOptions } from './subagent-adapter.js';
+import { CheckpointAdapter, type Checkpoint, type Workflow, type CheckpointOptions } from './checkpoint-adapter.js';
+import { InstructionsBridge, type CombinedInstructions, type InstructionsBridgeOptions, getInstructionsBridge } from './instructions-bridge.js';
 
 /**
  * SDK Adapter configuration options
@@ -52,6 +60,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   private readonly streamingEnabled: boolean;
   private sdkAvailable: boolean | null = null;
 
+  // New adapters (v10.4.0)
+  private subagentAdapter: SubagentAdapter | null = null;
+  private checkpointAdapter: CheckpointAdapter | null = null;
+  private instructionsBridge: InstructionsBridge | null = null;
+
   constructor(options: SdkAdapterOptions = {}) {
     this.reuseEnabled = options.reuseEnabled ?? true;
     this.streamingEnabled = options.streamingEnabled ?? false;
@@ -60,6 +73,143 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       reuseEnabled: this.reuseEnabled,
       streamingEnabled: this.streamingEnabled
     });
+  }
+
+  // ==========================================
+  // Subagent Orchestration (v10.4.0)
+  // ==========================================
+
+  /**
+   * Get or create SubagentAdapter for parallel multi-agent execution
+   *
+   * @example
+   * ```typescript
+   * const subagents = adapter.getSubagentAdapter();
+   * const results = await subagents.executeParallel([
+   *   { task: 'Implement API', config: { role: 'developer' } },
+   *   { task: 'Write tests', config: { role: 'tester' } }
+   * ]);
+   * ```
+   */
+  getSubagentAdapter(options?: OrchestratorOptions): SubagentAdapter {
+    if (!this.subagentAdapter) {
+      this.subagentAdapter = new SubagentAdapter(options);
+      logger.debug('SubagentAdapter created');
+    }
+    return this.subagentAdapter;
+  }
+
+  /**
+   * Execute multiple tasks in parallel using subagents
+   * Convenience method that wraps SubagentAdapter.executeParallel()
+   */
+  async executeParallelTasks(tasks: SubagentTask[]): Promise<SubagentResult[]> {
+    const adapter = this.getSubagentAdapter();
+    return adapter.executeParallel(tasks);
+  }
+
+  /**
+   * Execute tasks sequentially with context propagation
+   * Convenience method that wraps SubagentAdapter.executeSequential()
+   */
+  async executeSequentialTasks(tasks: SubagentTask[]): Promise<SubagentResult[]> {
+    const adapter = this.getSubagentAdapter();
+    return adapter.executeSequential(tasks);
+  }
+
+  // ==========================================
+  // Checkpoint/Resume Support (v10.4.0)
+  // ==========================================
+
+  /**
+   * Get or create CheckpointAdapter for resumable workflows
+   *
+   * @example
+   * ```typescript
+   * const checkpoints = adapter.getCheckpointAdapter();
+   * await checkpoints.save('my-workflow', { phase: 2, context: '...' });
+   * const latest = await checkpoints.load('my-workflow');
+   * ```
+   */
+  getCheckpointAdapter(options?: CheckpointOptions): CheckpointAdapter {
+    if (!this.checkpointAdapter) {
+      this.checkpointAdapter = new CheckpointAdapter(options);
+      logger.debug('CheckpointAdapter created');
+    }
+    return this.checkpointAdapter;
+  }
+
+  /**
+   * Save a checkpoint for a workflow
+   * Convenience method that wraps CheckpointAdapter.save()
+   */
+  async saveCheckpoint(workflowId: string, data: Partial<Checkpoint>): Promise<Checkpoint> {
+    const adapter = this.getCheckpointAdapter();
+    return adapter.save(workflowId, data);
+  }
+
+  /**
+   * Load the latest checkpoint for a workflow
+   * Convenience method that wraps CheckpointAdapter.load()
+   */
+  async loadCheckpoint(workflowId: string): Promise<Checkpoint | null> {
+    const adapter = this.getCheckpointAdapter();
+    return adapter.load(workflowId);
+  }
+
+  /**
+   * Check if a checkpoint exists and can be resumed
+   */
+  async canResumeWorkflow(workflowId: string): Promise<boolean> {
+    const adapter = this.getCheckpointAdapter();
+    return adapter.exists(workflowId);
+  }
+
+  /**
+   * Get remaining phases for a workflow based on checkpoint
+   */
+  async getRemainingPhases(workflowId: string, workflow: Workflow): Promise<import('./checkpoint-adapter.js').WorkflowPhase[]> {
+    const adapter = this.getCheckpointAdapter();
+    return adapter.getRemainingPhases(workflowId, workflow);
+  }
+
+  // ==========================================
+  // Instructions Bridge (v10.4.0)
+  // ==========================================
+
+  /**
+   * Get or create InstructionsBridge for unified agent instructions
+   *
+   * @example
+   * ```typescript
+   * const bridge = adapter.getInstructionsBridge();
+   * const instructions = await bridge.getInstructions('backend');
+   * // instructions.systemPrompt contains merged agent + custom instructions
+   * ```
+   */
+  getInstructionsBridge(options?: InstructionsBridgeOptions): InstructionsBridge {
+    if (!this.instructionsBridge) {
+      this.instructionsBridge = getInstructionsBridge(options);
+      logger.debug('InstructionsBridge created');
+    }
+    return this.instructionsBridge;
+  }
+
+  /**
+   * Get combined instructions for an agent
+   * Convenience method that wraps InstructionsBridge.getInstructions()
+   */
+  async getAgentInstructions(agentName: string, additionalContext?: string): Promise<CombinedInstructions> {
+    const bridge = this.getInstructionsBridge();
+    return bridge.getInstructions(agentName, additionalContext);
+  }
+
+  /**
+   * Sync an AutomatosX agent profile to ax-cli custom instructions
+   */
+  async syncAgentToAxCli(agentName: string): Promise<void> {
+    const bridge = this.getInstructionsBridge();
+    return bridge.syncAgentToAxCli(agentName);
   }
 
   /**
@@ -663,6 +813,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    * Cleanup resources
    */
   async destroy(): Promise<void> {
+    // Cleanup main agent
     if (this.agent) {
       try {
         // Call SDK's dispose() method to cleanup resources
@@ -679,5 +830,56 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         });
       }
     }
+
+    // Cleanup SubagentAdapter (v10.4.0)
+    if (this.subagentAdapter) {
+      try {
+        await this.subagentAdapter.destroy();
+        this.subagentAdapter = null;
+        logger.debug('SubagentAdapter destroyed');
+      } catch (error) {
+        logger.warn('Error during SubagentAdapter cleanup', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    // Cleanup CheckpointAdapter (v10.4.0)
+    if (this.checkpointAdapter) {
+      try {
+        this.checkpointAdapter.destroy();
+        this.checkpointAdapter = null;
+        logger.debug('CheckpointAdapter destroyed');
+      } catch (error) {
+        logger.warn('Error during CheckpointAdapter cleanup', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    // Cleanup InstructionsBridge cache (v10.4.0)
+    if (this.instructionsBridge) {
+      try {
+        this.instructionsBridge.clearCache();
+        this.instructionsBridge = null;
+        logger.debug('InstructionsBridge cache cleared');
+      } catch (error) {
+        logger.warn('Error during InstructionsBridge cleanup', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
   }
 }
+
+// Re-export types for convenience
+export type {
+  SubagentTask,
+  SubagentResult,
+  OrchestratorOptions,
+  Checkpoint,
+  Workflow,
+  CheckpointOptions,
+  CombinedInstructions,
+  InstructionsBridgeOptions
+};

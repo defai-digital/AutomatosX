@@ -13,16 +13,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v10.3.2) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, grok, codex) for seamless orchestration.
+AutomatosX (v10.3.3) is an AI Agent Orchestration Platform that combines declarative YAML workflow specs, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, codex, ax-cli) for seamless orchestration.
 
 **Key Differentiators:**
 - **Spec-Kit**: Define workflows in YAML → Auto-generate plans, DAGs, scaffolds, and tests
-- **Pure CLI Wrapper**: Wraps around existing `claude`, `gemini`, `grok`, `codex` CLIs for simple integration
+- **Pure CLI Wrapper**: Wraps around existing `claude`, `gemini`, `codex`, `ax-cli` CLIs for simple integration
 - **Persistent Memory**: SQLite FTS5 full-text search (< 1ms) - perfect context with zero API costs
 - **Multi-Agent Orchestration**: 20 specialized agents that delegate tasks autonomously
 - **Token-Based Budgets**: Reliable budget control using token limits (no more unreliable cost estimates)
 - **Complete Observability**: JSONL trace logging for every execution decision
-- **AI Assistant Integration**: Works seamlessly with Claude Code, Gemini CLI, Grok CLI, and OpenAI Codex
+- **AI Assistant Integration**: Works seamlessly with Claude Code, Gemini CLI, OpenAI Codex, and ax-cli
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -61,14 +61,14 @@ npm version patch                          # Bump version (auto-syncs via hook)
 npm run release:check                      # Validate release readiness
 ```
 
-### Current State (v10.3.2)
+### Current State (v10.3.3)
 
 - ✅ Production-ready orchestration platform
 - ✅ 20+ specialized AI agents for different domains
 - ✅ Spec-Kit 100% complete (plans, DAGs, scaffolds, tests)
 - ✅ Pure CLI wrapper (no API keys needed for CLI mode)
 - ✅ Persistent memory with SQLite FTS5 search
-- ✅ Multi-provider support (Claude, Gemini, Grok, OpenAI Codex)
+- ✅ Multi-provider support (Claude, Gemini, OpenAI Codex, ax-cli)
 - ✅ Token-based budget control (stable and reliable)
 - ✅ Natural language integration with AI assistants
 - ✅ Enterprise MCP support with lifecycle logging
@@ -81,7 +81,7 @@ npm run release:check                      # Validate release readiness
 - 📖 **Migration Guide**: See `docs/migration/v9-cost-to-tokens.md` for upgrade path
 - 🎯 **Zero Maintenance**: No more pricing updates or outdated cost estimates
 
-**Recent Changes (v10.3.2 - Token Budget System):**
+**Recent Changes (v10.3.3 - Token Budget System):**
 - 🎯 **Token-Based Limits**: `--iterate-max-tokens` and `--iterate-max-tokens-per-iteration`
 - 📊 **Progressive Warnings**: Alerts at 75% and 90% of token budget
 - 🔍 **Real-Time Tracking**: Accurate token usage from provider responses
@@ -103,7 +103,7 @@ npm run release:check                      # Validate release readiness
    ↓
 2. Spec-Kit Generation (PlanGenerator, DagGenerator, ScaffoldGenerator, TestGenerator)
    ↓
-3. Provider CLI Selection (wraps existing claude/gemini/grok/codex commands)
+3. Provider CLI Selection (wraps existing claude/gemini/codex/ax-cli commands)
    ↓
 4. Execution (runs provider CLI with task, handles output parsing)
    ↓
@@ -115,7 +115,7 @@ npm run release:check                      # Validate release readiness
 ### Key System Components
 
 **1. Provider CLI Wrappers (`src/integrations/`)**
-- Pure CLI wrappers around existing `claude`, `gemini`, `grok`, `codex` commands
+- Pure CLI wrappers around existing `claude`, `gemini`, `codex`, `ax-cli` commands
 - No API keys needed for CLI mode (uses installed provider CLIs)
 - Stream parsing and output handling
 - Error handling and retry logic
@@ -163,7 +163,7 @@ npm run release:check                      # Validate release readiness
 **Integration Layer (`src/integrations/`)**
 - `claude-code/`: MCP manager, command manager, config manager
 - `gemini-cli/`: Command translator, file readers, MCP support
-- `ax-cli/`: Multi-provider CLI adapter (GLM, xAI, OpenAI, Anthropic, Ollama)
+- `ax-cli/`: Multi-provider CLI adapter (GLM, xAI, OpenAI, Anthropic, Ollama) - see "ax-cli SDK Integration" section below
 - `openai-codex/`: CLI wrapper, MCP support, AGENTS.md auto-injection, streaming progress
 
 ### Configuration System
@@ -197,9 +197,8 @@ npm run build              # Also calls prebuild:config automatically
 - Global performance tracking
 
 **Key Commands:**
-- `setup`: Initialize .automatosx/ directory with agents and config (v7.0.0)
-- `init`: AI-powered initialization with template generation (v7.1.2)
-- `cli`: Interactive ChatGPT-style CLI with streaming responses (v7.1.0+)
+- `setup`: Initialize .automatosx/ directory with agents and config
+- `init`: AI-powered initialization with template generation
 - `run`: Execute agent tasks with memory and delegation
 - `spec`: Spec-driven workflow execution
 - `gen`: Generate plans, DAGs, scaffolds, tests from specs
@@ -246,7 +245,7 @@ AutomatosX is designed to work seamlessly with your preferred AI assistant:
 **Supported Assistants:**
 - **Claude Code** - Primary integration with MCP support
 - **Gemini CLI** - Google's CLI with natural language support and MCP
-- **Grok CLI** - xAI's CLI with project instructions and user settings
+- **ax-cli** - Multi-provider CLI for GLM, xAI, OpenAI, Anthropic, and Ollama
 - **OpenAI Codex** - OpenAI's development assistant with AGENTS.md auto-injection
 
 **How It Works:**
@@ -649,57 +648,7 @@ tests/
 
 ### When to Use Zod
 
-**ALWAYS use Zod for:**
-- Validating external API responses (provider APIs, MCP responses)
-- Parsing user configuration files (ax.config.json, agent profiles)
-- Validating CLI arguments and options
-- Parsing YAML spec files (workflow.ax.yaml)
-- Validating environment variables
-- Any data from external sources (files, network, user input)
-
-**Example - Validating Provider Response:**
-```typescript
-import { z } from 'zod';
-
-const ProviderResponseSchema = z.object({
-  content: z.string(),
-  model: z.string(),
-  usage: z.object({
-    inputTokens: z.number(),
-    outputTokens: z.number()
-  }).optional()
-});
-
-// Parse and validate
-const result = ProviderResponseSchema.safeParse(rawResponse);
-if (!result.success) {
-  throw new ProviderError(`Invalid response: ${result.error.message}`);
-}
-const validated = result.data; // Type-safe!
-```
-
-**Example - Validating Configuration:**
-```typescript
-const ConfigSchema = z.object({
-  providers: z.record(z.object({
-    enabled: z.boolean(),
-    priority: z.number().min(1),
-    timeout: z.number().optional()
-  })),
-  execution: z.object({
-    maxConcurrentAgents: z.number().min(1).max(10)
-  })
-});
-
-const config = ConfigSchema.parse(rawConfig); // Throws on invalid
-```
-
-**Why Zod?**
-- TypeScript types are compile-time only - they disappear at runtime
-- Zod validates at runtime AND provides TypeScript types
-- Prevents runtime errors from malformed data
-- Better error messages for debugging
-- Type inference from schemas (single source of truth)
+**ALWAYS use Zod for external data:** API responses, config files, CLI arguments, YAML specs, environment variables. See examples in "Critical Development Patterns" section above.
 
 ## Common Workflows
 
@@ -842,12 +791,287 @@ ax run backend "task" --iterate-max-tokens-per-iteration 100000
 
 - Node.js >= 24.0.0 required (ES2022 features)
 - SQLite must support FTS5 extension (usually built-in)
-- Provider CLIs must be installed separately (`claude`, `gemini`, `grok`, `codex`)
+- Provider CLIs must be installed separately (`claude`, `gemini`, `codex`, `ax-cli`)
 - Max delegation depth: 2 (configurable in `orchestration.delegation.maxDepth`)
 - Max concurrent agents: 4 (configurable in `execution.concurrency.maxConcurrentAgents`)
 - Memory max entries: 10,000 (auto-cleanup if exceeded)
 - Session persistence debounce: 1s (reduces I/O but delays saves)
 - Token budgets enforced via `maxTotalTokens` and `maxTokensPerIteration`
+
+## ax-cli SDK Integration
+
+AutomatosX has **comprehensive ax-cli integration** (v3.8.3) with both CLI and SDK execution modes, providing provider-agnostic access to GLM, xAI, OpenAI, Anthropic, and Ollama models.
+
+### ax-cli Architecture
+
+```
+AutomatosX                         ax-cli (v3.8.3)
+    │                                   │
+    ├─ AxCliProvider ─────────────────► HybridAxCliAdapter
+    │   (src/providers/                 │
+    │    ax-cli-provider.ts)            │
+    │                                   │
+    │   ┌───────────────────────────────┴───────────────────────────────┐
+    │   │                                                               │
+    │   ▼                                                               ▼
+    │  SDK Mode (10-40x faster)                                   CLI Mode
+    │  AxCliSdkAdapter                                          AxCliAdapter
+    │  (src/integrations/ax-cli-sdk/)                    (src/integrations/ax-cli/)
+    │   │                                                               │
+    │   ├─ createAgent()                                          ├─ ax-cli -p "prompt"
+    │   ├─ agent.processUserMessageStream()                       ├─ JSONL parsing
+    │   ├─ Streaming events                                       └─ Shell-safe escaping
+    │   └─ Token tracking                                               │
+    │                                                                   │
+    └───────────────────────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+                              ┌─────────────────────┐
+                              │   AI Providers      │
+                              ├─────────────────────┤
+                              │ • GLM (glm-4.6)     │
+                              │ • xAI/Grok (grok-2) │
+                              │ • OpenAI (gpt-4)    │
+                              │ • Anthropic         │
+                              │ • Ollama (local)    │
+                              └─────────────────────┘
+```
+
+**Note**: Grok/xAI is only accessible through ax-cli. AutomatosX does not have a direct Grok CLI integration.
+
+### Execution Modes
+
+AutomatosX supports **three execution modes** via `HybridAxCliAdapter`:
+
+| Mode | Performance | Use Case |
+|------|-------------|----------|
+| `"sdk"` | ~5ms overhead | Production (requires SDK installed) |
+| `"cli"` | ~50-200ms overhead | Legacy/fallback mode |
+| `"auto"` (default) | SDK if available, else CLI | Recommended |
+
+**Configuration** in `ax.config.json`:
+```json
+{
+  "providers": {
+    "ax-cli": {
+      "enabled": true,
+      "priority": 4,
+      "mode": "auto",
+      "axCliSdk": {
+        "streamingEnabled": true,
+        "reuseEnabled": true
+      }
+    }
+  }
+}
+```
+
+### Integration Code Structure
+
+**CLI Adapter** (`src/integrations/ax-cli/`):
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `adapter.ts` | CLI process spawning, availability caching | 197 |
+| `command-builder.ts` | Shell-safe argument building | 183 |
+| `response-parser.ts` | JSONL parsing with Zod validation | 188 |
+| `interface.ts` | TypeScript interfaces (AxCliOptions) | 159 |
+| `types.ts` | Zod schemas for validation | 68 |
+
+**SDK Adapter** (`src/integrations/ax-cli-sdk/`):
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `adapter.ts` | In-process SDK execution via `createAgent()` | 880+ |
+| `hybrid-adapter.ts` | Mode selection and fallback logic | 360+ |
+| `token-estimator.ts` | Fallback token estimation (4 chars/token) | 146 |
+| `subagent-adapter.ts` | Parallel multi-agent execution **(v10.4.0)** | 540+ |
+| `checkpoint-adapter.ts` | Resumable workflow support **(v10.4.0)** | 530+ |
+| `instructions-bridge.ts` | Unified agent instructions **(v10.4.0)** | 490+ |
+
+**Provider** (`src/providers/ax-cli-provider.ts`):
+
+| Class | Purpose | Lines |
+|-------|---------|-------|
+| `AxCliProvider` | Provider-agnostic AI access, extends BaseProvider | 400+ |
+
+**Total**: ~4,000+ lines of purpose-built ax-cli integration code (v10.4.0)
+
+### SDK Features Implemented
+
+**Token Tracking** (3-tier fallback):
+1. SDK events (`token_count` emissions) - 100% accurate
+2. ChatEntry.usage - if available from SDK
+3. Estimation fallback - 4 chars/token heuristic
+
+**Streaming Support**:
+```typescript
+// Streaming callbacks in AxCliOptions
+onStream?: (chunk: StreamChunk) => void;  // content, thinking, tool
+onTool?: (tool: ToolInvocation) => void;  // tool name, args
+```
+
+**Error Handling** (mapped to standard codes):
+- `RATE_LIMIT_EXCEEDED`
+- `CONTEXT_LENGTH_EXCEEDED`
+- `TIMEOUT`
+- `AUTHENTICATION_FAILED`
+- `NETWORK_ERROR`
+
+### Advanced SDK Features (v10.4.0)
+
+**1. Parallel Multi-Agent Execution** (`SubagentAdapter`):
+```typescript
+const provider = new AxCliProvider({ mode: 'auto' });
+
+// Execute multiple tasks in parallel
+const results = await provider.executeParallelTasks([
+  { task: 'Implement API', config: { role: 'developer', specialization: 'backend' } },
+  { task: 'Write tests', config: { role: 'tester' } },
+  { task: 'Security audit', config: { role: 'auditor', specialization: 'security' } }
+]);
+
+// Or sequentially with context propagation
+const sequential = await provider.executeSequentialTasks([
+  { task: 'Design API', config: { role: 'architect' } },
+  { task: 'Implement design', config: { role: 'developer' } },
+  { task: 'Review implementation', config: { role: 'reviewer' } }
+]);
+```
+
+**2. Resumable Workflows** (`CheckpointAdapter`):
+```typescript
+// Save checkpoint after each phase
+await provider.saveCheckpoint('auth-workflow', {
+  phase: 2,
+  completedTasks: ['design', 'implement'],
+  context: 'OAuth integration complete...',
+  tokensUsed: { prompt: 5000, completion: 3000, total: 8000 }
+});
+
+// Resume interrupted workflow
+const checkpoint = await provider.loadCheckpoint('auth-workflow');
+if (checkpoint) {
+  const remaining = await provider.getRemainingPhases('auth-workflow', workflow);
+  // Resume from phase 3
+}
+```
+
+**3. Unified Agent Instructions** (`InstructionsBridge`):
+```typescript
+// Get merged instructions (agent profile + ax-cli custom + project context)
+const instructions = await provider.getAgentInstructions('backend', 'Additional context');
+console.log(instructions.systemPrompt);  // Combined system prompt
+console.log(instructions.sources);        // { agentProfile: true, axCliCustom: true, projectMemory: true }
+
+// Sync agent profile to ax-cli
+await provider.syncAgentToAxCli('backend');
+// Now ax-cli uses the backend agent's instructions in .ax-cli/CUSTOM.md
+```
+
+**SubagentRole Mapping** (AutomatosX → ax-cli):
+| AutomatosX Agent | ax-cli SubagentRole |
+|------------------|---------------------|
+| backend, frontend, fullstack, mobile | `developer` |
+| security | `auditor` |
+| quality | `tester` |
+| architecture, cto | `architect` |
+| researcher, data-scientist, data | `analyst` |
+| writer, product | `documenter` |
+| standard | `reviewer` |
+| Other agents | `custom` |
+
+### Usage Examples
+
+**Via AxCliProvider** (recommended):
+```typescript
+import { AxCliProvider } from '@/providers/ax-cli-provider.js';
+
+const provider = new AxCliProvider({
+  name: 'ax-cli',
+  mode: 'auto',  // SDK with CLI fallback
+  axCliSdk: {
+    streamingEnabled: true,
+    reuseEnabled: true  // Agent reuse for performance
+  }
+});
+
+const response = await provider.execute({
+  task: 'Implement feature X',
+  timeout: 120000
+});
+
+// Check active mode
+console.log(provider.getActiveMode());  // 'sdk' or 'cli'
+```
+
+**Direct SDK Adapter** (advanced):
+```typescript
+import { AxCliSdkAdapter } from '@/integrations/ax-cli-sdk/adapter.js';
+
+const adapter = new AxCliSdkAdapter({
+  reuseEnabled: true,
+  streamingEnabled: true
+});
+
+const response = await adapter.execute('Task', {
+  maxToolRounds: 400,
+  onStream: (chunk) => console.log(chunk.content),
+  onTool: (tool) => console.log(`Tool: ${tool.name}`)
+});
+
+// Access advanced features (v10.4.0)
+const subagents = adapter.getSubagentAdapter();
+const checkpoints = adapter.getCheckpointAdapter();
+const instructions = adapter.getInstructionsBridge();
+```
+
+### ax-cli Features by Version
+
+**v3.8.3 (Current)**:
+- Fixed MCP server 60-second timeout with ContentLengthStdioTransport
+- MCP SDK updated to v1.22.0
+- Connection time reduced from 60s to ~200ms
+
+**v3.6.2**:
+- Multi-level verbosity: Quiet (default), Concise, Verbose
+- Smart tool grouping for consecutive operations
+
+**v3.6.0**:
+- Session continuity (`--continue` / `-c`)
+- Multi-phase task planner (57 keyword patterns)
+- Project memory system
+
+### Backward Compatibility
+
+**Deprecated aliases** (still functional):
+```typescript
+// src/providers/ax-cli-provider.ts lines 224-235
+export const GlmProvider = AxCliProvider;      // @deprecated
+export type GlmProviderConfig = AxCliProviderConfig;  // @deprecated
+```
+
+**Legacy config key**: `"glm"` config key still accepted, shows deprecation warning.
+
+### ax-cli vs AutomatosX
+
+| Capability | ax-cli | AutomatosX |
+|------------|--------|------------|
+| Single-agent execution | ✅ Primary focus | ✅ Via AxCliProvider |
+| Multi-agent orchestration | ❌ | ✅ 20+ specialized agents |
+| **Parallel subagent execution** | ✅ SDK API | ✅ Via SubagentAdapter (v10.4.0) |
+| Session continuity | ✅ `--continue` | ✅ Session manager |
+| Persistent memory | ✅ Project memory | ✅ SQLite FTS5 (< 1ms) |
+| **Checkpoint/resume** | ✅ SDK API | ✅ Via CheckpointAdapter (v10.4.0) |
+| MCP support | ✅ 12+ templates | ✅ Enterprise MCP |
+| Workflow automation | ❌ | ✅ YAML specs |
+| Provider routing | Single provider | Multi-provider with fallback |
+| SDK/Programmatic API | ✅ `createAgent()` | ✅ Full SDK integration (v10.4.0) |
+| **Unified instructions** | ✅ CUSTOM.md | ✅ Via InstructionsBridge (v10.4.0) |
+
+**When to use ax-cli directly**: Single-agent tasks, GLM-focused development, interactive sessions
+
+**When to use AutomatosX**: Multi-agent workflows, provider routing, enterprise orchestration
 
 ## Workspace Conventions
 
@@ -1168,72 +1392,17 @@ await monitor.watchAgent('writer', (status) => {
 
 ---
 
-## Major Milestones
+## Breaking Changes Reference
 
-### v9.0.0 - Token-Based Budgets (2025-11-18)
+See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
-**BREAKING CHANGE**: Cost estimation completely removed, replaced with token-based budgets
+### v9.0.0 - Token-Based Budgets
 
-**What Changed**:
-- 🚨 **Removed Cost Tracking**: ~1,200 lines of unreliable cost estimation code deleted
-- ✅ **Token-Only Budgets**: `--iterate-max-tokens` replaces `--iterate-max-cost`
-- ✅ **Stable Tracking**: Token counts never change (unlike provider pricing)
-- ✅ **Accurate Limits**: Direct from provider API responses, no estimates
-- ✅ **Zero Maintenance**: No more pricing updates needed
-- 📖 **Migration Guide**: `docs/migration/v9-cost-to-tokens.md` provides upgrade path
+Cost estimation removed. Use `--iterate-max-tokens` instead of `--iterate-max-cost`. Migration: `docs/migration/v9-cost-to-tokens.md`
 
-**Breaking Changes**:
-- ❌ `--iterate-max-cost` flag removed (use `--iterate-max-tokens`)
-- ❌ `maxEstimatedCostUsd` config removed (use `maxTotalTokens`)
-- ❌ `cost_limit_exceeded` pause reason removed (use `token_limit_exceeded`)
-- ❌ `enableCostTracking` config removed
-- ❌ `warnAtCostPercent` config removed
-- ❌ CostTracker class and all cost estimation infrastructure removed
+### v8.2.0 - AI Assistant Focus
 
-**What Remains**:
-- ✅ All core CLI commands (ax run, ax memory, ax session, etc.)
-- ✅ 20+ specialized agents with persistent memory
-- ✅ Pure CLI wrapper architecture (simple integration)
-- ✅ Spec-Kit workflow system
-- ✅ Multi-provider support (Claude, Gemini, Grok, Codex)
-- ✅ Complete observability and tracing
-- ✅ Enterprise MCP support
-
-**Migration**:
-```bash
-# Old (v8.x)
-ax run backend "task" --iterate-max-cost 5.0
-
-# New (v9.0+)
-ax run backend "task" --iterate-max-tokens 1000000
-```
-
-**Why This Change**:
-Provider pricing changes frequently and unpredictably, making cost estimates unreliable and confusing. Token-based budgets are stable, accurate, and require zero maintenance. Users can calculate costs manually if needed using current provider pricing.
-
-### v8.2.0 - Streamlined for AI Assistant Integration
-
-**Major Change**: Removed standalone chatbot interface to focus on core orchestration
-
-**What Changed**:
-- 🔄 Removed `ax cli` interactive mode (~25,000 lines of code)
-- ✅ Focused on AI assistant integration (Claude Code, Gemini CLI, Grok, Codex)
-- ✅ Simplified UX - use familiar AI tools instead of learning new CLI
-- ✅ Reduced maintenance burden and complexity
-- ✅ Better separation of concerns: AutomatosX = orchestration, AI assistants = UI
-
-**What Remains**:
-- ✅ All core CLI commands (ax run, ax memory, ax session, etc.)
-- ✅ 20+ specialized agents with persistent memory
-- ✅ Pure CLI wrapper (no API keys needed)
-- ✅ Spec-Kit workflow system
-- ✅ Multi-provider support with fallback
-- ✅ Complete observability and tracing
-
-**Migration**: See `MIGRATION.md` for guidance on transitioning from v7.x
-
-**Why This Change**:
-Users preferred using Claude Code, Gemini CLI, Grok, or Codex for conversations. The standalone chatbot duplicated functionality and added complexity. By removing it, AutomatosX becomes a pure orchestration platform that works **with** AI assistants rather than trying to replace them.
+Removed `ax cli` interactive mode. Use Claude Code, Gemini CLI, OpenAI Codex, or ax-cli instead. Migration: `MIGRATION.md`
 
 ---
 

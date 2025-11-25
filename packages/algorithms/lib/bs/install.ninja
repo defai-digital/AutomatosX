@@ -1,0 +1,18 @@
+rescript = 1
+rule cp
+  command = cp $i $out
+rule touch
+ command = touch $out
+o Routing.cmi : cp ../bs/src/Routing.cmi
+o Routing.cmj : cp ../bs/src/Routing.cmj
+o Routing.cmt : cp ../bs/src/Routing.cmt
+o Routing.res : cp ../../src/Routing.res
+o MemoryRank.cmi : cp ../bs/src/MemoryRank.cmi
+o MemoryRank.cmj : cp ../bs/src/MemoryRank.cmj
+o MemoryRank.cmt : cp ../bs/src/MemoryRank.cmt
+o MemoryRank.res : cp ../../src/MemoryRank.res
+o DagScheduler.cmi : cp ../bs/src/DagScheduler.cmi
+o DagScheduler.cmj : cp ../bs/src/DagScheduler.cmj
+o DagScheduler.cmt : cp ../bs/src/DagScheduler.cmt
+o DagScheduler.res : cp ../../src/DagScheduler.res
+build install.stamp : touch Routing.cmi Routing.cmj MemoryRank.cmi MemoryRank.cmj DagScheduler.cmi DagScheduler.cmj 

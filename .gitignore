@@ -1,0 +1,8 @@
+
+# AutomatosX
+.automatosx/memory/
+.automatosx/logs/
+automatosx/tmp/  # v5.2: Temporary files
+ax.config.json  # v9.2.0: Optional - remove to track config
+automatosx.config.json  # DEPRECATED: old config name (backward compat)
+node_modules

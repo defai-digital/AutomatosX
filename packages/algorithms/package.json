@@ -1,0 +1,54 @@
+{
+  "name": "@ax/algorithms",
+  "version": "11.0.0-alpha.0",
+  "description": "Performance-critical algorithms for AutomatosX (ReScript)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./routing": {
+      "types": "./dist/routing.d.ts",
+      "import": "./dist/routing.js"
+    },
+    "./dag": {
+      "types": "./dist/dag.d.ts",
+      "import": "./dist/dag.js"
+    },
+    "./ranking": {
+      "types": "./dist/ranking.d.ts",
+      "import": "./dist/ranking.js"
+    }
+  },
+  "files": [
+    "dist",
+    "lib"
+  ],
+  "scripts": {
+    "res:build": "rescript build",
+    "res:watch": "rescript build -w",
+    "res:clean": "rescript clean",
+    "build": "npm run res:build && tsup",
+    "dev": "npm run res:watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist lib && npm run res:clean",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ax/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@rescript/core": "^1.6.1",
+    "rescript": "^11.1.4",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  }
+}

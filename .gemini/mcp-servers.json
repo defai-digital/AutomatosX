@@ -1,0 +1,13 @@
+{
+  "automatosx": {
+    "command": "node",
+    "args": [
+      "/Users/akiralam/.nvm/versions/node/v24.11.1/lib/node_modules/@defai.digital/automatosx/dist/mcp/index.js"
+    ],
+    "description": "AutomatosX AI agent orchestration platform with persistent memory and multi-agent collaboration",
+    "env": {
+      "AUTOMATOSX_CONFIG_PATH": "/Users/akiralam/code/AutomatosX/ax.config.json",
+      "AUTOMATOSX_LOG_LEVEL": "warn"
+    }
+  }
+}

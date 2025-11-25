@@ -1,0 +1,52 @@
+{
+  "name": "@ax/cli",
+  "version": "11.0.0-alpha.0",
+  "description": "Command-line interface for AutomatosX",
+  "type": "module",
+  "bin": {
+    "ax": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@ax/core": "workspace:*",
+    "@ax/schemas": "workspace:*",
+    "@ax/providers": "workspace:*",
+    "@ax/algorithms": "workspace:*",
+    "yargs": "^17.7.2",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.1",
+    "cli-table3": "^0.6.5",
+    "figures": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/yargs": "^17.0.33",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

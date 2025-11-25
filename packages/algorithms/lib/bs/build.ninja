@@ -1,0 +1,20 @@
+rescript = 1
+g_finger := /Users/akiralam/code/AutomatosX/packages/algorithms/node_modules/@rescript/core/lib/ocaml/install.stamp
+rule astj
+  command = /Users/akiralam/code/AutomatosX/node_modules/.pnpm/rescript@11.1.4/node_modules/rescript/darwinarm64/bsc.exe  -warn-error +101 -bs-v 11.1.4 -uncurried -open RescriptCore -absname -bs-ast -o $out $i
+o src/Routing.ast : astj ../../src/Routing.res
+rule deps
+  command = /Users/akiralam/code/AutomatosX/node_modules/.pnpm/rescript@11.1.4/node_modules/rescript/darwinarm64/bsb_helper.exe -hash 04a267e48a1ce789104d1365384cc9c6 $in
+  restat = 1
+o src/Routing.d : deps src/Routing.ast
+rule mij
+  command = /Users/akiralam/code/AutomatosX/node_modules/.pnpm/rescript@11.1.4/node_modules/rescript/darwinarm64/bsc.exe -I src/bindings -I src/rescript -I src -I /Users/akiralam/code/AutomatosX/packages/algorithms/node_modules/@rescript/core/lib/ocaml -open RescriptCore  -warn-error +101 -uncurried -bs-package-name @ax/algorithms -bs-package-output esmodule:lib/es6/$in_d:.mjs -bs-v $g_finger $i
+  dyndep = 1
+  restat = 1
+o src/Routing.cmj src/Routing.cmi ../es6/src/Routing.mjs : mij src/Routing.ast
+o src/MemoryRank.ast : astj ../../src/MemoryRank.res
+o src/MemoryRank.d : deps src/MemoryRank.ast
+o src/MemoryRank.cmj src/MemoryRank.cmi ../es6/src/MemoryRank.mjs : mij src/MemoryRank.ast
+o src/DagScheduler.ast : astj ../../src/DagScheduler.res
+o src/DagScheduler.d : deps src/DagScheduler.ast
+o src/DagScheduler.cmj src/DagScheduler.cmi ../es6/src/DagScheduler.mjs : mij src/DagScheduler.ast

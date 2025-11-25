@@ -1,0 +1,58 @@
+# Design Team Configuration
+# UX/UI design and technical writing
+
+name: design
+displayName: "Design Team"
+description: "UX/UI design and technical writing"
+
+# Provider Configuration
+provider:
+  primary: gemini
+  fallback: claude
+  fallbackChain:
+    - gemini
+    - claude
+    - codex
+
+# Shared Abilities
+sharedAbilities:
+  - design-principles
+  - documentation
+  - user-research
+
+# Team Capabilities (v4.11.0 - Self-assessment for intelligent delegation)
+capabilities:
+  canDo:
+    - UX/UI design and prototyping
+    - User research and testing
+    - Visual design and branding
+    - Technical writing and documentation
+    - README and user guide writing
+    - Content creation and editing
+    - Documentation quality assessment
+    - Design system development
+    - Accessibility and usability review
+
+  shouldDelegate:
+    - Code implementation → coder (engineering team)
+    - Backend development → backend (engineering team)
+    - Frontend implementation → frontend (engineering team)
+    - Security audits → security (core team)
+    - Testing automation → quality (core team)
+    - Product strategy → product (design team)
+
+# Orchestration Defaults
+orchestration:
+  maxDelegationDepth: 2  # v4.11.0: Enforced limit
+  canWriteToShared: true
+  canReadWorkspaces:
+    - design
+    - writer
+    - product
+
+# Metadata
+metadata:
+  color: "#EC4899"
+  icon: "🎨"
+  priority: 4
+version: "1.0.0"

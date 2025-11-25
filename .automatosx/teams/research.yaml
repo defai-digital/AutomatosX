@@ -1,0 +1,56 @@
+# Research Team Configuration
+# Research and feasibility analysis specialists
+
+name: research
+displayName: "Research Team"
+description: "Research, feasibility analysis, and evidence-driven decision making"
+
+# Provider Configuration
+provider:
+  primary: openai        # OpenAI for structured research and analysis
+  fallback: gemini-cli   # Gemini as secondary
+  fallbackChain:
+    - openai
+    - gemini-cli
+    - claude
+
+# Shared Abilities
+sharedAbilities:
+  - idea-evaluation
+  - logical-analysis
+  - feasibility-study
+  - risk-assessment
+  - literature-review
+
+# Team Capabilities
+capabilities:
+  canDo:
+    - Idea validation and evaluation
+    - Feasibility analysis (technical, operational, economic)
+    - Risk assessment and mitigation strategies
+    - Literature review and citation
+    - Long-form research reports
+    - Logical reasoning and assumption analysis
+    - Evidence-based recommendations
+
+  shouldDelegate:
+    - Technical implementation → backend (engineering team)
+    - Data analysis → data (leadership team)
+    - Design work → design (content team)
+    - Documentation → writer (content team)
+
+# Orchestration Defaults
+orchestration:
+  maxDelegationDepth: 0  # Researchers execute research themselves
+  canWriteToShared: true
+  canReadWorkspaces:
+    - backend
+    - frontend
+    - data
+
+# Metadata
+metadata:
+  color: "#10B981"
+  icon: "🔬"
+  priority: 4
+version: "1.0.0"

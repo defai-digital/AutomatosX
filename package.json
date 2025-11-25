@@ -1,0 +1,61 @@
+{
+  "name": "@defai.digital/automatosx",
+  "version": "11.0.0-alpha.0",
+  "description": "AI agent orchestration platform with multi-provider support",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@9.14.2",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:schemas": "pnpm --filter @ax/schemas build",
+    "build:core": "pnpm --filter @ax/core build",
+    "build:providers": "pnpm --filter @ax/providers build",
+    "build:algorithms": "pnpm --filter @ax/algorithms build",
+    "build:cli": "pnpm --filter @ax/cli build",
+    "build:mcp": "pnpm --filter @ax/mcp build",
+    "dev": "pnpm -r --parallel dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "lint:fix": "eslint packages/*/src --ext .ts,.tsx --fix",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "clean:dist": "pnpm -r clean",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.16.0",
+    "@typescript-eslint/parser": "^8.16.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "eslint": "^9.15.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.4.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "orchestration",
+    "claude",
+    "gemini",
+    "mcp",
+    "automation"
+  ],
+  "author": "DEFAI Private Limited",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx"
+  }
+}

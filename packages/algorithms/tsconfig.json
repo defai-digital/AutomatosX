@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "./src/bindings",
+    "allowJs": true
+  },
+  "include": ["src/bindings/**/*"],
+  "exclude": ["node_modules", "dist", "lib", "**/*.test.ts"]
+}

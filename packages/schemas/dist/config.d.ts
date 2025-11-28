@@ -16,12 +16,12 @@ declare const ProvidersConfigSchema: z.ZodObject<{
     /** Fallback order when default fails */
     fallbackOrder: z.ZodOptional<z.ZodArray<z.ZodEnum<["claude", "gemini", "ax-cli", "openai"]>, "many">>;
 }, "strip", z.ZodTypeAny, {
-    enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
     default: "claude" | "gemini" | "ax-cli" | "openai";
+    enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
     fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
 }, {
-    enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     default?: "claude" | "gemini" | "ax-cli" | "openai" | undefined;
+    enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
 }>;
 type ProvidersConfig = z.infer<typeof ProvidersConfigSchema>;
@@ -160,17 +160,17 @@ declare const MemoryConfigSchema: z.ZodObject<{
     searchLimit: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     enabled: boolean;
-    retentionDays: number;
     maxEntries: number;
     databasePath: string;
+    retentionDays: number;
     cleanupStrategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
     autoCleanup: boolean;
     searchLimit: number;
 }, {
     enabled?: boolean | undefined;
-    retentionDays?: number | undefined;
     maxEntries?: number | undefined;
     databasePath?: string | undefined;
+    retentionDays?: number | undefined;
     cleanupStrategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
     autoCleanup?: boolean | undefined;
     searchLimit?: number | undefined;
@@ -338,12 +338,12 @@ declare const ConfigSchema: z.ZodObject<{
         /** Fallback order when default fails */
         fallbackOrder: z.ZodOptional<z.ZodArray<z.ZodEnum<["claude", "gemini", "ax-cli", "openai"]>, "many">>;
     }, "strip", z.ZodTypeAny, {
-        enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
         default: "claude" | "gemini" | "ax-cli" | "openai";
+        enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
         fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     }, {
-        enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
         default?: "claude" | "gemini" | "ax-cli" | "openai" | undefined;
+        enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
         fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     }>>;
     /** Execution configuration */
@@ -436,17 +436,17 @@ declare const ConfigSchema: z.ZodObject<{
         searchLimit: z.ZodDefault<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         enabled: boolean;
-        retentionDays: number;
         maxEntries: number;
         databasePath: string;
+        retentionDays: number;
         cleanupStrategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
         autoCleanup: boolean;
         searchLimit: number;
     }, {
         enabled?: boolean | undefined;
-        retentionDays?: number | undefined;
         maxEntries?: number | undefined;
         databasePath?: string | undefined;
+        retentionDays?: number | undefined;
         cleanupStrategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
         autoCleanup?: boolean | undefined;
         searchLimit?: number | undefined;
@@ -583,17 +583,17 @@ declare const ConfigSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     memory: {
         enabled: boolean;
-        retentionDays: number;
         maxEntries: number;
         databasePath: string;
+        retentionDays: number;
         cleanupStrategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
         autoCleanup: boolean;
         searchLimit: number;
     };
     version: string;
     providers: {
-        enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
         default: "claude" | "gemini" | "ax-cli" | "openai";
+        enabled: ("claude" | "gemini" | "ax-cli" | "openai")[];
         fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     };
     execution: {
@@ -649,9 +649,9 @@ declare const ConfigSchema: z.ZodObject<{
 }, {
     memory?: {
         enabled?: boolean | undefined;
-        retentionDays?: number | undefined;
         maxEntries?: number | undefined;
         databasePath?: string | undefined;
+        retentionDays?: number | undefined;
         cleanupStrategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
         autoCleanup?: boolean | undefined;
         searchLimit?: number | undefined;
@@ -659,8 +659,8 @@ declare const ConfigSchema: z.ZodObject<{
     $schema?: string | undefined;
     version?: string | undefined;
     providers?: {
-        enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
         default?: "claude" | "gemini" | "ax-cli" | "openai" | undefined;
+        enabled?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
         fallbackOrder?: ("claude" | "gemini" | "ax-cli" | "openai")[] | undefined;
     } | undefined;
     execution?: {

@@ -16,17 +16,24 @@ This project uses [AutomatosX](https://github.com/defai-digital/automatosx) - an
 
 ## Quick Start
 
-### Available Commands
+### Getting Started
 
 ```bash
+# Initialize AutomatosX in your project
+ax setup
+
 # List all available agents
-ax list agents
+ax agent list
 
 # Run an agent with a task
 ax run <agent-name> "your task description"
 
 # Example: Ask the backend agent to create an API
 ax run backend "create a REST API for user management"
+
+# Auto-select agent based on task (v11+)
+# If agent not found, router auto-selects based on keywords
+ax run auto "create a REST API"  # → selects backend agent
 
 # Search memory for past conversations
 ax memory search "keyword"
@@ -142,10 +149,17 @@ Edit `ax.config.json` to customize:
 
 ### Agent Customization
 
-Create custom agents in `.automatosx/agents/`:
+Create custom agents by copying templates in `.automatosx/agents/`:
 
 ```bash
-ax agent create my-agent --template developer --interactive
+# Copy an existing agent template and customize
+cp .automatosx/agents/backend.yaml .automatosx/agents/my-agent.yaml
+
+# Edit the YAML file to customize
+# - name: my-agent
+# - role: Your custom role
+# - abilities: List of capabilities
+# - systemPrompt: Agent instructions
 ```
 
 ### Workspace Conventions
@@ -265,11 +279,17 @@ ax config show
 
 **"Out of memory"**
 ```bash
-# Clear old memories
-ax memory clear --before "2024-01-01"
+# Clear old memories (v11+)
+ax memory clear --before "2024-01-01" --force
+
+# Clear memories for specific agent
+ax memory clear --agent backend --force
+
+# Clear all memories
+ax memory clear --all --force
 
 # View memory stats
-ax cache stats
+ax memory stats
 ```
 
 ### Getting Help
@@ -294,15 +314,46 @@ ax memory search "similar task"
 4. **Review Configurations**: Check `ax.config.json` for timeouts and retries
 5. **Keep Agents Specialized**: Use the right agent for each task type
 
+## ax-cli Integration
+
+AutomatosX integrates seamlessly with [ax-cli](https://github.com/defai-digital/ax-cli) via the Model Context Protocol (MCP). ax-cli automatically detects the `.automatosx/config.json` configuration.
+
+### Quick Setup
+
+```bash
+# ax-cli auto-detects AutomatosX in your project
+ax status
+
+# Use AutomatosX tools through ax-cli
+ax run backend "Create user authentication API"
+ax memory search "authentication"
+ax session list
+```
+
+### MCP Tools Available
+
+When connected, ax-cli exposes these AutomatosX tools:
+- `ax_run` - Execute tasks with agents
+- `ax_list_agents` - List available agents
+- `ax_agent_info` - Get agent details
+- `ax_memory_search` - Search persistent memory
+- `ax_memory_save` - Save to memory
+- `ax_session_create` - Create sessions
+- `ax_status` - System status
+
+For detailed setup instructions, see [docs/ax-cli-integration.md](docs/ax-cli-integration.md).
+
 ## Documentation
 
 - **AutomatosX Docs**: https://github.com/defai-digital/automatosx
+- **ax-cli Integration**: [docs/ax-cli-integration.md](docs/ax-cli-integration.md)
 - **Agent Directory**: `.automatosx/agents/`
-- **Configuration**: `ax.config.json`
+- **Configuration**: `.automatosx/config.json`
 - **Memory Database**: `.automatosx/memory/memories.db`
 - **Workspace**: `automatosx/PRD/` (planning docs) and `automatosx/tmp/` (temporary files)
 
 ## Support
 
 - Issues: https://github.com/defai-digital/automatosx/issues
+- ax-cli Issues: https://github.com/defai-digital/ax-cli/issues
 - NPM: https://www.npmjs.com/package/@defai.digital/automatosx

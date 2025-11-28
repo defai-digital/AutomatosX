@@ -536,6 +536,30 @@ var MemoryManager = class _MemoryManager {
     });
   }
   /**
+   * Clear memories based on criteria
+   *
+   * @param options - Clear options
+   * @returns Number of deleted entries
+   */
+  clear(options) {
+    if (!options?.before && !options?.agent && !options?.all) {
+      throw new Error("Must specify --before, --agent, or --all to clear memories");
+    }
+    let sql = "DELETE FROM memories WHERE 1=1";
+    const params = [];
+    if (options.before) {
+      sql += " AND created_at < ?";
+      params.push(options.before.toISOString());
+    }
+    if (options.agent) {
+      sql += " AND json_extract(metadata, '$.agentId') = ?";
+      params.push(options.agent);
+    }
+    const stmt = this.db.prepare(sql);
+    const result = stmt.run(...params);
+    return { deleted: result.changes };
+  }
+  /**
    * Run VACUUM to reclaim space (use sparingly)
    */
   vacuum() {

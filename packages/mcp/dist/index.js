@@ -23,6 +23,10 @@ import {
 } from "@ax/core";
 var cachedContext = null;
 function getBasePath() {
+  const envBasePath = process.env["AUTOMATOSX_BASE_PATH"];
+  if (envBasePath) {
+    return envBasePath;
+  }
   const cwdPath = join(process.cwd(), DIR_AUTOMATOSX);
   return cwdPath;
 }

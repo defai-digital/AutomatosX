@@ -123,14 +123,21 @@ export function listItem(item: string, indent = 0): void {
  * Create and print a table
  */
 export function table(data: string[][], options: TableOptions): void {
-  const tableInstance = new Table({
+  const tableConfig: {
+    head: string[];
+    colWidths?: (number | null)[];
+    style: { head: string[]; border: string[] };
+  } = {
     head: options.head.map(h => chalk.cyan(h)),
-    colWidths: options.colWidths,
     style: {
       head: options.style?.head ?? ['cyan'],
       border: options.style?.border ?? ['gray'],
     },
-  });
+  };
+  if (options.colWidths) {
+    tableConfig.colWidths = options.colWidths;
+  }
+  const tableInstance = new Table(tableConfig);
 
   for (const row of data) {
     tableInstance.push(row);

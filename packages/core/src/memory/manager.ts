@@ -753,6 +753,44 @@ export class MemoryManager {
   }
 
   /**
+   * Clear memories based on criteria
+   *
+   * @param options - Clear options
+   * @returns Number of deleted entries
+   */
+  clear(options?: {
+    /** Clear memories before this date */
+    before?: Date;
+    /** Clear memories for specific agent */
+    agent?: string;
+    /** Clear all memories (required if no other option provided) */
+    all?: boolean;
+  }): { deleted: number } {
+    // Require at least one option to prevent accidental deletion
+    if (!options?.before && !options?.agent && !options?.all) {
+      throw new Error('Must specify --before, --agent, or --all to clear memories');
+    }
+
+    let sql = 'DELETE FROM memories WHERE 1=1';
+    const params: (string | number)[] = [];
+
+    if (options.before) {
+      sql += ' AND created_at < ?';
+      params.push(options.before.toISOString());
+    }
+
+    if (options.agent) {
+      sql += " AND json_extract(metadata, '$.agentId') = ?";
+      params.push(options.agent);
+    }
+
+    const stmt = this.db.prepare(sql);
+    const result = stmt.run(...params);
+
+    return { deleted: result.changes };
+  }
+
+  /**
    * Run VACUUM to reclaim space (use sparingly)
    */
   vacuum(): void {

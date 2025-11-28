@@ -103,6 +103,22 @@ declare class MemoryManager {
      */
     private rowToEntry;
     /**
+     * Clear memories based on criteria
+     *
+     * @param options - Clear options
+     * @returns Number of deleted entries
+     */
+    clear(options?: {
+        /** Clear memories before this date */
+        before?: Date;
+        /** Clear memories for specific agent */
+        agent?: string;
+        /** Clear all memories (required if no other option provided) */
+        all?: boolean;
+    }): {
+        deleted: number;
+    };
+    /**
      * Run VACUUM to reclaim space (use sparingly)
      */
     vacuum(): void;

@@ -127,7 +127,7 @@ declare class SessionManager {
      */
     setEvents(events: SessionManagerEvents): void;
     /**
-     * Generate a unique session ID
+     * Generate a unique session ID (UUID format)
      */
     private generateSessionId;
     /**

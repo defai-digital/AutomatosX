@@ -125,8 +125,8 @@ export type Checkpoint = z.infer<typeof CheckpointSchema>;
  * Input for creating a new session
  */
 export const CreateSessionInputSchema = z.object({
-  /** Session name */
-  name: z.string().min(1).max(200),
+  /** Session name (optional, defaults to 'Untitled Session') */
+  name: z.string().min(1).max(200).optional(),
   /** Session description */
   description: z.string().max(1000).optional(),
   /** Initial agents */

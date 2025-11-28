@@ -1,6 +1,10 @@
 {
   "name": "@ax/schemas",
   "version": "11.0.0-alpha.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "Zod schemas for AutomatosX",
   "type": "module",
   "main": "./dist/index.js",

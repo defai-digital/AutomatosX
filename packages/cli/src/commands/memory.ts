@@ -28,31 +28,31 @@ import * as spinner from '../utils/spinner.js';
 
 interface MemorySearchArgs {
   query: string;
-  limit?: number;
-  agent?: string;
-  json?: boolean;
+  limit: number;
+  agent: string | undefined;
+  json: boolean;
 }
 
 interface MemoryListArgs {
-  limit?: number;
-  agent?: string;
-  json?: boolean;
+  limit: number;
+  agent: string | undefined;
+  json: boolean;
 }
 
 interface MemoryExportArgs {
-  output?: string;
-  agent?: string;
+  output: string | undefined;
+  agent: string | undefined;
 }
 
 interface MemoryImportArgs {
   file: string;
-  merge?: boolean;
+  merge: boolean;
 }
 
 interface MemoryClearArgs {
-  agent?: string;
-  before?: string;
-  force?: boolean;
+  agent: string | undefined;
+  before: string | undefined;
+  force: boolean;
 }
 
 // =============================================================================
@@ -96,32 +96,38 @@ const searchCommand: CommandModule<object, MemorySearchArgs> = {
       }
 
       const ctx = await getContext();
-      const results = await ctx.memoryManager.search(query, {
+      const results = ctx.memoryManager.search({
+        query,
         limit,
-        agentId: agent,
+        offset: 0,
+        sortBy: 'relevance',
+        sortDirection: 'desc',
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : undefined,
       });
 
       if (json) {
         output.json(results);
       } else {
-        spinner.succeed(`Found ${results.length} results`);
+        spinner.succeed(`Found ${results.entries.length} results`);
 
-        if (results.length === 0) {
+        if (results.entries.length === 0) {
           output.newline();
           output.info('No memories found matching your query');
           return;
         }
 
         output.newline();
-        for (const result of results) {
+        for (const entry of results.entries) {
           output.divider();
-          output.keyValue('ID', result.id);
-          output.keyValue('Agent', result.agentId);
-          output.keyValue('Session', result.sessionId);
-          output.keyValue('Score', result.score?.toFixed(3) ?? '-');
-          output.keyValue('Created', output.formatRelativeTime(new Date(result.createdAt)));
+          output.keyValue('ID', String(entry.id));
+          output.keyValue('Type', entry.metadata.type);
+          output.keyValue('Agent', entry.metadata.agentId ?? '-');
+          output.keyValue('Session', entry.metadata.sessionId ?? '-');
+          output.keyValue('Created', output.formatRelativeTime(new Date(entry.createdAt)));
           output.newline();
-          console.log(result.content.slice(0, 300) + (result.content.length > 300 ? '...' : ''));
+          console.log(entry.content.slice(0, 300) + (entry.content.length > 300 ? '...' : ''));
         }
         output.divider();
       }
@@ -170,21 +176,28 @@ const listCommand: CommandModule<object, MemoryListArgs> = {
       }
 
       const ctx = await getContext();
-      const memories = await ctx.memoryManager.list({
+      // Use search with wildcard to list recent memories
+      const results = ctx.memoryManager.search({
+        query: '*',
         limit,
-        agentId: agent,
+        offset: 0,
+        sortBy: 'created',
+        sortDirection: 'desc',
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : undefined,
       });
 
       if (json) {
-        output.json(memories);
+        output.json(results.entries);
       } else {
-        spinner.succeed(`Loaded ${memories.length} memories`);
+        spinner.succeed(`Loaded ${results.entries.length} memories`);
         output.newline();
 
-        const rows = memories.map((m) => [
-          m.id.slice(0, 8),
-          m.agentId,
-          m.type,
+        const rows = results.entries.map((m) => [
+          String(m.id).slice(0, 8),
+          m.metadata.agentId ?? '-',
+          m.metadata.type,
           m.content.slice(0, 40) + (m.content.length > 40 ? '...' : ''),
           output.formatRelativeTime(new Date(m.createdAt)),
         ]);
@@ -204,7 +217,11 @@ const listCommand: CommandModule<object, MemoryListArgs> = {
 // Memory Stats Command
 // =============================================================================
 
-const statsCommand: CommandModule = {
+interface MemoryStatsArgs {
+  json: boolean;
+}
+
+const statsCommand: CommandModule<object, MemoryStatsArgs> = {
   command: 'stats',
   describe: 'Show memory statistics',
 
@@ -215,9 +232,9 @@ const statsCommand: CommandModule = {
       default: false,
     }),
 
-  handler: async (argv) => {
+  handler: async (argv: ArgumentsCamelCase<MemoryStatsArgs>) => {
     try {
-      const json = argv.json as boolean;
+      const { json } = argv;
 
       if (!json) {
         spinner.start('Calculating statistics...');
@@ -234,14 +251,16 @@ const statsCommand: CommandModule = {
         output.newline();
         output.section('Overview');
         output.keyValue('Total Memories', stats.totalEntries.toLocaleString());
-        output.keyValue('Database Size', output.formatBytes(stats.databaseSize));
-        output.keyValue('Unique Agents', stats.uniqueAgents);
-        output.keyValue('Unique Sessions', stats.uniqueSessions);
+        output.keyValue('Database Size', output.formatBytes(stats.databaseSizeBytes));
+        output.keyValue('Average Content Length', Math.round(stats.avgContentLength).toLocaleString() + ' chars');
+        output.keyValue('Total Access Count', stats.totalAccessCount.toLocaleString());
 
         output.newline();
         output.section('By Type');
-        for (const [type, count] of Object.entries(stats.byType)) {
-          output.keyValue(type, count.toLocaleString());
+        for (const [type, count] of Object.entries(stats.entriesByType)) {
+          if (count) {
+            output.keyValue(type, count.toLocaleString());
+          }
         }
 
         if (stats.oldestEntry && stats.newestEntry) {
@@ -288,13 +307,23 @@ const exportCommand: CommandModule<object, MemoryExportArgs> = {
       spinner.start('Exporting memories...');
 
       const ctx = await getContext();
-      const memories = await ctx.memoryManager.export({ agentId: agent });
+      // Use search with high limit to export
+      const results = ctx.memoryManager.search({
+        query: '*',
+        limit: 100,  // Max allowed by schema
+        offset: 0,
+        sortBy: 'created',
+        sortDirection: 'desc',
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : undefined,
+      });
 
-      const data = JSON.stringify(memories, null, 2);
+      const data = JSON.stringify(results.entries, null, 2);
 
       if (outputPath) {
         await writeFile(outputPath, data, 'utf-8');
-        spinner.succeed(`Exported ${memories.length} memories to ${outputPath}`);
+        spinner.succeed(`Exported ${results.entries.length} memories to ${outputPath}`);
       } else {
         spinner.stop();
         console.log(data);
@@ -332,21 +361,41 @@ const importCommand: CommandModule<object, MemoryImportArgs> = {
 
   handler: async (argv: ArgumentsCamelCase<MemoryImportArgs>) => {
     try {
-      const { file, merge } = argv;
+      const { file } = argv;
 
       spinner.start(`Importing from ${file}...`);
 
       const data = await readFile(file, 'utf-8');
-      const memories = JSON.parse(data);
+      const memories = JSON.parse(data) as Array<{
+        content: string;
+        metadata: {
+          type: 'task' | 'code' | 'conversation' | 'document' | 'decision';
+          source: string;
+          tags: string[];
+          agentId?: string;
+          sessionId?: string;
+          importance?: number;
+        };
+      }>;
 
       if (!Array.isArray(memories)) {
         throw new Error('Invalid format: expected an array of memories');
       }
 
       const ctx = await getContext();
-      const result = await ctx.memoryManager.import(memories, { merge });
+      // Use addBatch to import
+      const inputs = memories.map(m => ({
+        content: m.content,
+        metadata: {
+          ...m.metadata,
+          type: m.metadata.type ?? 'document',
+          source: m.metadata.source ?? 'import',
+          tags: m.metadata.tags ?? [],
+        },
+      }));
+      const ids = ctx.memoryManager.addBatch(inputs);
 
-      spinner.succeed(`Imported ${result.imported} memories (${result.skipped} skipped)`);
+      spinner.succeed(`Imported ${ids.length} memories`);
     } catch (error) {
       spinner.stop();
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -360,7 +409,11 @@ const importCommand: CommandModule<object, MemoryImportArgs> = {
 // Memory Clear Command
 // =============================================================================
 
-const clearCommand: CommandModule<object, MemoryClearArgs> = {
+interface MemoryClearArgsWithAll extends MemoryClearArgs {
+  all: boolean;
+}
+
+const clearCommand: CommandModule<object, MemoryClearArgsWithAll> = {
   command: 'clear',
   describe: 'Clear memories',
 
@@ -376,32 +429,78 @@ const clearCommand: CommandModule<object, MemoryClearArgs> = {
         describe: 'Clear memories before this date (YYYY-MM-DD)',
         type: 'string',
       })
+      .option('all', {
+        describe: 'Clear all memories',
+        type: 'boolean',
+        default: false,
+      })
       .option('force', {
         alias: 'f',
         describe: 'Skip confirmation',
         type: 'boolean',
         default: false,
+      })
+      .check((argv) => {
+        // Require at least one of: --agent, --before, or --all
+        if (!argv.agent && !argv.before && !argv.all) {
+          throw new Error('Must specify at least one of: --agent, --before, or --all');
+        }
+        return true;
       }),
 
-  handler: async (argv: ArgumentsCamelCase<MemoryClearArgs>) => {
+  handler: async (argv: ArgumentsCamelCase<MemoryClearArgsWithAll>) => {
     try {
-      const { agent, before, force } = argv;
+      const { agent, before, all, force } = argv;
+
+      // Build description of what will be cleared
+      const descriptions: string[] = [];
+      if (all) {
+        descriptions.push('ALL memories');
+      } else {
+        if (agent) {
+          descriptions.push(`memories for agent "${agent}"`);
+        }
+        if (before) {
+          descriptions.push(`memories before ${before}`);
+        }
+      }
 
       if (!force) {
-        output.warning('This will permanently delete memories.');
+        output.warning(`This will permanently delete ${descriptions.join(' and ')}.`);
         output.info('Use --force to skip this confirmation.');
         process.exit(0);
       }
 
-      spinner.start('Clearing memories...');
+      spinner.start(`Clearing ${descriptions.join(' and ')}...`);
 
       const ctx = await getContext();
-      const count = await ctx.memoryManager.clear({
-        agentId: agent,
-        before: before ? new Date(before) : undefined,
-      });
 
-      spinner.succeed(`Cleared ${count} memories`);
+      // Parse before date if provided
+      const beforeDate = before ? new Date(before) : undefined;
+      if (beforeDate && isNaN(beforeDate.getTime())) {
+        throw new Error(`Invalid date format: ${before}. Use YYYY-MM-DD.`);
+      }
+
+      // Use the new clear method - build options object conditionally
+      const clearOptions: Parameters<typeof ctx.memoryManager.clear>[0] = {};
+      if (beforeDate) {
+        clearOptions.before = beforeDate;
+      }
+      if (agent) {
+        clearOptions.agent = agent;
+      }
+      if (all) {
+        clearOptions.all = all;
+      }
+
+      const result = ctx.memoryManager.clear(clearOptions);
+
+      spinner.succeed(`Cleared ${result.deleted} memories`);
+
+      // Suggest vacuum for large deletions
+      if (result.deleted > 100) {
+        output.info('Tip: Run a database maintenance task periodically to reclaim disk space.');
+      }
     } catch (error) {
       spinner.stop();
       const message = error instanceof Error ? error.message : 'Unknown error';

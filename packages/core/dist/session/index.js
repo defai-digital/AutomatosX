@@ -345,12 +345,10 @@ var SessionManager = class {
   // Private Methods
   // =============================================================================
   /**
-   * Generate a unique session ID
+   * Generate a unique session ID (UUID format)
    */
   generateSessionId() {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
-    return `session_${timestamp}_${random}`;
+    return randomUUID();
   }
   /**
    * Get file path for session storage

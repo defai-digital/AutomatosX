@@ -234,6 +234,12 @@ function warn(message) {
     activeSpinner = null;
   }
 }
+function info2(message) {
+  if (activeSpinner) {
+    activeSpinner.info(message);
+    activeSpinner = null;
+  }
+}
 function stop() {
   if (activeSpinner) {
     activeSpinner.stop();
@@ -242,6 +248,7 @@ function stop() {
 }
 
 // src/commands/run.ts
+import { selectAgentWithReason, findSimilar } from "@ax/core";
 var runCommand = {
   command: "run <agent> <task>",
   describe: "Execute a task with an agent",
@@ -279,27 +286,43 @@ var runCommand = {
         start("Initializing...");
       }
       const ctx = await getContext();
+      let selectedAgent = agent;
+      let autoSelected = false;
       if (!ctx.agentRegistry.has(agent)) {
         const available = ctx.agentRegistry.getIds();
-        if (!json2) {
-          fail(`Agent "${agent}" not found`);
-          newline();
-          info("Available agents:");
-          for (const id of available.slice(0, 10)) {
-            listItem(id);
+        const similar = findSimilar(agent, available);
+        if (similar.length > 0 && similar[0]) {
+          if (!json2) {
+            fail(`Agent "${agent}" not found`);
+            newline();
+            info(`Did you mean: ${similar.join(", ")}?`);
+            newline();
+            info("Or run without an agent name to auto-select:");
+            listItem(`ax run "${task}"`);
+          } else {
+            json({
+              error: `Agent "${agent}" not found`,
+              suggestions: similar,
+              availableAgents: available
+            });
           }
-          if (available.length > 10) {
-            listItem(`... and ${available.length - 10} more`);
-          }
-        } else {
-          json({ error: `Agent "${agent}" not found`, availableAgents: available });
+          process.exit(1);
         }
-        process.exit(1);
+        const selection = selectAgentWithReason(task, ctx.agentRegistry);
+        selectedAgent = selection.agent.name;
+        autoSelected = true;
+        if (!json2) {
+          info2(`Agent "${agent}" not found, auto-selected: ${selectedAgent}`);
+          info(`Reason: ${selection.reason}`);
+          if (selection.confidence < 0.5) {
+            warning("Low confidence selection. Consider specifying an agent explicitly.");
+          }
+        }
       }
       if (!json2) {
-        update(`Executing task with ${agent}...`);
+        update(`Executing task with ${selectedAgent}...`);
       }
-      const result = await ctx.agentExecutor.execute(agent, task, {
+      const result = await ctx.agentExecutor.execute(selectedAgent, task, {
         sessionId: session,
         timeout,
         stream,
@@ -310,6 +333,7 @@ var runCommand = {
         json({
           success: result.response.success,
           agent: result.agentId,
+          autoSelected,
           sessionId: result.session.id,
           taskId: result.task.id,
           output: result.response.output,
@@ -521,29 +545,35 @@ var searchCommand = {
         start(`Searching for "${query}"...`);
       }
       const ctx = await getContext();
-      const results = await ctx.memoryManager.search(query, {
+      const results = ctx.memoryManager.search({
+        query,
         limit,
-        agentId: agent
+        offset: 0,
+        sortBy: "relevance",
+        sortDirection: "desc",
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : void 0
       });
       if (json2) {
         json(results);
       } else {
-        succeed(`Found ${results.length} results`);
-        if (results.length === 0) {
+        succeed(`Found ${results.entries.length} results`);
+        if (results.entries.length === 0) {
           newline();
           info("No memories found matching your query");
           return;
         }
         newline();
-        for (const result of results) {
+        for (const entry of results.entries) {
           divider();
-          keyValue("ID", result.id);
-          keyValue("Agent", result.agentId);
-          keyValue("Session", result.sessionId);
-          keyValue("Score", result.score?.toFixed(3) ?? "-");
-          keyValue("Created", formatRelativeTime(new Date(result.createdAt)));
+          keyValue("ID", String(entry.id));
+          keyValue("Type", entry.metadata.type);
+          keyValue("Agent", entry.metadata.agentId ?? "-");
+          keyValue("Session", entry.metadata.sessionId ?? "-");
+          keyValue("Created", formatRelativeTime(new Date(entry.createdAt)));
           newline();
-          console.log(result.content.slice(0, 300) + (result.content.length > 300 ? "..." : ""));
+          console.log(entry.content.slice(0, 300) + (entry.content.length > 300 ? "..." : ""));
         }
         divider();
       }
@@ -579,19 +609,25 @@ var listCommand2 = {
         start("Loading memories...");
       }
       const ctx = await getContext();
-      const memories = await ctx.memoryManager.list({
+      const results = ctx.memoryManager.search({
+        query: "*",
         limit,
-        agentId: agent
+        offset: 0,
+        sortBy: "created",
+        sortDirection: "desc",
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : void 0
       });
       if (json2) {
-        json(memories);
+        json(results.entries);
       } else {
-        succeed(`Loaded ${memories.length} memories`);
+        succeed(`Loaded ${results.entries.length} memories`);
         newline();
-        const rows = memories.map((m) => [
-          m.id.slice(0, 8),
-          m.agentId,
-          m.type,
+        const rows = results.entries.map((m) => [
+          String(m.id).slice(0, 8),
+          m.metadata.agentId ?? "-",
+          m.metadata.type,
           m.content.slice(0, 40) + (m.content.length > 40 ? "..." : ""),
           formatRelativeTime(new Date(m.createdAt))
         ]);
@@ -615,7 +651,7 @@ var statsCommand = {
   }),
   handler: async (argv) => {
     try {
-      const json2 = argv.json;
+      const { json: json2 } = argv;
       if (!json2) {
         start("Calculating statistics...");
       }
@@ -628,13 +664,15 @@ var statsCommand = {
         newline();
         section("Overview");
         keyValue("Total Memories", stats.totalEntries.toLocaleString());
-        keyValue("Database Size", formatBytes(stats.databaseSize));
-        keyValue("Unique Agents", stats.uniqueAgents);
-        keyValue("Unique Sessions", stats.uniqueSessions);
+        keyValue("Database Size", formatBytes(stats.databaseSizeBytes));
+        keyValue("Average Content Length", Math.round(stats.avgContentLength).toLocaleString() + " chars");
+        keyValue("Total Access Count", stats.totalAccessCount.toLocaleString());
         newline();
         section("By Type");
-        for (const [type, count] of Object.entries(stats.byType)) {
-          keyValue(type, count.toLocaleString());
+        for (const [type, count] of Object.entries(stats.entriesByType)) {
+          if (count) {
+            keyValue(type, count.toLocaleString());
+          }
         }
         if (stats.oldestEntry && stats.newestEntry) {
           newline();
@@ -668,11 +706,21 @@ var exportCommand = {
       const { output: outputPath, agent } = argv;
       start("Exporting memories...");
       const ctx = await getContext();
-      const memories = await ctx.memoryManager.export({ agentId: agent });
-      const data = JSON.stringify(memories, null, 2);
+      const results = ctx.memoryManager.search({
+        query: "*",
+        limit: 100,
+        // Max allowed by schema
+        offset: 0,
+        sortBy: "created",
+        sortDirection: "desc",
+        includeContent: true,
+        highlight: false,
+        filter: agent ? { agentId: agent } : void 0
+      });
+      const data = JSON.stringify(results.entries, null, 2);
       if (outputPath) {
         await writeFile(outputPath, data, "utf-8");
-        succeed(`Exported ${memories.length} memories to ${outputPath}`);
+        succeed(`Exported ${results.entries.length} memories to ${outputPath}`);
       } else {
         stop();
         console.log(data);
@@ -700,7 +748,7 @@ var importCommand = {
   }),
   handler: async (argv) => {
     try {
-      const { file, merge } = argv;
+      const { file } = argv;
       start(`Importing from ${file}...`);
       const data = await readFile(file, "utf-8");
       const memories = JSON.parse(data);
@@ -708,8 +756,17 @@ var importCommand = {
         throw new Error("Invalid format: expected an array of memories");
       }
       const ctx = await getContext();
-      const result = await ctx.memoryManager.import(memories, { merge });
-      succeed(`Imported ${result.imported} memories (${result.skipped} skipped)`);
+      const inputs = memories.map((m) => ({
+        content: m.content,
+        metadata: {
+          ...m.metadata,
+          type: m.metadata.type ?? "document",
+          source: m.metadata.source ?? "import",
+          tags: m.metadata.tags ?? []
+        }
+      }));
+      const ids = ctx.memoryManager.addBatch(inputs);
+      succeed(`Imported ${ids.length} memories`);
     } catch (error2) {
       stop();
       const message = error2 instanceof Error ? error2.message : "Unknown error";
@@ -729,27 +786,61 @@ var clearCommand = {
     alias: "b",
     describe: "Clear memories before this date (YYYY-MM-DD)",
     type: "string"
+  }).option("all", {
+    describe: "Clear all memories",
+    type: "boolean",
+    default: false
   }).option("force", {
     alias: "f",
     describe: "Skip confirmation",
     type: "boolean",
     default: false
+  }).check((argv) => {
+    if (!argv.agent && !argv.before && !argv.all) {
+      throw new Error("Must specify at least one of: --agent, --before, or --all");
+    }
+    return true;
   }),
   handler: async (argv) => {
     try {
-      const { agent, before, force } = argv;
+      const { agent, before, all, force } = argv;
+      const descriptions = [];
+      if (all) {
+        descriptions.push("ALL memories");
+      } else {
+        if (agent) {
+          descriptions.push(`memories for agent "${agent}"`);
+        }
+        if (before) {
+          descriptions.push(`memories before ${before}`);
+        }
+      }
       if (!force) {
-        warning("This will permanently delete memories.");
+        warning(`This will permanently delete ${descriptions.join(" and ")}.`);
         info("Use --force to skip this confirmation.");
         process.exit(0);
       }
-      start("Clearing memories...");
+      start(`Clearing ${descriptions.join(" and ")}...`);
       const ctx = await getContext();
-      const count = await ctx.memoryManager.clear({
-        agentId: agent,
-        before: before ? new Date(before) : void 0
-      });
-      succeed(`Cleared ${count} memories`);
+      const beforeDate = before ? new Date(before) : void 0;
+      if (beforeDate && isNaN(beforeDate.getTime())) {
+        throw new Error(`Invalid date format: ${before}. Use YYYY-MM-DD.`);
+      }
+      const clearOptions = {};
+      if (beforeDate) {
+        clearOptions.before = beforeDate;
+      }
+      if (agent) {
+        clearOptions.agent = agent;
+      }
+      if (all) {
+        clearOptions.all = all;
+      }
+      const result = ctx.memoryManager.clear(clearOptions);
+      succeed(`Cleared ${result.deleted} memories`);
+      if (result.deleted > 100) {
+        info("Tip: Run a database maintenance task periodically to reclaim disk space.");
+      }
     } catch (error2) {
       stop();
       const message = error2 instanceof Error ? error2.message : "Unknown error";
@@ -782,7 +873,8 @@ var listCommand3 = {
         start("Loading provider configuration...");
       }
       const { config } = await getMinimalContext();
-      const providers = config.providers.fallbackOrder.map((provider, index) => ({
+      const fallbackOrder = config.providers.fallbackOrder ?? [config.providers.default];
+      const providers = fallbackOrder.map((provider, index) => ({
         provider,
         priority: index + 1,
         enabled: true
@@ -824,7 +916,7 @@ var statusCommand = {
         start("Checking provider health...");
       }
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkHealth();
+      const healthStatus = await ctx.providerRouter.checkAllHealth();
       if (json2) {
         json(healthStatus);
       } else {
@@ -832,13 +924,16 @@ var statusCommand = {
         const totalCount = Object.keys(healthStatus).length;
         succeed(`${healthyCount}/${totalCount} providers healthy`);
         newline();
-        const rows = Object.entries(healthStatus).map(([provider, status]) => [
-          providerBadge(provider),
-          statusBadge(status.healthy ? "healthy" : "unhealthy"),
-          status.latency ? `${status.latency}ms` : "-",
-          status.lastCheck ? formatRelativeTime(new Date(status.lastCheck)) : "-",
-          status.error ?? "-"
-        ]);
+        const rows = Object.entries(healthStatus).map(([provider, status]) => {
+          const s = status;
+          return [
+            providerBadge(provider),
+            statusBadge(s.healthy ? "healthy" : "unhealthy"),
+            s.latency ? `${s.latency}ms` : "-",
+            s.lastCheck ? formatRelativeTime(new Date(s.lastCheck)) : "-",
+            s.error ?? "-"
+          ];
+        });
         simpleTable(["Provider", "Status", "Latency", "Last Check", "Error"], rows);
       }
     } catch (error2) {
@@ -869,32 +964,37 @@ var testCommand = {
       }
       const ctx = await getContext();
       const startTime = Date.now();
-      const result = await ctx.providerRouter.testProvider(provider);
+      const providerInstance = ctx.providerRouter.getProvider(provider);
       const duration = Date.now() - startTime;
+      if (!providerInstance) {
+        if (json2) {
+          json({
+            provider,
+            success: false,
+            duration,
+            error: `Provider "${provider}" not found`
+          });
+        } else {
+          fail(`Provider "${provider}" not found`);
+        }
+        process.exit(1);
+      }
+      const healthResult = await providerInstance.checkHealth();
       if (json2) {
         json({
           provider,
-          success: result.success,
+          success: healthResult,
           duration,
-          message: result.message,
-          error: result.error
+          message: healthResult ? "Provider is healthy" : "Provider health check failed"
         });
       } else {
-        if (result.success) {
+        if (healthResult) {
           succeed(`${provider} is working (${duration}ms)`);
-          if (result.message) {
-            newline();
-            info(result.message);
-          }
         } else {
           fail(`${provider} test failed`);
-          if (result.error) {
-            newline();
-            error("Error", result.error);
-          }
         }
       }
-      process.exit(result.success ? 0 : 1);
+      process.exit(healthResult ? 0 : 1);
     } catch (error2) {
       stop();
       const message = error2 instanceof Error ? error2.message : "Unknown error";
@@ -940,10 +1040,9 @@ var listCommand4 = {
         start("Loading sessions...");
       }
       const ctx = await getContext();
-      const sessions = await ctx.sessionManager.list({
-        state,
-        agent
-      });
+      const sessions = await ctx.sessionManager.list(
+        state !== void 0 || agent !== void 0 ? { state, agent } : void 0
+      );
       if (json2) {
         json(sessions);
       } else {
@@ -1049,10 +1148,86 @@ var infoCommand2 = {
     }
   }
 };
+var createCommand = {
+  command: "create",
+  describe: "Create a new session",
+  builder: (yargs2) => yargs2.option("name", {
+    alias: "n",
+    describe: "Session name",
+    type: "string",
+    default: "New Session"
+  }).option("description", {
+    alias: "d",
+    describe: "Session description",
+    type: "string"
+  }).option("goal", {
+    alias: "g",
+    describe: "Session goal",
+    type: "string"
+  }).option("agents", {
+    alias: "a",
+    describe: "Initial agents",
+    type: "array",
+    default: [],
+    coerce: (arr) => arr.map(String)
+  }).option("tags", {
+    alias: "t",
+    describe: "Session tags",
+    type: "array",
+    default: [],
+    coerce: (arr) => arr.map(String)
+  }).option("json", {
+    describe: "Output as JSON",
+    type: "boolean",
+    default: false
+  }),
+  handler: async (argv) => {
+    try {
+      const { name, description, goal, agents, tags, json: json2 } = argv;
+      if (!json2) {
+        start("Creating session...");
+      }
+      const ctx = await getContext();
+      const session = await ctx.sessionManager.create({
+        name,
+        description,
+        goal,
+        agents,
+        tags
+      });
+      if (json2) {
+        json(session);
+      } else {
+        succeed(`Created session: ${session.id}`);
+        newline();
+        keyValue("ID", session.id);
+        keyValue("Name", session.name);
+        keyValue("State", statusBadge(session.state));
+        if (session.description) {
+          keyValue("Description", session.description);
+        }
+        if (session.goal) {
+          keyValue("Goal", session.goal);
+        }
+        if (session.agents.length > 0) {
+          keyValue("Agents", session.agents.join(", "));
+        }
+        if (session.tags.length > 0) {
+          keyValue("Tags", session.tags.join(", "));
+        }
+      }
+    } catch (error2) {
+      stop();
+      const message = error2 instanceof Error ? error2.message : "Unknown error";
+      error("Failed to create session", message);
+      process.exit(1);
+    }
+  }
+};
 var sessionCommand = {
   command: "session",
   describe: "Manage sessions",
-  builder: (yargs2) => yargs2.command(listCommand4).command(infoCommand2).demandCommand(1, "Please specify a subcommand"),
+  builder: (yargs2) => yargs2.command(listCommand4).command(infoCommand2).command(createCommand).demandCommand(1, "Please specify a subcommand"),
   handler: () => {
   }
 };
@@ -1075,8 +1250,8 @@ var statusCommand2 = {
         start("Checking system status...");
       }
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkHealth();
-      const memoryStats = await ctx.memoryManager.getStats();
+      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const memoryStats = ctx.memoryManager.getStats();
       const agentCount = ctx.agentRegistry.getIds().length;
       const status = {
         version: "11.0.0-alpha.0",
@@ -1089,7 +1264,7 @@ var statusCommand2 = {
         },
         memory: {
           entries: memoryStats.totalEntries,
-          size: memoryStats.databaseSize
+          size: memoryStats.databaseSizeBytes
         }
       };
       if (json2) {
@@ -1107,8 +1282,9 @@ var statusCommand2 = {
         section("Providers");
         keyValue("Status", `${healthyProviders}/${totalProviders} healthy`);
         for (const [provider, health] of Object.entries(healthStatus)) {
+          const h = health;
           listItem(
-            `${providerBadge(provider)}: ${statusBadge(health.healthy ? "healthy" : "unhealthy")}`
+            `${providerBadge(provider)}: ${statusBadge(h.healthy ? "healthy" : "unhealthy")}`
           );
         }
         newline();
@@ -1151,15 +1327,16 @@ var configShowCommand = {
         keyValue("Config File", configPath ?? "Using defaults");
         newline();
         section("Providers");
-        keyValue("Fallback Order", config.providers.fallbackOrder.join(" \u2192 "));
+        keyValue("Default", config.providers.default);
+        keyValue("Fallback Order", config.providers.fallbackOrder?.join(" \u2192 ") ?? "None configured");
         newline();
         section("Router");
-        keyValue("Default Provider", config.router.defaultProvider);
         keyValue("Health Check Interval", formatDuration(config.router.healthCheckInterval));
+        keyValue("Prefer MCP", config.router.preferMcp ? "Yes" : "No");
         newline();
         section("Execution");
         keyValue("Default Timeout", formatDuration(config.execution.timeout));
-        keyValue("Max Retries", config.execution.maxRetries);
+        keyValue("Max Retries", config.execution.retry.maxAttempts);
         newline();
         section("Memory");
         keyValue("Max Entries", config.memory.maxEntries.toLocaleString());
@@ -1283,7 +1460,7 @@ var doctorCommand = {
       }
       try {
         const ctx = await getContext();
-        const healthStatus = await ctx.providerRouter.checkHealth();
+        const healthStatus = await ctx.providerRouter.checkAllHealth();
         const healthyCount = Object.values(healthStatus).filter((h) => h.healthy).length;
         if (healthyCount > 0) {
           results.push({
@@ -1360,6 +1537,268 @@ var doctorCommand = {
   }
 };
 
+// src/commands/setup.ts
+import { access as access2, mkdir, writeFile as writeFile2, readdir, readFile as readFile2, copyFile } from "fs/promises";
+import { join as join3, dirname } from "path";
+import { fileURLToPath } from "url";
+var AUTOMATOSX_DIR = ".automatosx";
+var CONFIG_FILE = "ax.config.json";
+var DIRECTORIES = ["agents", "memory", "sessions", "abilities", "teams", "templates"];
+var DEFAULT_CONFIG = {
+  $schema: "https://automatosx.dev/schema/config.json",
+  version: "11.0.0",
+  providers: {
+    default: "ax-cli",
+    fallbackOrder: ["ax-cli"]
+  },
+  router: {
+    healthCheckInterval: 3e4,
+    preferMcp: true,
+    routingStrategy: "capability-first"
+  },
+  execution: {
+    timeout: 15e5,
+    retry: {
+      maxAttempts: 3,
+      initialDelay: 1e3,
+      maxDelay: 1e4,
+      backoffMultiplier: 2
+    },
+    streaming: true
+  },
+  memory: {
+    maxEntries: 1e4,
+    autoCleanup: true,
+    cleanupStrategy: "lru",
+    retentionDays: 90
+  },
+  agents: {
+    defaultAgent: "standard",
+    maxDelegationDepth: 3,
+    enableAutoSelection: true
+  }
+};
+async function directoryExists(path) {
+  try {
+    await access2(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function findPackageAgents() {
+  const searchPaths = [
+    // Development: relative to CLI source
+    join3(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", ".automatosx", "agents"),
+    // Installed: in node_modules
+    join3(process.cwd(), "node_modules", "@ax", "cli", "agents"),
+    // Global install
+    join3(dirname(fileURLToPath(import.meta.url)), "..", "agents")
+  ];
+  for (const searchPath of searchPaths) {
+    if (await directoryExists(searchPath)) {
+      return searchPath;
+    }
+  }
+  return null;
+}
+async function copyAgents(sourcePath, targetPath) {
+  const files = await readdir(sourcePath);
+  const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+  for (const file of yamlFiles) {
+    await copyFile(join3(sourcePath, file), join3(targetPath, file));
+  }
+  return yamlFiles.length;
+}
+async function createMinimalAgents(targetPath) {
+  const standardAgent = `# Standard Agent
+# A general-purpose agent for handling diverse tasks
+
+name: standard
+displayName: Standard Agent
+role: General Purpose Assistant
+team: default
+description: A versatile agent capable of handling a wide variety of tasks including research, analysis, coding assistance, and general problem-solving.
+
+abilities:
+  - general-assistance
+  - research
+  - analysis
+  - code-review
+  - documentation
+
+personality:
+  traits:
+    - helpful
+    - thorough
+    - adaptable
+  communicationStyle: technical
+  decisionMaking: analytical
+
+orchestration:
+  maxDelegationDepth: 2
+  canWriteToShared: true
+  canDelegateTo:
+    - backend
+    - frontend
+    - security
+    - quality
+  priority: 5
+
+systemPrompt: |
+  You are a Standard Agent, a versatile AI assistant capable of handling diverse tasks.
+
+  Your capabilities include:
+  - Research and analysis
+  - Code review and assistance
+  - Documentation writing
+  - General problem-solving
+  - Task coordination
+
+  When you receive a task:
+  1. Analyze what type of task it is
+  2. Determine if you can handle it or should delegate
+  3. Execute the task thoroughly
+  4. Provide clear, actionable output
+
+  If a task would be better handled by a specialist agent, suggest delegation.
+
+enabled: true
+version: "1.0.0"
+`;
+  await writeFile2(join3(targetPath, "standard.yaml"), standardAgent);
+  return 1;
+}
+var setupCommand = {
+  command: "setup",
+  describe: "Initialize AutomatosX in your project",
+  builder: (yargs2) => yargs2.option("force", {
+    alias: "f",
+    describe: "Overwrite existing configuration",
+    type: "boolean",
+    default: false
+  }).option("json", {
+    describe: "Output as JSON",
+    type: "boolean",
+    default: false
+  }),
+  handler: async (argv) => {
+    const { force, json: json2 } = argv;
+    const basePath = join3(process.cwd(), AUTOMATOSX_DIR);
+    const result = {
+      success: false,
+      basePath,
+      configPath: join3(process.cwd(), CONFIG_FILE),
+      directories: [],
+      agentsCopied: 0,
+      messages: []
+    };
+    try {
+      const exists = await directoryExists(basePath);
+      if (exists && !force) {
+        if (json2) {
+          json({
+            success: false,
+            error: "AutomatosX already initialized",
+            suggestion: "Use --force to reinitialize"
+          });
+        } else {
+          error("AutomatosX already initialized", "Use --force to reinitialize");
+        }
+        process.exit(1);
+      }
+      if (!json2) {
+        start("Setting up AutomatosX...");
+      }
+      for (const dir of DIRECTORIES) {
+        const dirPath = join3(basePath, dir);
+        await mkdir(dirPath, { recursive: true });
+        result.directories.push(dir);
+        if (!json2) {
+          update(`Creating ${dir} directory...`);
+        }
+      }
+      result.messages.push(`Created ${DIRECTORIES.length} directories`);
+      if (!json2) {
+        update("Installing default agents...");
+      }
+      const agentsPath = join3(basePath, "agents");
+      const sourceAgentsPath = await findPackageAgents();
+      if (sourceAgentsPath) {
+        result.agentsCopied = await copyAgents(sourceAgentsPath, agentsPath);
+        result.messages.push(`Copied ${result.agentsCopied} agents`);
+      } else {
+        result.agentsCopied = await createMinimalAgents(agentsPath);
+        result.messages.push(`Created ${result.agentsCopied} minimal agent(s)`);
+      }
+      if (!json2) {
+        update("Creating configuration...");
+      }
+      const configPath = join3(process.cwd(), CONFIG_FILE);
+      const configExists = await directoryExists(configPath);
+      if (!configExists || force) {
+        await writeFile2(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n");
+        result.messages.push("Created ax.config.json");
+      } else {
+        result.messages.push("Config file exists, skipping");
+      }
+      const gitignorePath = join3(process.cwd(), ".gitignore");
+      const gitignoreEntries = `
+# AutomatosX
+.automatosx/memory/
+.automatosx/sessions/
+`;
+      try {
+        const existingGitignore = await readFile2(gitignorePath, "utf-8");
+        if (!existingGitignore.includes(".automatosx/memory/")) {
+          result.messages.push("Consider adding .automatosx/memory/ and .automatosx/sessions/ to .gitignore");
+        }
+      } catch {
+      }
+      result.success = true;
+      if (json2) {
+        json(result);
+      } else {
+        succeed("AutomatosX initialized successfully!");
+        newline();
+        section("Created Structure");
+        keyValue("Base Path", result.basePath);
+        for (const dir of result.directories) {
+          listItem(dir);
+        }
+        newline();
+        section("Configuration");
+        keyValue("Config File", result.configPath);
+        keyValue("Agents", result.agentsCopied);
+        newline();
+        divider();
+        newline();
+        info("Next Steps:");
+        listItem("ax agent list     - See available agents");
+        listItem('ax run backend "your task"  - Run a task');
+        listItem("ax status         - Check system status");
+        listItem("ax doctor         - Run diagnostics");
+        if (result.agentsCopied < 5) {
+          newline();
+          warning("Limited agents installed. Consider copying agents from the AutomatosX repository.");
+        }
+      }
+    } catch (error2) {
+      stop();
+      const message = error2 instanceof Error ? error2.message : "Unknown error";
+      if (json2) {
+        json({
+          success: false,
+          error: message
+        });
+      } else {
+        error("Setup failed", message);
+      }
+      process.exit(1);
+    }
+  }
+};
+
 // src/index.ts
 var VERSION = "11.0.0-alpha.0";
 var LOGO = `
@@ -1370,7 +1809,7 @@ var LOGO = `
 `;
 async function main() {
   try {
-    await yargs(hideBin(process.argv)).scriptName("ax").usage(LOGO + "\nUsage: $0 <command> [options]").command(runCommand).command(agentCommand).command(memoryCommand).command(providerCommand).command(sessionCommand).command(statusCommand2).command(configCommand).command(doctorCommand).option("debug", {
+    await yargs(hideBin(process.argv)).scriptName("ax").usage(LOGO + "\nUsage: $0 <command> [options]").command(runCommand).command(setupCommand).command(agentCommand).command(memoryCommand).command(providerCommand).command(sessionCommand).command(statusCommand2).command(configCommand).command(doctorCommand).option("debug", {
       describe: "Enable debug output",
       type: "boolean",
       global: true
@@ -1391,7 +1830,7 @@ async function main() {
         yargs2.showHelp();
       }
       process.exit(1);
-    }).demandCommand(1, 'Please specify a command. Run "ax --help" for usage.').strict().example('$0 run backend "implement user auth"', "Run a task with the backend agent").example("$0 agent list", "List all available agents").example('$0 memory search "authentication"', "Search memory for past conversations").example("$0 status", "Show system status").example("$0 doctor", "Run system diagnostics").epilog(
+    }).demandCommand(1, 'Please specify a command. Run "ax --help" for usage.').strict().example("$0 setup", "Initialize AutomatosX in your project").example('$0 run backend "implement user auth"', "Run a task with the backend agent").example("$0 agent list", "List all available agents").example('$0 memory search "authentication"', "Search memory for past conversations").example("$0 status", "Show system status").example("$0 doctor", "Run system diagnostics").epilog(
       chalk3.gray(
         "For more information, visit: https://github.com/defai-digital/automatosx"
       )
@@ -1516,6 +1955,19 @@ main();
  *   ax doctor         - Run system diagnostics
  *
  * @module @ax/cli/commands/system
+ * @license Apache-2.0
+ * @copyright 2024 DEFAI Private Limited
+ */
+/**
+ * Setup Command
+ *
+ * Initialize AutomatosX in the current project.
+ *
+ * Usage:
+ *   ax setup              - Initialize with default settings
+ *   ax setup --force      - Reinitialize even if already exists
+ *
+ * @module @ax/cli/commands/setup
  * @license Apache-2.0
  * @copyright 2024 DEFAI Private Limited
  */

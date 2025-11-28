@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     'src/index.ts',
     'src/agent.ts',
+    'src/common.ts',
     'src/config.ts',
     'src/constants.ts',
     'src/format.ts',
@@ -12,7 +13,11 @@ export default defineConfig({
     'src/session.ts',
   ],
   format: ['esm'],
-  dts: true,
+  dts: {
+    compilerOptions: {
+      composite: false,
+    },
+  },
   clean: true,
   sourcemap: true,
   target: 'node24',

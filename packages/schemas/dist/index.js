@@ -892,8 +892,8 @@ var CheckpointSchema = z6.object({
   metadata: z6.record(z6.string(), z6.unknown()).optional()
 });
 var CreateSessionInputSchema = z6.object({
-  /** Session name */
-  name: z6.string().min(1).max(200),
+  /** Session name (optional, defaults to 'Untitled Session') */
+  name: z6.string().min(1).max(200).optional(),
   /** Session description */
   description: z6.string().max(1e3).optional(),
   /** Initial agents */

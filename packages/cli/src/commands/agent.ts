@@ -23,13 +23,13 @@ import * as spinner from '../utils/spinner.js';
 // =============================================================================
 
 interface AgentListArgs {
-  format?: 'table' | 'json' | 'simple';
-  team?: string;
+  format: 'table' | 'json' | 'simple';
+  team: string | undefined;
 }
 
 interface AgentInfoArgs {
   name: string;
-  json?: boolean;
+  json: boolean;
 }
 
 // =============================================================================

@@ -145,9 +145,9 @@ declare const ProviderConfigSchema: z.ZodObject<{
 }, {
     type: "claude" | "gemini" | "ax-cli" | "openai";
     integrationMode: "mcp" | "sdk" | "bash";
-    metadata?: Record<string, unknown> | undefined;
     enabled?: boolean | undefined;
     timeout?: number | undefined;
+    metadata?: Record<string, unknown> | undefined;
     priority?: number | undefined;
     maxConcurrency?: number | undefined;
     circuitBreaker?: {
@@ -222,8 +222,8 @@ declare const ExecutionRequestSchema: z.ZodObject<{
     /** Request priority */
     priority: z.ZodDefault<z.ZodEnum<["low", "normal", "high"]>>;
 }, "strip", z.ZodTypeAny, {
-    task: string;
     timeout: number;
+    task: string;
     priority: "low" | "normal" | "high";
     stream: boolean;
     sessionId?: string | undefined;
@@ -231,8 +231,8 @@ declare const ExecutionRequestSchema: z.ZodObject<{
     agent?: string | undefined;
 }, {
     task: string;
-    sessionId?: string | undefined;
     timeout?: number | undefined;
+    sessionId?: string | undefined;
     priority?: "low" | "normal" | "high" | undefined;
     context?: Record<string, unknown> | undefined;
     stream?: boolean | undefined;
@@ -268,8 +268,8 @@ declare const ExecutionMetadataSchema: z.ZodObject<{
     /** Model used if applicable */
     model: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    duration: number;
     provider: "claude" | "gemini" | "ax-cli" | "openai";
+    duration: number;
     integrationMode: "mcp" | "sdk" | "bash";
     tokens?: {
         input?: number | undefined;
@@ -279,8 +279,8 @@ declare const ExecutionMetadataSchema: z.ZodObject<{
     requestId?: string | undefined;
     model?: string | undefined;
 }, {
-    duration: number;
     provider: "claude" | "gemini" | "ax-cli" | "openai";
+    duration: number;
     integrationMode: "mcp" | "sdk" | "bash";
     tokens?: {
         input?: number | undefined;
@@ -326,8 +326,8 @@ declare const ExecutionResponseSchema: z.ZodObject<{
         /** Model used if applicable */
         model: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        duration: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        duration: number;
         integrationMode: "mcp" | "sdk" | "bash";
         tokens?: {
             input?: number | undefined;
@@ -337,8 +337,8 @@ declare const ExecutionResponseSchema: z.ZodObject<{
         requestId?: string | undefined;
         model?: string | undefined;
     }, {
-        duration: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        duration: number;
         integrationMode: "mcp" | "sdk" | "bash";
         tokens?: {
             input?: number | undefined;
@@ -371,8 +371,8 @@ declare const ExecutionResponseSchema: z.ZodObject<{
     output: string;
     success: boolean;
     metadata: {
-        duration: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        duration: number;
         integrationMode: "mcp" | "sdk" | "bash";
         tokens?: {
             input?: number | undefined;
@@ -393,8 +393,8 @@ declare const ExecutionResponseSchema: z.ZodObject<{
     output: string;
     success: boolean;
     metadata: {
-        duration: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        duration: number;
         integrationMode: "mcp" | "sdk" | "bash";
         tokens?: {
             input?: number | undefined;
@@ -507,9 +507,9 @@ declare const ProviderRegistrationSchema: z.ZodObject<{
     }, {
         type: "claude" | "gemini" | "ax-cli" | "openai";
         integrationMode: "mcp" | "sdk" | "bash";
-        metadata?: Record<string, unknown> | undefined;
         enabled?: boolean | undefined;
         timeout?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
         priority?: number | undefined;
         maxConcurrency?: number | undefined;
         circuitBreaker?: {
@@ -612,9 +612,9 @@ declare const ProviderRegistrationSchema: z.ZodObject<{
     config: {
         type: "claude" | "gemini" | "ax-cli" | "openai";
         integrationMode: "mcp" | "sdk" | "bash";
-        metadata?: Record<string, unknown> | undefined;
         enabled?: boolean | undefined;
         timeout?: number | undefined;
+        metadata?: Record<string, unknown> | undefined;
         priority?: number | undefined;
         maxConcurrency?: number | undefined;
         circuitBreaker?: {
@@ -695,30 +695,30 @@ declare const RoutingDecisionSchema: z.ZodObject<{
         score: z.ZodNumber;
         reason: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        score: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        score: number;
         reason: string;
     }, {
-        score: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        score: number;
         reason: string;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
-    score: number;
     provider: "claude" | "gemini" | "ax-cli" | "openai";
+    score: number;
     reason: string;
     alternatives: {
-        score: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        score: number;
         reason: string;
     }[];
 }, {
-    score: number;
     provider: "claude" | "gemini" | "ax-cli" | "openai";
+    score: number;
     reason: string;
     alternatives?: {
-        score: number;
         provider: "claude" | "gemini" | "ax-cli" | "openai";
+        score: number;
         reason: string;
     }[] | undefined;
 }>;

@@ -26,6 +26,7 @@ import { memoryCommand } from './commands/memory.js';
 import { providerCommand } from './commands/provider.js';
 import { sessionCommand } from './commands/session.js';
 import { statusCommand, configCommand, doctorCommand } from './commands/system.js';
+import { setupCommand } from './commands/setup.js';
 
 // =============================================================================
 // Constants
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
 
       // Commands
       .command(runCommand)
+      .command(setupCommand)
       .command(agentCommand)
       .command(memoryCommand)
       .command(providerCommand)
@@ -100,6 +102,7 @@ async function main(): Promise<void> {
       .strict()
 
       // Example usage
+      .example('$0 setup', 'Initialize AutomatosX in your project')
       .example('$0 run backend "implement user auth"', 'Run a task with the backend agent')
       .example('$0 agent list', 'List all available agents')
       .example('$0 memory search "authentication"', 'Search memory for past conversations')

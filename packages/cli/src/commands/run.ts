@@ -16,6 +16,7 @@ import type { CommandModule, ArgumentsCamelCase } from 'yargs';
 import { getContext, cleanupContext } from '../utils/context.js';
 import * as output from '../utils/output.js';
 import * as spinner from '../utils/spinner.js';
+import { selectAgentWithReason, findSimilar } from '@ax/core';
 
 // =============================================================================
 // Types
@@ -24,10 +25,10 @@ import * as spinner from '../utils/spinner.js';
 interface RunArgs {
   agent: string;
   task: string;
-  timeout?: number;
-  session?: string;
-  stream?: boolean;
-  json?: boolean;
+  timeout: number;
+  session: string | undefined;
+  stream: boolean;
+  json: boolean;
 }
 
 // =============================================================================
@@ -83,31 +84,54 @@ export const runCommand: CommandModule<object, RunArgs> = {
 
       const ctx = await getContext();
 
-      // Check if agent exists
+      // Determine which agent to use
+      let selectedAgent = agent;
+      let autoSelected = false;
+
       if (!ctx.agentRegistry.has(agent)) {
+        // Try to find similar agent names first (typo correction)
         const available = ctx.agentRegistry.getIds();
-        if (!json) {
-          spinner.fail(`Agent "${agent}" not found`);
-          output.newline();
-          output.info('Available agents:');
-          for (const id of available.slice(0, 10)) {
-            output.listItem(id);
+        const similar = findSimilar(agent, available);
+
+        if (similar.length > 0 && similar[0]) {
+          // If there's a very close match, suggest it but don't auto-select
+          if (!json) {
+            spinner.fail(`Agent "${agent}" not found`);
+            output.newline();
+            output.info(`Did you mean: ${similar.join(', ')}?`);
+            output.newline();
+            output.info('Or run without an agent name to auto-select:');
+            output.listItem(`ax run "${task}"`);
+          } else {
+            output.json({
+              error: `Agent "${agent}" not found`,
+              suggestions: similar,
+              availableAgents: available,
+            });
           }
-          if (available.length > 10) {
-            output.listItem(`... and ${available.length - 10} more`);
-          }
-        } else {
-          output.json({ error: `Agent "${agent}" not found`, availableAgents: available });
+          process.exit(1);
         }
-        process.exit(1);
+
+        // Use the agent router to auto-select based on task keywords
+        const selection = selectAgentWithReason(task, ctx.agentRegistry);
+        selectedAgent = selection.agent.name;
+        autoSelected = true;
+
+        if (!json) {
+          spinner.info(`Agent "${agent}" not found, auto-selected: ${selectedAgent}`);
+          output.info(`Reason: ${selection.reason}`);
+          if (selection.confidence < 0.5) {
+            output.warning('Low confidence selection. Consider specifying an agent explicitly.');
+          }
+        }
       }
 
       if (!json) {
-        spinner.update(`Executing task with ${agent}...`);
+        spinner.update(`Executing task with ${selectedAgent}...`);
       }
 
       // Execute the task
-      const result = await ctx.agentExecutor.execute(agent, task, {
+      const result = await ctx.agentExecutor.execute(selectedAgent, task, {
         sessionId: session,
         timeout,
         stream,
@@ -120,6 +144,7 @@ export const runCommand: CommandModule<object, RunArgs> = {
         output.json({
           success: result.response.success,
           agent: result.agentId,
+          autoSelected,
           sessionId: result.session.id,
           taskId: result.task.id,
           output: result.response.output,

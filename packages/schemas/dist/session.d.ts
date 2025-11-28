@@ -445,8 +445,8 @@ type Checkpoint = z.infer<typeof CheckpointSchema>;
  * Input for creating a new session
  */
 declare const CreateSessionInputSchema: z.ZodObject<{
-    /** Session name */
-    name: z.ZodString;
+    /** Session name (optional, defaults to 'Untitled Session') */
+    name: z.ZodOptional<z.ZodString>;
     /** Session description */
     description: z.ZodOptional<z.ZodString>;
     /** Initial agents */
@@ -470,9 +470,9 @@ declare const CreateSessionInputSchema: z.ZodObject<{
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
     agents: string[];
-    name: string;
     tags?: string[] | undefined;
     metadata?: Record<string, unknown> | undefined;
+    name?: string | undefined;
     description?: string | undefined;
     tasks?: {
         agentId: string;
@@ -481,9 +481,9 @@ declare const CreateSessionInputSchema: z.ZodObject<{
     goal?: string | undefined;
 }, {
     agents: string[];
-    name: string;
     tags?: string[] | undefined;
     metadata?: Record<string, unknown> | undefined;
+    name?: string | undefined;
     description?: string | undefined;
     tasks?: {
         agentId: string;

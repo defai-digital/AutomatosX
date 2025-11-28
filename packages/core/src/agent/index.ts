@@ -30,3 +30,14 @@ export {
   type ExecutionResult,
   type AgentExecutorEvents,
 } from './executor.js';
+
+export {
+  selectAgent,
+  selectAgentWithReason,
+  getAgentKeywords,
+  getAllKeywords,
+  findAgentsByKeyword,
+  AGENT_KEYWORDS,
+  type AgentSelectionResult,
+  type RouterOptions,
+} from './router.js';

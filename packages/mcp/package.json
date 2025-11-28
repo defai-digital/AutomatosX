@@ -1,6 +1,10 @@
 {
   "name": "@ax/mcp",
   "version": "11.0.0-alpha.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "AutomatosX MCP Server - Model Context Protocol integration",
   "type": "module",
   "exports": {
@@ -22,13 +26,13 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@ax/core": "workspace:*",
-    "@ax/schemas": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@ax/core": "^11.0.0-alpha.0",
+    "@ax/schemas": "^11.0.0-alpha.0",
+    "@modelcontextprotocol/sdk": "^1.22.0"
   },
   "devDependencies": {
     "tsup": "^8.3.5",

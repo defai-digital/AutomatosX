@@ -112,8 +112,8 @@ var CheckpointSchema = z2.object({
   metadata: z2.record(z2.string(), z2.unknown()).optional()
 });
 var CreateSessionInputSchema = z2.object({
-  /** Session name */
-  name: z2.string().min(1).max(200),
+  /** Session name (optional, defaults to 'Untitled Session') */
+  name: z2.string().min(1).max(200).optional(),
   /** Session description */
   description: z2.string().max(1e3).optional(),
   /** Initial agents */

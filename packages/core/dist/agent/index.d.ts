@@ -320,4 +320,78 @@ declare class AgentExecutor {
  */
 declare function createAgentExecutor(options: AgentExecutorOptions): AgentExecutor;
 
-export { AgentExecutor, type AgentExecutorEvents, type AgentExecutorOptions, type AgentFilter, type AgentLoadError, AgentLoader, type AgentLoaderOptions, AgentRegistry, type AgentRegistryEvents, type AgentRegistryOptions, type ExecuteOptions, type ExecutionResult, type LoadedAgent, createAgentExecutor, createAgentLoader, createAgentRegistry };
+/**
+ * Simple Agent Router - Keyword-based agent selection
+ *
+ * Provides fast, simple agent selection based on keyword matching.
+ * This is intentionally simple - complex ML-based routing was deemed
+ * over-engineering. Simple keyword matching works just as well.
+ *
+ * @module @ax/core/agent
+ * @license Apache-2.0
+ * @copyright 2024 DEFAI Private Limited
+ */
+
+interface AgentSelectionResult {
+    /** Selected agent profile */
+    agent: AgentProfile;
+    /** Reason for selection */
+    reason: string;
+    /** Keywords that matched */
+    matchedKeywords: string[];
+    /** Selection confidence (0-1) */
+    confidence: number;
+    /** Alternative agents considered */
+    alternatives: string[];
+}
+interface RouterOptions {
+    /** Default agent to use when no match found */
+    defaultAgent?: string;
+    /** Minimum keyword matches to consider (default: 1) */
+    minMatches?: number;
+}
+/**
+ * Keyword to agent mapping
+ * Each agent has keywords that indicate tasks it should handle
+ */
+declare const AGENT_KEYWORDS: Record<string, string[]>;
+/**
+ * Select the best agent for a task based on keyword matching
+ *
+ * @param task - The task description
+ * @param registry - Agent registry to select from
+ * @param options - Router options
+ * @returns Selected agent profile or undefined if no match
+ */
+declare function selectAgent(task: string, registry: AgentRegistry, options?: RouterOptions): AgentProfile | undefined;
+/**
+ * Select the best agent with detailed reasoning
+ *
+ * @param task - The task description
+ * @param registry - Agent registry to select from
+ * @param options - Router options
+ * @returns Selection result with reasoning
+ */
+declare function selectAgentWithReason(task: string, registry: AgentRegistry, options?: RouterOptions): AgentSelectionResult;
+/**
+ * Get all keywords for an agent
+ *
+ * @param agentId - Agent identifier
+ * @returns Array of keywords or empty array if agent not found
+ */
+declare function getAgentKeywords(agentId: string): string[];
+/**
+ * Get all agent keywords mapping
+ *
+ * @returns Copy of the keywords database
+ */
+declare function getAllKeywords(): Record<string, string[]>;
+/**
+ * Find which agents match a given keyword
+ *
+ * @param keyword - Keyword to search for
+ * @returns Array of agent IDs that have this keyword
+ */
+declare function findAgentsByKeyword(keyword: string): string[];
+
+export { AGENT_KEYWORDS, AgentExecutor, type AgentExecutorEvents, type AgentExecutorOptions, type AgentFilter, type AgentLoadError, AgentLoader, type AgentLoaderOptions, AgentRegistry, type AgentRegistryEvents, type AgentRegistryOptions, type AgentSelectionResult, type ExecuteOptions, type ExecutionResult, type LoadedAgent, type RouterOptions, createAgentExecutor, createAgentLoader, createAgentRegistry, findAgentsByKeyword, getAgentKeywords, getAllKeywords, selectAgent, selectAgentWithReason };

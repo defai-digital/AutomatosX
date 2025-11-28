@@ -47,8 +47,20 @@ let cachedContext: CLIContext | null = null;
 
 /**
  * Get the AutomatosX base directory
+ *
+ * Priority:
+ * 1. AUTOMATOSX_BASE_PATH environment variable
+ * 2. Current working directory + .automatosx
+ * 3. Home directory + .automatosx (fallback)
  */
 export function getBasePath(): string {
+  // Check environment variable first (set by ax-cli)
+  const envBasePath = process.env['AUTOMATOSX_BASE_PATH'];
+  if (envBasePath) {
+    return envBasePath;
+  }
+
+  // Default to current working directory
   const cwdPath = join(process.cwd(), DIR_AUTOMATOSX);
   return cwdPath;
 }

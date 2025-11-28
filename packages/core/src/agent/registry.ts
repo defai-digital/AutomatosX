@@ -15,6 +15,7 @@
 
 import { type AgentProfile } from '@ax/schemas';
 import { AgentLoader, type LoadedAgent, type AgentLoadError } from './loader.js';
+import { AgentNotFoundError, findSimilar } from '../errors.js';
 
 // =============================================================================
 // Types
@@ -189,7 +190,12 @@ export class AgentRegistry {
   getOrThrow(agentId: string): AgentProfile {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      throw new Error(`Agent not found: ${agentId}`);
+      const availableAgents = Array.from(this.agents.keys());
+      const similarAgents = findSimilar(agentId, availableAgents);
+      throw new AgentNotFoundError(agentId, {
+        availableAgents,
+        similarAgents,
+      });
     }
     return agent;
   }

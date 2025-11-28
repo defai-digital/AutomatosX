@@ -731,57 +731,57 @@ declare const MemoryCleanupConfigSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     preserveTags: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
 }, "strip", z.ZodTypeAny, {
     enabled: boolean;
+    retentionDays: number;
     strategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
     triggerThreshold: number;
     targetThreshold: number;
     minCleanupCount: number;
     maxCleanupCount: number;
-    retentionDays: number;
     preserveTags: string[];
 }, {
     enabled?: boolean | undefined;
+    retentionDays?: number | undefined;
     strategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
     triggerThreshold?: number | undefined;
     targetThreshold?: number | undefined;
     minCleanupCount?: number | undefined;
     maxCleanupCount?: number | undefined;
-    retentionDays?: number | undefined;
     preserveTags?: string[] | undefined;
 }>, {
     enabled: boolean;
+    retentionDays: number;
     strategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
     triggerThreshold: number;
     targetThreshold: number;
     minCleanupCount: number;
     maxCleanupCount: number;
-    retentionDays: number;
     preserveTags: string[];
 }, {
     enabled?: boolean | undefined;
+    retentionDays?: number | undefined;
     strategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
     triggerThreshold?: number | undefined;
     targetThreshold?: number | undefined;
     minCleanupCount?: number | undefined;
     maxCleanupCount?: number | undefined;
-    retentionDays?: number | undefined;
     preserveTags?: string[] | undefined;
 }>, {
     enabled: boolean;
+    retentionDays: number;
     strategy: "oldest" | "least_accessed" | "hybrid" | "low_importance";
     triggerThreshold: number;
     targetThreshold: number;
     minCleanupCount: number;
     maxCleanupCount: number;
-    retentionDays: number;
     preserveTags: string[];
 }, {
     enabled?: boolean | undefined;
+    retentionDays?: number | undefined;
     strategy?: "oldest" | "least_accessed" | "hybrid" | "low_importance" | undefined;
     triggerThreshold?: number | undefined;
     targetThreshold?: number | undefined;
     minCleanupCount?: number | undefined;
     maxCleanupCount?: number | undefined;
-    retentionDays?: number | undefined;
     preserveTags?: string[] | undefined;
 }>;
 type MemoryCleanupConfig = z.infer<typeof MemoryCleanupConfigSchema>;

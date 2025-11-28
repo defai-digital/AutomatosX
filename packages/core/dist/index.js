@@ -536,6 +536,30 @@ var MemoryManager = class _MemoryManager {
     });
   }
   /**
+   * Clear memories based on criteria
+   *
+   * @param options - Clear options
+   * @returns Number of deleted entries
+   */
+  clear(options) {
+    if (!options?.before && !options?.agent && !options?.all) {
+      throw new Error("Must specify --before, --agent, or --all to clear memories");
+    }
+    let sql = "DELETE FROM memories WHERE 1=1";
+    const params = [];
+    if (options.before) {
+      sql += " AND created_at < ?";
+      params.push(options.before.toISOString());
+    }
+    if (options.agent) {
+      sql += " AND json_extract(metadata, '$.agentId') = ?";
+      params.push(options.agent);
+    }
+    const stmt = this.db.prepare(sql);
+    const result = stmt.run(...params);
+    return { deleted: result.changes };
+  }
+  /**
    * Run VACUUM to reclaim space (use sparingly)
    */
   vacuum() {
@@ -1380,12 +1404,10 @@ var SessionManager = class {
   // Private Methods
   // =============================================================================
   /**
-   * Generate a unique session ID
+   * Generate a unique session ID (UUID format)
    */
   generateSessionId() {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
-    return `session_${timestamp}_${random}`;
+    return randomUUID();
   }
   /**
    * Get file path for session storage
@@ -1640,6 +1662,178 @@ function createAgentLoader(options) {
 
 // src/agent/registry.ts
 import "@ax/schemas";
+
+// src/errors.ts
+var AutomatosXError = class extends Error {
+  /** Error code for programmatic handling */
+  code;
+  /** Suggestion for how to fix the error */
+  suggestion;
+  /** Additional context data */
+  context;
+  constructor(message, code, options) {
+    super(message, options?.cause ? { cause: options.cause } : void 0);
+    this.name = "AutomatosXError";
+    this.code = code;
+    this.suggestion = options?.suggestion;
+    this.context = options?.context;
+  }
+  /**
+   * Get formatted error message with suggestion
+   */
+  toUserMessage() {
+    let msg = `${this.message}`;
+    if (this.suggestion) {
+      msg += `
+  Suggestion: ${this.suggestion}`;
+    }
+    return msg;
+  }
+};
+var AgentNotFoundError = class extends AutomatosXError {
+  constructor(agentId, options) {
+    let message = `Agent "${agentId}" not found`;
+    let suggestion;
+    if (options?.similarAgents && options.similarAgents.length > 0) {
+      suggestion = `Did you mean: ${options.similarAgents.join(", ")}?`;
+    } else if (options?.availableAgents && options.availableAgents.length > 0) {
+      const preview = options.availableAgents.slice(0, 5).join(", ");
+      const more = options.availableAgents.length > 5 ? ` (and ${options.availableAgents.length - 5} more)` : "";
+      suggestion = `Available agents: ${preview}${more}. Run "ax agent list" to see all.`;
+    } else {
+      suggestion = 'Run "ax agent list" to see available agents.';
+    }
+    super(message, "AGENT_NOT_FOUND", {
+      suggestion,
+      context: {
+        requestedAgent: agentId,
+        availableAgents: options?.availableAgents,
+        similarAgents: options?.similarAgents
+      }
+    });
+    this.name = "AgentNotFoundError";
+  }
+};
+var AgentExecutionError = class extends AutomatosXError {
+  constructor(agentId, reason, options) {
+    let suggestion = "Try running the task again.";
+    if (options?.timeout) {
+      suggestion = "The task timed out. Try a simpler task or increase the timeout in ax.config.json.";
+    } else if (options?.provider) {
+      suggestion = `Check if provider "${options.provider}" is available with "ax provider status".`;
+    }
+    const context = {
+      agentId,
+      reason
+    };
+    if (options?.timeout !== void 0) {
+      context["timeout"] = options.timeout;
+    }
+    if (options?.provider !== void 0) {
+      context["provider"] = options.provider;
+    }
+    super(`Agent "${agentId}" execution failed: ${reason}`, "AGENT_EXECUTION_ERROR", {
+      suggestion,
+      context,
+      ...options?.cause ? { cause: options.cause } : {}
+    });
+    this.name = "AgentExecutionError";
+  }
+};
+var ProviderUnavailableError = class extends AutomatosXError {
+  constructor(provider) {
+    const message = provider ? `Provider "${provider}" is not available` : "No AI providers are available";
+    super(message, "PROVIDER_UNAVAILABLE", {
+      suggestion: 'Check provider status with "ax provider status" and verify your API keys.',
+      context: { provider }
+    });
+    this.name = "ProviderUnavailableError";
+  }
+};
+var ProviderAuthError = class extends AutomatosXError {
+  constructor(provider, reason) {
+    super(
+      `Authentication failed for provider "${provider}"${reason ? `: ${reason}` : ""}`,
+      "PROVIDER_AUTH_ERROR",
+      {
+        suggestion: "Verify your API key is correct and has sufficient permissions.",
+        context: { provider, reason }
+      }
+    );
+    this.name = "ProviderAuthError";
+  }
+};
+var MemoryError = class extends AutomatosXError {
+  constructor(message, operation) {
+    super(message, "MEMORY_ERROR", {
+      suggestion: 'Check memory status with "ax memory stats". Database may need maintenance.',
+      context: { operation }
+    });
+    this.name = "MemoryError";
+  }
+};
+var ConfigurationError = class extends AutomatosXError {
+  constructor(message, field) {
+    super(message, "CONFIGURATION_ERROR", {
+      suggestion: field ? `Check the "${field}" field in ax.config.json.` : "Validate your ax.config.json configuration.",
+      context: { field }
+    });
+    this.name = "ConfigurationError";
+  }
+};
+var NotInitializedError = class extends AutomatosXError {
+  constructor(what = "AutomatosX") {
+    super(`${what} has not been initialized`, "NOT_INITIALIZED", {
+      suggestion: 'Run "ax setup" to initialize AutomatosX in your project.',
+      context: { component: what }
+    });
+    this.name = "NotInitializedError";
+  }
+};
+var SessionNotFoundError = class extends AutomatosXError {
+  constructor(sessionId) {
+    super(`Session "${sessionId}" not found`, "SESSION_NOT_FOUND", {
+      suggestion: 'Run "ax session list" to see available sessions.',
+      context: { sessionId }
+    });
+    this.name = "SessionNotFoundError";
+  }
+};
+function levenshteinDistance(a, b) {
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          // substitution
+          matrix[i][j - 1] + 1,
+          // insertion
+          matrix[i - 1][j] + 1
+          // deletion
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+function findSimilar(input, options, maxDistance = 2) {
+  const inputLower = input.toLowerCase();
+  return options.filter((opt) => {
+    const optLower = opt.toLowerCase();
+    return optLower.includes(inputLower) || inputLower.includes(optLower) || levenshteinDistance(inputLower, optLower) <= maxDistance;
+  }).slice(0, 3);
+}
+
+// src/agent/registry.ts
 var AgentRegistry = class {
   loader;
   agents = /* @__PURE__ */ new Map();
@@ -1742,7 +1936,12 @@ var AgentRegistry = class {
   getOrThrow(agentId) {
     const agent = this.agents.get(agentId);
     if (!agent) {
-      throw new Error(`Agent not found: ${agentId}`);
+      const availableAgents = Array.from(this.agents.keys());
+      const similarAgents = findSimilar(agentId, availableAgents);
+      throw new AgentNotFoundError(agentId, {
+        availableAgents,
+        similarAgents
+      });
     }
     return agent;
   }
@@ -2155,6 +2354,321 @@ function createAgentExecutor(options) {
   return new AgentExecutor(options);
 }
 
+// src/agent/router.ts
+import "@ax/schemas";
+var AGENT_KEYWORDS = {
+  backend: [
+    "api",
+    "database",
+    "server",
+    "rest",
+    "graphql",
+    "sql",
+    "endpoint",
+    "auth",
+    "crud",
+    "backend",
+    "postgres",
+    "mysql",
+    "mongodb",
+    "redis",
+    "cache",
+    "microservice",
+    "service",
+    "controller",
+    "middleware",
+    "route",
+    "go",
+    "rust",
+    "python",
+    "java"
+  ],
+  frontend: [
+    "ui",
+    "component",
+    "react",
+    "vue",
+    "angular",
+    "css",
+    "button",
+    "form",
+    "page",
+    "frontend",
+    "html",
+    "javascript",
+    "typescript",
+    "tailwind",
+    "styled",
+    "layout",
+    "responsive",
+    "animation",
+    "state",
+    "redux",
+    "nextjs",
+    "svelte"
+  ],
+  devops: [
+    "deploy",
+    "ci",
+    "cd",
+    "docker",
+    "kubernetes",
+    "aws",
+    "pipeline",
+    "infrastructure",
+    "terraform",
+    "ansible",
+    "helm",
+    "github actions",
+    "jenkins",
+    "monitoring",
+    "logging",
+    "container",
+    "cloud",
+    "gcp",
+    "azure",
+    "nginx",
+    "load balancer"
+  ],
+  security: [
+    "vulnerability",
+    "audit",
+    "security",
+    "penetration",
+    "xss",
+    "injection",
+    "owasp",
+    "encryption",
+    "authentication",
+    "authorization",
+    "threat",
+    "risk",
+    "compliance",
+    "ssl",
+    "tls",
+    "firewall",
+    "breach",
+    "cve"
+  ],
+  quality: [
+    "test",
+    "qa",
+    "coverage",
+    "bug",
+    "e2e",
+    "unit test",
+    "integration test",
+    "testing",
+    "jest",
+    "vitest",
+    "cypress",
+    "playwright",
+    "assertion",
+    "mock",
+    "fixture",
+    "spec"
+  ],
+  design: [
+    "ux",
+    "ui design",
+    "wireframe",
+    "mockup",
+    "figma",
+    "prototype",
+    "accessibility",
+    "a11y",
+    "user experience",
+    "user interface",
+    "design system",
+    "typography",
+    "color",
+    "visual"
+  ],
+  product: [
+    "requirements",
+    "user story",
+    "roadmap",
+    "feature",
+    "prd",
+    "product",
+    "stakeholder",
+    "priority",
+    "backlog",
+    "epic",
+    "acceptance criteria",
+    "mvp",
+    "specification"
+  ],
+  data: [
+    "etl",
+    "analytics",
+    "warehouse",
+    "data model",
+    "bigquery",
+    "data",
+    "spark",
+    "airflow",
+    "transformation",
+    "schema",
+    "migration",
+    "batch",
+    "streaming",
+    "kafka"
+  ],
+  architecture: [
+    "architecture",
+    "system design",
+    "adr",
+    "scalability",
+    "microservices",
+    "monolith",
+    "distributed",
+    "event-driven",
+    "saga",
+    "cqrs",
+    "ddd",
+    "domain",
+    "boundary",
+    "technical debt"
+  ],
+  writer: [
+    "documentation",
+    "docs",
+    "readme",
+    "technical writing",
+    "guide",
+    "tutorial",
+    "changelog",
+    "api docs",
+    "wiki",
+    "manual",
+    "instructions"
+  ],
+  mobile: [
+    "ios",
+    "android",
+    "swift",
+    "kotlin",
+    "flutter",
+    "mobile",
+    "app",
+    "react native",
+    "expo",
+    "xcode",
+    "gradle",
+    "cocoapods",
+    "app store",
+    "play store"
+  ],
+  fullstack: [
+    "fullstack",
+    "full-stack",
+    "node",
+    "express",
+    "nest",
+    "prisma",
+    "trpc",
+    "t3",
+    "remix",
+    "astro"
+  ],
+  researcher: [
+    "research",
+    "analyze",
+    "investigate",
+    "compare",
+    "evaluate",
+    "benchmark",
+    "study",
+    "explore",
+    "survey",
+    "assessment"
+  ],
+  "data-scientist": [
+    "machine learning",
+    "ml",
+    "ai",
+    "model",
+    "training",
+    "prediction",
+    "classification",
+    "regression",
+    "neural network",
+    "deep learning",
+    "nlp",
+    "computer vision",
+    "tensorflow",
+    "pytorch"
+  ]
+};
+function selectAgent(task, registry, options = {}) {
+  const result = selectAgentWithReason(task, registry, options);
+  return result.agent;
+}
+function selectAgentWithReason(task, registry, options = {}) {
+  const { defaultAgent = "standard", minMatches = 1 } = options;
+  const taskLower = task.toLowerCase();
+  const scores = [];
+  for (const [agentId, keywords] of Object.entries(AGENT_KEYWORDS)) {
+    const matched = keywords.filter((kw) => taskLower.includes(kw));
+    if (matched.length >= minMatches) {
+      scores.push({
+        agentId,
+        score: matched.length,
+        keywords: matched
+      });
+    }
+  }
+  scores.sort((a, b) => b.score - a.score);
+  const alternatives = scores.slice(1, 4).map((s) => s.agentId);
+  if (scores.length > 0) {
+    const best = scores[0];
+    const agent = registry.get(best.agentId);
+    if (agent) {
+      const maxPossibleMatches = AGENT_KEYWORDS[best.agentId]?.length ?? 1;
+      const confidence = Math.min(best.score / Math.max(maxPossibleMatches / 3, 1), 1);
+      return {
+        agent,
+        reason: `Selected ${best.agentId} agent based on keywords: ${best.keywords.join(", ")}`,
+        matchedKeywords: best.keywords,
+        confidence,
+        alternatives
+      };
+    }
+  }
+  const fallbackAgent = registry.get(defaultAgent);
+  if (fallbackAgent) {
+    return {
+      agent: fallbackAgent,
+      reason: "No keyword matches, using default agent",
+      matchedKeywords: [],
+      confidence: 0.5,
+      alternatives: []
+    };
+  }
+  const allAgents = registry.getAll();
+  if (allAgents.length > 0) {
+    return {
+      agent: allAgents[0],
+      reason: "Using first available agent (no default found)",
+      matchedKeywords: [],
+      confidence: 0.1,
+      alternatives: allAgents.slice(1, 4).map((a) => a.name)
+    };
+  }
+  throw new Error("No agents available in registry");
+}
+function getAgentKeywords(agentId) {
+  return AGENT_KEYWORDS[agentId] ?? [];
+}
+function getAllKeywords() {
+  return { ...AGENT_KEYWORDS };
+}
+function findAgentsByKeyword(keyword) {
+  const lowerKeyword = keyword.toLowerCase();
+  return Object.entries(AGENT_KEYWORDS).filter(([, keywords]) => keywords.some((k) => k.includes(lowerKeyword))).map(([agentId]) => agentId);
+}
+
 // src/index.ts
 import {
   DEFAULT_CONFIG as DEFAULT_CONFIG2,
@@ -2180,12 +2694,17 @@ import {
   MS_PER_DAY
 } from "@ax/schemas";
 export {
+  AGENT_KEYWORDS,
+  AgentExecutionError,
   AgentExecutor,
   AgentLoader,
+  AgentNotFoundError,
   AgentRegistry,
+  AutomatosXError,
   BYTES_PER_GB,
   BYTES_PER_KB,
   BYTES_PER_MB,
+  ConfigurationError,
   DEFAULT_CONFIG2 as DEFAULT_CONFIG,
   DIR_AGENTS,
   DIR_AUTOMATOSX,
@@ -2203,19 +2722,31 @@ export {
   MS_PER_HOUR,
   MS_PER_MINUTE,
   MS_PER_SECOND,
+  MemoryError,
   MemoryManager,
+  NotInitializedError,
+  ProviderAuthError,
   ProviderRouter,
+  ProviderUnavailableError,
   SessionManager,
+  SessionNotFoundError,
   VERSION,
   createAgentExecutor,
   createAgentLoader,
   createAgentRegistry,
   createProviderRouter,
   createSessionManager,
+  findAgentsByKeyword,
+  findSimilar,
+  getAgentKeywords,
+  getAllKeywords,
   getDefaultConfig,
   isValidConfig,
+  levenshteinDistance,
   loadConfig,
-  loadConfigSync
+  loadConfigSync,
+  selectAgent,
+  selectAgentWithReason
 };
 /**
  * Memory Manager - FTS5-based persistent memory system
@@ -2298,6 +2829,15 @@ export {
  * @copyright 2024 DEFAI Private Limited
  */
 /**
+ * AutomatosX Error Classes
+ *
+ * Provides structured error types with helpful suggestions for users.
+ *
+ * @module @ax/core/errors
+ * @license Apache-2.0
+ * @copyright 2024 DEFAI Private Limited
+ */
+/**
  * Agent Registry - Central registry for agent profiles
  *
  * Provides fast lookup and querying of agent profiles with
@@ -2312,6 +2852,17 @@ export {
  *
  * Executes tasks using agent profiles with support for
  * delegation, session tracking, and memory integration.
+ *
+ * @module @ax/core/agent
+ * @license Apache-2.0
+ * @copyright 2024 DEFAI Private Limited
+ */
+/**
+ * Simple Agent Router - Keyword-based agent selection
+ *
+ * Provides fast, simple agent selection based on keyword matching.
+ * This is intentionally simple - complex ML-based routing was deemed
+ * over-engineering. Simple keyword matching works just as well.
  *
  * @module @ax/core/agent
  * @license Apache-2.0

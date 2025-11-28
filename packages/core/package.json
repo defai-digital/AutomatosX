@@ -1,6 +1,10 @@
 {
   "name": "@ax/core",
   "version": "11.0.0-alpha.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "Core orchestration engine for AutomatosX",
   "type": "module",
   "main": "./dist/index.js",
@@ -43,9 +47,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ax/schemas": "workspace:*",
-    "@ax/algorithms": "workspace:*",
-    "@ax/providers": "workspace:*",
+    "@ax/schemas": "^11.0.0-alpha.0",
+    "@ax/algorithms": "^11.0.0-alpha.0",
+    "@ax/providers": "^11.0.0-alpha.0",
     "better-sqlite3": "^11.6.0",
     "yaml": "^2.6.1"
   },

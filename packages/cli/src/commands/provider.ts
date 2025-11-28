@@ -60,7 +60,8 @@ const listCommand: CommandModule<object, ProviderListArgs> = {
 
       const { config } = await getMinimalContext();
 
-      const providers = config.providers.fallbackOrder.map((provider, index) => ({
+      const fallbackOrder = config.providers.fallbackOrder ?? [config.providers.default];
+      const providers = fallbackOrder.map((provider, index) => ({
         provider,
         priority: index + 1,
         enabled: true,
@@ -116,24 +117,27 @@ const statusCommand: CommandModule<object, ProviderStatusArgs> = {
       }
 
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkHealth();
+      const healthStatus = await ctx.providerRouter.checkAllHealth();
 
       if (json) {
         output.json(healthStatus);
       } else {
-        const healthyCount = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthyCount = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
         const totalCount = Object.keys(healthStatus).length;
 
         spinner.succeed(`${healthyCount}/${totalCount} providers healthy`);
         output.newline();
 
-        const rows = Object.entries(healthStatus).map(([provider, status]) => [
-          output.providerBadge(provider),
-          output.statusBadge(status.healthy ? 'healthy' : 'unhealthy'),
-          status.latency ? `${status.latency}ms` : '-',
-          status.lastCheck ? output.formatRelativeTime(new Date(status.lastCheck)) : '-',
-          status.error ?? '-',
-        ]);
+        const rows = Object.entries(healthStatus).map(([provider, status]) => {
+          const s = status as { healthy: boolean; latency?: number; lastCheck?: string; error?: string };
+          return [
+            output.providerBadge(provider),
+            output.statusBadge(s.healthy ? 'healthy' : 'unhealthy'),
+            s.latency ? `${s.latency}ms` : '-',
+            s.lastCheck ? output.formatRelativeTime(new Date(s.lastCheck)) : '-',
+            s.error ?? '-',
+          ];
+        });
 
         output.simpleTable(['Provider', 'Status', 'Latency', 'Last Check', 'Error'], rows);
       }
@@ -178,34 +182,41 @@ const testCommand: CommandModule<object, ProviderTestArgs> = {
       const ctx = await getContext();
 
       const startTime = Date.now();
-      const result = await ctx.providerRouter.testProvider(provider);
+      const providerInstance = ctx.providerRouter.getProvider(provider as any);
       const duration = Date.now() - startTime;
+
+      if (!providerInstance) {
+        if (json) {
+          output.json({
+            provider,
+            success: false,
+            duration,
+            error: `Provider "${provider}" not found`,
+          });
+        } else {
+          spinner.fail(`Provider "${provider}" not found`);
+        }
+        process.exit(1);
+      }
+
+      const healthResult = await providerInstance.checkHealth();
 
       if (json) {
         output.json({
           provider,
-          success: result.success,
+          success: healthResult,
           duration,
-          message: result.message,
-          error: result.error,
+          message: healthResult ? 'Provider is healthy' : 'Provider health check failed',
         });
       } else {
-        if (result.success) {
+        if (healthResult) {
           spinner.succeed(`${provider} is working (${duration}ms)`);
-          if (result.message) {
-            output.newline();
-            output.info(result.message);
-          }
         } else {
           spinner.fail(`${provider} test failed`);
-          if (result.error) {
-            output.newline();
-            output.error('Error', result.error);
-          }
         }
       }
 
-      process.exit(result.success ? 0 : 1);
+      process.exit(healthResult ? 0 : 1);
     } catch (error) {
       spinner.stop();
       const message = error instanceof Error ? error.message : 'Unknown error';

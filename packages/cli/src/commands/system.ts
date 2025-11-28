@@ -26,16 +26,16 @@ import * as spinner from '../utils/spinner.js';
 // =============================================================================
 
 interface StatusArgs {
-  json?: boolean;
+  json: boolean;
 }
 
 interface ConfigShowArgs {
-  json?: boolean;
+  json: boolean;
 }
 
 interface DoctorArgs {
-  fix?: boolean;
-  json?: boolean;
+  fix: boolean;
+  json: boolean;
 }
 
 // =============================================================================
@@ -62,8 +62,8 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
       }
 
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkHealth();
-      const memoryStats = await ctx.memoryManager.getStats();
+      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const memoryStats = ctx.memoryManager.getStats();
       const agentCount = ctx.agentRegistry.getIds().length;
 
       const status = {
@@ -77,14 +77,14 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
         },
         memory: {
           entries: memoryStats.totalEntries,
-          size: memoryStats.databaseSize,
+          size: memoryStats.databaseSizeBytes,
         },
       };
 
       if (json) {
         output.json(status);
       } else {
-        const healthyProviders = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthyProviders = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
         const totalProviders = Object.keys(healthStatus).length;
 
         spinner.succeed('System Status');
@@ -99,8 +99,9 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
         output.section('Providers');
         output.keyValue('Status', `${healthyProviders}/${totalProviders} healthy`);
         for (const [provider, health] of Object.entries(healthStatus)) {
+          const h = health as { healthy: boolean };
           output.listItem(
-            `${output.providerBadge(provider)}: ${output.statusBadge(health.healthy ? 'healthy' : 'unhealthy')}`
+            `${output.providerBadge(provider)}: ${output.statusBadge(h.healthy ? 'healthy' : 'unhealthy')}`
           );
         }
 
@@ -158,17 +159,18 @@ const configShowCommand: CommandModule<object, ConfigShowArgs> = {
 
         output.newline();
         output.section('Providers');
-        output.keyValue('Fallback Order', config.providers.fallbackOrder.join(' → '));
+        output.keyValue('Default', config.providers.default);
+        output.keyValue('Fallback Order', config.providers.fallbackOrder?.join(' → ') ?? 'None configured');
 
         output.newline();
         output.section('Router');
-        output.keyValue('Default Provider', config.router.defaultProvider);
         output.keyValue('Health Check Interval', output.formatDuration(config.router.healthCheckInterval));
+        output.keyValue('Prefer MCP', config.router.preferMcp ? 'Yes' : 'No');
 
         output.newline();
         output.section('Execution');
         output.keyValue('Default Timeout', output.formatDuration(config.execution.timeout));
-        output.keyValue('Max Retries', config.execution.maxRetries);
+        output.keyValue('Max Retries', config.execution.retry.maxAttempts);
 
         output.newline();
         output.section('Memory');
@@ -332,8 +334,8 @@ export const doctorCommand: CommandModule<object, DoctorArgs> = {
       // Check 5: Provider connectivity
       try {
         const ctx = await getContext();
-        const healthStatus = await ctx.providerRouter.checkHealth();
-        const healthyCount = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthStatus = await ctx.providerRouter.checkAllHealth();
+        const healthyCount = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
 
         if (healthyCount > 0) {
           results.push({

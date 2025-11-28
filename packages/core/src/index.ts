@@ -52,6 +52,12 @@ export {
   createAgentRegistry,
   AgentExecutor,
   createAgentExecutor,
+  selectAgent,
+  selectAgentWithReason,
+  getAgentKeywords,
+  getAllKeywords,
+  findAgentsByKeyword,
+  AGENT_KEYWORDS,
   type AgentLoaderOptions,
   type LoadedAgent,
   type AgentLoadError,
@@ -62,7 +68,24 @@ export {
   type ExecuteOptions,
   type ExecutionResult,
   type AgentExecutorEvents,
+  type AgentSelectionResult,
+  type RouterOptions,
 } from './agent/index.js';
+
+// Error classes
+export {
+  AutomatosXError,
+  AgentNotFoundError,
+  AgentExecutionError,
+  ProviderUnavailableError,
+  ProviderAuthError,
+  MemoryError,
+  ConfigurationError,
+  NotInitializedError,
+  SessionNotFoundError,
+  levenshteinDistance,
+  findSimilar,
+} from './errors.js';
 
 // Re-export commonly used schemas for convenience
 export {

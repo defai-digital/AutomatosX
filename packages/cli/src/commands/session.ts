@@ -22,15 +22,24 @@ import * as spinner from '../utils/spinner.js';
 // =============================================================================
 
 interface SessionListArgs {
-  state?: 'active' | 'paused' | 'completed' | 'cancelled' | 'failed';
-  agent?: string;
-  limit?: number;
-  json?: boolean;
+  state: 'active' | 'paused' | 'completed' | 'cancelled' | 'failed' | undefined;
+  agent: string | undefined;
+  limit: number;
+  json: boolean;
 }
 
 interface SessionInfoArgs {
   id: string;
-  json?: boolean;
+  json: boolean;
+}
+
+interface SessionCreateArgs {
+  name: string;
+  description: string | undefined;
+  goal: string | undefined;
+  agents: string[];
+  tags: string[];
+  json: boolean;
 }
 
 // =============================================================================
@@ -74,10 +83,12 @@ const listCommand: CommandModule<object, SessionListArgs> = {
       }
 
       const ctx = await getContext();
-      const sessions = await ctx.sessionManager.list({
-        state,
-        agent,
-      });
+      // Build filter, only including defined values
+      const sessions = await ctx.sessionManager.list(
+        state !== undefined || agent !== undefined
+          ? { state, agent } as any
+          : undefined
+      );
 
       if (json) {
         output.json(sessions);
@@ -209,6 +220,99 @@ const infoCommand: CommandModule<object, SessionInfoArgs> = {
 };
 
 // =============================================================================
+// Session Create Command
+// =============================================================================
+
+const createCommand: CommandModule<object, SessionCreateArgs> = {
+  command: 'create',
+  describe: 'Create a new session',
+
+  builder: (yargs) =>
+    yargs
+      .option('name', {
+        alias: 'n',
+        describe: 'Session name',
+        type: 'string',
+        default: 'New Session',
+      })
+      .option('description', {
+        alias: 'd',
+        describe: 'Session description',
+        type: 'string',
+      })
+      .option('goal', {
+        alias: 'g',
+        describe: 'Session goal',
+        type: 'string',
+      })
+      .option('agents', {
+        alias: 'a',
+        describe: 'Initial agents',
+        type: 'array',
+        default: [] as string[],
+        coerce: (arr: (string | number)[]) => arr.map(String),
+      })
+      .option('tags', {
+        alias: 't',
+        describe: 'Session tags',
+        type: 'array',
+        default: [] as string[],
+        coerce: (arr: (string | number)[]) => arr.map(String),
+      })
+      .option('json', {
+        describe: 'Output as JSON',
+        type: 'boolean',
+        default: false,
+      }),
+
+  handler: async (argv: ArgumentsCamelCase<SessionCreateArgs>) => {
+    try {
+      const { name, description, goal, agents, tags, json } = argv;
+
+      if (!json) {
+        spinner.start('Creating session...');
+      }
+
+      const ctx = await getContext();
+      const session = await ctx.sessionManager.create({
+        name,
+        description,
+        goal,
+        agents,
+        tags,
+      });
+
+      if (json) {
+        output.json(session);
+      } else {
+        spinner.succeed(`Created session: ${session.id}`);
+        output.newline();
+        output.keyValue('ID', session.id);
+        output.keyValue('Name', session.name);
+        output.keyValue('State', output.statusBadge(session.state));
+        if (session.description) {
+          output.keyValue('Description', session.description);
+        }
+        if (session.goal) {
+          output.keyValue('Goal', session.goal);
+        }
+        if (session.agents.length > 0) {
+          output.keyValue('Agents', session.agents.join(', '));
+        }
+        if (session.tags.length > 0) {
+          output.keyValue('Tags', session.tags.join(', '));
+        }
+      }
+    } catch (error) {
+      spinner.stop();
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      output.error('Failed to create session', message);
+      process.exit(1);
+    }
+  },
+};
+
+// =============================================================================
 // Main Session Command
 // =============================================================================
 
@@ -220,6 +324,7 @@ export const sessionCommand: CommandModule = {
     yargs
       .command(listCommand)
       .command(infoCommand)
+      .command(createCommand)
       .demandCommand(1, 'Please specify a subcommand'),
 
   handler: () => {

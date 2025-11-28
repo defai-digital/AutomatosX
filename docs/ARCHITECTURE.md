@@ -15,12 +15,12 @@ AutomatosX is an **orchestration layer** that sits between you and multiple AI C
 
 AutomatosX integrates with four AI coding assistants:
 
-| CLI Tool | Provider | Integration | Command |
-|----------|----------|-------------|---------|
-| **Claude Code** | Anthropic | MCP (stdin/stdout) | `claude mcp` |
-| **Gemini CLI** | Google | MCP (stdin/stdout) | `gemini mcp` |
+| CLI Tool | Backend Providers | Integration | Command |
+|----------|-------------------|-------------|---------|
+| **Claude Code** | Anthropic Claude | MCP (stdin/stdout) | `claude mcp` |
+| **Gemini CLI** | Google Gemini | MCP (stdin/stdout) | `gemini mcp` |
 | **OpenAI Codex** | OpenAI | Bash (subprocess) | `codex -p` |
-| **ax-cli** | Anthropic | SDK (native) | SDK calls |
+| **ax-cli** | GLM, Grok, DeepSeek, Ollama, Qwen, Mistral, etc. | SDK (native) | SDK calls |
 
 ### Integration Modes
 
@@ -110,40 +110,44 @@ AutomatosX integrates with four AI coding assistants:
 ║                                                                              ║
 ║   AutomatosX spawns these as subprocesses and communicates via:              ║
 ║                                                                              ║
-║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             ║
-║   │  ClaudeProvider │  │ GeminiProvider  │  │ OpenAIProvider  │             ║
-║   │                 │  │                 │  │                 │             ║
-║   │  Integration:   │  │  Integration:   │  │  Integration:   │             ║
-║   │  MCP Protocol   │  │  MCP Protocol   │  │  Bash Spawn     │             ║
-║   │                 │  │                 │  │                 │             ║
-║   │  Command:       │  │  Command:       │  │  Command:       │             ║
-║   │  claude mcp     │  │  gemini mcp     │  │  codex -p       │             ║
-║   │                 │  │                 │  │                 │             ║
-║   │  Transport:     │  │  Transport:     │  │  Transport:     │             ║
-║   │  stdin/stdout   │  │  stdin/stdout   │  │  pipe           │             ║
-║   └────────┬────────┘  └────────┬────────┘  └────────┬────────┘             ║
-║            │                    │                    │                       ║
-║   ┌────────┴────────┐                                                        ║
-║   │  AxCliProvider  │                                                        ║
-║   │                 │                                                        ║
-║   │  Integration:   │                                                        ║
-║   │  Native SDK     │                                                        ║
-║   │                 │                                                        ║
-║   │  Features:      │                                                        ║
-║   │  Checkpoints    │                                                        ║
-║   │  Subagents      │                                                        ║
-║   └────────┬────────┘                                                        ║
-║            │                                                                 ║
-╠════════════▼═════════════════════════════════════════════════════════════════╣
-║                              EXTERNAL AI SERVICES                            ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             ║
-║   │    Anthropic    │  │     Google      │  │     OpenAI      │             ║
-║   │    Claude API   │  │   Gemini API    │  │    Codex API    │             ║
-║   └─────────────────┘  └─────────────────┘  └─────────────────┘             ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+║   │  ClaudeProvider │  │ GeminiProvider  │  │ OpenAIProvider  │  │  AxCliProvider  │
+║   │                 │  │                 │  │                 │  │                 │
+║   │  Integration:   │  │  Integration:   │  │  Integration:   │  │  Integration:   │
+║   │  MCP Protocol   │  │  MCP Protocol   │  │  Bash Spawn     │  │  Native SDK     │
+║   │                 │  │                 │  │                 │  │                 │
+║   │  Command:       │  │  Command:       │  │  Command:       │  │  Providers:     │
+║   │  claude mcp     │  │  gemini mcp     │  │  codex -p       │  │  GLM, Grok,     │
+║   │                 │  │                 │  │                 │  │  DeepSeek,      │
+║   │  Transport:     │  │  Transport:     │  │  Transport:     │  │  Ollama, etc.   │
+║   │  stdin/stdout   │  │  stdin/stdout   │  │  pipe           │  │                 │
+║   └────────┬────────┘  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+║            │                    │                    │                    │        ║
+║            │                    │                    │                    │        ║
+╠════════════▼════════════════════▼════════════════════▼════════════════════▼════════╣
+║                              EXTERNAL AI SERVICES                                  ║
+╠════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                    ║
+║   ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌───────────────────┐  ║
+║   │   Anthropic   │  │    Google     │  │    OpenAI     │  │   ax-cli Multi-   │  ║
+║   │   Claude API  │  │  Gemini API   │  │   Codex API   │  │   Provider Hub    │  ║
+║   └───────────────┘  └───────────────┘  └───────────────┘  └─────────┬─────────┘  ║
+║                                                                      │             ║
+║                                              ┌───────────────────────┼───────────┐ ║
+║                                              │                       │           │ ║
+║                                              ▼                       ▼           ▼ ║
+║                                         ┌─────────┐  ┌─────────┐  ┌─────────────┐ ║
+║                                         │  GLM    │  │  Grok   │  │  DeepSeek   │ ║
+║                                         │(Zhipu)  │  │  (xAI)  │  │             │ ║
+║                                         └─────────┘  └─────────┘  └─────────────┘ ║
+║                                              │           │              │          ║
+║                                              ▼           ▼              ▼          ║
+║                                         ┌─────────┐  ┌─────────┐  ┌─────────────┐ ║
+║                                         │ Ollama  │  │ Qwen    │  │  Mistral    │ ║
+║                                         │ (local) │  │(Alibaba)│  │             │ ║
+║                                         └─────────┘  └─────────┘  └─────────────┘ ║
+║                                                                                    ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
@@ -732,12 +736,12 @@ project/
 
 AutomatosX orchestrates four AI CLI tools:
 
-| Tool | Integration | How AutomatosX Connects |
-|------|-------------|------------------------|
-| **Claude Code** | MCP Protocol | Spawns `claude mcp`, communicates via stdin/stdout |
-| **Gemini CLI** | MCP Protocol | Spawns `gemini mcp`, communicates via stdin/stdout |
-| **OpenAI Codex** | Bash | Spawns `codex -p "prompt"`, captures stdout |
-| **ax-cli** | Native SDK | Direct function calls with checkpoints |
+| Tool | Integration | How AutomatosX Connects | Backend Providers |
+|------|-------------|------------------------|-------------------|
+| **Claude Code** | MCP Protocol | Spawns `claude mcp`, stdin/stdout | Anthropic Claude |
+| **Gemini CLI** | MCP Protocol | Spawns `gemini mcp`, stdin/stdout | Google Gemini |
+| **OpenAI Codex** | Bash | Spawns `codex -p "prompt"`, stdout | OpenAI |
+| **ax-cli** | Native SDK | Direct function calls with checkpoints | GLM, Grok, DeepSeek, Ollama, Qwen, Mistral, etc. |
 
 **Key value adds:**
 1. **Intelligent routing** — Automatically picks the healthiest, fastest provider
@@ -745,5 +749,6 @@ AutomatosX orchestrates four AI CLI tools:
 3. **Persistent memory** — Search across all past conversations
 4. **Specialized agents** — Route tasks to domain experts
 5. **Session tracking** — Manage multi-step workflows
+6. **Multi-provider hub** — ax-cli gives access to many additional AI providers
 
 **You continue using your favorite CLI.** AutomatosX works invisibly to make it smarter.

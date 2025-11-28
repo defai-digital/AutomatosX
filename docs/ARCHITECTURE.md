@@ -491,8 +491,9 @@ class AxCliProvider extends BaseProvider {
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │   .automatosx/agents/                                                        │
-│   ├── backend.yaml      → Bob (Go, Rust, Python, APIs)                      │
-│   ├── frontend.yaml     → Frank (React, Next.js, Vue)                       │
+│   ├── backend.yaml      → Bob (Go, Rust - high-performance systems)         │
+│   ├── fullstack.yaml    → Felix (Node.js, TypeScript, React - full-stack)   │
+│   ├── frontend.yaml     → Frank (React, Next.js, Vue, Swift)                │
 │   ├── devops.yaml       → Oliver (K8s, Docker, CI/CD)                       │
 │   ├── security.yaml     → Steve (Audits, OWASP, Threats)                    │
 │   ├── quality.yaml      → Queenie (Testing, QA)                             │
@@ -500,6 +501,11 @@ class AxCliProvider extends BaseProvider {
 │   ├── performance.yaml  → Peter (Optimization)                              │
 │   ├── product.yaml      → Paris (Requirements)                              │
 │   └── ... (20+ agents)                                                       │
+│                                                                              │
+│   Language Routing:                                                          │
+│   • JS/TS/Node.js → Felix (fullstack) - APIs, React, full-stack features   │
+│   • Go/Rust       → Bob (backend) - High-performance, microservices         │
+│   • React/Vue     → Frank (frontend) - UI components, state management      │
 │                                                                              │
 │   AgentLoader ──► AgentRegistry ──► AgentExecutor                           │
 │       │               │                  │                                   │

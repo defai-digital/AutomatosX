@@ -452,71 +452,141 @@ export class ProviderRouter {
   /**
    * Infer task type from task description
    *
-   * Task types map to provider specialties:
-   * - planning/architecture/strategy → OpenAI
-   * - frontend/ui/creative → Gemini
-   * - coding/debugging/implementation → Claude
-   * - general → balanced (slight Claude preference)
+   * Three task classes with provider assignments:
+   *
+   * CLASS 1: PLANNING/STRATEGY → OpenAI primary
+   *   planning, architecture, strategy, research, requirements, roadmap, analysis
+   *
+   * CLASS 2: FRONTEND/CREATIVE → Gemini primary
+   *   frontend, ui, ux, creative, styling, animation, visual, design, branding, marketing
+   *
+   * CLASS 3: CODING/TECHNICAL → Claude primary
+   *   coding, debugging, implementation, refactoring, testing, review, security,
+   *   devops, infrastructure, backend, api, database, documentation
+   *
+   * ax-cli is always the last fallback for all task types.
    */
   private inferTaskType(task: string): string {
     const lowerTask = task.toLowerCase();
 
-    // Planning tasks → OpenAI excels
-    if (/\b(plan|roadmap|strategy|requirements|prd|specification|propose|design system)\b/.test(lowerTask)) {
+    // =========================================================================
+    // CLASS 1: PLANNING/STRATEGY → OpenAI primary
+    // =========================================================================
+
+    // Planning and roadmap tasks
+    if (/\b(plan|roadmap|requirements|prd|specification|propose)\b/.test(lowerTask)) {
       return 'planning';
     }
 
-    // Architecture tasks → OpenAI excels
-    if (/\b(architect|infrastructure|scalab|microservice|monolith|system design)\b/.test(lowerTask)) {
+    // Architecture and system design
+    if (/\b(architect|system design|design system|scalab|microservice|monolith)\b/.test(lowerTask)) {
       return 'architecture';
     }
 
-    // Frontend/UI tasks → Gemini excels
-    if (/\b(ui|ux|component|react|vue|angular|css|tailwind|responsive|layout|frontend|styling)\b/.test(lowerTask)) {
+    // Strategy tasks
+    if (/\b(strategy|strategic|decision|trade-?off|evaluate options)\b/.test(lowerTask)) {
+      return 'strategy';
+    }
+
+    // Research tasks
+    if (/\b(research|investigate|explore|compare|benchmark|study)\b/.test(lowerTask)) {
+      return 'research';
+    }
+
+    // =========================================================================
+    // CLASS 2: FRONTEND/CREATIVE → Gemini primary
+    // =========================================================================
+
+    // Frontend development
+    if (/\b(frontend|front-end|react|vue|angular|svelte|nextjs|nuxt)\b/.test(lowerTask)) {
       return 'frontend';
     }
 
-    // Creative tasks → Gemini excels
-    if (/\b(creative|visual|animation|theme|brand|marketing|design)\b/.test(lowerTask)) {
+    // UI/UX tasks
+    if (/\b(ui|ux|user interface|user experience|component|widget)\b/.test(lowerTask)) {
+      return 'ui';
+    }
+
+    // Styling and CSS
+    if (/\b(css|tailwind|styled|styling|sass|scss|responsive|layout)\b/.test(lowerTask)) {
+      return 'styling';
+    }
+
+    // Animation
+    if (/\b(animation|animate|motion|transition|framer)\b/.test(lowerTask)) {
+      return 'animation';
+    }
+
+    // Creative and visual
+    if (/\b(creative|visual|graphic|illustration|artwork)\b/.test(lowerTask)) {
       return 'creative';
     }
 
-    // Debugging tasks → Claude excels
-    if (/\b(fix|debug|bug|error|issue|problem|troubleshoot|resolve)\b/.test(lowerTask)) {
+    // Design (UI design goes to Gemini)
+    if (/\b(design|wireframe|mockup|prototype|figma)\b/.test(lowerTask)) {
+      return 'design';
+    }
+
+    // Branding and marketing
+    if (/\b(brand|branding|marketing|campaign|content|copy)\b/.test(lowerTask)) {
+      return 'marketing';
+    }
+
+    // =========================================================================
+    // CLASS 3: CODING/TECHNICAL → Claude primary
+    // =========================================================================
+
+    // Debugging
+    if (/\b(debug|fix|bug|error|issue|problem|troubleshoot|resolve)\b/.test(lowerTask)) {
       return 'debugging';
     }
 
-    // Coding/implementation tasks → Claude excels
-    if (/\b(implement|code|write|create function|build|develop|refactor)\b/.test(lowerTask)) {
+    // Implementation and coding
+    if (/\b(implement|code|write|create function|build|develop)\b/.test(lowerTask)) {
       return 'coding';
     }
 
-    // Testing tasks → Claude preferred
+    // Refactoring
+    if (/\b(refactor|restructure|reorganize|clean up|optimize code)\b/.test(lowerTask)) {
+      return 'refactoring';
+    }
+
+    // Testing
     if (/\b(test|spec|coverage|unit|e2e|integration|verify|validate)\b/.test(lowerTask)) {
       return 'testing';
     }
 
-    // Security tasks → Claude preferred
-    if (/\b(security|vulnerab|audit|threat|owasp|penetration)\b/.test(lowerTask)) {
+    // Code review
+    if (/\b(review|code review|pull request|pr|audit code)\b/.test(lowerTask)) {
+      return 'review';
+    }
+
+    // Security
+    if (/\b(security|vulnerab|threat|owasp|penetration|xss|injection)\b/.test(lowerTask)) {
       return 'security';
     }
 
-    // Analysis/review tasks → Claude preferred
-    if (/\b(review|analyze|audit|assess|evaluate)\b/.test(lowerTask)) {
-      return 'analysis';
+    // DevOps and infrastructure
+    if (/\b(devops|deploy|ci|cd|pipeline|docker|kubernetes|terraform)\b/.test(lowerTask)) {
+      return 'devops';
     }
 
-    // Documentation tasks
-    if (/\b(document|explain|describe|readme|docs)\b/.test(lowerTask)) {
+    // Backend and API
+    if (/\b(backend|back-end|api|endpoint|rest|graphql|server)\b/.test(lowerTask)) {
+      return 'backend';
+    }
+
+    // Database
+    if (/\b(database|db|sql|query|migration|schema|postgres|mysql|mongo)\b/.test(lowerTask)) {
+      return 'database';
+    }
+
+    // Documentation
+    if (/\b(document|docs|readme|explain|describe|guide|tutorial)\b/.test(lowerTask)) {
       return 'documentation';
     }
 
-    // Research tasks → OpenAI preferred
-    if (/\b(research|investigate|explore|compare|benchmark)\b/.test(lowerTask)) {
-      return 'research';
-    }
-
-    // Data/ML tasks → OpenAI preferred
+    // Data and ML (leans toward OpenAI but Claude is secondary)
     if (/\b(data|etl|ml|machine learning|model|training|prediction)\b/.test(lowerTask)) {
       return 'data';
     }

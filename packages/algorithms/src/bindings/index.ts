@@ -21,10 +21,13 @@ export {
   type Provider,
   type RoutingContext,
   type RoutingResult,
+  type TaskClass,
   defaultRoutingContext,
   calculateScore,
   selectProvider,
   getFallbackOrder,
+  // Task classification
+  classifyTask,
   // Task and agent affinity exports
   TASK_PROVIDER_AFFINITY,
   AGENT_PROVIDER_AFFINITY,

@@ -65,96 +65,176 @@ const INTEGRATION_MODE_MCP = 'mcp';
 const MAX_ALTERNATIVES = 3;
 
 // =============================================================================
-// Task-Provider Affinity System
+// Task Classification System
 // =============================================================================
 
 /**
+ * Three primary task classes with clear provider assignments:
+ *
+ * CLASS 1: PLANNING/STRATEGY → OpenAI (primary)
+ *   - Product planning, roadmaps, requirements
+ *   - Architecture design, system design
+ *   - Strategy, research, analysis
+ *   - Complex reasoning tasks
+ *
+ * CLASS 2: FRONTEND/CREATIVE → Gemini (primary)
+ *   - UI/UX design and implementation
+ *   - Frontend components (React, Vue, etc.)
+ *   - Creative content, styling, animation
+ *   - Visual design, branding
+ *
+ * CLASS 3: CODING/TECHNICAL → Claude (primary)
+ *   - Backend implementation
+ *   - Debugging and bug fixing
+ *   - Code review and refactoring
+ *   - Testing, security, DevOps
+ *
+ * FALLBACK: ax-cli (always last)
+ *   - Universal fallback when others fail
+ *   - Lower scores across all task types
+ */
+
+/**
+ * Task class enumeration
+ */
+export type TaskClass = 'planning' | 'creative' | 'technical' | 'general';
+
+/**
+ * Classify a task into one of the three primary classes
+ */
+export function classifyTask(taskType: string): TaskClass {
+  // Class 1: Planning/Strategy tasks
+  const planningTasks = [
+    'planning', 'architecture', 'strategy', 'research',
+    'requirements', 'roadmap', 'design-system', 'analysis'
+  ];
+  if (planningTasks.includes(taskType)) return 'planning';
+
+  // Class 2: Frontend/Creative tasks
+  const creativeTasks = [
+    'frontend', 'ui', 'ux', 'creative', 'styling',
+    'animation', 'visual', 'design', 'branding', 'marketing'
+  ];
+  if (creativeTasks.includes(taskType)) return 'creative';
+
+  // Class 3: Coding/Technical tasks
+  const technicalTasks = [
+    'coding', 'debugging', 'implementation', 'refactoring',
+    'testing', 'review', 'security', 'devops', 'infrastructure',
+    'backend', 'api', 'database', 'documentation'
+  ];
+  if (technicalTasks.includes(taskType)) return 'technical';
+
+  return 'general';
+}
+
+/**
  * Task type to provider affinity mapping
- * Higher values = better fit for that task type
- * Scale: 0-100 (0 = not suitable, 100 = perfect fit)
+ *
+ * Scoring ensures:
+ * - Primary provider gets highest score (100)
+ * - Secondary providers get moderate scores (60-70)
+ * - ax-cli always gets lowest score (30) as fallback
+ *
+ * This ensures all providers get utilized based on task type.
  */
 const TASK_PROVIDER_AFFINITY: Record<string, Record<string, number>> = {
-  // Planning and architecture tasks → OpenAI excels
-  planning: { openai: 95, codex: 95, claude: 70, gemini: 60, 'ax-cli': 40 },
-  architecture: { openai: 90, codex: 90, claude: 75, gemini: 50, 'ax-cli': 40 },
-  design: { openai: 85, codex: 85, gemini: 80, claude: 65, 'ax-cli': 40 },
-  strategy: { openai: 95, codex: 95, claude: 70, gemini: 55, 'ax-cli': 40 },
+  // =========================================================================
+  // CLASS 1: PLANNING/STRATEGY → OpenAI primary
+  // =========================================================================
+  planning:     { openai: 100, claude: 65, gemini: 55, 'ax-cli': 30 },
+  architecture: { openai: 100, claude: 70, gemini: 50, 'ax-cli': 30 },
+  strategy:     { openai: 100, claude: 60, gemini: 55, 'ax-cli': 30 },
+  research:     { openai: 95,  claude: 70, gemini: 65, 'ax-cli': 30 },
+  requirements: { openai: 95,  claude: 65, gemini: 55, 'ax-cli': 30 },
+  roadmap:      { openai: 100, claude: 60, gemini: 55, 'ax-cli': 30 },
+  analysis:     { openai: 90,  claude: 75, gemini: 60, 'ax-cli': 30 },
 
-  // Frontend and creative tasks → Gemini excels
-  frontend: { gemini: 95, claude: 75, openai: 65, codex: 65, 'ax-cli': 40 },
-  ui: { gemini: 95, claude: 70, openai: 60, codex: 60, 'ax-cli': 40 },
-  creative: { gemini: 95, openai: 75, codex: 75, claude: 60, 'ax-cli': 40 },
-  styling: { gemini: 90, claude: 70, openai: 55, codex: 55, 'ax-cli': 40 },
-  animation: { gemini: 90, claude: 65, openai: 50, codex: 50, 'ax-cli': 40 },
+  // =========================================================================
+  // CLASS 2: FRONTEND/CREATIVE → Gemini primary
+  // =========================================================================
+  frontend:  { gemini: 100, claude: 70, openai: 55, 'ax-cli': 30 },
+  ui:        { gemini: 100, claude: 65, openai: 50, 'ax-cli': 30 },
+  ux:        { gemini: 100, openai: 65, claude: 55, 'ax-cli': 30 },
+  creative:  { gemini: 100, openai: 70, claude: 55, 'ax-cli': 30 },
+  styling:   { gemini: 100, claude: 65, openai: 45, 'ax-cli': 30 },
+  animation: { gemini: 100, claude: 60, openai: 45, 'ax-cli': 30 },
+  visual:    { gemini: 100, openai: 65, claude: 50, 'ax-cli': 30 },
+  design:    { gemini: 95,  openai: 75, claude: 60, 'ax-cli': 30 },
+  branding:  { gemini: 100, openai: 70, claude: 50, 'ax-cli': 30 },
+  marketing: { gemini: 95,  openai: 75, claude: 55, 'ax-cli': 30 },
 
-  // Coding and debugging tasks → Claude excels
-  coding: { claude: 95, openai: 75, codex: 75, gemini: 65, 'ax-cli': 40 },
-  debugging: { claude: 95, openai: 70, codex: 70, gemini: 55, 'ax-cli': 40 },
-  implementation: { claude: 90, openai: 75, codex: 75, gemini: 65, 'ax-cli': 40 },
-  refactoring: { claude: 90, openai: 70, codex: 70, gemini: 55, 'ax-cli': 40 },
-  testing: { claude: 85, openai: 75, codex: 75, gemini: 60, 'ax-cli': 40 },
-  analysis: { claude: 85, openai: 80, codex: 80, gemini: 65, 'ax-cli': 40 },
-  review: { claude: 85, openai: 80, codex: 80, gemini: 60, 'ax-cli': 40 },
+  // =========================================================================
+  // CLASS 3: CODING/TECHNICAL → Claude primary
+  // =========================================================================
+  coding:         { claude: 100, openai: 65, gemini: 55, 'ax-cli': 30 },
+  debugging:      { claude: 100, openai: 60, gemini: 45, 'ax-cli': 30 },
+  implementation: { claude: 100, openai: 65, gemini: 55, 'ax-cli': 30 },
+  refactoring:    { claude: 100, openai: 65, gemini: 50, 'ax-cli': 30 },
+  testing:        { claude: 95,  openai: 70, gemini: 55, 'ax-cli': 30 },
+  review:         { claude: 95,  openai: 75, gemini: 55, 'ax-cli': 30 },
+  security:       { claude: 100, openai: 70, gemini: 45, 'ax-cli': 30 },
+  devops:         { claude: 90,  openai: 70, gemini: 50, 'ax-cli': 30 },
+  infrastructure: { claude: 90,  openai: 75, gemini: 50, 'ax-cli': 30 },
+  backend:        { claude: 100, openai: 60, gemini: 45, 'ax-cli': 30 },
+  api:            { claude: 100, openai: 65, gemini: 50, 'ax-cli': 30 },
+  database:       { claude: 95,  openai: 70, gemini: 45, 'ax-cli': 30 },
+  documentation:  { claude: 85,  openai: 75, gemini: 65, 'ax-cli': 30 },
 
-  // General tasks → balanced scoring, slight preference for Claude
-  general: { claude: 75, openai: 70, codex: 70, gemini: 70, 'ax-cli': 50 },
-  documentation: { claude: 80, openai: 75, codex: 75, gemini: 70, 'ax-cli': 45 },
-  research: { openai: 80, codex: 80, claude: 75, gemini: 75, 'ax-cli': 45 },
-
-  // Security tasks → Claude preferred for careful analysis
-  security: { claude: 90, openai: 80, codex: 80, gemini: 55, 'ax-cli': 40 },
-
-  // DevOps tasks → balanced
-  devops: { claude: 80, openai: 75, codex: 75, gemini: 60, 'ax-cli': 45 },
-  infrastructure: { claude: 80, openai: 75, codex: 75, gemini: 55, 'ax-cli': 45 },
-
-  // Data tasks → OpenAI/Claude both good
-  data: { openai: 85, codex: 85, claude: 85, gemini: 60, 'ax-cli': 45 },
-  'machine-learning': { openai: 90, codex: 90, claude: 80, gemini: 65, 'ax-cli': 40 },
+  // =========================================================================
+  // GENERAL/MIXED → Balanced with slight Claude preference
+  // =========================================================================
+  general: { claude: 75, openai: 70, gemini: 70, 'ax-cli': 35 },
+  data:    { openai: 85, claude: 80, gemini: 55, 'ax-cli': 30 },
+  ml:      { openai: 90, claude: 75, gemini: 55, 'ax-cli': 30 },
 };
 
 /**
  * Agent type to provider affinity
- * Maps agent specialties to their best-fit providers
+ *
+ * Maps agent specialties to their best-fit providers following
+ * the same three-class system.
  */
 const AGENT_PROVIDER_AFFINITY: Record<string, Record<string, number>> = {
-  // Planning/strategy agents → OpenAI
-  product: { openai: 90, codex: 90, claude: 70, gemini: 65, 'ax-cli': 40 },
-  architecture: { openai: 90, codex: 90, claude: 75, gemini: 55, 'ax-cli': 40 },
-  cto: { openai: 90, codex: 90, claude: 75, gemini: 60, 'ax-cli': 40 },
-  ceo: { openai: 90, codex: 90, claude: 70, gemini: 65, 'ax-cli': 40 },
-  researcher: { openai: 85, codex: 85, claude: 80, gemini: 70, 'ax-cli': 45 },
+  // =========================================================================
+  // CLASS 1 AGENTS: Planning/Strategy → OpenAI primary
+  // =========================================================================
+  product:      { openai: 100, claude: 65, gemini: 60, 'ax-cli': 30 },
+  architecture: { openai: 100, claude: 70, gemini: 50, 'ax-cli': 30 },
+  cto:          { openai: 95,  claude: 75, gemini: 55, 'ax-cli': 30 },
+  ceo:          { openai: 100, claude: 65, gemini: 60, 'ax-cli': 30 },
+  researcher:   { openai: 95,  claude: 75, gemini: 65, 'ax-cli': 30 },
 
-  // Frontend/creative agents → Gemini
-  frontend: { gemini: 95, claude: 75, openai: 60, codex: 60, 'ax-cli': 40 },
-  design: { gemini: 95, openai: 70, codex: 70, claude: 60, 'ax-cli': 40 },
-  mobile: { gemini: 85, claude: 80, openai: 65, codex: 65, 'ax-cli': 40 },
-  'creative-marketer': { gemini: 95, openai: 75, codex: 75, claude: 60, 'ax-cli': 40 },
+  // =========================================================================
+  // CLASS 2 AGENTS: Frontend/Creative → Gemini primary
+  // =========================================================================
+  frontend:           { gemini: 100, claude: 70, openai: 55, 'ax-cli': 30 },
+  design:             { gemini: 100, openai: 70, claude: 55, 'ax-cli': 30 },
+  mobile:             { gemini: 90,  claude: 75, openai: 60, 'ax-cli': 30 },
+  'creative-marketer': { gemini: 100, openai: 70, claude: 55, 'ax-cli': 30 },
 
-  // Coding/technical agents → Claude
-  backend: { claude: 95, openai: 70, codex: 70, gemini: 55, 'ax-cli': 40 },
-  fullstack: { claude: 90, gemini: 70, openai: 65, codex: 65, 'ax-cli': 40 },
-  security: { claude: 95, openai: 75, codex: 75, gemini: 50, 'ax-cli': 40 },
-  quality: { claude: 90, openai: 75, codex: 75, gemini: 60, 'ax-cli': 40 },
-  devops: { claude: 85, openai: 75, codex: 75, gemini: 55, 'ax-cli': 45 },
+  // =========================================================================
+  // CLASS 3 AGENTS: Coding/Technical → Claude primary
+  // =========================================================================
+  backend:             { claude: 100, openai: 60, gemini: 45, 'ax-cli': 30 },
+  fullstack:           { claude: 90,  gemini: 70, openai: 65, 'ax-cli': 30 },
+  security:            { claude: 100, openai: 70, gemini: 45, 'ax-cli': 30 },
+  quality:             { claude: 95,  openai: 70, gemini: 55, 'ax-cli': 30 },
+  devops:              { claude: 90,  openai: 70, gemini: 50, 'ax-cli': 30 },
+  data:                { openai: 85,  claude: 85, gemini: 50, 'ax-cli': 30 },
+  'data-scientist':    { openai: 90,  claude: 80, gemini: 55, 'ax-cli': 30 },
+  writer:              { claude: 85,  openai: 80, gemini: 70, 'ax-cli': 30 },
+  'quantum-engineer':  { claude: 90,  openai: 85, gemini: 45, 'ax-cli': 30 },
+  'aerospace-scientist': { claude: 90, openai: 85, gemini: 50, 'ax-cli': 30 },
 
-  // Data agents → OpenAI/Claude balanced
-  data: { openai: 85, codex: 85, claude: 85, gemini: 55, 'ax-cli': 40 },
-  'data-scientist': { openai: 90, codex: 90, claude: 80, gemini: 60, 'ax-cli': 40 },
-
-  // Documentation → Claude slightly preferred
-  writer: { claude: 85, openai: 80, codex: 80, gemini: 75, 'ax-cli': 45 },
-
-  // Specialized technical agents → Claude
-  'quantum-engineer': { claude: 85, openai: 85, codex: 85, gemini: 50, 'ax-cli': 40 },
-  'aerospace-scientist': { claude: 85, openai: 85, codex: 85, gemini: 55, 'ax-cli': 40 },
-
-  // Standard/fallback → balanced
-  standard: { claude: 75, openai: 70, codex: 70, gemini: 70, 'ax-cli': 50 },
+  // =========================================================================
+  // GENERAL AGENTS → Balanced
+  // =========================================================================
+  standard: { claude: 75, openai: 70, gemini: 70, 'ax-cli': 35 },
 };
 
-/** Task affinity bonus multiplier (how much task type affects scoring) */
-const TASK_AFFINITY_MULTIPLIER = 1.5;
+/** Task affinity bonus multiplier (dominant factor for routing) */
+const TASK_AFFINITY_MULTIPLIER = 2.0;
 
 /** Agent affinity bonus multiplier */
 const AGENT_AFFINITY_MULTIPLIER = 1.0;

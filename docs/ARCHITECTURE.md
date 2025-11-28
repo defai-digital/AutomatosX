@@ -2,360 +2,748 @@
 
 ## Overview
 
-AutomatosX is a TypeScript monorepo providing AI agent orchestration with
-persistent memory and multi-provider support.
+AutomatosX is an **orchestration layer** that sits between you and multiple AI CLI tools. It is **NOT** a standalone AI—it coordinates existing AI tools to provide:
+
+- **Intelligent Routing** — Automatically select the best available provider
+- **Persistent Memory** — Remember past conversations across sessions
+- **Specialized Agents** — Route tasks to domain-expert personas
+- **Session Management** — Track multi-step workflows
+
+---
+
+## The Four AI CLI Tools
+
+AutomatosX integrates with four AI coding assistants:
+
+| CLI Tool | Provider | Integration | Command |
+|----------|----------|-------------|---------|
+| **Claude Code** | Anthropic | MCP (stdin/stdout) | `claude mcp` |
+| **Gemini CLI** | Google | MCP (stdin/stdout) | `gemini mcp` |
+| **OpenAI Codex** | OpenAI | Bash (subprocess) | `codex -p` |
+| **ax-cli** | Anthropic | SDK (native) | SDK calls |
+
+### Integration Modes
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │   CLI (ax)  │  │  MCP Server │  │  Natural Language (AI)  │ │
-│  └──────┬──────┘  └──────┬──────┘  └────────────┬────────────┘ │
-└─────────┼────────────────┼──────────────────────┼───────────────┘
-          │                │                      │
-          └────────────────┼──────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Core Engine                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │   Agents    │  │   Memory    │  │       Sessions          │ │
-│  │  Registry   │  │   Manager   │  │       Manager           │ │
-│  └──────┬──────┘  └──────┬──────┘  └────────────┬────────────┘ │
-│         │                │                      │               │
-│         └────────────────┼──────────────────────┘               │
-│                          ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    Provider Router                          ││
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────┐││
-│  │  │ Claude  │  │ Gemini  │  │ OpenAI  │  │     ax-cli      │││
-│  │  └────┬────┘  └────┬────┘  └────┬────┘  └────────┬────────┘││
-│  └───────┼────────────┼───────────┼─────────────────┼──────────┘│
-└──────────┼────────────┼───────────┼─────────────────┼───────────┘
-           │            │           │                 │
-           └────────────┴───────────┴─────────────────┘
-                                │
-                    ┌───────────▼───────────┐
-                    │    AI Providers       │
-                    │  (External APIs)      │
-                    └───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        How AutomatosX Connects to Providers                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────┐      MCP Protocol       ┌─────────────────────────┐   │
+│   │  Claude Code    │◄═══════════════════════►│                         │   │
+│   │  (claude mcp)   │      stdin/stdout       │                         │   │
+│   └─────────────────┘                         │                         │   │
+│                                               │                         │   │
+│   ┌─────────────────┐      MCP Protocol       │     AutomatosX          │   │
+│   │  Gemini CLI     │◄═══════════════════════►│     Provider            │   │
+│   │  (gemini mcp)   │      stdin/stdout       │     Router              │   │
+│   └─────────────────┘                         │                         │   │
+│                                               │                         │   │
+│   ┌─────────────────┐      Bash Subprocess    │                         │   │
+│   │  OpenAI Codex   │◄═══════════════════════►│                         │   │
+│   │  (codex -p)     │      spawn + pipe       │                         │   │
+│   └─────────────────┘                         │                         │   │
+│                                               │                         │   │
+│   ┌─────────────────┐      Native SDK         │                         │   │
+│   │  ax-cli         │◄═══════════════════════►│                         │   │
+│   │  (SDK calls)    │      function calls     │                         │   │
+│   └─────────────────┘                         └─────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Package Structure
+---
+
+## System Architecture
+
+### High-Level View
 
 ```
-packages/
-├── schemas/      # Zod schemas, type definitions
-├── algorithms/   # ReScript algorithms (routing, ranking, DAG)
-├── providers/    # AI provider integrations
-├── core/         # Orchestration engine
-├── cli/          # Command-line interface
-└── mcp/          # Model Context Protocol server
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                              USER ENTRY POINTS                               ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   You can interact with AutomatosX through ANY of these:                     ║
+║                                                                              ║
+║   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    ║
+║   │   ax CLI     │  │ Claude Code  │  │  Gemini CLI  │  │   VS Code    │    ║
+║   │              │  │  (via MCP)   │  │  (via MCP)   │  │  Extension   │    ║
+║   │  ax run ...  │  │              │  │              │  │              │    ║
+║   └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    ║
+║          │                 │                 │                 │             ║
+║          │                 └────────┬────────┘                 │             ║
+║          │                          │                          │             ║
+║          │                 ┌────────▼────────┐                 │             ║
+║          │                 │   MCP Server    │                 │             ║
+║          │                 │   (@ax/mcp)     │                 │             ║
+║          │                 └────────┬────────┘                 │             ║
+║          │                          │                          │             ║
+║          └──────────────────────────┼──────────────────────────┘             ║
+║                                     │                                        ║
+╠═════════════════════════════════════▼════════════════════════════════════════╣
+║                           AUTOMATOSX CORE ENGINE                             ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   ┌────────────────────────────────────────────────────────────────────┐    ║
+║   │                         @ax/core                                    │    ║
+║   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌───────────┐  │    ║
+║   │  │   Agent     │  │   Memory    │  │   Session   │  │  Config   │  │    ║
+║   │  │  Registry   │  │  Manager    │  │  Manager    │  │  Loader   │  │    ║
+║   │  │             │  │             │  │             │  │           │  │    ║
+║   │  │ 20+ agents  │  │ SQLite FTS5 │  │ Workflows   │  │ Settings  │  │    ║
+║   │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └─────┬─────┘  │    ║
+║   │         │                │                │                │        │    ║
+║   │         └────────────────┼────────────────┼────────────────┘        │    ║
+║   │                          │                │                         │    ║
+║   │                  ┌───────▼────────────────▼───────┐                 │    ║
+║   │                  │      Provider Router           │                 │    ║
+║   │                  │  • Health monitoring           │                 │    ║
+║   │                  │  • Latency scoring             │                 │    ║
+║   │                  │  • Automatic fallback          │                 │    ║
+║   │                  │  • Circuit breaker             │                 │    ║
+║   │                  └───────────────┬───────────────┘                 │    ║
+║   └──────────────────────────────────┼──────────────────────────────────┘    ║
+║                                      │                                       ║
+╠══════════════════════════════════════▼═══════════════════════════════════════╣
+║                           PROVIDER LAYER (@ax/providers)                     ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   AutomatosX spawns these as subprocesses and communicates via:              ║
+║                                                                              ║
+║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             ║
+║   │  ClaudeProvider │  │ GeminiProvider  │  │ OpenAIProvider  │             ║
+║   │                 │  │                 │  │                 │             ║
+║   │  Integration:   │  │  Integration:   │  │  Integration:   │             ║
+║   │  MCP Protocol   │  │  MCP Protocol   │  │  Bash Spawn     │             ║
+║   │                 │  │                 │  │                 │             ║
+║   │  Command:       │  │  Command:       │  │  Command:       │             ║
+║   │  claude mcp     │  │  gemini mcp     │  │  codex -p       │             ║
+║   │                 │  │                 │  │                 │             ║
+║   │  Transport:     │  │  Transport:     │  │  Transport:     │             ║
+║   │  stdin/stdout   │  │  stdin/stdout   │  │  pipe           │             ║
+║   └────────┬────────┘  └────────┬────────┘  └────────┬────────┘             ║
+║            │                    │                    │                       ║
+║   ┌────────┴────────┐                                                        ║
+║   │  AxCliProvider  │                                                        ║
+║   │                 │                                                        ║
+║   │  Integration:   │                                                        ║
+║   │  Native SDK     │                                                        ║
+║   │                 │                                                        ║
+║   │  Features:      │                                                        ║
+║   │  Checkpoints    │                                                        ║
+║   │  Subagents      │                                                        ║
+║   └────────┬────────┘                                                        ║
+║            │                                                                 ║
+╠════════════▼═════════════════════════════════════════════════════════════════╣
+║                              EXTERNAL AI SERVICES                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             ║
+║   │    Anthropic    │  │     Google      │  │     OpenAI      │             ║
+║   │    Claude API   │  │   Gemini API    │  │    Codex API    │             ║
+║   └─────────────────┘  └─────────────────┘  └─────────────────┘             ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## Bidirectional Relationship
+
+### Key Insight: CLIs as Both Entry Points AND Backends
+
+The same CLI tools serve **two roles**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     BIDIRECTIONAL RELATIONSHIP                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ROLE 1: As Entry Points (User → AutomatosX)                               │
+│   ════════════════════════════════════════════                               │
+│                                                                              │
+│   When you use Claude Code or Gemini CLI, they can call AutomatosX          │
+│   MCP server tools to leverage agents, memory, and sessions:                 │
+│                                                                              │
+│       User                                                                   │
+│         │                                                                    │
+│         ▼                                                                    │
+│   ┌───────────────┐        MCP Tool Call        ┌───────────────────┐       │
+│   │  Claude Code  │ ══════════════════════════► │  AutomatosX MCP   │       │
+│   │  or           │    ax_run, ax_memory_*,     │  Server           │       │
+│   │  Gemini CLI   │    ax_session_*, etc.       │                   │       │
+│   └───────────────┘                             └───────────────────┘       │
+│                                                                              │
+│                                                                              │
+│   ROLE 2: As Execution Backends (AutomatosX → CLIs)                         │
+│   ═════════════════════════════════════════════════                          │
+│                                                                              │
+│   When AutomatosX needs to execute a task, it spawns these CLIs             │
+│   as subprocesses to do the actual AI work:                                  │
+│                                                                              │
+│   ┌───────────────────┐        Subprocess        ┌───────────────┐          │
+│   │  AutomatosX       │ ════════════════════════►│  Claude Code  │          │
+│   │  Provider Router  │     claude mcp           │  (execution)  │          │
+│   │                   │     gemini mcp           ├───────────────┤          │
+│   │                   │     codex -p             │  Gemini CLI   │          │
+│   │                   │     SDK calls            │  (execution)  │          │
+│   └───────────────────┘                          ├───────────────┤          │
+│                                                  │  OpenAI Codex │          │
+│                                                  │  (execution)  │          │
+│                                                  ├───────────────┤          │
+│                                                  │  ax-cli       │          │
+│                                                  │  (execution)  │          │
+│                                                  └───────────────┘          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Example Flows
+
+**Flow A: Using ax CLI directly**
+```
+User: ax run backend "Create REST API"
+         │
+         ▼
+    AutomatosX CLI
+         │
+         ▼
+    Agent Registry (selects "backend" agent)
+         │
+         ▼
+    Provider Router (selects best provider)
+         │
+         ├── Claude healthy? ──► claude mcp ──► Execute
+         │
+         ├── Gemini healthy? ──► gemini mcp ──► Execute
+         │
+         └── OpenAI healthy? ──► codex -p ──► Execute
+```
+
+**Flow B: Using Claude Code with AutomatosX MCP tools**
+```
+User: (in Claude Code) "Use AutomatosX backend agent to create an API"
+         │
+         ▼
+    Claude Code
+         │
+         ▼
+    Calls MCP tool: ax_run(agent="backend", task="Create API")
+         │
+         ▼
+    AutomatosX MCP Server
+         │
+         ▼
+    Agent Registry + Provider Router
+         │
+         ▼
+    (May use Claude itself, or Gemini, or OpenAI as backend)
+```
+
+---
+
+## Package Architecture
+
+### Monorepo Structure
+
+```
+AutomatosX/
+├── packages/
+│   ├── schemas/          # @ax/schemas - Zod types (base layer)
+│   ├── algorithms/       # @ax/algorithms - ReScript performance code
+│   ├── providers/        # @ax/providers - CLI integrations
+│   ├── core/             # @ax/core - Orchestration engine
+│   ├── cli/              # @ax/cli - Command-line interface
+│   ├── mcp/              # @ax/mcp - MCP server for IDE integration
+│   └── vscode-extension/ # VS Code extension
 ```
 
 ### Dependency Graph
 
 ```
-@ax/schemas (base - no dependencies)
-     │
-     ├──────────────────────────┐
-     ▼                          ▼
-@ax/algorithms            @ax/providers
-     │                          │
-     └──────────┬───────────────┘
-                ▼
-           @ax/core
-                │
-     ┌──────────┴──────────┐
-     ▼                     ▼
-  @ax/cli              @ax/mcp
+                    @ax/schemas
+                    (Zod types, branded IDs)
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+    @ax/algorithms  @ax/providers  better-sqlite3
+    (ReScript)      (CLI integrations)
+          │              │              │
+          └──────────────┼──────────────┘
+                         │
+                         ▼
+                     @ax/core
+                (Orchestration engine)
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+          ▼                             ▼
+       @ax/cli                      @ax/mcp
+  (Direct CLI usage)          (MCP server for IDEs)
 ```
 
-## Core Components
+---
 
-### 1. Agent System
+## Provider Details
 
-**Location:** `packages/core/src/agent/`
-
-The agent system manages AI agent definitions and execution.
+### Claude Code Provider
 
 ```typescript
-// Agent lifecycle
-AgentLoader → AgentRegistry → AgentExecutor
-     │              │               │
-     │              │               └── Execute tasks
-     │              └── Store/lookup agents
-     └── Load from YAML files
-```
+// Integration via MCP Protocol
+class ClaudeProvider extends BaseProvider {
+  id = 'claude';
+  name = 'Claude Code';
+  integrationMode = 'mcp';
 
-**Key Classes:**
-- `AgentLoader` - Loads agent definitions from `.automatosx/agents/*.yaml`
-- `AgentRegistry` - In-memory registry with filtering and lookup
-- `AgentExecutor` - Executes tasks with timeout and retry handling
-- `AgentRouter` - Keyword-based agent selection for auto-routing
-
-**Agent Definition (YAML):**
-```yaml
-name: backend
-displayName: Bob
-role: Backend Developer
-team: development
-abilities:
-  - api-design
-  - database-modeling
-orchestration:
-  maxDelegationDepth: 1
-  canDelegateTo: [quality, security]
-```
-
-### 2. Memory System
-
-**Location:** `packages/core/src/memory/`
-
-SQLite-based persistent memory with full-text search (FTS5).
-
-```
-┌─────────────────────────────────────────┐
-│             MemoryManager               │
-├─────────────────────────────────────────┤
-│  add(entry)      → Insert new memory    │
-│  search(query)   → FTS5 full-text       │
-│  get(id)         → Retrieve by ID       │
-│  clear(options)  → Filtered deletion    │
-│  getStats()      → Database statistics  │
-└────────────────────┬────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────┐
-│         SQLite + FTS5 Database          │
-│  .automatosx/memory/memories.db         │
-└─────────────────────────────────────────┘
-```
-
-**Features:**
-- Full-text search with relevance ranking
-- Hybrid cleanup strategies (LRU, age, importance)
-- Import/export for backup
-- Access tracking and statistics
-
-### 3. Session Management
-
-**Location:** `packages/core/src/session/`
-
-Multi-agent session lifecycle management.
-
-```
-Session Lifecycle:
-  created → active → completed
-              ↓
-           failed
-```
-
-**Session Structure:**
-```typescript
-interface Session {
-  id: SessionId;
-  primaryAgent: string;
-  task: string;
-  state: 'created' | 'active' | 'completed' | 'failed';
-  tasks: Task[];          // Sub-tasks
-  metadata: Metadata;
-  createdAt: ISODateString;
-  completedAt?: ISODateString;
+  // Spawns: claude mcp
+  // Transport: StdioClientTransport (stdin/stdout)
+  // Protocol: JSON-RPC 2.0 over MCP
 }
 ```
 
-### 4. Provider Router
-
-**Location:** `packages/core/src/router/`
-
-Multi-provider orchestration with health monitoring and fallback.
-
+**Execution flow:**
 ```
-Request → Router → Provider Selection → Execution → Response
-             │              │
-             │              ├── Health check
-             │              ├── Latency scoring
-             │              └── Priority order
-             │
-             └── On failure: Fallback to next provider
-```
-
-**Routing Algorithm:**
-1. Score each healthy provider
-2. Select highest score
-3. Execute request
-4. On failure, try alternatives
-5. Track metrics
-
-**Scoring Factors:**
-- Provider health (40%)
-- Recent latency (30%)
-- Success rate (20%)
-- Configuration priority (10%)
-
-### 5. Algorithms (ReScript)
-
-**Location:** `packages/algorithms/`
-
-Performance-critical algorithms in ReScript with TypeScript bindings.
-
-| Algorithm | Purpose |
-|-----------|---------|
-| Routing | Multi-factor provider selection |
-| DAG Scheduler | Task dependency resolution |
-| Memory Ranking | Relevance scoring for search |
-
-### 6. CLI Commands
-
-**Location:** `packages/cli/src/commands/`
-
-| Command | Description |
-|---------|-------------|
-| `ax setup` | Initialize project |
-| `ax run` | Execute agent task |
-| `ax agent` | Manage agents |
-| `ax memory` | Manage memory |
-| `ax provider` | Manage providers |
-| `ax session` | Manage sessions |
-| `ax system` | System diagnostics |
-
-### 7. MCP Server
-
-**Location:** `packages/mcp/`
-
-Model Context Protocol server for IDE integration.
-
-```
-MCP Client (Claude Code, Gemini CLI)
+ClaudeProvider.execute(request)
          │
          ▼
-    MCP Server
+    Spawn subprocess: claude mcp
          │
-    ┌────┴────┐
-    │ Tools   │
-    ├─────────┤
-    │ ax_run  │
-    │ ax_memory_search │
-    │ ax_session_create │
-    │ ...     │
-    └─────────┘
+         ▼
+    MCP Client connects via stdin/stdout
+         │
+         ▼
+    Call MCP tool: run_task(prompt)
+         │
+         ▼
+    Claude processes request
+         │
+         ▼
+    Return response via MCP
 ```
 
-## Data Flow
+### Gemini CLI Provider
 
-### Task Execution
+```typescript
+// Integration via MCP Protocol
+class GeminiProvider extends BaseProvider {
+  id = 'gemini';
+  name = 'Gemini CLI';
+  integrationMode = 'mcp';
 
-```
-1. User: ax run backend "Create API"
-                │
-2. CLI parses command
-                │
-3. AgentRegistry.get("backend")
-                │
-4. AgentExecutor.execute(agent, task)
-                │
-5. ProviderRouter.route(request)
-                │
-6. Provider.execute(request)
-                │
-7. MemoryManager.add(result)
-                │
-8. Return response to user
+  // Spawns: gemini mcp
+  // Transport: StdioClientTransport (stdin/stdout)
+  // Protocol: JSON-RPC 2.0 over MCP
+}
 ```
 
-### Memory Search
+### OpenAI Codex Provider
+
+```typescript
+// Integration via Bash subprocess
+class OpenAIProvider extends BaseProvider {
+  id = 'openai';
+  name = 'OpenAI Codex';
+  integrationMode = 'bash';
+
+  // Spawns: codex -p "prompt"
+  // Transport: Process spawn with pipe
+  // Output: stdout capture
+}
+```
+
+**Execution flow:**
+```
+OpenAIProvider.execute(request)
+         │
+         ▼
+    Spawn subprocess: codex -p "prompt"
+         │
+         ▼
+    Capture stdout/stderr
+         │
+         ▼
+    Parse output
+         │
+         ▼
+    Return response
+```
+
+### ax-cli Provider
+
+```typescript
+// Integration via Native SDK
+class AxCliProvider extends BaseProvider {
+  id = 'ax-cli';
+  name = 'ax-cli';
+  integrationMode = 'sdk';
+
+  // Uses: @anthropic/agent-sdk (when available)
+  // Features: Checkpoints, subagent delegation
+}
+```
+
+---
+
+## Provider Router
+
+### Routing Algorithm
 
 ```
-1. User: ax memory search "API design"
-                │
-2. MemoryManager.search("API design")
-                │
-3. SQLite FTS5 query
-                │
-4. MemoryRanking algorithm
-                │
-5. Return ranked results
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PROVIDER SELECTION ALGORITHM                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. Get all configured providers                                            │
+│      ┌──────────────────────────────────────────────────────────────┐       │
+│      │  Providers: [claude, gemini, openai, ax-cli]                 │       │
+│      └──────────────────────────────────────────────────────────────┘       │
+│                              │                                               │
+│                              ▼                                               │
+│   2. Filter by health status                                                 │
+│      ┌──────────────────────────────────────────────────────────────┐       │
+│      │  Healthy: [claude ✓, gemini ✓, openai ✗]                     │       │
+│      │  (OpenAI circuit breaker is OPEN)                            │       │
+│      └──────────────────────────────────────────────────────────────┘       │
+│                              │                                               │
+│                              ▼                                               │
+│   3. Score each healthy provider                                             │
+│      ┌──────────────────────────────────────────────────────────────┐       │
+│      │  Score = Health(40%) + Latency(30%) + Success(20%) + Prio(10%)│       │
+│      │                                                               │       │
+│      │  claude:  0.40 × 1.0 + 0.30 × 0.9 + 0.20 × 0.99 + 0.10 × 1.0 │       │
+│      │         = 0.40 + 0.27 + 0.198 + 0.10 = 0.968                  │       │
+│      │                                                               │       │
+│      │  gemini:  0.40 × 1.0 + 0.30 × 0.7 + 0.20 × 0.95 + 0.10 × 0.8 │       │
+│      │         = 0.40 + 0.21 + 0.19 + 0.08 = 0.88                    │       │
+│      └──────────────────────────────────────────────────────────────┘       │
+│                              │                                               │
+│                              ▼                                               │
+│   4. Select highest score                                                    │
+│      ┌──────────────────────────────────────────────────────────────┐       │
+│      │  Selected: claude (score: 0.968)                             │       │
+│      └──────────────────────────────────────────────────────────────┘       │
+│                              │                                               │
+│                              ▼                                               │
+│   5. Execute with fallback                                                   │
+│      ┌──────────────────────────────────────────────────────────────┐       │
+│      │  Try claude → Success? Return result                         │       │
+│      │            → Failure? Try gemini (next highest score)        │       │
+│      └──────────────────────────────────────────────────────────────┘       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Circuit Breaker Pattern
+
+```
+                    ┌─────────────────────────────────────┐
+                    │                                     │
+                    ▼                                     │
+              ┌──────────┐                                │
+              │  CLOSED  │ ◄── Normal operation           │
+              │ (healthy)│     Accepting requests         │
+              └────┬─────┘                                │
+                   │                                      │
+        Failures exceed threshold                         │
+        (default: 3 consecutive)                          │
+                   │                                      │
+                   ▼                                      │
+              ┌──────────┐                                │
+              │   OPEN   │ ◄── Failure mode               │
+              │(unhealthy)│    Rejecting requests         │
+              └────┬─────┘     Using alternatives         │
+                   │                                      │
+        Recovery timeout expires                          │
+        (default: 60 seconds)                             │
+                   │                                      │
+                   ▼                                      │
+              ┌──────────┐                                │
+              │HALF-OPEN │ ◄── Testing recovery           │
+              │ (testing) │    Allow one request          │
+              └────┬─────┘                                │
+                   │                                      │
+        ┌──────────┴──────────┐                           │
+        │                     │                           │
+    Success                Failure                        │
+        │                     │                           │
+        │                     ▼                           │
+        │               ┌──────────┐                      │
+        │               │   OPEN   │                      │
+        │               └──────────┘                      │
+        │                                                 │
+        └─────────────────────────────────────────────────┘
+```
+
+---
+
+## Core Components
+
+### Agent Registry
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             AGENT REGISTRY                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   .automatosx/agents/                                                        │
+│   ├── backend.yaml      → Bob (Go, Rust, Python, APIs)                      │
+│   ├── frontend.yaml     → Frank (React, Next.js, Vue)                       │
+│   ├── devops.yaml       → Oliver (K8s, Docker, CI/CD)                       │
+│   ├── security.yaml     → Steve (Audits, OWASP, Threats)                    │
+│   ├── quality.yaml      → Queenie (Testing, QA)                             │
+│   ├── architect.yaml    → Alex (System design)                              │
+│   ├── performance.yaml  → Peter (Optimization)                              │
+│   ├── product.yaml      → Paris (Requirements)                              │
+│   └── ... (20+ agents)                                                       │
+│                                                                              │
+│   AgentLoader ──► AgentRegistry ──► AgentExecutor                           │
+│       │               │                  │                                   │
+│       │               │                  └── Execute with provider           │
+│       │               └── In-memory lookup                                   │
+│       └── Parse YAML files                                                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Memory Manager
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             MEMORY MANAGER                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   SQLite Database with FTS5 (Full-Text Search)                              │
+│   Location: .automatosx/memory/memories.db                                   │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  Memory Entry                                                        │   │
+│   │  ┌─────────────────────────────────────────────────────────────┐    │   │
+│   │  │  id: "mem_abc123..."                                         │    │   │
+│   │  │  type: "execution" | "decision" | "code"                     │    │   │
+│   │  │  agentId: "backend"                                          │    │   │
+│   │  │  sessionId: "sess_xyz..."                                    │    │   │
+│   │  │  input: { task, provider, context }                          │    │   │
+│   │  │  output: { response, duration, success }                     │    │   │
+│   │  │  metadata: { tags, importance, accessCount }                 │    │   │
+│   │  │  createdAt: "2024-11-28T10:30:00Z"                          │    │   │
+│   │  └─────────────────────────────────────────────────────────────┘    │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Operations:                                                                │
+│   • add(entry)     → Insert with FTS5 indexing                              │
+│   • search(query)  → Full-text search with ranking                          │
+│   • get(id)        → Retrieve by ID                                         │
+│   • clear(options) → Filtered deletion (by date, agent, type)               │
+│   • export/import  → Backup and restore                                      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Session Manager
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            SESSION MANAGER                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Session Lifecycle:                                                         │
+│                                                                              │
+│       created ──► active ──► completed                                       │
+│                      │                                                       │
+│                      └──► failed                                             │
+│                                                                              │
+│   Session Structure:                                                         │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  {                                                                   │   │
+│   │    id: "sess_abc123",                                               │   │
+│   │    primaryAgent: "backend",                                         │   │
+│   │    task: "Build user authentication",                               │   │
+│   │    state: "active",                                                 │   │
+│   │    tasks: [                                                         │   │
+│   │      { id: "task_1", description: "Design schema", status: "done" },│   │
+│   │      { id: "task_2", description: "Implement API", status: "active"}│   │
+│   │    ],                                                               │   │
+│   │    delegations: ["quality", "security"],                            │   │
+│   │    createdAt: "2024-11-28T10:00:00Z"                               │   │
+│   │  }                                                                  │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Storage: .automatosx/sessions/                                             │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## MCP Server
+
+### Tools Exposed to Claude Code / Gemini CLI
+
+When Claude Code or Gemini CLI connects to AutomatosX MCP server, these tools become available:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MCP SERVER TOOLS                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Agent Tools:                                                               │
+│   • ax_run           Execute task with agent                                 │
+│   • ax_agent_list    List available agents                                   │
+│   • ax_agent_info    Get agent details                                       │
+│                                                                              │
+│   Memory Tools:                                                              │
+│   • ax_memory_search Search past conversations                               │
+│   • ax_memory_add    Add memory entry                                        │
+│   • ax_memory_list   List recent entries                                     │
+│                                                                              │
+│   Session Tools:                                                             │
+│   • ax_session_create  Start new session                                     │
+│   • ax_session_list    List sessions                                         │
+│   • ax_session_complete Mark session done                                    │
+│                                                                              │
+│   Provider Tools:                                                            │
+│   • ax_provider_list   List providers                                        │
+│   • ax_provider_health Check provider status                                 │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Example: Claude Code calling AutomatosX
+
+```
+User (in Claude Code): "Use the backend agent to create an API"
+
+Claude Code internally:
+         │
+         ▼
+    Calls MCP tool: ax_run
+    {
+      "agent": "backend",
+      "task": "Create an API"
+    }
+         │
+         ▼
+    AutomatosX MCP Server receives call
+         │
+         ▼
+    Routes to backend agent
+         │
+         ▼
+    Provider Router selects best provider
+    (might be Claude itself, or Gemini, or OpenAI)
+         │
+         ▼
+    Executes and returns result
+         │
+         ▼
+    Claude Code receives response
+```
+
+---
 
 ## Configuration
 
-**File:** `ax.config.json`
+### ax.config.json
 
 ```json
 {
   "providers": {
-    "default": "claude",
-    "fallbackOrder": ["claude", "gemini", "openai"]
+    "claude-code": {
+      "enabled": true,
+      "priority": 3,
+      "command": "claude",
+      "args": ["mcp"],
+      "timeout": 2700000,
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000
+      },
+      "circuitBreaker": {
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      }
+    },
+    "gemini-cli": {
+      "enabled": true,
+      "priority": 2,
+      "command": "gemini",
+      "args": ["mcp"],
+      "timeout": 2700000
+    },
+    "openai": {
+      "enabled": true,
+      "priority": 1,
+      "command": "codex",
+      "timeout": 300000
+    },
+    "ax-cli": {
+      "enabled": true,
+      "priority": 2,
+      "useSDK": true
+    }
   },
-  "execution": {
-    "timeout": 1500000,
-    "retry": { "maxAttempts": 3 }
+  "routing": {
+    "weights": {
+      "health": 0.4,
+      "latency": 0.3,
+      "successRate": 0.2,
+      "priority": 0.1
+    }
   },
   "memory": {
     "maxEntries": 10000,
-    "autoCleanup": true
+    "persistPath": ".automatosx/memory"
   },
-  "agents": {
-    "defaultAgent": "standard",
-    "enableAutoSelection": true
+  "orchestration": {
+    "delegation": {
+      "maxDepth": 2,
+      "enableCycleDetection": true
+    }
   }
 }
 ```
+
+---
 
 ## Directory Structure
 
 ```
 project/
-├── ax.config.json           # Configuration
-├── .automatosx/             # Runtime data (gitignored)
-│   ├── agents/              # Agent definitions
+├── ax.config.json              # Configuration
+├── .automatosx/                # Runtime data (gitignored)
+│   ├── agents/                 # Agent definitions (YAML)
 │   │   ├── backend.yaml
 │   │   ├── frontend.yaml
+│   │   ├── devops.yaml
 │   │   └── ...
-│   ├── memory/              # SQLite database
+│   ├── memory/                 # SQLite database
 │   │   └── memories.db
-│   ├── sessions/            # Session files
-│   └── abilities/           # Ability definitions
-└── automatosx/              # Workspace (gitignored)
-    ├── PRD/                 # Planning documents
-    └── tmp/                 # Temporary files
+│   ├── sessions/               # Session persistence
+│   └── checkpoints/            # Resumable checkpoints
+└── automatosx/                 # Workspace (gitignored)
+    ├── PRD/                    # Planning documents
+    └── tmp/                    # Temporary files
 ```
 
-## Error Handling
+---
 
-Custom error classes with helpful suggestions:
+## Summary
 
-```typescript
-class AutomatosXError extends Error {
-  code: string;
-  suggestion?: string;
-  context?: Record<string, unknown>;
-}
+AutomatosX orchestrates four AI CLI tools:
 
-// Specialized errors
-AgentNotFoundError      // Includes similar agent suggestions
-ProviderUnavailableError // Suggests checking status
-MemoryError             // Suggests cleanup
-NotInitializedError     // Suggests ax setup
-```
+| Tool | Integration | How AutomatosX Connects |
+|------|-------------|------------------------|
+| **Claude Code** | MCP Protocol | Spawns `claude mcp`, communicates via stdin/stdout |
+| **Gemini CLI** | MCP Protocol | Spawns `gemini mcp`, communicates via stdin/stdout |
+| **OpenAI Codex** | Bash | Spawns `codex -p "prompt"`, captures stdout |
+| **ax-cli** | Native SDK | Direct function calls with checkpoints |
 
-## Security Considerations
+**Key value adds:**
+1. **Intelligent routing** — Automatically picks the healthiest, fastest provider
+2. **Automatic fallback** — If one fails, seamlessly tries another
+3. **Persistent memory** — Search across all past conversations
+4. **Specialized agents** — Route tasks to domain experts
+5. **Session tracking** — Manage multi-step workflows
 
-1. **Local-first** - Memory stays on disk, never uploaded
-2. **No telemetry** - No data collection
-3. **API keys** - Managed by individual providers
-4. **Sandboxing** - Providers can run in sandboxed mode
-
-## Performance
-
-- **Memory search:** < 1ms (SQLite FTS5)
-- **Agent lookup:** O(1) (hash map)
-- **Provider routing:** O(n) where n = provider count
-- **Task scheduling:** O(V + E) (topological sort)
-
-## Future Considerations
-
-1. **Distributed execution** - Multi-machine agent pools
-2. **Real-time collaboration** - Shared sessions
-3. **Plugin system** - Custom provider/agent extensions
-4. **Web UI** - Browser-based dashboard
+**You continue using your favorite CLI.** AutomatosX works invisibly to make it smarter.

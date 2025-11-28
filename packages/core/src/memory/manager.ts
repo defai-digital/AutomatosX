@@ -340,12 +340,15 @@ export class MemoryManager {
     }
 
     // Filter by tags (match ANY of the specified tags)
+    // SQLite has a limit of 999 parameters, so we cap the tag list
     if (filter?.tags && filter.tags.length > 0) {
+      const maxTags = Math.min(filter.tags.length, 500);
+      const validTags = filter.tags.slice(0, maxTags);
       sql += ` AND EXISTS (
         SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
-        WHERE value IN (${filter.tags.map(() => '?').join(',')})
+        WHERE value IN (${validTags.map(() => '?').join(',')})
       )`;
-      params.push(...filter.tags);
+      params.push(...validTags);
     }
 
     // Filter by tagsAll (match ALL of the specified tags)

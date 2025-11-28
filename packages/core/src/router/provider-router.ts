@@ -314,7 +314,10 @@ export class ProviderRouter {
         const healthy = await provider.checkHealth();
         results.set(type, healthy);
         this.events.onHealthUpdate?.(type, healthy);
-      } catch {
+      } catch (error) {
+        console.warn(
+          `[ax/router] Health check failed for ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         results.set(type, false);
         this.events.onHealthUpdate?.(type, false);
       }
@@ -628,6 +631,11 @@ export class ProviderRouter {
         );
       }
     }, intervalMs);
+
+    // Unref the interval so it doesn't prevent process exit
+    if (this.healthCheckIntervalId.unref) {
+      this.healthCheckIntervalId.unref();
+    }
   }
 
   /**

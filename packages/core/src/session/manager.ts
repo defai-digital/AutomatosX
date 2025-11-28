@@ -359,6 +359,7 @@ export class SessionManager {
       description: validated.description,
       agentId: validated.agentId,
       status: 'pending',
+      createdAt: new Date(),
       parentTaskId: validated.parentTaskId,
       metadata: validated.metadata,
     });
@@ -407,9 +408,9 @@ export class SessionManager {
     }
     if (validated.status === 'completed' || validated.status === 'failed') {
       task.completedAt = new Date();
-      if (task.startedAt) {
-        task.duration = task.completedAt.getTime() - task.startedAt.getTime();
-      }
+      // Use startedAt if available, otherwise fall back to task creation time
+      const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
+      task.duration = task.completedAt.getTime() - startTime;
     }
 
     session.updatedAt = new Date();

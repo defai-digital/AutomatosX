@@ -26,6 +26,8 @@ export const SessionTaskSchema = z.object({
   result: z.string().optional(),
   /** Error if failed */
   error: z.string().optional(),
+  /** Task creation timestamp */
+  createdAt: z.date().optional(),
   /** Start timestamp */
   startedAt: z.date().optional(),
   /** Completion timestamp */

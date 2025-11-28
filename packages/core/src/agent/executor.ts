@@ -126,6 +126,11 @@ export class AgentExecutor {
     task: string,
     options: ExecuteOptions = {}
   ): Promise<ExecutionResult> {
+    // Validate task is not empty
+    if (!task || task.trim() === '') {
+      throw new Error('Task description cannot be empty');
+    }
+
     // Get or create session
     const session = options.sessionId
       ? await this.sessionManager.getOrThrow(options.sessionId)
@@ -159,6 +164,11 @@ export class AgentExecutor {
     task: string,
     options: ExecuteOptions = {}
   ): Promise<ExecutionResult> {
+    // Validate task is not empty
+    if (!task || task.trim() === '') {
+      throw new Error('Task description cannot be empty');
+    }
+
     // Infer task type and find suitable agent
     const taskType = this.inferTaskType(task);
     const candidates = this.agentRegistry.findForTask(taskType);
@@ -323,7 +333,10 @@ export class AgentExecutor {
 
       // Get updated session
       const updatedSession = await this.sessionManager.getOrThrow(session.id);
-      const updatedTask = updatedSession.tasks.find(t => t.id === sessionTask.id)!;
+      const updatedTask = updatedSession.tasks.find(t => t.id === sessionTask.id);
+      if (!updatedTask) {
+        throw new Error(`Task ${sessionTask.id} not found in session ${session.id} after execution`);
+      }
 
       const result: ExecutionResult = {
         response,

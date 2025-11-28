@@ -84,9 +84,13 @@ const listCommand: CommandModule<object, SessionListArgs> = {
 
       const ctx = await getContext();
       // Build filter, only including defined values
+      const hasFilter = state !== undefined || agent !== undefined;
       const sessions = await ctx.sessionManager.list(
-        state !== undefined || agent !== undefined
-          ? { state, agent } as any
+        hasFilter
+          ? {
+              ...(state !== undefined && { state }),
+              ...(agent !== undefined && { agent }),
+            }
           : undefined
       );
 

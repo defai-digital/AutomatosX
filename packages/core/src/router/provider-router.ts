@@ -374,6 +374,11 @@ export class ProviderRouter {
 
   /**
    * Build routing context from request and options
+   *
+   * The context now includes:
+   * - taskType: Inferred from task description
+   * - agentId: For agent-specific provider affinity
+   * - taskDescription: For keyword-based routing analysis
    */
   private buildRoutingContext(
     request: ExecutionRequest,
@@ -384,7 +389,14 @@ export class ProviderRouter {
       complexity: (options.context?.complexity as number) ?? DEFAULT_ROUTING_COMPLEXITY,
       preferMcp: (options.context?.preferMcp as boolean) ?? true,
       excludeProviders: options.excludeProviders ?? [],
+      // Pass full task description for keyword analysis
+      taskDescription: request.task,
     };
+
+    // Only set agentId if it exists (for agent-provider affinity matching)
+    if (request.agent) {
+      context.agentId = request.agent;
+    }
 
     // Only set forceProvider if it exists
     if (options.forceProvider) {
@@ -439,24 +451,74 @@ export class ProviderRouter {
 
   /**
    * Infer task type from task description
+   *
+   * Task types map to provider specialties:
+   * - planning/architecture/strategy → OpenAI
+   * - frontend/ui/creative → Gemini
+   * - coding/debugging/implementation → Claude
+   * - general → balanced (slight Claude preference)
    */
   private inferTaskType(task: string): string {
     const lowerTask = task.toLowerCase();
 
-    if (lowerTask.includes('code') || lowerTask.includes('implement') || lowerTask.includes('write')) {
+    // Planning tasks → OpenAI excels
+    if (/\b(plan|roadmap|strategy|requirements|prd|specification|propose|design system)\b/.test(lowerTask)) {
+      return 'planning';
+    }
+
+    // Architecture tasks → OpenAI excels
+    if (/\b(architect|infrastructure|scalab|microservice|monolith|system design)\b/.test(lowerTask)) {
+      return 'architecture';
+    }
+
+    // Frontend/UI tasks → Gemini excels
+    if (/\b(ui|ux|component|react|vue|angular|css|tailwind|responsive|layout|frontend|styling)\b/.test(lowerTask)) {
+      return 'frontend';
+    }
+
+    // Creative tasks → Gemini excels
+    if (/\b(creative|visual|animation|theme|brand|marketing|design)\b/.test(lowerTask)) {
+      return 'creative';
+    }
+
+    // Debugging tasks → Claude excels
+    if (/\b(fix|debug|bug|error|issue|problem|troubleshoot|resolve)\b/.test(lowerTask)) {
+      return 'debugging';
+    }
+
+    // Coding/implementation tasks → Claude excels
+    if (/\b(implement|code|write|create function|build|develop|refactor)\b/.test(lowerTask)) {
       return 'coding';
     }
-    if (lowerTask.includes('test') || lowerTask.includes('verify') || lowerTask.includes('validate')) {
+
+    // Testing tasks → Claude preferred
+    if (/\b(test|spec|coverage|unit|e2e|integration|verify|validate)\b/.test(lowerTask)) {
       return 'testing';
     }
-    if (lowerTask.includes('review') || lowerTask.includes('analyze') || lowerTask.includes('audit')) {
+
+    // Security tasks → Claude preferred
+    if (/\b(security|vulnerab|audit|threat|owasp|penetration)\b/.test(lowerTask)) {
+      return 'security';
+    }
+
+    // Analysis/review tasks → Claude preferred
+    if (/\b(review|analyze|audit|assess|evaluate)\b/.test(lowerTask)) {
       return 'analysis';
     }
-    if (lowerTask.includes('design') || lowerTask.includes('architect') || lowerTask.includes('plan')) {
-      return 'design';
+
+    // Documentation tasks
+    if (/\b(document|explain|describe|readme|docs)\b/.test(lowerTask)) {
+      return 'documentation';
     }
-    if (lowerTask.includes('fix') || lowerTask.includes('debug') || lowerTask.includes('resolve')) {
-      return 'debugging';
+
+    // Research tasks → OpenAI preferred
+    if (/\b(research|investigate|explore|compare|benchmark)\b/.test(lowerTask)) {
+      return 'research';
+    }
+
+    // Data/ML tasks → OpenAI preferred
+    if (/\b(data|etl|ml|machine learning|model|training|prediction)\b/.test(lowerTask)) {
+      return 'data';
     }
 
     return 'general';

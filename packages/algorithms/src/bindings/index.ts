@@ -16,7 +16,7 @@
  * @copyright 2024 DEFAI Private Limited
  */
 
-// Routing algorithm
+// Routing algorithm with task-aware provider selection
 export {
   type Provider,
   type RoutingContext,
@@ -25,6 +25,15 @@ export {
   calculateScore,
   selectProvider,
   getFallbackOrder,
+  // Task and agent affinity exports
+  TASK_PROVIDER_AFFINITY,
+  AGENT_PROVIDER_AFFINITY,
+  getBestProviderForTask,
+  getBestProviderForAgent,
+  getSupportedTaskTypes,
+  getAgentsWithAffinities,
+  getProviderTaskAffinity,
+  getProviderAgentAffinity,
 } from './routing.js';
 
 // DAG scheduling algorithm

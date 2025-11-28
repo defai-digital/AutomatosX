@@ -1,0 +1,336 @@
+{
+  "name": "automatosx",
+  "displayName": "AutomatosX",
+  "description": "AI Agent Orchestration for VS Code - Multi-provider support with intelligent agent routing",
+  "version": "11.0.0-alpha.0",
+  "publisher": "defai-digital",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "claude",
+    "gemini",
+    "openai",
+    "mcp",
+    "automation",
+    "code-assistant"
+  ],
+  "activationEvents": [
+    "workspaceContains:.automatosx",
+    "workspaceContains:ax.config.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "AutomatosX",
+      "properties": {
+        "automatosx.defaultAgent": {
+          "type": "string",
+          "default": "standard",
+          "description": "Default agent to use when none is specified"
+        },
+        "automatosx.defaultProvider": {
+          "type": "string",
+          "enum": ["claude", "gemini", "openai", "ax-cli"],
+          "default": "ax-cli",
+          "description": "Default AI provider"
+        },
+        "automatosx.timeout": {
+          "type": "number",
+          "default": 300000,
+          "description": "Execution timeout in milliseconds"
+        },
+        "automatosx.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show AutomatosX status in the status bar"
+        },
+        "automatosx.enableCodeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Code Lens actions on functions and classes"
+        },
+        "automatosx.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable hover information with agent suggestions"
+        },
+        "automatosx.streamOutput": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stream agent output in real-time"
+        },
+        "automatosx.autoSaveToMemory": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save agent interactions to memory"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "automatosx.run",
+        "title": "Run Task",
+        "category": "AutomatosX",
+        "icon": "$(play)"
+      },
+      {
+        "command": "automatosx.runWithAgent",
+        "title": "Run Task with Agent...",
+        "category": "AutomatosX",
+        "icon": "$(run)"
+      },
+      {
+        "command": "automatosx.analyzeSelection",
+        "title": "Analyze Selection",
+        "category": "AutomatosX",
+        "icon": "$(search)"
+      },
+      {
+        "command": "automatosx.explainCode",
+        "title": "Explain Code",
+        "category": "AutomatosX",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "automatosx.generateTests",
+        "title": "Generate Tests",
+        "category": "AutomatosX",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "automatosx.securityReview",
+        "title": "Security Review",
+        "category": "AutomatosX",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "automatosx.optimizeCode",
+        "title": "Optimize Code",
+        "category": "AutomatosX",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "automatosx.refactorCode",
+        "title": "Refactor Code",
+        "category": "AutomatosX",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "automatosx.searchMemory",
+        "title": "Search Memory",
+        "category": "AutomatosX",
+        "icon": "$(search)"
+      },
+      {
+        "command": "automatosx.showStatus",
+        "title": "Show Status",
+        "category": "AutomatosX",
+        "icon": "$(info)"
+      },
+      {
+        "command": "automatosx.listAgents",
+        "title": "List Agents",
+        "category": "AutomatosX",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "automatosx.agentInfo",
+        "title": "Agent Info",
+        "category": "AutomatosX",
+        "icon": "$(info)"
+      },
+      {
+        "command": "automatosx.setup",
+        "title": "Setup AutomatosX",
+        "category": "AutomatosX",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "automatosx.refreshAgents",
+        "title": "Refresh Agents",
+        "category": "AutomatosX",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "automatosx.refreshSessions",
+        "title": "Refresh Sessions",
+        "category": "AutomatosX",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "automatosx.newSession",
+        "title": "New Session",
+        "category": "AutomatosX",
+        "icon": "$(add)"
+      },
+      {
+        "command": "automatosx.clearOutput",
+        "title": "Clear Output",
+        "category": "AutomatosX",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "automatosx.run",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      },
+      {
+        "command": "automatosx.runWithAgent",
+        "key": "ctrl+shift+alt+a",
+        "mac": "cmd+shift+alt+a"
+      },
+      {
+        "command": "automatosx.analyzeSelection",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorHasSelection"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "automatosx.editor",
+          "group": "automatosx"
+        }
+      ],
+      "automatosx.editor": [
+        {
+          "command": "automatosx.analyzeSelection",
+          "when": "editorHasSelection",
+          "group": "1_analyze"
+        },
+        {
+          "command": "automatosx.explainCode",
+          "when": "editorHasSelection",
+          "group": "1_analyze"
+        },
+        {
+          "command": "automatosx.generateTests",
+          "when": "editorHasSelection",
+          "group": "2_generate"
+        },
+        {
+          "command": "automatosx.securityReview",
+          "when": "editorHasSelection",
+          "group": "3_review"
+        },
+        {
+          "command": "automatosx.optimizeCode",
+          "when": "editorHasSelection",
+          "group": "3_review"
+        },
+        {
+          "command": "automatosx.refactorCode",
+          "when": "editorHasSelection",
+          "group": "4_refactor"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "automatosx.refreshAgents",
+          "when": "view == automatosx.agentsView",
+          "group": "navigation"
+        },
+        {
+          "command": "automatosx.refreshSessions",
+          "when": "view == automatosx.sessionsView",
+          "group": "navigation"
+        },
+        {
+          "command": "automatosx.newSession",
+          "when": "view == automatosx.sessionsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "automatosx.runWithAgent",
+          "when": "view == automatosx.agentsView && viewItem == agent",
+          "group": "inline"
+        },
+        {
+          "command": "automatosx.agentInfo",
+          "when": "view == automatosx.agentsView && viewItem == agent"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "automatosx.editor",
+        "label": "AutomatosX"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "automatosx",
+          "title": "AutomatosX",
+          "icon": "images/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "automatosx": [
+        {
+          "id": "automatosx.agentsView",
+          "name": "Agents"
+        },
+        {
+          "id": "automatosx.sessionsView",
+          "name": "Sessions"
+        },
+        {
+          "id": "automatosx.memoryView",
+          "name": "Memory"
+        },
+        {
+          "id": "automatosx.systemView",
+          "name": "System"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "automatosx.agentsView",
+        "contents": "No agents found.\n[Setup AutomatosX](command:automatosx.setup)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ax/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/vscode-extension"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,21 @@
+{
+  "automatosx.defaultAgent": "standard",
+  "automatosx.defaultProvider": "ax-cli",
+  "automatosx.timeout": 300000,
+  "automatosx.showStatusBar": true,
+  "automatosx.enableCodeLens": true,
+  "automatosx.enableHover": true,
+  "automatosx.streamOutput": true,
+  "automatosx.autoSaveToMemory": true,
+
+  "// Claude Code MCP Integration": "Add this to your Claude Code settings",
+  "claude-code.mcpServers": {
+    "automatosx": {
+      "command": "npx",
+      "args": ["ax-mcp"],
+      "env": {
+        "AUTOMATOSX_BASE_PATH": "${workspaceFolder}/.automatosx"
+      }
+    }
+  }
+}

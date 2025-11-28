@@ -186,7 +186,7 @@ describe('Multi-Agent Workflow Integration', () => {
     await sessionManager.initialize();
 
     memoryManager = new MemoryManager({
-      dbPath: ':memory:',
+      databasePath: ':memory:',
       maxEntries: 1000,
     });
     await memoryManager.initialize();

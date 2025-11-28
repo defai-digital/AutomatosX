@@ -26,6 +26,7 @@ import * as spinner from '../utils/spinner.js';
 interface SetupArgs {
   force: boolean;
   json: boolean;
+  vscode: boolean;
 }
 
 // =============================================================================
@@ -200,10 +201,15 @@ export const setupCommand: CommandModule<object, SetupArgs> = {
         describe: 'Output as JSON',
         type: 'boolean',
         default: false,
+      })
+      .option('vscode', {
+        describe: 'Generate VS Code configuration files',
+        type: 'boolean',
+        default: false,
       }),
 
   handler: async (argv: ArgumentsCamelCase<SetupArgs>) => {
-    const { force, json } = argv;
+    const { force, json, vscode: generateVscode } = argv;
     const basePath = join(process.cwd(), AUTOMATOSX_DIR);
 
     const result = {
@@ -282,11 +288,6 @@ export const setupCommand: CommandModule<object, SetupArgs> = {
 
       // Create .gitignore entries suggestion
       const gitignorePath = join(process.cwd(), '.gitignore');
-      const gitignoreEntries = `
-# AutomatosX
-.automatosx/memory/
-.automatosx/sessions/
-`;
 
       try {
         const existingGitignore = await readFile(gitignorePath, 'utf-8');
@@ -295,6 +296,137 @@ export const setupCommand: CommandModule<object, SetupArgs> = {
         }
       } catch {
         // .gitignore doesn't exist, that's fine
+      }
+
+      // Generate VS Code configuration files if requested
+      if (generateVscode) {
+        if (!json) {
+          spinner.update('Creating VS Code configuration...');
+        }
+
+        const vscodePath = join(process.cwd(), '.vscode');
+        await mkdir(vscodePath, { recursive: true });
+
+        // Create tasks.json
+        const tasksConfig = {
+          version: '2.0.0',
+          tasks: [
+            {
+              label: 'AX: Run Task',
+              type: 'shell',
+              command: 'ax run "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'dedicated', clear: true },
+            },
+            {
+              label: 'AX: Run with Backend Agent',
+              type: 'shell',
+              command: 'ax run backend "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'dedicated' },
+            },
+            {
+              label: 'AX: Run with Frontend Agent',
+              type: 'shell',
+              command: 'ax run frontend "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'dedicated' },
+            },
+            {
+              label: 'AX: Run with Security Agent',
+              type: 'shell',
+              command: 'ax run security "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'dedicated' },
+            },
+            {
+              label: 'AX: Search Memory',
+              type: 'shell',
+              command: 'ax memory search "${input:searchQuery}"',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'shared' },
+            },
+            {
+              label: 'AX: Show Status',
+              type: 'shell',
+              command: 'ax status',
+              problemMatcher: [],
+              presentation: { reveal: 'always', panel: 'shared' },
+            },
+          ],
+          inputs: [
+            {
+              id: 'taskDescription',
+              description: 'What do you want the agent to do?',
+              type: 'promptString',
+              default: '',
+            },
+            {
+              id: 'searchQuery',
+              description: 'Search query for memory',
+              type: 'promptString',
+              default: '',
+            },
+          ],
+        };
+
+        const tasksPath = join(vscodePath, 'tasks.json');
+        const tasksExists = await directoryExists(tasksPath);
+        if (!tasksExists || force) {
+          await writeFile(tasksPath, JSON.stringify(tasksConfig, null, 2) + '\n');
+          result.messages.push('Created .vscode/tasks.json');
+        }
+
+        // Create settings.json with MCP server config
+        const settingsPath = join(vscodePath, 'settings.json');
+        let existingSettings: Record<string, unknown> = {};
+        try {
+          const existing = await readFile(settingsPath, 'utf-8');
+          existingSettings = JSON.parse(existing) as Record<string, unknown>;
+        } catch {
+          // Settings don't exist
+        }
+
+        const mcpSettings = {
+          ...existingSettings,
+          'automatosx.defaultAgent': 'standard',
+          'automatosx.defaultProvider': 'ax-cli',
+          'automatosx.showStatusBar': true,
+          'automatosx.enableCodeLens': true,
+          'automatosx.enableHover': true,
+        };
+
+        await writeFile(settingsPath, JSON.stringify(mcpSettings, null, 2) + '\n');
+        result.messages.push('Updated .vscode/settings.json');
+
+        // Create code snippets
+        const snippetsPath = join(vscodePath, 'automatosx.code-snippets');
+        const snippetsExists = await directoryExists(snippetsPath);
+        if (!snippetsExists || force) {
+          const snippets = {
+            'AX Agent YAML': {
+              scope: 'yaml',
+              prefix: 'ax-agent',
+              body: [
+                'name: ${1:agent-id}',
+                'displayName: "${2:Agent Name}"',
+                'role: "${3:Role description}"',
+                'team: ${4|engineering,research,creative,default|}',
+                'enabled: true',
+                '',
+                'abilities:',
+                '  - ${5:ability}',
+                '',
+                'systemPrompt: |',
+                '  You are ${2:Agent Name}.',
+                '  ${6:Your instructions here}',
+              ],
+              description: 'Create an AutomatosX agent profile',
+            },
+          };
+          await writeFile(snippetsPath, JSON.stringify(snippets, null, 2) + '\n');
+          result.messages.push('Created .vscode/automatosx.code-snippets');
+        }
       }
 
       result.success = true;
@@ -324,6 +456,12 @@ export const setupCommand: CommandModule<object, SetupArgs> = {
         output.listItem('ax run backend "your task"  - Run a task');
         output.listItem('ax status         - Check system status');
         output.listItem('ax doctor         - Run diagnostics');
+
+        if (!generateVscode) {
+          output.newline();
+          output.info('VS Code Integration:');
+          output.listItem('ax setup --vscode  - Generate VS Code tasks and snippets');
+        }
 
         if (result.agentsCopied < 5) {
           output.newline();

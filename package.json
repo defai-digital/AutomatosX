@@ -19,6 +19,7 @@
     "build:algorithms": "pnpm --filter @ax/algorithms build",
     "build:cli": "pnpm --filter @ax/cli build",
     "build:mcp": "pnpm --filter @ax/mcp build",
+    "build:vscode": "pnpm --filter automatosx build",
     "dev": "pnpm -r --parallel dev",
     "test": "vitest run",
     "test:watch": "vitest",

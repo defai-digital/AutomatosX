@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "AX: Run Task",
+      "type": "shell",
+      "command": "ax run \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "none"
+    },
+    {
+      "label": "AX: Run with Backend Agent",
+      "type": "shell",
+      "command": "ax run backend \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "AX: Run with Frontend Agent",
+      "type": "shell",
+      "command": "ax run frontend \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "AX: Run with Security Agent",
+      "type": "shell",
+      "command": "ax run security \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "AX: Run with Quality Agent",
+      "type": "shell",
+      "command": "ax run quality \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "AX: Run with DevOps Agent",
+      "type": "shell",
+      "command": "ax run devops \"${input:taskDescription}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "AX: Search Memory",
+      "type": "shell",
+      "command": "ax memory search \"${input:searchQuery}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "AX: List Agents",
+      "type": "shell",
+      "command": "ax agent list",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "AX: Show Status",
+      "type": "shell",
+      "command": "ax status",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "AX: Run Doctor",
+      "type": "shell",
+      "command": "ax doctor",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "AX: Setup",
+      "type": "shell",
+      "command": "ax setup",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "taskDescription",
+      "description": "What do you want the agent to do?",
+      "type": "promptString",
+      "default": ""
+    },
+    {
+      "id": "searchQuery",
+      "description": "Search query for memory",
+      "type": "promptString",
+      "default": ""
+    },
+    {
+      "id": "agentName",
+      "description": "Select an agent",
+      "type": "pickString",
+      "options": [
+        "backend",
+        "frontend",
+        "devops",
+        "security",
+        "quality",
+        "data",
+        "researcher",
+        "standard"
+      ],
+      "default": "standard"
+    }
+  ]
+}

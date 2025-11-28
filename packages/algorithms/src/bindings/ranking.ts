@@ -44,8 +44,8 @@ const FREQUENCY_SCORE_MAX = 1;
 /** Default limit for top ranked results */
 const DEFAULT_RANKING_LIMIT = 10;
 
-/** Default max FTS score for normalization baseline */
-const DEFAULT_MAX_FTS_SCORE = -1;
+/** Default max FTS score for normalization baseline (typical FTS5 BM25 range is -15 to 0) */
+const DEFAULT_MAX_FTS_SCORE = -10;
 
 // =============================================================================
 // Types

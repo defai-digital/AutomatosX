@@ -124,7 +124,7 @@ export function findCriticalPath(nodes: DagNode[]): string[] {
       let hasPredecessor = false;
       node.deps.forEach((dep) => {
         const depDuration = longestPath.get(dep) ?? 0;
-        // Use >= to ensure first predecessor is set on ties (consistent behavior)
+        // Use > (not >=) to keep first predecessor on ties (consistent, stable behavior)
         if (!hasPredecessor || depDuration > maxPredDuration) {
           maxPredDuration = depDuration;
           pathPredecessor.set(nodeId, dep);

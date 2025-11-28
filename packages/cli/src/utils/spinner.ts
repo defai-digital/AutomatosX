@@ -121,8 +121,21 @@ export async function withSpinner<T>(
  * Display a progress indicator
  */
 export function progress(current: number, total: number, message?: string): void {
-  const percent = Math.round((current / total) * 100);
-  const bar = '█'.repeat(Math.floor(percent / 5)) + '░'.repeat(20 - Math.floor(percent / 5));
+  // Prevent division by zero
+  if (total <= 0) {
+    if (activeSpinner) {
+      activeSpinner.text = `${message ?? 'Progress'} ${chalk.cyan('░'.repeat(20))} 0%`;
+    }
+    return;
+  }
+
+  // Clamp percent to 0-100 range to prevent bar overflow
+  const percentRaw = (current / total) * 100;
+  const percent = Math.max(0, Math.min(100, Math.round(percentRaw)));
+
+  const filledCount = Math.floor(percent / 5);
+  const emptyCount = Math.max(0, 20 - filledCount);
+  const bar = '█'.repeat(filledCount) + '░'.repeat(emptyCount);
 
   if (activeSpinner) {
     activeSpinner.text = `${message ?? 'Progress'} ${chalk.cyan(bar)} ${percent}%`;

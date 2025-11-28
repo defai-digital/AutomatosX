@@ -551,10 +551,13 @@ export class SessionManager {
       if (parsed.completedAt) {
         parsed.completedAt = new Date(parsed.completedAt);
       }
-      for (const task of parsed.tasks) {
-        if (task.createdAt) task.createdAt = new Date(task.createdAt);
-        if (task.startedAt) task.startedAt = new Date(task.startedAt);
-        if (task.completedAt) task.completedAt = new Date(task.completedAt);
+      // Safely iterate tasks array (defend against corrupted JSON)
+      if (Array.isArray(parsed.tasks)) {
+        for (const task of parsed.tasks) {
+          if (task.createdAt) task.createdAt = new Date(task.createdAt);
+          if (task.startedAt) task.startedAt = new Date(task.startedAt);
+          if (task.completedAt) task.completedAt = new Date(task.completedAt);
+        }
       }
 
       return SessionSchema.parse(parsed);

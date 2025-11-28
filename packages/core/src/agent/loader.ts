@@ -98,6 +98,13 @@ export class AgentLoader {
         AGENT_FILE_EXTENSIONS.includes(extname(f).toLowerCase())
       );
 
+      if (agentFiles.length === 0) {
+        console.warn(
+          `[ax/loader] No agent files found in ${this.agentsPath}. ` +
+          `Supported extensions: ${AGENT_FILE_EXTENSIONS.join(', ')}`
+        );
+      }
+
       for (const file of agentFiles) {
         await this.loadAgentFile(file);
       }
@@ -105,7 +112,7 @@ export class AgentLoader {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
       }
-      // Agents directory doesn't exist - that's ok
+      // Agents directory doesn't exist - that's ok, will use defaults
     }
 
     return {

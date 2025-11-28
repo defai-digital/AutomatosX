@@ -23,7 +23,15 @@ import {
  * Format bytes to human-readable string
  */
 export function formatBytes(bytes: number): string {
-  if (bytes < BYTES_PER_KB) return `${bytes} B`;
+  // Handle edge cases: NaN, Infinity, negative
+  if (!Number.isFinite(bytes) || Number.isNaN(bytes)) {
+    return '0 B';
+  }
+  if (bytes < 0) {
+    return '0 B';
+  }
+
+  if (bytes < BYTES_PER_KB) return `${Math.round(bytes)} B`;
   if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} KB`;
   if (bytes < BYTES_PER_GB) return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
   return `${(bytes / BYTES_PER_GB).toFixed(2)} GB`;
@@ -33,7 +41,12 @@ export function formatBytes(bytes: number): string {
  * Format duration in milliseconds to human-readable string
  */
 export function formatDuration(ms: number): string {
-  if (ms < MS_PER_SECOND) return `${ms}ms`;
+  // Handle edge cases: NaN, Infinity, negative
+  if (!Number.isFinite(ms) || Number.isNaN(ms) || ms < 0) {
+    return '0ms';
+  }
+
+  if (ms < MS_PER_SECOND) return `${Math.round(ms)}ms`;
   if (ms < MS_PER_MINUTE) return `${(ms / MS_PER_SECOND).toFixed(1)}s`;
   if (ms < MS_PER_HOUR) return `${Math.floor(ms / MS_PER_MINUTE)}m`;
   return `${Math.floor(ms / MS_PER_HOUR)}h`;

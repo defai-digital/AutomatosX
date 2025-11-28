@@ -1,8 +1,30 @@
 
-# AutomatosX
-.automatosx/memory/
-.automatosx/logs/
-automatosx/tmp/  # v5.2: Temporary files
-ax.config.json  # v9.2.0: Optional - remove to track config
-automatosx.config.json  # DEPRECATED: old config name (backward compat)
+# AutomatosX - Protected folders (user data, not part of repo)
+.automatosx/          # User's local AutomatosX data (agents, memory, sessions)
+automatosx/           # Project workspace (PRD, tmp files)
+
+# Legacy patterns (kept for backward compatibility)
+ax.config.json        # v9.2.0: Optional - remove to track config
+automatosx.config.json  # DEPRECATED: old config name
+
+# Dependencies
 node_modules
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

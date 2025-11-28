@@ -140,7 +140,10 @@ export class AgentExecutor {
       // Fall back to default agent if available
       const defaultAgent = this.agentRegistry.get(DEFAULT_AGENT_ID);
       if (!defaultAgent) {
-        throw new Error(`Agent not found: ${agentId}`);
+        throw new Error(
+          `Agent "${agentId}" not found and fallback agent "${DEFAULT_AGENT_ID}" is also unavailable. ` +
+          `Available agents: ${this.agentRegistry.getAll().map(a => a.name).join(', ') || 'none'}`
+        );
       }
       console.warn(`[ax/executor] Agent "${agentId}" not found, using "${DEFAULT_AGENT_ID}"`);
       return this.executeWithAgent(defaultAgent, task, session, options);

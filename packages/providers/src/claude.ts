@@ -63,8 +63,9 @@ export class ClaudeProvider extends BaseProvider {
    * Uses Promise lock to prevent race conditions with concurrent calls
    */
   override async initialize(): Promise<void> {
+    // Already initialized - return immediately
     if (this.client) {
-      return; // Already initialized
+      return;
     }
 
     // Reuse existing initialization promise if in progress
@@ -72,11 +73,16 @@ export class ClaudeProvider extends BaseProvider {
       return this.initPromise;
     }
 
+    // Create and store the initialization promise
+    // Note: We don't clear initPromise on success to prevent re-initialization
+    // It's only cleared on failure so retry is possible
     this.initPromise = this.doInitialize();
     try {
       await this.initPromise;
-    } finally {
+    } catch (error) {
+      // Clear promise on failure to allow retry
       this.initPromise = null;
+      throw error;
     }
   }
 

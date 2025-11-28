@@ -117,25 +117,32 @@ const statusCommand: CommandModule<object, ProviderStatusArgs> = {
       }
 
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const healthStatusMap = await ctx.providerRouter.checkAllHealth();
+
+      // Convert Map to object for JSON serialization and easier access
+      const healthStatus: Record<string, boolean> = {};
+      for (const [provider, healthy] of healthStatusMap) {
+        healthStatus[provider] = healthy;
+      }
 
       if (json) {
         output.json(healthStatus);
       } else {
-        const healthyCount = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
+        const healthyCount = Object.values(healthStatus).filter((h) => h === true).length;
         const totalCount = Object.keys(healthStatus).length;
 
         spinner.succeed(`${healthyCount}/${totalCount} providers healthy`);
         output.newline();
 
-        const rows = Object.entries(healthStatus).map(([provider, status]) => {
-          const s = status as { healthy: boolean; latency?: number; lastCheck?: string; error?: string };
+        const rows = Object.entries(healthStatus).map(([provider, healthy]) => {
+          const providerInstance = ctx.providerRouter.getProvider(provider as any);
+          const health = providerInstance?.getHealth();
           return [
             output.providerBadge(provider),
-            output.statusBadge(s.healthy ? 'healthy' : 'unhealthy'),
-            s.latency ? `${s.latency}ms` : '-',
-            s.lastCheck ? output.formatRelativeTime(new Date(s.lastCheck)) : '-',
-            s.error ?? '-',
+            output.statusBadge(healthy ? 'healthy' : 'unhealthy'),
+            health?.latencyMs ? `${health.latencyMs}ms` : '-',
+            health?.lastCheck ? output.formatRelativeTime(new Date(health.lastCheck)) : '-',
+            health?.errorMessage ?? '-',
           ];
         });
 

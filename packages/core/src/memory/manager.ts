@@ -731,7 +731,12 @@ export class MemoryManager {
     let metadata: MemoryMetadata;
     try {
       metadata = JSON.parse(row.metadata) as MemoryMetadata;
-    } catch {
+    } catch (error) {
+      // Log warning for corrupted metadata to aid debugging
+      console.warn(
+        `[ax/memory] Corrupted metadata for entry ${row.id}, using defaults: ` +
+        `${error instanceof Error ? error.message : 'Parse error'}`
+      );
       // Fallback for corrupted metadata - use complete valid defaults
       metadata = {
         type: DEFAULT_METADATA_TYPE,

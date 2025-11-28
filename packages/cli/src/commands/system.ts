@@ -62,9 +62,15 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
       }
 
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const healthStatusMap = await ctx.providerRouter.checkAllHealth();
       const memoryStats = ctx.memoryManager.getStats();
       const agentCount = ctx.agentRegistry.getIds().length;
+
+      // Convert Map to object for JSON serialization and easier access
+      const healthStatus: Record<string, boolean> = {};
+      for (const [provider, healthy] of healthStatusMap) {
+        healthStatus[provider] = healthy;
+      }
 
       const status = {
         version: '11.0.0-alpha.0',
@@ -84,7 +90,7 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
       if (json) {
         output.json(status);
       } else {
-        const healthyProviders = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
+        const healthyProviders = Object.values(healthStatus).filter((h) => h === true).length;
         const totalProviders = Object.keys(healthStatus).length;
 
         spinner.succeed('System Status');
@@ -98,10 +104,9 @@ export const statusCommand: CommandModule<object, StatusArgs> = {
         output.newline();
         output.section('Providers');
         output.keyValue('Status', `${healthyProviders}/${totalProviders} healthy`);
-        for (const [provider, health] of Object.entries(healthStatus)) {
-          const h = health as { healthy: boolean };
+        for (const [provider, healthy] of Object.entries(healthStatus)) {
           output.listItem(
-            `${output.providerBadge(provider)}: ${output.statusBadge(h.healthy ? 'healthy' : 'unhealthy')}`
+            `${output.providerBadge(provider)}: ${output.statusBadge(healthy ? 'healthy' : 'unhealthy')}`
           );
         }
 
@@ -334,8 +339,11 @@ export const doctorCommand: CommandModule<object, DoctorArgs> = {
       // Check 5: Provider connectivity
       try {
         const ctx = await getContext();
-        const healthStatus = await ctx.providerRouter.checkAllHealth();
-        const healthyCount = Object.values(healthStatus).filter((h: { healthy: boolean }) => h.healthy).length;
+        const healthStatusMap = await ctx.providerRouter.checkAllHealth();
+        let healthyCount = 0;
+        for (const [, healthy] of healthStatusMap) {
+          if (healthy) healthyCount++;
+        }
 
         if (healthyCount > 0) {
           results.push({

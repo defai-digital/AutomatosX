@@ -88,6 +88,7 @@ const createMockAgentRegistry = () => ({
     return undefined;
   }),
   findForTask: vi.fn().mockReturnValue([mockAgent]),
+  getAll: vi.fn().mockReturnValue([mockAgent, mockFrontendAgent]),
 });
 
 const createMockMemoryManager = () => ({
@@ -150,7 +151,7 @@ describe('AgentExecutor', () => {
     it('should throw if agent not found and no default', async () => {
       mockAgentRegistry.get.mockReturnValue(undefined);
 
-      await expect(executor.execute('non-existent', 'Test task')).rejects.toThrow('Agent not found');
+      await expect(executor.execute('non-existent', 'Test task')).rejects.toThrow(/Agent.*not found/);
     });
 
     it('should add task to session', async () => {

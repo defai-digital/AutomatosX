@@ -135,7 +135,7 @@ export class AgentExecutor {
     const session = options.sessionId
       ? await this.sessionManager.getOrThrow(options.sessionId)
       : await this.sessionManager.create({
-          name: `Task: ${task.substring(0, 50)}...`,
+          name: `Task: ${task.slice(0, 50)}${task.length > 50 ? '...' : ''}`,
           agents: [agentId],
         });
 
@@ -387,9 +387,21 @@ export class AgentExecutor {
       parts.push(`[Abilities]\n${agent.abilities.join(', ')}\n`);
     }
 
-    // Add additional context
+    // Add additional context (with circular reference protection)
     if (additionalContext && Object.keys(additionalContext).length > 0) {
-      parts.push(`[Additional Context]\n${JSON.stringify(additionalContext, null, 2)}\n`);
+      try {
+        const seen = new WeakSet();
+        const json = JSON.stringify(additionalContext, (key, value) => {
+          if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) return '[Circular]';
+            seen.add(value);
+          }
+          return value;
+        }, 2);
+        parts.push(`[Additional Context]\n${json}\n`);
+      } catch (error) {
+        parts.push(`[Additional Context]\n[Failed to serialize: ${error instanceof Error ? error.message : 'Unknown error'}]\n`);
+      }
     }
 
     // Add the task

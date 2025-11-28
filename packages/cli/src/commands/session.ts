@@ -199,12 +199,15 @@ const infoCommand: CommandModule<object, SessionInfoArgs> = {
         if (session.tasks.length > 0) {
           output.newline();
           output.section('Tasks');
-          for (const task of session.tasks.slice(0, 10)) {
+          const maxTasksToShow = 10;
+          for (const task of session.tasks.slice(0, maxTasksToShow)) {
             const status = output.statusBadge(task.status);
-            output.listItem(`[${status}] ${task.agentId}: ${task.description.slice(0, 50)}...`);
+            const desc = task.description.slice(0, 50);
+            const truncated = task.description.length > 50 ? '...' : '';
+            output.listItem(`[${status}] ${task.agentId}: ${desc}${truncated}`);
           }
-          if (session.tasks.length > 10) {
-            output.listItem(`... and ${session.tasks.length - 10} more`);
+          if (session.tasks.length > maxTasksToShow) {
+            output.listItem(`... and ${session.tasks.length - maxTasksToShow} more`);
           }
         }
 

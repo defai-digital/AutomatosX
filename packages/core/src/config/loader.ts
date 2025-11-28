@@ -133,15 +133,23 @@ function getEnvOverrides(prefix: string = 'AX'): Partial<Config> {
   // Timeout override (validated: 1ms to 1 hour)
   const timeout = process.env[`${prefix}_TIMEOUT`];
   if (timeout) {
-    const timeoutMs = parseInt(timeout, 10);
-    // Validate: must be positive number between 1ms and 1 hour
-    if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
-      overrides['execution'] = { timeout: timeoutMs };
-    } else {
+    // Validate format: must be purely numeric (no trailing characters like "123abc")
+    if (!/^\d+$/.test(timeout.trim())) {
       console.warn(
-        `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". ` +
-          `Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        `[ax/config] Invalid ${prefix}_TIMEOUT format "${timeout}". ` +
+          `Expected numeric value only. Using default.`
       );
+    } else {
+      const timeoutMs = parseInt(timeout, 10);
+      // Validate: must be positive number between 1ms and 1 hour
+      if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
+        overrides['execution'] = { timeout: timeoutMs };
+      } else {
+        console.warn(
+          `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". ` +
+            `Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        );
+      }
     }
   }
 

@@ -468,17 +468,24 @@ const clearCommand: CommandModule<object, MemoryClearArgsWithAll> = {
       if (!force) {
         output.warning(`This will permanently delete ${descriptions.join(' and ')}.`);
         output.info('Use --force to skip this confirmation.');
-        process.exit(0);
+        process.exit(1); // Exit with error code since operation was not performed
       }
 
       spinner.start(`Clearing ${descriptions.join(' and ')}...`);
 
       const ctx = await getContext();
 
-      // Parse before date if provided
-      const beforeDate = before ? new Date(before) : undefined;
-      if (beforeDate && isNaN(beforeDate.getTime())) {
-        throw new Error(`Invalid date format: ${before}. Use YYYY-MM-DD.`);
+      // Parse before date if provided (strict YYYY-MM-DD format validation)
+      let beforeDate: Date | undefined;
+      if (before) {
+        // Validate strict YYYY-MM-DD format to prevent partial dates like "2024" or "2024-01"
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(before)) {
+          throw new Error(`Invalid date format: "${before}". Use YYYY-MM-DD (e.g., 2024-01-15).`);
+        }
+        beforeDate = new Date(before);
+        if (isNaN(beforeDate.getTime())) {
+          throw new Error(`Invalid date: "${before}". Use a valid YYYY-MM-DD date.`);
+        }
       }
 
       // Use the new clear method - build options object conditionally

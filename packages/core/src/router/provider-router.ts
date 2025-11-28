@@ -323,7 +323,8 @@ export class ProviderRouter {
       }
     });
 
-    await Promise.all(checks);
+    // Use allSettled to ensure all checks complete even if some throw unexpectedly
+    await Promise.allSettled(checks);
     return results;
   }
 
@@ -621,15 +622,14 @@ export class ProviderRouter {
    * Start periodic health checks
    */
   private startHealthChecks(intervalMs: number): void {
-    this.healthCheckIntervalId = setInterval(async () => {
-      try {
-        await this.checkAllHealth();
-      } catch (error) {
+    // Use non-async callback with explicit .catch() to handle all promise rejections
+    this.healthCheckIntervalId = setInterval(() => {
+      this.checkAllHealth().catch((error) => {
         console.warn(
           `[ax/router] Health check failed: ` +
           `${error instanceof Error ? error.message : 'Unknown error'}`
         );
-      }
+      });
     }, intervalMs);
 
     // Unref the interval so it doesn't prevent process exit

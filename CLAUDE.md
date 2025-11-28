@@ -239,21 +239,6 @@ See real-time output from AI providers:
 ax run backend "Explain this codebase" --streaming
 ```
 
-### Spec-Driven Development (v5.8.0+)
-
-For complex projects, use spec-driven workflows:
-
-```bash
-# Create spec from natural language
-ax spec create "Build authentication with database, API, JWT, and tests"
-
-# Or manually define in .specify/tasks.md
-ax spec run --parallel
-
-# Check progress
-ax spec status
-```
-
 ## Troubleshooting
 
 ### Common Issues

@@ -17,6 +17,7 @@ multi-provider support.
 - [Claude](providers/claude.md) - Claude Code integration
 - [Codex](providers/codex.md) - OpenAI Codex CLI integration
 - [Gemini](providers/gemini.md) - Google Gemini CLI integration
+- [ax-cli](providers/ax-cli.md) - SDK-based integration for nested execution
 
 ### Architecture
 

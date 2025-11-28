@@ -366,7 +366,7 @@ const importCommand: CommandModule<object, MemoryImportArgs> = {
       spinner.start(`Importing from ${file}...`);
 
       const data = await readFile(file, 'utf-8');
-      const memories = JSON.parse(data) as Array<{
+      let memories: Array<{
         content: string;
         metadata: {
           type: 'task' | 'code' | 'conversation' | 'document' | 'decision';
@@ -377,6 +377,12 @@ const importCommand: CommandModule<object, MemoryImportArgs> = {
           importance?: number;
         };
       }>;
+      try {
+        memories = JSON.parse(data);
+      } catch (parseError) {
+        const parseMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+        throw new Error(`Invalid JSON in file "${file}": ${parseMessage}`);
+      }
 
       if (!Array.isArray(memories)) {
         throw new Error('Invalid format: expected an array of memories');

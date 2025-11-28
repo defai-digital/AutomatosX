@@ -607,13 +607,16 @@ export class ProviderRouter {
   }
 
   /**
-   * Update latency metrics for provider
+   * Update latency metrics for provider using cumulative moving average
    */
   private updateLatencyMetrics(type: ProviderType, latency: number): void {
     const currentAvg = this.metrics.avgLatencyByProvider.get(type) ?? 0;
+    // requestCount was already incremented in updateRequestCount, so use it directly
+    // For correct cumulative moving average: newAvg = oldAvg + (newValue - oldAvg) / n
+    // where n is the count AFTER adding the new value
     const requestCount = this.metrics.requestsByProvider.get(type) ?? 1;
 
-    // Running average calculation
+    // Running average calculation (requestCount already includes the current request)
     const newAvg = currentAvg + (latency - currentAvg) / requestCount;
     this.metrics.avgLatencyByProvider.set(type, newAvg);
   }

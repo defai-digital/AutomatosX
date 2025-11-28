@@ -252,7 +252,9 @@ export class SessionManager {
 
     if (state === 'completed' || state === 'failed' || state === 'cancelled') {
       session.completedAt = new Date();
-      session.duration = session.completedAt.getTime() - session.createdAt.getTime();
+      const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+      // Ensure duration is never negative (can happen with system clock adjustments)
+      session.duration = Math.max(0, rawDuration);
     }
 
     if (this.autoPersist) {
@@ -311,7 +313,9 @@ export class SessionManager {
     session.state = 'failed';
     session.updatedAt = new Date();
     session.completedAt = new Date();
-    session.duration = session.completedAt.getTime() - session.createdAt.getTime();
+    const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+    // Ensure duration is never negative (can happen with system clock adjustments)
+    session.duration = Math.max(0, rawDuration);
 
     if (error) {
       session.metadata = {
@@ -410,7 +414,9 @@ export class SessionManager {
       task.completedAt = new Date();
       // Use startedAt if available, otherwise fall back to task creation time
       const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
-      task.duration = task.completedAt.getTime() - startTime;
+      const rawDuration = task.completedAt.getTime() - startTime;
+      // Ensure duration is never negative (can happen with system clock adjustments)
+      task.duration = Math.max(0, rawDuration);
     }
 
     session.updatedAt = new Date();
@@ -534,8 +540,8 @@ export class SessionManager {
    * Load session from disk
    */
   private async loadSession(sessionId: string): Promise<Session | null> {
+    const filePath = this.getSessionFilePath(sessionId);
     try {
-      const filePath = this.getSessionFilePath(sessionId);
       const data = await readFile(filePath, 'utf-8');
       const parsed = JSON.parse(data);
 
@@ -552,7 +558,13 @@ export class SessionManager {
       }
 
       return SessionSchema.parse(parsed);
-    } catch {
+    } catch (error) {
+      // Log corruption/parse errors but not missing file errors
+      if (error instanceof Error && !error.message.includes('ENOENT')) {
+        console.warn(
+          `[ax/session] Failed to load session ${sessionId}: ${error.message}`
+        );
+      }
       return null;
     }
   }

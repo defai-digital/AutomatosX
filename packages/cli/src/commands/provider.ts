@@ -14,6 +14,7 @@
  */
 
 import type { CommandModule, ArgumentsCamelCase } from 'yargs';
+import type { ProviderType } from '@ax/schemas';
 import { getContext, getMinimalContext } from '../utils/context.js';
 import * as output from '../utils/output.js';
 import * as spinner from '../utils/spinner.js';
@@ -135,7 +136,7 @@ const statusCommand: CommandModule<object, ProviderStatusArgs> = {
         output.newline();
 
         const rows = Object.entries(healthStatus).map(([provider, healthy]) => {
-          const providerInstance = ctx.providerRouter.getProvider(provider as any);
+          const providerInstance = ctx.providerRouter.getProvider(provider as ProviderType);
           const health = providerInstance?.getHealth();
           return [
             output.providerBadge(provider),
@@ -189,7 +190,7 @@ const testCommand: CommandModule<object, ProviderTestArgs> = {
       const ctx = await getContext();
 
       const startTime = Date.now();
-      const providerInstance = ctx.providerRouter.getProvider(provider as any);
+      const providerInstance = ctx.providerRouter.getProvider(provider as ProviderType);
       const duration = Date.now() - startTime;
 
       if (!providerInstance) {

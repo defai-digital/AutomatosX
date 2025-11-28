@@ -196,6 +196,8 @@ export class ClaudeProvider extends BaseProvider {
       await this.transport.close();
       this.transport = null;
     }
+    // Clear init promise to allow re-initialization after cleanup
+    this.initPromise = null;
     // Call base cleanup to clear recovery timeout
     await super.cleanup();
   }

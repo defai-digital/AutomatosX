@@ -398,7 +398,11 @@ export function selectAgentWithReason(
   }
 
   // This should never happen if registry is properly initialized
-  throw new Error('No agents available in registry');
+  throw new Error(
+    'No agents available in registry. ' +
+    'Ensure at least one agent is registered before routing tasks. ' +
+    'Check that agent configuration files exist and are valid.'
+  );
 }
 
 /**

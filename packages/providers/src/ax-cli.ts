@@ -157,12 +157,12 @@ export class AxCliProvider extends BaseProvider {
         useMcp: true, // SDK handles MCP internally
       });
 
-      const _duration = Date.now() - start;
+      const duration = Date.now() - start;
 
       if (result.success) {
         return this.createSuccessResponse(
           result.output,
-          _duration,
+          duration,
           result.tokensUsed !== null && result.tokensUsed !== undefined
             ? { total: result.tokensUsed }
             : undefined
@@ -176,7 +176,7 @@ export class AxCliProvider extends BaseProvider {
         );
       }
     } catch (error) {
-      const _duration = Date.now() - start;
+      // Duration intentionally not tracked for error responses as it's not meaningful
       const message = error instanceof Error ? error.message : 'Unknown error';
 
       return this.createErrorResponse(request, ERROR_CODE_SDK_ERROR, message, true);

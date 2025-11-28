@@ -257,14 +257,14 @@ const createCommand: CommandModule<object, SessionCreateArgs> = {
         describe: 'Initial agents',
         type: 'array',
         default: [] as string[],
-        coerce: (arr: (string | number)[]) => arr.map(String),
+        coerce: (arr: (string | number)[]) => arr.map(String).filter(s => s.trim() !== ''),
       })
       .option('tags', {
         alias: 't',
         describe: 'Session tags',
         type: 'array',
         default: [] as string[],
-        coerce: (arr: (string | number)[]) => arr.map(String),
+        coerce: (arr: (string | number)[]) => arr.map(String).filter(s => s.trim() !== ''),
       })
       .option('json', {
         describe: 'Output as JSON',

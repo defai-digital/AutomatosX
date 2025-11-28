@@ -431,7 +431,7 @@ describe('ProviderRouter', () => {
     });
 
     it('should emit onHealthUpdate during health check', async () => {
-      let healthUpdates: Array<{ provider: ProviderType; healthy: boolean }> = [];
+      const healthUpdates: Array<{ provider: ProviderType; healthy: boolean }> = [];
       router.setEvents({
         onHealthUpdate: (provider, healthy) => {
           healthUpdates.push({ provider, healthy });

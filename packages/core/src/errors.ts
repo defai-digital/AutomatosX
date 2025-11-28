@@ -66,7 +66,7 @@ export class AgentNotFoundError extends AutomatosXError {
       similarAgents?: string[];
     }
   ) {
-    let message = `Agent "${agentId}" not found`;
+    const message = `Agent "${agentId}" not found`;
     let suggestion: string | undefined;
 
     if (options?.similarAgents && options.similarAgents.length > 0) {

@@ -137,6 +137,7 @@ export class OpenAIProvider extends BaseProvider {
       let stderr = '';
       let settled = false; // Track if promise is already resolved/rejected
       // Declare timeoutId before settle() to avoid Temporal Dead Zone issue
+      // eslint-disable-next-line prefer-const
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
       // Named handlers for cleanup

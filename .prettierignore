@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# ReScript
+packages/algorithms/lib/
+packages/algorithms/src/*.res
+packages/algorithms/src/*.resi
+
+# Generated
+*.generated.*
+coverage/
+
+# Logs
+*.log
+
+# Lock files
+pnpm-lock.yaml
+
+# IDE
+.idea/
+.vscode/

@@ -151,19 +151,21 @@ export class AxCliProvider extends BaseProvider {
 
       const result = await this.sdk.execute({
         prompt: request.task,
-        ...(request.agent != null && { agent: request.agent }),
+        ...(request.agent !== null && request.agent !== undefined && { agent: request.agent }),
         timeout: request.timeout,
         stream: request.stream,
         useMcp: true, // SDK handles MCP internally
       });
 
-      const duration = Date.now() - start;
+      const _duration = Date.now() - start;
 
       if (result.success) {
         return this.createSuccessResponse(
           result.output,
-          duration,
-          result.tokensUsed != null ? { total: result.tokensUsed } : undefined
+          _duration,
+          result.tokensUsed !== null && result.tokensUsed !== undefined
+            ? { total: result.tokensUsed }
+            : undefined
         );
       } else {
         return this.createErrorResponse(
@@ -174,7 +176,7 @@ export class AxCliProvider extends BaseProvider {
         );
       }
     } catch (error) {
-      const duration = Date.now() - start;
+      const _duration = Date.now() - start;
       const message = error instanceof Error ? error.message : 'Unknown error';
 
       return this.createErrorResponse(request, ERROR_CODE_SDK_ERROR, message, true);

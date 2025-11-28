@@ -23,14 +23,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint packages/*/src --ext .ts,.tsx",
-    "lint:fix": "eslint packages/*/src --ext .ts,.tsx --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "clean:dist": "pnpm -r clean",
     "prepare": "husky || true"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.1",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.16.0",
     "@typescript-eslint/parser": "^8.16.0",
@@ -41,6 +44,7 @@
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "8.48.0",
     "vitest": "^4.0.0"
   },
   "keywords": [

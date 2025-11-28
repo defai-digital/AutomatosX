@@ -170,7 +170,6 @@ export class ProviderRouter {
     const maxRetries = options.maxRetries ?? MAX_ROUTING_RETRIES;
     const enableFallback = options.enableFallback ?? true;
 
-    let lastError: Error | undefined;
     const triedProviders: ProviderType[] = [provider.id];
 
     // First attempt
@@ -206,7 +205,7 @@ export class ProviderRouter {
 
     // All attempts failed
     this.metrics.failedRequests++;
-    lastError = new Error(response.error ?? 'All providers failed');
+    const lastError = new Error(response.error ?? 'All providers failed');
     this.events.onAllProvidersFailed?.(triedProviders, lastError);
 
     return response;

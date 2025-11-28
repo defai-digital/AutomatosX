@@ -1,0 +1,15 @@
+echo "Running pre-commit checks..."
+
+# Run linting
+echo "Checking lint..."
+pnpm lint || exit 1
+
+# Run type checking
+echo "Checking types..."
+pnpm typecheck || exit 1
+
+# Run tests
+echo "Running tests..."
+pnpm test || exit 1
+
+echo "All pre-commit checks passed!"

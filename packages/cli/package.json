@@ -31,10 +31,10 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@ax/core": "^11.0.0-alpha.0",
-    "@ax/schemas": "^11.0.0-alpha.0",
-    "@ax/providers": "^11.0.0-alpha.0",
-    "@ax/algorithms": "^11.0.0-alpha.0",
+    "@ax/core": "workspace:*",
+    "@ax/schemas": "workspace:*",
+    "@ax/providers": "workspace:*",
+    "@ax/algorithms": "workspace:*",
     "yargs": "^17.7.2",
     "chalk": "^5.3.0",
     "ora": "^8.1.1",

@@ -47,9 +47,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ax/schemas": "^11.0.0-alpha.0",
-    "@ax/algorithms": "^11.0.0-alpha.0",
-    "@ax/providers": "^11.0.0-alpha.0",
+    "@ax/schemas": "workspace:*",
+    "@ax/algorithms": "workspace:*",
+    "@ax/providers": "workspace:*",
     "better-sqlite3": "^11.6.0",
     "yaml": "^2.6.1"
   },

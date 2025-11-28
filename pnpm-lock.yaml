@@ -51,7 +51,7 @@ importers:
   packages/algorithms:
     dependencies:
       '@ax/schemas':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../schemas
     devDependencies:
       '@rescript/core':
@@ -73,16 +73,16 @@ importers:
   packages/cli:
     dependencies:
       '@ax/algorithms':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../algorithms
       '@ax/core':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../core
       '@ax/providers':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../providers
       '@ax/schemas':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../schemas
       chalk:
         specifier: ^5.3.0
@@ -116,13 +116,13 @@ importers:
   packages/core:
     dependencies:
       '@ax/algorithms':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../algorithms
       '@ax/providers':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../providers
       '@ax/schemas':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../schemas
       better-sqlite3:
         specifier: ^11.6.0
@@ -147,10 +147,10 @@ importers:
   packages/mcp:
     dependencies:
       '@ax/core':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../core
       '@ax/schemas':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../schemas
       '@modelcontextprotocol/sdk':
         specifier: ^1.22.0
@@ -169,7 +169,7 @@ importers:
   packages/providers:
     dependencies:
       '@ax/schemas':
-        specifier: ^11.0.0-alpha.0
+        specifier: workspace:*
         version: link:../schemas
       '@modelcontextprotocol/sdk':
         specifier: ^1.22.0

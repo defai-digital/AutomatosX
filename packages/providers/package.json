@@ -43,7 +43,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ax/schemas": "^11.0.0-alpha.0",
+    "@ax/schemas": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.22.0"
   },
   "devDependencies": {

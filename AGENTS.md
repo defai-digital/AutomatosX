@@ -80,13 +80,13 @@ ax run backend "Draft implementation" --output automatosx/tmp/draft.ts
 | Command | Description |
 |---------|-------------|
 | `ax setup` | Initialize AutomatosX in the current project |
-| `ax list agents` | List available agents |
+| `ax agent list` | List available agents |
+| `ax agent info <name>` | Get detailed info about an agent |
 | `ax run <agent> "task"` | Execute an agent task |
 | `ax memory search "keyword"` | Search conversation history |
+| `ax memory clear --before "YYYY-MM-DD"` | Clear old memory entries |
 | `ax status` | Check provider/system status |
 | `ax config show` | Display current configuration |
-| `ax config get <path>` | Read a specific config value |
-| `ax agent create my-agent --template developer --interactive` | Scaffold a custom agent |
 | `ax --debug run <agent> "task"` | Run with verbose logging |
 
 ## Configuration & Troubleshooting

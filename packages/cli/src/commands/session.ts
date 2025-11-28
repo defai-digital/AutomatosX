@@ -64,9 +64,10 @@ const listCommand: CommandModule<object, SessionListArgs> = {
       })
       .option('limit', {
         alias: 'l',
-        describe: 'Maximum results',
+        describe: 'Maximum results (1-1000)',
         type: 'number',
         default: 20,
+        coerce: (value: number) => Math.max(1, Math.min(1000, value)),
       })
       .option('json', {
         describe: 'Output as JSON',

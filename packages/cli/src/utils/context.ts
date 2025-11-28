@@ -147,7 +147,15 @@ export async function cleanupContext(): Promise<void> {
   if (cachedContext) {
     await cachedContext.providerRouter.cleanup();
     await cachedContext.sessionManager.cleanup();
-    cachedContext.memoryManager.close();
+    // Wrap close in try-catch to prevent cleanup failures from blocking context cleanup
+    try {
+      cachedContext.memoryManager.close();
+    } catch (error) {
+      // Log but don't throw - cleanup should be best-effort
+      console.warn(
+        `[ax/cli] Failed to close memory manager: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
     cachedContext = null;
   }
 }

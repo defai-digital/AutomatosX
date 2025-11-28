@@ -389,16 +389,30 @@ const importCommand: CommandModule<object, MemoryImportArgs> = {
       }
 
       const ctx = await getContext();
-      // Use addBatch to import
-      const inputs = memories.map(m => ({
-        content: m.content,
-        metadata: {
-          ...m.metadata,
-          type: m.metadata.type ?? 'document',
-          source: m.metadata.source ?? 'import',
-          tags: m.metadata.tags ?? [],
-        },
-      }));
+      // Validate and normalize each memory before import
+      const validTypes = ['task', 'code', 'conversation', 'document', 'decision'] as const;
+      const inputs = memories.map(m => {
+        // Handle null/undefined metadata gracefully
+        const metadata = m.metadata ?? {};
+        const rawType = metadata.type;
+        // Ensure type is valid, default to 'document'
+        const type = typeof rawType === 'string' && validTypes.includes(rawType as any)
+          ? rawType as typeof validTypes[number]
+          : 'document';
+
+        return {
+          content: m.content,
+          metadata: {
+            type,
+            source: typeof metadata.source === 'string' ? metadata.source : 'import',
+            tags: Array.isArray(metadata.tags) ? metadata.tags.filter((t): t is string => typeof t === 'string') : [],
+            // Preserve other metadata fields if present
+            ...(metadata.agentId && { agentId: metadata.agentId }),
+            ...(metadata.sessionId && { sessionId: metadata.sessionId }),
+            ...(typeof metadata.importance === 'number' && { importance: metadata.importance }),
+          },
+        };
+      });
       const ids = ctx.memoryManager.addBatch(inputs);
 
       spinner.succeed(`Imported ${ids.length} memories`);

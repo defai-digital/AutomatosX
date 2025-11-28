@@ -196,14 +196,20 @@ export abstract class BaseProvider {
 
       let response: ExecutionResponse;
       if (timeout > 0) {
-        let timeoutId: ReturnType<typeof setTimeout>;
+        // Use a holder object to ensure timeoutId is properly assigned before clearTimeout
+        const timeoutHolder = { id: null as ReturnType<typeof setTimeout> | null };
         const timeoutPromise = new Promise<ExecutionResponse>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error(`Execution timeout after ${timeout}ms`)), timeout);
+          timeoutHolder.id = setTimeout(
+            () => reject(new Error(`Execution timeout after ${timeout}ms`)),
+            timeout
+          );
         });
         try {
           response = await Promise.race([executePromise, timeoutPromise]);
         } finally {
-          clearTimeout(timeoutId!);
+          if (timeoutHolder.id !== null) {
+            clearTimeout(timeoutHolder.id);
+          }
         }
       } else {
         response = await executePromise;

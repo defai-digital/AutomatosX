@@ -675,7 +675,12 @@ export class MemoryManager {
 
   /**
    * Check if cleanup is needed and perform it
-   * Protected against concurrent cleanup operations
+   * Protected against concurrent cleanup operations.
+   *
+   * Note: This is intentionally synchronous because SQLite uses a single-writer model.
+   * The `cleanupInProgress` flag prevents re-entrant calls which could occur if
+   * add() is called during cleanup (e.g., in a batch operation).
+   * Async cleanup would not provide benefits with SQLite's locking model.
    */
   private maybeCleanup(): void {
     // Skip if cleanup is already in progress (prevent race condition)
@@ -683,16 +688,18 @@ export class MemoryManager {
       return;
     }
 
+    // Early return if threshold not reached (avoid locking getCount unnecessarily)
     const count = this.getCount();
     const threshold = Math.floor(this.maxEntries * this.cleanupConfig.triggerThreshold);
+    if (count < threshold) {
+      return;
+    }
 
-    if (count >= threshold) {
-      this.cleanupInProgress = true;
-      try {
-        this.cleanup();
-      } finally {
-        this.cleanupInProgress = false;
-      }
+    this.cleanupInProgress = true;
+    try {
+      this.cleanup();
+    } finally {
+      this.cleanupInProgress = false;
     }
   }
 

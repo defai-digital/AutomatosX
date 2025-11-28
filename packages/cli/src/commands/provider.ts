@@ -191,9 +191,9 @@ const testCommand: CommandModule<object, ProviderTestArgs> = {
 
       const startTime = Date.now();
       const providerInstance = ctx.providerRouter.getProvider(provider as ProviderType);
-      const duration = Date.now() - startTime;
 
       if (!providerInstance) {
+        const duration = Date.now() - startTime;
         if (json) {
           output.json({
             provider,
@@ -208,6 +208,8 @@ const testCommand: CommandModule<object, ProviderTestArgs> = {
       }
 
       const healthResult = await providerInstance.checkHealth();
+      // Calculate duration AFTER health check completes (includes actual check time)
+      const duration = Date.now() - startTime;
 
       if (json) {
         output.json({

@@ -12,6 +12,17 @@ var DEFAULT_PROVIDER_PRIORITY = 99;
 var DEFAULT_ROUTING_COMPLEXITY = 5;
 var DEFAULT_HEALTH_CHECK_INTERVAL_MS = 6e4;
 var MAX_ROUTING_RETRIES = 3;
+function safeInvokeEvent(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/router] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var ProviderRouter = class {
   config;
   providers = /* @__PURE__ */ new Map();
@@ -54,11 +65,10 @@ var ProviderRouter = class {
     if (!provider) {
       throw new Error(`Provider ${result.provider.id} not found in registry`);
     }
-    this.events.onProviderSelected?.(provider.id, result.reason);
+    safeInvokeEvent("onProviderSelected", this.events.onProviderSelected, provider.id, result.reason);
     this.incrementProviderMetrics(provider.id);
     const maxRetries = options.maxRetries ?? MAX_ROUTING_RETRIES;
     const enableFallback = options.enableFallback ?? true;
-    let lastError;
     const triedProviders = [provider.id];
     let response = await this.executeWithProvider(provider, request);
     if (response.success) {
@@ -73,7 +83,7 @@ var ProviderRouter = class {
         if (!altProvider) continue;
         this.metrics.fallbackAttempts++;
         triedProviders.push(altProvider.id);
-        this.events.onFallback?.(provider.id, altProvider.id, response.error ?? "Unknown error");
+        safeInvokeEvent("onFallback", this.events.onFallback, provider.id, altProvider.id, response.error ?? "Unknown error");
         response = await this.executeWithProvider(altProvider, request);
         if (response.success) {
           this.metrics.successfulRequests++;
@@ -83,8 +93,8 @@ var ProviderRouter = class {
       }
     }
     this.metrics.failedRequests++;
-    lastError = new Error(response.error ?? "All providers failed");
-    this.events.onAllProvidersFailed?.(triedProviders, lastError);
+    const lastError = new Error(response.error ?? "All providers failed");
+    safeInvokeEvent("onAllProvidersFailed", this.events.onAllProvidersFailed, triedProviders, lastError);
     return response;
   }
   /**
@@ -170,13 +180,16 @@ var ProviderRouter = class {
       try {
         const healthy = await provider.checkHealth();
         results.set(type, healthy);
-        this.events.onHealthUpdate?.(type, healthy);
-      } catch {
+        safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, healthy);
+      } catch (error) {
+        console.warn(
+          `[ax/router] Health check failed for ${type}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         results.set(type, false);
-        this.events.onHealthUpdate?.(type, false);
+        safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, false);
       }
     });
-    await Promise.all(checks);
+    await Promise.allSettled(checks);
     return results;
   }
   /**
@@ -202,7 +215,7 @@ var ProviderRouter = class {
         const provider = createProvider(type, factoryOptions);
         provider.setEvents({
           onHealthChange: (health) => {
-            this.events.onHealthUpdate?.(type, health.healthy);
+            safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, health.healthy);
           }
         });
         this.providers.set(type, provider);
@@ -218,14 +231,24 @@ var ProviderRouter = class {
   }
   /**
    * Build routing context from request and options
+   *
+   * The context now includes:
+   * - taskType: Inferred from task description
+   * - agentId: For agent-specific provider affinity
+   * - taskDescription: For keyword-based routing analysis
    */
   buildRoutingContext(request, options) {
     const context = {
       taskType: this.inferTaskType(request.task),
       complexity: options.context?.complexity ?? DEFAULT_ROUTING_COMPLEXITY,
       preferMcp: options.context?.preferMcp ?? true,
-      excludeProviders: options.excludeProviders ?? []
+      excludeProviders: options.excludeProviders ?? [],
+      // Pass full task description for keyword analysis
+      taskDescription: request.task
     };
+    if (request.agent) {
+      context.agentId = request.agent;
+    }
     if (options.forceProvider) {
       context.forceProvider = options.forceProvider;
     }
@@ -266,23 +289,88 @@ var ProviderRouter = class {
   }
   /**
    * Infer task type from task description
+   *
+   * Three task classes with provider assignments:
+   *
+   * CLASS 1: PLANNING/STRATEGY → OpenAI primary
+   *   planning, architecture, strategy, research, requirements, roadmap, analysis
+   *
+   * CLASS 2: FRONTEND/CREATIVE → Gemini primary
+   *   frontend, ui, ux, creative, styling, animation, visual, design, branding, marketing
+   *
+   * CLASS 3: CODING/TECHNICAL → Claude primary
+   *   coding, debugging, implementation, refactoring, testing, review, security,
+   *   devops, infrastructure, backend, api, database, documentation
+   *
+   * ax-cli is always the last fallback for all task types.
    */
   inferTaskType(task) {
     const lowerTask = task.toLowerCase();
-    if (lowerTask.includes("code") || lowerTask.includes("implement") || lowerTask.includes("write")) {
-      return "coding";
+    if (/\b(plan|roadmap|requirements|prd|specification|propose)\b/.test(lowerTask)) {
+      return "planning";
     }
-    if (lowerTask.includes("test") || lowerTask.includes("verify") || lowerTask.includes("validate")) {
-      return "testing";
+    if (/\b(architect|system design|design system|scalab|microservice|monolith)\b/.test(lowerTask)) {
+      return "architecture";
     }
-    if (lowerTask.includes("review") || lowerTask.includes("analyze") || lowerTask.includes("audit")) {
-      return "analysis";
+    if (/\b(strategy|strategic|decision|trade-?off|evaluate options)\b/.test(lowerTask)) {
+      return "strategy";
     }
-    if (lowerTask.includes("design") || lowerTask.includes("architect") || lowerTask.includes("plan")) {
+    if (/\b(research|investigate|explore|compare|benchmark|study)\b/.test(lowerTask)) {
+      return "research";
+    }
+    if (/\b(frontend|front-end|react|vue|angular|svelte|nextjs|nuxt)\b/.test(lowerTask)) {
+      return "frontend";
+    }
+    if (/\b(ui|ux|user interface|user experience|component|widget)\b/.test(lowerTask)) {
+      return "ui";
+    }
+    if (/\b(css|tailwind|styled|styling|sass|scss|responsive|layout)\b/.test(lowerTask)) {
+      return "styling";
+    }
+    if (/\b(animation|animate|motion|transition|framer)\b/.test(lowerTask)) {
+      return "animation";
+    }
+    if (/\b(creative|visual|graphic|illustration|artwork)\b/.test(lowerTask)) {
+      return "creative";
+    }
+    if (/\b(design|wireframe|mockup|prototype|figma)\b/.test(lowerTask)) {
       return "design";
     }
-    if (lowerTask.includes("fix") || lowerTask.includes("debug") || lowerTask.includes("resolve")) {
+    if (/\b(brand|branding|marketing|campaign|content|copy)\b/.test(lowerTask)) {
+      return "marketing";
+    }
+    if (/\b(debug|fix|bug|error|issue|problem|troubleshoot|resolve)\b/.test(lowerTask)) {
       return "debugging";
+    }
+    if (/\b(implement|code|write|create function|build|develop)\b/.test(lowerTask)) {
+      return "coding";
+    }
+    if (/\b(refactor|restructure|reorganize|clean up|optimize code)\b/.test(lowerTask)) {
+      return "refactoring";
+    }
+    if (/\b(test|spec|coverage|unit|e2e|integration|verify|validate)\b/.test(lowerTask)) {
+      return "testing";
+    }
+    if (/\b(review|code review|pull request|pr|audit code)\b/.test(lowerTask)) {
+      return "review";
+    }
+    if (/\b(security|vulnerab|threat|owasp|penetration|xss|injection)\b/.test(lowerTask)) {
+      return "security";
+    }
+    if (/\b(devops|deploy|ci|cd|pipeline|docker|kubernetes|terraform)\b/.test(lowerTask)) {
+      return "devops";
+    }
+    if (/\b(backend|back-end|api|endpoint|rest|graphql|server)\b/.test(lowerTask)) {
+      return "backend";
+    }
+    if (/\b(database|db|sql|query|migration|schema|postgres|mysql|mongo)\b/.test(lowerTask)) {
+      return "database";
+    }
+    if (/\b(document|docs|readme|explain|describe|guide|tutorial)\b/.test(lowerTask)) {
+      return "documentation";
+    }
+    if (/\b(data|etl|ml|machine learning|model|training|prediction)\b/.test(lowerTask)) {
+      return "data";
     }
     return "general";
   }
@@ -294,7 +382,7 @@ var ProviderRouter = class {
     this.metrics.requestsByProvider.set(type, current + 1);
   }
   /**
-   * Update latency metrics for provider
+   * Update latency metrics for provider using cumulative moving average
    */
   updateLatencyMetrics(type, latency) {
     const currentAvg = this.metrics.avgLatencyByProvider.get(type) ?? 0;
@@ -306,15 +394,16 @@ var ProviderRouter = class {
    * Start periodic health checks
    */
   startHealthChecks(intervalMs) {
-    this.healthCheckIntervalId = setInterval(async () => {
-      try {
-        await this.checkAllHealth();
-      } catch (error) {
+    this.healthCheckIntervalId = setInterval(() => {
+      this.checkAllHealth().catch((error) => {
         console.warn(
           `[ax/router] Health check failed: ${error instanceof Error ? error.message : "Unknown error"}`
         );
-      }
+      });
     }, intervalMs);
+    if (this.healthCheckIntervalId.unref) {
+      this.healthCheckIntervalId.unref();
+    }
   }
   /**
    * Stop periodic health checks

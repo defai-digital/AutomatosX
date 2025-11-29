@@ -188,18 +188,28 @@ export class ClaudeProvider extends BaseProvider {
    * Cleanup MCP connection
    */
   override async cleanup(): Promise<void> {
-    if (this.client) {
-      await this.client.close();
-      this.client = null;
+    // Use try-finally to ensure transport is always closed even if client.close() throws
+    try {
+      if (this.client) {
+        await this.client.close();
+        this.client = null;
+      }
+    } finally {
+      if (this.transport) {
+        try {
+          await this.transport.close();
+        } catch (error) {
+          console.warn(
+            `[ax/claude] Failed to close transport: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+        this.transport = null;
+      }
+      // Clear init promise to allow re-initialization after cleanup
+      this.initPromise = null;
+      // Call base cleanup to clear recovery timeout and reset health
+      await super.cleanup();
     }
-    if (this.transport) {
-      await this.transport.close();
-      this.transport = null;
-    }
-    // Clear init promise to allow re-initialization after cleanup
-    this.initPromise = null;
-    // Call base cleanup to clear recovery timeout
-    await super.cleanup();
   }
 
   /**

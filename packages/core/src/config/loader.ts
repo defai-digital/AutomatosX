@@ -172,16 +172,32 @@ export async function loadConfig(options: ConfigLoaderOptions = {}): Promise<Loa
   let fileConfig: Partial<Config> = {};
 
   if (fileName) {
-    // Use specific file name
+    // Use specific file name - check if it exists first
     configPath = join(baseDir, fileName);
     try {
-      fileConfig = (await parseConfigFile(configPath)) as Partial<Config>;
+      const stats = await stat(configPath);
+      if (!stats.isFile()) {
+        console.warn(
+          `[ax/config] Specified config path "${configPath}" is not a file. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        fileConfig = (await parseConfigFile(configPath)) as Partial<Config>;
+      }
     } catch (error) {
-      console.warn(
-        `[ax/config] Failed to parse specified config file ${configPath}: ` +
-          `${error instanceof Error ? error.message : 'Unknown error'}. Using defaults.`
-      );
-      configPath = null;
+      const errno = error as NodeJS.ErrnoException;
+      if (errno.code === 'ENOENT') {
+        // File doesn't exist - use defaults (same behavior as search)
+        console.warn(
+          `[ax/config] Specified config file "${configPath}" not found. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        // Parse error or other error - throw (consistent with search behavior)
+        throw new Error(
+          `Failed to parse config file ${configPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
     }
   } else {
     // Search for config file
@@ -243,11 +259,34 @@ export async function loadConfig(options: ConfigLoaderOptions = {}): Promise<Loa
 }
 
 /**
- * Load config synchronously (uses defaults only)
+ * Load config synchronously (uses defaults + environment overrides)
+ * Note: This does not read config files - use loadConfig() for full functionality.
  */
 export function loadConfigSync(): Config {
   const envOverrides = getEnvOverrides('AX');
-  return mergeConfig(envOverrides);
+
+  // Helper to deep merge a config section with defaults < env precedence
+  // Same logic as async loadConfig to ensure consistency
+  const mergeSection = <K extends keyof Config>(key: K): Config[K] => ({
+    ...(DEFAULT_CONFIG[key] as object),
+    ...((envOverrides[key] ?? {}) as object),
+  }) as Config[K];
+
+  // Deep merge all nested config sections to preserve defaults
+  const mergedConfig = {
+    ...DEFAULT_CONFIG,
+    ...envOverrides,
+    providers: mergeSection('providers'),
+    execution: mergeSection('execution'),
+    memory: mergeSection('memory'),
+    session: mergeSection('session'),
+    checkpoint: mergeSection('checkpoint'),
+    router: mergeSection('router'),
+    workspace: mergeSection('workspace'),
+    logging: mergeSection('logging'),
+  };
+
+  return validateConfig(mergedConfig);
 }
 
 /**

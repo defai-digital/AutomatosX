@@ -17,6 +17,25 @@ import { type AgentProfile } from '@ax/schemas';
 import { AgentLoader, type LoadedAgent, type AgentLoadError } from './loader.js';
 import { AgentNotFoundError, findSimilar } from '../errors.js';
 
+/**
+ * Safely invoke an event callback, catching and logging any errors.
+ */
+function safeInvokeEvent<T extends unknown[]>(
+  eventName: string,
+  callback: ((...args: T) => void) | undefined,
+  ...args: T
+): void {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/registry] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -109,7 +128,7 @@ export class AgentRegistry {
       this.registerAgent(loaded.profile);
     }
 
-    this.events.onReloaded?.(Array.from(this.agents.values()));
+    safeInvokeEvent('onReloaded', this.events.onReloaded, Array.from(this.agents.values()));
 
     return {
       loaded: agents.length,
@@ -145,7 +164,7 @@ export class AgentRegistry {
       this.byAbility.get(ability)!.add(id);
     }
 
-    this.events.onAgentRegistered?.(profile);
+    safeInvokeEvent('onAgentRegistered', this.events.onAgentRegistered, profile);
   }
 
   /**
@@ -173,7 +192,7 @@ export class AgentRegistry {
       }
     }
 
-    this.events.onAgentRemoved?.(agentId);
+    safeInvokeEvent('onAgentRemoved', this.events.onAgentRemoved, agentId);
     return true;
   }
 
@@ -283,9 +302,14 @@ export class AgentRegistry {
   getByTeam(team: string): AgentProfile[] {
     const agentIds = this.byTeam.get(team);
     if (!agentIds) return [];
-    return Array.from(agentIds)
-      .map(id => this.agents.get(id)!)
-      .filter(Boolean);
+    const results: AgentProfile[] = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
 
   /**
@@ -301,9 +325,14 @@ export class AgentRegistry {
   getByAbility(ability: string): AgentProfile[] {
     const agentIds = this.byAbility.get(ability);
     if (!agentIds) return [];
-    return Array.from(agentIds)
-      .map(id => this.agents.get(id)!)
-      .filter(Boolean);
+    const results: AgentProfile[] = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
 
   /**

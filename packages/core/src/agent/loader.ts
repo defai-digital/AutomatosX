@@ -18,9 +18,6 @@ const AGENTS_DIR = 'agents';
 /** Supported file extensions */
 const AGENT_FILE_EXTENSIONS = ['.yaml', '.yml'];
 
-/** Agent file pattern */
-const AGENT_FILE_PATTERN = /^[a-z][a-z0-9-]*\.(yaml|yml)$/;
-
 // =============================================================================
 // Imports
 // =============================================================================
@@ -99,9 +96,10 @@ export class AgentLoader {
       );
 
       if (agentFiles.length === 0) {
-        console.warn(
+        // Info level: not an error, just informational
+        console.info(
           `[ax/loader] No agent files found in ${this.agentsPath}. ` +
-          `Supported extensions: ${AGENT_FILE_EXTENSIONS.join(', ')}`
+          `Using defaults. Supported extensions: ${AGENT_FILE_EXTENSIONS.join(', ')}`
         );
       }
 
@@ -109,10 +107,23 @@ export class AgentLoader {
         await this.loadAgentFile(file);
       }
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      const errno = error as NodeJS.ErrnoException;
+      if (errno.code === 'ENOENT') {
+        // Directory doesn't exist - that's ok, will use defaults
+        // Log at debug level so users know what's happening
+        console.debug?.(
+          `[ax/loader] Agents directory not found at ${this.agentsPath}. Using defaults.`
+        );
+      } else if (errno.code === 'EACCES' || errno.code === 'EPERM') {
+        // Permission errors should be reported as warnings
+        console.warn(
+          `[ax/loader] Cannot access agents directory ${this.agentsPath}: ${errno.message}. ` +
+          `Check permissions. Using defaults.`
+        );
+      } else {
+        // Unexpected errors should be rethrown
         throw error;
       }
-      // Agents directory doesn't exist - that's ok, will use defaults
     }
 
     return {
@@ -143,10 +154,21 @@ export class AgentLoader {
    * Load agent from a specific file path
    */
   async loadAgentFromPath(filePath: string): Promise<LoadedAgent | null> {
+    const agentId = basename(filePath, extname(filePath));
+
     try {
       const content = await readFile(filePath, 'utf-8');
       const parsed = parseYaml(content);
       const profile = validateAgentProfile(parsed);
+
+      // Validate that the profile name matches the filename for consistency
+      // This prevents confusion between filename-based lookups and profile.name
+      if (profile.name !== agentId) {
+        console.warn(
+          `[ax/loader] Agent filename "${agentId}" doesn't match profile name "${profile.name}". ` +
+          `Using filename as the canonical ID. Consider renaming the file or updating the profile.`
+        );
+      }
 
       const loaded: LoadedAgent = {
         profile,
@@ -154,10 +176,10 @@ export class AgentLoader {
         loadedAt: new Date(),
       };
 
-      this.loadedAgents.set(profile.name, loaded);
+      // Always use filename (agentId) as the key for consistency with loadAgent()
+      this.loadedAgents.set(agentId, loaded);
       return loaded;
     } catch (error) {
-      const agentId = basename(filePath, extname(filePath));
       this.loadErrors.push({
         agentId,
         filePath,

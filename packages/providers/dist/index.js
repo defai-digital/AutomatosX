@@ -17,6 +17,17 @@ var ERROR_CODE_EXECUTION_ERROR = "EXECUTION_ERROR";
 var TIMEOUT_ERROR_PATTERN = "timeout";
 var MCP_CONTENT_TYPE_TEXT = "text";
 var MCP_OUTPUT_SEPARATOR = "\n";
+function safeInvokeEvent(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/provider] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var BaseProvider = class {
   /** Provider configuration */
   config = null;
@@ -48,6 +59,7 @@ var BaseProvider = class {
       clearTimeout(this.recoveryTimeoutId);
       this.recoveryTimeoutId = null;
     }
+    this.resetHealth();
   }
   // =============================================================================
   // Public Methods
@@ -89,34 +101,39 @@ var BaseProvider = class {
       );
     }
     const start = Date.now();
-    this.events.onExecutionStart?.(request);
+    safeInvokeEvent("onExecutionStart", this.events.onExecutionStart, request);
     try {
       const timeout = request.timeout ?? DEFAULT_EXECUTION_TIMEOUT_MS;
       const executePromise = this.execute(request);
       let response;
       if (timeout > 0) {
-        let timeoutId;
+        const timeoutHolder = { id: null };
         const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error(`Execution timeout after ${timeout}ms`)), timeout);
+          timeoutHolder.id = setTimeout(
+            () => reject(new Error(`Execution timeout after ${timeout}ms`)),
+            timeout
+          );
         });
         try {
           response = await Promise.race([executePromise, timeoutPromise]);
         } finally {
-          clearTimeout(timeoutId);
+          if (timeoutHolder.id !== null) {
+            clearTimeout(timeoutHolder.id);
+          }
         }
       } else {
         response = await executePromise;
       }
       const duration = Date.now() - start;
       this.updateHealth(response.success, duration);
-      this.events.onExecutionEnd?.(response);
+      safeInvokeEvent("onExecutionEnd", this.events.onExecutionEnd, response);
       return response;
     } catch (error) {
       const duration = Date.now() - start;
       this.updateHealth(false, duration);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const isTimeout = errorMessage.includes(TIMEOUT_ERROR_PATTERN);
-      this.events.onError?.(error instanceof Error ? error : new Error(errorMessage));
+      safeInvokeEvent("onError", this.events.onError, error instanceof Error ? error : new Error(errorMessage));
       return this.createErrorResponse(
         request,
         isTimeout ? ERROR_CODE_TIMEOUT : ERROR_CODE_EXECUTION_ERROR,
@@ -167,7 +184,7 @@ var BaseProvider = class {
       }
     }
     if (previousHealth !== this.health.healthy) {
-      this.events.onHealthChange?.(this.getHealth());
+      safeInvokeEvent("onHealthChange", this.events.onHealthChange, this.getHealth());
     }
   }
   /**
@@ -271,8 +288,9 @@ var ClaudeProvider = class extends BaseProvider {
     this.initPromise = this.doInitialize();
     try {
       await this.initPromise;
-    } finally {
+    } catch (error) {
       this.initPromise = null;
+      throw error;
     }
   }
   /**
@@ -357,15 +375,25 @@ var ClaudeProvider = class extends BaseProvider {
    * Cleanup MCP connection
    */
   async cleanup() {
-    if (this.client) {
-      await this.client.close();
-      this.client = null;
+    try {
+      if (this.client) {
+        await this.client.close();
+        this.client = null;
+      }
+    } finally {
+      if (this.transport) {
+        try {
+          await this.transport.close();
+        } catch (error) {
+          console.warn(
+            `[ax/claude] Failed to close transport: ${error instanceof Error ? error.message : "Unknown error"}`
+          );
+        }
+        this.transport = null;
+      }
+      this.initPromise = null;
+      await super.cleanup();
     }
-    if (this.transport) {
-      await this.transport.close();
-      this.transport = null;
-    }
-    await super.cleanup();
   }
   /**
    * Ensure client is connected
@@ -417,8 +445,9 @@ var GeminiProvider = class extends BaseProvider {
     this.initPromise = this.doInitialize();
     try {
       await this.initPromise;
-    } finally {
+    } catch (error) {
       this.initPromise = null;
+      throw error;
     }
   }
   /**
@@ -511,6 +540,7 @@ var GeminiProvider = class extends BaseProvider {
       await this.transport.close();
       this.transport = null;
     }
+    this.initPromise = null;
     await super.cleanup();
   }
   /**
@@ -598,7 +628,7 @@ var AxCliProvider = class extends BaseProvider {
       }
       const result = await this.sdk.execute({
         prompt: request.task,
-        ...request.agent != null && { agent: request.agent },
+        ...request.agent !== null && request.agent !== void 0 && { agent: request.agent },
         timeout: request.timeout,
         stream: request.stream,
         useMcp: true
@@ -609,7 +639,7 @@ var AxCliProvider = class extends BaseProvider {
         return this.createSuccessResponse(
           result.output,
           duration,
-          result.tokensUsed != null ? { total: result.tokensUsed } : void 0
+          result.tokensUsed !== null && result.tokensUsed !== void 0 ? { total: result.tokensUsed } : void 0
         );
       } else {
         return this.createErrorResponse(
@@ -620,7 +650,6 @@ var AxCliProvider = class extends BaseProvider {
         );
       }
     } catch (error) {
-      const duration = Date.now() - start;
       const message = error instanceof Error ? error.message : "Unknown error";
       return this.createErrorResponse(request, ERROR_CODE_SDK_ERROR, message, true);
     }

@@ -1038,7 +1038,10 @@ async function main() {
     process.exit(1);
   }
 }
-main();
+main().catch((error) => {
+  console.error("Fatal error starting MCP server:", error);
+  process.exit(1);
+});
 /**
  * MCP Context
  *

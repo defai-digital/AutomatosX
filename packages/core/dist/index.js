@@ -32,34 +32,39 @@ var MemoryManager = class _MemoryManager {
     this.maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES;
     this.cleanupConfig = MemoryCleanupConfigSchema.parse(options.cleanupConfig ?? {});
     this.db = new Database(options.databasePath);
-    this.initialize();
-    this.stmtInsert = this.db.prepare(`
-      INSERT INTO memories (content, metadata)
-      VALUES (?, ?)
-    `);
-    this.stmtSearch = this.db.prepare(`
-      SELECT m.*, bm25(memories_fts) as rank
-      FROM memories m
-      JOIN memories_fts ON m.id = memories_fts.rowid
-      WHERE memories_fts MATCH ?
-      ORDER BY rank
-      LIMIT ? OFFSET ?
-    `);
-    this.stmtGetById = this.db.prepare(`
-      SELECT * FROM memories WHERE id = ?
-    `);
-    this.stmtUpdateAccess = this.db.prepare(`
-      UPDATE memories
-      SET access_count = access_count + 1,
-          last_accessed_at = datetime('now')
-      WHERE id = ?
-    `);
-    this.stmtDelete = this.db.prepare(`
-      DELETE FROM memories WHERE id = ?
-    `);
-    this.stmtCount = this.db.prepare(`
-      SELECT COUNT(*) as count FROM memories
-    `);
+    try {
+      this.initialize();
+      this.stmtInsert = this.db.prepare(`
+        INSERT INTO memories (content, metadata)
+        VALUES (?, ?)
+      `);
+      this.stmtSearch = this.db.prepare(`
+        SELECT m.*, bm25(memories_fts) as rank
+        FROM memories m
+        JOIN memories_fts ON m.id = memories_fts.rowid
+        WHERE memories_fts MATCH ?
+        ORDER BY rank
+        LIMIT ? OFFSET ?
+      `);
+      this.stmtGetById = this.db.prepare(`
+        SELECT * FROM memories WHERE id = ?
+      `);
+      this.stmtUpdateAccess = this.db.prepare(`
+        UPDATE memories
+        SET access_count = access_count + 1,
+            last_accessed_at = datetime('now')
+        WHERE id = ?
+      `);
+      this.stmtDelete = this.db.prepare(`
+        DELETE FROM memories WHERE id = ?
+      `);
+      this.stmtCount = this.db.prepare(`
+        SELECT COUNT(*) as count FROM memories
+      `);
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
   /**
    * Initialize database schema
@@ -226,15 +231,24 @@ var MemoryManager = class _MemoryManager {
       sql += ` AND m.created_at <= ?`;
       params.push(filter.createdBefore.toISOString());
     }
+    const SQLITE_PARAM_LIMIT = 999;
     if (filter?.tags && filter.tags.length > 0) {
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      const reserveForTagsAll = filter.tagsAll?.length ? Math.min(filter.tagsAll.length, 100) : 0;
+      const tagBudget = Math.max(1, remainingBudget - reserveForTagsAll - 10);
+      const maxTags = Math.min(filter.tags.length, tagBudget);
+      const validTags = filter.tags.slice(0, maxTags);
       sql += ` AND EXISTS (
         SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
-        WHERE value IN (${filter.tags.map(() => "?").join(",")})
+        WHERE value IN (${validTags.map(() => "?").join(",")})
       )`;
-      params.push(...filter.tags);
+      params.push(...validTags);
     }
     if (filter?.tagsAll && filter.tagsAll.length > 0) {
-      for (const tag of filter.tagsAll) {
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      const maxTagsAll = Math.min(filter.tagsAll.length, remainingBudget - 5);
+      const validTagsAll = filter.tagsAll.slice(0, Math.max(1, maxTagsAll));
+      for (const tag of validTagsAll) {
         sql += ` AND EXISTS (
           SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
           WHERE value = ?
@@ -336,6 +350,7 @@ var MemoryManager = class _MemoryManager {
       `
       SELECT value as tag, COUNT(*) as count
       FROM memories, json_each(json_extract(metadata, '$.tags'))
+      WHERE value IS NOT NULL AND typeof(value) = 'text'
       GROUP BY value
       ORDER BY count DESC
       LIMIT ${DEFAULT_TOP_TAGS_LIMIT}
@@ -474,7 +489,12 @@ var MemoryManager = class _MemoryManager {
   }
   /**
    * Check if cleanup is needed and perform it
-   * Protected against concurrent cleanup operations
+   * Protected against concurrent cleanup operations.
+   *
+   * Note: This is intentionally synchronous because SQLite uses a single-writer model.
+   * The `cleanupInProgress` flag prevents re-entrant calls which could occur if
+   * add() is called during cleanup (e.g., in a batch operation).
+   * Async cleanup would not provide benefits with SQLite's locking model.
    */
   maybeCleanup() {
     if (this.cleanupInProgress) {
@@ -482,13 +502,14 @@ var MemoryManager = class _MemoryManager {
     }
     const count = this.getCount();
     const threshold = Math.floor(this.maxEntries * this.cleanupConfig.triggerThreshold);
-    if (count >= threshold) {
-      this.cleanupInProgress = true;
-      try {
-        this.cleanup();
-      } finally {
-        this.cleanupInProgress = false;
-      }
+    if (count < threshold) {
+      return;
+    }
+    this.cleanupInProgress = true;
+    try {
+      this.cleanup();
+    } finally {
+      this.cleanupInProgress = false;
     }
   }
   /**
@@ -508,7 +529,7 @@ var MemoryManager = class _MemoryManager {
    * Escapes special characters rather than removing them to preserve query intent
    */
   sanitizeQuery(query) {
-    return query.replace(/"/g, '""').replace(/[*(){}[\]^~\\]/g, " ").replace(/\s+/g, " ").trim();
+    return query.replace(/"/g, '""').replace(/[*(){}[\]^~\\:]/g, " ").replace(/(^|\s)-/g, "$1").replace(/\s+/g, " ").trim();
   }
   /**
    * Convert database row to MemoryEntry
@@ -517,7 +538,10 @@ var MemoryManager = class _MemoryManager {
     let metadata;
     try {
       metadata = JSON.parse(row.metadata);
-    } catch {
+    } catch (error) {
+      console.warn(
+        `[ax/memory] Corrupted metadata for entry ${row.id}, using defaults: ${error instanceof Error ? error.message : "Parse error"}`
+      );
       metadata = {
         type: DEFAULT_METADATA_TYPE,
         source: DEFAULT_METADATA_SOURCE,
@@ -567,9 +591,12 @@ var MemoryManager = class _MemoryManager {
   }
   /**
    * Close database connection
+   * Safe to call multiple times - subsequent calls are no-ops.
    */
   close() {
-    this.db.close();
+    if (this.db.open) {
+      this.db.close();
+    }
   }
 };
 
@@ -580,8 +607,7 @@ import { parse as parseYaml } from "yaml";
 import {
   ConfigSchema,
   DEFAULT_CONFIG,
-  validateConfig,
-  mergeConfig
+  validateConfig
 } from "@ax/schemas";
 var CONFIG_FILE_NAMES = ["ax.config.json", "ax.config.yaml", "ax.config.yml"];
 var MAX_PARENT_SEARCH = 10;
@@ -634,13 +660,19 @@ function getEnvOverrides(prefix = "AX") {
   }
   const timeout = process.env[`${prefix}_TIMEOUT`];
   if (timeout) {
-    const timeoutMs = parseInt(timeout, 10);
-    if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
-      overrides["execution"] = { timeout: timeoutMs };
-    } else {
+    if (!/^\d+$/.test(timeout.trim())) {
       console.warn(
-        `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        `[ax/config] Invalid ${prefix}_TIMEOUT format "${timeout}". Expected numeric value only. Using default.`
       );
+    } else {
+      const timeoutMs = parseInt(timeout, 10);
+      if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
+        overrides["execution"] = { timeout: timeoutMs };
+      } else {
+        console.warn(
+          `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        );
+      }
     }
   }
   return overrides;
@@ -657,12 +689,27 @@ async function loadConfig(options = {}) {
   if (fileName) {
     configPath = join(baseDir, fileName);
     try {
-      fileConfig = await parseConfigFile(configPath);
+      const stats = await stat(configPath);
+      if (!stats.isFile()) {
+        console.warn(
+          `[ax/config] Specified config path "${configPath}" is not a file. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        fileConfig = await parseConfigFile(configPath);
+      }
     } catch (error) {
-      console.warn(
-        `[ax/config] Failed to parse specified config file ${configPath}: ${error instanceof Error ? error.message : "Unknown error"}. Using defaults.`
-      );
-      configPath = null;
+      const errno = error;
+      if (errno.code === "ENOENT") {
+        console.warn(
+          `[ax/config] Specified config file "${configPath}" not found. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        throw new Error(
+          `Failed to parse config file ${configPath}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     }
   } else {
     configPath = await findConfigFile(baseDir, searchParents);
@@ -711,7 +758,23 @@ async function loadConfig(options = {}) {
 }
 function loadConfigSync() {
   const envOverrides = getEnvOverrides("AX");
-  return mergeConfig(envOverrides);
+  const mergeSection = (key) => ({
+    ...DEFAULT_CONFIG[key],
+    ...envOverrides[key] ?? {}
+  });
+  const mergedConfig = {
+    ...DEFAULT_CONFIG,
+    ...envOverrides,
+    providers: mergeSection("providers"),
+    execution: mergeSection("execution"),
+    memory: mergeSection("memory"),
+    session: mergeSection("session"),
+    checkpoint: mergeSection("checkpoint"),
+    router: mergeSection("router"),
+    workspace: mergeSection("workspace"),
+    logging: mergeSection("logging")
+  };
+  return validateConfig(mergedConfig);
 }
 function getDefaultConfig() {
   return { ...DEFAULT_CONFIG };
@@ -739,6 +802,17 @@ var DEFAULT_PROVIDER_PRIORITY = 99;
 var DEFAULT_ROUTING_COMPLEXITY = 5;
 var DEFAULT_HEALTH_CHECK_INTERVAL_MS = 6e4;
 var MAX_ROUTING_RETRIES = 3;
+function safeInvokeEvent(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/router] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var ProviderRouter = class {
   config;
   providers = /* @__PURE__ */ new Map();
@@ -781,11 +855,10 @@ var ProviderRouter = class {
     if (!provider) {
       throw new Error(`Provider ${result.provider.id} not found in registry`);
     }
-    this.events.onProviderSelected?.(provider.id, result.reason);
+    safeInvokeEvent("onProviderSelected", this.events.onProviderSelected, provider.id, result.reason);
     this.incrementProviderMetrics(provider.id);
     const maxRetries = options.maxRetries ?? MAX_ROUTING_RETRIES;
     const enableFallback = options.enableFallback ?? true;
-    let lastError;
     const triedProviders = [provider.id];
     let response = await this.executeWithProvider(provider, request);
     if (response.success) {
@@ -800,7 +873,7 @@ var ProviderRouter = class {
         if (!altProvider) continue;
         this.metrics.fallbackAttempts++;
         triedProviders.push(altProvider.id);
-        this.events.onFallback?.(provider.id, altProvider.id, response.error ?? "Unknown error");
+        safeInvokeEvent("onFallback", this.events.onFallback, provider.id, altProvider.id, response.error ?? "Unknown error");
         response = await this.executeWithProvider(altProvider, request);
         if (response.success) {
           this.metrics.successfulRequests++;
@@ -810,8 +883,8 @@ var ProviderRouter = class {
       }
     }
     this.metrics.failedRequests++;
-    lastError = new Error(response.error ?? "All providers failed");
-    this.events.onAllProvidersFailed?.(triedProviders, lastError);
+    const lastError = new Error(response.error ?? "All providers failed");
+    safeInvokeEvent("onAllProvidersFailed", this.events.onAllProvidersFailed, triedProviders, lastError);
     return response;
   }
   /**
@@ -897,13 +970,16 @@ var ProviderRouter = class {
       try {
         const healthy = await provider.checkHealth();
         results.set(type, healthy);
-        this.events.onHealthUpdate?.(type, healthy);
-      } catch {
+        safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, healthy);
+      } catch (error) {
+        console.warn(
+          `[ax/router] Health check failed for ${type}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         results.set(type, false);
-        this.events.onHealthUpdate?.(type, false);
+        safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, false);
       }
     });
-    await Promise.all(checks);
+    await Promise.allSettled(checks);
     return results;
   }
   /**
@@ -929,7 +1005,7 @@ var ProviderRouter = class {
         const provider = createProvider(type, factoryOptions);
         provider.setEvents({
           onHealthChange: (health) => {
-            this.events.onHealthUpdate?.(type, health.healthy);
+            safeInvokeEvent("onHealthUpdate", this.events.onHealthUpdate, type, health.healthy);
           }
         });
         this.providers.set(type, provider);
@@ -945,14 +1021,24 @@ var ProviderRouter = class {
   }
   /**
    * Build routing context from request and options
+   *
+   * The context now includes:
+   * - taskType: Inferred from task description
+   * - agentId: For agent-specific provider affinity
+   * - taskDescription: For keyword-based routing analysis
    */
   buildRoutingContext(request, options) {
     const context = {
       taskType: this.inferTaskType(request.task),
       complexity: options.context?.complexity ?? DEFAULT_ROUTING_COMPLEXITY,
       preferMcp: options.context?.preferMcp ?? true,
-      excludeProviders: options.excludeProviders ?? []
+      excludeProviders: options.excludeProviders ?? [],
+      // Pass full task description for keyword analysis
+      taskDescription: request.task
     };
+    if (request.agent) {
+      context.agentId = request.agent;
+    }
     if (options.forceProvider) {
       context.forceProvider = options.forceProvider;
     }
@@ -993,23 +1079,88 @@ var ProviderRouter = class {
   }
   /**
    * Infer task type from task description
+   *
+   * Three task classes with provider assignments:
+   *
+   * CLASS 1: PLANNING/STRATEGY → OpenAI primary
+   *   planning, architecture, strategy, research, requirements, roadmap, analysis
+   *
+   * CLASS 2: FRONTEND/CREATIVE → Gemini primary
+   *   frontend, ui, ux, creative, styling, animation, visual, design, branding, marketing
+   *
+   * CLASS 3: CODING/TECHNICAL → Claude primary
+   *   coding, debugging, implementation, refactoring, testing, review, security,
+   *   devops, infrastructure, backend, api, database, documentation
+   *
+   * ax-cli is always the last fallback for all task types.
    */
   inferTaskType(task) {
     const lowerTask = task.toLowerCase();
-    if (lowerTask.includes("code") || lowerTask.includes("implement") || lowerTask.includes("write")) {
-      return "coding";
+    if (/\b(plan|roadmap|requirements|prd|specification|propose)\b/.test(lowerTask)) {
+      return "planning";
     }
-    if (lowerTask.includes("test") || lowerTask.includes("verify") || lowerTask.includes("validate")) {
-      return "testing";
+    if (/\b(architect|system design|design system|scalab|microservice|monolith)\b/.test(lowerTask)) {
+      return "architecture";
     }
-    if (lowerTask.includes("review") || lowerTask.includes("analyze") || lowerTask.includes("audit")) {
-      return "analysis";
+    if (/\b(strategy|strategic|decision|trade-?off|evaluate options)\b/.test(lowerTask)) {
+      return "strategy";
     }
-    if (lowerTask.includes("design") || lowerTask.includes("architect") || lowerTask.includes("plan")) {
+    if (/\b(research|investigate|explore|compare|benchmark|study)\b/.test(lowerTask)) {
+      return "research";
+    }
+    if (/\b(frontend|front-end|react|vue|angular|svelte|nextjs|nuxt)\b/.test(lowerTask)) {
+      return "frontend";
+    }
+    if (/\b(ui|ux|user interface|user experience|component|widget)\b/.test(lowerTask)) {
+      return "ui";
+    }
+    if (/\b(css|tailwind|styled|styling|sass|scss|responsive|layout)\b/.test(lowerTask)) {
+      return "styling";
+    }
+    if (/\b(animation|animate|motion|transition|framer)\b/.test(lowerTask)) {
+      return "animation";
+    }
+    if (/\b(creative|visual|graphic|illustration|artwork)\b/.test(lowerTask)) {
+      return "creative";
+    }
+    if (/\b(design|wireframe|mockup|prototype|figma)\b/.test(lowerTask)) {
       return "design";
     }
-    if (lowerTask.includes("fix") || lowerTask.includes("debug") || lowerTask.includes("resolve")) {
+    if (/\b(brand|branding|marketing|campaign|content|copy)\b/.test(lowerTask)) {
+      return "marketing";
+    }
+    if (/\b(debug|fix|bug|error|issue|problem|troubleshoot|resolve)\b/.test(lowerTask)) {
       return "debugging";
+    }
+    if (/\b(implement|code|write|create function|build|develop)\b/.test(lowerTask)) {
+      return "coding";
+    }
+    if (/\b(refactor|restructure|reorganize|clean up|optimize code)\b/.test(lowerTask)) {
+      return "refactoring";
+    }
+    if (/\b(test|spec|coverage|unit|e2e|integration|verify|validate)\b/.test(lowerTask)) {
+      return "testing";
+    }
+    if (/\b(review|code review|pull request|pr|audit code)\b/.test(lowerTask)) {
+      return "review";
+    }
+    if (/\b(security|vulnerab|threat|owasp|penetration|xss|injection)\b/.test(lowerTask)) {
+      return "security";
+    }
+    if (/\b(devops|deploy|ci|cd|pipeline|docker|kubernetes|terraform)\b/.test(lowerTask)) {
+      return "devops";
+    }
+    if (/\b(backend|back-end|api|endpoint|rest|graphql|server)\b/.test(lowerTask)) {
+      return "backend";
+    }
+    if (/\b(database|db|sql|query|migration|schema|postgres|mysql|mongo)\b/.test(lowerTask)) {
+      return "database";
+    }
+    if (/\b(document|docs|readme|explain|describe|guide|tutorial)\b/.test(lowerTask)) {
+      return "documentation";
+    }
+    if (/\b(data|etl|ml|machine learning|model|training|prediction)\b/.test(lowerTask)) {
+      return "data";
     }
     return "general";
   }
@@ -1021,7 +1172,7 @@ var ProviderRouter = class {
     this.metrics.requestsByProvider.set(type, current + 1);
   }
   /**
-   * Update latency metrics for provider
+   * Update latency metrics for provider using cumulative moving average
    */
   updateLatencyMetrics(type, latency) {
     const currentAvg = this.metrics.avgLatencyByProvider.get(type) ?? 0;
@@ -1033,15 +1184,16 @@ var ProviderRouter = class {
    * Start periodic health checks
    */
   startHealthChecks(intervalMs) {
-    this.healthCheckIntervalId = setInterval(async () => {
-      try {
-        await this.checkAllHealth();
-      } catch (error) {
+    this.healthCheckIntervalId = setInterval(() => {
+      this.checkAllHealth().catch((error) => {
         console.warn(
           `[ax/router] Health check failed: ${error instanceof Error ? error.message : "Unknown error"}`
         );
-      }
+      });
     }, intervalMs);
+    if (this.healthCheckIntervalId.unref) {
+      this.healthCheckIntervalId.unref();
+    }
   }
   /**
    * Stop periodic health checks
@@ -1067,22 +1219,50 @@ import {
   CreateSessionInputSchema,
   AddTaskInputSchema,
   UpdateTaskInputSchema,
-  createSessionSummary
+  createSessionSummary,
+  SessionId
 } from "@ax/schemas";
 var DEFAULT_SESSION_NAME = "Untitled Session";
 var MAX_IN_MEMORY_SESSIONS = 100;
 var SESSION_FILE_EXT = ".json";
 var SESSIONS_DIR = "sessions";
+var VALID_STATE_TRANSITIONS = {
+  active: ["paused", "completed", "failed", "cancelled"],
+  paused: ["active", "cancelled"],
+  completed: [],
+  // Terminal state - no transitions allowed
+  failed: [],
+  // Terminal state - no transitions allowed
+  cancelled: []
+  // Terminal state - no transitions allowed
+};
+function isValidTransition(fromState, toState) {
+  const validTargets = VALID_STATE_TRANSITIONS[fromState];
+  return validTargets?.includes(toState) ?? false;
+}
+function parseSessionId(sessionId) {
+  return SessionId.parse(sessionId);
+}
+function safeInvokeEvent2(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/session] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var SessionManager = class {
-  storagePath;
   sessionsPath;
   maxInMemorySessions;
   autoPersist;
   sessions = /* @__PURE__ */ new Map();
   events = {};
+  sessionLocks = /* @__PURE__ */ new Map();
   initialized = false;
   constructor(options) {
-    this.storagePath = options.storagePath;
     this.sessionsPath = join2(options.storagePath, SESSIONS_DIR);
     this.maxInMemorySessions = options.maxInMemorySessions ?? MAX_IN_MEMORY_SESSIONS;
     this.autoPersist = options.autoPersist ?? true;
@@ -1113,9 +1293,20 @@ var SessionManager = class {
   // Session CRUD Operations
   // =============================================================================
   /**
+   * Ensure the manager is initialized before performing operations
+   */
+  ensureInitialized() {
+    if (!this.initialized) {
+      throw new Error(
+        "SessionManager not initialized. Call initialize() before performing operations."
+      );
+    }
+  }
+  /**
    * Create a new session
    */
   async create(input) {
+    this.ensureInitialized();
     const validated = CreateSessionInputSchema.parse(input);
     const now = /* @__PURE__ */ new Date();
     const sessionId = this.generateSessionId();
@@ -1124,7 +1315,8 @@ var SessionManager = class {
         id: randomUUID(),
         description: t.description,
         agentId: t.agentId,
-        status: "pending"
+        status: "pending",
+        createdAt: now
       })
     );
     const session = SessionSchema.parse({
@@ -1145,13 +1337,14 @@ var SessionManager = class {
     if (this.autoPersist) {
       await this.persistSession(session);
     }
-    this.events.onSessionCreated?.(session);
+    safeInvokeEvent2("onSessionCreated", this.events.onSessionCreated, session);
     return session;
   }
   /**
    * Get session by ID
    */
   async get(sessionId) {
+    this.ensureInitialized();
     let session = this.sessions.get(sessionId);
     if (!session) {
       session = await this.loadSession(sessionId);
@@ -1176,6 +1369,7 @@ var SessionManager = class {
    * List sessions with optional filtering
    */
   async list(filter) {
+    this.ensureInitialized();
     await this.loadAllSessions();
     let sessions = Array.from(this.sessions.values());
     if (filter) {
@@ -1204,21 +1398,29 @@ var SessionManager = class {
    * Update session state
    */
   async updateState(sessionId, state) {
-    const session = await this.getOrThrow(sessionId);
-    session.state = state;
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (state === "completed" || state === "failed" || state === "cancelled") {
-      session.completedAt = /* @__PURE__ */ new Date();
-      session.duration = session.completedAt.getTime() - session.createdAt.getTime();
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onSessionUpdated?.(session);
-    if (state === "completed") {
-      this.events.onSessionCompleted?.(session);
-    }
-    return session;
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (!isValidTransition(session.state, state)) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to '${state}'`
+        );
+      }
+      session.state = state;
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (state === "completed" || state === "failed" || state === "cancelled") {
+        session.completedAt = /* @__PURE__ */ new Date();
+        const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+        session.duration = Math.max(0, rawDuration);
+      }
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent2("onSessionUpdated", this.events.onSessionUpdated, session);
+      if (state === "completed") {
+        safeInvokeEvent2("onSessionCompleted", this.events.onSessionCompleted, session);
+      }
+      return session;
+    });
   }
   /**
    * Complete a session
@@ -1236,11 +1438,24 @@ var SessionManager = class {
    * Resume a paused session
    */
   async resume(sessionId) {
-    const session = await this.getOrThrow(sessionId);
-    if (session.state !== "paused") {
-      throw new Error(`Cannot resume session in state: ${session.state}`);
-    }
-    return this.updateState(sessionId, "active");
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (session.state !== "paused") {
+        throw new Error(`Cannot resume session in state: ${session.state}`);
+      }
+      if (!isValidTransition(session.state, "active")) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'active'`
+        );
+      }
+      session.state = "active";
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent2("onSessionUpdated", this.events.onSessionUpdated, session);
+      return session;
+    });
   }
   /**
    * Cancel a session
@@ -1249,25 +1464,33 @@ var SessionManager = class {
     return this.updateState(sessionId, "cancelled");
   }
   /**
-   * Fail a session
+   * Fail a session with an optional error message
    */
   async fail(sessionId, error) {
-    const session = await this.getOrThrow(sessionId);
-    session.state = "failed";
-    session.updatedAt = /* @__PURE__ */ new Date();
-    session.completedAt = /* @__PURE__ */ new Date();
-    session.duration = session.completedAt.getTime() - session.createdAt.getTime();
-    if (error) {
-      session.metadata = {
-        ...session.metadata,
-        failureReason: error
-      };
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onSessionUpdated?.(session);
-    return session;
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (!isValidTransition(session.state, "failed")) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'failed'`
+        );
+      }
+      if (error) {
+        session.metadata = {
+          ...session.metadata,
+          failureReason: error
+        };
+      }
+      session.state = "failed";
+      session.updatedAt = /* @__PURE__ */ new Date();
+      session.completedAt = /* @__PURE__ */ new Date();
+      const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+      session.duration = Math.max(0, rawDuration);
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent2("onSessionUpdated", this.events.onSessionUpdated, session);
+      return session;
+    });
   }
   /**
    * Delete a session
@@ -1290,67 +1513,71 @@ var SessionManager = class {
    */
   async addTask(input) {
     const validated = AddTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
-    const task = SessionTaskSchema.parse({
-      id: randomUUID(),
-      description: validated.description,
-      agentId: validated.agentId,
-      status: "pending",
-      parentTaskId: validated.parentTaskId,
-      metadata: validated.metadata
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
+      const task = SessionTaskSchema.parse({
+        id: randomUUID(),
+        description: validated.description,
+        agentId: validated.agentId,
+        status: "pending",
+        createdAt: /* @__PURE__ */ new Date(),
+        parentTaskId: validated.parentTaskId,
+        metadata: validated.metadata
+      });
+      session.tasks.push(task);
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (!session.agents.includes(validated.agentId)) {
+        session.agents.push(validated.agentId);
+      }
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent2("onTaskAdded", this.events.onTaskAdded, session, task);
+      return task;
     });
-    session.tasks.push(task);
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (!session.agents.includes(validated.agentId)) {
-      session.agents.push(validated.agentId);
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onTaskAdded?.(session, task);
-    return task;
   }
   /**
    * Update task status and result
    */
   async updateTask(input) {
     const validated = UpdateTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
-    const task = session.tasks.find((t) => t.id === validated.taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${validated.taskId}`);
-    }
-    const previousStatus = task.status;
-    task.status = validated.status;
-    if (validated.result !== void 0) {
-      task.result = validated.result;
-    }
-    if (validated.error !== void 0) {
-      task.error = validated.error;
-    }
-    if (validated.status === "running" && previousStatus === "pending") {
-      task.startedAt = /* @__PURE__ */ new Date();
-    }
-    if (validated.status === "completed" || validated.status === "failed") {
-      task.completedAt = /* @__PURE__ */ new Date();
-      if (task.startedAt) {
-        task.duration = task.completedAt.getTime() - task.startedAt.getTime();
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
+      const task = session.tasks.find((t) => t.id === validated.taskId);
+      if (!task) {
+        throw new Error(`Task not found: ${validated.taskId}`);
       }
-    }
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onTaskUpdated?.(session, task);
-    return task;
+      const previousStatus = task.status;
+      task.status = validated.status;
+      if (validated.result !== void 0) {
+        task.result = validated.result;
+      }
+      if (validated.error !== void 0) {
+        task.error = validated.error;
+      }
+      if (validated.status === "running" && previousStatus === "pending") {
+        task.startedAt = /* @__PURE__ */ new Date();
+      }
+      if (validated.status === "completed" || validated.status === "failed") {
+        task.completedAt = /* @__PURE__ */ new Date();
+        const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
+        const rawDuration = task.completedAt.getTime() - startTime;
+        task.duration = Math.max(0, rawDuration);
+      }
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent2("onTaskUpdated", this.events.onTaskUpdated, session, task);
+      return task;
+    });
   }
   /**
    * Start a task
    */
   async startTask(sessionId, taskId) {
     return this.updateTask({
-      sessionId,
-      // Cast to branded type
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "running"
     });
@@ -1360,7 +1587,7 @@ var SessionManager = class {
    */
   async completeTask(sessionId, taskId, result) {
     return this.updateTask({
-      sessionId,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "completed",
       result
@@ -1371,7 +1598,7 @@ var SessionManager = class {
    */
   async failTask(sessionId, taskId, error) {
     return this.updateTask({
-      sessionId,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "failed",
       error
@@ -1403,6 +1630,30 @@ var SessionManager = class {
   // =============================================================================
   // Private Methods
   // =============================================================================
+  /**
+   * Execute an operation with a session lock to prevent race conditions.
+   * Only one operation can modify a session at a time.
+   */
+  async withSessionLock(sessionId, operation) {
+    const existingLock = this.sessionLocks.get(sessionId);
+    if (existingLock) {
+      await existingLock.catch(() => {
+      });
+    }
+    let releaseLock;
+    const lockPromise = new Promise((resolve2) => {
+      releaseLock = resolve2;
+    });
+    this.sessionLocks.set(sessionId, lockPromise);
+    try {
+      return await operation();
+    } finally {
+      releaseLock();
+      if (this.sessionLocks.get(sessionId) === lockPromise) {
+        this.sessionLocks.delete(sessionId);
+      }
+    }
+  }
   /**
    * Generate a unique session ID (UUID format)
    */
@@ -1436,8 +1687,8 @@ var SessionManager = class {
    * Load session from disk
    */
   async loadSession(sessionId) {
+    const filePath = this.getSessionFilePath(sessionId);
     try {
-      const filePath = this.getSessionFilePath(sessionId);
       const data = await readFile2(filePath, "utf-8");
       const parsed = JSON.parse(data);
       parsed.createdAt = new Date(parsed.createdAt);
@@ -1445,12 +1696,21 @@ var SessionManager = class {
       if (parsed.completedAt) {
         parsed.completedAt = new Date(parsed.completedAt);
       }
-      for (const task of parsed.tasks) {
-        if (task.startedAt) task.startedAt = new Date(task.startedAt);
-        if (task.completedAt) task.completedAt = new Date(task.completedAt);
+      if (Array.isArray(parsed.tasks)) {
+        for (const task of parsed.tasks) {
+          if (task.createdAt) task.createdAt = new Date(task.createdAt);
+          if (task.startedAt) task.startedAt = new Date(task.startedAt);
+          if (task.completedAt) task.completedAt = new Date(task.completedAt);
+        }
       }
       return SessionSchema.parse(parsed);
-    } catch {
+    } catch (error) {
+      const errno = error;
+      if (errno.code !== "ENOENT") {
+        console.warn(
+          `[ax/session] Failed to load session ${sessionId}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
       return null;
     }
   }
@@ -1549,11 +1809,25 @@ var AgentLoader = class {
       const agentFiles = files.filter(
         (f) => AGENT_FILE_EXTENSIONS.includes(extname(f).toLowerCase())
       );
+      if (agentFiles.length === 0) {
+        console.info(
+          `[ax/loader] No agent files found in ${this.agentsPath}. Using defaults. Supported extensions: ${AGENT_FILE_EXTENSIONS.join(", ")}`
+        );
+      }
       for (const file of agentFiles) {
         await this.loadAgentFile(file);
       }
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      const errno = error;
+      if (errno.code === "ENOENT") {
+        console.debug?.(
+          `[ax/loader] Agents directory not found at ${this.agentsPath}. Using defaults.`
+        );
+      } else if (errno.code === "EACCES" || errno.code === "EPERM") {
+        console.warn(
+          `[ax/loader] Cannot access agents directory ${this.agentsPath}: ${errno.message}. Check permissions. Using defaults.`
+        );
+      } else {
         throw error;
       }
     }
@@ -1582,19 +1856,24 @@ var AgentLoader = class {
    * Load agent from a specific file path
    */
   async loadAgentFromPath(filePath) {
+    const agentId = basename2(filePath, extname(filePath));
     try {
       const content = await readFile3(filePath, "utf-8");
       const parsed = parseYaml2(content);
       const profile = validateAgentProfile(parsed);
+      if (profile.name !== agentId) {
+        console.warn(
+          `[ax/loader] Agent filename "${agentId}" doesn't match profile name "${profile.name}". Using filename as the canonical ID. Consider renaming the file or updating the profile.`
+        );
+      }
       const loaded = {
         profile,
         filePath,
         loadedAt: /* @__PURE__ */ new Date()
       };
-      this.loadedAgents.set(profile.name, loaded);
+      this.loadedAgents.set(agentId, loaded);
       return loaded;
     } catch (error) {
-      const agentId = basename2(filePath, extname(filePath));
       this.loadErrors.push({
         agentId,
         filePath,
@@ -1692,7 +1971,7 @@ var AutomatosXError = class extends Error {
 };
 var AgentNotFoundError = class extends AutomatosXError {
   constructor(agentId, options) {
-    let message = `Agent "${agentId}" not found`;
+    const message = `Agent "${agentId}" not found`;
     let suggestion;
     if (options?.similarAgents && options.similarAgents.length > 0) {
       suggestion = `Did you mean: ${options.similarAgents.join(", ")}?`;
@@ -1834,6 +2113,17 @@ function findSimilar(input, options, maxDistance = 2) {
 }
 
 // src/agent/registry.ts
+function safeInvokeEvent3(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/registry] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var AgentRegistry = class {
   loader;
   agents = /* @__PURE__ */ new Map();
@@ -1875,7 +2165,7 @@ var AgentRegistry = class {
     for (const loaded of agents) {
       this.registerAgent(loaded.profile);
     }
-    this.events.onReloaded?.(Array.from(this.agents.values()));
+    safeInvokeEvent3("onReloaded", this.events.onReloaded, Array.from(this.agents.values()));
     return {
       loaded: agents.length,
       errors
@@ -1901,7 +2191,7 @@ var AgentRegistry = class {
       }
       this.byAbility.get(ability).add(id);
     }
-    this.events.onAgentRegistered?.(profile);
+    safeInvokeEvent3("onAgentRegistered", this.events.onAgentRegistered, profile);
   }
   /**
    * Remove an agent from registry
@@ -1921,7 +2211,7 @@ var AgentRegistry = class {
         this.byAbility.delete(ability);
       }
     }
-    this.events.onAgentRemoved?.(agentId);
+    safeInvokeEvent3("onAgentRemoved", this.events.onAgentRemoved, agentId);
     return true;
   }
   /**
@@ -2016,7 +2306,14 @@ var AgentRegistry = class {
   getByTeam(team) {
     const agentIds = this.byTeam.get(team);
     if (!agentIds) return [];
-    return Array.from(agentIds).map((id) => this.agents.get(id)).filter(Boolean);
+    const results = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
   /**
    * Get all team names
@@ -2030,7 +2327,14 @@ var AgentRegistry = class {
   getByAbility(ability) {
     const agentIds = this.byAbility.get(ability);
     if (!agentIds) return [];
-    return Array.from(agentIds).map((id) => this.agents.get(id)).filter(Boolean);
+    const results = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
   /**
    * Get all available abilities
@@ -2075,11 +2379,26 @@ function createAgentRegistry(options) {
 // src/agent/executor.ts
 import {
   DelegationRequestSchema,
-  DelegationResultSchema
+  DelegationResultSchema,
+  SessionId as SessionId2
 } from "@ax/schemas";
 var DEFAULT_EXECUTION_TIMEOUT_MS = 3e5;
 var MAX_DELEGATION_DEPTH = 3;
 var DEFAULT_AGENT_ID = "standard";
+function parseSessionId2(sessionId) {
+  return SessionId2.parse(sessionId);
+}
+function safeInvokeEvent4(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/executor] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var AgentExecutor = class {
   router;
   sessionManager;
@@ -2101,15 +2420,20 @@ var AgentExecutor = class {
    * Execute a task with a specific agent
    */
   async execute(agentId, task, options = {}) {
+    if (!task || task.trim() === "") {
+      throw new Error("Task description cannot be empty");
+    }
     const session = options.sessionId ? await this.sessionManager.getOrThrow(options.sessionId) : await this.sessionManager.create({
-      name: `Task: ${task.substring(0, 50)}...`,
+      name: `Task: ${task.slice(0, 50)}${task.length > 50 ? "..." : ""}`,
       agents: [agentId]
     });
     const agent = this.agentRegistry.get(agentId);
     if (!agent) {
       const defaultAgent = this.agentRegistry.get(DEFAULT_AGENT_ID);
       if (!defaultAgent) {
-        throw new Error(`Agent not found: ${agentId}`);
+        throw new Error(
+          `Agent "${agentId}" not found and fallback agent "${DEFAULT_AGENT_ID}" is also unavailable. Available agents: ${this.agentRegistry.getAll().map((a) => a.name).join(", ") || "none"}`
+        );
       }
       console.warn(`[ax/executor] Agent "${agentId}" not found, using "${DEFAULT_AGENT_ID}"`);
       return this.executeWithAgent(defaultAgent, task, session, options);
@@ -2120,6 +2444,9 @@ var AgentExecutor = class {
    * Execute a task with automatic agent selection
    */
   async executeAuto(task, options = {}) {
+    if (!task || task.trim() === "") {
+      throw new Error("Task description cannot be empty");
+    }
     const taskType = this.inferTaskType(task);
     const candidates = this.agentRegistry.findForTask(taskType);
     if (candidates.length === 0) {
@@ -2140,6 +2467,15 @@ var AgentExecutor = class {
         success: false,
         request: validated,
         error: `Maximum delegation depth (${MAX_DELEGATION_DEPTH}) exceeded`,
+        duration: Date.now() - startTime,
+        completedBy: validated.fromAgent
+      });
+    }
+    if (validated.context.delegationChain.includes(validated.toAgent) || validated.toAgent === validated.fromAgent) {
+      return DelegationResultSchema.parse({
+        success: false,
+        request: validated,
+        error: `Circular delegation detected: "${validated.toAgent}" is already in the delegation chain`,
         duration: Date.now() - startTime,
         completedBy: validated.fromAgent
       });
@@ -2167,7 +2503,7 @@ var AgentExecutor = class {
         });
       }
     }
-    this.events.onDelegation?.(validated.fromAgent, validated.toAgent, validated.task);
+    safeInvokeEvent4("onDelegation", this.events.onDelegation, validated.fromAgent, validated.toAgent, validated.task);
     try {
       const executeOptions = {
         timeout: validated.options.timeout,
@@ -2210,9 +2546,9 @@ var AgentExecutor = class {
    */
   async executeWithAgent(agent, task, session, options) {
     const agentId = agent.name;
-    this.events.onExecutionStart?.(agentId, task);
+    safeInvokeEvent4("onExecutionStart", this.events.onExecutionStart, agentId, task);
     const sessionTask = await this.sessionManager.addTask({
-      sessionId: session.id,
+      sessionId: parseSessionId2(session.id),
       description: task,
       agentId,
       metadata: {
@@ -2246,6 +2582,9 @@ var AgentExecutor = class {
       }
       const updatedSession = await this.sessionManager.getOrThrow(session.id);
       const updatedTask = updatedSession.tasks.find((t) => t.id === sessionTask.id);
+      if (!updatedTask) {
+        throw new Error(`Task ${sessionTask.id} not found in session ${session.id} after execution`);
+      }
       const result = {
         response,
         session: updatedSession,
@@ -2253,12 +2592,12 @@ var AgentExecutor = class {
         agentId,
         delegated: (options.delegationChain?.length ?? 0) > 0
       };
-      this.events.onExecutionEnd?.(result);
+      safeInvokeEvent4("onExecutionEnd", this.events.onExecutionEnd, result);
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       await this.sessionManager.failTask(session.id, sessionTask.id, errorMessage);
-      this.events.onError?.(agentId, error instanceof Error ? error : new Error(errorMessage));
+      safeInvokeEvent4("onError", this.events.onError, agentId, error instanceof Error ? error : new Error(errorMessage));
       throw error;
     }
   }
@@ -2288,9 +2627,23 @@ ${agent.abilities.join(", ")}
 `);
     }
     if (additionalContext && Object.keys(additionalContext).length > 0) {
-      parts.push(`[Additional Context]
-${JSON.stringify(additionalContext, null, 2)}
+      try {
+        const seen = /* @__PURE__ */ new WeakSet();
+        const json = JSON.stringify(additionalContext, (key, value) => {
+          if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) return "[Circular]";
+            seen.add(value);
+          }
+          return value;
+        }, 2);
+        parts.push(`[Additional Context]
+${json}
 `);
+      } catch (error) {
+        parts.push(`[Additional Context]
+[Failed to serialize: ${error instanceof Error ? error.message : "Unknown error"}]
+`);
+      }
     }
     parts.push(`[Task]
 ${task}`);
@@ -2626,7 +2979,7 @@ function selectAgentWithReason(task, registry, options = {}) {
     const agent = registry.get(best.agentId);
     if (agent) {
       const maxPossibleMatches = AGENT_KEYWORDS[best.agentId]?.length ?? 1;
-      const confidence = Math.min(best.score / Math.max(maxPossibleMatches / 3, 1), 1);
+      const confidence = Math.min(best.score / Math.max(maxPossibleMatches, 5), 1);
       return {
         agent,
         reason: `Selected ${best.agentId} agent based on keywords: ${best.keywords.join(", ")}`,
@@ -2656,7 +3009,9 @@ function selectAgentWithReason(task, registry, options = {}) {
       alternatives: allAgents.slice(1, 4).map((a) => a.name)
     };
   }
-  throw new Error("No agents available in registry");
+  throw new Error(
+    "No agents available in registry. Ensure at least one agent is registered before routing tasks. Check that agent configuration files exist and are valid."
+  );
 }
 function getAgentKeywords(agentId) {
   return AGENT_KEYWORDS[agentId] ?? [];

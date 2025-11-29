@@ -8,22 +8,50 @@ import {
   CreateSessionInputSchema,
   AddTaskInputSchema,
   UpdateTaskInputSchema,
-  createSessionSummary
+  createSessionSummary,
+  SessionId
 } from "@ax/schemas";
 var DEFAULT_SESSION_NAME = "Untitled Session";
 var MAX_IN_MEMORY_SESSIONS = 100;
 var SESSION_FILE_EXT = ".json";
 var SESSIONS_DIR = "sessions";
+var VALID_STATE_TRANSITIONS = {
+  active: ["paused", "completed", "failed", "cancelled"],
+  paused: ["active", "cancelled"],
+  completed: [],
+  // Terminal state - no transitions allowed
+  failed: [],
+  // Terminal state - no transitions allowed
+  cancelled: []
+  // Terminal state - no transitions allowed
+};
+function isValidTransition(fromState, toState) {
+  const validTargets = VALID_STATE_TRANSITIONS[fromState];
+  return validTargets?.includes(toState) ?? false;
+}
+function parseSessionId(sessionId) {
+  return SessionId.parse(sessionId);
+}
+function safeInvokeEvent(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/session] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var SessionManager = class {
-  storagePath;
   sessionsPath;
   maxInMemorySessions;
   autoPersist;
   sessions = /* @__PURE__ */ new Map();
   events = {};
+  sessionLocks = /* @__PURE__ */ new Map();
   initialized = false;
   constructor(options) {
-    this.storagePath = options.storagePath;
     this.sessionsPath = join(options.storagePath, SESSIONS_DIR);
     this.maxInMemorySessions = options.maxInMemorySessions ?? MAX_IN_MEMORY_SESSIONS;
     this.autoPersist = options.autoPersist ?? true;
@@ -54,9 +82,20 @@ var SessionManager = class {
   // Session CRUD Operations
   // =============================================================================
   /**
+   * Ensure the manager is initialized before performing operations
+   */
+  ensureInitialized() {
+    if (!this.initialized) {
+      throw new Error(
+        "SessionManager not initialized. Call initialize() before performing operations."
+      );
+    }
+  }
+  /**
    * Create a new session
    */
   async create(input) {
+    this.ensureInitialized();
     const validated = CreateSessionInputSchema.parse(input);
     const now = /* @__PURE__ */ new Date();
     const sessionId = this.generateSessionId();
@@ -65,7 +104,8 @@ var SessionManager = class {
         id: randomUUID(),
         description: t.description,
         agentId: t.agentId,
-        status: "pending"
+        status: "pending",
+        createdAt: now
       })
     );
     const session = SessionSchema.parse({
@@ -86,13 +126,14 @@ var SessionManager = class {
     if (this.autoPersist) {
       await this.persistSession(session);
     }
-    this.events.onSessionCreated?.(session);
+    safeInvokeEvent("onSessionCreated", this.events.onSessionCreated, session);
     return session;
   }
   /**
    * Get session by ID
    */
   async get(sessionId) {
+    this.ensureInitialized();
     let session = this.sessions.get(sessionId);
     if (!session) {
       session = await this.loadSession(sessionId);
@@ -117,6 +158,7 @@ var SessionManager = class {
    * List sessions with optional filtering
    */
   async list(filter) {
+    this.ensureInitialized();
     await this.loadAllSessions();
     let sessions = Array.from(this.sessions.values());
     if (filter) {
@@ -145,21 +187,29 @@ var SessionManager = class {
    * Update session state
    */
   async updateState(sessionId, state) {
-    const session = await this.getOrThrow(sessionId);
-    session.state = state;
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (state === "completed" || state === "failed" || state === "cancelled") {
-      session.completedAt = /* @__PURE__ */ new Date();
-      session.duration = session.completedAt.getTime() - session.createdAt.getTime();
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onSessionUpdated?.(session);
-    if (state === "completed") {
-      this.events.onSessionCompleted?.(session);
-    }
-    return session;
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (!isValidTransition(session.state, state)) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to '${state}'`
+        );
+      }
+      session.state = state;
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (state === "completed" || state === "failed" || state === "cancelled") {
+        session.completedAt = /* @__PURE__ */ new Date();
+        const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+        session.duration = Math.max(0, rawDuration);
+      }
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent("onSessionUpdated", this.events.onSessionUpdated, session);
+      if (state === "completed") {
+        safeInvokeEvent("onSessionCompleted", this.events.onSessionCompleted, session);
+      }
+      return session;
+    });
   }
   /**
    * Complete a session
@@ -177,11 +227,24 @@ var SessionManager = class {
    * Resume a paused session
    */
   async resume(sessionId) {
-    const session = await this.getOrThrow(sessionId);
-    if (session.state !== "paused") {
-      throw new Error(`Cannot resume session in state: ${session.state}`);
-    }
-    return this.updateState(sessionId, "active");
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (session.state !== "paused") {
+        throw new Error(`Cannot resume session in state: ${session.state}`);
+      }
+      if (!isValidTransition(session.state, "active")) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'active'`
+        );
+      }
+      session.state = "active";
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent("onSessionUpdated", this.events.onSessionUpdated, session);
+      return session;
+    });
   }
   /**
    * Cancel a session
@@ -190,25 +253,33 @@ var SessionManager = class {
     return this.updateState(sessionId, "cancelled");
   }
   /**
-   * Fail a session
+   * Fail a session with an optional error message
    */
   async fail(sessionId, error) {
-    const session = await this.getOrThrow(sessionId);
-    session.state = "failed";
-    session.updatedAt = /* @__PURE__ */ new Date();
-    session.completedAt = /* @__PURE__ */ new Date();
-    session.duration = session.completedAt.getTime() - session.createdAt.getTime();
-    if (error) {
-      session.metadata = {
-        ...session.metadata,
-        failureReason: error
-      };
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onSessionUpdated?.(session);
-    return session;
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
+      if (!isValidTransition(session.state, "failed")) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'failed'`
+        );
+      }
+      if (error) {
+        session.metadata = {
+          ...session.metadata,
+          failureReason: error
+        };
+      }
+      session.state = "failed";
+      session.updatedAt = /* @__PURE__ */ new Date();
+      session.completedAt = /* @__PURE__ */ new Date();
+      const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+      session.duration = Math.max(0, rawDuration);
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent("onSessionUpdated", this.events.onSessionUpdated, session);
+      return session;
+    });
   }
   /**
    * Delete a session
@@ -231,67 +302,71 @@ var SessionManager = class {
    */
   async addTask(input) {
     const validated = AddTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
-    const task = SessionTaskSchema.parse({
-      id: randomUUID(),
-      description: validated.description,
-      agentId: validated.agentId,
-      status: "pending",
-      parentTaskId: validated.parentTaskId,
-      metadata: validated.metadata
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
+      const task = SessionTaskSchema.parse({
+        id: randomUUID(),
+        description: validated.description,
+        agentId: validated.agentId,
+        status: "pending",
+        createdAt: /* @__PURE__ */ new Date(),
+        parentTaskId: validated.parentTaskId,
+        metadata: validated.metadata
+      });
+      session.tasks.push(task);
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (!session.agents.includes(validated.agentId)) {
+        session.agents.push(validated.agentId);
+      }
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent("onTaskAdded", this.events.onTaskAdded, session, task);
+      return task;
     });
-    session.tasks.push(task);
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (!session.agents.includes(validated.agentId)) {
-      session.agents.push(validated.agentId);
-    }
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onTaskAdded?.(session, task);
-    return task;
   }
   /**
    * Update task status and result
    */
   async updateTask(input) {
     const validated = UpdateTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
-    const task = session.tasks.find((t) => t.id === validated.taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${validated.taskId}`);
-    }
-    const previousStatus = task.status;
-    task.status = validated.status;
-    if (validated.result !== void 0) {
-      task.result = validated.result;
-    }
-    if (validated.error !== void 0) {
-      task.error = validated.error;
-    }
-    if (validated.status === "running" && previousStatus === "pending") {
-      task.startedAt = /* @__PURE__ */ new Date();
-    }
-    if (validated.status === "completed" || validated.status === "failed") {
-      task.completedAt = /* @__PURE__ */ new Date();
-      if (task.startedAt) {
-        task.duration = task.completedAt.getTime() - task.startedAt.getTime();
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
+      const task = session.tasks.find((t) => t.id === validated.taskId);
+      if (!task) {
+        throw new Error(`Task not found: ${validated.taskId}`);
       }
-    }
-    session.updatedAt = /* @__PURE__ */ new Date();
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-    this.events.onTaskUpdated?.(session, task);
-    return task;
+      const previousStatus = task.status;
+      task.status = validated.status;
+      if (validated.result !== void 0) {
+        task.result = validated.result;
+      }
+      if (validated.error !== void 0) {
+        task.error = validated.error;
+      }
+      if (validated.status === "running" && previousStatus === "pending") {
+        task.startedAt = /* @__PURE__ */ new Date();
+      }
+      if (validated.status === "completed" || validated.status === "failed") {
+        task.completedAt = /* @__PURE__ */ new Date();
+        const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
+        const rawDuration = task.completedAt.getTime() - startTime;
+        task.duration = Math.max(0, rawDuration);
+      }
+      session.updatedAt = /* @__PURE__ */ new Date();
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+      safeInvokeEvent("onTaskUpdated", this.events.onTaskUpdated, session, task);
+      return task;
+    });
   }
   /**
    * Start a task
    */
   async startTask(sessionId, taskId) {
     return this.updateTask({
-      sessionId,
-      // Cast to branded type
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "running"
     });
@@ -301,7 +376,7 @@ var SessionManager = class {
    */
   async completeTask(sessionId, taskId, result) {
     return this.updateTask({
-      sessionId,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "completed",
       result
@@ -312,7 +387,7 @@ var SessionManager = class {
    */
   async failTask(sessionId, taskId, error) {
     return this.updateTask({
-      sessionId,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: "failed",
       error
@@ -344,6 +419,30 @@ var SessionManager = class {
   // =============================================================================
   // Private Methods
   // =============================================================================
+  /**
+   * Execute an operation with a session lock to prevent race conditions.
+   * Only one operation can modify a session at a time.
+   */
+  async withSessionLock(sessionId, operation) {
+    const existingLock = this.sessionLocks.get(sessionId);
+    if (existingLock) {
+      await existingLock.catch(() => {
+      });
+    }
+    let releaseLock;
+    const lockPromise = new Promise((resolve) => {
+      releaseLock = resolve;
+    });
+    this.sessionLocks.set(sessionId, lockPromise);
+    try {
+      return await operation();
+    } finally {
+      releaseLock();
+      if (this.sessionLocks.get(sessionId) === lockPromise) {
+        this.sessionLocks.delete(sessionId);
+      }
+    }
+  }
   /**
    * Generate a unique session ID (UUID format)
    */
@@ -377,8 +476,8 @@ var SessionManager = class {
    * Load session from disk
    */
   async loadSession(sessionId) {
+    const filePath = this.getSessionFilePath(sessionId);
     try {
-      const filePath = this.getSessionFilePath(sessionId);
       const data = await readFile(filePath, "utf-8");
       const parsed = JSON.parse(data);
       parsed.createdAt = new Date(parsed.createdAt);
@@ -386,12 +485,21 @@ var SessionManager = class {
       if (parsed.completedAt) {
         parsed.completedAt = new Date(parsed.completedAt);
       }
-      for (const task of parsed.tasks) {
-        if (task.startedAt) task.startedAt = new Date(task.startedAt);
-        if (task.completedAt) task.completedAt = new Date(task.completedAt);
+      if (Array.isArray(parsed.tasks)) {
+        for (const task of parsed.tasks) {
+          if (task.createdAt) task.createdAt = new Date(task.createdAt);
+          if (task.startedAt) task.startedAt = new Date(task.startedAt);
+          if (task.completedAt) task.completedAt = new Date(task.completedAt);
+        }
       }
       return SessionSchema.parse(parsed);
-    } catch {
+    } catch (error) {
+      const errno = error;
+      if (errno.code !== "ENOENT") {
+        console.warn(
+          `[ax/session] Failed to load session ${sessionId}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
       return null;
     }
   }

@@ -1,3 +1,3 @@
-export { Provider, RoutingContext, RoutingResult, calculateScore, defaultRoutingContext, getFallbackOrder, selectProvider } from './routing.js';
+export { AGENT_PROVIDER_AFFINITY, Provider, RoutingContext, RoutingResult, TASK_PROVIDER_AFFINITY, TaskClass, calculateScore, classifyTask, defaultRoutingContext, getAgentsWithAffinities, getBestProviderForAgent, getBestProviderForTask, getFallbackOrder, getProviderAgentAffinity, getProviderTaskAffinity, getSupportedTaskTypes, selectProvider } from './routing.js';
 export { DagNode, ScheduleGroup, ScheduleResult, findCriticalPath, getExecutionOrder, hasCycle, scheduleParallel, validateDag } from './dag.js';
 export { MemoryEntry as RankableMemoryEntry, RankedEntry, RankingContext, ScoreBreakdown, calculateFrequencyScore, calculateRecencyScore, calculateTagBonus, calculateTypeBonus, createRankingContext, defaultRankingContext, getTopRanked, normalizeFtsScore, rankEntries, rankEntry, validateWeights } from './ranking.js';

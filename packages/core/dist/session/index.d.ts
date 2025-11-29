@@ -34,12 +34,12 @@ interface SessionManagerEvents {
     onTaskUpdated?: (session: Session, task: SessionTask) => void;
 }
 declare class SessionManager {
-    private readonly storagePath;
     private readonly sessionsPath;
     private readonly maxInMemorySessions;
     private readonly autoPersist;
     private readonly sessions;
     private readonly events;
+    private readonly sessionLocks;
     private initialized;
     constructor(options: SessionManagerOptions);
     /**
@@ -50,6 +50,10 @@ declare class SessionManager {
      * Cleanup and persist all sessions
      */
     cleanup(): Promise<void>;
+    /**
+     * Ensure the manager is initialized before performing operations
+     */
+    private ensureInitialized;
     /**
      * Create a new session
      */
@@ -87,7 +91,7 @@ declare class SessionManager {
      */
     cancel(sessionId: string): Promise<Session>;
     /**
-     * Fail a session
+     * Fail a session with an optional error message
      */
     fail(sessionId: string, error?: string): Promise<Session>;
     /**
@@ -126,6 +130,11 @@ declare class SessionManager {
      * Set event handlers
      */
     setEvents(events: SessionManagerEvents): void;
+    /**
+     * Execute an operation with a session lock to prevent race conditions.
+     * Only one operation can modify a session at a time.
+     */
+    private withSessionLock;
     /**
      * Generate a unique session ID (UUID format)
      */

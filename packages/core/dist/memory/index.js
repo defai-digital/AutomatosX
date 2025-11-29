@@ -32,34 +32,39 @@ var MemoryManager = class _MemoryManager {
     this.maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES;
     this.cleanupConfig = MemoryCleanupConfigSchema.parse(options.cleanupConfig ?? {});
     this.db = new Database(options.databasePath);
-    this.initialize();
-    this.stmtInsert = this.db.prepare(`
-      INSERT INTO memories (content, metadata)
-      VALUES (?, ?)
-    `);
-    this.stmtSearch = this.db.prepare(`
-      SELECT m.*, bm25(memories_fts) as rank
-      FROM memories m
-      JOIN memories_fts ON m.id = memories_fts.rowid
-      WHERE memories_fts MATCH ?
-      ORDER BY rank
-      LIMIT ? OFFSET ?
-    `);
-    this.stmtGetById = this.db.prepare(`
-      SELECT * FROM memories WHERE id = ?
-    `);
-    this.stmtUpdateAccess = this.db.prepare(`
-      UPDATE memories
-      SET access_count = access_count + 1,
-          last_accessed_at = datetime('now')
-      WHERE id = ?
-    `);
-    this.stmtDelete = this.db.prepare(`
-      DELETE FROM memories WHERE id = ?
-    `);
-    this.stmtCount = this.db.prepare(`
-      SELECT COUNT(*) as count FROM memories
-    `);
+    try {
+      this.initialize();
+      this.stmtInsert = this.db.prepare(`
+        INSERT INTO memories (content, metadata)
+        VALUES (?, ?)
+      `);
+      this.stmtSearch = this.db.prepare(`
+        SELECT m.*, bm25(memories_fts) as rank
+        FROM memories m
+        JOIN memories_fts ON m.id = memories_fts.rowid
+        WHERE memories_fts MATCH ?
+        ORDER BY rank
+        LIMIT ? OFFSET ?
+      `);
+      this.stmtGetById = this.db.prepare(`
+        SELECT * FROM memories WHERE id = ?
+      `);
+      this.stmtUpdateAccess = this.db.prepare(`
+        UPDATE memories
+        SET access_count = access_count + 1,
+            last_accessed_at = datetime('now')
+        WHERE id = ?
+      `);
+      this.stmtDelete = this.db.prepare(`
+        DELETE FROM memories WHERE id = ?
+      `);
+      this.stmtCount = this.db.prepare(`
+        SELECT COUNT(*) as count FROM memories
+      `);
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
   /**
    * Initialize database schema
@@ -226,15 +231,24 @@ var MemoryManager = class _MemoryManager {
       sql += ` AND m.created_at <= ?`;
       params.push(filter.createdBefore.toISOString());
     }
+    const SQLITE_PARAM_LIMIT = 999;
     if (filter?.tags && filter.tags.length > 0) {
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      const reserveForTagsAll = filter.tagsAll?.length ? Math.min(filter.tagsAll.length, 100) : 0;
+      const tagBudget = Math.max(1, remainingBudget - reserveForTagsAll - 10);
+      const maxTags = Math.min(filter.tags.length, tagBudget);
+      const validTags = filter.tags.slice(0, maxTags);
       sql += ` AND EXISTS (
         SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
-        WHERE value IN (${filter.tags.map(() => "?").join(",")})
+        WHERE value IN (${validTags.map(() => "?").join(",")})
       )`;
-      params.push(...filter.tags);
+      params.push(...validTags);
     }
     if (filter?.tagsAll && filter.tagsAll.length > 0) {
-      for (const tag of filter.tagsAll) {
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      const maxTagsAll = Math.min(filter.tagsAll.length, remainingBudget - 5);
+      const validTagsAll = filter.tagsAll.slice(0, Math.max(1, maxTagsAll));
+      for (const tag of validTagsAll) {
         sql += ` AND EXISTS (
           SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
           WHERE value = ?
@@ -336,6 +350,7 @@ var MemoryManager = class _MemoryManager {
       `
       SELECT value as tag, COUNT(*) as count
       FROM memories, json_each(json_extract(metadata, '$.tags'))
+      WHERE value IS NOT NULL AND typeof(value) = 'text'
       GROUP BY value
       ORDER BY count DESC
       LIMIT ${DEFAULT_TOP_TAGS_LIMIT}
@@ -474,7 +489,12 @@ var MemoryManager = class _MemoryManager {
   }
   /**
    * Check if cleanup is needed and perform it
-   * Protected against concurrent cleanup operations
+   * Protected against concurrent cleanup operations.
+   *
+   * Note: This is intentionally synchronous because SQLite uses a single-writer model.
+   * The `cleanupInProgress` flag prevents re-entrant calls which could occur if
+   * add() is called during cleanup (e.g., in a batch operation).
+   * Async cleanup would not provide benefits with SQLite's locking model.
    */
   maybeCleanup() {
     if (this.cleanupInProgress) {
@@ -482,13 +502,14 @@ var MemoryManager = class _MemoryManager {
     }
     const count = this.getCount();
     const threshold = Math.floor(this.maxEntries * this.cleanupConfig.triggerThreshold);
-    if (count >= threshold) {
-      this.cleanupInProgress = true;
-      try {
-        this.cleanup();
-      } finally {
-        this.cleanupInProgress = false;
-      }
+    if (count < threshold) {
+      return;
+    }
+    this.cleanupInProgress = true;
+    try {
+      this.cleanup();
+    } finally {
+      this.cleanupInProgress = false;
     }
   }
   /**
@@ -508,7 +529,7 @@ var MemoryManager = class _MemoryManager {
    * Escapes special characters rather than removing them to preserve query intent
    */
   sanitizeQuery(query) {
-    return query.replace(/"/g, '""').replace(/[*(){}[\]^~\\]/g, " ").replace(/\s+/g, " ").trim();
+    return query.replace(/"/g, '""').replace(/[*(){}[\]^~\\:]/g, " ").replace(/(^|\s)-/g, "$1").replace(/\s+/g, " ").trim();
   }
   /**
    * Convert database row to MemoryEntry
@@ -517,7 +538,10 @@ var MemoryManager = class _MemoryManager {
     let metadata;
     try {
       metadata = JSON.parse(row.metadata);
-    } catch {
+    } catch (error) {
+      console.warn(
+        `[ax/memory] Corrupted metadata for entry ${row.id}, using defaults: ${error instanceof Error ? error.message : "Parse error"}`
+      );
       metadata = {
         type: DEFAULT_METADATA_TYPE,
         source: DEFAULT_METADATA_SOURCE,
@@ -567,9 +591,12 @@ var MemoryManager = class _MemoryManager {
   }
   /**
    * Close database connection
+   * Safe to call multiple times - subsequent calls are no-ops.
    */
   close() {
-    this.db.close();
+    if (this.db.open) {
+      this.db.close();
+    }
   }
 };
 export {

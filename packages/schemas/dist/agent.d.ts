@@ -286,12 +286,12 @@ declare const AgentResponseSchema: z.ZodObject<{
         output: z.ZodOptional<z.ZodNumber>;
         total: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
-        output?: number | undefined;
         input?: number | undefined;
+        output?: number | undefined;
         total?: number | undefined;
     }, {
-        output?: number | undefined;
         input?: number | undefined;
+        output?: number | undefined;
         total?: number | undefined;
     }>>;
     /** Delegation requests made by agent */
@@ -325,8 +325,8 @@ declare const AgentResponseSchema: z.ZodObject<{
     /** Metadata about execution */
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
-    success: boolean;
     output: string;
+    success: boolean;
     agentId: string;
     duration: number;
     delegations: {
@@ -334,28 +334,33 @@ declare const AgentResponseSchema: z.ZodObject<{
         task: string;
         toAgent: string;
     }[];
-    metadata?: Record<string, unknown> | undefined;
-    provider?: string | undefined;
-    tokens?: {
-        output?: number | undefined;
-        input?: number | undefined;
-        total?: number | undefined;
-    } | undefined;
     error?: {
         code: string;
         message: string;
         details?: unknown;
     } | undefined;
-}, {
-    success: boolean;
-    output: string;
-    agentId: string;
-    duration: number;
     metadata?: Record<string, unknown> | undefined;
     provider?: string | undefined;
     tokens?: {
-        output?: number | undefined;
         input?: number | undefined;
+        output?: number | undefined;
+        total?: number | undefined;
+    } | undefined;
+}, {
+    output: string;
+    success: boolean;
+    agentId: string;
+    duration: number;
+    error?: {
+        code: string;
+        message: string;
+        details?: unknown;
+    } | undefined;
+    metadata?: Record<string, unknown> | undefined;
+    provider?: string | undefined;
+    tokens?: {
+        input?: number | undefined;
+        output?: number | undefined;
         total?: number | undefined;
     } | undefined;
     delegations?: {
@@ -363,11 +368,6 @@ declare const AgentResponseSchema: z.ZodObject<{
         task: string;
         toAgent: string;
     }[] | undefined;
-    error?: {
-        code: string;
-        message: string;
-        details?: unknown;
-    } | undefined;
 }>;
 type AgentResponse = z.infer<typeof AgentResponseSchema>;
 /**

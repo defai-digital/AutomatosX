@@ -30,11 +30,25 @@ var AgentLoader = class {
       const agentFiles = files.filter(
         (f) => AGENT_FILE_EXTENSIONS.includes(extname(f).toLowerCase())
       );
+      if (agentFiles.length === 0) {
+        console.info(
+          `[ax/loader] No agent files found in ${this.agentsPath}. Using defaults. Supported extensions: ${AGENT_FILE_EXTENSIONS.join(", ")}`
+        );
+      }
       for (const file of agentFiles) {
         await this.loadAgentFile(file);
       }
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      const errno = error;
+      if (errno.code === "ENOENT") {
+        console.debug?.(
+          `[ax/loader] Agents directory not found at ${this.agentsPath}. Using defaults.`
+        );
+      } else if (errno.code === "EACCES" || errno.code === "EPERM") {
+        console.warn(
+          `[ax/loader] Cannot access agents directory ${this.agentsPath}: ${errno.message}. Check permissions. Using defaults.`
+        );
+      } else {
         throw error;
       }
     }
@@ -63,19 +77,24 @@ var AgentLoader = class {
    * Load agent from a specific file path
    */
   async loadAgentFromPath(filePath) {
+    const agentId = basename(filePath, extname(filePath));
     try {
       const content = await readFile(filePath, "utf-8");
       const parsed = parseYaml(content);
       const profile = validateAgentProfile(parsed);
+      if (profile.name !== agentId) {
+        console.warn(
+          `[ax/loader] Agent filename "${agentId}" doesn't match profile name "${profile.name}". Using filename as the canonical ID. Consider renaming the file or updating the profile.`
+        );
+      }
       const loaded = {
         profile,
         filePath,
         loadedAt: /* @__PURE__ */ new Date()
       };
-      this.loadedAgents.set(profile.name, loaded);
+      this.loadedAgents.set(agentId, loaded);
       return loaded;
     } catch (error) {
-      const agentId = basename(filePath, extname(filePath));
       this.loadErrors.push({
         agentId,
         filePath,
@@ -173,7 +192,7 @@ var AutomatosXError = class extends Error {
 };
 var AgentNotFoundError = class extends AutomatosXError {
   constructor(agentId, options) {
-    let message = `Agent "${agentId}" not found`;
+    const message = `Agent "${agentId}" not found`;
     let suggestion;
     if (options?.similarAgents && options.similarAgents.length > 0) {
       suggestion = `Did you mean: ${options.similarAgents.join(", ")}?`;
@@ -230,6 +249,17 @@ function findSimilar(input, options, maxDistance = 2) {
 }
 
 // src/agent/registry.ts
+function safeInvokeEvent(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/registry] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var AgentRegistry = class {
   loader;
   agents = /* @__PURE__ */ new Map();
@@ -271,7 +301,7 @@ var AgentRegistry = class {
     for (const loaded of agents) {
       this.registerAgent(loaded.profile);
     }
-    this.events.onReloaded?.(Array.from(this.agents.values()));
+    safeInvokeEvent("onReloaded", this.events.onReloaded, Array.from(this.agents.values()));
     return {
       loaded: agents.length,
       errors
@@ -297,7 +327,7 @@ var AgentRegistry = class {
       }
       this.byAbility.get(ability).add(id);
     }
-    this.events.onAgentRegistered?.(profile);
+    safeInvokeEvent("onAgentRegistered", this.events.onAgentRegistered, profile);
   }
   /**
    * Remove an agent from registry
@@ -317,7 +347,7 @@ var AgentRegistry = class {
         this.byAbility.delete(ability);
       }
     }
-    this.events.onAgentRemoved?.(agentId);
+    safeInvokeEvent("onAgentRemoved", this.events.onAgentRemoved, agentId);
     return true;
   }
   /**
@@ -412,7 +442,14 @@ var AgentRegistry = class {
   getByTeam(team) {
     const agentIds = this.byTeam.get(team);
     if (!agentIds) return [];
-    return Array.from(agentIds).map((id) => this.agents.get(id)).filter(Boolean);
+    const results = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
   /**
    * Get all team names
@@ -426,7 +463,14 @@ var AgentRegistry = class {
   getByAbility(ability) {
     const agentIds = this.byAbility.get(ability);
     if (!agentIds) return [];
-    return Array.from(agentIds).map((id) => this.agents.get(id)).filter(Boolean);
+    const results = [];
+    for (const id of agentIds) {
+      const agent = this.agents.get(id);
+      if (agent) {
+        results.push(agent);
+      }
+    }
+    return results;
   }
   /**
    * Get all available abilities
@@ -471,7 +515,8 @@ function createAgentRegistry(options) {
 // src/agent/executor.ts
 import {
   DelegationRequestSchema,
-  DelegationResultSchema
+  DelegationResultSchema,
+  SessionId as SessionId2
 } from "@ax/schemas";
 
 // src/router/provider-router.ts
@@ -495,7 +540,8 @@ import {
   CreateSessionInputSchema,
   AddTaskInputSchema,
   UpdateTaskInputSchema,
-  createSessionSummary
+  createSessionSummary,
+  SessionId
 } from "@ax/schemas";
 
 // src/memory/manager.ts
@@ -509,6 +555,20 @@ import {
 var DEFAULT_EXECUTION_TIMEOUT_MS = 3e5;
 var MAX_DELEGATION_DEPTH = 3;
 var DEFAULT_AGENT_ID = "standard";
+function parseSessionId(sessionId) {
+  return SessionId2.parse(sessionId);
+}
+function safeInvokeEvent2(eventName, callback, ...args) {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/executor] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 var AgentExecutor = class {
   router;
   sessionManager;
@@ -530,15 +590,20 @@ var AgentExecutor = class {
    * Execute a task with a specific agent
    */
   async execute(agentId, task, options = {}) {
+    if (!task || task.trim() === "") {
+      throw new Error("Task description cannot be empty");
+    }
     const session = options.sessionId ? await this.sessionManager.getOrThrow(options.sessionId) : await this.sessionManager.create({
-      name: `Task: ${task.substring(0, 50)}...`,
+      name: `Task: ${task.slice(0, 50)}${task.length > 50 ? "..." : ""}`,
       agents: [agentId]
     });
     const agent = this.agentRegistry.get(agentId);
     if (!agent) {
       const defaultAgent = this.agentRegistry.get(DEFAULT_AGENT_ID);
       if (!defaultAgent) {
-        throw new Error(`Agent not found: ${agentId}`);
+        throw new Error(
+          `Agent "${agentId}" not found and fallback agent "${DEFAULT_AGENT_ID}" is also unavailable. Available agents: ${this.agentRegistry.getAll().map((a) => a.name).join(", ") || "none"}`
+        );
       }
       console.warn(`[ax/executor] Agent "${agentId}" not found, using "${DEFAULT_AGENT_ID}"`);
       return this.executeWithAgent(defaultAgent, task, session, options);
@@ -549,6 +614,9 @@ var AgentExecutor = class {
    * Execute a task with automatic agent selection
    */
   async executeAuto(task, options = {}) {
+    if (!task || task.trim() === "") {
+      throw new Error("Task description cannot be empty");
+    }
     const taskType = this.inferTaskType(task);
     const candidates = this.agentRegistry.findForTask(taskType);
     if (candidates.length === 0) {
@@ -569,6 +637,15 @@ var AgentExecutor = class {
         success: false,
         request: validated,
         error: `Maximum delegation depth (${MAX_DELEGATION_DEPTH}) exceeded`,
+        duration: Date.now() - startTime,
+        completedBy: validated.fromAgent
+      });
+    }
+    if (validated.context.delegationChain.includes(validated.toAgent) || validated.toAgent === validated.fromAgent) {
+      return DelegationResultSchema.parse({
+        success: false,
+        request: validated,
+        error: `Circular delegation detected: "${validated.toAgent}" is already in the delegation chain`,
         duration: Date.now() - startTime,
         completedBy: validated.fromAgent
       });
@@ -596,7 +673,7 @@ var AgentExecutor = class {
         });
       }
     }
-    this.events.onDelegation?.(validated.fromAgent, validated.toAgent, validated.task);
+    safeInvokeEvent2("onDelegation", this.events.onDelegation, validated.fromAgent, validated.toAgent, validated.task);
     try {
       const executeOptions = {
         timeout: validated.options.timeout,
@@ -639,9 +716,9 @@ var AgentExecutor = class {
    */
   async executeWithAgent(agent, task, session, options) {
     const agentId = agent.name;
-    this.events.onExecutionStart?.(agentId, task);
+    safeInvokeEvent2("onExecutionStart", this.events.onExecutionStart, agentId, task);
     const sessionTask = await this.sessionManager.addTask({
-      sessionId: session.id,
+      sessionId: parseSessionId(session.id),
       description: task,
       agentId,
       metadata: {
@@ -675,6 +752,9 @@ var AgentExecutor = class {
       }
       const updatedSession = await this.sessionManager.getOrThrow(session.id);
       const updatedTask = updatedSession.tasks.find((t) => t.id === sessionTask.id);
+      if (!updatedTask) {
+        throw new Error(`Task ${sessionTask.id} not found in session ${session.id} after execution`);
+      }
       const result = {
         response,
         session: updatedSession,
@@ -682,12 +762,12 @@ var AgentExecutor = class {
         agentId,
         delegated: (options.delegationChain?.length ?? 0) > 0
       };
-      this.events.onExecutionEnd?.(result);
+      safeInvokeEvent2("onExecutionEnd", this.events.onExecutionEnd, result);
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       await this.sessionManager.failTask(session.id, sessionTask.id, errorMessage);
-      this.events.onError?.(agentId, error instanceof Error ? error : new Error(errorMessage));
+      safeInvokeEvent2("onError", this.events.onError, agentId, error instanceof Error ? error : new Error(errorMessage));
       throw error;
     }
   }
@@ -717,9 +797,23 @@ ${agent.abilities.join(", ")}
 `);
     }
     if (additionalContext && Object.keys(additionalContext).length > 0) {
-      parts.push(`[Additional Context]
-${JSON.stringify(additionalContext, null, 2)}
+      try {
+        const seen = /* @__PURE__ */ new WeakSet();
+        const json = JSON.stringify(additionalContext, (key, value) => {
+          if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) return "[Circular]";
+            seen.add(value);
+          }
+          return value;
+        }, 2);
+        parts.push(`[Additional Context]
+${json}
 `);
+      } catch (error) {
+        parts.push(`[Additional Context]
+[Failed to serialize: ${error instanceof Error ? error.message : "Unknown error"}]
+`);
+      }
     }
     parts.push(`[Task]
 ${task}`);
@@ -1055,7 +1149,7 @@ function selectAgentWithReason(task, registry, options = {}) {
     const agent = registry.get(best.agentId);
     if (agent) {
       const maxPossibleMatches = AGENT_KEYWORDS[best.agentId]?.length ?? 1;
-      const confidence = Math.min(best.score / Math.max(maxPossibleMatches / 3, 1), 1);
+      const confidence = Math.min(best.score / Math.max(maxPossibleMatches, 5), 1);
       return {
         agent,
         reason: `Selected ${best.agentId} agent based on keywords: ${best.keywords.join(", ")}`,
@@ -1085,7 +1179,9 @@ function selectAgentWithReason(task, registry, options = {}) {
       alternatives: allAgents.slice(1, 4).map((a) => a.name)
     };
   }
-  throw new Error("No agents available in registry");
+  throw new Error(
+    "No agents available in registry. Ensure at least one agent is registered before routing tasks. Check that agent configuration files exist and are valid."
+  );
 }
 function getAgentKeywords(agentId) {
   return AGENT_KEYWORDS[agentId] ?? [];

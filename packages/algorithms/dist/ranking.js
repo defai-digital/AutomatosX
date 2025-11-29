@@ -13,7 +13,7 @@ var WEIGHT_VALIDATION_TOLERANCE = 0.01;
 var EXPONENTIAL_DECAY_BASE = 0.5;
 var FREQUENCY_SCORE_MAX = 1;
 var DEFAULT_RANKING_LIMIT = 10;
-var DEFAULT_MAX_FTS_SCORE = -1;
+var DEFAULT_MAX_FTS_SCORE = -10;
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }

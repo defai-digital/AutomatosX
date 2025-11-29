@@ -5,8 +5,7 @@ import { parse as parseYaml } from "yaml";
 import {
   ConfigSchema,
   DEFAULT_CONFIG,
-  validateConfig,
-  mergeConfig
+  validateConfig
 } from "@ax/schemas";
 var CONFIG_FILE_NAMES = ["ax.config.json", "ax.config.yaml", "ax.config.yml"];
 var MAX_PARENT_SEARCH = 10;
@@ -59,13 +58,19 @@ function getEnvOverrides(prefix = "AX") {
   }
   const timeout = process.env[`${prefix}_TIMEOUT`];
   if (timeout) {
-    const timeoutMs = parseInt(timeout, 10);
-    if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
-      overrides["execution"] = { timeout: timeoutMs };
-    } else {
+    if (!/^\d+$/.test(timeout.trim())) {
       console.warn(
-        `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        `[ax/config] Invalid ${prefix}_TIMEOUT format "${timeout}". Expected numeric value only. Using default.`
       );
+    } else {
+      const timeoutMs = parseInt(timeout, 10);
+      if (!isNaN(timeoutMs) && timeoutMs > 0 && timeoutMs <= MAX_TIMEOUT_MS) {
+        overrides["execution"] = { timeout: timeoutMs };
+      } else {
+        console.warn(
+          `[ax/config] Invalid ${prefix}_TIMEOUT value "${timeout}". Expected positive integer between 1 and ${MAX_TIMEOUT_MS} (ms). Using default.`
+        );
+      }
     }
   }
   return overrides;
@@ -82,12 +87,27 @@ async function loadConfig(options = {}) {
   if (fileName) {
     configPath = join(baseDir, fileName);
     try {
-      fileConfig = await parseConfigFile(configPath);
+      const stats = await stat(configPath);
+      if (!stats.isFile()) {
+        console.warn(
+          `[ax/config] Specified config path "${configPath}" is not a file. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        fileConfig = await parseConfigFile(configPath);
+      }
     } catch (error) {
-      console.warn(
-        `[ax/config] Failed to parse specified config file ${configPath}: ${error instanceof Error ? error.message : "Unknown error"}. Using defaults.`
-      );
-      configPath = null;
+      const errno = error;
+      if (errno.code === "ENOENT") {
+        console.warn(
+          `[ax/config] Specified config file "${configPath}" not found. Using defaults.`
+        );
+        configPath = null;
+      } else {
+        throw new Error(
+          `Failed to parse config file ${configPath}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     }
   } else {
     configPath = await findConfigFile(baseDir, searchParents);
@@ -136,7 +156,23 @@ async function loadConfig(options = {}) {
 }
 function loadConfigSync() {
   const envOverrides = getEnvOverrides("AX");
-  return mergeConfig(envOverrides);
+  const mergeSection = (key) => ({
+    ...DEFAULT_CONFIG[key],
+    ...envOverrides[key] ?? {}
+  });
+  const mergedConfig = {
+    ...DEFAULT_CONFIG,
+    ...envOverrides,
+    providers: mergeSection("providers"),
+    execution: mergeSection("execution"),
+    memory: mergeSection("memory"),
+    session: mergeSection("session"),
+    checkpoint: mergeSection("checkpoint"),
+    router: mergeSection("router"),
+    workspace: mergeSection("workspace"),
+    logging: mergeSection("logging")
+  };
+  return validateConfig(mergedConfig);
 }
 function getDefaultConfig() {
   return { ...DEFAULT_CONFIG };

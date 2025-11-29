@@ -82,7 +82,13 @@ async function cleanupContext() {
   if (cachedContext) {
     await cachedContext.providerRouter.cleanup();
     await cachedContext.sessionManager.cleanup();
-    cachedContext.memoryManager.close();
+    try {
+      cachedContext.memoryManager.close();
+    } catch (error2) {
+      console.warn(
+        `[ax/cli] Failed to close memory manager: ${error2 instanceof Error ? error2.message : "Unknown error"}`
+      );
+    }
     cachedContext = null;
   }
 }
@@ -751,20 +757,35 @@ var importCommand = {
       const { file } = argv;
       start(`Importing from ${file}...`);
       const data = await readFile(file, "utf-8");
-      const memories = JSON.parse(data);
+      let memories;
+      try {
+        memories = JSON.parse(data);
+      } catch (parseError) {
+        const parseMessage = parseError instanceof Error ? parseError.message : "Unknown parse error";
+        throw new Error(`Invalid JSON in file "${file}": ${parseMessage}`);
+      }
       if (!Array.isArray(memories)) {
         throw new Error("Invalid format: expected an array of memories");
       }
       const ctx = await getContext();
-      const inputs = memories.map((m) => ({
-        content: m.content,
-        metadata: {
-          ...m.metadata,
-          type: m.metadata.type ?? "document",
-          source: m.metadata.source ?? "import",
-          tags: m.metadata.tags ?? []
-        }
-      }));
+      const validTypes = ["task", "code", "conversation", "document", "decision"];
+      const inputs = memories.map((m) => {
+        const metadata = m.metadata ?? {};
+        const rawType = metadata.type;
+        const type = typeof rawType === "string" && validTypes.includes(rawType) ? rawType : "document";
+        return {
+          content: m.content,
+          metadata: {
+            type,
+            source: typeof metadata.source === "string" ? metadata.source : "import",
+            tags: Array.isArray(metadata.tags) ? metadata.tags.filter((t) => typeof t === "string") : [],
+            // Preserve other metadata fields if present
+            ...metadata.agentId && { agentId: metadata.agentId },
+            ...metadata.sessionId && { sessionId: metadata.sessionId },
+            ...typeof metadata.importance === "number" && { importance: metadata.importance }
+          }
+        };
+      });
       const ids = ctx.memoryManager.addBatch(inputs);
       succeed(`Imported ${ids.length} memories`);
     } catch (error2) {
@@ -818,13 +839,19 @@ var clearCommand = {
       if (!force) {
         warning(`This will permanently delete ${descriptions.join(" and ")}.`);
         info("Use --force to skip this confirmation.");
-        process.exit(0);
+        process.exit(1);
       }
       start(`Clearing ${descriptions.join(" and ")}...`);
       const ctx = await getContext();
-      const beforeDate = before ? new Date(before) : void 0;
-      if (beforeDate && isNaN(beforeDate.getTime())) {
-        throw new Error(`Invalid date format: ${before}. Use YYYY-MM-DD.`);
+      let beforeDate;
+      if (before) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(before)) {
+          throw new Error(`Invalid date format: "${before}". Use YYYY-MM-DD (e.g., 2024-01-15).`);
+        }
+        beforeDate = new Date(before);
+        if (isNaN(beforeDate.getTime())) {
+          throw new Error(`Invalid date: "${before}". Use a valid YYYY-MM-DD date.`);
+        }
       }
       const clearOptions = {};
       if (beforeDate) {
@@ -916,22 +943,27 @@ var statusCommand = {
         start("Checking provider health...");
       }
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const healthStatusMap = await ctx.providerRouter.checkAllHealth();
+      const healthStatus = {};
+      for (const [provider, healthy] of healthStatusMap) {
+        healthStatus[provider] = healthy;
+      }
       if (json2) {
         json(healthStatus);
       } else {
-        const healthyCount = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthyCount = Object.values(healthStatus).filter((h) => h === true).length;
         const totalCount = Object.keys(healthStatus).length;
         succeed(`${healthyCount}/${totalCount} providers healthy`);
         newline();
-        const rows = Object.entries(healthStatus).map(([provider, status]) => {
-          const s = status;
+        const rows = Object.entries(healthStatus).map(([provider, healthy]) => {
+          const providerInstance = ctx.providerRouter.getProvider(provider);
+          const health = providerInstance?.getHealth();
           return [
             providerBadge(provider),
-            statusBadge(s.healthy ? "healthy" : "unhealthy"),
-            s.latency ? `${s.latency}ms` : "-",
-            s.lastCheck ? formatRelativeTime(new Date(s.lastCheck)) : "-",
-            s.error ?? "-"
+            statusBadge(healthy ? "healthy" : "unhealthy"),
+            health?.latencyMs ? `${health.latencyMs}ms` : "-",
+            health?.lastCheck ? formatRelativeTime(new Date(health.lastCheck)) : "-",
+            health?.errorMessage ?? "-"
           ];
         });
         simpleTable(["Provider", "Status", "Latency", "Last Check", "Error"], rows);
@@ -965,13 +997,13 @@ var testCommand = {
       const ctx = await getContext();
       const startTime = Date.now();
       const providerInstance = ctx.providerRouter.getProvider(provider);
-      const duration = Date.now() - startTime;
       if (!providerInstance) {
+        const duration2 = Date.now() - startTime;
         if (json2) {
           json({
             provider,
             success: false,
-            duration,
+            duration: duration2,
             error: `Provider "${provider}" not found`
           });
         } else {
@@ -980,6 +1012,7 @@ var testCommand = {
         process.exit(1);
       }
       const healthResult = await providerInstance.checkHealth();
+      const duration = Date.now() - startTime;
       if (json2) {
         json({
           provider,
@@ -1025,9 +1058,10 @@ var listCommand4 = {
     type: "string"
   }).option("limit", {
     alias: "l",
-    describe: "Maximum results",
+    describe: "Maximum results (1-1000)",
     type: "number",
-    default: 20
+    default: 20,
+    coerce: (value) => Math.max(1, Math.min(1e3, value))
   }).option("json", {
     describe: "Output as JSON",
     type: "boolean",
@@ -1040,8 +1074,12 @@ var listCommand4 = {
         start("Loading sessions...");
       }
       const ctx = await getContext();
+      const hasFilter = state !== void 0 || agent !== void 0;
       const sessions = await ctx.sessionManager.list(
-        state !== void 0 || agent !== void 0 ? { state, agent } : void 0
+        hasFilter ? {
+          ...state !== void 0 && { state },
+          ...agent !== void 0 && { agent }
+        } : void 0
       );
       if (json2) {
         json(sessions);
@@ -1126,12 +1164,15 @@ var infoCommand2 = {
         if (session.tasks.length > 0) {
           newline();
           section("Tasks");
-          for (const task of session.tasks.slice(0, 10)) {
+          const maxTasksToShow = 10;
+          for (const task of session.tasks.slice(0, maxTasksToShow)) {
             const status = statusBadge(task.status);
-            listItem(`[${status}] ${task.agentId}: ${task.description.slice(0, 50)}...`);
+            const desc = task.description.slice(0, 50);
+            const truncated = task.description.length > 50 ? "..." : "";
+            listItem(`[${status}] ${task.agentId}: ${desc}${truncated}`);
           }
-          if (session.tasks.length > 10) {
-            listItem(`... and ${session.tasks.length - 10} more`);
+          if (session.tasks.length > maxTasksToShow) {
+            listItem(`... and ${session.tasks.length - maxTasksToShow} more`);
           }
         }
         if (session.tags.length > 0) {
@@ -1169,13 +1210,13 @@ var createCommand = {
     describe: "Initial agents",
     type: "array",
     default: [],
-    coerce: (arr) => arr.map(String)
+    coerce: (arr) => arr.map(String).filter((s) => s.trim() !== "")
   }).option("tags", {
     alias: "t",
     describe: "Session tags",
     type: "array",
     default: [],
-    coerce: (arr) => arr.map(String)
+    coerce: (arr) => arr.map(String).filter((s) => s.trim() !== "")
   }).option("json", {
     describe: "Output as JSON",
     type: "boolean",
@@ -1250,9 +1291,13 @@ var statusCommand2 = {
         start("Checking system status...");
       }
       const ctx = await getContext();
-      const healthStatus = await ctx.providerRouter.checkAllHealth();
+      const healthStatusMap = await ctx.providerRouter.checkAllHealth();
       const memoryStats = ctx.memoryManager.getStats();
       const agentCount = ctx.agentRegistry.getIds().length;
+      const healthStatus = {};
+      for (const [provider, healthy] of healthStatusMap) {
+        healthStatus[provider] = healthy;
+      }
       const status = {
         version: "11.0.0-alpha.0",
         basePath: ctx.basePath,
@@ -1270,7 +1315,7 @@ var statusCommand2 = {
       if (json2) {
         json(status);
       } else {
-        const healthyProviders = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthyProviders = Object.values(healthStatus).filter((h) => h === true).length;
         const totalProviders = Object.keys(healthStatus).length;
         succeed("System Status");
         newline();
@@ -1281,10 +1326,9 @@ var statusCommand2 = {
         newline();
         section("Providers");
         keyValue("Status", `${healthyProviders}/${totalProviders} healthy`);
-        for (const [provider, health] of Object.entries(healthStatus)) {
-          const h = health;
+        for (const [provider, healthy] of Object.entries(healthStatus)) {
           listItem(
-            `${providerBadge(provider)}: ${statusBadge(h.healthy ? "healthy" : "unhealthy")}`
+            `${providerBadge(provider)}: ${statusBadge(healthy ? "healthy" : "unhealthy")}`
           );
         }
         newline();
@@ -1460,8 +1504,11 @@ var doctorCommand = {
       }
       try {
         const ctx = await getContext();
-        const healthStatus = await ctx.providerRouter.checkAllHealth();
-        const healthyCount = Object.values(healthStatus).filter((h) => h.healthy).length;
+        const healthStatusMap = await ctx.providerRouter.checkAllHealth();
+        let healthyCount = 0;
+        for (const [, healthy] of healthStatusMap) {
+          if (healthy) healthyCount++;
+        }
         if (healthyCount > 0) {
           results.push({
             name: "Providers",
@@ -1681,9 +1728,13 @@ var setupCommand = {
     describe: "Output as JSON",
     type: "boolean",
     default: false
+  }).option("vscode", {
+    describe: "Generate VS Code configuration files",
+    type: "boolean",
+    default: false
   }),
   handler: async (argv) => {
-    const { force, json: json2 } = argv;
+    const { force, json: json2, vscode: generateVscode } = argv;
     const basePath = join3(process.cwd(), AUTOMATOSX_DIR);
     const result = {
       success: false,
@@ -1743,17 +1794,130 @@ var setupCommand = {
         result.messages.push("Config file exists, skipping");
       }
       const gitignorePath = join3(process.cwd(), ".gitignore");
-      const gitignoreEntries = `
-# AutomatosX
-.automatosx/memory/
-.automatosx/sessions/
-`;
       try {
         const existingGitignore = await readFile2(gitignorePath, "utf-8");
         if (!existingGitignore.includes(".automatosx/memory/")) {
           result.messages.push("Consider adding .automatosx/memory/ and .automatosx/sessions/ to .gitignore");
         }
       } catch {
+      }
+      if (generateVscode) {
+        if (!json2) {
+          update("Creating VS Code configuration...");
+        }
+        const vscodePath = join3(process.cwd(), ".vscode");
+        await mkdir(vscodePath, { recursive: true });
+        const tasksConfig = {
+          version: "2.0.0",
+          tasks: [
+            {
+              label: "AX: Run Task",
+              type: "shell",
+              command: 'ax run "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "dedicated", clear: true }
+            },
+            {
+              label: "AX: Run with Backend Agent",
+              type: "shell",
+              command: 'ax run backend "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "dedicated" }
+            },
+            {
+              label: "AX: Run with Frontend Agent",
+              type: "shell",
+              command: 'ax run frontend "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "dedicated" }
+            },
+            {
+              label: "AX: Run with Security Agent",
+              type: "shell",
+              command: 'ax run security "${input:taskDescription}"',
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "dedicated" }
+            },
+            {
+              label: "AX: Search Memory",
+              type: "shell",
+              command: 'ax memory search "${input:searchQuery}"',
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "shared" }
+            },
+            {
+              label: "AX: Show Status",
+              type: "shell",
+              command: "ax status",
+              problemMatcher: [],
+              presentation: { reveal: "always", panel: "shared" }
+            }
+          ],
+          inputs: [
+            {
+              id: "taskDescription",
+              description: "What do you want the agent to do?",
+              type: "promptString",
+              default: ""
+            },
+            {
+              id: "searchQuery",
+              description: "Search query for memory",
+              type: "promptString",
+              default: ""
+            }
+          ]
+        };
+        const tasksPath = join3(vscodePath, "tasks.json");
+        const tasksExists = await directoryExists(tasksPath);
+        if (!tasksExists || force) {
+          await writeFile2(tasksPath, JSON.stringify(tasksConfig, null, 2) + "\n");
+          result.messages.push("Created .vscode/tasks.json");
+        }
+        const settingsPath = join3(vscodePath, "settings.json");
+        let existingSettings = {};
+        try {
+          const existing = await readFile2(settingsPath, "utf-8");
+          existingSettings = JSON.parse(existing);
+        } catch {
+        }
+        const mcpSettings = {
+          ...existingSettings,
+          "automatosx.defaultAgent": "standard",
+          "automatosx.defaultProvider": "ax-cli",
+          "automatosx.showStatusBar": true,
+          "automatosx.enableCodeLens": true,
+          "automatosx.enableHover": true
+        };
+        await writeFile2(settingsPath, JSON.stringify(mcpSettings, null, 2) + "\n");
+        result.messages.push("Updated .vscode/settings.json");
+        const snippetsPath = join3(vscodePath, "automatosx.code-snippets");
+        const snippetsExists = await directoryExists(snippetsPath);
+        if (!snippetsExists || force) {
+          const snippets = {
+            "AX Agent YAML": {
+              scope: "yaml",
+              prefix: "ax-agent",
+              body: [
+                "name: ${1:agent-id}",
+                'displayName: "${2:Agent Name}"',
+                'role: "${3:Role description}"',
+                "team: ${4|engineering,research,creative,default|}",
+                "enabled: true",
+                "",
+                "abilities:",
+                "  - ${5:ability}",
+                "",
+                "systemPrompt: |",
+                "  You are ${2:Agent Name}.",
+                "  ${6:Your instructions here}"
+              ],
+              description: "Create an AutomatosX agent profile"
+            }
+          };
+          await writeFile2(snippetsPath, JSON.stringify(snippets, null, 2) + "\n");
+          result.messages.push("Created .vscode/automatosx.code-snippets");
+        }
       }
       result.success = true;
       if (json2) {
@@ -1778,6 +1942,11 @@ var setupCommand = {
         listItem('ax run backend "your task"  - Run a task');
         listItem("ax status         - Check system status");
         listItem("ax doctor         - Run diagnostics");
+        if (!generateVscode) {
+          newline();
+          info("VS Code Integration:");
+          listItem("ax setup --vscode  - Generate VS Code tasks and snippets");
+        }
         if (result.agentsCopied < 5) {
           newline();
           warning("Limited agents installed. Consider copying agents from the AutomatosX repository.");

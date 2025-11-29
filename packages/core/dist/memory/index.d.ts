@@ -86,7 +86,12 @@ declare class MemoryManager {
     cleanup(strategy?: CleanupStrategy): MemoryCleanupResult;
     /**
      * Check if cleanup is needed and perform it
-     * Protected against concurrent cleanup operations
+     * Protected against concurrent cleanup operations.
+     *
+     * Note: This is intentionally synchronous because SQLite uses a single-writer model.
+     * The `cleanupInProgress` flag prevents re-entrant calls which could occur if
+     * add() is called during cleanup (e.g., in a batch operation).
+     * Async cleanup would not provide benefits with SQLite's locking model.
      */
     private maybeCleanup;
     /**
@@ -124,6 +129,7 @@ declare class MemoryManager {
     vacuum(): void;
     /**
      * Close database connection
+     * Safe to call multiple times - subsequent calls are no-ops.
      */
     close(): void;
 }

@@ -34,9 +34,44 @@ import {
   type DelegationResult,
   type Session,
   type SessionTask,
+  type SessionIdType,
   DelegationRequestSchema,
   DelegationResultSchema,
+  SessionId,
 } from '@ax/schemas';
+
+/**
+ * Parse a session ID string to the branded SessionId type.
+ * Falls back to casting if not a valid UUID (for backward compatibility with tests).
+ */
+function parseSessionId(sessionId: string): SessionIdType {
+  const result = SessionId.safeParse(sessionId);
+  if (result.success) {
+    return result.data;
+  }
+  // Fallback for non-UUID session IDs (backward compatibility)
+  return sessionId as SessionIdType;
+}
+
+/**
+ * Safely invoke an event callback, catching and logging any errors.
+ */
+function safeInvokeEvent<T extends unknown[]>(
+  eventName: string,
+  callback: ((...args: T) => void) | undefined,
+  ...args: T
+): void {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/executor] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 import { type ProviderRouter } from '../router/provider-router.js';
 import { type SessionManager } from '../session/manager.js';
 import { type MemoryManager } from '../memory/manager.js';
@@ -202,6 +237,17 @@ export class AgentExecutor {
       });
     }
 
+    // Check for circular delegation (agent delegating to itself or to an agent already in chain)
+    if (validated.context.delegationChain.includes(validated.toAgent) || validated.toAgent === validated.fromAgent) {
+      return DelegationResultSchema.parse({
+        success: false,
+        request: validated,
+        error: `Circular delegation detected: "${validated.toAgent}" is already in the delegation chain`,
+        duration: Date.now() - startTime,
+        completedBy: validated.fromAgent,
+      });
+    }
+
     // Verify target agent can receive delegations
     const targetAgent = this.agentRegistry.get(validated.toAgent);
     if (!targetAgent) {
@@ -229,7 +275,7 @@ export class AgentExecutor {
       }
     }
 
-    this.events.onDelegation?.(validated.fromAgent, validated.toAgent, validated.task);
+    safeInvokeEvent('onDelegation', this.events.onDelegation, validated.fromAgent, validated.toAgent, validated.task);
 
     try {
       // Execute with target agent
@@ -284,11 +330,11 @@ export class AgentExecutor {
     options: ExecuteOptions
   ): Promise<ExecutionResult> {
     const agentId = agent.name;
-    this.events.onExecutionStart?.(agentId, task);
+    safeInvokeEvent('onExecutionStart', this.events.onExecutionStart, agentId, task);
 
     // Add task to session
     const sessionTask = await this.sessionManager.addTask({
-      sessionId: session.id as any,
+      sessionId: parseSessionId(session.id),
       description: task,
       agentId,
       metadata: {
@@ -346,13 +392,13 @@ export class AgentExecutor {
         delegated: (options.delegationChain?.length ?? 0) > 0,
       };
 
-      this.events.onExecutionEnd?.(result);
+      safeInvokeEvent('onExecutionEnd', this.events.onExecutionEnd, result);
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await this.sessionManager.failTask(session.id, sessionTask.id, errorMessage);
 
-      this.events.onError?.(agentId, error instanceof Error ? error : new Error(errorMessage));
+      safeInvokeEvent('onError', this.events.onError, agentId, error instanceof Error ? error : new Error(errorMessage));
       throw error;
     }
   }

@@ -45,6 +45,8 @@ var SessionTaskSchema = z2.object({
   result: z2.string().optional(),
   /** Error if failed */
   error: z2.string().optional(),
+  /** Task creation timestamp */
+  createdAt: z2.date().optional(),
   /** Start timestamp */
   startedAt: z2.date().optional(),
   /** Completion timestamp */

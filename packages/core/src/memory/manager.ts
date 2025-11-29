@@ -103,41 +103,48 @@ export class MemoryManager {
 
     // Initialize database
     this.db = new Database(options.databasePath);
-    this.initialize();
 
-    // Prepare statements
-    this.stmtInsert = this.db.prepare(`
-      INSERT INTO memories (content, metadata)
-      VALUES (?, ?)
-    `);
+    try {
+      this.initialize();
 
-    this.stmtSearch = this.db.prepare(`
-      SELECT m.*, bm25(memories_fts) as rank
-      FROM memories m
-      JOIN memories_fts ON m.id = memories_fts.rowid
-      WHERE memories_fts MATCH ?
-      ORDER BY rank
-      LIMIT ? OFFSET ?
-    `);
+      // Prepare statements
+      this.stmtInsert = this.db.prepare(`
+        INSERT INTO memories (content, metadata)
+        VALUES (?, ?)
+      `);
 
-    this.stmtGetById = this.db.prepare(`
-      SELECT * FROM memories WHERE id = ?
-    `);
+      this.stmtSearch = this.db.prepare(`
+        SELECT m.*, bm25(memories_fts) as rank
+        FROM memories m
+        JOIN memories_fts ON m.id = memories_fts.rowid
+        WHERE memories_fts MATCH ?
+        ORDER BY rank
+        LIMIT ? OFFSET ?
+      `);
 
-    this.stmtUpdateAccess = this.db.prepare(`
-      UPDATE memories
-      SET access_count = access_count + 1,
-          last_accessed_at = datetime('now')
-      WHERE id = ?
-    `);
+      this.stmtGetById = this.db.prepare(`
+        SELECT * FROM memories WHERE id = ?
+      `);
 
-    this.stmtDelete = this.db.prepare(`
-      DELETE FROM memories WHERE id = ?
-    `);
+      this.stmtUpdateAccess = this.db.prepare(`
+        UPDATE memories
+        SET access_count = access_count + 1,
+            last_accessed_at = datetime('now')
+        WHERE id = ?
+      `);
 
-    this.stmtCount = this.db.prepare(`
-      SELECT COUNT(*) as count FROM memories
-    `);
+      this.stmtDelete = this.db.prepare(`
+        DELETE FROM memories WHERE id = ?
+      `);
+
+      this.stmtCount = this.db.prepare(`
+        SELECT COUNT(*) as count FROM memories
+      `);
+    } catch (error) {
+      // Close database on initialization failure to prevent resource leaks
+      this.db.close();
+      throw error;
+    }
   }
 
   /**
@@ -340,9 +347,15 @@ export class MemoryManager {
     }
 
     // Filter by tags (match ANY of the specified tags)
-    // SQLite has a limit of 999 parameters, so we cap the tag list
+    // SQLite has a limit of 999 parameters per statement
+    // Reserve space for other filters (tagsAll, etc.) - use dynamic budget
+    const SQLITE_PARAM_LIMIT = 999;
     if (filter?.tags && filter.tags.length > 0) {
-      const maxTags = Math.min(filter.tags.length, 500);
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      // Reserve half the remaining budget for tagsAll if present
+      const reserveForTagsAll = filter.tagsAll?.length ? Math.min(filter.tagsAll.length, 100) : 0;
+      const tagBudget = Math.max(1, remainingBudget - reserveForTagsAll - 10); // -10 for safety margin
+      const maxTags = Math.min(filter.tags.length, tagBudget);
       const validTags = filter.tags.slice(0, maxTags);
       sql += ` AND EXISTS (
         SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
@@ -352,8 +365,12 @@ export class MemoryManager {
     }
 
     // Filter by tagsAll (match ALL of the specified tags)
+    // Each tag adds one parameter
     if (filter?.tagsAll && filter.tagsAll.length > 0) {
-      for (const tag of filter.tagsAll) {
+      const remainingBudget = SQLITE_PARAM_LIMIT - params.length;
+      const maxTagsAll = Math.min(filter.tagsAll.length, remainingBudget - 5); // -5 safety margin
+      const validTagsAll = filter.tagsAll.slice(0, Math.max(1, maxTagsAll));
+      for (const tag of validTagsAll) {
         sql += ` AND EXISTS (
           SELECT 1 FROM json_each(json_extract(m.metadata, '$.tags'))
           WHERE value = ?
@@ -485,12 +502,13 @@ export class MemoryManager {
       }
     }
 
-    // Get top tags
+    // Get top tags (filter out NULL values which could occur from malformed JSON)
     const tagStats = this.db
       .prepare(
         `
       SELECT value as tag, COUNT(*) as count
       FROM memories, json_each(json_extract(metadata, '$.tags'))
+      WHERE value IS NOT NULL AND typeof(value) = 'text'
       GROUP BY value
       ORDER BY count DESC
       LIMIT ${DEFAULT_TOP_TAGS_LIMIT}
@@ -725,10 +743,14 @@ export class MemoryManager {
   private sanitizeQuery(query: string): string {
     // Escape double quotes for FTS5 (double them) rather than removing
     // This preserves phrase search semantics ("hello world" stays as phrase)
-    // Remove only truly problematic operators that can't be escaped
+    // Remove FTS5 operators that can't be safely escaped:
+    // - * ^ ~ \ { } [ ] ( ) are syntax operators
+    // - Leading - is the NOT operator (dangerous: "-secret" would exclude "secret")
+    // - : is the column filter operator (dangerous: "content:password" targets column)
     return query
       .replace(/"/g, '""') // Escape quotes by doubling
-      .replace(/[*(){}[\]^~\\]/g, ' ') // Remove operators that can't be escaped
+      .replace(/[*(){}[\]^~\\:]/g, ' ') // Remove operators that can't be escaped (including :)
+      .replace(/(^|\s)-/g, '$1') // Remove leading minus (NOT operator) after spaces or at start
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -814,8 +836,12 @@ export class MemoryManager {
 
   /**
    * Close database connection
+   * Safe to call multiple times - subsequent calls are no-ops.
    */
   close(): void {
-    this.db.close();
+    // Check if database is already closed using better-sqlite3's open property
+    if (this.db.open) {
+      this.db.close();
+    }
   }
 }

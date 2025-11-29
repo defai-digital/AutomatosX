@@ -60,6 +60,25 @@ import {
   DEFAULT_HEALTH_VALUES,
 } from '@ax/schemas';
 
+/**
+ * Safely invoke an event callback, catching and logging any errors.
+ */
+function safeInvokeEvent<T extends unknown[]>(
+  eventName: string,
+  callback: ((...args: T) => void) | undefined,
+  ...args: T
+): void {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/provider] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -138,6 +157,8 @@ export abstract class BaseProvider {
       clearTimeout(this.recoveryTimeoutId);
       this.recoveryTimeoutId = null;
     }
+    // Reset health state to prevent stale data on re-initialization
+    this.resetHealth();
   }
 
   // =============================================================================
@@ -187,7 +208,7 @@ export abstract class BaseProvider {
     }
 
     const start = Date.now();
-    this.events.onExecutionStart?.(request);
+    safeInvokeEvent('onExecutionStart', this.events.onExecutionStart, request);
 
     try {
       // Apply timeout if specified in request
@@ -220,7 +241,7 @@ export abstract class BaseProvider {
       // Update health on success
       this.updateHealth(response.success, duration);
 
-      this.events.onExecutionEnd?.(response);
+      safeInvokeEvent('onExecutionEnd', this.events.onExecutionEnd, response);
       return response;
     } catch (error) {
       const duration = Date.now() - start;
@@ -228,7 +249,7 @@ export abstract class BaseProvider {
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const isTimeout = errorMessage.includes(TIMEOUT_ERROR_PATTERN);
-      this.events.onError?.(error instanceof Error ? error : new Error(errorMessage));
+      safeInvokeEvent('onError', this.events.onError, error instanceof Error ? error : new Error(errorMessage));
 
       return this.createErrorResponse(
         request,
@@ -297,7 +318,7 @@ export abstract class BaseProvider {
 
     // Notify health change
     if (previousHealth !== this.health.healthy) {
-      this.events.onHealthChange?.(this.getHealth());
+      safeInvokeEvent('onHealthChange', this.events.onHealthChange, this.getHealth());
     }
   }
 

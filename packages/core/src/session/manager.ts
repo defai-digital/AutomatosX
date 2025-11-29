@@ -26,6 +26,30 @@ const SESSION_FILE_EXT = '.json';
 const SESSIONS_DIR = 'sessions';
 
 // =============================================================================
+// State Transition Rules
+// =============================================================================
+
+/**
+ * Valid state transitions for session state machine.
+ * Key is current state, value is array of valid target states.
+ */
+const VALID_STATE_TRANSITIONS: Record<string, readonly string[]> = {
+  active: ['paused', 'completed', 'failed', 'cancelled'],
+  paused: ['active', 'cancelled'],
+  completed: [], // Terminal state - no transitions allowed
+  failed: [], // Terminal state - no transitions allowed
+  cancelled: [], // Terminal state - no transitions allowed
+} as const;
+
+/**
+ * Check if a state transition is valid
+ */
+function isValidTransition(fromState: string, toState: string): boolean {
+  const validTargets = VALID_STATE_TRANSITIONS[fromState];
+  return validTargets?.includes(toState) ?? false;
+}
+
+// =============================================================================
 // Imports
 // =============================================================================
 
@@ -40,6 +64,7 @@ import {
   type CreateSessionInput,
   type AddTaskInput,
   type UpdateTaskInput,
+  type SessionIdType,
   SessionSchema,
   SessionTaskSchema,
   CreateSessionInputSchema,
@@ -47,7 +72,41 @@ import {
   UpdateTaskInputSchema,
   createSessionSummary,
   TaskStatus,
+  SessionId,
 } from '@ax/schemas';
+
+/**
+ * Parse a session ID string to the branded SessionId type.
+ * Falls back to casting if not a valid UUID (for backward compatibility).
+ */
+function parseSessionId(sessionId: string): SessionIdType {
+  const result = SessionId.safeParse(sessionId);
+  if (result.success) {
+    return result.data;
+  }
+  // Fallback for non-UUID session IDs (backward compatibility)
+  return sessionId as SessionIdType;
+}
+
+/**
+ * Safely invoke an event callback, catching and logging any errors.
+ * This prevents user-provided callbacks from crashing the session manager.
+ */
+function safeInvokeEvent<T extends unknown[]>(
+  eventName: string,
+  callback: ((...args: T) => void) | undefined,
+  ...args: T
+): void {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/session] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 
 // =============================================================================
 // Types
@@ -83,16 +142,15 @@ export interface SessionManagerEvents {
 // =============================================================================
 
 export class SessionManager {
-  private readonly storagePath: string;
   private readonly sessionsPath: string;
   private readonly maxInMemorySessions: number;
   private readonly autoPersist: boolean;
   private readonly sessions: Map<string, Session> = new Map();
   private readonly events: SessionManagerEvents = {};
+  private readonly sessionLocks: Map<string, Promise<void>> = new Map();
   private initialized = false;
 
   constructor(options: SessionManagerOptions) {
-    this.storagePath = options.storagePath;
     this.sessionsPath = join(options.storagePath, SESSIONS_DIR);
     this.maxInMemorySessions = options.maxInMemorySessions ?? MAX_IN_MEMORY_SESSIONS;
     this.autoPersist = options.autoPersist ?? true;
@@ -133,9 +191,21 @@ export class SessionManager {
   // =============================================================================
 
   /**
+   * Ensure the manager is initialized before performing operations
+   */
+  private ensureInitialized(): void {
+    if (!this.initialized) {
+      throw new Error(
+        'SessionManager not initialized. Call initialize() before performing operations.'
+      );
+    }
+  }
+
+  /**
    * Create a new session
    */
   async create(input: CreateSessionInput): Promise<Session> {
+    this.ensureInitialized();
     const validated = CreateSessionInputSchema.parse(input);
     const now = new Date();
     const sessionId = this.generateSessionId();
@@ -147,6 +217,7 @@ export class SessionManager {
         description: t.description,
         agentId: t.agentId,
         status: 'pending',
+        createdAt: now,
       })
     );
 
@@ -171,7 +242,7 @@ export class SessionManager {
       await this.persistSession(session);
     }
 
-    this.events.onSessionCreated?.(session);
+    safeInvokeEvent('onSessionCreated', this.events.onSessionCreated, session);
     return session;
   }
 
@@ -179,6 +250,7 @@ export class SessionManager {
    * Get session by ID
    */
   async get(sessionId: string): Promise<Session | null> {
+    this.ensureInitialized();
     // Check memory first
     let session: Session | null | undefined = this.sessions.get(sessionId);
 
@@ -209,6 +281,7 @@ export class SessionManager {
    * List sessions with optional filtering
    */
   async list(filter?: SessionFilter): Promise<SessionSummary[]> {
+    this.ensureInitialized();
     // Ensure all persisted sessions are loaded for listing
     await this.loadAllSessions();
 
@@ -245,29 +318,38 @@ export class SessionManager {
    * Update session state
    */
   async updateState(sessionId: string, state: SessionState): Promise<Session> {
-    const session = await this.getOrThrow(sessionId);
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
 
-    session.state = state;
-    session.updatedAt = new Date();
+      // Validate state transition
+      if (!isValidTransition(session.state, state)) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to '${state}'`
+        );
+      }
 
-    if (state === 'completed' || state === 'failed' || state === 'cancelled') {
-      session.completedAt = new Date();
-      const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
-      // Ensure duration is never negative (can happen with system clock adjustments)
-      session.duration = Math.max(0, rawDuration);
-    }
+      session.state = state;
+      session.updatedAt = new Date();
 
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
+      if (state === 'completed' || state === 'failed' || state === 'cancelled') {
+        session.completedAt = new Date();
+        const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+        // Ensure duration is never negative (can happen with system clock adjustments)
+        session.duration = Math.max(0, rawDuration);
+      }
 
-    this.events.onSessionUpdated?.(session);
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
 
-    if (state === 'completed') {
-      this.events.onSessionCompleted?.(session);
-    }
+      safeInvokeEvent('onSessionUpdated', this.events.onSessionUpdated, session);
 
-    return session;
+      if (state === 'completed') {
+        safeInvokeEvent('onSessionCompleted', this.events.onSessionCompleted, session);
+      }
+
+      return session;
+    });
   }
 
   /**
@@ -288,13 +370,31 @@ export class SessionManager {
    * Resume a paused session
    */
   async resume(sessionId: string): Promise<Session> {
-    const session = await this.getOrThrow(sessionId);
+    // Use session lock to prevent race condition between state check and update
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
 
-    if (session.state !== 'paused') {
-      throw new Error(`Cannot resume session in state: ${session.state}`);
-    }
+      if (session.state !== 'paused') {
+        throw new Error(`Cannot resume session in state: ${session.state}`);
+      }
 
-    return this.updateState(sessionId, 'active');
+      // Validate transition (should always pass since we checked state is 'paused')
+      if (!isValidTransition(session.state, 'active')) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'active'`
+        );
+      }
+
+      session.state = 'active';
+      session.updatedAt = new Date();
+
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+
+      safeInvokeEvent('onSessionUpdated', this.events.onSessionUpdated, session);
+      return session;
+    });
   }
 
   /**
@@ -305,31 +405,40 @@ export class SessionManager {
   }
 
   /**
-   * Fail a session
+   * Fail a session with an optional error message
    */
   async fail(sessionId: string, error?: string): Promise<Session> {
-    const session = await this.getOrThrow(sessionId);
+    return this.withSessionLock(sessionId, async () => {
+      const session = await this.getOrThrow(sessionId);
 
-    session.state = 'failed';
-    session.updatedAt = new Date();
-    session.completedAt = new Date();
-    const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
-    // Ensure duration is never negative (can happen with system clock adjustments)
-    session.duration = Math.max(0, rawDuration);
+      // Validate state transition (same rules as updateState)
+      if (!isValidTransition(session.state, 'failed')) {
+        throw new Error(
+          `Invalid state transition: cannot transition from '${session.state}' to 'failed'`
+        );
+      }
 
-    if (error) {
-      session.metadata = {
-        ...session.metadata,
-        failureReason: error,
-      };
-    }
+      // Store error in metadata before state transition
+      if (error) {
+        session.metadata = {
+          ...session.metadata,
+          failureReason: error,
+        };
+      }
 
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
+      session.state = 'failed';
+      session.updatedAt = new Date();
+      session.completedAt = new Date();
+      const rawDuration = session.completedAt.getTime() - session.createdAt.getTime();
+      session.duration = Math.max(0, rawDuration);
 
-    this.events.onSessionUpdated?.(session);
-    return session;
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+
+      safeInvokeEvent('onSessionUpdated', this.events.onSessionUpdated, session);
+      return session;
+    });
   }
 
   /**
@@ -356,32 +465,35 @@ export class SessionManager {
    */
   async addTask(input: AddTaskInput): Promise<SessionTask> {
     const validated = AddTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
 
-    const task = SessionTaskSchema.parse({
-      id: randomUUID(),
-      description: validated.description,
-      agentId: validated.agentId,
-      status: 'pending',
-      createdAt: new Date(),
-      parentTaskId: validated.parentTaskId,
-      metadata: validated.metadata,
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
+
+      const task = SessionTaskSchema.parse({
+        id: randomUUID(),
+        description: validated.description,
+        agentId: validated.agentId,
+        status: 'pending',
+        createdAt: new Date(),
+        parentTaskId: validated.parentTaskId,
+        metadata: validated.metadata,
+      });
+
+      session.tasks.push(task);
+      session.updatedAt = new Date();
+
+      // Add agent if not already in session
+      if (!session.agents.includes(validated.agentId)) {
+        session.agents.push(validated.agentId);
+      }
+
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+
+      safeInvokeEvent('onTaskAdded', this.events.onTaskAdded, session, task);
+      return task;
     });
-
-    session.tasks.push(task);
-    session.updatedAt = new Date();
-
-    // Add agent if not already in session
-    if (!session.agents.includes(validated.agentId)) {
-      session.agents.push(validated.agentId);
-    }
-
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
-
-    this.events.onTaskAdded?.(session, task);
-    return task;
   }
 
   /**
@@ -389,44 +501,47 @@ export class SessionManager {
    */
   async updateTask(input: UpdateTaskInput): Promise<SessionTask> {
     const validated = UpdateTaskInputSchema.parse(input);
-    const session = await this.getOrThrow(validated.sessionId);
 
-    const task = session.tasks.find(t => t.id === validated.taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${validated.taskId}`);
-    }
+    return this.withSessionLock(validated.sessionId, async () => {
+      const session = await this.getOrThrow(validated.sessionId);
 
-    const previousStatus = task.status;
-    task.status = validated.status;
+      const task = session.tasks.find(t => t.id === validated.taskId);
+      if (!task) {
+        throw new Error(`Task not found: ${validated.taskId}`);
+      }
 
-    if (validated.result !== undefined) {
-      task.result = validated.result;
-    }
-    if (validated.error !== undefined) {
-      task.error = validated.error;
-    }
+      const previousStatus = task.status;
+      task.status = validated.status;
 
-    // Track timing
-    if (validated.status === 'running' && previousStatus === 'pending') {
-      task.startedAt = new Date();
-    }
-    if (validated.status === 'completed' || validated.status === 'failed') {
-      task.completedAt = new Date();
-      // Use startedAt if available, otherwise fall back to task creation time
-      const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
-      const rawDuration = task.completedAt.getTime() - startTime;
-      // Ensure duration is never negative (can happen with system clock adjustments)
-      task.duration = Math.max(0, rawDuration);
-    }
+      if (validated.result !== undefined) {
+        task.result = validated.result;
+      }
+      if (validated.error !== undefined) {
+        task.error = validated.error;
+      }
 
-    session.updatedAt = new Date();
+      // Track timing
+      if (validated.status === 'running' && previousStatus === 'pending') {
+        task.startedAt = new Date();
+      }
+      if (validated.status === 'completed' || validated.status === 'failed') {
+        task.completedAt = new Date();
+        // Use startedAt if available, otherwise fall back to task creation time
+        const startTime = task.startedAt?.getTime() ?? new Date(task.createdAt ?? Date.now()).getTime();
+        const rawDuration = task.completedAt.getTime() - startTime;
+        // Ensure duration is never negative (can happen with system clock adjustments)
+        task.duration = Math.max(0, rawDuration);
+      }
 
-    if (this.autoPersist) {
-      await this.persistSession(session);
-    }
+      session.updatedAt = new Date();
 
-    this.events.onTaskUpdated?.(session, task);
-    return task;
+      if (this.autoPersist) {
+        await this.persistSession(session);
+      }
+
+      safeInvokeEvent('onTaskUpdated', this.events.onTaskUpdated, session, task);
+      return task;
+    });
   }
 
   /**
@@ -434,7 +549,7 @@ export class SessionManager {
    */
   async startTask(sessionId: string, taskId: string): Promise<SessionTask> {
     return this.updateTask({
-      sessionId: sessionId as any, // Cast to branded type
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: 'running',
     });
@@ -449,7 +564,7 @@ export class SessionManager {
     result: string
   ): Promise<SessionTask> {
     return this.updateTask({
-      sessionId: sessionId as any,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: 'completed',
       result,
@@ -465,7 +580,7 @@ export class SessionManager {
     error: string
   ): Promise<SessionTask> {
     return this.updateTask({
-      sessionId: sessionId as any,
+      sessionId: parseSessionId(sessionId),
       taskId,
       status: 'failed',
       error,
@@ -502,6 +617,38 @@ export class SessionManager {
   // =============================================================================
   // Private Methods
   // =============================================================================
+
+  /**
+   * Execute an operation with a session lock to prevent race conditions.
+   * Only one operation can modify a session at a time.
+   */
+  private async withSessionLock<T>(
+    sessionId: string,
+    operation: () => Promise<T>
+  ): Promise<T> {
+    // Wait for any existing lock on this session
+    const existingLock = this.sessionLocks.get(sessionId);
+    if (existingLock) {
+      await existingLock.catch(() => {}); // Ignore errors from previous operations
+    }
+
+    // Create a new lock for this operation
+    let releaseLock: () => void;
+    const lockPromise = new Promise<void>(resolve => {
+      releaseLock = resolve;
+    });
+    this.sessionLocks.set(sessionId, lockPromise);
+
+    try {
+      return await operation();
+    } finally {
+      releaseLock!();
+      // Clean up lock if it's still ours
+      if (this.sessionLocks.get(sessionId) === lockPromise) {
+        this.sessionLocks.delete(sessionId);
+      }
+    }
+  }
 
   /**
    * Generate a unique session ID (UUID format)
@@ -563,9 +710,10 @@ export class SessionManager {
       return SessionSchema.parse(parsed);
     } catch (error) {
       // Log corruption/parse errors but not missing file errors
-      if (error instanceof Error && !error.message.includes('ENOENT')) {
+      const errno = error as NodeJS.ErrnoException;
+      if (errno.code !== 'ENOENT') {
         console.warn(
-          `[ax/session] Failed to load session ${sessionId}: ${error.message}`
+          `[ax/session] Failed to load session ${sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
       return null;

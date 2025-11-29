@@ -52,6 +52,26 @@ import {
   type ProviderFactoryOptions,
 } from '@ax/providers';
 
+/**
+ * Safely invoke an event callback, catching and logging any errors.
+ * This prevents user-provided callbacks from crashing the router.
+ */
+function safeInvokeEvent<T extends unknown[]>(
+  eventName: string,
+  callback: ((...args: T) => void) | undefined,
+  ...args: T
+): void {
+  if (!callback) return;
+  try {
+    callback(...args);
+  } catch (error) {
+    console.error(
+      `[ax/router] Event callback "${eventName}" threw an error:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -163,16 +183,18 @@ export class ProviderRouter {
       throw new Error(`Provider ${result.provider.id} not found in registry`);
     }
 
-    this.events.onProviderSelected?.(provider.id, result.reason);
+    safeInvokeEvent('onProviderSelected', this.events.onProviderSelected, provider.id, result.reason);
     this.incrementProviderMetrics(provider.id);
 
     // Execute with fallback support
+    // maxRetries = total provider attempts allowed (initial + fallbacks)
+    // With default maxRetries=3: 1 initial + up to 2 fallbacks = 3 total attempts
     const maxRetries = options.maxRetries ?? MAX_ROUTING_RETRIES;
     const enableFallback = options.enableFallback ?? true;
 
     const triedProviders: ProviderType[] = [provider.id];
 
-    // First attempt
+    // First attempt (attempt 1 of maxRetries)
     let response = await this.executeWithProvider(provider, request);
 
     if (response.success) {
@@ -181,9 +203,10 @@ export class ProviderRouter {
       return response;
     }
 
-    // Fallback attempts
+    // Fallback attempts (attempts 2..maxRetries)
     if (enableFallback && result.alternatives.length > 0) {
       for (const alt of result.alternatives) {
+        // Stop when we've reached maxRetries total attempts
         if (triedProviders.length >= maxRetries) break;
 
         const altProvider = this.providers.get(alt.provider.id as ProviderType);
@@ -191,7 +214,7 @@ export class ProviderRouter {
 
         this.metrics.fallbackAttempts++;
         triedProviders.push(altProvider.id);
-        this.events.onFallback?.(provider.id, altProvider.id, response.error ?? 'Unknown error');
+        safeInvokeEvent('onFallback', this.events.onFallback, provider.id, altProvider.id, response.error ?? 'Unknown error');
 
         response = await this.executeWithProvider(altProvider, request);
 
@@ -206,7 +229,7 @@ export class ProviderRouter {
     // All attempts failed
     this.metrics.failedRequests++;
     const lastError = new Error(response.error ?? 'All providers failed');
-    this.events.onAllProvidersFailed?.(triedProviders, lastError);
+    safeInvokeEvent('onAllProvidersFailed', this.events.onAllProvidersFailed, triedProviders, lastError);
 
     return response;
   }
@@ -313,13 +336,13 @@ export class ProviderRouter {
       try {
         const healthy = await provider.checkHealth();
         results.set(type, healthy);
-        this.events.onHealthUpdate?.(type, healthy);
+        safeInvokeEvent('onHealthUpdate', this.events.onHealthUpdate, type, healthy);
       } catch (error) {
         console.warn(
           `[ax/router] Health check failed for ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         results.set(type, false);
-        this.events.onHealthUpdate?.(type, false);
+        safeInvokeEvent('onHealthUpdate', this.events.onHealthUpdate, type, false);
       }
     });
 
@@ -358,7 +381,7 @@ export class ProviderRouter {
         // Set up health change events
         provider.setEvents({
           onHealthChange: (health) => {
-            this.events.onHealthUpdate?.(type, health.healthy);
+            safeInvokeEvent('onHealthUpdate', this.events.onHealthUpdate, type, health.healthy);
           },
         });
 

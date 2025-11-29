@@ -29,13 +29,22 @@ var LIMIT_MAX_LOG_SIZE = 10 * BYTES_PER_MB;
 
 // src/format.ts
 function formatBytes(bytes) {
-  if (bytes < BYTES_PER_KB) return `${bytes} B`;
+  if (!Number.isFinite(bytes) || Number.isNaN(bytes)) {
+    return "0 B";
+  }
+  if (bytes < 0) {
+    return "0 B";
+  }
+  if (bytes < BYTES_PER_KB) return `${Math.round(bytes)} B`;
   if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} KB`;
   if (bytes < BYTES_PER_GB) return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
   return `${(bytes / BYTES_PER_GB).toFixed(2)} GB`;
 }
 function formatDuration(ms) {
-  if (ms < MS_PER_SECOND) return `${ms}ms`;
+  if (!Number.isFinite(ms) || Number.isNaN(ms) || ms < 0) {
+    return "0ms";
+  }
+  if (ms < MS_PER_SECOND) return `${Math.round(ms)}ms`;
   if (ms < MS_PER_MINUTE) return `${(ms / MS_PER_SECOND).toFixed(1)}s`;
   if (ms < MS_PER_HOUR) return `${Math.floor(ms / MS_PER_MINUTE)}m`;
   return `${Math.floor(ms / MS_PER_HOUR)}h`;

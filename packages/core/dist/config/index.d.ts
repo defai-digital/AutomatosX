@@ -30,7 +30,8 @@ interface LoadedConfig {
  */
 declare function loadConfig(options?: ConfigLoaderOptions): Promise<LoadedConfig>;
 /**
- * Load config synchronously (uses defaults only)
+ * Load config synchronously (uses defaults + environment overrides)
+ * Note: This does not read config files - use loadConfig() for full functionality.
  */
 declare function loadConfigSync(): Config;
 /**

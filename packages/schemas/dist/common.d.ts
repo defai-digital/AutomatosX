@@ -89,12 +89,12 @@ declare const TokenUsage: z.ZodObject<{
     output: z.ZodOptional<z.ZodNumber>;
     total: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    output?: number | undefined;
     input?: number | undefined;
+    output?: number | undefined;
     total?: number | undefined;
 }, {
-    output?: number | undefined;
     input?: number | undefined;
+    output?: number | undefined;
     total?: number | undefined;
 }>;
 type TokenUsage = z.infer<typeof TokenUsage>;
@@ -155,7 +155,6 @@ declare const Result: <T extends z.ZodTypeAny>(dataSchema: T) => z.ZodDiscrimina
         cause?: string | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
-    success: false;
     error: {
         code: string;
         message: string;
@@ -163,8 +162,8 @@ declare const Result: <T extends z.ZodTypeAny>(dataSchema: T) => z.ZodDiscrimina
         stack?: string | undefined;
         cause?: string | undefined;
     };
+    success: false;
 }, {
-    success: false;
     error: {
         code: string;
         message: string;
@@ -172,6 +171,7 @@ declare const Result: <T extends z.ZodTypeAny>(dataSchema: T) => z.ZodDiscrimina
         stack?: string | undefined;
         cause?: string | undefined;
     };
+    success: false;
 }>]>;
 /**
  * Custom validation error class

@@ -101,21 +101,29 @@ export type TaskClass = 'planning' | 'creative' | 'technical' | 'general';
 
 /**
  * Classify a task into one of the three primary classes
+ * Handles case-insensitive matching and common task type variants.
  */
 export function classifyTask(taskType: string): TaskClass {
+  // Normalize to lowercase for case-insensitive matching
+  const normalizedType = taskType.toLowerCase();
+
   // Class 1: Planning/Strategy tasks
   const planningTasks = [
     'planning', 'architecture', 'strategy', 'research',
     'requirements', 'roadmap', 'design-system', 'analysis'
   ];
-  if (planningTasks.includes(taskType)) return 'planning';
+  if (planningTasks.some(t => normalizedType === t || normalizedType.startsWith(`${t}-`))) {
+    return 'planning';
+  }
 
   // Class 2: Frontend/Creative tasks
   const creativeTasks = [
     'frontend', 'ui', 'ux', 'creative', 'styling',
     'animation', 'visual', 'design', 'branding', 'marketing'
   ];
-  if (creativeTasks.includes(taskType)) return 'creative';
+  if (creativeTasks.some(t => normalizedType === t || normalizedType.startsWith(`${t}-`))) {
+    return 'creative';
+  }
 
   // Class 3: Coding/Technical tasks
   const technicalTasks = [
@@ -123,7 +131,9 @@ export function classifyTask(taskType: string): TaskClass {
     'testing', 'review', 'security', 'devops', 'infrastructure',
     'backend', 'api', 'database', 'documentation'
   ];
-  if (technicalTasks.includes(taskType)) return 'technical';
+  if (technicalTasks.some(t => normalizedType === t || normalizedType.startsWith(`${t}-`))) {
+    return 'technical';
+  }
 
   return 'general';
 }
@@ -295,9 +305,12 @@ export const defaultRoutingContext: RoutingContext = {
 /**
  * Get task-provider affinity score
  * Returns 0-100 based on how well the provider fits the task type
+ * Handles case-insensitive task type matching.
  */
 function getTaskAffinity(providerId: string, taskType: string): number {
-  const taskAffinities = TASK_PROVIDER_AFFINITY[taskType];
+  // Normalize task type to lowercase for case-insensitive matching
+  const normalizedTaskType = taskType.toLowerCase();
+  const taskAffinities = TASK_PROVIDER_AFFINITY[normalizedTaskType];
   if (!taskAffinities) {
     // Unknown task type, use general affinity
     return TASK_PROVIDER_AFFINITY['general']?.[providerId] ?? 50;
@@ -308,11 +321,14 @@ function getTaskAffinity(providerId: string, taskType: string): number {
 /**
  * Get agent-provider affinity score
  * Returns 0-100 based on how well the provider fits the agent type
+ * Handles case-insensitive agent ID matching.
  */
 function getAgentAffinity(providerId: string, agentId: string | undefined): number {
   if (!agentId) return 50; // No agent specified, neutral score
 
-  const agentAffinities = AGENT_PROVIDER_AFFINITY[agentId];
+  // Normalize agent ID to lowercase for case-insensitive matching
+  const normalizedAgentId = agentId.toLowerCase();
+  const agentAffinities = AGENT_PROVIDER_AFFINITY[normalizedAgentId];
   if (!agentAffinities) {
     // Unknown agent, use standard agent affinity
     return AGENT_PROVIDER_AFFINITY['standard']?.[providerId] ?? 50;
@@ -555,9 +571,11 @@ export function getFallbackOrder(providers: Provider[], ctx: RoutingContext = de
 
 /**
  * Get the best provider for a specific task type
+ * Handles case-insensitive task type matching.
  */
 export function getBestProviderForTask(taskType: string): string {
-  const affinities = TASK_PROVIDER_AFFINITY[taskType] ?? TASK_PROVIDER_AFFINITY['general'];
+  const normalizedTaskType = taskType.toLowerCase();
+  const affinities = TASK_PROVIDER_AFFINITY[normalizedTaskType] ?? TASK_PROVIDER_AFFINITY['general'];
   if (!affinities) return 'claude'; // Default fallback
 
   let bestProvider = 'claude';
@@ -575,9 +593,11 @@ export function getBestProviderForTask(taskType: string): string {
 
 /**
  * Get the best provider for a specific agent
+ * Handles case-insensitive agent ID matching.
  */
 export function getBestProviderForAgent(agentId: string): string {
-  const affinities = AGENT_PROVIDER_AFFINITY[agentId] ?? AGENT_PROVIDER_AFFINITY['standard'];
+  const normalizedAgentId = agentId.toLowerCase();
+  const affinities = AGENT_PROVIDER_AFFINITY[normalizedAgentId] ?? AGENT_PROVIDER_AFFINITY['standard'];
   if (!affinities) return 'claude'; // Default fallback
 
   let bestProvider = 'claude';

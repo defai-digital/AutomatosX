@@ -117,6 +117,11 @@ declare class ProviderRouter {
     private initializeProviders;
     /**
      * Build routing context from request and options
+     *
+     * The context now includes:
+     * - taskType: Inferred from task description
+     * - agentId: For agent-specific provider affinity
+     * - taskDescription: For keyword-based routing analysis
      */
     private buildRoutingContext;
     /**
@@ -129,6 +134,20 @@ declare class ProviderRouter {
     private getProviderStates;
     /**
      * Infer task type from task description
+     *
+     * Three task classes with provider assignments:
+     *
+     * CLASS 1: PLANNING/STRATEGY → OpenAI primary
+     *   planning, architecture, strategy, research, requirements, roadmap, analysis
+     *
+     * CLASS 2: FRONTEND/CREATIVE → Gemini primary
+     *   frontend, ui, ux, creative, styling, animation, visual, design, branding, marketing
+     *
+     * CLASS 3: CODING/TECHNICAL → Claude primary
+     *   coding, debugging, implementation, refactoring, testing, review, security,
+     *   devops, infrastructure, backend, api, database, documentation
+     *
+     * ax-cli is always the last fallback for all task types.
      */
     private inferTaskType;
     /**
@@ -136,7 +155,7 @@ declare class ProviderRouter {
      */
     private incrementProviderMetrics;
     /**
-     * Update latency metrics for provider
+     * Update latency metrics for provider using cumulative moving average
      */
     private updateLatencyMetrics;
     /**

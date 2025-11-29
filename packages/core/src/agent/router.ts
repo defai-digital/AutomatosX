@@ -358,10 +358,11 @@ export function selectAgentWithReason(
     const agent = registry.get(best.agentId);
 
     if (agent) {
-      // Calculate confidence based on keyword matches
-      // More matches = higher confidence
+      // Calculate confidence based on keyword match ratio
+      // Confidence = matched keywords / total possible keywords (with minimum floor)
+      // Use floor of 5 to avoid extreme confidence for agents with few keywords
       const maxPossibleMatches = AGENT_KEYWORDS[best.agentId]?.length ?? 1;
-      const confidence = Math.min(best.score / Math.max(maxPossibleMatches / 3, 1), 1);
+      const confidence = Math.min(best.score / Math.max(maxPossibleMatches, 5), 1);
 
       return {
         agent,

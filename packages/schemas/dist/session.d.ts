@@ -21,6 +21,8 @@ declare const SessionTaskSchema: z.ZodObject<{
     result: z.ZodOptional<z.ZodString>;
     /** Error if failed */
     error: z.ZodOptional<z.ZodString>;
+    /** Task creation timestamp */
+    createdAt: z.ZodOptional<z.ZodDate>;
     /** Start timestamp */
     startedAt: z.ZodOptional<z.ZodDate>;
     /** Completion timestamp */
@@ -40,6 +42,7 @@ declare const SessionTaskSchema: z.ZodObject<{
     description: string;
     error?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
+    createdAt?: Date | undefined;
     duration?: number | undefined;
     result?: string | undefined;
     startedAt?: Date | undefined;
@@ -53,6 +56,7 @@ declare const SessionTaskSchema: z.ZodObject<{
     description: string;
     error?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
+    createdAt?: Date | undefined;
     duration?: number | undefined;
     result?: string | undefined;
     startedAt?: Date | undefined;
@@ -94,6 +98,8 @@ declare const SessionSchema: z.ZodObject<{
         result: z.ZodOptional<z.ZodString>;
         /** Error if failed */
         error: z.ZodOptional<z.ZodString>;
+        /** Task creation timestamp */
+        createdAt: z.ZodOptional<z.ZodDate>;
         /** Start timestamp */
         startedAt: z.ZodOptional<z.ZodDate>;
         /** Completion timestamp */
@@ -113,6 +119,7 @@ declare const SessionSchema: z.ZodObject<{
         description: string;
         error?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
+        createdAt?: Date | undefined;
         duration?: number | undefined;
         result?: string | undefined;
         startedAt?: Date | undefined;
@@ -126,6 +133,7 @@ declare const SessionSchema: z.ZodObject<{
         description: string;
         error?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
+        createdAt?: Date | undefined;
         duration?: number | undefined;
         result?: string | undefined;
         startedAt?: Date | undefined;
@@ -162,6 +170,7 @@ declare const SessionSchema: z.ZodObject<{
         description: string;
         error?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
+        createdAt?: Date | undefined;
         duration?: number | undefined;
         result?: string | undefined;
         startedAt?: Date | undefined;
@@ -193,6 +202,7 @@ declare const SessionSchema: z.ZodObject<{
         description: string;
         error?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
+        createdAt?: Date | undefined;
         duration?: number | undefined;
         result?: string | undefined;
         startedAt?: Date | undefined;
@@ -241,6 +251,8 @@ declare const CheckpointSchema: z.ZodObject<{
             result: z.ZodOptional<z.ZodString>;
             /** Error if failed */
             error: z.ZodOptional<z.ZodString>;
+            /** Task creation timestamp */
+            createdAt: z.ZodOptional<z.ZodDate>;
             /** Start timestamp */
             startedAt: z.ZodOptional<z.ZodDate>;
             /** Completion timestamp */
@@ -260,6 +272,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;
@@ -273,6 +286,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;
@@ -309,6 +323,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;
@@ -340,6 +355,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;
@@ -381,6 +397,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;
@@ -423,6 +440,7 @@ declare const CheckpointSchema: z.ZodObject<{
             description: string;
             error?: string | undefined;
             metadata?: Record<string, unknown> | undefined;
+            createdAt?: Date | undefined;
             duration?: number | undefined;
             result?: string | undefined;
             startedAt?: Date | undefined;

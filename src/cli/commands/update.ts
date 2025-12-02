@@ -93,7 +93,7 @@ export const updateCommand: CommandModule<Record<string, unknown>, UpdateOptions
 
         console.log(chalk.green.bold('\n✅ AutomatosX updated successfully!\n'));
         console.log(chalk.gray('New version:'), chalk.cyan(latestVersion));
-        console.log(chalk.gray('\nRun'), chalk.cyan('automatosx --version'), chalk.gray('to verify.\n'));
+        console.log(chalk.gray('\nRun'), chalk.cyan('ax --version'), chalk.gray('to verify.\n'));
 
         logger.info('AutomatosX updated', { from: currentVersion, to: latestVersion });
 

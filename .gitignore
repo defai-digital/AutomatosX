@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
 yarn.lock
-pnpm-lock.yaml
+# pnpm-lock.yaml - Required for CI (pnpm install --frozen-lockfile)
 
 # Build outputs
 dist/
@@ -218,4 +218,4 @@ snapshots/
 # Lock files for user-specific tools (keep package manager locks)
 .yarn-lock.json
 .pnpm-lock.yaml
-# Note: package-lock.json, yarn.lock, pnpm-lock.yaml handled separately
+# Note: package-lock.json and pnpm-lock.yaml are tracked for CI reproducibility

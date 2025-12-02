@@ -482,7 +482,7 @@ ax providers trace | grep "EXECUTION"
 ## See Also
 
 - [Gemini Integration Guide](./gemini.md) - Gemini-specific setup and optimization
-- [OpenAI Codex Integration Guide](./openai-codex.md) - OpenAI-specific setup and configuration
+- [Codex CLI Integration Guide](./openai-codex.md) - OpenAI-specific setup and configuration
 - [Claude Code Integration Guide](./claude-code.md) - Claude-specific setup and best practices
 - [Provider Parameters](./parameters.md) - Parameter control details
 - [Cost Optimization](../../README.md#-policy-driven-cost-optimization) - Main README section

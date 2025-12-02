@@ -1110,7 +1110,7 @@ ax doctor
 
 - [README.md](../README.md) - Main documentation with natural language examples
 - [docs/guides/claude-code-integration.md](guides/claude-code-integration.md) - Using with Claude Code
-- [docs/guides/codex-integration.md](guides/codex-integration.md) - Using with OpenAI Codex
+- [docs/guides/codex-integration.md](guides/codex-integration.md) - Using with Codex CLI
 
 **Support**:
 - Issues: [GitHub Issues](https://github.com/defai-digital/automatosx/issues)

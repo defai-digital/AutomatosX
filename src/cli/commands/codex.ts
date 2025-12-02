@@ -187,7 +187,7 @@ const agentsMdCommand: CommandModule = {
 
 export const codexCommand: CommandModule = {
   command: 'codex <command>',
-  describe: 'OpenAI Codex integration commands',
+  describe: 'Codex CLI integration commands',
 
   builder: (yargs: Argv) => {
     return yargs

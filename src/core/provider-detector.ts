@@ -8,7 +8,7 @@
  * Supported Providers:
  * - Claude Code (claude)
  * - Gemini CLI (gemini)
- * - OpenAI Codex (codex)
+ * - Codex CLI (codex)
  * - ax-cli (ax-cli) - optional multi-provider CLI
  *
  * @module core/provider-detector
@@ -262,7 +262,7 @@ export class ProviderDetector {
     const nameMap: Record<string, string> = {
       'claude-code': 'Claude Code',
       'gemini-cli': 'Gemini CLI',
-      'codex': 'OpenAI Codex',
+      'codex': 'Codex CLI',
       'ax-cli': 'ax-cli'
     };
 

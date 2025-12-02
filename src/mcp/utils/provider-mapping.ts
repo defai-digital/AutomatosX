@@ -1,55 +1,56 @@
 /**
- * MCP Provider Name Mapping
+ * MCP Provider Name Mapping (v10.6.0)
  *
- * Maps simplified MCP provider names to actual AutomatosX provider names.
- * This allows MCP clients to use simple names ('gemini') while the system
- * uses full provider identifiers ('gemini-cli').
+ * Unified mapping between MCP names, actual provider names, and normalized names.
+ * Single source of truth for all provider name transformations.
  */
 
-/**
- * Map MCP provider names (simplified) to actual provider names in config
- *
- * MCP API uses simple names: 'claude', 'gemini', 'openai'
- * System uses full names: 'claude-code', 'gemini-cli', 'openai'
- *
- * @param mcpProvider - MCP provider name from client request
- * @returns Actual provider name used in system configuration, or undefined if not provided
- *
- * @example
- * mapMcpProviderToActual('gemini') // Returns: 'gemini-cli'
- * mapMcpProviderToActual('claude') // Returns: 'claude-code'
- * mapMcpProviderToActual('openai') // Returns: 'openai'
- * mapMcpProviderToActual(undefined) // Returns: undefined
- */
-export function mapMcpProviderToActual(mcpProvider?: string): string | undefined {
-  if (mcpProvider === undefined) return undefined;
-
-  const providerMap: Record<string, string> = {
+/** Provider name mappings - single source of truth */
+const PROVIDER_MAP = {
+  // MCP name → Actual name
+  mcpToActual: {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',
     'openai': 'openai'
-  };
+  } as Record<string, string>,
 
-  return providerMap[mcpProvider] || mcpProvider;
-}
-
-/**
- * Map actual provider name back to MCP provider name
- *
- * @param actualProvider - Actual provider name from system
- * @returns MCP provider name for API responses
- *
- * @example
- * mapActualProviderToMcp('gemini-cli') // Returns: 'gemini'
- * mapActualProviderToMcp('claude-code') // Returns: 'claude'
- * mapActualProviderToMcp('openai') // Returns: 'openai'
- */
-export function mapActualProviderToMcp(actualProvider: string): string {
-  const reverseMap: Record<string, string> = {
+  // Actual name → MCP name
+  actualToMcp: {
     'claude-code': 'claude',
     'gemini-cli': 'gemini',
     'openai': 'openai'
-  };
+  } as Record<string, string>,
 
-  return reverseMap[actualProvider] || actualProvider;
+  // Normalized caller → Actual name (for Smart Routing)
+  normalizedToActual: {
+    'claude': 'claude-code',
+    'gemini': 'gemini-cli',
+    'codex': 'openai',
+    'ax-cli': 'ax-cli'
+  } as Record<string, string>
+} as const;
+
+/**
+ * Map MCP provider name to actual provider name
+ */
+export function mapMcpProviderToActual(mcpProvider?: string): string | undefined {
+  if (mcpProvider === undefined) return undefined;
+  return PROVIDER_MAP.mcpToActual[mcpProvider] ?? mcpProvider;
+}
+
+/**
+ * Map actual provider name to MCP provider name
+ */
+export function mapActualProviderToMcp(actualProvider: string): string {
+  return PROVIDER_MAP.actualToMcp[actualProvider] ?? actualProvider;
+}
+
+/**
+ * Map normalized caller (from MCP session) to actual provider name
+ * Used for Smart Routing caller detection
+ */
+export function mapNormalizedCallerToActual(
+  caller: 'claude' | 'gemini' | 'codex' | 'ax-cli' | 'unknown'
+): string {
+  return PROVIDER_MAP.normalizedToActual[caller] ?? 'unknown';
 }

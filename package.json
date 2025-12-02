@@ -1,7 +1,7 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "10.3.3",
-  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, OpenAI Codex, and ax-cli",
+  "version": "11.0.0",
+  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, Codex CLI, and ax-cli",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -91,7 +91,7 @@
   "dependencies": {
     "@defai.digital/ax-cli": "^3.6.2",
     "@iarna/toml": "^2.2.5",
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.23.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "async-mutex": "^0.5.0",

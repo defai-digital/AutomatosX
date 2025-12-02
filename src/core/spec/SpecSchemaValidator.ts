@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import type { SpecYAML, ValidationIssue, SpecValidationResult } from '@/types/spec-yaml.js';
 import { logger } from '@/utils/logger.js';
-import { SecurityValidator } from './SecurityValidator.js';
+// v11.0.0: SecurityValidator removed (spec execution deprecated)
 
 // Get current file directory (ESM)
 const __filename = fileURLToPath(import.meta.url);
@@ -29,14 +29,10 @@ export class SpecSchemaValidator {
   private ajv: Ajv;
   private validateFn: ValidateFunction | null = null;
   private schemaPath: string;
-  private securityValidator: SecurityValidator;
 
   constructor(schemaPath?: string) {
     // Default schema path relative to project root
     this.schemaPath = schemaPath || join(__dirname, '../../../schema/spec-schema.json');
-
-    // Initialize security validator
-    this.securityValidator = new SecurityValidator();
 
     // Initialize Ajv with strict mode
     this.ajv = new Ajv({
@@ -111,17 +107,7 @@ export class SpecSchemaValidator {
     if (valid && this.isSpecYAML(spec)) {
       this.validateSemantics(spec, warnings, info);
 
-      // Run security validation (Phase 1)
-      const securityIssues = this.securityValidator.validate(spec);
-      for (const issue of securityIssues) {
-        if (issue.severity === 'error') {
-          errors.push(issue);
-        } else if (issue.severity === 'warning') {
-          warnings.push(issue);
-        } else {
-          info.push(issue);
-        }
-      }
+      // v11.0.0: SecurityValidator removed (spec execution deprecated)
     }
 
     return {

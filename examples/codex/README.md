@@ -1,10 +1,10 @@
-# OpenAI Codex Integration for AutomatosX
+# Codex CLI Integration for AutomatosX
 
-This directory contains integration files and examples for using OpenAI Codex CLI as a provider with AutomatosX.
+This directory contains integration files and examples for using Codex CLI CLI as a provider with AutomatosX.
 
 ## Overview
 
-**OpenAI Codex** is configured as an AI provider in AutomatosX. Unlike Claude Code and Gemini CLI which have native CLI integrations with custom slash commands, Codex operates as a background provider powering AutomatosX agents.
+**Codex CLI** is configured as an AI provider in AutomatosX. Unlike Claude Code and Gemini CLI which have native CLI integrations with custom slash commands, Codex operates as a background provider powering AutomatosX agents.
 
 ## Architecture
 
@@ -302,7 +302,7 @@ ax provider-limits
 - **Usage**: Invoke AutomatosX agents FROM their CLI
 - **Example**: `/ax-agent backend, create API` inside Claude Code IDE
 
-### Providers (OpenAI Codex)
+### Providers (Codex CLI)
 
 - **Interface**: Background AI engine
 - **Custom Commands**: Not applicable (used as provider, not CLI)

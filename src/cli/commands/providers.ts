@@ -47,7 +47,7 @@ const PROVIDER_METADATA: Record<string, SimpleProviderMetadata> = {
   'gemini': { name: 'gemini', displayName: 'Gemini', features: { streaming: true, functionCalling: true, vision: true } },
   'gemini-cli': { name: 'gemini-cli', displayName: 'Gemini CLI', features: { streaming: true, functionCalling: true, vision: true } },
   'glm': { name: 'glm', displayName: 'GLM (Zhipu AI)', features: { streaming: true, functionCalling: true, vision: false } },
-  'codex': { name: 'codex', displayName: 'OpenAI Codex', features: { streaming: true, functionCalling: true, vision: false } }
+  'codex': { name: 'codex', displayName: 'Codex CLI', features: { streaming: true, functionCalling: true, vision: false } }
 };
 const getProviderMetadata = (name: string): SimpleProviderMetadata =>
   PROVIDER_METADATA[name] || { name, displayName: name, features: {} };

@@ -12,7 +12,7 @@ Before you begin, ensure you have:
 - **One AI provider CLI** installed:
   - **Gemini CLI** (recommended, free): `npm install -g @google/gemini-cli`
   - **Claude Code**: Already configured if you're using it now
-  - **OpenAI Codex**: `npm install -g openai-cli`
+  - **Codex CLI**: `npm install -g openai-cli`
 
 ---
 
@@ -74,7 +74,7 @@ Talk to Gemini naturally:
 - `ax` automatically selects appropriate agents
 - Shows you the results
 
-### In OpenAI Codex
+### In Codex CLI
 
 Talk to Codex naturally:
 

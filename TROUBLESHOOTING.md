@@ -24,7 +24,7 @@ This guide helps you resolve common issues when using AutomatosX.
   - [Claude API errors](#claude-api-errors)
   - [Gemini API errors](#gemini-api-errors)
   - [Provider selection not working](#provider-selection-not-working)
-  - [OpenAI Codex requires git initialization](#openai-codex-requires-git-initialization)
+  - [Codex CLI requires git initialization](#openai-codex-requires-git-initialization)
 - [Agent Execution Problems](#agent-execution-problems)
   - [Agent not found](#agent-not-found)
   - [Ability files not loaded](#ability-files-not-loaded)
@@ -584,11 +584,11 @@ automatosx config --set providers.preferred --value claude
 automatosx run backend "hello" --provider claude
 ```
 
-### OpenAI Codex requires git initialization
+### Codex CLI requires git initialization
 
 **Symptom**: Codex provider fails with error or doesn't work as expected
 
-**Cause**: OpenAI Codex CLI requires the project to be a git repository to function properly.
+**Cause**: Codex CLI CLI requires the project to be a git repository to function properly.
 
 **Solution**:
 
@@ -612,7 +612,7 @@ codex --version
 
 **Important Notes**:
 
-- This is a requirement from the OpenAI Codex CLI, not AutomatosX
+- This is a requirement from the Codex CLI CLI, not AutomatosX
 - The project must have `.git/` directory for codex to work
 - You don't need to commit any files, just `git init` is sufficient
 - Other providers (Claude, Gemini) do not have this requirement

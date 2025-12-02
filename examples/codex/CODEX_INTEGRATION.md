@@ -1,4 +1,4 @@
-# AutomatosX Integration with OpenAI Codex
+# AutomatosX Integration with Codex CLI
 
 **IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
 
@@ -6,11 +6,11 @@ This file provides **Codex-specific** setup instructions and configuration detai
 
 ---
 
-This project uses [AutomatosX](https://github.com/defai-digital/automatosx) with OpenAI Codex CLI as a provider for AI-powered agent orchestration.
+This project uses [AutomatosX](https://github.com/defai-digital/automatosx) with Codex CLI CLI as a provider for AI-powered agent orchestration.
 
 ## Overview
 
-**OpenAI Codex** is configured as a **provider** in AutomatosX, meaning:
+**Codex CLI** is configured as a **provider** in AutomatosX, meaning:
 - AutomatosX uses Codex CLI to power AI agent responses
 - You interact with AutomatosX using `ax` terminal commands
 - Codex runs in the background as the AI engine
@@ -193,7 +193,7 @@ $ ax run backend "implement authentication API"
 ```
 
 **Provider Priority** (configured in `ax.config.json`):
-1. **OpenAI Codex** (priority: 1) - Primary
+1. **Codex CLI** (priority: 1) - Primary
 2. **Gemini CLI** (priority: 2) - First fallback
 3. **Claude Code** (priority: 3) - Second fallback
 

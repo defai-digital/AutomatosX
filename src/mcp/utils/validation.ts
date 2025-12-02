@@ -22,6 +22,25 @@ export class ValidationError extends Error {
   }
 }
 
+/** Dangerous patterns that indicate path traversal attempts */
+const DANGEROUS_PATH_PATTERNS = [
+  '../',          // Parent directory traversal (Unix)
+  '..\\',         // Parent directory traversal (Windows)
+  '~/',           // Home directory (Unix)
+  '~\\',          // Home directory (Windows)
+  '/etc/',        // System directory (Unix)
+  '/var/',        // System directory (Unix)
+  '/usr/',        // System directory (Unix)
+  '/root/',       // Root home directory (Unix)
+  'C:\\',         // System drive (Windows)
+  'C:/',          // System drive (Windows, alt format)
+  'D:\\',         // Common data drive (Windows)
+  'D:/',          // Common data drive (Windows, alt format)
+];
+
+/** Special characters that might be problematic in paths */
+const SUSPICIOUS_PATH_CHARS = /[<>:|"]/;
+
 /**
  * Validates a path parameter to prevent path traversal attacks
  *
@@ -50,24 +69,8 @@ export function validatePathParameter(
     );
   }
 
-  // Dangerous patterns that indicate path traversal attempts
-  const dangerousPatterns = [
-    '../',          // Parent directory traversal (Unix)
-    '..\\',         // Parent directory traversal (Windows)
-    '~/',           // Home directory (Unix)
-    '~\\',          // Home directory (Windows)
-    '/etc/',        // System directory (Unix)
-    '/var/',        // System directory (Unix)
-    '/usr/',        // System directory (Unix)
-    '/root/',       // Root home directory (Unix)
-    'C:\\',         // System drive (Windows)
-    'C:/',          // System drive (Windows, alt format)
-    'D:\\',         // Common data drive (Windows)
-    'D:/',          // Common data drive (Windows, alt format)
-  ];
-
   // Check for dangerous patterns
-  for (const pattern of dangerousPatterns) {
+  for (const pattern of DANGEROUS_PATH_PATTERNS) {
     if (path.includes(pattern)) {
       throw new ValidationError(
         `Invalid ${paramName}: path contains dangerous pattern "${pattern}"`,
@@ -119,8 +122,7 @@ export function validatePathParameter(
   }
 
   // Check for special characters that might be problematic
-  const suspiciousChars = /[<>:|"]/;
-  if (suspiciousChars.test(path)) {
+  if (SUSPICIOUS_PATH_CHARS.test(path)) {
     throw new ValidationError(
       `Invalid ${paramName}: path contains invalid characters`,
       McpErrorCode.InvalidParams,
@@ -129,17 +131,20 @@ export function validatePathParameter(
   }
 }
 
+/** Valid agent name pattern: alphanumeric, hyphens, underscores */
+const VALID_AGENT_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const MAX_AGENT_NAME_LENGTH = 100;
+
 /**
  * Validates an agent name parameter
  *
  * Agent names should be simple alphanumeric strings with hyphens/underscores.
- * No path separators, no special characters.
+ * Pattern implicitly rejects path separators and special characters.
  *
  * @param name - Agent name to validate
  * @throws {ValidationError} If name is invalid
  */
 export function validateAgentName(name: string): void {
-  // Reject empty names
   if (!name || name.trim() === '') {
     throw new ValidationError(
       'Invalid agent name: name cannot be empty',
@@ -148,40 +153,20 @@ export function validateAgentName(name: string): void {
     );
   }
 
-  // Reject path traversal attempts
-  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+  if (name.length > MAX_AGENT_NAME_LENGTH) {
     throw new ValidationError(
-      'Invalid agent name: path traversal detected',
+      `Invalid agent name: name too long (max ${MAX_AGENT_NAME_LENGTH} characters)`,
       McpErrorCode.InvalidParams,
-      { name }
+      { name, length: name.length }
     );
   }
 
-  // Reject absolute paths
-  if (isAbsolute(name)) {
-    throw new ValidationError(
-      'Invalid agent name: absolute paths not allowed',
-      McpErrorCode.InvalidParams,
-      { name }
-    );
-  }
-
-  // Agent names should match pattern: alphanumeric, hyphens, underscores
-  const validNamePattern = /^[a-zA-Z0-9_-]+$/;
-  if (!validNamePattern.test(name)) {
+  // Pattern check implicitly rejects path traversal (.., /, \) and special chars
+  if (!VALID_AGENT_NAME_PATTERN.test(name)) {
     throw new ValidationError(
       'Invalid agent name: must contain only letters, numbers, hyphens, and underscores',
       McpErrorCode.InvalidParams,
       { name }
-    );
-  }
-
-  // Prevent excessively long names (DoS protection)
-  if (name.length > 100) {
-    throw new ValidationError(
-      'Invalid agent name: name too long (max 100 characters)',
-      McpErrorCode.InvalidParams,
-      { name, length: name.length }
     );
   }
 }

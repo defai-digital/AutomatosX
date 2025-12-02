@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex CLI Integration - Usage Examples
+ * Codex CLI CLI Integration - Usage Examples
  *
- * This file demonstrates various ways to use the OpenAI Codex integration
+ * This file demonstrates various ways to use the Codex CLI integration
  * with AutomatosX, including basic execution, MCP server management, and
  * advanced patterns.
  *
@@ -372,7 +372,7 @@ async function example7_advancedConfiguration() {
 // ========================================
 
 async function main() {
-  console.log('OpenAI Codex Integration - Usage Examples');
+  console.log('Codex CLI Integration - Usage Examples');
   console.log('==========================================\n');
 
   const examples = [

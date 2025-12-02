@@ -127,7 +127,7 @@ describe('ParameterValidator', () => {
       const support = ParameterValidator.getProviderSupport('openai');
 
       expect(support).toBeDefined();
-      expect(support?.name).toBe('OpenAI Codex');
+      expect(support?.name).toBe('Codex CLI');
       expect(support?.supportsMaxTokens).toBe(true);
       expect(support?.supportsTemperature).toBe(true);
       expect(support?.supportsTopP).toBe(false);  // v5.0.6: Removed for simplification

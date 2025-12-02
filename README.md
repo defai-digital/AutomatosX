@@ -1,6 +1,6 @@
 <h1><img src=".github/assets/axlogo.png" alt="AutomatosX Logo" width="36" /> <span style="font-size: 1.5em;">AutomatosX</span></h1>
 
-*The Invisible Power Addon for Claude Code & OpenAI Codex*
+*The Invisible Power Addon for Claude Code & Codex CLI*
 
 **AutomatosX transforms your AI coding assistant into a multi-agent enterprise platform** - with 20+ specialized agents, persistent memory, and 80% cost savings through intelligent multi-provider routing. **You keep using Claude Code or Codex exactly as before**, but now with superpowers.
 
@@ -13,7 +13,7 @@
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v10.3.3 | Native Claude Code Integration | Enterprise MCP Support
+**Status**: ✅ **Production Ready** | v11.0.0 | Workflow Templates | Codex CLI Renaming
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
@@ -602,7 +602,7 @@ Save everything to shared memory."
 
 ### Natural Language Usage (Recommended)
 - **[Using with Claude Code](docs/guides/claude-code-integration.md)** - Best practices
-- [Using with OpenAI Codex](docs/guides/codex-integration.md) - Natural language examples
+- [Using with Codex CLI](docs/guides/codex-integration.md) - Natural language examples
 - [Agent Collaboration](docs/guides/agent-communication.md) - Multi-agent workflows
 
 ### Advanced Features
@@ -654,7 +654,7 @@ ax setup
 - **At least one AI CLI** (you probably already have):
   - [Claude Code](https://claude.ai/code) - **Recommended** (best reasoning)
   - [Gemini CLI](https://ai.google.dev/gemini-api/docs/cli) - Cost-efficient
-  - [OpenAI Codex](https://platform.openai.com/docs/guides/code) - Fastest
+  - [Codex CLI](https://developers.openai.com/codex/cli/) - Fastest
 
 **Optional**:
 - [ax-cli](.ax-cli/README.md) - GLM-first native CLI for Chinese models
@@ -706,7 +706,7 @@ AutomatosX uses an **open-core model** with three editions:
 - ✅ Full source code on GitHub
 - ✅ Core orchestration engine + 20+ AI agents
 - ✅ Persistent memory system (SQLite FTS5)
-- ✅ Multi-provider routing (Claude, Gemini, OpenAI Codex)
+- ✅ Multi-provider routing (Claude, Gemini, Codex CLI)
 - ✅ Workflow specs and execution
 - ✅ Community support (GitHub Issues)
 

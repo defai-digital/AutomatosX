@@ -90,8 +90,8 @@ export interface GeminiProviderConfig {
 }
 
 /**
- * OpenAI/Codex MCP Configuration (v5.13.0+)
- * Provider-specific settings for OpenAI Codex CLI with MCP support
+ * Codex CLI MCP Configuration (v5.13.0+)
+ * Provider-specific settings for Codex CLI with MCP support
  */
 export interface OpenAIMCPConfig {
   enabled: boolean;           // Enable MCP server (default: false)
@@ -181,8 +181,8 @@ export interface ProviderConfig {
   claude?: ClaudeProviderConfig;  // Claude Code specific configuration
   gemini?: GeminiProviderConfig;  // Gemini CLI specific configuration
 
-  // v5.13.0: OpenAI/Codex MCP configuration
-  mcp?: OpenAIMCPConfig;          // OpenAI Codex MCP server configuration
+  // v5.13.0: Codex CLI MCP configuration
+  mcp?: OpenAIMCPConfig;          // Codex CLI MCP server configuration
 
   // v5.13.0 Phase 1: SDK Integration and Connection Pooling
   /** Integration mode: "sdk" (native SDK), "cli" (subprocess), "mcp" (MCP protocol) */

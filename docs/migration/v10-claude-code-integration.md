@@ -453,7 +453,7 @@ All existing commands, workflows, and integrations continue to work unchanged. T
 - Direct CLI (`ax run backend "task"`)
 - Gemini CLI integration
 - Grok CLI integration
-- OpenAI Codex integration
+- Codex CLI integration
 
 ### Q: What happens to CLAUDE.md?
 
@@ -472,7 +472,7 @@ npm run generate:claude-manifests
 
 ### Q: Does this work with other AI assistants?
 
-**A**: This release focuses on Claude Code integration. Gemini CLI, Grok CLI, and OpenAI Codex integrations remain unchanged.
+**A**: This release focuses on Claude Code integration. Gemini CLI, Grok CLI, and Codex CLI integrations remain unchanged.
 
 ### Q: Is there a performance impact?
 

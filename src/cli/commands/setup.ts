@@ -175,7 +175,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('   Please install one of:'));
         console.log(chalk.gray('     - Claude Code'));
         console.log(chalk.gray('     - Gemini CLI'));
-        console.log(chalk.gray('     - OpenAI Codex'));
+        console.log(chalk.gray('     - Codex CLI'));
         console.log(chalk.gray('     - ax-cli (optional)'));
         console.log('');
         console.log(chalk.cyan('   💡 After installing, run "ax setup" again to configure.\n'));
@@ -247,6 +247,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.cyan('📋 Installing agent templates...'));
       const templateCount = await copyExampleTemplates(automatosxDir, packageRoot);
       console.log(chalk.green(`   ✓ ${templateCount} agent templates installed`));
+
+      // Copy workflow templates (v11.0.0+)
+      console.log(chalk.cyan('🔄 Installing workflow templates...'));
+      const workflowCount = await copyWorkflowTemplates(automatosxDir, packageRoot);
+      console.log(chalk.green(`   ✓ ${workflowCount} workflow templates installed`));
 
       // Create default config
       console.log(chalk.cyan('⚙️  Generating configuration...'));
@@ -333,10 +338,10 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.green('   ✓ Git repository initialized'));
       }
 
-      // Setup OpenAI Codex MCP integration UNCONDITIONALLY (v10.3.2+)
+      // Setup Codex CLI MCP integration UNCONDITIONALLY (v10.3.2+)
       // This ensures .codex/mcp-servers.json is always created, even if Codex
       // is installed later. Fixes timeout issues when user installs Codex after setup.
-      console.log(chalk.cyan('🔌 Setting up OpenAI Codex MCP integration...'));
+      console.log(chalk.cyan('🔌 Setting up Codex CLI MCP integration...'));
       const codexDir = join(projectDir, '.codex');
       const codexDirExistedBefore = await checkExists(codexDir);
       await setupCodexIntegration(projectDir, packageRoot);
@@ -344,7 +349,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       if (!codexDirExistedBefore) {
         createdResources.push(codexDir);
       }
-      console.log(chalk.green('   ✓ OpenAI Codex MCP integration configured'));
+      console.log(chalk.green('   ✓ Codex CLI MCP integration configured'));
 
       // Create .gitignore entry
       console.log(chalk.cyan('📝 Updating .gitignore...'));
@@ -413,16 +418,20 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('  • Setup with: ax setup --claude-code\n'));
       }
 
+      // v11.0.0: Updated workflow templates messaging
+      console.log(chalk.cyan('Workflow Templates (v11.0.0):'));
+      console.log(chalk.gray('  • 4 workflow templates installed in .automatosx/workflows/'));
+      console.log(chalk.gray('  • Use with --workflow flag for multi-step tasks:'));
+      console.log(chalk.gray('    ax run backend "implement auth" --workflow auth-flow'));
+      console.log(chalk.gray('    ax run backend "create API" --workflow api-flow'));
+      console.log(chalk.gray('  • Available: auth-flow, feature-flow, api-flow, refactor-flow\n'));
+
       if (specKitInitialized) {
-        console.log(chalk.cyan('Spec-Driven Development:'));
-        console.log(chalk.gray('  • Spec files created in .specify/'));
+        console.log(chalk.cyan('Spec Files (.specify/):'));
+        console.log(chalk.gray('  • Spec files created for documentation'));
         console.log(chalk.gray('  • Use agents to work with specs:'));
         console.log(chalk.gray('    ax run product "Write spec for feature X"'));
-        console.log(chalk.gray('    ax run tony "Create technical plan"'));
-        console.log(chalk.gray('    ax run backend "Implement according to spec"\n'));
-      } else {
-        console.log(chalk.cyan('Spec-Driven Development (optional):'));
-        console.log(chalk.gray('  • Initialize with: ax setup --spec-kit\n'));
+        console.log(chalk.gray('  • Note: ax spec run removed in v11.0.0, use --workflow instead\n'));
       }
       console.log(chalk.cyan('Iterate Mode (Autonomous Multi-Iteration):'));
       console.log(chalk.gray('  • Enable with --iterate flag for autonomous task loops'));
@@ -481,7 +490,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       }
 
       if (providers['codex']) {
-        console.log(chalk.cyan('OpenAI Codex Integration:'));
+        console.log(chalk.cyan('Codex CLI Integration:'));
         console.log(chalk.gray('  • Use natural language to work with ax agents'));
         console.log(chalk.gray('  • Or use terminal: ax run <agent> "task"'));
         console.log(chalk.gray('  • Git repository initialized for Codex compatibility\n'));
@@ -503,7 +512,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       logger.info('AutomatosX set up', {
         projectDir,
         automatosxDir,
-        counts: { teams: teamCount, agents: agentCount, abilities: abilityCount, templates: templateCount }
+        counts: { teams: teamCount, agents: agentCount, abilities: abilityCount, templates: templateCount, workflows: workflowCount }
       });
 
     } catch (error) {
@@ -557,7 +566,8 @@ async function createDirectoryStructure(baseDir: string): Promise<void> {
     join(baseDir, 'memory/exports'), // v5.1: MCP memory export directory
     join(baseDir, 'sessions'),       // v5.1: Session persistence
     // v5.2: Removed 'workspaces' - automatosx/PRD and automatosx/tmp created on-demand
-    join(baseDir, 'logs')
+    join(baseDir, 'logs'),
+    join(baseDir, 'workflows')       // v11.0.0: Workflow templates directory
   ];
 
   // v5.6.0: Use 0o755 permissions (rwxr-xr-x) for cross-platform compatibility
@@ -699,6 +709,187 @@ async function copyExampleTemplates(baseDir: string, packageRoot: string): Promi
     extension: '.yaml',
     resourceName: 'template'
   });
+}
+
+/**
+ * Copy workflow templates to user's .automatosx directory (v11.0.0)
+ *
+ * Workflow templates enable multi-step task execution with --workflow flag.
+ * Templates are YAML files that configure iterate mode with predefined settings.
+ */
+async function copyWorkflowTemplates(baseDir: string, packageRoot: string): Promise<number> {
+  const examplesDir = join(packageRoot, 'examples/workflows');
+  const targetDir = join(baseDir, 'workflows');
+
+  try {
+    const files = await readdir(examplesDir);
+    let count = 0;
+
+    for (const file of files) {
+      if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+        await copyFile(join(examplesDir, file), join(targetDir, file));
+        count++;
+      }
+    }
+
+    // If no example workflows exist, create default templates
+    if (count === 0) {
+      await createDefaultWorkflowTemplates(targetDir);
+      count = 4; // 4 default templates
+    }
+
+    return count;
+  } catch {
+    // Examples directory doesn't exist, create default templates
+    await createDefaultWorkflowTemplates(targetDir);
+    return 4;
+  }
+}
+
+/**
+ * Create default workflow templates if examples don't exist
+ */
+async function createDefaultWorkflowTemplates(targetDir: string): Promise<void> {
+  const authFlow = `# Authentication Implementation Workflow
+# Usage: ax run backend "implement user login" --workflow auth-flow
+
+name: auth-flow
+description: Multi-step authentication implementation workflow
+
+iterate:
+  enabled: true
+  timeout: 180
+  maxTokens: 2000000
+  strictness: balanced
+
+steps:
+  - name: design
+    agent: architecture
+    task: Design authentication architecture and security model
+  - name: implement
+    agent: backend
+    task: Implement authentication logic with security best practices
+  - name: security-review
+    agent: security
+    task: Review implementation for OWASP vulnerabilities
+  - name: tests
+    agent: quality
+    task: Write comprehensive auth tests including edge cases
+
+agents:
+  - backend
+  - security
+  - quality
+  - architecture
+`;
+
+  const featureFlow = `# Full Feature Implementation Workflow
+# Usage: ax run backend "implement user dashboard" --workflow feature-flow
+
+name: feature-flow
+description: End-to-end feature development with design, implementation, and testing
+
+iterate:
+  enabled: true
+  timeout: 240
+  maxTokens: 3000000
+  strictness: balanced
+
+steps:
+  - name: design
+    agent: architecture
+    task: Design feature architecture and data model
+  - name: backend
+    agent: backend
+    task: Implement backend logic and APIs
+  - name: frontend
+    agent: frontend
+    task: Implement UI components and integration
+  - name: tests
+    agent: quality
+    task: Write unit and integration tests
+  - name: review
+    agent: standard
+    task: Code review and final polish
+
+agents:
+  - architecture
+  - backend
+  - frontend
+  - quality
+  - standard
+`;
+
+  const apiFlow = `# API Development Workflow
+# Usage: ax run backend "create REST API for products" --workflow api-flow
+
+name: api-flow
+description: RESTful API design, implementation, and documentation
+
+iterate:
+  enabled: true
+  timeout: 120
+  maxTokens: 1500000
+  strictness: balanced
+
+steps:
+  - name: design
+    agent: architecture
+    task: Design API endpoints, request/response schemas, and error handling
+  - name: implement
+    agent: backend
+    task: Implement API endpoints with validation and error handling
+  - name: tests
+    agent: quality
+    task: Write API tests including happy path and error scenarios
+  - name: docs
+    agent: writer
+    task: Generate API documentation
+
+agents:
+  - architecture
+  - backend
+  - quality
+  - writer
+`;
+
+  const refactorFlow = `# Code Refactoring Workflow
+# Usage: ax run backend "refactor user service" --workflow refactor-flow
+
+name: refactor-flow
+description: Safe code refactoring with analysis, implementation, and verification
+
+iterate:
+  enabled: true
+  timeout: 90
+  maxTokens: 1000000
+  strictness: paranoid
+
+steps:
+  - name: analyze
+    agent: architecture
+    task: Analyze current code structure and identify refactoring opportunities
+  - name: refactor
+    agent: backend
+    task: Implement refactoring with backward compatibility
+  - name: verify
+    agent: quality
+    task: Verify all tests pass and no regressions
+  - name: review
+    agent: standard
+    task: Final code review for quality and consistency
+
+agents:
+  - architecture
+  - backend
+  - quality
+  - standard
+`;
+
+  await writeFile(join(targetDir, 'auth-flow.yaml'), authFlow, 'utf-8');
+  await writeFile(join(targetDir, 'feature-flow.yaml'), featureFlow, 'utf-8');
+  await writeFile(join(targetDir, 'api-flow.yaml'), apiFlow, 'utf-8');
+  await writeFile(join(targetDir, 'refactor-flow.yaml'), refactorFlow, 'utf-8');
 }
 
 /**
@@ -1412,13 +1603,13 @@ async function setupProjectCodexMd(
   return setupProjectProviderMd(projectDir, packageRoot, force, {
     fileName: 'CODEX.md',
     templatePath: 'examples/codex/CODEX_INTEGRATION.md',
-    description: 'This file provides guidance to OpenAI Codex CLI users when working with code in this repository.',
+    description: 'This file provides guidance to Codex CLI users when working with code in this repository.',
     providerName: 'CODEX'
   });
 }
 
 /**
- * Setup OpenAI Codex CLI integration files
+ * Setup Codex CLI integration files
  *
  * v10.3.0: Added MCP (Model Context Protocol) auto-configuration
  * v10.3.2: Now called unconditionally - config created even if Codex not detected

@@ -36,11 +36,11 @@ interface ProviderParameterSupport {
  */
 const PROVIDER_SUPPORT: Record<string, ProviderParameterSupport> = {
   'openai': {
-    name: 'OpenAI Codex',
+    name: 'Codex CLI',
     supportsMaxTokens: true,
     supportsTemperature: true,
     supportsTopP: false,  // v5.0.6: Removed for simplification
-    docsUrl: 'https://github.com/openai/codex',
+    docsUrl: 'https://developers.openai.com/codex/cli/',
     notes: 'Supports maxTokens and temperature via -c flags'
   },
   'gemini-cli': {

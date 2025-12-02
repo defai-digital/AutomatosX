@@ -12,7 +12,7 @@ This guide helps you migrate from AutomatosX v7.x to v8.2.0.
 - All Phase 1-6 interactive CLI features (slash commands, streaming, etc.)
 
 **Why this change:**
-Users overwhelmingly preferred using their existing AI assistants (Claude Code, Gemini CLI, OpenAI Codex) for conversations. The standalone chatbot duplicated functionality and added unnecessary complexity. By removing it, AutomatosX becomes a **pure orchestration platform** that works seamlessly with AI assistants.
+Users overwhelmingly preferred using their existing AI assistants (Claude Code, Gemini CLI, Codex CLI) for conversations. The standalone chatbot duplicated functionality and added unnecessary complexity. By removing it, AutomatosX becomes a **pure orchestration platform** that works seamlessly with AI assistants.
 
 ## What Remains Unchanged
 
@@ -69,7 +69,7 @@ gemini "Use ax backend agent to implement authentication"
 # Gemini invokes: ax run backend "implement authentication"
 ```
 
-#### Option C: OpenAI Codex
+#### Option C: Codex CLI
 ```bash
 codex "Have ax backend agent implement authentication"
 # Codex invokes: ax run backend "implement authentication"
@@ -144,7 +144,7 @@ AI: Executes both commands sequentially
 Yes, but through your AI assistant's native features:
 - **Claude Code**: Auto-saves conversations
 - **Gemini CLI**: Use `gemini --save` flag
-- **OpenAI Codex**: Use history features
+- **Codex CLI**: Use history features
 
 AutomatosX `ax memory` still saves all agent executions automatically.
 
@@ -168,7 +168,7 @@ Slash commands (`/help`, `/memory`, `/save`, etc.) were part of the removed chat
 
 **Alternatives**:
 - **Gemini CLI** - Free tier, natural language
-- **OpenAI Codex** - Strong code understanding
+- **Codex CLI** - Strong code understanding
 - **Cursor/Copilot/Windsurf** - IDE-integrated
 
 All work seamlessly with AutomatosX!

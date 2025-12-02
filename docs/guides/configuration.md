@@ -228,7 +228,7 @@ gemini --version
 
 See [Gemini Integration Guide](./gemini-integration.md) for cost optimization tips.
 
-#### OpenAI Codex CLI
+#### Codex CLI CLI
 
 ```bash
 # Install

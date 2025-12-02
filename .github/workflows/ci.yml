@@ -25,23 +25,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: TypeScript type check
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build project
-        run: npm run build
+        run: pnpm run build
 
       - name: Run unit tests
-        run: npm run test:ci
+        run: pnpm run test:ci
         timeout-minutes: 10
         env:
           AUTOMATOSX_MOCK_PROVIDERS: 'true'
@@ -51,7 +56,7 @@ jobs:
       # Integration tests temporarily disabled (timing issues in CI)
       # See vitest.config.ci.ts for details
       # - name: Run integration tests
-      #   run: npm run test:integration -- --config vitest.config.ci.ts
+      #   run: pnpm run test:integration -- --config vitest.config.ci.ts
       #   timeout-minutes: 10
       #   env:
       #     AUTOMATOSX_MOCK_PROVIDERS: 'true'
@@ -77,20 +82,25 @@ jobs:
   #     - name: Checkout code
   #       uses: actions/checkout@v4
   #
+  #     - name: Setup pnpm
+  #       uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 9
+  #
   #     - name: Setup Node.js
   #       uses: actions/setup-node@v4
   #       with:
   #         node-version: 20.x
-  #         cache: 'npm'
+  #         cache: 'pnpm'
   #
   #     - name: Install dependencies
-  #       run: npm ci
+  #       run: pnpm install --frozen-lockfile
   #
   #     - name: Run ESLint
-  #       run: npm run lint
+  #       run: pnpm run lint
   #
   #     - name: TypeScript type check
-  #       run: npm run typecheck
+  #       run: pnpm run typecheck
   #
   #     - name: Check build
-  #       run: npm run build
+  #       run: pnpm run build

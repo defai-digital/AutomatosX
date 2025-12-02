@@ -10,10 +10,23 @@
  * - Reduced memory footprint
  * - Automatic coordination
  *
+ * Updated for SDK v1.3.0:
+ * - Typed event interfaces (SubagentEvents)
+ * - Progress reporting integration
+ * - Enhanced state management
+ *
  * @module integrations/ax-cli-sdk/subagent-adapter
  */
 
 import { logger } from '../../utils/logger.js';
+import type {
+  SubagentEvents,
+  SubagentProgressData,
+  SubagentStateChangeData,
+  SubagentStateType,
+  ProgressCallback,
+  ProgressEvent
+} from './sdk-types.js';
 
 /**
  * Subagent role types supported by ax-cli SDK
@@ -107,6 +120,12 @@ export interface OrchestratorOptions {
 
   /** Continue on individual task failure */
   continueOnError?: boolean;
+
+  /** Event handlers (SDK v1.3.0) */
+  events?: SubagentEvents;
+
+  /** Progress callback (SDK v1.3.0) */
+  onProgress?: ProgressCallback;
 }
 
 /**
@@ -142,10 +161,48 @@ export class SubagentAdapter {
       maxParallel: options.maxParallel ?? 4,
       timeout: options.timeout ?? 300000, // 5 minutes
       sharedContext: options.sharedContext ?? true,
-      continueOnError: options.continueOnError ?? true
+      continueOnError: options.continueOnError ?? true,
+      events: options.events,
+      onProgress: options.onProgress
     };
 
     logger.debug('SubagentAdapter initialized', { options: this.options });
+  }
+
+  /**
+   * Emit a subagent event if handler is registered
+   */
+  private emitEvent<K extends keyof SubagentEvents>(
+    event: K,
+    ...args: Parameters<NonNullable<SubagentEvents[K]>>
+  ): void {
+    const handler = this.options.events?.[event];
+    if (handler) {
+      try {
+        (handler as (...args: unknown[]) => void)(...args);
+      } catch (error) {
+        logger.warn('Event handler error', {
+          event,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  }
+
+  /**
+   * Report progress if callback is registered
+   */
+  private reportProgress(event: ProgressEvent): void {
+    if (this.options.onProgress) {
+      try {
+        this.options.onProgress(event);
+      } catch (error) {
+        logger.warn('Progress callback error', {
+          taskId: event.taskId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
   }
 
   /**
@@ -258,6 +315,22 @@ export class SubagentAdapter {
   private async executeTask(task: SubagentTask): Promise<SubagentResult> {
     const startTime = Date.now();
     const subagentKey = this.getSubagentKey(task.config);
+    const taskId = `${subagentKey}:${Date.now()}`;
+
+    // Emit task start event
+    this.emitEvent('task_start', task.task);
+    this.emitEvent('state_change', {
+      previousState: 'idle',
+      currentState: 'running',
+      subagentId: subagentKey
+    });
+
+    // Report progress: start
+    this.reportProgress({
+      type: 'start',
+      taskId,
+      message: `Starting ${task.config.role} task`
+    });
 
     try {
       // Get or create subagent
@@ -274,6 +347,14 @@ export class SubagentAdapter {
         taskPreview: task.task.substring(0, 100)
       });
 
+      // Report progress: 25%
+      this.reportProgress({
+        type: 'progress',
+        taskId,
+        progress: 25,
+        message: 'Subagent initialized, executing...'
+      });
+
       // Execute via SDK
       let content = '';
       let totalTokens = 0;
@@ -288,6 +369,27 @@ export class SubagentAdapter {
       }
 
       const latencyMs = Date.now() - startTime;
+
+      // Emit task complete event
+      this.emitEvent('task_complete', task.task, content);
+      this.emitEvent('state_change', {
+        previousState: 'running',
+        currentState: 'completed',
+        subagentId: subagentKey
+      });
+      this.emitEvent('progress', {
+        subagentId: subagentKey,
+        progress: 100,
+        message: 'Task completed'
+      });
+
+      // Report progress: complete
+      this.reportProgress({
+        type: 'complete',
+        taskId,
+        message: `${task.config.role} task completed`,
+        metadata: { latencyMs, tokensUsed: totalTokens }
+      });
 
       logger.debug('Subagent task completed', {
         role: task.config.role,
@@ -310,6 +412,23 @@ export class SubagentAdapter {
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const err = error instanceof Error ? error : new Error(errorMessage);
+
+      // Emit error event
+      this.emitEvent('error', err);
+      this.emitEvent('state_change', {
+        previousState: 'running',
+        currentState: 'failed',
+        subagentId: subagentKey
+      });
+
+      // Report progress: error
+      this.reportProgress({
+        type: 'error',
+        taskId,
+        error: err,
+        message: `${task.config.role} task failed: ${errorMessage}`
+      });
 
       logger.error('Subagent task failed', {
         role: task.config.role,

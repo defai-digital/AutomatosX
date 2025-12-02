@@ -24,6 +24,7 @@ import { TokenEstimator } from './token-estimator.js';
 import { SubagentAdapter, type SubagentTask, type SubagentResult, type OrchestratorOptions } from './subagent-adapter.js';
 import { CheckpointAdapter, type Checkpoint, type Workflow, type CheckpointOptions } from './checkpoint-adapter.js';
 import { InstructionsBridge, type CombinedInstructions, type InstructionsBridgeOptions, getInstructionsBridge } from './instructions-bridge.js';
+import { AxCliMCPManager, getAxCliMCPManager, type MCPTemplate, type MCPServerConfig, type MCPManagerOptions } from './mcp-manager.js';
 
 /**
  * SDK Adapter configuration options
@@ -64,6 +65,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   private subagentAdapter: SubagentAdapter | null = null;
   private checkpointAdapter: CheckpointAdapter | null = null;
   private instructionsBridge: InstructionsBridge | null = null;
+  private mcpManager: AxCliMCPManager | null = null;
 
   constructor(options: SdkAdapterOptions = {}) {
     this.reuseEnabled = options.reuseEnabled ?? true;
@@ -210,6 +212,68 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   async syncAgentToAxCli(agentName: string): Promise<void> {
     const bridge = this.getInstructionsBridge();
     return bridge.syncAgentToAxCli(agentName);
+  }
+
+  // ==========================================
+  // MCP Manager (v10.4.1)
+  // ==========================================
+
+  /**
+   * Get or create MCP Manager for ax-cli MCP server management
+   *
+   * @example
+   * ```typescript
+   * const mcp = adapter.getMCPManager();
+   * const templates = await mcp.getTemplateNames();
+   * await mcp.addFromTemplate('github', { GITHUB_TOKEN: 'xxx' });
+   * ```
+   */
+  getMCPManager(options?: MCPManagerOptions): AxCliMCPManager {
+    if (!this.mcpManager) {
+      this.mcpManager = getAxCliMCPManager(options);
+      logger.debug('AxCliMCPManager created');
+    }
+    return this.mcpManager;
+  }
+
+  /**
+   * Get all available MCP template names
+   * Convenience method that wraps MCPManager.getTemplateNames()
+   */
+  async getMCPTemplateNames(): Promise<string[]> {
+    const mcp = this.getMCPManager();
+    const result = await mcp.getTemplateNames();
+    return result.ok ? result.value : [];
+  }
+
+  /**
+   * Get a specific MCP template
+   * Convenience method that wraps MCPManager.getTemplate()
+   */
+  async getMCPTemplate(name: string): Promise<MCPTemplate | null> {
+    const mcp = this.getMCPManager();
+    const result = await mcp.getTemplate(name);
+    return result.ok ? result.value : null;
+  }
+
+  /**
+   * Add an MCP server from template
+   * Convenience method that wraps MCPManager.addFromTemplate()
+   */
+  async addMCPFromTemplate(templateName: string, env?: Record<string, string>): Promise<boolean> {
+    const mcp = this.getMCPManager();
+    const result = await mcp.addFromTemplate(templateName, env);
+    return result.ok;
+  }
+
+  /**
+   * List all configured MCP servers
+   * Convenience method that wraps MCPManager.listServers()
+   */
+  async listMCPServers(): Promise<string[]> {
+    const mcp = this.getMCPManager();
+    const result = await mcp.listServers();
+    return result.ok ? result.value : [];
   }
 
   /**
@@ -786,7 +850,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       // Try to import SDK to check if it's available
       await import('@defai.digital/ax-cli/sdk');
       // SDK doesn't expose version directly, return expected version
-      return '3.7.0+';
+      return '3.14.5+';
     } catch (error) {
       logger.warn('Failed to get SDK version', {
         error: error instanceof Error ? error.message : String(error)
@@ -869,6 +933,12 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         });
       }
     }
+
+    // Cleanup MCP Manager (v10.4.1)
+    if (this.mcpManager) {
+      this.mcpManager = null;
+      logger.debug('MCP Manager cleared');
+    }
   }
 }
 
@@ -881,5 +951,11 @@ export type {
   Workflow,
   CheckpointOptions,
   CombinedInstructions,
-  InstructionsBridgeOptions
+  InstructionsBridgeOptions,
+  MCPTemplate,
+  MCPServerConfig,
+  MCPManagerOptions
 };
+
+// Re-export MCP manager
+export { AxCliMCPManager, getAxCliMCPManager, resetAxCliMCPManager } from './mcp-manager.js';

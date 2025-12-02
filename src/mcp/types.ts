@@ -5,26 +5,15 @@
  * AutomatosX MCP server and MCP clients (e.g., Claude Code).
  */
 
-// JSON-RPC 2.0 Base Types
-export interface JsonRpcRequest {
-  jsonrpc: '2.0';
-  id?: string | number | null;
-  method: string;
-  params?: unknown;
-}
+// Re-export JSON-RPC base types from shared location
+export type {
+  JsonRpcRequest,
+  JsonRpcResponse,
+  JsonRpcError
+} from '../providers/mcp/types.js';
 
-export interface JsonRpcResponse {
-  jsonrpc: '2.0';
-  id: string | number | null;
-  result?: unknown;
-  error?: JsonRpcError;
-}
-
-export interface JsonRpcError {
-  code: number;
-  message: string;
-  data?: unknown;
-}
+/** MCP protocol version (shared constant for consistency) */
+export const MCP_PROTOCOL_VERSION = '2024-11-05';
 
 // MCP Protocol Messages
 export interface McpInitializeRequest {
@@ -89,12 +78,24 @@ export interface McpTool {
 
 // Tool-Specific Input/Output Types
 
-// run_agent
+// v10.5.0: MCP Session for Smart Routing
+export interface McpSession {
+  clientInfo: {
+    name: string;
+    version?: string;
+  };
+  normalizedProvider: 'claude' | 'gemini' | 'codex' | 'ax-cli' | 'unknown';
+  initTime: number;
+}
+
+// run_agent (v10.5.0: Added mode for Smart Routing)
 export interface RunAgentInput {
   agent: string;
   task: string;
   provider?: 'claude' | 'gemini' | 'openai';
   no_memory?: boolean;
+  /** v10.5.0: Execution mode - auto (default), context (always return context), execute (always spawn) */
+  mode?: 'auto' | 'context' | 'execute';
 }
 
 export interface RunAgentOutput {
@@ -106,6 +107,27 @@ export interface RunAgentOutput {
     total: number;
   };
   latencyMs?: number;
+  /** v10.5.0: Routing decision - context_returned (same-provider), executed (cross-provider) */
+  routingDecision?: 'context_returned' | 'executed';
+  /** v10.6.0: How the task was executed - mcp_pooled, mcp_new, cli_spawn, cli_fallback, context_returned */
+  executionMode?: 'mcp_pooled' | 'mcp_new' | 'cli_spawn' | 'cli_fallback' | 'context_returned';
+  /** v10.5.0: Context returned when caller == best provider (Smart Routing) */
+  agentContext?: {
+    agentProfile: {
+      name: string;
+      role: string;
+      expertise: string[];
+      systemPrompt: string;
+    };
+    relevantMemory: Array<{
+      id: number;
+      content: string;
+      similarity: number;
+    }>;
+    enhancedPrompt: string;
+    detectedCaller: string;
+    recommendedProvider: string;
+  };
 }
 
 // list_agents

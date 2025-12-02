@@ -1,7 +1,7 @@
 /**
  * Codex Event Parser
  *
- * Parses JSONL events from OpenAI Codex CLI streaming output.
+ * Parses JSONL events from Codex CLI streaming output.
  *
  * Features:
  * - Type-safe event schemas with Zod

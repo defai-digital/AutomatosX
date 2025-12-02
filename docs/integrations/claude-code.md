@@ -659,7 +659,7 @@ ls .claude/              # Manifests
 - Direct CLI (`ax run backend "task"`)
 - Gemini CLI integration
 - Grok CLI integration
-- OpenAI Codex integration
+- Codex CLI integration
 
 ### Q: How do I add custom agents?
 

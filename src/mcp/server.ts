@@ -21,9 +21,10 @@ import type {
   McpToolCallRequest,
   McpToolCallResponse,
   McpTool,
+  McpSession,
   ToolHandler
 } from './types.js';
-import { McpErrorCode } from './types.js';
+import { McpErrorCode, MCP_PROTOCOL_VERSION } from './types.js';
 import { logger, setLogLevel } from '../utils/logger.js';
 import { loadConfig } from '../core/config.js';
 import { Router } from '../core/router.js';
@@ -67,8 +68,38 @@ import { createInjectConversationContextHandler } from './tools/inject-conversat
 // Import tool handlers - Phase 3.1: Tool Chaining
 import { createImplementAndDocumentHandler } from './tools/implement-and-document.js';
 
+// Import tool handlers - v10.5.0: Smart Routing
+import { createGetAgentContextHandler } from './tools/get-agent-context.js';
+
+// v10.6.0: MCP Client Pool for cross-provider execution
+import { McpClientPool, getGlobalPool } from '../providers/mcp/pool-manager.js';
+
 export interface McpServerOptions {
   debug?: boolean;
+}
+
+/** Client name patterns for provider detection */
+const CLIENT_PATTERNS: Array<[string[], McpSession['normalizedProvider']]> = [
+  [['claude'], 'claude'],
+  [['gemini'], 'gemini'],
+  [['codex', 'openai'], 'codex'],
+  [['ax-cli', 'ax', 'automatosx'], 'ax-cli']
+];
+
+/** Stdio buffer safety limits (prevent infinite loops and memory exhaustion) */
+const STDIO_MAX_ITERATIONS = 100;
+const STDIO_MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+const STDIO_MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+/**
+ * Normalize MCP client name to provider identifier
+ */
+function normalizeClientProvider(clientName: string): McpSession['normalizedProvider'] {
+  const name = clientName.toLowerCase();
+  for (const [patterns, provider] of CLIENT_PATTERNS) {
+    if (patterns.some(p => name.includes(p))) return provider;
+  }
+  return 'unknown';
 }
 
 export class McpServer {
@@ -82,6 +113,12 @@ export class McpServer {
   private version: string;
   private ajv: Ajv;
   private compiledValidators = new Map<string, ValidateFunction>();
+
+  // v10.5.0: MCP Session for Smart Routing
+  private session: McpSession | null = null;
+
+  // v10.6.0: MCP Client Pool for cross-provider execution
+  private mcpPool: McpClientPool | null = null;
 
   // Shared services (initialized once per server)
   private router!: Router;
@@ -116,8 +153,18 @@ export class McpServer {
     return [
       {
         name: 'run_agent',
-        description: 'Execute an AutomatosX agent with a specific task',
-        inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'The name of the agent to run (e.g., backend, Paris, Bob)' }, task: { type: 'string', description: 'The task for the agent to perform' }, provider: { type: 'string', description: 'Optional: Override the AI provider', enum: ['claude', 'gemini', 'openai'] }, no_memory: { type: 'boolean', description: 'Optional: Skip memory injection', default: false } }, required: ['agent', 'task'] }
+        description: 'Execute an AutomatosX agent with a specific task. Uses Smart Routing: returns context for same-provider calls, spawns cross-provider execution.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            agent: { type: 'string', description: 'The name of the agent to run (e.g., backend, Paris, Bob)' },
+            task: { type: 'string', description: 'The task for the agent to perform' },
+            provider: { type: 'string', description: 'Optional: Override the AI provider', enum: ['claude', 'gemini', 'openai'] },
+            no_memory: { type: 'boolean', description: 'Optional: Skip memory injection', default: false },
+            mode: { type: 'string', description: 'Optional: Execution mode - auto (default), context (always return context), execute (always spawn)', enum: ['auto', 'context', 'execute'], default: 'auto' }
+          },
+          required: ['agent', 'task']
+        }
       },
       {
         name: 'list_agents',
@@ -208,6 +255,21 @@ export class McpServer {
         name: 'implement_and_document',
         description: 'Implement code and generate documentation atomically to prevent documentation drift',
         inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'Task description' }, agent: { type: 'string', description: 'Optional: Agent to use (default: backend)' }, documentation: { type: 'object', description: 'Documentation options', properties: { format: { type: 'string', enum: ['markdown', 'jsdoc'], description: 'Doc format (default: markdown)' }, outputPath: { type: 'string', description: 'Optional: Custom doc output path' }, updateChangelog: { type: 'boolean', description: 'Update CHANGELOG.md (default: true)', default: true } } }, provider: { type: 'string', enum: ['claude', 'gemini', 'openai'], description: 'Optional: AI provider override' } }, required: ['task'] }
+      },
+      // v10.5.0: Smart Routing - Explicit context retrieval
+      {
+        name: 'get_agent_context',
+        description: 'Get agent context without executing. Returns profile, relevant memory, and enhanced prompt for AI assistant to execute directly.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            agent: { type: 'string', description: 'The name of the agent (e.g., backend, Paris, Bob)' },
+            task: { type: 'string', description: 'The task description for context building' },
+            includeMemory: { type: 'boolean', description: 'Include relevant memory entries (default: true)', default: true },
+            maxMemoryResults: { type: 'number', description: 'Maximum memory entries to return (default: 5)', default: 5 }
+          },
+          required: ['agent', 'task']
+        }
       }
     ];
   }
@@ -304,6 +366,10 @@ export class McpServer {
     });
     await this.contextStore.initialize();
 
+    // v10.6.0: Initialize MCP Client Pool for cross-provider execution
+    // Uses global singleton pool with default config (defined in pool-manager.ts)
+    this.mcpPool = getGlobalPool();
+
     logger.info('[MCP Server] Services initialized successfully');
   }
 
@@ -313,6 +379,8 @@ export class McpServer {
   private async cleanup(): Promise<void> {
     logger.info('[MCP Server] Performing cleanup...');
     if (this.memoryManager) await this.memoryManager.close();
+    // v10.6.0: Drain MCP Client Pool
+    if (this.mcpPool) await this.mcpPool.drain();
     logger.info('[MCP Server] Cleanup completed');
   }
 
@@ -322,127 +390,77 @@ export class McpServer {
   private registerTools(): void {
     logger.info('[MCP Server] Registering tools...');
 
-    const register = (name: string, handler: ToolHandler<any,any>, schema: McpTool) => {
-        this.tools.set(name, handler);
-        this.toolSchemas.push(schema);
-        this.compiledValidators.set(name, this.ajv.compile(schema.inputSchema));
-    }
+    // Use static schemas as single source of truth
+    const staticSchemas = McpServer.getStaticToolSchemas();
+    const schemaByName = new Map(staticSchemas.map(s => [s.name, s]));
 
-    register('run_agent', createRunAgentHandler({ contextManager: this.contextManager, executorConfig: { sessionManager: this.sessionManager, workspaceManager: this.workspaceManager, contextManager: this.contextManager, profileLoader: this.profileLoader } }), {
-      name: 'run_agent',
-      description: 'Execute an AutomatosX agent with a specific task',
-      inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'The name of the agent to run (e.g., backend, Paris, Bob)' }, task: { type: 'string', description: 'The task for the agent to perform' }, provider: { type: 'string', description: 'Optional: Override the AI provider', enum: ['claude', 'gemini', 'openai'] }, no_memory: { type: 'boolean', description: 'Optional: Skip memory injection', default: false } }, required: ['agent', 'task'] }
-    });
+    const register = (name: string, handler: ToolHandler<any, any>) => {
+      const schema = schemaByName.get(name);
+      if (!schema) {
+        throw new Error(`No static schema found for tool: ${name}`);
+      }
+      this.tools.set(name, handler);
+      this.toolSchemas.push(schema);
+      this.compiledValidators.set(name, this.ajv.compile(schema.inputSchema));
+    };
 
-    register('list_agents', createListAgentsHandler({ profileLoader: this.profileLoader }), {
-      name: 'list_agents',
-      description: 'List all available AutomatosX agents',
-      inputSchema: { type: 'object', properties: {} }
-    });
+    // Phase 1: Core tools
+    register('run_agent', createRunAgentHandler({
+      contextManager: this.contextManager,
+      executorConfig: {
+        sessionManager: this.sessionManager,
+        workspaceManager: this.workspaceManager,
+        contextManager: this.contextManager,
+        profileLoader: this.profileLoader
+      },
+      getSession: () => this.session,
+      router: this.router,
+      profileLoader: this.profileLoader,
+      memoryManager: this.memoryManager,
+      mcpPool: this.mcpPool ?? undefined,
+      crossProviderMode: 'auto'
+    }));
 
-    register('search_memory', createSearchMemoryHandler({ memoryManager: this.memoryManager }), {
-      name: 'search_memory',
-      description: 'Search AutomatosX memory for relevant information',
-      inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, limit: { type: 'number', description: 'Maximum number of results', default: 10 } }, required: ['query'] }
-    });
+    register('list_agents', createListAgentsHandler({ profileLoader: this.profileLoader }));
+    register('search_memory', createSearchMemoryHandler({ memoryManager: this.memoryManager }));
+    register('get_status', createGetStatusHandler({ memoryManager: this.memoryManager, sessionManager: this.sessionManager, router: this.router }));
 
-    register('get_status', createGetStatusHandler({ memoryManager: this.memoryManager, sessionManager: this.sessionManager, router: this.router }), {
-      name: 'get_status',
-      description: 'Get AutomatosX system status and configuration',
-      inputSchema: { type: 'object', properties: {} }
-    });
+    // Phase 2: Session tools
+    register('session_create', createSessionCreateHandler({ sessionManager: this.sessionManager }));
+    register('session_list', createSessionListHandler({ sessionManager: this.sessionManager }));
+    register('session_status', createSessionStatusHandler({ sessionManager: this.sessionManager }));
+    register('session_complete', createSessionCompleteHandler({ sessionManager: this.sessionManager }));
+    register('session_fail', createSessionFailHandler({ sessionManager: this.sessionManager }));
 
-    register('session_create', createSessionCreateHandler({ sessionManager: this.sessionManager }), {
-      name: 'session_create',
-      description: 'Create a new multi-agent session',
-      inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'Session name/task description' }, agent: { type: 'string', description: 'Initiating agent name' } }, required: ['name', 'agent'] }
-    });
-
-    register('session_list', createSessionListHandler({ sessionManager: this.sessionManager }), {
-      name: 'session_list',
-      description: 'List all active sessions',
-      inputSchema: { type: 'object', properties: {} }
-    });
-
-    register('session_status', createSessionStatusHandler({ sessionManager: this.sessionManager }), {
-        name: 'session_status',
-        description: 'Get detailed status of a specific session',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' } }, required: ['id'] }
-    });
-
-    register('session_complete', createSessionCompleteHandler({ sessionManager: this.sessionManager }), {
-        name: 'session_complete',
-        description: 'Mark a session as completed',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' } }, required: ['id'] }
-    });
-
-    register('session_fail', createSessionFailHandler({ sessionManager: this.sessionManager }), {
-        name: 'session_fail',
-        description: 'Mark a session as failed with an error reason',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' }, reason: { type: 'string', description: 'Failure reason' } }, required: ['id', 'reason'] }
-    });
-
-    register('memory_add', createMemoryAddHandler({ memoryManager: this.memoryManager }), {
-        name: 'memory_add',
-        description: 'Add a new memory entry to the system',
-        inputSchema: { type: 'object', properties: { content: { type: 'string', description: 'Memory content' }, metadata: { type: 'object', description: 'Optional metadata (agent, timestamp, etc.)', properties: { agent: { type: 'string' }, timestamp: { type: 'string' } } } }, required: ['content'] }
-    });
-
-    register('memory_list', createMemoryListHandler({ memoryManager: this.memoryManager }), {
-        name: 'memory_list',
-        description: 'List memory entries with optional filtering',
-        inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Filter by agent name' }, limit: { type: 'number', description: 'Maximum number of entries', default: 50 } } }
-    });
-
-    register('memory_delete', createMemoryDeleteHandler({ memoryManager: this.memoryManager }), {
-        name: 'memory_delete',
-        description: 'Delete a specific memory entry by ID',
-        inputSchema: { type: 'object', properties: { id: { type: 'number', description: 'Memory entry ID' } }, required: ['id'] }
-    });
-
-    register('memory_export', createMemoryExportHandler({ memoryManager: this.memoryManager, pathResolver: this.pathResolver }), {
-        name: 'memory_export',
-        description: 'Export all memory entries to a JSON file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Export file path' } }, required: ['path'] }
-    });
-
-    register('memory_import', createMemoryImportHandler({ memoryManager: this.memoryManager, pathResolver: this.pathResolver }), {
-        name: 'memory_import',
-        description: 'Import memory entries from a JSON file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Import file path' } }, required: ['path'] }
-    });
-
-    register('memory_stats', createMemoryStatsHandler({ memoryManager: this.memoryManager }), {
-        name: 'memory_stats',
-        description: 'Get detailed memory statistics',
-        inputSchema: { type: 'object', properties: {} }
-    });
-
-    register('memory_clear', createMemoryClearHandler({ memoryManager: this.memoryManager }), {
-        name: 'memory_clear',
-        description: 'Clear all memory entries from the database',
-        inputSchema: { type: 'object', properties: {} }
-    });
+    // Phase 2: Memory tools
+    register('memory_add', createMemoryAddHandler({ memoryManager: this.memoryManager }));
+    register('memory_list', createMemoryListHandler({ memoryManager: this.memoryManager }));
+    register('memory_delete', createMemoryDeleteHandler({ memoryManager: this.memoryManager }));
+    register('memory_export', createMemoryExportHandler({ memoryManager: this.memoryManager, pathResolver: this.pathResolver }));
+    register('memory_import', createMemoryImportHandler({ memoryManager: this.memoryManager, pathResolver: this.pathResolver }));
+    register('memory_stats', createMemoryStatsHandler({ memoryManager: this.memoryManager }));
+    register('memory_clear', createMemoryClearHandler({ memoryManager: this.memoryManager }));
 
     // Phase 3.1: Context Sharing
-    register('get_conversation_context', createGetConversationContextHandler({ contextStore: this.contextStore }), {
-        name: 'get_conversation_context',
-        description: 'Retrieve conversation context from the shared context store',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Optional: Context ID to retrieve' }, source: { type: 'string', description: 'Optional: Filter by source (e.g., gemini-cli)' }, limit: { type: 'number', description: 'Optional: Max results (default: 10)', default: 10 } } }
-    });
-
-    register('inject_conversation_context', createInjectConversationContextHandler({ contextStore: this.contextStore }), {
-        name: 'inject_conversation_context',
-        description: 'Inject conversation context into the shared context store',
-        inputSchema: { type: 'object', properties: { source: { type: 'string', description: 'Source assistant (e.g., gemini-cli, claude-code)' }, content: { type: 'string', description: 'Context content' }, metadata: { type: 'object', description: 'Optional metadata', properties: { topic: { type: 'string' }, participants: { type: 'array', items: { type: 'string' } }, tags: { type: 'array', items: { type: 'string' } } } } }, required: ['source', 'content'] }
-    });
+    register('get_conversation_context', createGetConversationContextHandler({ contextStore: this.contextStore }));
+    register('inject_conversation_context', createInjectConversationContextHandler({ contextStore: this.contextStore }));
 
     // Phase 3.1: Tool Chaining
-    register('implement_and_document', createImplementAndDocumentHandler({ contextManager: this.contextManager, executorConfig: { sessionManager: this.sessionManager, workspaceManager: this.workspaceManager, contextManager: this.contextManager, profileLoader: this.profileLoader } }), {
-        name: 'implement_and_document',
-        description: 'Implement code and generate documentation atomically to prevent documentation drift',
-        inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'Task description' }, agent: { type: 'string', description: 'Optional: Agent to use (default: backend)' }, documentation: { type: 'object', description: 'Documentation options', properties: { format: { type: 'string', enum: ['markdown', 'jsdoc'], description: 'Doc format (default: markdown)' }, outputPath: { type: 'string', description: 'Optional: Custom doc output path' }, updateChangelog: { type: 'boolean', description: 'Update CHANGELOG.md (default: true)', default: true } } }, provider: { type: 'string', enum: ['claude', 'gemini', 'openai'], description: 'Optional: AI provider override' } }, required: ['task'] }
-    });
+    register('implement_and_document', createImplementAndDocumentHandler({
+      contextManager: this.contextManager,
+      executorConfig: {
+        sessionManager: this.sessionManager,
+        workspaceManager: this.workspaceManager,
+        contextManager: this.contextManager,
+        profileLoader: this.profileLoader
+      }
+    }));
+
+    // v10.5.0: Smart Routing - Explicit context retrieval
+    register('get_agent_context', createGetAgentContextHandler({
+      profileLoader: this.profileLoader,
+      memoryManager: this.memoryManager
+    }));
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,
@@ -451,42 +469,69 @@ export class McpServer {
   }
 
   /**
+   * v10.5.0: Get current MCP session for Smart Routing
+   * Used by tools to detect caller provider and implement same-provider optimization
+   */
+  getSession(): McpSession | null {
+    return this.session;
+  }
+
+  /**
    * Handle MCP protocol messages
    */
   private async handleRequest(request: JsonRpcRequest): Promise<JsonRpcResponse> {
-    const { method, params, id } = request;
+    const { method, id } = request;
+    const responseId = id ?? null;
     logger.debug('[MCP Server] Handling request', { method, id });
 
     try {
-      if (method === 'initialize') {
-        return await this.handleInitialize(request as McpInitializeRequest, id ?? null);
+      switch (method) {
+        case 'initialize':
+          return await this.handleInitialize(request as McpInitializeRequest, responseId);
+        case 'tools/list':
+          return this.handleToolsList(request as McpToolListRequest, responseId);
+        case 'tools/call':
+          return await this.handleToolCall(request as McpToolCallRequest, responseId);
+        default:
+          return this.createErrorResponse(responseId, McpErrorCode.MethodNotFound, `Method not found: ${method}`);
       }
-      if (method === 'tools/list') {
-        return this.handleToolsList(request as McpToolListRequest, id ?? null);
-      }
-      if (method === 'tools/call') {
-        return await this.handleToolCall(request as McpToolCallRequest, id ?? null);
-      }
-      return this.createErrorResponse(id ?? null, McpErrorCode.MethodNotFound, `Method not found: ${method}`);
     } catch (error) {
       logger.error('[MCP Server] Request handling failed', { method, error });
-      return this.createErrorResponse(id ?? null, McpErrorCode.InternalError, `Internal error: ${(error as Error).message}`);
+      return this.createErrorResponse(responseId, McpErrorCode.InternalError, `Internal error: ${(error as Error).message}`);
     }
   }
 
   /**
    * Handle initialize request
    * BUG FIX (v9.0.1): Added mutex to prevent concurrent initialization race conditions
+   * v10.5.0: Capture clientInfo for Smart Routing
    */
   private async handleInitialize(request: McpInitializeRequest, id: string | number | null): Promise<JsonRpcResponse> {
-    logger.info('[MCP Server] Initialize request received (fast handshake mode)', { clientInfo: request.params.clientInfo });
+    const clientInfo = request.params.clientInfo;
+    logger.info('[MCP Server] Initialize request received (fast handshake mode)', { clientInfo });
+
+    // v10.5.0: Store session info for Smart Routing
+    // This allows us to detect caller and return context instead of spawning same provider
+    this.session = {
+      clientInfo: {
+        name: clientInfo.name,
+        version: clientInfo.version,
+      },
+      normalizedProvider: normalizeClientProvider(clientInfo.name),
+      initTime: Date.now(),
+    };
+
+    logger.info('[MCP Server] Session established', {
+      clientName: clientInfo.name,
+      normalizedProvider: this.session.normalizedProvider,
+    });
 
     // OPTIMIZATION (v10.3.1): Fast handshake - no blocking initialization!
     // Services are initialized lazily on first tool call instead of during handshake.
     // This reduces MCP startup time from 18s to < 10ms.
 
     const response: McpInitializeResponse = {
-      protocolVersion: '2024-11-05',
+      protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: { tools: {} },
       serverInfo: { name: 'automatosx', version: this.version }
     };
@@ -511,73 +556,76 @@ export class McpServer {
 
   /**
    * Validate tool input against its JSON schema.
+   * Returns null if valid, or error message string if invalid.
    */
-  private validateToolInput(toolName: string, input: Record<string, unknown>): { valid: boolean; error?: string } {
+  private validateToolInput(toolName: string, input: Record<string, unknown>): string | null {
     const validate = this.compiledValidators.get(toolName);
-    if (!validate) {
-      return { valid: false, error: `No validator found for tool: ${toolName}` };
-    }
-    if (validate(input)) {
-      return { valid: true };
-    }
-    return { valid: false, error: this.ajv.errorsText(validate.errors) };
+    if (!validate) return `No validator found for tool: ${toolName}`;
+    if (validate(input)) return null;
+    return this.ajv.errorsText(validate.errors);
+  }
+
+  /** Create MCP tool response wrapper */
+  private createToolResponse(id: string | number | null, text: string, isError = false): JsonRpcResponse {
+    const response: McpToolCallResponse = { content: [{ type: 'text', text }], ...(isError && { isError }) };
+    return { jsonrpc: '2.0', id, result: response };
+  }
+
+  /**
+   * Ensure services are initialized (lazy initialization on first call)
+   * OPTIMIZATION (v10.3.1): Moves 15-20s initialization from handshake to first request
+   */
+  private async ensureInitialized(): Promise<void> {
+    await this.initializationMutex.runExclusive(async () => {
+      if (this.initialized) return;
+
+      if (!this.initializationPromise) {
+        logger.info('[MCP Server] First tool call - initializing services (lazy loading)...');
+        this.initializationPromise = (async () => {
+          try {
+            const startTime = Date.now();
+            await this.initializeServices();
+            this.registerTools();
+            this.initialized = true;
+            logger.info('[MCP Server] Services initialized successfully', { duration: `${Date.now() - startTime}ms` });
+          } catch (error) {
+            logger.error('[MCP Server] Initialization failed', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+            this.initializationPromise = null; // Allow retry on failure
+            throw error;
+          }
+        })();
+      }
+      await this.initializationPromise;
+    });
   }
 
   /**
    * Handle tools/call request
-   *
-   * OPTIMIZATION (v10.3.1): Lazy initialization on first tool call
-   * Services are initialized only when first tool is called, not during handshake.
-   * This moves the 15-20s initialization delay from handshake to first request.
    */
   private async handleToolCall(request: McpToolCallRequest, id: string | number | null): Promise<JsonRpcResponse> {
     const { name, arguments: args } = request.params;
     logger.info('[MCP Server] Tool call', { tool: name });
 
-    // LAZY INITIALIZATION: Initialize services on first tool call
-    await this.initializationMutex.runExclusive(async () => {
-      if (!this.initialized) {
-        if (!this.initializationPromise) {
-          logger.info('[MCP Server] First tool call - initializing services (lazy loading)...');
-          this.initializationPromise = (async () => {
-            try {
-              const startTime = Date.now();
-              await this.initializeServices();
-              this.registerTools();
-              this.initialized = true;
-              const duration = Date.now() - startTime;
-              logger.info('[MCP Server] Services initialized successfully', { duration: `${duration}ms` });
-            } catch (error) {
-              logger.error('[MCP Server] Initialization failed', {
-                error: error instanceof Error ? error.message : String(error)
-              });
-              this.initializationPromise = null; // Allow retry on failure
-              throw error;
-            }
-          })();
-        }
-        await this.initializationPromise;
-      }
-    });
+    await this.ensureInitialized();
 
     const handler = this.tools.get(name);
     if (!handler) {
       return this.createErrorResponse(id, McpErrorCode.ToolNotFound, `Tool not found: ${name}`);
     }
 
-    const validation = this.validateToolInput(name, args || {});
-    if (!validation.valid) {
-      return this.createErrorResponse(id, McpErrorCode.InvalidParams, validation.error || 'Invalid parameters');
+    const validationError = this.validateToolInput(name, args || {});
+    if (validationError) {
+      return this.createErrorResponse(id, McpErrorCode.InvalidParams, validationError);
     }
 
     try {
       const result = await handler(args || {});
-      const response: McpToolCallResponse = { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-      return { jsonrpc: '2.0', id, result: response };
+      return this.createToolResponse(id, JSON.stringify(result, null, 2));
     } catch (error) {
       logger.error('[MCP Server] Tool execution failed', { tool: name, error });
-      const response: McpToolCallResponse = { content: [{ type: 'text', text: `Error: ${(error as Error).message}` }], isError: true };
-      return { jsonrpc: '2.0', id, result: response };
+      return this.createToolResponse(id, `Error: ${(error as Error).message}`, true);
     }
   }
 
@@ -609,19 +657,14 @@ export class McpServer {
     let buffer = '';
     let contentLength: number | null = null;
 
-    // Safety limits to prevent infinite loops and excessive memory usage
-    const MAX_ITERATIONS_PER_CHUNK = 100;
-    const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
-    const MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5MB
-
     process.stdin.on('data', async (chunk: Buffer) => {
       buffer += chunk.toString('utf-8');
 
       // BUG FIX: Check buffer size to prevent memory exhaustion
-      if (buffer.length > MAX_BUFFER_SIZE) {
+      if (buffer.length > STDIO_MAX_BUFFER_SIZE) {
         logger.error('[MCP Server] Buffer size exceeded maximum', {
           bufferSize: buffer.length,
-          maxSize: MAX_BUFFER_SIZE
+          maxSize: STDIO_MAX_BUFFER_SIZE
         });
         buffer = ''; // Reset buffer
         contentLength = null;
@@ -630,7 +673,7 @@ export class McpServer {
 
       // BUG FIX: Add iteration counter to prevent infinite loops
       let iterations = 0;
-      while (iterations < MAX_ITERATIONS_PER_CHUNK) {
+      while (iterations < STDIO_MAX_ITERATIONS) {
         iterations++;
 
         if (contentLength === null) {
@@ -651,7 +694,7 @@ export class McpServer {
               contentLength = parseInt(value, 10);
 
               // BUG FIX: Validate content length
-              if (isNaN(contentLength) || contentLength <= 0 || contentLength > MAX_MESSAGE_SIZE) {
+              if (isNaN(contentLength) || contentLength <= 0 || contentLength > STDIO_MAX_MESSAGE_SIZE) {
                 logger.error('[MCP Server] Invalid Content-Length', { contentLength });
                 buffer = buffer.slice(headerEndIndex + delimiter.length);
                 contentLength = null;
@@ -688,7 +731,7 @@ export class McpServer {
       }
 
       // BUG FIX: Warn if iteration limit reached
-      if (iterations >= MAX_ITERATIONS_PER_CHUNK) {
+      if (iterations >= STDIO_MAX_ITERATIONS) {
         logger.warn('[MCP Server] Maximum iterations reached in message processing', {
           iterations,
           bufferSize: buffer.length
@@ -696,18 +739,15 @@ export class McpServer {
       }
     });
 
-    process.stdin.on('end', () => {
-        logger.info('[MCP Server] Server stopped (stdin closed)');
-        this.cleanup().finally(() => process.exit(0));
-    });
-    process.on('SIGINT', () => {
-        logger.info('[MCP Server] Received SIGINT, shutting down...');
-        this.cleanup().finally(() => process.exit(0));
-    });
-    process.on('SIGTERM', () => {
-        logger.info('[MCP Server] Received SIGTERM, shutting down...');
-        this.cleanup().finally(() => process.exit(0));
-    });
+    // Common shutdown handler
+    const shutdown = (reason: string) => {
+      logger.info(`[MCP Server] ${reason}`);
+      this.cleanup().finally(() => process.exit(0));
+    };
+
+    process.stdin.on('end', () => shutdown('Server stopped (stdin closed)'));
+    process.on('SIGINT', () => shutdown('Received SIGINT, shutting down...'));
+    process.on('SIGTERM', () => shutdown('Received SIGTERM, shutting down...'));
 
     logger.info('[MCP Server] Server started successfully (Content-Length framing)');
   }

@@ -52,7 +52,7 @@ export const cleanupCommand: CommandModule<Record<string, unknown>, CleanupOptio
         default: false
       })
       .example('$0 cleanup', 'Clean up all orphaned processes')
-      .example('$0 cleanup openai', 'Clean up OpenAI codex processes')
+      .example('$0 cleanup openai', 'Clean up Codex CLI processes')
       .example('$0 cleanup --force', 'Clean up without confirmation');
   },
 

@@ -193,7 +193,7 @@ export const PROVIDER_ERROR_PATTERNS: Record<string, ProviderErrorPatterns> = {
   },
 
   /**
-   * OpenAI Codex Provider (same patterns as OpenAI)
+   * Codex CLI Provider (same patterns as OpenAI)
    */
   codex: {
     quota: [

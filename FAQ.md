@@ -6,7 +6,7 @@ Note: This FAQ applies to AutomatosX v9.2.0 (last updated 2025-11-22). For detai
 - [General Questions](#general-questions)
   - [What AI providers are supported?](#what-ai-providers-are-supported)
   - [What happens if OpenAI or Gemini is not installed?](#what-happens-if-openai-or-gemini-is-not-installed)
-  - [Does AutomatosX require Claude Code? Can Gemini or OpenAI Codex be the primary?](#does-automatosx-require-claude-code-can-gemini-or-openai-codex-be-the-primary)
+  - [Does AutomatosX require Claude Code? Can Gemini or Codex CLI be the primary?](#does-automatosx-require-claude-code-can-gemini-or-openai-codex-be-the-primary)
   - [Do I need to run AutomatosX inside the Claude/Gemini/Codex CLI?](#do-i-need-to-run-automatosx-inside-the-claudegeminicodex-cli)
   - [Can I run AutomatosX with a fully offline model?](#can-i-run-automatosx-with-a-fully-offline-model)
 - [Installation & Setup](#installation--setup)
@@ -100,7 +100,7 @@ Troubleshooting checklist:
 - Verify the provider is `enabled` in `ax.config.json`.
 - Use `--provider` to override selection temporarily.
 
-### Does AutomatosX require Claude Code? Can Gemini or OpenAI Codex be the primary?
+### Does AutomatosX require Claude Code? Can Gemini or Codex CLI be the primary?
 
 No. AutomatosX is provider-agnostic. Any supported provider can be primary. Set it at the team level (recommended) or override per command:
 
@@ -232,7 +232,7 @@ No, you need at least one provider CLI installed and authenticated:
 - **Free option**: Gemini CLI offers generous free tier
 - **For testing**: Use mock providers (`AX_MOCK_PROVIDERS=true`)
 
-**Important**: OpenAI Codex CLI requires your project to be a git repository (`git init`). Other providers don't have this requirement.
+**Important**: Codex CLI CLI requires your project to be a git repository (`git init`). Other providers don't have this requirement.
 
 ```bash
 # Test without real providers

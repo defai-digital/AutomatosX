@@ -1,16 +1,32 @@
 /**
- * ClaudeProvider - Pure CLI Wrapper (v8.3.0)
+ * ClaudeProvider - CLI-based Claude Code Provider (v10.5.0)
  *
- * Simply invokes `claude "<prompt>"` command
- * No model selection, no API keys, no cost tracking
+ * Invokes Claude Code CLI: `claude --print "<prompt>"`
+ *
+ * Note: Claude Code users (80%) access AutomatosX via MCP CLIENT.
+ * This provider is used for cross-provider routing when Claude is
+ * selected as the best provider for a task from another AI assistant.
  */
 
 import { BaseProvider } from './base-provider.js';
-import type { ProviderConfig } from '../types/provider.js';
+import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
+import { logger } from '../utils/logger.js';
 
 export class ClaudeProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
     super(config);
+    logger.debug('[Claude Provider] Initialized (CLI mode)');
+  }
+
+  /**
+   * Execute request via CLI
+   */
+  override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
+    logger.debug('[Claude Provider] Executing via CLI', {
+      promptLength: request.prompt.length,
+    });
+
+    return super.execute(request);
   }
 
   protected getCLICommand(): string {
@@ -30,5 +46,17 @@ export class ClaudeProvider extends BaseProvider {
 
   protected getMockResponse(): string {
     return `[Mock Claude Response]\n\nThis is a mock response for testing purposes.`;
+  }
+
+  /**
+   * Get extended capabilities
+   */
+  override get capabilities(): any {
+    return {
+      ...super.capabilities,
+      integrationMode: 'cli',
+      supportsMcp: true,
+      mcpCommand: 'claude mcp serve',
+    };
   }
 }

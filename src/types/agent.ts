@@ -190,7 +190,7 @@ export interface AgentProfile {
    * - temperature: Control randomness (0 = deterministic, 2 = creative)
    * - maxTokens: Limit output length (cost control or specific use case)
    *
-   * Note: Only OpenAI Codex CLI currently supports temperature/maxTokens parameters.
+   * Note: Only Codex CLI currently supports temperature/maxTokens parameters.
    * Gemini and Claude use their CLI's default settings.
    */
   provider?: string;         // Provider override (e.g., "openai", "gemini-cli", "claude-code")

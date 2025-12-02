@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex Integration - CLI Wrapper
+ * Codex CLI Integration - CLI Wrapper
  *
- * Wrapper for executing OpenAI Codex CLI commands.
+ * Wrapper for executing Codex CLI commands.
  *
  * @module integrations/openai-codex/cli-wrapper
  */
@@ -19,7 +19,7 @@ import { CodexProgressRenderer } from './progress-renderer.js';
 import { getDefaultInjector } from './prompt-injector.js';
 
 /**
- * OpenAI Codex CLI Wrapper
+ * Codex CLI Wrapper
  *
  * Provides methods for executing codex CLI commands with proper
  * process management, timeout handling, and error recovery.

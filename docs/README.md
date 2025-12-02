@@ -123,7 +123,7 @@ Provider-specific documentation:
   - Approval modes
   - Best practices
 
-- **[OpenAI Codex](./providers/openai-codex.md)** 🤖
+- **[Codex CLI](./providers/openai-codex.md)** 🤖
   - Codex CLI setup
   - Model configuration
   - Integration patterns

@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex Integration - MCP Manager
+ * Codex CLI Integration - MCP Manager
  *
- * Manages the OpenAI Codex MCP (Model Context Protocol) server.
+ * Manages the Codex CLI MCP (Model Context Protocol) server.
  *
  * @module integrations/openai-codex/mcp-manager
  */
@@ -16,7 +16,7 @@ import type {
 import { CodexError, CodexErrorType } from './types.js';
 
 /**
- * OpenAI Codex MCP Manager
+ * Codex CLI MCP Manager
  *
  * Manages the lifecycle of the codex MCP server process.
  * The server uses stdio transport for communication.

@@ -1,12 +1,15 @@
 /**
- * OpenAIProvider - Pure CLI Wrapper (v8.3.0)
+ * OpenAIProvider - CLI-based Codex Provider (v10.5.0)
  *
- * Uses `codex exec "<prompt>"` for non-interactive execution
- * No model selection, no API keys, no cost tracking
+ * Invokes Codex CLI: `codex exec "<prompt>"`
+ *
+ * Note: Codex CLI users (10%) access AutomatosX via MCP CLIENT.
+ * This provider is used for cross-provider routing when Codex is
+ * selected as the best provider for a task from another AI assistant.
  */
 
 import { BaseProvider } from './base-provider.js';
-import type { ProviderConfig } from '../types/provider.js';
+import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { logger } from '../utils/logger.js';
@@ -16,6 +19,18 @@ const execAsync = promisify(exec);
 export class OpenAIProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
     super(config);
+    logger.debug('[OpenAI/Codex] Initialized (CLI mode)');
+  }
+
+  /**
+   * Execute request via CLI
+   */
+  override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
+    logger.debug('[OpenAI/Codex] Executing via CLI', {
+      promptLength: request.prompt.length,
+    });
+
+    return super.execute(request);
   }
 
   protected getCLICommand(): string {
@@ -35,9 +50,6 @@ export class OpenAIProvider extends BaseProvider {
   /**
    * Override executeCLI to use 'codex exec' subcommand for non-interactive execution
    * This avoids "stdout is not a terminal" errors while keeping CLI detection working
-   *
-   * NOTE: This override is deprecated in favor of BaseProvider's streaming support.
-   * Keeping for backward compatibility but should use BaseProvider.executeCLI with getCLIArgs().
    */
   protected override async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests
@@ -100,5 +112,17 @@ export class OpenAIProvider extends BaseProvider {
 
   protected getMockResponse(): string {
     return `[Mock OpenAI/Codex Response]\n\nThis is a mock response for testing purposes.`;
+  }
+
+  /**
+   * Get extended capabilities
+   */
+  override get capabilities(): any {
+    return {
+      ...super.capabilities,
+      integrationMode: 'cli',
+      supportsMcp: true,
+      mcpCommand: 'codex mcp-server',
+    };
   }
 }

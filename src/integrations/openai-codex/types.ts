@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex Integration - Type Definitions
+ * Codex CLI Integration - Type Definitions
  *
- * Type definitions for OpenAI Codex CLI integration with AutomatosX.
+ * Type definitions for Codex CLI integration with AutomatosX.
  *
  * @module integrations/openai-codex
  */
@@ -9,7 +9,7 @@
 import type { ChildProcess } from 'child_process';
 
 /**
- * OpenAI Codex CLI Configuration
+ * Codex CLI Configuration
  */
 export interface CodexConfig {
   /** Path to codex CLI binary */

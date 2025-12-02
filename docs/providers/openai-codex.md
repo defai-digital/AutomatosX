@@ -1,13 +1,13 @@
-# OpenAI Codex CLI Integration
+# Codex CLI CLI Integration
 
-Complete guide for integrating OpenAI Codex CLI with AutomatosX.
+Complete guide for integrating Codex CLI CLI with AutomatosX.
 
 ## Overview
 
 AutomatosX supports OpenAI's Codex CLI as a provider, enabling you to use OpenAI's powerful models (GPT-4o, o1-preview, etc.) for agent execution. The integration includes optional MCP (Model Context Protocol) server support for advanced use cases.
 
 **Features**:
-- ✅ Execute agents using OpenAI Codex CLI
+- ✅ Execute agents using Codex CLI CLI
 - ✅ Native streaming support
 - ✅ Sandbox mode for secure file access
 - ✅ Optional MCP server for bidirectional communication
@@ -55,7 +55,7 @@ export OPENAI_API_KEY="your-api-key-here"
 
 ### Basic Configuration
 
-OpenAI Codex provider is pre-configured in `ax.config.json`:
+Codex CLI provider is pre-configured in `ax.config.json`:
 
 ```json
 {
@@ -151,7 +151,7 @@ The MCP server enables bidirectional communication with Codex CLI:
 ### Basic Agent Execution
 
 ```bash
-# Run an agent with OpenAI Codex
+# Run an agent with Codex CLI
 ax run backend "Create a REST API for user management"
 
 # Force use of OpenAI provider
@@ -638,7 +638,7 @@ ax provider-limits
 
 ## API Reference
 
-See the [OpenAI Codex Integration API Reference](../api/openai-codex.md) for complete API documentation.
+See the [Codex CLI Integration API Reference](../api/openai-codex.md) for complete API documentation.
 
 **Key Classes**:
 - `CodexCLI` - CLI command execution
@@ -657,14 +657,14 @@ See the [OpenAI Codex Integration API Reference](../api/openai-codex.md) for com
 
 - **Documentation**: [AutomatosX Docs](https://github.com/defai-digital/automatosx/docs)
 - **Issues**: [GitHub Issues](https://github.com/defai-digital/automatosx/issues)
-- **OpenAI Codex**: [Official Docs](https://developers.openai.com/codex/cli/)
+- **Codex CLI**: [Official Docs](https://developers.openai.com/codex/cli/)
 
 ---
 
 ## Changelog
 
 ### v5.13.0 (2025-10-29)
-- ✅ Initial OpenAI Codex CLI integration
+- ✅ Initial Codex CLI CLI integration
 - ✅ MCP server support
 - ✅ Sandbox mode configuration
 - ✅ Process management and cleanup

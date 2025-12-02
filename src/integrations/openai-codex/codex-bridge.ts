@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex Integration - Bridge
+ * Codex CLI Integration - Bridge
  *
- * Unified bridge interface for OpenAI Codex CLI and MCP integration.
+ * Unified bridge interface for Codex CLI and MCP integration.
  * Provides seamless switching between CLI and MCP execution modes.
  *
  * @module integrations/openai-codex/codex-bridge
@@ -46,7 +46,7 @@ export interface CodexBridgeOptions extends CodexExecutionOptions {
 }
 
 /**
- * OpenAI Codex Bridge
+ * Codex CLI Bridge
  *
  * Provides unified interface for both CLI and MCP execution modes.
  * Automatically selects best available method based on configuration.

@@ -1,7 +1,7 @@
 /**
- * OpenAI Codex Integration
+ * Codex CLI Integration
  *
- * Integration between AutomatosX and OpenAI Codex CLI,
+ * Integration between AutomatosX and Codex CLI,
  * enabling CLI command execution and MCP server management.
  *
  * @module integrations/openai-codex

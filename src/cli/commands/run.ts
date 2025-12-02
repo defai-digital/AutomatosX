@@ -36,8 +36,9 @@ import { mkdir } from 'fs/promises';
 import boxen from 'boxen';
 import type { ExecutionResult } from '../../agents/executor.js';
 import { formatOutput, formatForSave } from '../../utils/output-formatter.js';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import readline from 'readline';
+import yaml from 'js-yaml';
 
 interface RunOptions {
   provider?: string;
@@ -75,6 +76,8 @@ interface RunOptions {
   iterateMaxTokens?: number;
   iterateMaxTokensPerIteration?: number;
   iterateWarnAtTokenPercent?: number[];
+  // v11.0.0: Workflow templates (replaces spec-kit execution)
+  workflow?: string;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -226,6 +229,12 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         type: 'boolean',
         default: false
       })
+      .option('workflow', {
+        alias: 'w',
+        describe: 'Use workflow template for multi-step execution (v11.0.0)',
+        type: 'string'
+      })
+      .example('$0 run backend "implement auth" --workflow auth-flow', 'Use auth-flow workflow template')
   },
 
   handler: async (argv) => {
@@ -253,138 +262,87 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       process.exit(1);
     }
 
-    // v5.8.3: Detect complex tasks and suggest spec-kit (unless --no-spec flag is set)
-    if (!argv.noSpec) {
-      // Simple complexity check without provider initialization
-      // (saves time and avoids dependency issues)
-      const SpecGeneratorClass = (await import('../../core/spec/SpecGenerator.js')).SpecGenerator;
-      const tempGenerator = new SpecGeneratorClass(null as any); // Temporary for analysis only
-      const complexity = tempGenerator.analyzeComplexity(argv.task);
+    // v11.0.0: Spec-kit suggestion removed (use --iterate for complex tasks)
+    // Complex tasks are now handled by iterate mode or --workflow flag
 
-      if (complexity.isComplex) {
-        // FIXED (Bug #80 - Part 2): Skip spec-kit prompt entirely in iterate/auto-continue mode
-        // When --iterate or --auto-continue is set, user wants autonomous execution
-        // BUG #45 FIX: Also skip prompt when stdin is not a TTY (non-interactive context)
-        const skipPrompt = argv.autoContinue || argv.iterate || !process.stdin.isTTY;
+    // v11.0.0: Workflow template handling
+    interface WorkflowTemplate {
+      name: string;
+      description?: string;
+      steps?: Array<{ name: string; agent?: string; task: string }>;
+      iterate?: {
+        enabled?: boolean;
+        timeout?: number;
+        maxTokens?: number;
+        strictness?: 'paranoid' | 'balanced' | 'permissive';
+      };
+      agents?: string[];
+    }
 
-        if (skipPrompt) {
-          // Autonomous mode or non-interactive: Skip complexity prompt entirely and continue with standard ax run
-          // v8.5.8: Only show message in verbose mode to reduce noise
-          if (verbosity.shouldShow('showComplexityAnalysis')) {
-            const reason = !process.stdin.isTTY ? 'non-interactive mode' : 'autonomous mode';
-            console.log(chalk.gray(`\n→ Complex task detected, continuing with standard ax run (${reason})...\n`));
+    let workflowConfig: WorkflowTemplate | undefined;
+    if (argv.workflow) {
+      const workflowPath = join(await detectProjectRoot(process.cwd()), '.automatosx', 'workflows', `${argv.workflow}.yaml`);
+
+      if (!existsSync(workflowPath)) {
+        console.error(chalk.red.bold(`\n❌ Workflow template not found: ${argv.workflow}\n`));
+        console.log(chalk.gray(`Expected location: ${workflowPath}`));
+        console.log(chalk.gray('\nAvailable workflows:'));
+
+        const workflowsDir = join(await detectProjectRoot(process.cwd()), '.automatosx', 'workflows');
+        if (existsSync(workflowsDir)) {
+          const { readdirSync } = await import('fs');
+          const files = readdirSync(workflowsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+          if (files.length > 0) {
+            files.forEach(f => console.log(chalk.cyan(`  • ${f.replace(/\.(yaml|yml)$/, '')}`)));
+          } else {
+            console.log(chalk.gray('  (none found)'));
           }
         } else {
-          // Interactive mode: Show complexity analysis and prompt user
-          // Show complexity analysis
-          console.log(chalk.yellow.bold('\n⚠️  Complex Task Detected\n'));
-          console.log(chalk.gray('This task appears to be complex and multi-step:'));
-          complexity.indicators.forEach((indicator) => {
-            console.log(chalk.gray(`  • ${indicator}`));
-          });
-          console.log(chalk.gray(`\nComplexity Score: ${complexity.score}/10\n`));
+          console.log(chalk.gray('  (workflows directory not found)'));
+        }
+        console.log(chalk.gray('\nCreate a workflow: .automatosx/workflows/<name>.yaml'));
+        process.exit(1);
+      }
 
-          // Show spec-kit benefits
-          console.log(chalk.cyan.bold('💡 Consider using Spec-Kit for:\n'));
-          console.log(chalk.gray('  ✓ Automatic dependency management'));
-          console.log(chalk.gray('  ✓ Parallel execution of independent tasks'));
-          console.log(chalk.gray('  ✓ Progress tracking and resume capability'));
-          console.log(chalk.gray('  ✓ Better orchestration across multiple agents\n'));
+      try {
+        const workflowContent = readFileSync(workflowPath, 'utf-8');
+        workflowConfig = yaml.load(workflowContent) as WorkflowTemplate;
 
-          // Only create readline interface in interactive mode
-          const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
-          });
+        // Auto-enable iterate mode when using workflow
+        if (workflowConfig?.iterate?.enabled !== false) {
+          argv.iterate = true;
+        }
 
-          const question = (query: string): Promise<string> => {
-            return new Promise((resolve) => {
-              rl.question(query, (answer) => {
-                resolve(answer);
-              });
-            });
-          };
-
-          try {
-            const answer = await question(
-              chalk.cyan('Would you like to create a spec-driven workflow instead? (Y/n): ')
-            );
-
-            if (answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no') {
-              // User wants spec-kit workflow
-              console.log(chalk.green('\n✓ Generating spec-driven workflow...\n'));
-
-              const projectDir = await detectProjectRoot(process.cwd());
-              const tempConfig = await loadConfig(projectDir);
-
-              // Use Claude provider for spec generation (highest priority)
-              const claudeConfig = tempConfig.providers['claude-code'];
-              if (!claudeConfig) {
-                console.error(chalk.red('✗ Claude provider not configured'));
-                rl.close(); // FIXED (Bug #91): Ensure readline closed before exit
-                process.exit(1);
-              }
-              // Convert config.ProviderConfig to provider.ProviderConfig by adding name
-              const claudeProviderConfig: import('../../types/provider.js').ProviderConfig = {
-                ...claudeConfig,
-                name: 'claude-code',
-                command: claudeConfig.command || 'claude'
-              };
-              const tempProvider = new ClaudeProvider(claudeProviderConfig);
-              const realGenerator = new SpecGeneratorClass(tempProvider);
-              const spec = await realGenerator.generate(argv.task, projectDir);
-
-              console.log(chalk.green('✓ Generated spec files:\n'));
-              console.log(chalk.gray(`  • .specify/spec.md - Project specification`));
-              console.log(chalk.gray(`  • .specify/plan.md - Technical plan`));
-              console.log(chalk.gray(`  • .specify/tasks.md - ${spec.tasks.length} tasks with dependencies\n`));
-
-              // Ask if user wants to execute now
-              const executeAnswer = await question(
-                chalk.cyan('Execute spec now with parallel mode? (Y/n): ')
-              );
-
-              // FIXED (Bug #91): Close readline before any process.exit() call
-              rl.close();
-
-              if (executeAnswer.toLowerCase() !== 'n' && executeAnswer.toLowerCase() !== 'no') {
-                // Execute spec with parallel mode
-                console.log(chalk.blue('\n🚀 Executing spec-driven workflow...\n'));
-                const { spawn } = await import('child_process');
-
-                // FIX Bug #140: Remove shell:true for security
-                // No shell needed for known executable with safe arguments
-                const child = spawn('ax', ['spec', 'run', '--parallel'], {
-                  stdio: 'inherit',
-                  shell: false, // FIXED Bug #140: Removed shell:true for security
-                });
-
-                return new Promise<void>((resolve) => {
-                  child.on('close', (code) => {
-                    process.exit(code || 0);
-                  });
-                });
-              } else {
-                console.log(chalk.yellow('\n💡 To execute later, run: ax spec run --parallel\n'));
-                process.exit(0);
-              }
-            } else {
-              rl.close();
-              console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
-            }
-          } catch (error) {
-            rl.close();
-            console.log(chalk.gray('\n→ Continuing with standard ax run...\n'));
-          } finally {
-            // FIXED (Bug #91): Ensure readline is always closed, even on unexpected errors
-            // This handles edge cases where the interface might still be open
-            try {
-              rl.close();
-            } catch {
-              // Interface already closed, ignore
-            }
+        // Apply workflow settings
+        if (workflowConfig?.iterate) {
+          if (workflowConfig.iterate.timeout && !argv.iterateTimeout) {
+            argv.iterateTimeout = workflowConfig.iterate.timeout;
+          }
+          if (workflowConfig.iterate.maxTokens && !argv.iterateMaxTokens) {
+            argv.iterateMaxTokens = workflowConfig.iterate.maxTokens;
+          }
+          if (workflowConfig.iterate.strictness && !argv.iterateStrictness) {
+            argv.iterateStrictness = workflowConfig.iterate.strictness;
           }
         }
+
+        if (verbosity.shouldShow('showBanner')) {
+          console.log(chalk.cyan(`📋 Using workflow: ${argv.workflow}`));
+          if (workflowConfig?.description) {
+            console.log(chalk.gray(`   ${workflowConfig.description}`));
+          }
+          console.log();
+        }
+
+        logger.info('Workflow template loaded', {
+          workflow: argv.workflow,
+          iterateEnabled: argv.iterate,
+          steps: workflowConfig?.steps?.length || 0
+        });
+      } catch (error) {
+        console.error(chalk.red.bold(`\n❌ Failed to load workflow: ${argv.workflow}\n`));
+        console.error(chalk.gray((error as Error).message));
+        process.exit(1);
       }
     }
 

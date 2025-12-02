@@ -72,13 +72,15 @@ describe('MCP Validation', () => {
     });
 
     it('should reject path traversal in agent names', () => {
-      expect(() => validateAgentName('../../../etc/passwd')).toThrow('path traversal');
-      expect(() => validateAgentName('../../config')).toThrow('path traversal');
+      // Pattern check implicitly rejects path traversal (.., /, \)
+      expect(() => validateAgentName('../../../etc/passwd')).toThrow('must contain only');
+      expect(() => validateAgentName('../../config')).toThrow('must contain only');
     });
 
     it('should reject paths with directory separators', () => {
-      expect(() => validateAgentName('folder/agent')).toThrow('path traversal');
-      expect(() => validateAgentName('path\\to\\agent')).toThrow('path traversal');
+      // Pattern check implicitly rejects directory separators
+      expect(() => validateAgentName('folder/agent')).toThrow('must contain only');
+      expect(() => validateAgentName('path\\to\\agent')).toThrow('must contain only');
     });
 
     it('should reject empty names', () => {

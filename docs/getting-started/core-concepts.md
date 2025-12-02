@@ -50,7 +50,7 @@ An **agent** is an AI entity configured to perform specific tasks. Each agent ha
 
 - Claude (Anthropic) - Best for reasoning and code (200K context)
 - Gemini (Google) - Fast and versatile (2M context)
-- OpenAI Codex - Code generation and specialized tasks
+- Codex CLI - Code generation and specialized tasks
 
 ---
 

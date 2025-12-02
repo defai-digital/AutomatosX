@@ -180,7 +180,7 @@ describe('AxCliSdkAdapter', () => {
 
     it('should return version when SDK is installed', async () => {
       const version = await adapter.getVersion();
-      expect(version).toBe('3.7.0+');
+      expect(version).toBe('3.14.5+');
     });
   });
 

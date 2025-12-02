@@ -4,7 +4,7 @@
  * Shared MCP manager implementation that works for ALL providers:
  * - Claude Code
  * - Gemini CLI
- * - OpenAI Codex
+ * - Codex CLI
  * - Grok
  *
  * This eliminates code duplication and provides consistent MCP experience.

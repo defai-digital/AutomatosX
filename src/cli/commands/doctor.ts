@@ -72,7 +72,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         default: false
       })
       .option('codex', {
-        describe: 'Run OpenAI Codex MCP integration diagnostics',
+        describe: 'Run Codex CLI MCP integration diagnostics',
         type: 'boolean',
         default: false
       })
@@ -286,7 +286,7 @@ function getProviderInstallCommand(provider: string): string {
 }
 
 /**
- * Check OpenAI Codex provider
+ * Check Codex CLI provider
  */
 async function checkOpenAIProvider(verbose: boolean): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -746,13 +746,13 @@ async function runClaudeCodeDiagnostics(verbose: boolean): Promise<void> {
 }
 
 /**
- * Run OpenAI Codex CLI integration diagnostics
+ * Run Codex CLI integration diagnostics
  *
  * NOTE: MCP integration is disabled in v10.3.2+
  * AutomatosX uses CLI mode (subprocess) for Codex integration.
  */
 async function runCodexDiagnostics(verbose: boolean): Promise<void> {
-  console.log(chalk.bold('\n🔍 OpenAI Codex CLI Integration Diagnostics\n'));
+  console.log(chalk.bold('\n🔍 Codex CLI Integration Diagnostics\n'));
 
   const workingDir = process.cwd();
   const automatosxDir = join(workingDir, '.automatosx');

@@ -424,12 +424,12 @@ export class ProviderError extends BaseError {
   }
 
   /**
-   * OpenAI Codex CLI not found error
+   * Codex CLI not found error
    * v6.0.7: Enhanced UX for missing CLI
    */
   static openaiCLINotFound(): ProviderError {
     return new ProviderError(
-      'OpenAI Codex CLI not found',
+      'Codex CLI not found',
       ErrorCode.PROVIDER_UNAVAILABLE,
       [
         'Install via npm: npm install -g @openai/codex-cli',

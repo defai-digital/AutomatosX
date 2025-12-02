@@ -194,7 +194,7 @@ claude login
 curl -fsSL https://gemini.google.com/install.sh | sh
 gemini login
 
-# OpenAI Codex
+# Codex CLI
 npm install -g @openai/codex
 codex auth login
 ```
@@ -317,7 +317,7 @@ Or use the brief [GEMINI.md](../../GEMINI.md) integration guide.
 Any AI assistant with terminal access can use AutomatosX. See [AX-GUIDE.md](../../AX-GUIDE.md#other-assistants) for:
 
 - Generic bash command patterns
-- OpenAI Codex integration
+- Codex CLI integration
 - Integration examples
 
 ---

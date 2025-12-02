@@ -805,7 +805,7 @@ AutomatosX is designed to work seamlessly with AI assistants:
 
 - **Claude Code** - Primary integration with MCP support
 - **Gemini CLI** - Natural language support
-- **OpenAI Codex** - Development assistant integration
+- **Codex CLI** - Development assistant integration
 - **Grok CLI** - Fast debugging and analysis
 
 ### Natural Language Usage

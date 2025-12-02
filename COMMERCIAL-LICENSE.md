@@ -38,7 +38,7 @@ This document describes the commercial licensing for **Pro** and **Enterprise** 
 - ✅ Core orchestration engine
 - ✅ 20+ specialized AI agents
 - ✅ Persistent memory system (SQLite FTS5)
-- ✅ Multi-provider routing (Claude, Gemini, OpenAI Codex)
+- ✅ Multi-provider routing (Claude, Gemini, Codex CLI)
 - ✅ Workflow specs and execution
 - ✅ Community support (GitHub Issues)
 

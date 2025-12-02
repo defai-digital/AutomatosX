@@ -121,7 +121,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = ${JSON.stringify(config, nul
  */
 export const PRECOMPILED_CONFIG_META = {
   generatedAt: '${timestamp}',
-  sourceFile: 'automatosx.config.json',
+  sourceFile: '${configFileName}',
   version: '${config.version || 'unknown'}'
 } as const;
 `;

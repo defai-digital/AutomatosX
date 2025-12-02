@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-02T06:30:59.947Z
+ * Generated: 2025-12-02T09:09:14.095Z
  */
 
 import type { AutomatosXConfig } from './types/config.js';
@@ -319,17 +319,18 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000,
+    "circuitBreakerWindowMs": 300000,
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "11.0.0"
+  "version": "11.0.2"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-02T06:30:59.947Z',
-  sourceFile: 'automatosx.config.json',
-  version: '11.0.0'
+  generatedAt: '2025-12-02T09:09:14.095Z',
+  sourceFile: 'ax.config.json',
+  version: '11.0.2'
 } as const;

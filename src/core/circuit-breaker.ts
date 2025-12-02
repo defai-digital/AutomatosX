@@ -17,11 +17,13 @@ export interface CircuitBreakerConfig {
   failureThreshold: number;  // Failures before opening circuit
   cooldownMs: number;        // Time to wait before half-open
   successThreshold?: number; // Successes needed to close from half-open
+  failureWindowMs?: number;  // v11.1.0: Time window for counting failures (default: 5 min)
 }
 
 export interface CircuitStats {
   state: CircuitState;
   failureCount: number;
+  failureTimestamps: number[];  // v11.1.0: Track failure timestamps for window-based counting
   successCount: number;
   lastFailureTime: number | null;
   nextAttemptTime: number | null;
@@ -30,7 +32,8 @@ export interface CircuitStats {
 const DEFAULT_CONFIG: Required<CircuitBreakerConfig> = {
   failureThreshold: 3,
   cooldownMs: 60000, // 1 minute
-  successThreshold: 2
+  successThreshold: 2,
+  failureWindowMs: 300000 // v11.1.0: 5 minutes - failures outside this window don't count
 };
 
 /**
@@ -68,6 +71,8 @@ export class CircuitBreaker {
 
   /**
    * Record successful operation
+   *
+   * v11.1.0: Also clears failure timestamps on success in CLOSED state.
    */
   recordSuccess(resourceName: string): void {
     const circuit = this.getOrCreateCircuit(resourceName);
@@ -79,20 +84,33 @@ export class CircuitBreaker {
         this.close(resourceName);
       }
     } else if (circuit.state === 'CLOSED') {
-      // Reset failure count on success
+      // Reset failure count and timestamps on success
       circuit.failureCount = 0;
+      circuit.failureTimestamps = [];
     }
   }
 
   /**
    * Record failed operation
+   *
+   * v11.1.0: Uses time-window based failure counting instead of consecutive failures.
+   * Only failures within the configured window (default 5 min) count toward the threshold.
+   * This prevents circuit flapping when failures are spread over long periods.
    */
   recordFailure(resourceName: string): void {
     const circuit = this.getOrCreateCircuit(resourceName);
     const now = Date.now();
 
-    circuit.failureCount++;
+    // Add current failure timestamp
+    circuit.failureTimestamps.push(now);
     circuit.lastFailureTime = now;
+
+    // Prune failures outside the window
+    const windowStart = now - this.config.failureWindowMs;
+    circuit.failureTimestamps = circuit.failureTimestamps.filter(t => t >= windowStart);
+
+    // Update failureCount to reflect windowed count (for backward compatibility)
+    circuit.failureCount = circuit.failureTimestamps.length;
 
     if (circuit.state === 'HALF_OPEN') {
       // Fail fast - return to OPEN immediately
@@ -100,6 +118,13 @@ export class CircuitBreaker {
     } else if (circuit.failureCount >= this.config.failureThreshold) {
       this.open(resourceName);
     }
+
+    logger.debug('[Circuit Breaker] Failure recorded', {
+      resource: resourceName,
+      failuresInWindow: circuit.failureCount,
+      windowMs: this.config.failureWindowMs,
+      threshold: this.config.failureThreshold
+    });
   }
 
   /**
@@ -109,6 +134,7 @@ export class CircuitBreaker {
     const circuit = this.getOrCreateCircuit(resourceName);
     circuit.state = 'CLOSED';
     circuit.failureCount = 0;
+    circuit.failureTimestamps = [];  // v11.1.0: Clear timestamps
     circuit.successCount = 0;
     circuit.nextAttemptTime = null;
 
@@ -178,6 +204,7 @@ export class CircuitBreaker {
       circuit = {
         state: 'CLOSED',
         failureCount: 0,
+        failureTimestamps: [],  // v11.1.0: Initialize timestamps array
         successCount: 0,
         lastFailureTime: null,
         nextAttemptTime: null
@@ -186,5 +213,13 @@ export class CircuitBreaker {
     }
 
     return circuit;
+  }
+
+  /**
+   * Get current configuration (for debugging/observability)
+   * v11.1.0: Added for transparency
+   */
+  getConfig(): Required<CircuitBreakerConfig> {
+    return { ...this.config };
   }
 }

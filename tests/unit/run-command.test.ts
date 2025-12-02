@@ -12,7 +12,8 @@ describe('Run Command', () => {
 
   describe('command definition', () => {
     it('should have correct command string', () => {
-      expect(runCommand.command).toBe('run <agent> <task>');
+      // v11.1.0: Changed to [agent] [task] for auto-selection support
+      expect(runCommand.command).toBe('run [agent] [task]');
     });
 
     it('should have description', () => {

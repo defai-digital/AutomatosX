@@ -74,8 +74,18 @@ import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 // v10.6.0: MCP Client Pool for cross-provider execution
 import { McpClientPool, getGlobalPool } from '../providers/mcp/pool-manager.js';
 
+// v11.1.0: Unified Event System
+import { getGlobalEventBridge, type EventBridge } from '../core/events/event-bridge.js';
+import { McpStreamingNotifier, getGlobalStreamingNotifier } from './streaming-notifier.js';
+import { ClaudeEventNormalizer } from '../core/events/normalizers/claude-normalizer.js';
+import { GeminiEventNormalizer } from '../core/events/normalizers/gemini-normalizer.js';
+import { CodexEventNormalizer } from '../core/events/normalizers/codex-normalizer.js';
+import { AxCliEventNormalizer } from '../core/events/normalizers/ax-cli-normalizer.js';
+
 export interface McpServerOptions {
   debug?: boolean;
+  /** v11.1.0: Enable streaming progress notifications */
+  enableStreamingNotifications?: boolean;
 }
 
 /** Client name patterns for provider detection */
@@ -120,6 +130,11 @@ export class McpServer {
   // v10.6.0: MCP Client Pool for cross-provider execution
   private mcpPool: McpClientPool | null = null;
 
+  // v11.1.0: Unified Event System
+  private eventBridge: EventBridge | null = null;
+  private streamingNotifier: McpStreamingNotifier | null = null;
+  private enableStreamingNotifications = true;
+
   // Shared services (initialized once per server)
   private router!: Router;
   private memoryManager!: IMemoryManager;
@@ -135,12 +150,16 @@ export class McpServer {
       setLogLevel('debug');
     }
 
+    // v11.1.0: Configure streaming notifications
+    this.enableStreamingNotifications = options.enableStreamingNotifications ?? true;
+
     this.version = getVersion();
     this.ajv = new Ajv({ allErrors: true });
     addFormats(this.ajv);
 
     logger.info('[MCP Server] Initializing AutomatosX MCP Server', {
-      version: this.version
+      version: this.version,
+      streamingNotifications: this.enableStreamingNotifications
     });
   }
 
@@ -370,6 +389,30 @@ export class McpServer {
     // Uses global singleton pool with default config (defined in pool-manager.ts)
     this.mcpPool = getGlobalPool();
 
+    // v11.1.0: Initialize Unified Event System
+    this.eventBridge = getGlobalEventBridge({
+      throttleMs: 100,
+      throttledTypes: ['execution.token', 'execution.progress'],
+      debug: process.env.AUTOMATOSX_LOG_LEVEL === 'debug'
+    });
+
+    // Register provider-specific normalizers
+    this.eventBridge.registerNormalizer(new ClaudeEventNormalizer());
+    this.eventBridge.registerNormalizer(new GeminiEventNormalizer());
+    this.eventBridge.registerNormalizer(new CodexEventNormalizer());
+    this.eventBridge.registerNormalizer(new AxCliEventNormalizer());
+
+    // Start streaming notifier if enabled
+    if (this.enableStreamingNotifications) {
+      this.streamingNotifier = getGlobalStreamingNotifier({
+        enabled: true,
+        eventBridge: this.eventBridge,
+        debug: process.env.AUTOMATOSX_LOG_LEVEL === 'debug'
+      });
+      this.streamingNotifier.start();
+      logger.info('[MCP Server] Streaming notifications enabled');
+    }
+
     logger.info('[MCP Server] Services initialized successfully');
   }
 
@@ -378,10 +421,28 @@ export class McpServer {
    */
   private async cleanup(): Promise<void> {
     logger.info('[MCP Server] Performing cleanup...');
+
+    // v11.1.0: Stop streaming notifier
+    if (this.streamingNotifier) {
+      this.streamingNotifier.stop();
+    }
+
+    // v11.1.0: Destroy event bridge
+    if (this.eventBridge) {
+      this.eventBridge.destroy();
+    }
+
     if (this.memoryManager) await this.memoryManager.close();
     // v10.6.0: Drain MCP Client Pool
     if (this.mcpPool) await this.mcpPool.drain();
     logger.info('[MCP Server] Cleanup completed');
+  }
+
+  /**
+   * v11.1.0: Get the event bridge for external event publishing
+   */
+  getEventBridge(): EventBridge | null {
+    return this.eventBridge;
   }
 
   /**

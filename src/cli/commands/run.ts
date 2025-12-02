@@ -6,6 +6,7 @@ import type { CommandModule } from 'yargs';
 import { ContextManager } from '../../agents/context-manager.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { AbilitiesManager } from '../../agents/abilities-manager.js';
+import { AgentSelector } from '../../agents/agent-selector.js';
 import { AgentExecutor } from '../../agents/executor.js';
 import type { Stage } from '../../types/agent.js';
 import { AgentNotFoundError } from '../../types/agent.js';
@@ -76,25 +77,32 @@ interface RunOptions {
   iterateMaxTokens?: number;
   iterateMaxTokensPerIteration?: number;
   iterateWarnAtTokenPercent?: number[];
+  // v8.6.0: Deprecated cost-based limits (kept for backward compatibility)
+  iterateMaxCost?: number;
   // v11.0.0: Workflow templates (replaces spec-kit execution)
   workflow?: string;
+  // v11.1.0: Agent auto-selection
+  noAutoSelect?: boolean;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
-  command: 'run <agent> <task>',
-  describe: 'Run an agent with a specific task',
+  command: 'run [agent] [task]',
+  describe: 'Run an agent with a specific task (auto-selects agent if not specified)',
 
   builder: (yargs) => {
     return yargs
       .positional('agent', {
-        describe: 'Agent name',
-        type: 'string',
-        demandOption: true
+        describe: 'Agent name (optional - auto-selects if not provided)',
+        type: 'string'
       })
       .positional('task', {
         describe: 'Task to execute',
-        type: 'string',
-        demandOption: true
+        type: 'string'
+      })
+      .option('no-auto-select', {
+        describe: 'Disable agent auto-selection (v11.1.0+)',
+        type: 'boolean',
+        default: false
       })
       .option('provider', {
         describe: 'Override provider (claude, gemini, openai)',
@@ -229,6 +237,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         type: 'boolean',
         default: false
       })
+      .option('iterate-max-cost', {
+        describe: '[DEPRECATED] Max cost for iterate mode (use --iterate-max-tokens instead)',
+        type: 'number',
+        hidden: true // Hide from help but still accept for backward compat
+      })
       .option('workflow', {
         alias: 'w',
         describe: 'Use workflow template for multi-step execution (v11.0.0)',
@@ -251,14 +264,32 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
     // If no explicit level, VerbosityManager will auto-detect
     const verbosity = VerbosityManager.getInstance(verbosityLevel);
 
-    // Validate inputs
-    if (!argv.agent || typeof argv.agent !== 'string') {
-      console.log(chalk.red.bold('\n❌ Error: Agent name is required\n'));
+    // v11.1.0: Handle auto-selection when agent is not provided
+    // Detect if only one positional was provided (just the task)
+    let agentProvided = true;
+    let actualTask: string = argv.task as string;
+    let actualAgent: string = argv.agent as string;
+
+    if (!argv.task && argv.agent) {
+      // Only one positional provided - treat it as the task
+      actualTask = argv.agent as string;
+      actualAgent = ''; // Will be auto-selected
+      agentProvided = false;
+    }
+
+    // Validate task is provided
+    if (!actualTask || typeof actualTask !== 'string') {
+      console.log(chalk.red.bold('\n❌ Error: Task is required\n'));
+      console.log(chalk.gray('Usage: ax run [agent] <task>'));
+      console.log(chalk.gray('       ax run "implement authentication"  # auto-selects agent'));
+      console.log(chalk.gray('       ax run backend "implement API"     # uses specified agent'));
       process.exit(1);
     }
 
-    if (!argv.task || typeof argv.task !== 'string') {
-      console.log(chalk.red.bold('\n❌ Error: Task is required\n'));
+    // If agent not provided and auto-select is disabled, error
+    if (!agentProvided && argv.noAutoSelect) {
+      console.log(chalk.red.bold('\n❌ Error: Agent name is required when --no-auto-select is used\n'));
+      console.log(chalk.gray('Usage: ax run <agent> <task> --no-auto-select'));
       process.exit(1);
     }
 
@@ -346,11 +377,6 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       }
     }
 
-    // v8.5.8: Show banner only in normal/verbose mode
-    if (verbosity.shouldShow('showBanner')) {
-      console.log(chalk.blue.bold(`\n🤖 AutomatosX - Running ${argv.agent}\n`));
-    }
-
     // v8.5.8 Phase 3: Quiet mode optimizations
     if (verbosity.isQuiet()) {
       // Disable optional features that create noise
@@ -366,7 +392,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
     let router: Router | undefined;
     let contextManager: ContextManager | undefined;
     let context: any;
-    let resolvedAgentName: string = argv.agent as string; // Default to input, will be resolved later
+    let resolvedAgentName: string = actualAgent; // v11.1.0: Use actualAgent from auto-select detection
+    let wasAutoSelected = false; // v11.1.0: Track if agent was auto-selected
     const executionStartTime = Date.now();
 
     try {
@@ -419,42 +446,111 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         teamManager
       );
 
-      // Resolve agent name early (supports displayName → actual name)
-      // This ensures consistency across session, memory, and all operations
-      try {
-        resolvedAgentName = await profileLoader.resolveAgentName(argv.agent as string);
+      // v11.1.0: Agent resolution with auto-selection support
+      // Supports three modes:
+      // 1. Agent explicitly provided → resolve name
+      // 2. Agent not provided → auto-select based on task keywords
+      // 3. Agent not found → fall back to auto-selection (unless --no-auto-select)
+      const agentSelector = new AgentSelector(profileLoader);
 
-        // v8.5.8 Phase 3: Show resolution in verbose mode
-        if (verbosity.isVerbose()) {
-          if (resolvedAgentName !== argv.agent) {
-            console.log(chalk.gray(`Resolved agent: ${argv.agent} → ${resolvedAgentName}`));
+      if (!agentProvided) {
+        // Mode 2: No agent provided, auto-select based on task
+        const selection = await agentSelector.selectAgent(actualTask);
+        resolvedAgentName = selection.agent;
+        wasAutoSelected = true;
+
+        // Show auto-selection result
+        if (verbosity.shouldShow('showBanner')) {
+          const confidenceEmoji = selection.confidence === 'high' ? '✅' :
+                                  selection.confidence === 'medium' ? '⚡' : '💡';
+          console.log(chalk.cyan(`\n${confidenceEmoji} Auto-selected agent: ${selection.displayName} (${selection.agent})`));
+          if (selection.rationale.length > 0) {
+            console.log(chalk.gray(`   ${selection.rationale.join(', ')}`));
           }
+          if (selection.usedFallback) {
+            console.log(chalk.yellow('   ⚠️  Low confidence - consider specifying agent explicitly'));
+          }
+          console.log();
         }
-      } catch (error) {
-        // Agent not found - show helpful suggestions
-        console.error(chalk.red.bold(`\n❌ Agent not found: ${argv.agent}\n`));
 
-        // Try to suggest similar agents
+        logger.info('[run] Agent auto-selected', {
+          agent: selection.agent,
+          score: selection.score,
+          confidence: selection.confidence,
+          usedFallback: selection.usedFallback
+        });
+      } else {
+        // Mode 1 & 3: Agent provided, try to resolve
         try {
-          const suggestions = await profileLoader.findSimilarAgents(argv.agent as string, 3);
-          const closeSuggestions = suggestions.filter(s => s.distance <= 3);
+          resolvedAgentName = await profileLoader.resolveAgentName(actualAgent);
 
-          if (closeSuggestions.length > 0) {
-            console.log(chalk.yellow('💡 Did you mean:\n'));
-            closeSuggestions.forEach((s, i) => {
-              const displayInfo = s.displayName ? `${s.displayName} (${s.name})` : s.name;
-              const roleInfo = s.role ? ` - ${s.role}` : '';
-              console.log(chalk.cyan(`  ${i + 1}. ${displayInfo}${roleInfo}`));
-            });
-            console.log();
-          } else {
-            console.log(chalk.gray('Run "ax agent list" to see available agents.\n'));
+          // v8.5.8 Phase 3: Show resolution in verbose mode
+          if (verbosity.isVerbose()) {
+            if (resolvedAgentName !== actualAgent) {
+              console.log(chalk.gray(`Resolved agent: ${actualAgent} → ${resolvedAgentName}`));
+            }
           }
-        } catch {
-          console.log(chalk.gray('Run "ax agent list" to see available agents.\n'));
-        }
+        } catch (error) {
+          // Agent not found
+          if (argv.noAutoSelect) {
+            // Mode 3b: Auto-select disabled, show error and suggestions
+            console.error(chalk.red.bold(`\n❌ Agent not found: ${actualAgent}\n`));
 
-        process.exit(1);
+            // Try to suggest similar agents
+            try {
+              const suggestions = await profileLoader.findSimilarAgents(actualAgent, 3);
+              const closeSuggestions = suggestions.filter(s => s.distance <= 3);
+
+              if (closeSuggestions.length > 0) {
+                console.log(chalk.yellow('💡 Did you mean:\n'));
+                closeSuggestions.forEach((s, i) => {
+                  const displayInfo = s.displayName ? `${s.displayName} (${s.name})` : s.name;
+                  const roleInfo = s.role ? ` - ${s.role}` : '';
+                  console.log(chalk.cyan(`  ${i + 1}. ${displayInfo}${roleInfo}`));
+                });
+                console.log();
+              } else {
+                console.log(chalk.gray('Run "ax agent list" to see available agents.\n'));
+              }
+            } catch {
+              console.log(chalk.gray('Run "ax agent list" to see available agents.\n'));
+            }
+
+            process.exit(1);
+          } else {
+            // Mode 3a: Auto-select as fallback
+            console.log(chalk.yellow(`⚠️  Agent "${actualAgent}" not found, auto-selecting...\n`));
+
+            const selection = await agentSelector.selectAgent(actualTask);
+            resolvedAgentName = selection.agent;
+            wasAutoSelected = true;
+
+            // Show auto-selection result
+            if (verbosity.shouldShow('showBanner')) {
+              const confidenceEmoji = selection.confidence === 'high' ? '✅' :
+                                      selection.confidence === 'medium' ? '⚡' : '💡';
+              console.log(chalk.cyan(`${confidenceEmoji} Auto-selected agent: ${selection.displayName} (${selection.agent})`));
+              if (selection.rationale.length > 0) {
+                console.log(chalk.gray(`   ${selection.rationale.join(', ')}`));
+              }
+              console.log();
+            }
+
+            logger.info('[run] Agent auto-selected (fallback)', {
+              requestedAgent: actualAgent,
+              selectedAgent: selection.agent,
+              score: selection.score,
+              confidence: selection.confidence
+            });
+          }
+        }
+      }
+
+      // v8.5.8: Show banner after agent resolution
+      if (verbosity.shouldShow('showBanner') && !wasAutoSelected) {
+        console.log(chalk.blue.bold(`\n🤖 AutomatosX - Running ${resolvedAgentName}\n`));
+      } else if (verbosity.shouldShow('showBanner') && wasAutoSelected) {
+        console.log(chalk.blue.bold(`🤖 AutomatosX - Running ${resolvedAgentName}\n`));
       }
 
       const abilitiesManager = new AbilitiesManager(
@@ -695,7 +791,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       try {
         context = await contextManager.createContext(
           resolvedAgentName,
-          argv.task as string,
+          actualTask,
           {
             provider: argv.provider,
             model: argv.model,
@@ -727,7 +823,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               });
 
               console.log(chalk.gray('\nTo use one of these agents:'));
-              console.log(chalk.gray(`  automatosx run ${closeSuggestions[0]!.name} "${argv.task}"`));
+              console.log(chalk.gray(`  automatosx run ${closeSuggestions[0]!.name} "${actualTask}"`));
               console.log();
             } else {
               // No close matches, show all available agents
@@ -813,7 +909,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         // Execute with controller
         const result = await controller.execute(
           context.agent,
-          argv.task as string,
+          actualTask,
           executionMode,
           { showPlan: true, verbose: argv.verbose }
         );
@@ -840,7 +936,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             };
 
             const embedding = null;
-            const content = `Agent: ${resolvedAgentName}\nTask: ${argv.task}\n\nResult: ${result.stages.map(s => s.output).join('\n\n')}`;
+            const content = `Agent: ${resolvedAgentName}\nTask: ${actualTask}\n\nResult: ${result.stages.map(s => s.output).join('\n\n')}`;
             await memoryManager.add(content, embedding, metadata);
 
             if (argv.verbose) {
@@ -876,7 +972,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             console.log(chalk.yellow('\n⚠️  Warning: --iterate-max-cost is deprecated and will be removed in v9.0.0'));
             console.log(chalk.yellow('    Reason: Provider pricing changes frequently, making cost estimates unreliable\n'));
             console.log(chalk.cyan('    Please use --iterate-max-tokens instead:'));
-            console.log(chalk.cyan(`      ax run ${argv.agent} "${argv.task}" --iterate --iterate-max-tokens 1000000\n`));
+            console.log(chalk.cyan(`      ax run ${resolvedAgentName} "${actualTask}" --iterate --iterate-max-tokens 1000000\n`));
             console.log(chalk.gray('    Learn more: https://docs.automatosx.com/migration/cost-to-tokens\n'));
           }
 
@@ -1093,7 +1189,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
             const outputData = formatForSave(result, argv.format || 'text', {
               agent: resolvedAgentName,
-              task: argv.task
+              task: actualTask
             });
 
             writeFileSync(savePath, outputData, 'utf-8');
@@ -1119,7 +1215,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             const embedding = null;
 
             // Build content from execution result
-            const content = `Agent: ${resolvedAgentName}\nTask: ${argv.task}\n\nResponse: ${result.response.content}`;
+            const content = `Agent: ${resolvedAgentName}\nTask: ${actualTask}\n\nResponse: ${result.response.content}`;
 
             // Save to memory
             await memoryManager.add(content, embedding, metadata);
@@ -1200,7 +1296,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         timestamp: new Date().toISOString(),
         pid: process.pid,
         duration: Date.now() - executionStartTime,
-        task: argv.task as string,
+        task: actualTask,
         provider: argv.provider
       });
 
@@ -1219,7 +1315,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       logger.error('Agent execution failed', {
         error: err.message,
         agent: resolvedAgentName,
-        task: argv.task,
+        task: actualTask,
         provider: argv.provider,
         stack: err.stack
       });
@@ -1269,7 +1365,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           pid: process.pid,
           duration: Date.now() - executionStartTime,
           error: err.message,
-          task: argv.task as string,
+          task: actualTask,
           provider: argv.provider
         });
       } catch (cleanupError) {

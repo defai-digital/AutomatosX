@@ -44,6 +44,7 @@ export interface RouterConfig {
   healthCheckInterval?: number;
   providerCooldownMs?: number; // Cooldown period for failed providers (default: 30000ms)
   circuitBreakerThreshold?: number; // v8.3.0: Circuit breaker failure threshold (default: 3)
+  circuitBreakerWindowMs?: number; // v11.1.0: Time window for counting failures (default: 300000 = 5 min)
   cache?: ResponseCache; // Optional response cache
   strategy?: RoutingConfig; // Phase 3: Multi-factor routing configuration
   workspacePath?: string; // Phase 2.3: Workspace path for trace logging
@@ -91,9 +92,11 @@ export class Router {
     this.cache = config.cache;
 
     // v9.0.2: Initialize circuit breaker with config
+    // v11.1.0: Added failureWindowMs for time-window based failure counting
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: config.circuitBreakerThreshold ?? 3,
-      cooldownMs: config.providerCooldownMs ?? 30000
+      cooldownMs: config.providerCooldownMs ?? 30000,
+      failureWindowMs: config.circuitBreakerWindowMs ?? 300000  // 5 min default
     });
 
     // v5.7.0: Initialize provider limit manager (non-blocking)

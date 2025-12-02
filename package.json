@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "11.0.2",
+  "version": "11.1.0",
   "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, Codex CLI, and ax-cli",
   "type": "module",
   "publishConfig": {
@@ -14,6 +14,7 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "packageManager": "pnpm@9.14.2",
   "scripts": {
     "prebuild:config": "node tools/prebuild-config.cjs",
     "generate:claude-manifests": "tsx tools/generate-claude-manifests.ts",

@@ -6,14 +6,20 @@
  * - Network connectivity
  * - Configuration validity
  * - File system permissions
+ * - Memory system health (SQLite, FTS5)
+ * - Session system checks
+ * - MCP server validation
+ * - Agent profile validation
+ * - System dependencies
  *
  * v6.0.7: Initial implementation for improved UX
+ * v11.0.2: Comprehensive diagnostics (inspired by ax-cli doctor)
  */
 
 import type { CommandModule } from 'yargs';
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { access, constants } from 'fs/promises';
+import { existsSync, statSync, readdirSync } from 'fs';
+import { access, constants, readFile, stat } from 'fs/promises';
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '../../core/config.js';
@@ -26,6 +32,7 @@ import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ProviderDetector } from '../../core/provider-detector.js';
 import { join } from 'path';
+import { PRECOMPILED_CONFIG } from '../../config.generated.js';
 
 interface DoctorOptions {
   provider?: string;
@@ -33,6 +40,9 @@ interface DoctorOptions {
   fix?: boolean;
   claudeCode?: boolean;
   codex?: boolean;
+  axCli?: boolean;
+  memory?: boolean;
+  full?: boolean;
 }
 
 interface CheckResult {
@@ -42,6 +52,7 @@ interface CheckResult {
   message: string;
   fix?: string;
   details?: string;
+  warning?: boolean; // For non-critical issues
 }
 
 export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
@@ -51,9 +62,9 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
   builder: (yargs) => {
     return yargs
       .positional('provider', {
-        describe: 'Check specific provider (openai, gemini, claude) or all if omitted',
+        describe: 'Check specific provider (openai, gemini, claude, ax-cli) or all if omitted',
         type: 'string',
-        choices: ['openai', 'gemini', 'claude']
+        choices: ['openai', 'gemini', 'claude', 'ax-cli']
       })
       .option('verbose', {
         describe: 'Show detailed diagnostic information',
@@ -76,25 +87,58 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
+      .option('ax-cli', {
+        describe: 'Run ax-cli SDK integration diagnostics',
+        type: 'boolean',
+        default: false
+      })
+      .option('memory', {
+        describe: 'Run memory system health checks',
+        type: 'boolean',
+        default: false
+      })
+      .option('full', {
+        describe: 'Run all comprehensive diagnostics',
+        type: 'boolean',
+        default: false
+      })
       .example('ax doctor', 'Run all diagnostic checks')
       .example('ax doctor openai', 'Check only OpenAI provider')
       .example('ax doctor --verbose', 'Show detailed diagnostics')
       .example('ax doctor --fix', 'Auto-fix issues where possible')
       .example('ax doctor --claude-code', 'Check Claude Code integration')
-      .example('ax doctor --codex', 'Check Codex MCP configuration');
+      .example('ax doctor --codex', 'Check Codex MCP configuration')
+      .example('ax doctor --ax-cli', 'Check ax-cli SDK integration')
+      .example('ax doctor --memory', 'Check memory system health')
+      .example('ax doctor --full', 'Run all comprehensive diagnostics');
   },
 
   handler: async (argv) => {
     try {
+      const verbose = argv.verbose ?? false;
+      const runFull = argv.full ?? false;
+
       // If --claude-code flag is set, run Claude Code diagnostics only
       if (argv.claudeCode) {
-        await runClaudeCodeDiagnostics(argv.verbose ?? false);
+        await runClaudeCodeDiagnostics(verbose);
         return;
       }
 
       // If --codex flag is set, run Codex MCP diagnostics only
       if (argv.codex) {
-        await runCodexDiagnostics(argv.verbose ?? false);
+        await runCodexDiagnostics(verbose);
+        return;
+      }
+
+      // If --ax-cli flag is set, run ax-cli SDK diagnostics only
+      if (argv.axCli) {
+        await runAxCliDiagnostics(verbose);
+        return;
+      }
+
+      // If --memory flag is set, run memory diagnostics only
+      if (argv.memory) {
+        await runMemoryDiagnostics(verbose);
         return;
       }
 
@@ -109,15 +153,34 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
 
       const results: CheckResult[] = [];
 
-      // Check Node.js version (v10.1.0+)
+      // Check Node.js version
       console.log(chalk.bold('⚙️  System Requirements'));
-      results.push(...await checkNodeVersion(argv.verbose ?? false));
+      results.push(...await checkNodeVersion(verbose));
 
-      // Load configuration
+      // Check system dependencies (ripgrep, git)
+      if (runFull) {
+        results.push(...await checkSystemDependencies(verbose));
+      }
+
+      // Load and validate configuration
       let config: AutomatosXConfig | null = null;
+      console.log(chalk.bold('\n📋 Configuration'));
       try {
         const detectedProjectDir = await pathResolver.detectProjectRoot();
         config = await loadConfig(detectedProjectDir);
+        results.push({
+          name: 'Configuration',
+          category: 'Setup',
+          passed: true,
+          message: 'Loaded successfully',
+          details: verbose ? `Version: ${config.version}` : undefined
+        });
+        displayCheck(results[results.length - 1]!);
+
+        // Validate configuration schema (--full mode)
+        if (runFull) {
+          results.push(...await checkConfigValidation(config, verbose));
+        }
       } catch (error) {
         results.push({
           name: 'Configuration',
@@ -127,6 +190,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
           fix: 'Run: ax setup',
           details: (error as Error).message
         });
+        displayCheck(results[results.length - 1]!);
       }
 
       // Detect all installed AI providers
@@ -157,8 +221,6 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       }
 
       // Check specific provider if requested
-      const verbose = argv.verbose ?? false;
-
       if (argv.provider) {
         const providerMap: Record<string, string> = {
           'openai': 'codex',
@@ -194,6 +256,36 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // Check file system
       console.log(chalk.bold('\n📁 File System'));
       results.push(...await checkFileSystem(workingDir, verbose));
+
+      // Memory system checks (--full mode)
+      if (runFull) {
+        console.log(chalk.bold('\n💾 Memory System'));
+        results.push(...await checkMemorySystem(workingDir, verbose));
+      }
+
+      // Session system checks (--full mode)
+      if (runFull) {
+        console.log(chalk.bold('\n📂 Session System'));
+        results.push(...await checkSessionSystem(workingDir, verbose));
+      }
+
+      // Agent profile validation (--full mode)
+      if (runFull) {
+        console.log(chalk.bold('\n🤖 Agent Profiles'));
+        results.push(...await checkAgentProfiles(workingDir, verbose));
+      }
+
+      // Network connectivity check (--full mode)
+      if (runFull) {
+        console.log(chalk.bold('\n🌐 Network Connectivity'));
+        results.push(...await checkNetworkConnectivity(verbose));
+      }
+
+      // Disk space check (--full mode)
+      if (runFull) {
+        console.log(chalk.bold('\n💿 Disk Space'));
+        results.push(...await checkDiskSpace(workingDir, verbose));
+      }
 
       // Print summary
       printSummary(results, verbose);
@@ -880,5 +972,631 @@ async function runCodexDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.cyan('Note:'));
     console.log(chalk.gray('  MCP integration is disabled (v10.3.2+). Using CLI mode instead.'));
     console.log(chalk.gray('  This is simpler and more reliable for production use.\n'));
+  }
+}
+
+/**
+ * Check system dependencies (ripgrep, git)
+ */
+async function checkSystemDependencies(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // Check ripgrep
+  const rgCheck = await checkCommand('rg', '--version');
+  results.push({
+    name: 'ripgrep',
+    category: 'Dependencies',
+    passed: rgCheck.success,
+    message: rgCheck.success
+      ? `Installed (${rgCheck.output?.split('\n')[0]?.trim() || 'version unknown'})`
+      : 'Not found (optional)',
+    fix: rgCheck.success ? undefined : 'Install ripgrep for faster file search: brew install ripgrep',
+    details: verbose ? 'Used for fast file content searching' : undefined,
+    warning: true // Not a critical failure
+  });
+  displayCheck(results[results.length - 1]!);
+
+  // Check git
+  const gitCheck = await checkCommand('git', '--version');
+  results.push({
+    name: 'git',
+    category: 'Dependencies',
+    passed: gitCheck.success,
+    message: gitCheck.success
+      ? `Installed (${gitCheck.output?.trim() || 'version unknown'})`
+      : 'Not found',
+    fix: gitCheck.success ? undefined : 'Install git: https://git-scm.com/downloads',
+    details: verbose ? 'Required for version control operations' : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  return results;
+}
+
+/**
+ * Validate configuration schema
+ */
+async function checkConfigValidation(config: AutomatosXConfig, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // Check providers configuration
+  const enabledProviders = Object.entries(config.providers || {})
+    .filter(([_, cfg]) => cfg.enabled)
+    .map(([name]) => name);
+
+  results.push({
+    name: 'Provider Configuration',
+    category: 'Configuration',
+    passed: enabledProviders.length > 0,
+    message: enabledProviders.length > 0
+      ? `${enabledProviders.length} provider(s) enabled`
+      : 'No providers enabled',
+    fix: enabledProviders.length > 0 ? undefined : 'Enable at least one provider in ax.config.json',
+    details: verbose ? `Enabled: ${enabledProviders.join(', ') || 'none'}` : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  // Check execution settings
+  const defaultTimeout = config.execution?.defaultTimeout ?? 0;
+  const hasValidTimeout = defaultTimeout > 0;
+  results.push({
+    name: 'Execution Settings',
+    category: 'Configuration',
+    passed: hasValidTimeout,
+    message: hasValidTimeout
+      ? `Timeout: ${Math.round(defaultTimeout / 60000)}min`
+      : 'Invalid timeout configuration',
+    fix: hasValidTimeout ? undefined : 'Set valid defaultTimeout in ax.config.json',
+    details: verbose ? `Concurrency: ${config.execution?.concurrency?.maxConcurrentAgents ?? 4}` : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  // Check memory settings
+  const maxEntries = config.memory?.maxEntries ?? 0;
+  const hasValidMemory = maxEntries > 0;
+  results.push({
+    name: 'Memory Settings',
+    category: 'Configuration',
+    passed: hasValidMemory,
+    message: hasValidMemory
+      ? `Max entries: ${maxEntries.toLocaleString()}`
+      : 'Invalid memory configuration',
+    fix: hasValidMemory ? undefined : 'Set valid memory settings in ax.config.json',
+    details: verbose ? `Path: ${config.memory?.persistPath ?? '.automatosx/memory'}` : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  return results;
+}
+
+/**
+ * Check memory system health
+ */
+async function checkMemorySystem(workingDir: string, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+  const memoryDir = join(workingDir, '.automatosx', 'memory');
+  const dbPath = join(memoryDir, 'memories.db');
+
+  // Check memory database exists
+  const dbExists = existsSync(dbPath);
+  results.push({
+    name: 'Memory Database',
+    category: 'Memory',
+    passed: dbExists,
+    message: dbExists ? 'SQLite database exists' : 'Database not found',
+    fix: dbExists ? undefined : 'Run: ax memory add "test" to initialize',
+    details: verbose ? `Path: ${dbPath}` : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  if (dbExists) {
+    // Check database size
+    try {
+      const stats = statSync(dbPath);
+      const sizeKB = Math.round(stats.size / 1024);
+      const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+      results.push({
+        name: 'Database Size',
+        category: 'Memory',
+        passed: true,
+        message: sizeKB > 1024 ? `${sizeMB} MB` : `${sizeKB} KB`,
+        details: verbose ? `Last modified: ${stats.mtime.toISOString()}` : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    } catch (error) {
+      results.push({
+        name: 'Database Size',
+        category: 'Memory',
+        passed: false,
+        message: 'Cannot read database stats',
+        details: verbose ? (error as Error).message : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    }
+
+    // Check FTS5 and database integrity (using sqlite3 CLI if available)
+    // Note: Escape path to prevent command injection from paths with special characters
+    const escapedDbPath = `"${dbPath.replace(/"/g, '\\"')}"`;
+    const sqliteCheck = await checkCommand('sqlite3', escapedDbPath + ' "PRAGMA integrity_check;" 2>&1');
+    if (sqliteCheck.success) {
+      const integrityOk = sqliteCheck.output?.includes('ok');
+      results.push({
+        name: 'Database Integrity',
+        category: 'Memory',
+        passed: integrityOk ?? false,
+        message: integrityOk ? 'PRAGMA integrity_check: ok' : 'Integrity check failed',
+        fix: integrityOk ? undefined : 'Database may be corrupted. Backup and recreate.',
+        details: verbose ? sqliteCheck.output?.trim() : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Check session system
+ */
+async function checkSessionSystem(workingDir: string, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+  const sessionDir = join(workingDir, '.automatosx', 'sessions');
+
+  // Check session directory
+  const sessionDirExists = existsSync(sessionDir);
+  results.push({
+    name: 'Session Directory',
+    category: 'Sessions',
+    passed: sessionDirExists,
+    message: sessionDirExists ? 'Exists' : 'Not found (created on first use)',
+    details: verbose ? `Path: ${sessionDir}` : undefined,
+    warning: true
+  });
+  displayCheck(results[results.length - 1]!);
+
+  if (sessionDirExists) {
+    // Count session files
+    try {
+      const files = readdirSync(sessionDir).filter(f => f.endsWith('.json'));
+      const sessionCount = files.length;
+      results.push({
+        name: 'Active Sessions',
+        category: 'Sessions',
+        passed: true,
+        message: `${sessionCount} session file(s)`,
+        details: verbose && sessionCount > 0 ? `Latest: ${files[files.length - 1]}` : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+
+      // Warn if too many sessions
+      if (sessionCount > 50) {
+        results.push({
+          name: 'Session Cleanup',
+          category: 'Sessions',
+          passed: true,
+          message: `${sessionCount} sessions (consider cleanup)`,
+          fix: 'Run: ax session cleanup',
+          warning: true
+        });
+        displayCheck(results[results.length - 1]!);
+      }
+    } catch (error) {
+      results.push({
+        name: 'Session Files',
+        category: 'Sessions',
+        passed: false,
+        message: 'Cannot read session directory',
+        details: verbose ? (error as Error).message : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Check agent profiles
+ */
+async function checkAgentProfiles(workingDir: string, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+  const agentsDir = join(workingDir, '.automatosx', 'agents');
+
+  // Check agents directory
+  const agentsDirExists = existsSync(agentsDir);
+  results.push({
+    name: 'Agents Directory',
+    category: 'Agents',
+    passed: agentsDirExists,
+    message: agentsDirExists ? 'Exists' : 'Not found',
+    fix: agentsDirExists ? undefined : 'Run: ax setup',
+    details: verbose ? `Path: ${agentsDir}` : undefined
+  });
+  displayCheck(results[results.length - 1]!);
+
+  if (agentsDirExists) {
+    // Count and validate agent profiles
+    try {
+      const files = readdirSync(agentsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+      const agentCount = files.length;
+      results.push({
+        name: 'Agent Profiles',
+        category: 'Agents',
+        passed: agentCount > 0,
+        message: `${agentCount} profile(s) found`,
+        fix: agentCount > 0 ? undefined : 'Run: ax setup to create default agents',
+        details: verbose ? `Profiles: ${files.slice(0, 5).join(', ')}${files.length > 5 ? '...' : ''}` : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+
+      // Check for essential agents
+      const essentialAgents = ['backend', 'frontend', 'quality', 'security'];
+      const foundEssential = essentialAgents.filter(agent =>
+        files.some(f => f.startsWith(agent))
+      );
+      results.push({
+        name: 'Essential Agents',
+        category: 'Agents',
+        passed: foundEssential.length >= 3,
+        message: `${foundEssential.length}/${essentialAgents.length} essential agents`,
+        fix: foundEssential.length >= 3 ? undefined : 'Run: ax setup to create default agents',
+        details: verbose ? `Found: ${foundEssential.join(', ')}` : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    } catch (error) {
+      results.push({
+        name: 'Agent Profiles',
+        category: 'Agents',
+        passed: false,
+        message: 'Cannot read agents directory',
+        details: verbose ? (error as Error).message : undefined
+      });
+      displayCheck(results[results.length - 1]!);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Check network connectivity
+ */
+async function checkNetworkConnectivity(verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // Test basic internet connectivity
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch('https://api.anthropic.com/v1/models', {
+      method: 'HEAD',
+      signal: controller.signal
+    }).catch(() => null);
+    clearTimeout(timeout);
+
+    results.push({
+      name: 'Anthropic API',
+      category: 'Network',
+      passed: response !== null,
+      message: response ? 'Reachable' : 'Unreachable',
+      fix: response ? undefined : 'Check internet connection or firewall settings',
+      details: verbose && response ? `Status: ${response.status}` : undefined
+    });
+    displayCheck(results[results.length - 1]!);
+  } catch (error) {
+    results.push({
+      name: 'Anthropic API',
+      category: 'Network',
+      passed: false,
+      message: 'Connection failed',
+      fix: 'Check internet connection',
+      details: verbose ? (error as Error).message : undefined
+    });
+    displayCheck(results[results.length - 1]!);
+  }
+
+  // Test OpenAI endpoint
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'HEAD',
+      signal: controller.signal
+    }).catch(() => null);
+    clearTimeout(timeout);
+
+    results.push({
+      name: 'OpenAI API',
+      category: 'Network',
+      passed: response !== null,
+      message: response ? 'Reachable' : 'Unreachable',
+      details: verbose && response ? `Status: ${response.status}` : undefined
+    });
+    displayCheck(results[results.length - 1]!);
+  } catch {
+    results.push({
+      name: 'OpenAI API',
+      category: 'Network',
+      passed: false,
+      message: 'Connection failed',
+      warning: true
+    });
+    displayCheck(results[results.length - 1]!);
+  }
+
+  return results;
+}
+
+/**
+ * Check disk space
+ */
+async function checkDiskSpace(workingDir: string, verbose: boolean): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  try {
+    // Use df command to check disk space
+    const dfOutput = execSync(`df -k "${workingDir}" | tail -1`, {
+      encoding: 'utf-8',
+      timeout: 5000
+    });
+
+    const parts = dfOutput.trim().split(/\s+/);
+    const availableKB = parseInt(parts[3] || '0', 10);
+    const availableMB = Math.round(availableKB / 1024);
+    const availableGB = (availableKB / (1024 * 1024)).toFixed(2);
+
+    const hasEnoughSpace = availableMB > 100; // At least 100MB free
+
+    results.push({
+      name: 'Available Disk Space',
+      category: 'Disk',
+      passed: hasEnoughSpace,
+      message: availableMB > 1024 ? `${availableGB} GB available` : `${availableMB} MB available`,
+      fix: hasEnoughSpace ? undefined : 'Free up disk space (need at least 100MB)',
+      details: verbose ? `Working directory: ${workingDir}` : undefined
+    });
+    displayCheck(results[results.length - 1]!);
+
+    // Check .automatosx directory size
+    const automatosxDir = join(workingDir, '.automatosx');
+    if (existsSync(automatosxDir)) {
+      try {
+        const duOutput = execSync(`du -sk "${automatosxDir}" 2>/dev/null | cut -f1`, {
+          encoding: 'utf-8',
+          timeout: 10000
+        });
+        const sizeKB = parseInt(duOutput.trim(), 10);
+        const sizeMB = (sizeKB / 1024).toFixed(2);
+
+        results.push({
+          name: '.automatosx Size',
+          category: 'Disk',
+          passed: true,
+          message: sizeKB > 1024 ? `${sizeMB} MB` : `${sizeKB} KB`,
+          details: verbose ? `Includes: memory, sessions, logs, agents` : undefined
+        });
+        displayCheck(results[results.length - 1]!);
+      } catch {
+        // Ignore du errors
+      }
+    }
+  } catch (error) {
+    results.push({
+      name: 'Disk Space',
+      category: 'Disk',
+      passed: true, // Don't fail if we can't check
+      message: 'Could not determine disk space',
+      details: verbose ? (error as Error).message : undefined,
+      warning: true
+    });
+    displayCheck(results[results.length - 1]!);
+  }
+
+  return results;
+}
+
+/**
+ * Run ax-cli SDK integration diagnostics
+ */
+async function runAxCliDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 ax-cli SDK Integration Diagnostics\n'));
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // Check 1: ax-cli CLI Installation
+  const axCliCheck = await checkCommand('ax-cli', '--version');
+  checks.push({
+    name: 'ax-cli CLI',
+    passed: axCliCheck.success,
+    message: axCliCheck.success
+      ? `Installed (${axCliCheck.output?.trim() || 'version unknown'})`
+      : 'Not found',
+    fix: axCliCheck.success ? undefined : 'npm install -g @defai.digital/ax-cli',
+    details: verbose && !axCliCheck.success ? axCliCheck.error : undefined
+  });
+
+  // Check 2: ax-cli SDK package
+  let sdkInstalled = false;
+  let sdkVersion = 'unknown';
+  try {
+    const packagePath = join(process.cwd(), 'node_modules', '@defai.digital', 'ax-cli', 'package.json');
+    if (existsSync(packagePath)) {
+      const pkgContent = await readFile(packagePath, 'utf-8');
+      const pkg = JSON.parse(pkgContent);
+      sdkVersion = pkg.version || 'unknown';
+      sdkInstalled = true;
+    }
+  } catch {
+    // Not installed locally
+  }
+
+  checks.push({
+    name: 'ax-cli SDK',
+    passed: sdkInstalled,
+    message: sdkInstalled ? `v${sdkVersion} (local)` : 'Not installed',
+    fix: sdkInstalled ? undefined : 'npm install @defai.digital/ax-cli',
+    details: verbose ? 'SDK provides createAgent, Subagent, MCPManager' : undefined
+  });
+
+  // Check 3: SDK imports availability
+  if (sdkInstalled) {
+    let importsWork = false;
+    try {
+      // Check if SDK exports exist
+      const sdkPath = join(process.cwd(), 'node_modules', '@defai.digital', 'ax-cli', 'dist', 'sdk', 'index.js');
+      importsWork = existsSync(sdkPath);
+    } catch {
+      importsWork = false;
+    }
+
+    checks.push({
+      name: 'SDK Exports',
+      passed: importsWork,
+      message: importsWork ? 'Available' : 'Not available',
+      fix: importsWork ? undefined : 'npm install @defai.digital/ax-cli@latest',
+      details: verbose ? 'Import from @defai.digital/ax-cli/sdk' : undefined
+    });
+  }
+
+  // Check 4: ax-cli provider enabled
+  let providerEnabled = false;
+  const configPath = join(process.cwd(), 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerEnabled = config?.providers?.['ax-cli']?.enabled === true;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerEnabled,
+    message: providerEnabled ? 'ax-cli provider enabled' : 'ax-cli provider not configured',
+    fix: providerEnabled ? undefined : 'Add ax-cli provider to ax.config.json',
+    details: verbose ? 'Provider supports GLM, xAI, OpenAI, Anthropic, Ollama' : undefined
+  });
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! ax-cli SDK integration is ready.\n'));
+
+    console.log(chalk.cyan('Usage:'));
+    console.log(chalk.gray('  ax run backend "task" --provider ax-cli     # Use ax-cli provider'));
+    console.log(chalk.gray('  import { createAgent } from "@defai.digital/ax-cli/sdk"'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Supported Models:'));
+    console.log(chalk.gray('  • GLM (glm-4.6, glm-4-plus)'));
+    console.log(chalk.gray('  • xAI/Grok (grok-2, grok-3)'));
+    console.log(chalk.gray('  • OpenAI (gpt-4, gpt-4o)'));
+    console.log(chalk.gray('  • Anthropic (claude-3-opus)'));
+    console.log(chalk.gray('  • Ollama (local models)\n'));
+  }
+}
+
+/**
+ * Run memory system diagnostics (standalone)
+ */
+async function runMemoryDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 Memory System Diagnostics\n'));
+
+  const workingDir = process.cwd();
+  const results = await checkMemorySystem(workingDir, verbose);
+
+  // Additional detailed checks for memory-only mode
+  const memoryDir = join(workingDir, '.automatosx', 'memory');
+  const dbPath = join(memoryDir, 'memories.db');
+
+  if (existsSync(dbPath)) {
+    // Escape path to prevent command injection from paths with special characters
+    const escapedDbPath = `"${dbPath.replace(/"/g, '\\"')}"`;
+
+    // Try to get memory count
+    const countCheck = await checkCommand('sqlite3', escapedDbPath + ' "SELECT COUNT(*) FROM memories;" 2>&1');
+    if (countCheck.success && countCheck.output) {
+      const count = parseInt(countCheck.output.trim(), 10);
+      if (!isNaN(count)) {
+        const spinner = ora();
+        spinner.succeed(chalk.green(`Memory Entries: ${count.toLocaleString()} entries`));
+        if (verbose) {
+          console.log(chalk.dim(`  └─ SQLite FTS5 full-text search enabled`));
+        }
+      }
+    }
+
+    // Check FTS5 table exists
+    const ftsCheck = await checkCommand('sqlite3', escapedDbPath + ' "SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'memories_fts\';" 2>&1');
+    if (ftsCheck.success) {
+      const hasFts = ftsCheck.output?.includes('memories_fts');
+      const spinner = ora();
+      if (hasFts) {
+        spinner.succeed(chalk.green('FTS5 Index: Enabled'));
+      } else {
+        spinner.warn(chalk.yellow('FTS5 Index: Not found (search may be slower)'));
+      }
+    }
+  }
+
+  // Summary
+  const passed = results.filter(r => r.passed).length;
+  const failed = results.filter(r => !r.passed).length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passed}/${results.length}`));
+
+  if (failed > 0) {
+    console.log(chalk.red(`✗ Failed: ${failed}/${results.length}`));
+
+    const failedChecks = results.filter(r => !r.passed && r.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ Memory system is healthy!\n'));
+
+    console.log(chalk.cyan('Commands:'));
+    console.log(chalk.gray('  ax memory search "keyword"    # Search memories'));
+    console.log(chalk.gray('  ax memory list --limit 10     # List recent memories'));
+    console.log(chalk.gray('  ax memory export > backup.json  # Export for backup\n'));
   }
 }

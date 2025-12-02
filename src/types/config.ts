@@ -577,6 +577,7 @@ export interface RouterConfig {
   healthCheckInterval?: number;         // Background health check interval (ms), optional
   providerCooldownMs?: number;          // Cooldown period for failed providers (ms)
   circuitBreakerThreshold?: number;     // v8.3.0: Circuit breaker failure threshold (default: 3)
+  circuitBreakerWindowMs?: number;      // v11.1.0: Time window for counting failures (default: 300000 = 5 min)
   enableFreeTierPrioritization?: boolean;  // Enable prioritization of free tier providers (default: true)
   enableWorkloadAwareRouting?: boolean;    // Enable workload-aware provider routing (default: true)
 }
@@ -925,9 +926,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
 
   // v5.7.0: Router configuration for background health checks
   // v6.3.1+: Cost optimization features
+  // v11.1.0: Circuit breaker window-based failure tracking
   router: {
     healthCheckInterval: 60000,             // 60 seconds (default: enabled)
     providerCooldownMs: 30000,              // 30 seconds cooldown for failed providers
+    circuitBreakerWindowMs: 300000,         // v11.1.0: 5 minute window for failure counting
     enableFreeTierPrioritization: true,     // v6.3.1: Enable free tier prioritization (default: true)
     enableWorkloadAwareRouting: true        // v6.3.1: Enable workload-aware routing (default: true)
   }

@@ -13,7 +13,7 @@
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v11.0.2 | Workflow Templates | Codex CLI Renaming
+**Status**: ✅ **Production Ready** | v11.1.0 | Unified Event System | MCP Streaming
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

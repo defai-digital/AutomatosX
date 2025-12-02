@@ -296,8 +296,9 @@
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000,
+    "circuitBreakerWindowMs": 300000,
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "11.0.2"
+  "version": "11.1.0"
 }

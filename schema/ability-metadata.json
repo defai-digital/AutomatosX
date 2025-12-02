@@ -1,0 +1,21 @@
+{
+  "metadataVersion": "1.0.0",
+  "description": "Ability metadata schema for intelligent loading and validation",
+  "lastUpdated": "2025-10-14",
+  "abilityCount": 63,
+  "tiers": {
+    "core": {
+      "description": "Always loaded, <250 words",
+      "maxWordCount": 250
+    },
+    "advanced": {
+      "description": "Conditionally loaded based on keywords/complexity",
+      "maxWordCount": 600
+    },
+    "specialized": {
+      "description": "Loaded on explicit demand or high complexity",
+      "maxWordCount": null
+    }
+  },
+  "note": "Full metadata with all 63 abilities will be populated in v5.4.0 with intelligent loading system"
+}

@@ -1,0 +1,608 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/spec-v1.0.json",
+  "title": "AutomatosX Spec Schema",
+  "description": "JSON Schema for AutomatosX YAML specification files (*.ax.yaml)",
+  "type": "object",
+  "required": ["version", "metadata", "actors"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Spec schema version (e.g., '1.0')"
+    },
+    "metadata": {
+      "$ref": "#/definitions/Metadata"
+    },
+    "actors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Actor"
+      },
+      "description": "List of actors (agents) that execute tasks"
+    },
+    "providers": {
+      "$ref": "#/definitions/Providers",
+      "description": "AI provider configuration (optional)"
+    },
+    "policy": {
+      "$ref": "#/definitions/Policy",
+      "description": "Routing and optimization policy (optional)"
+    },
+    "observability": {
+      "$ref": "#/definitions/Observability",
+      "description": "Monitoring and observability configuration (optional)"
+    },
+    "recovery": {
+      "$ref": "#/definitions/Recovery",
+      "description": "Error handling and recovery configuration (optional)"
+    },
+    "validation": {
+      "$ref": "#/definitions/Validation",
+      "description": "Custom validation rules (optional)"
+    }
+  },
+  "definitions": {
+    "Metadata": {
+      "type": "object",
+      "required": ["id", "name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique identifier (kebab-case)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Brief description of what this spec does"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Spec version (semver format)"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or team name"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "description": "Tags for categorization"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp (ISO 8601)"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp (ISO 8601)"
+        }
+      }
+    },
+    "Actor": {
+      "type": "object",
+      "required": ["id", "agent"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique actor identifier"
+        },
+        "agent": {
+          "type": "string",
+          "description": "Agent name (e.g., 'backend', 'frontend')"
+        },
+        "description": {
+          "type": "string",
+          "description": "Actor role description"
+        },
+        "permissions": {
+          "$ref": "#/definitions/Permissions"
+        },
+        "resources": {
+          "$ref": "#/definitions/Resources"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "description": "Execution timeout in milliseconds"
+        }
+      }
+    },
+    "Permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed read paths (glob patterns)"
+            },
+            "write": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed write paths (glob patterns)"
+            }
+          }
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether network access is allowed"
+            },
+            "whitelist": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "hostname"
+              },
+              "description": "Allowed domains/IPs"
+            },
+            "requireTls": {
+              "type": "boolean",
+              "description": "Require TLS/SSL for all connections"
+            }
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed environment variables to read"
+            },
+            "write": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed environment variables to modify"
+            }
+          }
+        }
+      }
+    },
+    "Resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "string",
+              "pattern": "^\\d+[KMG]B$",
+              "description": "Memory limit (e.g., '512MB', '2GB')"
+            }
+          }
+        },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 16.0,
+              "description": "CPU cores limit"
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "string",
+              "pattern": "^\\d+[KMG]B$",
+              "description": "Storage limit"
+            }
+          }
+        }
+      }
+    },
+    "Providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "$ref": "#/definitions/ProviderConfig"
+        },
+        "fallback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ProviderConfig"
+          }
+        }
+      }
+    },
+    "ProviderConfig": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["openai", "claude-code", "gemini-cli", "claude-sdk", "gemini-sdk"],
+          "description": "Provider name"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name (e.g., 'gpt-4o', 'claude-opus-4')"
+        },
+        "budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "softCap": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Soft cost limit (triggers warning)"
+            },
+            "hardCap": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Hard cost limit (aborts execution)"
+            },
+            "period": {
+              "type": "string",
+              "enum": ["daily", "weekly", "monthly"],
+              "description": "Budget period"
+            }
+          }
+        }
+      }
+    },
+    "Policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "type": "string",
+          "enum": ["cost", "latency", "reliability", "balanced"],
+          "description": "Primary optimization goal"
+        },
+        "optimization": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "weights": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "cost": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "latency": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "reliability": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "$ref": "#/definitions/CostConstraint"
+            },
+            "latency": {
+              "$ref": "#/definitions/LatencyConstraint"
+            },
+            "privacy": {
+              "$ref": "#/definitions/PrivacyConstraint"
+            },
+            "reliability": {
+              "$ref": "#/definitions/ReliabilityConstraint"
+            }
+          }
+        }
+      }
+    },
+    "CostConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxPerRequest": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum cost per request (USD)"
+        },
+        "maxDaily": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum daily cost (USD)"
+        }
+      }
+    },
+    "LatencyConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "type": "integer",
+          "minimum": 100,
+          "description": "P50 latency target (ms)"
+        },
+        "p95": {
+          "type": "integer",
+          "minimum": 100,
+          "description": "P95 latency target (ms)"
+        },
+        "p99": {
+          "type": "integer",
+          "minimum": 100,
+          "description": "P99 latency target (ms)"
+        }
+      }
+    },
+    "PrivacyConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataClassification": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "pii", "phi"],
+          "description": "Data classification level"
+        },
+        "allowedClouds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["aws", "gcp", "azure", "on-prem"]
+          },
+          "description": "Allowed cloud providers"
+        },
+        "allowedRegions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed geographic regions (e.g., 'us-east', 'eu-west')"
+        }
+      }
+    },
+    "ReliabilityConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minAvailability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum availability (e.g., 0.999 for 99.9%)"
+        },
+        "maxErrorRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Maximum acceptable error rate"
+        }
+      }
+    },
+    "Observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["prometheus", "datadog", "cloudwatch"],
+              "description": "Metrics provider"
+            }
+          }
+        },
+        "logs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "level": {
+              "type": "string",
+              "enum": ["debug", "info", "warn", "error"],
+              "description": "Log level"
+            },
+            "destination": {
+              "type": "string",
+              "description": "Log destination (file path or URL)"
+            }
+          }
+        },
+        "tracing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["jaeger", "zipkin", "opentelemetry"],
+              "description": "Tracing provider"
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "destination": {
+              "type": "string",
+              "description": "Audit log destination"
+            }
+          }
+        }
+      }
+    },
+    "Recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxAttempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Maximum retry attempts"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["exponential", "linear", "constant"],
+              "description": "Backoff strategy"
+            },
+            "initialDelayMs": {
+              "type": "integer",
+              "minimum": 100,
+              "description": "Initial retry delay (ms)"
+            }
+          }
+        },
+        "timeout": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "type": "integer",
+              "minimum": 1000,
+              "description": "Request timeout (ms)"
+            },
+            "task": {
+              "type": "integer",
+              "minimum": 1000,
+              "description": "Task timeout (ms)"
+            }
+          }
+        },
+        "failover": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["immediate", "delayed", "manual"],
+              "description": "Failover trigger strategy"
+            }
+          }
+        },
+        "circuit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "errorThreshold": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Consecutive errors to open circuit"
+            },
+            "resetTimeoutMs": {
+              "type": "integer",
+              "minimum": 1000,
+              "description": "Time before attempting reset (ms)"
+            }
+          }
+        }
+      }
+    },
+    "Validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strictMode": {
+          "type": "boolean",
+          "description": "Enable strict validation (warnings become errors)"
+        },
+        "customRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "severity", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Z0-9-]+$",
+                "description": "Rule ID (e.g., 'CUSTOM-001')"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["error", "warning", "info"]
+              },
+              "description": {
+                "type": "string",
+                "description": "Rule description"
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regex pattern to match"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+version: "1.0"
+
+metadata:
+  id: "{{id}}"
+  name: "{{name}}"
+  description: "{{description}}"
+  version: "1.0.0"
+  author: "{{author}}"
+  tags: []
+
+actors:
+  - id: "main-actor"
+    agent: "{{agent}}"
+    description: "Primary agent for task execution"
+    permissions:
+      filesystem:
+        read: []
+        write: []
+      network:
+        enabled: false
+    timeout: 300000  # 5 minutes

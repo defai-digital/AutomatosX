@@ -1,0 +1,172 @@
+name: Gemini PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+jobs:
+  gemini-review:
+    name: Gemini Code Review
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install -g @defai.digital/automatosx
+
+      - name: Configure AutomatosX
+        run: |
+          # Create automatosx config for CI
+          cat > automatosx.config.json << EOF
+          {
+            "providers": {
+              "gemini-cli": {
+                "enabled": true,
+                "priority": 1,
+                "timeout": 300000,
+                "command": "gemini",
+                "gemini": {
+                  "model": "gemini-3-pro",
+                  "fallbackModel": "gemini-2.5-flash",
+                  "approvalMode": "auto_edit",
+                  "outputFormat": "json",
+                  "includeMetadata": true,
+                  "includeCitations": true,
+                  "tools": {
+                    "googleSearch": false,
+                    "webFetch": false,
+                    "shellCommands": false
+                  },
+                  "includeDirectories": ["src", "tests"],
+                  "excludeDirectories": ["node_modules", ".git", "dist"]
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          # Get the diff between base and head
+          git diff origin/${{ github.base_ref }}...origin/${{ github.head_ref }} > pr.diff
+          
+          # Count lines changed
+          LINES_ADDED=$(git diff --numstat origin/${{ github.base_ref }}...origin/${{ github.head_ref }} | awk '{s+=$1} END {print s+0}')
+          LINES_DELETED=$(git diff --numstat origin/${{ github.base_ref }}...origin/${{ github.head_ref }} | awk '{s+=$2} END {print s+0}')
+          TOTAL_LINES=$((LINES_ADDED + LINES_DELETED))
+          
+          echo "lines_added=$LINES_ADDED" >> $GITHUB_OUTPUT
+          echo "lines_deleted=$LINES_DELETED" >> $GITHUB_OUTPUT
+          echo "total_lines=$TOTAL_LINES" >> $GITHUB_OUTPUT
+          
+          # Skip review for trivial changes
+          if [ $TOTAL_LINES -lt 10 ]; then
+            echo "skip_review=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip_review=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Gemini PR Review
+        if: steps.diff.outputs.skip_review == 'false'
+        id: review
+        run: |
+          # Run the PR review script
+          npx tsx scripts/gemini-pr-review.ts \
+            --pr-number ${{ github.event.number }} \
+            --base-ref ${{ github.base_ref }} \
+            --head-ref ${{ github.head_ref }} \
+            --diff-file pr.diff \
+            --output review-comment.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Post Review Comment
+        if: steps.diff.outputs.skip_review == 'false' && steps.review.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const commentBody = fs.readFileSync('review-comment.md', 'utf8');
+              
+              // Find existing bot comment
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              
+              const botComment = comments.find(comment => 
+                comment.user.type === 'Bot' && 
+                comment.body.includes('## 🤖 Gemini Code Review')
+              );
+              
+              if (botComment) {
+                // Update existing comment
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: commentBody,
+                });
+                console.log('Updated existing review comment');
+              } else {
+                // Create new comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: commentBody,
+                });
+                console.log('Created new review comment');
+              }
+            } catch (error) {
+              console.error('Error posting review comment:', error);
+              
+              // Post error fallback
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🚨 Gemini Review Error\n\nUnable to complete automated review:\n\n\`\`\`\n${error.message}\n\`\`\`\n\nPlease review manually.`
+              });
+            }
+
+      - name: Post Skip Notice
+        if: steps.diff.outputs.skip_review == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ⚡ Gemini Review Skipped\n\nThis PR contains only minor changes (${ steps.diff.outputs.total_lines }} lines). No automated review needed.`
+            });
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f pr.diff
+          rm -f review-comment.md
+          rm -f automatosx.config.json

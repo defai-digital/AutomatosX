@@ -1,0 +1,148 @@
+version: "1.0"
+
+metadata:
+  id: "secure-data-processing"
+  name: "Secure Government Data Processing"
+  description: "High-security data processing workflow for government compliance (FISMA, FedRAMP)"
+  version: "1.0.0"
+  author: "Government Security Team"
+  tags: ["government", "compliance", "high-security", "fisma", "fedramp"]
+  created: "2025-10-30T00:00:00Z"
+
+actors:
+  - id: "security-coordinator"
+    agent: "security"
+    description: "Security-first coordination and approval"
+    permissions:
+      filesystem:
+        read: ["docs/**", "policies/**"]
+        write: ["reports/**", "audit/**"]
+      network:
+        enabled: true
+        whitelist: ["secure-api.gov.internal"]
+        requireTls: true
+      environment:
+        read: ["NODE_ENV"]  # Minimal environment access
+    resources:
+      memory:
+        limit: "256MB"
+      cpu:
+        limit: 0.5
+    timeout: 300000  # 5 minutes
+
+  - id: "compliance-officer"
+    agent: "standard"
+    description: "Ensures all actions meet compliance requirements"
+    permissions:
+      filesystem:
+        read: ["policies/**", "compliance/**"]
+        write: ["compliance/reports/**"]
+      network:
+        enabled: false  # No network access for compliance checks
+    resources:
+      memory:
+        limit: "256MB"
+      cpu:
+        limit: 0.5
+    timeout: 300000
+
+  - id: "executor"
+    agent: "backend"
+    description: "Executes approved tasks with strict permissions"
+    permissions:
+      filesystem:
+        read: ["src/**"]  # Read-only source access
+        write: ["output/**"]  # Restricted write location
+      network:
+        enabled: true
+        whitelist: ["approved-api.gov.internal"]  # Single approved endpoint
+        requireTls: true
+      environment:
+        read: []  # No environment variable access
+        write: []
+    resources:
+      memory:
+        limit: "512MB"
+      cpu:
+        limit: 1.0
+    timeout: 600000
+
+providers:
+  primary:
+    name: "claude-code"  # On-prem preferred for government
+    model: "claude-opus-4"
+    budget:
+      softCap: 2.0
+      hardCap: 5.0
+      period: "daily"
+  fallback:
+    - name: "openai"
+      model: "gpt-4o"
+
+policy:
+  goal: "reliability"  # Reliability over cost/speed
+  optimization:
+    weights:
+      cost: 0.1
+      latency: 0.2
+      reliability: 0.7
+  constraints:
+    cost:
+      maxPerRequest: 1.0
+      maxDaily: 50.0
+    latency:
+      p50: 5000   # Accept higher latency for security
+      p95: 15000
+      p99: 30000
+    privacy:
+      dataClassification: "phi"  # Highest classification
+      allowedClouds: ["on-prem"]  # On-premises only
+      allowedRegions: ["us-gov-east", "us-gov-west"]  # Government regions only
+    reliability:
+      minAvailability: 0.999  # 99.9% uptime required
+      maxErrorRate: 0.001     # 0.1% max error rate
+
+observability:
+  metrics:
+    enabled: true
+    provider: "prometheus"
+  logs:
+    enabled: true
+    level: "info"  # Detailed logging required
+    destination: "/var/log/automatosx/spec-execution.log"
+  tracing:
+    enabled: true
+    provider: "jaeger"
+  audit:
+    enabled: true  # Mandatory audit trail
+    destination: "/var/log/automatosx/audit.log"
+
+recovery:
+  retry:
+    maxAttempts: 2  # Limited retries for predictability
+    strategy: "linear"  # Predictable retry timing
+    initialDelayMs: 2000
+  timeout:
+    request: 60000   # 1 minute
+    task: 900000     # 15 minutes
+  failover:
+    enabled: true
+    strategy: "manual"  # Manual approval for failover
+  circuit:
+    enabled: true
+    errorThreshold: 3  # Low tolerance for errors
+    resetTimeoutMs: 300000  # 5 minutes
+
+validation:
+  strictMode: true  # All warnings become errors
+  customRules:
+    - id: "GOV-001"
+      severity: "error"
+      description: "No external API calls allowed"
+      pattern: "https?://(?!.*\\.gov\\.internal)"
+    - id: "GOV-002"
+      severity: "error"
+      description: "All data must be encrypted at rest"
+    - id: "GOV-003"
+      severity: "error"
+      description: "Audit logging must be enabled"

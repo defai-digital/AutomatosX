@@ -1,0 +1,244 @@
+name: Gemini Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage-issue:
+    name: Classify and Label Issue
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install -g @defai.digital/automatosx
+
+      - name: Configure AutomatosX for Triage
+        run: |
+          # Create minimal config for issue triage
+          cat > automatosx.config.json << EOF
+          {
+            "providers": {
+              "gemini-cli": {
+                "enabled": true,
+                "priority": 1,
+                "timeout": 60000,
+                "command": "gemini",
+                "gemini": {
+                  "model": "gemini-2.5-flash",
+                  "approvalMode": "auto_edit",
+                  "outputFormat": "json",
+                  "includeMetadata": true,
+                  "tools": {
+                    "googleSearch": false,
+                    "webFetch": false,
+                    "shellCommands": false
+                  }
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Extract Issue Data
+        id: issue
+        run: |
+          # Extract issue details for analysis
+          ISSUE_TITLE='${{ github.event.issue.title }}'
+          ISSUE_BODY='${{ github.event.issue.body }}'
+          ISSUE_AUTHOR='${{ github.event.issue.user.login }}'
+          ISSUE_NUMBER='${{ github.event.issue.number }}'
+          
+          # Create JSON payload for Gemini
+          cat > issue-payload.json << EOF
+          {
+            "title": "$ISSUE_TITLE",
+            "body": "$ISSUE_BODY",
+            "author": "$ISSUE_AUTHOR",
+            "number": $ISSUE_NUMBER,
+            "repository": "${{ github.repository }}",
+            "created_at": "${{ github.event.issue.created_at }}"
+          }
+          EOF
+          
+          echo "issue_data=$(cat issue-payload.json | jq -c .)" >> $GITHUB_OUTPUT
+
+      - name: Classify Issue with Gemini
+        id: classification
+        run: |
+          # Run Gemini classification
+          cat > classify-prompt.md << 'EOF'
+          You are an issue triage bot for the AutomatosX project. Analyze the following GitHub issue and classify it.
+
+          Issue data:
+          ${{ steps.issue.outputs.issue_data }}
+
+          Please respond with a JSON object containing:
+          {
+            "type": "bug|feature|documentation|question|performance|security|other",
+            "priority": "high|medium|low",
+            "area": "core|cli|providers|integrations|docs|tests|infrastructure",
+            "labels": ["label1", "label2", "..."],
+            "reasoning": "Brief explanation of classification",
+            "needs_info": true/false,
+            "suggested_assignee": "username or null"
+          }
+
+          Classification guidelines:
+          - "bug": Error reports, broken functionality
+          - "feature": New functionality requests
+          - "documentation": Docs, README, examples
+          - "question": Help requests, clarifications
+          - "performance": Performance issues, optimization
+          - "security": Security vulnerabilities, concerns
+          - "other": Everything else
+
+          Priority guidelines:
+          - "high": Security issues, broken main functionality
+          - "medium": Important features, significant bugs
+          - "low": Minor issues, nice-to-have features
+
+          Area guidelines:
+          - "core": Core AutomatosX functionality
+          - "cli": Command-line interface
+          - "providers": AI provider integrations
+          - "integrations": External service integrations
+          - "docs": Documentation and examples
+          - "tests": Testing framework and test cases
+          - "infrastructure": CI/CD, GitHub Actions, deployment
+          EOF
+          
+          # Run classification with Gemini
+          gemini "$(cat classify-prompt.md)" --output-format json > classification-result.json
+          
+          # Validate and extract classification
+          if [ -f classification-result.json ] && [ -s classification-result.json ]; then
+            echo "classification=$(cat classification-result.json | jq -c .)" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "error=Gemini classification failed" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Apply Labels and Status
+        if: steps.classification.outputs.success == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const classification = JSON.parse('${{ steps.classification.outputs.classification }}');
+            
+            console.log('Classification result:', classification);
+            
+            // Prepare labels to add
+            const labels = [];
+            
+            // Add type label
+            if (classification.type) {
+              labels.push(classification.type);
+            }
+            
+            // Add priority label
+            if (classification.priority) {
+              labels.push(`priority: ${classification.priority}`);
+            }
+            
+            // Add area label
+            if (classification.area) {
+              labels.push(classification.area);
+            }
+            
+            // Add custom labels
+            if (classification.labels && Array.isArray(classification.labels)) {
+              labels.push(...classification.labels);
+            }
+            
+            // Add needs-info label if required
+            if (classification.needs_info) {
+              labels.push('needs-info');
+            }
+            
+            // Remove duplicates
+            const uniqueLabels = [...new Set(labels)];
+            
+            // Apply labels
+            if (uniqueLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: uniqueLabels
+              });
+              console.log('Applied labels:', uniqueLabels);
+            }
+            
+            // Add comment with classification reasoning
+            if (classification.reasoning) {
+              const comment = `## 🤖 Automated Issue Classification\n\n**Type:** ${classification.type || 'unknown'}\n**Priority:** ${classification.priority || 'unknown'}\n**Area:** ${classification.area || 'unknown'}\n\n**Reasoning:** ${classification.reasoning}\n\n${classification.needs_info ? 'ℹ️ **Additional information may be needed**' : ''}\n\n---\n*This classification was generated by Gemini 3.0*`;
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+              console.log('Added classification comment');
+            }
+            
+            // Suggest assignee if provided
+            if (classification.suggested_assignee) {
+              try {
+                await github.rest
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  assignees: [classification.suggested_assignee]
+                });
+                console.log('Assigned to:', classification.suggested_assignee);
+              } catch (error) {
+                console.warn('Failed to assign:', error.message);
+              }
+            }
+
+      - name: Handle Classification Failure
+        if: steps.classification.outputs.success == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-triage']
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🚨 Triage Error\n\nUnable to automatically classify this issue. Manual triage required.\n\nError: ${{ steps.classification.outputs.error }}`
+            });
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f issue-payload.json
+          rm -f classification-result.json
+          rm -f classify-prompt.md
+          rm -f automatosx.config.json

@@ -1,0 +1,99 @@
+# ============================================================================
+# NPM PACKAGE CONFIGURATION
+# ============================================================================
+# NOTE: The "files" field in package.json takes precedence over .npmignore
+# Currently published: dist/, examples/, schema/, templates/, README.md, LICENSE, CHANGELOG.md
+# See package.json lines 113-120 for explicit list
+# ============================================================================
+
+# Development documentation and AI assistant configuration
+PRD/
+# AI assistant runtime directories (contain API keys, privacy data, sensitive config)
+.claude/
+.gemini/
+.grok/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Internal release documentation
+RELEASE-CHECKLIST.md
+RELEASE-NOTES.md
+BETA-TESTING.md
+E2E-TESTING.md
+
+# Development files
+.gitignore
+.gitattributes
+.editorconfig
+.prettierrc*
+.eslintrc*
+tsconfig.json
+vitest.config.ts
+vitest.config.ci.ts
+vitest.setup.ts
+vitest.global-teardown.ts
+tsup.config.ts
+commitlint.config.js
+
+# Source files (only publish dist/)
+src/
+tests/
+__tests__/
+
+# IMPORTANT: schema/ and templates/ are INCLUDED via package.json "files" field
+# They are needed at runtime for:
+# - schema/: Configuration and spec validation (SpecSchemaValidator.ts)
+# - templates/: CLI commands (ax spec init, ax setup)
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build artifacts
+*.tsbuildinfo
+
+# Documentation (keep only essential docs)
+docs/development/
+docs/internal/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AutomatosX specific
+.automatosx/
+.automatosx-backups/
+
+# Workspace directories (v5.2.0+)
+automatosx/tmp/
+automatosx/PRD/
+
+# Environment
+.env*

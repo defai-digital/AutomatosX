@@ -1,0 +1,219 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  # Allow manual workflow dispatch for testing
+  workflow_dispatch:
+
+# Permissions required for creating issues on failure
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  comprehensive-tests:
+    name: Comprehensive Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [24.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test:unit
+        timeout-minutes: 10
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
+
+      - name: Run integration tests
+        run: npm run test:integration
+        timeout-minutes: 15
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
+
+      - name: Run e2e tests
+        run: npx vitest run tests/e2e
+        timeout-minutes: 15
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
+
+      - name: Run reliability tests
+        run: npx vitest run tests/reliability
+        timeout-minutes: 15
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+        timeout-minutes: 5
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+        timeout-minutes: 15
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: 'true'
+          CI: true
+          NODE_ENV: test
+
+      - name: Upload coverage to artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-${{ github.run_number }}
+          path: coverage/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Check for test failures
+        if: failure()
+        run: echo "::error::Nightly tests failed on ${{ matrix.os }}"
+
+  test-stability-report:
+    name: Test Stability Report
+    needs: comprehensive-tests
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage-reports/
+
+      - name: Generate stability report
+        run: |
+          echo "# Nightly Test Stability Report" > stability-report.md
+          echo "" >> stability-report.md
+          echo "**Run Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> stability-report.md
+          echo "**Commit:** ${{ github.sha }}" >> stability-report.md
+          echo "**Branch:** ${{ github.ref_name }}" >> stability-report.md
+          echo "" >> stability-report.md
+
+          if [ "${{ needs.comprehensive-tests.result }}" == "success" ]; then
+            echo "✅ **Status:** All tests passed" >> stability-report.md
+          else
+            echo "❌ **Status:** Some tests failed" >> stability-report.md
+          fi
+
+          echo "" >> stability-report.md
+          echo "## Test Results" >> stability-report.md
+          echo "" >> stability-report.md
+          echo "| Platform | Status |" >> stability-report.md
+          echo "|----------|--------|" >> stability-report.md
+          echo "| Ubuntu | ${{ needs.comprehensive-tests.result }} |" >> stability-report.md
+          echo "| MacOS | ${{ needs.comprehensive-tests.result }} |" >> stability-report.md
+          echo "| Windows | ${{ needs.comprehensive-tests.result }} |" >> stability-report.md
+
+          echo "" >> stability-report.md
+          echo "## Coverage Reports" >> stability-report.md
+          echo "" >> stability-report.md
+          echo "Coverage reports available as artifacts with 30-day retention." >> stability-report.md
+
+          cat stability-report.md
+
+      - name: Upload stability report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-report-${{ github.run_number }}
+          path: stability-report.md
+          retention-days: 90
+
+  notify-on-failure:
+    name: Notify on Failure
+    needs: comprehensive-tests
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Nightly Tests Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Nightly Test Failure Report
+
+            **Run Date:** ${new Date().toUTCString()}
+            **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+
+            ### Status
+
+            ❌ One or more nightly test suites failed.
+
+            ### Test Suites
+
+            - Unit Tests
+            - Integration Tests
+            - E2E Tests
+            - Reliability Tests (Chaos, Concurrency, Load)
+            - Smoke Tests
+
+            ### Action Required
+
+            1. Review the [workflow run logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Identify failing test suites
+            3. Investigate root cause
+            4. Create fix or adjust test expectations
+            5. Close this issue once resolved
+
+            ### Coverage Reports
+
+            Coverage reports are available in the workflow artifacts.
+            `;
+
+            // Check if similar issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'nightly-test-failure'
+            });
+
+            // Only create if no open issue exists
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['nightly-test-failure', 'bug', 'automated']
+              });
+            }

@@ -1,0 +1,284 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0, 1.0.0-beta.0)'
+        required: true
+        type: string
+      npm_tag:
+        description: 'npm tag to publish under'
+        required: true
+        type: choice
+        options:
+          - latest
+          - beta
+          - rc
+          - next
+
+permissions:
+  contents: write
+  id-token: write  # Required for npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false  # Queue releases instead of canceling
+
+    env:
+      CI: true
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      # Determine if this is a pre-release (from tag or manual input)
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger
+            VERSION="${{ github.event.inputs.version }}"
+            NPM_TAG="${{ github.event.inputs.npm_tag }}"
+            if [[ "$NPM_TAG" != "latest" ]]; then
+              IS_PRERELEASE=true
+            else
+              IS_PRERELEASE=false
+            fi
+          else
+            # Tag trigger
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+            if [[ "$TAG_NAME" =~ -(beta|rc|alpha)\. ]]; then
+              IS_PRERELEASE=true
+              if [[ "$TAG_NAME" =~ -beta\. ]]; then
+                NPM_TAG=beta
+              elif [[ "$TAG_NAME" =~ -rc\. ]]; then
+                NPM_TAG=rc
+              else
+                NPM_TAG=next
+              fi
+            else
+              IS_PRERELEASE=false
+              NPM_TAG=latest
+            fi
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "NPM_TAG=$NPM_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+          echo "🏷️  npm tag: $NPM_TAG"
+          echo "🔖 Pre-release: $IS_PRERELEASE"
+
+      - name: Validate version consistency
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_VERSION="${{ steps.prerelease.outputs.VERSION }}"
+
+          echo "📦 package.json version: $PACKAGE_VERSION"
+          echo "🏷️  Release version: $RELEASE_VERSION"
+
+          if [[ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "❌ Version mismatch!"
+            echo "package.json has $PACKAGE_VERSION but releasing $RELEASE_VERSION"
+            exit 1
+          fi
+
+          echo "✅ Version consistency validated"
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_ENV: ''  # Override job-level NODE_ENV to install devDependencies
+
+      - name: Verify dependencies
+        run: |
+          echo "🔍 Verifying npm dependencies..."
+          npm list --depth=0 || echo "⚠️  Dependency tree check completed with warnings"
+
+      - name: Build project
+        run: |
+          echo "🔨 Building project..."
+          npm run build
+
+      - name: Run TypeScript type check
+        run: |
+          echo "🔍 Running TypeScript type check..."
+          npm run typecheck
+
+      - name: Run test suite
+        run: |
+          echo "🧪 Running release test suite (CI-optimized)..."
+          npm run test:release
+        timeout-minutes: 10  # CI tests complete in ~30s (1,390+ tests, excludes flaky tests)
+        env:
+          AUTOMATOSX_MOCK_PROVIDERS: true
+          NODE_ENV: test  # Override job-level NODE_ENV for tests
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+          npm run test:smoke
+
+      - name: Check package size
+        run: |
+          echo "📏 Checking package size..."
+          npm run check:size || echo "⚠️  Size check not available"
+
+      - name: Test package
+        run: |
+          echo "📦 Creating package tarball..."
+          npm pack
+
+          echo "📋 Inspecting package contents..."
+          tar -tzf *.tgz | head -50
+
+          echo "📊 Package size:"
+          ls -lh *.tgz
+
+          echo "📂 Package structure:"
+          tar -tzf *.tgz | grep -E '^[^/]+/[^/]+/$' | sort | uniq || true
+
+      - name: Verify package installability
+        run: |
+          echo "🔍 Testing package installation..."
+          PACKAGE_FILE=$(ls *.tgz)
+          npm install -g "$PACKAGE_FILE"
+
+          echo "🧪 Verifying CLI commands..."
+          ax --version
+          automatosx --version
+
+          echo "✅ Package is installable"
+
+      # Publish with appropriate tag (with retry for network failures)
+      - name: Publish to npm
+        id: publish
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "📤 Publishing to npm with tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
+            npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }}
+            echo "NPM_PUBLISH_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Wait for npm to propagate
+        run: |
+          echo "⏳ Waiting for npm to propagate the new version..."
+          sleep 30
+
+          echo "🔍 Verifying npm package..."
+          npm view @defai.digital/automatosx@${{ steps.prerelease.outputs.VERSION }} version || echo "⚠️  Package not yet visible (may take a few minutes)"
+
+      # Create GitHub Release (mark as pre-release if beta/rc)
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "📝 Generating release notes..."
+
+          if [[ -f "CHANGELOG.md" ]]; then
+            # Extract relevant section from CHANGELOG
+            CHANGELOG_SECTION=$(sed -n "/## \[${{ steps.prerelease.outputs.VERSION }}\]/,/## \[/p" CHANGELOG.md | sed '$d')
+
+            if [[ -n "$CHANGELOG_SECTION" ]]; then
+              echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+              echo "$CHANGELOG_SECTION" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.prerelease.outputs.VERSION) || github.ref_name }}
+          name: ${{ format('Release {0}', steps.prerelease.outputs.VERSION) }}
+          body: |
+            ## 📦 AutomatosX ${{ steps.prerelease.outputs.VERSION }}
+
+            ${{ steps.release_notes.outputs.CHANGELOG || 'See [CHANGELOG.md](./CHANGELOG.md) for details.' }}
+
+            ---
+
+            ### 📥 Installation
+
+            ```bash
+            npm install -g @defai.digital/automatosx@${{ steps.prerelease.outputs.VERSION }}
+            ```
+
+            ### 🔗 Links
+
+            - **npm**: [npmjs.com/package/@defai.digital/automatosx/v/${{ steps.prerelease.outputs.VERSION }}](https://www.npmjs.com/package/@defai.digital/automatosx/v/${{ steps.prerelease.outputs.VERSION }})
+            - **Documentation**: [automatosx.com](https://automatosx.com)
+            - **GitHub**: [github.com/defai-digital/automatosx](https://github.com/defai-digital/automatosx)
+
+            ### 📋 Release Info
+
+            - **npm tag**: `${{ steps.prerelease.outputs.NPM_TAG }}`
+            - **Published**: ${{ steps.publish.outputs.NPM_PUBLISH_TIME }}
+            - **Node.js**: >=20.0.0
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE == 'true' }}
+          generate_release_notes: true
+          files: |
+            *.tgz
+            CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify success
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Successfully released version ${{ steps.prerelease.outputs.VERSION }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📦 npm package:"
+          echo "   https://www.npmjs.com/package/@defai.digital/automatosx/v/${{ steps.prerelease.outputs.VERSION }}"
+          echo ""
+          echo "🏷️  npm tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
+          echo ""
+          echo "🔗 GitHub Release:"
+          echo "   https://github.com/defai-digital/automatosx/releases/tag/v${{ steps.prerelease.outputs.VERSION }}"
+          echo ""
+          echo "📥 Install command:"
+          echo "   npm install -g @defai.digital/automatosx@${{ steps.prerelease.outputs.VERSION }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ Release failed for version ${{ steps.prerelease.outputs.VERSION }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Please check the workflow logs for details."
+          echo ""
+          echo "Common issues:"
+          echo "  - NPM_TOKEN secret not configured or expired"
+          echo "  - Version already published to npm"
+          echo "  - Tests failing"
+          echo "  - Build errors"
+          echo ""

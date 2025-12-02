@@ -1,0 +1,9 @@
+# Commit message hook: Validate commit message format
+# Supports both pnpm (preferred) and npm
+
+# Detect package manager and run commitlint
+if command -v pnpm &> /dev/null && [ -f "pnpm-lock.yaml" ]; then
+  pnpm exec commitlint --edit $1
+else
+  npx --no -- commitlint --edit $1
+fi

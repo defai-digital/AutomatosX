@@ -1,0 +1,15 @@
+# Pre-commit hook: Run type checking and tests
+# Supports both pnpm (preferred) and npm
+
+# Detect package manager
+if command -v pnpm &> /dev/null && [ -f "pnpm-lock.yaml" ]; then
+  PM="pnpm"
+else
+  PM="npm"
+fi
+
+# Run type checking first (fast fail)
+$PM run typecheck
+
+# Run full test suite
+$PM test

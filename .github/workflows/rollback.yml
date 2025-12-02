@@ -1,0 +1,185 @@
+name: Rollback Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to rollback (e.g., 5.6.6)'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+      skip_npm:
+        description: 'Skip npm unpublish (if already done manually)'
+        required: false
+        type: boolean
+        default: false
+      skip_github:
+        description: 'Skip GitHub Release deletion (if you want to keep it)'
+        required: false
+        type: boolean
+        default: false
+
+# Only run on manual workflow dispatch - do NOT run on push/pull_request
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only run on manual workflow dispatch - skip if triggered by push/other events
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: ${{ !inputs.skip_npm }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Confirm rollback
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "⚠️  WARNING: ROLLBACK INITIATED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📦 Version: ${{ inputs.version }}"
+          echo "📝 Reason: ${{ inputs.reason }}"
+          echo ""
+          echo "Actions to perform:"
+          if [[ "${{ inputs.skip_npm }}" != "true" ]]; then
+            echo "  ❌ Unpublish from npm: @defai.digital/automatosx@${{ inputs.version }}"
+          else
+            echo "  ⏭️  Skip npm unpublish"
+          fi
+          if [[ "${{ inputs.skip_github }}" != "true" ]]; then
+            echo "  ❌ Delete GitHub Release: v${{ inputs.version }}"
+          else
+            echo "  ⏭️  Skip GitHub Release deletion"
+          fi
+          echo ""
+          echo "⏳ Waiting 10 seconds... Press 'Cancel workflow' to abort."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          sleep 10
+
+      - name: Verify version exists on npm
+        if: ${{ !inputs.skip_npm }}
+        run: |
+          echo "🔍 Verifying version ${{ inputs.version }} exists on npm..."
+
+          if npm view @defai.digital/automatosx@${{ inputs.version }} version > /dev/null 2>&1; then
+            echo "✅ Version ${{ inputs.version }} found on npm"
+          else
+            echo "❌ Version ${{ inputs.version }} not found on npm"
+            echo "💡 Tip: Use --skip_npm=true if you already unpublished manually"
+            exit 1
+          fi
+
+      - name: Unpublish from npm
+        if: ${{ !inputs.skip_npm }}
+        run: |
+          echo "📤 Unpublishing @defai.digital/automatosx@${{ inputs.version }} from npm..."
+
+          # npm unpublish requires --force flag
+          npm unpublish @defai.digital/automatosx@${{ inputs.version }} --force
+
+          echo "✅ Successfully unpublished from npm"
+
+          # Wait for npm to propagate
+          echo "⏳ Waiting 30 seconds for npm to propagate..."
+          sleep 30
+
+          # Verify unpublish
+          if npm view @defai.digital/automatosx@${{ inputs.version }} version > /dev/null 2>&1; then
+            echo "⚠️  WARNING: Version still visible on npm (may take a few minutes)"
+          else
+            echo "✅ Version no longer visible on npm"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Delete GitHub Release
+        if: ${{ !inputs.skip_github }}
+        run: |
+          echo "🗑️  Deleting GitHub Release v${{ inputs.version }}..."
+
+          if gh release view v${{ inputs.version }} > /dev/null 2>&1; then
+            gh release delete v${{ inputs.version }} --yes --cleanup-tag
+            echo "✅ GitHub Release deleted"
+          else
+            echo "⚠️  GitHub Release v${{ inputs.version }} not found (may have been deleted already)"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create rollback issue
+        run: |
+          echo "📝 Creating rollback tracking issue..."
+          ROLLBACK_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          gh issue create \
+            --title "Rollback v${{ inputs.version }}" \
+            --body "Rollback version ${{ inputs.version }} at ${ROLLBACK_DATE}. Reason: ${{ inputs.reason }}. See workflow run for details." \
+            --label "rollback" \
+            --assignee "${{ github.actor }}"
+          echo "✅ Rollback tracking issue created"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rollback summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔄 Rollback Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📦 Version: ${{ inputs.version }}"
+          echo "📝 Reason: ${{ inputs.reason }}"
+          echo ""
+
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ Rollback completed successfully"
+            echo ""
+            echo "Actions taken:"
+            if [[ "${{ inputs.skip_npm }}" != "true" ]]; then
+              echo "  ✅ Unpublished from npm"
+            fi
+            if [[ "${{ inputs.skip_github }}" != "true" ]]; then
+              echo "  ✅ Deleted GitHub Release"
+            fi
+            echo "  ✅ Created tracking issue"
+          else
+            echo "❌ Rollback failed"
+            echo ""
+            echo "⚠️  Some steps may have completed successfully."
+            echo "⚠️  Check the workflow logs for details."
+          fi
+
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ Rollback failed for version ${{ inputs.version }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Please check the workflow logs for details."
+          echo ""
+          echo "Common issues:"
+          echo "  - NPM_TOKEN secret not configured or expired"
+          echo "  - Version already unpublished from npm"
+          echo "  - GitHub Release already deleted"
+          echo "  - Insufficient permissions"
+          echo ""
+          echo "💡 Tip: You can use --skip_npm or --skip_github flags"
+          echo "        to skip steps that are already done."
+          echo ""

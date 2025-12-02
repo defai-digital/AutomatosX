@@ -1,0 +1,221 @@
+# Dependencies
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+.nyc_output/
+tests/fixtures/test-state-*/
+tests/fixtures/test-*/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+# Allow shared VS Code configuration (for team consistency)
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files and internal development artifacts
+tmp/
+temp/
+*.tmp
+
+# Backup and test files
+*-backup.md
+*-improved.md
+test_*.txt
+*.tgz
+test-config/
+test-creds/
+test-key/
+test-session/
+--porcelain/
+echo/
+git/
+status/
+
+# AutomatosX runtime (created by CLI)
+.automatosx/
+.automatosx-backups/
+
+# Checkpoint files (resumable execution state)
+checkpoints/
+*.checkpoint
+*.checkpoint.json
+
+# Workspace directories (v5.2.0+)
+# These are local-only directories for development planning
+automatosx/tmp/
+automatosx/PRD/
+automatosx/
+
+# Spec-Kit generated files (v5.8.3+)
+.specify/
+
+# === INTERNAL DOCUMENTATION (NEVER COMMIT TO PUBLIC REPO) ===
+
+# Product Requirements Documents (Internal Planning)
+PRD/
+
+# Internal release documentation
+RELEASE-CHECKLIST.md
+RELEASE-NOTES.md
+*-RELEASE-PLAN.md
+RELEASE_NOTES_v*.md
+
+# Deprecated and temporary documentation
+*_cli_streaming_report.md
+MCP_Documentation.md
+
+# Demo and verification scripts
+demo-*.sh
+verify-v*.sh
+test-*.sh
+test-*.js
+
+# Internal status tracking
+*-KICKOFF.md
+*-COMPLETE*.md
+*-STATUS.md
+*ULTRATHINK*.md
+*HEAVYTHINK*.md
+*DAY[0-9]*.md
+*-PHASE*.md
+
+# Internal analysis and planning
+*AUDIT*.md
+*ANALYSIS*.md
+*ASSESSMENT*.md
+
+# AI assistant runtime directories (user-specific)
+# These directories contain API keys, privacy data, and sensitive configuration
+# CRITICAL: These directories MUST be completely excluded from git
+.claude/
+.gemini/
+.grok/
+.ax-cli/
+
+# SECURITY: Do NOT allow ANY files from these directories, even READMEs
+# (Previously allowed .grok/README.md and .ax-cli/README.md - REMOVED for security)
+
+# User-specific configuration and secrets
+**/config.local.json
+**/settings.local.json
+**/.secrets/
+**/secrets/
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# API keys and credentials (additional patterns)
+.api-keys
+.api-key
+.credentials
+credentials.json
+service-account*.json
+**/api-keys/
+**/api-key/
+api-key.txt
+api-keys.txt
+*.apikey
+*-apikey.json
+auth-token*.json
+bearer-token*.json
+
+# Database files with potentially sensitive data
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+!**/*.test.db                     # Exception: Allow test databases
+!**/*-fixture.db                  # Exception: Allow fixture databases
+!**/*-example.db                  # Exception: Allow example databases
+
+# Personal notes and documentation
+PERSONAL*.md
+PRIVATE*.md
+TODO-*.md
+NOTES*.md
+
+# AI Assistant integration documentation (project-specific, not for public repo)
+AGENTS.md
+AX.md
+GEMINI.md
+GROK.md
+
+# Work in progress
+WIP-*.md
+DRAFT-*.md
+
+# System and IDE specific (additional)
+.history/
+*.sublime-*
+# Note: .vscode/ shared config files are allowed via negation rules above
+
+# User session and cache data
+.sessions/
+sessions/
+.cache/
+cache/
+*.session
+*.cache
+.user-data/
+user-data/
+
+# Provider-specific runtime data
+.anthropic/
+.openai/
+.google/
+.xai/
+
+# Local development and testing artifacts
+*.local
+*.dev
+*-local.*
+*-dev.*
+local-*/
+dev-*/
+
+# Backup and snapshot files
+*.backup
+*.bak
+*-backup/
+backups/
+snapshots/
+*.snapshot
+
+# Lock files for user-specific tools (keep package manager locks)
+.yarn-lock.json
+.pnpm-lock.yaml
+# Note: package-lock.json, yarn.lock, pnpm-lock.yaml handled separately

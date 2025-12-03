@@ -963,10 +963,14 @@ async function setupAxCliIntegration(): Promise<string> {
     // Check if ax-cli is installed
     const { execSync } = await import('child_process');
     try {
-      execSync('ax-cli --version', { stdio: 'pipe', timeout: 2000 });
-    } catch {
+      // Use 'which' to check if ax-cli is on PATH (more reliable than running --version)
+      const whichCommand = process.platform === 'win32' ? 'where' : 'which';
+      execSync(`${whichCommand} ax-cli`, { stdio: 'pipe', timeout: 5000 });
+    } catch (error) {
       // ax-cli not installed, skip configuration
-      logger.info('ax-cli not installed, skipping MCP configuration');
+      logger.info('ax-cli not installed, skipping MCP configuration', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       return 'not_installed';
     }
 

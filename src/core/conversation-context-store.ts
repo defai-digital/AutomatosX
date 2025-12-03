@@ -8,8 +8,14 @@
  */
 
 import { mkdir, readFile, writeFile, readdir, unlink, stat } from 'node:fs/promises';
-import { join } from 'path';
+import { join, resolve, relative } from 'path';
 import { logger } from '../utils/logger.js';
+
+/**
+ * Valid context ID pattern - alphanumeric, underscores, hyphens only
+ * Max 64 characters to prevent filesystem issues
+ */
+const VALID_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 /**
  * Conversation context entry
@@ -49,6 +55,40 @@ export class ConversationContextStore {
   }
 
   /**
+   * Validate and sanitize context ID to prevent path traversal attacks
+   *
+   * SECURITY: This is critical to prevent path traversal vulnerabilities.
+   * A malicious ID like "../../.ssh/id_rsa" could read/write/delete files
+   * outside the context store directory.
+   *
+   * @param id - Context ID to validate
+   * @returns Sanitized file path within storePath
+   * @throws Error if ID is invalid or path escapes storePath
+   */
+  private validateAndResolvePath(id: string): string {
+    // Step 1: Validate ID format (strict whitelist)
+    if (!VALID_ID_PATTERN.test(id)) {
+      throw new Error(
+        `Invalid context ID: "${id}". IDs must be 1-64 characters, alphanumeric with underscores/hyphens only.`
+      );
+    }
+
+    // Step 2: Construct and resolve the full path
+    const filePath = join(this.storePath, `${id}.json`);
+    const resolvedPath = resolve(filePath);
+    const resolvedStorePath = resolve(this.storePath);
+
+    // Step 3: Verify path stays within storePath (defense in depth)
+    const relativePath = relative(resolvedStorePath, resolvedPath);
+    if (relativePath.startsWith('..') || relativePath.includes('/..') || relativePath.includes('\\..')) {
+      logger.error('[ContextStore] Path traversal attempt blocked', { id, resolvedPath });
+      throw new Error(`Security violation: context ID "${id}" would escape store directory`);
+    }
+
+    return resolvedPath;
+  }
+
+  /**
    * Initialize store (create directory if needed)
    */
   async initialize(): Promise<void> {
@@ -67,7 +107,8 @@ export class ConversationContextStore {
   async save(context: ConversationContext): Promise<void> {
     await this.initialize(); // Ensure directory exists
 
-    const filePath = join(this.storePath, `${context.id}.json`);
+    // SECURITY: Validate ID to prevent path traversal
+    const filePath = this.validateAndResolvePath(context.id);
     const data = JSON.stringify(context, null, 2);
 
     try {
@@ -90,7 +131,8 @@ export class ConversationContextStore {
    * Get conversation context by ID
    */
   async get(id: string): Promise<ConversationContext | null> {
-    const filePath = join(this.storePath, `${id}.json`);
+    // SECURITY: Validate ID to prevent path traversal
+    const filePath = this.validateAndResolvePath(id);
 
     try {
       const data = await readFile(filePath, 'utf-8');
@@ -162,7 +204,8 @@ export class ConversationContextStore {
    * Delete context entry
    */
   async delete(id: string): Promise<void> {
-    const filePath = join(this.storePath, `${id}.json`);
+    // SECURITY: Validate ID to prevent path traversal
+    const filePath = this.validateAndResolvePath(id);
 
     try {
       await unlink(filePath);

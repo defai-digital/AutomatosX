@@ -189,7 +189,12 @@ export abstract class BaseProvider implements Provider {
     try {
       const cliCommand = this.getCLICommand();
       const cliArgs = await this.getCLIArgs();
-      const argsString = cliArgs.length > 0 ? cliArgs.join(' ') + ' ' : '';
+
+      // SECURITY: Escape each CLI arg to prevent command injection
+      // Defense-in-depth: Even though current providers return hardcoded safe values,
+      // future providers might override getCLIArgs() with untrusted data.
+      const escapedArgs = cliArgs.map(arg => this.escapeShellArg(arg));
+      const argsString = escapedArgs.length > 0 ? escapedArgs.join(' ') + ' ' : '';
 
       // v9.0.3 Windows Fix: Check if command would exceed Windows limit (8191 chars)
       // Use stdin for long prompts instead of command-line arguments
@@ -736,7 +741,11 @@ export abstract class BaseProvider implements Provider {
           errors: responseValidation.error.issues,
           response
         });
-        // Still return the response but log the validation issue
+        // SECURITY: Don't return invalid data - throw error to prevent downstream issues
+        throw new ProviderError(
+          `Provider returned invalid response structure: ${responseValidation.error.issues.map(i => i.message).join(', ')}`,
+          ErrorCode.PROVIDER_EXEC_ERROR
+        );
       }
 
       return response;

@@ -120,6 +120,7 @@ export class McpServer {
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
   private initializationMutex = new Mutex(); // BUG FIX (v9.0.1): Prevent concurrent initialization
+  private stdinMutex = new Mutex(); // BUG FIX: Prevent race conditions in stdin message processing
   private version: string;
   private ajv: Ajv;
   private compiledValidators = new Map<string, ValidateFunction>();
@@ -718,86 +719,90 @@ export class McpServer {
     let buffer = '';
     let contentLength: number | null = null;
 
-    process.stdin.on('data', async (chunk: Buffer) => {
-      buffer += chunk.toString('utf-8');
+    process.stdin.on('data', (chunk: Buffer) => {
+      // BUG FIX: Use mutex to serialize stdin chunk processing
+      // Prevents race conditions when multiple data events fire rapidly
+      void this.stdinMutex.runExclusive(async () => {
+        buffer += chunk.toString('utf-8');
 
-      // BUG FIX: Check buffer size to prevent memory exhaustion
-      if (buffer.length > STDIO_MAX_BUFFER_SIZE) {
-        logger.error('[MCP Server] Buffer size exceeded maximum', {
-          bufferSize: buffer.length,
-          maxSize: STDIO_MAX_BUFFER_SIZE
-        });
-        buffer = ''; // Reset buffer
-        contentLength = null;
-        return;
-      }
+        // BUG FIX: Check buffer size to prevent memory exhaustion
+        if (buffer.length > STDIO_MAX_BUFFER_SIZE) {
+          logger.error('[MCP Server] Buffer size exceeded maximum', {
+            bufferSize: buffer.length,
+            maxSize: STDIO_MAX_BUFFER_SIZE
+          });
+          buffer = ''; // Reset buffer
+          contentLength = null;
+          return;
+        }
 
-      // BUG FIX: Add iteration counter to prevent infinite loops
-      let iterations = 0;
-      while (iterations < STDIO_MAX_ITERATIONS) {
-        iterations++;
+        // BUG FIX: Add iteration counter to prevent infinite loops
+        let iterations = 0;
+        while (iterations < STDIO_MAX_ITERATIONS) {
+          iterations++;
 
-        if (contentLength === null) {
-          // Support both CRLF and LF framing used by different MCP clients
-          const delimiter = buffer.includes('\r\n\r\n')
-            ? '\r\n\r\n'
-            : buffer.includes('\n\n')
-              ? '\n\n'
-              : null;
+          if (contentLength === null) {
+            // Support both CRLF and LF framing used by different MCP clients
+            const delimiter = buffer.includes('\r\n\r\n')
+              ? '\r\n\r\n'
+              : buffer.includes('\n\n')
+                ? '\n\n'
+                : null;
 
-          if (!delimiter) break;
+            if (!delimiter) break;
 
-          const headerEndIndex = buffer.indexOf(delimiter);
-          const headerBlock = buffer.slice(0, headerEndIndex);
-          for (const line of headerBlock.split(delimiter === '\r\n\r\n' ? '\r\n' : '\n')) {
-            const [key, value] = line.split(':', 2).map(s => s.trim());
-            if (key && key.toLowerCase() === 'content-length' && value) {
-              contentLength = parseInt(value, 10);
+            const headerEndIndex = buffer.indexOf(delimiter);
+            const headerBlock = buffer.slice(0, headerEndIndex);
+            for (const line of headerBlock.split(delimiter === '\r\n\r\n' ? '\r\n' : '\n')) {
+              const [key, value] = line.split(':', 2).map(s => s.trim());
+              if (key && key.toLowerCase() === 'content-length' && value) {
+                contentLength = parseInt(value, 10);
 
-              // BUG FIX: Validate content length
-              if (isNaN(contentLength) || contentLength <= 0 || contentLength > STDIO_MAX_MESSAGE_SIZE) {
-                logger.error('[MCP Server] Invalid Content-Length', { contentLength });
-                buffer = buffer.slice(headerEndIndex + delimiter.length);
-                contentLength = null;
-                continue;
+                // BUG FIX: Validate content length
+                if (isNaN(contentLength) || contentLength <= 0 || contentLength > STDIO_MAX_MESSAGE_SIZE) {
+                  logger.error('[MCP Server] Invalid Content-Length', { contentLength });
+                  buffer = buffer.slice(headerEndIndex + delimiter.length);
+                  contentLength = null;
+                  continue;
+                }
               }
             }
-          }
-          if (contentLength === null) {
-            logger.error('[MCP Server] No Content-Length header found');
+            if (contentLength === null) {
+              logger.error('[MCP Server] No Content-Length header found');
+              buffer = buffer.slice(headerEndIndex + delimiter.length);
+              continue;
+            }
             buffer = buffer.slice(headerEndIndex + delimiter.length);
-            continue;
           }
-          buffer = buffer.slice(headerEndIndex + delimiter.length);
+
+          if (Buffer.byteLength(buffer, 'utf-8') < contentLength) break;
+
+          const messageBuffer = Buffer.from(buffer, 'utf-8');
+          const jsonMessage = messageBuffer.slice(0, contentLength).toString('utf-8');
+          buffer = messageBuffer.slice(contentLength).toString('utf-8');
+          contentLength = null;
+
+          try {
+            const request = JSON.parse(jsonMessage) as JsonRpcRequest;
+            logger.debug('[MCP Server] Request received', { method: request.method, id: request.id });
+            const response = await this.handleRequest(request);
+            if (request.id !== undefined && request.id !== null) {
+              this.writeResponse(response);
+            }
+          } catch (error) {
+            logger.error('[MCP Server] Failed to parse or handle request', { jsonMessage, error });
+            this.writeResponse({ jsonrpc: '2.0', id: null, error: { code: McpErrorCode.ParseError, message: 'Parse error: Invalid JSON' } });
+          }
         }
 
-        if (Buffer.byteLength(buffer, 'utf-8') < contentLength) break;
-
-        const messageBuffer = Buffer.from(buffer, 'utf-8');
-        const jsonMessage = messageBuffer.slice(0, contentLength).toString('utf-8');
-        buffer = messageBuffer.slice(contentLength).toString('utf-8');
-        contentLength = null;
-
-        try {
-          const request = JSON.parse(jsonMessage) as JsonRpcRequest;
-          logger.debug('[MCP Server] Request received', { method: request.method, id: request.id });
-          const response = await this.handleRequest(request);
-          if (request.id !== undefined && request.id !== null) {
-            this.writeResponse(response);
-          }
-        } catch (error) {
-          logger.error('[MCP Server] Failed to parse or handle request', { jsonMessage, error });
-          this.writeResponse({ jsonrpc: '2.0', id: null, error: { code: McpErrorCode.ParseError, message: 'Parse error: Invalid JSON' } });
+        // BUG FIX: Warn if iteration limit reached
+        if (iterations >= STDIO_MAX_ITERATIONS) {
+          logger.warn('[MCP Server] Maximum iterations reached in message processing', {
+            iterations,
+            bufferSize: buffer.length
+          });
         }
-      }
-
-      // BUG FIX: Warn if iteration limit reached
-      if (iterations >= STDIO_MAX_ITERATIONS) {
-        logger.warn('[MCP Server] Maximum iterations reached in message processing', {
-          iterations,
-          bufferSize: buffer.length
-        });
-      }
+      });
     });
 
     // Common shutdown handler

@@ -442,7 +442,6 @@ Example:
 }
 
 // Run if called directly
-if (
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }

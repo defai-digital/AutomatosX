@@ -3,7 +3,7 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join, extname, basename, dirname } from 'path';
+import { join, extname, basename, dirname, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { TTLCache } from '../core/cache.js';
@@ -15,7 +15,8 @@ const __dirname = dirname(__filename);
 // Get package root - handle both dev (src/) and prod (dist/) scenarios
 function getPackageRoot(): string {
   const currentDir = __dirname;
-  if (currentDir.includes('/dist')) {
+  // Use path.sep-independent check for cross-platform compatibility
+  if (currentDir.includes(`${sep}dist`) || currentDir.includes('/dist')) {
     return join(currentDir, '..');
   } else {
     return join(currentDir, '../..');

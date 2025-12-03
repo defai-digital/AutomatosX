@@ -3,7 +3,7 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join, extname, basename, dirname } from 'path';
+import { join, extname, basename, dirname, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { load } from 'js-yaml';
 import { Mutex } from 'async-mutex';
@@ -37,7 +37,8 @@ function getPackageRoot(): string {
 
   // If we're in dist/, go up one level to package root
   // If we're in src/agents/, go up two levels to package root
-  if (currentDir.includes('/dist')) {
+  // Use path.sep-independent check for cross-platform compatibility
+  if (currentDir.includes(`${sep}dist`) || currentDir.includes('/dist')) {
     return join(currentDir, '..');
   } else {
     return join(currentDir, '../..');

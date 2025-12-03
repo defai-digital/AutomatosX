@@ -2,7 +2,7 @@
  * Context Manager Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ContextManager } from '../../src/agents/context-manager.js';
 import { ProfileLoader } from '../../src/agents/profile-loader.js';
 import { AbilitiesManager } from '../../src/agents/abilities-manager.js';
@@ -64,6 +64,9 @@ temperature: 0.7
       timeout: 30000,
       command: 'claude'
     });
+
+    // Mock isAvailable to return true (CLI not installed in CI)
+    claudeProvider.isAvailable = vi.fn().mockResolvedValue(true);
 
     router = new Router({
       providers: [claudeProvider],

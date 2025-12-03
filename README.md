@@ -1,6 +1,6 @@
 <h1><img src=".github/assets/axlogo.png" alt="AutomatosX Logo" width="36" /> <span style="font-size: 1.5em;">AutomatosX</span></h1>
 
-*The Invisible Power Addon for Claude Code & Codex CLI*
+*The Invisible Power Addon for Vibe Coding CLI*
 
 **AutomatosX transforms your AI coding assistant into a multi-agent enterprise platform** - with 20+ specialized agents, persistent memory, and 80% cost savings through intelligent multi-provider routing. **You keep using Claude Code or Codex exactly as before**, but now with superpowers.
 
@@ -13,7 +13,7 @@
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 
-**Status**: ✅ **Production Ready** | v11.2.0 | Unified Event System | MCP Streaming
+**Status**: ✅ **Production Ready** | v11.2.1 | Unified Event System | MCP Streaming
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

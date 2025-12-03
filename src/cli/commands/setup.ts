@@ -326,35 +326,22 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       }
       console.log(chalk.green('   ✓ Codex CLI MCP integration configured'));
 
-      // Setup GLOBAL MCP configuration for all detected AI provider CLIs (v11.2.0+)
-      // This configures MCP in ~/.gemini/settings.json, ~/.codex/config.toml, and Claude Code
-      console.log(chalk.cyan('🌐 Setting up global MCP configuration...'));
-      const mcpResults = await setupGlobalMCPConfigs(providers);
-
-      // Report MCP configuration results
-      if (mcpResults.claudeCode === 'configured') {
-        console.log(chalk.green('   ✓ Claude Code MCP configured'));
-      } else if (mcpResults.claudeCode === 'already_configured') {
-        console.log(chalk.green('   ✓ Claude Code MCP already configured'));
-      } else if (mcpResults.claudeCode === 'failed') {
-        console.log(chalk.yellow('   ⚠ Claude Code MCP configuration failed'));
-      }
-
-      if (mcpResults.geminiCli === 'configured') {
-        console.log(chalk.green('   ✓ Gemini CLI MCP configured (~/.gemini/settings.json)'));
-      } else if (mcpResults.geminiCli === 'already_configured') {
-        console.log(chalk.green('   ✓ Gemini CLI MCP already configured'));
-      } else if (mcpResults.geminiCli === 'failed') {
-        console.log(chalk.yellow('   ⚠ Gemini CLI MCP configuration failed'));
-      }
-
-      if (mcpResults.codexCli === 'configured') {
-        console.log(chalk.green('   ✓ Codex CLI MCP configured (~/.codex/config.toml)'));
-      } else if (mcpResults.codexCli === 'already_configured') {
-        console.log(chalk.green('   ✓ Codex CLI MCP already configured'));
-      } else if (mcpResults.codexCli === 'failed') {
-        console.log(chalk.yellow('   ⚠ Codex CLI MCP configuration failed'));
-      }
+      // NOTE: Global MCP configuration REMOVED in v11.2.4
+      //
+      // Previous behavior (v11.2.0-v11.2.3): ax setup configured MCP in global user configs
+      // (~/.gemini/settings.json, ~/.codex/config.toml, claude mcp add)
+      //
+      // This was removed because:
+      // 1. AutomatosX uses CLI wrappers for provider connections, NOT MCP
+      // 2. Global MCP caused AutomatosX MCP server to boot in EVERY project (6+ second delay)
+      // 3. MCP integration is an optional feature, not core functionality
+      //
+      // Project-local MCP configs (.gemini/mcp-servers.json, .codex/mcp-servers.json) are still created
+      // for projects that want MCP integration.
+      //
+      // To manually enable global MCP, users can run:
+      //   claude mcp add --transport stdio automatosx -- automatosx-mcp
+      //   # Or add to ~/.gemini/settings.json / ~/.codex/config.toml manually
 
       // Create .gitignore entry
       console.log(chalk.cyan('📝 Updating .gitignore...'));
@@ -1560,190 +1547,19 @@ Created by AutomatosX for organized scratch work.
   }
 }
 
-type MCPConfigStatus = 'configured' | 'already_configured' | 'skipped' | 'failed';
-
-interface MCPConfigResults {
-  claudeCode: MCPConfigStatus;
-  geminiCli: MCPConfigStatus;
-  codexCli: MCPConfigStatus;
-}
-
-/**
- * Setup global MCP configuration for all AI provider CLIs
- *
- * v11.2.0: Added global MCP configuration to `ax setup`
- *
- * This function configures MCP in the USER's global config directories:
- * - Claude Code: Uses `claude mcp add` command
- * - Gemini CLI: Updates ~/.gemini/settings.json
- * - Codex CLI: Updates ~/.codex/config.toml
- *
- * Uses `automatosx-mcp` binary (fast entry point, no yargs overhead)
- *
- * @param providers - Object with provider detection results
- * @returns Object with status for each provider
- */
-async function setupGlobalMCPConfigs(providers: {
-  'claude-code': boolean;
-  'gemini-cli': boolean;
-  'codex': boolean;
-  'ax-cli': boolean;
-}): Promise<MCPConfigResults> {
-  const results: MCPConfigResults = {
-    claudeCode: 'skipped',
-    geminiCli: 'skipped',
-    codexCli: 'skipped'
-  };
-
-  // Get the path to automatosx-mcp binary
-  const { execSync } = await import('child_process');
-  let mcpBinaryPath: string;
-  try {
-    mcpBinaryPath = execSync('which automatosx-mcp', { encoding: 'utf-8', timeout: 5000 }).trim();
-  } catch {
-    // Try to find in common locations
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    const possiblePaths = [
-      join(homeDir, '.nvm/versions/node', process.version, 'bin/automatosx-mcp'),
-      '/usr/local/bin/automatosx-mcp',
-      '/usr/bin/automatosx-mcp'
-    ];
-
-    mcpBinaryPath = '';
-    for (const p of possiblePaths) {
-      if (await checkExists(p)) {
-        mcpBinaryPath = p;
-        break;
-      }
-    }
-
-    if (!mcpBinaryPath) {
-      logger.warn('Could not find automatosx-mcp binary, skipping global MCP configuration');
-      return results;
-    }
-  }
-
-  logger.info('Found automatosx-mcp binary', { path: mcpBinaryPath });
-
-  // Configure Claude Code MCP (if detected)
-  if (providers['claude-code']) {
-    try {
-      // Check if already registered
-      const listOutput = execSync('claude mcp list 2>/dev/null || true', {
-        encoding: 'utf-8',
-        timeout: 10000
-      });
-
-      if (listOutput.includes('automatosx')) {
-        results.claudeCode = 'already_configured';
-        logger.info('Claude Code MCP already configured');
-      } else {
-        // Register with Claude Code
-        execSync(`claude mcp add --transport stdio automatosx -- "${mcpBinaryPath}"`, {
-          timeout: 30000
-        });
-        results.claudeCode = 'configured';
-        logger.info('Claude Code MCP configured successfully');
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      if (errorMsg.includes('already exists')) {
-        results.claudeCode = 'already_configured';
-      } else {
-        results.claudeCode = 'failed';
-        logger.warn('Failed to configure Claude Code MCP', { error: errorMsg });
-      }
-    }
-  }
-
-  // Configure Gemini CLI MCP (if detected)
-  if (providers['gemini-cli']) {
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    const geminiSettingsPath = join(homeDir, '.gemini', 'settings.json');
-
-    try {
-      // Ensure .gemini directory exists
-      await mkdir(join(homeDir, '.gemini'), { recursive: true });
-
-      // Read existing settings or create new
-      let settings: Record<string, unknown> = {};
-      if (await checkExists(geminiSettingsPath)) {
-        const content = await readFile(geminiSettingsPath, 'utf-8');
-        try {
-          settings = JSON.parse(content);
-        } catch {
-          // Invalid JSON, start fresh but preserve non-JSON content
-          settings = {};
-        }
-      }
-
-      // Check if automatosx MCP already configured
-      const mcpServers = (settings['mcpServers'] as Record<string, unknown>) || {};
-      if (mcpServers['automatosx']) {
-        results.geminiCli = 'already_configured';
-        logger.info('Gemini CLI MCP already configured');
-      } else {
-        // Add automatosx MCP server
-        mcpServers['automatosx'] = {
-          command: mcpBinaryPath,
-          args: [],
-          env: {
-            AUTOMATOSX_LOG_LEVEL: 'warn'
-          },
-          timeout: 30000
-        };
-        settings['mcpServers'] = mcpServers;
-
-        await writeFile(geminiSettingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-        results.geminiCli = 'configured';
-        logger.info('Gemini CLI MCP configured successfully', { path: geminiSettingsPath });
-      }
-    } catch (error) {
-      results.geminiCli = 'failed';
-      logger.warn('Failed to configure Gemini CLI MCP', { error: (error as Error).message });
-    }
-  }
-
-  // Configure Codex CLI MCP (if detected)
-  if (providers['codex']) {
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    const codexConfigPath = join(homeDir, '.codex', 'config.toml');
-
-    try {
-      // Ensure .codex directory exists
-      await mkdir(join(homeDir, '.codex'), { recursive: true });
-
-      // Read existing config or create new
-      let configContent = '';
-      if (await checkExists(codexConfigPath)) {
-        configContent = await readFile(codexConfigPath, 'utf-8');
-      }
-
-      // Check if automatosx MCP already configured
-      if (configContent.includes('[mcp_servers.automatosx]')) {
-        results.codexCli = 'already_configured';
-        logger.info('Codex CLI MCP already configured');
-      } else {
-        // Add automatosx MCP server configuration
-        const mcpConfig = `
-[mcp_servers.automatosx]
-command = "${mcpBinaryPath}"
-args = []
-startup_timeout_sec = 30
-`;
-        configContent = configContent.trimEnd() + '\n' + mcpConfig;
-        await writeFile(codexConfigPath, configContent, 'utf-8');
-        results.codexCli = 'configured';
-        logger.info('Codex CLI MCP configured successfully', { path: codexConfigPath });
-      }
-    } catch (error) {
-      results.codexCli = 'failed';
-      logger.warn('Failed to configure Codex CLI MCP', { error: (error as Error).message });
-    }
-  }
-
-  return results;
-}
+// NOTE: setupGlobalMCPConfigs function REMOVED in v11.2.4
+//
+// Previous behavior (v11.2.0-v11.2.3): This function configured MCP in global user configs
+// (~/.gemini/settings.json, ~/.codex/config.toml, claude mcp add)
+//
+// This was removed because:
+// 1. AutomatosX uses CLI wrappers for provider connections, NOT MCP
+// 2. Global MCP caused AutomatosX MCP server to boot in EVERY project (6+ second delay)
+// 3. MCP integration is an optional feature, not core functionality
+//
+// To manually enable global MCP, users can run:
+//   claude mcp add --transport stdio automatosx -- automatosx-mcp
+//   # Or add to ~/.gemini/settings.json / ~/.codex/config.toml manually
 
 /**
  * Clean up existing installation in force mode

@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v11.2.5) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, codex, ax-cli) for seamless orchestration.
+AutomatosX (v11.2.6) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, codex, ax-cli) for seamless orchestration.
 
 **Key Differentiators:**
 - **Workflow Templates** (v11.0.0): YAML-based workflow templates with `--workflow` flag for iterate mode

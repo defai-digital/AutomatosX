@@ -292,28 +292,36 @@ export class Router {
         healthMultipliers.set(provider.name, isCircuitOpen ? 0.5 : 1.0);
       }
 
-      // Get scores for all providers
-      const scores = await getProviderMetricsTracker().getAllScores(
-        providerNames,
-        strategyManager.getWeights(),
-        healthMultipliers
-      );
+      // Get scores for all providers with error handling
+      // If scoring fails, fall back to priority order instead of failing the request
+      try {
+        const scores = await getProviderMetricsTracker().getAllScores(
+          providerNames,
+          strategyManager.getWeights(),
+          healthMultipliers
+        );
 
-      // Reorder providers by score (highest first)
-      if (scores.length > 0) {
-        const scoreMap = new Map(scores.map(s => [s.provider, s.totalScore]));
-        const originalOrder = providersToTry.map(p => p.name);
-        providersToTry = [...providersToTry].sort((a, b) => {
-          const scoreA = scoreMap.get(a.name) ?? 0;
-          const scoreB = scoreMap.get(b.name) ?? 0;
-          return scoreB - scoreA; // Descending order
-        });
+        // Reorder providers by score (highest first)
+        if (scores.length > 0) {
+          const scoreMap = new Map(scores.map(s => [s.provider, s.totalScore]));
+          const originalOrder = providersToTry.map(p => p.name);
+          providersToTry = [...providersToTry].sort((a, b) => {
+            const scoreA = scoreMap.get(a.name) ?? 0;
+            const scoreB = scoreMap.get(b.name) ?? 0;
+            return scoreB - scoreA; // Descending order
+          });
 
-        logger.debug('Provider order after multi-factor routing', {
-          original: originalOrder,
-          reordered: providersToTry.map(p => p.name),
-          scores: Object.fromEntries(scoreMap)
+          logger.debug('Provider order after multi-factor routing', {
+            original: originalOrder,
+            reordered: providersToTry.map(p => p.name),
+            scores: Object.fromEntries(scoreMap)
+          });
+        }
+      } catch (scoringError) {
+        logger.warn('Multi-factor scoring failed, using priority order', {
+          error: (scoringError as Error).message
         });
+        // Continue with original priority order
       }
     }
 

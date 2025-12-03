@@ -29,7 +29,7 @@ import type { ExecutionHooks } from '../../agents/executor.js';
 import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
 import { VerbosityManager, VerbosityLevel } from '../../utils/verbosity-manager.js';
 import chalk from 'chalk';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { writeFileSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import boxen from 'boxen';
@@ -1172,7 +1172,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         if (argv.save) {
           try {
             const savePath = argv.save;
-            const saveDir = join(savePath, '..');
+            // Use dirname() instead of join(path, '..') for correct parent resolution
+            const saveDir = dirname(savePath);
             await mkdir(saveDir, { recursive: true });
 
             const outputData = formatForSave(result, argv.format || 'text', {

@@ -1299,9 +1299,13 @@ export class MemoryManager implements IMemoryManager {
       const tempPath = `${this.config.dbPath}.restore.tmp`;
 
       // Step 1: Copy backup to temporary location
+      // BUG FIX: Wrap in try/finally to ensure srcDb is closed even if backup fails
       const srcDb = new Database(srcPath, { readonly: true });
-      await srcDb.backup(tempPath);
-      srcDb.close();
+      try {
+        await srcDb.backup(tempPath);
+      } finally {
+        srcDb.close();
+      }
 
       // Step 2: Verify temporary database integrity (basic check)
       try {

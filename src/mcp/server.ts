@@ -569,7 +569,17 @@ export class McpServer {
    * v10.5.0: Capture clientInfo for Smart Routing
    */
   private async handleInitialize(request: McpInitializeRequest, id: string | number | null): Promise<JsonRpcResponse> {
-    const clientInfo = request.params.clientInfo;
+    // BUG FIX: Validate clientInfo exists before accessing fields
+    // Previously threw internal error for malformed requests instead of proper MCP error
+    const clientInfo = request.params?.clientInfo;
+    if (!clientInfo || typeof clientInfo.name !== 'string' || typeof clientInfo.version !== 'string') {
+      logger.warn('[MCP Server] Invalid initialize request: missing or invalid clientInfo', {
+        hasParams: !!request.params,
+        hasClientInfo: !!clientInfo,
+        clientInfo
+      });
+      return this.createErrorResponse(id, McpErrorCode.InvalidRequest, 'Invalid initialize request: clientInfo with name and version is required');
+    }
     logger.info('[MCP Server] Initialize request received (fast handshake mode)', { clientInfo });
 
     // v10.5.0: Store session info for Smart Routing

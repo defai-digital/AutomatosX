@@ -385,12 +385,21 @@ export abstract class BaseProvider implements Provider {
           logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
         }
 
-        if (code === 0 || code === null) {
+        // BUG FIX: Check signal as well as code
+        // If process was killed by signal (timeout, SIGTERM), treat as error
+        // Previously: code=null with signal set was treated as success
+        if ((code === 0 || code === null) && !signal) {
           // Mark progress as complete (v8.5.1)
           if (progressParser) {
             progressParser.succeed(`${cliCommand} completed successfully`);
           }
           resolve({ stdout, stderr });
+        } else if (signal) {
+          // Process was killed by signal (timeout, SIGTERM, SIGKILL, etc.)
+          if (progressParser) {
+            progressParser.fail(`${cliCommand} killed by signal ${signal}`);
+          }
+          reject(new Error(`${cliCommand} CLI killed by signal ${signal}. stderr: ${stderr || 'none'}`));
         } else {
           // Mark progress as failed (v8.5.1)
           if (progressParser) {

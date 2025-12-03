@@ -548,7 +548,7 @@ const exportAbilityCommand: CommandModule<Record<string, unknown>, ExportAbility
           `Ability "${argv.name}" not found`,
           {
             path: abilityPath,
-            availableAbilities: availableAbilities.map(f => basename(f, '.md'))
+            availableAbilities: availableAbilities.map((f: string) => basename(f, '.md'))
           }
         );
       }

@@ -54,23 +54,24 @@ export class AxCliCommandBuilder {
     args.push('-p', this.escape(prompt));
 
     // Provider selection (xai, glm, openai, anthropic, ollama)
+    // BUG FIX: Escape all user-supplied strings to prevent shell injection
     if (options.provider) {
-      args.push('--provider', options.provider);
+      args.push('--provider', this.escape(options.provider));
     }
 
     // Model selection
     if (options.model) {
-      args.push('--model', options.model);
+      args.push('--model', this.escape(options.model));
     }
 
     // API key override
     if (options.apiKey) {
-      args.push('--api-key', options.apiKey);
+      args.push('--api-key', this.escape(options.apiKey));
     }
 
     // Base URL override
     if (options.baseUrl) {
-      args.push('--base-url', options.baseUrl);
+      args.push('--base-url', this.escape(options.baseUrl));
     }
 
     // Working directory
@@ -97,7 +98,8 @@ export class AxCliCommandBuilder {
     }
 
     if (options.lineRange) {
-      args.push('--line-range', options.lineRange);
+      // BUG FIX: Escape lineRange to prevent shell injection
+      args.push('--line-range', this.escape(options.lineRange));
     }
 
     if (options.gitDiff) {

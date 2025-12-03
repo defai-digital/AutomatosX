@@ -22,21 +22,21 @@ describe('AxCliCommandBuilder', () => {
       const result = builder.build('test', { model: 'glm-4.6' });
 
       expect(result.args).toContain('--model');
-      expect(result.args).toContain('glm-4.6');
+      expect(result.args).toContain('"glm-4.6"');  // Now escaped for shell safety
     });
 
     it('should include API key when provided', () => {
       const result = builder.build('test', { apiKey: 'test-key-123' });
 
       expect(result.args).toContain('--api-key');
-      expect(result.args).toContain('test-key-123');
+      expect(result.args).toContain('"test-key-123"');  // Now escaped for shell safety
     });
 
     it('should include base URL when provided', () => {
       const result = builder.build('test', { baseUrl: 'https://api.example.com' });
 
       expect(result.args).toContain('--base-url');
-      expect(result.args).toContain('https://api.example.com');
+      expect(result.args).toContain('"https://api.example.com"');  // Now escaped for shell safety
     });
 
     it('should include directory when provided', () => {
@@ -144,7 +144,7 @@ describe('AxCliCommandBuilder', () => {
       const result = builder.build('test', { lineRange: '10-20' });
 
       expect(result.args).toContain('--line-range');
-      expect(result.args).toContain('10-20');
+      expect(result.args).toContain('"10-20"');  // Now escaped for shell safety
     });
 
     it('should include --git-diff flag when gitDiff is true', () => {
@@ -177,13 +177,13 @@ describe('AxCliCommandBuilder', () => {
       });
 
       expect(result.args).toContain('--model');
-      expect(result.args).toContain('grok-2');
+      expect(result.args).toContain('"grok-2"');  // Now escaped for shell safety
       expect(result.args).toContain('--json');
       expect(result.args).toContain('--file');
       expect(result.args).toContain('"src/components/App.tsx"');  // Escaped
       expect(result.args).toContain('--selection');
       expect(result.args).toContain('--line-range');
-      expect(result.args).toContain('42-56');
+      expect(result.args).toContain('"42-56"');  // Now escaped for shell safety
       expect(result.args).toContain('--git-diff');
       expect(result.args).toContain('--vscode');
     });

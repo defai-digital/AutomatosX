@@ -229,6 +229,17 @@ export class UnifiedMCPManager implements IMCPManager {
         error: (error as Error).message,
       });
 
+      // Clean up: kill the child process if it was spawned and remove from tracking
+      const serverProcess = this.servers.get(config.name);
+      if (serverProcess?.process && !serverProcess.process.killed) {
+        try {
+          serverProcess.process.kill('SIGTERM');
+        } catch {
+          // Ignore kill errors - process may have already exited
+        }
+      }
+      this.servers.delete(config.name);
+
       throw error;
     }
   }
@@ -662,27 +673,33 @@ export class UnifiedMCPManager implements IMCPManager {
       }
     });
 
-    // Log server output if configured
+    // Always consume stdout/stderr to prevent pipe buffer from filling and blocking the child process
     // Note: Using process streams here (correctly - 'process' is the ChildProcess parameter)
     // These listeners are cleaned up when the ChildProcess exits (streams close automatically)
-    if (this.config.logging?.logServerOutput) {
-      if (process.stdout) {
-        // Stream 'data' events continue until stream closes, which is fine
-        // The stream closes when the process exits
-        process.stdout.on('data', (data: Buffer) => {
+    const shouldLog = this.config.logging?.logServerOutput;
+
+    if (process.stdout) {
+      // Stream 'data' events continue until stream closes, which is fine
+      // The stream closes when the process exits
+      process.stdout.on('data', (data: Buffer) => {
+        if (shouldLog) {
           logger.debug(`MCP[${serverName}] stdout:`, {
             data: data.toString().trim(),
           });
-        });
-      }
+        }
+        // Data is consumed even when not logging to prevent pipe buffer blocking
+      });
+    }
 
-      if (process.stderr) {
-        process.stderr.on('data', (data: Buffer) => {
+    if (process.stderr) {
+      process.stderr.on('data', (data: Buffer) => {
+        if (shouldLog) {
           logger.debug(`MCP[${serverName}] stderr:`, {
             data: data.toString().trim(),
           });
-        });
-      }
+        }
+        // Data is consumed even when not logging to prevent pipe buffer blocking
+      });
     }
   }
 

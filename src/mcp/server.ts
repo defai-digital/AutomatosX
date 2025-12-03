@@ -758,9 +758,18 @@ export class McpServer {
               if (key && key.toLowerCase() === 'content-length' && value) {
                 contentLength = parseInt(value, 10);
 
-                // BUG FIX: Validate content length
+                // BUG FIX: Validate content length and send JSON-RPC error response
                 if (isNaN(contentLength) || contentLength <= 0 || contentLength > STDIO_MAX_MESSAGE_SIZE) {
                   logger.error('[MCP Server] Invalid Content-Length', { contentLength });
+                  // Send JSON-RPC error response for protocol violation
+                  this.writeResponse({
+                    jsonrpc: '2.0',
+                    id: null,
+                    error: {
+                      code: McpErrorCode.InvalidRequest,
+                      message: `Invalid Content-Length: ${contentLength}`
+                    }
+                  });
                   buffer = buffer.slice(headerEndIndex + delimiter.length);
                   contentLength = null;
                   continue;

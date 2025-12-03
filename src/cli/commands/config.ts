@@ -96,7 +96,7 @@ export const configCommand: CommandModule<Record<string, unknown>, ConfigOptions
         configPath = process.env.AUTOMATOSX_CONFIG_PATH;
       } else {
         // Check in priority order: project root config, then hidden dir config
-        const projectConfig = resolve(process.cwd(), 'automatosx.config.json');
+        const projectConfig = resolve(process.cwd(), 'ax.config.json');
         const hiddenConfig = resolve(process.cwd(), '.automatosx', 'config.json');
 
         const fs = await import('fs');

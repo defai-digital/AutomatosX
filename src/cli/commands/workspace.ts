@@ -149,17 +149,25 @@ const cleanupCommand: CommandModule<Record<string, unknown>, WorkspaceCleanupOpt
 
   handler: async (argv) => {
     try {
+      // Validate --older-than value (default is 7 from builder)
+      const olderThan = argv.olderThan ?? 7;
+      if (isNaN(olderThan) || olderThan < 0) {
+        console.error(chalk.red.bold('\n✗ Invalid --older-than value\n'));
+        console.error(chalk.red('Value must be a non-negative number (days)'));
+        process.exit(1);
+      }
+
       const { detectProjectRoot } = await import('../../core/path-resolver.js');
       const projectDir = await detectProjectRoot(process.cwd());
       const workspaceManager = new WorkspaceManager(projectDir);
 
       if (!argv.confirm) {
-        console.log(chalk.yellow(`\n⚠ This will remove temporary files older than ${argv.olderThan} days`));
+        console.log(chalk.yellow(`\n⚠ This will remove temporary files older than ${olderThan} days`));
         console.log(chalk.gray('Run with --confirm to proceed\n'));
         process.exit(0);
       }
 
-      const removed = await workspaceManager.cleanupTmp(argv.olderThan);
+      const removed = await workspaceManager.cleanupTmp(olderThan);
 
       console.log(chalk.green.bold(`\n✓ Cleanup complete\n`));
       console.log(chalk.gray(`Removed ${removed} temporary file(s)\n`));

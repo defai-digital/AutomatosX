@@ -131,12 +131,23 @@ export const genCommand: CommandModule<Record<string, unknown>, GenOptions> = {
       specFile = resolve(process.cwd(), specFile);
 
       // Validate path safety - prevent access to system-critical directories
-      const dangerousPaths = ['/etc', '/sys', '/proc', '/dev', '/root', '/boot'];
-      const isDangerousPath = dangerousPaths.some(dangerous =>
+      // Unix dangerous paths
+      const dangerousUnixPaths = ['/etc', '/sys', '/proc', '/dev', '/root', '/boot'];
+      const isDangerousUnixPath = dangerousUnixPaths.some(dangerous =>
         specFile.startsWith(dangerous + '/') || specFile === dangerous
       );
 
-      if (isDangerousPath) {
+      // Windows dangerous paths (case-insensitive)
+      const specFileLower = specFile.toLowerCase();
+      const dangerousWindowsPaths = [
+        'c:\\windows', 'c:\\program files', 'c:\\program files (x86)',
+        'c:\\programdata', 'c:\\users\\public', 'c:\\system32'
+      ];
+      const isDangerousWindowsPath = dangerousWindowsPaths.some(dangerous =>
+        specFileLower.startsWith(dangerous + '\\') || specFileLower === dangerous
+      );
+
+      if (isDangerousUnixPath || isDangerousWindowsPath) {
         console.error(chalk.red(`✗ Error: Access to system directory '${specFile}' is not allowed`));
         console.error(chalk.gray('Spec files should be in your project directory'));
         process.exit(1);

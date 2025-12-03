@@ -54,7 +54,7 @@ export const configureCommand: CommandModule<Record<string, unknown>, ConfigureO
       console.log(chalk.dim('This wizard will help you configure the OpenAI integration mode.\n'));
 
       // Load current config
-      const configPath = resolve(process.cwd(), 'automatosx.config.json');
+      const configPath = resolve(process.cwd(), 'ax.config.json');
       const config = await loadConfig(configPath);
 
       if (!config.providers.openai) {

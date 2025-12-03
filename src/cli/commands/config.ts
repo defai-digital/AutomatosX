@@ -406,7 +406,8 @@ async function setConfig(
  * Get nested object value by dot notation
  */
 function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+  if (!path || !path.trim()) return undefined;
+  return path.split('.').filter(Boolean).reduce((current, key) => current?.[key], obj);
 }
 
 /**

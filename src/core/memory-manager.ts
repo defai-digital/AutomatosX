@@ -52,6 +52,26 @@ export class MemoryManager implements IMemoryManager {
   private static readonly FTS5_BOOLEAN_OPS_REGEX = /\b(AND|OR|NOT)\b/gi;
   private static readonly WHITESPACE_NORMALIZE_REGEX = /\s+/g;
 
+  /**
+   * Safely parse metadata JSON from database rows
+   * Returns default metadata if parsing fails to prevent crashes on corrupted data
+   */
+  private static safeParseMetadata(metadataStr: string | null | undefined): MemoryMetadata {
+    const defaultMetadata: MemoryMetadata = { type: 'other', source: 'unknown' };
+    if (!metadataStr) return defaultMetadata;
+    try {
+      const parsed = JSON.parse(metadataStr);
+      // Ensure required fields exist
+      return {
+        ...defaultMetadata,
+        ...parsed
+      };
+    } catch {
+      logger.warn('Invalid metadata JSON in memory entry, using default metadata');
+      return defaultMetadata;
+    }
+  }
+
   private db: Database.Database;
   private config: Required<Omit<MemoryManagerConfig, 'embeddingProvider' | 'hnsw' | 'cleanup'>> & {
     embeddingProvider?: unknown;
@@ -676,7 +696,7 @@ export class MemoryManager implements IMemoryManager {
             id: row.id,
             content: row.content,
             embedding: [], // No embedding in FTS5 mode
-            metadata: JSON.parse(row.metadata),
+            metadata: MemoryManager.safeParseMetadata(row.metadata),
             createdAt: new Date(row.created_at),
             lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : undefined,
             accessCount: row.access_count
@@ -721,7 +741,7 @@ export class MemoryManager implements IMemoryManager {
         id: row.id,
         content: row.content,
         embedding: [], // No embedding in FTS5 mode
-        metadata: JSON.parse(row.metadata),
+        metadata: MemoryManager.safeParseMetadata(row.metadata),
         createdAt: new Date(row.created_at),
         lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : undefined,
         accessCount: row.access_count
@@ -898,7 +918,7 @@ export class MemoryManager implements IMemoryManager {
           id: row.id,
           content: row.content,
           embedding: [], // No embedding in FTS5 mode
-          metadata: JSON.parse(row.metadata),
+          metadata: MemoryManager.safeParseMetadata(row.metadata),
           createdAt: new Date(row.created_at),
           lastAccessedAt: row.last_accessed_at ? new Date(row.last_accessed_at) : undefined,
           accessCount: row.access_count
@@ -1436,7 +1456,7 @@ export class MemoryManager implements IMemoryManager {
         } = {
           id: row.id,
           content: row.content,
-          metadata: JSON.parse(row.metadata),
+          metadata: MemoryManager.safeParseMetadata(row.metadata),
           createdAt: new Date(row.created_at).toISOString(),
           accessCount: row.access_count
         };

@@ -219,6 +219,14 @@ export function inRange(value: number, min: number, max: number): boolean {
   return value >= min && value <= max;
 }
 
+// Pre-compiled regex patterns for sanitization (performance optimization)
+const SANITIZE_PATTERNS = {
+  absolutePath: /\/[^\s]+\//g,
+  macosUser: /\/Users\/[^/]+\//g,
+  linuxUser: /\/home\/[^/]+\//g,
+  windowsUser: /C:\\Users\\[^\\]+\\/g
+} as const;
+
 /**
  * Sanitize error message for production (remove sensitive paths)
  *
@@ -231,13 +239,10 @@ export function sanitizeErrorMessage(message: string, isProduction: boolean): st
     return message;
   }
 
-  // Remove absolute paths
-  message = message.replace(/\/[^\s]+\//g, '<path>/');
-
-  // Remove usernames
-  message = message.replace(/\/Users\/[^/]+\//g, '/Users/<user>/');
-  message = message.replace(/\/home\/[^/]+\//g, '/home/<user>/');
-  message = message.replace(/C:\\Users\\[^\\]+\\/g, 'C:\\Users\\<user>\\');
-
-  return message;
+  // Remove absolute paths and usernames using pre-compiled patterns
+  return message
+    .replace(SANITIZE_PATTERNS.absolutePath, '<path>/')
+    .replace(SANITIZE_PATTERNS.macosUser, '/Users/<user>/')
+    .replace(SANITIZE_PATTERNS.linuxUser, '/home/<user>/')
+    .replace(SANITIZE_PATTERNS.windowsUser, 'C:\\Users\\<user>\\');
 }

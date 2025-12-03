@@ -211,17 +211,21 @@ export class ConfigManager {
           this.readProjectConfig(),
         ]);
 
+        // Safely access results with bounds checking
+        const userResult = results[0];
+        const projectResult = results[1];
+
         const userConfig =
-          results[0].status === 'fulfilled' ? results[0].value : {};
+          userResult?.status === 'fulfilled' ? userResult.value : {};
         const projectConfig =
-          results[1].status === 'fulfilled' ? results[1].value : {};
+          projectResult?.status === 'fulfilled' ? projectResult.value : {};
 
         // Log any errors but continue with available configs
-        if (results[0].status === 'rejected') {
-          console.warn('Failed to read user config:', results[0].reason);
+        if (userResult?.status === 'rejected') {
+          console.warn('Failed to read user config:', userResult.reason);
         }
-        if (results[1].status === 'rejected') {
-          console.warn('Failed to read project config:', results[1].reason);
+        if (projectResult?.status === 'rejected') {
+          console.warn('Failed to read project config:', projectResult.reason);
         }
 
         const merged = this.mergeConfigs(userConfig, projectConfig);

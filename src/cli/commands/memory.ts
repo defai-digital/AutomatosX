@@ -95,8 +95,8 @@ export const searchCommand: CommandModule = {
         if (argv.type) {
           searchQuery.filters.type = argv.type;
         }
-        if (argv.tags) {
-          searchQuery.filters.tags = argv.tags.split(',').map((t: string) => t.trim());
+        if (argv.tags && argv.tags.trim()) {
+          searchQuery.filters.tags = argv.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
         }
       }
 
@@ -348,8 +348,8 @@ export const addCommand: CommandModule = {
         timestamp: new Date().toISOString()
       };
 
-      if (argv.tags) {
-        metadata.tags = argv.tags.split(',').map((t: string) => t.trim());
+      if (argv.tags && argv.tags.trim()) {
+        metadata.tags = argv.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
       }
 
       // Parse custom metadata if provided
@@ -526,8 +526,8 @@ export const listCommand: CommandModule = {
         options.type = argv.type;
       }
 
-      if (argv.tags) {
-        options.tags = argv.tags.split(',').map((t: string) => t.trim());
+      if (argv.tags && argv.tags.trim()) {
+        options.tags = argv.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
       }
 
       const entries = await manager.getAll(options);

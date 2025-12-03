@@ -1,8 +1,8 @@
 # AutomatosX Integration with Codex CLI
 
-**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
+**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AX-Integration.md](../AX-Integration.md)**.
 
-This file provides **Codex-specific** setup instructions and configuration details. For comprehensive AutomatosX documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
+This file provides **Codex-specific** setup instructions and configuration details. For comprehensive AutomatosX documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AX-Integration.md](../AX-Integration.md).
 
 ---
 

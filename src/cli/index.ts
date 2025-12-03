@@ -50,6 +50,7 @@ import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
 import { cliCommand } from './commands/cli.js';
+import { uninstallCommand } from './commands/uninstall.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -150,6 +151,7 @@ globalTracker.mark('cli_start');
   .command(specCommand)
   .command(genCommand)
   .command(updateCommand)
+  .command(uninstallCommand)
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

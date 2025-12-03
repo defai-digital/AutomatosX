@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { join, dirname, resolve } from 'path';
+import { join, resolve } from 'path';
 import { createHash } from 'crypto';
 import type {
   CheckpointData,
@@ -484,11 +484,14 @@ export class CheckpointManager {
     minor: number;
     patch: number;
   } {
-    const parts = version.split('.').map((p) => parseInt(p, 10));
+    const parts = version.split('.').map((p) => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? 0 : num;
+    });
     return {
-      major: parts[0] || 0,
-      minor: parts[1] || 0,
-      patch: parts[2] || 0,
+      major: parts[0] ?? 0,
+      minor: parts[1] ?? 0,
+      patch: parts[2] ?? 0,
     };
   }
 }

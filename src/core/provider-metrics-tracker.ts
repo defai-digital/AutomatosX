@@ -185,8 +185,9 @@ export class ProviderMetricsTracker extends EventEmitter {
     // Calculate latency metrics
     // FIXED Bug #144: Use centralized percentile utility for consistency
     // FIXED Bug #145: Use getPercentile directly instead of dynamic import
-    const latencies = records.map(r => r.latencyMs).sort((a, b) => a - b);
-    const avgLatency = latencies.reduce((sum, l) => sum + l, 0) / latencies.length;
+    // FIXED Bug #146: Filter invalid latencies and guard against division by zero
+    const latencies = records.map(r => r.latencyMs).filter(l => l != null && !isNaN(l)).sort((a, b) => a - b);
+    const avgLatency = latencies.length > 0 ? latencies.reduce((sum, l) => sum + l, 0) / latencies.length : 0;
 
     const p50 = getPercentile(latencies, 50);
     const p95 = getPercentile(latencies, 95);

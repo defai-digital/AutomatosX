@@ -26,8 +26,6 @@ import { logger } from '../../utils/logger.js';
 import { writeAgentStatus } from '../../utils/agent-status-writer.js';
 import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
 import type { ExecutionHooks } from '../../agents/executor.js';
-// Note: CostTracker removed in v8.3.0 - cost tracking disabled in iterate mode
-// import { CostTracker } from '../../core/cost-tracker.js';
 import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
 import { VerbosityManager, VerbosityLevel } from '../../utils/verbosity-manager.js';
 import chalk from 'chalk';
@@ -40,6 +38,30 @@ import { formatOutput, formatForSave } from '../../utils/output-formatter.js';
 import { existsSync, readFileSync } from 'fs';
 import readline from 'readline';
 import yaml from 'js-yaml';
+import type { AgentSelectionResult } from '../../agents/agent-selector.js';
+
+/**
+ * Display auto-selection result to user
+ * Extracted to avoid code duplication (v11.1.0 refactor)
+ */
+function displayAutoSelectionResult(
+  selection: AgentSelectionResult,
+  verbosity: VerbosityManager,
+  showBanner: boolean = true
+): void {
+  if (!showBanner || !verbosity.shouldShow('showBanner')) return;
+
+  const confidenceEmoji = selection.confidence === 'high' ? '✅' :
+                          selection.confidence === 'medium' ? '⚡' : '💡';
+  console.log(chalk.cyan(`\n${confidenceEmoji} Auto-selected agent: ${selection.displayName} (${selection.agent})`));
+  if (selection.rationale.length > 0) {
+    console.log(chalk.gray(`   ${selection.rationale.join(', ')}`));
+  }
+  if (selection.usedFallback) {
+    console.log(chalk.yellow('   ⚠️  Low confidence - consider specifying agent explicitly'));
+  }
+  console.log();
+}
 
 interface RunOptions {
   provider?: string;
@@ -460,18 +482,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         wasAutoSelected = true;
 
         // Show auto-selection result
-        if (verbosity.shouldShow('showBanner')) {
-          const confidenceEmoji = selection.confidence === 'high' ? '✅' :
-                                  selection.confidence === 'medium' ? '⚡' : '💡';
-          console.log(chalk.cyan(`\n${confidenceEmoji} Auto-selected agent: ${selection.displayName} (${selection.agent})`));
-          if (selection.rationale.length > 0) {
-            console.log(chalk.gray(`   ${selection.rationale.join(', ')}`));
-          }
-          if (selection.usedFallback) {
-            console.log(chalk.yellow('   ⚠️  Low confidence - consider specifying agent explicitly'));
-          }
-          console.log();
-        }
+        displayAutoSelectionResult(selection, verbosity);
 
         logger.info('[run] Agent auto-selected', {
           agent: selection.agent,
@@ -525,16 +536,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             resolvedAgentName = selection.agent;
             wasAutoSelected = true;
 
-            // Show auto-selection result
-            if (verbosity.shouldShow('showBanner')) {
-              const confidenceEmoji = selection.confidence === 'high' ? '✅' :
-                                      selection.confidence === 'medium' ? '⚡' : '💡';
-              console.log(chalk.cyan(`${confidenceEmoji} Auto-selected agent: ${selection.displayName} (${selection.agent})`));
-              if (selection.rationale.length > 0) {
-                console.log(chalk.gray(`   ${selection.rationale.join(', ')}`));
-              }
-              console.log();
-            }
+            // Show auto-selection result (skip leading newline since we just printed one)
+            displayAutoSelectionResult(selection, verbosity);
 
             logger.info('[run] Agent auto-selected (fallback)', {
               requestedAgent: actualAgent,
@@ -989,21 +992,6 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
             strictness: argv.iterateStrictness || 'balanced',
             dryRun: argv.iterateDryRun || false
           });
-
-          // Note: Cost tracker removed in v8.3.0
-          // Cost tracking disabled in iterate mode - token limits used instead
-          // const costTracker = new CostTracker({
-          //   enabled: true,
-          //   persistPath: join(projectDir, '.automatosx', 'costs', 'iterate-costs.db'),
-          //   budgets: {
-          //     daily: {
-          //       limit: argv.iterateMaxCost || 5.0,
-          //       warningThreshold: 0.75
-          //     }
-          //   },
-          //   alertOnBudget: true
-          // });
-          // await costTracker.initialize();
 
           // Create status renderer for real-time UX (v8.6.0 Phase 1)
           const statusRenderer = new IterateStatusRenderer({

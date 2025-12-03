@@ -126,39 +126,45 @@ export const suggestCommand: CommandModule<{}, SuggestOptions> = {
       // Load all agent profiles
       const agentNames = await profileLoader.listProfiles();
 
-      // Score each agent
-      const scoredAgents: SuggestionResult[] = [];
+      // Score each agent (parallel loading for better performance)
       const failedProfiles: string[] = [];
 
-      for (const name of agentNames) {
-        try {
-          const profile = await profileLoader.loadProfile(name);
+      const profileResults = await Promise.all(
+        agentNames.map(async (name) => {
+          try {
+            const profile = await profileLoader.loadProfile(name);
 
-          // Debug: Log selectionMetadata for first few agents
-          if (scoredAgents.length < 3 && profile.selectionMetadata) {
-            logger.debug(`[agent suggest] Profile ${name} has selectionMetadata`, {
-              primaryIntents: profile.selectionMetadata.primaryIntents?.length || 0,
-              secondarySignals: profile.selectionMetadata.secondarySignals?.length || 0
-            });
+            // Debug: Log selectionMetadata
+            if (profile.selectionMetadata) {
+              logger.debug(`[agent suggest] Profile ${name} has selectionMetadata`, {
+                primaryIntents: profile.selectionMetadata.primaryIntents?.length || 0,
+                secondarySignals: profile.selectionMetadata.secondarySignals?.length || 0
+              });
+            }
+
+            const score = scoreAgent(task, profile);
+            const rationale = buildRationale(task, profile);
+            const confidence = getConfidence(score);
+
+            return {
+              agent: profile.name,
+              displayName: profile.displayName || profile.name,
+              role: profile.role,
+              score,
+              rationale,
+              confidence
+            } as SuggestionResult;
+          } catch (error) {
+            logger.warn(`Failed to load profile: ${name}`, { error });
+            failedProfiles.push(name);
+            return null;
           }
+        })
+      );
 
-          const score = scoreAgent(task, profile);
-          const rationale = buildRationale(task, profile);
-          const confidence = getConfidence(score);
-
-          scoredAgents.push({
-            agent: profile.name,
-            displayName: profile.displayName || profile.name,
-            role: profile.role,
-            score,
-            rationale,
-            confidence
-          });
-        } catch (error) {
-          logger.warn(`Failed to load profile: ${name}`, { error });
-          failedProfiles.push(name);
-        }
-      }
+      const scoredAgents = profileResults.filter(
+        (result): result is SuggestionResult => result !== null
+      );
 
       // Check if no agents were loaded successfully
       if (scoredAgents.length === 0) {

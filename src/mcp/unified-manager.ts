@@ -44,6 +44,7 @@ import { ResourceEnforcer, createResourceEnforcer } from './resource-enforcer.js
 export class UnifiedMCPManager implements IMCPManager {
   private servers: Map<string, MCPServerProcess> = new Map();
   private healthCheckInterval?: NodeJS.Timeout;
+  private pendingRestarts: Map<string, NodeJS.Timeout> = new Map();
 
   // Phase 4 components
   private lifecycleLogger: LifecycleLogger;
@@ -240,6 +241,13 @@ export class UnifiedMCPManager implements IMCPManager {
       count: this.servers.size,
     });
 
+    // Stop health check interval to prevent it from running against empty map
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = undefined;
+      logger.debug('UnifiedMCPManager: Health check interval stopped');
+    }
+
     const stopPromises = Array.from(this.servers.keys()).map(name =>
       this.stopServer(name)
     );
@@ -415,17 +423,31 @@ export class UnifiedMCPManager implements IMCPManager {
       };
     }
 
-    try {
-      // TODO: Implement actual JSON-RPC tool call
-      // This is a placeholder implementation
-      throw new Error('Tool calling not yet implemented');
-    } catch (error) {
+    // Check if this tool is available on the server
+    const availableTools = serverProcess.tools || [];
+    const toolExists = availableTools.some(t => t.name === request.toolName);
+
+    if (!toolExists) {
       return {
         success: false,
-        error: (error as Error).message,
+        error: `Tool not found: ${request.toolName} on server ${request.serverName}`,
         executionTimeMs: Date.now() - startTime,
       };
     }
+
+    // TODO: Implement actual JSON-RPC tool call via stdio transport
+    // For now, return a clear "not implemented" status without throwing
+    // This allows callers to handle gracefully instead of catching exceptions
+    logger.warn('UnifiedMCPManager: Tool calling via JSON-RPC not yet implemented', {
+      server: request.serverName,
+      tool: request.toolName,
+    });
+
+    return {
+      success: false,
+      error: `Tool calling not yet implemented for server: ${request.serverName}. Use provider-specific MCP integration instead.`,
+      executionTimeMs: Date.now() - startTime,
+    };
   }
 
   /**
@@ -526,6 +548,12 @@ export class UnifiedMCPManager implements IMCPManager {
       this.healthCheckInterval = undefined;
     }
 
+    // Clear all pending restart timers to prevent leaks
+    for (const timer of this.pendingRestarts.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingRestarts.clear();
+
     // Phase 4: Stop metrics collection
     this.metricsCollector.stop();
 
@@ -582,7 +610,8 @@ export class UnifiedMCPManager implements IMCPManager {
     process: ChildProcess,
     serverProcess: MCPServerProcess
   ): void {
-    process.on('error', (error: Error) => {
+    // Use .once() to prevent listener accumulation on restarts
+    process.once('error', (error: Error) => {
       logger.error('UnifiedMCPManager: Process error', {
         server: serverName,
         error: error.message,
@@ -592,7 +621,8 @@ export class UnifiedMCPManager implements IMCPManager {
       serverProcess.running = false;
     });
 
-    process.on('exit', (code: number | null, signal: string | null) => {
+    // Use .once() for exit handler - process can only exit once
+    process.once('exit', (code: number | null, signal: string | null) => {
       logger.info('UnifiedMCPManager: Process exited', {
         server: serverName,
         code,
@@ -611,20 +641,34 @@ export class UnifiedMCPManager implements IMCPManager {
           server: serverName,
         });
 
-        setTimeout(() => {
-          this.restartServer(serverName).catch(err =>
+        // Cancel any existing restart timer for this server
+        const existingTimer = this.pendingRestarts.get(serverName);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+
+        // Track the restart timer to prevent leaks
+        const restartTimer = setTimeout(() => {
+          this.pendingRestarts.delete(serverName);
+          this.restartServer(serverName).catch(err => {
+            const errorMessage = err instanceof Error ? err.message : String(err);
             logger.error('UnifiedMCPManager: Auto-restart failed', {
               server: serverName,
-              error: err.message,
-            })
-          );
+              error: errorMessage,
+            });
+          });
         }, 2000);
+        this.pendingRestarts.set(serverName, restartTimer);
       }
     });
 
     // Log server output if configured
+    // Note: Using process streams here (correctly - 'process' is the ChildProcess parameter)
+    // These listeners are cleaned up when the ChildProcess exits (streams close automatically)
     if (this.config.logging?.logServerOutput) {
       if (process.stdout) {
+        // Stream 'data' events continue until stream closes, which is fine
+        // The stream closes when the process exits
         process.stdout.on('data', (data: Buffer) => {
           logger.debug(`MCP[${serverName}] stdout:`, {
             data: data.toString().trim(),
@@ -730,13 +774,19 @@ export class UnifiedMCPManager implements IMCPManager {
     });
 
     this.healthCheckInterval = setInterval(async () => {
-      const results = await this.healthCheck();
+      try {
+        const results = await this.healthCheck();
 
-      const unhealthy = results.filter(r => !r.healthy);
-      if (unhealthy.length > 0) {
-        logger.warn('UnifiedMCPManager: Unhealthy servers detected', {
-          count: unhealthy.length,
-          servers: unhealthy.map(r => r.serverName),
+        const unhealthy = results.filter(r => !r.healthy);
+        if (unhealthy.length > 0) {
+          logger.warn('UnifiedMCPManager: Unhealthy servers detected', {
+            count: unhealthy.length,
+            servers: unhealthy.map(r => r.serverName),
+          });
+        }
+      } catch (error) {
+        logger.error('UnifiedMCPManager: Health check failed', {
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }, intervalMs);

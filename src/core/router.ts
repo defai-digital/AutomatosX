@@ -100,11 +100,16 @@ export class Router {
     });
 
     // v5.7.0: Initialize provider limit manager (non-blocking)
+    // Fixed: Wrap entire IIFE in try-catch to handle getProviderLimitManager() failures
     void (async () => {
-      const limitManager = await getProviderLimitManager();
-      await limitManager.initialize().catch(err => {
-        logger.warn('Failed to initialize ProviderLimitManager', { error: err.message });
-      });
+      try {
+        const limitManager = await getProviderLimitManager();
+        await limitManager.initialize();
+      } catch (err) {
+        logger.warn('Failed to initialize ProviderLimitManager', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
     })();
 
     // Phase 3: Initialize multi-factor routing if strategy provided

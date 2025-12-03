@@ -19,7 +19,7 @@
 import type { CommandModule } from 'yargs';
 import { execSync } from 'child_process';
 import { existsSync, statSync, readdirSync } from 'fs';
-import { access, constants, readFile, stat } from 'fs/promises';
+import { access, constants, readFile } from 'fs/promises';
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '../../core/config.js';
@@ -32,7 +32,6 @@ import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ProviderDetector } from '../../core/provider-detector.js';
 import { join } from 'path';
-import { PRECOMPILED_CONFIG } from '../../config.generated.js';
 
 interface DoctorOptions {
   provider?: string;
@@ -322,7 +321,9 @@ async function checkNodeVersion(verbose: boolean): Promise<CheckResult[]> {
 
   try {
     const nodeVersion = process.version; // e.g., "v24.0.0"
-    const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0] || '0', 10);
+    const versionParts = nodeVersion.slice(1).split('.');
+    const parsedMajor = parseInt(versionParts[0] || '0', 10);
+    const majorVersion = isNaN(parsedMajor) ? 0 : parsedMajor;
 
     const isSupported = majorVersion >= 24;
 
@@ -418,33 +419,40 @@ async function checkOpenAIProvider(verbose: boolean): Promise<CheckResult[]> {
 }
 
 /**
- * Check Gemini provider
+ * Generic CLI provider check - used by Gemini and Claude
  */
-async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
+interface CliProviderConfig {
+  name: string;
+  command: string;
+  category: string;
+  installFix: string;
+  helpDetails: string;
+}
+
+async function checkCliProvider(config: CliProviderConfig, verbose: boolean): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
 
-  const cliCheck = await checkCommand('gemini', '--version');
+  const cliCheck = await checkCommand(config.command, '--version');
   results.push({
     name: 'CLI Installation',
-    category: 'Gemini',
+    category: config.category,
     passed: cliCheck.success,
     message: cliCheck.success
       ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
-      : 'Gemini CLI not found',
-    fix: cliCheck.success ? undefined : 'Follow installation guide at: https://ai.google.dev/gemini-api/docs/cli',
+      : `${config.name} CLI not found`,
+    fix: cliCheck.success ? undefined : config.installFix,
     details: verbose ? cliCheck.error : undefined
   });
 
   if (cliCheck.success) {
-    // Gemini CLI uses API keys directly - just check if help works
-    const helpCheck = await checkCommand('gemini', '--help');
+    const helpCheck = await checkCommand(config.command, '--help');
     results.push({
       name: 'CLI Ready',
-      category: 'Gemini',
+      category: config.category,
       passed: helpCheck.success,
       message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
-      fix: helpCheck.success ? undefined : 'Check Gemini CLI installation: npm install -g @google/generative-ai-cli',
-      details: verbose ? (helpCheck.success ? 'Gemini CLI uses API keys from environment or config' : helpCheck.error) : undefined
+      fix: helpCheck.success ? undefined : `Check ${config.name} CLI installation`,
+      details: verbose ? (helpCheck.success ? config.helpDetails : helpCheck.error) : undefined
     });
   }
 
@@ -453,38 +461,29 @@ async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
 }
 
 /**
+ * Check Gemini provider
+ */
+async function checkGeminiProvider(verbose: boolean): Promise<CheckResult[]> {
+  return checkCliProvider({
+    name: 'Gemini',
+    command: 'gemini',
+    category: 'Gemini',
+    installFix: 'Follow installation guide at: https://ai.google.dev/gemini-api/docs/cli',
+    helpDetails: 'Gemini CLI uses API keys from environment or config'
+  }, verbose);
+}
+
+/**
  * Check Claude provider
  */
 async function checkClaudeProvider(verbose: boolean): Promise<CheckResult[]> {
-  const results: CheckResult[] = [];
-
-  const cliCheck = await checkCommand('claude', '--version');
-  results.push({
-    name: 'CLI Installation',
+  return checkCliProvider({
+    name: 'Claude',
+    command: 'claude',
     category: 'Claude',
-    passed: cliCheck.success,
-    message: cliCheck.success
-      ? `Installed: ${cliCheck.output?.trim() || 'version unknown'}`
-      : 'Claude CLI not found',
-    fix: cliCheck.success ? undefined : 'npm install -g @anthropic-ai/claude-cli',
-    details: verbose ? cliCheck.error : undefined
-  });
-
-  if (cliCheck.success) {
-    // Claude Code CLI is authenticated when installed - just check if help works
-    const helpCheck = await checkCommand('claude', '--help');
-    results.push({
-      name: 'CLI Ready',
-      category: 'Claude',
-      passed: helpCheck.success,
-      message: helpCheck.success ? 'CLI is functional' : 'CLI not responding',
-      fix: helpCheck.success ? undefined : 'Check Claude Code CLI installation',
-      details: verbose ? (helpCheck.success ? 'Claude Code CLI authenticated via desktop app' : helpCheck.error) : undefined
-    });
-  }
-
-  results.forEach(r => displayCheck(r));
-  return results;
+    installFix: 'npm install -g @anthropic-ai/claude-cli',
+    helpDetails: 'Claude Code CLI authenticated via desktop app'
+  }, verbose);
 }
 
 /**
@@ -1259,69 +1258,61 @@ async function checkAgentProfiles(workingDir: string, verbose: boolean): Promise
 }
 
 /**
+ * Check a single API endpoint reachability
+ */
+async function checkApiEndpoint(
+  name: string,
+  url: string,
+  verbose: boolean,
+  options?: { fix?: string; warning?: boolean }
+): Promise<CheckResult> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal
+    }).catch(() => null);
+    clearTimeout(timeout);
+
+    return {
+      name,
+      category: 'Network',
+      passed: response !== null,
+      message: response ? 'Reachable' : 'Unreachable',
+      fix: response ? undefined : options?.fix,
+      details: verbose && response ? `Status: ${response.status}` : undefined
+    };
+  } catch (error) {
+    return {
+      name,
+      category: 'Network',
+      passed: false,
+      message: 'Connection failed',
+      fix: options?.fix,
+      details: verbose ? (error as Error).message : undefined,
+      warning: options?.warning
+    };
+  }
+}
+
+/**
  * Check network connectivity
  */
 async function checkNetworkConnectivity(verbose: boolean): Promise<CheckResult[]> {
+  const endpoints = [
+    { name: 'Anthropic API', url: 'https://api.anthropic.com/v1/models', fix: 'Check internet connection or firewall settings' },
+    { name: 'OpenAI API', url: 'https://api.openai.com/v1/models', warning: true }
+  ];
+
   const results: CheckResult[] = [];
-
-  // Test basic internet connectivity
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch('https://api.anthropic.com/v1/models', {
-      method: 'HEAD',
-      signal: controller.signal
-    }).catch(() => null);
-    clearTimeout(timeout);
-
-    results.push({
-      name: 'Anthropic API',
-      category: 'Network',
-      passed: response !== null,
-      message: response ? 'Reachable' : 'Unreachable',
-      fix: response ? undefined : 'Check internet connection or firewall settings',
-      details: verbose && response ? `Status: ${response.status}` : undefined
+  for (const endpoint of endpoints) {
+    const result = await checkApiEndpoint(endpoint.name, endpoint.url, verbose, {
+      fix: endpoint.fix,
+      warning: endpoint.warning
     });
-    displayCheck(results[results.length - 1]!);
-  } catch (error) {
-    results.push({
-      name: 'Anthropic API',
-      category: 'Network',
-      passed: false,
-      message: 'Connection failed',
-      fix: 'Check internet connection',
-      details: verbose ? (error as Error).message : undefined
-    });
-    displayCheck(results[results.length - 1]!);
-  }
-
-  // Test OpenAI endpoint
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch('https://api.openai.com/v1/models', {
-      method: 'HEAD',
-      signal: controller.signal
-    }).catch(() => null);
-    clearTimeout(timeout);
-
-    results.push({
-      name: 'OpenAI API',
-      category: 'Network',
-      passed: response !== null,
-      message: response ? 'Reachable' : 'Unreachable',
-      details: verbose && response ? `Status: ${response.status}` : undefined
-    });
-    displayCheck(results[results.length - 1]!);
-  } catch {
-    results.push({
-      name: 'OpenAI API',
-      category: 'Network',
-      passed: false,
-      message: 'Connection failed',
-      warning: true
-    });
-    displayCheck(results[results.length - 1]!);
+    results.push(result);
+    displayCheck(result);
   }
 
   return results;

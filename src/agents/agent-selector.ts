@@ -223,22 +223,23 @@ export class AgentSelector {
       return this.createFallbackResult(task);
     }
 
-    // Score each agent
-    const scoredAgents: Array<{
-      name: string;
-      profile: AgentProfile;
-      score: number;
-    }> = [];
+    // Score each agent (parallel loading for better performance)
+    const profileResults = await Promise.all(
+      agentNames.map(async (name) => {
+        try {
+          const profile = await this.profileLoader.loadProfile(name);
+          return { name, profile, score: scoreAgent(task, profile) };
+        } catch (error) {
+          logger.debug(`[AgentSelector] Failed to load profile: ${name}`, { error });
+          return null;
+        }
+      })
+    );
 
-    for (const name of agentNames) {
-      try {
-        const profile = await this.profileLoader.loadProfile(name);
-        const score = scoreAgent(task, profile);
-        scoredAgents.push({ name, profile, score });
-      } catch (error) {
-        logger.debug(`[AgentSelector] Failed to load profile: ${name}`, { error });
-      }
-    }
+    const scoredAgents = profileResults.filter(
+      (result): result is { name: string; profile: AgentProfile; score: number } =>
+        result !== null
+    );
 
     if (scoredAgents.length === 0) {
       logger.warn('[AgentSelector] Failed to load any profiles, using fallback');

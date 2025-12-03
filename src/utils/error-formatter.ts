@@ -107,7 +107,9 @@ export function formatError(error: unknown, options: FormatOptions = {}): string
       : 'Stack Trace:';
     lines.push(stackHeader);
 
-    const stack = baseError.stack.split('\n').slice(1); // Skip first line (message)
+    // Safely handle stack trace - ensure it exists and is a string
+    const stackStr = baseError.stack && typeof baseError.stack === 'string' ? baseError.stack : '';
+    const stack = stackStr.split('\n').slice(1); // Skip first line (message)
     const formatted = colors
       ? chalk.gray(stack.map(line => '  ' + line).join('\n'))
       : stack.map(line => '  ' + line).join('\n');

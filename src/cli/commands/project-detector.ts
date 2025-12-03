@@ -298,13 +298,17 @@ async function parsePackageJson(projectDir: string, info: ProjectInfo): Promise<
       info.formatter = 'Prettier';
     }
 
-    // Package manager
-    if (existsSync(join(projectDir, 'pnpm-lock.yaml'))) {
-      info.packageManager = 'pnpm';
-    } else if (existsSync(join(projectDir, 'yarn.lock'))) {
-      info.packageManager = 'yarn';
-    } else if (existsSync(join(projectDir, 'bun.lockb'))) {
-      info.packageManager = 'bun';
+    // Package manager detection (data-driven)
+    const packageManagerFiles: Array<{ file: string; name: string }> = [
+      { file: 'pnpm-lock.yaml', name: 'pnpm' },
+      { file: 'yarn.lock', name: 'yarn' },
+      { file: 'bun.lockb', name: 'bun' }
+    ];
+    for (const pm of packageManagerFiles) {
+      if (existsSync(join(projectDir, pm.file))) {
+        info.packageManager = pm.name;
+        break;
+      }
     }
 
     // Monorepo

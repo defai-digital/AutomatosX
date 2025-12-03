@@ -228,10 +228,12 @@ export class ConfigManager {
           errors.push(`Server ${index}: Field "args" must be an array`);
         }
 
-        // Warn about duplicate names
-        const duplicates = config.servers.filter(s => s.name === server.name);
-        if (duplicates.length > 1) {
-          warnings.push(`Server "${server.name}": Duplicate name detected`);
+        // Warn about duplicate names (only check if name exists)
+        if (server.name) {
+          const duplicates = config.servers.filter(s => s.name === server.name);
+          if (duplicates.length > 1) {
+            warnings.push(`Server "${server.name}": Duplicate name detected`);
+          }
         }
       });
     }

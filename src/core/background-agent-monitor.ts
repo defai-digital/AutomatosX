@@ -8,8 +8,8 @@
  * @since v8.5.0
  */
 
-import { watch } from 'fs';
-import { readFile, unlink, readdir, rename } from 'fs/promises';
+import { watch, existsSync } from 'fs';
+import { readFile, unlink, readdir, rename, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { AgentStatus } from '../utils/agent-status-writer.js';
 import { logger } from '../utils/logger.js';
@@ -119,6 +119,12 @@ export class BackgroundAgentMonitor {
     if (this.fsWatcher) return;
 
     try {
+      // Ensure status directory exists before watching
+      if (!existsSync(this.statusDir)) {
+        await mkdir(this.statusDir, { recursive: true });
+        logger.debug('Created status directory', { dir: this.statusDir });
+      }
+
       // Watch status directory for changes
       this.fsWatcher = watch(
         this.statusDir,

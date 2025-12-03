@@ -1,27 +1,26 @@
 /**
- * Codex CLI Integration
+ * Codex CLI/SDK Integration
  *
- * Integration between AutomatosX and Codex CLI,
- * enabling CLI command execution and MCP server management.
+ * v11.1.0: SDK-first with CLI fallback (no MCP)
  *
  * @module integrations/openai-codex
  */
 
-// Core classes
+// CLI adapter
 export { CodexCLI, getDefaultCLI } from './cli-wrapper.js';
-export { CodexMCPManager, getDefaultMCPManager } from './mcp-manager.js';
 
-// Type definitions
+// SDK adapter
+export { CodexSdkAdapter } from './sdk-adapter.js';
+export type { CodexSdkOptions } from './sdk-adapter.js';
+
+// Hybrid adapter - SDK-first with CLI fallback
+export { HybridCodexAdapter } from './hybrid-adapter.js';
+export type { CodexAdapterMode, HybridCodexAdapterOptions } from './hybrid-adapter.js';
+
+// Types
 export type {
   CodexConfig,
-  CodexMCPConfig,
   CodexExecutionOptions,
   CodexExecutionResult,
-  MCPServerStatus,
-  MCPServerProcess,
-  IntegrationStatus,
-  ValidationResult,
 } from './types.js';
-
-// Error types
 export { CodexError, CodexErrorType } from './types.js';

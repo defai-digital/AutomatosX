@@ -17,6 +17,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.23.0
         version: 1.23.0(zod@4.1.13)
+      '@openai/codex-sdk':
+        specifier: ^0.64.0
+        version: 0.64.0
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -767,6 +770,10 @@ packages:
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
+
+  '@openai/codex-sdk@0.64.0':
+    resolution: {integrity: sha512-C675h9+5iL7v3w3XKlMTCmejGyEY4qOygro8pRAoBAQbbCS504SKxosJu5Mb/drhV0GkjbKbKfcjxHtjZJfNDQ==}
+    engines: {node: '>=18'}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -4350,6 +4357,8 @@ snapshots:
       zod-to-json-schema: 3.25.0(zod@4.1.13)
     transitivePeerDependencies:
       - supports-color
+
+  '@openai/codex-sdk@0.64.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true

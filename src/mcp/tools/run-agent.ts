@@ -43,9 +43,9 @@ async function executeViaMcpPool(
       mode: 'execute'
     });
 
-    const content = result.content
-      .filter(c => c.type === 'text')
-      .map(c => c.text)
+    const content = (result.content ?? [])
+      .filter((c): c is { type: 'text'; text: string } => c?.type === 'text')
+      .map(c => c.text ?? '')
       .join('\n');
 
     return {

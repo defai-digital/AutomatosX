@@ -1,8 +1,8 @@
 # AutomatosX Integration for Gemini CLI
 
-**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
+**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AX-Integration.md](../AX-Integration.md)**.
 
-This file provides Gemini CLI-specific tips and quick reference. For comprehensive documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
+This file provides Gemini CLI-specific tips and quick reference. For comprehensive documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AX-Integration.md](../AX-Integration.md).
 
 ---
 
@@ -104,7 +104,7 @@ Edit `ax.config.json` to customize.
 
 ## Available Agents
 
-Quick reference (for full list, see [AutomatosX-Integration.md](../AutomatosX-Integration.md)):
+Quick reference (for full list, see [AX-Integration.md](../AX-Integration.md)):
 
 - **backend** (Bob) - Backend development
 - **frontend** (Frank) - Frontend development
@@ -207,7 +207,7 @@ ax --debug run backend "task"
 
 ## Advanced Features
 
-For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md):
+For advanced usage, see [AX-Integration.md](../AX-Integration.md):
 
 - **Spec-Driven Workflows** - YAML-based task definitions
 - **Parallel Execution** - Run multiple agents concurrently
@@ -221,7 +221,7 @@ For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md
 
 ## Documentation
 
-- **Complete Guide**: [AutomatosX-Integration.md](../AutomatosX-Integration.md) ← **Read this!**
+- **Complete Guide**: [AX-Integration.md](../AX-Integration.md) ← **Read this!**
 - **GitHub**: https://github.com/defai-digital/automatosx
 - **Agent Profiles**: `.automatosx/agents/`
 - **Configuration**: `ax.config.json`
@@ -233,4 +233,4 @@ For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md
 
 ---
 
-**For complete AutomatosX documentation**, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
+**For complete AutomatosX documentation**, see [AX-Integration.md](../AX-Integration.md).

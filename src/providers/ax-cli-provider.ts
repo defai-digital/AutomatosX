@@ -23,6 +23,11 @@ import { logger } from '../utils/logger.js';
 import type { SubagentTask, SubagentResult, OrchestratorOptions, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
 
 /**
+ * Error message for SDK adapter unavailable (used in multiple methods)
+ */
+const SDK_ADAPTER_UNAVAILABLE_ERROR = 'SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.';
+
+/**
  * Extended provider config for ax-cli
  */
 export interface AxCliProviderConfig extends ProviderConfig {
@@ -238,7 +243,7 @@ export class AxCliProvider extends BaseProvider {
   async executeParallelTasks(tasks: SubagentTask[], options?: OrchestratorOptions): Promise<SubagentResult[]> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.executeParallelTasks(tasks);
   }
@@ -258,7 +263,7 @@ export class AxCliProvider extends BaseProvider {
   async executeSequentialTasks(tasks: SubagentTask[]): Promise<SubagentResult[]> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.executeSequentialTasks(tasks);
   }
@@ -278,7 +283,7 @@ export class AxCliProvider extends BaseProvider {
   async saveCheckpoint(workflowId: string, data: Partial<Checkpoint>): Promise<Checkpoint> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.saveCheckpoint(workflowId, data);
   }
@@ -297,7 +302,7 @@ export class AxCliProvider extends BaseProvider {
   async loadCheckpoint(workflowId: string): Promise<Checkpoint | null> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.loadCheckpoint(workflowId);
   }
@@ -319,7 +324,7 @@ export class AxCliProvider extends BaseProvider {
   async getRemainingPhases(workflowId: string, workflow: Workflow): Promise<import('../integrations/ax-cli-sdk/checkpoint-adapter.js').WorkflowPhase[]> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.getRemainingPhases(workflowId, workflow);
   }
@@ -336,7 +341,7 @@ export class AxCliProvider extends BaseProvider {
   async getAgentInstructions(agentName: string, additionalContext?: string): Promise<CombinedInstructions> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.getAgentInstructions(agentName, additionalContext);
   }
@@ -353,7 +358,7 @@ export class AxCliProvider extends BaseProvider {
   async syncAgentToAxCli(agentName: string): Promise<void> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
-      throw new Error('SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.');
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
     }
     return sdkAdapter.syncAgentToAxCli(agentName);
   }

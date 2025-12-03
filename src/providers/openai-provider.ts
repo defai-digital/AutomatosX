@@ -1,128 +1,140 @@
 /**
- * OpenAIProvider - CLI-based Codex Provider (v10.5.0)
+ * OpenAIProvider - Hybrid Codex Provider (v11.1.0)
  *
- * Invokes Codex CLI: `codex exec "<prompt>"`
+ * Uses SDK as primary mode with CLI fallback:
+ * - "sdk": SDK only
+ * - "cli": CLI only
+ * - "auto" (default): SDK first, CLI fallback
  *
- * Note: Codex CLI users (10%) access AutomatosX via MCP CLIENT.
- * This provider is used for cross-provider routing when Codex is
- * selected as the best provider for a task from another AI assistant.
+ * Note: The SDK wraps the CLI binary, so latency is similar.
+ * SDK provides better TypeScript types and thread management.
  */
 
 import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { logger } from '../utils/logger.js';
+import {
+  HybridCodexAdapter,
+  type CodexAdapterMode,
+  type HybridCodexAdapterOptions,
+} from '../integrations/openai-codex/hybrid-adapter.js';
+import type { CodexSdkOptions } from '../integrations/openai-codex/sdk-adapter.js';
 
-const execAsync = promisify(exec);
+export interface OpenAIProviderConfig extends ProviderConfig {
+  mode?: CodexAdapterMode;
+  codexSdk?: CodexSdkOptions;
+}
 
 export class OpenAIProvider extends BaseProvider {
-  constructor(config: ProviderConfig) {
+  private hybridAdapter: HybridCodexAdapter | null = null;
+  private readonly providerConfig: OpenAIProviderConfig;
+
+  constructor(config: OpenAIProviderConfig) {
     super(config);
-    logger.debug('[OpenAI/Codex] Initialized (CLI mode)');
+    this.providerConfig = config;
+    logger.debug('[OpenAI/Codex] Initialized', { mode: config.mode || 'auto' });
   }
 
-  /**
-   * Execute request via CLI
-   */
   override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
-    logger.debug('[OpenAI/Codex] Executing via CLI', {
-      promptLength: request.prompt.length,
-    });
-
-    return super.execute(request);
-  }
-
-  protected getCLICommand(): string {
-    // Return 'codex' as the base command (not 'codex exec')
-    // The 'exec' subcommand is added in executeCLI() when building the full command
-    return 'codex';
-  }
-
-  /**
-   * Get CLI arguments for Codex
-   * Enables JSONL streaming output for real-time progress
-   */
-  protected override getCLIArgs(): string[] {
-    return ['--json'];  // Output events as JSONL (streaming JSON)
-  }
-
-  /**
-   * Override executeCLI to use 'codex exec' subcommand for non-interactive execution
-   * This avoids "stdout is not a terminal" errors while keeping CLI detection working
-   */
-  protected override async executeCLI(prompt: string): Promise<string> {
     // Mock mode for tests
     if (process.env.AX_MOCK_PROVIDERS === 'true') {
-      logger.debug('Mock mode: returning test response');
-      return this.getMockResponse();
+      return {
+        content: this.getMockResponse(),
+        model: 'codex',
+        tokensUsed: { prompt: 10, completion: 20, total: 30 },
+        latencyMs: 100,
+        finishReason: 'stop',
+      };
+    }
+
+    const startTime = Date.now();
+
+    // Initialize hybrid adapter on first use
+    if (!this.hybridAdapter) {
+      this.initializeHybridAdapter();
     }
 
     try {
-      const escapedPrompt = this.escapeShellArg(prompt);
-      const cliCommand = 'codex exec'; // Use 'exec' subcommand for non-interactive mode
-
-      logger.debug('Executing codex exec CLI', {
-        command: cliCommand,
-        promptLength: prompt.length
-      });
-
-      // v9.0.3 Windows Fix: Detect correct shell for platform
-      const shell = process.platform === 'win32' ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
-
-      const { stdout, stderr } = await execAsync(
-        `${cliCommand} ${escapedPrompt}`,
-        {
-          timeout: this.config.timeout || 120000,
-          maxBuffer: 10 * 1024 * 1024,
-          shell,  // Platform-specific shell
-          env: {
-            ...process.env,
-            // Force non-interactive mode for CLIs
-            TERM: 'dumb',
-            NO_COLOR: '1',
-            FORCE_COLOR: '0',
-            CI: 'true',
-            NO_UPDATE_NOTIFIER: '1',
-            DEBIAN_FRONTEND: 'noninteractive'
-          }
-        }
+      const result = await this.hybridAdapter!.execute(
+        request.prompt,
+        this.config.timeout
       );
 
-      if (stderr) {
-        // codex CLI outputs session info to stderr (normal behavior)
-        // Only show in debug mode to reduce token usage
-        logger.debug('codex exec CLI stderr output', { stderr: stderr.trim() });
-      }
-
-      if (!stdout) {
-        throw new Error(`codex exec CLI returned empty output. stderr: ${stderr || 'none'}`);
-      }
-
-      logger.debug('codex exec CLI execution successful', {
-        outputLength: stdout.length
+      return {
+        content: result.content,
+        model: 'codex',
+        tokensUsed: {
+          prompt: result.tokenCount ? Math.floor(result.tokenCount * 0.3) : 0,
+          completion: result.tokenCount ? Math.floor(result.tokenCount * 0.7) : 0,
+          total: result.tokenCount || 0,
+        },
+        latencyMs: Date.now() - startTime,
+        finishReason: 'stop',
+      };
+    } catch (error) {
+      logger.error('[OpenAI/Codex] Execution failed', {
+        error: error instanceof Error ? error.message : String(error),
+        mode: this.hybridAdapter?.getActiveMode() || 'unknown',
       });
-
-      return stdout.trim();
-    } catch (error: any) {
-      logger.error('codex exec CLI execution failed', { error });
       throw error;
     }
   }
 
-  protected getMockResponse(): string {
-    return `[Mock OpenAI/Codex Response]\n\nThis is a mock response for testing purposes.`;
+  private initializeHybridAdapter(): void {
+    const options: HybridCodexAdapterOptions = {
+      mode: this.providerConfig.mode || 'auto',
+      cli: {
+        command: 'codex',
+        sandboxMode: 'workspace-write',
+        timeout: this.config.timeout || 120000,
+      },
+      sdk: this.providerConfig.codexSdk,
+    };
+
+    this.hybridAdapter = new HybridCodexAdapter(options);
+    logger.info('[OpenAI/Codex] Hybrid adapter initialized', { mode: options.mode });
   }
 
-  /**
-   * Get extended capabilities
-   */
-  override get capabilities(): any {
+  protected getCLICommand(): string {
+    return 'codex';
+  }
+
+  protected override getCLIArgs(): string[] {
+    return ['--json'];
+  }
+
+  protected getMockResponse(): string {
+    return '[Mock OpenAI/Codex Response]\n\nThis is a mock response for testing purposes.';
+  }
+
+  override get capabilities(): {
+    supportsStreaming: boolean;
+    supportsEmbedding: boolean;
+    supportsVision: boolean;
+    maxContextTokens: number;
+    supportedModels: string[];
+  } {
     return {
-      ...super.capabilities,
-      integrationMode: 'cli',
-      supportsMcp: true,
-      mcpCommand: 'codex mcp-server',
+      supportsStreaming: true,
+      supportsEmbedding: false,
+      supportsVision: true,
+      maxContextTokens: 128000,
+      supportedModels: ['codex'],
     };
+  }
+
+  getActiveMode(): 'sdk' | 'cli' | null {
+    return this.hybridAdapter?.getActiveMode() || null;
+  }
+
+  switchToCliMode(): void {
+    this.hybridAdapter?.switchToCliMode();
+  }
+
+  async destroy(): Promise<void> {
+    if (this.hybridAdapter) {
+      await this.hybridAdapter.destroy();
+      this.hybridAdapter = null;
+    }
   }
 }

@@ -284,38 +284,44 @@ export class CheckpointAdapter {
    * List all checkpoints for a workflow
    */
   async list(workflowId: string): Promise<Checkpoint[]> {
-    const checkpoints: Checkpoint[] = [];
-
     try {
       await fs.mkdir(this.checkpointDir, { recursive: true });
       const files = await fs.readdir(this.checkpointDir);
 
-      for (const file of files) {
-        if (file.startsWith(workflowId) && file.endsWith('.json')) {
+      // Filter matching files first
+      const matchingFiles = files.filter(
+        file => file.startsWith(workflowId) && file.endsWith('.json')
+      );
+
+      // Read all files in parallel for better performance
+      const results = await Promise.all(
+        matchingFiles.map(async (file) => {
           try {
             const content = await fs.readFile(
               path.join(this.checkpointDir, file),
               'utf-8'
             );
-            checkpoints.push(JSON.parse(content));
+            return JSON.parse(content) as Checkpoint;
           } catch {
-            // Skip invalid files
+            return null; // Skip invalid files
           }
-        }
-      }
+        })
+      );
 
-      // Sort by creation time (newest first)
+      // Filter out nulls and sort by creation time (newest first)
+      const checkpoints = results.filter((cp): cp is Checkpoint => cp !== null);
       checkpoints.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+
+      return checkpoints;
     } catch (error) {
       logger.warn('Failed to list checkpoints', {
         workflowId,
         error: error instanceof Error ? error.message : String(error)
       });
+      return [];
     }
-
-    return checkpoints;
   }
 
   /**

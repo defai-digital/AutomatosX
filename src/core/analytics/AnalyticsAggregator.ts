@@ -232,10 +232,13 @@ export class AnalyticsAggregator {
       latencyCount[event.provider] = (latencyCount[event.provider] || 0) + 1;
     }
     for (const provider in latencySum) {
-      const count = latencyCount[provider] || 1;
+      const count = latencyCount[provider];
       const sum = latencySum[provider];
-      if (sum !== undefined) {
+      // Guard against division by zero - skip providers with no valid count
+      if (sum !== undefined && count !== undefined && count > 0) {
         avgLatency[provider] = Math.round(sum / count);
+      } else if (sum !== undefined) {
+        avgLatency[provider] = 0; // Default to 0 if count is invalid
       }
     }
 
@@ -246,8 +249,9 @@ export class AnalyticsAggregator {
     }
     for (const provider in usage) {
       const errors = errorCount[provider] || 0;
-      const total = usage[provider] || 1;
-      errorRate[provider] = (errors / total) * 100;
+      const total = usage[provider];
+      // Guard against division by zero
+      errorRate[provider] = total && total > 0 ? (errors / total) * 100 : 0;
     }
 
     return {

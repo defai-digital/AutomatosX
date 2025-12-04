@@ -390,8 +390,9 @@ export class ProjectContextLoader {
     if (projectMatch && projectMatch[1]) {
       // Parse "my-app v1.0.0"
       const parts = projectMatch[1].trim().split(/\s+v/);
-      metadata.name = parts[0];
-      if (parts[1]) {
+      // split() always returns at least one element, but use optional access for safety
+      metadata.name = parts[0] || '';
+      if (parts.length > 1 && parts[1]) {
         metadata.version = parts[1];
       }
     }

@@ -676,8 +676,21 @@ export abstract class BaseProvider implements Provider {
   /**
    * Check if CLI is available - Template method pattern
    * Uses getCLICommand() to determine which CLI to check
+   *
+   * v11.2.9 Fix: Always return true in mock mode (AX_MOCK_PROVIDERS=true)
+   * This allows integration tests in CI to run without installing actual provider CLIs
    */
   protected async checkCLIAvailable(): Promise<boolean> {
+    // v11.2.9 Fix: Mock mode bypasses CLI availability check
+    // This is essential for CI integration tests where no provider CLIs are installed
+    if (process.env.AX_MOCK_PROVIDERS === 'true') {
+      logger.debug(`${this.getCLICommand()} CLI availability check (mock mode)`, {
+        available: true,
+        mockMode: true
+      });
+      return true;
+    }
+
     try {
       const cliCommand = this.getCLICommand();
       const result = findOnPath(cliCommand);

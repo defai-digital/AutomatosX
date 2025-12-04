@@ -4,16 +4,15 @@
 
 **AutomatosX transforms your AI coding assistant into a multi-agent enterprise platform** - with 20+ specialized agents, persistent memory, and 80% cost savings through intelligent multi-provider routing. **You keep using Claude Code or Codex exactly as before**, but now with superpowers.
 
-[![npm version](https://img.shields.io/npm/v/@defai.digital/automatosx.svg)](https://www.npmjs.com/package/@defai.digital/automatosx)
-[![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue.svg)](https://www.typescriptlang.org/)
+
+[![downloads](https://img.shields.io/npm/dt/@defai.digital/automatosx?style=flat-square&logo=npm&label=downloads)](https://npm-stat.com/charts.html?package=%40defai.digital%2Fautomatox)
 [![Tests](https://img.shields.io/badge/tests-2,423+%20passing-brightgreen.svg)](#)
-[![npm](https://img.shields.io/npm/dt/%40defai.digital%2Fautomatosx.svg?label=total%20downloads&color=blue)](https://www.npmjs.com/package/@defai.digital/automatosx)
 [![macOS](https://img.shields.io/badge/macOS-26.0-blue.svg)](https://www.apple.com/macos)
 [![Windows](https://img.shields.io/badge/Windows-10+-blue.svg)](https://www.microsoft.com/windows)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
+[![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v11.2.9 | Performance Refactors | Array Optimization
+**Status**: ✅ **Production Ready** | v11.3.0 | Embedded Instructions System | Orchestration Service
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

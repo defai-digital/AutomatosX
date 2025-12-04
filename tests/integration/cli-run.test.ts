@@ -32,7 +32,8 @@ describe('CLI Run Command Integration', () => {
   describe('run command', () => {
     it('should show error when agent profile not found', async () => {
       try {
-        await execFileAsync('node', [cliPath, 'run', 'nonexistent', 'test task'], {
+        // v11.1.0: Use --no-auto-select to disable fallback auto-selection
+        await execFileAsync('node', [cliPath, 'run', 'nonexistent', 'test task', '--no-auto-select'], {
           cwd: testDir,
           env: {
             ...process.env,
@@ -42,8 +43,9 @@ describe('CLI Run Command Integration', () => {
         expect.fail('Should have thrown error');
       } catch (error: any) {
         expect(error.code).toBe(1);
-        // Error message should be present in stderr
-        expect(error.stderr).toBeTruthy();
+        // Error message should be present in stderr or stdout (depends on output mode)
+        const output = (error.stderr || '') + (error.stdout || '');
+        expect(output).toContain('not found');
       }
     });
 

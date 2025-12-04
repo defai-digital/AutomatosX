@@ -104,7 +104,7 @@ interface RunOptions {
   // v11.0.0: Workflow templates (replaces spec-kit execution)
   workflow?: string;
   // v11.1.0: Agent auto-selection
-  noAutoSelect?: boolean;
+  autoSelect?: boolean;
 }
 
 export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
@@ -121,10 +121,10 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: 'Task to execute',
         type: 'string'
       })
-      .option('no-auto-select', {
-        describe: 'Disable agent auto-selection (v11.1.0+)',
+      .option('auto-select', {
+        describe: 'Enable agent auto-selection when agent not found (v11.1.0+)',
         type: 'boolean',
-        default: false
+        default: true
       })
       .option('provider', {
         describe: 'Override provider (claude, gemini, openai)',
@@ -309,7 +309,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
     }
 
     // If agent not provided and auto-select is disabled, error
-    if (!agentProvided && argv.noAutoSelect) {
+    if (!agentProvided && argv.autoSelect === false) {
       console.log(chalk.red.bold('\n❌ Error: Agent name is required when --no-auto-select is used\n'));
       console.log(chalk.gray('Usage: ax run <agent> <task> --no-auto-select'));
       process.exit(1);
@@ -503,7 +503,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           }
         } catch (error) {
           // Agent not found
-          if (argv.noAutoSelect) {
+          if (argv.autoSelect === false) {
             // Mode 3b: Auto-select disabled, show error and suggestions
             console.error(chalk.red.bold(`\n❌ Agent not found: ${actualAgent}\n`));
 

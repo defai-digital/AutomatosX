@@ -345,8 +345,9 @@ systemPrompt: Test prompt
   describe('Error Handling', () => {
     it('should handle missing agent gracefully', async () => {
       try {
+        // v11.1.0: Use --no-auto-select to disable fallback auto-selection
         await exec(
-          `cd "${testDir}" && node "${cliPath}" run nonexistent "task" --parallel`,
+          `cd "${testDir}" && node "${cliPath}" run nonexistent "task" --parallel --no-auto-select`,
           {
             env: {
               ...process.env,
@@ -361,11 +362,11 @@ systemPrompt: Test prompt
       } catch (error: any) {
         // Should fail gracefully
         expect(error.code).toBeGreaterThan(0);
-        // Error message might vary - check for key indicators
+        // Error message should indicate agent not found
         const stderr = error.stderr || '';
         const stdout = error.stdout || '';
         const output = stderr + stdout;
-        expect(output.length).toBeGreaterThan(0);
+        expect(output).toContain('not found');
       }
     }, 60000);
 
@@ -383,8 +384,9 @@ systemPrompt: Test prompt
       );
 
       try {
+        // v11.1.0: Use --no-auto-select to disable fallback auto-selection
         await exec(
-          `cd "${testDir}" && node "${cliPath}" run broken "task" --parallel`,
+          `cd "${testDir}" && node "${cliPath}" run broken "task" --parallel --no-auto-select`,
           {
             env: {
               ...process.env,
@@ -396,7 +398,7 @@ systemPrompt: Test prompt
         );
         expect(true).toBe(false);
       } catch (error: any) {
-        // Should fail validation
+        // Should fail - agent config is invalid or not found
         expect(error.code).toBeGreaterThan(0);
       }
     }, 60000);

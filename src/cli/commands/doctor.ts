@@ -1332,9 +1332,13 @@ async function checkDiskSpace(workingDir: string, verbose: boolean): Promise<Che
     });
 
     const parts = dfOutput.trim().split(/\s+/);
-    const availableKB = parseInt(parts[3] || '0', 10);
-    const availableMB = Math.round(availableKB / 1024);
-    const availableGB = (availableKB / (1024 * 1024)).toFixed(2);
+    // df -k output format: Filesystem 1K-blocks Used Available Use% Mounted
+    // parts[3] is "Available" - use fallback if missing or invalid
+    const rawAvailable = parts.length > 3 ? parts[3] : '0';
+    const availableKB = parseInt(rawAvailable || '0', 10);
+    const safeAvailableKB = isNaN(availableKB) ? 0 : availableKB;
+    const availableMB = Math.round(safeAvailableKB / 1024);
+    const availableGB = (safeAvailableKB / (1024 * 1024)).toFixed(2);
 
     const hasEnoughSpace = availableMB > 100; // At least 100MB free
 

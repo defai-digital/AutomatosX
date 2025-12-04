@@ -92,10 +92,11 @@ temperature: 0.7
     }, 30000);
 
     it('should handle missing agent gracefully', async () => {
-      const result = await runCLI(['run', 'nonexistent', 'Task'], testDir);
+      // v11.1.0: Use --no-auto-select to disable fallback auto-selection
+      const result = await runCLI(['run', 'nonexistent', 'Task', '--no-auto-select'], testDir);
 
       expect(result.code).toBe(1);
-      // Error messages are in stderr, not stdout
+      // Error messages may be in stderr or stdout
       const output = result.stdout + result.stderr;
       expect(output).toContain('not found');
     }, 30000);

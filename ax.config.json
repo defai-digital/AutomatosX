@@ -300,5 +300,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "11.2.9"
+  "version": "11.3.0"
 }

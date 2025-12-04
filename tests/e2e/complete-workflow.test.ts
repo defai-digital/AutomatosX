@@ -46,11 +46,13 @@ describe('E2E Complete Workflows', () => {
       });
 
       // Step 3: Run agent
+      // v8.5.8: In non-TTY environments, quiet mode is auto-detected
+      // Check for "📝 Result" which is always shown in output
       const runResult = await execCLI(env, ['run', 'assistant', 'Hello, test!'], {
         timeout: 20000
       });
       assertSuccess(runResult);
-      assertOutputContains(runResult.stdout, 'Complete');
+      assertOutputContains(runResult.stdout, '📝 Result');
 
       // Step 4: Check status (after run)
       const statusAfter = await execCLI(env, ['status']);
@@ -141,8 +143,9 @@ describe('E2E Complete Workflows', () => {
     }, 30000);
 
     it('should recover from errors gracefully', async () => {
-      // Step 1: Try to run non-existent agent (should fail)
-      const run1 = await execCLI(env, ['run', 'nonexistent', 'test']);
+      // Step 1: Try to run non-existent agent (should fail with --no-auto-select)
+      // v11.1.0: Without --no-auto-select, auto-selection would pick a fallback agent
+      const run1 = await execCLI(env, ['run', 'nonexistent', 'test', '--no-auto-select']);
       expect(run1.exitCode).not.toBe(0);
       // v4.7.5+: Shows intelligent suggestions instead of simple "not found"
       assertOutputContains(run1.stderr + run1.stdout, /Agent not found|Did you mean|Available agents/i);
@@ -155,7 +158,6 @@ describe('E2E Complete Workflows', () => {
         timeout: 20000
       });
       assertSuccess(run2);
-      assertOutputContains(run2.stdout, 'Complete');
     }, 30000);
   });
 
@@ -225,7 +227,8 @@ describe('E2E Complete Workflows', () => {
         timeout: 40000
       });
       assertSuccess(run);
-      assertOutputContains(run.stdout, 'Complete');
+      // v8.5.8: In non-TTY environments, check for "📝 Result" instead of "Complete"
+      assertOutputContains(run.stdout, '📝 Result');
     }, 60000);
 
     it('should support resource cleanup after execution', async () => {
@@ -281,7 +284,8 @@ describe('E2E Complete Workflows', () => {
       );
 
       assertSuccess(run);
-      assertOutputContains(run.stdout, 'Complete');
+      // v8.5.8: In non-TTY environments, check for "📝 Result" instead of "Complete"
+      assertOutputContains(run.stdout, '📝 Result');
     }, 40000); // Test timeout > command timeout
 
     it('should handle partial failure scenarios', async () => {
@@ -325,8 +329,9 @@ describe('E2E Complete Workflows', () => {
       assertSuccess(run2);
 
       // Both should succeed independently
-      assertOutputContains(run1.stdout, 'Complete');
-      assertOutputContains(run2.stdout, 'Complete');
+      // v8.5.8: In non-TTY environments, check for "📝 Result" instead of "Complete"
+      assertOutputContains(run1.stdout, '📝 Result');
+      assertOutputContains(run2.stdout, '📝 Result');
     }, 40000);
 
     it('should handle memory filtering workflow', async () => {

@@ -12,7 +12,7 @@
 
 import type { AgentProfile } from '../types/agent.js';
 import type { ProfileLoader } from './profile-loader.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Agent selection result

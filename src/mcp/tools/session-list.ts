@@ -5,8 +5,8 @@
  */
 
 import type { ToolHandler, SessionListOutput } from '../types.js';
-import { SessionManager } from '../../core/session-manager.js';
-import { logger } from '../../utils/logger.js';
+import { SessionManager } from '../../core/session/manager.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface SessionListDependencies {
   sessionManager: SessionManager;

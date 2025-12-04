@@ -10,7 +10,7 @@
 
 import type { SpecTask, SpecGraph, SpecErrorCode } from '../../types/spec.js';
 import { SpecError } from '../../types/spec.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * SpecGraphBuilder class

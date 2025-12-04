@@ -11,7 +11,7 @@ import { readFile, stat, realpath, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'path';
 import yaml from 'yaml';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 // Maximum context size: 100KB (security limit)
 const MAX_CONTEXT_SIZE = 100 * 1024;

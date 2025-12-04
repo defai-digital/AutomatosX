@@ -18,19 +18,19 @@ import type { OrchestrationMetadata, Session } from '../types/orchestration.js';
 import { ProfileLoader } from './profile-loader.js';
 import { AbilitiesManager } from './abilities-manager.js';
 import type { IMemoryManager } from '../types/memory.js';
-import type { SessionManager } from '../core/session-manager.js';
+import type { SessionManager } from '../core/session/manager.js';
 import type { WorkspaceManager } from '../core/workspace-manager.js';
-import { Router } from '../core/router.js';
-import { PathResolver } from '../core/path-resolver.js';
+import { Router } from '../core/router/router.js';
+import { PathResolver } from '../shared/validation/path-resolver.js';
 import { ProjectContextLoader } from '../core/project-context.js';
-import { logger } from '../utils/logger.js';
-import { PathError, ProviderError } from '../utils/errors.js';
+import { logger } from '../shared/logging/logger.js';
+import { PathError, ProviderError } from '../shared/errors/errors.js';
 import {
   ComponentType,
   LifecycleState,
   markState,
   PerformanceTimer
-} from '../utils/performance-markers.js';
+} from '../shared/profiling/performance-markers.js';
 
 /**
  * Provider name aliases (v5.0.7 fix)

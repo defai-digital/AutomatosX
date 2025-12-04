@@ -17,7 +17,7 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { detectProjectRoot } from '../../core/path-resolver.js';
+import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
 import { handleSpecExplain } from './spec/explain.js';
 
 interface SpecOptions {

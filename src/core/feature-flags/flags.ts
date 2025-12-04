@@ -7,7 +7,7 @@
  */
 
 import { FeatureFlagManager } from './flag-manager.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 // Global flag manager instances per workspace
 const flagManagerInstances = new Map<string, FeatureFlagManager>();

@@ -10,7 +10,7 @@ import { join } from 'path';
 import chalk from 'chalk';
 import { ProfileLoader } from '../../../agents/profile-loader.js';
 import { TeamManager } from '../../../core/team-manager.js';
-import { PromptHelper } from '../../../utils/prompt-helper.js';
+import { PromptHelper } from '../../../shared/helpers/prompt-helper.js';
 
 interface RemoveOptions {
   agent: string;

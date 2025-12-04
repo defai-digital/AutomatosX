@@ -9,9 +9,9 @@ import chalk from 'chalk';
 import { getTelemetryCollector } from '../../core/telemetry/TelemetryCollector.js';
 import { getAnalyticsAggregator } from '../../core/analytics/AnalyticsAggregator.js';
 import { getOptimizationAnalyzer } from '../../core/analytics/OptimizationAnalyzer.js';
-import { loadConfig } from '../../core/config.js';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
+import { loadConfig } from '../../core/config/loader.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
 import type { TimePeriod } from '../../types/telemetry.js';
 
 interface AnalyticsOptions {

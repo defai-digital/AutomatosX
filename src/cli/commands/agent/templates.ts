@@ -8,40 +8,8 @@ import { readdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import chalk from 'chalk';
-
-interface TemplateInfo {
-  name: string;
-  team: string;
-  description: string;
-}
-
-const TEMPLATE_DESCRIPTIONS: Record<string, TemplateInfo> = {
-  'basic-agent': {
-    name: 'basic-agent',
-    team: 'core',
-    description: 'Basic agent with minimal configuration'
-  },
-  'developer': {
-    name: 'developer',
-    team: 'engineering',
-    description: 'Software developer (code generation, review, testing)'
-  },
-  'analyst': {
-    name: 'analyst',
-    team: 'business',
-    description: 'Business analyst (requirements, user stories, strategy)'
-  },
-  'designer': {
-    name: 'designer',
-    team: 'design',
-    description: 'UI/UX designer (interface design, user experience)'
-  },
-  'qa-specialist': {
-    name: 'qa-specialist',
-    team: 'core',
-    description: 'QA specialist (test planning, automation, quality)'
-  }
-};
+import { getPackageRoot } from '../../../shared/helpers/package-root.js';
+import { BUILTIN_TEMPLATE_METADATA, type TemplateMetadata } from './helpers.js';
 
 export const templatesCommand: CommandModule = {
   command: 'templates',
@@ -56,8 +24,9 @@ export const templatesCommand: CommandModule = {
       const hasProjectTemplates = existsSync(projectTemplatesDir);
 
       // Default templates location (package examples)
-      // After bundling, __dirname is dist/, so go up 1 level to project root
-      const defaultTemplatesDir = join(__dirname, '../examples/templates');
+      // Use getPackageRoot() to reliably find examples in both dev and bundled mode
+      const packageRoot = getPackageRoot();
+      const defaultTemplatesDir = join(packageRoot, 'examples/workflows');
       const hasDefaultTemplates = existsSync(defaultTemplatesDir);
 
       if (!hasProjectTemplates && !hasDefaultTemplates) {
@@ -83,7 +52,7 @@ export const templatesCommand: CommandModule = {
       console.log(chalk.gray(`Source: ${templateSource} (${templatesDir})\n`));
 
       // Group by team
-      const byTeam: Record<string, TemplateInfo[]> = {
+      const byTeam: Record<string, TemplateMetadata[]> = {
         core: [],
         engineering: [],
         business: [],
@@ -91,7 +60,7 @@ export const templatesCommand: CommandModule = {
       };
 
       templates.forEach(template => {
-        const info = TEMPLATE_DESCRIPTIONS[template] || {
+        const info = BUILTIN_TEMPLATE_METADATA[template] || {
           name: template,
           team: 'core',
           description: 'Custom template'

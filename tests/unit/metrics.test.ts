@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MetricsCollector, measureLatency } from '../../src/utils/metrics.js';
+import { MetricsCollector, measureLatency } from '../../src/shared/profiling/metrics.js';
 
 describe('MetricsCollector', () => {
   let metrics: MetricsCollector;

@@ -10,7 +10,7 @@
  * v6.0.7: Phase 2 - Smart integration mode selection
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { execSync } from 'child_process';

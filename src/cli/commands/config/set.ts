@@ -5,11 +5,11 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { loadConfigFile, saveConfigFile, validateConfig } from '../../../core/config.js';
-import { printError } from '../../../utils/error-formatter.js';
-import { printSuccess } from '../../../utils/message-formatter.js';
-import { formatValidationErrors } from '../../../utils/config-validator.js';
-import { logger } from '../../../utils/logger.js';
+import { loadConfigFile, saveConfigFile, validateConfig } from '../../../core/config/loader.js';
+import { printError } from '../../../shared/errors/error-formatter.js';
+import { printSuccess } from '../../../shared/logging/message-formatter.js';
+import { formatValidationErrors } from '../../../core/config/validator.js';
+import { logger } from '../../../shared/logging/logger.js';
 import { resolveConfigPath, checkExists, setNestedValue } from './utils.js';
 
 interface SetOptions {

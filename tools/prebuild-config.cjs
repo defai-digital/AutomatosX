@@ -38,7 +38,7 @@ const path = require('path');
 
 // Paths
 const rootDir = path.resolve(__dirname, '..');
-const outputPath = path.join(rootDir, 'src', 'config.generated.ts');
+const outputPath = path.join(rootDir, 'src', 'core', 'config', 'generated.ts');
 
 // v9.2.0: Try ax.config.json first (preferred), fall back to automatosx.config.json (deprecated)
 const configPaths = [
@@ -103,7 +103,7 @@ const tsContent = `/**
  * Generated: ${timestamp}
  */
 
-import type { AutomatosXConfig } from './types/config.js';
+import type { AutomatosXConfig } from '../../types/config.js';
 
 /**
  * Precompiled default configuration

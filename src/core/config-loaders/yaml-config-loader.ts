@@ -22,7 +22,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { ConfigError, ErrorCode } from '../../utils/errors.js';
+import { ConfigError, ErrorCode } from '../../shared/errors/errors.js';
 
 /**
  * YAML Provider Configuration Schema

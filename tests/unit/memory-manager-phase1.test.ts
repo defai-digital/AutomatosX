@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, rm } from 'fs/promises';
 import { join } from 'path';
-import { MemoryManager } from '../../src/core/memory-manager.js';
+import { MemoryManager } from '../../src/core/memory/manager.js';
 
 describe('Memory Manager - Phase 1 Improvements', () => {
   let memoryManager: MemoryManager;

@@ -18,8 +18,8 @@ import type {
   AnalyticsOptions
 } from '../../types/telemetry.js';
 import type { TelemetryCollector } from '../telemetry/TelemetryCollector.js';
-import { logger } from '../../utils/logger.js';
-import { getPercentile } from '../../utils/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
+import { logger } from '../../shared/logging/logger.js';
+import { getPercentile } from '../../shared/helpers/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
 
 /**
  * Analytics Aggregator

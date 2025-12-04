@@ -13,8 +13,8 @@ import { readFile, stat, mkdir, access } from 'fs/promises';
 import { statSync, existsSync, mkdirSync } from 'fs';
 import { join, parse, dirname } from 'path';
 import { createHash } from 'crypto';
-import { logger } from '../utils/logger.js';
-import { DatabaseFactory } from '../utils/db-factory.js';
+import { logger } from '../shared/logging/logger.js';
+import { DatabaseFactory } from '../core/database/factory.js';
 
 /**
  * File metadata stored in index

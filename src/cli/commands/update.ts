@@ -6,9 +6,9 @@ import type { CommandModule } from 'yargs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import chalk from 'chalk';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
-import { PromptHelper } from '../../utils/prompt-helper.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
+import { PromptHelper } from '../../shared/helpers/prompt-helper.js';
 
 const execAsync = promisify(exec);
 
@@ -34,9 +34,9 @@ export const updateCommand: CommandModule<Record<string, unknown>, UpdateOptions
         type: 'boolean',
         default: false
       })
-      .example('automatosx update', 'Check and install latest version')
-      .example('automatosx update --check', 'Only check for updates')
-      .example('automatosx update --yes', 'Update without confirmation');
+      .example('$0 update', 'Check and install latest version')
+      .example('$0 update --check', 'Only check for updates')
+      .example('$0 update --yes', 'Update without confirmation');
   },
 
   handler: async (argv) => {

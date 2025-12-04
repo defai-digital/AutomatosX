@@ -24,7 +24,7 @@ const getProviderMetadata = (name: string): ProviderMetadata | null => {
     }
   } as any;
 };
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 export interface ValidationResult {
   valid: boolean;

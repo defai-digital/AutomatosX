@@ -6,7 +6,7 @@
 
 import type { ToolHandler, MemoryClearOutput } from '../types.js';
 import type { IMemoryManager } from '../../types/memory.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface MemoryClearDependencies {
   memoryManager: IMemoryManager;

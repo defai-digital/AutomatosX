@@ -27,11 +27,11 @@ import type {
   StageStatus,
   CheckpointAction,
 } from '../types/stage-execution.js';
-import { CheckpointManager } from './checkpoint-manager.js';
+import { CheckpointManager } from './session/checkpoint.js';
 import { PromptManager, createCLIPromptManager } from './prompt-manager.js';
 import { ProgressChannel } from './progress-channel.js';
 import { ProgressRenderer } from '../cli/renderers/progress-renderer.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { IMemoryManager } from '../types/memory.js';
 
 /**

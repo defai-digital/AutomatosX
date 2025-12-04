@@ -13,7 +13,7 @@
 import { readFile, writeFile, access } from 'fs/promises';
 import { join } from 'path';
 import { z } from 'zod';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 // ========== Schemas ==========
 

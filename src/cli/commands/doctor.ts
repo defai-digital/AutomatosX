@@ -22,10 +22,10 @@ import { existsSync, statSync, readdirSync } from 'fs';
 import { access, constants, readFile } from 'fs/promises';
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadConfig } from '../../core/config.js';
-import { PathResolver } from '../../core/path-resolver.js';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
+import { loadConfig } from '../../core/config/loader.js';
+import { PathResolver } from '../../shared/validation/path-resolver.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
@@ -1357,16 +1357,20 @@ async function checkDiskSpace(workingDir: string, verbose: boolean): Promise<Che
           timeout: 10000
         });
         const sizeKB = parseInt(duOutput.trim(), 10);
-        const sizeMB = (sizeKB / 1024).toFixed(2);
 
-        results.push({
-          name: '.automatosx Size',
-          category: 'Disk',
-          passed: true,
-          message: sizeKB > 1024 ? `${sizeMB} MB` : `${sizeKB} KB`,
-          details: verbose ? `Includes: memory, sessions, logs, agents` : undefined
-        });
-        displayCheck(results[results.length - 1]!);
+        // FIXED (v11.2.7): Validate parseInt result to prevent NaN display
+        if (!isNaN(sizeKB)) {
+          const sizeMB = (sizeKB / 1024).toFixed(2);
+
+          results.push({
+            name: '.automatosx Size',
+            category: 'Disk',
+            passed: true,
+            message: sizeKB > 1024 ? `${sizeMB} MB` : `${sizeKB} KB`,
+            details: verbose ? `Includes: memory, sessions, logs, agents` : undefined
+          });
+          displayCheck(results[results.length - 1]!);
+        }
       } catch {
         // Ignore du errors
       }

@@ -13,9 +13,9 @@
 
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import { EventEmitter } from 'events';
-import { detectProjectRoot } from './path-resolver.js';
+import { detectProjectRoot } from '../shared/validation/path-resolver.js';
 import type { ProviderLimitTrackingConfig } from '../types/config.js';
 import { Mutex } from 'async-mutex';
 

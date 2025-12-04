@@ -14,7 +14,7 @@ import { promisify } from 'util';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { mkdir, writeFile } from 'fs/promises';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { MCPRegistryEntry, MCPDiscoveryResult, KNOWN_MCP_SERVERS } from './types-common.js';
 
 const execAsync = promisify(exec);

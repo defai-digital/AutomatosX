@@ -9,7 +9,7 @@
 
 import { UnifiedMCPManager, createUnifiedMCPManager } from '../../mcp/unified-manager.js';
 import type { UniversalMCPConfig, MCPServerStatus, MCPToolInfo } from '../../mcp/types-common.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import type { GeminiConfig } from './types.js';
 
 /**

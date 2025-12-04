@@ -16,7 +16,7 @@ import {
   getEnvironmentName,
   shouldAutoEnableMockProviders,
   getProviderSuggestion
-} from '@/utils/environment.js';
+} from '@/shared/helpers/environment.js';
 
 describe('Environment Detection', () => {
   // Store original env to restore after each test

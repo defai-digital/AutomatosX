@@ -8,7 +8,7 @@
  * @since v10.3.0
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { CodexCLI, getDefaultCLI } from './cli-wrapper.js';
 import { CodexMCPManager, getDefaultMCPManager } from './mcp-manager.js';
 import type {

@@ -22,7 +22,7 @@ import {
   getProjectConfigPath,
   fileExists,
 } from '../../integrations/gemini-cli/utils/file-reader.js';
-import { loadConfig } from '../../core/config.js';
+import { loadConfig } from '../../core/config/loader.js';
 
 const bridge = new GeminiCLIBridge();
 const translator = new CommandTranslator();

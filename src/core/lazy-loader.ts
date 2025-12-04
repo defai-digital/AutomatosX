@@ -5,7 +5,7 @@
  * by deferring the loading of heavy modules until they're actually needed.
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Lazy loader for heavy modules

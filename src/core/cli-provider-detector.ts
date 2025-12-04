@@ -14,7 +14,7 @@
 import { existsSync } from 'fs';
 import { delimiter } from 'path';
 import { spawn, spawnSync, type ChildProcess, type SpawnOptions } from 'child_process';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 // ============================================================================
 // Type Definitions

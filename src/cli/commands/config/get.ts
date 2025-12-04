@@ -5,9 +5,9 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { loadConfigFile } from '../../../core/config.js';
-import { printError } from '../../../utils/error-formatter.js';
-import { formatKeyValue } from '../../../utils/message-formatter.js';
+import { loadConfigFile } from '../../../core/config/loader.js';
+import { printError } from '../../../shared/errors/error-formatter.js';
+import { formatKeyValue } from '../../../shared/logging/message-formatter.js';
 import { resolveConfigPath, checkExists, getNestedValue } from './utils.js';
 
 interface GetOptions {

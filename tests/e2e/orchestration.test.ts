@@ -46,7 +46,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
       });
 
       // Create SessionManager programmatically to create a session
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
       const sessionManager = new SessionManager({ persistencePath: sessionsPath });
       await sessionManager.initialize();
@@ -77,7 +77,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
       // Create agent
       await createAgentProfile(env, 'backend');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
 
       // First instance - create session
@@ -109,7 +109,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
     it('should complete session and persist status', async () => {
       await createAgentProfile(env, 'backend');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
       const sessionManager = new SessionManager({ persistencePath: sessionsPath });
       await sessionManager.initialize();
@@ -128,7 +128,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
     it('should fail session and persist error metadata', async () => {
       await createAgentProfile(env, 'backend');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
       const sessionManager = new SessionManager({ persistencePath: sessionsPath });
       await sessionManager.initialize();
@@ -153,7 +153,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
       await createAgentProfile(env, 'frontend');
       await createAgentProfile(env, 'security');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
       const sessionManager = new SessionManager({ persistencePath: sessionsPath });
       await sessionManager.initialize();
@@ -176,7 +176,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
     it('should not add duplicate agents to session', async () => {
       await createAgentProfile(env, 'backend');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionsPath = join(env.testDir, '.automatosx', 'sessions', 'sessions.json');
       const sessionManager = new SessionManager({ persistencePath: sessionsPath });
       await sessionManager.initialize();
@@ -194,7 +194,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
       await createAgentProfile(env, 'backend');
       await createAgentProfile(env, 'frontend');
 
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const sessionManager = new SessionManager();
       await sessionManager.initialize();
 
@@ -297,7 +297,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
 
   describe('Cleanup Coordination', () => {
     it('should cleanup old sessions and temporary files independently', async () => {
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
       const { WorkspaceManager } = await import('../../src/core/workspace-manager.js');
 
       await createAgentProfile(env, 'backend');
@@ -341,7 +341,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
     }, 20000);
 
     it('should persist cleanup to sessions file', async () => {
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
 
       await createAgentProfile(env, 'backend');
 
@@ -378,7 +378,7 @@ describe('E2E Orchestration Workflows (v4.7.0)', () => {
 
   describe('Session Metadata', () => {
     it('should update session metadata and persist', async () => {
-      const { SessionManager } = await import('../../src/core/session-manager.js');
+      const { SessionManager } = await import('../../src/core/session/manager.js');
 
       await createAgentProfile(env, 'backend');
 

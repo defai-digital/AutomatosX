@@ -13,8 +13,8 @@
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadConfig } from '@/core/config.js';
-import { detectProjectRoot } from '@/core/path-resolver.js';
+import { loadConfig } from '@/core/config/loader.js';
+import { detectProjectRoot } from '@/shared/validation/path-resolver.js';
 // v9.0.2: Simplified provider metadata since cost tracking was removed in v8.3.0
 // These stubs provide basic display names and feature flags for CLI commands
 interface SimpleProviderMetadata {
@@ -57,7 +57,7 @@ const getFastestProvider = () => 'claude-code'; // Generally fast
 const getMostReliableProvider = () => 'claude-code'; // Generally reliable
 import { getProviderLimitManager } from '@/core/provider-limit-manager.js';
 import { getProviderSession } from '@/core/provider-session.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 interface ProvidersOptions {
   // Subcommand

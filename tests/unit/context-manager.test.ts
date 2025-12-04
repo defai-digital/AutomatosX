@@ -6,14 +6,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ContextManager } from '../../src/agents/context-manager.js';
 import { ProfileLoader } from '../../src/agents/profile-loader.js';
 import { AbilitiesManager } from '../../src/agents/abilities-manager.js';
-import { MemoryManager } from '../../src/core/memory-manager.js';
-import { Router } from '../../src/core/router.js';
-import { PathResolver } from '../../src/core/path-resolver.js';
+import { MemoryManager } from '../../src/core/memory/manager.js';
+import { Router } from '../../src/core/router/router.js';
+import { PathResolver } from '../../src/shared/validation/path-resolver.js';
 import { ClaudeProvider } from '../../src/providers/claude-provider.js';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { normalizePath } from '../../src/utils/path-utils.js';
+import { normalizePath } from '../../src/shared/validation/path-utils.js';
 
 describe('ContextManager', () => {
   let testDir: string;

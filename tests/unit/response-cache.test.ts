@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ResponseCache } from '../../src/core/response-cache.js';
+import { ResponseCache } from '../../src/core/cache/response-cache.js';
 import { unlinkSync, existsSync } from 'fs';
 import { resolve } from 'path';
 

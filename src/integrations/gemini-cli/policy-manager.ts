@@ -22,7 +22,7 @@ import type {
   PolicyStats,
   PolicyAuditLog
 } from '../../types/gemini-policy.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export class GeminiPolicyManager {
   private policy: GeminiPolicy;

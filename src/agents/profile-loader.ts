@@ -3,14 +3,13 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join, extname, basename, dirname, sep } from 'path';
-import { fileURLToPath } from 'url';
+import { join, extname, basename } from 'path';
 import { load } from 'js-yaml';
 import { Mutex } from 'async-mutex';
 import type { AgentProfile } from '../types/agent.js';
 import { AgentValidationError, AgentNotFoundError } from '../types/agent.js';
-import { logger } from '../utils/logger.js';
-import { TTLCache } from '../core/cache.js';
+import { logger } from '../shared/logging/logger.js';
+import { TTLCache } from '../core/cache/cache.js';
 import type { TeamManager } from '../core/team-manager.js';
 import type { TeamConfig } from '../types/team.js';
 import type { ProfileCacheConfig } from '../types/config.js';
@@ -22,28 +21,9 @@ import {
   markCacheHit,
   markCacheMiss,
   PerformanceTimer
-} from '../utils/performance-markers.js';
+} from '../shared/profiling/performance-markers.js';
 import { safeValidateAgentProfile, validateAgentProfileFromYAML } from './agent-schemas.js';
-
-// Get the directory of this file for locating built-in agents
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Get package root - handle both dev (src/) and prod (dist/) scenarios
-function getPackageRoot(): string {
-  // In production, __dirname will be dist/
-  // In development, __dirname will be src/agents/
-  const currentDir = __dirname;
-
-  // If we're in dist/, go up one level to package root
-  // If we're in src/agents/, go up two levels to package root
-  // Use path.sep-independent check for cross-platform compatibility
-  if (currentDir.includes(`${sep}dist`) || currentDir.includes('/dist')) {
-    return join(currentDir, '..');
-  } else {
-    return join(currentDir, '../..');
-  }
-}
+import { getPackageRoot } from '../shared/helpers/package-root.js';
 
 /**
  * Profile Loader - Load and validate agent profiles

@@ -6,11 +6,11 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { loadConfig, saveConfigFile } from '../../core/config.js';
+import { loadConfig, saveConfigFile } from '../../core/config/loader.js';
 import { showModeWizard, detectEnvironment } from '../../providers/integration-mode-wizard.js';
 import type { IntegrationMode } from '../../types/config.js';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
 import { resolve } from 'path';
 
 interface ConfigureOptions {

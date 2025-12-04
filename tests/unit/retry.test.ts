@@ -9,7 +9,7 @@ import {
   calculateBackoffDelay,
   CircuitBreaker,
   CircuitState
-} from '../../src/utils/retry.js';
+} from '../../src/shared/helpers/retry.js';
 
 describe('Retry Logic', () => {
   describe('isRetryableError', () => {

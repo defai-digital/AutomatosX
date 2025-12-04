@@ -7,7 +7,7 @@
  * @module integrations/openai-codex/sdk-adapter
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import type { CodexExecutionResult } from './types.js';
 import { CodexError, CodexErrorType } from './types.js';
 

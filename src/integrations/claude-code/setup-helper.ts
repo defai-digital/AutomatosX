@@ -10,7 +10,7 @@ import { promisify } from 'util';
 import { access, readFile } from 'fs/promises';
 import { join } from 'path';
 import { constants } from 'fs';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { ManifestGenerator } from './manifest-generator.js';
 import type { ProfileLoader } from '../../agents/profile-loader.js';
 

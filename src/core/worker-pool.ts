@@ -6,7 +6,7 @@
 import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import { join } from 'path';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 export interface WorkerTask<T = any> {
   id: string;

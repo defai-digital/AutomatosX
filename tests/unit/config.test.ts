@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadConfig, validateConfig, clearConfigCache } from '../../src/core/config.js';
+import { loadConfig, validateConfig, clearConfigCache } from '../../src/core/config/loader.js';
 import type { AutomatosXConfig } from '../../src/types/config.js';
 import { DEFAULT_CONFIG } from '../../src/types/config.js';
 

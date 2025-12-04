@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   GracefulShutdownManager,
   InFlightTracker
-} from '../../src/utils/graceful-shutdown.js';
+} from '../../src/shared/process/graceful-shutdown.js';
 
 describe('GracefulShutdownManager', () => {
   let shutdownManager: GracefulShutdownManager;

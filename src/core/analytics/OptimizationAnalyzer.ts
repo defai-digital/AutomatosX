@@ -19,7 +19,7 @@ import type {
 } from '../../types/telemetry.js';
 import type { AnalyticsAggregator } from './AnalyticsAggregator.js';
 import type { TelemetryCollector } from '../telemetry/TelemetryCollector.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * Optimization Analyzer

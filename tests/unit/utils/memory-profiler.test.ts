@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MemoryProfiler } from '../../../src/utils/memory-profiler';
+import { MemoryProfiler } from '../../../src/shared/profiling/memory-profiler';
 
 describe('MemoryProfiler', () => {
   let originalEnv: string | undefined;

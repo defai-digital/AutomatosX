@@ -15,7 +15,7 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import type { SpecYAML, ValidationIssue, SpecValidationResult } from '@/types/spec-yaml.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 // v11.0.0: SecurityValidator removed (spec execution deprecated)
 
 // Get current file directory (ESM)

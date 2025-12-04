@@ -8,7 +8,7 @@
  * @since v4.7.2
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { ProfileLoader } from './profile-loader.js';
 
 /**

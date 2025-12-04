@@ -6,11 +6,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { PathResolver } from '../../src/core/path-resolver.js';
+import { PathResolver } from '../../src/shared/validation/path-resolver.js';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { mkdirSync, rmSync } from 'fs';
-import { normalizePath } from '../../src/utils/path-utils.js';
+import { normalizePath } from '../../src/shared/validation/path-utils.js';
 
 describe('MCP Security - Path Traversal Prevention', () => {
   let testDir: string;

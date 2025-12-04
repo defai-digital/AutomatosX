@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configCommand } from '../../src/cli/commands/config.js';
 import { DEFAULT_CONFIG } from '../../src/types/config.js';
 import type { AutomatosXConfig } from '../../src/types/config.js';
-import { loadConfigFile, saveConfigFile } from '../../src/core/config.js';
+import { loadConfigFile, saveConfigFile } from '../../src/core/config/loader.js';
 
 // Mock config store - using a module to share state with mocks
 const mockConfigState = {
@@ -18,7 +18,7 @@ let mockConfig: AutomatosXConfig | null = null;
 let mockConfigPath = '/test-project/ax.config.json'; // v9.2.0: Updated filename
 
 // Mock the config module
-vi.mock('../../src/core/config.js');
+vi.mock('../../src/core/config/loader.js');
 
 // Mock the config utils module (v9.2.0: for resolveConfigPath and checkExists)
 vi.mock('../../src/cli/commands/config/utils.js', async () => {

@@ -25,8 +25,8 @@ import type {
   ExecutionResponse,
   HealthStatus
 } from '../types/provider.js';
-import { logger } from '../utils/logger.js';
-import { ProviderError, ErrorCode } from '../utils/errors.js';
+import { logger } from '../shared/logging/logger.js';
+import { ProviderError, ErrorCode } from '../shared/errors/errors.js';
 import { exec, spawn } from 'child_process';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import {
@@ -35,8 +35,8 @@ import {
 } from './provider-schemas.js';
 import readline from 'readline';
 import chalk from 'chalk';
-import { StreamingProgressParser } from '../utils/streaming-progress-parser.js';
-import { VerbosityManager } from '../utils/verbosity-manager.js';
+import { StreamingProgressParser } from '../shared/process/streaming-progress-parser.js';
+import { VerbosityManager } from '../shared/logging/verbosity-manager.js';
 
 /**
  * Execute command with proper process cleanup (BUG #3 FIX)

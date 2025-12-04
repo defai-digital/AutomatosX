@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateConfig, formatValidationErrors } from '../../src/utils/config-validator.js';
+import { validateConfig, formatValidationErrors } from '../../src/core/config/validator.js';
 import { DEFAULT_CONFIG } from '../../src/types/config.js';
 
 describe('Config Validator', () => {

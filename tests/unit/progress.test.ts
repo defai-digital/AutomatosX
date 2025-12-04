@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ProgressIndicator, createProgress } from '../../src/utils/progress.js';
+import { ProgressIndicator, createProgress } from '../../src/shared/logging/progress.js';
 
 describe('ProgressIndicator', () => {
   let consoleSpy: any;

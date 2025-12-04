@@ -12,7 +12,7 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import { validateSpec } from '@/core/spec/SpecSchemaValidator.js';
 import type { SpecYAML } from '@/types/spec-yaml.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 export interface SpecExplainOptions {
   file: string;

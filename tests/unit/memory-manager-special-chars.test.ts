@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MemoryManager } from '../../src/core/memory-manager.js';
+import { MemoryManager } from '../../src/core/memory/manager.js';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -39,18 +39,18 @@ describe('MemoryManager - FTS5 Special Character Handling', () => {
     it('should handle Unix file paths', async () => {
       // Add memory with file path
       await memoryManager.add(
-        'Review the file src/core/memory-manager.ts for bugs',
+        'Review the file src/core/memory/manager.ts for bugs',
         null,
         { type: 'task', agentId: 'test', source: 'user' }
       );
 
       // Search with file path containing /
       const results = await memoryManager.search({
-        text: 'src/core/memory-manager.ts'
+        text: 'src/core/memory/manager.ts'
       });
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0]?.entry.content).toContain('src/core/memory-manager.ts');
+      expect(results[0]?.entry.content).toContain('src/core/memory/manager.ts');
     });
 
     it('should handle Windows file paths', async () => {
@@ -308,13 +308,13 @@ describe('MemoryManager - FTS5 Special Character Handling', () => {
   describe('Complex Real-World Queries', () => {
     it('should handle file path with line number', async () => {
       await memoryManager.add(
-        'Bug found at src/core/memory-manager.ts:301',
+        'Bug found at src/core/memory/manager.ts:301',
         null,
         { type: 'other', agentId: 'test', source: 'review' }
       );
 
       const results = await memoryManager.search({
-        text: 'src/core/memory-manager.ts:301'
+        text: 'src/core/memory/manager.ts:301'
       });
 
       expect(results.length).toBeGreaterThan(0);

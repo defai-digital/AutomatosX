@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Router } from '../../src/core/router.js';
+import { Router } from '../../src/core/router/router.js';
 import { BaseProvider } from '../../src/providers/base-provider.js';
 import { ProviderLimitManager, getProviderLimitManager } from '../../src/core/provider-limit-manager.js';
-import { ProviderError, ErrorCode } from '../../src/utils/errors.js';
+import { ProviderError, ErrorCode } from '../../src/shared/errors/errors.js';
 import type {
   ExecutionRequest,
   ExecutionResponse,

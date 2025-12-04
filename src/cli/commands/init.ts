@@ -16,8 +16,8 @@ import { writeFile, readFile, access, rename } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'path';
 import chalk from 'chalk';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
 import {
   detectProjectInfo,
   type ProjectInfo,

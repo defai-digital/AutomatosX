@@ -13,10 +13,10 @@ import {
   InitializationChecker,
   getStalenessThreshold,
   isAutoInitDisabled
-} from '../../utils/initialization-checker.js';
-import { logger } from '../../utils/logger.js';
-import type { SetupTimestamp } from '../../utils/initialization-checker.js';
-import { getVersion } from '../../utils/version.js';
+} from '../../shared/process/initialization.js';
+import { logger } from '../../shared/logging/logger.js';
+import type { SetupTimestamp } from '../../shared/process/initialization.js';
+import { getVersion } from '../../shared/helpers/version.js';
 
 /**
  * Commands that should NOT trigger auto-initialization

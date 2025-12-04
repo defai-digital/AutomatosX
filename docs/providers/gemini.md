@@ -1,687 +1,534 @@
-# Gemini CLI Integration Guide
+# AutomatosX Project `GEMINI.md`
 
-**Version**: v6.0.1+
-**Status**: Production Ready
-**Cost Savings**: 99.6% vs traditional providers
+This document provides a comprehensive overview of the AutomatosX project, its structure, and how to work with it. It is intended to be used as a quick reference for developers and as a context file for AI assistants.
+
+## Project Overview
+
+AutomatosX is a command-line tool that acts as a power-add-on for AI coding assistants like Claude Code and Codex CLI. It provides features like multi-agent orchestration, persistent memory, and cost-optimization by routing requests to different AI providers. The project is written in TypeScript and is designed to be a provider-agnostic AI orchestration platform.
+
+The project is structured as a Node.js module and is distributed via npm as `@defai.digital/automatosx`. The main executable is `dist/index.js`, which is aliased to `automatosx` and `ax`.
+
+## Building and Running
+
+### Building the Project
+
+To build the project, run the following command:
+
+```bash
+npm run build
+```
+
+This command uses `tsup` to compile the TypeScript code in the `src` directory and outputs the compiled JavaScript to the `dist` directory.
+
+### Running in Development
+
+To run the CLI in development mode without building, use the following command:
+
+```bash
+npm run dev
+```
+
+This command uses `tsx` to execute the main CLI entry point at `src/cli/index.ts` directly.
+
+### Running Tests
+
+The project has a comprehensive test suite that includes unit, integration, and smoke tests. To run all tests, use the following command:
+
+```bash
+npm test
+```
+
+You can also run specific types of tests:
+
+*   **Unit Tests:** `npm run test:unit`
+*   **Integration Tests:** `npm run test:integration`
+*   **Smoke Tests:** `npm run test:smoke`
+
+## Development Conventions
+
+### Coding Style
+
+The project uses ESLint to enforce a consistent coding style. To check for linting errors, run:
+
+```bash
+npm run lint
+```
+
+To automatically fix linting errors, run:
+
+```bash
+npm run lint:fix
+```
+
+### Type Checking
+
+The project uses TypeScript for static type checking. to run the type checker, use the following command:
+
+```bash
+npm run typecheck
+```
+
+### Commit Messages
+
+The project uses the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for commit messages. This is enforced by a `commit-msg` hook that is managed by `husky`. When you commit your changes, you'll be prompted to provide a structured commit message.
+
+### Versioning and Releasing
+
+The project uses `standard-version` for versioning and releasing. There are several npm scripts available for managing versions and creating releases:
+
+*   `npm run version:patch`
+*   `npm run version:minor`
+*   `npm run version:major`
+*   `npm run release`
+
+These scripts handle version bumping, changelog generation, and git tagging.
 
 ---
 
-## Overview
+# AutomatosX Integration for Gemini CLI
 
-Gemini CLI is AutomatosX's **most cost-effective** provider, offering 96-99.6% lower costs compared to OpenAI and Claude. This guide covers setup, configuration, best practices, and troubleshooting for Gemini integration.
+**IMPORTANT**: For the complete AutomatosX integration guide, **please read [AutomatosX-Integration.md](../AutomatosX-Integration.md)**.
 
----
-
-## Why Gemini?
-
-### Cost Comparison
-
-| Scenario | OpenAI | Claude Code | Gemini CLI | Savings |
-|----------|--------|-------------|------------|---------|
-| **1,000 requests/month** | $62,500 | $90,000 | **$50** | **99.6%** |
-| **Per 1M tokens** | $6.25 | $9.00 | **$0.25** | **96%** |
-| **Free tier** | None | None | **1,500 req/day** | **100%** |
-
-### Free Tier Benefits
-
-Gemini offers the most generous free tier in the industry:
-
-- **1,500 requests per day** (45,000/month)
-- **1 million tokens per day** (30M/month)
-- **Automatic resets** at midnight UTC
-- **No credit card** required for free tier
-- **Production-ready** quality
-
-**Real-world impact**: Most small to medium projects run **100% free** on Gemini.
+This file provides Gemini CLI-specific tips and quick reference. For comprehensive documentation including all agents, commands, memory features, workflows, and troubleshooting, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
 
 ---
 
-## Quick Start
+## Quick Start for Gemini CLI Users
 
-### 1. Install Gemini CLI
+### Natural Language Integration
 
-```bash
-# macOS/Linux
-curl -fsSL https://gemini.google.com/install.sh | sh
+Gemini CLI can invoke AutomatosX agents using natural language:
 
-# Or with package managers
-brew install gemini-cli  # macOS
-apt install gemini-cli   # Ubuntu
-
-# Verify installation
-gemini --version
+```
+"Please use the ax backend agent to implement user authentication"
+"Ask the ax security agent to audit this code for vulnerabilities"
+"Have the ax quality agent write tests for this feature"
+"Work with ax agent product to design this new feature"
+"Use ax agent devops to set up the deployment pipeline"
 ```
 
-### 2. Authenticate
+Gemini CLI will understand your intent and invoke the appropriate AutomatosX agent for you. Just describe what you need in natural language - no special commands required!
+
+### Essential Commands
 
 ```bash
-# Login to Google account
-gemini login
+# List all available agents
+ax list agents
 
-# Verify authentication
-gemini whoami
+# Run an agent with a task
+ax run backend "create a REST API for user management"
+
+# Search memory for past conversations
+ax memory search "authentication"
+
+# View system status
+ax status
 ```
 
-### 3. Enable in AutomatosX
+---
+
+## Gemini CLI-Specific Tips
+
+### 1. Natural Language is Best
+
+Custom slash commands have been removed. Instead, talk naturally to Gemini CLI:
+
+**Natural Language Examples**:
+```
+"Use ax agent backend to create a REST API for authentication"
+"Ask ax agent frontend to build a responsive navbar"
+"Have ax agent security audit this code for vulnerabilities"
+"Work with ax agent quality to write unit tests"
+```
+
+### 2. Direct CLI Access
+
+For direct terminal usage:
 
 ```bash
-# Check current providers
-ax providers list
+# Run agents directly
+ax run backend "task"
 
-# Gemini should appear if installed correctly
-# If not, add to ax.config.json:
+# Search memory
+ax memory search "keyword"
+
+# Check status
+ax status
 ```
+
+### 3. Workspace Conventions
+
+AutomatosX uses specific directories:
+
+- **`automatosx/PRD/`** - Design specs and planning documents
+- **`automatosx/tmp/`** - Temporary files and scratch work
+
+**Usage in Gemini CLI** (natural language):
+```
+"Use ax product agent to save the design to automatosx/PRD/auth-design.md"
+"Have ax backend agent put the draft in automatosx/tmp/auth-draft.ts"
+```
+
+### 4. Provider Configuration
+
+Gemini is typically configured with high priority for Gemini CLI users:
 
 ```json
 {
   "providers": {
     "gemini-cli": {
-      "enabled": true,
-      "priority": 1,  // Highest priority for cost optimization
-      "timeout": 2700000,
-      "command": "gemini",
-      "gemini": {
-        "approvalMode": "auto_edit",  // Auto-approve file edits
-        "embeddingModel": "text-embedding-004"
-      }
-    }
-  }
-}
-```
-
-### 4. Test Integration
-
-```bash
-# Test Gemini directly
-ax providers test --provider gemini-cli
-
-# Should output:
-# ✓ gemini-cli: Available (authenticated, responsive)
-
-# Run a simple task
-ax run backend "create hello world function"
-
-# Check that Gemini was used
-ax providers trace --follow
-```
-
----
-
-## Configuration
-
-### Provider Settings
-
-```json
-{
-  "providers": {
-    "gemini-cli": {
-      // Basic settings
       "enabled": true,
       "priority": 1,
-      "timeout": 2700000,  // 45 minutes
-      "command": "gemini",
-
-      // Health checks
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,  // 5 minutes
-        "timeout": 5000
-      },
-
-      // Circuit breaker (automatic failover)
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-
-      // Gemini-specific
-      "gemini": {
-        "approvalMode": "auto_edit",
-        "embeddingModel": "text-embedding-004",
-        "enableRealEmbeddings": false
-      },
-
-      // Limit tracking
-      "limitTracking": {
-        "enabled": true,
-        "window": "daily",
-        "resetHourUtc": 0
-      }
+      "command": "gemini"
     }
   }
 }
 ```
 
-### Approval Modes
-
-Controls how Gemini CLI handles file modifications:
-
-| Mode | Behavior | Best For |
-|------|----------|----------|
-| `auto_edit` | Auto-approve all file changes | **Recommended**: Automated workflows |
-| `prompt` | Ask before each file change | Interactive sessions |
-| `none` | No file operations | Read-only tasks |
-
-**Example**:
-```json
-{
-  "gemini": {
-    "approvalMode": "prompt"  // Ask before file edits
-  }
-}
-```
+Edit `ax.config.json` to customize.
 
 ---
 
-## Cost Optimization
+## Available Agents
 
-### Automatic Free Tier Utilization
+Quick reference (for full list, see [AutomatosX-Integration.md](../AutomatosX-Integration.md)):
 
-AutomatosX **automatically uses Gemini's free tier** when available, achieving 99.6% cost reduction.
+- **backend** (Bob) - Backend development
+- **frontend** (Frank) - Frontend development
+- **fullstack** (Felix) - Full-stack development
+- **mobile** (Maya) - Mobile development
+- **devops** (Oliver) - DevOps and infrastructure
+- **security** (Steve) - Security auditing
+- **quality** (Queenie) - QA and testing
+- **architecture** (Avery) - System architecture
+- **data** (Daisy) - Data engineering
+- **design** (Debbee) - UX/UI design
+- **product** (Paris) - Product management
+- **writer** (Wendy) - Technical writing
 
-**No configuration needed** - works out of the box!
-
-#### How It Works
-
-1. **Request arrives**: User runs `ax run backend "task"`
-2. **Free tier check**: AutomatosX checks Gemini quota
-3. **Automatic routing**:
-   - If quota available → Use Gemini (free)
-   - If quota exhausted → Fallback to paid or other provider
-4. **Tracking**: Usage tracked in `.automatosx/usage/usage-tracker.db`
-
-#### Monitor Free Tier Usage
-
-```bash
-# Current status
-ax free-tier status
-
-# Output:
-# 📊 Gemini CLI Free Tier Status
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Daily Requests:  342 / 1,500 (23%)
-# ████░░░░░░░░░░░░░░░░░░░░░░░░░░░
-#
-# Daily Tokens:    256,789 / 1,000,000 (26%)
-# █████░░░░░░░░░░░░░░░░░░░░░░░░░░
-#
-# Resets in: 14h 23m
-# Status: ✅ Healthy (77% available)
-```
-
-```bash
-# Usage history (last 7 days)
-ax free-tier history --days 7
-
-# Summary statistics
-ax free-tier summary
-```
-
-### Workload-Aware Routing
-
-AutomatosX analyzes request characteristics and routes optimally:
-
-| Request Type | Size | Routing Decision | Reasoning |
-|--------------|------|------------------|-----------|
-| Interactive UI change | Small (300 tokens) | **OpenAI** | Speed-critical |
-| Large refactoring | Large (15K tokens) | **Gemini CLI** | Cost-optimal |
-| Security audit | Medium (5K tokens) | **Claude Code** | Quality-critical |
-| Batch documentation | XLarge (50K tokens) | **Gemini CLI** | Massive cost savings |
-
-**Example**:
-```bash
-# Small, streaming → OpenAI (fast)
-ax run frontend "add button"
-# Cost: $0.002, Time: 1.2s
-
-# Large batch → Gemini (cheap)
-ax run backend "refactor authentication system"
-# Cost: $0.004, Time: 4.5s (vs $0.15 with OpenAI!)
-```
-
-### Policy-Driven Cost Control
-
-Set explicit cost constraints:
-
-```yaml
-# workflow.ax.yaml
-policy:
-  goal: cost
-  constraints:
-    cost:
-      maxPerRequest: 0.01    # Max $0.01 per request
-      maxDaily: 1.00         # Max $1.00 per day
-```
-
-AutomatosX will:
-1. Filter providers by cost constraint
-2. Select Gemini CLI (cheapest)
-3. Track daily spend
-4. Fallback if daily budget exceeded
+**Full list**: `ax list agents --format json`
 
 ---
 
-## Features and Capabilities
+## Memory System
 
-### Streaming Support
-
-**Status**: ✅ **Enabled** (gradual rollout)
-
-Gemini streaming is controlled by feature flags for safe deployment:
+AutomatosX automatically saves all agent conversations:
 
 ```bash
-# Check streaming status
-ax flags list
+# Search memory
+ax memory search "authentication"
 
-# Output:
-# gemini_streaming: 100% rollout (ENABLED for all requests)
+# List recent memories
+ax memory list --limit 10
 
-# View provider capabilities
-ax providers info gemini-cli
-
-# Features section shows:
-# Streaming: ✓ (enabled)
+# Export for backup
+ax memory export > backup.json
 ```
 
-**Note**: Streaming was rolled out gradually (0% → 1% → 10% → 50% → 100%) to ensure stability. Now fully enabled.
-
-### Vision/Multimodal
-
-**Status**: ✅ **Fully Supported**
-
-Gemini supports image analysis, OCR, diagram understanding:
-
-```bash
-# Analyze image
-ax run vision "analyze this screenshot and suggest improvements" --attach screenshot.png
-
-# OCR use case
-ax run data "extract table data from this PDF" --attach report.pdf
-
-# Diagram understanding
-ax run architecture "review this system diagram" --attach architecture.png
+**In Gemini CLI** (natural language):
+```
+"Search AutomatosX memory for authentication"
 ```
 
-### Function Calling
-
-**Status**: ✅ **Fully Supported**
-
-Gemini can call external functions and tools:
-
-```yaml
-# .automatosx/agents/backend.yaml
-name: backend
-capabilities:
-  - file_operations
-  - code_generation
-  - function_calling
-
-# Functions automatically available to Gemini
-```
+**Details**: Fast SQLite FTS5 search (< 1ms), 100% local, $0 API costs.
 
 ---
 
-## Limitations
+## Multi-Agent Collaboration
 
-### 1. Model Parameter Control
-
-**Status**: ❌ **Not Supported**
-
-Gemini CLI does not currently support `maxTokens`, `temperature`, or `topP` parameters.
-
-**GitHub Issue**: [google-gemini/gemini-cli#5280](https://github.com/google-gemini/gemini-cli/issues/5280)
-
-**Workaround**: Use role/prompt engineering instead of parameters:
-
-```yaml
-# ❌ Won't work (parameters ignored)
-provider:
-  primary: gemini-cli
-  defaults:
-    temperature: 0    # Ignored by Gemini CLI
-    maxTokens: 4096   # Ignored by Gemini CLI
-
-# ✅ Use role definition instead
-name: qa-specialist
-role: Deterministic QA Specialist
-systemPrompt: |
-  You are a QA specialist who provides consistent, deterministic output.
-  Always follow the same testing patterns and provide reproducible results.
-```
-
-**Impact**:
-- ✅ Most use cases unaffected (role/prompt is more effective)
-- ⚠️ QA/testing requiring exact determinism → Use OpenAI instead
-- ⚠️ Strict token budgets → Use OpenAI `maxTokens` control
-
-### 2. Model Selection
-
-**Status**: ❌ **Not Supported**
-
-Gemini CLI automatically selects the best model for each request.
-
-**Impact**:
-- ✅ Positive: Always get latest, best model
-- ⚠️ Potential: Model changes may affect output consistency
-
-### 3. Rate Limits
-
-**Free Tier Limits**:
-- 1,500 requests per day
-- 1 million tokens per day
-- Resets at midnight UTC
-
-**Paid Tier Limits**:
-- 10,000 requests per day
-- 10 million tokens per day
-
-**AutomatosX Handling**:
-- Automatic tracking and monitoring
-- Predictive quota management
-- Graceful fallback to other providers
-
----
-
-## Best Practices
-
-### 1. Maximize Free Tier Utilization
-
-```json
-// ✅ Good: Enable Gemini with highest priority
-{
-  "providers": {
-    "gemini-cli": {
-      "enabled": true,
-      "priority": 1  // Use first (free tier!)
-    },
-    "openai": {
-      "enabled": true,
-      "priority": 2  // Fallback when free tier exhausted
-    }
-  }
-}
-```
-
-```json
-// ❌ Bad: Gemini disabled or low priority
-{
-  "providers": {
-    "openai": {
-      "priority": 1  // Expensive, used first
-    },
-    "gemini-cli": {
-      "priority": 3  // Rarely used
-    }
-  }
-}
-```
-
-### 2. Set Cost Goals
-
-```yaml
-# ✅ Good: Explicit cost optimization
-policy:
-  goal: cost
-  constraints:
-    cost:
-      maxDaily: 1.00  # Will use free tier + cheap providers
-```
-
-### 3. Monitor Usage
+Agents can delegate tasks automatically:
 
 ```bash
-# ✅ Good: Regular monitoring
-ax free-tier status    # Check daily
-ax providers trace     # Debug routing
-ax free-tier summary   # Weekly review
+ax run product "Build a complete user authentication feature"
+# → Product designs system
+# → Delegates to backend for implementation
+# → Delegates to security for audit
 ```
 
-### 4. Use Workload-Aware Routing
-
-```bash
-# ✅ Good: Let AutomatosX decide
-ax run backend "large refactoring task"
-# → Automatically routes to Gemini (cost-optimal for large tasks)
-
-# ❌ Bad: Force OpenAI for everything
-ax providers switch openai
-ax run backend "large refactoring task"
-# → Expensive ($0.15 vs $0.004)
+**Gemini CLI Example**:
+```
+"Use ax product agent to build a complete user authentication feature"
 ```
 
 ---
 
 ## Troubleshooting
 
-### Free Tier Not Working
+### Common Issues
 
-**Symptom**: Gemini always shows paid usage, never uses free tier
-
-**Causes**:
-1. Free tier quota already exhausted
-2. Gemini CLI not authenticated
-3. Free tier tracking disabled
-
-**Fix**:
+**"Agent not found"**
 ```bash
-# Check authentication
-gemini whoami
-
-# Check free tier status
-ax free-tier status
-
-# Check tracking config
-cat ax.config.json | grep -A3 "limitTracking"
-
-# Should show:
-# "limitTracking": {
-#   "enabled": true,
-#   "window": "daily"
-# }
+ax list agents  # Case-sensitive names
 ```
 
----
-
-### Provider Not Being Used
-
-**Symptom**: Policy set to `cost` but Gemini never selected
-
-**Causes**:
-1. Gemini CLI not installed
-2. Not authenticated
-3. Provider disabled in config
-4. Circuit breaker tripped (too many failures)
-
-**Fix**:
+**"Provider not available"**
 ```bash
-# Check provider status
-ax providers list
-
-# Should show:
-# ✅ gemini-cli  (Priority: 1)
-
-# If not available:
-ax providers test --provider gemini-cli
-
-# Test authentication
-gemini whoami
+ax status
+ax doctor
 ```
 
----
-
-### Streaming Not Working
-
-**Symptom**: Gemini responses come all at once, not streamed
-
-**Causes**:
-1. Feature flag not enabled
-2. Request doesn't require streaming
-3. Client doesn't support streaming
-
-**Fix**:
+**"Gemini CLI not found"**
 ```bash
-# Check feature flag
-ax flags list
-
-# Should show:
-# gemini_streaming: 100% rollout
-
-# If not 100%, gradually increase:
-ax flags rollout gemini_streaming 100
-
-# Verify streaming in provider info
-ax providers info gemini-cli
-# Features → Streaming: ✓
+npm install -g @google/gemini-cli
+gemini --version
 ```
 
----
-
-### Unexpected Errors
-
-**Symptom**: Gemini returns errors, other providers work fine
-
-**Common Errors**:
-
-#### 1. "Rate limit exceeded"
-```
-Solution: Free tier exhausted, wait for midnight UTC reset
-Check: ax free-tier status
-```
-
-#### 2. "Authentication failed"
-```
-Solution: Re-authenticate with Gemini CLI
-Fix: gemini login
-```
-
-#### 3. "Model not available"
-```
-Solution: Gemini CLI selecting unavailable model
-Fix: Update Gemini CLI: gemini update
-```
-
-#### 4. "Request too large"
-```
-Solution: Request exceeds token limit (1M/day free tier)
-Fix: Split into smaller requests or wait for reset
-```
-
----
-
-## Advanced Configuration
-
-### Per-Agent Provider Override
-
-Force specific agents to use Gemini:
-
-```yaml
-# .automatosx/agents/docs-writer.yaml
-name: docs-writer
-role: Documentation Writer
-
-provider:
-  primary: gemini-cli  # Always use Gemini (cost-effective for docs)
-  fallbackChain: []    # No fallback (docs not time-critical)
-```
-
-### Team-Level Configuration
-
-Set Gemini as default for entire team:
-
-```yaml
-# .automatosx/teams/backend.yaml
-name: backend
-displayName: "Backend Team"
-
-provider:
-  primary: gemini-cli
-  fallbackChain: [openai, claude-code]
-```
-
-### Temporary Provider Override
-
-Test workflows with Gemini:
+### Getting Help
 
 ```bash
-# Force all requests to Gemini
-ax providers switch gemini-cli
+# Command help
+ax --help
+ax run --help
 
-# Run your workflow
-ax run backend "implement feature X"
+# Debug mode
+ax --debug run backend "task"
+```
 
-# Reset to normal routing
-ax providers reset
+**In Gemini CLI** (natural language):
+```
+"Check AutomatosX system status"
+"List all available agents"
 ```
 
 ---
 
-## Cost Savings Calculator
+## Advanced Features
 
-Estimate your savings with Gemini:
+For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md):
 
-### Current Costs (Example: Medium Project)
+- **Spec-Driven Workflows** - YAML-based task definitions
+- **Parallel Execution** - Run multiple agents concurrently
+- **Resumable Runs** - Checkpoint and resume long tasks
+- **Streaming Output** - Real-time AI responses
+- **Provider Routing** - Intelligent multi-provider selection
+- **Cost Optimization** - Free-tier prioritization
+- **Custom Agents** - Create your own specialized agents
 
-**Assumptions**:
-- 500 requests/month
-- 8,000 tokens per request (average)
-- Current provider: OpenAI ($6.25 per 1M tokens)
+---
 
-**Current Monthly Cost**:
-```
-500 requests × 8K tokens = 4,000,000 tokens
-4M tokens × $6.25 / 1M = $25.00/month
-```
+## Documentation
 
-### With Gemini Free Tier
+- **Complete Guide**: [AutomatosX-Integration.md](../AutomatosX-Integration.md) ← **Read this!**
+- **GitHub**: https://github.com/defai-digital/automatosx
+- **Agent Profiles**: `.automatosx/agents/`
+- **Configuration**: `ax.config.json`
 
-**Free tier capacity**:
-- 1,500 requests/day × 30 days = 45,000 requests/month
-- 1M tokens/day × 30 days = 30,000,000 tokens/month
+## Support
 
-**Your usage**: 500 requests × 8K tokens = 4M tokens/month
+- **Issues**: https://github.com/defai-digital/automatosx/issues
+- **NPM**: https://www.npmjs.com/package/@defai.digital/automatosx
 
-**Cost with AutomatosX + Gemini**:
-```
-4M tokens < 30M tokens (free tier)
-Cost: $0/month (100% free!)
+---
 
-Annual savings: $25 × 12 = $300/year
-```
+**For complete AutomatosX documentation**, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).
 
-### Large Project Example
 
-**Assumptions**:
-- 10,000 requests/month
-- 15,000 tokens per request
-- Current: Claude Code ($9.00 per 1M tokens)
+# List all available agents
+ax list agents
 
-**Current Cost**:
-```
-10,000 × 15K = 150,000,000 tokens
-150M × $9.00 / 1M = $1,350/month
-```
+# Run an agent with a task
+ax run backend "create a REST API for user management"
 
-**With Gemini** (mix of free + paid):
-```
-Free tier: 30M tokens/month = $0
-Paid: 120M tokens × $0.25 / 1M = $30
-Total: $30/month
+# Search memory for past conversations
+ax memory search "authentication"
 
-Savings: $1,350 - $30 = $1,320/month (98% reduction!)
-Annual savings: $15,840/year
+# View system status
+ax status
 ```
 
 ---
 
-## See Also
+## Gemini CLI-Specific Tips
 
-- [Provider Comparison](./provider-comparison.md) - Compare all providers
-- [Provider Parameters](./provider-parameters.md) - Parameter limitations
-- [Cost Optimization](../../README.md#-policy-driven-cost-optimization) - Main guide
+### 1. Natural Language is Best
+
+Custom slash commands have been removed. Instead, talk naturally to Gemini CLI:
+
+**Natural Language Examples**:
+```
+"Use ax agent backend to create a REST API for authentication"
+"Ask ax agent frontend to build a responsive navbar"
+"Have ax agent security audit this code for vulnerabilities"
+"Work with ax agent quality to write unit tests"
+```
+
+### 2. Direct CLI Access
+
+For direct terminal usage:
+
+```bash
+# Run agents directly
+ax run backend "task"
+
+# Search memory
+ax memory search "keyword"
+
+# Check status
+ax status
+```
+
+### 3. Workspace Conventions
+
+AutomatosX uses specific directories:
+
+- **`automatosx/PRD/`** - Design specs and planning documents
+- **`automatosx/tmp/`** - Temporary files and scratch work
+
+**Usage in Gemini CLI** (natural language):
+```
+"Use ax product agent to save the design to automatosx/PRD/auth-design.md"
+"Have ax backend agent put the draft in automatosx/tmp/auth-draft.ts"
+```
+
+### 4. Provider Configuration
+
+Gemini is typically configured with high priority for Gemini CLI users:
+
+```json
+{
+  "providers": {
+    "gemini-cli": {
+      "enabled": true,
+      "priority": 1,
+      "command": "gemini"
+    }
+  }
+}
+```
+
+Edit `ax.config.json` to customize.
 
 ---
 
-**Last Updated**: 2025-10-31
-**Version**: v6.0.1
-**Status**: Production Ready
+## Available Agents
+
+Quick reference (for full list, see [AutomatosX-Integration.md](../AutomatosX-Integration.md)):
+
+- **backend** (Bob) - Backend development
+- **frontend** (Frank) - Frontend development
+- **fullstack** (Felix) - Full-stack development
+- **mobile** (Maya) - Mobile development
+- **devops** (Oliver) - DevOps and infrastructure
+- **security** (Steve) - Security auditing
+- **quality** (Queenie) - QA and testing
+- **architecture** (Avery) - System architecture
+- **data** (Daisy) - Data engineering
+- **design** (Debbee) - UX/UI design
+- **product** (Paris) - Product management
+- **writer** (Wendy) - Technical writing
+
+**Full list**: `ax list agents --format json`
+
+---
+
+## Memory System
+
+AutomatosX automatically saves all agent conversations:
+
+```bash
+# Search memory
+ax memory search "authentication"
+
+# List recent memories
+ax memory list --limit 10
+
+# Export for backup
+ax memory export > backup.json
+```
+
+**In Gemini CLI** (natural language):
+```
+"Search AutomatosX memory for authentication"
+```
+
+**Details**: Fast SQLite FTS5 search (< 1ms), 100% local, $0 API costs.
+
+---
+
+## Multi-Agent Collaboration
+
+Agents can delegate tasks automatically:
+
+```bash
+ax run product "Build a complete user authentication feature"
+# → Product designs system
+# → Delegates to backend for implementation
+# → Delegates to security for audit
+```
+
+**Gemini CLI Example**:
+```
+"Use ax product agent to build a complete user authentication feature"
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**"Agent not found"**
+```bash
+ax list agents  # Case-sensitive names
+```
+
+**"Provider not available"**
+```bash
+ax status
+ax doctor
+```
+
+**"Gemini CLI not found"**
+```bash
+npm install -g @google/gemini-cli
+gemini --version
+```
+
+### Getting Help
+
+```bash
+# Command help
+ax --help
+ax run --help
+
+# Debug mode
+ax --debug run backend "task"
+```
+
+**In Gemini CLI** (natural language):
+```
+"Check AutomatosX system status"
+"List all available agents"
+```
+
+---
+
+## Advanced Features
+
+For advanced usage, see [AutomatosX-Integration.md](../AutomatosX-Integration.md):
+
+- **Spec-Driven Workflows** - YAML-based task definitions
+- **Parallel Execution** - Run multiple agents concurrently
+- **Resumable Runs** - Checkpoint and resume long tasks
+- **Streaming Output** - Real-time AI responses
+- **Provider Routing** - Intelligent multi-provider selection
+- **Cost Optimization** - Free-tier prioritization
+- **Custom Agents** - Create your own specialized agents
+
+---
+
+## Documentation
+
+- **Complete Guide**: [AutomatosX-Integration.md](../AutomatosX-Integration.md) ← **Read this!**
+- **GitHub**: https://github.com/defai-digital/automatosx
+- **Agent Profiles**: `.automatosx/agents/`
+- **Configuration**: `ax.config.json`
+
+## Support
+
+- **Issues**: https://github.com/defai-digital/automatosx/issues
+- **NPM**: https://www.npmjs.com/package/@defai.digital/automatosx
+
+---
+
+**For complete AutomatosX documentation**, see [AutomatosX-Integration.md](../AutomatosX-Integration.md).

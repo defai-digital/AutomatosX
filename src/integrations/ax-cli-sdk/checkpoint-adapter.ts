@@ -13,7 +13,7 @@
  * @module integrations/ax-cli-sdk/checkpoint-adapter
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

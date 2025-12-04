@@ -14,7 +14,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { ProfileLoader } from '../../agents/profile-loader.js';
 import type { AgentProfile } from '../../types/agent.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface ManifestGeneratorOptions {
   profileLoader: ProfileLoader;

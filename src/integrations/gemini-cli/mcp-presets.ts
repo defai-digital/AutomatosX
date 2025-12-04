@@ -9,7 +9,7 @@ import type { MCPServerConfig } from '../../types/gemini-mcp.js';
 export const MCP_PRESETS: Record<string, MCPServerConfig> = {
   github: {
     name: 'github',
-    enabled: true,
+    enabled: false, // Disabled by default - requires GITHUB_PERSONAL_ACCESS_TOKEN
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-github'],
     env: {
@@ -28,7 +28,7 @@ export const MCP_PRESETS: Record<string, MCPServerConfig> = {
 
   slack: {
     name: 'slack',
-    enabled: true,
+    enabled: false, // Disabled by default - requires SLACK_BOT_TOKEN and SLACK_APP_TOKEN
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-slack'],
     env: {
@@ -48,7 +48,7 @@ export const MCP_PRESETS: Record<string, MCPServerConfig> = {
 
   database: {
     name: 'database',
-    enabled: true,
+    enabled: false, // Disabled by default - requires DATABASE_URL
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-postgres'],
     env: {
@@ -64,14 +64,19 @@ export const MCP_PRESETS: Record<string, MCPServerConfig> = {
       timeout: 5000
     }
   },
+  // FIXED (v11.2.7): Use getter function instead of static value to avoid
+  // capturing process.cwd() at module load time. The getMCPPreset() function
+  // should be used to get a fresh copy with the current working directory.
   filesystem: {
     name: 'filesystem',
     enabled: true,
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '/Users/akiralam/code/AutomatosX'],
+    // Note: args is a template, actual cwd should be injected at runtime
+    // via getMCPPresetWithCwd() or similar pattern
+    args: ['-y', '@modelcontextprotocol/server-filesystem'],
     config: {
       // Filesystem MCP config
-      // Access to specified directory
+      // Access to current working directory
     },
     healthCheck: {
       enabled: true,
@@ -96,28 +101,21 @@ export const MCP_PRESETS: Record<string, MCPServerConfig> = {
     }
   },
 
-  brave: {
-    name: 'brave',
-    enabled: false, // Disabled by default as it requires API key
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-brave-search'],
-    env: {
-      BRAVE_API_KEY: process.env.BRAVE_API_KEY || ''
-    },
-    config: {
-      // Brave Search MCP config
-      // Web search capabilities
-    },
-    healthCheck: {
-      enabled: true,
-      interval: 30000, // 30 seconds
-      timeout: 5000
-    }
-  }
 };
 
 export function getMCPPreset(name: string): MCPServerConfig | undefined {
-  return MCP_PRESETS[name];
+  const preset = MCP_PRESETS[name];
+  if (!preset) return undefined;
+
+  // FIXED (v11.2.7): Inject current working directory for filesystem preset
+  if (name === 'filesystem' && preset.args) {
+    return {
+      ...preset,
+      args: [...preset.args, process.cwd()]
+    };
+  }
+
+  return preset;
 }
 
 export function listMCPPresets(): string[] {
@@ -125,5 +123,9 @@ export function listMCPPresets(): string[] {
 }
 
 export function getEnabledPresets(): MCPServerConfig[] {
-  return Object.values(MCP_PRESETS).filter(preset => preset.enabled);
+  // FIXED (v11.2.7): Use getMCPPreset to ensure runtime values (like cwd) are injected
+  return Object.keys(MCP_PRESETS)
+    .filter(name => MCP_PRESETS[name]?.enabled)
+    .map(name => getMCPPreset(name)!)
+    .filter(preset => preset !== undefined);
 }

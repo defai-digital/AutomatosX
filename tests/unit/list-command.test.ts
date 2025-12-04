@@ -10,11 +10,11 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { listCommand } from '../../src/cli/commands/list.js';
-import { detectProjectRoot } from '../../src/core/path-resolver.js';
+import { detectProjectRoot } from '../../src/shared/validation/path-resolver.js';
 
 // Mock the path resolver to use our test directory
-vi.mock('../../src/core/path-resolver.js', async () => {
-  const actual = await vi.importActual('../../src/core/path-resolver.js') as any;
+vi.mock('../../src/shared/validation/path-resolver.js', async () => {
+  const actual = await vi.importActual('../../src/shared/validation/path-resolver.js') as any;
   // Create a mock function that returns a Promise
   const mockDetectProjectRoot = vi.fn();
 

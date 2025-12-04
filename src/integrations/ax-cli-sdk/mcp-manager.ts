@@ -18,7 +18,7 @@
  * @module integrations/ax-cli-sdk/mcp-manager
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import type { MCPServerStatus as SDKMCPServerStatus } from './sdk-types.js';
 
 /**

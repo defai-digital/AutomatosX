@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CacheWarmer } from '../../src/core/cache-warmer.js';
+import { CacheWarmer } from '../../src/core/cache/warmer.js';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';

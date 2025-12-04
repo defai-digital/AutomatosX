@@ -12,7 +12,7 @@
 
 import type { AxCliOptions } from './interface.js';
 import type { AxCliCommand } from './types.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * Build ax-cli command with arguments

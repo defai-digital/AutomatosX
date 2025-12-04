@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentExecutor } from '../../src/agents/executor.js';
 import type { DelegationRequest, DelegationResult } from '../../src/types/orchestration.js';
 import { DelegationError } from '../../src/types/orchestration.js';
-import type { SessionManager } from '../../src/core/session-manager.js';
+import type { SessionManager } from '../../src/core/session/manager.js';
 import type { WorkspaceManager } from '../../src/core/workspace-manager.js';
 import type { ContextManager } from '../../src/agents/context-manager.js';
 import type { ProfileLoader } from '../../src/agents/profile-loader.js';

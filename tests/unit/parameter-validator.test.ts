@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ParameterValidator } from '../../src/core/parameter-validator';
+import { ParameterValidator } from '../../src/shared/validation/parameter-validator';
 import type { ExecutionRequest } from '../../src/types/provider';
-import { logger } from '../../src/utils/logger';
+import { logger } from '../../src/shared/logging/logger';
 
 describe('ParameterValidator', () => {
   // Spy on logger.warn

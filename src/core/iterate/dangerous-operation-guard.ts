@@ -26,7 +26,7 @@ import type {
   SafetyConfig
 } from '../../types/iterate.js';
 import type { WorkspaceManager } from '../workspace-manager.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { resolve as resolvePath } from 'path';
 
 /**

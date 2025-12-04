@@ -12,7 +12,7 @@
 
 import { readFile, access } from 'fs/promises';
 import { join } from 'path';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 // ========== Types ==========
 

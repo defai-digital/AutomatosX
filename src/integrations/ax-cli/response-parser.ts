@@ -8,7 +8,7 @@
 
 import type { ExecutionResponse } from '../../types/provider.js';
 import { AxCliMessageSchema, type AxCliMessage } from './types.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { ZodError } from 'zod';
 
 /**

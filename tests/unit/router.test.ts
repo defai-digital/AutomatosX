@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Router } from '../../src/core/router.js';
+import { Router } from '../../src/core/router/router.js';
 import type { Provider, ExecutionRequest, ExecutionResponse } from '../../src/types/provider.js';
-import { ProviderError } from '../../src/utils/errors.js';
+import { ProviderError } from '../../src/shared/errors/errors.js';
 
 describe('Router', () => {
   let router: Router;

@@ -10,24 +10,24 @@
  */
 
 import type { CommandModule } from 'yargs';
-import { PathResolver } from '../../core/path-resolver.js';
+import { PathResolver } from '../../shared/validation/path-resolver.js';
 import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { BaseProvider } from '../../providers/base-provider.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { AxCliProvider, type AxCliProviderConfig } from '../../providers/ax-cli-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
-import { loadConfig } from '../../core/config.js';
+import { loadConfig } from '../../core/config/loader.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import chalk from 'chalk';
 import { existsSync, statSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
 import { join, basename } from 'path';
 import os from 'os';
-import { printError } from '../../utils/error-formatter.js';
-import { getVersion } from '../../utils/version.js';
+import { printError } from '../../shared/errors/error-formatter.js';
+import { getVersion } from '../../shared/helpers/version.js';
 import { getProviderLimitManager } from '../../core/provider-limit-manager.js';
 
 // Get version from package.json (single source of truth)

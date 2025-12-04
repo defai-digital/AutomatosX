@@ -9,7 +9,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { createInterface, Interface } from 'readline';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { MCP_PROTOCOL_VERSION } from '../../mcp/types.js';
 import type {
   McpClientConfig,

@@ -9,8 +9,8 @@ import chalk from 'chalk';
 import { exec, spawn } from 'child_process'; // FIXED Bug #146: Import spawn at top instead of dynamic import
 import { promisify } from 'util';
 import inquirer from 'inquirer';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
 
 const execAsync = promisify(exec);
 

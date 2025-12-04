@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Router } from '../../src/core/router.js';
+import { Router } from '../../src/core/router/router.js';
 import type {
   Provider,
   ProviderConfig,

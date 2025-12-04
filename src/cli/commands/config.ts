@@ -9,11 +9,11 @@ import { constants } from 'fs';
 import chalk from 'chalk';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import type { AutomatosXConfig } from '../../types/config.js';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
-import { printSuccess, formatInfo, formatKeyValue, formatWarning } from '../../utils/message-formatter.js';
-import { validateConfig, formatValidationErrors } from '../../utils/config-validator.js';
-import { loadConfigFile, saveConfigFile } from '../../core/config.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
+import { printSuccess, formatInfo, formatKeyValue, formatWarning } from '../../shared/logging/message-formatter.js';
+import { validateConfig, formatValidationErrors } from '../../core/config/validator.js';
+import { loadConfigFile, saveConfigFile } from '../../core/config/loader.js';
 
 interface ConfigOptions {
   get?: string;
@@ -215,7 +215,7 @@ async function resetConfig(path: string, verbose: boolean): Promise<void> {
   // Read version from package.json dynamically
   const { createRequire } = await import('module');
   const require = createRequire(import.meta.url);
-  let version = '5.8.6'; // fallback
+  let version = '11.2.6'; // fallback
   try {
     const packageJson = require('../../../package.json');
     version = packageJson.version;

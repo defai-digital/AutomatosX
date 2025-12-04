@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { StageExecutionController } from '../../src/core/stage-execution-controller.js';
-import { CheckpointManager } from '../../src/core/checkpoint-manager.js';
+import { CheckpointManager } from '../../src/core/session/checkpoint.js';
 import type { AgentExecutor, ExecutionResult } from '../../src/agents/executor.js';
 import type { ContextManager } from '../../src/agents/context-manager.js';
 import type { ProfileLoader } from '../../src/agents/profile-loader.js';

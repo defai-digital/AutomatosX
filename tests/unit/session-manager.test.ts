@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SessionManager } from '../../src/core/session-manager.js';
+import { SessionManager } from '../../src/core/session/manager.js';
 import { SessionError } from '../../src/types/orchestration.js';
 
 // Internal type from session-manager (not exported)

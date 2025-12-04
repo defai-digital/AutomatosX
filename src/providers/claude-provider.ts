@@ -10,7 +10,7 @@
 
 import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 export class ClaudeProvider extends BaseProvider {
   constructor(config: ProviderConfig) {

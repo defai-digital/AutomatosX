@@ -2,7 +2,7 @@
  * MCP Command - Manage MCP Servers and Tools
  *
  * Comprehensive CLI for managing MCP (Model Context Protocol) servers
- * across all providers (Claude, Gemini, OpenAI, Grok).
+ * across all providers (Claude, Gemini, OpenAI/Codex).
  *
  * Subcommands:
  * - mcp server: Start AutomatosX as MCP server (for Claude Code)
@@ -19,12 +19,12 @@ import type { CommandModule, Argv } from 'yargs';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { McpServer } from '../../mcp/server.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { YamlConfigLoader } from '../../core/config-loaders/yaml-config-loader.js';
 import { getDefaultGeminiMCPManager } from '../../integrations/gemini-cli/mcp-manager.js';
-// Grok MCP manager removed in v11.0.0 (Grok provider removed)
-import { getDefaultMCPManager as getCodexMCPManager } from '../../integrations/openai-codex/mcp-manager.js';
-import { defaultMCPManager as getClaudeMCPManager } from '../../integrations/claude-code/mcp-manager.js';
+// Note: Claude Code and Codex MCP managers not used here - status/health/tools only check Gemini MCP
+// For Claude Code MCP, use: ax mcp server (starts AutomatosX as MCP server for Claude Code)
+// For Codex MCP, integration is handled directly by openai-codex provider
 import { KNOWN_MCP_SERVERS } from '../../mcp/types-common.js';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -96,8 +96,8 @@ const statusCommand: CommandModule<object, McpStatusArgs> = {
       .option('provider', {
         alias: 'p',
         type: 'string',
-        description: 'Filter by provider (claude, gemini, codex, grok)',
-        choices: ['claude', 'gemini', 'codex', 'grok'],
+        description: 'Filter by provider (claude, gemini, codex)',
+        choices: ['claude', 'gemini', 'codex'],
       })
       .option('json', {
         alias: 'j',
@@ -106,7 +106,7 @@ const statusCommand: CommandModule<object, McpStatusArgs> = {
         default: false,
       })
       .example('$0 mcp status', 'Show all MCP servers')
-      .example('$0 mcp status --provider grok', 'Show Grok MCP servers only')
+      .example('$0 mcp status --provider gemini', 'Show Gemini MCP servers only')
       .example('$0 mcp status --json', 'Output as JSON');
   },
 
@@ -138,7 +138,7 @@ const statusCommand: CommandModule<object, McpStatusArgs> = {
         if (allStatuses.length === 0) {
           console.log(chalk.yellow('No MCP servers running'));
           console.log(chalk.gray('\nTo enable MCP servers, configure them in your provider YAML files.'));
-          console.log(chalk.gray('See: examples/providers/grok-with-mcp.yaml\n'));
+          console.log(chalk.gray('See: examples/providers/ for MCP configuration templates\n'));
           return;
         }
 
@@ -201,7 +201,7 @@ const healthCommand: CommandModule<object, McpStatusArgs> = {
         alias: 'p',
         type: 'string',
         description: 'Filter by provider',
-        choices: ['claude', 'gemini', 'codex', 'grok'],
+        choices: ['claude', 'gemini', 'codex'],
       })
       .option('json', {
         alias: 'j',
@@ -305,7 +305,7 @@ const toolsCommand: CommandModule<object, McpStatusArgs> = {
         alias: 'p',
         type: 'string',
         description: 'Filter by provider',
-        choices: ['claude', 'gemini', 'codex', 'grok'],
+        choices: ['claude', 'gemini', 'codex'],
       })
       .option('json', {
         alias: 'j',
@@ -314,7 +314,7 @@ const toolsCommand: CommandModule<object, McpStatusArgs> = {
         default: false,
       })
       .example('$0 mcp tools', 'List all available tools')
-      .example('$0 mcp tools --provider grok', 'List Grok tools only');
+      .example('$0 mcp tools --provider gemini', 'List Gemini tools only');
   },
 
   handler: async (argv) => {

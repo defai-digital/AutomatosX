@@ -9,7 +9,7 @@ import { AgentExecutor } from '../../src/agents/executor.js';
 import { ContextManager } from '../../src/agents/context-manager.js';
 import { ProfileLoader } from '../../src/agents/profile-loader.js';
 import { TeamManager } from '../../src/core/team-manager.js';
-import { Router } from '../../src/core/router.js';
+import { Router } from '../../src/core/router/router.js';
 import { ProgressChannel } from '../../src/core/progress-channel.js';
 import { ProgressRenderer } from '../../src/cli/renderers/progress-renderer.js';
 import { OpenAIProvider } from '../../src/providers/openai-provider.js';

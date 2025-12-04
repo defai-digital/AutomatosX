@@ -4,13 +4,13 @@
 
 import type { CommandModule } from 'yargs';
 import { resolve } from 'path';
-import { LazyMemoryManager } from '../../core/lazy-memory-manager.js';
+import { LazyMemoryManager } from '../../core/memory/lazy-manager.js';
 import type { IMemoryManager } from '../../types/memory.js';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { printError } from '../../utils/error-formatter.js';
-import { ProgressIndicator } from '../../utils/progress.js';
-import { printSuccess } from '../../utils/message-formatter.js';
+import { printError } from '../../shared/errors/error-formatter.js';
+import { ProgressIndicator } from '../../shared/logging/progress.js';
+import { printSuccess } from '../../shared/logging/message-formatter.js';
 
 const DEFAULT_DB_PATH = '.automatosx/memory/memory.db';
 

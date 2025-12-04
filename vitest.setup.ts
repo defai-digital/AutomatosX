@@ -4,7 +4,7 @@
  */
 
 import { afterEach, beforeEach, vi } from 'vitest';
-import { providerCache } from './src/core/provider-cache.js';
+import { providerCache } from './src/core/cache/provider-cache.js';
 import { clearDetectCache } from './src/core/cli-provider-detector.js';
 
 // Global cleanup hook - runs after each test

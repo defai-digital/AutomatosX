@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { VerbosityManager, VerbosityLevel } from '../../src/utils/verbosity-manager.js';
+import { VerbosityManager, VerbosityLevel } from '../../src/shared/logging/verbosity-manager.js';
 
 describe('VerbosityManager', () => {
   // Store original env vars

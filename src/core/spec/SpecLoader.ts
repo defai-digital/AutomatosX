@@ -20,7 +20,7 @@ import type {
   SpecErrorCode
 } from '../../types/spec.js';
 import { SpecError as SpecErrorClass } from '../../types/spec.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * Extract JSON object with brace counting to handle nested braces

@@ -24,7 +24,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { WorkspaceManager } from '../../src/core/workspace-manager.js';
-import { PathResolver } from '../../src/core/path-resolver.js';
+import { PathResolver } from '../../src/shared/validation/path-resolver.js';
 
 describe('Path Validation Security Tests (Queenie)', () => {
   let workspaceManager: WorkspaceManager;

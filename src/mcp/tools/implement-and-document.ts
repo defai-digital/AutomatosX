@@ -9,11 +9,11 @@
 
 import type { ToolHandler } from '../types.js';
 import type { ContextManager } from '../../agents/context-manager.js';
-import type { SessionManager } from '../../core/session-manager.js';
+import type { SessionManager } from '../../core/session/manager.js';
 import type { WorkspaceManager } from '../../core/workspace-manager.js';
 import type { ProfileLoader } from '../../agents/profile-loader.js';
 import { AgentExecutor } from '../../agents/executor.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'path';
 

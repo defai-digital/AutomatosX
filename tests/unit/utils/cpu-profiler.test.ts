@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CPUProfiler } from '../../../src/utils/cpu-profiler';
+import { CPUProfiler } from '../../../src/shared/profiling/cpu-profiler';
 
 describe('CPUProfiler', () => {
   let originalEnv: string | undefined;

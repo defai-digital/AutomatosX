@@ -1,5 +1,5 @@
 import { cpus } from 'os';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { DependencyGraph } from './dependency-graph.js';
 import type { ConcurrencyConfig } from '../types/config.js';
 

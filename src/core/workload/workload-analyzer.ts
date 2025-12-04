@@ -8,7 +8,7 @@
  */
 
 import type { ExecutionRequest } from '@/types/provider.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 /**
  * Workload characteristics

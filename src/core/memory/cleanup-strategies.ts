@@ -4,11 +4,11 @@
  * Extracted from MemoryManager to improve maintainability and testability.
  * Provides three cleanup strategies: oldest, least_accessed, and hybrid.
  *
- * @see src/core/memory-manager.ts (original implementation)
+ * @see src/core/memory/manager.ts (original implementation)
  */
 
 import type Database from 'better-sqlite3';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export type CleanupStrategy = 'oldest' | 'least_accessed' | 'hybrid';
 

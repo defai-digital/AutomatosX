@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SimpleLogger, createLogger } from '../../src/utils/logger.js';
+import { SimpleLogger, createLogger } from '../../src/shared/logging/logger.js';
 
 describe('SimpleLogger', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

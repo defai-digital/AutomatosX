@@ -17,7 +17,7 @@ import {
   loadYamlConfig,
   type YamlProviderConfig
 } from '../../src/core/config-loaders/yaml-config-loader.js';
-import { ConfigError } from '../../src/utils/errors.js';
+import { ConfigError } from '../../src/shared/errors/errors.js';
 
 describe('YamlConfigLoader Integration Tests', () => {
   let testDir: string;

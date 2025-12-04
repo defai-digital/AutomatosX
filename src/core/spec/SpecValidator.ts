@@ -17,7 +17,7 @@ import type {
   SpecTask
 } from '../../types/spec.js';
 import { SpecGraphBuilder } from './SpecGraphBuilder.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * Default validator options

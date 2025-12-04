@@ -7,10 +7,10 @@
 
 import type { ToolHandler, GetStatusOutput } from '../types.js';
 import type { IMemoryManager } from '../../types/memory.js';
-import { SessionManager } from '../../core/session-manager.js';
-import { Router } from '../../core/router.js';
-import { logger } from '../../utils/logger.js';
-import { getVersion } from '../../utils/version.js';
+import { SessionManager } from '../../core/session/manager.js';
+import { Router } from '../../core/router/router.js';
+import { logger } from '../../shared/logging/logger.js';
+import { getVersion } from '../../shared/helpers/version.js';
 import { mapActualProviderToMcp } from '../utils/provider-mapping.js';
 
 export interface GetStatusDependencies {

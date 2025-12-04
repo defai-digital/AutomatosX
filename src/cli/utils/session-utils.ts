@@ -5,10 +5,10 @@
  * @since v4.7.0
  */
 
-import { SessionManager } from '../../core/session-manager.js';
-import { PathResolver } from '../../core/path-resolver.js';
+import { SessionManager } from '../../core/session/manager.js';
+import { PathResolver } from '../../shared/validation/path-resolver.js';
 import { join } from 'path';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 // Global registry of active session managers (for cleanup on exit)
 const activeSessionManagers = new Set<SessionManager>();

@@ -219,3 +219,4 @@ snapshots/
 .yarn-lock.json
 .pnpm-lock.yaml
 # Note: package-lock.json and pnpm-lock.yaml are tracked for CI reproducibility
+CLAUDE.md

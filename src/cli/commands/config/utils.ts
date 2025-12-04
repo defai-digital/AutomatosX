@@ -25,7 +25,7 @@ export async function checkExists(path: string): Promise<boolean> {
  *
  * Priority:
  *   1. --config CLI arg
- *   2. AUTOMATOSX_CONFIG env var
+ *   2. AUTOMATOSX_CONFIG_PATH env var
  *   3. ax.config.yaml (project root) - NEW in v9.2.0
  *   4. ax.config.json (project root) - NEW in v9.2.0
  *   5. automatosx.config.yaml (project root) - DEPRECATED, removed in v10.0.0
@@ -40,8 +40,8 @@ export function resolveConfigPath(cliArg?: string): string {
   }
 
   // 2. Environment variable
-  if (process.env.AUTOMATOSX_CONFIG) {
-    return resolve(process.env.AUTOMATOSX_CONFIG);
+  if (process.env.AUTOMATOSX_CONFIG_PATH) {
+    return resolve(process.env.AUTOMATOSX_CONFIG_PATH);
   }
 
   // 3-8. Check in priority order (new names first, then deprecated names for backward compat)

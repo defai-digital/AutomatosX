@@ -12,8 +12,8 @@ import { join, extname, basename } from 'path';
 import { load } from 'js-yaml';
 import type { TeamConfig } from '../types/team.js';
 import { TeamValidationError, TeamNotFoundError } from '../types/team.js';
-import { logger } from '../utils/logger.js';
-import { TTLCache } from './cache.js';
+import { logger } from '../shared/logging/logger.js';
+import { TTLCache } from './cache/cache.js';
 
 /**
  * Team Manager - Load and validate team configurations

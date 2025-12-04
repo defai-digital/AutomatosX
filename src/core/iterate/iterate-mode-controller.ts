@@ -16,7 +16,7 @@
 
 import type { ExecutionContext } from '../../types/agent.js';
 import type { ExecutionResponse } from '../../types/provider.js';
-import type { SessionManager } from '../session-manager.js';
+import type { SessionManager } from '../session/manager.js';
 import type {
   IterateConfig,
   IterateState,
@@ -27,7 +27,7 @@ import type {
   ClassificationType
 } from '../../types/iterate.js';
 import type { ExecutionOptions, ExecutionResult } from '../../agents/executor.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { IterateError } from '../../types/iterate.js';
 import { IterateClassifier } from './iterate-classifier.js';
 import { IterateAutoResponder } from './iterate-auto-responder.js';

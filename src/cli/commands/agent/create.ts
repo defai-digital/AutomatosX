@@ -10,7 +10,8 @@ import { join } from 'path';
 import { load as loadYaml } from 'js-yaml';
 import chalk from 'chalk';
 import { TemplateEngine, type TemplateVariables } from '../../../agents/template-engine.js';
-import { PromptHelper } from '../../../utils/prompt-helper.js';
+import { PromptHelper } from '../../../shared/helpers/prompt-helper.js';
+import { getPackageRoot } from '../../../shared/helpers/package-root.js';
 import {
   listAvailableTemplates,
   listAvailableTeams,
@@ -212,8 +213,9 @@ async function findTemplate(name: string): Promise<string> {
   }
 
   // Check default templates
-  // After bundling, __dirname is dist/, so go up 1 level to project root
-  const defaultTemplate = join(__dirname, '../examples/templates', `${name}.yaml`);
+  // Use getPackageRoot() to reliably find examples in both dev and bundled mode
+  const packageRoot = getPackageRoot();
+  const defaultTemplate = join(packageRoot, 'examples/workflows', `${name}.yaml`);
   if (existsSync(defaultTemplate)) {
     return defaultTemplate;
   }

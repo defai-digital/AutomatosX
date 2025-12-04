@@ -16,21 +16,21 @@
 
 import type { AutomatosXConfig } from '../types/config.js';
 import type { ExecutionResponse } from '../types/provider.js';
-import { Router } from '../core/router.js';
-import { SessionManager } from '../core/session-manager.js';
+import { Router } from '../core/router/router.js';
+import { SessionManager } from '../core/session/manager.js';
 import { WorkspaceManager } from '../core/workspace-manager.js';
-import { LazyMemoryManager } from '../core/lazy-memory-manager.js';
+import { LazyMemoryManager } from '../core/memory/lazy-manager.js';
 import { ProfileLoader } from './profile-loader.js';
 import { AbilitiesManager } from './abilities-manager.js';
 import { TeamManager } from '../core/team-manager.js';
-import { PathResolver } from '../core/path-resolver.js';
+import { PathResolver } from '../shared/validation/path-resolver.js';
 import { ContextManager } from './context-manager.js';
 import { AgentExecutor } from './executor.js';
 import { ClaudeProvider } from '../providers/claude-provider.js';
 import { GeminiProvider } from '../providers/gemini-provider.js';
 import { createOpenAIProviderSync } from '../providers/openai-provider-factory.js';
 import type { BaseProvider } from '../providers/base-provider.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import { join } from 'path';
 
 /**

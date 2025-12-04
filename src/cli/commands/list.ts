@@ -6,8 +6,8 @@ import type { CommandModule } from 'yargs';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 import chalk from 'chalk';
-import { logger } from '../../utils/logger.js';
-import { PathResolver, detectProjectRoot } from '../../core/path-resolver.js';
+import { logger } from '../../shared/logging/logger.js';
+import { PathResolver, detectProjectRoot } from '../../shared/validation/path-resolver.js';
 
 interface ListOptions {
   type: 'agents' | 'abilities' | 'providers';

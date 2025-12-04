@@ -340,16 +340,6 @@ export const KNOWN_MCP_SERVERS: Record<string, Omit<MCPServerConfig, 'name' | 'e
     tags: ['memory', 'storage', 'persistence'],
   },
 
-  brave: {
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-brave-search'],
-    description: 'Brave Search API integration',
-    tags: ['search', 'web', 'brave'],
-    env: {
-      // BRAVE_API_KEY should be provided by user
-    },
-  },
-
   puppeteer: {
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-puppeteer'],

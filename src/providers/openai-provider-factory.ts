@@ -20,7 +20,7 @@ import {
   showModeWizard,
   detectEnvironment
 } from './integration-mode-wizard.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Create OpenAI provider instance synchronously based on integration mode

@@ -9,8 +9,8 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import type { CheckpointData, StageStates, ExecutionMode } from '../../src/types/stage-execution.js';
-import { CheckpointManager } from '../../src/core/checkpoint-manager.js';
-import { detectProjectRoot } from '../../src/core/path-resolver.js';
+import { CheckpointManager } from '../../src/core/session/checkpoint.js';
+import { detectProjectRoot } from '../../src/shared/validation/path-resolver.js';
 
 // Note: We test the command handler logic, not the full CLI integration
 describe('Resume Command', () => {

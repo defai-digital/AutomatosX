@@ -4,42 +4,19 @@
 
 import type { CommandModule } from 'yargs';
 import { mkdir, writeFile, readFile, access, readdir, copyFile, rm, stat } from 'fs/promises';
-import { resolve, join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { constants, existsSync } from 'fs';
+import { resolve, join } from 'path';
+import { constants } from 'fs';
 import chalk from 'chalk';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import type { AutomatosXConfig } from '../../types/config.js';
-import { logger } from '../../utils/logger.js';
-import { printError } from '../../utils/error-formatter.js';
-import { PromptHelper } from '../../utils/prompt-helper.js';
+import { logger } from '../../shared/logging/logger.js';
+import { printError } from '../../shared/errors/error-formatter.js';
+import { PromptHelper } from '../../shared/helpers/prompt-helper.js';
+import { getPackageRoot } from '../../shared/helpers/package-root.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ProviderDetector } from '../../core/provider-detector.js';
-
-// Get the directory of this file for locating examples
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-/**
- * Get package root using filesystem checks instead of string matching
- * This is more reliable and works with any directory structure
- */
-function getPackageRoot(): string {
-  let current = __dirname;
-  const root = '/';
-
-  while (current !== root) {
-    // Check if package.json exists at this level
-    if (existsSync(join(current, 'package.json'))) {
-      return current;
-    }
-    current = dirname(current);
-  }
-
-  throw new Error('Could not find package root (no package.json found)');
-}
 
 interface SetupOptions {
   force?: boolean;
@@ -88,7 +65,7 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
 
     // Get version from package.json dynamically
     const packageRoot = getPackageRoot();
-    let version = '5.1.2'; // fallback
+    let version = '11.2.6'; // fallback
     try {
       const packageJson = JSON.parse(
         await import('fs/promises').then(fs => fs.readFile(join(packageRoot, 'package.json'), 'utf-8'))
@@ -601,7 +578,7 @@ async function validateEnvironment(packageRoot: string): Promise<void> {
   const requiredDirs = [
     'examples/agents',
     'examples/abilities',
-    'examples/templates',
+    'examples/workflows',
     'examples/teams'
   ];
 
@@ -718,7 +695,7 @@ async function copyExampleAbilities(baseDir: string, packageRoot: string): Promi
  */
 async function copyExampleTemplates(baseDir: string, packageRoot: string): Promise<number> {
   return copyExampleFiles(baseDir, packageRoot, {
-    exampleDir: 'templates',
+    exampleDir: 'workflows',
     targetDir: 'templates',
     extension: '.yaml',
     resourceName: 'template'
@@ -936,7 +913,7 @@ async function createDefaultConfig(
  * Setup Claude Code integration files
  */
 async function setupClaudeIntegration(projectDir: string, packageRoot: string): Promise<void> {
-  const examplesBaseDir = join(packageRoot, 'examples/claude');
+  const examplesBaseDir = join(packageRoot, 'examples/providers/claude');
 
   // Create .claude directory structure
   const claudeDir = join(projectDir, '.claude');

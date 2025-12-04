@@ -7,7 +7,7 @@
 
 import { randomUUID } from 'crypto';
 import chalk from 'chalk';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { AgentProfile, ExecutionContext } from '../types/agent.js';
 import type { DelegationResult } from '../types/orchestration.js';
 import { DependencyGraphBuilder, type DependencyGraph, type AgentNode } from './dependency-graph.js';

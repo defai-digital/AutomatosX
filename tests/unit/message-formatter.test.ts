@@ -11,7 +11,7 @@ import {
   formatStep,
   formatHeader,
   formatKeyValue
-} from '../../src/utils/message-formatter.js';
+} from '../../src/shared/logging/message-formatter.js';
 
 describe('Message Formatter', () => {
   describe('formatSuccess', () => {

@@ -9,7 +9,7 @@ import { rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { existsSync } from 'fs';
-import { MemoryManager } from '../../src/core/memory-manager.js';
+import { MemoryManager } from '../../src/core/memory/manager.js';
 import type { MemoryMetadata } from '../../src/types/memory.js';
 
 describe('MemoryManager Text Query (FTS5)', () => {

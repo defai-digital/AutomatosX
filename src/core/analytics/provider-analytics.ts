@@ -9,9 +9,9 @@
 
 import Database from 'better-sqlite3';
 import { join } from 'path';
-import { logger } from '@/utils/logger.js';
-import { getPercentile } from '@/utils/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
-import { DatabaseFactory } from '@/utils/db-factory.js';
+import { logger } from '@/shared/logging/logger.js';
+import { getPercentile } from '@/shared/helpers/statistics.js'; // FIXED Bug #144: Use centralized percentile utility
+import { DatabaseFactory } from '@/core/database/factory.js';
 
 export interface ProviderExecutionEvent {
   provider: string;
@@ -131,7 +131,7 @@ export class ProviderAnalytics {
     `);
 
     // Bug #12: Register shutdown handler to close database
-    import('../../utils/process-manager.js').then(({ processManager }) => {
+    import('../../shared/process/process-manager.js').then(({ processManager }) => {
       processManager.onShutdown(async () => {
         this.close();
       });

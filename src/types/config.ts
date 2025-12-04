@@ -7,7 +7,7 @@
 
 import type { LogLevel } from './logger.js';
 import type { TimeoutConfig } from './timeout.js';
-import type { AdaptiveCacheConfig as AdaptiveCacheConfigImpl } from '../core/adaptive-cache.js';
+import type { AdaptiveCacheConfig as AdaptiveCacheConfigImpl } from '../core/cache/adaptive-cache.js';
 import type { IterateConfig } from './iterate.js';
 
 // ========================================

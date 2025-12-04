@@ -11,8 +11,8 @@ import {
   printError,
   printErrorSummary,
   printErrorList
-} from '../../src/utils/error-formatter.js';
-import { ConfigError, ErrorCode, BaseError } from '../../src/utils/errors.js';
+} from '../../src/shared/errors/error-formatter.js';
+import { ConfigError, ErrorCode, BaseError } from '../../src/shared/errors/errors.js';
 
 describe('Error Formatter', () => {
   describe('formatError', () => {

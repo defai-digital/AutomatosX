@@ -10,11 +10,11 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { statusCommand } from '../../src/cli/commands/status.js';
-import { detectProjectRoot } from '../../src/core/path-resolver.js';
+import { detectProjectRoot } from '../../src/shared/validation/path-resolver.js';
 
 // Mock all dependencies
-vi.mock('../../src/core/config.js', async () => {
-  const actual = await vi.importActual('../../src/core/config.js') as any;
+vi.mock('../../src/core/config/loader.js', async () => {
+  const actual = await vi.importActual('../../src/core/config/loader.js') as any;
   return {
     ...actual,
     loadConfig: vi.fn().mockResolvedValue({
@@ -56,8 +56,8 @@ vi.mock('../../src/types/config.ts', async () => {
   };
 });
 
-vi.mock('../../src/core/path-resolver.js', async () => {
-  const actual = await vi.importActual('../../src/core/path-resolver.js') as any;
+vi.mock('../../src/shared/validation/path-resolver.js', async () => {
+  const actual = await vi.importActual('../../src/shared/validation/path-resolver.js') as any;
   // Create a mock function that returns a Promise
   const mockDetectProjectRoot = vi.fn();
 
@@ -133,7 +133,7 @@ vi.mock('../../src/providers/openai-provider-factory.js', () => ({
   }))
 }));
 
-vi.mock('../../src/core/router.js', () => ({
+vi.mock('../../src/core/router/router.js', () => ({
   Router: vi.fn().mockImplementation(() => ({
     getAvailableProviders: vi.fn().mockResolvedValue([
       {
@@ -179,7 +179,7 @@ describe('Status Command', () => {
 
     // Reconfigure loadConfig mock to return config without enabled providers
     // This prevents status command from creating Provider instances
-    const { loadConfig } = await import('../../src/core/config.js');
+    const { loadConfig } = await import('../../src/core/config/loader.js');
     vi.mocked(loadConfig).mockResolvedValue({
       providers: {},  // No enabled providers
       logging: {
@@ -581,7 +581,7 @@ describe('Status Command', () => {
   describe('Error Handling', () => {
     it('should handle errors gracefully', async () => {
       // Mock loadConfig to throw error
-      const { loadConfig } = await import('../../src/core/config.js');
+      const { loadConfig } = await import('../../src/core/config/loader.js');
       vi.mocked(loadConfig).mockRejectedValueOnce(new Error('Config error'));
 
       // Status command should gracefully fallback to DEFAULT_CONFIG (which is mocked to have no providers)
@@ -593,7 +593,7 @@ describe('Status Command', () => {
     });
 
     it('should display error with verbose flag', async () => {
-      const { loadConfig } = await import('../../src/core/config.js');
+      const { loadConfig } = await import('../../src/core/config/loader.js');
       vi.mocked(loadConfig).mockRejectedValueOnce(new Error('Verbose error test'));
 
       // Status command should gracefully fallback to DEFAULT_CONFIG and succeed

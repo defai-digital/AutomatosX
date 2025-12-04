@@ -9,8 +9,8 @@
 
 import { randomUUID } from 'crypto';
 import type { ToolHandler } from '../types.js';
-import type { ConversationContextStore, ConversationContext } from '../../core/conversation-context-store.js';
-import { logger } from '../../utils/logger.js';
+import type { ConversationContextStore, ConversationContext } from '../../core/session/context-store.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface InjectConversationContextInput {
   source: string;                // Source assistant (e.g., "gemini-cli", "claude-code")

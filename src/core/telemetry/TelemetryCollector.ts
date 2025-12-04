@@ -22,8 +22,8 @@ import type {
   TelemetryQueryFilters,
   TelemetryEventType
 } from '../../types/telemetry.js';
-import { logger } from '../../utils/logger.js';
-import { DatabaseFactory } from '../../utils/db-factory.js';
+import { logger } from '../../shared/logging/logger.js';
+import { DatabaseFactory } from '../database/factory.js';
 
 /**
  * Default telemetry options
@@ -74,7 +74,7 @@ export class TelemetryCollector {
         this.startAutoFlush();
 
         // Bug #12: Register shutdown handler to close database
-        import('../../utils/process-manager.js').then(({ processManager }) => {
+        import('../../shared/process/process-manager.js').then(({ processManager }) => {
           processManager.onShutdown(async () => {
             await this.close();
           });

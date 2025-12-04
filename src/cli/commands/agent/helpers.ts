@@ -5,15 +5,11 @@
 
 import { readdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, extname, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join, extname } from 'path';
 import { ProfileLoader } from '../../../agents/profile-loader.js';
 import { TeamManager } from '../../../core/team-manager.js';
-import { logger } from '../../../utils/logger.js';
-
-// Get the directory of this file for ESM compatibility
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { logger } from '../../../shared/logging/logger.js';
+import { getPackageRoot } from '../../../shared/helpers/package-root.js';
 
 /**
  * Template information
@@ -24,6 +20,47 @@ export interface TemplateInfo {
   description?: string;
   team?: string;
 }
+
+/**
+ * Template metadata with team assignment
+ */
+export interface TemplateMetadata {
+  name: string;
+  team: string;
+  description: string;
+}
+
+/**
+ * Built-in template descriptions - Single source of truth
+ * Used by both helpers.ts and templates.ts
+ */
+export const BUILTIN_TEMPLATE_METADATA: Record<string, TemplateMetadata> = {
+  'basic-agent': {
+    name: 'basic-agent',
+    team: 'core',
+    description: 'Basic agent with minimal configuration'
+  },
+  'developer': {
+    name: 'developer',
+    team: 'engineering',
+    description: 'Software developer (code generation, review, testing)'
+  },
+  'analyst': {
+    name: 'analyst',
+    team: 'business',
+    description: 'Business analyst (requirements, user stories, strategy)'
+  },
+  'designer': {
+    name: 'designer',
+    team: 'design',
+    description: 'UI/UX designer (interface design, user experience)'
+  },
+  'qa-specialist': {
+    name: 'qa-specialist',
+    team: 'core',
+    description: 'QA specialist (test planning, automation, quality)'
+  }
+};
 
 /**
  * Team information
@@ -63,9 +100,10 @@ export async function listAvailableTemplates(baseDir?: string): Promise<Template
     }
   }
 
-  // 2. Check built-in templates (examples/templates/)
-  // Note: In production, this should resolve to the correct path
-  const builtinTemplatesDir = join(__dirname, '../../../../examples/templates');
+  // 2. Check built-in templates (examples/workflows/)
+  // Use getPackageRoot() to reliably find examples in both dev and bundled mode
+  const packageRoot = getPackageRoot();
+  const builtinTemplatesDir = join(packageRoot, 'examples/workflows');
   if (existsSync(builtinTemplatesDir)) {
     try {
       const files = await readdir(builtinTemplatesDir);
@@ -78,19 +116,14 @@ export async function listAvailableTemplates(baseDir?: string): Promise<Template
             continue;
           }
 
-          // Map built-in templates to descriptions
-          const descriptions: Record<string, string> = {
-            'basic-agent': 'Basic agent (core team)',
-            'developer': 'Software developer (engineering)',
-            'analyst': 'Business analyst (business)',
-            'designer': 'UI/UX designer (design)',
-            'qa-specialist': 'QA specialist (core)'
-          };
+          // Use shared template metadata
+          const metadata = BUILTIN_TEMPLATE_METADATA[name];
 
           templates.push({
             name,
             path: join(builtinTemplatesDir, file),
-            description: descriptions[name] || 'Built-in template'
+            description: metadata?.description || 'Built-in template',
+            team: metadata?.team
           });
         }
       }

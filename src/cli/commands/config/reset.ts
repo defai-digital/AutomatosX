@@ -6,12 +6,12 @@
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import { DEFAULT_CONFIG } from '../../../types/config.js';
-import { saveConfigFile } from '../../../core/config.js';
-import { printError } from '../../../utils/error-formatter.js';
-import { printSuccess } from '../../../utils/message-formatter.js';
-import { logger } from '../../../utils/logger.js';
+import { saveConfigFile } from '../../../core/config/loader.js';
+import { printError } from '../../../shared/errors/error-formatter.js';
+import { printSuccess } from '../../../shared/logging/message-formatter.js';
+import { logger } from '../../../shared/logging/logger.js';
 import { resolveConfigPath } from './utils.js';
-import { PromptHelper } from '../../../utils/prompt-helper.js';
+import { PromptHelper } from '../../../shared/helpers/prompt-helper.js';
 
 interface ResetOptions {
   verbose?: boolean;

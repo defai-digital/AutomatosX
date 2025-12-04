@@ -3,25 +3,10 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
-import { join, extname, basename, dirname, sep } from 'path';
-import { fileURLToPath } from 'url';
-import { logger } from '../utils/logger.js';
-import { TTLCache } from '../core/cache.js';
-
-// Get the directory of this file for locating built-in abilities
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Get package root - handle both dev (src/) and prod (dist/) scenarios
-function getPackageRoot(): string {
-  const currentDir = __dirname;
-  // Use path.sep-independent check for cross-platform compatibility
-  if (currentDir.includes(`${sep}dist`) || currentDir.includes('/dist')) {
-    return join(currentDir, '..');
-  } else {
-    return join(currentDir, '../..');
-  }
-}
+import { join, extname, basename } from 'path';
+import { logger } from '../shared/logging/logger.js';
+import { TTLCache } from '../core/cache/cache.js';
+import { getPackageRoot } from '../shared/helpers/package-root.js';
 
 /**
  * Abilities Manager - Load and manage agent abilities

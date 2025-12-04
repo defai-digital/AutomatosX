@@ -7,7 +7,7 @@
 
 import type { CommandModule } from 'yargs';
 import { getProviderLimitManager } from '../../core/provider-limit-manager.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import chalk from 'chalk';
 
 interface ProviderLimitsOptions {

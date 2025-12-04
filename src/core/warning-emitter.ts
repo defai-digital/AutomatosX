@@ -10,7 +10,7 @@
 
 import { EventEmitter } from 'events';
 import { TimeoutWarningEvent } from '../types/timeout.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Warning emitter for timeout events

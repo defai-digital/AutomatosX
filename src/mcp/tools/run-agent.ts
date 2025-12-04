@@ -15,10 +15,10 @@ import type { ToolHandler, RunAgentInput, RunAgentOutput, McpSession } from '../
 import { AgentExecutor } from '../../agents/executor.js';
 import { ContextManager } from '../../agents/context-manager.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
-import { Router } from '../../core/router.js';
+import { Router } from '../../core/router/router.js';
 import type { IMemoryManager } from '../../types/memory.js';
-import { logger } from '../../utils/logger.js';
-import { formatError } from '../../utils/error-formatter.js';
+import { logger } from '../../shared/logging/logger.js';
+import { formatError } from '../../shared/errors/error-formatter.js';
 import { validateAgentName, validateStringParameter } from '../utils/validation.js';
 import { mapMcpProviderToActual, mapActualProviderToMcp, mapNormalizedCallerToActual } from '../utils/provider-mapping.js';
 import { McpClientPool } from '../../providers/mcp/pool-manager.js';

@@ -14,7 +14,7 @@
 import type { ToolHandler } from '../types.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import type { IMemoryManager } from '../../types/memory.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { validateAgentName, validateStringParameter } from '../utils/validation.js';
 
 export interface GetAgentContextInput {

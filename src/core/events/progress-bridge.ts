@@ -8,7 +8,7 @@
  * @since v11.1.0
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { ProgressChannel, type ProgressEvent, type ProgressEventType } from '../progress-channel.js';
 import { getGlobalEventBridge, type EventBridge } from './event-bridge.js';
 import type { UnifiedEventType, EventSource } from './unified-event.js';

@@ -19,7 +19,7 @@ import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
 import { HybridAxCliAdapter, type AdapterMode } from '../integrations/ax-cli-sdk/hybrid-adapter.js';
 import type { AxCliOptions } from '../integrations/ax-cli/interface.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { SubagentTask, SubagentResult, OrchestratorOptions, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
 
 /**

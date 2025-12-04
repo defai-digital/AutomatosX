@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import type { AgentProfile } from '../types/agent.js';
 import type { DelegationResult } from '../types/orchestration.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 export interface AgentNode {
   agentName: string;

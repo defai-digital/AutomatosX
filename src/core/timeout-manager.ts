@@ -15,7 +15,7 @@ import {
   TimeoutWarningEvent,
 } from '../types/timeout.js';
 import { WarningEmitter } from './warning-emitter.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Default timeout value in milliseconds (25 minutes)

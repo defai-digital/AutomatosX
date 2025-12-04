@@ -11,10 +11,10 @@
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { logger, setLogLevel } from '../utils/logger.js';
-import { globalTracker } from '../utils/performance.js';
-import { getVersion } from '../utils/version.js';
-import { installExitHandlers } from '../utils/process-manager.js';
+import { logger, setLogLevel } from '../shared/logging/logger.js';
+import { globalTracker } from '../shared/profiling/performance.js';
+import { getVersion } from '../shared/helpers/version.js';
+import { installExitHandlers } from '../shared/process/process-manager.js';
 
 // Install exit handlers to cleanup child processes
 // Fixes: Background tasks hanging when run via Claude Code

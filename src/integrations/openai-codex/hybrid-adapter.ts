@@ -9,7 +9,7 @@
  * @module integrations/openai-codex/hybrid-adapter
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import type { CodexConfig, CodexExecutionResult } from './types.js';
 import { CodexCLI } from './cli-wrapper.js';
 import { CodexSdkAdapter, type CodexSdkOptions } from './sdk-adapter.js';

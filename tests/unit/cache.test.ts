@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TTLCache, ProviderResponseCache, type CacheStats } from '../../src/core/cache.js';
+import { TTLCache, ProviderResponseCache, type CacheStats } from '../../src/core/cache/cache.js';
 
 describe('TTLCache', () => {
   describe('Basic Operations', () => {

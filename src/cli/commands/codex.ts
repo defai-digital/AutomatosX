@@ -13,7 +13,7 @@ import type { CommandModule, Argv } from 'yargs';
 import chalk from 'chalk';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { generateAgentsMd, validateAgentsMd } from '../../integrations/openai-codex/agents-md-generator.js';
 
 // ========== Types ==========

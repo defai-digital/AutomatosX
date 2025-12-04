@@ -9,7 +9,7 @@
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import { flagManager } from '@/core/feature-flags/flags.js';
-import { logger } from '@/utils/logger.js';
+import { logger } from '@/shared/logging/logger.js';
 
 interface FlagsListOptions {
   json?: boolean;

@@ -8,7 +8,7 @@ import {
   measureAsync,
   measureSync,
   globalTracker
-} from '../../src/utils/performance.js';
+} from '../../src/shared/profiling/performance.js';
 
 describe('PerformanceTracker', () => {
   let tracker: PerformanceTracker;

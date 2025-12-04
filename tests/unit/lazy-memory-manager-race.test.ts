@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LazyMemoryManager } from '../../src/core/lazy-memory-manager.js';
+import { LazyMemoryManager } from '../../src/core/memory/lazy-manager.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { mkdtempSync, rmSync } from 'fs';

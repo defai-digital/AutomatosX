@@ -14,7 +14,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { WorkspaceManager } from '../../src/core/workspace-manager.js';
-import { joinPathDisplay } from '../../src/utils/path-utils.js';
+import { joinPathDisplay } from '../../src/shared/validation/path-utils.js';
 
 describe('WorkspaceManager (v5.2.0)', () => {
   let workspaceManager: WorkspaceManager;

@@ -16,7 +16,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import type {
   UnifiedEvent,
   UnifiedEventType,

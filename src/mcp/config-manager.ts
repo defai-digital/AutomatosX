@@ -12,7 +12,7 @@
 import { watch, FSWatcher } from 'fs';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { UniversalMCPConfig } from './types-common.js';
 
 /**

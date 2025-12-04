@@ -48,7 +48,7 @@ const listCommand: CommandModule<Record<string, unknown>, WorkspaceListOptions> 
 
   handler: async (argv) => {
     try {
-      const { detectProjectRoot } = await import('../../core/path-resolver.js');
+      const { detectProjectRoot } = await import('../../shared/validation/path-resolver.js');
       const projectDir = await detectProjectRoot(process.cwd());
       const workspaceManager = new WorkspaceManager(projectDir);
 
@@ -99,7 +99,7 @@ const statsCommand: CommandModule<Record<string, unknown>, WorkspaceStatsOptions
 
   handler: async (argv) => {
     try {
-      const { detectProjectRoot } = await import('../../core/path-resolver.js');
+      const { detectProjectRoot } = await import('../../shared/validation/path-resolver.js');
       const projectDir = await detectProjectRoot(process.cwd());
       const workspaceManager = new WorkspaceManager(projectDir);
 
@@ -157,7 +157,7 @@ const cleanupCommand: CommandModule<Record<string, unknown>, WorkspaceCleanupOpt
         process.exit(1);
       }
 
-      const { detectProjectRoot } = await import('../../core/path-resolver.js');
+      const { detectProjectRoot } = await import('../../shared/validation/path-resolver.js');
       const projectDir = await detectProjectRoot(process.cwd());
       const workspaceManager = new WorkspaceManager(projectDir);
 

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { SessionManager } from '../../src/core/session-manager.js';
+import { SessionManager } from '../../src/core/session/manager.js';
 import { mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';

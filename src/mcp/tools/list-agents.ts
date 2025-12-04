@@ -7,7 +7,7 @@
 
 import type { ToolHandler, ListAgentsOutput } from '../types.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface ListAgentsDependencies {
   profileLoader: ProfileLoader;

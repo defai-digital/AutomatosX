@@ -12,10 +12,10 @@ import {
   buildTimeoutConfig,
   validateAndBuildTimeoutConfig,
   getTimeoutConfigSummary,
-} from '../../src/utils/timeout-validator.js';
+} from '../../src/shared/validation/timeout-validator.js';
 import { TimeoutConfig } from '../../src/types/timeout.js';
 import { ExecutionConfig } from '../../src/types/config.js';
-import { ConfigError } from '../../src/utils/errors.js';
+import { ConfigError } from '../../src/shared/errors/errors.js';
 
 describe('timeout-validator', () => {
   describe('validateTimeoutConfig', () => {

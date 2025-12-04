@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { CheckpointManager } from '../../src/core/checkpoint-manager.js';
+import { CheckpointManager } from '../../src/core/session/checkpoint.js';
 import type { CheckpointData, StageStates, ExecutionMode } from '../../src/types/stage-execution.js';
 
 describe('Runs Command', () => {

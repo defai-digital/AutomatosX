@@ -12,8 +12,8 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import { logger } from '@/utils/logger.js';
-import { detectProjectRoot } from './path-resolver.js';
+import { logger } from '@/shared/logging/logger.js';
+import { detectProjectRoot } from '../shared/validation/path-resolver.js';
 
 /**
  * Provider session configuration stored in .automatosx/session/provider-override.json

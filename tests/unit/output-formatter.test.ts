@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatOutput, formatForSave } from '../../src/utils/output-formatter.js';
+import { formatOutput, formatForSave } from '../../src/shared/logging/output-formatter.js';
 import type { ExecutionResult } from '../../src/agents/executor.js';
 import type { ExecutionContext } from '../../src/types/agent.js';
 

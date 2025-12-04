@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 // ========== Event Schemas ==========
 

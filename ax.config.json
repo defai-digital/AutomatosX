@@ -2,7 +2,7 @@
   "providers": {
     "claude-code": {
       "enabled": true,
-      "priority": 3,
+      "priority": 1,
       "timeout": 2700000,
       "command": "claude",
       "healthCheck": {
@@ -62,7 +62,7 @@
     },
     "openai": {
       "enabled": true,
-      "priority": 1,
+      "priority": 3,
       "timeout": 2700000,
       "command": "codex",
       "healthCheck": {
@@ -300,5 +300,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "11.2.6"
+  "version": "11.2.7"
 }

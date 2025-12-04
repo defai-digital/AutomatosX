@@ -11,8 +11,8 @@
 import { watch, existsSync } from 'fs';
 import { readFile, unlink, readdir, rename, mkdir } from 'fs/promises';
 import { join } from 'path';
-import type { AgentStatus } from '../utils/agent-status-writer.js';
-import { logger } from '../utils/logger.js';
+import type { AgentStatus } from '../shared/helpers/agent-status-writer.js';
+import { logger } from '../shared/logging/logger.js';
 import chalk from 'chalk';
 
 /**

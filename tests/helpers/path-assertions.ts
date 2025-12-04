@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'vitest';
-import { normalizePath, pathsEqual, pathContains } from '../../src/utils/path-utils.js';
+import { normalizePath, pathsEqual, pathContains } from '../../src/shared/validation/path-utils.js';
 
 /**
  * Assert that two paths are equal (ignoring separator differences)

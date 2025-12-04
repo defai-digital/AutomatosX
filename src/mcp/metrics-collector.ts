@@ -13,7 +13,7 @@
  * @module mcp/metrics-collector
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import type { MCPServerStatus, MCPHealthCheckResult } from './types-common.js';
 
 /**

@@ -8,7 +8,7 @@ import {
   validateConfigWithZod,
   safeValidateConfig,
   validatePartialConfig
-} from '../../../src/core/config-schemas.js';
+} from '../../../src/core/config/schemas.js';
 
 describe('Config Schemas - Zod Validation', () => {
   describe('Provider Configuration', () => {

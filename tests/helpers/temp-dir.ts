@@ -11,7 +11,7 @@
 import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { joinPath, normalizePath } from '../../src/utils/path-utils.js';
+import { joinPath, normalizePath } from '../../src/shared/validation/path-utils.js';
 
 /**
  * Options for creating a temporary directory

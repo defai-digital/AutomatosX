@@ -7,7 +7,7 @@
  */
 
 import { spawn } from 'child_process';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import readline from 'readline';
 import type {
   CodexConfig,

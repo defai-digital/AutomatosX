@@ -13,7 +13,7 @@
  */
 
 import { McpServer } from './server.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 // Parse command-line arguments
 const args = process.argv.slice(2);

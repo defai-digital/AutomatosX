@@ -12,7 +12,7 @@
  */
 
 import chalk from 'chalk';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 export interface StreamingMetrics {
   tokensReceived: number;

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SimpleLogger } from '../../src/utils/logger.js';
+import { SimpleLogger } from '../../src/shared/logging/logger.js';
 
 describe('Logger Sanitization', () => {
   let logger: SimpleLogger;

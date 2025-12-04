@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RoutingStrategyManager, resetRoutingStrategyManager } from '../../src/core/routing-strategy.js';
+import { RoutingStrategyManager, resetRoutingStrategyManager } from '../../src/core/router/routing-strategy.js';
 import { getProviderMetricsTracker, resetProviderMetricsTracker } from '../../src/core/provider-metrics-tracker.js';
 
 describe('Phase 3: RoutingStrategyManager', () => {

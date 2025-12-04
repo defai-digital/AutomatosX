@@ -31,7 +31,7 @@ import {
   dirname,
   basename,
   extname
-} from '../../src/utils/path-utils.js';
+} from '../../src/shared/validation/path-utils.js';
 
 describe('path-utils', () => {
   describe('normalizePath()', () => {

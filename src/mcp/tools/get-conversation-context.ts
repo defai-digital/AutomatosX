@@ -8,8 +8,8 @@
  */
 
 import type { ToolHandler } from '../types.js';
-import type { ConversationContextStore } from '../../core/conversation-context-store.js';
-import { logger } from '../../utils/logger.js';
+import type { ConversationContextStore } from '../../core/session/context-store.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface GetConversationContextInput {
   id?: string;                   // Optional: Get specific context by ID

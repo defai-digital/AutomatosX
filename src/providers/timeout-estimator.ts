@@ -10,7 +10,7 @@
  * v6.0.7: Phase 1 enhancement for better UX
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 
 export interface TimeoutEstimate {
   timeoutMs: number;

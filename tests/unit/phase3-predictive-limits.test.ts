@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { PredictiveLimitManager, resetPredictiveLimitManager } from '../../src/core/predictive-limit-manager.js';
+import { PredictiveLimitManager, resetPredictiveLimitManager } from '../../src/core/router/predictive-limit.js';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 
@@ -80,7 +80,7 @@ describe('Phase 3: PredictiveLimitManager', () => {
       // to prevent memory leaks on retry
 
       // Create a manager with an invalid path that will cause errors
-      const badManager = new (await import('../../src/core/predictive-limit-manager.js')).PredictiveLimitManager({
+      const badManager = new (await import('../../src/core/router/predictive-limit.js')).PredictiveLimitManager({
         enabled: true,
         trackingWindow: 24,
         rotationThreshold: 1,
@@ -297,7 +297,7 @@ describe('Phase 3: PredictiveLimitManager', () => {
       // Should be 0 to indicate no data, not uncertainty
 
       // Create manager with no known limits
-      const noLimitsManager = new (await import('../../src/core/predictive-limit-manager.js')).PredictiveLimitManager({
+      const noLimitsManager = new (await import('../../src/core/router/predictive-limit.js')).PredictiveLimitManager({
         enabled: true,
         trackingWindow: 24,
         rotationThreshold: 1,

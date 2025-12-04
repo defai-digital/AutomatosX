@@ -22,7 +22,7 @@ import type {
   ResponseTemplate,
   TemplateLibrary
 } from '../../types/iterate.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { readFile } from 'fs/promises';
 import { load as yamlLoad } from 'js-yaml';
 import { existsSync } from 'fs';

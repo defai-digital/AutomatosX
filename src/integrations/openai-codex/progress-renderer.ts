@@ -12,9 +12,9 @@
 
 import ora, { Ora } from 'ora';
 import chalk from 'chalk';
-import { VerbosityManager } from '../../utils/verbosity-manager.js';
+import { VerbosityManager } from '../../shared/logging/verbosity-manager.js';
 import { CodexEventParser, type CodexEvent } from './event-parser.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 // ========== Types ==========
 

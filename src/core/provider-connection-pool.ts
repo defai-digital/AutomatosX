@@ -13,7 +13,7 @@
  * @module core/provider-connection-pool
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import { EventEmitter } from 'events';
 
 /**
@@ -102,7 +102,7 @@ export class ProviderConnectionPool extends EventEmitter {
     this.startMaintenanceTasks();
 
     // Bug #41: Register shutdown handler to cleanup intervals
-    import('../utils/process-manager.js').then(({ processManager }) => {
+    import('../shared/process/process-manager.js').then(({ processManager }) => {
       processManager.onShutdown(async () => {
         await this.shutdown();
       });

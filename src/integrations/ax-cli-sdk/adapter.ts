@@ -19,7 +19,7 @@
 
 import type { AxCliAdapter, AxCliOptions } from '../ax-cli/interface.js';
 import type { ExecutionResponse } from '../../types/provider.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 import { TokenEstimator } from './token-estimator.js';
 import { SubagentAdapter, type SubagentTask, type SubagentResult, type OrchestratorOptions } from './subagent-adapter.js';
 import { CheckpointAdapter, type Checkpoint, type Workflow, type CheckpointOptions } from './checkpoint-adapter.js';

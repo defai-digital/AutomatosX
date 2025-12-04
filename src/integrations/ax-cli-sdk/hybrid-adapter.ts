@@ -13,7 +13,7 @@ import type { IAxCliAdapter, AxCliOptions } from '../ax-cli/interface.js';
 import type { ExecutionResponse } from '../../types/provider.js';
 import { AxCliAdapter as AxCliAdapterImpl } from '../ax-cli/adapter.js';
 import { AxCliSdkAdapter } from './adapter.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 /**
  * Execution mode for hybrid adapter

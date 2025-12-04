@@ -17,7 +17,7 @@
  * @since v11.1.0
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logging/logger.js';
 import { getGlobalEventBridge, EventBridge } from '../core/events/event-bridge.js';
 import type { UnifiedEvent, UnifiedEventType } from '../core/events/unified-event.js';
 

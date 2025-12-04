@@ -13,8 +13,8 @@ import type {
   MemoryImportOutput
 } from '../types.js';
 import type { IMemoryManager } from '../../types/memory.js';
-import type { PathResolver } from '../../core/path-resolver.js';
-import { logger } from '../../utils/logger.js';
+import type { PathResolver } from '../../shared/validation/path-resolver.js';
+import { logger } from '../../shared/logging/logger.js';
 import { resolve, basename } from 'path';
 import { validatePathParameter } from '../utils/validation.js';
 

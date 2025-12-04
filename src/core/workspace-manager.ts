@@ -24,8 +24,8 @@ import {
   getRelativePath,
   isWindows,
   isAbsolutePath
-} from '../utils/path-utils.js';
-import { logger } from '../utils/logger.js';
+} from '../shared/validation/path-utils.js';
+import { logger } from '../shared/logging/logger.js';
 
 /**
  * Workspace statistics

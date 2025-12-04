@@ -12,29 +12,29 @@ import type { Stage } from '../../types/agent.js';
 import { AgentNotFoundError } from '../../types/agent.js';
 import { StageExecutionController } from '../../core/stage-execution-controller.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
-import { LazyMemoryManager } from '../../core/lazy-memory-manager.js';
-import { Router } from '../../core/router.js';
-import { PathResolver, detectProjectRoot } from '../../core/path-resolver.js';
-import { SessionManager } from '../../core/session-manager.js';
+import { LazyMemoryManager } from '../../core/memory/lazy-manager.js';
+import { Router } from '../../core/router/router.js';
+import { PathResolver, detectProjectRoot } from '../../shared/validation/path-resolver.js';
+import { SessionManager } from '../../core/session/manager.js';
 import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
-import { loadConfig } from '../../core/config.js';
-import { logger } from '../../utils/logger.js';
-import { writeAgentStatus } from '../../utils/agent-status-writer.js';
+import { loadConfig } from '../../core/config/loader.js';
+import { logger } from '../../shared/logging/logger.js';
+import { writeAgentStatus } from '../../shared/helpers/agent-status-writer.js';
 import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
 import type { ExecutionHooks } from '../../agents/executor.js';
 import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
-import { VerbosityManager, VerbosityLevel } from '../../utils/verbosity-manager.js';
+import { VerbosityManager, VerbosityLevel } from '../../shared/logging/verbosity-manager.js';
 import chalk from 'chalk';
 import { join, dirname } from 'path';
 import { writeFileSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import boxen from 'boxen';
 import type { ExecutionResult } from '../../agents/executor.js';
-import { formatOutput, formatForSave } from '../../utils/output-formatter.js';
+import { formatOutput, formatForSave } from '../../shared/logging/output-formatter.js';
 import { existsSync, readFileSync } from 'fs';
 import readline from 'readline';
 import yaml from 'js-yaml';
@@ -972,11 +972,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         if (argv.iterate || argv.autoContinue) {
           // v8.6.0: Show deprecation warning if cost-based flag is used
           if (argv.iterateMaxCost !== undefined) {
-            console.log(chalk.yellow('\n⚠️  Warning: --iterate-max-cost is deprecated and will be removed in v9.0.0'));
+            console.log(chalk.yellow('\n⚠️  Warning: --iterate-max-cost is deprecated and will be removed in a future version'));
             console.log(chalk.yellow('    Reason: Provider pricing changes frequently, making cost estimates unreliable\n'));
             console.log(chalk.cyan('    Please use --iterate-max-tokens instead:'));
             console.log(chalk.cyan(`      ax run ${resolvedAgentName} "${actualTask}" --iterate --iterate-max-tokens 1000000\n`));
-            console.log(chalk.gray('    Learn more: https://docs.automatosx.com/migration/cost-to-tokens\n'));
+            console.log(chalk.gray('    Learn more: https://github.com/defai-digital/automatosx/blob/main/docs/migration/cost-to-tokens.md\n'));
           }
 
           // v8.6.0: Determine limits (prefer token-based over cost-based)
@@ -1261,7 +1261,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       // Graceful shutdown: cleanup all child processes before exit
       // Fixes: Background tasks hanging when run via Claude Code
       try {
-        const { processManager } = await import('../../utils/process-manager.js');
+        const { processManager } = await import('../../shared/process/process-manager.js');
         await processManager.shutdown(3000); // 3 second timeout
       } catch (shutdownError) {
         logger.error('Process manager shutdown failed', {
@@ -1329,7 +1329,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
         // Graceful shutdown: cleanup all child processes before exit
         try {
-          const { processManager } = await import('../../utils/process-manager.js');
+          const { processManager } = await import('../../shared/process/process-manager.js');
           await processManager.shutdown(3000); // 3 second timeout
         } catch (shutdownError) {
           logger.error('Process manager shutdown failed', {

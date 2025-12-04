@@ -14,7 +14,7 @@ import {
   ValidationError,
   toBaseError,
   isOperationalError
-} from '../../src/utils/errors.js';
+} from '../../src/shared/errors/errors.js';
 
 describe('Error Hierarchy', () => {
   describe('BaseError', () => {

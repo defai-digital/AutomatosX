@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { resolvePath, joinPathDisplay, normalizePath } from '../../src/utils/path-utils.js';
-import { PathResolver, detectProjectRoot } from '../../src/core/path-resolver.js';
+import { resolvePath, joinPathDisplay, normalizePath } from '../../src/shared/validation/path-utils.js';
+import { PathResolver, detectProjectRoot } from '../../src/shared/validation/path-resolver.js';
 import { PathError } from '../../src/types/path.js';
 
 describe('PathResolver', () => {

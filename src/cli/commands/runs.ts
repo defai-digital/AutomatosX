@@ -6,12 +6,12 @@ import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import { join } from 'path';
 import { promises as fs } from 'fs';
-import { CheckpointManager } from '../../core/checkpoint-manager.js';
-import { detectProjectRoot } from '../../core/path-resolver.js';
-import { loadConfig } from '../../core/config.js';
-import { logger } from '../../utils/logger.js';
+import { CheckpointManager } from '../../core/session/checkpoint.js';
+import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
+import { loadConfig } from '../../core/config/loader.js';
+import { logger } from '../../shared/logging/logger.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
-import { PromptHelper } from '../../utils/prompt-helper.js';
+import { PromptHelper } from '../../shared/helpers/prompt-helper.js';
 
 // ============================================================================
 // List Runs Command

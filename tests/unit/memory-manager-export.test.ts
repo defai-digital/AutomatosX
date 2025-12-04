@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MemoryManager } from '../../src/core/memory-manager.js';
+import { MemoryManager } from '../../src/core/memory/manager.js';
 import type { IMemoryManager } from '../../src/types/memory.js';
 
 describe('Memory Manager Export', () => {

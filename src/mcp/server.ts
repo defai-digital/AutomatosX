@@ -9,7 +9,7 @@ import { join } from 'path';
 import Ajv, { type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { Mutex } from 'async-mutex'; // BUG FIX (v9.0.1): Added for initialization mutex
-import { getVersion } from '../utils/version.js';
+import { getVersion } from '../shared/helpers/version.js';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
@@ -25,19 +25,19 @@ import type {
   ToolHandler
 } from './types.js';
 import { McpErrorCode, MCP_PROTOCOL_VERSION } from './types.js';
-import { logger, setLogLevel } from '../utils/logger.js';
-import { loadConfig } from '../core/config.js';
-import { Router } from '../core/router.js';
-import { LazyMemoryManager } from '../core/lazy-memory-manager.js';
+import { logger, setLogLevel } from '../shared/logging/logger.js';
+import { loadConfig } from '../core/config/loader.js';
+import { Router } from '../core/router/router.js';
+import { LazyMemoryManager } from '../core/memory/lazy-manager.js';
 import type { IMemoryManager } from '../types/memory.js';
-import { SessionManager } from '../core/session-manager.js';
+import { SessionManager } from '../core/session/manager.js';
 import { WorkspaceManager } from '../core/workspace-manager.js';
 import { ContextManager } from '../agents/context-manager.js';
 import { ProfileLoader } from '../agents/profile-loader.js';
 import { AbilitiesManager } from '../agents/abilities-manager.js';
 import { TeamManager } from '../core/team-manager.js';
-import { PathResolver } from '../core/path-resolver.js';
-import { ConversationContextStore } from '../core/conversation-context-store.js';
+import { PathResolver } from '../shared/validation/path-resolver.js';
+import { ConversationContextStore } from '../core/session/context-store.js';
 
 // Import tool handlers - Phase 1
 import { createRunAgentHandler } from './tools/run-agent.js';

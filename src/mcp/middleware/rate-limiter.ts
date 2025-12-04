@@ -4,7 +4,7 @@
  * Prevents abuse by limiting requests per time window per client.
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/logging/logger.js';
 
 export interface RateLimiterOptions {
   windowMs: number;        // Time window in milliseconds

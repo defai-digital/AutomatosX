@@ -134,7 +134,7 @@ export function parseAXMD(content: string): ParsedAXMD {
   ];
 
   for (const section of sections) {
-    const sectionName = section.split('\n')[0];
+    const sectionName = section.split('\n')[0] ?? '';
     if (sectionName && !standardSections.includes(sectionName)) {
       result.customSections.push(sectionName);
     }

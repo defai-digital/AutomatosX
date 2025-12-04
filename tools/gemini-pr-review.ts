@@ -386,7 +386,7 @@ async function main() {
     
     switch (flag) {
       case '--pr-number':
-        options.prNumber = parseInt(value);
+        options.prNumber = parseInt(value, 10);
         break;
       case '--base-ref':
         options.baseRef = value;

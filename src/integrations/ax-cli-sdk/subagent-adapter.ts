@@ -28,6 +28,9 @@ import type {
   ProgressEvent
 } from './sdk-types.js';
 
+/** Estimated token split ratios when actual split is unknown */
+const TOKEN_SPLIT = { PROMPT: 0.3, COMPLETION: 0.7 } as const;
+
 /**
  * Subagent role types supported by ax-cli SDK
  */
@@ -404,8 +407,8 @@ export class SubagentAdapter {
         success: true,
         latencyMs,
         tokensUsed: totalTokens > 0 ? {
-          prompt: Math.floor(totalTokens * 0.3), // Estimated split
-          completion: Math.floor(totalTokens * 0.7),
+          prompt: Math.floor(totalTokens * TOKEN_SPLIT.PROMPT),
+          completion: Math.floor(totalTokens * TOKEN_SPLIT.COMPLETION),
           total: totalTokens
         } : undefined
       };
@@ -602,7 +605,11 @@ export class SubagentAdapter {
     for (const [key, subagent] of this.subagents) {
       try {
         if (subagent.dispose) {
-          subagent.dispose();
+          // Await dispose in case it's async to ensure proper cleanup
+          const result = subagent.dispose();
+          if (result instanceof Promise) {
+            await result;
+          }
         }
         logger.debug('Subagent disposed', { key });
       } catch (error) {

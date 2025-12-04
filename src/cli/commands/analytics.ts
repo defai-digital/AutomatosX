@@ -178,9 +178,11 @@ async function optimizeHandler(argv: AnalyticsOptions) {
       return;
     }
 
+    const TYPE_ICONS: Record<string, string> = { cost_saving: '💰', performance: '⚡', security: '🔒' };
+    const SEVERITY_COLORS: Record<string, typeof chalk.red> = { high: chalk.red, medium: chalk.yellow, low: chalk.gray };
     for (const rec of recommendations) {
-      const icon = rec.type === 'cost_saving' ? '💰' : rec.type === 'performance' ? '⚡' : '🔒';
-      const severityColor = rec.severity === 'high' ? chalk.red : rec.severity === 'medium' ? chalk.yellow : chalk.gray;
+      const icon = TYPE_ICONS[rec.type] ?? '🔒';
+      const severityColor = SEVERITY_COLORS[rec.severity] ?? chalk.gray;
 
       console.log(`${icon} ${severityColor(rec.severity.toUpperCase())}: ${chalk.bold(rec.title)}`);
       console.log(`   ${rec.description}`);

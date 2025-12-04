@@ -97,6 +97,10 @@ export interface ProviderCapabilities {
   supportsVision: boolean;
   maxContextTokens: number;
   supportedModels: string[];
+  // Extended capabilities for specific providers
+  integrationMode?: 'cli' | 'sdk';
+  supportsMcp?: boolean;
+  mcpCommand?: string;
 }
 
 export interface HealthStatus {

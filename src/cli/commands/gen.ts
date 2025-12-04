@@ -566,10 +566,11 @@ function displayPlanSummary(plan: any): void {
   console.log(chalk.gray(`  Network: ${plan.resourceRequirements.network}\n`));
 
   // Risks
+  const SEVERITY_ICONS: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
   if (plan.risks.length > 0) {
     console.log(chalk.blue('Identified Risks:'));
     for (const risk of plan.risks) {
-      const icon = risk.severity === 'high' ? '🔴' : risk.severity === 'medium' ? '🟡' : '🟢';
+      const icon = SEVERITY_ICONS[risk.severity] ?? '🟢';
       console.log(`  ${icon} ${risk.severity.toUpperCase()}: ${risk.title}`);
       console.log(chalk.gray(`    ${risk.description}`));
       console.log(chalk.gray(`    Mitigation: ${risk.mitigation}\n`));

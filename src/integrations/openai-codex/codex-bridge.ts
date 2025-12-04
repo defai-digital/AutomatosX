@@ -20,6 +20,7 @@ import type {
   MCPServerStatus,
 } from './types.js';
 import { CodexError, CodexErrorType } from './types.js';
+import { Mutex } from 'async-mutex';
 
 /**
  * Codex Bridge Configuration
@@ -70,6 +71,7 @@ export class CodexBridge {
   private cli!: CodexCLI;
   private mcpManager: CodexMCPManager | null = null;
   private initialized = false;
+  private initMutex = new Mutex(); // v11.2.8: Prevent race condition in initialize
 
   constructor(private config: CodexBridgeConfig = {}) {
     this.validateConfig();
@@ -77,41 +79,44 @@ export class CodexBridge {
 
   /**
    * Initialize bridge (start MCP if configured)
+   * v11.2.8: Protected by mutex to prevent race condition
    */
   async initialize(): Promise<void> {
-    if (this.initialized) {
-      logger.debug('CodexBridge already initialized');
-      return;
-    }
+    return this.initMutex.runExclusive(async () => {
+      if (this.initialized) {
+        logger.debug('CodexBridge already initialized');
+        return;
+      }
 
-    logger.info('CodexBridge: Initializing', {
-      preferMCP: this.config.preferMCP,
-      autoStartMCP: this.config.autoStartMCP,
-    });
+      logger.info('CodexBridge: Initializing', {
+        preferMCP: this.config.preferMCP,
+        autoStartMCP: this.config.autoStartMCP,
+      });
 
-    // Initialize CLI
-    this.cli = getDefaultCLI(this.config.cli);
+      // Initialize CLI
+      this.cli = getDefaultCLI(this.config.cli);
 
-    // Initialize MCP if enabled
-    if (this.config.mcp?.enabled) {
-      this.mcpManager = getDefaultMCPManager(this.config.mcp);
+      // Initialize MCP if enabled
+      if (this.config.mcp?.enabled) {
+        this.mcpManager = getDefaultMCPManager(this.config.mcp);
 
-      // Auto-start MCP server if configured
-      if (this.config.autoStartMCP) {
-        try {
-          await this.mcpManager.startServer();
-          logger.info('CodexBridge: MCP server started automatically');
-        } catch (error) {
-          logger.warn('CodexBridge: Failed to auto-start MCP server', {
-            error: (error as Error).message,
-          });
-          // Continue with CLI-only mode
+        // Auto-start MCP server if configured
+        if (this.config.autoStartMCP) {
+          try {
+            await this.mcpManager.startServer();
+            logger.info('CodexBridge: MCP server started automatically');
+          } catch (error) {
+            logger.warn('CodexBridge: Failed to auto-start MCP server', {
+              error: (error as Error).message,
+            });
+            // Continue with CLI-only mode
+          }
         }
       }
-    }
 
-    this.initialized = true;
-    logger.info('CodexBridge: Initialization complete');
+      this.initialized = true;
+      logger.info('CodexBridge: Initialization complete');
+    });
   }
 
   /**

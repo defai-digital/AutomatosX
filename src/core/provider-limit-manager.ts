@@ -350,7 +350,10 @@ export class ProviderLimitManager extends EventEmitter {
     // Check if override has expired
     if (this.manualOverride && this.manualOverride.expiresAtMs) {
       if (Date.now() >= this.manualOverride.expiresAtMs) {
-        // Expired - clear it asynchronously
+        // Bug fix: Clear synchronously first to prevent race condition,
+        // then persist state asynchronously
+        const expiredOverride = this.manualOverride;
+        this.manualOverride = undefined;
         void this.clearManualOverride();
         return undefined;
       }

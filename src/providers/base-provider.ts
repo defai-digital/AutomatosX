@@ -23,7 +23,8 @@ import type {
   ProviderConfig,
   ExecutionRequest,
   ExecutionResponse,
-  HealthStatus
+  HealthStatus,
+  ProviderCapabilities
 } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
 import { ProviderError, ErrorCode } from '../shared/errors/errors.js';
@@ -119,6 +120,16 @@ export abstract class BaseProvider implements Provider {
     'glm',           // v9.2.0: DEPRECATED - use 'ax-cli' instead (kept for backward compatibility)
     'test-provider'  // For unit tests
   ] as const;
+
+  /** Environment variables to force non-interactive CLI mode */
+  private static readonly NON_INTERACTIVE_ENV: Readonly<Record<string, string>> = {
+    TERM: 'dumb',
+    NO_COLOR: '1',
+    FORCE_COLOR: '0',
+    CI: 'true',
+    NO_UPDATE_NOTIFIER: '1',
+    DEBIAN_FRONTEND: 'noninteractive'
+  };
 
   protected config: ProviderConfig;
   protected logger = logger;
@@ -263,18 +274,7 @@ export abstract class BaseProvider implements Provider {
       const child = spawn(command, [], {
         shell: true,  // Auto-detects: cmd.exe on Windows, /bin/sh on Unix
         timeout: this.config.timeout || 120000,
-        env: {
-          ...process.env,
-          // Force non-interactive mode for CLIs
-          TERM: 'dumb',
-          NO_COLOR: '1',
-          // Disable TTY checks for codex and other CLIs
-          FORCE_COLOR: '0',
-          CI: 'true', // Many CLIs disable TTY checks in CI mode
-          NO_UPDATE_NOTIFIER: '1',
-          // Disable interactive prompts
-          DEBIAN_FRONTEND: 'noninteractive'
-        }
+        env: { ...process.env, ...BaseProvider.NON_INTERACTIVE_ENV }
       });
 
       let stdout = '';
@@ -478,16 +478,7 @@ export abstract class BaseProvider implements Provider {
       // Spawn process (no shell needed - direct command execution)
       const child = spawn(cliCommand, commandArgs, {
         timeout: this.config.timeout || 120000,
-        env: {
-          ...process.env,
-          // Force non-interactive mode for CLIs
-          TERM: 'dumb',
-          NO_COLOR: '1',
-          FORCE_COLOR: '0',
-          CI: 'true',
-          NO_UPDATE_NOTIFIER: '1',
-          DEBIAN_FRONTEND: 'noninteractive'
-        }
+        env: { ...process.env, ...BaseProvider.NON_INTERACTIVE_ENV }
       });
 
       let stdout = '';
@@ -495,6 +486,7 @@ export abstract class BaseProvider implements Provider {
       let timeoutId: NodeJS.Timeout | null = null;
       let forceKillTimer: NodeJS.Timeout | null = null;
       let readlineInterface: readline.Interface | null = null;
+      let stderrInterface: readline.Interface | null = null;
 
       const streamingEnabled = process.env.AUTOMATOSX_SHOW_PROVIDER_OUTPUT === 'true';
       const debugMode = process.env.AUTOMATOSX_DEBUG === 'true';
@@ -521,7 +513,7 @@ export abstract class BaseProvider implements Provider {
         }
       }
 
-      // Create readline interface for line-by-line streaming
+      // Create readline interface for line-by-line streaming (stdout)
       if (child.stdout) {
         readlineInterface = readline.createInterface({
           input: child.stdout,
@@ -554,7 +546,7 @@ export abstract class BaseProvider implements Provider {
       // Capture stderr output
       if (child.stderr) {
         // Add readline interface for stderr streaming
-        const stderrInterface = readline.createInterface({
+        stderrInterface = readline.createInterface({
           input: child.stderr,
           crlfDelay: Infinity
         });
@@ -573,6 +565,15 @@ export abstract class BaseProvider implements Provider {
             }
           }
         });
+
+        // Handle stderr readline errors
+        stderrInterface.on('error', (error) => {
+          if (error.message !== 'Readable stream already read') {
+            logger.debug('Stderr readline error (non-fatal)', {
+              error: error.message
+            });
+          }
+        });
       }
 
       // Cleanup function
@@ -585,7 +586,7 @@ export abstract class BaseProvider implements Provider {
           clearTimeout(forceKillTimer);
           forceKillTimer = null;
         }
-        // Close readline interface to prevent memory leaks
+        // Close readline interfaces to prevent memory leaks
         if (readlineInterface) {
           try {
             readlineInterface.close();
@@ -593,6 +594,15 @@ export abstract class BaseProvider implements Provider {
             // Ignore cleanup errors
           } finally {
             readlineInterface = null;
+          }
+        }
+        if (stderrInterface) {
+          try {
+            stderrInterface.close();
+          } catch (error) {
+            // Ignore cleanup errors
+          } finally {
+            stderrInterface = null;
           }
         }
       };
@@ -605,16 +615,23 @@ export abstract class BaseProvider implements Provider {
           logger.debug(`${cliCommand} CLI stderr output`, { stderr: stderr.trim() });
         }
 
-        if (code === 0) {
+        // Bug fix: Check both exit code AND signal for proper exit handling
+        // Process killed by signal (SIGTERM, SIGKILL) should be treated as failure
+        if ((code === 0 || code === null) && !signal) {
           if (progressParser) {
             progressParser.succeed(`${cliCommand} completed successfully`);
           }
           resolve({ stdout, stderr });
+        } else if (signal) {
+          if (progressParser) {
+            progressParser.fail(`${cliCommand} killed by signal ${signal}`);
+          }
+          reject(new Error(`${cliCommand} CLI killed by signal ${signal}. stderr: ${stderr || 'none'}`));
         } else {
           if (progressParser) {
             progressParser.fail(`${cliCommand} failed with code ${code}`);
           }
-          reject(new Error(`${cliCommand} CLI exited with code ${code}${signal ? ` (signal: ${signal})` : ''}. stderr: ${stderr || 'none'}`));
+          reject(new Error(`${cliCommand} CLI exited with code ${code}. stderr: ${stderr || 'none'}`));
         }
       });
 
@@ -926,7 +943,7 @@ export abstract class BaseProvider implements Provider {
   get name(): string { return this.config.name; }
   get version(): string { return '1.0.0'; }
   get priority(): number { return this.config.priority; }
-  get capabilities(): any {
+  get capabilities(): ProviderCapabilities {
     return {
       supportsStreaming: false,
       supportsEmbedding: false,

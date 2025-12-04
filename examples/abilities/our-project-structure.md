@@ -137,7 +137,7 @@ import type { Provider } from '../types/provider.js';
 - `index.js.map` - Source map
 - `index.d.ts` - Type definitions
 
-**Bundle target:** ESM, Node 20+, <250KB target
+**Bundle target:** ESM, Node 24+, <250KB target
 
 ## Workspace Structure
 

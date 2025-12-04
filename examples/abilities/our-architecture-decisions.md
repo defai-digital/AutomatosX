@@ -25,7 +25,7 @@
 
 **Rationale:**
 
-- Node.js 20+ has first-class ESM support
+- Node.js 24+ has first-class ESM support
 - Better tree-shaking and bundle optimization
 - Modern standards compliance
 

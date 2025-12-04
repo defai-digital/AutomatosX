@@ -89,7 +89,7 @@ export const statusCommand: CommandModule = {
         });
 
         const hitRate = (stats.hitRate * 100).toFixed(2);
-        const hitRateColor = stats.hitRate > 0.5 ? chalk.green : stats.hitRate > 0.2 ? chalk.yellow : chalk.red;
+        const hitRateColor = stats.hitRate > 0.5 ? chalk.green : (stats.hitRate > 0.2 ? chalk.yellow : chalk.red);
 
         statsTable.push(
           ['Total Entries', `${stats.totalEntries}`],

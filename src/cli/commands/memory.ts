@@ -365,7 +365,7 @@ export const addCommand: CommandModule = {
 
       // For CLI, we don't have an embedding provider by default
       // Use a zero vector as placeholder (will be updated later if needed)
-      const embedding = new Array(1536).fill(0);
+      const embedding = Array<number>(1536).fill(0);
 
       const entry = await manager.add(argv.content, embedding, metadata);
 

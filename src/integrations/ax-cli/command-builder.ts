@@ -165,7 +165,12 @@ export class AxCliCommandBuilder {
    * @param options - Execution options
    * @returns Environment variable object
    */
-  buildEnv(options: AxCliOptions): Record<string, string> {
+  buildEnv(options: AxCliOptions): Record<string, string> | null {
+    // Avoid allocating empty object when no env vars needed
+    if (!options.apiKey && !options.baseUrl && !options.model) {
+      return null;
+    }
+
     const env: Record<string, string> = {};
 
     if (options.apiKey) {

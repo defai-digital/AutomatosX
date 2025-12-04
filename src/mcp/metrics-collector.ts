@@ -299,19 +299,27 @@ export class MetricsCollector {
    */
   getMetricsSummary(serverMetrics: ServerMetrics[]): MetricsSummary {
     const totalServers = serverMetrics.length;
-    const healthyServers = serverMetrics.filter(m => m.memoryUsageMB > 0).length;
 
-    const totalCpu = serverMetrics.reduce((sum, m) => sum + m.cpuUsagePercent, 0);
-    const totalMemory = serverMetrics.reduce((sum, m) => sum + m.memoryUsageMB, 0);
-    const totalRequests = serverMetrics.reduce((sum, m) => sum + m.totalRequests, 0);
-    const totalFailed = serverMetrics.reduce((sum, m) => sum + m.failedRequests, 0);
-    const totalRestarts = serverMetrics.reduce((sum, m) => sum + m.restartCount, 0);
+    // Single pass O(n) instead of O(7n)
+    let healthyServers = 0;
+    let totalCpu = 0;
+    let totalMemory = 0;
+    let totalRequests = 0;
+    let totalFailed = 0;
+    let totalRestarts = 0;
+    let totalResponseTime = 0;
 
-    const avgResponseTime =
-      serverMetrics.length > 0
-        ? serverMetrics.reduce((sum, m) => sum + m.avgResponseTimeMs, 0) /
-          serverMetrics.length
-        : 0;
+    for (const m of serverMetrics) {
+      if (m.memoryUsageMB > 0) healthyServers++;
+      totalCpu += m.cpuUsagePercent;
+      totalMemory += m.memoryUsageMB;
+      totalRequests += m.totalRequests;
+      totalFailed += m.failedRequests;
+      totalRestarts += m.restartCount;
+      totalResponseTime += m.avgResponseTimeMs;
+    }
+
+    const avgResponseTime = totalServers > 0 ? totalResponseTime / totalServers : 0;
 
     const errorRate = totalRequests > 0 ? (totalFailed / totalRequests) * 100 : 0;
 

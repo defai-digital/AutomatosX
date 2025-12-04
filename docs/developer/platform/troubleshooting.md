@@ -459,8 +459,8 @@ ExperimentalWarning: Importing JSON modules is an experimental feature
 ```
 
 **Status**: ✅ SAFE TO IGNORE
-**Reason**: Node.js 20.x experimental feature, not a bug
-**Fix**: This will be resolved when Node.js stabilizes JSON imports
+**Reason**: Node.js experimental feature (resolved in Node 24+)
+**Fix**: Upgrade to Node.js 24+ to resolve this warning
 
 ### 2. Provider CLI Detection
 
@@ -576,7 +576,7 @@ Please include the following in your issue:
 ## ✅ Resolution Checklist
 
 - [ ] Update to AutomatosX v6.3.8 or later
-- [ ] Verify Node.js v20+ is installed
+- [ ] Verify Node.js v24+ is installed
 - [ ] Run `ax setup` in your project directory
 - [ ] Run diagnostic commands (`ax status --verbose`)
 - [ ] Check PowerShell execution policy

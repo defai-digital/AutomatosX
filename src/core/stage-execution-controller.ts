@@ -1189,32 +1189,35 @@ export class StageExecutionController {
    * @param stage - Stage to execute
    * @param context - Stage context
    * @returns Stage task prompt
+   * v11.2.8: Refactored to use array.join() for better string building performance
    */
   private buildStageTask(stage: EnhancedStage, context: StageContext): string {
-    let prompt = `# Stage: ${stage.name}\n\n`;
-    prompt += `## Stage Description\n${stage.description}\n\n`;
-    prompt += `## Original Task\n${context.task}\n\n`;
+    const parts: string[] = [
+      `# Stage: ${stage.name}\n`,
+      `## Stage Description\n${stage.description}\n`,
+      `## Original Task\n${context.task}\n`
+    ];
 
     if (context.previousOutputs.length > 0) {
-      prompt += `## Previous Stage Outputs\n\n`;
-      context.previousOutputs.forEach((output, index) => {
-        prompt += `### Stage ${index + 1} Output\n${output}\n\n`;
-      });
+      parts.push(`## Previous Stage Outputs\n`);
+      parts.push(...context.previousOutputs.map((output, index) =>
+        `### Stage ${index + 1} Output\n${output}\n`
+      ));
     }
 
     if (stage.key_questions && stage.key_questions.length > 0) {
-      prompt += `## Key Questions to Address\n`;
-      stage.key_questions.forEach((q) => (prompt += `- ${q}\n`));
-      prompt += `\n`;
+      parts.push(`## Key Questions to Address`);
+      parts.push(...stage.key_questions.map(q => `- ${q}`));
+      parts.push('');
     }
 
     if (stage.outputs && stage.outputs.length > 0) {
-      prompt += `## Expected Outputs\n`;
-      stage.outputs.forEach((o) => (prompt += `- ${o}\n`));
-      prompt += `\n`;
+      parts.push(`## Expected Outputs`);
+      parts.push(...stage.outputs.map(o => `- ${o}`));
+      parts.push('');
     }
 
-    return prompt;
+    return parts.join('\n');
   }
 
   /**

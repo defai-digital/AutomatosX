@@ -193,15 +193,30 @@ export class ProviderMetricsTracker extends EventEmitter {
     const p95 = getPercentile(latencies, 95);
     const p99 = getPercentile(latencies, 99);
 
-    // Calculate quality metrics
-    const successful = records.filter(r => r.success);
-    const failed = records.filter(r => !r.success);
-    const stopFinishes = successful.filter(r => r.finishReason === 'stop');
-    const lengthFinishes = successful.filter(r => r.finishReason === 'length');
-    const errorFinishes = records.filter(r => r.finishReason === 'error');
+    // Calculate quality metrics - single pass O(n) instead of O(5n)
+    let successCount = 0;
+    let failCount = 0;
+    let stopFinishCount = 0;
+    let lengthFinishCount = 0;
+    let errorFinishCount = 0;
+    let lastSuccessTimestamp = 0;
+    let lastFailureTimestamp = 0;
 
-    const successRate = successful.length / records.length;
-    const properStopRate = successful.length > 0 ? stopFinishes.length / successful.length : 0;
+    for (const r of records) {
+      if (r.success) {
+        successCount++;
+        lastSuccessTimestamp = r.timestamp;
+        if (r.finishReason === 'stop') stopFinishCount++;
+        else if (r.finishReason === 'length') lengthFinishCount++;
+      } else {
+        failCount++;
+        lastFailureTimestamp = r.timestamp;
+      }
+      if (r.finishReason === 'error') errorFinishCount++;
+    }
+
+    const successRate = successCount / records.length;
+    const properStopRate = successCount > 0 ? stopFinishCount / successCount : 0;
 
     // Calculate cost metrics
     const totalCost = records.reduce((sum, r) => sum + r.costUsd, 0);
@@ -209,9 +224,9 @@ export class ProviderMetricsTracker extends EventEmitter {
     const totalTokens = records.reduce((sum, r) => sum + r.totalTokens, 0);
     const avgCostPer1M = totalTokens > 0 ? (totalCost / totalTokens) * 1_000_000 : 0;
 
-    // Calculate availability metrics
-    const lastSuccess = successful.length > 0 ? successful[successful.length - 1]!.timestamp : 0;
-    const lastFailure = failed.length > 0 ? failed[failed.length - 1]!.timestamp : 0;
+    // Calculate availability metrics (lastSuccess/lastFailure captured in single-pass above)
+    const lastSuccess = lastSuccessTimestamp;
+    const lastFailure = lastFailureTimestamp;
 
     // Count consecutive failures from the end
     let consecutiveFailures = 0;
@@ -238,12 +253,12 @@ export class ProviderMetricsTracker extends EventEmitter {
       },
       quality: {
         totalRequests: records.length,
-        successfulRequests: successful.length,
-        failedRequests: failed.length,
+        successfulRequests: successCount,
+        failedRequests: failCount,
         successRate,
-        stopFinishes: stopFinishes.length,
-        lengthFinishes: lengthFinishes.length,
-        errorFinishes: errorFinishes.length,
+        stopFinishes: stopFinishCount,
+        lengthFinishes: lengthFinishCount,
+        errorFinishes: errorFinishCount,
         properStopRate
       },
       cost: {
@@ -394,7 +409,8 @@ export class ProviderMetricsTracker extends EventEmitter {
     healthMultiplier: number = 1.0
   ): Promise<ProviderScore> {
     // v9.0.3: Check cache with dirty flag optimization
-    const cacheKey = `${provider}-${JSON.stringify(weights)}-${healthMultiplier}`;
+    // v11.2.8: Avoid JSON.stringify overhead - build cache key directly
+    const cacheKey = `${provider}-${weights.cost}-${weights.latency}-${weights.quality}-${weights.availability}-${healthMultiplier}`;
     const cached = this.scoreCache.get(cacheKey);
     const currentRequestCount = this.getRequestCount(provider);
 

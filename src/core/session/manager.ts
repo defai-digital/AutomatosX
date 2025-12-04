@@ -12,6 +12,7 @@ import { SessionError } from '../../types/orchestration.js';
 import { logger } from '../../shared/logging/logger.js';
 import { dirname, normalizePath } from '../../shared/validation/path-utils.js';
 import { JoinTaskInfoSchema, SessionManagerConfigSchema } from './schemas.js';
+import { ZodError } from 'zod';
 
 /**
  * Task metadata for session tracking
@@ -140,9 +141,10 @@ export class SessionManager {
     if (config) {
       try {
         SessionManagerConfigSchema.parse(config);
-      } catch (error: any) {
+      } catch (error) {
+        const message = error instanceof ZodError ? error.message : String(error);
         throw new SessionError(
-          `Invalid session manager config: ${error.message}`,
+          `Invalid session manager config: ${message}`,
           undefined,
           'invalid_configuration'
         );

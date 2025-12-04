@@ -91,15 +91,3 @@ export function deepMerge<T extends object>(
 
   return result;
 }
-
-/**
- * Type-safe helper to check if a value is a plain object
- */
-function isPlainObject(value: unknown): value is object {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.getPrototypeOf(value) === Object.prototype
-  );
-}

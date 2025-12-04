@@ -238,7 +238,7 @@ jobs:
 
             - **npm tag**: `${{ steps.prerelease.outputs.NPM_TAG }}`
             - **Published**: ${{ steps.publish.outputs.NPM_PUBLISH_TIME }}
-            - **Node.js**: >=20.0.0
+            - **Node.js**: >=24.0.0
           draft: false
           prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE == 'true' }}
           generate_release_notes: true

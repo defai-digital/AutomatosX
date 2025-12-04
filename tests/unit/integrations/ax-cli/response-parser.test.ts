@@ -236,8 +236,8 @@ invalid json line
 
       const error = parser.extractError(stdout);
 
-      // Based on response-parser.ts line 137: returns 'Sorry, I encountered an error' when no text after error phrase
-      expect(error).toBe('Sorry, I encountered an error');
+      // Returns 'API error' as fallback when no specific error text after the phrase
+      expect(error).toBe('API error');
     });
 
     it('should handle invalid JSON gracefully', () => {

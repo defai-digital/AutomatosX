@@ -234,25 +234,28 @@ describe('AxCliCommandBuilder', () => {
     it('should return empty object when no options provided', () => {
       const env = builder.buildEnv({});
 
-      expect(env).toEqual({});
+      expect(env).toBeNull();
     });
 
     it('should set YOUR_API_KEY when apiKey provided', () => {
       const env = builder.buildEnv({ apiKey: 'test-key' });
 
-      expect(env.YOUR_API_KEY).toBe('test-key');
+      expect(env).not.toBeNull();
+      expect(env!.YOUR_API_KEY).toBe('test-key');
     });
 
     it('should set AI_BASE_URL when baseUrl provided', () => {
       const env = builder.buildEnv({ baseUrl: 'https://api.test.com' });
 
-      expect(env.AI_BASE_URL).toBe('https://api.test.com');
+      expect(env).not.toBeNull();
+      expect(env!.AI_BASE_URL).toBe('https://api.test.com');
     });
 
     it('should set AI_MODEL when model provided', () => {
       const env = builder.buildEnv({ model: 'grok-2' });
 
-      expect(env.AI_MODEL).toBe('grok-2');
+      expect(env).not.toBeNull();
+      expect(env!.AI_MODEL).toBe('grok-2');
     });
 
     it('should set all env vars when all options provided', () => {
@@ -262,9 +265,10 @@ describe('AxCliCommandBuilder', () => {
         model: 'glm-4.6'
       });
 
-      expect(env.YOUR_API_KEY).toBe('key-123');
-      expect(env.AI_BASE_URL).toBe('https://api.test.com');
-      expect(env.AI_MODEL).toBe('glm-4.6');
+      expect(env).not.toBeNull();
+      expect(env!.YOUR_API_KEY).toBe('key-123');
+      expect(env!.AI_BASE_URL).toBe('https://api.test.com');
+      expect(env!.AI_MODEL).toBe('glm-4.6');
     });
   });
 });

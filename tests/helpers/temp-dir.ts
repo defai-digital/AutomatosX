@@ -9,6 +9,7 @@
  */
 
 import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { joinPath, normalizePath } from '../../src/shared/validation/path-utils.js';
@@ -87,7 +88,6 @@ function registerCleanup(): void {
 
   // Synchronous cleanup function for reliability
   const cleanupSync = () => {
-    const { rmSync } = require('node:fs');
     for (const dir of tempDirs) {
       try {
         rmSync(dir, { recursive: true, force: true });

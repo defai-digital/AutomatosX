@@ -11,7 +11,7 @@
  */
 
 import { BaseProvider } from './base-provider.js';
-import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../types/provider.js';
+import type { ProviderConfig, ExecutionRequest, ExecutionResponse, ProviderCapabilities } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
 
 export class GeminiProvider extends BaseProvider {
@@ -53,7 +53,7 @@ export class GeminiProvider extends BaseProvider {
   /**
    * Get extended capabilities
    */
-  override get capabilities(): any {
+  override get capabilities(): ProviderCapabilities {
     return {
       ...super.capabilities,
       integrationMode: 'cli',

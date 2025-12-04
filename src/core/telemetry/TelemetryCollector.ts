@@ -312,45 +312,46 @@ export class TelemetryCollector {
       return [];
     }
 
-    let sql = 'SELECT * FROM telemetry_events WHERE 1=1';
-    const params: any[] = [];
+    const conditions: string[] = [];
+    const params: (string | number | boolean)[] = [];
 
     if (filters.provider) {
-      sql += ' AND provider = ?';
+      conditions.push('provider = ?');
       params.push(filters.provider);
     }
 
     if (filters.agentName) {
-      sql += ' AND agent_name = ?';
+      conditions.push('agent_name = ?');
       params.push(filters.agentName);
     }
 
     if (filters.sessionId) {
-      sql += ' AND session_id = ?';
+      conditions.push('session_id = ?');
       params.push(filters.sessionId);
     }
 
     if (filters.type) {
-      sql += ' AND type = ?';
+      conditions.push('type = ?');
       params.push(filters.type);
     }
 
     if (filters.startDate) {
-      sql += ' AND timestamp >= ?';
+      conditions.push('timestamp >= ?');
       params.push(filters.startDate);
     }
 
     if (filters.endDate) {
-      sql += ' AND timestamp <= ?';
+      conditions.push('timestamp <= ?');
       params.push(filters.endDate);
     }
 
     if (filters.success !== undefined) {
-      sql += ' AND success = ?';
+      conditions.push('success = ?');
       params.push(filters.success ? 1 : 0);
     }
 
-    sql += ' ORDER BY timestamp DESC LIMIT ?';
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+    const sql = `SELECT * FROM telemetry_events ${whereClause} ORDER BY timestamp DESC LIMIT ?`;
     params.push(filters.limit || 1000);
 
     const rows = this.db.prepare(sql).all(...params) as any[];
@@ -368,23 +369,26 @@ export class TelemetryCollector {
       return 0;
     }
 
-    let sql = 'SELECT COUNT(*) as count FROM telemetry_events WHERE 1=1';
-    const params: any[] = [];
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
 
     if (filters.provider) {
-      sql += ' AND provider = ?';
+      conditions.push('provider = ?');
       params.push(filters.provider);
     }
 
     if (filters.startDate) {
-      sql += ' AND timestamp >= ?';
+      conditions.push('timestamp >= ?');
       params.push(filters.startDate);
     }
 
     if (filters.endDate) {
-      sql += ' AND timestamp <= ?';
+      conditions.push('timestamp <= ?');
       params.push(filters.endDate);
     }
+
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+    const sql = `SELECT COUNT(*) as count FROM telemetry_events ${whereClause}`;
 
     const result = this.db.prepare(sql).get(...params) as { count: number };
     return result.count;

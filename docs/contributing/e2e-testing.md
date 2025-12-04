@@ -399,7 +399,7 @@ Example report:
 
 ```markdown
 **Test**: Complete workflow E2E test
-**Environment**: Ubuntu 22.04, Node 20.10, AutomatosX 4.0.0-beta.1
+**Environment**: Ubuntu 22.04, Node 24.0, AutomatosX 4.0.0-beta.1
 **Mode**: Real providers (Claude)
 **Error**:
 ```

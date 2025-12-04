@@ -18,6 +18,29 @@ export class AxCliResponseParser {
   /** Maximum number of assistant messages to prevent memory exhaustion */
   private static readonly MAX_ASSISTANT_MESSAGES = 1000;
 
+  /** Pre-compiled regex patterns for error detection (avoids recompilation per call) */
+  private static readonly ERROR_WITH_COLON_REGEX = /Sorry, I encountered an error: (.+?)$/;
+  private static readonly ERROR_WITHOUT_COLON_REGEX = /Sorry, I encountered an error(.*?)$/;
+
+  /**
+   * Extract error message from content if present
+   * @returns Error message or null if no error
+   */
+  private extractErrorFromContent(content: string): string | null {
+    if (!content.includes('Sorry, I encountered an error')) {
+      return null;
+    }
+    const matchWithColon = content.match(AxCliResponseParser.ERROR_WITH_COLON_REGEX);
+    if (matchWithColon?.[1]) {
+      return matchWithColon[1];
+    }
+    const matchWithoutColon = content.match(AxCliResponseParser.ERROR_WITHOUT_COLON_REGEX);
+    if (matchWithoutColon) {
+      return matchWithoutColon[1] ? matchWithoutColon[1].trim() : 'API error';
+    }
+    return 'API error';
+  }
+
   /**
    * Parse JSONL output from ax-cli into ProviderResponse
    *
@@ -49,20 +72,10 @@ export class AxCliResponseParser {
           const validated = AxCliMessageSchema.parse(parsed);
 
           if (validated.role === 'assistant') {
-            // Check for error messages
-            if (validated.content.includes('Sorry, I encountered an error')) {
-              // Check for error with colon first (non-greedy to prevent backtracking)
-              const matchWithColon = validated.content.match(/Sorry, I encountered an error: (.+?)$/);
-              if (matchWithColon) {
-                throw new Error(`ax-cli error: ${matchWithColon[1]}`);
-              }
-              // Then check for error without colon (non-greedy)
-              const matchWithoutColon = validated.content.match(/Sorry, I encountered an error(.*?)$/);
-              if (matchWithoutColon) {
-                const errorMsg = matchWithoutColon[1] ? matchWithoutColon[1].trim() : 'API error';
-                throw new Error(`ax-cli error: ${errorMsg}`);
-              }
-              throw new Error('ax-cli error: API error');
+            // Check for error messages using centralized method
+            const errorMsg = this.extractErrorFromContent(validated.content);
+            if (errorMsg) {
+              throw new Error(`ax-cli error: ${errorMsg}`);
             }
 
             // Prevent unbounded array growth (Bug #10 fix)
@@ -161,18 +174,9 @@ export class AxCliResponseParser {
         try {
           const parsed = JSON.parse(line);
           if (parsed.role === 'assistant' && parsed.content) {
-            if (parsed.content.includes('Sorry, I encountered an error')) {
-              // Check for error with colon first (non-greedy to prevent backtracking)
-              const matchWithColon = parsed.content.match(/Sorry, I encountered an error: (.+?)$/);
-              if (matchWithColon) {
-                return matchWithColon[1];
-              }
-              // Then check for error without colon (non-greedy)
-              const matchWithoutColon = parsed.content.match(/Sorry, I encountered an error(.*?)$/);
-              if (matchWithoutColon) {
-                return matchWithoutColon[1] ? matchWithoutColon[1].trim() : 'Sorry, I encountered an error';
-              }
-              return parsed.content;
+            const errorMsg = this.extractErrorFromContent(parsed.content);
+            if (errorMsg) {
+              return errorMsg;
             }
           }
         } catch {

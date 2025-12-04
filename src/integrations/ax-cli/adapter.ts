@@ -73,7 +73,7 @@ export class AxCliAdapter implements IAxCliAdapter {
         maxBuffer: 10 * 1024 * 1024, // 10MB
         env: {
           ...process.env,
-          ...this.commandBuilder.buildEnv(options)
+          ...(this.commandBuilder.buildEnv(options) ?? {})
         }
       });
 

@@ -119,7 +119,7 @@ ax status
 
 System:
   Version: 6.3.8
-  Node: v20.12.2
+  Node: v24.0.0
   Platform: darwin arm64
 
 Resources:

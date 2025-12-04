@@ -268,8 +268,7 @@ export class Router {
 
       // If all providers are limited, throw specialized error
       if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
-        const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
-        throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
+        throw ProviderError.allProvidersLimited(limitedProviders, this.getSoonestLimitReset(limitedProviders));
       }
 
       // Otherwise throw generic "no available providers" error
@@ -800,8 +799,7 @@ export class Router {
 
     // If all providers are limited, throw specialized error with correct soonest reset
     if (limitedProviders.length === allProviders.length && limitedProviders.length > 0) {
-      const soonestReset = Math.min(...limitedProviders.map(p => p.resetAtMs));
-      throw ProviderError.allProvidersLimited(limitedProviders, soonestReset);
+      throw ProviderError.allProvidersLimited(limitedProviders, this.getSoonestLimitReset(limitedProviders));
     }
 
     // Otherwise, throw generic error with helpful suggestions
@@ -1103,5 +1101,16 @@ export class Router {
         };
       })
     };
+  }
+
+  /**
+   * Calculate the soonest reset time from limited providers
+   * v11.2.8: Added guard against empty array (Math.min on empty array returns Infinity)
+   */
+  private getSoonestLimitReset(limitedProviders: Array<{ resetAtMs: number }>): number {
+    if (limitedProviders.length === 0) {
+      return Date.now() + 60000; // Default: 1 minute from now
+    }
+    return Math.min(...limitedProviders.map(p => p.resetAtMs));
   }
 }

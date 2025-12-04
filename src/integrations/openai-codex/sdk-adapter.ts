@@ -10,6 +10,7 @@
 import { logger } from '../../shared/logging/logger.js';
 import type { CodexExecutionResult } from './types.js';
 import { CodexError, CodexErrorType } from './types.js';
+import { Mutex } from 'async-mutex';
 
 // SDK types (dynamically imported)
 type CodexSDK = typeof import('@openai/codex-sdk');
@@ -28,6 +29,7 @@ export class CodexSdkAdapter {
   private sdkModule: CodexSDK | null = null;
   private readonly options: CodexSdkOptions;
   private initialized = false;
+  private initMutex = new Mutex(); // v11.2.8: Prevent race condition in ensureInitialized
 
   constructor(options: CodexSdkOptions = {}) {
     this.options = {
@@ -151,19 +153,22 @@ export class CodexSdkAdapter {
   }
 
   private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
+    // v11.2.8: Use mutex to prevent race condition when multiple calls occur concurrently
+    return this.initMutex.runExclusive(async () => {
+      if (this.initialized) return;
 
-    try {
-      this.sdkModule = await import('@openai/codex-sdk');
-      this.codex = new this.sdkModule.Codex();
-      this.initialized = true;
-      logger.info('Codex SDK initialized');
-    } catch (error) {
-      throw new CodexError(
-        CodexErrorType.CLI_NOT_FOUND,
-        'Codex SDK not available. Install with: npm install @openai/codex-sdk'
-      );
-    }
+      try {
+        this.sdkModule = await import('@openai/codex-sdk');
+        this.codex = new this.sdkModule.Codex();
+        this.initialized = true;
+        logger.info('Codex SDK initialized');
+      } catch (error) {
+        throw new CodexError(
+          CodexErrorType.CLI_NOT_FOUND,
+          'Codex SDK not available. Install with: npm install @openai/codex-sdk'
+        );
+      }
+    });
   }
 
   async destroy(): Promise<void> {

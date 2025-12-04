@@ -127,8 +127,10 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
         }
       }));
     } catch (error) {
+      // v11.2.8: Safe error message extraction
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new EmbeddingError(
-        `Batch embedding failed: ${(error as Error).message}`,
+        `Batch embedding failed: ${errorMessage}`,
         'BATCH_ERROR',
         { error, count: texts.length }
       );
@@ -203,9 +205,10 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
 
   /**
    * Check if error is non-retryable
+   * v11.2.8: Safe error message extraction
    */
   private isNonRetryableError(error: unknown): boolean {
-    const message = (error as Error).message.toLowerCase();
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
     return (
       message.includes('invalid') ||
       message.includes('api key') ||
@@ -217,9 +220,10 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
 
   /**
    * Wrap native error as EmbeddingError
+   * v11.2.8: Safe error message extraction
    */
   private wrapError(error: unknown): EmbeddingError {
-    const message = (error as Error).message;
+    const message = error instanceof Error ? error.message : String(error);
     let code: EmbeddingErrorCode = 'PROVIDER_ERROR';
 
     if (message.includes('rate limit')) {

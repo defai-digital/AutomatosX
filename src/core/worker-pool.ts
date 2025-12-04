@@ -313,21 +313,14 @@ export class WorkerPool {
     const priority = queuedTask.task.priority || 0;
 
     // Insert in priority order (higher priority first)
-    let inserted = false;
-    for (let i = 0; i < this.queue.length; i++) {
-      const queueItem = this.queue[i];
-      if (!queueItem) {
-        continue;
-      }
-      const existingPriority = queueItem.task.priority || 0;
-      if (priority > existingPriority) {
-        this.queue.splice(i, 0, queuedTask);
-        inserted = true;
-        break;
-      }
-    }
+    // Use findIndex for cleaner insertion logic
+    const insertIndex = this.queue.findIndex(
+      item => (item.task.priority || 0) < priority
+    );
 
-    if (!inserted) {
+    if (insertIndex !== -1) {
+      this.queue.splice(insertIndex, 0, queuedTask);
+    } else {
       this.queue.push(queuedTask);
     }
 
@@ -461,22 +454,17 @@ export class WorkerPool {
       const excessCount = this.workers.length - this.config.minWorkers;
       if (excessCount > 0 && idleWorkers.length > 0) {
         // Calculate how many idle workers we can safely terminate
-        // Take minimum of: excess workers OR available idle workers
         const canTerminate = Math.min(excessCount, idleWorkers.length);
-        const toTerminate = idleWorkers.slice(0, canTerminate);
 
-        // Terminate in reverse order to avoid potential index issues
-        for (let i = toTerminate.length - 1; i >= 0; i--) {
-          const workerInfo = toTerminate[i];
-          if (workerInfo) {
-            workerInfo.worker.terminate();
-            this.removeWorker(workerInfo);
+        // Terminate workers (slice creates a copy, so removing from this.workers is safe)
+        const workersToTerminate = idleWorkers.slice(0, canTerminate);
+        for (const workerInfo of workersToTerminate) {
+          workerInfo.worker.terminate();
+          this.removeWorker(workerInfo);
 
-            logger.debug('Idle worker terminated', {
-              totalWorkers: this.workers.length,
-              idleWorkers: this.workers.filter(w => !w.busy).length
-            });
-          }
+          logger.debug('Idle worker terminated', {
+            totalWorkers: this.workers.length
+          });
         }
       }
     }, this.config.idleTimeout);

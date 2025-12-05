@@ -116,6 +116,8 @@ export class ResourceEnforcer {
   private violationHandlers: ViolationHandler[] = [];
   private violationTimestamps: Map<string, Date> = new Map();
   private monitoredServers: Map<string, MCPServerProcess> = new Map();
+  /** Track throttle resume timers to prevent leaks on stop() */
+  private throttleTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(options: ResourceEnforcerOptions) {
     this.defaultLimits = options.defaultLimits;
@@ -147,13 +149,23 @@ export class ResourceEnforcer {
 
   /**
    * Stop enforcing resource limits
+   *
+   * BUG FIX: Now also clears all pending throttle resume timers to prevent
+   * them from executing after stop() is called.
    */
   stop(): void {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = undefined;
-      logger.info('ResourceEnforcer: Stopped enforcement');
     }
+
+    // BUG FIX: Clear all pending throttle resume timers to prevent leaks
+    for (const timer of this.throttleTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.throttleTimers.clear();
+
+    logger.info('ResourceEnforcer: Stopped enforcement');
   }
 
   /**
@@ -349,23 +361,44 @@ export class ResourceEnforcer {
 
   /**
    * Throttle process temporarily
+   *
+   * BUG FIX: Now tracks the resume timer so it can be cleaned up on stop().
+   * Also checks if process is still running before attempting to resume.
    */
   private async throttleProcess(serverProcess: MCPServerProcess): Promise<void> {
+    const serverName = serverProcess.config.name;
+
     try {
       logger.info('ResourceEnforcer: Throttling process', {
-        serverName: serverProcess.config.name,
+        serverName,
         pid: serverProcess.process.pid,
       });
 
       // Send SIGSTOP to pause the process
       serverProcess.process.kill('SIGSTOP');
 
-      // Resume after 1 second
-      setTimeout(() => {
+      // Clear any existing resume timer for this server
+      const existingTimer = this.throttleTimers.get(serverName);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // Resume after 1 second - track the timer to prevent leaks
+      const resumeTimer = setTimeout(() => {
+        this.throttleTimers.delete(serverName);
+
+        // BUG FIX: Check if process is still running before resuming
+        if (!serverProcess.running || serverProcess.process.killed) {
+          logger.debug('ResourceEnforcer: Skipping resume - process no longer running', {
+            serverName,
+          });
+          return;
+        }
+
         try {
           serverProcess.process.kill('SIGCONT');
           logger.info('ResourceEnforcer: Resumed process', {
-            serverName: serverProcess.config.name,
+            serverName,
           });
         } catch (error) {
           logger.error('ResourceEnforcer: Failed to resume process', {
@@ -373,6 +406,8 @@ export class ResourceEnforcer {
           });
         }
       }, 1000);
+
+      this.throttleTimers.set(serverName, resumeTimer);
     } catch (error) {
       logger.error('ResourceEnforcer: Failed to throttle process', {
         error: (error as Error).message,

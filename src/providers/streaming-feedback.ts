@@ -90,6 +90,21 @@ export class StreamingFeedback {
   }
 
   /**
+   * Cleanup resources without showing completion message
+   *
+   * BUG FIX: Added destroy() method for cleanup when stop() may not be called
+   * (e.g., due to an error during streaming). This prevents the displayInterval
+   * timer from running indefinitely, causing a resource leak.
+   */
+  destroy(): void {
+    if (this.displayInterval) {
+      clearInterval(this.displayInterval);
+      this.displayInterval = null;
+    }
+    this.isActive = false;
+  }
+
+  /**
    * Get current throughput (tokens/sec)
    */
   private getThroughput(): number {
@@ -122,9 +137,13 @@ export class StreamingFeedback {
 
   /**
    * Get progress percentage
+   *
+   * BUG FIX: Handle case where estimatedTotal is 0 or negative.
+   * Previously only checked for falsy (!estimatedTotal) which would allow 0 to pass,
+   * causing division by zero and returning NaN. Now explicitly check for <= 0.
    */
   private getProgress(): number {
-    if (!this.metrics.estimatedTotal) return 0;
+    if (!this.metrics.estimatedTotal || this.metrics.estimatedTotal <= 0) return 0;
     return Math.min(95, Math.round((this.metrics.tokensReceived / this.metrics.estimatedTotal) * 100));
   }
 
@@ -249,6 +268,21 @@ export class SimpleStreamingIndicator {
 
     process.stderr.write('\r' + ' '.repeat(20) + '\r');
     process.stderr.write(chalk.green('✓ Complete!\n'));
+    this.isActive = false;
+  }
+
+  /**
+   * Cleanup resources without showing completion message
+   *
+   * BUG FIX: Added destroy() method for cleanup when stop() may not be called
+   * (e.g., due to an error during streaming). This prevents the interval
+   * timer from running indefinitely, causing a resource leak.
+   */
+  destroy(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
     this.isActive = false;
   }
 }

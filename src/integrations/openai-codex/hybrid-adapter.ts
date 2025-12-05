@@ -148,11 +148,43 @@ export class HybridCodexAdapter {
     this.activeMode = 'cli';
   }
 
+  /**
+   * Cleanup resources
+   *
+   * BUG FIX: Use Promise.allSettled to ensure cleanup continues even if one
+   * adapter fails, and properly log any cleanup errors. Previously, a failure
+   * in SDK destroy would prevent CLI cleanup from running.
+   */
   async destroy(): Promise<void> {
-    if (this.sdkAdapter) await this.sdkAdapter.destroy();
-    if (this.cliAdapter) await this.cliAdapter.cleanup();
+    const cleanupPromises: Promise<void>[] = [];
+
+    if (this.sdkAdapter) {
+      cleanupPromises.push(
+        this.sdkAdapter.destroy().catch(err => {
+          logger.warn('Error destroying SDK adapter', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        })
+      );
+    }
+
+    if (this.cliAdapter) {
+      cleanupPromises.push(
+        this.cliAdapter.cleanup().catch(err => {
+          logger.warn('Error cleaning up CLI adapter', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        })
+      );
+    }
+
+    // Wait for all cleanup to complete
+    await Promise.allSettled(cleanupPromises);
+
     this.sdkAdapter = null;
     this.cliAdapter = null;
     this.activeMode = null;
+
+    logger.debug('HybridCodexAdapter destroyed');
   }
 }

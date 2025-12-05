@@ -222,6 +222,63 @@ export const PROVIDER_ERROR_PATTERNS: Record<string, ProviderErrorPatterns> = {
       'billing_hard_limit_reached',
     ],
   },
+
+  /**
+   * ax-cli Provider Error Patterns (v9.2.0)
+   *
+   * ax-cli is a multi-model provider supporting GLM, xAI, OpenAI, Anthropic, Ollama, etc.
+   * BUG FIX: Added missing patterns - previously fell back to generic patterns which
+   * may miss provider-specific errors from the underlying model providers.
+   *
+   * Combines patterns from all supported backends since ax-cli proxies to them.
+   */
+  'ax-cli': {
+    quota: [
+      // GLM patterns
+      'quota exceeded',
+      'quota limit reached',
+      'insufficient quota',
+      // OpenAI patterns (via ax-cli)
+      'insufficient_quota',
+      'quota_exceeded',
+      'billing hard limit reached',
+      'usage limit exceeded',
+      'monthly quota exceeded',
+      'credit limit reached',
+      // Anthropic patterns (via ax-cli)
+      'credit limit reached',
+      // Generic patterns
+      'daily quota exceeded',
+      'api quota exceeded',
+    ],
+    rateLimit: [
+      // Common patterns
+      'rate_limit_exceeded',
+      'rate limit exceeded',
+      'too_many_requests',
+      'too many requests',
+      'requests per minute exceeded',
+      'tokens per minute exceeded',
+      'rate limit reached',
+      // Anthropic patterns (via ax-cli)
+      'rate_limit_error',
+      'overloaded_error',
+      'overloaded',
+      // xAI/Grok patterns
+      'throttled',
+      'request throttled',
+    ],
+    statusCodes: [429, 529],
+    errorCodes: [
+      'insufficient_quota',
+      'rate_limit_exceeded',
+      'quota_exceeded',
+      'rate_limit_error',
+      'overloaded_error',
+      'RATE_LIMIT_EXCEEDED',
+      'QUOTA_EXCEEDED',
+    ],
+  },
 };
 
 /**

@@ -78,7 +78,11 @@ export class MockEmbeddingProvider implements IEmbeddingProvider {
       embedding.reduce((sum, val) => sum + val * val, 0)
     );
 
-    const normalizedEmbedding = embedding.map(val => val / magnitude);
+    // BUG FIX: Prevent division by zero if magnitude is 0 (all values cancelled out)
+    // Return the raw embedding values if magnitude is too small to normalize safely
+    const normalizedEmbedding = magnitude > Number.EPSILON
+      ? embedding.map(val => val / magnitude)
+      : embedding;
 
     return {
       embedding: normalizedEmbedding,

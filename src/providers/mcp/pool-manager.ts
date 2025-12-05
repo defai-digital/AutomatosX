@@ -309,6 +309,11 @@ export class McpClientPool extends EventEmitter {
 
   /**
    * Check if pool has available capacity for provider
+   *
+   * BUG FIX: Account for pendingConnections to avoid reporting capacity
+   * when concurrent connection creations are in progress. Previously,
+   * hasCapacity() could return true even when all slots were about to be
+   * filled by in-flight createConnection() calls, causing over-allocation.
    */
   hasCapacity(provider: string): boolean {
     const pool = this.pools.get(provider);
@@ -324,7 +329,11 @@ export class McpClientPool extends EventEmitter {
         connectedCount++;
       }
     }
-    return connectedCount < this.config.maxConnectionsPerProvider;
+
+    // BUG FIX: Include pendingConnections in the count to prevent over-allocation
+    // race condition when multiple callers check hasCapacity() concurrently
+    const totalAllocated = connectedCount + pool.pendingConnections;
+    return totalAllocated < this.config.maxConnectionsPerProvider;
   }
 
   // ============================================
@@ -471,6 +480,13 @@ export class McpClientPool extends EventEmitter {
         }
 
         for (const pooledClient of toRemove) {
+          // BUG FIX: Re-check inUse status before removing, similar to health check logic.
+          // A client could have been acquired between the idle time check and removal,
+          // causing us to disconnect a client that's now in use.
+          if (pooledClient.inUse) {
+            logger.debug('[MCP Pool] Skipping idle client removal - now in use', { provider });
+            continue;
+          }
           logger.debug('[MCP Pool] Closing idle connection', {
             provider,
             idleTimeMs: now - pooledClient.lastUsed
@@ -498,9 +514,21 @@ export class McpClientPool extends EventEmitter {
 // Singleton instance for global use
 let globalPool: McpClientPool | null = null;
 
+/**
+ * Get or create the global MCP client pool singleton
+ *
+ * BUG FIX: Log warning when config is provided but pool already exists,
+ * as the config will be ignored. Use resetGlobalPool() first if you need
+ * to recreate with different config.
+ */
 export function getGlobalPool(config?: Partial<PoolConfig>): McpClientPool {
   if (!globalPool) {
     globalPool = new McpClientPool(config);
+  } else if (config) {
+    // BUG FIX: Warn when config is provided but pool already exists
+    logger.warn('[MCP Pool] Global pool already exists, ignoring new config', {
+      hint: 'Call resetGlobalPool() first to recreate with new config'
+    });
   }
   return globalPool;
 }

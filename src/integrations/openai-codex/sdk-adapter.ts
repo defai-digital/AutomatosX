@@ -105,7 +105,25 @@ export class CodexSdkAdapter {
         : undefined;
 
       // Clear thread if not reusing
-      if (!this.options.reuseThreads) {
+      // BUG FIX: Properly dispose thread resources before setting to null
+      // to prevent memory leaks from unclosed thread objects. The Codex SDK
+      // thread may hold references to internal state that needs cleanup.
+      if (!this.options.reuseThreads && this.activeThread) {
+        try {
+          // Try to dispose if method exists (SDK may add it in future versions)
+          // Use type assertion to check for dispose method at runtime
+          const threadWithDispose = this.activeThread as unknown as { dispose?: () => void | Promise<void> };
+          if (typeof threadWithDispose.dispose === 'function') {
+            const disposeResult = threadWithDispose.dispose();
+            if (disposeResult instanceof Promise) {
+              await disposeResult;
+            }
+          }
+        } catch (disposeError) {
+          logger.warn('Error disposing thread', {
+            error: disposeError instanceof Error ? disposeError.message : String(disposeError)
+          });
+        }
         this.activeThread = null;
       }
 

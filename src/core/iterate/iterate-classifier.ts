@@ -476,8 +476,11 @@ export class IterateClassifier {
 
     // Claude-specific markers
     if (providerLower.includes('claude')) {
-      // <THOUGHT> or <thinking> tags indicate self-reflection (status update)
-      if (message.includes('<THOUGHT>') || message.includes('<thinking>')) {
+      // <thinking> tags indicate self-reflection (status update)
+      // Check for various formats: <thinking>, </thinking>, <THINKING>, etc.
+      const lowerMessage = message.toLowerCase();
+      if (lowerMessage.includes('<thinking>') || lowerMessage.includes('</thinking>') ||
+          lowerMessage.includes('<thought>') || lowerMessage.includes('</thought>')) {
         return { type: 'status_update', confidence: 0.85 };
       }
 

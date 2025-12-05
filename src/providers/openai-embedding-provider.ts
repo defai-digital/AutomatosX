@@ -124,8 +124,12 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
         model: response.model,
         dimensions: this.config.dimensions,
         usage: {
-          promptTokens: response.usage.prompt_tokens / texts.length,
-          totalTokens: response.usage.total_tokens / texts.length
+          // BUG FIX: Use Math.ceil() to ensure integer token counts per embedding.
+          // Previously used plain division which produced floating point numbers,
+          // which is incorrect semantics for token counts (tokens are discrete units).
+          // Using ceil ensures we don't undercount when distributing total across batch.
+          promptTokens: Math.ceil(response.usage.prompt_tokens / texts.length),
+          totalTokens: Math.ceil(response.usage.total_tokens / texts.length)
         }
       }));
     } catch (error) {

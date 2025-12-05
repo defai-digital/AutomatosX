@@ -76,7 +76,10 @@ export class OpenAIProvider extends BaseProvider {
         error: error instanceof Error ? error.message : String(error),
         mode: this.hybridAdapter?.getActiveMode() || 'unknown',
       });
-      throw error;
+      // BUG FIX: Use handleError() for proper error categorization (rate limit, timeout, etc.)
+      // and health status updates. Previously just re-threw the raw error which bypassed
+      // error normalization and health tracking.
+      throw this.handleError(error);
     }
   }
 

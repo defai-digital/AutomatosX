@@ -14,12 +14,9 @@ import type { IntegrationMode } from '../types/config.js';
 import { OpenAIProvider } from './openai-provider.js';
 // v8.3.0: SDK provider removed - CLI only
 // import { OpenAISDKProvider } from './openai-sdk-provider.js';
-import {
-  getModeWithAutoResolution,
-  shouldShowWizard,
-  showModeWizard,
-  detectEnvironment
-} from './integration-mode-wizard.js';
+// BUG FIX: Removed unused imports from integration-mode-wizard.js
+// These were imported but never used since v8.3.0 removed SDK mode support.
+// Previously: getModeWithAutoResolution, shouldShowWizard, showModeWizard, detectEnvironment
 import { logger } from '../shared/logging/logger.js';
 
 /**

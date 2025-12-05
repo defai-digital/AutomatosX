@@ -136,22 +136,32 @@ export class AxCliCommandBuilder {
   /**
    * Escape string for shell execution
    *
-   * Wraps in double quotes and escapes:
-   * - Double quotes: " → \"
+   * Uses $'...' ANSI-C quoting for reliable cross-platform escaping.
+   * This handles all special characters including newlines, tabs, and unicode.
+   *
+   * Escapes:
+   * - Single quotes: ' → \'
    * - Backslashes: \ → \\
-   * - Dollar signs: $ → \$
-   * - Backticks: ` → \`
+   * - Newlines: \n → \n (literal escape sequence)
+   * - Carriage returns: \r → \r
+   * - Tabs: \t → \t
+   *
+   * BUG FIX (v11.3.3): Previous implementation using double quotes didn't handle
+   * newlines properly, which could break shell commands or cause unexpected behavior.
    *
    * @param input - String to escape
-   * @returns Shell-safe escaped string
+   * @returns Shell-safe escaped string using ANSI-C quoting
    */
   private escape(input: string): string {
-    return `"${input
-      .replace(/\\/g, '\\\\')    // Backslashes first
-      .replace(/"/g, '\\"')      // Double quotes
-      .replace(/\$/g, '\\$')     // Dollar signs
-      .replace(/`/g, '\\`')      // Backticks
-    }"`;
+    // Use ANSI-C quoting ($'...') which properly handles escape sequences
+    const escaped = input
+      .replace(/\\/g, '\\\\')    // Backslashes first (must be first!)
+      .replace(/'/g, "\\'")      // Single quotes
+      .replace(/\n/g, '\\n')     // Newlines (BUG FIX)
+      .replace(/\r/g, '\\r')     // Carriage returns (BUG FIX)
+      .replace(/\t/g, '\\t');    // Tabs (BUG FIX)
+
+    return `$'${escaped}'`;
   }
 
   /**

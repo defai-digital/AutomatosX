@@ -292,19 +292,29 @@ export class CheckpointAdapter {
 
   /**
    * List all checkpoints for a workflow
+   *
+   * BUG FIX (v11.3.3): The previous pattern `startsWith(workflowId-)` would match
+   * similar workflow IDs. For example, "auth" would match "auth-v2-1.json".
+   * Now we verify that the suffix after the workflowId is a numeric phase.
    */
   async list(workflowId: string): Promise<Checkpoint[]> {
     try {
       await fs.mkdir(this.checkpointDir, { recursive: true });
       const files = await fs.readdir(this.checkpointDir);
 
-      // Filter matching files first
-      // BUG FIX: Use more precise pattern to avoid matching workflows with similar prefixes
-      // e.g., "auth" should not match "auth-v2" checkpoints
-      // File format is: {workflowId}-{phase}.json
-      const matchingFiles = files.filter(
-        file => file.startsWith(`${workflowId}-`) && file.endsWith('.json')
-      );
+      // BUG FIX: Use precise regex pattern to match only this workflow's checkpoints
+      // File format is: {workflowId}-{phase}.json where phase is a number
+      // This prevents "auth" from matching "auth-v2-1.json"
+      const prefix = `${workflowId}-`;
+      const matchingFiles = files.filter(file => {
+        if (!file.startsWith(prefix) || !file.endsWith('.json')) {
+          return false;
+        }
+        // Extract the part between workflowId- and .json
+        const middle = file.slice(prefix.length, -5); // Remove prefix and ".json"
+        // Verify it's a valid phase number (digits only)
+        return /^\d+$/.test(middle);
+      });
 
       // Read all files in parallel for better performance
       const results = await Promise.all(
@@ -469,14 +479,23 @@ export class CheckpointAdapter {
     }
   }
 
+  /**
+   * BUG FIX (v11.3.3): Use same precise matching as list() to avoid
+   * deleting checkpoints for workflows with similar IDs.
+   */
   private async deleteFromFileSystem(workflowId: string): Promise<void> {
     try {
       const files = await fs.readdir(this.checkpointDir);
+      const prefix = `${workflowId}-`;
 
       for (const file of files) {
-        // BUG FIX: Use more precise pattern to avoid deleting checkpoints for similar workflows
-        // e.g., deleting "auth" should not delete "auth-v2" checkpoints
-        if (file.startsWith(`${workflowId}-`) && file.endsWith('.json')) {
+        if (!file.startsWith(prefix) || !file.endsWith('.json')) {
+          continue;
+        }
+        // Extract the part between workflowId- and .json
+        const middle = file.slice(prefix.length, -5);
+        // Only delete if middle part is a valid phase number
+        if (/^\d+$/.test(middle)) {
           await fs.unlink(path.join(this.checkpointDir, file));
         }
       }

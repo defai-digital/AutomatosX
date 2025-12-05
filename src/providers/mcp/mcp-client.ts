@@ -268,7 +268,12 @@ export class McpClient extends EventEmitter {
     params: unknown,
     timeout?: number
   ): Promise<unknown> {
-    if (!this.process?.stdin) {
+    // BUG FIX: Capture stdin reference immediately to avoid race condition.
+    // Previously checked `this.process?.stdin` but then used `this.process!.stdin!`
+    // later, which could fail if the process was disconnected between the check
+    // and the write (race condition during concurrent disconnect).
+    const stdin = this.process?.stdin;
+    if (!stdin) {
       throw new Error('MCP client not connected');
     }
 
@@ -296,7 +301,8 @@ export class McpClient extends EventEmitter {
 
       const message = JSON.stringify(request) + '\n';
       try {
-        this.process!.stdin!.write(message);
+        // BUG FIX: Use captured stdin reference instead of non-null assertions
+        stdin.write(message);
       } catch (error) {
         const pending = this.pendingRequests.get(id);
         if (pending) {
@@ -319,6 +325,10 @@ export class McpClient extends EventEmitter {
 
   /**
    * Send JSON-RPC notification (no response expected)
+   *
+   * BUG FIX: Handle write errors gracefully. If the process has exited or the
+   * pipe is broken, write() could throw an uncaught exception that would crash
+   * the application.
    */
   protected sendNotification(method: string, params: unknown): void {
     if (!this.process?.stdin) {
@@ -332,7 +342,16 @@ export class McpClient extends EventEmitter {
     };
 
     const message = JSON.stringify(notification) + '\n';
-    this.process.stdin.write(message);
+
+    // BUG FIX: Wrap write in try-catch to handle broken pipe errors
+    try {
+      this.process.stdin.write(message);
+    } catch (error) {
+      logger.debug('[MCP Client] Failed to send notification (pipe may be closed)', {
+        method,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
   /**

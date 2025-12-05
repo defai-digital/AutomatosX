@@ -10,7 +10,7 @@
  * @module mcp/lifecycle-logger
  */
 
-import { writeFile, appendFile, mkdir } from 'fs/promises';
+import { writeFile, appendFile, mkdir, rename, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../shared/logging/logger.js';
@@ -328,15 +328,17 @@ export class LifecycleLogger {
 
   /**
    * Rotate log file if it exceeds size limit
+   *
+   * BUG FIX: Previously used dynamic imports for fs/fs.promises which are already
+   * imported at module level, causing unnecessary overhead. Also had a TOCTOU race
+   * between existsSync and statSync - now uses async stat() which handles ENOENT
+   * gracefully without the race condition.
    */
   private async rotateLogIfNeeded(logPath: string): Promise<void> {
-    if (!existsSync(logPath)) {
-      return;
-    }
-
     try {
-      const { statSync } = await import('fs');
-      const stats = statSync(logPath);
+      // BUG FIX: Use async stat() instead of existsSync + statSync to avoid
+      // TOCTOU race condition where file could be deleted between checks
+      const stats = await stat(logPath);
       const sizeMB = stats.size / (1024 * 1024);
 
       if (sizeMB > this.maxLogSizeMB) {
@@ -344,7 +346,7 @@ export class LifecycleLogger {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const archivePath = logPath.replace('.jsonl', `-${timestamp}.jsonl`);
 
-        const { rename } = await import('fs/promises');
+        // BUG FIX: Use already-imported rename instead of dynamic import
         await rename(logPath, archivePath);
 
         logger.info('LifecycleLogger: Rotated log file', {
@@ -354,6 +356,10 @@ export class LifecycleLogger {
         });
       }
     } catch (error) {
+      // ENOENT means file doesn't exist - that's fine, nothing to rotate
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return;
+      }
       logger.error('LifecycleLogger: Failed to rotate log file', { error });
     }
   }

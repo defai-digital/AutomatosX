@@ -2,7 +2,7 @@
   "providers": {
     "claude-code": {
       "enabled": true,
-      "priority": 1,
+      "priority": 3,
       "timeout": 2700000,
       "command": "claude",
       "healthCheck": {
@@ -62,7 +62,7 @@
     },
     "openai": {
       "enabled": true,
-      "priority": 3,
+      "priority": 1,
       "timeout": 2700000,
       "command": "codex",
       "healthCheck": {
@@ -240,15 +240,10 @@
   },
   "advanced": {
     "embedding": {
-      "model": "text-embedding-3-small",
       "timeout": 30000,
       "retryDelay": 1000,
       "dimensions": 1536,
       "maxRetries": 3
-    },
-    "projectContext": {
-      "maxSizeBytes": 102400,
-      "cacheTtlMs": 300000
     },
     "security": {
       "enablePathValidation": true,
@@ -305,21 +300,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "axCliSdk": {
-    "maxToolRounds": 400,
-    "checkpoint": {
-      "maxCheckpoints": 10,
-      "flushTimeoutMs": 5000
-    },
-    "subagent": {
-      "maxParallel": 4,
-      "timeoutMs": 300000,
-      "maxToolRounds": 100
-    },
-    "instructions": {
-      "cacheTtlMs": 300000,
-      "maxContextLength": 32000
-    }
-  },
-  "version": "11.3.2"
+  "version": "11.3.3"
 }

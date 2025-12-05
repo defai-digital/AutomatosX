@@ -33,6 +33,9 @@ import { IterateClassifier } from './iterate-classifier.js';
 import { IterateAutoResponder } from './iterate-auto-responder.js';
 import { IterateStatusRenderer } from '../../cli/renderers/iterate-status-renderer.js';
 import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { appendFile } from 'fs/promises';
+import { dirname, join } from 'path';
 
 /**
  * Iterate Mode Controller
@@ -68,6 +71,18 @@ export class IterateModeController {
    * @param config - Iterate mode configuration
    * @param sessionManager - Session manager for state persistence (optional)
    */
+  /**
+   * Flag indicating if patterns/templates have been loaded
+   * @private
+   */
+  private initialized: boolean = false;
+
+  /**
+   * Promise for initialization (to avoid race conditions)
+   * @private
+   */
+  private initPromise?: Promise<void>;
+
   constructor(
     config: IterateConfig,
     sessionManager?: SessionManager,
@@ -94,6 +109,68 @@ export class IterateModeController {
       strictness: config.classifier.strictness,
       hasStatusRenderer: !!statusRenderer
     });
+
+    // Auto-load patterns and templates (non-blocking)
+    this.initPromise = this.loadPatternsAndTemplates();
+  }
+
+  /**
+   * Load pattern and template libraries
+   *
+   * Automatically loads patterns.yaml and templates.yaml from the configured paths.
+   * If files don't exist, uses fallback patterns.
+   *
+   * @private
+   */
+  private async loadPatternsAndTemplates(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    const patternsPath = this.config.classifier.patternLibraryPath;
+    const templatesPath = patternsPath.replace('patterns.yaml', 'templates.yaml');
+
+    // Load patterns
+    if (existsSync(patternsPath)) {
+      try {
+        await this.classifier.loadPatterns(patternsPath);
+        logger.info('Loaded iterate patterns', { path: patternsPath });
+      } catch (error) {
+        logger.warn('Failed to load iterate patterns, using defaults', {
+          path: patternsPath,
+          error: (error as Error).message
+        });
+      }
+    } else {
+      logger.warn('Iterate patterns file not found, using defaults', { path: patternsPath });
+    }
+
+    // Load templates
+    if (existsSync(templatesPath)) {
+      try {
+        await this.responder.loadTemplates(templatesPath);
+        logger.info('Loaded iterate templates', { path: templatesPath });
+      } catch (error) {
+        logger.warn('Failed to load iterate templates, using defaults', {
+          path: templatesPath,
+          error: (error as Error).message
+        });
+      }
+    } else {
+      logger.warn('Iterate templates file not found, using defaults', { path: templatesPath });
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Ensure patterns and templates are loaded before use
+   * @private
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized && this.initPromise) {
+      await this.initPromise;
+    }
   }
 
   /**
@@ -116,6 +193,9 @@ export class IterateModeController {
     context: ExecutionContext,
     options: ExecutionOptions
   ): Promise<ExecutionResult> {
+    // Step 0: Ensure patterns and templates are loaded
+    await this.ensureInitialized();
+
     // Step 1: Initialize iterate state
     const sessionId = this.sessionManager
       ? (await this.sessionManager.createSession(context.task, context.agent.name)).id
@@ -235,19 +315,22 @@ export class IterateModeController {
   async handleResponse(response: ExecutionResponse): Promise<IterateAction> {
     const startTime = Date.now();
 
-    // Week 1 Skeleton: If state not initialized, return simple continue action
+    // Ensure patterns/templates are loaded before classifying
+    await this.ensureInitialized();
+
+    // If state not initialized, initialize it now
     if (!this.state) {
-      logger.warn('handleResponse called without initialized state - returning skeleton response');
-      return {
-        type: 'continue',
-        reason: 'Skeleton implementation - state not initialized'
-      };
+      logger.warn('handleResponse called without initialized state - initializing now');
+      this.initializeState(randomUUID());
     }
+
+    // At this point state is guaranteed to be initialized
+    const state = this.state!;
 
     logger.debug('Handling response', {
       hasContent: !!response.content,
       contentLength: response.content?.length || 0,
-      iterations: this.state.totalIterations
+      iterations: state.totalIterations
     });
 
     // Step 1: Classify the response
@@ -262,16 +345,16 @@ export class IterateModeController {
     );
 
     // Add to classification history
-    this.state.classificationHistory.push(classification);
+    state.classificationHistory.push(classification);
 
     // Prevent memory leak: limit classification history to context window size
     // Only keep the most recent messages we'll actually use
     const maxHistorySize = this.config.classifier.contextWindowMessages * 2; // 2x buffer for safety
-    if (this.state.classificationHistory.length > maxHistorySize) {
+    if (state.classificationHistory.length > maxHistorySize) {
       // Keep only the most recent entries
-      this.state.classificationHistory = this.state.classificationHistory.slice(-maxHistorySize);
+      state.classificationHistory = state.classificationHistory.slice(-maxHistorySize);
       logger.debug('Trimmed classification history to prevent memory leak', {
-        newSize: this.state.classificationHistory.length,
+        newSize: state.classificationHistory.length,
         maxSize: maxHistorySize
       });
     }
@@ -327,11 +410,23 @@ export class IterateModeController {
       };
     }
 
-    // Step 4: Determine action based on classification type
+    // Step 4: Check safety guards for dangerous operations
+    const safetyCheck = this.checkSafetyGuards(response.content || '');
+    if (!safetyCheck.safe && this.config.notifications.pauseOnHighRiskOperation) {
+      const dangerousOps = safetyCheck.detectedOperations.map(op => `${op.type}: ${op.match}`).join(', ');
+      return {
+        type: 'pause',
+        reason: 'Dangerous operation detected',
+        pauseReason: 'high_risk_operation',
+        context: `Detected: ${dangerousOps}`
+      };
+    }
+
+    // Step 5: Determine action based on classification type
     const action = this.determineAction(classification, response);
 
-    // Step 5: Generate auto-response if continuing
-    if (action.type === 'continue' && action.response === undefined) {
+    // Step 6: Generate auto-response if continuing or stopping (acknowledgment)
+    if ((action.type === 'continue' || action.type === 'stop') && action.response === undefined) {
       const autoResponse = await this.responder.generateResponse(
         classification,
         {
@@ -352,7 +447,7 @@ export class IterateModeController {
       }
     }
 
-    // Step 6: Render action status (v8.6.0 UX)
+    // Step 7: Render action status (v8.6.0 UX)
     if (this.statusRenderer) {
       this.statusRenderer.handleEvent({
         type: 'action',
@@ -361,11 +456,11 @@ export class IterateModeController {
       });
     }
 
-    // Step 7: Emit telemetry event
+    // Step 8: Emit telemetry event
     this.emitEvent({
       type: 'iterate.classification',
       timestamp: new Date().toISOString(),
-      sessionId: this.state.sessionId,
+      sessionId: state.sessionId,
       payload: {
         classification,
         action: action.type,
@@ -438,11 +533,11 @@ export class IterateModeController {
       };
     }
 
-    // Completion signals → CONTINUE (acknowledge)
+    // Completion signals → STOP (acknowledge and end iteration)
     if (type === 'completion_signal') {
       return {
-        type: 'continue',
-        reason: 'Completion signal - acknowledging',
+        type: 'stop',
+        reason: 'Completion signal - task finished',
         metadata: { confidence }
       };
     }
@@ -707,8 +802,8 @@ export class IterateModeController {
       totalCost: 0, // v8.5.8 - Deprecated, always 0 (cost tracking removed)
       classificationBreakdown: breakdown,
       avgClassificationLatencyMs: Math.round(avgLatency),
-      safetyChecks: {
-        total: 0, // TODO: Track safety checks
+      safetyChecks: this.state.metadata.safetyChecks || {
+        total: 0,
         allowed: 0,
         paused: 0,
         blocked: 0
@@ -721,21 +816,52 @@ export class IterateModeController {
   /**
    * Emit telemetry event
    *
+   * Writes events to JSONL telemetry file for observability.
+   *
    * @param event - Telemetry event to emit
    * @private
-   *
-   * **Phase 1 (Week 1)**: Logs only
-   * **Phase 4 (Week 4)**: Full telemetry with file logging
    */
   private emitEvent(event: IterateEvent): void {
-    if (this.config.telemetry.emitMetrics) {
-      logger.debug('Iterate event (skeleton)', {
-        type: event.type,
-        sessionId: event.sessionId
-      });
+    if (!this.config.telemetry.emitMetrics) {
+      return;
     }
 
-    // TODO (Week 4): Write to JSONL telemetry file
+    logger.debug('Iterate event', {
+      type: event.type,
+      sessionId: event.sessionId
+    });
+
+    // Write to JSONL telemetry file (non-blocking)
+    // Calculate log directory more robustly using path.dirname
+    const patternsPath = this.config.classifier.patternLibraryPath;
+    const iterateDir = dirname(patternsPath); // .automatosx/iterate
+    const baseDir = dirname(iterateDir);      // .automatosx
+    const logDir = join(baseDir, 'logs');
+    const logPath = join(logDir, `iterate-trace-${event.sessionId}.jsonl`);
+    const line = JSON.stringify(event) + '\n';
+
+    // Ensure log directory exists (sync is OK here since it's called rarely)
+    if (!existsSync(logDir)) {
+      try {
+        mkdirSync(logDir, { recursive: true });
+      } catch {
+        // Ignore mkdir errors - appendFile will fail anyway
+      }
+    }
+
+    // Fire and forget - don't block on telemetry
+    appendFile(logPath, line).catch(error => {
+      // Only log on first error per session to avoid spam
+      if (!this.state?.metadata.telemetryErrorLogged) {
+        logger.warn('Failed to write iterate telemetry', {
+          path: logPath,
+          error: (error as Error).message
+        });
+        if (this.state) {
+          this.state.metadata.telemetryErrorLogged = true;
+        }
+      }
+    });
   }
 
   /**
@@ -980,4 +1106,208 @@ export class IterateModeController {
       }));
   }
 
+  /**
+   * Check for dangerous operations in response content
+   *
+   * Detects potentially destructive commands and operations that should
+   * pause execution for user confirmation.
+   *
+   * @param content - Response content to check
+   * @returns Safety check result with detected operations
+   */
+  checkSafetyGuards(content: string): {
+    safe: boolean;
+    detectedOperations: Array<{
+      type: string;
+      risk: 'LOW' | 'MEDIUM' | 'HIGH';
+      match: string;
+    }>;
+  } {
+    if (!this.config.safety.enableDangerousOperationGuard) {
+      return { safe: true, detectedOperations: [] };
+    }
+
+    const detectedOperations: Array<{
+      type: string;
+      risk: 'LOW' | 'MEDIUM' | 'HIGH';
+      match: string;
+    }> = [];
+
+    // Define dangerous operation patterns with risk levels
+    const dangerousPatterns: Array<{
+      pattern: RegExp;
+      type: string;
+      risk: 'LOW' | 'MEDIUM' | 'HIGH';
+    }> = [
+      // File deletion (HIGH risk)
+      {
+        pattern: /\brm\s+-rf\s+[\/~]/i,
+        type: 'fileDelete',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\brm\s+-rf\s+\./i,
+        type: 'fileDelete',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\brmdir\s+.*--ignore-fail-on-non-empty/i,
+        type: 'fileDelete',
+        risk: 'MEDIUM'
+      },
+
+      // Git force operations (HIGH risk)
+      {
+        pattern: /\bgit\s+push\s+.*--force/i,
+        type: 'gitForce',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bgit\s+push\s+-f\b/i,
+        type: 'gitForce',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bgit\s+reset\s+--hard/i,
+        type: 'gitForce',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bgit\s+clean\s+-fd/i,
+        type: 'gitForce',
+        risk: 'MEDIUM'
+      },
+
+      // Database operations (HIGH risk)
+      {
+        pattern: /\bDROP\s+(TABLE|DATABASE|SCHEMA)\b/i,
+        type: 'databaseDrop',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bTRUNCATE\s+TABLE\b/i,
+        type: 'databaseTruncate',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bDELETE\s+FROM\s+\w+\s*(;|$|WHERE\s+1\s*=\s*1)/i,
+        type: 'databaseDelete',
+        risk: 'HIGH'
+      },
+
+      // Secrets/credentials in code (HIGH risk)
+      {
+        pattern: /\b(password|secret|api_key|apikey|api-key|token)\s*[=:]\s*["'][^"']{8,}["']/i,
+        type: 'secretsInCode',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\b(AWS_SECRET|PRIVATE_KEY|AUTH_TOKEN)\s*[=:]/i,
+        type: 'secretsInCode',
+        risk: 'HIGH'
+      },
+
+      // Shell commands (MEDIUM risk based on config)
+      {
+        pattern: /\bsudo\s+/i,
+        type: 'shellCommands',
+        risk: 'MEDIUM'
+      },
+      {
+        pattern: /\bchmod\s+777\b/i,
+        type: 'shellCommands',
+        risk: 'MEDIUM'
+      },
+      {
+        pattern: /\bcurl\s+.*\|\s*(bash|sh)\b/i,
+        type: 'shellCommands',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\bwget\s+.*\|\s*(bash|sh)\b/i,
+        type: 'shellCommands',
+        risk: 'HIGH'
+      },
+
+      // Package installation (MEDIUM risk)
+      {
+        pattern: /\bnpm\s+install\s+--global\b/i,
+        type: 'packageInstall',
+        risk: 'MEDIUM'
+      },
+      {
+        pattern: /\bpip\s+install\s+--user\b/i,
+        type: 'packageInstall',
+        risk: 'LOW'
+      },
+
+      // Writing outside workspace (HIGH risk)
+      {
+        pattern: /\b(write|create|save)\s+.*[\/~](etc|usr|bin|lib|opt)\//i,
+        type: 'writeOutsideWorkspace',
+        risk: 'HIGH'
+      },
+      {
+        pattern: /\becho\s+.*>\s*[\/~](etc|usr|bin)/i,
+        type: 'writeOutsideWorkspace',
+        risk: 'HIGH'
+      }
+    ];
+
+    // Check each pattern
+    for (const { pattern, type, risk } of dangerousPatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        // Check if this operation type is at or above the configured risk tolerance
+        const configuredRisk = this.config.safety.dangerousOperations[type as keyof typeof this.config.safety.dangerousOperations];
+
+        // Only flag if the detected risk meets or exceeds configured threshold
+        if (configuredRisk) {
+          detectedOperations.push({
+            type,
+            risk,
+            match: match[0].substring(0, 100) // Truncate long matches
+          });
+        }
+      }
+    }
+
+    // Determine if safe based on risk tolerance
+    const riskTolerance = this.config.safety.riskTolerance;
+    const isSafe = detectedOperations.every(op => {
+      if (riskTolerance === 'permissive') {
+        return op.risk !== 'HIGH'; // Only block HIGH risk
+      } else if (riskTolerance === 'balanced') {
+        return op.risk === 'LOW'; // Block MEDIUM and HIGH
+      } else {
+        // paranoid: block everything
+        return false;
+      }
+    });
+
+    if (detectedOperations.length > 0) {
+      logger.warn('Dangerous operations detected', {
+        count: detectedOperations.length,
+        operations: detectedOperations,
+        safe: isSafe,
+        riskTolerance
+      });
+
+      // Track safety checks in stats
+      if (this.state) {
+        this.state.metadata.safetyChecks = this.state.metadata.safetyChecks || { total: 0, allowed: 0, paused: 0, blocked: 0 };
+        this.state.metadata.safetyChecks.total++;
+        if (isSafe) {
+          this.state.metadata.safetyChecks.allowed++;
+        } else {
+          this.state.metadata.safetyChecks.paused++;
+        }
+      }
+    }
+
+    return {
+      safe: isSafe || detectedOperations.length === 0,
+      detectedOperations
+    };
+  }
 }

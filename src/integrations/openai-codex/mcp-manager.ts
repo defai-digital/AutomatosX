@@ -230,17 +230,33 @@ export class CodexMCPManager {
 
   /**
    * Wait for process to exit
+   *
+   * BUG FIX: Previously had a memory leak where the 'exit' event listener was
+   * never removed if the timeout fired first. Now properly cleans up both the
+   * timeout and event listener in all cases.
    */
   private async waitForExit(process: ChildProcess, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        process.off('exit', onExit);
+      };
+
+      const onExit = () => {
+        cleanup();
+        resolve();
+      };
+
       const timeout = setTimeout(() => {
+        cleanup();
         reject(new Error(`Process did not exit within ${timeoutMs}ms`));
       }, timeoutMs);
 
-      process.on('exit', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
+      process.on('exit', onExit);
     });
   }
 }
@@ -253,11 +269,16 @@ let defaultManager: CodexMCPManager | null = null;
 /**
  * Get default MCP manager instance
  *
- * @param config - Configuration (optional)
+ * BUG FIX: Previously, passing config when a manager already existed would
+ * silently replace the existing manager (potentially orphaning an active
+ * server process). Now behaves consistently with other MCP managers by
+ * warning and ignoring the config. Use resetDefaultMCPManager() to recreate.
+ *
+ * @param config - Configuration (optional, only used on first call)
  * @returns Default manager instance
  */
 export function getDefaultMCPManager(config?: CodexMCPConfig): CodexMCPManager {
-  if (!defaultManager || config) {
+  if (!defaultManager) {
     defaultManager = new CodexMCPManager(
       config || {
         enabled: true,
@@ -265,6 +286,23 @@ export function getDefaultMCPManager(config?: CodexMCPConfig): CodexMCPManager {
         transport: 'stdio',
       }
     );
+  } else if (config) {
+    // BUG FIX: Warn when config is provided but instance already exists
+    logger.warn('CodexMCPManager already initialized, ignoring new config', {
+      hint: 'Use resetDefaultMCPManager() to recreate with new config'
+    });
   }
   return defaultManager;
+}
+
+/**
+ * Reset the default MCP manager
+ *
+ * Cleans up the existing manager and allows recreation with new config.
+ */
+export async function resetDefaultMCPManager(): Promise<void> {
+  if (defaultManager) {
+    await defaultManager.cleanup();
+    defaultManager = null;
+  }
 }

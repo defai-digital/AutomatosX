@@ -41,6 +41,7 @@ import chalk from 'chalk';
 import { StreamingProgressParser } from '../shared/process/streaming-progress-parser.js';
 import { VerbosityManager } from '../shared/logging/verbosity-manager.js';
 import { isLimitError } from './error-patterns.js';
+import { shouldRetryError, type RetryableProvider } from './retry-errors.js';
 
 export abstract class BaseProvider implements Provider {
   /**
@@ -84,6 +85,7 @@ export abstract class BaseProvider implements Provider {
     latencyMs: number;
     errorRate: number;
     consecutiveFailures: number;
+    consecutiveSuccesses: number; // BUG FIX: Added tracking for consecutive successes
     lastCheck: number;
   };
 
@@ -104,6 +106,7 @@ export abstract class BaseProvider implements Provider {
       latencyMs: 0,
       errorRate: 0,
       consecutiveFailures: 0,
+      consecutiveSuccesses: 0, // BUG FIX: Track consecutive successes
       lastCheck: Date.now()
     };
   }
@@ -444,16 +447,30 @@ export abstract class BaseProvider implements Provider {
       }
 
       // Write prompt to stdin
+      // BUG FIX: Previously swallowed write errors which caused the child process
+      // to hang indefinitely without input. Now properly rejects on write failure.
       if (child.stdin) {
         try {
           child.stdin.write(prompt);
           child.stdin.end(); // Signal EOF
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to write to stdin', {
             command: cliCommand,
-            error: error instanceof Error ? error.message : String(error)
+            error: errorMessage
           });
+          // BUG FIX: Reject immediately instead of swallowing the error
+          // Without input, the child process will hang until timeout
+          child.kill('SIGTERM');
+          reject(new Error(`Failed to write prompt to ${cliCommand} stdin: ${errorMessage}`));
+          return;
         }
+      } else {
+        // BUG FIX: Handle case where stdin is not available
+        logger.error('stdin not available for child process', { command: cliCommand });
+        child.kill('SIGTERM');
+        reject(new Error(`${cliCommand} stdin not available - cannot send prompt`));
+        return;
       }
 
       // Create readline interface for line-by-line streaming (stdout)
@@ -700,6 +717,7 @@ export abstract class BaseProvider implements Provider {
 
       // Update health on success
       this.health.consecutiveFailures = 0;
+      this.health.consecutiveSuccesses++; // BUG FIX: Track consecutive successes
       this.health.available = true;
       this.health.errorRate = 0;
       this.health.latencyMs = latencyMs;
@@ -735,6 +753,7 @@ export abstract class BaseProvider implements Provider {
       return response;
     } catch (error) {
       this.health.consecutiveFailures++;
+      this.health.consecutiveSuccesses = 0; // BUG FIX: Reset on failure
       this.health.available = false;
       this.health.errorRate = 1;
       this.health.latencyMs = Date.now() - startTime;
@@ -749,19 +768,27 @@ export abstract class BaseProvider implements Provider {
   async isAvailable(): Promise<boolean> {
     try {
       const available = await this.checkCLIAvailable();
-      this.health = {
-        available,
-        latencyMs: 0,
-        errorRate: available ? 0 : 1,
-        lastCheck: Date.now(),
-        consecutiveFailures: available ? 0 : this.health.consecutiveFailures + 1
-      };
+      // BUG FIX: Use selective property updates instead of full object replacement
+      // Previously overwrote entire health object which reset latencyMs to 0,
+      // losing valuable latency information from previous execute() calls.
+      this.health.available = available;
+      this.health.errorRate = available ? 0 : 1;
+      this.health.lastCheck = Date.now();
+      if (available) {
+        this.health.consecutiveFailures = 0;
+        this.health.consecutiveSuccesses++; // BUG FIX: Track consecutive successes
+      } else {
+        this.health.consecutiveFailures++;
+        this.health.consecutiveSuccesses = 0; // Reset on failure
+      }
+      // Note: latencyMs is preserved from previous execute() calls
       return available;
     } catch (error) {
       this.health.available = false;
       this.health.errorRate = 1;
       this.health.lastCheck = Date.now();
-      this.health.consecutiveFailures = this.health.consecutiveFailures + 1;
+      this.health.consecutiveFailures++;
+      this.health.consecutiveSuccesses = 0; // BUG FIX: Reset on failure
       return false;
     }
   }
@@ -946,15 +973,30 @@ export abstract class BaseProvider implements Provider {
   }
 
   shouldRetry(error: Error): boolean {
-    // v8.3.0: Simple retry logic for CLI failures
-    const message = error.message.toLowerCase();
-    return (
-      message.includes('timeout') ||
-      message.includes('rate limit') ||
-      message.includes('temporarily unavailable') ||
-      message.includes('503') ||
-      message.includes('502')
-    );
+    // BUG FIX: Use centralized shouldRetryError() from retry-errors.ts
+    // Previously used simple string matching which:
+    // 1. Missed provider-specific retry patterns (e.g., RESOURCE_EXHAUSTED for Gemini)
+    // 2. Didn't check non-retryable errors (could retry auth errors)
+    // 3. Had duplicate logic that could diverge from centralized patterns
+
+    // Map provider name to RetryableProvider type
+    const providerName = this.config.name.toLowerCase();
+    let retryableProvider: RetryableProvider = 'base';
+
+    // Map known provider names to their retry profiles
+    if (providerName === 'claude' || providerName === 'claude-code') {
+      retryableProvider = 'claude';
+    } else if (providerName === 'gemini' || providerName === 'gemini-cli') {
+      retryableProvider = 'gemini';
+    } else if (providerName === 'openai') {
+      retryableProvider = 'openai';
+    } else if (providerName === 'codex') {
+      retryableProvider = 'codex';
+    } else if (providerName === 'ax-cli' || providerName === 'glm') {
+      retryableProvider = 'ax-cli';
+    }
+
+    return shouldRetryError(error, retryableProvider);
   }
 
   getRetryDelay(attempt: number): number {
@@ -1007,7 +1049,9 @@ export abstract class BaseProvider implements Provider {
       },
       health: {
         consecutiveFailures: this.health.consecutiveFailures,
-        consecutiveSuccesses: this.health.consecutiveFailures === 0 ? 1 : 0,
+        // BUG FIX: Use actual tracked value instead of incorrect derivation
+        // Previously: `consecutiveFailures === 0 ? 1 : 0` which was wrong
+        consecutiveSuccesses: this.health.consecutiveSuccesses,
         lastCheckTime: this.health.lastCheck,
         lastCheckDuration: 0,
         uptime: this.health.lastCheck > 0 ? Date.now() - this.health.lastCheck : 0

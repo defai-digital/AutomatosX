@@ -186,13 +186,18 @@ let defaultManager: GeminiMCPManager | null = null;
 /**
  * Get default Gemini MCP manager instance
  *
- * @param config - Gemini configuration (optional)
+ * BUG FIX: Previously, passing config when a manager already existed would
+ * silently replace the existing manager (potentially orphaning active servers).
+ * Now behaves consistently with other MCP managers by warning and ignoring
+ * the config. Use resetDefaultGeminiMCPManager() to recreate.
+ *
+ * @param config - Gemini configuration (optional, only used on first call)
  * @returns Default manager instance
  */
 export function getDefaultGeminiMCPManager(
   config?: GeminiConfig
 ): GeminiMCPManager {
-  if (!defaultManager || config) {
+  if (!defaultManager) {
     defaultManager = new GeminiMCPManager(
       config || {
         // Default empty config
@@ -203,6 +208,23 @@ export function getDefaultGeminiMCPManager(
         },
       } as GeminiConfig
     );
+  } else if (config) {
+    // BUG FIX: Warn when config is provided but instance already exists
+    logger.warn('GeminiMCPManager already initialized, ignoring new config', {
+      hint: 'Use resetDefaultGeminiMCPManager() to recreate with new config'
+    });
   }
   return defaultManager;
+}
+
+/**
+ * Reset the default Gemini MCP manager
+ *
+ * Cleans up the existing manager and allows recreation with new config.
+ */
+export async function resetDefaultGeminiMCPManager(): Promise<void> {
+  if (defaultManager) {
+    await defaultManager.cleanup();
+    defaultManager = null;
+  }
 }

@@ -362,7 +362,13 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       // This is the ONLY way to get token counts from SDK
 
       // Get history length before execution (to identify new entries)
-      const historyLengthBefore = this.agent.getChatHistory().length;
+      // BUG FIX (v11.3.3): Handle case where getChatHistory() is not available
+      // or returns undefined/null. Some SDK agent implementations may not
+      // expose this method or may return empty results.
+      const chatHistory = typeof this.agent.getChatHistory === 'function'
+        ? this.agent.getChatHistory()
+        : null;
+      const historyLengthBefore = Array.isArray(chatHistory) ? chatHistory.length : 0;
 
       for await (const chunk of this.agent.processUserMessageStream(prompt)) {
         // Track token counts from chunks
@@ -406,8 +412,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       }
 
       // Get only the NEW entries from this execution
-      const fullHistory = this.agent.getChatHistory();
-      const result = fullHistory.slice(historyLengthBefore);
+      // BUG FIX (v11.3.3): Handle case where getChatHistory() is not available
+      const fullHistory = typeof this.agent.getChatHistory === 'function'
+        ? this.agent.getChatHistory()
+        : [];
+      const result = Array.isArray(fullHistory) ? fullHistory.slice(historyLengthBefore) : [];
 
       logger.debug('Chat history extraction', {
         historyLengthBefore,
@@ -564,11 +573,23 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    *
    * BUG FIX: If config changes while initialization is in progress, we need to
    * wait for current init to complete, then reinitialize with new config.
+   *
+   * BUG FIX (v11.3.3): Track initialization errors to prevent repeated init
+   * attempts from creating a retry storm. If init fails, remember the error
+   * and rethrow it for subsequent callers until reset.
    */
+  private initError: Error | null = null;
+
   private async ensureAgent(options: AxCliOptions): Promise<void> {
     // Fast path: agent exists and config hasn't changed
     if (this.agent && !this.hasConfigChanged(options)) {
       return;
+    }
+
+    // BUG FIX: If previous initialization failed, rethrow immediately
+    // to prevent retry storms. Reset via destroy() to allow retry.
+    if (this.initError && !this.agent) {
+      throw this.initError;
     }
 
     // If there's an initialization in progress, wait for it first
@@ -579,12 +600,23 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       if (this.agent && !this.hasConfigChanged(options)) {
         return;
       }
+      // Also check if the in-progress init failed
+      if (this.initError) {
+        throw this.initError;
+      }
     }
 
-    // Start new initialization
-    this.initPromise = this.initializeAgent(options).finally(() => {
-      this.initPromise = null;
-    });
+    // Start new initialization - clear any previous error
+    this.initError = null;
+    this.initPromise = this.initializeAgent(options)
+      .catch((error) => {
+        // BUG FIX: Capture initialization error for subsequent callers
+        this.initError = error instanceof Error ? error : new Error(String(error));
+        throw error;
+      })
+      .finally(() => {
+        this.initPromise = null;
+      });
 
     await this.initPromise;
   }
@@ -592,18 +624,32 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   /**
    * Set up streaming event handlers (for initialization)
    *
-   * BUG FIX: Remove existing listeners before adding new ones to prevent
-   * listener accumulation when agent is reinitialized.
+   * BUG FIX (v11.3.3): Check if removeAllListeners exists before calling it.
+   * Not all SDK agent implementations extend EventEmitter, and calling
+   * a non-existent method would cause an error. Use optional chaining and
+   * type guards to safely handle this.
    */
   private setupEventHandlers(): void {
     if (!this.agent) return;
 
     try {
-      // BUG FIX: Remove existing listeners to prevent accumulation
-      // This is important when agent is reinitialized (e.g., config changes)
-      this.agent.removeAllListeners('stream');
-      this.agent.removeAllListeners('tool');
-      this.agent.removeAllListeners('error');
+      // BUG FIX: Safely remove existing listeners to prevent accumulation
+      // Check if the agent has EventEmitter-like methods before calling them
+      if (typeof this.agent.removeAllListeners === 'function') {
+        this.agent.removeAllListeners('stream');
+        this.agent.removeAllListeners('tool');
+        this.agent.removeAllListeners('error');
+      } else if (typeof this.agent.off === 'function') {
+        // Fallback for agents that use off() instead of removeAllListeners()
+        // We can't remove all without knowing the listener refs, so just skip
+        logger.debug('Agent uses off() instead of removeAllListeners(), skipping listener cleanup');
+      }
+
+      // BUG FIX: Check if agent supports event subscription before adding listeners
+      if (typeof this.agent.on !== 'function') {
+        logger.debug('Agent does not support event subscription, skipping event handlers');
+        return;
+      }
 
       // SDK events: 'stream', 'tool', 'reasoning', etc.
       this.agent.on('stream', (chunk: any) => {
@@ -747,13 +793,17 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     }
 
     // Fallback: single response object (if SDK API changes)
-    const content = typeof result === 'string' ? result : result.content || result.text || '';
+    // BUG FIX (v11.3.3): Handle null/undefined result gracefully to avoid
+    // TypeError when accessing result.content or result.usage
+    const content = typeof result === 'string'
+      ? result
+      : (result?.content || result?.text || '');
 
     const tokensUsed = this.extractTokenUsage(
       prompt,
       content,
       totalTokensFromEvents,
-      result.usage || result.tokens,
+      result?.usage || result?.tokens,
       'response.usage (fallback path)'
     );
 
@@ -927,8 +977,12 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
   /**
    * Dispose the primary agent without touching ancillary adapters.
+   * BUG FIX (v11.3.3): Also clear initError to allow retry after destroy.
    */
   private async destroyAgentInstance(): Promise<void> {
+    // BUG FIX: Clear initError to allow retry after destroy
+    this.initError = null;
+
     if (!this.agent) return;
 
     try {

@@ -93,6 +93,20 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
           error: error instanceof Error ? error.message : String(error)
         });
 
+        // BUG FIX (v11.3.3): Clean up SDK adapter to prevent resource leaks
+        // when falling back to CLI. Use fire-and-forget pattern since we need
+        // to return quickly and CLI is the fallback anyway.
+        if (this.sdkAdapter) {
+          const sdkAdapterToClean = this.sdkAdapter;
+          this.sdkAdapter = null;
+          // Fire-and-forget cleanup - don't await to keep fallback fast
+          sdkAdapterToClean.destroy().catch((cleanupError) => {
+            logger.warn('Error during SDK adapter cleanup on fallback', {
+              error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+            });
+          });
+        }
+
         // Ensure CLI adapter exists for fallback
         if (!this.cliAdapter) {
           this.initializeCli();
@@ -189,18 +203,31 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
    *
    * @param required - If true, throws if SDK unavailable
    * @returns true if SDK is available, false otherwise
+   *
+   * BUG FIX (v11.3.3): Clean up SDK adapter if isAvailable() returns false.
+   * Previously the adapter was just set to null without calling destroy(),
+   * which could leak resources initialized in the constructor.
    */
   private async initializeSdk(required: boolean): Promise<boolean> {
     if (this.sdkAdapter) {
       return true;  // Already initialized
     }
 
-    try {
-      this.sdkAdapter = new AxCliSdkAdapter(this.sdkOptions);
+    let adapter: AxCliSdkAdapter | null = null;
 
-      const available = await this.sdkAdapter.isAvailable();
+    try {
+      adapter = new AxCliSdkAdapter(this.sdkOptions);
+
+      const available = await adapter.isAvailable();
 
       if (!available) {
+        // BUG FIX: Clean up adapter before discarding
+        await adapter.destroy().catch((cleanupError) => {
+          logger.warn('Error cleaning up unavailable SDK adapter', {
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+          });
+        });
+
         if (required) {
           throw new Error(
             'ax-cli SDK not available. Install with: npm install @defai.digital/ax-cli'
@@ -211,9 +238,11 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
           hint: 'Install with: npm install @defai.digital/ax-cli'
         });
 
-        this.sdkAdapter = null;
         return false;
       }
+
+      // Success - assign to instance variable
+      this.sdkAdapter = adapter;
 
       logger.info('SDK adapter initialized', {
         version: await this.sdkAdapter.getVersion()
@@ -221,6 +250,15 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
       return true;
     } catch (error) {
+      // BUG FIX: Clean up adapter on any error
+      if (adapter) {
+        await adapter.destroy().catch((cleanupError) => {
+          logger.warn('Error cleaning up SDK adapter after error', {
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+          });
+        });
+      }
+
       logger.error('Failed to initialize SDK adapter', {
         error: error instanceof Error ? error.message : String(error)
       });

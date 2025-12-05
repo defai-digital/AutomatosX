@@ -220,6 +220,11 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       const workflowCount = await copyWorkflowTemplates(automatosxDir, packageRoot);
       console.log(chalk.green(`   ✓ ${workflowCount} workflow templates installed`));
 
+      // Copy iterate mode patterns and templates (v11.4.0+)
+      console.log(chalk.cyan('🔁 Installing iterate mode configuration...'));
+      await copyIterateConfig(automatosxDir, packageRoot);
+      console.log(chalk.green('   ✓ Iterate mode patterns and templates installed'));
+
       // Create default config
       console.log(chalk.cyan('⚙️  Generating configuration...'));
       await createDefaultConfig(configPath, argv.force ?? false, version);
@@ -538,7 +543,9 @@ async function createDirectoryStructure(baseDir: string): Promise<void> {
     join(baseDir, 'sessions'),       // v5.1: Session persistence
     // v5.2: Removed 'workspaces' - automatosx/PRD and automatosx/tmp created on-demand
     join(baseDir, 'logs'),
-    join(baseDir, 'workflows')       // v11.0.0: Workflow templates directory
+    join(baseDir, 'workflows'),      // v11.0.0: Workflow templates directory
+    join(baseDir, 'iterate'),        // v11.4.0: Iterate mode patterns and templates
+    join(baseDir, 'state')           // v11.3.0: Mode state persistence
   ];
 
   // v5.6.0: Use 0o755 permissions (rwxr-xr-x) for cross-platform compatibility
@@ -715,6 +722,188 @@ async function copyWorkflowTemplates(baseDir: string, packageRoot: string): Prom
     await createDefaultWorkflowTemplates(targetDir);
     return 4;
   }
+}
+
+/**
+ * Copy iterate mode patterns and templates to user's .automatosx directory (v11.4.0)
+ *
+ * Iterate mode enables autonomous multi-iteration execution with --iterate flag.
+ * - patterns.yaml: Classification patterns for response types
+ * - templates.yaml: Auto-response templates for confirmations
+ */
+async function copyIterateConfig(baseDir: string, packageRoot: string): Promise<void> {
+  const iterateDir = join(baseDir, 'iterate');
+
+  // Try to copy from examples/iterate if it exists
+  const examplesIterateDir = join(packageRoot, 'examples/iterate');
+
+  try {
+    if (await checkExists(examplesIterateDir)) {
+      const files = await readdir(examplesIterateDir);
+      for (const file of files) {
+        if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+          await copyFile(join(examplesIterateDir, file), join(iterateDir, file));
+        }
+      }
+      return;
+    }
+  } catch {
+    // Fall through to create default files
+  }
+
+  // Create default iterate configuration files
+  await createDefaultIterateConfig(iterateDir);
+}
+
+/**
+ * Create default iterate mode configuration files
+ */
+async function createDefaultIterateConfig(iterateDir: string): Promise<void> {
+  const patternsYaml = `# AutomatosX Iterate Mode - Pattern Library
+# Production patterns for response classification
+#
+# Classification Types:
+# - confirmation_prompt: AI asking for permission to proceed (auto-respond YES)
+# - genuine_question: AI asking for user input/decision (PAUSE)
+# - status_update: AI reporting progress (NO-OP)
+# - completion_signal: AI indicating task complete (acknowledge)
+# - blocking_request: AI needs external input (PAUSE)
+# - error_signal: AI encountered error (PAUSE for recovery)
+# - rate_limit_or_context: Provider limits hit (RETRY with different provider)
+
+version: "1.0.0"
+updatedAt: "${new Date().toISOString()}"
+description: "Production pattern library for iterate mode classifier"
+
+patterns:
+  confirmation_prompt:
+    - pattern: "\\\\b(should I|shall I|do you want me to|would you like me to)\\\\b.*(proceed|continue|start|begin|go ahead)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\b(ready to|prepared to)\\\\b.*(proceed|continue|start|begin|implement)"
+      priority: 9
+      confidence: 0.9
+    - pattern: "\\\\b(continue|proceed|go ahead)\\\\s*\\\\?"
+      priority: 8
+      confidence: 0.85
+    - pattern: "\\\\b(is that|does that|sound)\\\\s+(okay|ok|good|correct|right)\\\\s*\\\\?"
+      priority: 7
+      confidence: 0.8
+
+  genuine_question:
+    - pattern: "\\\\b(which|what)\\\\b.*(approach|method|option|implementation|strategy|framework|library)\\\\b.*(should|would|prefer|recommend)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\b(option [A-Z]|choice \\\\d|alternative \\\\d)\\\\b"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\bwould you prefer\\\\b"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\bcould you (clarify|explain|specify|provide)\\\\b"
+      priority: 8
+      confidence: 0.85
+
+  status_update:
+    - pattern: "\\\\b(working on|implementing|creating|building|setting up|configuring)\\\\b"
+      priority: 10
+      confidence: 0.9
+    - pattern: "\\\\b(analyzing|reviewing|examining|checking|looking at)\\\\b"
+      priority: 9
+      confidence: 0.85
+    - pattern: "\\\\bI('ll| will| am going to)\\\\b.*(now|first|next|then)\\\\b"
+      priority: 8
+      confidence: 0.8
+
+  completion_signal:
+    - pattern: "\\\\b(all (tasks|items|changes|updates)|everything)\\\\s+(completed|done|finished|implemented)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\bsuccessfully (completed|implemented|created|fixed|resolved)"
+      priority: 9
+      confidence: 0.9
+    - pattern: "\\\\blet me know if (you need|there('s| is)) anything else"
+      priority: 7
+      confidence: 0.8
+
+  blocking_request:
+    - pattern: "\\\\b(API key|credentials|password|token|secret)\\\\s+(needed|required|missing)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\bplease (provide|enter|specify|supply)\\\\b.*(key|password|token|credential)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\b(need|require|waiting for)\\\\s+(your|user)\\\\s+(input|approval|confirmation|decision)"
+      priority: 10
+      confidence: 0.95
+
+  error_signal:
+    - pattern: "\\\\b(error|failed|failure|exception)\\\\s*:"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\b(cannot|can't|couldn't|unable to)\\\\s+(find|locate|access|connect|read|write)"
+      priority: 9
+      confidence: 0.9
+    - pattern: "\\\\b(test|build|compilation)\\\\s+(failed|error)"
+      priority: 9
+      confidence: 0.9
+
+  rate_limit_or_context:
+    - pattern: "\\\\brate limit\\\\s*(exceeded|reached|hit)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\bcontext (window|limit)\\\\s*(exceeded|full|reached)"
+      priority: 10
+      confidence: 0.95
+    - pattern: "\\\\btoo many requests"
+      priority: 10
+      confidence: 0.95
+`;
+
+  const templatesYaml = `# AutomatosX Iterate Mode - Template Library
+# Production templates for auto-response generation
+
+version: "1.0.0"
+updatedAt: "${new Date().toISOString()}"
+description: "Production template library for iterate mode auto-responder"
+
+templates:
+  confirmation_prompt:
+    - template: "Yes, please proceed."
+      priority: 10
+      provider: null
+    - template: "Yes, continue with that approach."
+      priority: 9
+      provider: null
+    - template: "Sounds good, go ahead."
+      priority: 8
+      provider: null
+    - template: "Proceed."
+      priority: 7
+      provider: null
+    - template: "Continue."
+      priority: 7
+      provider: null
+
+  completion_signal:
+    - template: "Thank you."
+      priority: 10
+      provider: null
+    - template: "Great work."
+      priority: 9
+      provider: null
+
+  status_update: []
+  genuine_question: []
+  blocking_request: []
+  error_signal: []
+  rate_limit_or_context: []
+`;
+
+  await writeFile(join(iterateDir, 'patterns.yaml'), patternsYaml, 'utf-8');
+  await writeFile(join(iterateDir, 'templates.yaml'), templatesYaml, 'utf-8');
+
+  logger.info('Created default iterate mode configuration', { iterateDir });
 }
 
 /**

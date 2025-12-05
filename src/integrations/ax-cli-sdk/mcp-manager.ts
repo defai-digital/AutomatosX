@@ -633,12 +633,37 @@ export class AxCliMCPManager {
       }
 
       // Fallback: stop each server individually
+      // BUG FIX (v11.3.3): Collect errors from individual server stops and report
+      // them to the caller. Previously errors were silently ignored, so callers
+      // thought shutdown succeeded even when some servers failed to stop.
       const serversResult = await this.listServers();
-      if (serversResult.ok) {
-        for (const name of serversResult.value) {
-          await this.stopServer(name);
+      // BUG FIX (v11.3.3): If listServers fails, propagate the error instead of
+      // silently returning success. This prevents false positives where callers
+      // think shutdown succeeded when we couldn't even enumerate the servers.
+      if (!serversResult.ok) {
+        logger.warn('Cannot enumerate servers for shutdown', {
+          error: serversResult.error.message
+        });
+        return serversResult;
+      }
+
+      const errors: Array<{ name: string; error: string }> = [];
+      for (const name of serversResult.value) {
+        const stopResult = await this.stopServer(name);
+        if (!stopResult.ok) {
+          errors.push({
+            name,
+            error: stopResult.error.message
+          });
         }
       }
+      // If any servers failed to stop, return an aggregated error
+      if (errors.length > 0) {
+        const errorMessage = `Failed to stop ${errors.length} server(s): ${errors.map(e => `${e.name} (${e.error})`).join(', ')}`;
+        logger.warn('Partial MCP shutdown failure', { errors });
+        return { ok: false, error: new Error(errorMessage) };
+      }
+
       return { ok: true, value: undefined };
     } catch (error) {
       return {

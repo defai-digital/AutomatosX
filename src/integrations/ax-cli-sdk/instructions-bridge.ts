@@ -222,17 +222,19 @@ export class InstructionsBridge {
       parts.push('## Additional Context\n\n' + additionalContext);
     }
 
-    let combined = parts.join('\n\n---\n\n');
+    const combined = parts.join('\n\n---\n\n');
 
     // Truncate if too long
     if (combined.length > this.options.maxContextLength) {
-      combined = combined.substring(0, this.options.maxContextLength - 100) +
-        '\n\n[Context truncated due to length limit]';
-
+      // BUG FIX: Use already-computed combined.length instead of recalculating
+      // parts.join() a second time (wasteful redundant computation)
       logger.warn('Instructions truncated', {
-        originalLength: parts.join('\n\n---\n\n').length,
+        originalLength: combined.length,
         truncatedTo: this.options.maxContextLength
       });
+
+      return combined.substring(0, this.options.maxContextLength - 100) +
+        '\n\n[Context truncated due to length limit]';
     }
 
     return combined;
@@ -342,6 +344,11 @@ export class InstructionsBridge {
 
   /**
    * Parse YAML profile content (simple parser)
+   *
+   * BUG FIX (v11.3.3):
+   * - Support keys with hyphens/underscores (e.g., display_name, my-key)
+   * - Strip quotes from string values
+   * - Handle empty values correctly
    */
   private parseYamlProfile(content: string): AgentProfile {
     const lines = content.split('\n');
@@ -351,34 +358,46 @@ export class InstructionsBridge {
     let inInstructions = false;
 
     for (const line of lines) {
-      // Check for key-value pair
-      const match = line.match(/^(\w+):\s*(.*)$/);
+      // BUG FIX: Support keys with hyphens and underscores, not just word chars
+      const match = line.match(/^([\w-]+):\s*(.*)$/);
 
       if (match) {
-        const [, key, value] = match;
+        const [, rawKey, rawValue] = match;
+        // BUG FIX: Ensure key is defined (TypeScript strictness)
+        const key = rawKey ?? '';
+        let value = rawValue ?? '';
 
-        if (inInstructions && key !== 'instructions') {
+        // BUG FIX: Strip surrounding quotes from values
+        if (value && ((value.startsWith('"') && value.endsWith('"')) ||
+                      (value.startsWith("'") && value.endsWith("'")))) {
+          value = value.slice(1, -1);
+        }
+
+        // BUG FIX: Normalize hyphenated keys to underscored (e.g., display-name → display_name)
+        const normalizedKey = key.replace(/-/g, '_');
+
+        if (inInstructions && normalizedKey !== 'instructions') {
           // End of instructions block
           profile.instructions = instructionsBuffer.join('\n').trim();
           instructionsBuffer = [];
           inInstructions = false;
         }
 
-        if (key === 'instructions') {
+        if (normalizedKey === 'instructions') {
           inInstructions = true;
-          currentKey = key;
+          currentKey = normalizedKey;
           if (value && value.startsWith('|')) {
             // Multi-line string starts
           } else if (value) {
             profile.instructions = value;
             inInstructions = false;
           }
-        } else if (key === 'expertise') {
+        } else if (normalizedKey === 'expertise') {
           profile.expertise = [];
-          currentKey = key;
-        } else if (key && value !== undefined) {
-          (profile as Record<string, string>)[key] = value;
-          currentKey = key;
+          currentKey = normalizedKey;
+        } else if (normalizedKey && value !== undefined) {
+          (profile as Record<string, string>)[normalizedKey] = value;
+          currentKey = normalizedKey;
         }
       } else if (inInstructions) {
         // Continuation of instructions

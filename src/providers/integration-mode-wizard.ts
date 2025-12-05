@@ -290,14 +290,35 @@ export async function shouldShowWizard(
 
 /**
  * Resolve auto mode to actual mode
+ *
+ * BUG FIX: Properly handle 'mcp' and 'auto' modes instead of unsafe type casting.
+ * Previously cast any IntegrationMode to 'cli' | 'sdk' which was incorrect
+ * when recommendedMode was 'mcp' or 'auto'.
  */
 export async function resolveAutoMode(): Promise<'cli' | 'sdk'> {
   const env = await detectEnvironment();
-  return env.recommendedMode === 'auto' ? 'cli' : env.recommendedMode as 'cli' | 'sdk';
+
+  // BUG FIX: Explicitly handle each possible mode
+  switch (env.recommendedMode) {
+    case 'cli':
+      return 'cli';
+    case 'sdk':
+      return 'sdk';
+    case 'mcp':
+      // MCP mode falls back to CLI (subprocess-based)
+      logger.debug('MCP mode recommended but resolving to CLI for auto-resolution');
+      return 'cli';
+    case 'auto':
+    default:
+      // Auto or unknown defaults to CLI (safest option)
+      return 'cli';
+  }
 }
 
 /**
  * Get mode with auto-resolution
+ *
+ * BUG FIX: Properly handle 'mcp' mode instead of unsafe type casting.
  */
 export async function getModeWithAutoResolution(
   configuredMode?: IntegrationMode
@@ -305,5 +326,12 @@ export async function getModeWithAutoResolution(
   if (!configuredMode || configuredMode === 'auto') {
     return await resolveAutoMode();
   }
-  return configuredMode as 'cli' | 'sdk';
+
+  // BUG FIX: Handle 'mcp' mode explicitly
+  if (configuredMode === 'mcp') {
+    logger.debug('MCP mode configured, resolving to CLI');
+    return 'cli';
+  }
+
+  return configuredMode;
 }

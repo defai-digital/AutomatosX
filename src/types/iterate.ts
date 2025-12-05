@@ -79,6 +79,15 @@ export interface DangerousOperationsConfig {
 
   /** Package installation (npm install, etc.) */
   packageInstall: RiskLevel;
+
+  /** Database DROP operations */
+  databaseDrop?: RiskLevel;
+
+  /** Database TRUNCATE operations */
+  databaseTruncate?: RiskLevel;
+
+  /** Database DELETE operations without WHERE */
+  databaseDelete?: RiskLevel;
 }
 
 /**

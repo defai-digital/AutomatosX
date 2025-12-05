@@ -62,6 +62,35 @@ export const OPENAI_RETRYABLE_ERRORS = [
 ] as const;
 
 /**
+ * ax-cli provider retryable errors (v9.2.0)
+ *
+ * BUG FIX: Added ax-cli specific patterns. ax-cli is a multi-model provider
+ * that proxies to GLM, xAI, OpenAI, Anthropic, Ollama, etc.
+ * Combines patterns from all backends since errors bubble up from them.
+ */
+export const AX_CLI_RETRYABLE_ERRORS = [
+  // Inherited from Anthropic (via ax-cli)
+  'overloaded_error',
+  // Inherited from OpenAI (via ax-cli)
+  'internal_error',
+  // ax-cli specific
+  'agent_error',
+  'tool_execution_error',
+  // xAI/Grok specific
+  'service_overloaded'
+] as const;
+
+/**
+ * Codex provider retryable errors
+ *
+ * BUG FIX: Added codex patterns (same as OpenAI since Codex uses OpenAI API)
+ */
+export const CODEX_RETRYABLE_ERRORS = [
+  ...OPENAI_RETRYABLE_ERRORS,
+  'sandbox_error'  // Codex-specific sandbox issues are often transient
+] as const;
+
+/**
  * Errors that should NEVER be retried (authentication, configuration, etc.)
  */
 export const NON_RETRYABLE_ERRORS = [
@@ -83,9 +112,17 @@ export function containsErrorPattern(message: string, patterns: readonly string[
 }
 
 /**
+ * Supported provider types for retry error handling
+ *
+ * BUG FIX: Added 'ax-cli' and 'codex' providers which were previously missing
+ * and falling through to default case.
+ */
+export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'ax-cli' | 'codex' | 'base';
+
+/**
  * Get all retryable errors for a specific provider
  */
-export function getRetryableErrors(provider: 'claude' | 'gemini' | 'openai' | 'base'): readonly string[] {
+export function getRetryableErrors(provider: RetryableProvider): readonly string[] {
   const baseErrors = [
     ...COMMON_NETWORK_ERRORS,
     ...COMMON_RATE_LIMIT_ERRORS,
@@ -99,6 +136,12 @@ export function getRetryableErrors(provider: 'claude' | 'gemini' | 'openai' | 'b
       return [...baseErrors, ...GEMINI_RETRYABLE_ERRORS];
     case 'openai':
       return [...baseErrors, ...OPENAI_RETRYABLE_ERRORS];
+    case 'ax-cli':
+      // BUG FIX: Added ax-cli support - combines patterns from all backends
+      return [...baseErrors, ...AX_CLI_RETRYABLE_ERRORS];
+    case 'codex':
+      // BUG FIX: Added codex support
+      return [...baseErrors, ...CODEX_RETRYABLE_ERRORS];
     case 'base':
     default:
       return baseErrors;
@@ -107,10 +150,13 @@ export function getRetryableErrors(provider: 'claude' | 'gemini' | 'openai' | 'b
 
 /**
  * Check if an error should be retried for a specific provider
+ *
+ * BUG FIX: Updated signature to use RetryableProvider type which includes
+ * 'ax-cli' and 'codex' providers.
  */
 export function shouldRetryError(
   error: Error,
-  provider: 'claude' | 'gemini' | 'openai' | 'base'
+  provider: RetryableProvider
 ): boolean {
   const message = error.message;
 

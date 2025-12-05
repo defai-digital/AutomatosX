@@ -37,14 +37,22 @@ export type ExecutionRequestZod = z.infer<typeof executionRequestSchema>;
 /**
  * Token usage schema
  * Validates token counts in responses
+ *
+ * BUG FIX: Relaxed validation from strict equality to >= comparison.
+ * Previously required `total === prompt + completion` which failed for:
+ * - Providers that include overhead tokens in total
+ * - Rounding differences in API responses
+ * - Providers that report total without detailed breakdown
+ *
+ * New rule: total >= prompt + completion (allows overhead tokens)
  */
 export const tokenUsageSchema = z.object({
   prompt: z.number().int().nonnegative(),
   completion: z.number().int().nonnegative(),
   total: z.number().int().nonnegative()
 }).refine(
-  (data) => data.total === data.prompt + data.completion,
-  'Total tokens must equal prompt + completion'
+  (data) => data.total >= data.prompt + data.completion,
+  'Total tokens must be greater than or equal to prompt + completion'
 ).describe('Token usage information');
 
 export type TokenUsageZod = z.infer<typeof tokenUsageSchema>;

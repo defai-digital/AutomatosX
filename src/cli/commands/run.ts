@@ -1054,7 +1054,10 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                   writeOutsideWorkspace: 'HIGH' as const,
                   secretsInCode: 'HIGH' as const,
                   shellCommands: 'MEDIUM' as const,
-                  packageInstall: 'MEDIUM' as const
+                  packageInstall: 'MEDIUM' as const,
+                  databaseDrop: 'HIGH' as const,
+                  databaseTruncate: 'HIGH' as const,
+                  databaseDelete: 'HIGH' as const
                 },
                 enableTimeTracking: true,
                 enableIterationTracking: true

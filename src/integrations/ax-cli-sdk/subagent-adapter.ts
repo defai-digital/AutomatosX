@@ -791,6 +791,11 @@ export class SubagentAdapter {
 
 /**
  * Map AutomatosX agent names to ax-cli subagent roles
+ *
+ * BUG FIX: Added missing mappings for 'debug' and 'performance' agents
+ * that were added to AutomatosX but not mapped to SDK roles.
+ * Also added 'debugging' and 'refactoring' which are SDK-specific roles
+ * referenced in CLAUDE.md documentation.
  */
 export function mapAgentToSubagentRole(agentName: string): SubagentRole {
   const roleMap: Record<string, SubagentRole> = {
@@ -817,11 +822,20 @@ export function mapAgentToSubagentRole(agentName: string): SubagentRole {
     'writer': 'documenter',
     'product': 'documenter',
 
-    // Default
+    // BUG FIX: Added missing agent mappings
+    // Debug and performance agents map to SDK-specific roles
+    'debug': 'developer',      // BUG FIX: Was missing - debug tasks are development-oriented
+    'performance': 'developer', // BUG FIX: Was missing - performance optimization is development work
+
+    // DevOps and infrastructure
     'devops': 'developer',
+
+    // Creative and leadership roles
     'design': 'custom',
     'ceo': 'custom',
     'creative-marketer': 'custom',
+
+    // Default review role
     'standard': 'reviewer'
   };
 

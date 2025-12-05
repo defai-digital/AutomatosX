@@ -134,6 +134,8 @@ export class MetricsCollector {
   private failedRequestCounts: Map<string, number> = new Map();
   private responseTimes: Map<string, number[]> = new Map();
   private restartCounts: Map<string, number> = new Map();
+  /** Track which servers have had their first start recorded */
+  private serverStarted: Set<string> = new Set();
 
   constructor(options: MetricsCollectorOptions = {}) {
     this.enabled = options.enabled ?? true;
@@ -179,17 +181,32 @@ export class MetricsCollector {
 
   /**
    * Record server start
+   *
+   * BUG FIX: Previously incremented restartCount on every start including the first one,
+   * so a server that never restarted would show restartCount: 1. Now correctly tracks
+   * only actual restarts (starts after the first one).
    */
   recordServerStart(serverName: string): void {
     if (!this.enabled) return;
 
-    const currentRestarts = this.restartCounts.get(serverName) || 0;
-    this.restartCounts.set(serverName, currentRestarts + 1);
+    // BUG FIX: Only count as restart if server has started before
+    if (this.serverStarted.has(serverName)) {
+      const currentRestarts = this.restartCounts.get(serverName) || 0;
+      this.restartCounts.set(serverName, currentRestarts + 1);
 
-    logger.debug('MetricsCollector: Recorded server start', {
-      serverName,
-      restartCount: currentRestarts + 1,
-    });
+      logger.debug('MetricsCollector: Recorded server restart', {
+        serverName,
+        restartCount: currentRestarts + 1,
+      });
+    } else {
+      // First start - mark as started but don't count as restart
+      this.serverStarted.add(serverName);
+      this.restartCounts.set(serverName, 0);
+
+      logger.debug('MetricsCollector: Recorded server first start', {
+        serverName,
+      });
+    }
   }
 
   /**
@@ -370,6 +387,7 @@ export class MetricsCollector {
       this.failedRequestCounts.delete(serverName);
       this.responseTimes.delete(serverName);
       this.restartCounts.delete(serverName);
+      this.serverStarted.delete(serverName);
       logger.info('MetricsCollector: Cleared history for server', { serverName });
     } else {
       this.metricsHistory.clear();
@@ -377,6 +395,7 @@ export class MetricsCollector {
       this.failedRequestCounts.clear();
       this.responseTimes.clear();
       this.restartCounts.clear();
+      this.serverStarted.clear();
       logger.info('MetricsCollector: Cleared all history');
     }
   }

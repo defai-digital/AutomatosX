@@ -157,12 +157,20 @@ export class AxCliProvider extends BaseProvider {
         model: options.model || '(from ax-cli setup)'
       });
 
-      throw error;
+      // BUG FIX: Use handleError() for proper error categorization (rate limit, timeout, etc.)
+      // and health status updates. Previously just re-threw the raw error which bypassed
+      // error normalization and health tracking.
+      throw this.handleError(error);
     }
   }
 
   /**
    * Check if ax-cli is available
+   *
+   * BUG FIX: Update health status like BaseProvider.isAvailable() does.
+   * Previously only returned the availability boolean without updating
+   * the provider's health state, which meant consecutiveFailures,
+   * consecutiveSuccesses, and errorRate weren't tracked for this provider.
    *
    * @returns True if ax-cli is installed and accessible
    */
@@ -170,7 +178,16 @@ export class AxCliProvider extends BaseProvider {
     try {
       const available = await this.adapter.isAvailable();
 
-      if (!available) {
+      // BUG FIX: Update health status (matching BaseProvider.isAvailable behavior)
+      this.health.available = available;
+      this.health.errorRate = available ? 0 : 1;
+      this.health.lastCheck = Date.now();
+      if (available) {
+        this.health.consecutiveFailures = 0;
+        this.health.consecutiveSuccesses++;
+      } else {
+        this.health.consecutiveFailures++;
+        this.health.consecutiveSuccesses = 0;
         logger.warn('ax-cli is not available', {
           provider: this.name,
           command: this.adapter.getCommand()
@@ -179,6 +196,13 @@ export class AxCliProvider extends BaseProvider {
 
       return available;
     } catch (error) {
+      // BUG FIX: Update health status on error
+      this.health.available = false;
+      this.health.errorRate = 1;
+      this.health.lastCheck = Date.now();
+      this.health.consecutiveFailures++;
+      this.health.consecutiveSuccesses = 0;
+
       logger.error('Failed to check ax-cli availability', {
         error: error instanceof Error ? error.message : String(error)
       });
@@ -384,6 +408,29 @@ export class AxCliProvider extends BaseProvider {
    */
   protected override getMockResponse(): string {
     return 'Mock ax-cli response for testing';
+  }
+
+  /**
+   * Cleanup provider resources
+   *
+   * BUG FIX (v11.3.3): AxCliProvider was missing a destroy() method, which meant
+   * the underlying HybridAxCliAdapter (and its SDK adapter, subagent adapter,
+   * checkpoint adapter, etc.) would never be cleaned up. This could cause:
+   * - Memory leaks from cached SDK agents
+   * - Unflushed checkpoint data
+   * - Orphaned MCP server connections
+   *
+   * Call this method when the provider is no longer needed.
+   */
+  async destroy(): Promise<void> {
+    try {
+      await this.adapter.destroy();
+      logger.info('AxCliProvider destroyed');
+    } catch (error) {
+      logger.warn('Error during AxCliProvider cleanup', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 }
 

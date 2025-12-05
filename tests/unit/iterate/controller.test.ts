@@ -116,7 +116,7 @@ describe('IterateModeController', () => {
   });
 
   describe('handleResponse() - Week 1 Skeleton', () => {
-    it('should return continue action for skeleton', async () => {
+    it('should return no_op action when state not initialized', async () => {
       const mockResponse = {
         content: 'Test response',
         tokensUsed: { prompt: 10, completion: 20, total: 30 },
@@ -128,8 +128,8 @@ describe('IterateModeController', () => {
       const action = await controller.handleResponse(mockResponse);
 
       expect(action).toBeDefined();
-      expect(action.type).toBe('continue');
-      expect(action.reason).toContain('Skeleton implementation');
+      expect(action.type).toBe('no_op');
+      expect(action.reason).toContain('no response needed');
     });
   });
 

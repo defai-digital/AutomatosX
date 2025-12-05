@@ -55,8 +55,8 @@ export function estimateTimeout(options: TimeoutOptions): TimeoutEstimate {
   // Calculate base duration
   // BUG #36 FIX: timing constants are already in milliseconds, don't multiply by 1000
   let estimatedDuration = timing.baseLatency;
-  estimatedDuration += (inputTokens / 1000) * timing.inputTokensPerSecond;
-  estimatedDuration += (estimatedOutputTokens / 1000) * timing.outputTokensPerSecond;
+  estimatedDuration += (inputTokens / 1000) * timing.inputMsPerKTokens;
+  estimatedDuration += (estimatedOutputTokens / 1000) * timing.outputMsPerKTokens;
 
   // Adjust for streaming (slightly faster due to immediate start)
   if (streaming) {
@@ -120,17 +120,22 @@ export function estimateTokenCount(text: string): number {
 
 /**
  * Get timing characteristics for model
+ *
+ * BUG FIX: Renamed variables from `inputTokensPerSecond`/`outputTokensPerSecond`
+ * to `inputMsPerKTokens`/`outputMsPerKTokens` to accurately reflect semantics.
+ * The old names suggested "tokens processed per second" but actually stored
+ * "milliseconds per 1K tokens processed", which is the inverse and confusing.
  */
 function getModelTiming(model?: string | null): {
   baseLatency: number;
-  inputTokensPerSecond: number;
-  outputTokensPerSecond: number;
+  inputMsPerKTokens: number;
+  outputMsPerKTokens: number;
 } {
   // Default timing for codex/gpt-4o class models
   const defaults = {
     baseLatency: 1000, // 1s base latency
-    inputTokensPerSecond: 50, // 50ms per 1K input tokens
-    outputTokensPerSecond: 200 // 200ms per 1K output tokens
+    inputMsPerKTokens: 50, // 50ms per 1K input tokens
+    outputMsPerKTokens: 200 // 200ms per 1K output tokens
   };
 
   if (!model) {
@@ -142,8 +147,8 @@ function getModelTiming(model?: string | null): {
     // o1 models are slower due to reasoning
     return {
       baseLatency: 2000,
-      inputTokensPerSecond: 100,
-      outputTokensPerSecond: 400
+      inputMsPerKTokens: 100,
+      outputMsPerKTokens: 400
     };
   }
 
@@ -151,8 +156,8 @@ function getModelTiming(model?: string | null): {
     // Mini models are faster
     return {
       baseLatency: 500,
-      inputTokensPerSecond: 30,
-      outputTokensPerSecond: 100
+      inputMsPerKTokens: 30,
+      outputMsPerKTokens: 100
     };
   }
 
@@ -223,9 +228,17 @@ export class ProgressTracker {
 
   /**
    * Get current progress (0-100)
+   *
+   * BUG FIX: Handle zero or negative estimatedDurationMs to prevent division by zero.
+   * Returns 95 (near-complete) if estimated duration is invalid, allowing the
+   * progress bar to still function while avoiding Infinity or NaN.
    */
   getProgress(): number {
     const elapsed = Date.now() - this.startTime;
+    // BUG FIX: Prevent division by zero when estimatedDurationMs is 0 or negative
+    if (this.estimatedDurationMs <= 0) {
+      return 95; // Return near-complete to indicate indeterminate progress
+    }
     const progress = Math.min((elapsed / this.estimatedDurationMs) * 100, 95);
     return Math.round(progress);
   }
@@ -239,8 +252,15 @@ export class ProgressTracker {
 
   /**
    * Get estimated remaining time in seconds
+   *
+   * BUG FIX: Handle zero or negative estimatedDurationMs gracefully.
+   * Returns 0 if estimated duration is invalid, indicating "finishing soon".
    */
   getEstimatedRemaining(): number {
+    // BUG FIX: Return 0 when estimatedDurationMs is invalid
+    if (this.estimatedDurationMs <= 0) {
+      return 0;
+    }
     const elapsed = Date.now() - this.startTime;
     const remaining = this.estimatedDurationMs - elapsed;
     return Math.max(0, Math.round(remaining / 1000));

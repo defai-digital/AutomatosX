@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-05T16:50:06.144Z
+ * Generated: 2025-12-05T19:08:31.187Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -25,7 +25,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   "providers": {
     "claude-code": {
       "enabled": true,
-      "priority": 1,
+      "priority": 3,
       "timeout": 2700000,
       "command": "claude",
       "healthCheck": {
@@ -85,7 +85,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     },
     "openai": {
       "enabled": true,
-      "priority": 3,
+      "priority": 1,
       "timeout": 2700000,
       "command": "codex",
       "healthCheck": {
@@ -263,15 +263,10 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   },
   "advanced": {
     "embedding": {
-      "model": "text-embedding-3-small",
       "timeout": 30000,
       "retryDelay": 1000,
       "dimensions": 1536,
       "maxRetries": 3
-    },
-    "projectContext": {
-      "maxSizeBytes": 102400,
-      "cacheTtlMs": 300000
     },
     "security": {
       "enablePathValidation": true,
@@ -328,30 +323,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "axCliSdk": {
-    "maxToolRounds": 400,
-    "checkpoint": {
-      "maxCheckpoints": 10,
-      "flushTimeoutMs": 5000
-    },
-    "subagent": {
-      "maxParallel": 4,
-      "timeoutMs": 300000,
-      "maxToolRounds": 100
-    },
-    "instructions": {
-      "cacheTtlMs": 300000,
-      "maxContextLength": 32000
-    }
-  },
-  "version": "11.3.2"
+  "version": "11.3.3"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-05T16:50:06.144Z',
+  generatedAt: '2025-12-05T19:08:31.187Z',
   sourceFile: 'ax.config.json',
-  version: '11.3.2'
+  version: '11.3.3'
 } as const;

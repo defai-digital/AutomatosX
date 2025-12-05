@@ -456,10 +456,23 @@ export interface PerformanceConfig {
 // ========================================
 
 export interface EmbeddingConfig {
+  /** Embedding model name (default: text-embedding-3-small) */
+  model?: string;
   timeout: number;
   retryDelay: number;
   dimensions: number;
   maxRetries: number;
+}
+
+/**
+ * Project Context Configuration (v11.3.0+)
+ * Controls project context loading behavior
+ */
+export interface ProjectContextConfig {
+  /** Maximum context size in bytes (default: 102400 = 100KB) */
+  maxSizeBytes?: number;
+  /** Cache TTL in milliseconds (default: 300000 = 5 minutes) */
+  cacheTtlMs?: number;
 }
 
 export interface SecurityConfig {
@@ -474,6 +487,7 @@ export interface DevelopmentConfig {
 
 export interface AdvancedConfig {
   embedding?: EmbeddingConfig;
+  projectContext?: ProjectContextConfig;
   security: SecurityConfig;
   development: DevelopmentConfig;
 }
@@ -610,6 +624,41 @@ export interface CostEstimationConfig {
   disclaimer?: string;        // Disclaimer text to show when enabled
 }
 
+/**
+ * ax-cli SDK Configuration (v11.3.0+)
+ * Configures the ax-cli SDK integration settings
+ */
+export interface AxCliSdkConfig {
+  /** Default max tool rounds for SDK agent (default: 400) */
+  maxToolRounds?: number;
+
+  /** Checkpoint configuration */
+  checkpoint?: {
+    /** Maximum checkpoints to retain per workflow (default: 10) */
+    maxCheckpoints?: number;
+    /** Timeout for flushing pending checkpoints during destroy in ms (default: 5000) */
+    flushTimeoutMs?: number;
+  };
+
+  /** Subagent configuration */
+  subagent?: {
+    /** Maximum parallel subagent executions (default: 4) */
+    maxParallel?: number;
+    /** Default timeout per subagent execution in ms (default: 300000) */
+    timeoutMs?: number;
+    /** Default max tool rounds for subagents (default: 100) */
+    maxToolRounds?: number;
+  };
+
+  /** Instructions bridge configuration */
+  instructions?: {
+    /** Cache TTL in ms (default: 300000) */
+    cacheTtlMs?: number;
+    /** Maximum context length in characters (default: 32000) */
+    maxContextLength?: number;
+  };
+}
+
 export interface AutomatosXConfig {
   $schema?: string;
   version?: string;
@@ -628,6 +677,7 @@ export interface AutomatosXConfig {
   router?: RouterConfig;  // v5.7.0: Router configuration
   telemetry?: TelemetryConfig;  // v6.0.7: Phase 4 - Observability & Analytics
   costEstimation?: CostEstimationConfig;  // v6.5.11: Cost estimation control
+  axCliSdk?: AxCliSdkConfig;  // v11.3.0: ax-cli SDK configuration
 }
 
 // ========================================

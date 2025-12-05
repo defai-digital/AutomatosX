@@ -97,7 +97,7 @@ export interface InstructionsBridgeOptions {
 export class InstructionsBridge {
   private readonly options: Required<InstructionsBridgeOptions>;
   private sdkAvailable: boolean | null = null;
-  private cache: Map<string, { instructions: CombinedInstructions; timestamp: number }> = new Map();
+  private cache: Map<string, { instructions: CombinedInstructions; timestamp: number; signature: string }> = new Map();
   private readonly CACHE_TTL = 300000; // 5 minutes
 
   constructor(options: InstructionsBridgeOptions = {}) {
@@ -119,9 +119,15 @@ export class InstructionsBridge {
    * @returns Combined instructions from all sources
    */
   async getInstructions(agentName: string, additionalContext?: string): Promise<CombinedInstructions> {
+    const cacheSignature = await this.buildCacheSignature(agentName);
+
     // Check cache first
     const cached = this.cache.get(agentName);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+    if (
+      cached &&
+      cached.signature === cacheSignature &&
+      Date.now() - cached.timestamp < this.CACHE_TTL
+    ) {
       logger.debug('Using cached instructions', { agentName });
 
       // Add additional context if provided
@@ -170,7 +176,11 @@ export class InstructionsBridge {
     };
 
     // Cache result
-    this.cache.set(agentName, { instructions: combined, timestamp: Date.now() });
+    this.cache.set(agentName, {
+      instructions: combined,
+      timestamp: Date.now(),
+      signature: cacheSignature
+    });
 
     logger.info('Instructions combined', {
       agentName,
@@ -470,6 +480,30 @@ ${profile.instructions}
     this.cache.delete(agentName);
     logger.debug('Agent cache cleared', { agentName });
   }
+
+  /**
+   * Build a cache signature from underlying file mtimes to invalidate cache when
+   * agent profiles or custom instructions change on disk.
+   */
+  private async buildCacheSignature(agentName: string): Promise<string> {
+    const profilePath = path.join(this.options.agentsDir, `${agentName}.ax.yaml`);
+    const [profileSig, customSig] = await Promise.all([
+      this.getFileSignature(profilePath),
+      this.getFileSignature(this.options.axCliCustomPath)
+    ]);
+
+    // Include whether project memory is part of the prompt to avoid mixing cached variants
+    return [profileSig, customSig, this.options.includeProjectMemory ? 'mem' : 'nomem'].join('|');
+  }
+
+  private async getFileSignature(filePath: string): Promise<string> {
+    try {
+      const stats = await fs.stat(filePath);
+      return `${stats.mtimeMs}:${stats.size}`;
+    } catch {
+      return 'missing';
+    }
+  }
 }
 
 /**
@@ -479,10 +513,30 @@ let defaultBridge: InstructionsBridge | null = null;
 
 /**
  * Get default instructions bridge instance
+ *
+ * BUG FIX: Log warning when options are provided but instance already exists,
+ * as the options will be ignored. Use resetInstructionsBridge() to recreate with new options.
  */
 export function getInstructionsBridge(options?: InstructionsBridgeOptions): InstructionsBridge {
   if (!defaultBridge) {
     defaultBridge = new InstructionsBridge(options);
+  } else if (options) {
+    // BUG FIX: Warn when options are provided but instance already exists
+    logger.warn('InstructionsBridge already initialized, ignoring new options', {
+      hint: 'Use resetInstructionsBridge() to recreate with new options'
+    });
   }
   return defaultBridge;
+}
+
+/**
+ * Reset the default instructions bridge instance
+ * Call this to recreate the bridge with new options
+ */
+export function resetInstructionsBridge(): void {
+  if (defaultBridge) {
+    defaultBridge.clearCache();
+    defaultBridge = null;
+    logger.debug('InstructionsBridge reset');
+  }
 }

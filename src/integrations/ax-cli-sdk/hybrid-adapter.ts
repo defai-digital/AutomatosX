@@ -88,10 +88,15 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
       throw new Error(`No adapter available for mode: ${this.mode}`);
     } catch (error) {
       // Auto mode: fallback to CLI if SDK fails
-      if (this.mode === 'auto' && this.activeMode === 'sdk' && this.cliAdapter) {
+      if (this.mode === 'auto' && this.activeMode === 'sdk') {
         logger.warn('SDK execution failed, falling back to CLI', {
           error: error instanceof Error ? error.message : String(error)
         });
+
+        // Ensure CLI adapter exists for fallback
+        if (!this.cliAdapter) {
+          this.initializeCli();
+        }
 
         // Permanently switch to CLI mode
         this.activeMode = 'cli';
@@ -277,6 +282,9 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
   /**
    * Get command name
+   *
+   * BUG FIX: Handle 'auto' mode correctly - return 'ax-cli-auto' to indicate
+   * the actual command hasn't been determined yet (will be sdk or cli after initialization)
    */
   getCommand(): string {
     if (this.activeMode === 'sdk') {
@@ -285,8 +293,16 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
       return 'ax-cli';
     }
 
-    // Not initialized yet, return based on mode
-    return this.mode === 'sdk' ? 'ax-cli-sdk' : 'ax-cli';
+    // Not initialized yet, return based on configured mode
+    // BUG FIX: Return mode-specific command name for accurate logging/debugging
+    if (this.mode === 'sdk') {
+      return 'ax-cli-sdk';
+    } else if (this.mode === 'cli') {
+      return 'ax-cli';
+    } else {
+      // Auto mode: indicate pending selection
+      return 'ax-cli-auto';
+    }
   }
 
   /**
@@ -312,9 +328,25 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
   /**
    * Force switch to CLI mode (for debugging or fallback)
+   *
+   * BUG FIX: Destroy SDK adapter when switching to CLI to prevent resource leaks
+   * (memory, event listeners) from the unused SDK adapter.
    */
-  switchToCliMode(): void {
+  async switchToCliMode(): Promise<void> {
     logger.info('Forcing switch to CLI mode');
+
+    // BUG FIX: Clean up SDK adapter to free resources
+    if (this.sdkAdapter) {
+      try {
+        await this.sdkAdapter.destroy();
+      } catch (error) {
+        logger.warn('Error destroying SDK adapter during mode switch', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      this.sdkAdapter = null;
+    }
+
     this.initializeCli();
     this.activeMode = 'cli';
   }
@@ -336,6 +368,7 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
   /**
    * Cleanup resources
+   * BUG FIX: Use Promise.allSettled to ensure cleanup completes even if SDK destroy fails
    */
   async destroy(): Promise<void> {
     const destroyPromises: Promise<void>[] = [];
@@ -346,7 +379,19 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
     // CLI adapter doesn't have cleanup (no persistent state)
 
-    await Promise.all(destroyPromises);
+    // BUG FIX: Use allSettled instead of all to ensure we always clean up references
+    // even if SDK destroy fails
+    const results = await Promise.allSettled(destroyPromises);
+
+    // Log any failures
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        logger.warn('Adapter cleanup failed', {
+          index,
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason)
+        });
+      }
+    });
 
     this.sdkAdapter = null;
     this.cliAdapter = null;

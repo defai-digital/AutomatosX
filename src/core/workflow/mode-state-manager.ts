@@ -11,7 +11,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { z } from 'zod';
 import { logger } from '../../shared/logging/logger.js';
-import { type WorkflowMode, isValidWorkflowMode } from './workflow-mode.js';
+import { type WorkflowMode } from './workflow-mode.js';
 import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
 
 /**
@@ -149,10 +149,13 @@ export async function clearModeState(): Promise<boolean> {
 
     if (existsSync(statePath)) {
       // Write default state instead of deleting
-      await saveModeState('default', {
+      const saved = await saveModeState('default', {
         setBy: 'cli',
         reason: 'mode cleared'
       });
+      if (!saved) {
+        return false;
+      }
     }
 
     logger.debug('Cleared mode state');

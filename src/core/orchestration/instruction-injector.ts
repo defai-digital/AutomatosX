@@ -62,7 +62,6 @@ export class OrchestrationInstructionInjector {
   private providers: Map<string, InstructionProvider> = new Map();
   private budgetManager: TokenBudgetManager;
   private config: OrchestrationConfig;
-  private lastInjectionTime: number = 0;
 
   constructor(config?: Partial<OrchestrationConfig>) {
     this.config = {
@@ -180,9 +179,6 @@ export class OrchestrationInstructionInjector {
 
     // Format instructions
     const formattedText = this.formatInstructions(allocation.included);
-
-    // Update timing
-    this.lastInjectionTime = Date.now();
 
     const duration = Date.now() - startTime;
     logger.debug('Instruction injection complete', {

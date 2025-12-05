@@ -132,8 +132,8 @@ export class SessionInstructionProvider implements InstructionProvider {
       return false;
     }
 
-    // Need either a session ID or a state provider
-    if (!context.sessionId && !this.stateProvider) {
+    // Need a session ID, state provider, or parent agent (for handoff context)
+    if (!context.sessionId && !this.stateProvider && !context.parentAgent) {
       return false;
     }
 
@@ -151,7 +151,8 @@ export class SessionInstructionProvider implements InstructionProvider {
     // Get session state
     const state = await this.getSessionState(context);
 
-    if (!state && !context.sessionId) {
+    // Can generate content from either session state or parentAgent context
+    if (!state && !context.sessionId && !context.parentAgent) {
       return instructions;
     }
 

@@ -127,54 +127,42 @@ export class WorkflowProgressProvider implements InstructionProvider {
    * Complete the current step and advance to next
    */
   completeCurrentStep(): boolean {
-    if (!this.activeWorkflow || this.activeWorkflow.isComplete) {
-      return false;
-    }
-
-    const currentStep = this.activeWorkflow.steps[this.activeWorkflow.currentStepIndex];
-    if (currentStep) {
-      currentStep.status = 'completed';
-      currentStep.completedAt = Date.now();
-    }
-
-    // Advance to next step
-    this.activeWorkflow.currentStepIndex++;
-
-    // Check if workflow is complete
-    if (this.activeWorkflow.currentStepIndex >= this.activeWorkflow.steps.length) {
-      this.activeWorkflow.isComplete = true;
-      logger.info('Workflow completed', {
-        name: this.activeWorkflow.name,
-        totalSteps: this.activeWorkflow.steps.length
-      });
-    } else {
-      // Mark next step as in_progress
-      const nextStep = this.activeWorkflow.steps[this.activeWorkflow.currentStepIndex];
-      if (nextStep) {
-        nextStep.status = 'in_progress';
-      }
-    }
-
-    return true;
+    return this.advanceStep('completed');
   }
 
   /**
    * Skip the current step
    */
   skipCurrentStep(): boolean {
+    return this.advanceStep('skipped');
+  }
+
+  /**
+   * Advance to the next step with the given status for the current step
+   */
+  private advanceStep(status: 'completed' | 'skipped'): boolean {
     if (!this.activeWorkflow || this.activeWorkflow.isComplete) {
       return false;
     }
 
     const currentStep = this.activeWorkflow.steps[this.activeWorkflow.currentStepIndex];
     if (currentStep) {
-      currentStep.status = 'skipped';
+      currentStep.status = status;
+      if (status === 'completed') {
+        currentStep.completedAt = Date.now();
+      }
     }
 
     this.activeWorkflow.currentStepIndex++;
 
     if (this.activeWorkflow.currentStepIndex >= this.activeWorkflow.steps.length) {
       this.activeWorkflow.isComplete = true;
+      if (status === 'completed') {
+        logger.info('Workflow completed', {
+          name: this.activeWorkflow.name,
+          totalSteps: this.activeWorkflow.steps.length
+        });
+      }
     } else {
       const nextStep = this.activeWorkflow.steps[this.activeWorkflow.currentStepIndex];
       if (nextStep) {
@@ -314,6 +302,13 @@ export class WorkflowProgressProvider implements InstructionProvider {
    */
   private generateProgressBar(completed: number, total: number): string {
     const barLength = 20;
+
+    // Guard against division by zero
+    if (total <= 0) {
+      const empty = '\u2591'.repeat(barLength);
+      return `Progress: [${empty}] 0% (0/0 steps)`;
+    }
+
     const filledLength = Math.round((completed / total) * barLength);
     const emptyLength = barLength - filledLength;
     const percent = Math.round((completed / total) * 100);

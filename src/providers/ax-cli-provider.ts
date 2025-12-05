@@ -20,12 +20,17 @@ import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../typ
 import { HybridAxCliAdapter, type AdapterMode } from '../integrations/ax-cli-sdk/hybrid-adapter.js';
 import type { AxCliOptions } from '../integrations/ax-cli/interface.js';
 import { logger } from '../shared/logging/logger.js';
-import type { SubagentTask, SubagentResult, OrchestratorOptions, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
+import type { SubagentTask, SubagentResult, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
 
 /**
  * Error message for SDK adapter unavailable (used in multiple methods)
  */
 const SDK_ADAPTER_UNAVAILABLE_ERROR = 'SDK adapter not available. Ensure mode="sdk" or "auto" with SDK installed.';
+
+/**
+ * Default maximum tool execution rounds for ax-cli provider
+ */
+const DEFAULT_MAX_TOOL_ROUNDS = 400;
 
 /**
  * Extended provider config for ax-cli
@@ -121,7 +126,7 @@ export class AxCliProvider extends BaseProvider {
     // Build execution options (provider is configured via ax-cli setup)
     const options: AxCliOptions = {
       model: request.model || axCliConfig.model,  // Optional model override
-      maxToolRounds: axCliConfig.maxToolRounds || 400,
+      maxToolRounds: axCliConfig.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS,
       timeout: this.config.timeout,
       // Note: apiKey and baseUrl are ignored by SDK adapter (v3.7.0+)
       // SDK loads credentials from ax-cli setup (~/.ax-cli/config.json)
@@ -217,9 +222,11 @@ export class AxCliProvider extends BaseProvider {
 
   /**
    * Force switch to CLI mode (for debugging or fallback)
+   *
+   * This method is async because it needs to clean up SDK adapter resources.
    */
-  public switchToCliMode(): void {
-    this.adapter.switchToCliMode();
+  public async switchToCliMode(): Promise<void> {
+    await this.adapter.switchToCliMode();
   }
 
   // ==========================================
@@ -240,7 +247,7 @@ export class AxCliProvider extends BaseProvider {
    * ]);
    * ```
    */
-  async executeParallelTasks(tasks: SubagentTask[], options?: OrchestratorOptions): Promise<SubagentResult[]> {
+  async executeParallelTasks(tasks: SubagentTask[]): Promise<SubagentResult[]> {
     const sdkAdapter = this.adapter.getSdkAdapter();
     if (!sdkAdapter) {
       throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
@@ -384,7 +391,6 @@ export class AxCliProvider extends BaseProvider {
 export type {
   SubagentTask,
   SubagentResult,
-  OrchestratorOptions,
   Checkpoint,
   Workflow,
   CheckpointOptions,

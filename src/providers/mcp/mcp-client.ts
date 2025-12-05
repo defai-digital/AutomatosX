@@ -295,7 +295,19 @@ export class McpClient extends EventEmitter {
       });
 
       const message = JSON.stringify(request) + '\n';
-      this.process!.stdin!.write(message);
+      try {
+        this.process!.stdin!.write(message);
+      } catch (error) {
+        const pending = this.pendingRequests.get(id);
+        if (pending) {
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(id);
+        }
+
+        const err = error instanceof Error ? error : new Error(String(error));
+        reject(err);
+        return;
+      }
 
       logger.debug('[MCP Client] Sent request', {
         id,

@@ -898,6 +898,12 @@ export class MemoryManager implements IMemoryManager {
         if (!Number.isInteger(offsetValue) || offsetValue < 0) {
           throw new Error(`Invalid offset value: ${options.offset}. Must be a non-negative integer.`);
         }
+
+        // SQLite requires LIMIT when OFFSET is present. Use LIMIT -1 to allow offset-only queries.
+        if (!limitClause) {
+          limitClause = 'LIMIT -1';
+        }
+
         offsetClause = `OFFSET ${offsetValue}`;
       }
 
@@ -1346,6 +1352,15 @@ export class MemoryManager implements IMemoryManager {
 
       logger.info('Database restored successfully (atomic operation)', { srcPath: normalizePath(srcPath) });
     } catch (error) {
+      // Ensure database handle is not leaked if reinitialization fails mid-restore
+      try {
+        DatabaseFactory.close(this.db);
+      } finally {
+        this.initialized = false;
+        this.entryCount = 0;
+        this.statements = {};
+      }
+
       throw new MemoryError(
         `Failed to restore database: ${(error as Error).message}`,
         'DATABASE_ERROR',

@@ -100,12 +100,14 @@ describe('AxCliProvider', () => {
   });
 
   describe('getCLICommand', () => {
-    it('should return ax-cli command', () => {
+    it('should return ax-cli-auto command before initialization (auto mode default)', () => {
       const provider = new AxCliProvider(baseConfig);
 
       const command = provider.getCLICommand();
 
-      expect(command).toBe('ax-cli');
+      // In auto mode (default), the adapter hasn't determined whether to use SDK or CLI yet
+      // so it returns 'ax-cli-auto' to indicate the pending selection
+      expect(command).toBe('ax-cli-auto');
     });
   });
 

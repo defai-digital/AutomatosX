@@ -28,7 +28,9 @@ import type {
 } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
 import { ProviderError, ErrorCode } from '../shared/errors/errors.js';
-import { exec, spawn } from 'child_process';
+import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import { findOnPath } from '../core/cli-provider-detector.js';
 import {
   safeValidateExecutionRequest,
@@ -38,69 +40,7 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { StreamingProgressParser } from '../shared/process/streaming-progress-parser.js';
 import { VerbosityManager } from '../shared/logging/verbosity-manager.js';
-
-/**
- * Execute command with proper process cleanup (BUG #3 FIX)
- * Wraps exec() to ensure child processes are killed on timeout
- *
- * Improvements:
- * 1. Clears timer on both success and error paths
- * 2. Uses SIGTERM → SIGKILL escalation pattern
- * 3. Prevents zombie processes with proper cleanup
- */
-function execWithCleanup(
-  command: string,
-  options: any
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = exec(command, options, (error, stdout, stderr) => {
-      // BUG #3 FIX: Clear timer on completion (success or error)
-      clearTimeout(killTimer);
-
-      if (error) {
-        reject(error);
-      } else {
-        resolve({
-          stdout: stdout.toString(),
-          stderr: stderr.toString()
-        });
-      }
-    });
-
-    // BUG #3 FIX: Ensure child process is killed on timeout
-    const timeout = options.timeout || 120000;
-    let forceKillTimer: NodeJS.Timeout | null = null;
-
-    const killTimer = setTimeout(() => {
-      if (child.pid && !child.killed) {
-        logger.warn('Killing child process due to timeout', {
-          pid: child.pid,
-          command: command.substring(0, 50)
-        });
-        child.kill('SIGTERM');
-
-        // MEGATHINK BUG FIX: Track force-kill timer to prevent leak
-        forceKillTimer = setTimeout(() => {
-          if (child.pid && !child.killed) {
-            logger.warn('Force killing child process', { pid: child.pid });
-            child.kill('SIGKILL');
-          }
-          forceKillTimer = null;
-        }, 5000);
-      }
-    }, timeout);
-
-    // BUG #3 FIX: Also clear timer on exit event (defensive cleanup)
-    // MEGATHINK BUG FIX: Also clear force-kill timer
-    child.on('exit', () => {
-      clearTimeout(killTimer);
-      if (forceKillTimer) {
-        clearTimeout(forceKillTimer);
-        forceKillTimer = null;
-      }
-    });
-  });
-}
+import { isLimitError } from './error-patterns.js';
 
 export abstract class BaseProvider implements Provider {
   /**
@@ -130,6 +70,12 @@ export abstract class BaseProvider implements Provider {
     NO_UPDATE_NOTIFIER: '1',
     DEBIAN_FRONTEND: 'noninteractive'
   };
+
+  /** Default CLI execution timeout in milliseconds */
+  private static readonly DEFAULT_TIMEOUT_MS = 120000;
+
+  /** Time to wait after SIGTERM before escalating to SIGKILL */
+  private static readonly SIGKILL_ESCALATION_MS = 5000;
 
   protected config: ProviderConfig;
   protected logger = logger;
@@ -228,7 +174,7 @@ export abstract class BaseProvider implements Provider {
 
       // v9.0.3 Windows Fix: Use stdin for long prompts on Windows
       const result = useStdin
-        ? await this.executeWithStdin(cliCommand, argsString.trim(), prompt)
+        ? await this.executeWithStdin(cliCommand, cliArgs, prompt)
         : await this.executeWithSpawn(fullCommand, cliCommand);
 
       if (!result.stdout) {
@@ -255,8 +201,8 @@ export abstract class BaseProvider implements Provider {
   /**
    * Execute command using spawn() with streaming support (v8.4.18)
    *
-   * Replaces execWithCleanup to support real-time line-by-line output streaming.
-   * Maintains all timeout and cleanup behaviors from execWithCleanup.
+   * Supports real-time line-by-line output streaming with proper timeout
+   * and cleanup behaviors (SIGTERM → SIGKILL escalation pattern).
    *
    * @param command - Full command string to execute
    * @param cliCommand - CLI command name (for logging)
@@ -273,7 +219,7 @@ export abstract class BaseProvider implements Provider {
       // v9.0.3 Windows Fix: Use auto-detected shell instead of hardcoded /bin/bash
       const child = spawn(command, [], {
         shell: true,  // Auto-detects: cmd.exe on Windows, /bin/sh on Unix
-        timeout: this.config.timeout || 120000,
+        timeout: this.config.timeout || BaseProvider.DEFAULT_TIMEOUT_MS,
         env: { ...process.env, ...BaseProvider.NON_INTERACTIVE_ENV }
       });
 
@@ -425,8 +371,8 @@ export abstract class BaseProvider implements Provider {
         reject(new Error(`Failed to spawn ${cliCommand} CLI: ${error.message}`));
       });
 
-      // Timeout handling (same as execWithCleanup)
-      const timeout = this.config.timeout || 120000;
+      // Timeout handling with SIGTERM → SIGKILL escalation
+      const timeout = this.config.timeout || BaseProvider.DEFAULT_TIMEOUT_MS;
       timeoutId = setTimeout(() => {
         if (child.pid && !child.killed) {
           logger.warn('Killing child process due to timeout', {
@@ -437,13 +383,13 @@ export abstract class BaseProvider implements Provider {
 
           child.kill('SIGTERM');
 
-          // Escalate to SIGKILL after 5 seconds (same as execWithCleanup)
+          // Escalate to SIGKILL after timeout if SIGTERM fails
           forceKillTimer = setTimeout(() => {
             if (child.pid && !child.killed) {
               logger.warn('Force killing child process', { pid: child.pid });
               child.kill('SIGKILL');
             }
-          }, 5000);
+          }, BaseProvider.SIGKILL_ESCALATION_MS);
         }
       }, timeout);
     });
@@ -462,22 +408,19 @@ export abstract class BaseProvider implements Provider {
    */
   private async executeWithStdin(
     cliCommand: string,
-    cliArgs: string,
+    cliArgs: string[],
     prompt: string
   ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      // Build command with args but without prompt (will come via stdin)
-      const commandArgs = cliArgs ? cliArgs.split(' ').filter(Boolean) : [];
-
       logger.debug(`Executing ${cliCommand} CLI with stdin`, {
         command: cliCommand,
-        args: commandArgs,
+        args: cliArgs,
         promptLength: prompt.length
       });
 
       // Spawn process (no shell needed - direct command execution)
-      const child = spawn(cliCommand, commandArgs, {
-        timeout: this.config.timeout || 120000,
+      const child = spawn(cliCommand, cliArgs, {
+        timeout: this.config.timeout || BaseProvider.DEFAULT_TIMEOUT_MS,
         env: { ...process.env, ...BaseProvider.NON_INTERACTIVE_ENV }
       });
 
@@ -651,7 +594,7 @@ export abstract class BaseProvider implements Provider {
       });
 
       // Timeout handling
-      const timeout = this.config.timeout || 120000;
+      const timeout = this.config.timeout || BaseProvider.DEFAULT_TIMEOUT_MS;
       timeoutId = setTimeout(() => {
         if (child.pid && !child.killed) {
           logger.warn('Killing child process due to timeout', {
@@ -661,13 +604,13 @@ export abstract class BaseProvider implements Provider {
           });
 
           child.kill('SIGTERM');
-          // Force kill after 5 seconds if SIGTERM doesn't work
+          // Force kill after timeout if SIGTERM doesn't work
           forceKillTimer = setTimeout(() => {
             if (child.pid && !child.killed) {
               logger.warn('Force killing child process', { pid: child.pid });
               child.kill('SIGKILL');
             }
-          }, 5000);
+          }, BaseProvider.SIGKILL_ESCALATION_MS);
         }
       }, timeout);
     });
@@ -747,8 +690,6 @@ export abstract class BaseProvider implements Provider {
 
       // DEBUG: Log the full prompt being sent (v8.4.16 debugging)
       if (process.env.AUTOMATOSX_DEBUG_PROMPT === 'true') {
-        const fs = await import('fs');
-        const path = await import('path');
         const debugPath = path.join(process.cwd(), 'automatosx/tmp/debug-prompt.txt');
         fs.writeFileSync(debugPath, `=== FULL PROMPT SENT TO ${this.getCLICommand()} ===\n\n${fullPrompt}\n\n=== END PROMPT ===\n`);
         logger.debug(`Full prompt saved to ${debugPath}`);
@@ -884,37 +825,20 @@ export abstract class BaseProvider implements Provider {
    * @returns true if this is a rate limit or quota error
    */
   private detectRateLimitError(error: any): boolean {
-    // Import pattern registry dynamically to avoid circular dependency
-    const { isLimitError } = require('./error-patterns.js');
+    // Use provider-specific detection from error-patterns.ts (static import)
+    const isLimited = isLimitError(error, this.config.name);
 
-    try {
-      // Use provider-specific detection from error-patterns.ts
-      const isLimited = isLimitError(error, this.config.name);
-
-      // Log detection for debugging
-      if (isLimited) {
-        this.logger.debug('Rate limit error detected', {
-          provider: this.config.name,
-          message: error?.message,
-          code: error?.code,
-          status: error?.status || error?.statusCode
-        });
-      }
-
-      return isLimited;
-    } catch (detectionError) {
-      // Fallback to simple string matching if detection fails
-      this.logger.warn('Rate limit detection failed, using fallback', {
+    // Log detection for debugging
+    if (isLimited) {
+      this.logger.debug('Rate limit error detected', {
         provider: this.config.name,
-        error: detectionError
+        message: error?.message,
+        code: error?.code,
+        status: error?.status || error?.statusCode
       });
-
-      const message = (error?.message || '').toLowerCase();
-      return message.includes('rate limit') ||
-             message.includes('quota') ||
-             message.includes('resource_exhausted') ||
-             message.includes('too many requests');
     }
+
+    return isLimited;
   }
 
   /**

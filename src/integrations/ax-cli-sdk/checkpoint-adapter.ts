@@ -17,6 +17,15 @@ import { logger } from '../../shared/logging/logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+/** Default checkpoint storage directory */
+const DEFAULT_CHECKPOINT_DIR = '.automatosx/checkpoints';
+
+/** Default maximum checkpoints to retain per workflow */
+const DEFAULT_MAX_CHECKPOINTS = 10;
+
+/** Timeout for flushing pending checkpoints during destroy (ms) */
+const FLUSH_TIMEOUT_MS = 5000;
+
 /**
  * Checkpoint data structure
  */
@@ -144,12 +153,13 @@ export class CheckpointAdapter {
   private readonly options: CheckpointOptions;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private pendingCheckpoint: Checkpoint | null = null;
+  private fsLock: Promise<void> = Promise.resolve();
 
   constructor(options: CheckpointOptions = {}) {
     this.options = {
-      checkpointDir: options.checkpointDir ?? '.automatosx/checkpoints',
+      checkpointDir: options.checkpointDir ?? DEFAULT_CHECKPOINT_DIR,
       autoSaveInterval: options.autoSaveInterval ?? 0,
-      maxCheckpoints: options.maxCheckpoints ?? 10,
+      maxCheckpoints: options.maxCheckpoints ?? DEFAULT_MAX_CHECKPOINTS,
       compress: options.compress ?? false
     };
 
@@ -201,10 +211,10 @@ export class CheckpointAdapter {
     }
 
     // Fallback: Save to file system
-    await this.saveToFileSystem(checkpoint);
-
-    // Cleanup old checkpoints
-    await this.cleanupOldCheckpoints(workflowId);
+    await this.withFsLock(async () => {
+      await this.saveToFileSystem(checkpoint);
+      await this.cleanupOldCheckpoints(workflowId);
+    });
 
     logger.info('Checkpoint saved', {
       workflowId,
@@ -275,7 +285,7 @@ export class CheckpointAdapter {
     }
 
     // Also clean file system
-    await this.deleteFromFileSystem(workflowId);
+    await this.withFsLock(() => this.deleteFromFileSystem(workflowId));
 
     logger.info('Checkpoints deleted', { workflowId });
   }
@@ -289,8 +299,11 @@ export class CheckpointAdapter {
       const files = await fs.readdir(this.checkpointDir);
 
       // Filter matching files first
+      // BUG FIX: Use more precise pattern to avoid matching workflows with similar prefixes
+      // e.g., "auth" should not match "auth-v2" checkpoints
+      // File format is: {workflowId}-{phase}.json
       const matchingFiles = files.filter(
-        file => file.startsWith(workflowId) && file.endsWith('.json')
+        file => file.startsWith(`${workflowId}-`) && file.endsWith('.json')
       );
 
       // Read all files in parallel for better performance
@@ -343,6 +356,15 @@ export class CheckpointAdapter {
 
     const phaseIndex = workflow.phases.findIndex(p => p.id === phaseId);
 
+    // BUG FIX: Handle case where phaseId is not found in workflow
+    if (phaseIndex === -1) {
+      logger.warn('Phase not found in workflow', {
+        workflowId,
+        phaseId,
+        availablePhases: workflow.phases.map(p => p.id)
+      });
+    }
+
     if (!checkpoint) {
       checkpoint = {
         id: `${workflowId}-${Date.now()}`,
@@ -361,8 +383,13 @@ export class CheckpointAdapter {
     // Update checkpoint with phase result
     if (result.success) {
       checkpoint.completedTasks.push(phaseId);
-      checkpoint.phase = phaseIndex + 1;
-      checkpoint.context += `\n[Phase ${phaseIndex + 1}: ${phaseId}]\n${result.content.substring(0, 1000)}\n`;
+      // BUG FIX: Only update phase number if phase was found (phaseIndex >= 0)
+      // Otherwise keep the current phase number to avoid corruption
+      if (phaseIndex >= 0) {
+        checkpoint.phase = phaseIndex + 1;
+      }
+      const phaseLabel = phaseIndex >= 0 ? `Phase ${phaseIndex + 1}` : 'Unknown Phase';
+      checkpoint.context += `\n[${phaseLabel}: ${phaseId}]\n${result.content.substring(0, 1000)}\n`;
 
       // Accumulate token usage
       if (result.tokensUsed && checkpoint.tokensUsed) {
@@ -430,7 +457,7 @@ export class CheckpointAdapter {
     const filepath = path.join(this.checkpointDir, filename);
 
     const content = JSON.stringify(checkpoint, null, 2);
-    await fs.writeFile(filepath, content, 'utf-8');
+    await this.atomicWrite(filepath, content);
   }
 
   private async loadFromFileSystem(workflowId: string): Promise<Checkpoint | null> {
@@ -447,7 +474,9 @@ export class CheckpointAdapter {
       const files = await fs.readdir(this.checkpointDir);
 
       for (const file of files) {
-        if (file.startsWith(workflowId) && file.endsWith('.json')) {
+        // BUG FIX: Use more precise pattern to avoid deleting checkpoints for similar workflows
+        // e.g., deleting "auth" should not delete "auth-v2" checkpoints
+        if (file.startsWith(`${workflowId}-`) && file.endsWith('.json')) {
           await fs.unlink(path.join(this.checkpointDir, file));
         }
       }
@@ -499,8 +528,11 @@ export class CheckpointAdapter {
   }
 
   private setupAutoSave(): void {
+    let autoSaveRunning = false;
     this.autoSaveTimer = setInterval(async () => {
+      if (autoSaveRunning) return;
       if (this.pendingCheckpoint) {
+        autoSaveRunning = true;
         try {
           await this.save(
             this.pendingCheckpoint.workflowId,
@@ -512,6 +544,8 @@ export class CheckpointAdapter {
             error: error instanceof Error ? error.message : String(error)
           });
           // Keep pending checkpoint for retry
+        } finally {
+          autoSaveRunning = false;
         }
       }
     }, this.options.autoSaveInterval!);
@@ -527,6 +561,7 @@ export class CheckpointAdapter {
   /**
    * Cleanup resources
    * BUG FIX: Flush pending checkpoint before destroying to prevent data loss
+   * BUG FIX: Add timeout to prevent hanging during cleanup
    */
   async destroy(): Promise<void> {
     // BUG FIX: Stop auto-save timer first
@@ -535,13 +570,20 @@ export class CheckpointAdapter {
       this.autoSaveTimer = null;
     }
 
-    // BUG FIX: Flush any pending checkpoint before destroying
+    // BUG FIX: Flush any pending checkpoint before destroying with timeout
+    // to prevent hanging if file system is slow or unresponsive
     if (this.pendingCheckpoint) {
       try {
-        await this.save(
-          this.pendingCheckpoint.workflowId,
-          this.pendingCheckpoint
-        );
+        // Race between save and timeout
+        await Promise.race([
+          this.save(
+            this.pendingCheckpoint.workflowId,
+            this.pendingCheckpoint
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Checkpoint flush timed out')), FLUSH_TIMEOUT_MS)
+          )
+        ]);
         logger.debug('Pending checkpoint flushed on destroy', {
           workflowId: this.pendingCheckpoint.workflowId
         });
@@ -556,5 +598,37 @@ export class CheckpointAdapter {
     this.sdkCheckpointManager = null;
 
     logger.debug('CheckpointAdapter destroyed');
+  }
+
+  /**
+   * Serialize filesystem operations to avoid race conditions between auto-save and manual saves.
+   */
+  private async withFsLock<T>(fn: () => Promise<T>): Promise<T> {
+    const resultPromise = this.fsLock.then(fn, fn);
+    this.fsLock = resultPromise.then(
+      () => Promise.resolve(),
+      () => Promise.resolve()
+    );
+    return resultPromise;
+  }
+
+  /**
+   * Write checkpoint atomically to avoid partial files being read by list/load.
+   * BUG FIX: Clean up temp file on rename failure to prevent resource leak.
+   */
+  private async atomicWrite(filepath: string, content: string): Promise<void> {
+    const tempFile = `${filepath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    await fs.writeFile(tempFile, content, 'utf-8');
+    try {
+      await fs.rename(tempFile, filepath);
+    } catch (renameError) {
+      // BUG FIX: Clean up temp file if rename fails (e.g., cross-filesystem, permissions)
+      try {
+        await fs.unlink(tempFile);
+      } catch {
+        // Ignore cleanup errors - temp file may already be gone
+      }
+      throw renameError;
+    }
   }
 }

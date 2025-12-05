@@ -83,6 +83,12 @@ export class SessionManager {
   /** UUID v4 validation regex (static for performance) */
   private static readonly UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+  /** Tracks whether manager has been destroyed to prevent late saves */
+  private destroyed = false;
+
+  /** Last persistence error (reported during flush) */
+  private lastSaveError?: Error;
+
   /**
    * Validate session ID format (must be valid UUID v4)
    *
@@ -827,6 +833,8 @@ export class SessionManager {
    * ```
    */
   async destroy(): Promise<void> {
+    this.destroyed = true;
+
     // Clear timeout
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
@@ -840,11 +848,19 @@ export class SessionManager {
       logger.error('Error flushing save during destroy', {
         error: (error as Error).message
       });
+      // Don't retain stale error after destroy
+      this.lastSaveError = undefined;
       // Continue with destroy even if flush fails
     }
 
+    // Capture session count before clearing
+    const sessionCount = this.activeSessions.size;
+
+    // Free in-memory data to avoid leaks after shutdown
+    this.activeSessions.clear();
+
     logger.debug('SessionManager destroyed', {
-      sessions: this.activeSessions.size
+      sessions: sessionCount
     });
   }
 
@@ -879,6 +895,12 @@ export class SessionManager {
           this.pendingSave = undefined;
         });
       await this.pendingSave;
+
+      if (this.lastSaveError) {
+        const err = this.lastSaveError;
+        this.lastSaveError = undefined;
+        throw err;
+      }
       return;
     }
 
@@ -886,6 +908,11 @@ export class SessionManager {
     if (this.pendingSave) {
       try {
         await this.pendingSave;
+        if (this.lastSaveError) {
+          const err = this.lastSaveError;
+          this.lastSaveError = undefined;
+          throw err;
+        }
       } catch (err) {
         // Re-throw so destroy() knows there was a problem
         throw err;
@@ -1106,7 +1133,7 @@ export class SessionManager {
    * @private
    */
   private saveToFile(): void {
-    if (!this.persistencePath) {
+    if (!this.persistencePath || this.destroyed) {
       return;
     }
 
@@ -1129,7 +1156,13 @@ export class SessionManager {
       this.saveNeeded = false;
 
       const executeNextSave = async (): Promise<void> => {
-        await this.doSave();
+        try {
+          await this.doSave();
+          this.lastSaveError = undefined;
+        } catch (err) {
+          // Persist error for callers waiting on flush, but avoid unhandled rejections
+          this.lastSaveError = err as Error;
+        }
 
         // FIXED (Bug #93): After save completes, check if another save was requested
         if (this.saveNeeded) {
@@ -1140,13 +1173,6 @@ export class SessionManager {
       };
 
       this.pendingSave = executeNextSave()
-        .catch(err => {
-          logger.error('Debounced save failed', {
-            error: err.message
-          });
-          // Re-throw to keep promise rejected (so flushSave can detect failures)
-          throw err;
-        })
         .finally(() => {
           // Bug #10: Clear pendingSave after completion to allow future saves
           this.pendingSave = undefined;

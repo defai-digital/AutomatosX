@@ -19,7 +19,6 @@ import { OrchestrationInstructionInjector, type InjectionResult } from './instru
 import { TodoInstructionProvider } from './todo-instruction-provider.js';
 import { MemoryInstructionProvider, type MemorySearchProvider } from './memory-instruction-provider.js';
 import { SessionInstructionProvider, type SessionStateProvider } from './session-instruction-provider.js';
-import { TokenBudgetManager } from './token-budget.js';
 import { WorkflowModeManager, isValidWorkflowMode } from '../workflow/index.js';
 import { AgentInstructionInjector, type AgentInjectorConfig } from '../../agents/agent-instruction-injector.js';
 import type { TodoItem } from './types.js';
@@ -59,7 +58,6 @@ export interface ServiceInjectionResult {
 export class OrchestrationService {
   private config: OrchestrationConfig;
   private injector: OrchestrationInstructionInjector;
-  private tokenBudgetManager: TokenBudgetManager;
   private workflowModeManager: WorkflowModeManager;
   private agentInjector: AgentInstructionInjector;
 
@@ -78,7 +76,6 @@ export class OrchestrationService {
 
     // Initialize core components
     this.injector = new OrchestrationInstructionInjector(this.config);
-    this.tokenBudgetManager = new TokenBudgetManager(this.config.tokenBudget);
     this.workflowModeManager = new WorkflowModeManager();
     this.agentInjector = new AgentInstructionInjector({
       enabled: this.config.agentTemplates?.enabled ?? true,
@@ -291,7 +288,7 @@ export class OrchestrationService {
     providers: string[];
     tokenBudget: { used: number; total: number; remaining: number };
   } {
-    const budgetConfig = this.tokenBudgetManager.getConfig();
+    const budgetConfig = this.injector.getBudgetManager().getConfig();
     const providers = this.injector.getProviders().map(p => p.name);
 
     return {
@@ -354,10 +351,7 @@ export class OrchestrationService {
         : this.config.agentTemplates
     };
 
-    // Update child components
-    if (updates.tokenBudget) {
-      this.tokenBudgetManager.updateConfig(this.config.tokenBudget);
-    }
+    // Update child components (injector handles its own tokenBudget updates)
     this.injector.updateConfig(updates);
 
     if (updates.todoIntegration && this.todoProvider) {

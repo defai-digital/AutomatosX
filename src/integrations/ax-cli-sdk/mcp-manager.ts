@@ -22,6 +22,11 @@ import { logger } from '../../shared/logging/logger.js';
 import type { MCPServerStatus as SDKMCPServerStatus } from './sdk-types.js';
 
 /**
+ * Error message for SDK not available (used in multiple methods)
+ */
+const SDK_NOT_AVAILABLE_ERROR = 'ax-cli SDK not available';
+
+/**
  * MCP Server template definition
  */
 export interface MCPTemplate {
@@ -114,7 +119,7 @@ export class AxCliMCPManager {
   async getTemplateNames(): Promise<Result<string[]>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       // ax-cli SDK exports getTemplateNames from MCP module
@@ -147,7 +152,7 @@ export class AxCliMCPManager {
   async getTemplate(name: string): Promise<Result<MCPTemplate>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -176,7 +181,7 @@ export class AxCliMCPManager {
   ): Promise<Result<MCPTemplate[]>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -200,7 +205,7 @@ export class AxCliMCPManager {
   async searchTemplates(keyword: string): Promise<Result<MCPTemplate[]>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -227,7 +232,7 @@ export class AxCliMCPManager {
   ): Promise<Result<MCPServerConfig>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -251,7 +256,7 @@ export class AxCliMCPManager {
   async loadConfig(): Promise<Result<Record<string, MCPServerConfig>>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -275,7 +280,7 @@ export class AxCliMCPManager {
   async addServer(name: string, config: MCPServerConfig): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -300,7 +305,7 @@ export class AxCliMCPManager {
   async removeServer(name: string): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -325,7 +330,7 @@ export class AxCliMCPManager {
   async getPredefinedServers(): Promise<Result<Record<string, MCPServerConfig>>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManager } = this.mcpModule;
@@ -391,7 +396,7 @@ export class AxCliMCPManager {
   async getServerStatus(name: string): Promise<Result<SDKMCPServerStatus>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       // Check if MCPManagerV2 is available
@@ -432,7 +437,7 @@ export class AxCliMCPManager {
   async getAllServerStatuses(): Promise<Result<SDKMCPServerStatus[]>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -461,7 +466,7 @@ export class AxCliMCPManager {
   async healthCheck(): Promise<Result<Map<string, boolean>>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -490,7 +495,7 @@ export class AxCliMCPManager {
   async startServer(name: string): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -507,9 +512,17 @@ export class AxCliMCPManager {
 
       return { ok: false, error: new Error('startServer not available in SDK') };
     } catch (error) {
+      // BUG FIX: Update local cache with error status to avoid stale data
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.serverStatuses.set(name, {
+        name,
+        status: 'error',
+        lastHealthCheck: new Date(),
+        error: errorMessage
+      });
       return {
         ok: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(errorMessage)
       };
     }
   }
@@ -520,7 +533,7 @@ export class AxCliMCPManager {
   async stopServer(name: string): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -537,9 +550,17 @@ export class AxCliMCPManager {
 
       return { ok: false, error: new Error('stopServer not available in SDK') };
     } catch (error) {
+      // BUG FIX: Update local cache with error status to avoid stale data
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.serverStatuses.set(name, {
+        name,
+        status: 'error',
+        lastHealthCheck: new Date(),
+        error: errorMessage
+      });
       return {
         ok: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(errorMessage)
       };
     }
   }
@@ -550,7 +571,7 @@ export class AxCliMCPManager {
   async restartServer(name: string): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -572,9 +593,17 @@ export class AxCliMCPManager {
       }
       return this.startServer(name);
     } catch (error) {
+      // BUG FIX: Update local cache with error status to avoid stale data
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.serverStatuses.set(name, {
+        name,
+        status: 'error',
+        lastHealthCheck: new Date(),
+        error: errorMessage
+      });
       return {
         ok: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(errorMessage)
       };
     }
   }
@@ -585,7 +614,7 @@ export class AxCliMCPManager {
   async shutdown(): Promise<Result<void>> {
     try {
       if (!(await this.isAvailable())) {
-        return { ok: false, error: new Error('ax-cli SDK not available') };
+        return { ok: false, error: new Error(SDK_NOT_AVAILABLE_ERROR) };
       }
 
       const { MCPManagerV2 } = this.mcpModule;
@@ -625,10 +654,18 @@ let defaultManager: AxCliMCPManager | null = null;
 
 /**
  * Get the default MCP manager instance
+ *
+ * BUG FIX: Log warning when options are provided but instance already exists,
+ * as the options will be ignored. Use resetAxCliMCPManager() to recreate with new options.
  */
 export function getAxCliMCPManager(options?: MCPManagerOptions): AxCliMCPManager {
   if (!defaultManager) {
     defaultManager = new AxCliMCPManager(options);
+  } else if (options) {
+    // BUG FIX: Warn when options are provided but instance already exists
+    logger.warn('AxCliMCPManager already initialized, ignoring new options', {
+      hint: 'Use resetAxCliMCPManager() to recreate with new options'
+    });
   }
   return defaultManager;
 }

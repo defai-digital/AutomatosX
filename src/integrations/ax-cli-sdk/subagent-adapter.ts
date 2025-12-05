@@ -18,6 +18,7 @@
  * @module integrations/ax-cli-sdk/subagent-adapter
  */
 
+import { createHash } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
 import type {
   SubagentEvents,
@@ -30,6 +31,15 @@ import type {
 
 /** Estimated token split ratios when actual split is unknown */
 const TOKEN_SPLIT = { PROMPT: 0.3, COMPLETION: 0.7 } as const;
+
+/** Default maximum parallel subagent executions */
+const DEFAULT_MAX_PARALLEL = 4;
+
+/** Default timeout per subagent execution in milliseconds (5 minutes) */
+const DEFAULT_TIMEOUT_MS = 300000;
+
+/** Default maximum tool rounds for subagents */
+const DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS = 100;
 
 /**
  * Subagent role types supported by ax-cli SDK
@@ -156,13 +166,14 @@ export interface OrchestratorOptions {
 export class SubagentAdapter {
   private orchestrator: any = null;
   private subagents: Map<string, any> = new Map();
+  private busySubagents: Set<string> = new Set();
   private sdkAvailable: boolean | null = null;
   private readonly options: OrchestratorOptions;
 
   constructor(options: OrchestratorOptions = {}) {
     this.options = {
-      maxParallel: options.maxParallel ?? 4,
-      timeout: options.timeout ?? 300000, // 5 minutes
+      maxParallel: options.maxParallel ?? DEFAULT_MAX_PARALLEL,
+      timeout: options.timeout ?? DEFAULT_TIMEOUT_MS,
       sharedContext: options.sharedContext ?? true,
       continueOnError: options.continueOnError ?? true,
       events: options.events,
@@ -228,17 +239,24 @@ export class SubagentAdapter {
       maxParallel: this.options.maxParallel
     });
 
-    // Sort by priority if provided
-    const sortedTasks = [...tasks].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+    // Sort by priority if provided, but preserve original order in results
+    const tasksWithIndex = tasks.map((task, index) => ({ task, index }));
+    const sortedTasks = [...tasksWithIndex].sort(
+      (a, b) => (a.task.priority ?? 0) - (b.task.priority ?? 0)
+    );
 
     // Execute in batches based on maxParallel
-    const results: SubagentResult[] = [];
+    const results: Array<SubagentResult | undefined> = new Array(tasks.length);
     const batchSize = this.options.maxParallel!;
 
     for (let i = 0; i < sortedTasks.length; i += batchSize) {
       const batch = sortedTasks.slice(i, i + batchSize);
-      const batchResults = await this.executeBatch(batch);
-      results.push(...batchResults);
+      const batchResults = await this.executeBatch(batch.map(item => item.task));
+
+      // Place batch results back into the original order
+      batch.forEach((item, idx) => {
+        results[item.index] = batchResults[idx];
+      });
 
       // Propagate context if enabled
       if (this.options.sharedContext && i + batchSize < sortedTasks.length) {
@@ -246,13 +264,29 @@ export class SubagentAdapter {
       }
     }
 
+    const finalResults: SubagentResult[] = results.map((result, index) => {
+      if (result) {
+        return result;
+      }
+
+      // Fallback placeholder to maintain positional consistency
+      return {
+        task: tasks[index]?.task ?? 'unknown',
+        role: tasks[index]?.config.role ?? 'custom',
+        content: '',
+        success: false,
+        error: 'Subagent result missing',
+        latencyMs: 0
+      };
+    });
+
     logger.info('Parallel execution complete', {
       taskCount: tasks.length,
-      successCount: results.filter(r => r.success).length,
+      successCount: finalResults.filter(r => r.success).length,
       totalLatencyMs: Date.now() - startTime
     });
 
-    return results;
+    return finalResults;
   }
 
   /**
@@ -277,11 +311,20 @@ export class SubagentAdapter {
 
     for (const task of tasks) {
       // Add accumulated context to task
+      // BUG FIX: Only add "Previous results:" section if there actually are previous results
+      // to avoid misleading empty section on first task
+      let combinedContext: string | undefined;
+      if (task.context && accumulatedContext) {
+        combinedContext = `${task.context}\n\nPrevious results:\n${accumulatedContext}`;
+      } else if (task.context) {
+        combinedContext = task.context;
+      } else if (accumulatedContext) {
+        combinedContext = accumulatedContext;
+      }
+
       const taskWithContext = {
         ...task,
-        context: task.context
-          ? `${task.context}\n\nPrevious results:\n${accumulatedContext}`
-          : accumulatedContext || undefined
+        context: combinedContext
       };
 
       const result = await this.executeTask(taskWithContext);
@@ -289,7 +332,9 @@ export class SubagentAdapter {
 
       // Accumulate context for next task
       if (result.success && this.options.sharedContext) {
-        accumulatedContext += `\n[${result.role}]: ${result.content.substring(0, 500)}...\n`;
+        // BUG FIX: Only add "..." suffix if content was actually truncated
+        const truncated = result.content.length > 500;
+        accumulatedContext += `\n[${result.role}]: ${result.content.substring(0, 500)}${truncated ? '...' : ''}\n`;
       }
 
       // Stop on error if not continuing
@@ -319,6 +364,7 @@ export class SubagentAdapter {
     const startTime = Date.now();
     const subagentKey = this.getSubagentKey(task.config);
     const taskId = `${subagentKey}:${Date.now()}`;
+    let release: (() => void) | null = null;
 
     // Emit task start event
     this.emitEvent('task_start', task.task);
@@ -336,8 +382,9 @@ export class SubagentAdapter {
     });
 
     try {
-      // Get or create subagent
-      const subagent = await this.getOrCreateSubagent(task.config);
+      const acquired = await this.acquireSubagent(task.config);
+      const subagent = acquired.subagent;
+      release = acquired.release;
 
       // Build prompt with context
       const prompt = task.context
@@ -447,6 +494,10 @@ export class SubagentAdapter {
         error: errorMessage,
         latencyMs
       };
+    } finally {
+      if (release) {
+        release();
+      }
     }
   }
 
@@ -473,9 +524,14 @@ export class SubagentAdapter {
    */
   private async propagateContext(results: SubagentResult[]): Promise<void> {
     // Build context summary from successful results
+    // BUG FIX: Only add "..." suffix if content was actually truncated
     const contextSummary = results
       .filter(r => r.success)
-      .map(r => `[${r.role}]: ${r.content.substring(0, 200)}...`)
+      .map(r => {
+        const truncated = r.content.length > 200;
+        const summary = r.content.substring(0, 200);
+        return `[${r.role}]: ${summary}${truncated ? '...' : ''}`;
+      })
       .join('\n');
 
     if (contextSummary && this.orchestrator?.setSharedContext) {
@@ -508,7 +564,7 @@ export class SubagentAdapter {
       // Cast role and config to SDK's expected types - SDK may have different property names
       const subagent = createSubagent(config.role as any, {
         systemPrompt: config.instructions,
-        maxToolRounds: config.maxToolRounds ?? 100
+        maxToolRounds: config.maxToolRounds ?? DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS
       } as any);
 
       this.subagents.set(key, subagent);
@@ -530,10 +586,81 @@ export class SubagentAdapter {
   }
 
   /**
+   * Create a temporary subagent instance. Used when the cached subagent is busy.
+   */
+  private async createEphemeralSubagent(config: SubagentConfig): Promise<any> {
+    const { createSubagent } = await import('@defai.digital/ax-cli/sdk');
+
+    return createSubagent(config.role as any, {
+      systemPrompt: config.instructions,
+      maxToolRounds: config.maxToolRounds ?? DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS
+    } as any);
+  }
+
+  /**
+   * Acquire a subagent instance for a task. If a cached instance is already
+   * running another task, create a short-lived one to avoid interleaved
+   * streams from concurrent executions.
+   */
+  private async acquireSubagent(config: SubagentConfig): Promise<{ subagent: any; release: () => void }> {
+    const key = this.getSubagentKey(config);
+
+    if (!this.busySubagents.has(key)) {
+      this.busySubagents.add(key);
+      // BUG FIX: If getOrCreateSubagent throws, we need to release the key
+      // to prevent permanently marking this subagent as busy
+      let subagent: any;
+      try {
+        subagent = await this.getOrCreateSubagent(config);
+      } catch (error) {
+        // Release the key on error so future calls don't always create ephemeral instances
+        this.busySubagents.delete(key);
+        throw error;
+      }
+      return {
+        subagent,
+        release: () => this.releaseSubagent(key)
+      };
+    }
+
+    logger.debug('Cached subagent busy, creating ephemeral instance', { key });
+    const ephemeral = await this.createEphemeralSubagent(config);
+    return {
+      subagent: ephemeral,
+      release: () => {
+        try {
+          if (ephemeral.dispose) {
+            const result = ephemeral.dispose();
+            if (result instanceof Promise) {
+              result.catch(err => logger.warn('Error disposing ephemeral subagent', { error: err instanceof Error ? err.message : String(err) }));
+            }
+          }
+        } catch (error) {
+          logger.warn('Error disposing ephemeral subagent', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    };
+  }
+
+  /**
+   * Release a cached subagent so it can be reused.
+   */
+  private releaseSubagent(key: string): void {
+    this.busySubagents.delete(key);
+  }
+
+  /**
    * Generate unique key for subagent config
    */
   private getSubagentKey(config: SubagentConfig): string {
-    return `${config.role}:${config.specialization || 'default'}`;
+    const instructionsHash = config.instructions
+      ? createHash('sha256').update(config.instructions).digest('hex').slice(0, 12)
+      : 'noinstr';
+    const maxToolRounds = config.maxToolRounds ?? DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS;
+
+    return `${config.role}:${config.specialization || 'default'}:${maxToolRounds}:${instructionsHash}`;
   }
 
   /**
@@ -600,8 +727,12 @@ export class SubagentAdapter {
 
   /**
    * Cleanup all subagents
+   * BUG FIX: Continue cleanup even if individual subagent disposal fails,
+   * and report all errors at the end to ensure no resources are leaked.
    */
   async destroy(): Promise<void> {
+    const errors: Array<{ key: string; error: string }> = [];
+
     for (const [key, subagent] of this.subagents) {
       try {
         if (subagent.dispose) {
@@ -613,15 +744,46 @@ export class SubagentAdapter {
         }
         logger.debug('Subagent disposed', { key });
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         logger.warn('Error disposing subagent', {
           key,
+          error: errorMsg
+        });
+        // BUG FIX: Collect errors but continue cleanup to ensure all subagents are attempted
+        errors.push({ key, error: errorMsg });
+      }
+    }
+
+    const orchestrator = this.orchestrator;
+    this.subagents.clear();
+    this.busySubagents.clear();
+
+    if (orchestrator && typeof orchestrator.dispose === 'function') {
+      try {
+        await orchestrator.dispose();
+      } catch (error) {
+        logger.warn('Error disposing subagent orchestrator', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } else if (orchestrator && typeof orchestrator.shutdown === 'function') {
+      try {
+        await orchestrator.shutdown();
+      } catch (error) {
+        logger.warn('Error shutting down subagent orchestrator', {
           error: error instanceof Error ? error.message : String(error)
         });
       }
     }
-
-    this.subagents.clear();
     this.orchestrator = null;
+
+    // Log summary of cleanup errors if any occurred
+    if (errors.length > 0) {
+      logger.error('SubagentAdapter cleanup had errors', {
+        errorCount: errors.length,
+        errors
+      });
+    }
 
     logger.debug('SubagentAdapter destroyed');
   }

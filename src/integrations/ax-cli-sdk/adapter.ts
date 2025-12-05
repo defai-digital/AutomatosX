@@ -38,6 +38,11 @@ export interface SdkAdapterOptions {
 }
 
 /**
+ * Default maximum tool execution rounds for SDK agent
+ */
+const DEFAULT_MAX_TOOL_ROUNDS = 400;
+
+/**
  * Agent configuration for tracking (SDK handles actual config via settings)
  */
 interface AgentConfig {
@@ -57,6 +62,8 @@ interface AgentConfig {
 export class AxCliSdkAdapter implements AxCliAdapter {
   private agent: any = null;  // Will type as LLMAgent after import
   private agentConfig: AgentConfig | null = null;
+  private initPromise: Promise<void> | null = null;
+  private executionLock: Promise<void> = Promise.resolve();
   private readonly reuseEnabled: boolean;
   private readonly streamingEnabled: boolean;
   private sdkAvailable: boolean | null = null;
@@ -84,6 +91,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   /**
    * Get or create SubagentAdapter for parallel multi-agent execution
    *
+   * BUG FIX: Log warning when options are provided but adapter already exists,
+   * as the options will be ignored.
+   *
    * @example
    * ```typescript
    * const subagents = adapter.getSubagentAdapter();
@@ -97,6 +107,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     if (!this.subagentAdapter) {
       this.subagentAdapter = new SubagentAdapter(options);
       logger.debug('SubagentAdapter created');
+    } else if (options) {
+      // BUG FIX: Warn when options are provided but adapter already exists
+      logger.warn('SubagentAdapter already exists, ignoring new options', {
+        hint: 'Call destroy() first to recreate with new options'
+      });
     }
     return this.subagentAdapter;
   }
@@ -126,6 +141,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   /**
    * Get or create CheckpointAdapter for resumable workflows
    *
+   * BUG FIX: Log warning when options are provided but adapter already exists,
+   * as the options will be ignored.
+   *
    * @example
    * ```typescript
    * const checkpoints = adapter.getCheckpointAdapter();
@@ -137,6 +155,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     if (!this.checkpointAdapter) {
       this.checkpointAdapter = new CheckpointAdapter(options);
       logger.debug('CheckpointAdapter created');
+    } else if (options) {
+      // BUG FIX: Warn when options are provided but adapter already exists
+      logger.warn('CheckpointAdapter already exists, ignoring new options', {
+        hint: 'Call destroy() first to recreate with new options'
+      });
     }
     return this.checkpointAdapter;
   }
@@ -182,6 +205,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   /**
    * Get or create InstructionsBridge for unified agent instructions
    *
+   * BUG FIX: Log warning when options are provided but bridge already exists,
+   * as the options will be ignored.
+   *
    * @example
    * ```typescript
    * const bridge = adapter.getInstructionsBridge();
@@ -193,6 +219,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     if (!this.instructionsBridge) {
       this.instructionsBridge = getInstructionsBridge(options);
       logger.debug('InstructionsBridge created');
+    } else if (options) {
+      // BUG FIX: Warn when options are provided but bridge already exists
+      logger.warn('InstructionsBridge already exists, ignoring new options', {
+        hint: 'Call destroy() first to recreate with new options'
+      });
     }
     return this.instructionsBridge;
   }
@@ -221,6 +252,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   /**
    * Get or create MCP Manager for ax-cli MCP server management
    *
+   * BUG FIX: Log warning when options are provided but manager already exists,
+   * as the options will be ignored.
+   *
    * @example
    * ```typescript
    * const mcp = adapter.getMCPManager();
@@ -232,6 +266,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     if (!this.mcpManager) {
       this.mcpManager = getAxCliMCPManager(options);
       logger.debug('AxCliMCPManager created');
+    } else if (options) {
+      // BUG FIX: Warn when options are provided but manager already exists
+      logger.warn('AxCliMCPManager already exists, ignoring new options', {
+        hint: 'Call destroy() first to recreate with new options'
+      });
     }
     return this.mcpManager;
   }
@@ -282,6 +321,23 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    * Performance: ~5ms overhead vs ~50-200ms for CLI spawning
    */
   async execute(prompt: string, options: AxCliOptions): Promise<ExecutionResponse> {
+    return this.runExclusive(() => this.executeInternal(prompt, options));
+  }
+
+  /**
+   * Serialize executions to avoid chat history corruption and token mis-tracking
+   * when the same adapter instance is used concurrently.
+   */
+  private async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const resultPromise = this.executionLock.then(fn, fn);
+    this.executionLock = resultPromise.then(
+      () => Promise.resolve(),
+      () => Promise.resolve()
+    );
+    return resultPromise;
+  }
+
+  private async executeInternal(prompt: string, options: AxCliOptions): Promise<ExecutionResponse> {
     const startTime = Date.now();
 
     // Token tracking from SDK events
@@ -293,10 +349,8 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         throw new Error('ax-cli SDK not available. Install with: npm install @defai.digital/ax-cli');
       }
 
-      // Initialize or recreate agent if config changed
-      if (!this.agent || this.hasConfigChanged(options)) {
-        await this.initializeAgent(options);
-      }
+      // Initialize or recreate agent if config changed (serialized via initPromise)
+      await this.ensureAgent(options);
 
       logger.debug('Executing via SDK (streaming mode for token tracking)', {
         promptLength: prompt.length,
@@ -403,12 +457,15 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    * We do NOT pass credentials to the SDK - it manages its own configuration.
    */
   private async initializeAgent(options: AxCliOptions): Promise<void> {
+    // Dispose any existing agent before creating a new one to avoid listener/memory leaks
+    await this.destroyAgentInstance();
+
     // Dynamic import to avoid loading SDK unless needed
     const { createAgent } = await import('@defai.digital/ax-cli/sdk');
 
     try {
       const config: AgentConfig = {
-        maxToolRounds: options.maxToolRounds || 400
+        maxToolRounds: options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS
       };
 
       logger.debug('Creating SDK agent (credentials from ax-cli settings)', {
@@ -488,12 +545,12 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   private hasConfigChanged(options: AxCliOptions): boolean {
     if (!this.agentConfig) return true;
 
-    const changed = this.agentConfig.maxToolRounds !== (options.maxToolRounds || 400);
+    const changed = this.agentConfig.maxToolRounds !== (options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS);
 
     if (changed) {
       logger.debug('Agent config changed, will reinitialize', {
         oldMaxToolRounds: this.agentConfig.maxToolRounds,
-        newMaxToolRounds: options.maxToolRounds || 400,
+        newMaxToolRounds: options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS,
         note: 'SDK credentials managed by ax-cli setup'
       });
     }
@@ -502,12 +559,52 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   }
 
   /**
+   * Ensure agent is initialized exactly once even if execute() is called
+   * concurrently. Reinitializes when config changes.
+   *
+   * BUG FIX: If config changes while initialization is in progress, we need to
+   * wait for current init to complete, then reinitialize with new config.
+   */
+  private async ensureAgent(options: AxCliOptions): Promise<void> {
+    // Fast path: agent exists and config hasn't changed
+    if (this.agent && !this.hasConfigChanged(options)) {
+      return;
+    }
+
+    // If there's an initialization in progress, wait for it first
+    if (this.initPromise) {
+      await this.initPromise;
+      // After waiting, check again if we still need to reinitialize
+      // (the completed init might have used different config)
+      if (this.agent && !this.hasConfigChanged(options)) {
+        return;
+      }
+    }
+
+    // Start new initialization
+    this.initPromise = this.initializeAgent(options).finally(() => {
+      this.initPromise = null;
+    });
+
+    await this.initPromise;
+  }
+
+  /**
    * Set up streaming event handlers (for initialization)
+   *
+   * BUG FIX: Remove existing listeners before adding new ones to prevent
+   * listener accumulation when agent is reinitialized.
    */
   private setupEventHandlers(): void {
     if (!this.agent) return;
 
     try {
+      // BUG FIX: Remove existing listeners to prevent accumulation
+      // This is important when agent is reinitialized (e.g., config changes)
+      this.agent.removeAllListeners('stream');
+      this.agent.removeAllListeners('tool');
+      this.agent.removeAllListeners('error');
+
       // SDK events: 'stream', 'tool', 'reasoning', etc.
       this.agent.on('stream', (chunk: any) => {
         logger.debug('Stream chunk received', {
@@ -529,57 +626,6 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       });
     } catch (error) {
       logger.warn('Failed to setup event handlers', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  /**
-   * Set up streaming callbacks for execution
-   */
-  private setupStreamingCallbacks(options: AxCliOptions): void {
-    if (!this.agent) return;
-
-    try {
-      // Remove any existing listeners to avoid duplicates
-      this.agent.removeAllListeners('stream');
-      this.agent.removeAllListeners('tool');
-
-      // Set up stream callback if provided
-      if (options.onStream) {
-        this.agent.on('stream', (chunk: any) => {
-          try {
-            options.onStream!({
-              type: chunk.type || 'content',
-              content: chunk.content,
-              tool: chunk.tool,
-              timestamp: new Date().toISOString()
-            });
-          } catch (error) {
-            logger.warn('Stream callback error', {
-              error: error instanceof Error ? error.message : String(error)
-            });
-          }
-        });
-      }
-
-      // Set up tool callback if provided
-      if (options.onTool) {
-        this.agent.on('tool', (data: any) => {
-          try {
-            options.onTool!({
-              name: data.name,
-              args: data.args
-            });
-          } catch (error) {
-            logger.warn('Tool callback error', {
-              error: error instanceof Error ? error.message : String(error)
-            });
-          }
-        });
-      }
-    } catch (error) {
-      logger.warn('Failed to setup streaming callbacks', {
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -616,11 +662,14 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     }
 
     // Priority 2: Usage object from response
+    // BUG FIX: Use nullish coalescing (??) instead of logical OR (||) to properly handle
+    // zero values. If a provider returns completion_tokens: 0, || would skip it and check
+    // the next property, while ?? correctly preserves the zero value.
     const usage = usageObject || {};
     const actualTokens = {
-      prompt: usage.prompt_tokens || usage.prompt || usage.input || usage.promptTokens || 0,
-      completion: usage.completion_tokens || usage.completion || usage.output || usage.completionTokens || 0,
-      total: usage.total_tokens || usage.total || usage.totalTokens || 0
+      prompt: usage.prompt_tokens ?? usage.prompt ?? usage.input ?? usage.promptTokens ?? 0,
+      completion: usage.completion_tokens ?? usage.completion ?? usage.output ?? usage.completionTokens ?? 0,
+      total: usage.total_tokens ?? usage.total ?? usage.totalTokens ?? 0
     };
 
     if (actualTokens.total > 0) {
@@ -811,27 +860,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
    * Cleanup resources
    */
   async destroy(): Promise<void> {
-    // Cleanup main agent
-    if (this.agent) {
-      try {
-        // Call SDK's dispose() method to cleanup resources
-        // This cleans up event listeners, caches, terminates subagents, etc.
-        // Await dispose in case it's async to ensure proper cleanup
-        const result = this.agent.dispose();
-        if (result instanceof Promise) {
-          await result;
-        }
-
-        this.agent = null;
-        this.agentConfig = null;
-
-        logger.debug('SDK agent destroyed');
-      } catch (error) {
-        logger.warn('Error during agent cleanup', {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
+    await this.destroyAgentInstance();
 
     // Cleanup SubagentAdapter (v10.4.0)
     if (this.subagentAdapter) {
@@ -878,8 +907,43 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
     // Cleanup MCP Manager (v10.4.1)
     if (this.mcpManager) {
-      this.mcpManager = null;
-      logger.debug('MCP Manager cleared');
+      try {
+        const shutdownResult = await this.mcpManager.shutdown();
+        if (!shutdownResult.ok) {
+          logger.warn('Error while shutting down MCP servers', {
+            error: shutdownResult.error instanceof Error ? shutdownResult.error.message : String(shutdownResult.error)
+          });
+        }
+      } catch (error) {
+        logger.warn('Error during MCP Manager cleanup', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      } finally {
+        this.mcpManager = null;
+        logger.debug('MCP Manager cleared');
+      }
+    }
+  }
+
+  /**
+   * Dispose the primary agent without touching ancillary adapters.
+   */
+  private async destroyAgentInstance(): Promise<void> {
+    if (!this.agent) return;
+
+    try {
+      const result = this.agent.dispose();
+      if (result instanceof Promise) {
+        await result;
+      }
+    } catch (error) {
+      logger.warn('Error during agent cleanup', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      this.agent = null;
+      this.agentConfig = null;
+      logger.debug('SDK agent destroyed');
     }
   }
 }

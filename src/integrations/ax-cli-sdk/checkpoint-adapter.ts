@@ -501,11 +501,18 @@ export class CheckpointAdapter {
   private setupAutoSave(): void {
     this.autoSaveTimer = setInterval(async () => {
       if (this.pendingCheckpoint) {
-        await this.save(
-          this.pendingCheckpoint.workflowId,
-          this.pendingCheckpoint
-        );
-        this.pendingCheckpoint = null;
+        try {
+          await this.save(
+            this.pendingCheckpoint.workflowId,
+            this.pendingCheckpoint
+          );
+          this.pendingCheckpoint = null;
+        } catch (error) {
+          logger.warn('Auto-save failed', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+          // Keep pending checkpoint for retry
+        }
       }
     }, this.options.autoSaveInterval!);
   }
@@ -519,13 +526,33 @@ export class CheckpointAdapter {
 
   /**
    * Cleanup resources
+   * BUG FIX: Flush pending checkpoint before destroying to prevent data loss
    */
-  destroy(): void {
+  async destroy(): Promise<void> {
+    // BUG FIX: Stop auto-save timer first
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);
       this.autoSaveTimer = null;
     }
-    this.pendingCheckpoint = null;
+
+    // BUG FIX: Flush any pending checkpoint before destroying
+    if (this.pendingCheckpoint) {
+      try {
+        await this.save(
+          this.pendingCheckpoint.workflowId,
+          this.pendingCheckpoint
+        );
+        logger.debug('Pending checkpoint flushed on destroy', {
+          workflowId: this.pendingCheckpoint.workflowId
+        });
+      } catch (error) {
+        logger.warn('Failed to flush pending checkpoint on destroy', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      this.pendingCheckpoint = null;
+    }
+
     this.sdkCheckpointManager = null;
 
     logger.debug('CheckpointAdapter destroyed');

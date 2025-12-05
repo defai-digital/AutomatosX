@@ -12,6 +12,7 @@ import {
   type OrchestrationContext,
   type EmbeddedInstruction,
   type OrchestrationConfig,
+  type WorkflowMode,
   DEFAULT_ORCHESTRATION_CONFIG
 } from './types.js';
 import { OrchestrationInstructionInjector, type InjectionResult } from './instruction-injector.js';
@@ -19,8 +20,8 @@ import { TodoInstructionProvider } from './todo-instruction-provider.js';
 import { MemoryInstructionProvider, type MemorySearchProvider } from './memory-instruction-provider.js';
 import { SessionInstructionProvider, type SessionStateProvider } from './session-instruction-provider.js';
 import { TokenBudgetManager } from './token-budget.js';
-import { WorkflowModeManager } from '../workflow/index.js';
-import { AgentInstructionInjector } from '../../agents/agent-instruction-injector.js';
+import { WorkflowModeManager, isValidWorkflowMode } from '../workflow/index.js';
+import { AgentInstructionInjector, type AgentInjectorConfig } from '../../agents/agent-instruction-injector.js';
 import type { TodoItem } from './types.js';
 
 /**
@@ -188,9 +189,14 @@ export class OrchestrationService {
 
   /**
    * Set the workflow mode
+   *
+   * @throws Error if mode is not a valid WorkflowMode
    */
   setWorkflowMode(mode: string): void {
-    this.workflowModeManager.setMode(mode as any);
+    if (!isValidWorkflowMode(mode)) {
+      throw new Error(`Invalid workflow mode: ${mode}. Valid modes: default, plan, iterate, review`);
+    }
+    this.workflowModeManager.setMode(mode);
     logger.debug('Workflow mode set', { mode });
   }
 
@@ -220,6 +226,7 @@ export class OrchestrationService {
    */
   incrementTurn(): void {
     this.turnCount++;
+    this.workflowModeManager.updateTurnCount(this.turnCount);
   }
 
   /**
@@ -241,7 +248,7 @@ export class OrchestrationService {
     const context: OrchestrationContext = {
       todos: this.currentTodos,
       turnCount: this.turnCount,
-      workflowMode: this.workflowModeManager.getCurrentMode() as any,
+      workflowMode: this.workflowModeManager.getCurrentMode(),
       currentTask: options.task,
       agentName: options.agentName,
       sessionId: options.sessionId,
@@ -329,12 +336,65 @@ export class OrchestrationService {
   updateConfig(updates: Partial<OrchestrationConfig>): void {
     this.config = {
       ...this.config,
-      ...updates
+      ...updates,
+      tokenBudget: updates.tokenBudget
+        ? { ...this.config.tokenBudget, ...updates.tokenBudget }
+        : this.config.tokenBudget,
+      todoIntegration: updates.todoIntegration
+        ? { ...this.config.todoIntegration, ...updates.todoIntegration }
+        : this.config.todoIntegration,
+      memoryIntegration: updates.memoryIntegration
+        ? { ...this.config.memoryIntegration, ...updates.memoryIntegration }
+        : this.config.memoryIntegration,
+      sessionIntegration: updates.sessionIntegration
+        ? { ...this.config.sessionIntegration, ...updates.sessionIntegration }
+        : this.config.sessionIntegration,
+      agentTemplates: updates.agentTemplates
+        ? { ...this.config.agentTemplates, ...updates.agentTemplates }
+        : this.config.agentTemplates
     };
 
     // Update child components
     if (updates.tokenBudget) {
-      this.tokenBudgetManager = new TokenBudgetManager(updates.tokenBudget);
+      this.tokenBudgetManager.updateConfig(this.config.tokenBudget);
+    }
+    this.injector.updateConfig(updates);
+
+    if (updates.todoIntegration && this.todoProvider) {
+      const current = this.todoProvider.getConfig();
+      this.todoProvider.updateConfig({
+        enabled: updates.todoIntegration.enabled ?? current.enabled,
+        reminderFrequency: updates.todoIntegration.reminderFrequency ?? current.reminderFrequency,
+        compactMode: updates.todoIntegration.compactMode ?? current.compactMode
+      });
+    }
+
+    if (updates.memoryIntegration && this.memoryProvider) {
+      const current = this.memoryProvider.getConfig();
+      this.memoryProvider.updateConfig({
+        enabled: updates.memoryIntegration.enabled ?? current.enabled,
+        maxEntries: updates.memoryIntegration.maxEntries ?? current.maxEntries,
+        minRelevance: updates.memoryIntegration.minRelevance ?? current.minRelevance
+      });
+    }
+
+    if (updates.sessionIntegration && this.sessionProvider) {
+      const current = this.sessionProvider.getConfig();
+      this.sessionProvider.updateConfig({
+        enabled: updates.sessionIntegration.enabled ?? current.enabled,
+        showCollaboration: updates.sessionIntegration.showCollaboration ?? current.showCollaboration
+      });
+    }
+
+    if (updates.agentTemplates) {
+      const agentUpdates: Partial<AgentInjectorConfig> = {};
+      if (updates.agentTemplates.enabled !== undefined) {
+        agentUpdates.enabled = updates.agentTemplates.enabled;
+      }
+      if (updates.agentTemplates.reminderFrequency !== undefined) {
+        agentUpdates.reminderFrequency = updates.agentTemplates.reminderFrequency;
+      }
+      this.agentInjector.updateConfig(agentUpdates);
     }
 
     logger.debug('OrchestrationService config updated', { updates });

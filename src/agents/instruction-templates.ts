@@ -418,28 +418,56 @@ export const STANDARD_TEMPLATE: AgentInstructionTemplate = {
 };
 
 /**
+ * Derived templates - defined as constants to avoid runtime object creation
+ */
+const FULLSTACK_TEMPLATE: AgentInstructionTemplate = {
+  ...BACKEND_TEMPLATE,
+  domain: 'fullstack',
+  displayName: 'Fullstack Engineer'
+};
+
+const DATA_TEMPLATE: AgentInstructionTemplate = {
+  ...BACKEND_TEMPLATE,
+  domain: 'data',
+  displayName: 'Data Engineer'
+};
+
+const MOBILE_TEMPLATE: AgentInstructionTemplate = {
+  ...FRONTEND_TEMPLATE,
+  domain: 'mobile',
+  displayName: 'Mobile Engineer'
+};
+
+const RESEARCHER_TEMPLATE: AgentInstructionTemplate = {
+  ...STANDARD_TEMPLATE,
+  domain: 'researcher',
+  displayName: 'Researcher'
+};
+
+/**
  * All agent templates indexed by domain
  */
 export const AGENT_TEMPLATES: Record<AgentDomain, AgentInstructionTemplate> = {
   backend: BACKEND_TEMPLATE,
   frontend: FRONTEND_TEMPLATE,
-  fullstack: { ...BACKEND_TEMPLATE, domain: 'fullstack', displayName: 'Fullstack Engineer' },
+  fullstack: FULLSTACK_TEMPLATE,
   security: SECURITY_TEMPLATE,
   quality: QUALITY_TEMPLATE,
   architecture: ARCHITECTURE_TEMPLATE,
   devops: DEVOPS_TEMPLATE,
-  data: { ...BACKEND_TEMPLATE, domain: 'data', displayName: 'Data Engineer' },
-  mobile: { ...FRONTEND_TEMPLATE, domain: 'mobile', displayName: 'Mobile Engineer' },
+  data: DATA_TEMPLATE,
+  mobile: MOBILE_TEMPLATE,
   writer: WRITER_TEMPLATE,
-  researcher: { ...STANDARD_TEMPLATE, domain: 'researcher', displayName: 'Researcher' },
+  researcher: RESEARCHER_TEMPLATE,
   standard: STANDARD_TEMPLATE
 };
 
 /**
  * Get template for an agent domain
+ * Falls back to STANDARD_TEMPLATE for unknown domains (runtime safety)
  */
 export function getAgentTemplate(domain: AgentDomain): AgentInstructionTemplate {
-  return AGENT_TEMPLATES[domain] || STANDARD_TEMPLATE;
+  return AGENT_TEMPLATES[domain] ?? STANDARD_TEMPLATE;
 }
 
 /**

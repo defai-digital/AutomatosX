@@ -11,9 +11,34 @@ import { logger } from '../../shared/logging/logger.js';
 import {
   type EmbeddedInstruction,
   type InstructionType,
+  type InstructionPriority,
   type TokenBudgetConfig,
   DEFAULT_TOKEN_BUDGET
 } from './types.js';
+
+/**
+ * Priority order for sorting instructions (lower = higher priority)
+ */
+const PRIORITY_ORDER: Record<InstructionPriority, number> = {
+  critical: 0,
+  high: 1,
+  normal: 2,
+  low: 3
+};
+
+/**
+ * Create an empty per-type usage record
+ */
+export function createEmptyTypeUsage(): Record<InstructionType, number> {
+  return {
+    task: 0,
+    memory: 0,
+    session: 0,
+    delegation: 0,
+    mode: 0,
+    context: 0
+  };
+}
 
 /**
  * Token estimation result
@@ -55,6 +80,9 @@ export class TokenBudgetManager {
   /** Characters per token estimate (conservative) */
   private static readonly CHARS_PER_TOKEN = 4;
 
+  /** Overhead tokens for system-reminder XML tags and formatting */
+  private static readonly FORMATTING_OVERHEAD_TOKENS = 50;
+
   constructor(config?: Partial<TokenBudgetConfig>) {
     this.config = {
       ...DEFAULT_TOKEN_BUDGET,
@@ -89,10 +117,8 @@ export class TokenBudgetManager {
    * Estimate tokens for an instruction (including formatting overhead)
    */
   estimateInstructionTokens(instruction: EmbeddedInstruction): number {
-    // Include overhead for XML tags and formatting
-    const overhead = 50; // ~50 tokens for <system-reminder> tags and metadata
     const contentTokens = this.estimateTokens(instruction.content).tokens;
-    return contentTokens + overhead;
+    return contentTokens + TokenBudgetManager.FORMATTING_OVERHEAD_TOKENS;
   }
 
   /**
@@ -107,28 +133,15 @@ export class TokenBudgetManager {
   allocateBudget(instructions: EmbeddedInstruction[]): BudgetAllocation {
     const included: EmbeddedInstruction[] = [];
     const excluded: EmbeddedInstruction[] = [];
-    const perTypeUsage: Record<InstructionType, number> = {
-      task: 0,
-      memory: 0,
-      session: 0,
-      delegation: 0,
-      mode: 0
-    };
+    const perTypeUsage = createEmptyTypeUsage();
 
     let tokensUsed = 0;
     const availableBudget = this.config.maxTotal;
 
     // Sort by priority (critical first, then high, normal, low)
-    const priorityOrder: Record<string, number> = {
-      critical: 0,
-      high: 1,
-      normal: 2,
-      low: 3
-    };
-
     const sorted = [...instructions].sort((a, b) => {
-      const aPriority = priorityOrder[a.priority] ?? 2;
-      const bPriority = priorityOrder[b.priority] ?? 2;
+      const aPriority = PRIORITY_ORDER[a.priority];
+      const bPriority = PRIORITY_ORDER[b.priority];
       const priorityDiff = aPriority - bPriority;
       if (priorityDiff !== 0) return priorityDiff;
       // Within same priority, sort by creation time (oldest first)

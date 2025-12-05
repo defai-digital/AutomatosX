@@ -2,6 +2,7 @@
  * Mode Command - Manage workflow modes for embedded instructions
  *
  * @since v11.3.0
+ * @updated v11.3.1 - Added mode persistence
  */
 
 import type { CommandModule } from 'yargs';
@@ -11,7 +12,11 @@ import {
   WORKFLOW_MODES,
   type WorkflowMode,
   isValidWorkflowMode,
-  getWorkflowModeDescription
+  getWorkflowModeDescription,
+  saveModeState,
+  loadModeState,
+  clearModeState,
+  isModePersistenceEnabled
 } from '../../core/workflow/index.js';
 
 interface ModeOptions {
@@ -59,7 +64,7 @@ export const modeCommand: CommandModule<Record<string, unknown>, ModeOptions> = 
 
       // Show status
       if (argv.status || !argv.mode) {
-        displayModeStatus();
+        await displayModeStatus();
         return;
       }
 
@@ -78,8 +83,26 @@ export const modeCommand: CommandModule<Record<string, unknown>, ModeOptions> = 
 
       // Display mode change
       const modeConfig = WORKFLOW_MODES[modeName as WorkflowMode];
-      console.log(chalk.green.bold(`\n✅ Workflow mode set to: ${modeName}\n`));
-      console.log(chalk.gray(`Description: ${modeConfig.description}`));
+
+      // v11.3.1: Persist mode to disk
+      if (isModePersistenceEnabled()) {
+        const saved = await saveModeState(modeName as WorkflowMode, {
+          setBy: 'cli',
+          reason: `ax mode ${modeName}`
+        });
+
+        if (saved) {
+          console.log(chalk.green.bold(`\n✅ Workflow mode set to: ${modeName}\n`));
+          console.log(chalk.gray(`Description: ${modeConfig.description}`));
+        } else {
+          console.log(chalk.yellow.bold(`\n⚠️  Mode set to: ${modeName} (not persisted)\n`));
+          console.log(chalk.gray(`Description: ${modeConfig.description}`));
+        }
+      } else {
+        console.log(chalk.green.bold(`\n✅ Workflow mode set to: ${modeName}\n`));
+        console.log(chalk.gray(`Description: ${modeConfig.description}`));
+        console.log(chalk.gray('(Mode persistence disabled via AX_DISABLE_MODE_PERSISTENCE)'));
+      }
 
       if (modeConfig.blockedTools && modeConfig.blockedTools.length > 0) {
         console.log(chalk.yellow('\nRestricted tools in this mode:'));
@@ -97,12 +120,16 @@ export const modeCommand: CommandModule<Record<string, unknown>, ModeOptions> = 
 
       console.log();
 
-      // Note: In a real implementation, this would persist the mode
-      // to a session file or environment variable
-      console.log(chalk.gray('Note: Mode setting applies to the current session.'));
-      console.log(chalk.gray('Use with --iterate flag in ax run for persistent mode.\n'));
+      // Show helpful usage info
+      if (modeName === 'iterate') {
+        console.log(chalk.cyan('💡 Tip: Use `ax run <agent> "task"` and it will auto-use iterate mode'));
+      } else if (modeName === 'plan') {
+        console.log(chalk.cyan('💡 Tip: Use `ax run <agent> "task"` and it will auto-use plan mode'));
+        console.log(chalk.gray('   The mode will persist until you run `ax mode default`'));
+      }
+      console.log();
 
-      logger.info('Workflow mode set', { mode: modeName });
+      logger.info('Workflow mode set', { mode: modeName, persisted: isModePersistenceEnabled() });
 
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -143,9 +170,10 @@ function displayModeList(): void {
 /**
  * Display current workflow mode status
  */
-function displayModeStatus(): void {
-  // In a real implementation, this would read from session state
-  const currentMode = 'default';
+async function displayModeStatus(): Promise<void> {
+  // v11.3.1: Read from persisted state
+  const modeState = await loadModeState();
+  const currentMode = modeState?.mode ?? 'default';
   const modeConfig = WORKFLOW_MODES[currentMode as WorkflowMode];
 
   console.log(chalk.blue.bold('\n📊 Workflow Mode Status\n'));
@@ -153,8 +181,23 @@ function displayModeStatus(): void {
   console.log(`  Current mode: ${chalk.cyan.bold(currentMode)}`);
   console.log(`  Description: ${chalk.gray(modeConfig.description)}`);
 
+  if (modeState) {
+    const setAt = new Date(modeState.setAt);
+    const expiresAt = modeState.expiresAt ? new Date(modeState.expiresAt) : null;
+    console.log(`  Set at: ${chalk.gray(setAt.toLocaleString())}`);
+    if (expiresAt) {
+      const remainingMs = expiresAt.getTime() - Date.now();
+      const remainingMins = Math.round(remainingMs / 60000);
+      if (remainingMs > 0) {
+        console.log(`  Expires in: ${chalk.gray(`${remainingMins} minutes`)}`);
+      } else {
+        console.log(`  Status: ${chalk.yellow('expired (will use default)')}`);
+      }
+    }
+  }
+
   if (modeConfig.blockedTools && modeConfig.blockedTools.length > 0) {
-    console.log(`  Blocked tools: ${chalk.yellow(modeConfig.blockedTools.length)}`);
+    console.log(`  Blocked tools: ${chalk.yellow(modeConfig.blockedTools.join(', '))}`);
   } else {
     console.log(`  Blocked tools: ${chalk.green('none')}`);
   }

@@ -255,7 +255,7 @@ export function getAllowedToolsForMode(mode: WorkflowMode): string[] | undefined
  * Check if a string is a valid workflow mode
  */
 export function isValidWorkflowMode(mode: string): mode is WorkflowMode {
-  return mode in WORKFLOW_MODE_CONFIGS;
+  return Object.prototype.hasOwnProperty.call(WORKFLOW_MODE_CONFIGS, mode);
 }
 
 /**

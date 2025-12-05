@@ -844,6 +844,10 @@ export async function saveConfigFile(
     // Write to file
     await writeFile(path, content, 'utf-8');
 
+    // BUG FIX: Clear config cache to ensure subsequent loads get fresh data
+    // Without this, loadConfig() may return stale cached data after saveConfigFile()
+    configCache.clear();
+
     logger.info('Config saved successfully', { path: normalizePath(path), format: ext });
   } catch (error) {
     // Re-throw ConfigError as-is

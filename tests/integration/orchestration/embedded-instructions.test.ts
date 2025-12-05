@@ -97,7 +97,8 @@ describe('Embedded Instructions Integration', () => {
             memory: 100,
             session: 100,
             delegation: 50,
-            mode: 50
+            mode: 50,
+            context: 50
           }
         }
       });
@@ -421,10 +422,9 @@ describe('Embedded Instructions Integration', () => {
     });
 
     it('should handle invalid mode gracefully', () => {
-      // Should not throw
       expect(() => {
         service.setWorkflowMode('invalid-mode' as any);
-      }).not.toThrow();
+      }).toThrow(/Invalid workflow mode/);
     });
 
     it('should handle missing memory provider gracefully', async () => {
@@ -505,5 +505,13 @@ describe('WorkflowModeManager Integration', () => {
     manager.setMode('iterate');
     filtered = manager.filterTools(allTools);
     expect(filtered).toHaveLength(allTools.length);
+  });
+
+  it('should propagate turn count updates from orchestration service', () => {
+    const service = new OrchestrationService();
+    service.incrementTurn();
+
+    const workflowStatus = (service as any).workflowModeManager.getStatus();
+    expect(workflowStatus.turnCount).toBe(1);
   });
 });

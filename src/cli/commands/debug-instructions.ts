@@ -165,20 +165,21 @@ function displayTokenBudget(verbose?: boolean): void {
   console.log(`  Critical reserve: ${chalk.yellow(config.criticalReserve)} tokens`);
   console.log(`  Available: ${chalk.green(config.maxTotal - config.criticalReserve)} tokens`);
 
-  // Per-type budgets
+  // Per-type budgets (read from config)
   console.log(chalk.cyan('\n  Per-Type Allocations:'));
-  const typeAllocations = [
-    { type: 'task', budget: 500, description: 'Todo/task reminders' },
-    { type: 'memory', budget: 400, description: 'Memory context' },
-    { type: 'session', budget: 300, description: 'Session state' },
-    { type: 'delegation', budget: 300, description: 'Agent delegation hints' },
-    { type: 'mode', budget: 200, description: 'Workflow mode instructions' }
-  ];
+  const typeDescriptions: Record<string, string> = {
+    task: 'Todo/task reminders',
+    memory: 'Memory context',
+    session: 'Session state',
+    delegation: 'Agent delegation hints',
+    mode: 'Workflow mode instructions',
+    context: 'Context-aware boosted reminders'
+  };
 
-  typeAllocations.forEach(({ type, budget, description }) => {
+  Object.entries(config.perType).forEach(([type, budget]) => {
     console.log(`    • ${chalk.cyan(type)}: ${budget} tokens`);
-    if (verbose) {
-      console.log(chalk.gray(`      ${description}`));
+    if (verbose && typeDescriptions[type]) {
+      console.log(chalk.gray(`      ${typeDescriptions[type]}`));
     }
   });
 

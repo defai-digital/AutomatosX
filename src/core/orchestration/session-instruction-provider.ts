@@ -11,7 +11,8 @@ import { logger } from '../../shared/logging/logger.js';
 import {
   type EmbeddedInstruction,
   type InstructionProvider,
-  type OrchestrationContext
+  type OrchestrationContext,
+  INSTRUCTION_SOURCE
 } from './types.js';
 
 /**
@@ -79,6 +80,11 @@ const DEFAULT_SESSION_CONFIG: SessionProviderConfig = {
 };
 
 /**
+ * Cache time-to-live for session state (30 seconds)
+ */
+const SESSION_CACHE_TTL_MS = 30000;
+
+/**
  * Session Instruction Provider
  *
  * Generates instructions based on the current session state,
@@ -92,7 +98,6 @@ export class SessionInstructionProvider implements InstructionProvider {
   private lastReminderTurn: number = 0;
   private cachedState?: SessionState;
   private cacheExpiry: number = 0;
-  private readonly CACHE_TTL = 30000; // 30 seconds
 
   constructor(
     stateProvider?: SessionStateProvider,
@@ -157,10 +162,11 @@ export class SessionInstructionProvider implements InstructionProvider {
         type: 'session',
         priority: 'normal',
         content,
-        source: 'automatosx',
+        source: INSTRUCTION_SOURCE,
         createdAt: Date.now(),
+        createdAtTurn: context.turnCount,
         expiresAfter: this.config.reminderFrequency,
-        id: `session-${context.sessionId || 'default'}-${Date.now()}`
+        id: `session-${context.sessionId ?? 'default'}-${Date.now()}`
       });
     }
 
@@ -200,7 +206,7 @@ export class SessionInstructionProvider implements InstructionProvider {
       const state = await this.stateProvider.getSessionState(context.sessionId);
       if (state) {
         this.cachedState = state;
-        this.cacheExpiry = Date.now() + this.CACHE_TTL;
+        this.cacheExpiry = Date.now() + SESSION_CACHE_TTL_MS;
       }
       return state;
     } catch (error) {

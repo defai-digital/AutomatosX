@@ -847,9 +847,13 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     }
 
     // Cleanup CheckpointAdapter (v10.4.0)
+    // BUG FIX: Handle async destroy to ensure pending checkpoint is flushed
     if (this.checkpointAdapter) {
       try {
-        this.checkpointAdapter.destroy();
+        const result = this.checkpointAdapter.destroy();
+        if (result instanceof Promise) {
+          await result;
+        }
         this.checkpointAdapter = null;
         logger.debug('CheckpointAdapter destroyed');
       } catch (error) {

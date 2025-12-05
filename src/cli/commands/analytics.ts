@@ -13,6 +13,7 @@ import { loadConfig } from '../../core/config/loader.js';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
 import type { TimePeriod } from '../../types/telemetry.js';
+import type { TelemetryCollector } from '../../core/telemetry/TelemetryCollector.js';
 
 interface AnalyticsOptions {
   period?: TimePeriod;
@@ -63,6 +64,7 @@ export const analyticsCommand: CommandModule<Record<string, unknown>, any> = {
  * Summary subcommand handler
  */
 async function summaryHandler(argv: AnalyticsOptions) {
+  let telemetry: TelemetryCollector | undefined;
   try {
     // Load config and get telemetry settings
     const config = await loadConfig(process.cwd());
@@ -70,7 +72,7 @@ async function summaryHandler(argv: AnalyticsOptions) {
 
     // Override enabled to true for analytics commands
     // (users explicitly requesting analytics need telemetry enabled)
-    const telemetry = getTelemetryCollector({
+    telemetry = getTelemetryCollector({
       ...telemetryConfig,
       enabled: true
     });
@@ -79,7 +81,8 @@ async function summaryHandler(argv: AnalyticsOptions) {
     const timeRange = parseTimePeriod(argv.period || '7d');
     const summary = await analytics.generateSummary({
       startDate: timeRange.startDate,
-      endDate: timeRange.endDate
+      endDate: timeRange.endDate,
+      provider: argv.provider
     });
 
     if (argv.format === 'json') {
@@ -89,7 +92,11 @@ async function summaryHandler(argv: AnalyticsOptions) {
 
     // Text format
     console.log(chalk.bold.cyan('\n📊 AutomatosX Analytics Summary\n'));
-    console.log(chalk.dim(`Period: ${formatPeriod(argv.period || '7d')}\n`));
+    console.log(chalk.dim(`Period: ${formatPeriod(argv.period || '7d')}`));
+    if (argv.provider) {
+      console.log(chalk.dim(`Provider filter: ${argv.provider}`));
+    }
+    console.log();
 
     // Executions
     console.log(chalk.bold('Executions'));
@@ -140,6 +147,8 @@ async function summaryHandler(argv: AnalyticsOptions) {
     });
     logger.error('Analytics summary failed', { error: (error as Error).message });
     process.exit(1);
+  } finally {
+    await telemetry?.close();
   }
 }
 
@@ -147,12 +156,13 @@ async function summaryHandler(argv: AnalyticsOptions) {
  * Optimize subcommand handler
  */
 async function optimizeHandler(argv: AnalyticsOptions) {
+  let telemetry: TelemetryCollector | undefined;
   try {
     // Load config and get telemetry settings
     const config = await loadConfig(process.cwd());
     const telemetryConfig = config.telemetry || { enabled: false };
 
-    const telemetry = getTelemetryCollector({
+    telemetry = getTelemetryCollector({
       ...telemetryConfig,
       enabled: true
     });
@@ -162,7 +172,8 @@ async function optimizeHandler(argv: AnalyticsOptions) {
     const timeRange = parseTimePeriod(argv.period || '7d');
     const recommendations = await optimizer.analyze({
       start: timeRange.startDate,
-      end: timeRange.endDate
+      end: timeRange.endDate,
+      provider: argv.provider
     });
 
     if (argv.format === 'json') {
@@ -171,7 +182,11 @@ async function optimizeHandler(argv: AnalyticsOptions) {
     }
 
     console.log(chalk.bold.cyan('\n💡 Optimization Recommendations\n'));
-    console.log(chalk.dim(`Period: ${formatPeriod(argv.period || '7d')}\n`));
+    console.log(chalk.dim(`Period: ${formatPeriod(argv.period || '7d')}`));
+    if (argv.provider) {
+      console.log(chalk.dim(`Provider filter: ${argv.provider}`));
+    }
+    console.log();
 
     if (recommendations.length === 0) {
       console.log(chalk.green('✅ No optimization opportunities found. You\'re doing great!\n'));
@@ -211,6 +226,8 @@ async function optimizeHandler(argv: AnalyticsOptions) {
     });
     logger.error('Optimization analysis failed', { error: (error as Error).message });
     process.exit(1);
+  } finally {
+    await telemetry?.close();
   }
 }
 
@@ -218,12 +235,13 @@ async function optimizeHandler(argv: AnalyticsOptions) {
  * Clear subcommand handler
  */
 async function clearHandler(argv: AnalyticsOptions) {
+  let telemetry: TelemetryCollector | undefined;
   try {
     // Load config and get telemetry settings
     const config = await loadConfig(process.cwd());
     const telemetryConfig = config.telemetry || { enabled: false };
 
-    const telemetry = getTelemetryCollector({
+    telemetry = getTelemetryCollector({
       ...telemetryConfig,
       enabled: true
     });
@@ -255,6 +273,8 @@ async function clearHandler(argv: AnalyticsOptions) {
     });
     logger.error('Clear telemetry failed', { error: (error as Error).message });
     process.exit(1);
+  } finally {
+    await telemetry?.close();
   }
 }
 
@@ -262,12 +282,13 @@ async function clearHandler(argv: AnalyticsOptions) {
  * Status subcommand handler
  */
 async function statusHandler(argv: AnalyticsOptions) {
+  let telemetry: TelemetryCollector | undefined;
   try {
     // Load config and get telemetry settings
     const config = await loadConfig(process.cwd());
     const telemetryConfig = config.telemetry || { enabled: false };
 
-    const telemetry = getTelemetryCollector({
+    telemetry = getTelemetryCollector({
       ...telemetryConfig,
       enabled: true
     });
@@ -300,6 +321,8 @@ async function statusHandler(argv: AnalyticsOptions) {
     });
     logger.error('Telemetry status failed', { error: (error as Error).message });
     process.exit(1);
+  } finally {
+    await telemetry?.close();
   }
 }
 

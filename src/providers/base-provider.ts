@@ -755,10 +755,14 @@ export abstract class BaseProvider implements Provider {
       }
 
       const result = await this.executeCLI(fullPrompt);
+      const latencyMs = Date.now() - startTime;
 
       // Update health on success
       this.health.consecutiveFailures = 0;
       this.health.available = true;
+      this.health.errorRate = 0;
+      this.health.latencyMs = latencyMs;
+      this.health.lastCheck = Date.now();
 
       const response: ExecutionResponse = {
         content: result,
@@ -768,7 +772,7 @@ export abstract class BaseProvider implements Provider {
           completion: 0,
           total: 0
         },
-        latencyMs: Date.now() - startTime,
+        latencyMs,
         finishReason: 'stop',
         cached: false
       };
@@ -792,6 +796,8 @@ export abstract class BaseProvider implements Provider {
       this.health.consecutiveFailures++;
       this.health.available = false;
       this.health.errorRate = 1;
+      this.health.latencyMs = Date.now() - startTime;
+      this.health.lastCheck = Date.now();
       throw this.handleError(error);
     }
   }
@@ -813,6 +819,8 @@ export abstract class BaseProvider implements Provider {
     } catch (error) {
       this.health.available = false;
       this.health.errorRate = 1;
+      this.health.lastCheck = Date.now();
+      this.health.consecutiveFailures = this.health.consecutiveFailures + 1;
       return false;
     }
   }
@@ -821,14 +829,14 @@ export abstract class BaseProvider implements Provider {
    * Get health status
    */
   async healthCheck(): Promise<HealthStatus> {
-    const isAvailable = await this.isAvailable();
-    // Update health status based on availability check
+    await this.isAvailable();
+    // Return current health without double-counting failures
     return {
-      available: isAvailable,
+      available: this.health.available,
       latencyMs: this.health.latencyMs,
-      errorRate: isAvailable ? 0 : 1,
-      consecutiveFailures: isAvailable ? 0 : this.health.consecutiveFailures + 1,
-      lastCheckTime: Date.now()
+      errorRate: this.health.errorRate,
+      consecutiveFailures: this.health.consecutiveFailures,
+      lastCheckTime: this.health.lastCheck
     };
   }
 

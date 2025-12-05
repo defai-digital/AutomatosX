@@ -354,8 +354,11 @@ export class CodexCLI {
       }
 
       // Process stdout line-by-line for streaming
+      // BUG FIX: Track readline interface to ensure proper cleanup
+      let rl: readline.Interface | null = null;
+
       if (child.stdout && renderer) {
-        const rl = readline.createInterface({
+        rl = readline.createInterface({
           input: child.stdout,
           crlfDelay: Infinity
         });
@@ -364,6 +367,13 @@ export class CodexCLI {
           stdout += line + '\n';
           // Feed line to progress renderer (it will parse JSONL events)
           renderer.processLine(line);
+        });
+
+        // BUG FIX: Handle readline errors to prevent unhandled exceptions
+        rl.on('error', (error: Error) => {
+          logger.warn('Readline error during streaming', {
+            error: error.message
+          });
         });
       } else if (child.stdout) {
         // No renderer - just capture output
@@ -384,6 +394,12 @@ export class CodexCLI {
         if (timeoutHandle) {
           clearTimeout(timeoutHandle);
           timeoutHandle = null;
+        }
+
+        // BUG FIX: Close readline interface to prevent resource leak
+        if (rl) {
+          rl.close();
+          rl = null;
         }
 
         this.activeProcesses.delete(child);
@@ -416,6 +432,12 @@ export class CodexCLI {
         if (timeoutHandle) {
           clearTimeout(timeoutHandle);
           timeoutHandle = null;
+        }
+
+        // BUG FIX: Close readline interface on error
+        if (rl) {
+          rl.close();
+          rl = null;
         }
 
         this.activeProcesses.delete(child);

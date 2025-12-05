@@ -8,14 +8,21 @@
  */
 
 import { logger } from '../../shared/logging/logger.js';
-import { TokenBudgetManager, type BudgetAllocation } from './token-budget.js';
+import { TokenBudgetManager, createEmptyTypeUsage, type BudgetAllocation } from './token-budget.js';
 import {
   type EmbeddedInstruction,
   type InstructionProvider,
+  type InstructionType,
   type OrchestrationContext,
   type OrchestrationConfig,
-  DEFAULT_ORCHESTRATION_CONFIG
+  DEFAULT_ORCHESTRATION_CONFIG,
+  INSTRUCTION_SOURCE
 } from './types.js';
+
+/**
+ * Order of instruction types for formatting (higher priority first)
+ */
+const INSTRUCTION_TYPE_ORDER = ['mode', 'task', 'context', 'memory', 'session', 'delegation'] as const;
 
 /**
  * Options for instruction injection
@@ -26,9 +33,9 @@ export interface InjectionOptions {
   /** Additional context to pass to providers */
   additionalContext?: Record<string, unknown>;
   /** Filter specific instruction types */
-  includeTypes?: string[];
+  includeTypes?: InstructionType[];
   /** Exclude specific instruction types */
-  excludeTypes?: string[];
+  excludeTypes?: InstructionType[];
 }
 
 /**
@@ -56,7 +63,6 @@ export class OrchestrationInstructionInjector {
   private budgetManager: TokenBudgetManager;
   private config: OrchestrationConfig;
   private lastInjectionTime: number = 0;
-  private instructionCache: Map<string, EmbeddedInstruction[]> = new Map();
 
   constructor(config?: Partial<OrchestrationConfig>) {
     this.config = {
@@ -213,10 +219,8 @@ export class OrchestrationInstructionInjector {
 
     const parts: string[] = [];
 
-    // Process in priority order: mode, task, memory, session, delegation
-    const typeOrder = ['mode', 'task', 'memory', 'session', 'delegation'];
-
-    for (const type of typeOrder) {
+    // Process in priority order
+    for (const type of INSTRUCTION_TYPE_ORDER) {
       const typeInstructions = grouped.get(type);
       if (!typeInstructions || typeInstructions.length === 0) continue;
 
@@ -247,9 +251,10 @@ export class OrchestrationInstructionInjector {
         return true; // No expiry
       }
 
-      // Calculate turn when instruction was created (approximate)
-      // Expiry is based on turns since creation
-      const turnsSinceCreation = currentTurn; // Simplified: assume created at turn 0
+      // Calculate turns since instruction was created
+      // If createdAtTurn is not set, assume created at current turn (won't expire immediately)
+      const createdAtTurn = instruction.createdAtTurn ?? currentTurn;
+      const turnsSinceCreation = currentTurn - createdAtTurn;
       return turnsSinceCreation < instruction.expiresAfter;
     });
   }
@@ -260,17 +265,11 @@ export class OrchestrationInstructionInjector {
   private calculateTypeUsage(
     instructions: EmbeddedInstruction[]
   ): Record<string, number> {
-    const usage: Record<string, number> = {
-      task: 0,
-      memory: 0,
-      session: 0,
-      delegation: 0,
-      mode: 0
-    };
+    const usage = createEmptyTypeUsage();
 
     for (const instruction of instructions) {
       const tokens = this.budgetManager.estimateInstructionTokens(instruction);
-      usage[instruction.type] = (usage[instruction.type] || 0) + tokens;
+      usage[instruction.type] += tokens;
     }
 
     return usage;
@@ -288,23 +287,17 @@ export class OrchestrationInstructionInjector {
         excluded: [],
         tokensUsed: 0,
         remaining: this.budgetManager.getConfig().maxTotal,
-        perTypeUsage: {
-          task: 0,
-          memory: 0,
-          session: 0,
-          delegation: 0,
-          mode: 0
-        }
+        perTypeUsage: createEmptyTypeUsage()
       },
       hasInstructions: false
     };
   }
 
   /**
-   * Clear instruction cache
+   * Clear instruction cache (placeholder for future caching implementation)
    */
   clearCache(): void {
-    this.instructionCache.clear();
+    // Currently a no-op - providers manage their own caching
     logger.debug('Instruction cache cleared');
   }
 
@@ -365,6 +358,7 @@ export function createInstruction(
   priority: EmbeddedInstruction['priority'] = 'normal',
   options?: {
     expiresAfter?: number;
+    createdAtTurn?: number;
     id?: string;
   }
 ): EmbeddedInstruction {
@@ -372,9 +366,10 @@ export function createInstruction(
     type,
     priority,
     content,
-    source: 'automatosx',
+    source: INSTRUCTION_SOURCE,
     createdAt: Date.now(),
+    createdAtTurn: options?.createdAtTurn,
     expiresAfter: options?.expiresAfter,
-    id: options?.id || `${type}-${Date.now()}`
+    id: options?.id ?? `${type}-${Date.now()}`
   };
 }

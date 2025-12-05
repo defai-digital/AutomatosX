@@ -13,7 +13,8 @@ import {
   type EmbeddedInstruction,
   type InstructionProvider,
   type OrchestrationContext,
-  type MemoryEntry
+  type MemoryEntry,
+  INSTRUCTION_SOURCE
 } from './types.js';
 
 /**
@@ -45,6 +46,11 @@ export interface MemorySearchProvider {
 }
 
 /**
+ * Default maximum length for memory content truncation
+ */
+const DEFAULT_CONTENT_MAX_LENGTH = 500;
+
+/**
  * Configuration for MemoryInstructionProvider
  */
 export interface MemoryProviderConfig {
@@ -62,6 +68,8 @@ export interface MemoryProviderConfig {
   includeMetadata: boolean;
   /** Cache TTL in milliseconds */
   cacheTTL: number;
+  /** Maximum length for memory content before truncation */
+  contentMaxLength: number;
 }
 
 /**
@@ -74,7 +82,8 @@ const DEFAULT_MEMORY_CONFIG: MemoryProviderConfig = {
   searchFrequency: 3,
   maxAge: 0, // No limit by default
   includeMetadata: true,
-  cacheTTL: 60000 // 1 minute
+  cacheTTL: 60000, // 1 minute
+  contentMaxLength: DEFAULT_CONTENT_MAX_LENGTH
 };
 
 /**
@@ -188,8 +197,9 @@ export class MemoryInstructionProvider implements InstructionProvider {
         type: 'memory',
         priority: 'normal',
         content,
-        source: 'automatosx',
+        source: INSTRUCTION_SOURCE,
         createdAt: Date.now(),
+        createdAtTurn: context.turnCount,
         expiresAfter: this.config.searchFrequency + 1,
         id: `memory-${Date.now()}`
       });
@@ -219,10 +229,13 @@ export class MemoryInstructionProvider implements InstructionProvider {
       parts.push(context.currentTask);
     }
 
-    // Include in-progress todos
-    const inProgressTodos = context.todos.filter(t => t.status === 'in_progress');
-    for (const todo of inProgressTodos.slice(0, 2)) {
-      parts.push(todo.content);
+    // Include up to 2 in-progress todos (inline loop avoids intermediate arrays)
+    let inProgressCount = 0;
+    for (const todo of context.todos) {
+      if (todo.status === 'in_progress') {
+        parts.push(todo.content);
+        if (++inProgressCount >= 2) break;
+      }
     }
 
     // Include agent name for context
@@ -325,9 +338,8 @@ export class MemoryInstructionProvider implements InstructionProvider {
       }
 
       // Truncate long content
-      const maxLength = 500;
-      const content = memory.content.length > maxLength
-        ? memory.content.substring(0, maxLength) + '...'
+      const content = memory.content.length > this.config.contentMaxLength
+        ? memory.content.substring(0, this.config.contentMaxLength) + '...'
         : memory.content;
 
       lines.push(content);

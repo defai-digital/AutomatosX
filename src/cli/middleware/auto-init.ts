@@ -65,7 +65,7 @@ async function runSetupSilently(projectDir: string): Promise<void> {
     const axScript = process.argv[1] || 'ax'; // ax script path
 
     // Run setup command
-    const child = spawn(axCommand, [axScript, 'setup', '--skip-spec-kit'], {
+    const child = spawn(axCommand, [axScript, 'setup'], {
       cwd: projectDir,
       env: {
         ...process.env,

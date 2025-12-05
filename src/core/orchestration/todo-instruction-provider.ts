@@ -14,7 +14,8 @@ import {
   type InstructionProvider,
   type OrchestrationContext,
   type TodoItem,
-  type TodoListState
+  type TodoListState,
+  INSTRUCTION_SOURCE
 } from './types.js';
 
 /**
@@ -83,7 +84,7 @@ export class TodoInstructionProvider implements InstructionProvider {
     }
 
     // Check if state changed
-    const currentHash = this.computeStateHash(context.todos);
+    const currentHash = computeTodoHash(context.todos);
     const stateChanged = currentHash !== this.lastStateHash;
 
     // Check if it's time for a reminder
@@ -103,18 +104,27 @@ export class TodoInstructionProvider implements InstructionProvider {
       return instructions;
     }
 
-    const currentHash = this.computeStateHash(context.todos);
+    const currentHash = computeTodoHash(context.todos);
     const stateChanged = currentHash !== this.lastStateHash;
 
-    // Get active todos (pending + in_progress)
-    const activeTodos = context.todos.filter(
-      todo => todo.status !== 'completed' || this.config.showCompleted
-    );
+    // Categorize todos in a single pass
+    const inProgressTasks: TodoItem[] = [];
+    const pendingTasks: TodoItem[] = [];
+    const completedTasks: TodoItem[] = [];
 
-    // Get current in-progress task
-    const inProgressTasks = activeTodos.filter(todo => todo.status === 'in_progress');
-    const pendingTasks = activeTodos.filter(todo => todo.status === 'pending');
-    const completedTasks = context.todos.filter(todo => todo.status === 'completed');
+    for (const todo of context.todos) {
+      switch (todo.status) {
+        case 'in_progress':
+          inProgressTasks.push(todo);
+          break;
+        case 'pending':
+          pendingTasks.push(todo);
+          break;
+        case 'completed':
+          completedTasks.push(todo);
+          break;
+      }
+    }
 
     // Generate instruction content
     let content: string;
@@ -138,8 +148,9 @@ export class TodoInstructionProvider implements InstructionProvider {
       type: 'task',
       priority,
       content,
-      source: 'automatosx',
+      source: INSTRUCTION_SOURCE,
       createdAt: Date.now(),
+      createdAtTurn: context.turnCount,
       expiresAfter: this.config.reminderFrequency + 1,
       id: `todo-${currentHash.substring(0, 8)}`
     });
@@ -250,23 +261,6 @@ export class TodoInstructionProvider implements InstructionProvider {
   }
 
   /**
-   * Compute hash of todo state for change detection
-   */
-  private computeStateHash(todos: TodoItem[]): string {
-    // Create a deterministic string representation
-    const stateString = todos
-      .map(t => `${t.id}:${t.status}:${t.content}`)
-      .sort()
-      .join('|');
-
-    return crypto
-      .createHash('sha256')
-      .update(stateString)
-      .digest('hex')
-      .substring(0, 16);
-  }
-
-  /**
    * Get current configuration
    */
   getConfig(): TodoProviderConfig {
@@ -299,18 +293,30 @@ export class TodoInstructionProvider implements InstructionProvider {
 }
 
 /**
+ * Compute deterministic hash for a todo list
+ * Reusable by both TodoInstructionProvider and createTodoListState
+ */
+function computeTodoHash(todos: TodoItem[]): string {
+  // Create a deterministic string representation including content for change detection
+  const stateString = todos
+    .map(t => `${t.id}:${t.status}:${t.content}`)
+    .sort()
+    .join('|');
+
+  return crypto
+    .createHash('sha256')
+    .update(stateString)
+    .digest('hex')
+    .substring(0, 16);
+}
+
+/**
  * Helper to create a TodoListState from an array of items
  */
 export function createTodoListState(items: TodoItem[]): TodoListState {
-  const hash = crypto
-    .createHash('sha256')
-    .update(items.map(t => `${t.id}:${t.status}`).join('|'))
-    .digest('hex')
-    .substring(0, 16);
-
   return {
     items,
-    stateHash: hash,
+    stateHash: computeTodoHash(items),
     lastUpdated: Date.now()
   };
 }

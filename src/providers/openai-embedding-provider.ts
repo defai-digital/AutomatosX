@@ -23,6 +23,8 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   private config: Required<EmbeddingProviderConfig>;
   private abortController: AbortController;
   private pendingRequests = new Set<NodeJS.Timeout>();
+  /** Track in-flight request controllers so we can abort them on cleanup */
+  private inFlightControllers = new Set<AbortController>();
 
   constructor(config: EmbeddingProviderConfig) {
     if (!config.apiKey) {
@@ -156,7 +158,14 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
     model: string;
     usage: { prompt_tokens: number; total_tokens: number };
   }> {
+    if (this.abortController.signal.aborted) {
+      throw new Error('Provider is shutting down');
+    }
+
     const controller = new AbortController();
+    const abortOnDestroy = () => controller.abort();
+    this.abortController.signal.addEventListener('abort', abortOnDestroy, { once: true });
+    this.inFlightControllers.add(controller);
     const timeout = setTimeout(() => controller.abort(), this.config.timeout);
 
     // Track timeout for cleanup
@@ -200,6 +209,9 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
       clearTimeout(timeout);
       this.pendingRequests.delete(timeout);
       throw error as Error;
+    } finally {
+      this.abortController.signal.removeEventListener('abort', abortOnDestroy);
+      this.inFlightControllers.delete(controller);
     }
   }
 
@@ -275,6 +287,12 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
   cleanup(): void {
     // Signal to abort all future operations
     this.abortController.abort();
+
+    // Abort any in-flight requests
+    for (const controller of this.inFlightControllers) {
+      controller.abort();
+    }
+    this.inFlightControllers.clear();
 
     // Clear all pending timeout timers
     for (const timeout of this.pendingRequests) {

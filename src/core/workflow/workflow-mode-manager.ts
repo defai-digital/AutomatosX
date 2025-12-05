@@ -18,7 +18,8 @@ import {
 import {
   type EmbeddedInstruction,
   type InstructionProvider,
-  type OrchestrationContext
+  type OrchestrationContext,
+  INSTRUCTION_SOURCE
 } from '../orchestration/types.js';
 
 /**
@@ -85,11 +86,17 @@ export class WorkflowModeManager implements InstructionProvider {
   }
 
   /**
+   * Get the top entry from the mode stack (private helper to reduce repetition)
+   */
+  private getTopEntry(): ModeStackEntry | undefined {
+    return this.modeStack[this.modeStack.length - 1];
+  }
+
+  /**
    * Get the current active mode
    */
   getCurrentMode(): WorkflowMode {
-    const top = this.modeStack[this.modeStack.length - 1];
-    return top?.mode ?? 'default';
+    return this.getTopEntry()?.mode ?? 'default';
   }
 
   /**
@@ -97,19 +104,23 @@ export class WorkflowModeManager implements InstructionProvider {
    */
   getCurrentModeConfig(): WorkflowModeConfig {
     const mode = this.getCurrentMode();
-    const entry = this.modeStack[this.modeStack.length - 1];
+    const entry = this.getTopEntry();
     const baseConfig = getWorkflowModeConfig(mode);
 
     // Merge custom config if present
     if (entry?.customConfig) {
+      const mergedAutoExit = entry.customConfig.autoExitConditions || baseConfig.autoExitConditions
+        ? {
+            ...(baseConfig.autoExitConditions ?? {}),
+            ...(entry.customConfig.autoExitConditions ?? {})
+          }
+        : undefined;
+
       return {
         ...baseConfig,
         ...entry.customConfig,
         // Deep merge for nested objects
-        autoExitConditions: {
-          ...baseConfig.autoExitConditions,
-          ...entry.customConfig.autoExitConditions
-        }
+        autoExitConditions: mergedAutoExit
       };
     }
 
@@ -141,7 +152,6 @@ export class WorkflowModeManager implements InstructionProvider {
     }
   ): boolean {
     const currentConfig = this.getCurrentModeConfig();
-    const newConfig = getWorkflowModeConfig(mode);
 
     // Check if nesting is allowed
     if (!currentConfig.allowNesting) {
@@ -342,7 +352,7 @@ export class WorkflowModeManager implements InstructionProvider {
    */
   private checkAutoExit(): void {
     const config = this.getCurrentModeConfig();
-    const entry = this.modeStack[this.modeStack.length - 1];
+    const entry = this.getTopEntry();
 
     if (!config.autoExitConditions || !entry) return;
 
@@ -421,7 +431,7 @@ export class WorkflowModeManager implements InstructionProvider {
         type: 'mode',
         priority: 'high',
         content: config.systemInstructions,
-        source: 'automatosx',
+        source: INSTRUCTION_SOURCE,
         createdAt: Date.now(),
         id: `mode-${config.name}-${Date.now()}`
       });
@@ -433,7 +443,7 @@ export class WorkflowModeManager implements InstructionProvider {
         type: 'mode',
         priority: 'critical',
         content: `**Tool Restrictions:** The following tools are NOT available in ${config.displayName}: ${config.blockedTools.join(', ')}`,
-        source: 'automatosx',
+        source: INSTRUCTION_SOURCE,
         createdAt: Date.now(),
         id: `mode-blocked-tools-${Date.now()}`
       });

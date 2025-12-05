@@ -21,8 +21,6 @@ import { ProviderDetector } from '../../core/provider-detector.js';
 interface SetupOptions {
   force?: boolean;
   path?: string;
-  specKit?: boolean;
-  skipSpecKit?: boolean;
   claudeCode?: boolean;
 }
 
@@ -42,14 +40,6 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         describe: 'Force setup even if .automatosx already exists',
         type: 'boolean',
         default: false
-      })
-      .option('spec-kit', {
-        describe: 'Automatically initialize GitHub Spec-Kit for spec-driven development',
-        type: 'boolean'
-      })
-      .option('skip-spec-kit', {
-        describe: 'Skip Spec-Kit initialization (useful for CI/CD)',
-        type: 'boolean'
       })
       .option('claude-code', {
         describe: 'Setup Claude Code integration (generates manifests and registers MCP server)',
@@ -347,9 +337,6 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await updateGitignore(projectDir);
       console.log(chalk.green('   ✓ .gitignore updated'));
 
-      // Initialize Spec-Kit (optional, interactive or via flags)
-      const specKitInitialized = await maybeInitializeSpecKit(projectDir, argv);
-
       // Claude Code integration setup (if requested)
       let claudeCodeSetupSucceeded = false;
       if (argv.claudeCode) {
@@ -417,13 +404,6 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.gray('    ax run backend "create API" --workflow api-flow'));
       console.log(chalk.gray('  • Available: auth-flow, feature-flow, api-flow, refactor-flow\n'));
 
-      if (specKitInitialized) {
-        console.log(chalk.cyan('Spec Files (.specify/):'));
-        console.log(chalk.gray('  • Spec files created for documentation'));
-        console.log(chalk.gray('  • Use agents to work with specs:'));
-        console.log(chalk.gray('    ax run product "Write spec for feature X"'));
-        console.log(chalk.gray('  • Note: ax spec run removed in v11.0.0, use --workflow instead\n'));
-      }
       console.log(chalk.cyan('Iterate Mode (Autonomous Multi-Iteration):'));
       console.log(chalk.gray('  • Enable with --iterate flag for autonomous task loops'));
       console.log(chalk.gray('  • Example: ax run quality "find bugs" --iterate --iterate-max-iterations 5'));
@@ -1118,210 +1098,6 @@ async function updateGitignore(projectDir: string): Promise<void> {
   } catch (error) {
     // Non-critical error, just log it
     logger.warn('Failed to update .gitignore', { error: (error as Error).message });
-  }
-}
-
-/**
- * Maybe initialize GitHub Spec-Kit for spec-driven development
- *
- * This function handles the optional initialization of Spec-Kit based on:
- * 1. --spec-kit flag: automatically initialize
- * 2. --skip-spec-kit flag: skip initialization
- * 3. Interactive prompt (if TTY): ask user
- * 4. Non-interactive: skip by default
- *
- * @param projectDir - Project directory path
- * @param argv - Command line arguments
- * @returns Promise<boolean> - true if Spec-Kit was initialized, false otherwise
- */
-async function maybeInitializeSpecKit(
-  projectDir: string,
-  argv: SetupOptions
-): Promise<boolean> {
-  const specifyDir = join(projectDir, '.specify');
-
-  // Skip if .specify/ already exists
-  const specifyExists = await checkExists(specifyDir);
-  if (specifyExists) {
-    logger.info('Spec-Kit directory already exists, skipping initialization', {
-      path: specifyDir
-    });
-    return true; // Consider it "initialized"
-  }
-
-  // Skip if --skip-spec-kit flag is set
-  if (argv.skipSpecKit) {
-    logger.info('Skipping Spec-Kit initialization (--skip-spec-kit flag)');
-    return false;
-  }
-
-  // Auto-initialize if --spec-kit flag is set
-  if (argv.specKit) {
-    console.log(chalk.cyan('\n📋 Initializing GitHub Spec-Kit...'));
-    return await initializeSpecKit(projectDir);
-  }
-
-  // Interactive prompt if running in TTY
-  // v9.0.2: Refactored to use PromptHelper for automatic cleanup
-  if (process.stdout.isTTY && process.stdin.isTTY) {
-    console.log(chalk.cyan('\n📋 GitHub Spec-Kit Integration'));
-    console.log(chalk.gray('   Spec-Kit enables spec-driven development workflows.'));
-    console.log(chalk.gray('   It creates .specify/ directory with spec.md, plan.md, and tasks.md'));
-    console.log(chalk.gray('   for structured planning and task management.\n'));
-
-    try {
-      const prompt = new PromptHelper();
-      try {
-        const answer = await prompt.question(
-          chalk.cyan('   Initialize Spec-Kit now? (y/N): ')
-        );
-
-        const shouldInit = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-
-        if (shouldInit) {
-          console.log(chalk.cyan('\n   Initializing Spec-Kit...'));
-          return await initializeSpecKit(projectDir);
-        } else {
-          logger.info('User declined Spec-Kit initialization');
-          return false;
-        }
-      } finally {
-        prompt.close();
-      }
-    } catch (error) {
-      // Error in interactive prompt, skip initialization
-      logger.warn('Failed to prompt for Spec-Kit initialization', {
-        error: (error as Error).message
-      });
-      return false;
-    }
-  }
-
-  // Non-interactive mode: skip by default
-  logger.info('Non-interactive mode, skipping Spec-Kit initialization');
-  return false;
-}
-
-/**
- * Initialize Spec-Kit in the project directory
- *
- * Creates .specify/ directory with template files for spec-driven development
- *
- * @param projectDir - Project directory path
- * @returns Promise<boolean> - true if initialization succeeded, false otherwise
- */
-async function initializeSpecKit(projectDir: string): Promise<boolean> {
-  try {
-    const specifyDir = join(projectDir, '.specify');
-
-    // Create .specify directory
-    await mkdir(specifyDir, { recursive: true });
-
-    // Create spec.md template
-    const specTemplate = `# Project Specification
-
-## Overview
-<!-- Brief description of what this project does -->
-
-## Goals
-<!-- List the main goals and objectives -->
-
-## Requirements
-<!-- Detailed requirements -->
-
-### Functional Requirements
-<!-- What the system should do -->
-
-### Non-Functional Requirements
-<!-- Performance, security, scalability, etc. -->
-
-## Success Criteria
-<!-- How do we measure success? -->
-
-## Out of Scope
-<!-- What this project explicitly does NOT include -->
-`;
-
-    // Create plan.md template
-    const planTemplate = `# Technical Plan
-
-## Architecture
-<!-- High-level architecture diagram or description -->
-
-## Technology Stack
-<!-- Languages, frameworks, libraries, tools -->
-
-## Implementation Approach
-<!-- Step-by-step approach to implementation -->
-
-## Data Model
-<!-- Database schema, data structures -->
-
-## API Design
-<!-- API endpoints, interfaces -->
-
-## Security Considerations
-<!-- Authentication, authorization, data protection -->
-
-## Testing Strategy
-<!-- Unit tests, integration tests, E2E tests -->
-
-## Deployment Plan
-<!-- How will this be deployed? -->
-
-## Risks and Mitigations
-<!-- Potential risks and how to handle them -->
-`;
-
-    // Create tasks.md template
-    const tasksTemplate = `# Tasks
-
-<!-- Task format: - [ ] id:task-id ops:"command" dep:dependency-id -->
-<!-- Example: -->
-<!-- - [ ] id:setup:env ops:"ax run devops 'Setup development environment'" -->
-<!-- - [ ] id:impl:api ops:"ax run backend 'Implement REST API'" dep:setup:env -->
-<!-- - [ ] id:test:api ops:"ax run quality 'Write API tests'" dep:impl:api -->
-
-## Phase 1: Setup
-- [ ] id:setup:env ops:"ax run devops 'Setup development environment'"
-- [ ] id:setup:db ops:"ax run backend 'Setup database schema'" dep:setup:env
-
-## Phase 2: Implementation
-- [ ] id:impl:core ops:"ax run backend 'Implement core functionality'" dep:setup:db
-
-## Phase 3: Testing
-- [ ] id:test:unit ops:"ax run quality 'Write unit tests'" dep:impl:core
-- [ ] id:test:integration ops:"ax run quality 'Write integration tests'" dep:impl:core
-
-## Phase 4: Documentation
-- [ ] id:docs:api ops:"ax run writer 'Write API documentation'" dep:impl:core
-`;
-
-    // Write template files
-    await writeFile(join(specifyDir, 'spec.md'), specTemplate, 'utf8');
-    await writeFile(join(specifyDir, 'plan.md'), planTemplate, 'utf8');
-    await writeFile(join(specifyDir, 'tasks.md'), tasksTemplate, 'utf8');
-
-    console.log(chalk.green('   ✓ Spec-Kit set up successfully'));
-    console.log(chalk.gray('      Files created: .specify/spec.md, plan.md, tasks.md'));
-    logger.info('Spec-Kit set up successfully', {
-      projectDir,
-      specifyDir
-    });
-    return true;
-
-  } catch (error) {
-    // Non-critical error - log warning but don't fail the setup
-    const errorMessage = (error as Error).message;
-    console.log(chalk.yellow('   ⚠️  Failed to initialize Spec-Kit'));
-    console.log(chalk.gray(`      ${errorMessage}\n`));
-
-    logger.warn('Spec-Kit initialization failed (non-critical)', {
-      error: errorMessage,
-      projectDir
-    });
-
-    return false;
   }
 }
 

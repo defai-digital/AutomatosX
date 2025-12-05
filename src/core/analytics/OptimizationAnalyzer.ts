@@ -35,12 +35,16 @@ export class OptimizationAnalyzer {
   /**
    * Analyze usage and generate recommendations
    */
-  async analyze(timeRange: { start: number; end: number }): Promise<OptimizationRecommendation[]> {
-    logger.debug('Analyzing for optimization opportunities', { timeRange });
+  async analyze(timeRange: { start: number; end: number; provider?: string }): Promise<OptimizationRecommendation[]> {
+    logger.debug('Analyzing for optimization opportunities', {
+      timeRange,
+      provider: timeRange.provider
+    });
 
     const summary = await this.analytics.generateSummary({
       startDate: timeRange.start,
-      endDate: timeRange.end
+      endDate: timeRange.end,
+      provider: timeRange.provider
     });
 
     const recommendations: OptimizationRecommendation[] = [];
@@ -148,7 +152,7 @@ export class OptimizationAnalyzer {
    */
   private async findCachingOpportunities(
     summary: AnalyticsSummary,
-    timeRange: { start: number; end: number }
+    timeRange: { start: number; end: number; provider?: string }
   ): Promise<OptimizationRecommendation[]> {
     const recommendations: OptimizationRecommendation[] = [];
 
@@ -156,6 +160,7 @@ export class OptimizationAnalyzer {
       type: 'cache_hit',
       startDate: timeRange.start,
       endDate: timeRange.end,
+      provider: timeRange.provider,
       limit: 10000
     });
 

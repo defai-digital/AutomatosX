@@ -39,6 +39,7 @@ import { existsSync, readFileSync } from 'fs';
 import readline from 'readline';
 import yaml from 'js-yaml';
 import type { AgentSelectionResult } from '../../agents/agent-selector.js';
+import { getCurrentPersistedMode, isModePersistenceEnabled } from '../../core/workflow/index.js';
 
 /**
  * Display auto-selection result to user
@@ -101,7 +102,7 @@ interface RunOptions {
   iterateWarnAtTokenPercent?: number[];
   // v8.6.0: Deprecated cost-based limits (kept for backward compatibility)
   iterateMaxCost?: number;
-  // v11.0.0: Workflow templates (replaces spec-kit execution)
+  // v11.0.0: Workflow templates for multi-step tasks
   workflow?: string;
   // v11.1.0: Agent auto-selection
   autoSelect?: boolean;
@@ -216,11 +217,6 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: 'Show execution timeline after completion (requires --parallel)',
         type: 'boolean',
         default: true
-      })
-      .option('no-spec', {
-        describe: 'Bypass spec-kit suggestion for complex tasks (v5.8.3+)',
-        type: 'boolean',
-        default: false
       })
       .option('sandbox', {
         describe: 'Sandbox mode for code execution (v6.0.7 Phase 3)',
@@ -396,6 +392,33 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         console.error(chalk.red.bold(`\n❌ Failed to load workflow: ${argv.workflow}\n`));
         console.error(chalk.gray((error as Error).message));
         process.exit(1);
+      }
+    }
+
+    // v11.3.1: Apply persisted mode if no workflow/iterate flag specified
+    if (!argv.workflow && !argv.iterate && isModePersistenceEnabled()) {
+      const persistedMode = await getCurrentPersistedMode();
+      if (persistedMode === 'iterate') {
+        argv.iterate = true;
+        if (verbosity.shouldShow('showBanner')) {
+          console.log(chalk.cyan(`📋 Using persisted mode: iterate`));
+          console.log(chalk.gray(`   (set via \`ax mode iterate\`, use \`ax mode default\` to clear)\n`));
+        }
+        logger.info('Applied persisted iterate mode');
+      } else if (persistedMode === 'plan') {
+        // Plan mode - could restrict tools, but for now just log
+        if (verbosity.shouldShow('showBanner')) {
+          console.log(chalk.cyan(`📋 Using persisted mode: plan`));
+          console.log(chalk.gray(`   (read-only exploration mode)\n`));
+        }
+        logger.info('Applied persisted plan mode');
+      } else if (persistedMode === 'review') {
+        // Review mode - read-only analysis
+        if (verbosity.shouldShow('showBanner')) {
+          console.log(chalk.cyan(`📋 Using persisted mode: review`));
+          console.log(chalk.gray(`   (code review mode)\n`));
+        }
+        logger.info('Applied persisted review mode');
       }
     }
 

@@ -36,3 +36,21 @@ export {
   type ModeTransitionEvent,
   type ModeTransitionListener
 } from './workflow-mode-manager.js';
+
+// Mode State Persistence (v11.3.1)
+export {
+  type ModeState,
+  loadModeState,
+  saveModeState,
+  clearModeState,
+  getCurrentPersistedMode,
+  isModePersistenceEnabled
+} from './mode-state-manager.js';
+
+// Workflow Progress Provider (v11.3.1)
+export {
+  WorkflowProgressProvider,
+  type WorkflowStep,
+  type ActiveWorkflow,
+  type WorkflowProgressConfig
+} from './workflow-progress-provider.js';

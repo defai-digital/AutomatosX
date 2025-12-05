@@ -24,6 +24,11 @@ describe('Mode Command Helpers', () => {
       expect(isValidWorkflowMode('')).toBe(false);
       expect(isValidWorkflowMode('PLAN')).toBe(false); // Case sensitive
     });
+
+    it('should reject object prototype property names', () => {
+      expect(isValidWorkflowMode('toString')).toBe(false);
+      expect(isValidWorkflowMode('__proto__')).toBe(false);
+    });
   });
 
   describe('getWorkflowModeDescription', () => {

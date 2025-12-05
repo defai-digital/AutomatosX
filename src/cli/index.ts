@@ -53,6 +53,7 @@ import { cliCommand } from './commands/cli.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { modeCommand } from './commands/mode.js';
 import { debugInstructionsCommand } from './commands/debug-instructions.js';
+import { planCommand, iterateCommand, reviewCommand } from './commands/shortcuts.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -156,6 +157,10 @@ globalTracker.mark('cli_start');
   .command(uninstallCommand)
   .command(modeCommand)
   .command(debugInstructionsCommand)
+  // v11.3.1: CLI shortcuts for quick mode + run
+  .command(planCommand)
+  .command(iterateCommand)
+  .command(reviewCommand)
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

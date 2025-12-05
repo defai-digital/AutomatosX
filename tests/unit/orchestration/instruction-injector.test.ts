@@ -177,7 +177,8 @@ describe('OrchestrationInstructionInjector', () => {
             memory: 50,
             session: 50,
             delegation: 50,
-            mode: 50
+            mode: 50,
+            context: 50
           },
           criticalReserve: 0
         }

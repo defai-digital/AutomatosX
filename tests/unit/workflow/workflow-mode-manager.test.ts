@@ -53,6 +53,17 @@ describe('WorkflowModeManager', () => {
       expect(config.name).toBe('plan');
       expect(config.blockedTools).toBeDefined();
     });
+
+    it('should merge custom auto-exit config when base mode has none', () => {
+      manager.pushMode('iterate', {
+        customConfig: {
+          autoExitConditions: { maxTurns: 2 }
+        }
+      });
+
+      const config = manager.getCurrentModeConfig();
+      expect(config.autoExitConditions?.maxTurns).toBe(2);
+    });
   });
 
   describe('pushMode', () => {
@@ -216,6 +227,18 @@ describe('WorkflowModeManager', () => {
       manager.updateTurnCount(5);
       const status = manager.getStatus();
       expect(status.turnCount).toBe(5);
+    });
+
+    it('should auto-exit when max turns are reached', () => {
+      manager.pushMode('iterate', {
+        customConfig: {
+          autoExitConditions: { maxTurns: 1 }
+        }
+      });
+
+      expect(manager.getCurrentMode()).toBe('iterate');
+      manager.updateTurnCount(1);
+      expect(manager.getCurrentMode()).toBe('default');
     });
   });
 

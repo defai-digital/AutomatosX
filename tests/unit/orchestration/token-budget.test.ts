@@ -26,7 +26,7 @@ describe('TokenBudgetManager', () => {
     it('should merge custom config with defaults', () => {
       const customManager = new TokenBudgetManager({
         maxTotal: 3000,
-        perType: { task: 800, memory: 600, session: 300, delegation: 200, mode: 400 }
+        perType: { task: 800, memory: 600, session: 300, delegation: 200, mode: 400, context: 300 }
       });
       const config = customManager.getConfig();
       expect(config.maxTotal).toBe(3000);
@@ -132,7 +132,7 @@ describe('TokenBudgetManager', () => {
       // Create manager with low type limit
       const limitedManager = new TokenBudgetManager({
         maxTotal: 10000,
-        perType: { task: 100, memory: 600, session: 300, delegation: 200, mode: 400 } // Very low task limit
+        perType: { task: 100, memory: 600, session: 300, delegation: 200, mode: 400, context: 300 } // Very low task limit
       });
 
       const instructions: EmbeddedInstruction[] = [
@@ -218,7 +218,8 @@ describe('TokenBudgetManager', () => {
         memory: 0,
         session: 0,
         delegation: 0,
-        mode: 0
+        mode: 0,
+        context: 0
       });
       expect(fits).toBe(true);
     });
@@ -237,7 +238,8 @@ describe('TokenBudgetManager', () => {
         memory: 0,
         session: 0,
         delegation: 0,
-        mode: 0
+        mode: 0,
+        context: 0
       });
       expect(fits).toBe(false);
     });
@@ -251,7 +253,7 @@ describe('TokenBudgetManager', () => {
     });
 
     it('should merge perType updates', () => {
-      manager.updateConfig({ perType: { task: 1000, memory: 600, session: 300, delegation: 200, mode: 400 } });
+      manager.updateConfig({ perType: { task: 1000, memory: 600, session: 300, delegation: 200, mode: 400, context: 300 } });
       const config = manager.getConfig();
       expect(config.perType.task).toBe(1000);
       expect(config.perType.memory).toBe(600);
@@ -265,7 +267,8 @@ describe('TokenBudgetManager', () => {
         memory: 0,
         session: 0,
         delegation: 0,
-        mode: 0
+        mode: 0,
+        context: 0
       });
       expect(remaining).toBe(DEFAULT_TOKEN_BUDGET.perType.task - 100);
     });
@@ -276,7 +279,8 @@ describe('TokenBudgetManager', () => {
         memory: 0,
         session: 0,
         delegation: 0,
-        mode: 0
+        mode: 0,
+        context: 0
       });
       expect(remaining).toBe(0);
     });

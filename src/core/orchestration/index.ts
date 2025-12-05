@@ -8,8 +8,18 @@
  * @module orchestration
  */
 
-// Types
+// Internal imports for createOrchestrationInjector
+import type { OrchestrationConfig } from './types.js';
+import { OrchestrationInstructionInjector } from './instruction-injector.js';
+import { TodoInstructionProvider } from './todo-instruction-provider.js';
+import { MemoryInstructionProvider, type MemorySearchProvider } from './memory-instruction-provider.js';
+import { SessionInstructionProvider, type SessionStateProvider } from './session-instruction-provider.js';
+
+// Types and Constants
 export {
+  // Constants
+  INSTRUCTION_SOURCE,
+
   // Instruction types
   type InstructionType,
   type InstructionPriority,
@@ -49,6 +59,7 @@ export {
 // Token Budget Manager
 export {
   TokenBudgetManager,
+  createEmptyTypeUsage,
   type TokenEstimation,
   type BudgetAllocation
 } from './token-budget.js';
@@ -99,17 +110,12 @@ export {
  * Create a pre-configured orchestration injector with default providers
  */
 export function createOrchestrationInjector(
-  config?: Partial<import('./types.js').OrchestrationConfig>,
+  config?: Partial<OrchestrationConfig>,
   options?: {
-    memorySearchProvider?: import('./memory-instruction-provider.js').MemorySearchProvider;
-    sessionStateProvider?: import('./session-instruction-provider.js').SessionStateProvider;
+    memorySearchProvider?: MemorySearchProvider;
+    sessionStateProvider?: SessionStateProvider;
   }
-): import('./instruction-injector.js').OrchestrationInstructionInjector {
-  const { OrchestrationInstructionInjector } = require('./instruction-injector.js');
-  const { TodoInstructionProvider } = require('./todo-instruction-provider.js');
-  const { MemoryInstructionProvider } = require('./memory-instruction-provider.js');
-  const { SessionInstructionProvider } = require('./session-instruction-provider.js');
-
+): OrchestrationInstructionInjector {
   const injector = new OrchestrationInstructionInjector(config);
 
   // Register Todo provider

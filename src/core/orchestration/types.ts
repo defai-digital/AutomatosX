@@ -10,13 +10,28 @@
 import { z } from 'zod';
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Source identifier for all embedded instructions
+ */
+export const INSTRUCTION_SOURCE = 'automatosx' as const;
+
+// ============================================================================
 // Instruction Types
 // ============================================================================
 
 /**
  * Types of embedded instructions
+ * - task: Current task reminders
+ * - memory: Relevant memory context
+ * - session: Multi-agent session info
+ * - delegation: Delegation suggestions
+ * - mode: Workflow mode instructions
+ * - context: Context-aware boosted reminders (v11.3.1)
  */
-export type InstructionType = 'task' | 'memory' | 'session' | 'delegation' | 'mode';
+export type InstructionType = 'task' | 'memory' | 'session' | 'delegation' | 'mode' | 'context';
 
 /**
  * Instruction priority levels
@@ -43,6 +58,8 @@ export interface EmbeddedInstruction {
   expiresAfter?: number;
   /** Timestamp when the instruction was created */
   createdAt: number;
+  /** Turn number when the instruction was created (for expiry tracking) */
+  createdAtTurn?: number;
   /** Unique identifier for the instruction */
   id?: string;
 }
@@ -51,12 +68,13 @@ export interface EmbeddedInstruction {
  * Zod schema for EmbeddedInstruction validation
  */
 export const EmbeddedInstructionSchema = z.object({
-  type: z.enum(['task', 'memory', 'session', 'delegation', 'mode']),
+  type: z.enum(['task', 'memory', 'session', 'delegation', 'mode', 'context']),
   priority: z.enum(['critical', 'high', 'normal', 'low']),
   content: z.string().min(1).max(5000),
-  source: z.literal('automatosx'),
+  source: z.literal(INSTRUCTION_SOURCE),
   expiresAfter: z.number().int().positive().optional(),
   createdAt: z.number(),
+  createdAtTurn: z.number().int().nonnegative().optional(),
   id: z.string().optional()
 });
 
@@ -125,12 +143,17 @@ export type WorkflowMode = 'default' | 'plan' | 'iterate' | 'review';
 
 /**
  * Configuration for a workflow mode
+ *
+ * Note: This interface is re-exported from workflow-mode.ts for convenience.
+ * The canonical definition is in src/core/workflow/workflow-mode.ts.
  */
 export interface WorkflowModeConfig {
   /** Mode name */
   name: WorkflowMode;
   /** Human-readable description */
   description: string;
+  /** Display name for UI */
+  displayName: string;
   /** Tools that are allowed in this mode (whitelist) */
   allowedTools?: string[];
   /** Tools that are blocked in this mode (blacklist) */
@@ -139,6 +162,17 @@ export interface WorkflowModeConfig {
   systemInstructions: string;
   /** Whether this mode can be nested */
   allowNesting: boolean;
+  /** Maximum depth if nesting is allowed */
+  maxNestingDepth?: number;
+  /** Auto-exit conditions */
+  autoExitConditions?: {
+    /** Exit after N turns */
+    maxTurns?: number;
+    /** Exit when specific tool is used */
+    onToolUse?: string[];
+    /** Exit on specific keywords in response */
+    onKeywords?: string[];
+  };
 }
 
 /**
@@ -147,10 +181,17 @@ export interface WorkflowModeConfig {
 export const WorkflowModeConfigSchema = z.object({
   name: z.enum(['default', 'plan', 'iterate', 'review']),
   description: z.string(),
+  displayName: z.string(),
   allowedTools: z.array(z.string()).optional(),
   blockedTools: z.array(z.string()).optional(),
   systemInstructions: z.string(),
-  allowNesting: z.boolean()
+  allowNesting: z.boolean(),
+  maxNestingDepth: z.number().int().positive().optional(),
+  autoExitConditions: z.object({
+    maxTurns: z.number().int().positive().optional(),
+    onToolUse: z.array(z.string()).optional(),
+    onKeywords: z.array(z.string()).optional()
+  }).optional()
 });
 
 // ============================================================================
@@ -238,7 +279,8 @@ export const DEFAULT_TOKEN_BUDGET: TokenBudgetConfig = {
     memory: 600,
     session: 300,
     delegation: 200,
-    mode: 400
+    mode: 400,
+    context: 300
   },
   criticalReserve: 300
 };
@@ -249,7 +291,7 @@ export const DEFAULT_TOKEN_BUDGET: TokenBudgetConfig = {
 export const TokenBudgetConfigSchema = z.object({
   maxTotal: z.number().int().positive().max(10000),
   perType: z.record(
-    z.enum(['task', 'memory', 'session', 'delegation', 'mode']),
+    z.enum(['task', 'memory', 'session', 'delegation', 'mode', 'context']),
     z.number().int().nonnegative()
   ),
   criticalReserve: z.number().int().nonnegative()

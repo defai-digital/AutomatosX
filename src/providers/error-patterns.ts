@@ -35,250 +35,175 @@ export interface ProviderErrorPatterns {
  * - Claude: Returns 'rate_limit_error', 'overloaded_error', 529 status
  * - OpenAI: Returns 'insufficient_quota', 'rate_limit_exceeded', 429 status
  */
+/**
+ * Google Gemini Error Patterns
+ *
+ * Gemini uses gRPC-style error codes and returns structured errors.
+ * Common quota errors include RESOURCE_EXHAUSTED and quotaExceeded.
+ */
+const GEMINI_PATTERNS: ProviderErrorPatterns = {
+  quota: [
+    'RESOURCE_EXHAUSTED',
+    'resource_exhausted',
+    'quotaExceeded',
+    'quota exceeded',
+    'quota limit reached',
+    'daily quota exceeded',
+    'monthly quota exceeded',
+    'insufficient quota',
+  ],
+  rateLimit: [
+    'RATE_LIMIT_EXCEEDED',
+    'rate_limit_exceeded',
+    'rate limit exceeded',
+    'too many requests',
+    'requests per minute exceeded',
+    'requests per day exceeded',
+  ],
+  statusCodes: [429], // Too Many Requests
+  errorCodes: [
+    'RESOURCE_EXHAUSTED',
+    'RATE_LIMIT_EXCEEDED',
+    'QUOTA_EXCEEDED',
+  ],
+};
+
+/**
+ * Anthropic Claude Error Patterns
+ *
+ * Claude returns different error types for rate limiting vs overload.
+ * Status 529 indicates temporary overload, 429 indicates rate limiting.
+ */
+const CLAUDE_PATTERNS: ProviderErrorPatterns = {
+  quota: [
+    'insufficient_quota',
+    'quota_exceeded',
+    'quota exceeded',
+    'credit limit reached',
+    'usage limit exceeded',
+    'monthly quota exceeded',
+  ],
+  rateLimit: [
+    'rate_limit_error',
+    'rate limit exceeded',
+    'overloaded_error',
+    'overloaded',
+    'too many requests',
+    'requests per minute exceeded',
+  ],
+  statusCodes: [429, 529], // Too Many Requests, Overloaded
+  errorCodes: [
+    'rate_limit_error',
+    'overloaded_error',
+    'insufficient_quota',
+  ],
+};
+
+/**
+ * OpenAI/Codex Error Patterns
+ *
+ * OpenAI provides detailed error messages for different types of limits.
+ * Distinguishes between quota exhaustion and rate limiting.
+ * Codex uses the same patterns as it's built on OpenAI.
+ */
+const OPENAI_PATTERNS: ProviderErrorPatterns = {
+  quota: [
+    'insufficient_quota',
+    'quota_exceeded',
+    'quota exceeded',
+    'billing hard limit reached',
+    'usage limit exceeded',
+    'monthly quota exceeded',
+    'credit limit reached',
+  ],
+  rateLimit: [
+    'rate_limit_exceeded',
+    'rate limit exceeded',
+    'too_many_requests',
+    'too many requests',
+    'requests per minute exceeded',
+    'tokens per minute exceeded',
+    'rate limit reached',
+  ],
+  statusCodes: [429], // Too Many Requests
+  errorCodes: [
+    'insufficient_quota',
+    'rate_limit_exceeded',
+    'quota_exceeded',
+    'billing_hard_limit_reached',
+  ],
+};
+
+/**
+ * ax-cli Provider Error Patterns (v9.2.0)
+ *
+ * ax-cli is a multi-model provider supporting GLM, xAI, OpenAI, Anthropic, Ollama, etc.
+ * Combines patterns from all supported backends since ax-cli proxies to them.
+ */
+const AX_CLI_PATTERNS: ProviderErrorPatterns = {
+  quota: [
+    // GLM patterns
+    'quota exceeded',
+    'quota limit reached',
+    'insufficient quota',
+    // OpenAI patterns (via ax-cli)
+    'insufficient_quota',
+    'quota_exceeded',
+    'billing hard limit reached',
+    'usage limit exceeded',
+    'monthly quota exceeded',
+    'credit limit reached',
+    // Generic patterns
+    'daily quota exceeded',
+    'api quota exceeded',
+  ],
+  rateLimit: [
+    // Common patterns
+    'rate_limit_exceeded',
+    'rate limit exceeded',
+    'too_many_requests',
+    'too many requests',
+    'requests per minute exceeded',
+    'tokens per minute exceeded',
+    'rate limit reached',
+    // Anthropic patterns (via ax-cli)
+    'rate_limit_error',
+    'overloaded_error',
+    'overloaded',
+    // xAI/Grok patterns
+    'throttled',
+    'request throttled',
+  ],
+  statusCodes: [429, 529],
+  errorCodes: [
+    'insufficient_quota',
+    'rate_limit_exceeded',
+    'quota_exceeded',
+    'rate_limit_error',
+    'overloaded_error',
+    'RATE_LIMIT_EXCEEDED',
+    'QUOTA_EXCEEDED',
+  ],
+};
+
+/**
+ * Complete registry of error patterns for all supported providers
+ *
+ * Based on actual provider API documentation and observed error formats.
+ * Aliases (claude-code, gemini-cli, codex, openai) reference the same patterns
+ * to avoid duplication and ensure consistency.
+ */
 export const PROVIDER_ERROR_PATTERNS: Record<string, ProviderErrorPatterns> = {
-  /**
-   * Google Gemini Error Patterns
-   *
-   * Gemini uses gRPC-style error codes and returns structured errors.
-   * Common quota errors include RESOURCE_EXHAUSTED and quotaExceeded.
-   */
-  gemini: {
-    quota: [
-      'RESOURCE_EXHAUSTED',
-      'resource_exhausted',
-      'quotaExceeded',
-      'quota exceeded',
-      'quota limit reached',
-      'daily quota exceeded',
-      'monthly quota exceeded',
-      'insufficient quota',
-    ],
-    rateLimit: [
-      'RATE_LIMIT_EXCEEDED',
-      'rate_limit_exceeded',
-      'rate limit exceeded',
-      'too many requests',
-      'requests per minute exceeded',
-      'requests per day exceeded',
-    ],
-    statusCodes: [429], // Too Many Requests
-    errorCodes: [
-      'RESOURCE_EXHAUSTED',
-      'RATE_LIMIT_EXCEEDED',
-      'QUOTA_EXCEEDED',
-    ],
-  },
+  // Primary providers
+  gemini: GEMINI_PATTERNS,
+  claude: CLAUDE_PATTERNS,
+  codex: OPENAI_PATTERNS,
+  'ax-cli': AX_CLI_PATTERNS,
 
-  /**
-   * Anthropic Claude Error Patterns
-   *
-   * Claude returns different error types for rate limiting vs overload.
-   * Status 529 indicates temporary overload, 429 indicates rate limiting.
-   */
-  claude: {
-    quota: [
-      'insufficient_quota',
-      'quota_exceeded',
-      'quota exceeded',
-      'credit limit reached',
-      'usage limit exceeded',
-      'monthly quota exceeded',
-    ],
-    rateLimit: [
-      'rate_limit_error',
-      'rate limit exceeded',
-      'overloaded_error',
-      'overloaded',
-      'too many requests',
-      'requests per minute exceeded',
-    ],
-    statusCodes: [429, 529], // Too Many Requests, Overloaded
-    errorCodes: [
-      'rate_limit_error',
-      'overloaded_error',
-      'insufficient_quota',
-    ],
-  },
-
-  /**
-   * OpenAI Error Patterns
-   *
-   * OpenAI provides detailed error messages for different types of limits.
-   * Distinguishes between quota exhaustion and rate limiting.
-   */
-  openai: {
-    quota: [
-      'insufficient_quota',
-      'quota_exceeded',
-      'quota exceeded',
-      'billing hard limit reached',
-      'usage limit exceeded',
-      'monthly quota exceeded',
-      'credit limit reached',
-    ],
-    rateLimit: [
-      'rate_limit_exceeded',
-      'rate limit exceeded',
-      'too_many_requests',
-      'too many requests',
-      'requests per minute exceeded',
-      'tokens per minute exceeded',
-      'rate limit reached',
-    ],
-    statusCodes: [429], // Too Many Requests
-    errorCodes: [
-      'insufficient_quota',
-      'rate_limit_exceeded',
-      'quota_exceeded',
-      'billing_hard_limit_reached',
-    ],
-  },
-
-  /**
-   * Claude Code Provider (extension of Claude patterns)
-   */
-  'claude-code': {
-    quota: [
-      'insufficient_quota',
-      'quota_exceeded',
-      'quota exceeded',
-      'credit limit reached',
-      'usage limit exceeded',
-      'monthly quota exceeded',
-    ],
-    rateLimit: [
-      'rate_limit_error',
-      'rate limit exceeded',
-      'overloaded_error',
-      'overloaded',
-      'too many requests',
-      'requests per minute exceeded',
-    ],
-    statusCodes: [429, 529],
-    errorCodes: [
-      'rate_limit_error',
-      'overloaded_error',
-      'insufficient_quota',
-    ],
-  },
-
-  /**
-   * Gemini CLI Provider (same patterns as Gemini)
-   */
-  'gemini-cli': {
-    quota: [
-      'RESOURCE_EXHAUSTED',
-      'resource_exhausted',
-      'quotaExceeded',
-      'quota exceeded',
-      'quota limit reached',
-      'daily quota exceeded',
-      'monthly quota exceeded',
-      'insufficient quota',
-    ],
-    rateLimit: [
-      'RATE_LIMIT_EXCEEDED',
-      'rate_limit_exceeded',
-      'rate limit exceeded',
-      'too many requests',
-      'requests per minute exceeded',
-      'requests per day exceeded',
-    ],
-    statusCodes: [429],
-    errorCodes: [
-      'RESOURCE_EXHAUSTED',
-      'RATE_LIMIT_EXCEEDED',
-      'QUOTA_EXCEEDED',
-    ],
-  },
-
-  /**
-   * Codex CLI Provider (same patterns as OpenAI)
-   */
-  codex: {
-    quota: [
-      'insufficient_quota',
-      'quota_exceeded',
-      'quota exceeded',
-      'billing hard limit reached',
-      'usage limit exceeded',
-      'monthly quota exceeded',
-      'credit limit reached',
-    ],
-    rateLimit: [
-      'rate_limit_exceeded',
-      'rate limit exceeded',
-      'too_many_requests',
-      'too many requests',
-      'requests per minute exceeded',
-      'tokens per minute exceeded',
-      'rate limit reached',
-    ],
-    statusCodes: [429],
-    errorCodes: [
-      'insufficient_quota',
-      'rate_limit_exceeded',
-      'quota_exceeded',
-      'billing_hard_limit_reached',
-    ],
-  },
-
-  /**
-   * ax-cli Provider Error Patterns (v9.2.0)
-   *
-   * ax-cli is a multi-model provider supporting GLM, xAI, OpenAI, Anthropic, Ollama, etc.
-   * BUG FIX: Added missing patterns - previously fell back to generic patterns which
-   * may miss provider-specific errors from the underlying model providers.
-   *
-   * Combines patterns from all supported backends since ax-cli proxies to them.
-   */
-  'ax-cli': {
-    quota: [
-      // GLM patterns
-      'quota exceeded',
-      'quota limit reached',
-      'insufficient quota',
-      // OpenAI patterns (via ax-cli)
-      'insufficient_quota',
-      'quota_exceeded',
-      'billing hard limit reached',
-      'usage limit exceeded',
-      'monthly quota exceeded',
-      'credit limit reached',
-      // Anthropic patterns (via ax-cli)
-      'credit limit reached',
-      // Generic patterns
-      'daily quota exceeded',
-      'api quota exceeded',
-    ],
-    rateLimit: [
-      // Common patterns
-      'rate_limit_exceeded',
-      'rate limit exceeded',
-      'too_many_requests',
-      'too many requests',
-      'requests per minute exceeded',
-      'tokens per minute exceeded',
-      'rate limit reached',
-      // Anthropic patterns (via ax-cli)
-      'rate_limit_error',
-      'overloaded_error',
-      'overloaded',
-      // xAI/Grok patterns
-      'throttled',
-      'request throttled',
-    ],
-    statusCodes: [429, 529],
-    errorCodes: [
-      'insufficient_quota',
-      'rate_limit_exceeded',
-      'quota_exceeded',
-      'rate_limit_error',
-      'overloaded_error',
-      'RATE_LIMIT_EXCEEDED',
-      'QUOTA_EXCEEDED',
-    ],
-  },
+  // Aliases - reference same patterns to avoid duplication
+  'gemini-cli': GEMINI_PATTERNS,  // Alias for gemini
+  'claude-code': CLAUDE_PATTERNS, // Alias for claude
+  'openai': OPENAI_PATTERNS,      // Alias for codex (same underlying API)
 };
 
 /**

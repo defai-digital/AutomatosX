@@ -365,7 +365,8 @@ export class AxCliMCPManager {
     // Generate config from template
     const configResult = await this.generateConfigFromTemplate(templateName, env);
     if (!configResult.ok) {
-      return configResult;
+      // Type-safe error propagation: extract error from failed Result
+      return { ok: false, error: configResult.error };
     }
 
     // Add the server
@@ -378,7 +379,8 @@ export class AxCliMCPManager {
   async listServers(): Promise<Result<string[]>> {
     const configResult = await this.loadConfig();
     if (!configResult.ok) {
-      return configResult;
+      // Type-safe error propagation: extract error from failed Result
+      return { ok: false, error: configResult.error };
     }
 
     return { ok: true, value: Object.keys(configResult.value) };
@@ -443,11 +445,17 @@ export class AxCliMCPManager {
       const { MCPManagerV2 } = this.mcpModule;
       if (MCPManagerV2?.getAllServerStatuses) {
         const statuses = MCPManagerV2.getAllServerStatuses();
-        // Update cache
-        for (const status of statuses) {
-          this.serverStatuses.set(status.name, status);
+        // BUG FIX (v11.3.4): Check for null/undefined before iterating
+        // SDK may return null if no servers are configured
+        if (statuses && Array.isArray(statuses)) {
+          // Update cache
+          for (const status of statuses) {
+            this.serverStatuses.set(status.name, status);
+          }
+          return { ok: true, value: statuses };
         }
-        return { ok: true, value: statuses };
+        // SDK returned null/undefined, return empty array
+        return { ok: true, value: [] };
       }
 
       // Fallback: return cached statuses
@@ -644,7 +652,8 @@ export class AxCliMCPManager {
         logger.warn('Cannot enumerate servers for shutdown', {
           error: serversResult.error.message
         });
-        return serversResult;
+        // Type-safe error propagation: extract error from failed Result
+        return { ok: false, error: serversResult.error };
       }
 
       const errors: Array<{ name: string; error: string }> = [];

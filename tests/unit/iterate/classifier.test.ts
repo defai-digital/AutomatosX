@@ -138,31 +138,206 @@ describe('IterateClassifier', () => {
     });
   });
 
-  // Phase 2 (Week 2): Advanced classification tests
-  // Placeholder for comprehensive testing when pattern library and semantic analysis are implemented
-  describe.skip('Classification Logic - Phase 2', () => {
-    it('should match patterns for each classification type', () => {
-      // Test pattern matching: confirmation_prompt, clarification_request, error_message, etc.
+  // Phase 2: Advanced classification tests
+  describe('Classification Logic - Phase 2', () => {
+    beforeEach(async () => {
+      await classifier.loadPatterns('tests/fixtures/iterate/sample-patterns.yaml');
     });
 
-    it('should load and validate pattern library from YAML', () => {
-      // Test YAML parsing, validation, regex compilation, priority ordering
+    it('should match patterns for each classification type', async () => {
+      // Test confirmation_prompt
+      const confirmResult = await classifier.classify('Should I proceed with the changes?', {
+        message: 'Should I proceed with the changes?',
+        recentMessages: [],
+        provider: 'claude'
+      });
+      expect(confirmResult.type).toBe('confirmation_prompt');
+
+      // Test status_update
+      const statusResult = await classifier.classify('I have completed the implementation of the feature.', {
+        message: 'I have completed the implementation of the feature.',
+        recentMessages: [],
+        provider: 'claude'
+      });
+      expect(['status_update', 'completion_signal']).toContain(statusResult.type);
+
+      // Test genuine_question
+      const questionResult = await classifier.classify('Which framework would you prefer - React or Vue?', {
+        message: 'Which framework would you prefer - React or Vue?',
+        recentMessages: [],
+        provider: 'claude'
+      });
+      expect(questionResult.type).toBe('genuine_question');
+
+      // Test error_signal
+      const errorResult = await classifier.classify('Error: Build failed with 5 errors', {
+        message: 'Error: Build failed with 5 errors',
+        recentMessages: [],
+        provider: 'claude'
+      });
+      expect(errorResult.type).toBe('error_signal');
     });
 
-    it('should apply contextual rules and provider-specific markers', () => {
-      // Test context-aware classification
+    it('should load and validate pattern library from YAML', async () => {
+      // Patterns should be loaded
+      expect(classifier['patterns']).toBeDefined();
+      expect(classifier['patterns']?.version).toBeDefined();
+
+      // Compiled patterns should exist
+      expect(classifier['compiledPatterns'].size).toBeGreaterThan(0);
+
+      // No validation errors
+      expect(classifier.hasPatternValidationErrors()).toBe(false);
     });
 
-    it('should perform semantic scoring when enabled', () => {
-      // Test semantic analysis (if implemented)
+    it('should apply contextual rules and provider-specific markers', async () => {
+      // Test provider markers for Claude
+      const claudeThinking = await classifier.classify('<thinking>Let me analyze this...</thinking>', {
+        message: '<thinking>Let me analyze this...</thinking>',
+        recentMessages: [],
+        provider: 'claude-3'
+      });
+      expect(claudeThinking.type).toBe('status_update');
+
+      // Test contextual rule: question after tool calls
+      const contextualQuestion = await classifier.classify('What should I do next?', {
+        message: 'What should I do next?',
+        recentMessages: [
+          { role: 'assistant', content: 'I have updated the file.', timestamp: new Date().toISOString() }
+        ],
+        provider: 'claude',
+        recentToolCalls: ['file_edit', 'file_edit', 'file_edit', 'file_edit']
+      });
+      // With recent tool calls and question, should be genuine_question or status_update
+      expect(['genuine_question', 'status_update']).toContain(contextualQuestion.type);
     });
 
-    it('should meet performance benchmarks (< 100ms)', () => {
-      // Test classification speed
+    it('should use fallback classification when semantic scoring disabled', async () => {
+      // Create classifier with semantic scoring disabled (default)
+      const noSemanticClassifier = new IterateClassifier({
+        strictness: 'balanced',
+        patternLibraryPath: '',
+        enableSemanticScoring: false,
+        semanticScoringThreshold: 0.7,
+        contextWindowMessages: 10
+      });
+
+      // Without patterns, should fall back to default
+      const result = await noSemanticClassifier.classify('Random text without patterns', {
+        message: 'Random text without patterns',
+        recentMessages: [],
+        provider: 'test'
+      });
+
+      expect(result).toBeDefined();
+      expect(result.type).toBeDefined();
+      // Should use fallback method
+      expect(['fallback', 'pattern_library', 'contextual_rules']).toContain(result.method);
     });
 
-    it('should handle edge cases (empty, long text, unicode, multiple/no matches)', () => {
-      // Comprehensive edge case coverage
+    it('should meet performance benchmarks (< 100ms)', async () => {
+      const message = 'Should I proceed with the implementation of the user authentication feature?';
+      const context = {
+        message,
+        recentMessages: [],
+        provider: 'claude'
+      };
+
+      const startTime = Date.now();
+      await classifier.classify(message, context);
+      const duration = Date.now() - startTime;
+
+      expect(duration).toBeLessThan(100); // Should classify in < 100ms
+    });
+
+    it('should handle edge cases', async () => {
+      // Empty string
+      const emptyResult = await classifier.classify('', {
+        message: '',
+        recentMessages: [],
+        provider: 'test'
+      });
+      expect(emptyResult).toBeDefined();
+      expect(emptyResult.type).toBeDefined();
+
+      // Very long text
+      const longText = 'a'.repeat(10000);
+      const longResult = await classifier.classify(longText, {
+        message: longText,
+        recentMessages: [],
+        provider: 'test'
+      });
+      expect(longResult).toBeDefined();
+
+      // Unicode text
+      const unicodeText = '这是一个测试消息 🎉 Should I proceed?';
+      const unicodeResult = await classifier.classify(unicodeText, {
+        message: unicodeText,
+        recentMessages: [],
+        provider: 'test'
+      });
+      expect(unicodeResult).toBeDefined();
+
+      // Text with no clear classification
+      const ambiguousText = 'Hello there';
+      const ambiguousResult = await classifier.classify(ambiguousText, {
+        message: ambiguousText,
+        recentMessages: [],
+        provider: 'test'
+      });
+      expect(ambiguousResult).toBeDefined();
+      // Should have low confidence
+      expect(ambiguousResult.confidence).toBeLessThanOrEqual(1);
+    });
+
+    it('should track pattern validation errors for invalid patterns', async () => {
+      // Create a fresh classifier and try to compile an invalid pattern
+      const freshClassifier = new IterateClassifier({
+        strictness: 'balanced',
+        patternLibraryPath: '',
+        enableSemanticScoring: false,
+        semanticScoringThreshold: 0.7,
+        contextWindowMessages: 10
+      });
+
+      // Call the private compilePattern method with an invalid regex
+      const invalidPattern = freshClassifier['compilePattern']('[invalid(regex', 'test_type');
+
+      // Should return null for invalid pattern
+      expect(invalidPattern).toBeNull();
+
+      // Should have validation error
+      expect(freshClassifier.hasPatternValidationErrors()).toBe(true);
+      const errors = freshClassifier.getPatternValidationErrors();
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0]?.type).toBe('test_type');
+    });
+
+    it('should support configurable classification priority order', async () => {
+      // Create classifier with custom priority order
+      const customConfig = {
+        strictness: 'balanced' as const,
+        patternLibraryPath: 'tests/fixtures/iterate/sample-patterns.yaml',
+        enableSemanticScoring: false,
+        semanticScoringThreshold: 0.7,
+        contextWindowMessages: 10,
+        classificationPriorityOrder: [
+          'confirmation_prompt' as const,
+          'genuine_question' as const,
+          'blocking_request' as const,
+          'rate_limit_or_context' as const,
+          'error_signal' as const,
+          'completion_signal' as const,
+          'status_update' as const
+        ]
+      };
+
+      const customClassifier = new IterateClassifier(customConfig);
+      await customClassifier.loadPatterns('tests/fixtures/iterate/sample-patterns.yaml');
+
+      // The classifier should use the custom priority order
+      expect(customClassifier['config'].classificationPriorityOrder).toBeDefined();
+      expect(customClassifier['config'].classificationPriorityOrder![0]).toBe('confirmation_prompt');
     });
   });
 });

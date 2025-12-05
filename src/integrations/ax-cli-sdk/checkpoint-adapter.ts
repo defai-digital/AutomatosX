@@ -26,6 +26,12 @@ const DEFAULT_MAX_CHECKPOINTS = 10;
 /** Timeout for flushing pending checkpoints during destroy (ms) */
 const FLUSH_TIMEOUT_MS = 5000;
 
+/** Maximum retry attempts for checkpoint flush */
+const FLUSH_MAX_RETRIES = 3;
+
+/** Delay between flush retry attempts (ms) */
+const FLUSH_RETRY_DELAY_MS = 500;
+
 /**
  * Checkpoint data structure
  */
@@ -366,13 +372,19 @@ export class CheckpointAdapter {
 
     const phaseIndex = workflow.phases.findIndex(p => p.id === phaseId);
 
-    // BUG FIX: Handle case where phaseId is not found in workflow
+    // BUG FIX (v11.3.4): Throw error instead of warn when phaseId is not found
+    // This prevents checkpoint state corruption from invalid phase IDs
     if (phaseIndex === -1) {
-      logger.warn('Phase not found in workflow', {
+      const availablePhases = workflow.phases.map(p => p.id);
+      logger.error('Phase not found in workflow - cannot save checkpoint', {
         workflowId,
         phaseId,
-        availablePhases: workflow.phases.map(p => p.id)
+        availablePhases
       });
+      throw new Error(
+        `Invalid phase ID '${phaseId}' for workflow '${workflowId}'. ` +
+        `Available phases: ${availablePhases.join(', ')}`
+      );
     }
 
     if (!checkpoint) {
@@ -392,14 +404,14 @@ export class CheckpointAdapter {
 
     // Update checkpoint with phase result
     if (result.success) {
-      checkpoint.completedTasks.push(phaseId);
-      // BUG FIX: Only update phase number if phase was found (phaseIndex >= 0)
-      // Otherwise keep the current phase number to avoid corruption
-      if (phaseIndex >= 0) {
-        checkpoint.phase = phaseIndex + 1;
+      // BUG FIX (v11.3.4): Prevent duplicate phaseId entries if savePhase is called
+      // multiple times for the same phase (e.g., during retry)
+      if (!checkpoint.completedTasks.includes(phaseId)) {
+        checkpoint.completedTasks.push(phaseId);
       }
-      const phaseLabel = phaseIndex >= 0 ? `Phase ${phaseIndex + 1}` : 'Unknown Phase';
-      checkpoint.context += `\n[${phaseLabel}: ${phaseId}]\n${result.content.substring(0, 1000)}\n`;
+      // phaseIndex is guaranteed to be >= 0 due to validation above
+      checkpoint.phase = phaseIndex + 1;
+      checkpoint.context += `\n[Phase ${phaseIndex + 1}: ${phaseId}]\n${result.content.substring(0, 1000)}\n`;
 
       // Accumulate token usage
       if (result.tokensUsed && checkpoint.tokensUsed) {
@@ -581,6 +593,8 @@ export class CheckpointAdapter {
    * Cleanup resources
    * BUG FIX: Flush pending checkpoint before destroying to prevent data loss
    * BUG FIX: Add timeout to prevent hanging during cleanup
+   * PRODUCTION FIX (v11.3.4): Add retry logic for checkpoint flush to handle
+   * transient filesystem errors (e.g., disk briefly unavailable)
    */
   async destroy(): Promise<void> {
     // BUG FIX: Stop auto-save timer first
@@ -589,28 +603,55 @@ export class CheckpointAdapter {
       this.autoSaveTimer = null;
     }
 
-    // BUG FIX: Flush any pending checkpoint before destroying with timeout
-    // to prevent hanging if file system is slow or unresponsive
+    // PRODUCTION FIX: Flush with retry logic to handle transient errors
     if (this.pendingCheckpoint) {
-      try {
-        // Race between save and timeout
-        await Promise.race([
-          this.save(
-            this.pendingCheckpoint.workflowId,
-            this.pendingCheckpoint
-          ),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Checkpoint flush timed out')), FLUSH_TIMEOUT_MS)
-          )
-        ]);
-        logger.debug('Pending checkpoint flushed on destroy', {
-          workflowId: this.pendingCheckpoint.workflowId
-        });
-      } catch (error) {
-        logger.warn('Failed to flush pending checkpoint on destroy', {
-          error: error instanceof Error ? error.message : String(error)
+      const checkpoint = this.pendingCheckpoint;
+      let lastError: Error | null = null;
+      let success = false;
+
+      for (let attempt = 1; attempt <= FLUSH_MAX_RETRIES; attempt++) {
+        try {
+          // Race between save and timeout
+          await Promise.race([
+            this.save(checkpoint.workflowId, checkpoint),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Checkpoint flush timed out')), FLUSH_TIMEOUT_MS)
+            )
+          ]);
+          logger.debug('Pending checkpoint flushed on destroy', {
+            workflowId: checkpoint.workflowId,
+            attempt
+          });
+          success = true;
+          break;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          logger.warn('Checkpoint flush attempt failed', {
+            workflowId: checkpoint.workflowId,
+            attempt,
+            maxAttempts: FLUSH_MAX_RETRIES,
+            error: lastError.message
+          });
+
+          // Wait before retry (except on last attempt)
+          if (attempt < FLUSH_MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, FLUSH_RETRY_DELAY_MS));
+          }
+        }
+      }
+
+      if (!success && lastError) {
+        // Log final failure with checkpoint data for manual recovery
+        logger.error('Failed to flush checkpoint after all retries', {
+          workflowId: checkpoint.workflowId,
+          phase: checkpoint.phase,
+          totalPhases: checkpoint.totalPhases,
+          completedTasks: checkpoint.completedTasks.length,
+          error: lastError.message,
+          hint: 'Checkpoint data may need manual recovery'
         });
       }
+
       this.pendingCheckpoint = null;
     }
 

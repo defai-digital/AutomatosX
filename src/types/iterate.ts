@@ -56,6 +56,17 @@ export interface ClassifierConfig {
 
   /** Number of messages to include in context window */
   contextWindowMessages: number;
+
+  /**
+   * Priority order for classification types (optional)
+   *
+   * Types listed first have higher priority when multiple patterns match.
+   * Default order prioritizes genuine_question first (to avoid false auto-responses).
+   *
+   * @since v11.3.4
+   * @default ['genuine_question', 'blocking_request', 'rate_limit_or_context', 'error_signal', 'completion_signal', 'confirmation_prompt', 'status_update']
+   */
+  classificationPriorityOrder?: ClassificationType[];
 }
 
 /**
@@ -231,7 +242,8 @@ export type ClassificationMethod =
   | 'pattern_library'    // Fast regex/keyword matching
   | 'contextual_rules'   // Conversation history analysis
   | 'provider_markers'   // Native AI annotations (e.g., Claude <THOUGHT>)
-  | 'semantic_scoring'   // ML-based classification (fallback)
+  | 'semantic_scoring'   // ML-based classification
+  | 'fallback'           // Default when no other method matches (v11.3.4+)
   | 'cache';             // Cached result (v8.6.0+)
 
 /**
@@ -311,6 +323,7 @@ export type PauseReason =
   | 'time_limit_exceeded'    // Max duration reached
   | 'token_limit_exceeded'   // Max tokens reached (v8.6.0+)
   | 'iteration_limit_exceeded' // Max iterations reached
+  | 'auto_response_limit_exceeded' // Max auto-responses per stage reached (v11.3.4+)
   | 'error_recovery_needed'  // Error requires user intervention
   | 'user_interrupt';        // User pressed Ctrl+C or Ctrl+Z
 
@@ -455,7 +468,14 @@ export interface IterateStats {
   };
 
   /** Stop reason */
-  stopReason: 'completion' | 'timeout' | 'token_limit' | 'user_interrupt' | 'error';
+  stopReason:
+    | 'completion'       // Task completed normally
+    | 'timeout'          // Time limit exceeded
+    | 'token_limit'      // Token budget exceeded
+    | 'iteration_limit'  // Iteration limit exceeded (v11.3.4+)
+    | 'user_interrupt'   // User interrupted or genuine question/blocking request
+    | 'safety_paused'    // High-risk operation detected (v11.3.4+)
+    | 'error';           // Error occurred
 
   /** Success rate (0-1) */
   successRate: number;

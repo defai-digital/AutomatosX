@@ -182,16 +182,25 @@ export class IterateModeController {
    * - Safety checks
    * - Budget monitoring
    *
+   * **Orchestration Flow**:
+   * 1. Initialize state and check initial budgets
+   * 2. Execute agent via provider with hooks installed
+   * 3. When response received, classify and determine action
+   * 4. If 'continue': send auto-response and loop
+   * 5. If 'pause'/'stop': return control to caller
+   *
    * @param context - Execution context
    * @param options - Execution options
+   * @param executor - Optional agent executor for actual execution (injected for testability)
    * @returns Execution result with iterate stats
    *
-   * **Phase 1 (Week 1)**: Skeleton implementation (no-op, falls back to standard execution)
-   * **Phase 3 (Week 3)**: Full implementation with orchestration loop
+   * @since v6.4.0 - Initial skeleton
+   * @since v11.3.4 - Full implementation with orchestration loop
    */
   async executeWithIterate(
     context: ExecutionContext,
-    options: ExecutionOptions
+    options: ExecutionOptions,
+    executor?: { execute: (ctx: ExecutionContext, opts: ExecutionOptions) => Promise<ExecutionResult> }
   ): Promise<ExecutionResult> {
     // Step 0: Ensure patterns and templates are loaded
     await this.ensureInitialized();
@@ -227,75 +236,227 @@ export class IterateModeController {
       }
     });
 
-    try {
-      // Step 2: Execute with budget monitoring
-      // Note: Full orchestration loop with agent execution hooks will be implemented in future phases
-      // For Week 4, we demonstrate the framework with state management and budget checking
+    // Track accumulated response content
+    const responseContents: string[] = [];
+    let totalTokensUsed = { prompt: 0, completion: 0, total: 0 };
+    let lastResponse: ExecutionResponse | undefined;
 
-      // Check initial budgets
+    try {
+      // Step 2: Check initial budgets
       if (this.checkTimeBudget()) {
         throw new IterateError('Time budget exceeded before execution', 'budget_exceeded');
       }
 
-      if (this.checkTokenBudget()) {
-        throw new IterateError('Token budget exceeded before execution', 'budget_exceeded');
+      // Step 3: Main orchestration loop
+      let currentTask = context.task;
+      let shouldContinue = true;
+
+      while (shouldContinue) {
+        // Create execution context with current task (may include auto-response)
+        const iterationContext: ExecutionContext = {
+          ...context,
+          task: currentTask
+        };
+
+        // Execute via the provided executor or fall back to direct provider execution
+        let result: ExecutionResult;
+        let action: IterateAction;
+
+        if (executor) {
+          // Use local variable to capture action (avoids race condition with concurrent calls)
+          let capturedAction: IterateAction | undefined;
+
+          // Install iterate mode hooks into execution options
+          const iterateOptions: ExecutionOptions = {
+            ...options,
+            iterateMode: true,
+            hooks: {
+              ...options.hooks,
+              onPostResponse: async (response: ExecutionResponse): Promise<IterateAction> => {
+                // Use the controller's handleResponse for classification and action
+                const responseAction = await this.handleResponse(response);
+                capturedAction = responseAction;
+                return responseAction;
+              }
+            }
+          };
+
+          result = await executor.execute(iterationContext, iterateOptions);
+          action = capturedAction || { type: 'stop', reason: 'No action from executor' };
+        } else {
+          // Direct provider execution (when no executor provided)
+          // This is a simplified path for testing or standalone use
+          const startTime = Date.now();
+          const response = await context.provider.execute({
+            prompt: currentTask,
+            systemPrompt: context.agent.systemPrompt,
+            model: context.agent.model,
+            temperature: context.agent.temperature,
+            maxTokens: context.agent.maxTokens,
+            signal: options.signal
+          });
+
+          // Process through handleResponse
+          action = await this.handleResponse(response);
+
+          result = {
+            response,
+            duration: Date.now() - startTime,
+            context: iterationContext
+          };
+        }
+
+        // Store response content
+        lastResponse = result.response;
+        if (result.response.content) {
+          responseContents.push(result.response.content);
+        }
+
+        // Accumulate tokens
+        if (result.response.tokensUsed) {
+          totalTokensUsed.prompt += result.response.tokensUsed.prompt || 0;
+          totalTokensUsed.completion += result.response.tokensUsed.completion || 0;
+          totalTokensUsed.total += result.response.tokensUsed.total || 0;
+        }
+
+        logger.debug('Iterate loop action', {
+          actionType: action.type,
+          reason: action.reason,
+          hasAutoResponse: !!action.response
+        });
+
+        switch (action.type) {
+          case 'continue':
+            // Auto-respond and continue
+            if (action.response) {
+              currentTask = action.response;
+
+              // Emit auto-response event
+              this.emitEvent({
+                type: 'iterate.auto_response',
+                timestamp: new Date().toISOString(),
+                sessionId,
+                payload: {
+                  response: action.response,
+                  iteration: this.state?.totalIterations || 0
+                }
+              });
+            } else {
+              // No auto-response generated, stop
+              shouldContinue = false;
+            }
+            break;
+
+          case 'stop':
+            // Task complete, stop gracefully
+            shouldContinue = false;
+            this.emitEvent({
+              type: 'iterate.stop',
+              timestamp: new Date().toISOString(),
+              sessionId,
+              payload: {
+                reason: action.reason,
+                stats: this.getStats()
+              }
+            });
+            break;
+
+          case 'pause':
+            // Pause for user intervention
+            shouldContinue = false;
+            await this.pause(action.pauseReason || 'user_interrupt', action.context);
+            break;
+
+          case 'retry':
+            // Retry with same task (could implement provider switching here)
+            logger.info('Retry requested, continuing with same task');
+            // currentTask stays the same
+            break;
+
+          case 'no_op':
+            // No action needed, but check if we should stop
+            // After a no_op, we typically wait for more output or stop
+            shouldContinue = false;
+            break;
+
+          default:
+            // Unknown action, stop for safety
+            logger.warn('Unknown action type, stopping iterate loop', { actionType: action.type });
+            shouldContinue = false;
+        }
       }
 
-      // Step 3: Return framework result
-      // Future: This would contain the actual execution orchestration loop
-      // For now, return a success result showing the framework is in place
+      // Step 4: Build final result
       const duration = Date.now() - new Date(this.state!.startedAt).getTime();
+      const stats = this.getStats();
+
+      // Render summary if status renderer is available
+      if (this.statusRenderer) {
+        this.statusRenderer.renderSummary(stats);
+      }
 
       const result: ExecutionResult = {
         response: {
-          content: `Iterate mode framework initialized for: ${context.task}\n\nSession ID: ${sessionId}\nState: ${JSON.stringify(this.getStats(), null, 2)}\n\nNote: Full execution loop will be implemented in future phases`,
-          tokensUsed: {
-            prompt: 0,
-            completion: 0,
-            total: 0
-          },
+          content: responseContents.join('\n\n---\n\n') || 'Iterate mode completed with no output',
+          tokensUsed: totalTokensUsed,
           latencyMs: duration,
-          model: context.agent.name,
-          finishReason: 'stop' as const
+          model: lastResponse?.model || context.agent.model || 'unknown',
+          // 'stop' is standard LLM finish reason for both normal completion and pauses
+          finishReason: 'stop'
         },
-        duration: duration,
-        context: context
+        duration,
+        context
       };
 
       logger.info('Iterate mode execution completed', {
         sessionId,
         duration: result.duration,
-        stats: this.getStats()
+        iterations: stats.totalIterations,
+        autoResponses: stats.totalAutoResponses,
+        tokens: stats.totalTokens,
+        stopReason: stats.stopReason
       });
 
       return result;
 
     } catch (error) {
       const duration = this.state ? Date.now() - new Date(this.state.startedAt).getTime() : 0;
+      const stats = this.getStats();
 
       logger.error('Iterate mode execution failed', {
         sessionId,
         error: (error as Error).message,
-        duration
+        duration,
+        stats
+      });
+
+      // Emit error event
+      this.emitEvent({
+        type: 'iterate.error',
+        timestamp: new Date().toISOString(),
+        sessionId,
+        payload: {
+          error: (error as Error).message,
+          stats
+        }
       });
 
       return {
         response: {
-          content: `Iterate mode execution failed: ${(error as Error).message}\n\nSession ID: ${sessionId}\nError: ${(error as Error).message}${this.state ? `\nState: ${JSON.stringify(this.getStats(), null, 2)}` : ''}`,
-          tokensUsed: {
-            prompt: 0,
-            completion: 0,
-            total: 0
-          },
+          content: responseContents.length > 0
+            ? responseContents.join('\n\n---\n\n') + `\n\n---\n\nIterate mode error: ${(error as Error).message}`
+            : `Iterate mode execution failed: ${(error as Error).message}`,
+          tokensUsed: totalTokensUsed,
           latencyMs: duration,
-          model: context.agent.name,
-          finishReason: 'error' as const
+          model: lastResponse?.model || context.agent.model || 'unknown',
+          finishReason: 'error'
         },
-        duration: duration,
-        context: context
+        duration,
+        context
       };
     }
   }
+
 
   /**
    * Handle AI response with classification and action determination
@@ -374,21 +535,14 @@ export class IterateModeController {
       });
     }
 
-    // Step 2: Track tokens (v9.0.0 - token-based budgets only)
-    if (response.tokensUsed && response.tokensUsed.total) {
-      this.updateTokens(response.tokensUsed.total);
-    }
-
-    // Step 3: Increment iteration counters
-    this.incrementIterations();
-
-    // Step 4: Check budget limits (v9.0.0 - token and time budgets only)
-    if (this.checkTokenBudget()) {
+    // Step 2: Check budget limits BEFORE incrementing counters (prevent off-by-one)
+    // This ensures we stop at exactly the limit, not after exceeding it
+    if (this.checkIterationLimit()) {
       return {
         type: 'pause',
-        reason: 'Token budget exceeded',
-        pauseReason: 'token_limit_exceeded',
-        context: `Maximum token limit of ${this.config.defaults.maxTotalTokens} reached`
+        reason: 'Iteration limit exceeded',
+        pauseReason: 'iteration_limit_exceeded',
+        context: `Maximum iterations reached`
       };
     }
 
@@ -401,16 +555,25 @@ export class IterateModeController {
       };
     }
 
-    if (this.checkIterationLimit()) {
+    // Step 3: Check token budget BEFORE adding tokens (prevent exceeding limit)
+    // This ensures we stop at exactly the limit, not after exceeding it
+    const newTokens = response.tokensUsed?.total || 0;
+    if (this.wouldExceedTokenBudget(newTokens)) {
       return {
         type: 'pause',
-        reason: 'Iteration limit exceeded',
-        pauseReason: 'iteration_limit_exceeded',
-        context: `Maximum iterations reached`
+        reason: 'Token budget exceeded',
+        pauseReason: 'token_limit_exceeded',
+        context: `Maximum token limit of ${this.config.defaults.maxTotalTokens} reached`
       };
     }
 
-    // Step 4: Check safety guards for dangerous operations
+    // Step 4: Update tokens and increment iteration counters (after limit checks pass)
+    if (newTokens > 0) {
+      this.updateTokens(newTokens);
+    }
+    this.incrementIterations();
+
+    // Step 5: Check safety guards for dangerous operations
     const safetyCheck = this.checkSafetyGuards(response.content || '');
     if (!safetyCheck.safe && this.config.notifications.pauseOnHighRiskOperation) {
       const dangerousOps = safetyCheck.detectedOperations.map(op => `${op.type}: ${op.match}`).join(', ');
@@ -422,11 +585,26 @@ export class IterateModeController {
       };
     }
 
-    // Step 5: Determine action based on classification type
+    // Step 6: Determine action based on classification type
     const action = this.determineAction(classification, response);
 
-    // Step 6: Generate auto-response if continuing or stopping (acknowledgment)
+    // Step 7: Generate auto-response if continuing or stopping (acknowledgment)
+    // First check auto-response limit before generating a new one
     if ((action.type === 'continue' || action.type === 'stop') && action.response === undefined) {
+      // Check auto-response limit BEFORE generating (prevent exceeding limit)
+      if (this.state && this.state.currentStageAutoResponses >= this.config.defaults.maxAutoResponsesPerStage) {
+        logger.warn('Auto-response limit reached, pausing instead of auto-responding', {
+          currentStageAutoResponses: this.state.currentStageAutoResponses,
+          limit: this.config.defaults.maxAutoResponsesPerStage
+        });
+        return {
+          type: 'pause',
+          reason: 'Auto-response limit exceeded',
+          pauseReason: 'auto_response_limit_exceeded',
+          context: `Maximum auto-responses per stage (${this.config.defaults.maxAutoResponsesPerStage}) reached`
+        };
+      }
+
       const autoResponse = await this.responder.generateResponse(
         classification,
         {
@@ -447,7 +625,7 @@ export class IterateModeController {
       }
     }
 
-    // Step 7: Render action status (v8.6.0 UX)
+    // Step 8: Render action status (v8.6.0 UX)
     if (this.statusRenderer) {
       this.statusRenderer.handleEvent({
         type: 'action',
@@ -456,7 +634,7 @@ export class IterateModeController {
       });
     }
 
-    // Step 8: Emit telemetry event
+    // Step 9: Emit telemetry event
     this.emitEvent({
       type: 'iterate.classification',
       timestamp: new Date().toISOString(),
@@ -767,17 +945,35 @@ export class IterateModeController {
     // User interventions = pauses for genuine questions or blocking requests
     const userInterventions = breakdown.genuine_question + breakdown.blocking_request;
 
-    // Determine stop reason
-    let stopReason: 'completion' | 'timeout' | 'token_limit' | 'user_interrupt' | 'error' = 'completion';
+    // Determine stop reason from pauseReason (v11.3.4: handle all pause reasons)
+    let stopReason: IterateStats['stopReason'] = 'completion';
     if (this.state.pauseReason) {
-      if (this.state.pauseReason === 'time_limit_exceeded') {
-        stopReason = 'timeout';
-      } else if (this.state.pauseReason === 'token_limit_exceeded') {
-        stopReason = 'token_limit'; // v9.0.0
-      } else if (this.state.pauseReason === 'user_interrupt') {
-        stopReason = 'user_interrupt';
-      } else if (this.state.pauseReason === 'error_recovery_needed') {
-        stopReason = 'error';
+      switch (this.state.pauseReason) {
+        case 'time_limit_exceeded':
+          stopReason = 'timeout';
+          break;
+        case 'token_limit_exceeded':
+          stopReason = 'token_limit';
+          break;
+        case 'iteration_limit_exceeded':
+        case 'auto_response_limit_exceeded':
+          stopReason = 'iteration_limit';
+          break;
+        case 'user_interrupt':
+        case 'genuine_question':
+        case 'blocking_request':
+          stopReason = 'user_interrupt';
+          break;
+        case 'high_risk_operation':
+          stopReason = 'safety_paused';
+          break;
+        case 'error_recovery_needed':
+          stopReason = 'error';
+          break;
+        default:
+          // Unknown pause reason, default to completion
+          logger.warn('Unknown pauseReason in getStats', { pauseReason: this.state.pauseReason });
+          stopReason = 'completion';
       }
     }
 
@@ -891,15 +1087,33 @@ export class IterateModeController {
       return true;
     }
 
-    // Check warning thresholds
+    // Check warning thresholds - only warn once per threshold
     const percentElapsed = (elapsedMinutes / maxMinutes) * 100;
+
+    // Initialize emitted warnings tracking if not present
+    if (!this.state.metadata.emittedTimeWarnings) {
+      this.state.metadata.emittedTimeWarnings = [];
+    }
+    const emittedTimeWarnings = this.state.metadata.emittedTimeWarnings as number[];
+
     for (const threshold of this.config.notifications.warnAtTimePercent) {
-      if (percentElapsed >= threshold && percentElapsed < threshold + 1) {
+      // Check if we've crossed this threshold AND haven't warned yet
+      if (percentElapsed >= threshold && !emittedTimeWarnings.includes(threshold)) {
         logger.warn(`Time budget at ${threshold}% of limit`, {
           elapsedMinutes: Math.round(elapsedMinutes),
           maxMinutes,
           percentUsed: Math.round(percentElapsed)
         });
+
+        // Mark this threshold as warned
+        emittedTimeWarnings.push(threshold);
+
+        // Update last warning threshold for compatibility
+        this.state.lastWarningThreshold = {
+          type: 'time',
+          percent: threshold,
+          timestamp: new Date().toISOString()
+        };
       }
     }
 
@@ -907,15 +1121,16 @@ export class IterateModeController {
   }
 
   /**
-   * Check if token budget exceeded
+   * Check if adding new tokens would exceed the token budget
    *
-   * @returns True if token budget exceeded
+   * @param newTokens - Number of new tokens to add
+   * @returns True if adding these tokens would exceed the budget
    * @private
-   * @since v8.6.0
+   * @since v11.3.4
    *
-   * More reliable than cost checking as token counts don't change
+   * This is a pre-check to prevent exceeding the budget (check BEFORE adding)
    */
-  private checkTokenBudget(): boolean {
+  private wouldExceedTokenBudget(newTokens: number): boolean {
     if (!this.state) return false;
 
     // Skip if token limits not configured (backward compatibility)
@@ -925,28 +1140,63 @@ export class IterateModeController {
     }
 
     const currentTokens = this.state.totalTokens;
+    const projectedTokens = currentTokens + newTokens;
 
-    // Check if budget exceeded
-    if (currentTokens >= maxTotalTokens) {
-      logger.warn('Token budget exceeded', {
+    // Check if adding these tokens would exceed the budget
+    if (projectedTokens > maxTotalTokens) {
+      logger.warn('Token budget would be exceeded', {
         currentTokens,
+        newTokens,
+        projectedTokens,
         maxTotalTokens,
         sessionId: this.state.sessionId
       });
       return true;
     }
 
-    // Warning thresholds (75%, 90%)
+    return false;
+  }
+
+  /**
+   * Check token budget warnings (called after tokens are added)
+   *
+   * @private
+   * @since v8.6.0
+   *
+   * Emits warnings at configured thresholds (default: 75%, 90%)
+   */
+  private checkTokenBudgetWarnings(): void {
+    if (!this.state) return;
+
+    // Skip if token limits not configured (backward compatibility)
+    const maxTotalTokens = this.config.defaults.maxTotalTokens;
+    if (!maxTotalTokens) {
+      return; // No token limit set, no warnings
+    }
+
+    const currentTokens = this.state.totalTokens;
+
+    // Warning thresholds (75%, 90%) - only warn once per threshold
     const percentUsed = (currentTokens / maxTotalTokens) * 100;
     const warnThresholds = this.config.defaults.warnAtTokenPercent || [75, 90];
 
+    // Initialize emitted warnings tracking if not present
+    if (!this.state.metadata.emittedTokenWarnings) {
+      this.state.metadata.emittedTokenWarnings = [];
+    }
+    const emittedTokenWarnings = this.state.metadata.emittedTokenWarnings as number[];
+
     for (const threshold of warnThresholds) {
-      if (percentUsed >= threshold && percentUsed < threshold + 1) {
+      // Check if we've crossed this threshold AND haven't warned yet
+      if (percentUsed >= threshold && !emittedTokenWarnings.includes(threshold)) {
         logger.warn(`Token budget at ${threshold}% of limit`, {
           currentTokens,
           maxTotalTokens,
           percentUsed: percentUsed.toFixed(1)
         });
+
+        // Mark this threshold as warned
+        emittedTokenWarnings.push(threshold);
 
         // Update last warning threshold
         this.state.lastWarningThreshold = {
@@ -956,8 +1206,6 @@ export class IterateModeController {
         };
       }
     }
-
-    return false;
   }
 
   /**
@@ -992,14 +1240,8 @@ export class IterateModeController {
       return true;
     }
 
-    // Check auto-response limit
-    if (this.state.currentStageAutoResponses >= this.config.defaults.maxAutoResponsesPerStage) {
-      logger.warn('Auto-response limit exceeded', {
-        currentStageAutoResponses: this.state.currentStageAutoResponses,
-        limit: this.config.defaults.maxAutoResponsesPerStage
-      });
-      return true;
-    }
+    // Note: Auto-response limit is checked separately in handleResponse
+    // before incrementing auto-responses, not here with iteration limits
 
     return false;
   }
@@ -1083,6 +1325,9 @@ export class IterateModeController {
       currentStageTokens: this.state.currentStageTokens,
       maxTotalTokens: this.config.defaults.maxTotalTokens
     });
+
+    // Check for warning thresholds after updating
+    this.checkTokenBudgetWarnings();
   }
 
   /**
@@ -1273,15 +1518,18 @@ export class IterateModeController {
     }
 
     // Determine if safe based on risk tolerance
+    // 'permissive': Only block HIGH risk, allow LOW and MEDIUM
+    // 'balanced': Block HIGH risk, allow LOW and MEDIUM
+    // 'paranoid': Block HIGH and MEDIUM risk, only allow LOW
     const riskTolerance = this.config.safety.riskTolerance;
     const isSafe = detectedOperations.every(op => {
       if (riskTolerance === 'permissive') {
         return op.risk !== 'HIGH'; // Only block HIGH risk
       } else if (riskTolerance === 'balanced') {
-        return op.risk === 'LOW'; // Block MEDIUM and HIGH
+        return op.risk !== 'HIGH'; // Block HIGH risk, allow LOW and MEDIUM
       } else {
-        // paranoid: block everything
-        return false;
+        // paranoid: block HIGH and MEDIUM, only allow LOW
+        return op.risk === 'LOW';
       }
     });
 

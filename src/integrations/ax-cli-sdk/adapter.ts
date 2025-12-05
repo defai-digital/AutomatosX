@@ -25,6 +25,7 @@ import { SubagentAdapter, type SubagentTask, type SubagentResult, type Orchestra
 import { CheckpointAdapter, type Checkpoint, type Workflow, type CheckpointOptions } from './checkpoint-adapter.js';
 import { InstructionsBridge, type CombinedInstructions, type InstructionsBridgeOptions, getInstructionsBridge } from './instructions-bridge.js';
 import { AxCliMCPManager, getAxCliMCPManager, type MCPTemplate, type MCPServerConfig, type MCPManagerOptions } from './mcp-manager.js';
+import type { SDKAgent, SDKStreamChunk, SDKChatEntry } from './sdk-types.js';
 
 /**
  * SDK Adapter configuration options
@@ -60,7 +61,8 @@ interface AgentConfig {
  * - Automatic error mapping
  */
 export class AxCliSdkAdapter implements AxCliAdapter {
-  private agent: any = null;  // Will type as LLMAgent after import
+  // PRODUCTION FIX: Use typed SDKAgent interface instead of 'any'
+  private agent: SDKAgent | null = null;
   private agentConfig: AgentConfig | null = null;
   private initPromise: Promise<void> | null = null;
   private executionLock: Promise<void> = Promise.resolve();
@@ -365,10 +367,16 @@ export class AxCliSdkAdapter implements AxCliAdapter {
       // BUG FIX (v11.3.3): Handle case where getChatHistory() is not available
       // or returns undefined/null. Some SDK agent implementations may not
       // expose this method or may return empty results.
-      const chatHistory = typeof this.agent.getChatHistory === 'function'
+      // BUG FIX (v11.3.4): Add null guard for this.agent before property access
+      const chatHistory = this.agent && typeof this.agent.getChatHistory === 'function'
         ? this.agent.getChatHistory()
         : null;
       const historyLengthBefore = Array.isArray(chatHistory) ? chatHistory.length : 0;
+
+      // PRODUCTION FIX: Assert agent is not null (ensureAgent guarantees this)
+      if (!this.agent) {
+        throw new Error('Agent not initialized');
+      }
 
       for await (const chunk of this.agent.processUserMessageStream(prompt)) {
         // Track token counts from chunks
@@ -413,7 +421,8 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
       // Get only the NEW entries from this execution
       // BUG FIX (v11.3.3): Handle case where getChatHistory() is not available
-      const fullHistory = typeof this.agent.getChatHistory === 'function'
+      // BUG FIX (v11.3.4): Add null guard for this.agent before property access
+      const fullHistory = this.agent && typeof this.agent.getChatHistory === 'function'
         ? this.agent.getChatHistory()
         : [];
       const result = Array.isArray(fullHistory) ? fullHistory.slice(historyLengthBefore) : [];
@@ -485,9 +494,10 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
       // Create agent via SDK
       // SDK will load apiKey, baseURL, model from ~/.ax-cli/config.json
+      // Cast to SDKAgent as SDK's actual type may differ but must be compatible
       this.agent = await createAgent({
         maxToolRounds: config.maxToolRounds
-      });
+      }) as unknown as SDKAgent;
 
       this.agentConfig = config;
 
@@ -665,9 +675,10 @@ export class AxCliSdkAdapter implements AxCliAdapter {
         });
       });
 
-      this.agent.on('error', (error: Error) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.agent.on('error', (error: any) => {
         logger.error('Agent error event', {
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       });
     } catch (error) {
@@ -784,7 +795,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
       return {
         content,
-        model: this.agent?.getCurrentModel() ?? 'unknown',
+        model: this.agent?.getCurrentModel?.() ?? 'unknown',
         tokensUsed,
         latencyMs,
         finishReason: 'stop',
@@ -809,7 +820,7 @@ export class AxCliSdkAdapter implements AxCliAdapter {
 
     return {
       content,
-      model: this.agent?.getCurrentModel() ?? 'unknown',
+      model: this.agent?.getCurrentModel?.() ?? 'unknown',
       tokensUsed,
       latencyMs,
       finishReason: 'stop',
@@ -986,9 +997,11 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     if (!this.agent) return;
 
     try {
-      const result = this.agent.dispose();
-      if (result instanceof Promise) {
-        await result;
+      if (this.agent.dispose) {
+        const result = this.agent.dispose();
+        if (result instanceof Promise) {
+          await result;
+        }
       }
     } catch (error) {
       logger.warn('Error during agent cleanup', {

@@ -387,10 +387,21 @@ export abstract class BaseProvider implements Provider {
           child.kill('SIGTERM');
 
           // Escalate to SIGKILL after timeout if SIGTERM fails
+          // BUG FIX: Don't check child.killed - it's set to true immediately when
+          // child.kill('SIGTERM') is called, not when the process actually exits.
+          // Instead, use process.kill(pid, 0) to check if process still exists.
           forceKillTimer = setTimeout(() => {
-            if (child.pid && !child.killed) {
-              logger.warn('Force killing child process', { pid: child.pid });
-              child.kill('SIGKILL');
+            if (child.pid) {
+              try {
+                // Check if process still exists (signal 0 doesn't kill, just checks)
+                process.kill(child.pid, 0);
+                // Process still exists - force kill it
+                logger.warn('Force killing child process', { pid: child.pid });
+                child.kill('SIGKILL');
+              } catch {
+                // Process already exited - no action needed
+                logger.debug('Process already exited before SIGKILL', { pid: child.pid });
+              }
             }
           }, BaseProvider.SIGKILL_ESCALATION_MS);
         }
@@ -622,10 +633,21 @@ export abstract class BaseProvider implements Provider {
 
           child.kill('SIGTERM');
           // Force kill after timeout if SIGTERM doesn't work
+          // BUG FIX: Don't check child.killed - it's set to true immediately when
+          // child.kill('SIGTERM') is called, not when the process actually exits.
+          // Instead, use process.kill(pid, 0) to check if process still exists.
           forceKillTimer = setTimeout(() => {
-            if (child.pid && !child.killed) {
-              logger.warn('Force killing child process', { pid: child.pid });
-              child.kill('SIGKILL');
+            if (child.pid) {
+              try {
+                // Check if process still exists (signal 0 doesn't kill, just checks)
+                process.kill(child.pid, 0);
+                // Process still exists - force kill it
+                logger.warn('Force killing child process', { pid: child.pid });
+                child.kill('SIGKILL');
+              } catch {
+                // Process already exited - no action needed
+                logger.debug('Process already exited before SIGKILL', { pid: child.pid });
+              }
             }
           }, BaseProvider.SIGKILL_ESCALATION_MS);
         }

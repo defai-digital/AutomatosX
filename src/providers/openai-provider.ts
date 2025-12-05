@@ -28,6 +28,11 @@ export interface OpenAIProviderConfig extends ProviderConfig {
 export class OpenAIProvider extends BaseProvider {
   private hybridAdapter: HybridCodexAdapter | null = null;
   private readonly providerConfig: OpenAIProviderConfig;
+  /** BUG FIX: Track pending initialization to prevent race condition where
+   * concurrent execute() calls could each trigger initializeHybridAdapter() */
+  private initializationPromise: Promise<void> | null = null;
+  /** BUG FIX: Track destroyed state to prevent use-after-destroy race condition */
+  private isDestroyed = false;
 
   constructor(config: OpenAIProviderConfig) {
     super(config);
@@ -36,6 +41,11 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
+    // BUG FIX: Check if provider has been destroyed to prevent use-after-destroy
+    if (this.isDestroyed) {
+      throw new Error('OpenAIProvider has been destroyed and cannot execute requests');
+    }
+
     // Mock mode for tests
     if (process.env.AX_MOCK_PROVIDERS === 'true') {
       return {
@@ -50,9 +60,9 @@ export class OpenAIProvider extends BaseProvider {
     const startTime = Date.now();
 
     // Initialize hybrid adapter on first use
-    if (!this.hybridAdapter) {
-      this.initializeHybridAdapter();
-    }
+    // BUG FIX: Use ensureInitialized() to prevent race condition where
+    // concurrent execute() calls could each trigger adapter initialization
+    await this.ensureInitialized();
 
     try {
       const result = await this.hybridAdapter!.execute(
@@ -83,7 +93,38 @@ export class OpenAIProvider extends BaseProvider {
     }
   }
 
-  private initializeHybridAdapter(): void {
+  /**
+   * BUG FIX: Ensure adapter is initialized exactly once, even with concurrent calls.
+   * Uses a promise-based lock pattern to prevent race conditions where multiple
+   * execute() calls could each trigger initializeHybridAdapter().
+   */
+  private async ensureInitialized(): Promise<void> {
+    // Fast path: already initialized
+    if (this.hybridAdapter) {
+      return;
+    }
+
+    // If initialization is in progress, wait for it
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+      return;
+    }
+
+    // Start initialization and track the promise
+    this.initializationPromise = this.initializeHybridAdapter();
+    try {
+      await this.initializationPromise;
+    } finally {
+      this.initializationPromise = null;
+    }
+  }
+
+  private async initializeHybridAdapter(): Promise<void> {
+    // Double-check in case another caller completed initialization
+    if (this.hybridAdapter) {
+      return;
+    }
+
     const options: HybridCodexAdapterOptions = {
       mode: this.providerConfig.mode || 'auto',
       cli: {
@@ -135,6 +176,9 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   async destroy(): Promise<void> {
+    // BUG FIX: Set destroyed flag first to prevent race condition with execute()
+    this.isDestroyed = true;
+
     if (this.hybridAdapter) {
       await this.hybridAdapter.destroy();
       this.hybridAdapter = null;

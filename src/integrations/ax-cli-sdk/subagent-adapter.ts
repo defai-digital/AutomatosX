@@ -26,7 +26,9 @@ import type {
   SubagentStateChangeData,
   SubagentStateType,
   ProgressCallback,
-  ProgressEvent
+  ProgressEvent,
+  SDKSubagent,
+  SDKStreamChunk
 } from './sdk-types.js';
 
 /** Estimated token split ratios when actual split is unknown */
@@ -163,9 +165,23 @@ export interface OrchestratorOptions {
  * ]);
  * ```
  */
+/**
+ * SDK Orchestrator interface - minimal typed interface
+ * Note: Uses loose typing to accommodate SDK variations
+ */
+interface SDKOrchestrator {
+  setSharedContext?(context: string): Promise<void>;
+  dispose?(): Promise<void>;
+  shutdown?(): Promise<void>;
+  // Allow additional SDK-specific properties
+  [key: string]: unknown;
+}
+
 export class SubagentAdapter {
-  private orchestrator: any = null;
-  private subagents: Map<string, any> = new Map();
+  // PRODUCTION FIX: Use typed interfaces instead of 'any'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private orchestrator: SDKOrchestrator | { initialized: boolean } | any = null;
+  private subagents: Map<string, SDKSubagent> = new Map();
   private busySubagents: Set<string> = new Set();
   private sdkAvailable: boolean | null = null;
   private readonly options: OrchestratorOptions;
@@ -364,7 +380,8 @@ export class SubagentAdapter {
     const startTime = Date.now();
     const subagentKey = this.getSubagentKey(task.config);
     const taskId = `${subagentKey}:${Date.now()}`;
-    let release: (() => void) | null = null;
+    // BUG FIX (v11.3.4): Type should be Promise<void> to match acquireSubagent signature
+    let release: (() => Promise<void>) | null = null;
 
     // Emit task start event
     this.emitEvent('task_start', task.task);
@@ -405,16 +422,44 @@ export class SubagentAdapter {
         message: 'Subagent initialized, executing...'
       });
 
-      // Execute via SDK
+      // Execute via SDK with timeout enforcement
+      // BUG FIX (v11.3.4): Apply configured timeout to stream processing
+      // Previously the timeout option was defined but never used, causing
+      // tasks to hang indefinitely if the stream never completed.
+      // PRODUCTION FIX (v11.3.4): Use proper timer variable pattern instead of
+      // storing on Promise prototype to prevent GC-related leaks.
       let content = '';
       let totalTokens = 0;
+      const timeoutMs = this.options.timeout!;
+      let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
-      for await (const chunk of subagent.processUserMessageStream(prompt)) {
-        if (chunk.type === 'content') {
-          content += chunk.content || '';
-        }
-        if (chunk.type === 'token_count' && chunk.tokenCount) {
-          totalTokens += chunk.tokenCount;
+      try {
+        // Create timeout promise with external timer reference for proper cleanup
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutTimer = setTimeout(() => {
+            reject(new Error(`Subagent task timed out after ${timeoutMs}ms`));
+          }, timeoutMs);
+        });
+
+        // Process stream with timeout - wrap in a promise we can race
+        const streamPromise = (async () => {
+          for await (const chunk of subagent.processUserMessageStream(prompt)) {
+            if (chunk.type === 'content') {
+              content += chunk.content || '';
+            }
+            if (chunk.type === 'token_count' && chunk.tokenCount) {
+              totalTokens += chunk.tokenCount;
+            }
+          }
+        })();
+
+        // Race between stream completion and timeout
+        await Promise.race([streamPromise, timeoutPromise]);
+      } finally {
+        // Always clear timeout to prevent memory leak
+        if (timeoutTimer !== null) {
+          clearTimeout(timeoutTimer);
+          timeoutTimer = null;
         }
       }
 
@@ -495,8 +540,9 @@ export class SubagentAdapter {
         latencyMs
       };
     } finally {
+      // PRODUCTION FIX: Await async release to ensure proper cleanup
       if (release) {
-        release();
+        await release();
       }
     }
   }
@@ -550,22 +596,30 @@ export class SubagentAdapter {
 
   /**
    * Get or create a subagent for the given config
+   *
+   * PRODUCTION FIX: Return typed SDKSubagent instead of 'any'
+   * Note: We still need 'as unknown as SDKSubagent' cast since SDK types may differ,
+   * but this is safer than raw 'any' as it enforces interface compliance.
    */
-  private async getOrCreateSubagent(config: SubagentConfig): Promise<any> {
+  private async getOrCreateSubagent(config: SubagentConfig): Promise<SDKSubagent> {
     const key = this.getSubagentKey(config);
 
-    if (this.subagents.has(key)) {
-      return this.subagents.get(key);
+    const cached = this.subagents.get(key);
+    if (cached) {
+      return cached;
     }
 
     try {
       const { createSubagent } = await import('@defai.digital/ax-cli/sdk');
 
-      // Cast role and config to SDK's expected types - SDK may have different property names
+      // Cast through unknown to SDKSubagent - safer than raw 'any'
+      // SDK may have additional properties but must satisfy SDKSubagent interface
+      // Note: Role type may differ between our definition and SDK's - use any for SDK compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subagent = createSubagent(config.role as any, {
         systemPrompt: config.instructions,
         maxToolRounds: config.maxToolRounds ?? DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS
-      } as any);
+      } as Record<string, unknown>) as unknown as SDKSubagent;
 
       this.subagents.set(key, subagent);
 
@@ -587,29 +641,37 @@ export class SubagentAdapter {
 
   /**
    * Create a temporary subagent instance. Used when the cached subagent is busy.
+   *
+   * PRODUCTION FIX: Return typed SDKSubagent instead of 'any'
    */
-  private async createEphemeralSubagent(config: SubagentConfig): Promise<any> {
+  private async createEphemeralSubagent(config: SubagentConfig): Promise<SDKSubagent> {
     const { createSubagent } = await import('@defai.digital/ax-cli/sdk');
 
+    // Cast through unknown to SDKSubagent - safer than raw 'any'
+    // Note: Role type may differ between our definition and SDK's - use any for SDK compatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return createSubagent(config.role as any, {
       systemPrompt: config.instructions,
       maxToolRounds: config.maxToolRounds ?? DEFAULT_SUBAGENT_MAX_TOOL_ROUNDS
-    } as any);
+    } as Record<string, unknown>) as unknown as SDKSubagent;
   }
 
   /**
    * Acquire a subagent instance for a task. If a cached instance is already
    * running another task, create a short-lived one to avoid interleaved
    * streams from concurrent executions.
+   *
+   * PRODUCTION FIX (v11.3.4): Changed release() to return Promise for proper
+   * async cleanup of ephemeral subagents. Callers must await release().
    */
-  private async acquireSubagent(config: SubagentConfig): Promise<{ subagent: any; release: () => void }> {
+  private async acquireSubagent(config: SubagentConfig): Promise<{ subagent: SDKSubagent; release: () => Promise<void> }> {
     const key = this.getSubagentKey(config);
 
     if (!this.busySubagents.has(key)) {
       this.busySubagents.add(key);
       // BUG FIX: If getOrCreateSubagent throws, we need to release the key
       // to prevent permanently marking this subagent as busy
-      let subagent: any;
+      let subagent: SDKSubagent;
       try {
         subagent = await this.getOrCreateSubagent(config);
       } catch (error) {
@@ -619,7 +681,7 @@ export class SubagentAdapter {
       }
       return {
         subagent,
-        release: () => this.releaseSubagent(key)
+        release: async () => this.releaseSubagent(key)
       };
     }
 
@@ -627,18 +689,23 @@ export class SubagentAdapter {
     const ephemeral = await this.createEphemeralSubagent(config);
     return {
       subagent: ephemeral,
-      release: () => {
+      // PRODUCTION FIX: Properly await async dispose to ensure cleanup completes
+      // before next task starts, preventing resource accumulation
+      release: async () => {
         try {
           if (ephemeral.dispose) {
             const result = ephemeral.dispose();
             if (result instanceof Promise) {
-              result.catch(err => logger.warn('Error disposing ephemeral subagent', { error: err instanceof Error ? err.message : String(err) }));
+              await result;
             }
           }
+          logger.debug('Ephemeral subagent disposed successfully', { key });
         } catch (error) {
           logger.warn('Error disposing ephemeral subagent', {
+            key,
             error: error instanceof Error ? error.message : String(error)
           });
+          // Don't rethrow - cleanup errors shouldn't fail the task
         }
       }
     };

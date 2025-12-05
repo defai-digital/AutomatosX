@@ -8,6 +8,108 @@
  */
 
 /**
+ * Result type for type-safe error handling
+ *
+ * PRODUCTION STANDARD: Use this type across all SDK adapters for consistent
+ * error handling. Prefer Result<T> over throwing exceptions for recoverable errors.
+ *
+ * @example
+ * ```typescript
+ * function divide(a: number, b: number): Result<number> {
+ *   if (b === 0) {
+ *     return { ok: false, error: new Error('Division by zero') };
+ *   }
+ *   return { ok: true, value: a / b };
+ * }
+ *
+ * const result = divide(10, 2);
+ * if (result.ok) {
+ *   console.log(result.value); // 5
+ * } else {
+ *   console.error(result.error.message);
+ * }
+ * ```
+ */
+export type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
+
+/**
+ * Helper to create a success result
+ */
+export function ok<T>(value: T): Result<T> {
+  return { ok: true, value };
+}
+
+/**
+ * Helper to create an error result
+ */
+export function err<E = Error>(error: E): Result<never, E> {
+  return { ok: false, error };
+}
+
+/**
+ * SDK Agent interface - minimal typed interface for ax-cli SDK agent
+ *
+ * PRODUCTION STANDARD: Use this instead of 'any' when working with SDK agents.
+ * Note: Uses 'unknown' for stream chunks to allow SDK-specific types to pass through.
+ */
+export interface SDKAgent {
+  /** Process user message and return async stream of chunks */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  processUserMessageStream(prompt: string): AsyncIterable<any>;
+
+  /** Get chat history if available */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getChatHistory?(): any[];
+
+  /** Dispose agent resources */
+  dispose?(): void | Promise<void>;
+
+  /** Get current model (SDK-specific) */
+  getCurrentModel?(): string;
+
+  /** Event subscription (optional EventEmitter-like) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on?(event: string, handler: (...args: any[]) => void): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off?(event: string, handler: (...args: any[]) => void): void;
+  removeAllListeners?(event: string): void;
+}
+
+/**
+ * SDK stream chunk - unified type for all chunk types
+ */
+export interface SDKStreamChunk {
+  type: 'content' | 'reasoning' | 'token_count' | 'tool_calls';
+  content?: string;
+  reasoningContent?: string;
+  tokenCount?: number;
+  toolCalls?: ToolCall[];
+}
+
+/**
+ * SDK chat entry
+ */
+export interface SDKChatEntry {
+  type: 'user' | 'assistant' | 'system' | 'tool';
+  content?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
+
+/**
+ * SDK Subagent interface
+ */
+export interface SDKSubagent extends SDKAgent {
+  /** Role of the subagent */
+  role?: string;
+}
+
+/**
  * Streaming content chunk from agent
  */
 export interface StreamChunk {

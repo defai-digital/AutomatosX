@@ -199,8 +199,17 @@ export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
       this.pendingRequests.delete(timeout);
 
       if (!response.ok) {
-        const error = await response.json() as { error?: { message?: string } };
-        throw new Error(error.error?.message ?? `HTTP ${response.status}`);
+        // BUG FIX: Wrap error response parsing in try-catch to handle non-JSON error responses.
+        // Previously, if response.json() threw (e.g., HTML error page), the error would propagate
+        // without being caught by our try-catch, leaving timeout uncleared in some edge cases.
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const error = await response.json() as { error?: { message?: string } };
+          errorMessage = error.error?.message ?? errorMessage;
+        } catch {
+          // Response body is not valid JSON, use status code as error message
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json() as {

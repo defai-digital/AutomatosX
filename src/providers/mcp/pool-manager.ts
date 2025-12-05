@@ -201,13 +201,22 @@ export class McpClientPool extends EventEmitter {
         this.removeFromPool(pool, pooledClient);
         this.emitEvent('connection_closed', provider, { reason: 'connection_died' });
 
+        // BUG FIX: Track pending connection creation to prevent over-allocation race condition.
+        // Previously, createConnection() was called without incrementing pendingConnections,
+        // which meant hasCapacity() and acquire() could allow additional connections during
+        // the async operation, exceeding maxConnectionsPerProvider.
+        pool.pendingConnections++;
+
         // Create a new connection for the waiter
         this.createConnection(provider)
           .then(newClient => {
             pool.clients.push(this.createPooledClient(newClient));
             waiter.resolve(newClient);
           })
-          .catch(waiter.reject);
+          .catch(waiter.reject)
+          .finally(() => {
+            pool.pendingConnections--;
+          });
       }
     }
   }

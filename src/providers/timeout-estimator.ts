@@ -40,8 +40,17 @@ export function estimateTimeout(options: TimeoutOptions): TimeoutEstimate {
     streaming = false,
     maxTokens,
     historicalAverage,
-    maxTimeoutMs = 3600000 // Default: 1 hour if not specified
+    maxTimeoutMs: rawMaxTimeoutMs = 3600000 // Default: 1 hour if not specified
   } = options;
+
+  // BUG FIX: Validate maxTimeoutMs parameter to prevent unexpected behavior.
+  // If maxTimeoutMs is negative, zero, Infinity, or NaN, clamp to valid range.
+  // Minimum timeout is 30000ms (30s), maximum is 1 hour (3600000ms).
+  const MIN_TIMEOUT_MS = 30000;
+  const MAX_TIMEOUT_MS = 3600000;
+  const maxTimeoutMs = Number.isFinite(rawMaxTimeoutMs) && rawMaxTimeoutMs >= MIN_TIMEOUT_MS
+    ? Math.min(rawMaxTimeoutMs, MAX_TIMEOUT_MS)
+    : MAX_TIMEOUT_MS;
 
   // Calculate total input tokens
   const inputTokens = estimateTokenCount(prompt) + (systemPrompt ? estimateTokenCount(systemPrompt) : 0);

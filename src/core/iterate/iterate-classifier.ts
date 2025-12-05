@@ -151,7 +151,7 @@ export class IterateClassifier {
             } else {
               // Absolute fallback: default to status_update with low confidence
               result = { type: 'status_update', confidence: 0.3 };
-              method = 'semantic_scoring'; // Fallback uses same method type
+              method = 'fallback'; // Explicitly mark as fallback (not semantic)
               reason = 'No matches found, using default';
             }
           }
@@ -168,7 +168,10 @@ export class IterateClassifier {
       reason,
       timestamp: new Date().toISOString(),
       context: {
-        latencyMs: latency
+        latencyMs: latency,
+        // Store the original message for context window lookups
+        // This is used by getRecentMessages() in the controller
+        message: message
       }
     };
 
@@ -337,6 +340,21 @@ export class IterateClassifier {
    * **Phase 1 (Week 1)**: Skeleton only
    * **Phase 2 (Week 2)**: Full pattern matching implementation
    */
+  /**
+   * Default priority order for classification types
+   * genuine_question has highest priority to avoid false auto-responses
+   * @private
+   */
+  private static readonly DEFAULT_PRIORITY_ORDER: ClassificationType[] = [
+    'genuine_question',
+    'blocking_request',
+    'rate_limit_or_context',
+    'error_signal',
+    'completion_signal',
+    'confirmation_prompt',
+    'status_update'
+  ];
+
   private classifyWithPatterns(
     message: string
   ): { type: ClassificationType; confidence: number; pattern?: string } | null {
@@ -344,17 +362,10 @@ export class IterateClassifier {
       return null;
     }
 
-    // Define priority order for classification types
-    // genuine_question has highest priority to avoid false auto-responses
-    const priorityOrder: ClassificationType[] = [
-      'genuine_question',
-      'blocking_request',
-      'rate_limit_or_context',
-      'error_signal',
-      'completion_signal',
-      'confirmation_prompt',
-      'status_update'
-    ];
+    // Use configured priority order or fall back to default
+    // This allows users to customize which classification types take precedence
+    const priorityOrder = this.config.classificationPriorityOrder
+      ?? IterateClassifier.DEFAULT_PRIORITY_ORDER;
 
     // Try each classification type in priority order
     for (const type of priorityOrder) {
@@ -548,23 +559,69 @@ export class IterateClassifier {
   }
 
   /**
-   * Compile regex pattern from string
-   *
-   * @param patternStr - Pattern string
-   * @returns Compiled RegExp
+   * Pattern validation errors collected during loading
    * @private
    */
-  private compilePattern(patternStr: string): RegExp {
+  private patternValidationErrors: Array<{ pattern: string; type: string; error: string }> = [];
+
+  /**
+   * Compile regex pattern from string with validation
+   *
+   * @param patternStr - Pattern string
+   * @param classificationType - Type this pattern belongs to (for error reporting)
+   * @returns Compiled RegExp, or null if invalid
+   * @private
+   */
+  private compilePattern(patternStr: string, classificationType?: string): RegExp | null {
+    // Validate pattern is non-empty
+    if (!patternStr || patternStr.trim() === '') {
+      const errorMsg = 'Pattern is empty or whitespace-only';
+      logger.warn('Invalid pattern: empty', {
+        type: classificationType,
+        error: errorMsg
+      });
+      this.patternValidationErrors.push({
+        pattern: patternStr || '(empty)',
+        type: classificationType || 'unknown',
+        error: errorMsg
+      });
+      return null;
+    }
+
     try {
       return new RegExp(patternStr, 'i'); // Case-insensitive
     } catch (error) {
-      logger.warn('Failed to compile pattern', {
-        pattern: patternStr,
-        error: (error as Error).message
+      const errorMsg = (error as Error).message;
+      logger.warn('Failed to compile pattern - invalid regex syntax', {
+        pattern: patternStr.substring(0, 100),
+        type: classificationType,
+        error: errorMsg
       });
-      // Return pattern that never matches
-      return /(?!)/;
+      this.patternValidationErrors.push({
+        pattern: patternStr.substring(0, 100),
+        type: classificationType || 'unknown',
+        error: errorMsg
+      });
+      return null;
     }
+  }
+
+  /**
+   * Get pattern validation errors from last load operation
+   *
+   * @returns Array of validation errors with pattern, type, and error message
+   */
+  getPatternValidationErrors(): Array<{ pattern: string; type: string; error: string }> {
+    return [...this.patternValidationErrors];
+  }
+
+  /**
+   * Check if there are any pattern validation errors
+   *
+   * @returns True if there are validation errors
+   */
+  hasPatternValidationErrors(): boolean {
+    return this.patternValidationErrors.length > 0;
   }
 
   /**
@@ -572,6 +629,7 @@ export class IterateClassifier {
    *
    * Compiles regex patterns and caches them for fast matching.
    * Patterns are sorted by priority (higher priority first).
+   * Invalid patterns are tracked in patternValidationErrors for reporting.
    *
    * @private
    */
@@ -581,8 +639,11 @@ export class IterateClassifier {
     }
 
     this.compiledPatterns.clear();
+    // Clear previous validation errors before compiling
+    this.patternValidationErrors = [];
 
     let totalCompiled = 0;
+    let totalFailed = 0;
 
     for (const [type, patterns] of Object.entries(this.patterns.patterns)) {
       const classificationType = type as ClassificationType;
@@ -594,20 +655,40 @@ export class IterateClassifier {
       // Patterns are already sorted by priority during loading
       // No need to sort again here
 
-      // Compile each pattern
-      const compiled = patterns
-        .map(p => this.compilePattern(p.pattern))
-        .filter(regex => regex.source !== '(?!)'); // Filter out failed patterns
+      // Compile each pattern with type context for error reporting
+      const compiled: RegExp[] = [];
+      for (const p of patterns) {
+        const regex = this.compilePattern(p.pattern, classificationType);
+        if (regex !== null) {
+          compiled.push(regex);
+          totalCompiled++;
+        } else {
+          totalFailed++;
+        }
+      }
 
       if (compiled.length > 0) {
         this.compiledPatterns.set(classificationType, compiled);
-        totalCompiled += compiled.length;
       }
     }
 
-    logger.debug('Patterns compiled', {
-      types: this.compiledPatterns.size,
-      totalPatterns: totalCompiled
-    });
+    // Log summary with validation status
+    if (totalFailed > 0) {
+      logger.warn('Pattern compilation completed with errors', {
+        types: this.compiledPatterns.size,
+        totalCompiled,
+        totalFailed,
+        errors: this.patternValidationErrors.map(e => ({
+          type: e.type,
+          pattern: e.pattern.substring(0, 50),
+          error: e.error
+        }))
+      });
+    } else {
+      logger.debug('Patterns compiled successfully', {
+        types: this.compiledPatterns.size,
+        totalPatterns: totalCompiled
+      });
+    }
   }
 }

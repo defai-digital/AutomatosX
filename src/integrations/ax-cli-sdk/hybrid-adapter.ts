@@ -53,6 +53,9 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
   private sdkAdapter: AxCliSdkAdapter | null = null;
   private cliAdapter: AxCliAdapterImpl | null = null;
   private readonly sdkOptions: HybridAdapterOptions['sdk'];
+  // BUG FIX (v11.3.4): Track pending initialization to prevent race condition
+  // where concurrent execute() calls could both try to initialize adapters
+  private initPromise: Promise<void> | null = null;
 
   constructor(options: HybridAdapterOptions = {}) {
     this.mode = options.mode || 'auto';
@@ -157,6 +160,10 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
 
   /**
    * Ensure adapters are initialized based on mode
+   *
+   * BUG FIX (v11.3.4): Use initPromise to prevent race condition where
+   * concurrent execute() calls could both attempt initialization before
+   * activeMode is set. Now subsequent callers wait for the first init.
    */
   private async ensureAdapters(): Promise<void> {
     // Already initialized
@@ -164,6 +171,27 @@ export class HybridAxCliAdapter implements IAxCliAdapter {
       return;
     }
 
+    // BUG FIX: If initialization is in progress, wait for it instead of
+    // starting a duplicate initialization
+    if (this.initPromise) {
+      await this.initPromise;
+      return;
+    }
+
+    // Start initialization and track the promise
+    this.initPromise = this.doInitializeAdapters();
+
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
+    }
+  }
+
+  /**
+   * Perform actual adapter initialization (called only once via ensureAdapters)
+   */
+  private async doInitializeAdapters(): Promise<void> {
     // SDK mode: Initialize SDK only
     if (this.mode === 'sdk') {
       await this.initializeSdk(true);  // required=true

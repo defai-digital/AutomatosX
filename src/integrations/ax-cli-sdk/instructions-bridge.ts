@@ -350,34 +350,61 @@ export class InstructionsBridge {
    * - Strip quotes from string values
    * - Handle empty values correctly
    */
+  /**
+   * PRODUCTION FIX (v11.3.4): Enhanced YAML parser with better edge case handling:
+   * - Handle values containing colons (e.g., "description: Function: does X")
+   * - Strip YAML comments (lines starting with # or inline # comments)
+   * - Preserve escaped quotes within values
+   * - Handle empty/null values correctly
+   */
   private parseYamlProfile(content: string): AgentProfile {
     const lines = content.split('\n');
     const profile: Partial<AgentProfile> = {};
     let currentKey = '';
     let instructionsBuffer: string[] = [];
     let inInstructions = false;
+    let blockIndent = 0;
 
-    for (const line of lines) {
-      // BUG FIX: Support keys with hyphens and underscores, not just word chars
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line === undefined) continue;
+
+      // PRODUCTION FIX: Strip full-line comments (but preserve # in values)
+      if (line.trim().startsWith('#')) {
+        continue;
+      }
+
+      // PRODUCTION FIX: Improved regex to capture key and rest of line after first colon
+      // This handles values containing colons like "description: Type: string"
       const match = line.match(/^([\w-]+):\s*(.*)$/);
 
       if (match) {
         const [, rawKey, rawValue] = match;
-        // BUG FIX: Ensure key is defined (TypeScript strictness)
         const key = rawKey ?? '';
         let value = rawValue ?? '';
 
-        // BUG FIX: Strip surrounding quotes from values
+        // PRODUCTION FIX: Strip inline comments (but not # within quotes)
+        // Only strip if # is preceded by whitespace and not within quotes
+        if (!value.startsWith('"') && !value.startsWith("'")) {
+          const commentIndex = value.search(/\s+#/);
+          if (commentIndex > 0) {
+            value = value.substring(0, commentIndex).trim();
+          }
+        }
+
+        // Strip surrounding quotes from values (handle escaped quotes)
         if (value && ((value.startsWith('"') && value.endsWith('"')) ||
                       (value.startsWith("'") && value.endsWith("'")))) {
           value = value.slice(1, -1);
+          // PRODUCTION FIX: Unescape escaped quotes
+          value = value.replace(/\\"/g, '"').replace(/\\'/g, "'");
         }
 
-        // BUG FIX: Normalize hyphenated keys to underscored (e.g., display-name → display_name)
+        // Normalize hyphenated keys to underscored (e.g., display-name → display_name)
         const normalizedKey = key.replace(/-/g, '_');
 
         if (inInstructions && normalizedKey !== 'instructions') {
-          // End of instructions block
+          // End of instructions block - new key found at root level
           profile.instructions = instructionsBuffer.join('\n').trim();
           instructionsBuffer = [];
           inInstructions = false;
@@ -386,8 +413,10 @@ export class InstructionsBridge {
         if (normalizedKey === 'instructions') {
           inInstructions = true;
           currentKey = normalizedKey;
-          if (value && value.startsWith('|')) {
-            // Multi-line string starts
+          // Support both | (literal block) and > (folded scalar) YAML syntax
+          if (value && (value.startsWith('|') || value.startsWith('>'))) {
+            // Multi-line string starts - record expected indent
+            blockIndent = 2; // Standard YAML indent
           } else if (value) {
             profile.instructions = value;
             inInstructions = false;
@@ -396,16 +425,27 @@ export class InstructionsBridge {
           profile.expertise = [];
           currentKey = normalizedKey;
         } else if (normalizedKey && value !== undefined) {
-          (profile as Record<string, string>)[normalizedKey] = value;
+          // PRODUCTION FIX: Handle 'null' and '~' as YAML null values
+          if (value === 'null' || value === '~' || value === '') {
+            (profile as Record<string, string>)[normalizedKey] = '';
+          } else {
+            (profile as Record<string, string>)[normalizedKey] = value;
+          }
           currentKey = normalizedKey;
         }
       } else if (inInstructions) {
-        // Continuation of instructions
-        instructionsBuffer.push(line.replace(/^  /, ''));
+        // Continuation of instructions - preserve indentation relative to block
+        const trimmedLine = line.replace(/^  /, '');
+        instructionsBuffer.push(trimmedLine);
       } else if (currentKey === 'expertise' && line.trim().startsWith('- ')) {
-        // List item
+        // List item - handle quoted list items
+        let listValue = line.trim().substring(2);
+        if ((listValue.startsWith('"') && listValue.endsWith('"')) ||
+            (listValue.startsWith("'") && listValue.endsWith("'"))) {
+          listValue = listValue.slice(1, -1);
+        }
         profile.expertise = profile.expertise ?? [];
-        profile.expertise.push(line.trim().substring(2));
+        profile.expertise.push(listValue);
       }
     }
 

@@ -35,6 +35,10 @@ export class McpClient extends EventEmitter {
   protected state: McpClientState;
   protected pendingRequests: Map<string | number, PendingRequest> = new Map();
   protected nextRequestId = 1;
+  /** BUG FIX: Maximum request ID before wraparound to prevent Number precision loss.
+   * JavaScript loses integer precision after Number.MAX_SAFE_INTEGER (2^53 - 1).
+   * Using 1 billion as a safe wraparound point - still unique within any realistic session. */
+  private static readonly MAX_REQUEST_ID = 1_000_000_000;
   protected serverInfo: McpInitializeResult['serverInfo'] | null = null;
 
   constructor(config: McpClientConfig) {
@@ -277,7 +281,12 @@ export class McpClient extends EventEmitter {
       throw new Error('MCP client not connected');
     }
 
+    // BUG FIX: Use wraparound for request IDs to prevent Number precision loss.
+    // After MAX_REQUEST_ID, reset to 1 to avoid ID collisions from precision errors.
     const id = this.nextRequestId++;
+    if (this.nextRequestId > McpClient.MAX_REQUEST_ID) {
+      this.nextRequestId = 1;
+    }
     const request: JsonRpcRequest = {
       jsonrpc: '2.0',
       id,

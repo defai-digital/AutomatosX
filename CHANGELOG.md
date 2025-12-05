@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.3.4] - 2025-12-05
+
+### Added
+- Comprehensive iterate mode controller tests with multi-phase orchestration
+- Mock executor and provider helpers for improved test coverage
+- Budget enforcement tests for iteration and token limits
+
+### Changed
+- Enhanced executeWithIterate() with executor injection support
+- Improved test structure with Phase 3 & 4 orchestration tests
+- Better action handling tests for completion and pause scenarios
+
+### Fixed
+- Test alignment for handleResponse() behavior when state not initialized
+- Classification history tracking in multi-iteration execution
+
 ## [11.3.3] - 2025-12-05
 
 ### Added

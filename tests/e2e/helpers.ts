@@ -131,6 +131,9 @@ export async function createAgentProfile(
 
   const profile = profileLines.join('\n') + '\n';
 
+  // Ensure agents directory exists (in case createTestEnv was not called or dir was cleaned up)
+  await mkdir(env.agentsDir, { recursive: true });
+
   const profilePath = join(env.agentsDir, `${name}.yaml`);
   await writeFile(profilePath, profile);
   return profilePath;

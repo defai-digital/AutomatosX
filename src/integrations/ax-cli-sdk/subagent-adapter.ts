@@ -432,18 +432,24 @@ export class SubagentAdapter {
       let totalTokens = 0;
       const timeoutMs = this.options.timeout!;
       let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+      let timedOut = false;
+      let streamPromise: Promise<void> | null = null;
 
       try {
         // Create timeout promise with external timer reference for proper cleanup
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutTimer = setTimeout(() => {
+            timedOut = true;
             reject(new Error(`Subagent task timed out after ${timeoutMs}ms`));
           }, timeoutMs);
         });
 
         // Process stream with timeout - wrap in a promise we can race
-        const streamPromise = (async () => {
+        // BUG FIX: Store the stream promise so we can wait for it to settle on timeout
+        streamPromise = (async () => {
           for await (const chunk of subagent.processUserMessageStream(prompt)) {
+            // BUG FIX: Check if timed out and exit early to prevent interleaved output
+            if (timedOut) break;
             if (chunk.type === 'content') {
               content += chunk.content || '';
             }
@@ -460,6 +466,29 @@ export class SubagentAdapter {
         if (timeoutTimer !== null) {
           clearTimeout(timeoutTimer);
           timeoutTimer = null;
+        }
+
+        // BUG FIX: On timeout, try to dispose the subagent and wait for stream to settle
+        // This prevents interleaved output and memory leaks from orphaned streams
+        if (timedOut) {
+          try {
+            // Try to dispose the subagent to cancel ongoing operations
+            if (typeof subagent.dispose === 'function') {
+              const disposeResult = subagent.dispose();
+              if (disposeResult instanceof Promise) {
+                await disposeResult.catch(() => { /* ignore dispose errors */ });
+              }
+            }
+            // Wait for stream to settle (with a short timeout) to avoid orphaned promises
+            if (streamPromise) {
+              await Promise.race([
+                streamPromise.catch(() => { /* ignore stream errors after timeout */ }),
+                new Promise(resolve => setTimeout(resolve, 1000)) // 1s max wait
+              ]);
+            }
+          } catch {
+            // Ignore cleanup errors
+          }
         }
       }
 

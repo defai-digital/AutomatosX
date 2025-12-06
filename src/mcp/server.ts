@@ -71,6 +71,20 @@ import { createImplementAndDocumentHandler } from './tools/implement-and-documen
 // Import tool handlers - v10.5.0: Smart Routing
 import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 
+// Import tool handlers - v11.3.5: Task Engine
+import {
+  createCreateTaskHandler,
+  createTaskSchema,
+  createRunTaskHandler,
+  runTaskSchema,
+  createGetTaskResultHandler,
+  getTaskResultSchema,
+  createListTasksHandler,
+  listTasksSchema,
+  createDeleteTaskHandler,
+  deleteTaskSchema
+} from './tools/task/index.js';
+
 // v10.6.0: MCP Client Pool for cross-provider execution
 import { McpClientPool, getGlobalPool } from '../providers/mcp/pool-manager.js';
 
@@ -290,7 +304,13 @@ export class McpServer {
           },
           required: ['agent', 'task']
         }
-      }
+      },
+      // v11.3.5: Task Engine tools
+      createTaskSchema as McpTool,
+      runTaskSchema as McpTool,
+      getTaskResultSchema as McpTool,
+      listTasksSchema as McpTool,
+      deleteTaskSchema as McpTool
     ];
   }
 
@@ -523,6 +543,17 @@ export class McpServer {
       profileLoader: this.profileLoader,
       memoryManager: this.memoryManager
     }));
+
+    // v11.3.5: Task Engine tools
+    register('create_task', createCreateTaskHandler({
+      getSession: () => this.session
+    }));
+    register('run_task', createRunTaskHandler({
+      getSession: () => this.session
+    }));
+    register('get_task_result', createGetTaskResultHandler());
+    register('list_tasks', createListTasksHandler());
+    register('delete_task', createDeleteTaskHandler());
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,

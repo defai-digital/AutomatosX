@@ -580,6 +580,12 @@ export class CheckpointAdapter {
         }
       }
     }, this.options.autoSaveInterval!);
+
+    // BUG FIX: Call unref() to prevent the timer from keeping the Node process alive
+    // This allows CLI scripts to exit naturally without requiring explicit destroy() calls
+    if (this.autoSaveTimer && typeof this.autoSaveTimer.unref === 'function') {
+      this.autoSaveTimer.unref();
+    }
   }
 
   /**

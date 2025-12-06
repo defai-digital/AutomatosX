@@ -320,13 +320,23 @@ export class InstructionsBridge {
       // Check if buildSystemPrompt is available and can provide context
       if (sdk.buildSystemPrompt) {
         // Get just the project context portion
-        const fullPrompt = sdk.buildSystemPrompt({
+        // BUG FIX: buildSystemPrompt may be async - await it to handle both sync and async implementations
+        const buildResult = sdk.buildSystemPrompt({
           customInstructions: '',
           includeMemory: true
         });
+        const fullPrompt = (buildResult as unknown) instanceof Promise ? await buildResult : buildResult;
+
+        // BUG FIX: Validate fullPrompt is a string before calling .match()
+        if (typeof fullPrompt !== 'string') {
+          logger.debug('buildSystemPrompt did not return a string', {
+            type: typeof fullPrompt
+          });
+          return '';
+        }
 
         // Extract project context section
-        const contextMatch = fullPrompt?.match(/## Project Context\n\n([\s\S]*?)(?=\n##|$)/);
+        const contextMatch = fullPrompt.match(/## Project Context\n\n([\s\S]*?)(?=\n##|$)/);
         if (contextMatch && contextMatch[1]) {
           logger.debug('Project memory loaded via SDK');
           return contextMatch[1].trim();

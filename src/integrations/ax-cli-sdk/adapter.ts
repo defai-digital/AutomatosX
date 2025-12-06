@@ -482,8 +482,9 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     const { createAgent } = await import('@defai.digital/ax-cli/sdk');
 
     try {
+      // BUG FIX: Use ?? instead of || to allow maxToolRounds: 0 (disable tools)
       const config: AgentConfig = {
-        maxToolRounds: options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS
+        maxToolRounds: options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS
       };
 
       logger.debug('Creating SDK agent (credentials from ax-cli settings)', {
@@ -564,12 +565,13 @@ export class AxCliSdkAdapter implements AxCliAdapter {
   private hasConfigChanged(options: AxCliOptions): boolean {
     if (!this.agentConfig) return true;
 
-    const changed = this.agentConfig.maxToolRounds !== (options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS);
+    // BUG FIX: Use ?? instead of || to allow maxToolRounds: 0 (disable tools)
+    const changed = this.agentConfig.maxToolRounds !== (options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS);
 
     if (changed) {
       logger.debug('Agent config changed, will reinitialize', {
         oldMaxToolRounds: this.agentConfig.maxToolRounds,
-        newMaxToolRounds: options.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS,
+        newMaxToolRounds: options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS,
         note: 'SDK credentials managed by ax-cli setup'
       });
     }
@@ -722,17 +724,23 @@ export class AxCliSdkAdapter implements AxCliAdapter {
     // BUG FIX: Use nullish coalescing (??) instead of logical OR (||) to properly handle
     // zero values. If a provider returns completion_tokens: 0, || would skip it and check
     // the next property, while ?? correctly preserves the zero value.
+    // BUG FIX: Coerce values to numbers and derive total from prompt+completion if not provided
     const usage = usageObject || {};
+    const promptTokens = Number(usage.prompt_tokens ?? usage.prompt ?? usage.input ?? usage.promptTokens ?? 0) || 0;
+    const completionTokens = Number(usage.completion_tokens ?? usage.completion ?? usage.output ?? usage.completionTokens ?? 0) || 0;
+    const totalFromUsage = Number(usage.total_tokens ?? usage.total ?? usage.totalTokens ?? 0) || 0;
+
+    // Derive total from prompt + completion if total is not provided but components are
     const actualTokens = {
-      prompt: usage.prompt_tokens ?? usage.prompt ?? usage.input ?? usage.promptTokens ?? 0,
-      completion: usage.completion_tokens ?? usage.completion ?? usage.output ?? usage.completionTokens ?? 0,
-      total: usage.total_tokens ?? usage.total ?? usage.totalTokens ?? 0
+      prompt: promptTokens,
+      completion: completionTokens,
+      total: totalFromUsage > 0 ? totalFromUsage : (promptTokens + completionTokens)
     };
 
     if (actualTokens.total > 0) {
       logger.info(`Using token counts from ${sourceName || 'usage object'}`, {
         tokens: TokenEstimator.format(actualTokens),
-        accuracy: '100%',
+        accuracy: totalFromUsage > 0 ? '100%' : '100% (derived from prompt+completion)',
         source: sourceName || 'usage'
       });
       return actualTokens;

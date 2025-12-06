@@ -126,8 +126,11 @@ export class AxCliProvider extends BaseProvider {
     // Build execution options (provider is configured via ax-cli setup)
     const options: AxCliOptions = {
       model: request.model || axCliConfig.model,  // Optional model override
-      maxToolRounds: axCliConfig.maxToolRounds || DEFAULT_MAX_TOOL_ROUNDS,
+      maxToolRounds: axCliConfig.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS,
       timeout: this.config.timeout,
+      // BUG FIX: Force JSON output for CLI adapter to ensure proper parsing
+      // Without this, the response parser expects JSONL but gets plain text
+      json: true,
       // Note: apiKey and baseUrl are ignored by SDK adapter (v3.7.0+)
       // SDK loads credentials from ax-cli setup (~/.ax-cli/config.json)
       apiKey: axCliConfig.apiKey,      // Only used by CLI adapter (deprecated)

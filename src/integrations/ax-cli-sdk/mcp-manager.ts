@@ -262,7 +262,17 @@ export class AxCliMCPManager {
       const { MCPManager } = this.mcpModule;
       if (MCPManager?.loadMCPConfig) {
         const config = await MCPManager.loadMCPConfig();
-        return { ok: true, value: config };
+
+        // BUG FIX: Validate that config is a non-null object before returning
+        // SDK may return null/undefined or non-object, which would cause Object.keys() to throw
+        if (config === null || config === undefined) {
+          return { ok: false, error: new Error('loadMCPConfig returned null/undefined') };
+        }
+        if (typeof config !== 'object' || Array.isArray(config)) {
+          return { ok: false, error: new Error(`loadMCPConfig returned invalid type: ${typeof config}`) };
+        }
+
+        return { ok: true, value: config as Record<string, MCPServerConfig> };
       }
 
       return { ok: false, error: new Error('loadMCPConfig not available in SDK') };

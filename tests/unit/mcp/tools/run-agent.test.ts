@@ -6,16 +6,21 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { createRunAgentHandler } from '../../../../src/mcp/tools/run-agent.js';
 import type { RunAgentInput } from '../../../../src/mcp/types.js';
 import { ValidationError } from '../../../../src/mcp/utils/validation.js';
-import { AgentExecutor } from '../../../../src/agents/executor.js';
 
-// Mock AgentExecutor at module level
-vi.mock('../../../../src/agents/executor.js', () => ({
-  AgentExecutor: vi.fn()
-}));
+// Create mock execute function
+const mockExecute = vi.fn();
+
+// Mock AgentExecutor class
+vi.mock('../../../../src/agents/executor.js', () => {
+  return {
+    AgentExecutor: class MockAgentExecutor {
+      execute = mockExecute;
+    }
+  };
+});
 
 describe('MCP Tool: run_agent', () => {
   let mockContextManager: any;
-  let mockExecute: any;
 
   beforeEach(() => {
     // Mock ContextManager
@@ -23,13 +28,8 @@ describe('MCP Tool: run_agent', () => {
       createContext: vi.fn()
     };
 
-    // Mock AgentExecutor.execute method
-    mockExecute = vi.fn();
-
-    // Mock AgentExecutor constructor to return object with execute method
-    (AgentExecutor as any).mockImplementation(() => ({
-      execute: mockExecute
-    }));
+    // Reset the mock
+    mockExecute.mockReset();
   });
 
   afterEach(() => {

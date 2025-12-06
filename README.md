@@ -12,7 +12,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v11.3.4 | Iterate Mode Tests & Orchestration Improvements
+**Status**: ✅ **Production Ready** | v11.4.0 | Task Engine Bug Fixes & Hardening
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

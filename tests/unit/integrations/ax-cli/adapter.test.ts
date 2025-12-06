@@ -5,18 +5,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Use vi.hoisted to create mock that's available during hoisting
-const { mockExecAsync } = vi.hoisted(() => ({
+const { mockExecFileAsync, mockExecAsync } = vi.hoisted(() => ({
+  mockExecFileAsync: vi.fn(),
   mockExecAsync: vi.fn()
 }));
 
-// Mock util.promisify to return our mock
-vi.mock('util', () => ({
-  promisify: vi.fn(() => mockExecAsync)
-}));
+// Mock child_process before any imports
+vi.mock('child_process', () => {
+  // Create named functions to preserve name property for promisify checks
+  function execFile() {}
+  function exec() {}
+  return { execFile, exec };
+});
 
-// Mock child_process (required for import)
-vi.mock('child_process', () => ({
-  exec: vi.fn()
+// Mock util.promisify to return our mock based on function name
+vi.mock('util', () => ({
+  promisify: vi.fn((fn: { name?: string }) => {
+    if (fn?.name === 'execFile') return mockExecFileAsync;
+    if (fn?.name === 'exec') return mockExecAsync;
+    return mockExecFileAsync;
+  })
 }));
 
 import { AxCliAdapter } from '../../../../src/integrations/ax-cli/adapter.js';
@@ -26,7 +34,7 @@ describe('AxCliAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockExecAsync.mockReset();
+    mockExecFileAsync.mockReset();
     adapter = new AxCliAdapter();
   });
 
@@ -36,7 +44,7 @@ describe('AxCliAdapter', () => {
 
   describe('execute', () => {
     it('should execute prompt successfully', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"user","content":"test"}\n{"role":"assistant","content":"response"}',
         stderr: ''
       });
@@ -44,26 +52,29 @@ describe('AxCliAdapter', () => {
       const result = await adapter.execute('test prompt', { timeout: 5000 });
 
       expect(result.content).toBe('response');
-      expect(mockExecAsync).toHaveBeenCalled();
+      expect(mockExecFileAsync).toHaveBeenCalled();
     });
 
     it('should pass model option to CLI', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: ''
       });
 
       await adapter.execute('test', { model: 'glm-4.6' });
 
-      const callArgs = mockExecAsync.mock.calls[0];
+      const callArgs = mockExecFileAsync.mock.calls[0];
       expect(callArgs).toBeDefined();
-      expect(callArgs![0]).toContain('--model');
-      expect(callArgs![0]).toContain('glm-4.6');
-      expect(mockExecAsync).toHaveBeenCalled();
+      // execFile takes (command, args, options) - args is callArgs[1]
+      const args = callArgs![1] as string[];
+      expect(args).toContain('--model');
+      // Values are escaped with ANSI-C quoting ($'...')
+      expect(args).toContain("$'glm-4.6'");
+      expect(mockExecFileAsync).toHaveBeenCalled();
     });
 
     it('should handle stderr warnings', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: 'Warning: deprecated API'
       });
@@ -74,68 +85,77 @@ describe('AxCliAdapter', () => {
     });
 
     it('should throw error on execution failure', async () => {
-      mockExecAsync.mockRejectedValue(new Error('Command failed'));
+      mockExecFileAsync.mockRejectedValue(new Error('Command failed'));
 
       await expect(adapter.execute('test', {})).rejects.toThrow('ax-cli execution failed');
     });
 
     it('should use default timeout when not provided', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: ''
       });
 
       await adapter.execute('test', {});
 
-      const callArgs = mockExecAsync.mock.calls[0];
+      const callArgs = mockExecFileAsync.mock.calls[0];
       expect(callArgs).toBeDefined();
-      expect(callArgs![1]).toHaveProperty('timeout');
-      expect(callArgs![1].timeout).toBe(120000); // Default 2 minutes
+      // execFile takes (command, args, options) - options is callArgs[2]
+      const options = callArgs![2] as { timeout: number };
+      expect(options).toHaveProperty('timeout');
+      expect(options.timeout).toBe(120000); // Default 2 minutes
     });
 
     it('should respect custom timeout', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: ''
       });
 
       await adapter.execute('test', { timeout: 30000 });
 
-      const callArgs = mockExecAsync.mock.calls[0];
+      const callArgs = mockExecFileAsync.mock.calls[0];
       expect(callArgs).toBeDefined();
-      expect(callArgs![1].timeout).toBe(30000);
+      // execFile takes (command, args, options) - options is callArgs[2]
+      const options = callArgs![2] as { timeout: number };
+      expect(options.timeout).toBe(30000);
     });
 
     it('should pass provider option to CLI', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: ''
       });
 
       await adapter.execute('test', { provider: 'xai' });
 
-      const callArgs = mockExecAsync.mock.calls[0];
+      const callArgs = mockExecFileAsync.mock.calls[0];
       expect(callArgs).toBeDefined();
-      expect(callArgs![0]).toContain('--provider');
-      expect(callArgs![0]).toContain('xai');
+      // execFile takes (command, args, options) - args is callArgs[1]
+      const args = callArgs![1] as string[];
+      expect(args).toContain('--provider');
+      // Values are escaped with ANSI-C quoting ($'...')
+      expect(args).toContain("$'xai'");
     });
 
     it('should handle maxToolRounds option', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"response"}',
         stderr: ''
       });
 
       await adapter.execute('test', { maxToolRounds: 500 });
 
-      const callArgs = mockExecAsync.mock.calls[0];
+      const callArgs = mockExecFileAsync.mock.calls[0];
       expect(callArgs).toBeDefined();
-      expect(callArgs![0]).toContain('--max-tool-rounds');
-      expect(callArgs![0]).toContain('500');
+      // execFile takes (command, args, options) - args is callArgs[1]
+      const args = callArgs![1] as string[];
+      expect(args).toContain('--max-tool-rounds');
+      expect(args).toContain('500');
     });
 
     it('should parse JSONL response correctly', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"user","content":"question"}\n{"role":"assistant","content":"answer here"}',
         stderr: ''
       });
@@ -146,7 +166,7 @@ describe('AxCliAdapter', () => {
     });
 
     it('should include usage information when provided', async () => {
-      mockExecAsync.mockResolvedValue({
+      mockExecFileAsync.mockResolvedValue({
         stdout: '{"role":"assistant","content":"test","usage":{"input_tokens":10,"output_tokens":20}}',
         stderr: ''
       });
@@ -162,6 +182,7 @@ describe('AxCliAdapter', () => {
 
   describe('isAvailable', () => {
     it('should return true when ax-cli is available', async () => {
+      // isAvailable uses exec (via which/where), not execFile
       mockExecAsync.mockResolvedValue({
         stdout: '/usr/local/bin/ax-cli',
         stderr: ''
@@ -217,6 +238,7 @@ describe('AxCliAdapter', () => {
 
   describe('getVersion', () => {
     it('should return version string', async () => {
+      // getVersion uses exec (ax-cli --version), not execFile
       mockExecAsync.mockResolvedValue({
         stdout: '2.5.1\n',
         stderr: ''

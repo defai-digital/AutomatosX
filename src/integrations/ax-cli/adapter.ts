@@ -16,10 +16,11 @@ import type { IAxCliAdapter, AxCliOptions } from './interface.js';
 import type { ExecutionResponse } from '../../types/provider.js';
 import { AxCliCommandBuilder } from './command-builder.js';
 import { AxCliResponseParser } from './response-parser.js';
-import { exec } from 'child_process';
+import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
 import { logger } from '../../shared/logging/logger.js';
 
+const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
 
 /**
@@ -67,8 +68,9 @@ export class AxCliAdapter implements IAxCliAdapter {
     });
 
     try {
-      // Execute command
-      const { stdout, stderr } = await execAsync(`${command} ${args.join(' ')}`, {
+      // BUG FIX: Use execFile instead of exec to avoid shell injection vulnerabilities
+      // execFile bypasses the shell entirely and passes args directly to the process
+      const { stdout, stderr } = await execFileAsync(command, args, {
         timeout,
         maxBuffer: 10 * 1024 * 1024, // 10MB
         env: {
@@ -101,16 +103,37 @@ export class AxCliAdapter implements IAxCliAdapter {
         latencyMs
       };
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+
+      // BUG FIX: Preserve stderr, stdout, and exit code from the error for better diagnostics
+      // ExecFileException includes additional properties that are lost when re-wrapping
+      const execError = error as { stderr?: string; stdout?: string; code?: number; killed?: boolean };
+      const stderr = execError.stderr || '';
+      const stdout = execError.stdout || '';
+      const exitCode = execError.code;
+
       logger.error('ax-cli execution failed', {
         error: error instanceof Error ? error.message : String(error),
-        command: fullCommand
+        command: fullCommand,
+        exitCode,
+        stderr: stderr.substring(0, 500),
+        latencyMs
       });
 
-      // Re-throw with context
-      if (error instanceof Error) {
-        throw new Error(`ax-cli execution failed: ${error.message}`);
+      // Try to extract structured error from stderr/stdout
+      let errorMessage = error instanceof Error ? error.message : String(error);
+      const extractedError = this.responseParser.extractError(stderr || stdout);
+      if (extractedError) {
+        errorMessage = extractedError;
       }
-      throw error;
+
+      // Re-throw with context but preserve original error details
+      const wrappedError = new Error(`ax-cli execution failed: ${errorMessage}`);
+      (wrappedError as any).exitCode = exitCode;
+      (wrappedError as any).stderr = stderr;
+      (wrappedError as any).stdout = stdout;
+      (wrappedError as any).latencyMs = latencyMs;
+      throw wrappedError;
     }
   }
 

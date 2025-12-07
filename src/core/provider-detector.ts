@@ -9,7 +9,8 @@
  * - Claude Code (claude)
  * - Gemini CLI (gemini)
  * - Codex CLI (codex)
- * - ax-cli (ax-cli) - optional multi-provider CLI
+ * - glm (GLM) - v12.0.0: SDK-first provider (Zhipu AI)
+ * - grok (Grok) - v12.0.0: SDK-first provider (xAI)
  *
  * @module core/provider-detector
  */
@@ -24,7 +25,8 @@ export interface DetectedProviders {
   'claude-code': boolean;
   'gemini-cli': boolean;
   'codex': boolean;
-  'ax-cli': boolean;
+  'glm': boolean;
+  'grok': boolean;
 }
 
 export interface ProviderInfo {
@@ -51,11 +53,13 @@ export interface ProviderInfo {
  * ```
  */
 export class ProviderDetector {
+  // v12.0.0: Removed ax-cli, added glm/grok (SDK-first providers)
   private static readonly PROVIDER_COMMANDS = {
     'claude-code': 'claude',
     'gemini-cli': 'gemini',
     'codex': 'codex',
-    'ax-cli': 'ax-cli'
+    'glm': 'glm',      // v12.0.0: Native GLM provider (SDK-first)
+    'grok': 'grok'     // v12.0.0: Native Grok provider (SDK-first)
   } as const;
 
   /**
@@ -80,18 +84,19 @@ export class ProviderDetector {
     logger.info('Detecting installed AI providers...');
 
     // Run all detections in parallel for better performance
+    // v12.0.0: glm/grok are SDK-first, always "available" (no CLI detection needed)
     const results = await Promise.all([
       this.isCommandAvailable('claude-code'),
       this.isCommandAvailable('gemini-cli'),
-      this.isCommandAvailable('codex'),
-      this.isCommandAvailable('ax-cli')
+      this.isCommandAvailable('codex')
     ]);
 
     const detected: DetectedProviders = {
       'claude-code': results[0],
       'gemini-cli': results[1],
       'codex': results[2],
-      'ax-cli': results[3]
+      'glm': true,   // SDK-first: always available via SDK
+      'grok': true   // SDK-first: always available via SDK
     };
 
     const foundProviders = Object.entries(detected)
@@ -263,7 +268,8 @@ export class ProviderDetector {
       'claude-code': 'Claude Code',
       'gemini-cli': 'Gemini CLI',
       'codex': 'Codex CLI',
-      'ax-cli': 'ax-cli'
+      'glm': 'GLM (Zhipu AI)',
+      'grok': 'Grok (xAI)'
     };
 
     return nameMap[provider] || provider;

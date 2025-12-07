@@ -29,13 +29,15 @@ export type TaskType = 'web_search' | 'code_review' | 'code_generation' | 'analy
 
 /**
  * Supported execution engines
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  */
-export type TaskEngine = 'auto' | 'gemini' | 'claude' | 'codex' | 'ax-cli';
+export type TaskEngine = 'auto' | 'gemini' | 'claude' | 'codex' | 'glm' | 'grok';
 
 /**
  * Origin client identifiers
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  */
-export type OriginClient = 'claude-code' | 'gemini-cli' | 'codex-cli' | 'ax-cli' | 'unknown';
+export type OriginClient = 'claude-code' | 'gemini-cli' | 'codex-cli' | 'glm' | 'grok' | 'unknown';
 
 // ============================================================================
 // Loop Prevention Types
@@ -456,13 +458,15 @@ export const TaskTypeSchema = z.enum([
 
 /**
  * Task engine schema
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  */
 export const TaskEngineSchema = z.enum([
   'auto',
   'gemini',
   'claude',
   'codex',
-  'ax-cli'
+  'glm',
+  'grok'
 ]);
 
 /**
@@ -478,12 +482,14 @@ export const TaskStatusSchema = z.enum([
 
 /**
  * Origin client schema
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  */
 export const OriginClientSchema = z.enum([
   'claude-code',
   'gemini-cli',
   'codex-cli',
-  'ax-cli',
+  'glm',
+  'grok',
   'unknown'
 ]);
 
@@ -519,7 +525,7 @@ export const TaskFilterSchema = z.object({
  * Run task options schema
  */
 export const RunTaskOptionsSchema = z.object({
-  engineOverride: z.enum(['gemini', 'claude', 'codex', 'ax-cli']).optional(),
+  engineOverride: z.enum(['gemini', 'claude', 'codex', 'glm', 'grok']).optional(),
   timeoutMs: z.number().int().min(5000).max(300000).optional(),
   skipCache: z.boolean().default(false)
 });

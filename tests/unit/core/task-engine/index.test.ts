@@ -124,7 +124,8 @@ describe('Type Guards', () => {
       expect(TaskEngineModule.isTaskEngine('gemini')).toBe(true);
       expect(TaskEngineModule.isTaskEngine('claude')).toBe(true);
       expect(TaskEngineModule.isTaskEngine('codex')).toBe(true);
-      expect(TaskEngineModule.isTaskEngine('ax-cli')).toBe(true);
+      expect(TaskEngineModule.isTaskEngine('glm')).toBe(true);
+      expect(TaskEngineModule.isTaskEngine('grok')).toBe(true);
     });
 
     it('should reject invalid engines', () => {

@@ -114,10 +114,9 @@ export function containsErrorPattern(message: string, patterns: readonly string[
 /**
  * Supported provider types for retry error handling
  *
- * BUG FIX: Added 'ax-cli' and 'codex' providers which were previously missing
- * and falling through to default case.
+ * v12.0.0: Removed 'ax-cli' (deprecated)
  */
-export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'ax-cli' | 'codex' | 'base';
+export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'codex' | 'glm' | 'grok' | 'base';
 
 /**
  * Get all retryable errors for a specific provider
@@ -136,12 +135,12 @@ export function getRetryableErrors(provider: RetryableProvider): readonly string
       return [...baseErrors, ...GEMINI_RETRYABLE_ERRORS];
     case 'openai':
       return [...baseErrors, ...OPENAI_RETRYABLE_ERRORS];
-    case 'ax-cli':
-      // BUG FIX: Added ax-cli support - combines patterns from all backends
-      return [...baseErrors, ...AX_CLI_RETRYABLE_ERRORS];
     case 'codex':
-      // BUG FIX: Added codex support
       return [...baseErrors, ...CODEX_RETRYABLE_ERRORS];
+    case 'glm':
+    case 'grok':
+      // v12.0.0: GLM/Grok use OpenAI-compatible API, same error patterns
+      return [...baseErrors, ...OPENAI_RETRYABLE_ERRORS];
     case 'base':
     default:
       return baseErrors;

@@ -158,6 +158,7 @@ export interface ProviderConfig {
   priority: number;
   timeout: number;
   command: string;
+  model?: string;  // v12.0.0: Default model for SDK-first providers (glm, grok)
   healthCheck?: ProviderHealthCheckConfig;
   defaults?: ProviderDefaultsConfig;  // v5.0: Default model parameters
 
@@ -659,6 +660,25 @@ export interface AxCliSdkConfig {
   };
 }
 
+/**
+ * Feature Flags Configuration (v12.0.0+)
+ * Controls gradual rollout of new features
+ */
+export interface FeatureFlagsConfig {
+  /** Enable SDK-first execution mode (default: false) */
+  sdkFirstMode?: boolean;
+  /** Enable MCP bidirectional communication (default: false) */
+  mcpBidirectional?: boolean;
+  /** Automatically inject MCP config (default: false) */
+  autoInjectMCPConfig?: boolean;
+  /** Enable SDK fallback to CLI on failure (default: true) */
+  sdkFallbackEnabled?: boolean;
+  /** Show deprecation warnings (default: true) */
+  deprecationWarnings?: boolean;
+  /** Enable provider metrics collection (default: true) */
+  providerMetrics?: boolean;
+}
+
 export interface AutomatosXConfig {
   $schema?: string;
   version?: string;
@@ -678,6 +698,7 @@ export interface AutomatosXConfig {
   telemetry?: TelemetryConfig;  // v6.0.7: Phase 4 - Observability & Analytics
   costEstimation?: CostEstimationConfig;  // v6.5.11: Cost estimation control
   axCliSdk?: AxCliSdkConfig;  // v11.3.0: ax-cli SDK configuration
+  featureFlags?: FeatureFlagsConfig;  // v12.0.0: Feature flags
 }
 
 // ========================================

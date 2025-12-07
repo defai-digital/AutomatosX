@@ -1,7 +1,7 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "11.5.0",
-  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, Codex CLI, and ax-cli",
+  "version": "12.0.1",
+  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, Codex CLI, GLM, and Grok",
   "type": "module",
   "publishConfig": {
     "access": "public"

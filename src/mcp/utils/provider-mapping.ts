@@ -1,5 +1,6 @@
 /**
  * MCP Provider Name Mapping (v10.6.0)
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  *
  * Unified mapping between MCP names, actual provider names, and normalized names.
  * Single source of truth for all provider name transformations.
@@ -11,14 +12,18 @@ const PROVIDER_MAP = {
   mcpToActual: {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',
-    'openai': 'openai'
+    'openai': 'openai',
+    'glm': 'glm',
+    'grok': 'grok'
   } as Record<string, string>,
 
   // Actual name → MCP name
   actualToMcp: {
     'claude-code': 'claude',
     'gemini-cli': 'gemini',
-    'openai': 'openai'
+    'openai': 'openai',
+    'glm': 'glm',
+    'grok': 'grok'
   } as Record<string, string>,
 
   // Normalized caller → Actual name (for Smart Routing)
@@ -26,7 +31,8 @@ const PROVIDER_MAP = {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',
     'codex': 'openai',
-    'ax-cli': 'ax-cli'
+    'glm': 'glm',
+    'grok': 'grok'
   } as Record<string, string>
 } as const;
 
@@ -48,9 +54,10 @@ export function mapActualProviderToMcp(actualProvider: string): string {
 /**
  * Map normalized caller (from MCP session) to actual provider name
  * Used for Smart Routing caller detection
+ * v12.0.0: Removed ax-cli, added glm/grok
  */
 export function mapNormalizedCallerToActual(
-  caller: 'claude' | 'gemini' | 'codex' | 'ax-cli' | 'unknown'
+  caller: 'claude' | 'gemini' | 'codex' | 'glm' | 'grok' | 'unknown'
 ): string {
   return PROVIDER_MAP.normalizedToActual[caller] ?? 'unknown';
 }

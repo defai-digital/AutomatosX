@@ -47,8 +47,7 @@ export abstract class BaseProvider implements Provider {
   /**
    * Whitelist of allowed provider names for security
    * v8.3.0: Support both old (claude-code, gemini-cli) and new (claude, gemini) names for backward compatibility
-   * v9.2.0: Added 'ax-cli' (multi-model provider: GLM, xAI, OpenAI, Anthropic, Ollama)
-   * v9.2.0: 'glm' is deprecated, use 'ax-cli' instead (kept for backward compatibility)
+   * v12.0.0: Removed ax-cli (deprecated), added native 'glm' and 'grok' providers
    */
   private static readonly ALLOWED_PROVIDER_NAMES = [
     'claude',
@@ -57,8 +56,10 @@ export abstract class BaseProvider implements Provider {
     'gemini-cli',    // Backward compatibility - maps to gemini CLI
     'openai',
     'codex',
-    'ax-cli',        // v9.2.0: Multi-model provider via ax-cli (GLM, xAI, OpenAI, Anthropic, Ollama, DeepSeek, Llama)
-    'glm',           // v9.2.0: DEPRECATED - use 'ax-cli' instead (kept for backward compatibility)
+    'glm',           // v12.0.0: Native GLM provider (Zhipu AI)
+    'ax-glm',        // v12.0.0: Alias for glm
+    'grok',          // v12.0.0: Native Grok provider (xAI)
+    'ax-grok',       // v12.0.0: Alias for grok
     'test-provider'  // For unit tests
   ] as const;
 
@@ -1014,8 +1015,12 @@ export abstract class BaseProvider implements Provider {
       retryableProvider = 'openai';
     } else if (providerName === 'codex') {
       retryableProvider = 'codex';
-    } else if (providerName === 'ax-cli' || providerName === 'glm') {
-      retryableProvider = 'ax-cli';
+    } else if (providerName === 'glm' || providerName === 'ax-glm') {
+      // v12.0.0: Native GLM provider
+      retryableProvider = 'glm';
+    } else if (providerName === 'grok' || providerName === 'ax-grok') {
+      // v12.0.0: Native Grok provider
+      retryableProvider = 'grok';
     }
 
     return shouldRetryError(error, retryableProvider);

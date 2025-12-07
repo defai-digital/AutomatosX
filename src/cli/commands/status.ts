@@ -15,7 +15,7 @@ import { WorkspaceManager } from '../../core/workspace-manager.js';
 import { BaseProvider } from '../../providers/base-provider.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
-import { AxCliProvider, type AxCliProviderConfig } from '../../providers/ax-cli-provider.js';
+// v12.0.0: Removed AxCliProvider (deprecated)
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { loadConfig } from '../../core/config/loader.js';
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -140,18 +140,8 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
         providers.push(provider);
       }
 
-      // Support both 'ax-cli' (new) and 'glm' (deprecated) for backward compatibility
-      const axCliConfig = (providerConfigs['ax-cli'] || providerConfigs['glm']) as AxCliProviderConfig | undefined;
-      if (axCliConfig?.enabled) {
-        providers.push(new AxCliProvider({
-          name: providerConfigs['ax-cli'] ? 'ax-cli' : 'glm',  // Use actual config name
-          enabled: true,
-          priority: axCliConfig.priority,
-          timeout: axCliConfig.timeout,
-          command: axCliConfig.command,
-          ...(axCliConfig.axCli && { axCli: axCliConfig.axCli })
-        }));
-      }
+      // v12.0.0: ax-cli provider removed (deprecated)
+      // GLM and Grok are now SDK-first providers with their own implementations
 
       // v5.6.25: Optimize status command - avoid Router initialization
       // Status command only needs to check provider availability, not full Router functionality

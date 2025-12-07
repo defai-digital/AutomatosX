@@ -274,6 +274,8 @@ export class FeatureFlagManager {
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash; // Convert to 32bit integer
     }
-    return Math.abs(hash);
+    // Use unsigned right shift to ensure positive value
+    // Math.abs(-2147483648) returns -2147483648 (MIN_INT32 edge case)
+    return hash >>> 0;
   }
 }

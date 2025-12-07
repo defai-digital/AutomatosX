@@ -12,7 +12,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v11.5.0 | Multi-Provider SDK & Security Fixes
+**Status**: ✅ **Production Ready** | v12.0.1 | Bug Fixes & Provider Architecture Improvements
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
@@ -628,7 +628,7 @@ Save everything to shared memory."
 
 ```bash
 npm install -g @defai.digital/automatosx
-ax --version  # v11.0.1
+ax --version  # v12.0.1
 ```
 
 ### Initialize Your Project
@@ -662,7 +662,7 @@ ax setup
 
 ## 🚦 Production Readiness
 
-✅ **v11.0.1 Released** - Workflow Templates & AI-Assisted Orchestration
+✅ **v12.0.1 Released** - Bug Fixes & Provider Architecture Improvements
 ✅ **2,512+ Tests Passing** - Comprehensive coverage
 ✅ **TypeScript Strict Mode** - Type-safe codebase
 ✅ **Zero Resource Leaks** - Clean shutdown guaranteed

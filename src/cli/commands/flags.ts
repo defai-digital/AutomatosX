@@ -8,7 +8,7 @@
 
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
-import { flagManager } from '@/core/feature-flags/flags.js';
+import { getFlagManager } from '@/core/feature-flags/flags.js';
 import { logger } from '@/shared/logging/logger.js';
 
 interface FlagsListOptions {
@@ -102,6 +102,7 @@ export const flagsCommand: CommandModule = {
  * Handle 'ax flags list' command
  */
 async function handleList(argv: FlagsListOptions): Promise<void> {
+  const flagManager = getFlagManager();
   const flags = flagManager.getAllFlags();
 
   if (argv.json) {
@@ -153,6 +154,7 @@ async function handleList(argv: FlagsListOptions): Promise<void> {
  * Handle 'ax flags rollout' command
  */
 async function handleRollout(argv: FlagsRolloutOptions): Promise<void> {
+  const flagManager = getFlagManager();
   const flagName = argv.flag;
   const percentage = argv.percentage;
 
@@ -205,6 +207,7 @@ async function handleRollout(argv: FlagsRolloutOptions): Promise<void> {
  * Handle 'ax flags kill' command
  */
 async function handleKill(argv: FlagsKillOptions): Promise<void> {
+  const flagManager = getFlagManager();
   const flagName = argv.flag;
   const reason = argv.reason;
 

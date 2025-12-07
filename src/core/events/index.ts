@@ -59,8 +59,7 @@ export {
   BaseEventNormalizer,
   ClaudeEventNormalizer,
   GeminiEventNormalizer,
-  CodexEventNormalizer,
-  AxCliEventNormalizer
+  CodexEventNormalizer
 } from './normalizers/index.js';
 
 // Progress channel bridge

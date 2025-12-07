@@ -449,20 +449,16 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('  • No special commands needed - just ask naturally!\n'));
       }
 
-      if (providers['ax-cli']) {
-        console.log(chalk.cyan('ax-cli Integration:'));
-        console.log(chalk.gray('  • Multi-provider AI CLI (GLM, xAI, OpenAI, Anthropic, Ollama)'));
-        console.log(chalk.gray('  • Use: ax cli "your task"'));
-        if (axCliConfigured === 'manual_required') {
-          console.log(chalk.yellow('  • Manual MCP configuration required (see above)'));
-        } else if (axCliConfigured === 'already_configured') {
-          console.log(chalk.gray('  • AutomatosX MCP server already configured'));
-        } else if (axCliConfigured === 'not_installed') {
-          console.log(chalk.gray('  • ax-cli detected but MCP not configured'));
-        } else {
-          console.log(chalk.gray('  • AutomatosX MCP server configured for agent access'));
+      // GLM and Grok SDK-first providers are always available
+      if (providers['glm'] || providers['grok']) {
+        console.log(chalk.cyan('SDK-First Providers:'));
+        if (providers['glm']) {
+          console.log(chalk.gray('  • GLM (Zhipu AI) - API key: GLM_API_KEY'));
         }
-        console.log(chalk.gray('  • See .ax-cli/README.md for configuration\n'));
+        if (providers['grok']) {
+          console.log(chalk.gray('  • Grok (xAI) - API key: XAI_API_KEY'));
+        }
+        console.log(chalk.gray('  • Use: ax run <agent> "your task" --engine glm|grok\n'));
       }
 
       if (providers['codex']) {

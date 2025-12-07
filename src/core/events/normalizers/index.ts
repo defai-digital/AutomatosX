@@ -11,7 +11,7 @@ export { BaseEventNormalizer } from './base-normalizer.js';
 export { ClaudeEventNormalizer } from './claude-normalizer.js';
 export { GeminiEventNormalizer } from './gemini-normalizer.js';
 export { CodexEventNormalizer } from './codex-normalizer.js';
-export { AxCliEventNormalizer } from './ax-cli-normalizer.js';
+// v12.0.0: Removed AxCliEventNormalizer (ax-cli deprecated)
 
 // Re-export types from unified-event for convenience
 export type {

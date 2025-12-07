@@ -84,7 +84,9 @@ describe('LoopGuard', () => {
       expect(guard.createContext('CLAUDE-CODE').originClient).toBe('claude-code');
       expect(guard.createContext('gemini').originClient).toBe('gemini-cli');
       expect(guard.createContext('codex').originClient).toBe('codex-cli');
-      expect(guard.createContext('ax').originClient).toBe('ax-cli');
+      // v12.0.0: Updated to GLM/Grok instead of ax-cli
+      expect(guard.createContext('glm').originClient).toBe('glm');
+      expect(guard.createContext('grok').originClient).toBe('grok');
     });
 
     it('should preserve unknown client names (normalized format) to prevent false-positive loop detection', () => {

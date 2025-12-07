@@ -198,12 +198,16 @@ export const PROVIDER_ERROR_PATTERNS: Record<string, ProviderErrorPatterns> = {
   gemini: GEMINI_PATTERNS,
   claude: CLAUDE_PATTERNS,
   codex: OPENAI_PATTERNS,
-  'ax-cli': AX_CLI_PATTERNS,
+  // v12.0.0: Removed ax-cli (deprecated)
+  glm: OPENAI_PATTERNS,    // v12.0.0: GLM uses OpenAI-compatible API
+  grok: OPENAI_PATTERNS,   // v12.0.0: Grok uses OpenAI-compatible API
 
   // Aliases - reference same patterns to avoid duplication
   'gemini-cli': GEMINI_PATTERNS,  // Alias for gemini
   'claude-code': CLAUDE_PATTERNS, // Alias for claude
   'openai': OPENAI_PATTERNS,      // Alias for codex (same underlying API)
+  'ax-glm': OPENAI_PATTERNS,      // v12.0.0: Alias for glm
+  'ax-grok': OPENAI_PATTERNS,     // v12.0.0: Alias for grok
 };
 
 /**

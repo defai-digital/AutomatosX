@@ -55,10 +55,13 @@ const CLIENT_NORMALIZATION_MAP: Record<string, OriginClient> = {
   'openai': 'codex-cli',
   'gpt': 'codex-cli',
 
-  // ax-cli variants
-  'ax': 'ax-cli',
-  'ax-cli': 'ax-cli',
-  'axcli': 'ax-cli'
+  // v12.0.0: GLM and Grok (replacing ax-cli)
+  'glm': 'glm',
+  'zhipu': 'glm',
+  'ax-glm': 'glm',
+  'grok': 'grok',
+  'xai': 'grok',
+  'ax-grok': 'grok'
 };
 
 /**

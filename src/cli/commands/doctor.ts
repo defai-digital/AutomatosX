@@ -13,7 +13,8 @@
  * - System dependencies
  *
  * v6.0.7: Initial implementation for improved UX
- * v11.0.2: Comprehensive diagnostics (inspired by ax-cli doctor)
+ * v11.0.2: Comprehensive diagnostics
+ * v12.0.0: Removed ax-cli (deprecated), added native GLM/Grok providers
  */
 
 import type { CommandModule } from 'yargs';
@@ -40,6 +41,8 @@ interface DoctorOptions {
   claudeCode?: boolean;
   codex?: boolean;
   axCli?: boolean;
+  glm?: boolean;
+  grok?: boolean;
   memory?: boolean;
   full?: boolean;
 }
@@ -61,9 +64,9 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
   builder: (yargs) => {
     return yargs
       .positional('provider', {
-        describe: 'Check specific provider (openai, gemini, claude, ax-cli) or all if omitted',
+        describe: 'Check specific provider (openai, gemini, claude, glm, grok) or all if omitted',
         type: 'string',
-        choices: ['openai', 'gemini', 'claude', 'ax-cli']
+        choices: ['openai', 'gemini', 'claude', 'glm', 'grok']
       })
       .option('verbose', {
         describe: 'Show detailed diagnostic information',
@@ -86,8 +89,14 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
-      .option('ax-cli', {
-        describe: 'Run ax-cli SDK integration diagnostics',
+      // v12.0.0: Removed ax-cli option (deprecated)
+      .option('glm', {
+        describe: 'Run GLM provider diagnostics',
+        type: 'boolean',
+        default: false
+      })
+      .option('grok', {
+        describe: 'Run Grok/xAI provider diagnostics',
         type: 'boolean',
         default: false
       })
@@ -107,7 +116,8 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       .example('ax doctor --fix', 'Auto-fix issues where possible')
       .example('ax doctor --claude-code', 'Check Claude Code integration')
       .example('ax doctor --codex', 'Check Codex MCP configuration')
-      .example('ax doctor --ax-cli', 'Check ax-cli SDK integration')
+      .example('ax doctor --glm', 'Check GLM provider')
+      .example('ax doctor --grok', 'Check Grok/xAI provider')
       .example('ax doctor --memory', 'Check memory system health')
       .example('ax doctor --full', 'Run all comprehensive diagnostics');
   },
@@ -129,9 +139,17 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         return;
       }
 
-      // If --ax-cli flag is set, run ax-cli SDK diagnostics only
-      if (argv.axCli) {
-        await runAxCliDiagnostics(verbose);
+      // v12.0.0: Removed ax-cli diagnostics (deprecated)
+
+      // If --glm flag is set, run GLM provider diagnostics only
+      if (argv.glm) {
+        await runGLMDiagnostics(verbose);
+        return;
+      }
+
+      // If --grok flag is set, run Grok provider diagnostics only
+      if (argv.grok) {
+        await runGrokDiagnostics(verbose);
         return;
       }
 
@@ -1394,138 +1412,8 @@ async function checkDiskSpace(workingDir: string, verbose: boolean): Promise<Che
   return results;
 }
 
-/**
- * Run ax-cli SDK integration diagnostics
- */
-async function runAxCliDiagnostics(verbose: boolean): Promise<void> {
-  console.log(chalk.bold('\n🔍 ax-cli SDK Integration Diagnostics\n'));
-
-  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
-
-  // Check 1: ax-cli CLI Installation
-  const axCliCheck = await checkCommand('ax-cli', '--version');
-  checks.push({
-    name: 'ax-cli CLI',
-    passed: axCliCheck.success,
-    message: axCliCheck.success
-      ? `Installed (${axCliCheck.output?.trim() || 'version unknown'})`
-      : 'Not found',
-    fix: axCliCheck.success ? undefined : 'npm install -g @defai.digital/ax-cli',
-    details: verbose && !axCliCheck.success ? axCliCheck.error : undefined
-  });
-
-  // Check 2: ax-cli SDK package
-  let sdkInstalled = false;
-  let sdkVersion = 'unknown';
-  try {
-    const packagePath = join(process.cwd(), 'node_modules', '@defai.digital', 'ax-cli', 'package.json');
-    if (existsSync(packagePath)) {
-      const pkgContent = await readFile(packagePath, 'utf-8');
-      const pkg = JSON.parse(pkgContent);
-      sdkVersion = pkg.version || 'unknown';
-      sdkInstalled = true;
-    }
-  } catch {
-    // Not installed locally
-  }
-
-  checks.push({
-    name: 'ax-cli SDK',
-    passed: sdkInstalled,
-    message: sdkInstalled ? `v${sdkVersion} (local)` : 'Not installed',
-    fix: sdkInstalled ? undefined : 'npm install @defai.digital/ax-cli',
-    details: verbose ? 'SDK provides createAgent, Subagent, MCPManager' : undefined
-  });
-
-  // Check 3: SDK imports availability
-  if (sdkInstalled) {
-    let importsWork = false;
-    try {
-      // Check if SDK exports exist
-      const sdkPath = join(process.cwd(), 'node_modules', '@defai.digital', 'ax-cli', 'dist', 'sdk', 'index.js');
-      importsWork = existsSync(sdkPath);
-    } catch {
-      importsWork = false;
-    }
-
-    checks.push({
-      name: 'SDK Exports',
-      passed: importsWork,
-      message: importsWork ? 'Available' : 'Not available',
-      fix: importsWork ? undefined : 'npm install @defai.digital/ax-cli@latest',
-      details: verbose ? 'Import from @defai.digital/ax-cli/sdk' : undefined
-    });
-  }
-
-  // Check 4: ax-cli provider enabled
-  let providerEnabled = false;
-  const configPath = join(process.cwd(), 'ax.config.json');
-  if (existsSync(configPath)) {
-    try {
-      const configContent = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(configContent);
-      providerEnabled = config?.providers?.['ax-cli']?.enabled === true;
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  checks.push({
-    name: 'Provider Configuration',
-    passed: providerEnabled,
-    message: providerEnabled ? 'ax-cli provider enabled' : 'ax-cli provider not configured',
-    fix: providerEnabled ? undefined : 'Add ax-cli provider to ax.config.json',
-    details: verbose ? 'Provider supports GLM, xAI, OpenAI, Anthropic, Ollama' : undefined
-  });
-
-  // Display results
-  checks.forEach(check => {
-    const spinner = ora();
-    if (check.passed) {
-      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
-    } else {
-      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
-    }
-    if (check.details) {
-      console.log(chalk.dim(`  └─ ${check.details}`));
-    }
-  });
-
-  // Summary
-  const passedCount = checks.filter(c => c.passed).length;
-  const totalCount = checks.length;
-
-  console.log(chalk.bold('\n📊 Summary\n'));
-  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
-
-  if (passedCount < totalCount) {
-    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
-
-    const failedChecks = checks.filter(c => !c.passed && c.fix);
-    if (failedChecks.length > 0) {
-      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
-      failedChecks.forEach((check, i) => {
-        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
-        console.log(chalk.white(`   ${check.fix}\n`));
-      });
-    }
-
-    process.exit(1);
-  } else {
-    console.log(chalk.bold.green('\n✅ All checks passed! ax-cli SDK integration is ready.\n'));
-
-    console.log(chalk.cyan('Usage:'));
-    console.log(chalk.gray('  ax run backend "task" --provider ax-cli     # Use ax-cli provider'));
-    console.log(chalk.gray('  import { createAgent } from "@defai.digital/ax-cli/sdk"'));
-    console.log(chalk.gray(''));
-    console.log(chalk.cyan('Supported Models:'));
-    console.log(chalk.gray('  • GLM (glm-4.6, glm-4-plus)'));
-    console.log(chalk.gray('  • xAI/Grok (grok-2, grok-3)'));
-    console.log(chalk.gray('  • OpenAI (gpt-4, gpt-4o)'));
-    console.log(chalk.gray('  • Anthropic (claude-3-opus)'));
-    console.log(chalk.gray('  • Ollama (local models)\n'));
-  }
-}
+// v12.0.0: Removed runAxCliDiagnostics (ax-cli deprecated)
+// GLM and Grok diagnostics are handled by runGLMDiagnostics and runGrokDiagnostics
 
 /**
  * Run memory system diagnostics (standalone)
@@ -1597,5 +1485,256 @@ async function runMemoryDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.gray('  ax memory search "keyword"    # Search memories'));
     console.log(chalk.gray('  ax memory list --limit 10     # List recent memories'));
     console.log(chalk.gray('  ax memory export > backup.json  # Export for backup\n'));
+  }
+}
+
+/**
+ * Run GLM provider diagnostics
+ * v12.0.0: CLI-based GLM provider (ax-glm)
+ */
+async function runGLMDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 GLM Provider Diagnostics (ax-glm CLI)\n'));
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // Check 1: ax-glm CLI installed
+  let cliInstalled = false;
+  let cliVersion = '';
+  try {
+    cliVersion = execSync('ax-glm --version', { encoding: 'utf8', timeout: 5000 }).trim();
+    cliInstalled = true;
+  } catch {
+    cliInstalled = false;
+  }
+
+  checks.push({
+    name: 'ax-glm CLI',
+    passed: cliInstalled,
+    message: cliInstalled ? `Installed (${cliVersion})` : 'Not found',
+    fix: cliInstalled ? undefined : 'Install: npm install -g @defai.digital/ax-glm',
+    details: verbose && cliInstalled ? `Path: ${execSync('which ax-glm', { encoding: 'utf8' }).trim()}` : undefined
+  });
+
+  // Check 2: API Key configured (ax-glm checks ZAI_API_KEY internally)
+  const apiKey = process.env.ZAI_API_KEY || process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY;
+  checks.push({
+    name: 'API Key',
+    passed: !!apiKey,
+    message: apiKey ? 'Configured' : 'Not found',
+    fix: apiKey ? undefined : 'Set ZAI_API_KEY environment variable (ax-glm requires this)',
+    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+  });
+
+  // Check 3: Provider enabled in config
+  let providerEnabled = false;
+  const configPath = join(process.cwd(), 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerEnabled = config?.providers?.glm?.enabled === true;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerEnabled,
+    message: providerEnabled ? 'GLM provider enabled' : 'GLM provider not configured',
+    fix: providerEnabled ? undefined : 'Add glm provider to ax.config.json'
+  });
+
+  // Check 4: Test CLI execution (only if installed and API key exists)
+  if (cliInstalled && apiKey) {
+    try {
+      // Simple test - just check if ax-glm can parse a help command quickly
+      execSync('ax-glm --help', { encoding: 'utf8', timeout: 5000 });
+      checks.push({
+        name: 'CLI Execution',
+        passed: true,
+        message: 'ax-glm responds correctly'
+      });
+    } catch (error) {
+      checks.push({
+        name: 'CLI Execution',
+        passed: false,
+        message: 'CLI execution failed',
+        fix: 'Check ax-glm installation and permissions',
+        details: verbose ? (error as Error).message : undefined
+      });
+    }
+  }
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! GLM provider is ready.\n'));
+
+    console.log(chalk.cyan('Usage:'));
+    console.log(chalk.gray('  ax run backend "task" --provider glm'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Supported Models (via --model flag):'));
+    console.log(chalk.gray('  • glm-4 (flagship model, default)'));
+    console.log(chalk.gray('  • glm-4-plus (enhanced)'));
+    console.log(chalk.gray('  • glm-4v (vision)'));
+    console.log(chalk.gray('  • glm-4-flash (fast)'));
+    console.log(chalk.gray('  • glm-4-air (cost-effective)\n'));
+  }
+}
+
+/**
+ * Run Grok/xAI provider diagnostics
+ * v12.0.0: CLI-based Grok provider (ax-grok)
+ */
+async function runGrokDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 Grok Provider Diagnostics (ax-grok CLI)\n'));
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // Check 1: ax-grok CLI installed
+  let cliInstalled = false;
+  let cliVersion = '';
+  try {
+    cliVersion = execSync('ax-grok --version', { encoding: 'utf8', timeout: 5000 }).trim();
+    cliInstalled = true;
+  } catch {
+    cliInstalled = false;
+  }
+
+  checks.push({
+    name: 'ax-grok CLI',
+    passed: cliInstalled,
+    message: cliInstalled ? `Installed (${cliVersion})` : 'Not found',
+    fix: cliInstalled ? undefined : 'Install: npm install -g @defai.digital/ax-grok',
+    details: verbose && cliInstalled ? `Path: ${execSync('which ax-grok', { encoding: 'utf8' }).trim()}` : undefined
+  });
+
+  // Check 2: API Key configured (ax-grok checks XAI_API_KEY internally)
+  const apiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  checks.push({
+    name: 'API Key',
+    passed: !!apiKey,
+    message: apiKey ? 'Configured' : 'Not found',
+    fix: apiKey ? undefined : 'Set XAI_API_KEY environment variable (ax-grok requires this)',
+    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+  });
+
+  // Check 3: Provider enabled in config
+  let providerEnabled = false;
+  const configPath = join(process.cwd(), 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerEnabled = config?.providers?.grok?.enabled === true;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerEnabled,
+    message: providerEnabled ? 'Grok provider enabled' : 'Grok provider not configured',
+    fix: providerEnabled ? undefined : 'Add grok provider to ax.config.json'
+  });
+
+  // Check 4: Test CLI execution (only if installed and API key exists)
+  if (cliInstalled && apiKey) {
+    try {
+      // Simple test - just check if ax-grok can parse a help command quickly
+      execSync('ax-grok --help', { encoding: 'utf8', timeout: 5000 });
+      checks.push({
+        name: 'CLI Execution',
+        passed: true,
+        message: 'ax-grok responds correctly'
+      });
+    } catch (error) {
+      checks.push({
+        name: 'CLI Execution',
+        passed: false,
+        message: 'CLI execution failed',
+        fix: 'Check ax-grok installation and permissions',
+        details: verbose ? (error as Error).message : undefined
+      });
+    }
+  }
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! Grok provider is ready.\n'));
+
+    console.log(chalk.cyan('Usage:'));
+    console.log(chalk.gray('  ax run backend "task" --provider grok'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Supported Models (via --model flag):'));
+    console.log(chalk.gray('  • grok-3 (latest flagship, default)'));
+    console.log(chalk.gray('  • grok-3-mini (fast & efficient)'));
+    console.log(chalk.gray('  • grok-2-vision (multimodal)'));
+    console.log(chalk.gray('  • grok-2 (stable)\n'));
   }
 }

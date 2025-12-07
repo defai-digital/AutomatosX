@@ -94,7 +94,7 @@ import { McpStreamingNotifier, getGlobalStreamingNotifier } from './streaming-no
 import { ClaudeEventNormalizer } from '../core/events/normalizers/claude-normalizer.js';
 import { GeminiEventNormalizer } from '../core/events/normalizers/gemini-normalizer.js';
 import { CodexEventNormalizer } from '../core/events/normalizers/codex-normalizer.js';
-import { AxCliEventNormalizer } from '../core/events/normalizers/ax-cli-normalizer.js';
+// v12.0.0: Removed AxCliEventNormalizer (ax-cli deprecated)
 
 export interface McpServerOptions {
   debug?: boolean;
@@ -106,8 +106,8 @@ export interface McpServerOptions {
 const CLIENT_PATTERNS: Array<[string[], McpSession['normalizedProvider']]> = [
   [['claude'], 'claude'],
   [['gemini'], 'gemini'],
-  [['codex', 'openai'], 'codex'],
-  [['ax-cli', 'ax', 'automatosx'], 'ax-cli']
+  [['codex', 'openai'], 'codex']
+  // v12.0.0: Removed ax-cli (deprecated)
 ];
 
 /** Stdio buffer safety limits (prevent infinite loops and memory exhaustion) */
@@ -421,7 +421,6 @@ export class McpServer {
     this.eventBridge.registerNormalizer(new ClaudeEventNormalizer());
     this.eventBridge.registerNormalizer(new GeminiEventNormalizer());
     this.eventBridge.registerNormalizer(new CodexEventNormalizer());
-    this.eventBridge.registerNormalizer(new AxCliEventNormalizer());
 
     // Start streaming notifier if enabled
     if (this.enableStreamingNotifications) {

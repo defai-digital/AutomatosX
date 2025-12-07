@@ -21,7 +21,7 @@ export interface RunTaskToolInput {
   /** Task ID to execute */
   task_id: string;
   /** Override the estimated engine */
-  engine_override?: 'gemini' | 'claude' | 'codex' | 'ax-cli';
+  engine_override?: 'gemini' | 'claude' | 'codex' | 'glm' | 'grok';
   /** Custom timeout in milliseconds (default: 30000) */
   timeout_ms?: number;
   /** Skip cache and force re-execution */
@@ -137,7 +137,8 @@ function mapNormalizedProviderToOriginClient(provider: string): OriginClient {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',
     'codex': 'codex-cli',
-    'ax-cli': 'ax-cli',
+    'glm': 'glm',
+    'grok': 'grok',
     'unknown': 'unknown'
   };
   return mapping[provider] ?? 'unknown';
@@ -158,7 +159,7 @@ export const runTaskSchema = {
       },
       engine_override: {
         type: 'string',
-        enum: ['gemini', 'claude', 'codex', 'ax-cli'],
+        enum: ['gemini', 'claude', 'codex', 'glm', 'grok'],
         description: 'Override the estimated engine'
       },
       timeout_ms: {

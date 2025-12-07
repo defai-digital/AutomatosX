@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v11.5.0) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that wraps around existing AI provider CLIs (claude, gemini, codex, ax-cli).
+AutomatosX (v12.0.1) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -107,7 +107,7 @@ if (!result.success) throw new ProviderError('Invalid response');
    ↓
 2. ax run <agent> "task" --workflow <template>
    ↓
-3. Provider CLI Selection (wraps claude/gemini/codex/ax-cli)
+3. Provider Selection (Claude Code, Gemini CLI, Codex, GLM, Grok)
    ↓
 4. Execution (runs provider CLI, handles output parsing)
    ↓
@@ -120,7 +120,7 @@ if (!result.success) throw new ProviderError('Invalid response');
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| Provider CLI Wrappers | `src/integrations/` | Wrap claude, gemini, codex, ax-cli CLIs |
+| Provider Integrations | `src/integrations/` | Claude Code, Gemini CLI, Codex CLI, GLM, Grok |
 | Memory Manager | `src/core/memory-manager.ts` | SQLite FTS5 full-text search (<1ms) |
 | Session Manager | `src/core/session-manager.ts` | Multi-agent collaborative sessions |
 | Delegation Parser | `src/agents/delegation-parser.ts` | Parse `@agent task` syntax (<1ms regex) |
@@ -130,7 +130,7 @@ if (!result.success) throw new ProviderError('Invalid response');
 
 ### Provider Architecture
 
-- Whitelist: `claude`, `claude-code`, `gemini`, `gemini-cli`, `openai`, `codex`
+- Whitelist: `claude`, `claude-code`, `gemini`, `gemini-cli`, `openai`, `codex`, `glm`, `ax-glm`, `grok`, `ax-grok`
 - Availability caching (60s TTL), version detection caching (5min TTL)
 - Circuit breaker with configurable failure thresholds (default 3)
 
@@ -147,7 +147,7 @@ src/
 ├── agents/          # Agent system (delegation, profiles, templates)
 ├── cli/             # CLI commands (yargs-based)
 ├── core/            # Core services (router, memory, session, spec-kit)
-├── integrations/    # Provider integrations (claude-code, gemini-cli, ax-cli)
+├── integrations/    # Provider integrations (claude-code, gemini-cli, ax-glm, ax-grok)
 ├── providers/       # Provider implementations
 ├── types/           # TypeScript type definitions
 ├── utils/           # Utilities (logger, errors, performance)
@@ -223,19 +223,19 @@ When executing `ax run` commands, **DO NOT prematurely interrupt agents**:
 - Backend agent (implementation): 120-300 seconds
 - Security agent (audit): 90-180 seconds
 
-## ax-cli SDK Integration
+## SDK-First Providers (v12.0.0)
 
-AutomatosX integrates with ax-cli (v3.14.5, SDK v1.3.0) for provider-agnostic access to GLM, xAI, OpenAI, Anthropic, and Ollama models.
+AutomatosX now supports native SDK integration for GLM (Zhipu AI) and Grok (xAI) providers.
 
-**Execution Modes** (in `ax.config.json`):
-- `"sdk"`: ~5ms overhead (production)
-- `"cli"`: ~50-200ms overhead (fallback)
-- `"auto"` (default): SDK if available, else CLI
+**SDK-First Providers**:
+- `glm`: GLM-4 and GLM-3 Turbo (API key: `GLM_API_KEY`)
+- `grok`: Grok-3 and Grok-2 (API key: `XAI_API_KEY`)
 
 **Key Integration Files**:
-- CLI Adapter: `src/integrations/ax-cli/`
-- SDK Adapter: `src/integrations/ax-cli-sdk/`
-- Provider: `src/providers/ax-cli-provider.ts`
+- GLM Adapter: `src/integrations/ax-glm/`
+- Grok Adapter: `src/integrations/ax-grok/`
+- GLM Provider: `src/providers/glm-provider.ts`
+- Grok Provider: `src/providers/grok-provider.ts`
 
 ## Git Workflow
 

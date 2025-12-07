@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-07T03:31:38.732Z
+ * Generated: 2025-12-07T09:11:16.048Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -111,6 +111,58 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "enabled": true,
         "window": "daily",
         "resetHourUtc": 0
+      }
+    },
+    "glm": {
+      "enabled": true,
+      "priority": 4,
+      "timeout": 120000,
+      "command": "ax-glm",
+      "model": "glm-4",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      }
+    },
+    "grok": {
+      "enabled": true,
+      "priority": 5,
+      "timeout": 120000,
+      "command": "ax-grok",
+      "model": "grok-3",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
       }
     }
   },
@@ -323,14 +375,22 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "11.5.0"
+  "featureFlags": {
+    "sdkFirstMode": false,
+    "mcpBidirectional": false,
+    "autoInjectMCPConfig": false,
+    "sdkFallbackEnabled": true,
+    "deprecationWarnings": true,
+    "providerMetrics": true
+  },
+  "version": "12.0.1"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-07T03:31:38.732Z',
+  generatedAt: '2025-12-07T09:11:16.048Z',
   sourceFile: 'ax.config.json',
-  version: '11.5.0'
+  version: '12.0.1'
 } as const;

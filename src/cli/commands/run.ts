@@ -653,39 +653,9 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }));
       }
 
-      // ax-cli provider (provider-agnostic, configured via ax-cli setup)
-      // Supports backward compatibility with 'glm' config key
-      const axCliConfigKey = config.providers['ax-cli'] ? 'ax-cli' :
-                            config.providers['glm'] ? 'glm' : null;
-
-      if (axCliConfigKey && config.providers[axCliConfigKey]?.enabled) {
-        try {
-          const { AxCliProvider } = await import('../../providers/ax-cli-provider.js');
-          const axCliConfig = config.providers[axCliConfigKey] as any;
-
-          // axCliConfig is guaranteed to exist here (checked in outer if)
-          providers.push(new AxCliProvider({
-            name: 'ax-cli',
-            enabled: true,
-            priority: axCliConfig.priority ?? 4,
-            timeout: axCliConfig.timeout ?? 120000,
-            command: axCliConfig.command || 'ax-cli',
-            mode: axCliConfig.mode || 'auto',
-            customPath: axCliConfig.customPath,
-            versionArg: axCliConfig.versionArg,
-            minVersion: axCliConfig.minVersion,
-            axCli: axCliConfig.axCli,
-            axCliSdk: axCliConfig.axCliSdk
-          }));
-
-          if (axCliConfigKey === 'glm') {
-            logger.warn('Using deprecated "glm" provider config. Please rename to "ax-cli" in ax.config.json');
-          }
-        } catch (error) {
-          logger.error('Failed to initialize ax-cli provider', { error });
-          // Continue with other providers
-        }
-      }
+      // v12.0.0: ax-cli provider removed (deprecated)
+      // GLM and Grok are now SDK-first providers with their own implementations
+      // See: src/providers/glm-provider.ts and src/providers/grok-provider.ts
 
       if (config.providers['openai']?.enabled) {
         const openaiConfig = config.providers['openai'];

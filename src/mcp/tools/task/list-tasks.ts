@@ -23,7 +23,7 @@ export interface ListTasksToolInput {
   /** Filter by task type */
   type?: 'web_search' | 'code_review' | 'code_generation' | 'analysis' | 'custom';
   /** Filter by engine */
-  engine?: 'gemini' | 'claude' | 'codex' | 'ax-cli';
+  engine?: 'gemini' | 'claude' | 'codex' | 'glm' | 'grok';
   /** Maximum results (default: 20, max: 100) */
   limit?: number;
   /** Offset for pagination */
@@ -154,7 +154,7 @@ export const listTasksSchema = {
       },
       engine: {
         type: 'string',
-        enum: ['gemini', 'claude', 'codex', 'ax-cli'],
+        enum: ['gemini', 'claude', 'codex', 'glm', 'grok'],
         description: 'Filter by engine'
       },
       limit: {

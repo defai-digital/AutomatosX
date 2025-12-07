@@ -23,7 +23,7 @@ export interface CreateTaskToolInput {
   /** Task data (max 1MB after JSON serialization) */
   payload: Record<string, unknown>;
   /** Target engine (auto = router decides) */
-  engine?: 'auto' | 'gemini' | 'claude' | 'codex' | 'ax-cli';
+  engine?: 'auto' | 'gemini' | 'claude' | 'codex' | 'glm' | 'grok';
   /** Execution priority (1=lowest, 10=highest) */
   priority?: number;
   /** Task time-to-live in hours */
@@ -124,7 +124,8 @@ function mapNormalizedProviderToOriginClient(provider: string): OriginClient {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',
     'codex': 'codex-cli',
-    'ax-cli': 'ax-cli',
+    'glm': 'glm',
+    'grok': 'grok',
     'unknown': 'unknown'
   };
   return mapping[provider] ?? 'unknown';
@@ -150,7 +151,7 @@ export const createTaskSchema = {
       },
       engine: {
         type: 'string',
-        enum: ['auto', 'gemini', 'claude', 'codex', 'ax-cli'],
+        enum: ['auto', 'gemini', 'claude', 'codex', 'glm', 'grok'],
         default: 'auto',
         description: 'Target engine (auto = router decides)'
       },

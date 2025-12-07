@@ -79,13 +79,52 @@ export interface McpTool {
 // Tool-Specific Input/Output Types
 
 // v10.5.0: MCP Session for Smart Routing
+// v12.0.0: Removed ax-cli (deprecated), added glm/grok
 export interface McpSession {
   clientInfo: {
     name: string;
     version?: string;
   };
-  normalizedProvider: 'claude' | 'gemini' | 'codex' | 'ax-cli' | 'unknown';
+  normalizedProvider: 'claude' | 'gemini' | 'codex' | 'glm' | 'grok' | 'unknown';
   initTime: number;
+}
+
+/**
+ * v12.0.0: Enhanced MCP Session for bidirectional communication
+ *
+ * Extends McpSession with:
+ * - Unique session ID for isolation
+ * - Memory namespace for per-session memory
+ * - Activity tracking for timeout management
+ * - Agent context for delegation chains
+ */
+export interface EnhancedMcpSession extends McpSession {
+  /** Unique session identifier */
+  sessionId: string;
+  /** Memory namespace for session isolation */
+  memoryNamespace: string;
+  /** Session creation timestamp */
+  createdAt: number;
+  /** Last activity timestamp (for timeout) */
+  lastActivityAt: number;
+  /** Current agent (if any) */
+  currentAgent?: string;
+  /** Parent session ID (for delegated calls) */
+  parentSessionId?: string;
+  /** Session metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * MCP Session Manager configuration
+ */
+export interface McpSessionManagerConfig {
+  /** Maximum concurrent sessions (default: 10) */
+  maxSessions?: number;
+  /** Session timeout in ms (default: 30 minutes) */
+  sessionTimeoutMs?: number;
+  /** Enable memory namespace isolation (default: true) */
+  enableMemoryIsolation?: boolean;
 }
 
 // run_agent (v10.5.0: Added mode for Smart Routing)

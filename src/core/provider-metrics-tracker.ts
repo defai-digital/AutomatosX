@@ -248,8 +248,8 @@ export class ProviderMetricsTracker extends EventEmitter {
         p50,
         p95,
         p99,
-        min: latencies[0]!,
-        max: latencies[latencies.length - 1]!
+        min: latencies.length > 0 ? latencies[0]! : 0,
+        max: latencies.length > 0 ? latencies[latencies.length - 1]! : 0
       },
       quality: {
         totalRequests: records.length,

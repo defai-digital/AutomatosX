@@ -22,12 +22,14 @@ import { z } from 'zod';
 
 /**
  * Source of the event (which provider/system generated it)
+ * v12.0.0: Removed ax-cli (deprecated), added glm/grok
  */
 export type EventSource =
   | 'claude'
   | 'gemini'
   | 'codex'
-  | 'ax-cli'
+  | 'glm'
+  | 'grok'
   | 'mcp'
   | 'internal';
 
@@ -35,7 +37,8 @@ export const EventSourceSchema = z.enum([
   'claude',
   'gemini',
   'codex',
-  'ax-cli',
+  'glm',
+  'grok',
   'mcp',
   'internal'
 ]);

@@ -60,7 +60,7 @@ const SQL = {
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL CHECK (type IN ('web_search', 'code_review', 'code_generation', 'analysis', 'custom')),
       status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'expired')),
-      engine TEXT CHECK (engine IN ('gemini', 'claude', 'codex', 'ax-cli', NULL)),
+      engine TEXT CHECK (engine IN ('gemini', 'claude', 'codex', 'glm', 'grok', NULL)),
       priority INTEGER NOT NULL DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
 
       payload_compressed BLOB NOT NULL,

@@ -101,8 +101,12 @@ export function scoreAgent(task: string, profile: AgentProfile): number {
         if (regex.test(task)) {
           score -= 15;
         }
-      } catch {
-        // Invalid regex, skip
+      } catch (error) {
+        // Invalid regex pattern - log and skip
+        logger.debug('Invalid regex pattern in redirectWhen rule', {
+          pattern: rule.phrase,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }

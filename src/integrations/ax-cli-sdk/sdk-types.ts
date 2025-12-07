@@ -1,8 +1,14 @@
 /**
- * ax-cli SDK v1.3.0 Type Definitions
+ * ax-cli SDK v1.4.0 Type Definitions
  *
  * Typed interfaces for ax-cli SDK events and managers.
  * These provide type safety when working with SDK callbacks.
+ *
+ * New in v1.4.0:
+ * - Multi-provider support (GLM, Grok)
+ * - ProviderContext for session management
+ * - Provider-specific factory functions
+ * - File locking for concurrent safety
  *
  * @module integrations/ax-cli-sdk/sdk-types
  */
@@ -407,4 +413,176 @@ export interface IUnifiedLogger {
 
   /** Get recent log entries */
   getRecentLogs(count?: number): LogEntry[];
+}
+
+// =============================================================================
+// SDK v1.4.0 Multi-Provider Support
+// =============================================================================
+
+/**
+ * Supported AI provider types (SDK v1.4.0)
+ */
+export type AIProvider = 'glm' | 'grok' | 'openai' | 'anthropic';
+
+/**
+ * GLM model variants (Z.AI)
+ */
+export type GLMModel =
+  | 'glm-4.6'      // 200K context, thinking mode
+  | 'glm-4.5v'     // 64K context, vision capability
+  | 'glm-4'        // 128K context
+  | 'glm-4-flash'; // Fast, cost-effective
+
+/**
+ * Grok model variants (xAI)
+ */
+export type GrokModel =
+  | 'grok-3'         // 131K context, reasoning effort
+  | 'grok-3-mini'    // Fast, cost-effective
+  | 'grok-2-vision'  // Image understanding
+  | 'grok-2';        // Live web search
+
+/**
+ * Provider-specific agent options
+ */
+export interface ProviderAgentOptions {
+  /** Model to use */
+  model?: string;
+
+  /** Maximum tool execution rounds */
+  maxToolRounds?: number;
+
+  /** Enable streaming */
+  streaming?: boolean;
+
+  /** System prompt */
+  systemPrompt?: string;
+
+  /** Temperature (0-1) */
+  temperature?: number;
+
+  /** Enable thinking/reasoning mode (GLM glm-4.6, Grok grok-3) */
+  thinkingMode?: boolean;
+
+  /** Enable vision capabilities */
+  visionEnabled?: boolean;
+
+  /** Enable web search (Grok grok-2) */
+  webSearchEnabled?: boolean;
+}
+
+/**
+ * GLM-specific agent options
+ */
+export interface GLMAgentOptions extends ProviderAgentOptions {
+  model?: GLMModel | string;
+  /** Z.AI API key override */
+  apiKey?: string;
+  /** Use local inference server */
+  useLocalServer?: boolean;
+  /** Local server URL (e.g., Ollama, LM Studio) */
+  localServerUrl?: string;
+}
+
+/**
+ * Grok-specific agent options
+ */
+export interface GrokAgentOptions extends ProviderAgentOptions {
+  model?: GrokModel | string;
+  /** xAI API key override */
+  apiKey?: string;
+  /** Extended thinking configuration */
+  extendedThinking?: {
+    enabled: boolean;
+    budgetTokens?: number;
+  };
+  /** Live web search configuration */
+  liveWebSearch?: {
+    enabled: boolean;
+    maxResults?: number;
+  };
+}
+
+/**
+ * Provider context for session management (SDK v1.4.0)
+ *
+ * Manages provider-specific state, caching, and configuration.
+ */
+export interface ProviderContext {
+  /** Provider type */
+  provider: AIProvider;
+
+  /** Session ID */
+  sessionId: string;
+
+  /** Provider-specific settings */
+  settings: Record<string, unknown>;
+
+  /** File cache with cross-process locking */
+  fileCache: {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<void>;
+    delete(key: string): Promise<void>;
+    clear(): Promise<void>;
+  };
+
+  /** Context store for conversation history */
+  contextStore: {
+    getHistory(): Promise<SDKChatEntry[]>;
+    addEntry(entry: SDKChatEntry): Promise<void>;
+    clearHistory(): Promise<void>;
+  };
+}
+
+/**
+ * Factory function result for provider agents
+ */
+export interface ProviderAgentResult {
+  /** The created agent */
+  agent: SDKAgent;
+
+  /** Provider context for the agent */
+  context: ProviderContext;
+
+  /** Dispose agent and context */
+  dispose(): Promise<void>;
+}
+
+/**
+ * Multi-provider agent factory (SDK v1.4.0)
+ *
+ * Factory functions for creating provider-specific agents.
+ */
+export interface IAgentFactory {
+  /**
+   * Create a GLM agent (Z.AI)
+   * @param options GLM-specific configuration
+   */
+  createGLMAgent(options?: GLMAgentOptions): Promise<ProviderAgentResult>;
+
+  /**
+   * Create a Grok agent (xAI)
+   * @param options Grok-specific configuration
+   */
+  createGrokAgent(options?: GrokAgentOptions): Promise<ProviderAgentResult>;
+
+  /**
+   * Create an agent for the specified provider
+   * @param provider Provider type
+   * @param options Provider-specific options
+   */
+  createAgent(
+    provider: AIProvider,
+    options?: ProviderAgentOptions
+  ): Promise<ProviderAgentResult>;
+
+  /**
+   * Get available providers
+   */
+  getAvailableProviders(): AIProvider[];
+
+  /**
+   * Check if a provider is configured
+   */
+  isProviderConfigured(provider: AIProvider): Promise<boolean>;
 }

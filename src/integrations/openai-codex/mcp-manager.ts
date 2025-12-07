@@ -95,6 +95,9 @@ export class CodexMCPManager {
       pid: this.serverProcess.process.pid,
     });
 
+    // BUG FIX: Store process reference before cleanup to remove event listeners
+    const processToClean = this.serverProcess.process;
+
     try {
       // Send SIGTERM for graceful shutdown
       this.serverProcess.process.kill('SIGTERM');
@@ -108,6 +111,17 @@ export class CodexMCPManager {
       logger.warn('CodexMCPManager: Forcing server termination');
       this.serverProcess.process.kill('SIGKILL');
     } finally {
+      // BUG FIX: Remove all event listeners to prevent memory leaks
+      // Event handlers were attached in setupProcessHandlers() but never removed
+      processToClean.removeAllListeners('error');
+      processToClean.removeAllListeners('exit');
+      if (processToClean.stderr) {
+        processToClean.stderr.removeAllListeners('data');
+      }
+      if (processToClean.stdout) {
+        processToClean.stdout.removeAllListeners('data');
+      }
+
       this.serverProcess.running = false;
       this.serverProcess = null;
     }

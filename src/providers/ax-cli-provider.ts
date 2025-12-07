@@ -1,5 +1,5 @@
 /**
- * AxCliProvider - Provider-Agnostic AI Access via ax-cli (v10.4.0)
+ * AxCliProvider - Provider-Agnostic AI Access via ax-cli (v11.5.0)
  *
  * Provides access to AI models through ax-cli SDK, which supports multiple providers.
  * The actual provider (GLM, Grok, OpenAI, DeepSeek, etc.) is configured via `ax-cli setup`
@@ -7,7 +7,14 @@
  *
  * AutomatosX is provider-agnostic and does not need to know which provider ax-cli uses.
  *
- * New in v10.4.0:
+ * New in v11.5.0 (ax-cli SDK v1.4.0):
+ * - Multi-provider support with createGLMAgent() and createGrokAgent()
+ * - ProviderContext for session management
+ * - Provider-specific file caching with cross-process locking
+ * - GLM models: glm-4.6 (200K), glm-4.5v (vision), glm-4, glm-4-flash
+ * - Grok models: grok-3 (reasoning), grok-3-mini, grok-2-vision, grok-2 (web search)
+ *
+ * Previous features (v10.4.0):
  * - SubagentAdapter for parallel multi-agent execution
  * - CheckpointAdapter for resumable workflows
  * - InstructionsBridge for unified agent instructions
@@ -20,7 +27,20 @@ import type { ProviderConfig, ExecutionRequest, ExecutionResponse } from '../typ
 import { HybridAxCliAdapter, type AdapterMode } from '../integrations/ax-cli-sdk/hybrid-adapter.js';
 import type { AxCliOptions } from '../integrations/ax-cli/interface.js';
 import { logger } from '../shared/logging/logger.js';
-import type { SubagentTask, SubagentResult, Checkpoint, Workflow, CheckpointOptions, CombinedInstructions, InstructionsBridgeOptions } from '../integrations/ax-cli-sdk/adapter.js';
+import type {
+  SubagentTask,
+  SubagentResult,
+  Checkpoint,
+  Workflow,
+  CheckpointOptions,
+  CombinedInstructions,
+  InstructionsBridgeOptions,
+  AIProvider,
+  GLMAgentOptions,
+  GrokAgentOptions,
+  ProviderAgentResult,
+  ProviderAgentOptions
+} from '../integrations/ax-cli-sdk/adapter.js';
 
 /**
  * Error message for SDK adapter unavailable (used in multiple methods)
@@ -404,6 +424,91 @@ export class AxCliProvider extends BaseProvider {
     return this.adapter.getSdkAdapter() !== null;
   }
 
+  // ==========================================
+  // Multi-Provider Factory (v11.5.0)
+  // ==========================================
+
+  /**
+   * Create a GLM agent (Z.AI)
+   *
+   * Requires SDK mode (mode="sdk" or "auto" with SDK available)
+   *
+   * @example
+   * ```typescript
+   * const { agent, context, dispose } = await provider.createGLMAgent({
+   *   model: 'glm-4.6',
+   *   thinkingMode: true
+   * });
+   * ```
+   */
+  async createGLMAgent(options?: GLMAgentOptions): Promise<ProviderAgentResult> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
+    }
+    return sdkAdapter.createGLMAgent(options);
+  }
+
+  /**
+   * Create a Grok agent (xAI)
+   *
+   * Requires SDK mode (mode="sdk" or "auto" with SDK available)
+   *
+   * @example
+   * ```typescript
+   * const { agent, context, dispose } = await provider.createGrokAgent({
+   *   model: 'grok-3',
+   *   extendedThinking: { enabled: true }
+   * });
+   * ```
+   */
+  async createGrokAgent(options?: GrokAgentOptions): Promise<ProviderAgentResult> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
+    }
+    return sdkAdapter.createGrokAgent(options);
+  }
+
+  /**
+   * Create an agent for the specified provider
+   *
+   * @param provider - Provider type ('glm', 'grok')
+   * @param options - Provider-specific options
+   */
+  async createAgent(
+    provider: AIProvider,
+    options?: ProviderAgentOptions
+  ): Promise<ProviderAgentResult> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      throw new Error(SDK_ADAPTER_UNAVAILABLE_ERROR);
+    }
+    return sdkAdapter.createAgent(provider, options);
+  }
+
+  /**
+   * Get available providers that support direct agent creation
+   */
+  getAvailableProviders(): AIProvider[] {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      return [];
+    }
+    return sdkAdapter.getAvailableProviders();
+  }
+
+  /**
+   * Check if a provider is configured for direct agent creation
+   */
+  async isProviderConfigured(provider: AIProvider): Promise<boolean> {
+    const sdkAdapter = this.adapter.getSdkAdapter();
+    if (!sdkAdapter) {
+      return false;
+    }
+    return sdkAdapter.isProviderConfigured(provider);
+  }
+
   /**
    * Get mock response for testing
    *
@@ -445,7 +550,13 @@ export type {
   Workflow,
   CheckpointOptions,
   CombinedInstructions,
-  InstructionsBridgeOptions
+  InstructionsBridgeOptions,
+  // v11.5.0 Multi-provider types
+  AIProvider,
+  GLMAgentOptions,
+  GrokAgentOptions,
+  ProviderAgentResult,
+  ProviderAgentOptions
 };
 
 /**

@@ -64,8 +64,15 @@ export class OpenAIProvider extends BaseProvider {
     // concurrent execute() calls could each trigger adapter initialization
     await this.ensureInitialized();
 
+    // BUG FIX: Check destroyed state AND adapter validity after ensureInitialized()
+    // Prevents race condition where destroy() could be called between ensureInitialized()
+    // and the execute() call, causing null pointer exception
+    if (this.isDestroyed || !this.hybridAdapter) {
+      throw new Error('OpenAIProvider has been destroyed or not properly initialized');
+    }
+
     try {
-      const result = await this.hybridAdapter!.execute(
+      const result = await this.hybridAdapter.execute(
         request.prompt,
         this.config.timeout
       );

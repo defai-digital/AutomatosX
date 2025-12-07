@@ -353,9 +353,24 @@ export const addCommand: CommandModule = {
       }
 
       // Parse custom metadata if provided
+      // BUG FIX: Protect against prototype pollution attacks by validating keys
       if (argv.metadata) {
         try {
           const customMetadata = JSON.parse(argv.metadata);
+
+          // Security: Validate that parsed value is a plain object
+          if (typeof customMetadata !== 'object' || customMetadata === null || Array.isArray(customMetadata)) {
+            throw new Error('Metadata must be a JSON object');
+          }
+
+          // Security: Filter out dangerous prototype pollution keys
+          const FORBIDDEN_KEYS = ['__proto__', 'constructor', 'prototype'];
+          for (const key of Object.keys(customMetadata)) {
+            if (FORBIDDEN_KEYS.includes(key) || key.startsWith('__')) {
+              throw new Error(`Invalid metadata key: "${key}" is not allowed`);
+            }
+          }
+
           // Merge custom metadata, preserving required fields
           Object.assign(metadata, customMetadata);
         } catch (error) {

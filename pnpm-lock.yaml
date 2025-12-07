@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@defai.digital/ax-cli':
-        specifier: ^4.0.6
-        version: 4.1.4
+        specifier: ^4.1.15
+        version: 4.1.15
       '@iarna/toml':
         specifier: ^2.2.5
         version: 2.2.5
@@ -237,8 +237,8 @@ packages:
     resolution: {integrity: sha512-bVUNBqG6aznYcYjTjnc3+Cat/iBgbgpflxbIBTnsHTX0YVpnmINPEkSRWymT2Q8aSH3Y7aKnEbunilkYe8TybA==}
     engines: {node: '>=v18'}
 
-  '@defai.digital/ax-cli@4.1.4':
-    resolution: {integrity: sha512-QWvvrG7YOkjm/SgwxWOhn3SBcDFquPfBUwQrJKA82f7SA4Dr2P/z++wAhFd2782yAI3mPl0Ia580cEW8MGImpg==}
+  '@defai.digital/ax-cli@4.1.15':
+    resolution: {integrity: sha512-iJYWe4LQbpf+52pDTUkvJmYeTFUtHJ6hYTZiqjuT/0YIf3s+RmybzH5sV0TfNf2G5/9CKucWUzXUbj6yzTsw4Q==}
     engines: {node: '>=24.0.0'}
     os: [darwin, linux, win32]
     hasBin: true
@@ -3740,7 +3740,7 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.2
       chalk: 5.6.2
 
-  '@defai.digital/ax-cli@4.1.4':
+  '@defai.digital/ax-cli@4.1.15':
     dependencies:
       '@clack/prompts': 0.11.0
       '@defai.digital/ax-schemas': 1.1.0

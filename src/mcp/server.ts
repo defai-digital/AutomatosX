@@ -1111,20 +1111,21 @@ Use this tool first to understand what AutomatosX offers.`,
   }
 
   /**
-   * Start stdio server with newline-delimited framing
+   * Start stdio server with hybrid framing support
    *
-   * v12.2.0: Changed from Content-Length to newline-delimited framing
-   * per official MCP specification: https://spec.modelcontextprotocol.io/specification/basic/transports/
+   * v12.3.1: Supports BOTH framing formats for maximum compatibility:
+   * 1. Newline-delimited (official MCP spec, used by Claude Code, @modelcontextprotocol/sdk)
+   * 2. Content-Length (LSP-style, used by ax-glm, ax-grok, some older clients)
    *
-   * Format: Each JSON-RPC message is terminated by a newline character.
-   * Messages MUST NOT contain embedded newlines.
-   * Reference: @modelcontextprotocol/sdk ReadBuffer uses: buffer.indexOf('\n')
+   * Detection: If first line starts with "Content-Length:", use LSP framing.
+   * Otherwise, use newline-delimited framing.
    *
    * BUG FIX (v9.0.1): Added iteration limit and buffer size checks to prevent infinite loops
    */
   async start(): Promise<void> {
     logger.info('[MCP Server] Starting stdio JSON-RPC server...');
     let buffer = '';
+    let detectedFraming: 'newline' | 'content-length' | null = null;
 
     process.stdin.on('data', (chunk: Buffer) => {
       // BUG FIX: Use mutex to serialize stdin chunk processing
@@ -1142,26 +1143,68 @@ Use this tool first to understand what AutomatosX offers.`,
           return;
         }
 
+        // Auto-detect framing on first message
+        if (detectedFraming === null) {
+          if (buffer.startsWith('Content-Length:')) {
+            detectedFraming = 'content-length';
+            logger.info('[MCP Server] Detected Content-Length framing (LSP-style)');
+          } else if (buffer.includes('{')) {
+            detectedFraming = 'newline';
+            logger.info('[MCP Server] Detected newline-delimited framing (MCP spec)');
+          }
+        }
+
         // BUG FIX: Add iteration counter to prevent infinite loops
         let iterations = 0;
 
-        // Process all complete messages (newline-delimited)
         while (iterations < STDIO_MAX_ITERATIONS) {
           iterations++;
 
-          // Find newline delimiter (support both \n and \r\n)
-          const newlineIndex = buffer.indexOf('\n');
-          if (newlineIndex === -1) break; // No complete message yet
+          let jsonMessage: string | null = null;
 
-          // Extract the message (strip trailing \r if present for Windows compatibility)
-          let jsonMessage = buffer.slice(0, newlineIndex);
-          if (jsonMessage.endsWith('\r')) {
-            jsonMessage = jsonMessage.slice(0, -1);
+          if (detectedFraming === 'content-length') {
+            // Content-Length framing (LSP-style)
+            // Format: Content-Length: <length>\r\n\r\n<json>
+            const headerEnd = buffer.indexOf('\r\n\r\n');
+            if (headerEnd === -1) break; // Headers not complete
+
+            const headers = buffer.slice(0, headerEnd);
+            const contentLengthMatch = headers.match(/Content-Length:\s*(\d+)/i);
+            if (!contentLengthMatch) {
+              // Skip malformed header line and continue
+              const lineEnd = buffer.indexOf('\n');
+              if (lineEnd !== -1) {
+                buffer = buffer.slice(lineEnd + 1);
+                continue;
+              }
+              break;
+            }
+
+            const contentLength = parseInt(contentLengthMatch[1], 10);
+            const bodyStart = headerEnd + 4; // Skip \r\n\r\n
+            const bodyEnd = bodyStart + contentLength;
+
+            if (buffer.length < bodyEnd) break; // Body not complete
+
+            jsonMessage = buffer.slice(bodyStart, bodyEnd);
+            buffer = buffer.slice(bodyEnd);
+          } else {
+            // Newline-delimited framing (official MCP spec)
+            const newlineIndex = buffer.indexOf('\n');
+            if (newlineIndex === -1) break; // No complete message yet
+
+            // Extract the message (strip trailing \r if present for Windows compatibility)
+            jsonMessage = buffer.slice(0, newlineIndex);
+            if (jsonMessage.endsWith('\r')) {
+              jsonMessage = jsonMessage.slice(0, -1);
+            }
+            buffer = buffer.slice(newlineIndex + 1);
+
+            // Skip empty lines
+            if (jsonMessage.trim() === '') continue;
           }
-          buffer = buffer.slice(newlineIndex + 1);
 
-          // Skip empty lines
-          if (jsonMessage.trim() === '') continue;
+          if (!jsonMessage) break;
 
           // Validate message size
           if (jsonMessage.length > STDIO_MAX_MESSAGE_SIZE) {
@@ -1213,6 +1256,6 @@ Use this tool first to understand what AutomatosX offers.`,
     process.on('SIGINT', () => shutdown('Received SIGINT, shutting down...'));
     process.on('SIGTERM', () => shutdown('Received SIGTERM, shutting down...'));
 
-    logger.info('[MCP Server] Server started successfully (newline-delimited framing)');
+    logger.info('[MCP Server] Server started successfully (hybrid framing: newline + Content-Length)');
   }
 }

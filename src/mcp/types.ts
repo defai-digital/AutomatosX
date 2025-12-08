@@ -12,10 +12,10 @@ export type {
   JsonRpcError
 } from '../providers/mcp/types.js';
 
-/** Latest MCP protocol version (v2) */
-export const MCP_PROTOCOL_VERSION = '2024-12-05';
-/** Backward-compatible versions (descending order) */
-export const MCP_SUPPORTED_VERSIONS = ['2024-12-05', '2024-11-05'] as const;
+/** Default MCP protocol version (use 2024-11-05 for maximum compatibility) */
+export const MCP_PROTOCOL_VERSION = '2024-11-05';
+/** Supported versions (descending order, prefer 2024-11-05 for compatibility) */
+export const MCP_SUPPORTED_VERSIONS = ['2024-11-05', '2024-12-05'] as const;
 export type SupportedMcpProtocolVersion = typeof MCP_SUPPORTED_VERSIONS[number];
 
 export interface McpCapabilities {

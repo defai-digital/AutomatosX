@@ -157,6 +157,11 @@
     "@ax-cli/schemas": "zod@^3.23.8",
     "@modelcontextprotocol/sdk": "^1.24.0"
   },
+  "pnpm": {
+    "overrides": {
+      "tmp": "^0.2.4"
+    }
+  },
   "config": {
     "commitizen": {
       "path": "cz-conventional-changelog"

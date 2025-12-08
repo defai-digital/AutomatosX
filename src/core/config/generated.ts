@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-08T10:31:36.794Z
+ * Generated: 2025-12-08T10:33:03.037Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -330,7 +330,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-08T10:31:36.794Z',
+  generatedAt: '2025-12-08T10:33:03.037Z',
   sourceFile: 'ax.config.json',
   version: '12.3.1'
 } as const;

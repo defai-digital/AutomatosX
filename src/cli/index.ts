@@ -49,7 +49,8 @@ import { doctorCommand } from './commands/doctor.js';
 import { cleanupCommand } from './commands/cleanup.js';
 import { analyticsCommand } from './commands/analytics.js';
 import { flagsCommand } from './commands/flags.js';
-import { cliCommand } from './commands/cli.js';
+// v13.0.0: cliCommand REMOVED (ax-cli deprecated)
+// Use ax-glm and ax-grok providers instead
 import { uninstallCommand } from './commands/uninstall.js';
 import { modeCommand } from './commands/mode.js';
 import { debugInstructionsCommand } from './commands/debug-instructions.js';
@@ -131,7 +132,7 @@ globalTracker.mark('cli_start');
   .command(setupCommand)
   .command(initCommand)
   .command(configureCommand)
-  .command(cliCommand)
+  // v13.0.0: cliCommand REMOVED (ax-cli deprecated)
   .command(agentCommand)
   .command(listCommand)
   .command(runCommand)

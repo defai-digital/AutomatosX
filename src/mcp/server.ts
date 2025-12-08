@@ -71,6 +71,9 @@ import { createImplementAndDocumentHandler } from './tools/implement-and-documen
 // Import tool handlers - v10.5.0: Smart Routing
 import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 
+// Import tool handlers - v13.0.0: Enhanced Service Discovery
+import { createGetCapabilitiesHandler } from './tools/get-capabilities.js';
+
 // Import tool handlers - v11.3.5: Task Engine
 import {
   createCreateTaskHandler,
@@ -213,6 +216,22 @@ export class McpServer {
       {
         name: 'get_status',
         description: 'Get AutomatosX system status and configuration',
+        inputSchema: { type: 'object', properties: {} }
+      },
+      // v13.0.0: Enhanced Service Discovery
+      {
+        name: 'get_capabilities',
+        description: `Get comprehensive AutomatosX capabilities for service discovery.
+
+Returns:
+- providers: All AI providers with execution modes (cli/sdk/hybrid)
+- agents: All available agent profiles with roles and abilities
+- tools: All MCP tools organized by category
+- memory: Memory system status (entries, limits)
+- sessions: Session management status
+- features: Enabled features (smart routing, streaming, etc.)
+
+Use this tool first to understand what AutomatosX offers.`,
         inputSchema: { type: 'object', properties: {} }
       },
       {
@@ -541,6 +560,15 @@ export class McpServer {
     register('get_agent_context', createGetAgentContextHandler({
       profileLoader: this.profileLoader,
       memoryManager: this.memoryManager
+    }));
+
+    // v13.0.0: Enhanced Service Discovery
+    register('get_capabilities', createGetCapabilitiesHandler({
+      memoryManager: this.memoryManager,
+      sessionManager: this.sessionManager,
+      router: this.router,
+      profileLoader: this.profileLoader,
+      toolSchemas: staticSchemas
     }));
 
     // v11.3.5: Task Engine tools

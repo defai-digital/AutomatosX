@@ -12,6 +12,7 @@
  */
 
 import { readFile, readdir } from 'fs/promises';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import { existsSync, statSync } from 'fs';
 
@@ -823,7 +824,9 @@ function detectPrerequisites(projectDir: string, info: ProjectInfo): string[] {
   try {
     const pkgJsonPath = join(projectDir, 'package.json');
     if (existsSync(pkgJsonPath)) {
-      const pkgJson = require(pkgJsonPath);
+      // Use readFileSync + JSON.parse instead of require() for ES module compatibility
+      const pkgJsonContent = readFileSync(pkgJsonPath, 'utf-8');
+      const pkgJson = JSON.parse(pkgJsonContent);
       if (pkgJson.engines?.node) {
         prereqs.push(`Node.js ${pkgJson.engines.node}`);
       } else {

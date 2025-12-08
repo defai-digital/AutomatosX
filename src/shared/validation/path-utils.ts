@@ -11,6 +11,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { realpath } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 
 /**
  * Normalize path separators to forward slashes (for display and logging)
@@ -220,10 +221,10 @@ export function expandShortPathSync(shortPath: string): string {
   if (!isWindows()) return shortPath;
 
   try {
-    const { realpathSync } = require('node:fs');
+    // Use imported realpathSync instead of require() for ES module compatibility
     const expandedPath = realpathSync(shortPath);
     return expandedPath;
-  } catch (error) {
+  } catch {
     return shortPath;
   }
 }

@@ -61,24 +61,8 @@ export const OPENAI_RETRYABLE_ERRORS = [
   'internal_error'
 ] as const;
 
-/**
- * ax-cli provider retryable errors (v9.2.0)
- *
- * BUG FIX: Added ax-cli specific patterns. ax-cli is a multi-model provider
- * that proxies to GLM, xAI, OpenAI, Anthropic, Ollama, etc.
- * Combines patterns from all backends since errors bubble up from them.
- */
-export const AX_CLI_RETRYABLE_ERRORS = [
-  // Inherited from Anthropic (via ax-cli)
-  'overloaded_error',
-  // Inherited from OpenAI (via ax-cli)
-  'internal_error',
-  // ax-cli specific
-  'agent_error',
-  'tool_execution_error',
-  // xAI/Grok specific
-  'service_overloaded'
-] as const;
+// v13.0.0: AX_CLI_RETRYABLE_ERRORS REMOVED (ax-cli deprecated)
+// Use GLM and Grok providers instead, which use OPENAI_RETRYABLE_ERRORS
 
 /**
  * Codex provider retryable errors
@@ -114,7 +98,7 @@ export function containsErrorPattern(message: string, patterns: readonly string[
 /**
  * Supported provider types for retry error handling
  *
- * v12.0.0: Removed 'ax-cli' (deprecated)
+ * v13.0.0: ax-cli removed, GLM and Grok are SDK-first providers
  */
 export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'codex' | 'glm' | 'grok' | 'base';
 
@@ -149,9 +133,6 @@ export function getRetryableErrors(provider: RetryableProvider): readonly string
 
 /**
  * Check if an error should be retried for a specific provider
- *
- * BUG FIX: Updated signature to use RetryableProvider type which includes
- * 'ax-cli' and 'codex' providers.
  */
 export function shouldRetryError(
   error: Error,

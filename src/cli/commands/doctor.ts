@@ -44,6 +44,7 @@ interface DoctorOptions {
   glm?: boolean;
   grok?: boolean;
   memory?: boolean;
+  mcp?: boolean;  // v13.0.0: MCP server diagnostics
   full?: boolean;
 }
 
@@ -105,6 +106,11 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
+      .option('mcp', {
+        describe: 'Run MCP server diagnostics',
+        type: 'boolean',
+        default: false
+      })
       .option('full', {
         describe: 'Run all comprehensive diagnostics',
         type: 'boolean',
@@ -119,6 +125,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       .example('ax doctor --glm', 'Check GLM provider')
       .example('ax doctor --grok', 'Check Grok/xAI provider')
       .example('ax doctor --memory', 'Check memory system health')
+      .example('ax doctor --mcp', 'Check MCP server health')
       .example('ax doctor --full', 'Run all comprehensive diagnostics');
   },
 
@@ -156,6 +163,12 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // If --memory flag is set, run memory diagnostics only
       if (argv.memory) {
         await runMemoryDiagnostics(verbose);
+        return;
+      }
+
+      // v13.0.0: If --mcp flag is set, run MCP server diagnostics only
+      if (argv.mcp) {
+        await runMcpDiagnostics(verbose);
         return;
       }
 
@@ -1491,13 +1504,64 @@ async function runMemoryDiagnostics(verbose: boolean): Promise<void> {
 /**
  * Run GLM provider diagnostics
  * v12.0.0: CLI-based GLM provider (ax-glm)
+ * v13.0.0: Updated for SDK-only execution mode
  */
 async function runGLMDiagnostics(verbose: boolean): Promise<void> {
-  console.log(chalk.bold('\n🔍 GLM Provider Diagnostics (ax-glm CLI)\n'));
+  console.log(chalk.bold('\n🔍 GLM Provider Diagnostics (SDK-first)\n'));
 
   const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
 
-  // Check 1: ax-glm CLI installed
+  // Check 1: API Key configured (required for SDK mode)
+  const apiKey = process.env.ZAI_API_KEY || process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY;
+  checks.push({
+    name: 'API Key',
+    passed: !!apiKey,
+    message: apiKey ? 'Configured (ZAI_API_KEY)' : 'Not found',
+    fix: apiKey ? undefined : 'Set ZAI_API_KEY or GLM_API_KEY environment variable',
+    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+  });
+
+  // Check 2: OpenAI SDK available (required for GLM SDK mode)
+  let sdkAvailable = false;
+  try {
+    await import('openai');
+    sdkAvailable = true;
+  } catch {
+    sdkAvailable = false;
+  }
+
+  checks.push({
+    name: 'OpenAI SDK',
+    passed: sdkAvailable,
+    message: sdkAvailable ? 'Installed (used for GLM API)' : 'Not found',
+    fix: sdkAvailable ? undefined : 'Install: npm install openai',
+    details: verbose && sdkAvailable ? 'GLM uses OpenAI-compatible API via openai package' : undefined
+  });
+
+  // Check 3: Provider enabled in config
+  let providerEnabled = false;
+  let executionMode = 'sdk';
+  const configPath = join(process.cwd(), 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerEnabled = config?.providers?.glm?.enabled === true;
+      executionMode = config?.providers?.glm?.executionMode || 'sdk';
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerEnabled,
+    message: providerEnabled ? `GLM enabled (mode: ${executionMode})` : 'GLM provider not configured',
+    fix: providerEnabled ? undefined : 'Add glm provider to ax.config.json',
+    details: verbose ? `Execution mode: ${executionMode} (SDK-only recommended)` : undefined
+  });
+
+  // Check 4: ax-glm CLI (optional, for legacy mode)
   let cliInstalled = false;
   let cliVersion = '';
   try {
@@ -1508,63 +1572,21 @@ async function runGLMDiagnostics(verbose: boolean): Promise<void> {
   }
 
   checks.push({
-    name: 'ax-glm CLI',
-    passed: cliInstalled,
-    message: cliInstalled ? `Installed (${cliVersion})` : 'Not found',
-    fix: cliInstalled ? undefined : 'Install: npm install -g @defai.digital/ax-glm',
-    details: verbose && cliInstalled ? `Path: ${execSync('which ax-glm', { encoding: 'utf8' }).trim()}` : undefined
+    name: 'ax-glm CLI (optional)',
+    passed: true, // CLI is optional now
+    message: cliInstalled ? `Installed (${cliVersion})` : 'Not installed (SDK mode preferred)',
+    details: verbose && !cliInstalled ? 'CLI not required for SDK execution mode' : undefined
   });
 
-  // Check 2: API Key configured (ax-glm checks ZAI_API_KEY internally)
-  const apiKey = process.env.ZAI_API_KEY || process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY;
+  // Check 5: SDK ready (API key + SDK package)
+  const sdkReady = !!apiKey && sdkAvailable;
   checks.push({
-    name: 'API Key',
-    passed: !!apiKey,
-    message: apiKey ? 'Configured' : 'Not found',
-    fix: apiKey ? undefined : 'Set ZAI_API_KEY environment variable (ax-glm requires this)',
-    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+    name: 'SDK Mode Ready',
+    passed: sdkReady,
+    message: sdkReady ? 'GLM SDK execution available' : 'SDK mode not available',
+    fix: sdkReady ? undefined : 'Ensure ZAI_API_KEY is set and openai package is installed',
+    details: verbose && sdkReady ? 'Direct API calls without subprocess overhead' : undefined
   });
-
-  // Check 3: Provider enabled in config
-  let providerEnabled = false;
-  const configPath = join(process.cwd(), 'ax.config.json');
-  if (existsSync(configPath)) {
-    try {
-      const configContent = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(configContent);
-      providerEnabled = config?.providers?.glm?.enabled === true;
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  checks.push({
-    name: 'Provider Configuration',
-    passed: providerEnabled,
-    message: providerEnabled ? 'GLM provider enabled' : 'GLM provider not configured',
-    fix: providerEnabled ? undefined : 'Add glm provider to ax.config.json'
-  });
-
-  // Check 4: Test CLI execution (only if installed and API key exists)
-  if (cliInstalled && apiKey) {
-    try {
-      // Simple test - just check if ax-glm can parse a help command quickly
-      execSync('ax-glm --help', { encoding: 'utf8', timeout: 5000 });
-      checks.push({
-        name: 'CLI Execution',
-        passed: true,
-        message: 'ax-glm responds correctly'
-      });
-    } catch (error) {
-      checks.push({
-        name: 'CLI Execution',
-        passed: false,
-        message: 'CLI execution failed',
-        fix: 'Check ax-glm installation and permissions',
-        details: verbose ? (error as Error).message : undefined
-      });
-    }
-  }
 
   // Display results
   checks.forEach(check => {
@@ -1610,20 +1632,75 @@ async function runGLMDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.gray('  • glm-4-plus (enhanced)'));
     console.log(chalk.gray('  • glm-4v (vision)'));
     console.log(chalk.gray('  • glm-4-flash (fast)'));
-    console.log(chalk.gray('  • glm-4-air (cost-effective)\n'));
+    console.log(chalk.gray('  • glm-4-air (cost-effective)'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Execution Mode:'));
+    console.log(chalk.gray('  v13.0.0+: SDK-only (direct API calls, faster)'));
+    console.log(chalk.gray('  Legacy: CLI mode (subprocess, deprecated)\n'));
   }
 }
 
 /**
  * Run Grok/xAI provider diagnostics
  * v12.0.0: CLI-based Grok provider (ax-grok)
+ * v13.0.0: Updated for SDK-only execution mode
  */
 async function runGrokDiagnostics(verbose: boolean): Promise<void> {
-  console.log(chalk.bold('\n🔍 Grok Provider Diagnostics (ax-grok CLI)\n'));
+  console.log(chalk.bold('\n🔍 Grok Provider Diagnostics (SDK-first)\n'));
 
   const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
 
-  // Check 1: ax-grok CLI installed
+  // Check 1: API Key configured (required for SDK mode)
+  const apiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  checks.push({
+    name: 'API Key',
+    passed: !!apiKey,
+    message: apiKey ? 'Configured (XAI_API_KEY)' : 'Not found',
+    fix: apiKey ? undefined : 'Set XAI_API_KEY environment variable',
+    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+  });
+
+  // Check 2: OpenAI SDK available (required for Grok SDK mode)
+  let sdkAvailable = false;
+  try {
+    await import('openai');
+    sdkAvailable = true;
+  } catch {
+    sdkAvailable = false;
+  }
+
+  checks.push({
+    name: 'OpenAI SDK',
+    passed: sdkAvailable,
+    message: sdkAvailable ? 'Installed (used for Grok API)' : 'Not found',
+    fix: sdkAvailable ? undefined : 'Install: npm install openai',
+    details: verbose && sdkAvailable ? 'Grok uses OpenAI-compatible API via openai package' : undefined
+  });
+
+  // Check 3: Provider enabled in config
+  let providerEnabled = false;
+  let executionMode = 'sdk';
+  const configPath = join(process.cwd(), 'ax.config.json');
+  if (existsSync(configPath)) {
+    try {
+      const configContent = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+      providerEnabled = config?.providers?.grok?.enabled === true;
+      executionMode = config?.providers?.grok?.executionMode || 'sdk';
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  checks.push({
+    name: 'Provider Configuration',
+    passed: providerEnabled,
+    message: providerEnabled ? `Grok enabled (mode: ${executionMode})` : 'Grok provider not configured',
+    fix: providerEnabled ? undefined : 'Add grok provider to ax.config.json',
+    details: verbose ? `Execution mode: ${executionMode} (SDK-only recommended)` : undefined
+  });
+
+  // Check 4: ax-grok CLI (optional, for legacy mode)
   let cliInstalled = false;
   let cliVersion = '';
   try {
@@ -1634,63 +1711,21 @@ async function runGrokDiagnostics(verbose: boolean): Promise<void> {
   }
 
   checks.push({
-    name: 'ax-grok CLI',
-    passed: cliInstalled,
-    message: cliInstalled ? `Installed (${cliVersion})` : 'Not found',
-    fix: cliInstalled ? undefined : 'Install: npm install -g @defai.digital/ax-grok',
-    details: verbose && cliInstalled ? `Path: ${execSync('which ax-grok', { encoding: 'utf8' }).trim()}` : undefined
+    name: 'ax-grok CLI (optional)',
+    passed: true, // CLI is optional now
+    message: cliInstalled ? `Installed (${cliVersion})` : 'Not installed (SDK mode preferred)',
+    details: verbose && !cliInstalled ? 'CLI not required for SDK execution mode' : undefined
   });
 
-  // Check 2: API Key configured (ax-grok checks XAI_API_KEY internally)
-  const apiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  // Check 5: SDK ready (API key + SDK package)
+  const sdkReady = !!apiKey && sdkAvailable;
   checks.push({
-    name: 'API Key',
-    passed: !!apiKey,
-    message: apiKey ? 'Configured' : 'Not found',
-    fix: apiKey ? undefined : 'Set XAI_API_KEY environment variable (ax-grok requires this)',
-    details: verbose && apiKey ? `Key prefix: ${apiKey.substring(0, 8)}...` : undefined
+    name: 'SDK Mode Ready',
+    passed: sdkReady,
+    message: sdkReady ? 'Grok SDK execution available' : 'SDK mode not available',
+    fix: sdkReady ? undefined : 'Ensure XAI_API_KEY is set and openai package is installed',
+    details: verbose && sdkReady ? 'Direct API calls without subprocess overhead' : undefined
   });
-
-  // Check 3: Provider enabled in config
-  let providerEnabled = false;
-  const configPath = join(process.cwd(), 'ax.config.json');
-  if (existsSync(configPath)) {
-    try {
-      const configContent = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(configContent);
-      providerEnabled = config?.providers?.grok?.enabled === true;
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  checks.push({
-    name: 'Provider Configuration',
-    passed: providerEnabled,
-    message: providerEnabled ? 'Grok provider enabled' : 'Grok provider not configured',
-    fix: providerEnabled ? undefined : 'Add grok provider to ax.config.json'
-  });
-
-  // Check 4: Test CLI execution (only if installed and API key exists)
-  if (cliInstalled && apiKey) {
-    try {
-      // Simple test - just check if ax-grok can parse a help command quickly
-      execSync('ax-grok --help', { encoding: 'utf8', timeout: 5000 });
-      checks.push({
-        name: 'CLI Execution',
-        passed: true,
-        message: 'ax-grok responds correctly'
-      });
-    } catch (error) {
-      checks.push({
-        name: 'CLI Execution',
-        passed: false,
-        message: 'CLI execution failed',
-        fix: 'Check ax-grok installation and permissions',
-        details: verbose ? (error as Error).message : undefined
-      });
-    }
-  }
 
   // Display results
   checks.forEach(check => {
@@ -1735,6 +1770,157 @@ async function runGrokDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.gray('  • grok-3 (latest flagship, default)'));
     console.log(chalk.gray('  • grok-3-mini (fast & efficient)'));
     console.log(chalk.gray('  • grok-2-vision (multimodal)'));
-    console.log(chalk.gray('  • grok-2 (stable)\n'));
+    console.log(chalk.gray('  • grok-2 (stable)'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Execution Mode:'));
+    console.log(chalk.gray('  v13.0.0+: SDK-only (direct API calls, faster)'));
+    console.log(chalk.gray('  Legacy: CLI mode (subprocess, deprecated)\n'));
+  }
+}
+
+/**
+ * Run MCP server diagnostics
+ * v13.0.0: Added for MCP Architecture Redesign
+ */
+async function runMcpDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 MCP Server Diagnostics\n'));
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // Check 1: automatosx command available
+  let cliAvailable = false;
+  let cliVersion = '';
+  try {
+    cliVersion = execSync('automatosx --version', { encoding: 'utf8', timeout: 5000 }).trim();
+    cliAvailable = true;
+  } catch {
+    cliAvailable = false;
+  }
+
+  checks.push({
+    name: 'AutomatosX CLI',
+    passed: cliAvailable,
+    message: cliAvailable ? `Installed (${cliVersion})` : 'Not found',
+    fix: cliAvailable ? undefined : 'Install: npm install -g @defai.digital/automatosx'
+  });
+
+  // Check 2: MCP server can start
+  let serverStarts = false;
+  if (cliAvailable) {
+    try {
+      // Test if server can initialize (will timeout quickly but that's expected)
+      const { spawn } = await import('child_process');
+      const proc = spawn('automatosx', ['mcp', 'server'], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+      const initResult = await new Promise<boolean>((resolve) => {
+        let output = '';
+        proc.stderr?.on('data', (data) => {
+          output += data.toString();
+          // Check for successful initialization message
+          if (output.includes('Server started successfully')) {
+            resolve(true);
+          }
+        });
+
+        setTimeout(() => {
+          proc.kill();
+          resolve(output.includes('Server started') || output.includes('MCP Server'));
+        }, 3000);
+      });
+
+      serverStarts = initResult;
+    } catch {
+      serverStarts = false;
+    }
+  }
+
+  checks.push({
+    name: 'MCP Server Startup',
+    passed: serverStarts,
+    message: serverStarts ? 'Server initializes correctly' : 'Server failed to start',
+    fix: serverStarts ? undefined : 'Check logs: automatosx mcp server --debug',
+    details: verbose && serverStarts ? 'stdio JSON-RPC with Content-Length framing' : undefined
+  });
+
+  // Check 3: .mcp.json exists in project root
+  const workingDir = process.cwd();
+  const mcpJsonPath = join(workingDir, '.mcp.json');
+  const mcpJsonExists = existsSync(mcpJsonPath);
+
+  checks.push({
+    name: '.mcp.json Registration',
+    passed: mcpJsonExists,
+    message: mcpJsonExists ? 'Exists in project root' : 'Not found',
+    fix: mcpJsonExists ? undefined : 'Run: ax setup --mcp',
+    details: verbose && mcpJsonExists ? `Path: ${mcpJsonPath}` : undefined
+  });
+
+  // Check 4: MCP registration content valid
+  let mcpConfigValid = false;
+  if (mcpJsonExists) {
+    try {
+      const mcpContent = await readFile(mcpJsonPath, 'utf-8');
+      const mcpConfig = JSON.parse(mcpContent);
+      mcpConfigValid = !!mcpConfig?.mcpServers?.automatosx?.command;
+    } catch {
+      mcpConfigValid = false;
+    }
+  }
+
+  if (mcpJsonExists) {
+    checks.push({
+      name: 'MCP Config Valid',
+      passed: mcpConfigValid,
+      message: mcpConfigValid ? 'automatosx server configured' : 'Invalid configuration',
+      fix: mcpConfigValid ? undefined : 'Regenerate .mcp.json with: ax setup --mcp'
+    });
+  }
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Suggested Fixes:\n'));
+      failedChecks.forEach((check, i) => {
+        console.log(chalk.yellow(`${i + 1}. ${check.name}:`));
+        console.log(chalk.white(`   ${check.fix}\n`));
+      });
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All checks passed! MCP server is ready.\n'));
+
+    console.log(chalk.cyan('MCP Tools Available:'));
+    console.log(chalk.gray('  • get_capabilities - Service discovery'));
+    console.log(chalk.gray('  • list_agents - Available agents'));
+    console.log(chalk.gray('  • run_task - Execute agent tasks'));
+    console.log(chalk.gray('  • search_memory - Memory search'));
+    console.log(chalk.gray('  • session_* - Session management'));
+    console.log(chalk.gray(''));
+    console.log(chalk.cyan('Registration:'));
+    console.log(chalk.gray('  Claude Code: claude mcp add automatosx'));
+    console.log(chalk.gray('  Manual: Add to .mcp.json in project root\n'));
   }
 }

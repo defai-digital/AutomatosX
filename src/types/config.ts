@@ -199,32 +199,8 @@ export interface ProviderConfig {
   /** Sandbox mode configuration for file system access control */
   sandbox?: SandboxConfig;
 
-  // v9.1.0: ax-cli provider configuration
-  axCli?: {
-    /**
-     * Provider name (optional)
-     *
-     * @deprecated Configure provider via `ax-cli setup` instead
-     */
-    provider?: string;
-    model?: string;
-    maxToolRounds?: number;
-    apiKey?: string;
-    baseUrl?: string;
-    configPath?: string;
-  };
-
-  // v9.2.0: ax-cli execution mode
-  /** Execution mode for ax-cli provider: "sdk", "cli", or "auto" (default: "auto") */
-  mode?: 'sdk' | 'cli' | 'auto';
-
-  // v9.2.0: ax-cli SDK-specific configuration
-  axCliSdk?: {
-    /** Enable streaming events */
-    streamingEnabled?: boolean;
-    /** Reuse agent instances between calls */
-    reuseEnabled?: boolean;
-  };
+  // v13.0.0: ax-cli configuration REMOVED (deprecated)
+  // Use ax-glm and ax-grok providers instead
 }
 
 // ========================================
@@ -625,40 +601,8 @@ export interface CostEstimationConfig {
   disclaimer?: string;        // Disclaimer text to show when enabled
 }
 
-/**
- * ax-cli SDK Configuration (v11.3.0+)
- * Configures the ax-cli SDK integration settings
- */
-export interface AxCliSdkConfig {
-  /** Default max tool rounds for SDK agent (default: 400) */
-  maxToolRounds?: number;
-
-  /** Checkpoint configuration */
-  checkpoint?: {
-    /** Maximum checkpoints to retain per workflow (default: 10) */
-    maxCheckpoints?: number;
-    /** Timeout for flushing pending checkpoints during destroy in ms (default: 5000) */
-    flushTimeoutMs?: number;
-  };
-
-  /** Subagent configuration */
-  subagent?: {
-    /** Maximum parallel subagent executions (default: 4) */
-    maxParallel?: number;
-    /** Default timeout per subagent execution in ms (default: 300000) */
-    timeoutMs?: number;
-    /** Default max tool rounds for subagents (default: 100) */
-    maxToolRounds?: number;
-  };
-
-  /** Instructions bridge configuration */
-  instructions?: {
-    /** Cache TTL in ms (default: 300000) */
-    cacheTtlMs?: number;
-    /** Maximum context length in characters (default: 32000) */
-    maxContextLength?: number;
-  };
-}
+// v13.0.0: AxCliSdkConfig REMOVED (ax-cli deprecated)
+// Use GLM and Grok SDK-first providers instead
 
 /**
  * Feature Flags Configuration (v12.0.0+)
@@ -697,7 +641,7 @@ export interface AutomatosXConfig {
   router?: RouterConfig;  // v5.7.0: Router configuration
   telemetry?: TelemetryConfig;  // v6.0.7: Phase 4 - Observability & Analytics
   costEstimation?: CostEstimationConfig;  // v6.5.11: Cost estimation control
-  axCliSdk?: AxCliSdkConfig;  // v11.3.0: ax-cli SDK configuration
+  // v13.0.0: axCliSdk REMOVED (ax-cli deprecated)
   featureFlags?: FeatureFlagsConfig;  // v12.0.0: Feature flags
 }
 

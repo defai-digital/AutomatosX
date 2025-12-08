@@ -89,11 +89,20 @@ export function isSDKModeAvailable(): boolean {
   // Check if API key is available
   const hasAPIKey = !!process.env.OPENAI_API_KEY;
 
-  // Check if OpenAI SDK is available
+  // Check if OpenAI SDK is available using dynamic import check
+  // Note: This is a sync check, so we use a try-catch with import.meta.resolve
+  // For full async check, use isSDKModeAvailableAsync()
   let hasSDK = false;
   try {
-    require.resolve('openai');
-    hasSDK = true;
+    // Use import.meta.resolve for ES module compatibility (Node 20+)
+    // Falls back to assuming SDK is available if resolve isn't supported
+    if (typeof import.meta.resolve === 'function') {
+      import.meta.resolve('openai');
+      hasSDK = true;
+    } else {
+      // Fallback: assume SDK might be available, will fail at runtime if not
+      hasSDK = true;
+    }
   } catch {
     hasSDK = false;
   }

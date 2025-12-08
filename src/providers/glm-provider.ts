@@ -19,7 +19,7 @@
 import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse, ProviderCapabilities } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
-import { GLMHybridAdapter, type GLMHybridAdapterOptions } from '../integrations/ax-glm/index.js';
+import { GLMHybridAdapter, type GLMHybridAdapterOptions, GLMSdkOnlyAdapter } from '../integrations/ax-glm/index.js';
 import { isSDKFirstModeEnabled } from '../core/feature-flags/flags.js';
 import type { AdapterMode } from './hybrid-adapter-base.js';
 
@@ -62,18 +62,14 @@ const MODEL_MAPPING: Record<string, string> = {
 };
 
 /**
- * GLM Provider - SDK-First with CLI Fallback
+ * GLM Provider - SDK-Only Execution (v13.0.0)
  *
- * Provides access to Zhipu AI's GLM models with automatic mode selection.
+ * Provides access to Zhipu AI's GLM models using SDK-only execution.
+ * CLI fallback has been removed per PRD MCP Architecture Redesign.
  *
  * **Setup:**
  * ```bash
- * # For SDK mode (recommended)
  * npm install openai  # Uses OpenAI-compatible API
- * export ZAI_API_KEY=your_api_key
- *
- * # For CLI mode (fallback)
- * npm install -g @defai.digital/ax-glm
  * export ZAI_API_KEY=your_api_key
  * ```
  *
@@ -85,7 +81,7 @@ const MODEL_MAPPING: Record<string, string> = {
  *   priority: 5,
  *   timeout: 120000,
  *   model: 'glm-4.6',
- *   mode: 'auto'  // SDK-first with CLI fallback
+ *   mode: 'sdk'  // SDK-only (default)
  * });
  * ```
  */
@@ -93,7 +89,10 @@ export class GLMProvider extends BaseProvider {
   /** Selected model */
   private readonly model: GLMModel;
 
-  /** Hybrid adapter for SDK/CLI execution */
+  /** SDK-only adapter for direct execution (v13.0.0) */
+  private sdkOnlyAdapter: GLMSdkOnlyAdapter | null = null;
+
+  /** Legacy hybrid adapter for 'auto' mode (backwards compatibility) */
   private hybridAdapter: GLMHybridAdapter | null = null;
 
   /** Provider configuration */
@@ -144,7 +143,23 @@ export class GLMProvider extends BaseProvider {
   }
 
   /**
-   * Get or create hybrid adapter
+   * Get or create SDK-only adapter (v13.0.0 default)
+   */
+  private getSdkOnlyAdapter(): GLMSdkOnlyAdapter {
+    if (!this.sdkOnlyAdapter) {
+      this.sdkOnlyAdapter = new GLMSdkOnlyAdapter({
+        model: this.model,
+        apiKey: this.glmConfig.apiKey,
+        baseUrl: this.glmConfig.baseUrl,
+        timeout: this.glmConfig.timeout
+      });
+    }
+
+    return this.sdkOnlyAdapter;
+  }
+
+  /**
+   * Get or create hybrid adapter (legacy, for 'auto' mode only)
    */
   private getHybridAdapter(): GLMHybridAdapter {
     if (!this.hybridAdapter) {
@@ -166,10 +181,11 @@ export class GLMProvider extends BaseProvider {
   /**
    * Execute a task using GLM
    *
-   * Execution flow:
+   * Execution flow (v13.0.0):
    * 1. Mock mode → return mock response
-   * 2. SDK-first disabled → use CLI via BaseProvider
-   * 3. SDK-first enabled → use hybrid adapter (SDK with CLI fallback)
+   * 2. mode='sdk' (default) → use SDK-only adapter (NO CLI fallback)
+   * 3. mode='auto' (legacy) → use hybrid adapter (SDK with CLI fallback)
+   * 4. mode='cli' → use CLI via BaseProvider (deprecated for GLM)
    */
   override async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
     // Mock mode handling
@@ -177,22 +193,33 @@ export class GLMProvider extends BaseProvider {
       return this.createMockResponse(request.prompt);
     }
 
-    // Check if SDK-first mode is enabled
-    if (!isSDKFirstModeEnabled() && this.glmConfig.mode !== 'sdk') {
-      logger.debug('[GLM Provider] SDK-first disabled, using CLI', {
+    const effectiveMode = this.glmConfig.mode || 'sdk'; // Default to SDK-only
+
+    // CLI mode (deprecated but supported for backwards compatibility)
+    if (effectiveMode === 'cli') {
+      logger.warn('[GLM Provider] CLI mode is deprecated for GLM. Consider using SDK mode.', {
         model: this.model
       });
       return super.execute(request);
     }
 
-    logger.debug('[GLM Provider] Executing via hybrid adapter', {
+    // Auto mode (legacy hybrid with fallback)
+    if (effectiveMode === 'auto') {
+      logger.debug('[GLM Provider] Executing via hybrid adapter (legacy auto mode)', {
+        promptLength: request.prompt.length,
+        model: this.model
+      });
+      const adapter = this.getHybridAdapter();
+      return adapter.execute(request);
+    }
+
+    // SDK mode (default - no CLI fallback)
+    logger.debug('[GLM Provider] Executing via SDK-only adapter', {
       promptLength: request.prompt.length,
-      model: this.model,
-      mode: this.glmConfig.mode || 'auto'
+      model: this.model
     });
 
-    // Use hybrid adapter for SDK-first execution
-    const adapter = this.getHybridAdapter();
+    const adapter = this.getSdkOnlyAdapter();
     return adapter.execute(request);
   }
 
@@ -308,6 +335,10 @@ Mode: ${this.glmConfig.mode || 'auto'}`;
    * Clean up resources
    */
   async destroy(): Promise<void> {
+    if (this.sdkOnlyAdapter) {
+      await this.sdkOnlyAdapter.destroy();
+      this.sdkOnlyAdapter = null;
+    }
     if (this.hybridAdapter) {
       await this.hybridAdapter.destroy();
       this.hybridAdapter = null;

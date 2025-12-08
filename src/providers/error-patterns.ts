@@ -134,57 +134,8 @@ const OPENAI_PATTERNS: ProviderErrorPatterns = {
   ],
 };
 
-/**
- * ax-cli Provider Error Patterns (v9.2.0)
- *
- * ax-cli is a multi-model provider supporting GLM, xAI, OpenAI, Anthropic, Ollama, etc.
- * Combines patterns from all supported backends since ax-cli proxies to them.
- */
-const AX_CLI_PATTERNS: ProviderErrorPatterns = {
-  quota: [
-    // GLM patterns
-    'quota exceeded',
-    'quota limit reached',
-    'insufficient quota',
-    // OpenAI patterns (via ax-cli)
-    'insufficient_quota',
-    'quota_exceeded',
-    'billing hard limit reached',
-    'usage limit exceeded',
-    'monthly quota exceeded',
-    'credit limit reached',
-    // Generic patterns
-    'daily quota exceeded',
-    'api quota exceeded',
-  ],
-  rateLimit: [
-    // Common patterns
-    'rate_limit_exceeded',
-    'rate limit exceeded',
-    'too_many_requests',
-    'too many requests',
-    'requests per minute exceeded',
-    'tokens per minute exceeded',
-    'rate limit reached',
-    // Anthropic patterns (via ax-cli)
-    'rate_limit_error',
-    'overloaded_error',
-    'overloaded',
-    // xAI/Grok patterns
-    'throttled',
-    'request throttled',
-  ],
-  statusCodes: [429, 529],
-  errorCodes: [
-    'insufficient_quota',
-    'rate_limit_exceeded',
-    'quota_exceeded',
-    'rate_limit_error',
-    'overloaded_error',
-    'RATE_LIMIT_EXCEEDED',
-    'QUOTA_EXCEEDED',
-  ],
-};
+// v13.0.0: AX_CLI_PATTERNS REMOVED (ax-cli deprecated)
+// GLM and Grok now use OpenAI-compatible API patterns
 
 /**
  * Complete registry of error patterns for all supported providers

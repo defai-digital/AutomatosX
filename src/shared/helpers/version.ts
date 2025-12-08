@@ -19,9 +19,11 @@ export function getVersion(): string {
   try {
     // In development: src/shared/helpers/version.ts -> ../../../package.json
     // In production: dist/index.js -> ../package.json
-    // Try multiple paths to handle both scenarios
+    // In MCP bundle: dist/mcp/index.js -> ../../package.json
+    // Try multiple paths to handle all scenarios
     const possiblePaths = [
       join(__dirname, '../../../package.json'),  // From src/shared/helpers
+      join(__dirname, '../../package.json'),     // From dist/mcp (bundled MCP entry)
       join(__dirname, '../package.json'),        // From dist
     ];
 

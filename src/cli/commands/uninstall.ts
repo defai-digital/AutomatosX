@@ -8,7 +8,6 @@
  * - Claude Code MCP server
  * - Gemini CLI MCP server
  * - Codex CLI MCP server
- * - ax-cli MCP server
  * - Optionally: .automatosx directory
  *
  * @module cli/commands/uninstall
@@ -136,40 +135,8 @@ async function removeCodexMCP(): Promise<'removed' | 'not_found' | 'failed'> {
   }
 }
 
-async function removeAxCliMCP(): Promise<'removed' | 'not_found' | 'failed'> {
-  try {
-    // Check if ax-cli is installed
-    execSync('which ax-cli', { encoding: 'utf-8', stdio: 'pipe', timeout: 5000 });
-  } catch {
-    // ax-cli not installed
-    return 'not_found';
-  }
-
-  try {
-    // Check if automatosx MCP is configured
-    const listOutput = execSync('ax-cli mcp list 2>/dev/null || true', {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 5000,
-    });
-
-    if (!listOutput.includes('automatosx')) {
-      return 'not_found';
-    }
-
-    // Remove automatosx MCP server
-    execSync('ax-cli mcp remove automatosx 2>/dev/null || true', {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 10000,
-    });
-
-    logger.info('Removed ax-cli MCP configuration');
-    return 'removed';
-  } catch {
-    return 'failed';
-  }
-}
+// v13.0.0: removeAxCliMCP REMOVED (ax-cli deprecated)
+// Use ax-glm and ax-grok providers instead
 
 async function removeProjectData(projectDir: string): Promise<'removed' | 'not_found' | 'failed'> {
   const automatosxDir = join(projectDir, '.automatosx');
@@ -275,15 +242,7 @@ export const uninstallCommand: CommandModule<object, UninstallArgs> = {
       console.log(chalk.yellow('  ⚠ Codex CLI MCP removal failed'));
     }
 
-    // ax-cli
-    const axcliResult = await removeAxCliMCP();
-    if (axcliResult === 'removed') {
-      console.log(chalk.green('  ✓ ax-cli MCP removed'));
-    } else if (axcliResult === 'not_found') {
-      console.log(chalk.gray('  - ax-cli MCP not configured'));
-    } else {
-      console.log(chalk.yellow('  ⚠ ax-cli MCP removal failed'));
-    }
+    // v13.0.0: ax-cli MCP removal REMOVED (deprecated)
 
     // Remove project-level MCP configs
     console.log(chalk.yellow('\nRemoving project-level MCP configurations:'));
@@ -310,7 +269,7 @@ export const uninstallCommand: CommandModule<object, UninstallArgs> = {
     // Summary
     console.log(chalk.cyan('\n✨ Uninstall complete!\n'));
 
-    const removedCount = [claudeResult, geminiResult, codexResult, axcliResult]
+    const removedCount = [claudeResult, geminiResult, codexResult]
       .filter(r => r === 'removed').length;
 
     if (removedCount > 0) {

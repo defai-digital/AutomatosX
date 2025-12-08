@@ -35,7 +35,7 @@ export const PROVIDER_ARCHITECTURE_FLAGS = {
   /** Allow CLI fallback when SDK fails */
   SDK_FALLBACK_ENABLED: 'sdk_fallback_enabled',
 
-  /** Show deprecation warnings for ax-cli */
+  /** Show deprecation warnings (legacy providers, etc.) */
   DEPRECATION_WARNINGS: 'deprecation_warnings',
 
   /** Enable provider metrics collection */
@@ -88,12 +88,12 @@ const DEFAULT_PROVIDER_FLAGS: FeatureFlag[] = [
   },
   {
     name: PROVIDER_ARCHITECTURE_FLAGS.DEPRECATION_WARNINGS,
-    description: 'Show deprecation warnings for ax-cli provider',
+    description: 'Show deprecation warnings for legacy features',
     enabled: true,   // Enabled by default to warn users
     rolloutPercentage: 100,
     metadata: {
       owner: 'platform-team',
-      expectedImpact: 'Prepare users for ax-cli removal in v12.0.0'
+      expectedImpact: 'v13.0.0: ax-cli removed, GLM/Grok are SDK-first'
     }
   },
   {

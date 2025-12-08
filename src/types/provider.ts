@@ -57,32 +57,8 @@ export interface ProviderConfig {
   limitTracking?: ProviderLimitTrackingConfig;  // Usage limit tracking configuration
   sandbox?: SandboxConfig;        // v6.0.7 Phase 3: Sandbox security configuration
 
-  // v9.1.0: ax-cli provider configuration
-  axCli?: {
-    /**
-     * Provider name (optional)
-     *
-     * @deprecated Configure provider via `ax-cli setup` instead
-     */
-    provider?: string;
-    model?: string;
-    maxToolRounds?: number;
-    apiKey?: string;
-    baseUrl?: string;
-    configPath?: string;
-  };
-
-  // v9.2.0: ax-cli execution mode
-  /** Execution mode for ax-cli provider: "sdk", "cli", or "auto" (default: "auto") */
-  mode?: 'sdk' | 'cli' | 'auto';
-
-  // v9.2.0: ax-cli SDK-specific configuration
-  axCliSdk?: {
-    /** Enable streaming events */
-    streamingEnabled?: boolean;
-    /** Reuse agent instances between calls */
-    reuseEnabled?: boolean;
-  };
+  // v13.0.0: ax-cli configuration REMOVED (deprecated)
+  // Use ax-glm and ax-grok providers instead
 }
 
 export interface RateLimitConfig {

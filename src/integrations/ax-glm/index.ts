@@ -11,6 +11,10 @@
 export { GLMHybridAdapter, type GLMHybridAdapterOptions } from './hybrid-adapter.js';
 export { GLMSdkAdapter } from './sdk-adapter.js';
 export { GLMCliWrapper } from './cli-wrapper.js';
+// v13.0.0: SDK-only adapter for direct execution (no CLI fallback)
+export { GLMSdkOnlyAdapter, type GLMSdkOnlyAdapterOptions } from './sdk-only-adapter.js';
+// v13.0.0: MCP Client Mode for AutomatosX integration
+export { AxGlmWithMcp, type GlmMcpChatOptions, type AgentInfo, type MemoryEntry, type AgentContext } from './mcp-client-mode.js';
 export {
   type GLMModel,
   type GLMSDKConfig,

@@ -443,31 +443,38 @@ export class McpClientPool extends EventEmitter {
 
   private startHealthChecks(): void {
     this.healthCheckTimer = setInterval(async () => {
-      for (const [provider, pool] of this.pools) {
-        const toRemove: PooledClient[] = [];
+      try {
+        for (const [provider, pool] of this.pools) {
+          const toRemove: PooledClient[] = [];
 
-        for (const pooledClient of pool.clients) {
-          if (!pooledClient.inUse && pooledClient.client.isConnected()) {
-            const healthy = await pooledClient.client.healthCheck();
-            if (!healthy) {
-              toRemove.push(pooledClient);
+          for (const pooledClient of pool.clients) {
+            if (!pooledClient.inUse && pooledClient.client.isConnected()) {
+              const healthy = await pooledClient.client.healthCheck();
+              if (!healthy) {
+                toRemove.push(pooledClient);
+              }
             }
           }
-        }
 
-        // Remove unhealthy clients from pool (outside iteration to avoid mutation issues)
-        for (const pooledClient of toRemove) {
-          // Re-check inUse status - client could have been acquired during health check
-          if (pooledClient.inUse) {
-            logger.debug('[MCP Pool] Skipping unhealthy client removal - now in use', { provider });
-            continue;
+          // Remove unhealthy clients from pool (outside iteration to avoid mutation issues)
+          for (const pooledClient of toRemove) {
+            // Re-check inUse status - client could have been acquired during health check
+            if (pooledClient.inUse) {
+              logger.debug('[MCP Pool] Skipping unhealthy client removal - now in use', { provider });
+              continue;
+            }
+            this.emitEvent('health_check_failed', provider);
+            logger.warn('[MCP Pool] Health check failed, removing connection', { provider });
+            await pooledClient.client.disconnect();
+            this.removeFromPool(pool, pooledClient);
+            this.emitEvent('connection_closed', provider, { reason: 'health_check_failed' });
           }
-          this.emitEvent('health_check_failed', provider);
-          logger.warn('[MCP Pool] Health check failed, removing connection', { provider });
-          await pooledClient.client.disconnect();
-          this.removeFromPool(pool, pooledClient);
-          this.emitEvent('connection_closed', provider, { reason: 'health_check_failed' });
         }
+      } catch (error) {
+        // Prevent unhandled promise rejection from crashing the process
+        logger.error('[MCP Pool] Unexpected error in health check interval', {
+          error: (error as Error).message,
+        });
       }
     }, this.config.healthCheckIntervalMs);
   }

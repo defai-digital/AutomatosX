@@ -143,7 +143,14 @@ export class ResourceEnforcer {
     });
 
     this.checkInterval = setInterval(async () => {
-      await this.checkAllServers();
+      try {
+        await this.checkAllServers();
+      } catch (error) {
+        // Prevent unhandled promise rejection from crashing the process
+        logger.error('ResourceEnforcer: Unexpected error in check interval', {
+          error: (error as Error).message,
+        });
+      }
     }, this.checkIntervalMs);
   }
 

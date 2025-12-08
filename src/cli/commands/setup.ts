@@ -21,7 +21,7 @@ import { ProviderDetector } from '../../core/provider-detector.js';
 interface SetupOptions {
   force?: boolean;
   path?: string;
-  claudeCode?: boolean;
+  claudeCode?: boolean;  // DEPRECATED: v13.0.0 - MCP discovery replaces manifest generation
 }
 
 export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> = {
@@ -42,9 +42,10 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         default: false
       })
       .option('claude-code', {
-        describe: 'Setup Claude Code integration (generates manifests and registers MCP server)',
+        describe: '[DEPRECATED] Legacy manifest generation - MCP discovery is now automatic',
         type: 'boolean',
-        default: false
+        default: false,
+        hidden: true  // Hide from help since it's deprecated
       });
   },
 
@@ -143,7 +144,8 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('     - Claude Code'));
         console.log(chalk.gray('     - Gemini CLI'));
         console.log(chalk.gray('     - Codex CLI'));
-        console.log(chalk.gray('     - ax-cli (optional)'));
+        console.log(chalk.gray('     - GLM (SDK-first, requires ZAI_API_KEY)'));
+        console.log(chalk.gray('     - Grok (SDK-first, requires XAI_API_KEY)'));
         console.log('');
         console.log(chalk.cyan('   💡 After installing, run "ax setup" again to configure.\n'));
 
@@ -244,24 +246,8 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.green('   ✓ Claude Code integration configured'));
       }
 
-      // Setup ax-cli MCP integration
-      console.log(chalk.cyan('🔌 Setting up ax-cli MCP integration...'));
-      const axCliConfigured = await setupAxCliIntegration();
-      if (axCliConfigured === 'already_configured') {
-        console.log(chalk.green('   ✓ ax-cli MCP already configured'));
-      } else if (axCliConfigured === 'not_installed') {
-        console.log(chalk.gray('   ℹ ax-cli not installed, skipping'));
-      } else if (axCliConfigured === 'manual_required') {
-        console.log(chalk.yellow('   ⚠ ax-cli detected - manual MCP configuration required'));
-        console.log(chalk.gray('     Run: ax-cli mcp add automatosx --transport stdio --command ax --args mcp server'));
-      } else if (axCliConfigured === 'error') {
-        console.log(chalk.yellow('   ⚠ ax-cli MCP configuration failed'));
-        console.log(chalk.gray('     CLI integration still works via subprocess'));
-      } else {
-        // Note: 'configured' status is currently not returned by setupAxCliIntegration
-        // This branch exists for future compatibility if auto-configuration is re-enabled
-        console.log(chalk.green('   ✓ ax-cli MCP integration configured'));
-      }
+      // v13.0.0: ax-cli MCP integration removed (deprecated)
+      // GLM and Grok now use SDK-first execution via MCP client mode
 
       // Setup Gemini CLI integration (ONLY if detected)
       // Note: This creates project-local .gemini/mcp-servers.json for MCP integration
@@ -342,11 +328,15 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await updateGitignore(projectDir);
       console.log(chalk.green('   ✓ .gitignore updated'));
 
-      // Claude Code integration setup (if requested)
+      // Claude Code integration setup (DEPRECATED - v13.0.0)
+      // MCP discovery via .mcp.json replaces manifest generation
       let claudeCodeSetupSucceeded = false;
       if (argv.claudeCode) {
-        console.log(chalk.blue('\n🔧 Setting up Claude Code integration...\n'));
+        console.log(chalk.yellow('\n⚠️  --claude-code flag is DEPRECATED (v13.0.0)'));
+        console.log(chalk.gray('   MCP discovery is now automatic via .mcp.json'));
+        console.log(chalk.gray('   Claude Code will discover agents via get_capabilities MCP tool\n'));
 
+        // Still run legacy setup for backwards compatibility, but warn
         try {
           const teamManager = new TeamManager(join(automatosxDir, 'teams'));
           const profileLoader = new ProfileLoader(
@@ -362,12 +352,18 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
 
           await setupHelper.setup();
           claudeCodeSetupSucceeded = true;
-          console.log(chalk.green('   ✓ Claude Code integration configured'));
+          console.log(chalk.green('   ✓ Legacy Claude Code manifests generated'));
+          console.log(chalk.gray('     Note: These will be removed in v14.0.0'));
         } catch (error) {
-          console.log(chalk.yellow(`   ⚠ Claude Code setup failed: ${error instanceof Error ? error.message : String(error)}`));
-          console.log(chalk.gray('     You can run setup later with: ax setup --claude-code'));
+          console.log(chalk.yellow(`   ⚠ Legacy setup failed: ${error instanceof Error ? error.message : String(error)}`));
+          console.log(chalk.gray('     This is fine - MCP discovery will work without manifests'));
         }
       }
+
+      // Create .mcp.json for MCP discovery (v13.0.0 - replaces manifests)
+      console.log(chalk.cyan('🔌 Creating MCP server configuration...'));
+      await createMcpConfig(projectDir);
+      console.log(chalk.green('   ✓ .mcp.json created for MCP discovery'));
 
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX set up successfully!\n'));
@@ -384,21 +380,17 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       console.log(chalk.gray('  2. List agents: automatosx list agents'));
       console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
 
+      // v13.0.0: MCP-first integration replaces legacy manifest generation
+      console.log(chalk.cyan('MCP Integration (v13.0.0):'));
+      console.log(chalk.gray('  • .mcp.json created for automatic MCP server discovery'));
+      console.log(chalk.gray('  • Claude Code/Gemini CLI will auto-connect to AutomatosX'));
+      console.log(chalk.gray('  • Use get_capabilities tool to discover agents dynamically'));
+      console.log(chalk.gray('  • No manual registration required\n'));
+
       if (claudeCodeSetupSucceeded) {
-        console.log(chalk.cyan('Claude Code Integration:'));
-        console.log(chalk.gray('  • MCP server registered with Claude Code'));
-        console.log(chalk.gray('  • Auto-generated slash commands: /agent-<name>'));
-        console.log(chalk.gray('  • Skill available: /automatosx'));
-        console.log(chalk.gray('  • Restart Claude Code to activate integration\n'));
-      } else if (argv.claudeCode) {
-        // Setup was attempted but failed
-        console.log(chalk.yellow('Claude Code Integration (failed):'));
-        console.log(chalk.gray('  • Run diagnostics: ax doctor --claude-code'));
-        console.log(chalk.gray('  • Retry setup: ax setup --claude-code\n'));
-      } else {
-        // Not attempted
-        console.log(chalk.cyan('Claude Code Integration (optional):'));
-        console.log(chalk.gray('  • Setup with: ax setup --claude-code\n'));
+        console.log(chalk.yellow('Legacy Claude Code Manifests (deprecated):'));
+        console.log(chalk.gray('  • Slash commands: /agent-<name> (will be removed in v14.0.0)'));
+        console.log(chalk.gray('  • Prefer using MCP tools instead\n'));
       }
 
       // v11.0.0: Updated workflow templates messaging
@@ -1096,67 +1088,9 @@ async function setupClaudeIntegration(projectDir: string, packageRoot: string): 
   }
 }
 
-/**
- * Setup ax-cli MCP integration
- *
- * Configures ax-cli to use AutomatosX as an MCP server, allowing ax-cli
- * to access AutomatosX agents, memory, and session management as tools.
- *
- * BUGFIX: This function was causing ax setup to hang indefinitely.
- * Now it skips ax-cli integration to avoid blocking the setup process.
- * Users can manually configure ax-cli MCP if needed:
- *   ax-cli mcp add automatosx --transport stdio --command ax --args mcp server
- *
- * @returns Status string: 'not_installed' | 'already_configured' | 'manual_required' | 'error'
- */
-async function setupAxCliIntegration(): Promise<string> {
-  try {
-    // Check if ax-cli is installed
-    const { execSync } = await import('child_process');
-    try {
-      // Use 'which' to check if ax-cli is on PATH (more reliable than running --version)
-      const whichCommand = process.platform === 'win32' ? 'where' : 'which';
-      execSync(`${whichCommand} ax-cli`, { stdio: 'pipe', timeout: 5000 });
-    } catch (error) {
-      // ax-cli not installed, skip configuration
-      logger.info('ax-cli not installed, skipping MCP configuration', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return 'not_installed';
-    }
-
-    // Check if AutomatosX MCP server is already configured
-    try {
-      const output = execSync('ax-cli mcp list', { encoding: 'utf-8', stdio: 'pipe', timeout: 2000 });
-      if (output.includes('automatosx')) {
-        logger.info('ax-cli MCP already configured');
-        return 'already_configured';
-      }
-    } catch {
-      // Ignore errors from mcp list
-    }
-
-    // BUGFIX: Skip automatic MCP configuration - it can hang during setup
-    // Users should manually configure if they want ax-cli integration
-    logger.info('ax-cli detected. Manual MCP configuration required:');
-    logger.info('  Run: ax-cli mcp add automatosx --transport stdio --command ax --args mcp server');
-    return 'manual_required';
-
-    // OLD CODE (commented out to prevent hanging):
-    // Add AutomatosX MCP server to ax-cli
-    // Note: The test will timeout, but the server will be added successfully
-    // execSync('ax-cli mcp add automatosx --transport stdio --command ax --args mcp server', {
-    //   stdio: 'pipe',
-    //   timeout: 5000 // 5 second timeout to avoid hanging
-    // });
-    // logger.info('ax-cli MCP server configured successfully');
-    // return 'configured';
-  } catch (error) {
-    // Log errors but don't fail setup
-    logger.warn('Failed to configure ax-cli MCP', { error });
-    return 'error';
-  }
-}
+// v13.0.0: setupAxCliIntegration REMOVED
+// ax-cli is deprecated - use ax-glm and ax-grok providers instead
+// GLM and Grok now use SDK-first execution with MCP client mode
 
 /**
  * Initialize git repository if needed (for Codex CLI compatibility)
@@ -1482,6 +1416,66 @@ Created by AutomatosX for organized scratch work.
 // To manually enable global MCP, users can run:
 //   claude mcp add --transport stdio automatosx -- automatosx-mcp
 //   # Or add to ~/.gemini/settings.json / ~/.codex/config.toml manually
+
+/**
+ * Create .mcp.json for MCP server discovery (v13.0.0)
+ *
+ * This file enables AI assistants (Claude Code, Gemini CLI, etc.) to
+ * automatically discover and connect to the AutomatosX MCP server.
+ *
+ * Benefits over legacy manifest generation:
+ * - Dynamic capability discovery via get_capabilities tool
+ * - No need to regenerate files when agents change
+ * - Standard MCP protocol for all clients
+ * - Automatic memory and session integration
+ *
+ * @param projectDir - Project root directory
+ */
+async function createMcpConfig(projectDir: string): Promise<void> {
+  const mcpConfigPath = join(projectDir, '.mcp.json');
+
+  // MCP server configuration for AutomatosX
+  const mcpConfig = {
+    mcpServers: {
+      automatosx: {
+        command: 'automatosx',
+        args: ['mcp', 'server'],
+        env: {
+          AUTOMATOSX_PROJECT_DIR: projectDir
+        }
+      }
+    }
+  };
+
+  try {
+    // Check if .mcp.json already exists
+    if (await checkExists(mcpConfigPath)) {
+      // Merge with existing config
+      const existingContent = await readFile(mcpConfigPath, 'utf-8');
+      try {
+        const existingConfig = JSON.parse(existingContent) as { mcpServers?: Record<string, unknown> };
+        if (existingConfig.mcpServers) {
+          existingConfig.mcpServers['automatosx'] = mcpConfig.mcpServers.automatosx;
+          await writeFile(mcpConfigPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
+          logger.info('Updated existing .mcp.json with AutomatosX server', { path: mcpConfigPath });
+          return;
+        }
+      } catch {
+        logger.warn('Failed to parse existing .mcp.json, will overwrite', { path: mcpConfigPath });
+      }
+    }
+
+    // Create new .mcp.json
+    await writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), 'utf-8');
+    logger.info('Created .mcp.json for MCP discovery', { path: mcpConfigPath });
+  } catch (error) {
+    // Log error but don't fail setup - MCP is optional enhancement
+    logger.warn('Failed to create .mcp.json', {
+      error: (error as Error).message,
+      path: mcpConfigPath
+    });
+  }
+}
 
 /**
  * Clean up existing installation in force mode

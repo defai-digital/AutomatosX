@@ -11,6 +11,10 @@
 export { GrokHybridAdapter, type GrokHybridAdapterOptions } from './hybrid-adapter.js';
 export { GrokSdkAdapter } from './sdk-adapter.js';
 export { GrokCliWrapper } from './cli-wrapper.js';
+// v13.0.0: SDK-only adapter for direct execution (no CLI fallback)
+export { GrokSdkOnlyAdapter, type GrokSdkOnlyAdapterOptions } from './sdk-only-adapter.js';
+// v13.0.0: MCP Client Mode for AutomatosX integration
+export { AxGrokWithMcp, type GrokMcpChatOptions, type AgentInfo, type MemoryEntry, type AgentContext } from './mcp-client-mode.js';
 export {
   type GrokModel,
   type GrokSDKConfig,

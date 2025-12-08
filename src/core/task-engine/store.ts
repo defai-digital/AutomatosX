@@ -38,6 +38,13 @@ import {
   TaskFilterSchema
 } from './types.js';
 
+// Error messages that indicate the native better-sqlite3 module is incompatible
+const NATIVE_MODULE_ERROR_PATTERNS = [
+  'NODE_MODULE_VERSION',
+  'was compiled against a different Node.js version',
+  'better_sqlite3.node'
+];
+
 /**
  * Default store configuration
  */
@@ -184,6 +191,61 @@ const SQL = {
 };
 
 /**
+ * Utility: generate a task ID
+ */
+function generateTaskId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = randomBytes(4).toString('hex');
+  return `task_${timestamp}${random}`;
+}
+
+/**
+ * Utility: hash payload for caching
+ */
+function hashPayload(json: string): string {
+  return createHash('sha256').update(json).digest('hex').substring(0, 16);
+}
+
+/**
+ * Utility: estimate engine from task type
+ */
+function estimateEngine(type: TaskType): TaskEngine {
+  switch (type) {
+    case 'web_search':
+      return 'gemini';
+    case 'code_review':
+    case 'code_generation':
+      return 'claude';
+    case 'analysis':
+      return 'claude';
+    case 'custom':
+    default:
+      return 'auto';
+  }
+}
+
+/**
+ * Shared interface for task stores (SQLite and in-memory fallback)
+ */
+export interface TaskStoreLike {
+  createTask(input: CreateTaskInput): CreateTaskResult;
+  getTask(taskId: string): Task | null;
+  updateTaskStatus(taskId: string, status: TaskStatus, error?: TaskError): void;
+  updateTaskResult(taskId: string, result: Record<string, unknown>, metrics: Partial<TaskMetrics>): void;
+  updateTaskFailed(taskId: string, error: TaskError, durationMs?: number): void;
+  incrementRetry(taskId: string): void;
+  deleteTask(taskId: string): boolean;
+  listTasks(filter?: TaskFilter): Task[];
+  countTasks(filter?: TaskFilter): number;
+  findByPayloadHash(payloadHash: string): string | null;
+  cleanupExpired(): number;
+  cleanupZombieRunning(): number;
+  cleanupAll(): { expired: number; zombies: number };
+  getStats(): { totalTasks: number; byStatus: Record<TaskStatus, number>; dbSizeBytes: number };
+  close(): void;
+}
+
+/**
  * TaskStore - SQLite-based task persistence
  *
  * @example
@@ -204,7 +266,7 @@ const SQL = {
  * store.updateTaskResult(result.id, { results: [...] }, { durationMs: 1500 });
  * ```
  */
-export class TaskStore {
+export class TaskStore implements TaskStoreLike {
   private db: Database.Database;
   private config: Required<TaskStoreConfig>;
   private closed = false;
@@ -282,8 +344,8 @@ export class TaskStore {
     }
 
     // Generate task ID and hash
-    const taskId = this.generateTaskId();
-    const payloadHash = this.hashPayload(payloadJson);
+    const taskId = generateTaskId();
+    const payloadHash = hashPayload(payloadJson);
 
     // Calculate expiration
     const now = Date.now();
@@ -295,7 +357,7 @@ export class TaskStore {
 
     // Determine estimated engine
     const estimatedEngine = validated.engine === 'auto'
-      ? this.estimateEngine(validated.type)
+      ? estimateEngine(validated.type)
       : validated.engine;
 
     // Insert task
@@ -737,32 +799,6 @@ export class TaskStore {
     }
   }
 
-  private generateTaskId(): string {
-    const timestamp = Date.now().toString(36);
-    const random = randomBytes(4).toString('hex');
-    return `task_${timestamp}${random}`;
-  }
-
-  private hashPayload(json: string): string {
-    return createHash('sha256').update(json).digest('hex').substring(0, 16);
-  }
-
-  private estimateEngine(type: TaskType): TaskEngine {
-    // Default routing based on task type
-    switch (type) {
-      case 'web_search':
-        return 'gemini'; // Gemini is good for web search
-      case 'code_review':
-      case 'code_generation':
-        return 'claude'; // Claude is good for code
-      case 'analysis':
-        return 'claude'; // Claude is good for analysis
-      case 'custom':
-      default:
-        return 'auto';
-    }
-  }
-
   private rowToTask(row: TaskRow): Task {
     // Decompress payload with error handling
     let payload: Record<string, unknown>;
@@ -867,9 +903,301 @@ interface TaskRow {
   error_message: string | null;
 }
 
+interface InMemoryTask extends Task {
+  payloadHash: string;
+  compressionRatio: number;
+}
+
+/**
+ * In-memory fallback for environments where the native SQLite module
+ * cannot be loaded (e.g., Node.js version mismatch).
+ *
+ * Provides functional parity for MCP task tools without persistence.
+ */
+export class InMemoryTaskStore implements TaskStoreLike {
+  private tasks = new Map<string, InMemoryTask>();
+  private config: Required<TaskStoreConfig>;
+  private closed = false;
+
+  constructor(config: Partial<TaskStoreConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    logger.warn('Using in-memory task store fallback (SQLite unavailable)', {
+      nodeVersion: process.version
+    });
+  }
+
+  createTask(input: CreateTaskInput): CreateTaskResult {
+    this.ensureOpen();
+
+    const validated = CreateTaskInputSchema.parse(input);
+    const payloadJson = JSON.stringify(validated.payload);
+    const payloadSize = Buffer.byteLength(payloadJson, 'utf-8');
+
+    if (payloadSize > this.config.maxPayloadBytes) {
+      throw new TaskEngineError(
+        `Payload size ${payloadSize} exceeds limit ${this.config.maxPayloadBytes}`,
+        'PAYLOAD_TOO_LARGE',
+        { payloadSize, limit: this.config.maxPayloadBytes }
+      );
+    }
+
+    const id = generateTaskId();
+    const now = Date.now();
+    const ttlHours = Math.min(
+      validated.ttlHours ?? this.config.defaultTtlHours,
+      this.config.maxTtlHours
+    );
+    const expiresAt = now + ttlHours * 60 * 60 * 1000;
+    const estimatedEngine = validated.engine === 'auto'
+      ? estimateEngine(validated.type)
+      : validated.engine;
+
+    const task: InMemoryTask = {
+      id,
+      type: validated.type,
+      status: 'pending',
+      engine: validated.engine === 'auto' ? null : validated.engine,
+      priority: validated.priority ?? 5,
+      payload: validated.payload,
+      payloadSize,
+      result: null,
+      context: {
+        originClient: validated.context?.originClient ?? 'unknown',
+        callChain: validated.context?.callChain ?? [],
+        depth: validated.context?.depth ?? 0
+      },
+      createdAt: now,
+      startedAt: null,
+      completedAt: null,
+      expiresAt,
+      metrics: null,
+      error: null,
+      retryCount: 0,
+      payloadHash: hashPayload(payloadJson),
+      compressionRatio: 1
+    };
+
+    this.tasks.set(id, task);
+
+    return {
+      id,
+      status: 'pending',
+      estimatedEngine: estimatedEngine ?? null,
+      expiresAt,
+      payloadSize,
+      compressionRatio: 1
+    };
+  }
+
+  getTask(taskId: string): Task | null {
+    this.ensureOpen();
+    const task = this.tasks.get(taskId);
+    return task ? structuredClone(task) : null;
+  }
+
+  updateTaskStatus(taskId: string, status: TaskStatus, error?: TaskError): void {
+    this.ensureOpen();
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      throw new TaskEngineError(`Task not found: ${taskId}`, 'TASK_NOT_FOUND');
+    }
+
+    const now = Date.now();
+    task.status = status;
+    task.startedAt = status === 'running' ? now : task.startedAt;
+    if (status === 'completed' || status === 'failed') {
+      task.completedAt = now;
+    }
+    task.error = error ?? null;
+  }
+
+  updateTaskResult(taskId: string, result: Record<string, unknown>, metrics: Partial<TaskMetrics>): void {
+    this.ensureOpen();
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      throw new TaskEngineError(`Task not found: ${taskId}`, 'TASK_NOT_FOUND');
+    }
+
+    task.status = 'completed';
+    task.result = result;
+    task.metrics = {
+      durationMs: metrics.durationMs ?? 0,
+      tokensPrompt: metrics.tokensPrompt ?? null,
+      tokensCompletion: metrics.tokensCompletion ?? null
+    };
+    task.completedAt = Date.now();
+    task.error = null;
+  }
+
+  updateTaskFailed(taskId: string, error: TaskError, durationMs?: number): void {
+    this.ensureOpen();
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      throw new TaskEngineError(`Task not found: ${taskId}`, 'TASK_NOT_FOUND');
+    }
+
+    task.status = 'failed';
+    task.error = error;
+    task.metrics = task.metrics ?? {
+      durationMs: durationMs ?? 0,
+      tokensPrompt: null,
+      tokensCompletion: null
+    };
+    task.completedAt = Date.now();
+  }
+
+  incrementRetry(taskId: string): void {
+    this.ensureOpen();
+    const task = this.tasks.get(taskId);
+    if (task) {
+      task.retryCount += 1;
+    }
+  }
+
+  deleteTask(taskId: string): boolean {
+    this.ensureOpen();
+    return this.tasks.delete(taskId);
+  }
+
+  listTasks(filter: TaskFilter = {}): Task[] {
+    this.ensureOpen();
+    const validated = TaskFilterSchema.parse(filter);
+
+    const filtered = Array.from(this.tasks.values()).filter(task => {
+      if (validated.status && task.status !== validated.status) return false;
+      if (validated.engine && task.engine !== validated.engine) return false;
+      if (validated.type && task.type !== validated.type) return false;
+      if (validated.originClient && task.context.originClient !== validated.originClient) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => {
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      return a.createdAt - b.createdAt;
+    });
+
+    const start = validated.offset ?? 0;
+    const end = start + (validated.limit ?? 20);
+    return filtered.slice(start, end).map(task => structuredClone(task));
+  }
+
+  countTasks(filter: TaskFilter = {}): number {
+    this.ensureOpen();
+    const validated = TaskFilterSchema.parse(filter);
+
+    return Array.from(this.tasks.values()).filter(task => {
+      if (validated.status && task.status !== validated.status) return false;
+      if (validated.engine && task.engine !== validated.engine) return false;
+      if (validated.type && task.type !== validated.type) return false;
+      if (validated.originClient && task.context.originClient !== validated.originClient) return false;
+      return true;
+    }).length;
+  }
+
+  findByPayloadHash(payloadHash: string): string | null {
+    this.ensureOpen();
+    for (const task of this.tasks.values()) {
+      if (task.status === 'completed' && task.payloadHash === payloadHash) {
+        return task.id;
+      }
+    }
+    return null;
+  }
+
+  cleanupExpired(): number {
+    this.ensureOpen();
+    const now = Date.now();
+    let removed = 0;
+
+    for (const [id, task] of this.tasks) {
+      if (task.expiresAt < now && task.status !== 'running') {
+        this.tasks.delete(id);
+        removed++;
+      }
+    }
+
+    return removed;
+  }
+
+  cleanupZombieRunning(): number {
+    this.ensureOpen();
+    const now = Date.now();
+    let converted = 0;
+
+    for (const task of this.tasks.values()) {
+      if (task.status === 'running' && task.expiresAt < now) {
+        task.status = 'failed';
+        task.error = {
+          code: 'ZOMBIE_TASK',
+          message: 'Task was stuck in running state past expiry'
+        };
+        task.completedAt = now;
+        converted++;
+      }
+    }
+
+    return converted;
+  }
+
+  cleanupAll(): { expired: number; zombies: number } {
+    const zombies = this.cleanupZombieRunning();
+    const expired = this.cleanupExpired();
+    return { expired, zombies };
+  }
+
+  getStats(): { totalTasks: number; byStatus: Record<TaskStatus, number>; dbSizeBytes: number } {
+    this.ensureOpen();
+
+    const byStatus: Record<TaskStatus, number> = {
+      pending: 0,
+      running: 0,
+      completed: 0,
+      failed: 0,
+      expired: 0
+    };
+
+    for (const task of this.tasks.values()) {
+      byStatus[task.status]++;
+    }
+
+    return {
+      totalTasks: this.tasks.size,
+      byStatus,
+      dbSizeBytes: 0
+    };
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+
+  private ensureOpen(): void {
+    if (this.closed) {
+      throw new TaskEngineError('TaskStore is closed', 'STORE_ERROR');
+    }
+  }
+}
+
+function isNativeModuleError(error: unknown): error is Error {
+  if (!(error instanceof Error)) return false;
+  const message = error.message ?? '';
+  return NATIVE_MODULE_ERROR_PATTERNS.some(pattern => message.includes(pattern));
+}
+
 /**
  * Create a TaskStore with default configuration
  */
-export function createTaskStore(config?: Partial<TaskStoreConfig>): TaskStore {
-  return new TaskStore(config);
+export function createTaskStore(config?: Partial<TaskStoreConfig>): TaskStoreLike {
+  try {
+    return new TaskStore(config);
+  } catch (error) {
+    if (isNativeModuleError(error)) {
+      logger.warn('Falling back to in-memory task store (native SQLite unavailable)', {
+        nodeVersion: process.version,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return new InMemoryTaskStore(config);
+    }
+    throw error;
+  }
 }

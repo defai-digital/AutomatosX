@@ -59,11 +59,41 @@ export interface McpToolCallRequest {
 }
 
 export interface McpToolCallResponse {
-  content: Array<{
-    type: 'text';
-    text: string;
-  }>;
+  content: Array<
+    | { type: 'text'; text: string }
+    | { type: 'application/json'; json: unknown }
+  >;
   isError?: boolean;
+}
+
+// MCP resources (optional)
+export interface McpResource {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+export interface McpResourceListRequest {
+  method: 'resources/list';
+  params?: Record<string, never>;
+}
+
+export interface McpResourceListResponse {
+  resources: McpResource[];
+}
+
+export interface McpResourceReadRequest {
+  method: 'resources/read';
+  params: {
+    uri: string;
+  };
+}
+
+export interface McpResourceReadResponse {
+  uri: string;
+  mimeType?: string;
+  contents: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
 }
 
 export interface McpTool {
@@ -377,7 +407,8 @@ export interface MemoryClearOutput {
 
 // Tool Handler Type
 export type ToolHandler<TInput = unknown, TOutput = unknown> = (
-  input: TInput
+  input: TInput,
+  context?: { signal?: AbortSignal }
 ) => Promise<TOutput>;
 
 // Error Codes (align with JSON-RPC standard)
@@ -393,4 +424,7 @@ export enum McpErrorCode {
   ToolExecutionFailed = -32002,
   InvalidToolInput = -32003,
   ServerNotInitialized = -32004,
+
+  // Cancellation (JSON-RPC best practice)
+  RequestCancelled = -32800,
 }

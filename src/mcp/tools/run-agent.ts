@@ -68,7 +68,8 @@ async function executeViaCli(
   actualProvider: string | undefined,
   no_memory: boolean | undefined,
   deps: RunAgentDependencies,
-  isFallback: boolean
+  isFallback: boolean,
+  signal?: AbortSignal
 ): Promise<RunAgentOutput> {
   const context = await deps.contextManager.createContext(agent, task, {
     provider: actualProvider,
@@ -79,7 +80,8 @@ async function executeViaCli(
   const startTime = Date.now();
   const result = await executor.execute(context, {
     showProgress: false,
-    verbose: false
+    verbose: false,
+    signal
   });
   const latencyMs = Date.now() - startTime;
 
@@ -208,8 +210,12 @@ async function buildAgentContext(
 export function createRunAgentHandler(
   deps: RunAgentDependencies
 ): ToolHandler<RunAgentInput, RunAgentOutput> {
-  return async (input: RunAgentInput): Promise<RunAgentOutput> => {
+  return async (input: RunAgentInput, context?: { signal?: AbortSignal }): Promise<RunAgentOutput> => {
     const { agent, task, provider, no_memory, mode = 'auto' } = input;
+
+    if (context?.signal?.aborted) {
+      throw new Error('Request was cancelled');
+    }
 
     // Validate inputs to prevent security issues
     validateAgentName(agent);
@@ -250,6 +256,10 @@ export function createRunAgentHandler(
     const shouldReturnContext =
       mode === 'context' ||
       (mode === 'auto' && callerActual === bestProvider && callerProvider !== 'unknown');
+
+    if (context?.signal?.aborted) {
+      throw new Error('Request was cancelled');
+    }
 
     logger.info('[Smart Routing] Decision', {
       mode,
@@ -294,6 +304,8 @@ export function createRunAgentHandler(
 
     if (shouldTryMcp && deps.mcpPool) {
       try {
+        if (context?.signal?.aborted) throw new Error('Request was cancelled');
+
         const result = await executeViaMcpPool(
           bestProvider,
           agent,
@@ -329,7 +341,11 @@ export function createRunAgentHandler(
 
     // CLI Spawn: Traditional execution via AgentExecutor
     try {
-      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp);
+      if (context?.signal?.aborted) {
+        throw new Error('Request was cancelled');
+      }
+
+      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal);
 
       logger.info('[MCP] run_agent completed (CLI spawn mode)', {
         agent,

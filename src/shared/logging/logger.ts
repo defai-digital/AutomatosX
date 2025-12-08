@@ -212,11 +212,9 @@ export class SimpleLogger implements Logger {
         context: entry.context
       });
 
-      if (entry.level === 'error') {
-        console.error(json);
-      } else {
-        console.log(json);
-      }
+      // v12.2.0: Always use stderr for logs (even in JSON mode)
+      // This ensures MCP servers don't pollute stdout with log messages
+      console.error(json);
       return;
     }
 

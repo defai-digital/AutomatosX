@@ -15,7 +15,7 @@
 import { EventEmitter } from 'events';
 import { logger } from '../../shared/logging/logger.js';
 import { LoopGuard, createLoopGuard } from './loop-guard.js';
-import { TaskStore, createTaskStore } from './store.js';
+import { createTaskStore, type TaskStoreLike } from './store.js';
 import {
   type Task,
   type TaskContext,
@@ -88,7 +88,7 @@ export interface TaskEngineEvents {
 export class TaskEngine extends EventEmitter {
   private config: Required<TaskEngineConfig>;
   private loopGuard: LoopGuard;
-  private store: TaskStore;
+  private store: TaskStoreLike;
   private runningTasks = new Map<string, AbortController>();
   private closed = false;
 
@@ -174,6 +174,11 @@ export class TaskEngine extends EventEmitter {
     const task = this.store.getTask(taskId);
     if (!task) {
       throw new TaskEngineError(`Task not found: ${taskId}`, 'TASK_NOT_FOUND');
+    }
+
+    // Respect external cancellation before starting
+    if (options.abortSignal?.aborted) {
+      throw new TaskEngineError('Task execution aborted', 'EXECUTION_TIMEOUT');
     }
 
     // Check task status
@@ -390,6 +395,18 @@ export class TaskEngine extends EventEmitter {
   ): Promise<TaskResult> {
     const taskId = task.id;
     const abortController = new AbortController();
+    let timeoutTriggered = false;
+    let externalCancelled = false;
+
+    const externalAbort = options.abortSignal
+      ? () => {
+          externalCancelled = true;
+          abortController.abort();
+        }
+      : null;
+    if (options.abortSignal && externalAbort) {
+      options.abortSignal.addEventListener('abort', externalAbort, { once: true });
+    }
     const startTime = Date.now();
 
     // Track running task
@@ -402,6 +419,7 @@ export class TaskEngine extends EventEmitter {
     // Set up timeout
     const timeoutMs = options.timeoutMs ?? this.config.defaultTimeoutMs;
     const timeoutId = setTimeout(() => {
+      timeoutTriggered = true;
       abortController.abort();
     }, timeoutMs);
 
@@ -447,9 +465,11 @@ export class TaskEngine extends EventEmitter {
       const durationMs = Date.now() - startTime;
       const errorObj = error instanceof Error ? error : new Error(String(error));
 
-      // Check if aborted (timeout)
+      // Check if aborted (timeout or external cancel)
       if (abortController.signal.aborted) {
-        const taskError = { code: 'TIMEOUT', message: `Task timed out after ${timeoutMs}ms` };
+        const taskError = externalCancelled
+          ? { code: 'CANCELLED', message: 'Task was cancelled by caller' }
+          : { code: 'TIMEOUT', message: `Task timed out after ${timeoutMs}ms` };
         this.store.updateTaskFailed(taskId, taskError, durationMs);
 
         this.stats.failed++;
@@ -491,6 +511,9 @@ export class TaskEngine extends EventEmitter {
     } finally {
       clearTimeout(timeoutId);
       this.runningTasks.delete(taskId);
+      if (options.abortSignal && externalAbort) {
+        options.abortSignal.removeEventListener('abort', externalAbort);
+      }
     }
   }
 

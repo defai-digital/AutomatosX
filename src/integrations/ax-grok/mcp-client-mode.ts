@@ -12,10 +12,61 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { logger } from '../../shared/logging/logger.js';
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { GrokSdkAdapter } from './sdk-adapter.js';
 import type { GrokModel } from './types.js';
+
+/**
+ * MCP configuration for ax-grok
+ * Read from .ax-grok/mcp-config.json if available
+ */
+interface GrokMcpConfig {
+  mcp: {
+    enabled: boolean;
+    serverCommand: string;
+    serverArgs: string[];
+    autoConnect: boolean;
+    timeout: number;
+  };
+  provider: {
+    name: string;
+    apiKeyEnv: string;
+    defaultModel: string;
+  };
+  integration: {
+    useMemory: boolean;
+    useAgentContext: boolean;
+    saveResponsesToMemory: boolean;
+  };
+}
+
+/**
+ * Load MCP config from .ax-grok/mcp-config.json
+ */
+function loadGrokMcpConfig(): GrokMcpConfig | null {
+  const configPaths = [
+    join(process.cwd(), '.ax-grok', 'mcp-config.json'),
+    join(process.env.HOME || '', '.ax-grok', 'mcp-config.json')
+  ];
+
+  for (const configPath of configPaths) {
+    if (existsSync(configPath)) {
+      try {
+        const content = readFileSync(configPath, 'utf-8');
+        const config = JSON.parse(content) as GrokMcpConfig;
+        logger.debug('[ax-grok MCP] Loaded config from', { path: configPath });
+        return config;
+      } catch (error) {
+        logger.warn('[ax-grok MCP] Failed to parse config', { path: configPath, error: (error as Error).message });
+      }
+    }
+  }
+
+  return null;
+}
 
 /**
  * MCP JSON-RPC types
@@ -130,26 +181,48 @@ export class AxGrokWithMcp {
     reject: (error: Error) => void;
   }>();
   private responseBuffer = '';
+  private config: GrokMcpConfig | null = null;
 
   constructor(options: { model?: GrokModel; apiKey?: string } = {}) {
+    // Load MCP config from .ax-grok/mcp-config.json
+    this.config = loadGrokMcpConfig();
+
     this.grokSdk = new GrokSdkAdapter({
       model: options.model,
       apiKey: options.apiKey
     });
+
+    if (this.config) {
+      logger.info('[ax-grok MCP] Config loaded', {
+        enabled: this.config.mcp.enabled,
+        serverCommand: this.config.mcp.serverCommand
+      });
+    }
   }
 
   /**
    * Connect to AutomatosX MCP server
+   * Uses config from .ax-grok/mcp-config.json if available
    */
   async connect(): Promise<void> {
     if (this.connected) {
       return;
     }
 
+    // Check if MCP is enabled in config
+    if (this.config && !this.config.mcp.enabled) {
+      logger.info('[ax-grok MCP] MCP disabled in config, skipping connection');
+      return;
+    }
+
     logger.info('[ax-grok MCP] Connecting to AutomatosX MCP server...');
 
+    // Use config or defaults
+    const serverCommand = this.config?.mcp.serverCommand || 'automatosx';
+    const serverArgs = this.config?.mcp.serverArgs || ['mcp', 'server'];
+
     // Spawn MCP server process
-    this.mcpProcess = spawn('automatosx', ['mcp', 'server'], {
+    this.mcpProcess = spawn(serverCommand, serverArgs, {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
@@ -190,36 +263,30 @@ export class AxGrokWithMcp {
 
   /**
    * Handle incoming data from MCP server
+   *
+   * v12.2.0: Changed from Content-Length to newline-delimited framing
+   * per official MCP specification
    */
   private handleMcpData(data: Buffer): void {
     this.responseBuffer += data.toString('utf-8');
 
-    // Parse Content-Length framed messages
+    // Parse newline-delimited messages (official MCP spec)
     while (true) {
-      const delimiter = this.responseBuffer.includes('\r\n\r\n')
-        ? '\r\n\r\n'
-        : this.responseBuffer.includes('\n\n')
-          ? '\n\n'
-          : null;
+      const newlineIndex = this.responseBuffer.indexOf('\n');
+      if (newlineIndex === -1) break;
 
-      if (!delimiter) break;
+      // Extract the message (strip trailing \r if present for Windows compatibility)
+      let jsonMessage = this.responseBuffer.slice(0, newlineIndex);
+      if (jsonMessage.endsWith('\r')) {
+        jsonMessage = jsonMessage.slice(0, -1);
+      }
+      this.responseBuffer = this.responseBuffer.slice(newlineIndex + 1);
 
-      const headerEnd = this.responseBuffer.indexOf(delimiter);
-      const headerBlock = this.responseBuffer.slice(0, headerEnd);
-      const match = headerBlock.match(/Content-Length:\s*(\d+)/i);
-
-      if (!match) break;
-
-      const contentLength = parseInt(match[1] || '0', 10);
-      const bodyStart = headerEnd + delimiter.length;
-
-      if (this.responseBuffer.length < bodyStart + contentLength) break;
-
-      const body = this.responseBuffer.slice(bodyStart, bodyStart + contentLength);
-      this.responseBuffer = this.responseBuffer.slice(bodyStart + contentLength);
+      // Skip empty lines
+      if (jsonMessage.trim() === '') continue;
 
       try {
-        const response = JSON.parse(body) as JsonRpcResponse;
+        const response = JSON.parse(jsonMessage) as JsonRpcResponse;
         const pending = this.pendingRequests.get(response.id);
         if (pending) {
           this.pendingRequests.delete(response.id);
@@ -251,8 +318,9 @@ export class AxGrokWithMcp {
       params
     };
 
+    // v12.2.0: Use newline-delimited framing per MCP spec
     const json = JSON.stringify(request);
-    const message = `Content-Length: ${Buffer.byteLength(json, 'utf-8')}\r\n\r\n${json}`;
+    const message = json + '\n';
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });

@@ -22,7 +22,10 @@ import type {
   McpToolCallResponse,
   McpTool,
   McpSession,
-  ToolHandler
+  ToolHandler,
+  McpResourceListRequest,
+  McpResourceReadRequest,
+  McpResourceReadResponse
 } from './types.js';
 import { McpErrorCode, MCP_PROTOCOL_VERSION } from './types.js';
 import { logger, setLogLevel } from '../shared/logging/logger.js';
@@ -141,6 +144,8 @@ export class McpServer {
   private version: string;
   private ajv: Ajv;
   private compiledValidators = new Map<string, ValidateFunction>();
+  private cancelledRequests = new Set<string | number>(); // Track client-initiated cancellations
+  private requestControllers = new Map<string | number, AbortController>(); // Abort long-running handlers
 
   // v10.5.0: MCP Session for Smart Routing
   private session: McpSession | null = null;
@@ -466,6 +471,24 @@ Use this tool first to understand what AutomatosX offers.`,
       this.streamingNotifier.stop();
     }
 
+    // Stop router health checks and provider timers
+    if (this.router) {
+      this.router.destroy();
+    }
+
+    // Clear request controllers
+    this.requestControllers.clear();
+
+    // Flush sessions to disk
+    if (this.sessionManager) {
+      await this.sessionManager.destroy();
+    }
+
+    // Close context store
+    if (this.contextStore) {
+      this.contextStore.destroy();
+    }
+
     // v11.1.0: Destroy event bridge
     if (this.eventBridge) {
       this.eventBridge.destroy();
@@ -612,6 +635,12 @@ Use this tool first to understand what AutomatosX offers.`,
           return this.handleToolsList(request as McpToolListRequest, responseId);
         case 'tools/call':
           return await this.handleToolCall(request as McpToolCallRequest, responseId);
+        case 'resources/list':
+          return await this.handleResourcesList(request as McpResourceListRequest, responseId);
+        case 'resources/read':
+          return await this.handleResourceRead(request as McpResourceReadRequest, responseId);
+        case '$/cancelRequest':
+          return this.handleCancelRequest(request, responseId);
         default:
           return this.createErrorResponse(responseId, McpErrorCode.MethodNotFound, `Method not found: ${method}`);
       }
@@ -685,6 +714,56 @@ Use this tool first to understand what AutomatosX offers.`,
   }
 
   /**
+   * Handle resources/list request (exposes agent profiles as MCP resources)
+   */
+  private async handleResourcesList(_request: McpResourceListRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    await this.ensureInitialized();
+
+    const agents = await this.profileLoader.listProfiles();
+    const resources = agents.map(agent => ({
+      uri: `agent/${agent}`,
+      name: `Agent: ${agent}`,
+      description: `AutomatosX agent profile for ${agent}`,
+      mimeType: 'text/markdown'
+    }));
+
+    return { jsonrpc: '2.0', id, result: { resources } };
+  }
+
+  /**
+   * Handle resources/read request
+   */
+  private async handleResourceRead(request: McpResourceReadRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    await this.ensureInitialized();
+    const uri = request.params?.uri;
+
+    if (!uri || !uri.startsWith('agent/')) {
+      return this.createErrorResponse(id, McpErrorCode.InvalidParams, 'Invalid resource URI. Expected agent/{name}.');
+    }
+
+    const agentName = uri.replace('agent/', '');
+    try {
+      const profile = await this.profileLoader.loadProfile(agentName);
+      const summary = [
+        `# ${agentName}`,
+        profile.role ? `**Role:** ${profile.role}` : '',
+        profile.abilities?.length ? `**Abilities:** ${profile.abilities.join(', ')}` : '',
+        '',
+        profile.systemPrompt || 'No system prompt defined.'
+      ].filter(Boolean).join('\n');
+
+      const contents: McpResourceReadResponse['contents'] = [
+        { type: 'text', text: summary },
+        { type: 'application/json', json: profile }
+      ];
+
+      return { jsonrpc: '2.0', id, result: { uri, mimeType: 'text/markdown', contents } };
+    } catch (error) {
+      return this.createErrorResponse(id, McpErrorCode.InternalError, `Failed to read resource: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Validate tool input against its JSON schema.
    * Returns null if valid, or error message string if invalid.
    */
@@ -696,9 +775,42 @@ Use this tool first to understand what AutomatosX offers.`,
   }
 
   /** Create MCP tool response wrapper */
-  private createToolResponse(id: string | number | null, text: string, isError = false): JsonRpcResponse {
-    const response: McpToolCallResponse = { content: [{ type: 'text', text }], ...(isError && { isError }) };
+  private createToolResponse(id: string | number | null, result: unknown, isError = false): JsonRpcResponse {
+    let content: McpToolCallResponse['content'];
+
+    if (typeof result === 'string') {
+      content = [{ type: 'text', text: result }];
+    } else {
+      content = [
+        { type: 'application/json', json: result },
+        { type: 'text', text: JSON.stringify(result, null, 2) }
+      ];
+    }
+
+    const response: McpToolCallResponse = { content, ...(isError && { isError }) };
     return { jsonrpc: '2.0', id, result: response };
+  }
+
+  /**
+   * Handle client cancellation ($/cancelRequest)
+   */
+  private handleCancelRequest(request: JsonRpcRequest, id: string | number | null): JsonRpcResponse {
+    const params = (request as { params?: { id?: string | number; requestId?: string | number } }).params;
+    const cancelId = params?.id ?? params?.requestId;
+
+    if (cancelId === undefined || cancelId === null) {
+      return this.createErrorResponse(id, McpErrorCode.InvalidParams, 'cancelRequest requires an id to cancel');
+    }
+
+    this.cancelledRequests.add(cancelId);
+    logger.info('[MCP Server] Cancellation requested', { cancelId });
+
+    // Abort handler if running
+    const controller = this.requestControllers.get(cancelId);
+    controller?.abort();
+
+    // Respond with null result to acknowledge cancellation
+    return { jsonrpc: '2.0', id, result: null };
   }
 
   /**
@@ -737,6 +849,20 @@ Use this tool first to understand what AutomatosX offers.`,
   private async handleToolCall(request: McpToolCallRequest, id: string | number | null): Promise<JsonRpcResponse> {
     const { name, arguments: args } = request.params;
     logger.info('[MCP Server] Tool call', { tool: name });
+    const requestId = id ?? null;
+
+    // Create abort controller for this request (if id provided)
+    const abortController = requestId !== null ? new AbortController() : null;
+    if (requestId !== null && abortController) {
+      this.requestControllers.set(requestId, abortController);
+    }
+
+    // If client already cancelled this request, short-circuit
+    if (requestId !== null && this.cancelledRequests.has(requestId)) {
+      this.cancelledRequests.delete(requestId);
+      this.requestControllers.delete(requestId);
+      return this.createErrorResponse(requestId, McpErrorCode.RequestCancelled, 'Request was cancelled');
+    }
 
     await this.ensureInitialized();
 
@@ -751,11 +877,30 @@ Use this tool first to understand what AutomatosX offers.`,
     }
 
     try {
-      const result = await handler(args || {});
-      return this.createToolResponse(id, JSON.stringify(result, null, 2));
+      const result = await handler(args || {}, { signal: abortController?.signal });
+      // If a cancellation arrived while running, honor it
+      if (requestId !== null && this.cancelledRequests.has(requestId)) {
+        this.cancelledRequests.delete(requestId);
+        this.requestControllers.delete(requestId);
+        return this.createErrorResponse(requestId, McpErrorCode.RequestCancelled, 'Request was cancelled');
+      }
+      return this.createToolResponse(id, result);
     } catch (error) {
+      const err = error as Error;
+      const cancelled = err?.name === 'AbortError' || err?.message?.toLowerCase().includes('cancel');
+
+      if (cancelled) {
+        logger.info('[MCP Server] Tool execution cancelled', { tool: name, id: requestId ?? undefined });
+        return this.createErrorResponse(id, McpErrorCode.RequestCancelled, 'Request was cancelled');
+      }
+
       logger.error('[MCP Server] Tool execution failed', { tool: name, error });
-      return this.createToolResponse(id, `Error: ${(error as Error).message}`, true);
+      return this.createToolResponse(id, `Error: ${err?.message ?? String(error)}`, true);
+    } finally {
+      if (requestId !== null) {
+        this.cancelledRequests.delete(requestId);
+        this.requestControllers.delete(requestId);
+      }
     }
   }
 
@@ -767,25 +912,36 @@ Use this tool first to understand what AutomatosX offers.`,
   }
 
   /**
-   * Write MCP-compliant response with Content-Length framing
+   * Write MCP-compliant response using newline-delimited framing
+   *
+   * v12.2.0: Changed from Content-Length to newline-delimited framing
+   * per official MCP specification: https://spec.modelcontextprotocol.io/specification/basic/transports/
+   *
+   * Format: JSON message followed by newline character
+   * Reference: @modelcontextprotocol/sdk serializeMessage() uses: JSON.stringify(message) + '\n'
    */
   private writeResponse(response: JsonRpcResponse): void {
     const json = JSON.stringify(response);
-    const contentLength = Buffer.byteLength(json, 'utf-8');
-    const message = `Content-Length: ${contentLength}\r\n\r\n${json}`;
-    process.stdout.write(message);
-    logger.debug('[MCP Server] Response sent', { id: response.id, contentLength });
+    // Official MCP spec: messages are newline-delimited, no Content-Length header
+    process.stdout.write(json + '\n');
+    logger.debug('[MCP Server] Response sent', { id: response.id, length: json.length });
   }
 
   /**
-   * Start stdio server with Content-Length framing
+   * Start stdio server with newline-delimited framing
+   *
+   * v12.2.0: Changed from Content-Length to newline-delimited framing
+   * per official MCP specification: https://spec.modelcontextprotocol.io/specification/basic/transports/
+   *
+   * Format: Each JSON-RPC message is terminated by a newline character.
+   * Messages MUST NOT contain embedded newlines.
+   * Reference: @modelcontextprotocol/sdk ReadBuffer uses: buffer.indexOf('\n')
    *
    * BUG FIX (v9.0.1): Added iteration limit and buffer size checks to prevent infinite loops
    */
   async start(): Promise<void> {
     logger.info('[MCP Server] Starting stdio JSON-RPC server...');
     let buffer = '';
-    let contentLength: number | null = null;
 
     process.stdin.on('data', (chunk: Buffer) => {
       // BUG FIX: Use mutex to serialize stdin chunk processing
@@ -800,64 +956,46 @@ Use this tool first to understand what AutomatosX offers.`,
             maxSize: STDIO_MAX_BUFFER_SIZE
           });
           buffer = ''; // Reset buffer
-          contentLength = null;
           return;
         }
 
         // BUG FIX: Add iteration counter to prevent infinite loops
         let iterations = 0;
+
+        // Process all complete messages (newline-delimited)
         while (iterations < STDIO_MAX_ITERATIONS) {
           iterations++;
 
-          if (contentLength === null) {
-            // Support both CRLF and LF framing used by different MCP clients
-            const delimiter = buffer.includes('\r\n\r\n')
-              ? '\r\n\r\n'
-              : buffer.includes('\n\n')
-                ? '\n\n'
-                : null;
+          // Find newline delimiter (support both \n and \r\n)
+          const newlineIndex = buffer.indexOf('\n');
+          if (newlineIndex === -1) break; // No complete message yet
 
-            if (!delimiter) break;
-
-            const headerEndIndex = buffer.indexOf(delimiter);
-            const headerBlock = buffer.slice(0, headerEndIndex);
-            for (const line of headerBlock.split(delimiter === '\r\n\r\n' ? '\r\n' : '\n')) {
-              const [key, value] = line.split(':', 2).map(s => s.trim());
-              if (key && key.toLowerCase() === 'content-length' && value) {
-                contentLength = parseInt(value, 10);
-
-                // BUG FIX: Validate content length and send JSON-RPC error response
-                if (isNaN(contentLength) || contentLength <= 0 || contentLength > STDIO_MAX_MESSAGE_SIZE) {
-                  logger.error('[MCP Server] Invalid Content-Length', { contentLength });
-                  // Send JSON-RPC error response for protocol violation
-                  this.writeResponse({
-                    jsonrpc: '2.0',
-                    id: null,
-                    error: {
-                      code: McpErrorCode.InvalidRequest,
-                      message: `Invalid Content-Length: ${contentLength}`
-                    }
-                  });
-                  buffer = buffer.slice(headerEndIndex + delimiter.length);
-                  contentLength = null;
-                  continue;
-                }
-              }
-            }
-            if (contentLength === null) {
-              logger.error('[MCP Server] No Content-Length header found');
-              buffer = buffer.slice(headerEndIndex + delimiter.length);
-              continue;
-            }
-            buffer = buffer.slice(headerEndIndex + delimiter.length);
+          // Extract the message (strip trailing \r if present for Windows compatibility)
+          let jsonMessage = buffer.slice(0, newlineIndex);
+          if (jsonMessage.endsWith('\r')) {
+            jsonMessage = jsonMessage.slice(0, -1);
           }
+          buffer = buffer.slice(newlineIndex + 1);
 
-          if (Buffer.byteLength(buffer, 'utf-8') < contentLength) break;
+          // Skip empty lines
+          if (jsonMessage.trim() === '') continue;
 
-          const messageBuffer = Buffer.from(buffer, 'utf-8');
-          const jsonMessage = messageBuffer.slice(0, contentLength).toString('utf-8');
-          buffer = messageBuffer.slice(contentLength).toString('utf-8');
-          contentLength = null;
+          // Validate message size
+          if (jsonMessage.length > STDIO_MAX_MESSAGE_SIZE) {
+            logger.error('[MCP Server] Message size exceeded maximum', {
+              messageSize: jsonMessage.length,
+              maxSize: STDIO_MAX_MESSAGE_SIZE
+            });
+            this.writeResponse({
+              jsonrpc: '2.0',
+              id: null,
+              error: {
+                code: McpErrorCode.InvalidRequest,
+                message: `Message too large: ${jsonMessage.length} bytes`
+              }
+            });
+            continue;
+          }
 
           try {
             const request = JSON.parse(jsonMessage) as JsonRpcRequest;
@@ -867,7 +1005,7 @@ Use this tool first to understand what AutomatosX offers.`,
               this.writeResponse(response);
             }
           } catch (error) {
-            logger.error('[MCP Server] Failed to parse or handle request', { jsonMessage, error });
+            logger.error('[MCP Server] Failed to parse or handle request', { error: (error as Error).message });
             this.writeResponse({ jsonrpc: '2.0', id: null, error: { code: McpErrorCode.ParseError, message: 'Parse error: Invalid JSON' } });
           }
         }
@@ -892,6 +1030,6 @@ Use this tool first to understand what AutomatosX offers.`,
     process.on('SIGINT', () => shutdown('Received SIGINT, shutting down...'));
     process.on('SIGTERM', () => shutdown('Received SIGTERM, shutting down...'));
 
-    logger.info('[MCP Server] Server started successfully (Content-Length framing)');
+    logger.info('[MCP Server] Server started successfully (newline-delimited framing)');
   }
 }

@@ -47,6 +47,7 @@ export class ConversationContextStore {
   private readonly storePath: string;
   private readonly maxEntries: number;
   private readonly ttlMs: number;
+  private destroyed = false;
 
   constructor(options: ConversationContextStoreOptions) {
     this.storePath = options.storePath;
@@ -92,6 +93,9 @@ export class ConversationContextStore {
    * Initialize store (create directory if needed)
    */
   async initialize(): Promise<void> {
+    if (this.destroyed) {
+      throw new Error('Context store is destroyed');
+    }
     try {
       await mkdir(this.storePath, { recursive: true });
       logger.info('[ContextStore] Initialized', { storePath: this.storePath });
@@ -105,6 +109,9 @@ export class ConversationContextStore {
    * Save conversation context
    */
   async save(context: ConversationContext): Promise<void> {
+    if (this.destroyed) {
+      throw new Error('Context store is destroyed');
+    }
     await this.initialize(); // Ensure directory exists
 
     // SECURITY: Validate ID to prevent path traversal
@@ -163,6 +170,9 @@ export class ConversationContextStore {
     source?: string;
     limit?: number;
   }): Promise<ConversationContext[]> {
+    if (this.destroyed) {
+      return [];
+    }
     try {
       const files = await readdir(this.storePath);
       const contexts: ConversationContext[] = [];
@@ -299,6 +309,9 @@ export class ConversationContextStore {
     oldestEntry?: string;
     newestEntry?: string;
   }> {
+    if (this.destroyed) {
+      return { totalEntries: 0, bySource: {} };
+    }
     const contexts = await this.list();
 
     const bySource: Record<string, number> = {};
@@ -312,5 +325,12 @@ export class ConversationContextStore {
       oldestEntry: contexts[contexts.length - 1]?.timestamp,
       newestEntry: contexts[0]?.timestamp
     };
+  }
+
+  /**
+   * Destroy store (prevent further I/O)
+   */
+  destroy(): void {
+    this.destroyed = true;
   }
 }

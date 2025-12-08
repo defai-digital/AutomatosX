@@ -67,8 +67,12 @@ export interface RunTaskDependencies {
  * Create the run_task tool handler
  */
 export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<RunTaskToolInput, RunTaskToolOutput> {
-  return async (input: RunTaskToolInput): Promise<RunTaskToolOutput> => {
+  return async (input: RunTaskToolInput, context?: { signal?: AbortSignal }): Promise<RunTaskToolOutput> => {
     const startTime = Date.now();
+
+    if (context?.signal?.aborted) {
+      throw new Error('Request was cancelled');
+    }
 
     logger.info('[run_task] Executing task', {
       taskId: input.task_id,
@@ -85,7 +89,8 @@ export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<Run
       const options: RunTaskOptions = {
         engineOverride: input.engine_override as Exclude<TaskEngineType, 'auto'> | undefined,
         timeoutMs: input.timeout_ms,
-        skipCache: input.skip_cache
+        skipCache: input.skip_cache,
+        abortSignal: context?.signal
       };
 
       const result = await taskEngine.runTask(input.task_id, options);

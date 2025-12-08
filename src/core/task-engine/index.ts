@@ -83,7 +83,9 @@ export {
 // Task Store
 export {
   TaskStore,
-  createTaskStore
+  InMemoryTaskStore,
+  createTaskStore,
+  type TaskStoreLike
 } from './store.js';
 
 // Task Engine

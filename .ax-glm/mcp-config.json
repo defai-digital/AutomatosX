@@ -1,0 +1,22 @@
+{
+  "mcp": {
+    "enabled": true,
+    "serverCommand": "automatosx",
+    "serverArgs": [
+      "mcp",
+      "server"
+    ],
+    "autoConnect": true,
+    "timeout": 30000
+  },
+  "provider": {
+    "name": "glm",
+    "apiKeyEnv": "GLM_API_KEY",
+    "defaultModel": "glm-4"
+  },
+  "integration": {
+    "useMemory": true,
+    "useAgentContext": true,
+    "saveResponsesToMemory": true
+  }
+}

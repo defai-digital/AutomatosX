@@ -2,10 +2,7 @@
   "mcpServers": {
     "automatosx": {
       "command": "automatosx",
-      "args": [
-        "mcp",
-        "server"
-      ],
+      "args": ["mcp", "server"],
       "env": {
         "AUTOMATOSX_PROJECT_DIR": "/Users/automatosx/code/automatosx"
       }

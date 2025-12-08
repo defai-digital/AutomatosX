@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [12.3.0] - 2025-12-08
+
+### Fixed
+- **MCP Configuration for ax-glm & ax-grok**: Fixed `ax setup` to create MCP config files in the correct format and location
+  - Changed from legacy `mcp-config.json` to Claude Code format `.mcp.json`
+  - ax-cli loads MCP config with priority: `.ax-glm/.mcp.json` > `.ax-glm/mcp-config.json`
+  - Now ax-glm and ax-grok can properly connect to AutomatosX MCP server
+
+### Changed
+- Updated `setupGlmMCPConfig()` and `setupGrokMCPConfig()` to write `.mcp.json` in Claude Code format
+- MCP configuration now uses the recommended format: `{ "mcpServers": { "automatosx": { "command": "automatosx", "args": ["mcp", "server"] } } }`
+
+## [12.1.1] - 2025-12-07
+
+### Fixed
+- Security update: Updated tmp to 0.2.4+ via pnpm override (CVE-2025-54798)
+
+## [12.1.0] - 2025-12-07
+
+### Added
+- MCP-First Architecture redesign
+- Removed ax-cli dependency for direct provider integration
+
 ## [11.3.4] - 2025-12-05
 
 ### Added

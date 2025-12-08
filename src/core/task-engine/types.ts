@@ -267,6 +267,9 @@ export interface RunTaskOptions {
 
   /** Skip cache lookup */
   skipCache?: boolean;
+
+  /** External abort signal (e.g., MCP cancellation) */
+  abortSignal?: AbortSignal;
 }
 
 /**

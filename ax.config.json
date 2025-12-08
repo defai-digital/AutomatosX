@@ -89,58 +89,6 @@
         "window": "daily",
         "resetHourUtc": 0
       }
-    },
-    "glm": {
-      "enabled": true,
-      "priority": 4,
-      "timeout": 120000,
-      "command": "ax-glm",
-      "model": "glm-4",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-      "processManagement": {
-        "gracefulShutdownTimeout": 5000,
-        "forceKillDelay": 1000
-      },
-      "versionDetection": {
-        "timeout": 5000,
-        "forceKillDelay": 1000,
-        "cacheEnabled": true
-      }
-    },
-    "grok": {
-      "enabled": true,
-      "priority": 5,
-      "timeout": 120000,
-      "command": "ax-grok",
-      "model": "grok-3",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-      "processManagement": {
-        "gracefulShutdownTimeout": 5000,
-        "forceKillDelay": 1000
-      },
-      "versionDetection": {
-        "timeout": 5000,
-        "forceKillDelay": 1000,
-        "cacheEnabled": true
-      }
     }
   },
   "execution": {
@@ -352,13 +300,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "featureFlags": {
-    "sdkFirstMode": false,
-    "mcpBidirectional": false,
-    "autoInjectMCPConfig": false,
-    "sdkFallbackEnabled": true,
-    "deprecationWarnings": true,
-    "providerMetrics": true
-  },
-  "version": "12.1.0"
+  "version": "12.1.1"
 }

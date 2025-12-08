@@ -121,6 +121,8 @@ test-*.js
 .gemini/
 .grok/
 .ax-cli/
+.ax-glm/
+.ax-grok/
 
 # SECURITY: Do NOT allow ANY files from these directories, even READMEs
 # (Previously allowed .grok/README.md and .ax-cli/README.md - REMOVED for security)

@@ -12,17 +12,28 @@ export type {
   JsonRpcError
 } from '../providers/mcp/types.js';
 
-/** MCP protocol version (shared constant for consistency) */
-export const MCP_PROTOCOL_VERSION = '2024-11-05';
+/** Latest MCP protocol version (v2) */
+export const MCP_PROTOCOL_VERSION = '2024-12-05';
+/** Backward-compatible versions (descending order) */
+export const MCP_SUPPORTED_VERSIONS = ['2024-12-05', '2024-11-05'] as const;
+export type SupportedMcpProtocolVersion = typeof MCP_SUPPORTED_VERSIONS[number];
+
+export interface McpCapabilities {
+  tools?: Record<string, unknown>;
+  resources?: Record<string, unknown>;
+  prompts?: Record<string, unknown>;
+  /** v2: Resource templates */
+  resourceTemplates?: Record<string, unknown>;
+  /** v2+: experimental capability channel */
+  experimental?: Record<string, unknown>;
+}
 
 // MCP Protocol Messages
 export interface McpInitializeRequest {
   method: 'initialize';
   params: {
     protocolVersion: string;
-    capabilities: {
-      tools?: Record<string, unknown>;
-    };
+    capabilities: McpCapabilities;
     clientInfo: {
       name: string;
       version: string;
@@ -32,9 +43,7 @@ export interface McpInitializeRequest {
 
 export interface McpInitializeResponse {
   protocolVersion: string;
-  capabilities: {
-    tools?: Record<string, unknown>;
-  };
+  capabilities: McpCapabilities;
   serverInfo: {
     name: string;
     version: string;
@@ -96,6 +105,77 @@ export interface McpResourceReadResponse {
   contents: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
 }
 
+// MCP resource templates (v2)
+export interface McpResourceTemplate {
+  name: string;
+  uriTemplate: string;
+  description?: string;
+  mimeType?: string;
+  variableDefinitions?: Array<{
+    name: string;
+    description?: string;
+    required?: boolean;
+  }>;
+}
+
+export interface McpResourceTemplateListRequest {
+  method: 'resources/templates/list';
+  params?: Record<string, never>;
+}
+
+export interface McpResourceTemplateListResponse {
+  resourceTemplates: McpResourceTemplate[];
+}
+
+export interface McpResourceTemplateReadRequest {
+  method: 'resources/templates/read';
+  params: {
+    uri: string;
+    variables?: Record<string, string>;
+  };
+}
+
+export interface McpResourceTemplateReadResponse {
+  uri: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+  contents: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
+}
+
+// MCP prompts (optional)
+export interface McpPrompt {
+  name: string;
+  description?: string;
+  arguments?: Array<{
+    name: string;
+    description?: string;
+    required?: boolean;
+  }>;
+}
+
+export interface McpPromptListRequest {
+  method: 'prompts/list';
+  params?: Record<string, never>;
+}
+
+export interface McpPromptListResponse {
+  prompts: McpPrompt[];
+}
+
+export interface McpPromptGetRequest {
+  method: 'prompts/get';
+  params: {
+    name: string;
+    arguments?: Record<string, string>;
+  };
+}
+
+export interface McpPromptGetResponse {
+  prompt: McpPrompt;
+  content: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
+}
+
 export interface McpTool {
   name: string;
   description: string;
@@ -104,6 +184,10 @@ export interface McpTool {
     properties: Record<string, unknown>;
     required?: string[];
   };
+  /** Optional auth/allowlist tag */
+  requiresAuth?: boolean;
+  /** Optional flag to signal hidden tools when allowlisting */
+  hidden?: boolean;
 }
 
 // Tool-Specific Input/Output Types

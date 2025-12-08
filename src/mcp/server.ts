@@ -25,9 +25,19 @@ import type {
   ToolHandler,
   McpResourceListRequest,
   McpResourceReadRequest,
-  McpResourceReadResponse
+  McpResourceReadResponse,
+  McpResourceTemplateListRequest,
+  McpResourceTemplateReadRequest,
+  McpResourceTemplateReadResponse,
+  McpPromptListRequest,
+  McpPromptGetRequest
 } from './types.js';
-import { McpErrorCode, MCP_PROTOCOL_VERSION } from './types.js';
+import {
+  McpErrorCode,
+  MCP_PROTOCOL_VERSION,
+  MCP_SUPPORTED_VERSIONS,
+  type SupportedMcpProtocolVersion
+} from './types.js';
 import { logger, setLogLevel } from '../shared/logging/logger.js';
 import { loadConfig } from '../core/config/loader.js';
 import { Router } from '../core/router/router.js';
@@ -101,11 +111,19 @@ import { ClaudeEventNormalizer } from '../core/events/normalizers/claude-normali
 import { GeminiEventNormalizer } from '../core/events/normalizers/gemini-normalizer.js';
 import { CodexEventNormalizer } from '../core/events/normalizers/codex-normalizer.js';
 // v12.0.0: Removed AxCliEventNormalizer (ax-cli deprecated)
+import {
+  listResourceTemplates,
+  resolveResourceTemplate
+} from './resource-templates.js';
 
 export interface McpServerOptions {
   debug?: boolean;
   /** v11.1.0: Enable streaming progress notifications */
   enableStreamingNotifications?: boolean;
+  /** Allowlist of tool names; if set, only these tools can be invoked */
+  toolAllowlist?: string[];
+  /** Shared secret token required to call protected tools */
+  authToken?: string;
 }
 
 /** Client name patterns for provider detection */
@@ -146,6 +164,8 @@ export class McpServer {
   private compiledValidators = new Map<string, ValidateFunction>();
   private cancelledRequests = new Set<string | number>(); // Track client-initiated cancellations
   private requestControllers = new Map<string | number, AbortController>(); // Abort long-running handlers
+  private toolAllowlist?: Set<string>;
+  private authToken?: string;
 
   // v10.5.0: MCP Session for Smart Routing
   private session: McpSession | null = null;
@@ -157,6 +177,7 @@ export class McpServer {
   private eventBridge: EventBridge | null = null;
   private streamingNotifier: McpStreamingNotifier | null = null;
   private enableStreamingNotifications = true;
+  private negotiatedProtocolVersion: SupportedMcpProtocolVersion = MCP_PROTOCOL_VERSION;
 
   // Shared services (initialized once per server)
   private router!: Router;
@@ -172,6 +193,12 @@ export class McpServer {
     if (options.debug) {
       setLogLevel('debug');
     }
+    if (options.toolAllowlist?.length) {
+      this.toolAllowlist = new Set(options.toolAllowlist);
+    }
+    if (options.authToken) {
+      this.authToken = options.authToken;
+    }
 
     // v11.1.0: Configure streaming notifications
     this.enableStreamingNotifications = options.enableStreamingNotifications ?? true;
@@ -184,6 +211,26 @@ export class McpServer {
       version: this.version,
       streamingNotifications: this.enableStreamingNotifications
     });
+  }
+
+  /** Determine if negotiated protocol is v2 */
+  private isV2Protocol(): boolean {
+    return this.negotiatedProtocolVersion === MCP_SUPPORTED_VERSIONS[0];
+  }
+
+  /** Build capability set based on negotiated protocol */
+  private buildCapabilities(): McpInitializeResponse['capabilities'] {
+    const base = { tools: {} as Record<string, unknown> };
+    if (this.isV2Protocol()) {
+      return {
+        ...base,
+        resources: {},
+        prompts: {},
+        resourceTemplates: {},
+        experimental: {}
+      };
+    }
+    return base;
   }
 
   /**
@@ -639,6 +686,14 @@ Use this tool first to understand what AutomatosX offers.`,
           return await this.handleResourcesList(request as McpResourceListRequest, responseId);
         case 'resources/read':
           return await this.handleResourceRead(request as McpResourceReadRequest, responseId);
+        case 'resources/templates/list':
+          return await this.handleResourceTemplatesList(request as McpResourceTemplateListRequest, responseId);
+        case 'resources/templates/read':
+          return await this.handleResourceTemplateRead(request as McpResourceTemplateReadRequest, responseId);
+        case 'prompts/list':
+          return await this.handlePromptsList(request as McpPromptListRequest, responseId);
+        case 'prompts/get':
+          return await this.handlePromptGet(request as McpPromptGetRequest, responseId);
         case '$/cancelRequest':
           return this.handleCancelRequest(request, responseId);
         default:
@@ -685,13 +740,18 @@ Use this tool first to understand what AutomatosX offers.`,
       normalizedProvider: this.session.normalizedProvider,
     });
 
+    // v2: Negotiate protocol version (prefer client request if supported)
+    const requestedProtocol = request.params?.protocolVersion;
+    const negotiated = MCP_SUPPORTED_VERSIONS.find(version => version === requestedProtocol) ?? MCP_SUPPORTED_VERSIONS[0];
+    this.negotiatedProtocolVersion = negotiated;
+
     // OPTIMIZATION (v10.3.1): Fast handshake - no blocking initialization!
     // Services are initialized lazily on first tool call instead of during handshake.
     // This reduces MCP startup time from 18s to < 10ms.
 
     const response: McpInitializeResponse = {
-      protocolVersion: MCP_PROTOCOL_VERSION,
-      capabilities: { tools: {} },
+      protocolVersion: negotiated,
+      capabilities: this.buildCapabilities(),
       serverInfo: { name: 'automatosx', version: this.version }
     };
 
@@ -709,7 +769,11 @@ Use this tool first to understand what AutomatosX offers.`,
     logger.debug('[MCP Server] Tools list requested (static schemas)');
 
     // Return static schemas - no initialization required!
-    const tools = McpServer.getStaticToolSchemas();
+    const tools = McpServer.getStaticToolSchemas().map(schema => ({
+      ...schema,
+      // If allowlist is set, hide tools not allowed
+      ...(this.toolAllowlist && !this.toolAllowlist.has(schema.name) ? { hidden: true } : {})
+    }));
     return { jsonrpc: '2.0', id, result: { tools } };
   }
 
@@ -728,6 +792,85 @@ Use this tool first to understand what AutomatosX offers.`,
     }));
 
     return { jsonrpc: '2.0', id, result: { resources } };
+  }
+
+  /**
+   * Handle resources/templates/list request (v2 capability)
+   */
+  private async handleResourceTemplatesList(_request: McpResourceTemplateListRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    if (!this.isV2Protocol()) {
+      return this.createErrorResponse(id, McpErrorCode.MethodNotFound, 'resources/templates/list is only available in MCP v2');
+    }
+
+    await this.ensureInitialized();
+    const resourceTemplates = listResourceTemplates();
+    return { jsonrpc: '2.0', id, result: { resourceTemplates } };
+  }
+
+  /**
+   * Handle prompts/list request (expose common starter prompts)
+   */
+  private async handlePromptsList(_request: McpPromptListRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    await this.ensureInitialized();
+
+    const prompts = [
+      {
+        name: 'agent_context',
+        description: 'Get agent context and system prompt for a given agent name',
+        arguments: [{ name: 'agent', required: true, description: 'Agent name' }]
+      },
+      {
+        name: 'status',
+        description: 'Get AutomatosX MCP status summary'
+      }
+    ];
+
+    return { jsonrpc: '2.0', id, result: { prompts } };
+  }
+
+  /**
+   * Handle prompts/get request
+   */
+  private async handlePromptGet(request: McpPromptGetRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    await this.ensureInitialized();
+    const name = request.params?.name;
+
+    if (!name) {
+      return this.createErrorResponse(id, McpErrorCode.InvalidParams, 'Prompt name is required');
+    }
+
+    switch (name) {
+      case 'agent_context': {
+        const agent = request.params?.arguments?.agent;
+        if (!agent) {
+          return this.createErrorResponse(id, McpErrorCode.InvalidParams, 'agent argument is required');
+        }
+        try {
+          const profile = await this.profileLoader.loadProfile(agent);
+          const content = [
+            { type: 'text', text: `System prompt for ${agent}:\n${profile.systemPrompt || 'No system prompt defined.'}` },
+            { type: 'application/json', json: profile }
+          ];
+          return { jsonrpc: '2.0', id, result: { prompt: { name, description: 'Agent context', arguments: [{ name: 'agent', required: true }] }, content } };
+        } catch (error) {
+          return this.createErrorResponse(id, McpErrorCode.InternalError, `Failed to load agent: ${(error as Error).message}`);
+        }
+      }
+      case 'status': {
+        const summary = {
+          version: this.version,
+          providerCount: this.router?.providerCount ?? 0,
+          streamingNotifications: this.enableStreamingNotifications
+        };
+        const content = [
+          { type: 'text', text: `AutomatosX MCP status:\nVersion: ${summary.version}\nProviders: ${summary.providerCount}\nStreaming: ${summary.streamingNotifications}` },
+          { type: 'application/json', json: summary }
+        ];
+        return { jsonrpc: '2.0', id, result: { prompt: { name, description: 'AutomatosX status' }, content } };
+      }
+      default:
+        return this.createErrorResponse(id, McpErrorCode.MethodNotFound, `Prompt not found: ${name}`);
+    }
   }
 
   /**
@@ -760,6 +903,32 @@ Use this tool first to understand what AutomatosX offers.`,
       return { jsonrpc: '2.0', id, result: { uri, mimeType: 'text/markdown', contents } };
     } catch (error) {
       return this.createErrorResponse(id, McpErrorCode.InternalError, `Failed to read resource: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Handle resources/templates/read request (v2 capability)
+   */
+  private async handleResourceTemplateRead(request: McpResourceTemplateReadRequest, id: string | number | null): Promise<JsonRpcResponse> {
+    if (!this.isV2Protocol()) {
+      return this.createErrorResponse(id, McpErrorCode.MethodNotFound, 'resources/templates/read is only available in MCP v2');
+    }
+
+    await this.ensureInitialized();
+    const uri = request.params?.uri;
+    try {
+      if (!uri) {
+        return this.createErrorResponse(id, McpErrorCode.InvalidParams, 'Missing resource template URI');
+      }
+      const resolved: McpResourceTemplateReadResponse = await resolveResourceTemplate(
+        uri,
+        request.params?.variables,
+        this.profileLoader,
+        this.workspaceManager
+      );
+      return { jsonrpc: '2.0', id, result: resolved };
+    } catch (error) {
+      return this.createErrorResponse(id, McpErrorCode.InternalError, `Failed to read resource template: ${(error as Error).message}`);
     }
   }
 
@@ -850,6 +1019,20 @@ Use this tool first to understand what AutomatosX offers.`,
     const { name, arguments: args } = request.params;
     logger.info('[MCP Server] Tool call', { tool: name });
     const requestId = id ?? null;
+
+    // Allowlist enforcement
+    if (this.toolAllowlist && !this.toolAllowlist.has(name)) {
+      return this.createErrorResponse(id, McpErrorCode.InvalidRequest, `Tool not allowed: ${name}`);
+    }
+
+    // Auth enforcement for tools marked requiresAuth
+    const schema = this.toolSchemas.find(t => t.name === name);
+    if (schema?.requiresAuth && this.authToken) {
+      const provided = (args as Record<string, unknown>)?.auth_token;
+      if (provided !== this.authToken) {
+        return this.createErrorResponse(id, McpErrorCode.InvalidRequest, 'Unauthorized: invalid auth token');
+      }
+    }
 
     // Create abort controller for this request (if id provided)
     const abortController = requestId !== null ? new AbortController() : null;

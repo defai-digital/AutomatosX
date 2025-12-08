@@ -44,23 +44,85 @@ interface GrokMcpConfig {
 }
 
 /**
- * Load MCP config from .ax-grok/mcp-config.json
+ * Claude Code format .mcp.json structure
+ * v12.3.0: New format created by ax setup
+ */
+interface ClaudeCodeMcpJson {
+  mcpServers: {
+    [key: string]: {
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+    };
+  };
+}
+
+/**
+ * Load MCP config from .ax-grok/.mcp.json (v12.3.0+) or .ax-grok/mcp-config.json (legacy)
+ *
+ * Priority order:
+ * 1. .ax-grok/.mcp.json (Claude Code format - recommended, created by ax setup v12.3.0+)
+ * 2. .ax-grok/mcp-config.json (legacy format)
  */
 function loadGrokMcpConfig(): GrokMcpConfig | null {
-  const configPaths = [
+  // v12.3.0: First try Claude Code format (.mcp.json)
+  const claudeCodeConfigPaths = [
+    join(process.cwd(), '.ax-grok', '.mcp.json'),
+    join(process.env.HOME || '', '.ax-grok', '.mcp.json')
+  ];
+
+  for (const configPath of claudeCodeConfigPaths) {
+    if (existsSync(configPath)) {
+      try {
+        const content = readFileSync(configPath, 'utf-8');
+        const claudeConfig = JSON.parse(content) as ClaudeCodeMcpJson;
+
+        // Convert Claude Code format to GrokMcpConfig
+        const automatosxServer = claudeConfig.mcpServers?.['automatosx'];
+        if (automatosxServer) {
+          const config: GrokMcpConfig = {
+            mcp: {
+              enabled: true,
+              serverCommand: automatosxServer.command,
+              serverArgs: automatosxServer.args || ['mcp', 'server'],
+              autoConnect: true,
+              timeout: 30000
+            },
+            provider: {
+              name: 'grok',
+              apiKeyEnv: 'XAI_API_KEY',
+              defaultModel: 'grok-3'
+            },
+            integration: {
+              useMemory: true,
+              useAgentContext: true,
+              saveResponsesToMemory: true
+            }
+          };
+          logger.debug('[ax-grok MCP] Loaded Claude Code format config from', { path: configPath });
+          return config;
+        }
+      } catch (error) {
+        logger.warn('[ax-grok MCP] Failed to parse .mcp.json', { path: configPath, error: (error as Error).message });
+      }
+    }
+  }
+
+  // Fallback to legacy format (mcp-config.json)
+  const legacyConfigPaths = [
     join(process.cwd(), '.ax-grok', 'mcp-config.json'),
     join(process.env.HOME || '', '.ax-grok', 'mcp-config.json')
   ];
 
-  for (const configPath of configPaths) {
+  for (const configPath of legacyConfigPaths) {
     if (existsSync(configPath)) {
       try {
         const content = readFileSync(configPath, 'utf-8');
         const config = JSON.parse(content) as GrokMcpConfig;
-        logger.debug('[ax-grok MCP] Loaded config from', { path: configPath });
+        logger.debug('[ax-grok MCP] Loaded legacy config from', { path: configPath });
         return config;
       } catch (error) {
-        logger.warn('[ax-grok MCP] Failed to parse config', { path: configPath, error: (error as Error).message });
+        logger.warn('[ax-grok MCP] Failed to parse legacy config', { path: configPath, error: (error as Error).message });
       }
     }
   }

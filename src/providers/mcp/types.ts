@@ -136,6 +136,9 @@ export interface McpInitializeParams {
   capabilities: {
     tools?: Record<string, unknown>;
     resources?: Record<string, unknown>;
+    prompts?: Record<string, unknown>;
+    resourceTemplates?: Record<string, unknown>;
+    experimental?: Record<string, unknown>;
   };
   clientInfo: {
     name: string;
@@ -148,6 +151,9 @@ export interface McpInitializeResult {
   capabilities: {
     tools?: Record<string, unknown>;
     resources?: Record<string, unknown>;
+    prompts?: Record<string, unknown>;
+    resourceTemplates?: Record<string, unknown>;
+    experimental?: Record<string, unknown>;
   };
   serverInfo: {
     name: string;

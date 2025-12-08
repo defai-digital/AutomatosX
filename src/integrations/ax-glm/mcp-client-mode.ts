@@ -44,23 +44,85 @@ interface GlmMcpConfig {
 }
 
 /**
- * Load MCP config from .ax-glm/mcp-config.json
+ * Claude Code format .mcp.json structure
+ * v12.3.0: New format created by ax setup
+ */
+interface ClaudeCodeMcpJson {
+  mcpServers: {
+    [key: string]: {
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+    };
+  };
+}
+
+/**
+ * Load MCP config from .ax-glm/.mcp.json (v12.3.0+) or .ax-glm/mcp-config.json (legacy)
+ *
+ * Priority order:
+ * 1. .ax-glm/.mcp.json (Claude Code format - recommended, created by ax setup v12.3.0+)
+ * 2. .ax-glm/mcp-config.json (legacy format)
  */
 function loadGlmMcpConfig(): GlmMcpConfig | null {
-  const configPaths = [
+  // v12.3.0: First try Claude Code format (.mcp.json)
+  const claudeCodeConfigPaths = [
+    join(process.cwd(), '.ax-glm', '.mcp.json'),
+    join(process.env.HOME || '', '.ax-glm', '.mcp.json')
+  ];
+
+  for (const configPath of claudeCodeConfigPaths) {
+    if (existsSync(configPath)) {
+      try {
+        const content = readFileSync(configPath, 'utf-8');
+        const claudeConfig = JSON.parse(content) as ClaudeCodeMcpJson;
+
+        // Convert Claude Code format to GlmMcpConfig
+        const automatosxServer = claudeConfig.mcpServers?.['automatosx'];
+        if (automatosxServer) {
+          const config: GlmMcpConfig = {
+            mcp: {
+              enabled: true,
+              serverCommand: automatosxServer.command,
+              serverArgs: automatosxServer.args || ['mcp', 'server'],
+              autoConnect: true,
+              timeout: 30000
+            },
+            provider: {
+              name: 'glm',
+              apiKeyEnv: 'GLM_API_KEY',
+              defaultModel: 'glm-4'
+            },
+            integration: {
+              useMemory: true,
+              useAgentContext: true,
+              saveResponsesToMemory: true
+            }
+          };
+          logger.debug('[ax-glm MCP] Loaded Claude Code format config from', { path: configPath });
+          return config;
+        }
+      } catch (error) {
+        logger.warn('[ax-glm MCP] Failed to parse .mcp.json', { path: configPath, error: (error as Error).message });
+      }
+    }
+  }
+
+  // Fallback to legacy format (mcp-config.json)
+  const legacyConfigPaths = [
     join(process.cwd(), '.ax-glm', 'mcp-config.json'),
     join(process.env.HOME || '', '.ax-glm', 'mcp-config.json')
   ];
 
-  for (const configPath of configPaths) {
+  for (const configPath of legacyConfigPaths) {
     if (existsSync(configPath)) {
       try {
         const content = readFileSync(configPath, 'utf-8');
         const config = JSON.parse(content) as GlmMcpConfig;
-        logger.debug('[ax-glm MCP] Loaded config from', { path: configPath });
+        logger.debug('[ax-glm MCP] Loaded legacy config from', { path: configPath });
         return config;
       } catch (error) {
-        logger.warn('[ax-glm MCP] Failed to parse config', { path: configPath, error: (error as Error).message });
+        logger.warn('[ax-glm MCP] Failed to parse legacy config', { path: configPath, error: (error as Error).message });
       }
     }
   }

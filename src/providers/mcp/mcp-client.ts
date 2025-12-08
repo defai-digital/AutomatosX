@@ -249,7 +249,11 @@ export class McpClient extends EventEmitter {
     const params: McpInitializeParams = {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {
-        tools: {}
+        tools: {},
+        resources: {},
+        prompts: {},
+        resourceTemplates: {},
+        experimental: {}
       },
       clientInfo: {
         name: 'automatosx',

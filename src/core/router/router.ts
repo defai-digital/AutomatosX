@@ -164,6 +164,14 @@ export class Router {
   }
 
   /**
+   * Get the number of configured providers.
+   * @returns Number of providers registered with this router
+   */
+  get providerCount(): number {
+    return this.providers.length;
+  }
+
+  /**
    * Warm up provider availability caches immediately.
    * Phase 3 (v5.6.3): Eliminates cold-start latency on first request.
    *

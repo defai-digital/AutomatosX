@@ -1180,7 +1180,7 @@ Use this tool first to understand what AutomatosX offers.`,
               break;
             }
 
-            const contentLength = parseInt(contentLengthMatch[1], 10);
+            const contentLength = parseInt(contentLengthMatch[1]!, 10);
             const bodyStart = headerEnd + 4; // Skip \r\n\r\n
             const bodyEnd = bodyStart + contentLength;
 

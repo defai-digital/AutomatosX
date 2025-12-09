@@ -298,7 +298,7 @@ export class ProfileLoader {
 
         // Security: Use safe YAML parsing (default safe schema)
         // Note: js-yaml's load() already uses safe schema by default
-        const data = load(content) as any;
+        const data: unknown = load(content);
 
         // Validate and build profile (v4.10.0+: async for team inheritance)
         const profile = await this.buildProfile(data, name);
@@ -439,7 +439,7 @@ export class ProfileLoader {
               try {
                 const content = await readFile(profilePath, 'utf-8');
                 if (content.length > 100 * 1024) continue;
-                const data = load(content) as any;
+                const data: unknown = load(content);
                 profile = await this.buildProfile(data, profileName);
                 this.cache.set(profileName, profile);
                 break;
@@ -665,7 +665,7 @@ export class ProfileLoader {
       }
 
       // v4.9.0: canDelegate is deprecated and ignored
-      if ((orch as any).canDelegate !== undefined) {
+      if ('canDelegate' in orch && orch.canDelegate !== undefined) {
         logger.warn('orchestration.canDelegate is deprecated and ignored (v4.9.0+). All agents can delegate by default.', {
           agent: profile.name
         });

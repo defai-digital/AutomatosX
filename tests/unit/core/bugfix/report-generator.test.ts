@@ -316,14 +316,20 @@ describe('Report Generator', () => {
     it('should return path with markdown extension', () => {
       const path = getDefaultReportPath('/project', 'markdown');
 
-      expect(path).toContain('.automatosx/reports/bugfix-');
+      // Use platform-independent check (Windows uses \, Unix uses /)
+      expect(path).toContain('.automatosx');
+      expect(path).toContain('reports');
+      expect(path).toContain('bugfix-');
       expect(path.endsWith('.md')).toBe(true);
     });
 
     it('should return path with json extension', () => {
       const path = getDefaultReportPath('/project', 'json');
 
-      expect(path).toContain('.automatosx/reports/bugfix-');
+      // Use platform-independent check (Windows uses \, Unix uses /)
+      expect(path).toContain('.automatosx');
+      expect(path).toContain('reports');
+      expect(path).toContain('bugfix-');
       expect(path.endsWith('.json')).toBe(true);
     });
 

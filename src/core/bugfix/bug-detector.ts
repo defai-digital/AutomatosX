@@ -17,7 +17,7 @@
  */
 
 import { readFile, readdir, stat } from 'fs/promises';
-import { join, extname, relative } from 'path';
+import { join, extname, relative, isAbsolute } from 'path';
 import { randomUUID } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
 import type {
@@ -259,8 +259,9 @@ export class BugDetector {
 
     if (fileFilter && fileFilter.length > 0) {
       // Use provided file filter (git-aware scanning)
+      // BUG FIX: Use isAbsolute() instead of startsWith('/') for cross-platform support
       files = fileFilter
-        .map(f => f.startsWith('/') ? f : join(rootDir, f))
+        .map(f => isAbsolute(f) ? f : join(rootDir, f))
         .filter(f => {
           const ext = extname(f);
           return ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'].includes(ext);

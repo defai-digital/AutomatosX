@@ -126,13 +126,16 @@ describe('disposable', () => {
 
       disposable.testCreateInterval(callback, 10); // Short interval
 
-      await new Promise(resolve => setTimeout(resolve, 25));
-      expect(callback).toHaveBeenCalledTimes(2);
+      // Wait for at least 2 ticks - use longer wait and "at least" assertion
+      // to handle Windows timing variability
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const callCountBeforeDestroy = callback.mock.calls.length;
+      expect(callCountBeforeDestroy).toBeGreaterThanOrEqual(2);
 
       await disposable.destroy();
 
       await new Promise(resolve => setTimeout(resolve, 30));
-      expect(callback).toHaveBeenCalledTimes(2); // No more calls after destroy
+      expect(callback).toHaveBeenCalledTimes(callCountBeforeDestroy); // No more calls after destroy
     });
 
     it('should clean up timeouts created via createTimeout', async () => {

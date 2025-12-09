@@ -83,11 +83,12 @@ describe('safe-timers', () => {
 
       const cleanup = createSafeInterval(callback, 10);
 
-      // Wait for 2 ticks
-      await new Promise(resolve => setTimeout(resolve, 25));
+      // Wait for at least 2 ticks - use longer wait and "at least" assertion
+      // to handle Windows timing variability
+      await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(callback).toHaveBeenCalledTimes(2);
-      expect(results).toHaveLength(2);
+      expect(callback.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(results.length).toBeGreaterThanOrEqual(2);
       cleanup();
     });
 

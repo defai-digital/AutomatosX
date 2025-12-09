@@ -157,7 +157,9 @@ export interface ProviderConfig {
   enabled: boolean;
   priority: number;
   timeout: number;
-  command: string;
+  command?: string;  // v12.4.0: Optional for SDK-first providers
+  type?: 'cli' | 'sdk';  // v12.4.0: Provider type (cli or sdk)
+  description?: string;  // v12.4.0: Human-readable description
   model?: string;  // v12.0.0: Default model for SDK-first providers (glm, grok)
   healthCheck?: ProviderHealthCheckConfig;
   defaults?: ProviderDefaultsConfig;  // v5.0: Default model parameters

@@ -18,6 +18,7 @@ import { EventEmitter } from 'events';
 import { detectProjectRoot } from '../shared/validation/path-resolver.js';
 import type { ProviderLimitTrackingConfig } from '../types/config.js';
 import { Mutex } from 'async-mutex';
+import { AX_PATHS } from './validation-limits.js';
 
 /**
  * Provider limit state
@@ -117,7 +118,7 @@ export class ProviderLimitManager extends EventEmitter {
   /**
    * Get singleton instance
    */
-  static getInstance(stateDirectory: string = '.automatosx/state'): ProviderLimitManager {
+  static getInstance(stateDirectory: string = AX_PATHS.STATE): ProviderLimitManager {
     if (!ProviderLimitManager.instance) {
       ProviderLimitManager.instance = new ProviderLimitManager(stateDirectory);
     }
@@ -236,7 +237,10 @@ export class ProviderLimitManager extends EventEmitter {
     // Check if limit has expired
     if (now >= state.resetAtMs) {
       // Limit expired - clear it asynchronously (don't block)
-      void this.clearLimit(providerName, 'expired');
+      // BUG FIX: Add .catch() to prevent unhandled rejection if saveState() fails
+      void this.clearLimit(providerName, 'expired').catch(err => {
+        logger.warn('Failed to clear expired limit', { provider: providerName, error: (err as Error).message });
+      });
       return { isLimited: false };
     }
 
@@ -352,9 +356,11 @@ export class ProviderLimitManager extends EventEmitter {
       if (Date.now() >= this.manualOverride.expiresAtMs) {
         // Bug fix: Clear synchronously first to prevent race condition,
         // then persist state asynchronously
-        const expiredOverride = this.manualOverride;
+        // BUG FIX: Add .catch() to prevent unhandled rejection if saveState() fails
         this.manualOverride = undefined;
-        void this.clearManualOverride();
+        void this.clearManualOverride().catch(err => {
+          logger.warn('Failed to clear expired manual override', { error: (err as Error).message });
+        });
         return undefined;
       }
     }
@@ -541,11 +547,11 @@ export async function getProviderLimitManager(stateDirectory?: string): Promise<
   if (!stateDirectory) {
     // In test mode, use a simple relative path to avoid async I/O issues
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-      stateDirectory = '.automatosx/state';
+      stateDirectory = AX_PATHS.STATE;
     } else {
       // Resolve project root to avoid creating state files in CWD
       const projectRoot = await detectProjectRoot();
-      stateDirectory = path.join(projectRoot, '.automatosx', 'state');
+      stateDirectory = path.join(projectRoot, AX_PATHS.STATE);
     }
   }
   return ProviderLimitManager.getInstance(stateDirectory);

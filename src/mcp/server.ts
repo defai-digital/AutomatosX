@@ -247,17 +247,24 @@ export class McpServer {
     return [
       {
         name: 'run_agent',
-        description: 'Execute an AutomatosX agent with a specific task. Uses Smart Routing: returns context for same-provider calls, spawns cross-provider execution.',
+        description: `Execute an AutomatosX agent with a specific task.
+
+v12.5.1: Agent auto-selection - if agent is omitted, system automatically selects the best agent based on task keywords.
+Uses Smart Routing: returns context for same-provider calls, spawns cross-provider execution.
+
+Examples:
+- With agent: run_agent({ agent: "backend", task: "implement API" })
+- Auto-select: run_agent({ task: "fix bugs in the codebase" }) → selects "quality" agent`,
         inputSchema: {
           type: 'object',
           properties: {
-            agent: { type: 'string', description: 'The name of the agent to run (e.g., backend, Paris, Bob)' },
+            agent: { type: 'string', description: 'Optional: Agent name (e.g., backend, quality). If omitted, best agent is auto-selected based on task.' },
             task: { type: 'string', description: 'The task for the agent to perform' },
             provider: { type: 'string', description: 'Optional: Override the AI provider', enum: ['claude', 'gemini', 'openai'] },
             no_memory: { type: 'boolean', description: 'Optional: Skip memory injection', default: false },
             mode: { type: 'string', description: 'Optional: Execution mode - auto (default), context (always return context), execute (always spawn)', enum: ['auto', 'context', 'execute'], default: 'auto' }
           },
-          required: ['agent', 'task']
+          required: ['task']
         }
       },
       {
@@ -369,16 +376,18 @@ Use this tool first to understand what AutomatosX offers.`,
       // v10.5.0: Smart Routing - Explicit context retrieval
       {
         name: 'get_agent_context',
-        description: 'Get agent context without executing. Returns profile, relevant memory, and enhanced prompt for AI assistant to execute directly.',
+        description: `Get agent context without executing. Returns profile, relevant memory, and enhanced prompt for AI assistant to execute directly.
+
+v12.5.1: Agent auto-selection - if agent is omitted, system automatically selects the best agent based on task keywords.`,
         inputSchema: {
           type: 'object',
           properties: {
-            agent: { type: 'string', description: 'The name of the agent (e.g., backend, Paris, Bob)' },
+            agent: { type: 'string', description: 'Optional: Agent name (e.g., backend, quality). If omitted, best agent is auto-selected based on task.' },
             task: { type: 'string', description: 'The task description for context building' },
             includeMemory: { type: 'boolean', description: 'Include relevant memory entries (default: true)', default: true },
             maxMemoryResults: { type: 'number', description: 'Maximum memory entries to return (default: 5)', default: 5 }
           },
-          required: ['agent', 'task']
+          required: ['task']
         }
       },
       // v11.3.5: Task Engine tools

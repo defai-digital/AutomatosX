@@ -242,8 +242,10 @@ export interface McpSessionManagerConfig {
 }
 
 // run_agent (v10.5.0: Added mode for Smart Routing)
+// v12.5.1: Made agent optional - system auto-selects best agent based on task
 export interface RunAgentInput {
-  agent: string;
+  /** Agent name. If omitted, system auto-selects the best agent for the task. */
+  agent?: string;
   task: string;
   provider?: 'claude' | 'gemini' | 'openai';
   no_memory?: boolean;

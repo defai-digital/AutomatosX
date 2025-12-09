@@ -15,6 +15,7 @@ import type { ToolHandler, RunAgentInput, RunAgentOutput, McpSession } from '../
 import { AgentExecutor } from '../../agents/executor.js';
 import { ContextManager } from '../../agents/context-manager.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
+import { AgentSelector } from '../../agents/agent-selector.js';
 import { Router } from '../../core/router/router.js';
 import type { IMemoryManager } from '../../types/memory.js';
 import { logger } from '../../shared/logging/logger.js';
@@ -211,19 +212,41 @@ export function createRunAgentHandler(
   deps: RunAgentDependencies
 ): ToolHandler<RunAgentInput, RunAgentOutput> {
   return async (input: RunAgentInput, context?: { signal?: AbortSignal }): Promise<RunAgentOutput> => {
-    const { agent, task, provider, no_memory, mode = 'auto' } = input;
+    const { task, provider, no_memory, mode = 'auto' } = input;
+    let { agent } = input;
 
     if (context?.signal?.aborted) {
       throw new Error('Request was cancelled');
     }
 
-    // Validate inputs to prevent security issues
-    validateAgentName(agent);
+    // Validate task first
     validateStringParameter(task, 'task', {
       required: true,
       minLength: 1,
       maxLength: 10000
     });
+
+    // v12.5.1: Auto-select agent if not provided
+    let autoSelected = false;
+    if (!agent && deps.profileLoader) {
+      const selector = new AgentSelector(deps.profileLoader);
+      const selection = await selector.selectAgent(task);
+      agent = selection.agent;
+      autoSelected = true;
+      logger.info('[MCP] run_agent auto-selected agent', {
+        task: task.substring(0, 100),
+        selectedAgent: agent,
+        confidence: selection.confidence,
+        score: selection.score,
+        rationale: selection.rationale
+      });
+    }
+
+    // Validate agent name (now guaranteed to exist)
+    if (!agent) {
+      throw new Error('Agent name is required when profileLoader is not available');
+    }
+    validateAgentName(agent);
 
     // Map MCP provider name to actual provider name
     const actualProvider = mapMcpProviderToActual(provider);
@@ -235,6 +258,7 @@ export function createRunAgentHandler(
 
     logger.info('[MCP] run_agent called (Smart Routing v10.5.0)', {
       agent,
+      autoSelected,
       task: task.substring(0, 100),
       mcpProvider: provider,
       actualProvider,

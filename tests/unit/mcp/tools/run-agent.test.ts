@@ -37,19 +37,60 @@ describe('MCP Tool: run_agent', () => {
   });
 
   describe('Input Validation', () => {
-    it('should reject empty agent name', async () => {
+    it('should reject empty agent name when explicitly provided', async () => {
       const handler = createRunAgentHandler({
         contextManager: mockContextManager,
         executorConfig: {}
       });
 
+      // v12.5.1: Empty string agent is treated as "no agent provided"
+      // Since profileLoader is not available, it should throw
       const input: RunAgentInput = {
         agent: '',
         task: 'test task'
       };
 
-      await expect(handler(input)).rejects.toThrow(ValidationError);
-      await expect(handler(input)).rejects.toThrow('cannot be empty');
+      await expect(handler(input)).rejects.toThrow('Agent name is required when profileLoader is not available');
+    });
+
+    it('should auto-select agent when agent is omitted and profileLoader available', async () => {
+      const mockProfileLoader = {
+        listProfiles: vi.fn().mockResolvedValue(['backend', 'quality']),
+        loadProfile: vi.fn().mockImplementation((name: string) => Promise.resolve({
+          name,
+          displayName: name,
+          role: 'Test Role',
+          abilities: [],
+          selectionMetadata: {
+            primaryIntents: name === 'quality' ? ['fix bugs', 'code quality'] : ['implement'],
+            secondarySignals: []
+          }
+        }))
+      };
+
+      mockContextManager.createContext.mockResolvedValue({
+        agent: { name: 'quality' },
+        task: 'fix bugs'
+      });
+
+      mockExecute.mockResolvedValue({
+        response: {
+          content: 'Done',
+          tokensUsed: { prompt: 10, completion: 20, total: 30 }
+        }
+      });
+
+      const handler = createRunAgentHandler({
+        contextManager: mockContextManager,
+        executorConfig: {},
+        profileLoader: mockProfileLoader as any
+      });
+
+      // No agent provided - should auto-select
+      const result = await handler({ task: 'fix bugs in the codebase' });
+
+      // Should have auto-selected an agent (likely 'quality' based on keywords)
+      expect(result.agent).toBeDefined();
     });
 
     it('should reject invalid agent name with special characters', async () => {

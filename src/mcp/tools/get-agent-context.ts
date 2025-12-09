@@ -13,12 +13,14 @@
 
 import type { ToolHandler } from '../types.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
+import { AgentSelector } from '../../agents/agent-selector.js';
 import type { IMemoryManager } from '../../types/memory.js';
 import { logger } from '../../shared/logging/logger.js';
 import { validateAgentName, validateStringParameter } from '../utils/validation.js';
 
 export interface GetAgentContextInput {
-  agent: string;
+  /** Agent name. If omitted, system auto-selects the best agent for the task. */
+  agent?: string;
   task: string;
   includeMemory?: boolean;
   maxMemoryResults?: number;
@@ -54,24 +56,43 @@ export function createGetAgentContextHandler(
 ): ToolHandler<GetAgentContextInput, GetAgentContextOutput> {
   return async (input: GetAgentContextInput): Promise<GetAgentContextOutput> => {
     const {
-      agent,
       task,
       includeMemory = true,
       maxMemoryResults = 5
     } = input;
+    let { agent } = input;
 
     const startTime = Date.now();
 
-    // Validate inputs
-    validateAgentName(agent);
+    // Validate task first
     validateStringParameter(task, 'task', {
       required: true,
       minLength: 1,
       maxLength: 10000
     });
 
+    // v12.5.1: Auto-select agent if not provided
+    let autoSelected = false;
+    if (!agent) {
+      const selector = new AgentSelector(deps.profileLoader);
+      const selection = await selector.selectAgent(task);
+      agent = selection.agent;
+      autoSelected = true;
+      logger.info('[MCP] get_agent_context auto-selected agent', {
+        task: task.substring(0, 100),
+        selectedAgent: agent,
+        confidence: selection.confidence,
+        score: selection.score,
+        rationale: selection.rationale
+      });
+    }
+
+    // Validate agent name
+    validateAgentName(agent);
+
     logger.info('[MCP] get_agent_context called', {
       agent,
+      autoSelected,
       task: task.substring(0, 100),
       includeMemory,
       maxMemoryResults

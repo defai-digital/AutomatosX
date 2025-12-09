@@ -347,5 +347,5 @@
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "12.4.0"
+  "version": "12.4.1"
 }

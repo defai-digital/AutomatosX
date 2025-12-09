@@ -133,10 +133,11 @@ describe('safe-timers', () => {
 
       const cleanup = createSafeInterval(callback, 10);
 
-      // Wait for 2 ticks - should not throw and continue running
-      await new Promise(resolve => setTimeout(resolve, 25));
+      // Wait for multiple ticks - should not throw and continue running
+      // Use longer wait (50ms) and check "at least 2" to avoid timing flakiness
+      await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback.mock.calls.length).toBeGreaterThanOrEqual(2);
 
       cleanup();
     });

@@ -11,15 +11,12 @@ import chalk from 'chalk';
 import ora from 'ora';
 import {
   BugfixController,
-  createDefaultBugfixConfig,
   getChangedFiles,
   generateJsonOutput,
   writeReport,
   getDefaultReportPath,
   type BugFinding,
-  type FixAttempt,
   type BugfixConfig,
-  type BugfixResult,
   type BugSeverity,
   type BugType
 } from '../../core/bugfix/index.js';
@@ -93,6 +90,7 @@ function formatBugType(type: BugType): string {
 /**
  * Bugfix command implementation
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
   command: 'bugfix [check]',
   describe: 'Find and fix bugs in the codebase',

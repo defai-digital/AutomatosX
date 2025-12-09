@@ -78,6 +78,7 @@ function formatJSON(suggestions: SuggestionResult[]): string {
 /**
  * Command module
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const suggestCommand: CommandModule<{}, SuggestOptions> = {
   command: 'suggest <task>',
   describe: 'Suggest the best agent(s) for a task',

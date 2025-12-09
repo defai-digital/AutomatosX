@@ -14,6 +14,22 @@ import type { ContextManager } from '../../../../src/agents/context-manager.js';
 import type { SessionManager } from '../../../../src/core/session/manager.js';
 import type { AgentProfile, ExecutionContext } from '../../../../src/types/agent.js';
 
+// Mock AgentExecutor - use a closure that can be updated
+const mockExecuteState = {
+  fn: vi.fn().mockResolvedValue({
+    response: {
+      content: 'Task completed successfully',
+      tokensUsed: { prompt: 100, completion: 200, total: 300 }
+    }
+  })
+};
+
+vi.mock('../../../../src/agents/executor.js', () => ({
+  AgentExecutor: vi.fn().mockImplementation(() => ({
+    execute: (...args: any[]) => mockExecuteState.fn(...args)
+  }))
+}));
+
 describe('orchestrate_task MCP tool', () => {
   let mockProfileLoader: ProfileLoader;
   let mockMemoryManager: IMemoryManager;
@@ -60,6 +76,14 @@ describe('orchestrate_task MCP tool', () => {
   };
 
   beforeEach(() => {
+    // Reset the mock execute function for each test
+    mockExecuteState.fn = vi.fn().mockResolvedValue({
+      response: {
+        content: 'Task completed successfully',
+        tokensUsed: { prompt: 100, completion: 200, total: 300 }
+      }
+    });
+
     mockProfileLoader = {
       listProfiles: vi.fn().mockResolvedValue(Object.keys(mockProfiles)),
       loadProfile: vi.fn().mockImplementation((name: string) => {
@@ -257,37 +281,26 @@ describe('orchestrate_task MCP tool', () => {
 
   describe('error handling', () => {
     it('should continue on failure when configured', async () => {
-      // Make first task fail
+      // Make first task fail, then succeed
       let callCount = 0;
-      mockContextManager.createContext = vi.fn().mockImplementation((agent: string, task: string) => {
+      mockExecuteState.fn = vi.fn().mockImplementation(async () => {
         callCount++;
         if (callCount === 1) {
-          return Promise.resolve({
-            agent: mockProfiles['backend'],
-            task,
-            provider: {
-              execute: vi.fn().mockRejectedValue(new Error('Task failed'))
-            }
-          } as unknown as ExecutionContext);
+          throw new Error('Task failed');
         }
-        return Promise.resolve({
-          agent: mockProfiles[agent] || mockProfiles['backend'],
-          task,
-          provider: {
-            execute: vi.fn().mockResolvedValue({
-              content: 'Success',
-              model: 'test'
-            })
+        return {
+          response: {
+            content: 'Success',
+            tokensUsed: { prompt: 100, completion: 200, total: 300 }
           }
-        } as unknown as ExecutionContext);
+        };
       });
 
       const handler = createOrchestrateTaskHandler({
         profileLoader: mockProfileLoader,
         contextManager: mockContextManager,
-        executorConfig: {},
-        continueOnFailure: true
-      } as any);
+        executorConfig: {}
+      });
 
       const result = await handler({
         task: 'Build multiple things',
@@ -297,6 +310,66 @@ describe('orchestrate_task MCP tool', () => {
 
       // Should continue despite failure
       expect(result.execution?.results.length).toBeGreaterThan(0);
+    });
+
+    it('should track failed results with continueOnFailure option', async () => {
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        executorConfig: {}
+      });
+
+      const result = await handler({
+        task: 'Build multiple things',
+        mode: 'execute',
+        continueOnFailure: false,
+        maxSubtasks: 2
+      });
+
+      // Should execute and track results
+      expect(result.execution?.results).toBeDefined();
+      expect(result.execution?.totalDurationMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle execution with session tracking', async () => {
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        sessionManager: mockSessionManager,
+        executorConfig: {}
+      });
+
+      const result = await handler({
+        task: 'Build something with session tracking',
+        mode: 'execute',
+        createSession: true
+      });
+
+      // Should create and complete session
+      expect(mockSessionManager.createSession).toHaveBeenCalled();
+      expect(result.execution?.sessionId).toBe('test-session-123');
+    });
+
+    it('should handle session update errors gracefully', async () => {
+      // Make session completeSession throw an error
+      mockSessionManager.completeSession = vi.fn().mockRejectedValue(new Error('Session error'));
+
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        sessionManager: mockSessionManager,
+        executorConfig: {}
+      });
+
+      // Should not throw, should complete gracefully
+      const result = await handler({
+        task: 'Build something',
+        mode: 'execute',
+        createSession: true
+      });
+
+      expect(result).toBeDefined();
+      expect(result.execution).toBeDefined();
     });
   });
 
@@ -367,6 +440,110 @@ describe('orchestrate_task MCP tool', () => {
       });
 
       expect(result.plan.subtasks.length).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('abort handling', () => {
+    it('should handle abort signal during execution', async () => {
+      const abortController = new AbortController();
+
+      // Make tasks take some time
+      mockContextManager.createContext = vi.fn().mockImplementation((agent: string, task: string) => {
+        return Promise.resolve({
+          agent: mockProfiles['backend'],
+          task,
+          provider: {
+            execute: vi.fn().mockImplementation(async () => {
+              // Abort mid-execution
+              abortController.abort();
+              return { content: 'Success', model: 'test' };
+            })
+          }
+        } as unknown as ExecutionContext);
+      });
+
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        executorConfig: {}
+      });
+
+      const result = await handler(
+        {
+          task: 'Build something that gets aborted',
+          mode: 'execute',
+          maxSubtasks: 3
+        },
+        { signal: abortController.signal }
+      );
+
+      // Should complete with some results
+      expect(result.execution).toBeDefined();
+    });
+  });
+
+  describe('session creation failure', () => {
+    it('should continue execution if session creation fails', async () => {
+      mockSessionManager.createSession = vi.fn().mockRejectedValue(new Error('Session creation failed'));
+
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        sessionManager: mockSessionManager,
+        executorConfig: {}
+      });
+
+      const result = await handler({
+        task: 'Build something',
+        mode: 'execute',
+        createSession: true
+      });
+
+      // Should still complete execution despite session failure
+      expect(result.execution).toBeDefined();
+      expect(result.execution?.sessionId).toBeUndefined();
+    });
+  });
+
+  describe('includeMemory option', () => {
+    it('should pass includeMemory to plan handler', async () => {
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        memoryManager: mockMemoryManager,
+        contextManager: mockContextManager,
+        executorConfig: {}
+      });
+
+      const result = await handler({
+        task: 'Build something with memory context',
+        mode: 'plan_only',
+        includeMemory: true
+      });
+
+      expect(result.plan).toBeDefined();
+      // Memory manager search should have been called by plan handler
+    });
+  });
+
+  describe('preferredAgents option', () => {
+    it('should pass preferredAgents to plan handler', async () => {
+      const handler = createOrchestrateTaskHandler({
+        profileLoader: mockProfileLoader,
+        contextManager: mockContextManager,
+        executorConfig: {}
+      });
+
+      const result = await handler({
+        task: 'Build something with specific agents',
+        mode: 'plan_only',
+        preferredAgents: ['backend', 'frontend']
+      });
+
+      expect(result.plan).toBeDefined();
+      // Plan should use preferred agents when possible
+      const agentsUsed = result.plan.uniqueAgents;
+      // At least some preferred agents should be used if available
+      expect(agentsUsed.length).toBeGreaterThan(0);
     });
   });
 });

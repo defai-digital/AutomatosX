@@ -15,6 +15,7 @@ interface ShowOptions {
   verbose?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const showCommand: CommandModule<{}, ShowOptions> = {
   command: 'show',
   describe: 'Show current configuration',

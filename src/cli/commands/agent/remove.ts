@@ -17,6 +17,7 @@ interface RemoveOptions {
   confirm?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const removeCommand: CommandModule<{}, RemoveOptions> = {
   command: 'remove <agent>',
   describe: 'Remove an agent',

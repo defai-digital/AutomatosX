@@ -4,7 +4,7 @@
  */
 
 import { access } from 'fs/promises';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 import { constants } from 'fs';
 import { existsSync } from 'fs';
 import { AX_PATHS } from '../../../core/validation-limits.js';

@@ -30,6 +30,7 @@ interface CreateOptions {
   interactive?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const createCommand: CommandModule<{}, CreateOptions> = {
   command: 'create <agent>',
   describe: 'Create a new agent from template',

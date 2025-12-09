@@ -10,7 +10,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import {
   RefactorController,
-  createDefaultRefactorConfig,
   type RefactorFinding,
   type RefactorResult,
   type RefactorSeverity,

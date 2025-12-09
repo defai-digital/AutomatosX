@@ -18,6 +18,7 @@ interface ResetOptions {
   confirm?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const resetCommand: CommandModule<{}, ResetOptions> = {
   command: 'reset',
   describe: 'Reset configuration to defaults',

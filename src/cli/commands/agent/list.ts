@@ -13,6 +13,7 @@ interface ListOptions {
   byTeam?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const listCommand: CommandModule<{}, ListOptions> = {
   command: 'list',
   describe: 'List all agents',

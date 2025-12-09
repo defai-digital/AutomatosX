@@ -33,6 +33,7 @@ interface CodexAgentsMdShowArgs {
 
 // ========== AGENTS.md Generate Subcommand ==========
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const agentsMdGenerateCommand: CommandModule<{}, CodexAgentsMdGenerateArgs> = {
   command: 'generate',
   describe: 'Generate AGENTS.md file for project',
@@ -76,6 +77,7 @@ const agentsMdGenerateCommand: CommandModule<{}, CodexAgentsMdGenerateArgs> = {
 
 // ========== AGENTS.md Validate Subcommand ==========
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const agentsMdValidateCommand: CommandModule<{}, CodexAgentsMdValidateArgs> = {
   command: 'validate',
   describe: 'Validate existing AGENTS.md file',
@@ -129,6 +131,7 @@ const agentsMdValidateCommand: CommandModule<{}, CodexAgentsMdValidateArgs> = {
 
 // ========== AGENTS.md Show Subcommand ==========
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const agentsMdShowCommand: CommandModule<{}, CodexAgentsMdShowArgs> = {
   command: 'show',
   describe: 'Display AGENTS.md content',

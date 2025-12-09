@@ -13,6 +13,7 @@ interface ShowOptions {
   agent: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const showCommand: CommandModule<{}, ShowOptions> = {
   command: 'show <agent>',
   describe: 'Show agent details',

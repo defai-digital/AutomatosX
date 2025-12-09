@@ -18,6 +18,7 @@ interface SetOptions {
   verbose?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const setCommand: CommandModule<{}, SetOptions> = {
   command: 'set <key> <value>',
   describe: 'Set configuration value',

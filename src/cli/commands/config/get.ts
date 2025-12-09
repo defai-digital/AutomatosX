@@ -15,6 +15,7 @@ interface GetOptions {
   verbose?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const getCommand: CommandModule<{}, GetOptions> = {
   command: 'get <key>',
   describe: 'Get configuration value',

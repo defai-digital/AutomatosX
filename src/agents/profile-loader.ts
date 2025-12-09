@@ -22,7 +22,7 @@ import {
   markCacheMiss,
   PerformanceTimer
 } from '../shared/profiling/performance-markers.js';
-import { safeValidateAgentProfile, validateAgentProfileFromYAML } from './agent-schemas.js';
+import { safeValidateAgentProfile } from './agent-schemas.js';
 import { getPackageRoot } from '../shared/helpers/package-root.js';
 
 /**
@@ -349,7 +349,7 @@ export class ProfileLoader {
         .map(file => basename(file, extname(file)));
 
       profiles.forEach(p => profileSet.add(p));
-    } catch (error) {
+    } catch (_error) {
       // Fallback directory doesn't exist - this is OK
       logger.debug('Fallback profiles directory not found', {
         dir: this.fallbackProfilesDir
@@ -697,7 +697,7 @@ export class ProfileLoader {
    * Protected by mutex to prevent race conditions
    */
   async clearCache(): Promise<void> {
-    await this.initMutex.runExclusive(async () => {
+    await this.initMutex.runExclusive(() => {
       this.cache.clear();
       this.displayNameMap.clear();
       this.mapInitialized = false;

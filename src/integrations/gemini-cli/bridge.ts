@@ -274,7 +274,7 @@ export class GeminiCLIBridge {
         if (isAbsolute(resolvedCommand)) {
           try {
             await accessAsync(resolvedCommand, constants.X_OK);
-          } catch (error) {
+          } catch (_error) {
             throw new GeminiCLIError(
               GeminiCLIErrorType.VALIDATION_ERROR,
               `Command not executable: ${resolvedCommand}`,

@@ -13,7 +13,7 @@ import type {
   ContextOptions
 } from '../types/agent.js';
 import type { Provider } from '../types/provider.js';
-import type { MemoryEntry } from '../types/memory.js';
+// MemoryEntry type imported via IMemoryManager
 import type { OrchestrationMetadata, Session } from '../types/orchestration.js';
 import { ProfileLoader } from './profile-loader.js';
 import { AbilitiesManager } from './abilities-manager.js';
@@ -24,7 +24,7 @@ import { Router } from '../core/router/router.js';
 import { PathResolver } from '../shared/validation/path-resolver.js';
 import { ProjectContextLoader } from '../core/project-context.js';
 import { logger } from '../shared/logging/logger.js';
-import { PathError, ProviderError } from '../shared/errors/errors.js';
+import { ProviderError } from '../shared/errors/errors.js';
 import {
   ComponentType,
   LifecycleState,
@@ -691,12 +691,14 @@ export class ContextManager {
    * Cleanup context
    *
    * v5.2: No cleanup needed - agent workspaces no longer created
+   * Note: Returns Promise for interface compatibility
    */
-  async cleanup(context: ExecutionContext): Promise<void> {
+  cleanup(context: ExecutionContext): Promise<void> {
     // v5.2: Agent-specific workspaces no longer created
     // All agents share automatosx/PRD and automatosx/tmp
     logger.debug('Context cleanup (no-op in v5.2)', {
       agent: context.agent.name
     });
+    return Promise.resolve();
   }
 }

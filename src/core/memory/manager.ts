@@ -26,8 +26,7 @@ import {
   MemorySearchQuerySchema,
   GetAllOptionsSchema,
   ExportOptionsSchema,
-  ImportOptionsSchema,
-  MemoryManagerConfigSchema
+  ImportOptionsSchema
 } from './schemas.js';
 import { MemoryCleanupStrategies } from './cleanup-strategies.js';
 

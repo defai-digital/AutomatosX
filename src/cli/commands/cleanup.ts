@@ -257,7 +257,7 @@ async function findProcesses(processName: string, verbose: boolean): Promise<Pro
         }
       }
     }
-  } catch (error) {
+  } catch (_error) {
     // Process not found or no matches
     if (verbose) {
       logger.debug(`No ${processName} processes found`);

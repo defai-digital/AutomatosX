@@ -13,7 +13,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { mkdir, writeFile } from 'fs/promises';
+import { writeFile } from 'fs/promises';
 import { logger } from '../shared/logging/logger.js';
 import type { MCPRegistryEntry, MCPDiscoveryResult, KNOWN_MCP_SERVERS } from './types-common.js';
 

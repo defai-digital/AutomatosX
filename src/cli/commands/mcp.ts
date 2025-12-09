@@ -20,7 +20,6 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { McpServer } from '../../mcp/server.js';
 import { logger } from '../../shared/logging/logger.js';
-import { YamlConfigLoader } from '../../core/config-loaders/yaml-config-loader.js';
 import { getDefaultGeminiMCPManager } from '../../integrations/gemini-cli/mcp-manager.js';
 // Note: Claude Code and Codex MCP managers not used here - status/health/tools only check Gemini MCP
 // For Claude Code MCP, use: ax mcp server (starts AutomatosX as MCP server for Claude Code)

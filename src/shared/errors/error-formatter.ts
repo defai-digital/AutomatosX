@@ -9,7 +9,6 @@
  */
 
 import chalk from 'chalk';
-import type { BaseError } from './errors.js';
 import { toBaseError } from './errors.js';
 
 export interface FormatOptions {

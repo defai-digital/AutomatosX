@@ -8,7 +8,6 @@ import { resolve, join } from 'path';
 import { constants } from 'fs';
 import chalk from 'chalk';
 import { DEFAULT_CONFIG } from '../../types/config.js';
-import type { AutomatosXConfig } from '../../types/config.js';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
 import { PromptHelper } from '../../shared/helpers/prompt-helper.js';

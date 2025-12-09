@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../../shared/logging/logger.js';
+import { TIMEOUTS } from '../validation-limits.js';
 
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
@@ -31,9 +32,9 @@ export interface CircuitStats {
 
 const DEFAULT_CONFIG: Required<CircuitBreakerConfig> = {
   failureThreshold: 3,
-  cooldownMs: 60000, // 1 minute
+  cooldownMs: TIMEOUTS.CIRCUIT_BREAKER_RECOVERY,
   successThreshold: 2,
-  failureWindowMs: 300000 // v11.1.0: 5 minutes - failures outside this window don't count
+  failureWindowMs: TIMEOUTS.CIRCUIT_BREAKER_WINDOW
 };
 
 /**

@@ -154,7 +154,6 @@ export class ConfigManager {
     }
 
     // Update current configuration
-    const oldConfig = this.currentConfig;
     this.currentConfig = newConfig;
 
     // Notify handlers

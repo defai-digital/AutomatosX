@@ -14,7 +14,7 @@
  */
 
 import { logger } from '../shared/logging/logger.js';
-import type { MCPServerStatus, MCPHealthCheckResult } from './types-common.js';
+import type { MCPHealthCheckResult } from './types-common.js';
 
 /**
  * Server Metrics

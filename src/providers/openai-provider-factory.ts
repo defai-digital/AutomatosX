@@ -18,6 +18,7 @@ import { OpenAIProvider } from './openai-provider.js';
 // These were imported but never used since v8.3.0 removed SDK mode support.
 // Previously: getModeWithAutoResolution, shouldShowWizard, showModeWizard, detectEnvironment
 import { logger } from '../shared/logging/logger.js';
+import { TIMEOUTS } from '../core/validation-limits.js';
 
 /**
  * Create OpenAI provider instance synchronously based on integration mode
@@ -124,7 +125,7 @@ export async function isCLIModeAvailable(): Promise<boolean> {
     execSync('codex --version', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 3000
+      timeout: TIMEOUTS.QUICK_COMMAND
     });
     return true;
   } catch {

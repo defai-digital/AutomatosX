@@ -324,7 +324,7 @@ export class AgentSelector {
   /**
    * Create a fallback result when no agents are available
    */
-  private async createFallbackResult(task: string): Promise<AgentSelectionResult> {
+  private async createFallbackResult(_task: string): Promise<AgentSelectionResult> {
     // Try to load standard agent profile
     try {
       const profile = await this.profileLoader.loadProfile(FALLBACK_AGENT);

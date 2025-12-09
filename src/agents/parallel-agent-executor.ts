@@ -104,7 +104,7 @@ export class ParallelAgentExecutor {
     }
 
     // Execute level by level
-    const results = new Map<string, any>();
+    const results = new Map<string, DelegationResult>();
     const continueOnFailure = options.continueOnFailure ?? true;
 
     try {
@@ -190,9 +190,9 @@ export class ParallelAgentExecutor {
     graph: DependencyGraph,
     context: ExecutionContext,
     options: ParallelExecutionOptions,
-    results: Map<string, any>,
+    results: Map<string, DelegationResult>,
     timeline: TimelineEntry[],
-    executionStartTime: number
+    _executionStartTime: number
   ): Promise<void> {
     logger.info('Executing batch in parallel', { agents: batch });
 
@@ -262,7 +262,7 @@ export class ParallelAgentExecutor {
     graph: DependencyGraph,
     context: ExecutionContext,
     options: ParallelExecutionOptions,
-    results: Map<string, any>,
+    results: Map<string, DelegationResult>,
     timeline: TimelineEntry[],
     executionStartTime: number
   ): Promise<void> {
@@ -320,7 +320,7 @@ export class ParallelAgentExecutor {
     context: ExecutionContext,
     options: ParallelExecutionOptions,
     timeline: TimelineEntry[]
-  ): Promise<any> {
+  ): Promise<DelegationResult> {
     const startTime = Date.now();
     const agentName = node.agentName;
 
@@ -426,7 +426,7 @@ export class ParallelAgentExecutor {
   /**
    * Check if all dependencies have completed successfully
    */
-  private checkDependencies(node: AgentNode, results: Map<string, any>): boolean {
+  private checkDependencies(node: AgentNode, results: Map<string, DelegationResult>): boolean {
     for (const dep of node.dependencies) {
       const depResult = results.get(dep);
       if (!depResult || !depResult.success) {
@@ -491,7 +491,7 @@ export class ParallelAgentExecutor {
     batch: string[],
     graph: DependencyGraph,
     timeline: TimelineEntry[],
-    executionStartTime: number
+    _executionStartTime: number
   ): void {
     const now = Date.now();
 

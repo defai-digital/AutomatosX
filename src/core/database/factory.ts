@@ -10,12 +10,13 @@ import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { logger } from '../../shared/logging/logger.js';
+import { DATABASE } from '../validation-limits.js';
 
 export interface DbConnectionOptions {
   /** Open database in read-only mode (default: false) */
   readonly?: boolean;
 
-  /** Busy timeout in milliseconds (default: 5000) */
+  /** Busy timeout in milliseconds (default: DATABASE.BUSY_TIMEOUT) */
   busyTimeout?: number;
 
   /** Enable verbose logging of SQL statements (default: false) */
@@ -30,7 +31,7 @@ export interface DbConnectionOptions {
 
 const DEFAULT_OPTIONS: Required<DbConnectionOptions> = {
   readonly: false,
-  busyTimeout: 5000,
+  busyTimeout: DATABASE.BUSY_TIMEOUT,
   verbose: false,
   enableWal: true,
   createDir: true

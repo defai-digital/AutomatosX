@@ -11,8 +11,7 @@ import { createHash } from 'crypto';
 import type {
   CheckpointData,
   RunMetadata,
-  StageStates,
-  ExecutionMode,
+  StageStates
 } from '../../types/stage-execution.js';
 
 /**

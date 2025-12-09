@@ -8,7 +8,7 @@
 
 import { readdir, copyFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import type { CommandInfo, CommandDiscoveryStats, ValidationResult } from './types.js';
+import type { CommandInfo, CommandDiscoveryStats } from './types.js';
 import { GeminiCLIError, GeminiCLIErrorType } from './types.js';
 import {
   getUserCommandsPath,

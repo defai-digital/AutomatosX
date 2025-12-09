@@ -52,7 +52,7 @@ export const listCommand: CommandModule<{}, ListOptions> = {
         agentNames.map(async name => {
           try {
             return await profileLoader.loadProfile(name);
-          } catch (error) {
+          } catch (_error) {
             return null;
           }
         })

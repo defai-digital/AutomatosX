@@ -156,7 +156,7 @@ export class TTLCache<T> {
    * @param value Value to cache
    * @param customTTL Optional custom TTL for this entry (ms)
    */
-  set(key: string, value: T, customTTL?: number): void {
+  set(key: string, value: T, _customTTL?: number): void {
     const size = this.estimateSize(value);
 
     // Check size limit

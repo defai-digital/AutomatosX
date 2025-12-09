@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  type WorkflowMode,
   WorkflowModeSchema,
   READ_ONLY_TOOLS,
   WRITE_TOOLS,

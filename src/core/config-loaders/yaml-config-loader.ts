@@ -23,6 +23,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { ConfigError, ErrorCode } from '../../shared/errors/errors.js';
+import { TIMEOUTS } from '../validation-limits.js';
 
 /**
  * YAML Provider Configuration Schema
@@ -151,7 +152,7 @@ export class YamlConfigLoader {
   private cache: Map<string, CacheEntry> = new Map();
 
   /** Cache TTL in milliseconds (default: 60s) */
-  private cacheTTL: number = 60000;
+  private cacheTTL: number = TIMEOUTS.CONFIG_CACHE_TTL;
 
   /** Singleton instance */
   private static instance: YamlConfigLoader | null = null;

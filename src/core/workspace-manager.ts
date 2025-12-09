@@ -22,7 +22,6 @@ import {
   resolvePath,
   dirname,
   getRelativePath,
-  isWindows,
   isAbsolutePath
 } from '../shared/validation/path-utils.js';
 import { logger } from '../shared/logging/logger.js';

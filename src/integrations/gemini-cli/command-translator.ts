@@ -9,7 +9,6 @@
 
 import { readFile, writeFile, readdir, mkdir, realpath, stat } from 'fs/promises';
 import { join, basename, extname, dirname, relative, sep } from 'path';
-import { homedir } from 'os';
 import { parse as parseToml, stringify as stringifyToml } from '@iarna/toml';
 import type { TomlCommand, CommandInfo, TranslationOptions } from './types.js';
 import { GeminiCLIError, GeminiCLIErrorType } from './types.js';

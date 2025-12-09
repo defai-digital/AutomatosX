@@ -18,6 +18,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { logger } from '../shared/logging/logger.js';
+import { TIMEOUTS } from './validation-limits.js';
 
 const execAsync = promisify(exec);
 
@@ -183,7 +184,7 @@ export class ProviderDetector {
       const whichCommand = process.platform === 'win32' ? 'where' : 'which';
 
       await execAsync(`${whichCommand} ${command}`, {
-        timeout: 5000, // 5 second timeout
+        timeout: TIMEOUTS.PROVIDER_DETECTION,
         windowsHide: true // Hide command window on Windows
       });
 
@@ -199,6 +200,7 @@ export class ProviderDetector {
    * Get version information for a provider
    *
    * Attempts to get the version string from the provider's CLI.
+   * For SDK-first providers (GLM, Grok), returns SDK info with API key status.
    * This helps users understand which version they have installed.
    *
    * @param provider - Provider name
@@ -212,12 +214,21 @@ export class ProviderDetector {
    * ```
    */
   async getVersion(provider: keyof DetectedProviders): Promise<string | undefined> {
+    // Handle SDK-first providers (GLM, Grok) - no CLI to check
+    if (provider === 'glm') {
+      return this.getGLMVersion();
+    }
+
+    if (provider === 'grok') {
+      return this.getGrokVersion();
+    }
+
     const command = ProviderDetector.PROVIDER_COMMANDS[provider];
 
     try {
       // Try --version flag (most common)
       const { stdout } = await execAsync(`${command} --version`, {
-        timeout: 5000,
+        timeout: TIMEOUTS.PROVIDER_DETECTION,
         windowsHide: true
       });
 
@@ -230,6 +241,38 @@ export class ProviderDetector {
       logger.debug(`Could not detect version for ${provider}`);
       return undefined;
     }
+  }
+
+  /**
+   * Get GLM provider version info (SDK-first provider)
+   *
+   * GLM is an SDK-first provider using the OpenAI-compatible API.
+   * Returns SDK info with API key status and default model.
+   */
+  private getGLMVersion(): string {
+    const apiKey = process.env.ZAI_API_KEY || process.env.ZHIPU_API_KEY || process.env.GLM_API_KEY;
+
+    if (apiKey) {
+      return 'SDK v1 (glm-4, API ready)';
+    }
+
+    return 'SDK v1 (glm-4, API key not set)';
+  }
+
+  /**
+   * Get Grok provider version info (SDK-first provider)
+   *
+   * Grok is an SDK-first provider using the OpenAI-compatible API.
+   * Returns SDK info with API key status and default model.
+   */
+  private getGrokVersion(): string {
+    const apiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+
+    if (apiKey) {
+      return 'SDK v1 (grok-3, API ready)';
+    }
+
+    return 'SDK v1 (grok-3, API key not set)';
   }
 
   /**

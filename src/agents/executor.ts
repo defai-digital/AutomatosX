@@ -96,6 +96,26 @@ export interface ExecutionResult {
 }
 
 /**
+ * Enhanced error with execution context (v12.4.0)
+ * Used for providing detailed error information
+ */
+interface EnhancedError extends Error {
+  context?: {
+    agent: string;
+    provider: string;
+    model?: string;
+    task: string;
+  };
+}
+
+/**
+ * Type guard to check if value is an Error-like object
+ */
+function isErrorLike(error: unknown): error is { message?: string; code?: string } {
+  return typeof error === 'object' && error !== null;
+}
+
+/**
  * Agent Executor Configuration
  */
 export interface AgentExecutorConfig {
@@ -282,8 +302,8 @@ export class AgentExecutor {
         }
 
         return await this.executeInternal(context, options);
-      } catch (error: any) {
-        lastError = error;
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
 
         // Check if error is retryable
         const isRetryable = this.isRetryableError(error, retryableErrors);
@@ -299,7 +319,8 @@ export class AgentExecutor {
         );
 
         if (verbose) {
-          console.log(chalk.yellow(`Retryable error occurred: ${error.message}`));
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.log(chalk.yellow(`Retryable error occurred: ${errorMessage}`));
           console.log(chalk.gray(`Waiting ${delay}ms before retry...`));
         }
 
@@ -322,7 +343,7 @@ export class AgentExecutor {
     options: ExecutionOptions
   ): Promise<ExecutionResult> {
     const timeout = options.timeout!;
-    const { verbose = false } = options;
+    const { verbose: _verbose = false } = options;
 
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -1096,12 +1117,12 @@ export class AgentExecutor {
   /**
    * Enhance error with context-specific details
    */
-  private enhanceError(error: Error, context: ExecutionContext): Error {
-    const enhanced = new Error(error.message);
+  private enhanceError(error: Error, context: ExecutionContext): EnhancedError {
+    const enhanced: EnhancedError = new Error(error.message);
     enhanced.stack = error.stack;
 
     // Add context to error
-    (enhanced as any).context = {
+    enhanced.context = {
       agent: context.agent.name,
       provider: context.provider.name,
       model: context.agent.model,
@@ -1151,10 +1172,16 @@ export class AgentExecutor {
   /**
    * Check if error is retryable
    */
-  private isRetryableError(error: any, retryableErrors?: string[]): boolean {
+  private isRetryableError(error: unknown, retryableErrors?: string[]): boolean {
     const patterns = retryableErrors || this.defaultRetryConfig.retryableErrors!;
 
-    const errorString = (error.message || error.code || '').toLowerCase();
+    // Extract error string from various error types
+    let errorString = '';
+    if (isErrorLike(error)) {
+      errorString = (error.message || error.code || '').toLowerCase();
+    } else if (typeof error === 'string') {
+      errorString = error.toLowerCase();
+    }
 
     return patterns.some(pattern =>
       errorString.includes(pattern.toLowerCase())
@@ -1419,7 +1446,7 @@ export class AgentExecutor {
 
     } catch (error) {
       const endTime = new Date();
-      const duration = endTime.getTime() - startTime.getTime();
+      const _duration = endTime.getTime() - startTime.getTime();
 
       // If it's already a DelegationError, re-throw it
       if (error instanceof DelegationError) {

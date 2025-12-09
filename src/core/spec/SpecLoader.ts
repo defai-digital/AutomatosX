@@ -270,9 +270,9 @@ export class SpecLoader {
 
       if (match) {
         // Extract fields based on regex format
-        // Match format: [, checked, id, fullOps, quotedOps, ...]
-        // fullOps is either "..." or { (JSON indicator)
-        const [, checked, id, fullOps, quotedOps] = match;
+        // Match format: [, checked, id, _fullOps, quotedOps, ...]
+        // _fullOps is either "..." or { (JSON indicator)
+        const [, checked, id, _fullOps, quotedOps] = match;
 
         // Determine ops value
         let ops: string;

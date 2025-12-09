@@ -16,13 +16,16 @@ import { BaseProvider } from '../../providers/base-provider.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 // v12.0.0: Removed AxCliProvider (deprecated)
+// v12.4.0: Added GLM and Grok SDK-first providers
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
+import { GLMProvider } from '../../providers/glm-provider.js';
+import { GrokProvider } from '../../providers/grok-provider.js';
 import { loadConfig } from '../../core/config/loader.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import { logger } from '../../shared/logging/logger.js';
 import chalk from 'chalk';
-import { existsSync, statSync } from 'fs';
+import { existsSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
 import { join, basename } from 'path';
 import os from 'os';
@@ -104,7 +107,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
           enabled: true,
           priority: providerConfigs['claude-code'].priority,
           timeout: providerConfigs['claude-code'].timeout,
-          command: providerConfigs['claude-code'].command
+          command: providerConfigs['claude-code'].command || 'claude'
         }));
       }
 
@@ -114,7 +117,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
           enabled: true,
           priority: providerConfigs['gemini-cli'].priority,
           timeout: providerConfigs['gemini-cli'].timeout,
-          command: providerConfigs['gemini-cli'].command
+          command: providerConfigs['gemini-cli'].command || 'gemini'
         }));
       }
 
@@ -141,7 +144,29 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       }
 
       // v12.0.0: ax-cli provider removed (deprecated)
-      // GLM and Grok are now SDK-first providers with their own implementations
+      // v12.4.0: GLM and Grok SDK-first providers now properly initialized
+
+      if (providerConfigs['glm']?.enabled) {
+        const glmConfig = providerConfigs['glm'];
+        providers.push(new GLMProvider({
+          name: 'glm',
+          enabled: true,
+          priority: glmConfig.priority,
+          timeout: glmConfig.timeout,
+          mode: 'sdk'
+        }));
+      }
+
+      if (providerConfigs['grok']?.enabled) {
+        const grokConfig = providerConfigs['grok'];
+        providers.push(new GrokProvider({
+          name: 'grok',
+          enabled: true,
+          priority: grokConfig.priority,
+          timeout: grokConfig.timeout,
+          mode: 'sdk'
+        }));
+      }
 
       // v5.6.25: Optimize status command - avoid Router initialization
       // Status command only needs to check provider availability, not full Router functionality

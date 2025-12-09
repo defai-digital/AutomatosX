@@ -14,6 +14,7 @@ import { join } from 'path';
 import type { AgentStatus } from '../shared/helpers/agent-status-writer.js';
 import { logger } from '../shared/logging/logger.js';
 import chalk from 'chalk';
+import { AX_PATHS } from './validation-limits.js';
 
 /**
  * Agent completion callback
@@ -46,7 +47,7 @@ export class BackgroundAgentMonitor {
    */
   constructor(projectDir: string = process.cwd()) {
     this.projectDir = projectDir;
-    this.statusDir = join(projectDir, '.automatosx', 'status');
+    this.statusDir = join(projectDir, AX_PATHS.STATUS);
   }
 
   /**

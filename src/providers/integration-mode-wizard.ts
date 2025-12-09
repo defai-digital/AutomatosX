@@ -15,6 +15,7 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
 import type { IntegrationMode } from '../types/config.js';
+import { TIMEOUTS } from '../core/validation-limits.js';
 
 export interface EnvironmentDetection {
   hasCodexCLI: boolean;
@@ -94,7 +95,7 @@ async function checkCodexCLI(): Promise<boolean> {
     execSync('codex --version', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 3000
+      timeout: TIMEOUTS.QUICK_COMMAND
     });
     return true;
   } catch {

@@ -18,12 +18,12 @@ import Database from 'better-sqlite3';
 import type {
   UsageEntry,
   UsageTrends,
-  ProviderLimits,
   PredictionResult,
   PredictiveLimitConfig
 } from '../../types/usage.js';
 import { logger } from '../../shared/logging/logger.js';
 import { DatabaseFactory } from '../database/factory.js';
+import { AX_PATHS } from '../validation-limits.js';
 
 /**
  * Predictive Limit Manager
@@ -38,7 +38,7 @@ export class PredictiveLimitManager {
 
   constructor(config: PredictiveLimitConfig) {
     this.config = config;
-    this.dbPath = '.automatosx/usage/usage-tracker.db';  // Default path
+    this.dbPath = `${AX_PATHS.USAGE}/usage-tracker.db`;
 
     logger.debug('PredictiveLimitManager created', {
       enabled: config.enabled,
@@ -353,15 +353,9 @@ export class PredictiveLimitManager {
       const timeToExhaustion = prediction.prediction.timeToExhaustionHours;
       const trends = await this.getUsageTrends(provider, this.config.trackingWindow);
 
-      // Apply custom threshold
-      if (timeToExhaustion < rotationThreshold) {
-        return true;
-      }
-      // Also rotate if usage is increasing and approaching threshold
-      if (trends.trend === 'increasing' && timeToExhaustion < rotationThreshold * 3) {
-        return true;
-      }
-      return false;
+      // Apply custom threshold, or rotate if usage is increasing and approaching threshold
+      return timeToExhaustion < rotationThreshold ||
+        (trends.trend === 'increasing' && timeToExhaustion < rotationThreshold * 3);
     }
 
     // Use the prediction's built-in shouldRotate (based on config threshold)

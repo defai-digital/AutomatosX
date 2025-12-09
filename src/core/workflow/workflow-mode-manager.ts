@@ -12,8 +12,7 @@ import {
   type WorkflowMode,
   type WorkflowModeConfig,
   getWorkflowModeConfig,
-  isToolAllowedInMode,
-  WORKFLOW_MODE_CONFIGS
+  isToolAllowedInMode
 } from './workflow-mode.js';
 import {
   type EmbeddedInstruction,

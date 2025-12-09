@@ -50,7 +50,7 @@ export const removeCommand: CommandModule<{}, RemoveOptions> = {
       let resolvedName: string;
       try {
         resolvedName = await profileLoader.resolveAgentName(argv.agent);
-      } catch (error) {
+      } catch (_error) {
         console.log(chalk.red.bold(`\n✗ Agent not found: ${argv.agent}\n`));
 
         // Try to suggest similar agents

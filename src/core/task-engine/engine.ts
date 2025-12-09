@@ -27,7 +27,6 @@ import {
   type TaskResult,
   type TaskFilter,
   type TaskEngine as TaskEngineType,
-  type TaskMetrics,
   type LoopGuardConfig,
   type TaskStoreConfig,
   TaskEngineError,

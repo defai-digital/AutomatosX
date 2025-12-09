@@ -7,13 +7,13 @@
 
 import { join } from 'path';
 import Ajv, { type ValidateFunction } from 'ajv';
+import { AX_PATHS } from '../core/validation-limits.js';
 import addFormats from 'ajv-formats';
 import { Mutex } from 'async-mutex'; // BUG FIX (v9.0.1): Added for initialization mutex
 import { getVersion } from '../shared/helpers/version.js';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
-  JsonRpcError,
   McpInitializeRequest,
   McpInitializeResponse,
   McpToolListRequest,
@@ -396,46 +396,75 @@ Use this tool first to understand what AutomatosX offers.`,
 
     // Initialize TeamManager
     const teamManager = new TeamManager(
-      join(projectDir, '.automatosx', 'teams')
+      join(projectDir, AX_PATHS.TEAMS)
     );
 
     // Initialize ProfileLoader
     this.profileLoader = new ProfileLoader(
-      join(projectDir, '.automatosx', 'agents'),
+      join(projectDir, AX_PATHS.AGENTS),
       undefined,
       teamManager
     );
 
     // Initialize AbilitiesManager
     const abilitiesManager = new AbilitiesManager(
-      join(projectDir, '.automatosx', 'abilities')
+      join(projectDir, AX_PATHS.ABILITIES)
     );
 
     // Initialize MemoryManager
     this.memoryManager = new LazyMemoryManager({
-      dbPath: join(projectDir, '.automatosx', 'memory', 'memory.db')
+      dbPath: join(projectDir, AX_PATHS.MEMORY, 'memory.db')
     });
 
     // Initialize PathResolver
     this.pathResolver = new PathResolver({
       projectDir,
       workingDir: process.cwd(),
-      agentWorkspace: join(projectDir, '.automatosx', 'workspaces')
+      agentWorkspace: join(projectDir, AX_PATHS.WORKSPACES)
     });
 
     // Initialize Providers
     const providers = [];
     if (config.providers['claude-code']?.enabled) {
       const { ClaudeProvider } = await import('../providers/claude-provider.js');
-      providers.push(new ClaudeProvider({ ...config.providers['claude-code'], name: 'claude-code' }));
+      const claudeConfig = config.providers['claude-code'];
+      providers.push(new ClaudeProvider({ ...claudeConfig, name: 'claude-code', command: claudeConfig.command || 'claude' }));
     }
     if (config.providers['gemini-cli']?.enabled) {
       const { GeminiProvider } = await import('../providers/gemini-provider.js');
-      providers.push(new GeminiProvider({ ...config.providers['gemini-cli'], name: 'gemini-cli' }));
+      const geminiConfig = config.providers['gemini-cli'];
+      providers.push(new GeminiProvider({ ...geminiConfig, name: 'gemini-cli', command: geminiConfig.command || 'gemini' }));
     }
     if (config.providers['openai']?.enabled) {
         const { createOpenAIProviderSync } = await import('../providers/openai-provider-factory.js');
-        providers.push(createOpenAIProviderSync({ ...config.providers['openai'], name: 'openai' }, config.providers['openai'].integration));
+        const openaiConfig = config.providers['openai'];
+        providers.push(createOpenAIProviderSync({ ...openaiConfig, name: 'openai', command: openaiConfig.command || 'codex' }, openaiConfig.integration));
+    }
+
+    // v12.4.0: Initialize GLM provider (SDK-first)
+    if (config.providers['glm']?.enabled) {
+      const { GLMProvider } = await import('../providers/glm-provider.js');
+      const glmConfig = config.providers['glm'];
+      providers.push(new GLMProvider({
+        name: 'glm',
+        enabled: true,
+        priority: glmConfig.priority,
+        timeout: glmConfig.timeout,
+        mode: 'sdk'
+      }));
+    }
+
+    // v12.4.0: Initialize Grok provider (SDK-first)
+    if (config.providers['grok']?.enabled) {
+      const { GrokProvider } = await import('../providers/grok-provider.js');
+      const grokConfig = config.providers['grok'];
+      providers.push(new GrokProvider({
+        name: 'grok',
+        enabled: true,
+        priority: grokConfig.priority,
+        timeout: grokConfig.timeout,
+        mode: 'sdk'
+      }));
     }
 
     // Initialize Router
@@ -741,9 +770,11 @@ Use this tool first to understand what AutomatosX offers.`,
     });
 
     // v2: Negotiate protocol version (prefer client request if supported)
+    // FIX: Default to 2024-11-05 (most widely supported) when client doesn't specify
+    // Claude Code v2.0.61 only supports 2024-11-05, not 2025-11-25 or 2024-12-05
     const requestedProtocol = request.params?.protocolVersion;
-    const negotiated = MCP_SUPPORTED_VERSIONS.find(version => version === requestedProtocol) ?? MCP_SUPPORTED_VERSIONS[0];
-    this.negotiatedProtocolVersion = negotiated;
+    const negotiated = MCP_SUPPORTED_VERSIONS.find(version => version === requestedProtocol) ?? '2024-11-05';
+    this.negotiatedProtocolVersion = negotiated as SupportedMcpProtocolVersion;
 
     // OPTIMIZATION (v10.3.1): Fast handshake - no blocking initialization!
     // Services are initialized lazily on first tool call instead of during handshake.

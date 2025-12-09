@@ -12,6 +12,7 @@
 
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 import {
   type GrokSDKConfig,
   type GrokModel,
@@ -73,7 +74,7 @@ export class GrokSdkAdapter {
       apiKey: config.apiKey || process.env.XAI_API_KEY || '',
       baseUrl: config.baseUrl || GROK_DEFAULT_BASE_URL,
       model: config.model || GROK_DEFAULT_MODEL,
-      timeout: config.timeout || 120000
+      timeout: config.timeout || TIMEOUTS.PROVIDER_DEFAULT
     };
 
     logger.debug('[Grok SDK] Adapter created', {

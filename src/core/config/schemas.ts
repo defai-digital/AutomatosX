@@ -23,7 +23,7 @@ import { VALIDATION_LIMITS } from '../validation-limits.js';
  * Prevents command injection via provider names
  * v12.0.0: Removed 'ax-cli' (deprecated), added native 'glm' and 'grok' providers
  */
-const providerNameSchema = z.enum([
+export const providerNameSchema = z.enum([
   'claude',
   'claude-code',
   'gemini',
@@ -152,17 +152,39 @@ const limitTrackingConfigSchema = z.object({
   customResetMs: positiveIntSchema.optional()
 }).describe('Provider limit tracking configuration');
 
+/**
+ * Provider type for SDK-based providers
+ * v12.0.0: Added for GLM and Grok providers that use SDK instead of CLI
+ */
+const providerTypeSchema = z.enum(['cli', 'sdk', 'hybrid']).default('cli');
+
 const providerConfigSchema = z.object({
   enabled: z.boolean().default(true),
   priority: positiveIntSchema,
   timeout: timeoutSchema,
-  command: commandSchema,
+  type: providerTypeSchema.optional(),
+  command: commandSchema.optional(),  // Optional for SDK providers (glm, grok)
+  description: z.string().optional(),  // Provider description
+  model: z.string().optional(),  // Model name override
   healthCheck: healthCheckConfigSchema.optional(),
   circuitBreaker: circuitBreakerConfigSchema.optional(),
   processManagement: processManagementConfigSchema.optional(),
   versionDetection: versionDetectionConfigSchema.optional(),
   limitTracking: limitTrackingConfigSchema.optional()
-}).describe('Provider configuration');
+}).refine(
+  (data) => {
+    // CLI and hybrid providers require a command
+    // SDK providers don't need a command
+    if (data.type === 'sdk') {
+      return true;  // SDK providers don't need command
+    }
+    return data.command !== undefined;  // CLI/hybrid providers need command
+  },
+  {
+    message: 'CLI and hybrid providers require a command field',
+    path: ['command']
+  }
+).describe('Provider configuration');
 
 const providersConfigSchema = z.record(
   safeNameSchema,

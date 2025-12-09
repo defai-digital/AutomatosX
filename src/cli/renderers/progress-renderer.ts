@@ -173,7 +173,7 @@ export class ProgressRenderer {
   /**
    * Handle user prompt event
    */
-  private handleUserPrompt(event: ProgressEvent): void {
+  private handleUserPrompt(_event: ProgressEvent): void {
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;

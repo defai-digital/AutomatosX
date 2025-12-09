@@ -691,11 +691,12 @@ const validateCommand: CommandModule<Record<string, unknown>, ValidateOptions> =
       }
 
       if (argv.json) {
+        const hasErrors = issues.some(i => i.type === 'error');
         console.log(JSON.stringify({
-          valid: issues.filter(i => i.type === 'error').length === 0,
+          valid: !hasErrors,
           issues,
         }, null, 2));
-        process.exit(issues.filter(i => i.type === 'error').length > 0 ? 1 : 0);
+        process.exit(hasErrors ? 1 : 0);
         return;
       }
 

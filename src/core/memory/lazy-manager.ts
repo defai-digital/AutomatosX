@@ -204,7 +204,7 @@ export class LazyMemoryManager implements IMemoryManager {
   /**
    * Backup database to destination path (lazy initialization on first call)
    */
-  async backup(destPath: string, onProgress?: (progress: number) => void): Promise<void> {
+  async backup(destPath: string, _onProgress?: (progress: number) => void): Promise<void> {
     const manager = await this.ensureInitialized();
     // Note: MemoryManager.backup() doesn't accept onProgress, but interface requires it
     // We ignore onProgress for now (future enhancement)

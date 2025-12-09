@@ -155,11 +155,9 @@ export class TemplateEngine {
     variables: TemplateVariables
   ): string[] {
     const missing: string[] = [];
-    const regex = new RegExp(TemplateEngine.VARIABLE_REGEX, 'g');
 
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(template)) !== null) {
-      if (!match[1]) continue; // Skip if capture group is missing
+    for (const match of template.matchAll(TemplateEngine.VARIABLE_REGEX)) {
+      if (!match[1]) continue;
       const varName = match[1].trim();
       const hasDefault = match[2] !== undefined;
 
@@ -188,11 +186,9 @@ export class TemplateEngine {
    */
   extractVariables(template: string): string[] {
     const variables: string[] = [];
-    const regex = new RegExp(TemplateEngine.VARIABLE_REGEX, 'g');
 
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(template)) !== null) {
-      if (!match[1]) continue; // Skip if capture group is missing
+    for (const match of template.matchAll(TemplateEngine.VARIABLE_REGEX)) {
+      if (!match[1]) continue;
       const varName = match[1].trim();
       if (!variables.includes(varName)) {
         variables.push(varName);

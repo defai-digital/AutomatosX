@@ -139,7 +139,7 @@ export class DelegationParser {
     delegations.sort((a, b) => a.position - b.position);
 
     // Remove position field before returning
-    const result = delegations.map(({ position, ...rest }) => rest);
+    const result = delegations.map(({ position: _position, ...rest }) => rest);
 
     logger.info(`Parsed ${delegations.length} delegation(s)`, {
       fromAgent,

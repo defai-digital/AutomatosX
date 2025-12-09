@@ -9,7 +9,7 @@ import chalk from 'chalk';
 import { logger } from '../../shared/logging/logger.js';
 import { OrchestrationService } from '../../core/orchestration/orchestration-service.js';
 import { TokenBudgetManager } from '../../core/orchestration/token-budget.js';
-import { WORKFLOW_MODES, type WorkflowMode } from '../../core/workflow/index.js';
+import { WORKFLOW_MODES } from '../../core/workflow/index.js';
 import { AGENT_TEMPLATES, type AgentDomain } from '../../agents/instruction-templates.js';
 
 interface DebugInstructionsOptions {
@@ -140,12 +140,12 @@ function displayOverallState(verbose?: boolean): void {
   // Workflow modes
   console.log(chalk.cyan('\n🔄 Workflow Modes'));
   console.log(chalk.dim('─'.repeat(40)));
-  Object.keys(WORKFLOW_MODES).forEach(mode => {
+  for (const mode of Object.keys(WORKFLOW_MODES)) {
     const isCurrent = mode === debugInfo.workflowMode;
     const prefix = isCurrent ? chalk.green('►') : ' ';
     const modeText = isCurrent ? chalk.green.bold(mode) : chalk.gray(mode);
     console.log(`  ${prefix} ${modeText}`);
-  });
+  }
 
   console.log(chalk.dim('\n' + '═'.repeat(60)));
   console.log(chalk.gray('\nUse --tokens, --providers, or --templates for detailed info.\n'));

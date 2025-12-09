@@ -20,9 +20,12 @@ import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
+import { GLMProvider } from '../../providers/glm-provider.js';
+import { GrokProvider } from '../../providers/grok-provider.js';
 import { loadConfig } from '../../core/config/loader.js';
 import { logger } from '../../shared/logging/logger.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
+import { AX_PATHS } from '../../core/validation-limits.js';
 
 interface ResumeOptions {
   interactive?: boolean;
@@ -103,7 +106,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
 
       // 3. Initialize CheckpointManager
       const stageConfig = config.execution?.stages;
-      const checkpointPath = stageConfig?.checkpointPath || join(projectDir, '.automatosx', 'checkpoints');
+      const checkpointPath = stageConfig?.checkpointPath || join(projectDir, AX_PATHS.CHECKPOINTS);
       const cleanupAfterDays = stageConfig?.cleanupAfterDays || 7;
 
       const checkpointManager = new CheckpointManager(checkpointPath, cleanupAfterDays);
@@ -122,24 +125,24 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
 
       // 5. Initialize components
       const teamManager = new TeamManager(
-        join(projectDir, '.automatosx', 'teams')
+        join(projectDir, AX_PATHS.TEAMS)
       );
 
       const profileLoader = new ProfileLoader(
-        join(projectDir, '.automatosx', 'agents'),
+        join(projectDir, AX_PATHS.AGENTS),
         undefined,
         teamManager
       );
 
       const abilitiesManager = new AbilitiesManager(
-        join(projectDir, '.automatosx', 'abilities')
+        join(projectDir, AX_PATHS.ABILITIES)
       );
 
       // Initialize memory manager if needed
       // v5.6.24: Use LazyMemoryManager for deferred initialization
       try {
         memoryManager = new LazyMemoryManager({
-          dbPath: join(projectDir, '.automatosx', 'memory', 'memory.db')
+          dbPath: join(projectDir, AX_PATHS.MEMORY, 'memory.db')
         });
 
         if (argv.verbose) {
@@ -155,7 +158,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
       const pathResolver = new PathResolver({
         projectDir,
         workingDir: process.cwd(),
-        agentWorkspace: join(projectDir, '.automatosx', 'workspaces')
+        agentWorkspace: join(projectDir, AX_PATHS.WORKSPACES)
       });
 
       // 6. Initialize providers
@@ -167,7 +170,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
           enabled: true,
           priority: config.providers['claude-code'].priority,
           timeout: config.providers['claude-code'].timeout,
-          command: config.providers['claude-code'].command
+          command: config.providers['claude-code'].command || 'claude'
         }));
       }
 
@@ -177,7 +180,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
           enabled: true,
           priority: config.providers['gemini-cli'].priority,
           timeout: config.providers['gemini-cli'].timeout,
-          command: config.providers['gemini-cli'].command
+          command: config.providers['gemini-cli'].command || 'gemini'
         }));
       }
 
@@ -203,6 +206,30 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
         providers.push(provider);
       }
 
+      // v12.4.0: Initialize GLM provider (SDK-first)
+      if (config.providers['glm']?.enabled) {
+        const glmConfig = config.providers['glm'];
+        providers.push(new GLMProvider({
+          name: 'glm',
+          enabled: true,
+          priority: glmConfig.priority,
+          timeout: glmConfig.timeout,
+          mode: 'sdk'
+        }));
+      }
+
+      // v12.4.0: Initialize Grok provider (SDK-first)
+      if (config.providers['grok']?.enabled) {
+        const grokConfig = config.providers['grok'];
+        providers.push(new GrokProvider({
+          name: 'grok',
+          enabled: true,
+          priority: grokConfig.priority,
+          timeout: grokConfig.timeout,
+          mode: 'sdk'
+        }));
+      }
+
       // v5.7.0: Include router configuration for health checks
       const providerHealthCheckIntervals = providers
         .map(p => config.providers[p.name]?.healthCheck?.interval)
@@ -225,7 +252,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
 
       // 7. Initialize orchestration managers
       const sessionManager = new SessionManager({
-        persistencePath: join(projectDir, '.automatosx', 'sessions', 'sessions.json')
+        persistencePath: join(projectDir, AX_PATHS.SESSIONS, 'sessions.json')
       });
       await sessionManager.initialize();
 

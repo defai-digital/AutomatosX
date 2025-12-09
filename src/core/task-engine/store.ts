@@ -15,8 +15,8 @@ import Database from 'better-sqlite3';
 import { createHash, randomBytes } from 'crypto';
 import { DatabaseFactory } from '../database/factory.js';
 import { logger } from '../../shared/logging/logger.js';
+import { AX_PATHS, DATABASE } from '../validation-limits.js';
 import {
-  compressPayload,
   decompressPayload,
   compressWithInfo,
   isGzipCompressed
@@ -49,13 +49,13 @@ const NATIVE_MODULE_ERROR_PATTERNS = [
  * Default store configuration
  */
 const DEFAULT_CONFIG: Required<TaskStoreConfig> = {
-  dbPath: '.automatosx/tasks/tasks.db',
+  dbPath: `${AX_PATHS.TASKS}/tasks.db`,
   maxPayloadBytes: 1024 * 1024, // 1MB
   compressionEnabled: true,
   compressionLevel: 6,
   defaultTtlHours: 24,
   maxTtlHours: 168, // 7 days
-  busyTimeout: 5000
+  busyTimeout: DATABASE.BUSY_TIMEOUT
 };
 
 /**

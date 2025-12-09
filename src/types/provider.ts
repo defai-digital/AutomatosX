@@ -26,7 +26,7 @@ export interface ProviderConfig {
   enabled: boolean;
   priority: number;
   timeout: number;
-  command: string;
+  command?: string;  // v12.4.0: Optional for SDK-first providers (glm, grok)
   rateLimits?: RateLimitConfig;
   retryPolicy?: RetryConfig;
 

@@ -13,7 +13,6 @@ import type {
   SpecValidationResult,
   ValidationIssue,
   SpecValidatorOptions,
-  ValidationRule,
   SpecTask
 } from '../../types/spec.js';
 import { SpecGraphBuilder } from './SpecGraphBuilder.js';

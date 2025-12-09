@@ -1,5 +1,7 @@
 /**
- * Configuration Validation Limits and Helpers
+ * Configuration Validation Limits, Paths, and Constants
+ *
+ * Centralized constants for the AutomatosX system to avoid hardcoded values.
  *
  * Defines security limits and validation functions to prevent:
  * - Resource exhaustion (DoS)
@@ -7,6 +9,164 @@
  * - Command injection
  * - Name injection
  */
+
+// ============================================
+// Directory Path Constants
+// ============================================
+
+/**
+ * AutomatosX directory structure constants
+ * All paths are relative to project root
+ */
+export const AX_PATHS = {
+  /** Root directory for AutomatosX data */
+  ROOT: '.automatosx',
+  /** Log files directory */
+  LOGS: '.automatosx/logs',
+  /** Memory/database directory */
+  MEMORY: '.automatosx/memory',
+  /** Agent workspaces directory */
+  WORKSPACES: '.automatosx/workspaces',
+  /** Session data directory */
+  SESSIONS: '.automatosx/sessions',
+  /** Team configurations directory */
+  TEAMS: '.automatosx/teams',
+  /** Agent profiles directory */
+  AGENTS: '.automatosx/agents',
+  /** Workflow definitions directory */
+  WORKFLOWS: '.automatosx/workflows',
+  /** Abilities/skills directory */
+  ABILITIES: '.automatosx/abilities',
+  /** Checkpoints directory */
+  CHECKPOINTS: '.automatosx/checkpoints',
+  /** Cache directory */
+  CACHE: '.automatosx/cache',
+  /** Task database directory */
+  TASKS: '.automatosx/tasks',
+  /** Status files directory */
+  STATUS: '.automatosx/status',
+  /** Provider configurations directory */
+  PROVIDERS: '.automatosx/providers',
+  /** Iterate mode directory */
+  ITERATE: '.automatosx/iterate',
+  /** State directory (mode, provider overrides) */
+  STATE: '.automatosx/state',
+  /** Usage tracking directory */
+  USAGE: '.automatosx/usage',
+  /** Context store directory */
+  CONTEXT: '.automatosx/context',
+  /** Telemetry directory */
+  TELEMETRY: '.automatosx/telemetry',
+  /** Workspace index directory */
+  WORKSPACE: '.automatosx/workspace',
+  /** Config file paths */
+  CONFIG_YAML: '.automatosx/config.yaml',
+  CONFIG_JSON: '.automatosx/config.json'
+} as const;
+
+// ============================================
+// Timeout Constants (milliseconds)
+// ============================================
+
+/**
+ * Standardized timeout values used across the codebase
+ */
+export const TIMEOUTS = {
+  /** Default provider execution timeout (2 minutes) */
+  PROVIDER_DEFAULT: 120000,
+  /** Provider detection/health check timeout (5 seconds) */
+  PROVIDER_DETECTION: 5000,
+  /** Database busy timeout (5 seconds) */
+  DATABASE_BUSY: 5000,
+  /** Provider cooldown after failure (30 seconds) */
+  PROVIDER_COOLDOWN: 30000,
+  /** Circuit breaker recovery timeout (1 minute) */
+  CIRCUIT_BREAKER_RECOVERY: 60000,
+  /** Circuit breaker failure window (5 minutes) */
+  CIRCUIT_BREAKER_WINDOW: 300000,
+  /** Health check interval (5 minutes) */
+  HEALTH_CHECK_INTERVAL: 300000,
+  /** Idle connection timeout (5 minutes) */
+  IDLE_CONNECTION: 300000,
+  /** User decision/prompt timeout (10 minutes) */
+  USER_DECISION: 600000,
+  /** Maximum execution timeout (1 hour) */
+  MAX_EXECUTION: 3600000,
+  /** Default global timeout (25 minutes) */
+  GLOBAL_DEFAULT: 1500000,
+  /** Config cache TTL (1 minute) */
+  CONFIG_CACHE_TTL: 60000,
+  /** Score cache TTL (5 minutes) */
+  SCORE_CACHE_TTL: 300000,
+  /** MCP health check interval (30 seconds) */
+  MCP_HEALTH_CHECK: 30000,
+  /** CLI command confirmation delay (5 seconds) */
+  CLI_CONFIRM_DELAY: 5000,
+  /** Kill switch confirmation delay (5 seconds) */
+  KILL_SWITCH_DELAY: 5000,
+  /** Minimum rollout duration (1 hour) */
+  MIN_ROLLOUT_DURATION: 3600000,
+  /** Graceful shutdown timeout (30 seconds) */
+  GRACEFUL_SHUTDOWN: 30000,
+  /** Package installation timeout (1 minute) */
+  PACKAGE_INSTALL: 60000,
+  /** Quick CLI command timeout (3 seconds) */
+  QUICK_COMMAND: 3000,
+  /** CLI version check timeout (10 seconds) */
+  VERSION_CHECK: 10000
+} as const;
+
+// ============================================
+// Database Constants
+// ============================================
+
+/**
+ * Database configuration constants
+ */
+export const DATABASE = {
+  /** SQLite busy timeout in milliseconds */
+  BUSY_TIMEOUT: 5000,
+  /** Maximum database connections in pool */
+  MAX_CONNECTIONS: 10,
+  /** Connection idle timeout (5 minutes) */
+  IDLE_TIMEOUT: 300000,
+  /** Default query limit */
+  DEFAULT_QUERY_LIMIT: 1000,
+  /** Maximum query limit */
+  MAX_QUERY_LIMIT: 10000
+} as const;
+
+// ============================================
+// Scoring Weights (for provider selection)
+// ============================================
+
+/**
+ * Provider scoring weights (must sum to 1.0)
+ */
+export const SCORING_WEIGHTS = {
+  /** Weight for latency in provider scoring */
+  LATENCY: 0.5,
+  /** Weight for cost in provider scoring */
+  COST: 0.3,
+  /** Weight for reliability in provider scoring */
+  RELIABILITY: 0.2
+} as const;
+
+/**
+ * Performance thresholds for scoring
+ */
+export const PERFORMANCE_THRESHOLDS = {
+  /** Excellent performance threshold */
+  EXCELLENT: 0.9,
+  /** Good performance threshold */
+  GOOD: 0.7,
+  /** Progress cap percentage */
+  PROGRESS_CAP: 95
+} as const;
+
+// ============================================
+// Security and Resource Limits
+// ============================================
 
 /**
  * Security and resource limits for configuration validation

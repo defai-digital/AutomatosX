@@ -201,11 +201,12 @@ export const GENERIC_ERROR_PATTERNS: ProviderErrorPatterns = {
  * }
  * ```
  */
-export function isQuotaError(error: any, providerName: string): boolean {
+export function isQuotaError(error: unknown, providerName: string): boolean {
   const patterns = PROVIDER_ERROR_PATTERNS[providerName] || GENERIC_ERROR_PATTERNS;
-  const message = (error?.message || '').toLowerCase();
-  const code = error?.code || '';
-  const statusCode = error?.status || error?.statusCode;
+  const errorObj = error as { message?: string; code?: string; status?: number; statusCode?: number };
+  const message = (errorObj?.message || '').toLowerCase();
+  const code = errorObj?.code || '';
+  const statusCode = errorObj?.status || errorObj?.statusCode;
 
   // Check error message against quota patterns
   if (patterns.quota.some((pattern) => message.includes(pattern.toLowerCase()))) {
@@ -246,11 +247,12 @@ export function isQuotaError(error: any, providerName: string): boolean {
  * }
  * ```
  */
-export function isRateLimitError(error: any, providerName: string): boolean {
+export function isRateLimitError(error: unknown, providerName: string): boolean {
   const patterns = PROVIDER_ERROR_PATTERNS[providerName] || GENERIC_ERROR_PATTERNS;
-  const message = (error?.message || '').toLowerCase();
-  const code = error?.code || '';
-  const statusCode = error?.status || error?.statusCode;
+  const errorObj = error as { message?: string; code?: string; status?: number; statusCode?: number };
+  const message = (errorObj?.message || '').toLowerCase();
+  const code = errorObj?.code || '';
+  const statusCode = errorObj?.status || errorObj?.statusCode;
 
   // Check error message against rate limit patterns
   if (patterns.rateLimit.some((pattern) => message.includes(pattern.toLowerCase()))) {

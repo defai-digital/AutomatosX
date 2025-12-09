@@ -20,9 +20,7 @@ import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
 import {
   detectProjectInfo,
-  type ProjectInfo,
-  type CategorizedScripts,
-  type FileStructure
+  type ProjectInfo
 } from './project-detector.js';
 import {
   parseAXMD,

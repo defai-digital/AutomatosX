@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { logger } from '../../shared/logging/logger.js';
 import { type WorkflowMode } from './workflow-mode.js';
 import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
+import { AX_PATHS } from '../validation-limits.js';
 
 /**
  * Mode state schema for validation
@@ -30,7 +31,7 @@ export type ModeState = z.infer<typeof ModeStateSchema>;
 /**
  * Default state file path relative to project root
  */
-const STATE_FILE_PATH = '.automatosx/state/mode.json';
+const STATE_FILE_PATH = `${AX_PATHS.STATE}/mode.json`;
 
 /**
  * Default expiration time for mode state (4 hours)

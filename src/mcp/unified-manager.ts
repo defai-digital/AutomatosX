@@ -23,7 +23,6 @@ import type {
   MCPToolCallRequest,
   MCPToolCallResponse,
   MCPHealthCheckResult,
-  MCPDiscoveryResult,
   MCPRegistryEntry,
   IMCPManager,
   KNOWN_MCP_SERVERS,
@@ -134,10 +133,11 @@ export class UnifiedMCPManager implements IMCPManager {
       }
     }
 
+    const runningCount = statuses.filter(s => s.running).length;
     logger.info('UnifiedMCPManager: Started servers', {
       total: statuses.length,
-      running: statuses.filter(s => s.running).length,
-      failed: statuses.filter(s => !s.running).length,
+      running: runningCount,
+      failed: statuses.length - runningCount,
     });
 
     return statuses;

@@ -171,6 +171,68 @@ describe('Config Schemas - Zod Validation', () => {
       const result = safeValidateConfig(config as any);
       expect(result.success).toBe(false);
     });
+
+    it('should allow SDK providers without command field (v12.0.0)', () => {
+      const config = {
+        providers: {
+          'glm': {
+            enabled: true,
+            priority: 4,
+            timeout: 2700000,
+            type: 'sdk',  // SDK provider - no command needed
+            description: 'GLM provider'
+          },
+          'grok': {
+            enabled: true,
+            priority: 5,
+            timeout: 2700000,
+            type: 'sdk'  // SDK provider - no command needed
+          }
+        }
+      };
+
+      const result = safeValidateConfig(config as any);
+      expect(result.success).toBe(true);
+    });
+
+    it('should require command for CLI providers', () => {
+      const config = {
+        providers: {
+          'claude-code': {
+            enabled: true,
+            priority: 1,
+            timeout: 120000,
+            // Missing command for CLI provider
+          }
+        }
+      };
+
+      const result = safeValidateConfig(config as any);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(e => e.message.includes('command'))).toBe(true);
+      }
+    });
+
+    it('should require command for hybrid providers', () => {
+      const config = {
+        providers: {
+          'openai': {
+            enabled: true,
+            priority: 1,
+            timeout: 120000,
+            type: 'hybrid',
+            // Missing command for hybrid provider
+          }
+        }
+      };
+
+      const result = safeValidateConfig(config as any);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(e => e.message.includes('command'))).toBe(true);
+      }
+    });
   });
 
   describe('Execution Configuration', () => {

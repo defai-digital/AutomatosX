@@ -17,6 +17,7 @@ import Database from 'better-sqlite3';
 import { createHash } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
 import { DatabaseFactory } from '../database/factory.js';
+import { AX_PATHS } from '../validation-limits.js';
 
 /**
  * Cache entry structure
@@ -149,7 +150,7 @@ export class ResponseCache {
       ttl: config.ttl ?? 86400, // 24 hours
       maxSize: config.maxSize ?? 1000,
       maxMemorySize: config.maxMemorySize ?? 100,
-      dbPath: config.dbPath ?? '.automatosx/cache/responses.db'
+      dbPath: config.dbPath ?? `${AX_PATHS.CACHE}/responses.db`
     };
 
     // Initialize L1 cache

@@ -4,9 +4,10 @@
  */
 
 import { access } from 'fs/promises';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import { constants } from 'fs';
 import { existsSync } from 'fs';
+import { AX_PATHS } from '../../../core/validation-limits.js';
 
 /**
  * Check if file exists
@@ -53,8 +54,8 @@ export function resolveConfigPath(cliArg?: string): string {
     resolve(process.cwd(), 'automatosx.config.yaml'),
     resolve(process.cwd(), 'automatosx.config.json'),
     // Hidden directory configs
-    resolve(process.cwd(), '.automatosx', 'config.yaml'),
-    resolve(process.cwd(), '.automatosx', 'config.json')
+    resolve(process.cwd(), AX_PATHS.CONFIG_YAML),
+    resolve(process.cwd(), AX_PATHS.CONFIG_JSON)
   ];
 
   for (const path of candidates) {

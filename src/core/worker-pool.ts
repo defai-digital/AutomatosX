@@ -5,7 +5,6 @@
 
 import { Worker } from 'worker_threads';
 import { cpus } from 'os';
-import { join } from 'path';
 import { logger } from '../shared/logging/logger.js';
 
 export interface WorkerTask<T = any> {
@@ -130,12 +129,11 @@ export class WorkerPool {
    */
   getStats() {
     const busyWorkers = this.workers.filter(w => w.busy).length;
-    const idleWorkers = this.workers.filter(w => !w.busy).length;
 
     return {
       totalWorkers: this.workers.length,
       busyWorkers,
-      idleWorkers,
+      idleWorkers: this.workers.length - busyWorkers,
       queuedTasks: this.queue.length,
       config: this.config
     };

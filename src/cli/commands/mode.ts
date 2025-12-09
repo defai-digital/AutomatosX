@@ -12,7 +12,6 @@ import {
   WORKFLOW_MODES,
   type WorkflowMode,
   isValidWorkflowMode,
-  getWorkflowModeDescription,
   saveModeState,
   loadModeState,
   clearModeState,

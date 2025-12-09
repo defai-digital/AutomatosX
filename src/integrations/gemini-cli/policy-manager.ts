@@ -15,7 +15,6 @@ import {
 } from '../../types/gemini-policy.js';
 import type {
   GeminiPolicy,
-  PolicyRule,
   PolicyViolation,
   PolicyContext,
   PolicyValidationResult,

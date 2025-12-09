@@ -11,7 +11,7 @@ import type { Session } from '../../types/orchestration.js';
 import { SessionError } from '../../types/orchestration.js';
 import { logger } from '../../shared/logging/logger.js';
 import { dirname, normalizePath } from '../../shared/validation/path-utils.js';
-import { JoinTaskInfoSchema, SessionManagerConfigSchema } from './schemas.js';
+import { SessionManagerConfigSchema } from './schemas.js';
 import { ZodError } from 'zod';
 
 /**
@@ -1016,13 +1016,15 @@ export class SessionManager {
     failed: number;
   }> {
     const sessions = Array.from(this.activeSessions.values());
+    let active = 0, completed = 0, failed = 0;
 
-    return {
-      total: sessions.length,
-      active: sessions.filter(s => s.status === 'active').length,
-      completed: sessions.filter(s => s.status === 'completed').length,
-      failed: sessions.filter(s => s.status === 'failed').length
-    };
+    for (const s of sessions) {
+      if (s.status === 'active') active++;
+      else if (s.status === 'completed') completed++;
+      else if (s.status === 'failed') failed++;
+    }
+
+    return { total: sessions.length, active, completed, failed };
   }
 
   /**

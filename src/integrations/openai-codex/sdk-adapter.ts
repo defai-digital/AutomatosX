@@ -180,7 +180,7 @@ export class CodexSdkAdapter {
         this.codex = new this.sdkModule.Codex();
         this.initialized = true;
         logger.info('Codex SDK initialized');
-      } catch (error) {
+      } catch (_error) {
         throw new CodexError(
           CodexErrorType.CLI_NOT_FOUND,
           'Codex SDK not available. Install with: npm install @openai/codex-sdk'

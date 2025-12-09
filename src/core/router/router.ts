@@ -16,6 +16,7 @@ import type {
 } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
 import { ProviderError, ErrorCode } from '../../shared/errors/errors.js';
+import { TIMEOUTS } from '../validation-limits.js';
 import type { ResponseCache } from '../cache/response-cache.js';
 import { getProviderLimitManager } from '../provider-limit-manager.js';
 import {
@@ -88,15 +89,15 @@ export class Router {
       return a.priority - b.priority;
     });
     this.fallbackEnabled = config.fallbackEnabled;
-    this.providerCooldownMs = config.providerCooldownMs ?? 30000; // Default: 30 seconds
+    this.providerCooldownMs = config.providerCooldownMs ?? TIMEOUTS.PROVIDER_COOLDOWN;
     this.cache = config.cache;
 
     // v9.0.2: Initialize circuit breaker with config
     // v11.1.0: Added failureWindowMs for time-window based failure counting
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: config.circuitBreakerThreshold ?? 3,
-      cooldownMs: config.providerCooldownMs ?? 30000,
-      failureWindowMs: config.circuitBreakerWindowMs ?? 300000  // 5 min default
+      cooldownMs: config.providerCooldownMs ?? TIMEOUTS.PROVIDER_COOLDOWN,
+      failureWindowMs: config.circuitBreakerWindowMs ?? TIMEOUTS.CIRCUIT_BREAKER_WINDOW
     });
 
     // v5.7.0: Initialize provider limit manager (non-blocking)

@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../logging/logger.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 
 export type ShutdownHandler = () => Promise<void> | void;
 
@@ -19,7 +20,7 @@ export interface ShutdownOptions {
 }
 
 const DEFAULT_SHUTDOWN_OPTIONS: ShutdownOptions = {
-  timeout: 30000,  // 30 seconds
+  timeout: TIMEOUTS.GRACEFUL_SHUTDOWN,
   forceExitOnTimeout: true
 };
 
@@ -297,7 +298,7 @@ export class InFlightTracker {
    * @param timeoutMs - Maximum time to wait in milliseconds
    * @param signal - Optional AbortSignal to cancel the wait
    */
-  async waitForCompletion(timeoutMs: number = 30000, signal?: AbortSignal): Promise<void> {
+  async waitForCompletion(timeoutMs: number = TIMEOUTS.GRACEFUL_SHUTDOWN, signal?: AbortSignal): Promise<void> {
     if (this.inFlightCount === 0) {
       return;
     }

@@ -13,6 +13,7 @@ import { constants } from 'fs';
 import { logger } from '../../shared/logging/logger.js';
 import { ManifestGenerator } from './manifest-generator.js';
 import type { ProfileLoader } from '../../agents/profile-loader.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 
 const execAsync = promisify(exec);
 
@@ -48,7 +49,7 @@ export class ClaudeCodeSetupHelper {
    */
   async isClaudeCodeInstalled(): Promise<boolean> {
     try {
-      await execAsync('claude --version', { timeout: 5000 });
+      await execAsync('claude --version', { timeout: TIMEOUTS.PROVIDER_DETECTION });
       return true;
     } catch {
       return false;
@@ -60,7 +61,7 @@ export class ClaudeCodeSetupHelper {
    */
   async getClaudeCodeVersion(): Promise<string | null> {
     try {
-      const { stdout } = await execAsync('claude --version', { timeout: 5000 });
+      const { stdout } = await execAsync('claude --version', { timeout: TIMEOUTS.PROVIDER_DETECTION });
       return stdout.trim();
     } catch {
       return null;
@@ -72,7 +73,7 @@ export class ClaudeCodeSetupHelper {
    */
   async isMcpServerAvailable(): Promise<boolean> {
     try {
-      await execAsync('which automatosx-mcp', { timeout: 5000 });
+      await execAsync('which automatosx-mcp', { timeout: TIMEOUTS.PROVIDER_DETECTION });
       return true;
     } catch {
       // Try checking in node_modules/.bin
@@ -114,7 +115,7 @@ export class ClaudeCodeSetupHelper {
       // Register using stdio transport
       await execAsync(
         'claude mcp add --transport stdio automatosx -- automatosx-mcp',
-        { cwd: this.projectDir, timeout: 30000 }
+        { cwd: this.projectDir, timeout: TIMEOUTS.PROVIDER_COOLDOWN }
       );
 
       logger.info('[Claude Code Setup] MCP server registered successfully');

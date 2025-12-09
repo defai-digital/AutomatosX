@@ -14,8 +14,7 @@
 
 import type {
   AnalyticsSummary,
-  OptimizationRecommendation,
-  TelemetryEvent
+  OptimizationRecommendation
 } from '../../types/telemetry.js';
 import type { AnalyticsAggregator } from './AnalyticsAggregator.js';
 import type { TelemetryCollector } from '../telemetry/TelemetryCollector.js';

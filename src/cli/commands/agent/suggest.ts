@@ -14,7 +14,6 @@
 import type { CommandModule } from 'yargs';
 import { ProfileLoader } from '../../../agents/profile-loader.js';
 import { scoreAgent, buildRationale, getConfidence } from '../../../agents/agent-selector.js';
-import type { AgentProfile } from '../../../types/agent.js';
 import { logger } from '../../../shared/logging/logger.js';
 import { TeamManager } from '../../../core/team-manager.js';
 import { join } from 'path';

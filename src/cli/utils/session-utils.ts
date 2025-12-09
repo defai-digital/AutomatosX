@@ -9,6 +9,7 @@ import { SessionManager } from '../../core/session/manager.js';
 import { PathResolver } from '../../shared/validation/path-resolver.js';
 import { join } from 'path';
 import { logger } from '../../shared/logging/logger.js';
+import { AX_PATHS } from '../../core/validation-limits.js';
 
 // Global registry of active session managers (for cleanup on exit)
 const activeSessionManagers = new Set<SessionManager>();
@@ -99,11 +100,11 @@ export async function createSessionManager(): Promise<SessionManager> {
     const projectDir = await new PathResolver({
       projectDir: process.cwd(),
       workingDir: process.cwd(),
-      agentWorkspace: join(process.cwd(), '.automatosx', 'workspaces')
+      agentWorkspace: join(process.cwd(), AX_PATHS.WORKSPACES)
     }).detectProjectRoot();
 
     const sessionManager = new SessionManager({
-      persistencePath: join(projectDir, '.automatosx', 'sessions', 'sessions.json')
+      persistencePath: join(projectDir, AX_PATHS.SESSIONS, 'sessions.json')
     });
 
     await sessionManager.initialize();

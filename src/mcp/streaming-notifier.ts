@@ -37,7 +37,7 @@ interface McpNotification {
 /**
  * Progress notification params
  */
-interface ProgressNotificationParams {
+interface _ProgressNotificationParams {
   /** Progress token for tracking */
   progressToken: string;
   /** Current value (0-100 for percentage, or token count) */

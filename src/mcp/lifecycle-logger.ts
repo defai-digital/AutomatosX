@@ -14,7 +14,7 @@ import { writeFile, appendFile, mkdir, rename, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../shared/logging/logger.js';
-import type { MCPServerStatus, MCPHealthCheckResult } from './types-common.js';
+import type { MCPHealthCheckResult } from './types-common.js';
 
 /**
  * Lifecycle Event Types

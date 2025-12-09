@@ -12,7 +12,6 @@ import {
   type OrchestrationContext,
   type EmbeddedInstruction,
   type OrchestrationConfig,
-  type WorkflowMode,
   DEFAULT_ORCHESTRATION_CONFIG
 } from './types.js';
 import { OrchestrationInstructionInjector, type InjectionResult } from './instruction-injector.js';

@@ -158,7 +158,7 @@ export async function listAvailableTeams(baseDir?: string): Promise<TeamInfo[]> 
           displayName: teamConfig.displayName || teamConfig.name,
           description: teamConfig.description
         });
-      } catch (error) {
+      } catch (_error) {
         // If team fails to load, add basic info
         teams.push({
           name,

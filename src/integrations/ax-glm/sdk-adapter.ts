@@ -12,6 +12,7 @@
 
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 import {
   type GLMSDKConfig,
   type GLMModel,
@@ -71,7 +72,7 @@ export class GLMSdkAdapter {
       apiKey: config.apiKey || process.env.ZAI_API_KEY || '',
       baseUrl: config.baseUrl || GLM_DEFAULT_BASE_URL,
       model: config.model || GLM_DEFAULT_MODEL,
-      timeout: config.timeout || 120000
+      timeout: config.timeout || TIMEOUTS.PROVIDER_DEFAULT
     };
 
     logger.debug('[GLM SDK] Adapter created', {

@@ -14,7 +14,7 @@
 import { readFile, readdir } from 'fs/promises';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { existsSync, statSync } from 'fs';
+import { existsSync } from 'fs';
 
 export interface ProjectInfo {
   name: string;

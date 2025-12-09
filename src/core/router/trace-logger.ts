@@ -10,6 +10,7 @@
 import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'fs';
 import { join, dirname } from 'path';
 import { logger } from '@/shared/logging/logger.js';
+import { AX_PATHS } from '../validation-limits.js';
 
 /**
  * Trace event phases
@@ -59,7 +60,7 @@ export class RouterTraceLogger {
   private sigtermHandler = () => this.close();
 
   constructor(options: TraceLoggerOptions) {
-    this.traceFile = join(options.workspacePath, '.automatosx/logs/router.trace.jsonl');
+    this.traceFile = join(options.workspacePath, AX_PATHS.LOGS, 'router.trace.jsonl');
     this.enabled = options.enabled ?? true;
     this.autoFlush = options.autoFlush ?? true;
 

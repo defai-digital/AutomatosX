@@ -28,6 +28,7 @@ import type {
 } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
 import { ProviderError, ErrorCode } from '../shared/errors/errors.js';
+import { TIMEOUTS } from '../core/validation-limits.js';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -74,10 +75,10 @@ export abstract class BaseProvider implements Provider {
   };
 
   /** Default CLI execution timeout in milliseconds */
-  private static readonly DEFAULT_TIMEOUT_MS = 120000;
+  private static readonly DEFAULT_TIMEOUT_MS = TIMEOUTS.PROVIDER_DEFAULT;
 
   /** Time to wait after SIGTERM before escalating to SIGKILL */
-  private static readonly SIGKILL_ESCALATION_MS = 5000;
+  private static readonly SIGKILL_ESCALATION_MS = TIMEOUTS.PROVIDER_DETECTION;
 
   protected config: ProviderConfig;
   protected logger = logger;
@@ -91,9 +92,10 @@ export abstract class BaseProvider implements Provider {
   };
 
   constructor(config: ProviderConfig) {
-    // Validate provider name
+    // Validate provider name against whitelist (prevents command injection)
     const providerName = config.name.toLowerCase();
-    if (!BaseProvider.ALLOWED_PROVIDER_NAMES.includes(providerName as any)) {
+    const allowedNames: readonly string[] = BaseProvider.ALLOWED_PROVIDER_NAMES;
+    if (!allowedNames.includes(providerName)) {
       throw new ProviderError(
         `Invalid provider name: ${config.name}. Allowed: ${BaseProvider.ALLOWED_PROVIDER_NAMES.join(', ')}`,
         ErrorCode.CONFIG_INVALID

@@ -15,6 +15,7 @@
 
 import { ChildProcess } from 'child_process';
 import { logger } from '../logging/logger.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 
 class ProcessManager {
   private childProcesses: Set<ChildProcess> = new Set();
@@ -60,7 +61,7 @@ class ProcessManager {
    *
    * @param timeout Maximum time to wait for graceful shutdown (ms)
    */
-  async shutdown(timeout: number = 5000): Promise<void> {
+  async shutdown(timeout: number = TIMEOUTS.PROVIDER_DETECTION): Promise<void> {
     if (this.isShuttingDown) {
       return; // Already shutting down
     }
@@ -257,7 +258,7 @@ export function installExitHandlers(): void {
       if (process.stderr.writable) {
         process.stderr.end();
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors
     }
 

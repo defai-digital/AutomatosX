@@ -25,7 +25,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from '../../core/config/loader.js';
 import { PathResolver } from '../../shared/validation/path-resolver.js';
-import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
@@ -33,6 +32,7 @@ import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ProviderDetector } from '../../core/provider-detector.js';
 import { join } from 'path';
+import { AX_PATHS, TIMEOUTS } from '../../core/validation-limits.js';
 
 interface DoctorOptions {
   provider?: string;
@@ -524,7 +524,7 @@ async function checkFileSystem(workingDir: string, verbose: boolean): Promise<Ch
   const results: CheckResult[] = [];
 
   // Check .automatosx directory
-  const automatosxDir = `${workingDir}/.automatosx`;
+  const automatosxDir = join(workingDir, AX_PATHS.ROOT);
   const automatosxExists = existsSync(automatosxDir);
 
   results.push({
@@ -538,7 +538,7 @@ async function checkFileSystem(workingDir: string, verbose: boolean): Promise<Ch
 
   // Check memory directory
   if (automatosxExists) {
-    const memoryDir = `${automatosxDir}/memory`;
+    const memoryDir = join(workingDir, AX_PATHS.MEMORY);
     const memoryExists = existsSync(memoryDir);
 
     results.push({
@@ -587,7 +587,7 @@ async function checkCommand(
     const output = execSync(`${command} ${args}`, {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 5000
+      timeout: TIMEOUTS.PROVIDER_DETECTION
     });
     return { success: true, output };
   } catch (error) {

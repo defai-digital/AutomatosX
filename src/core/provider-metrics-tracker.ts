@@ -16,7 +16,7 @@
  */
 
 import { EventEmitter } from 'events';
-import type { ProviderMetrics, ProviderScore, RoutingWeights, ModelPricing } from '../types/routing.js';
+import type { ProviderMetrics, ProviderScore, RoutingWeights } from '../types/routing.js';
 import { PROVIDER_PRICING } from '../types/routing.js';
 import { logger } from '../shared/logging/logger.js';
 import { getPercentile } from '../shared/helpers/statistics.js'; // FIXED Bug #145: Import at top instead of dynamic import

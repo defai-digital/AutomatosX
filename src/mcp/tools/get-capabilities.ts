@@ -112,7 +112,7 @@ function categorizeTools(name: string): ToolCapability['category'] {
 /**
  * Determine provider execution mode based on type
  */
-function getExecutionMode(providerName: string, providerConfig: Record<string, unknown>): 'cli' | 'sdk' | 'hybrid' {
+function getExecutionMode(providerName: string, _providerConfig: Record<string, unknown>): 'cli' | 'sdk' | 'hybrid' {
   // SDK-only providers (no CLI execution)
   if (providerName === 'glm' || providerName === 'grok') {
     return 'sdk';

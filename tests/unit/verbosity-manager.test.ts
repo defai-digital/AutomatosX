@@ -214,7 +214,7 @@ describe('VerbosityManager', () => {
     });
 
     it('should reset singleton on VerbosityManager.reset()', () => {
-      const vm1 = VerbosityManager.getInstance(VerbosityLevel.NORMAL);
+      const _vm1 = VerbosityManager.getInstance(VerbosityLevel.NORMAL);
       VerbosityManager.reset();
       const vm2 = VerbosityManager.getInstance(VerbosityLevel.QUIET);
 

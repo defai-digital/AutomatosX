@@ -10,6 +10,7 @@ import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import { getFlagManager } from '@/core/feature-flags/flags.js';
 import { logger } from '@/shared/logging/logger.js';
+import { TIMEOUTS } from '@/core/validation-limits.js';
 
 interface FlagsListOptions {
   json?: boolean;
@@ -172,7 +173,7 @@ async function handleRollout(argv: FlagsRolloutOptions): Promise<void> {
   try {
     await flagManager.increaseRollout(flagName, percentage, {
       validationRequired: !argv.skipValidation,
-      minimumDuration: 3600000 // 1 hour
+      minimumDuration: TIMEOUTS.MIN_ROLLOUT_DURATION
     });
 
     console.log(chalk.green(`✓ Rollout increased to ${percentage}%\n`));
@@ -219,7 +220,7 @@ async function handleKill(argv: FlagsKillOptions): Promise<void> {
   console.log(chalk.yellow('This will immediately disable the feature for ALL users.'));
   console.log(chalk.gray('Press Ctrl+C to cancel, or wait 5 seconds to confirm...\n'));
 
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  await new Promise(resolve => setTimeout(resolve, TIMEOUTS.KILL_SWITCH_DELAY));
 
   try {
     await flagManager.killSwitch(flagName, reason);

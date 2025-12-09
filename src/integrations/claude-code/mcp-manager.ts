@@ -242,7 +242,7 @@ export class MCPManager {
     };
 
     // Count by transport (all are stdio for Claude Code)
-    for (const { server } of servers) {
+    for (const _server of servers) {
       const transport = 'stdio'; // Claude Code uses stdio by default
       stats.byTransport[transport] = (stats.byTransport[transport] || 0) + 1;
     }

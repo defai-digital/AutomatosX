@@ -119,7 +119,7 @@ export const createCommand: CommandModule<{}, CreateOptions> = {
       }
 
       // 4. Load template
-      const templatePath = await findTemplate(templateName);
+      const templatePath = findTemplate(templateName);
       const templateContent = await readFile(templatePath, 'utf-8');
       const templateYaml = loadYaml(templateContent) as any;
 
@@ -205,7 +205,7 @@ export const createCommand: CommandModule<{}, CreateOptions> = {
 /**
  * Find template file
  */
-async function findTemplate(name: string): Promise<string> {
+function findTemplate(name: string): string {
   // Check project templates first
   const projectTemplate = join(process.cwd(), '.automatosx', 'templates', `${name}.yaml`);
   if (existsSync(projectTemplate)) {

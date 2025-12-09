@@ -170,9 +170,6 @@ export class CodexEventNormalizer extends BaseEventNormalizer {
     const outputTokens = event.outputTokens ?? 0;
     this.tokenCount = inputTokens + outputTokens;
 
-    const elapsed = Date.now() - this.startTime;
-    const throughput = elapsed > 0 ? (outputTokens / elapsed) * 1000 : 0;
-
     return this.createEvent('execution.progress', {
       agent: 'codex',
       progress: 100, // Token usage usually comes at the end

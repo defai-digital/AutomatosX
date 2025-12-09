@@ -64,7 +64,7 @@ export async function validatePath(filePath: string): Promise<void> {
   let realPath: string;
   try {
     realPath = await realpath(normalized);
-  } catch (error) {
+  } catch (_error) {
     // File doesn't exist yet - validate parent directory
     const parent = dirname(normalized);
     try {

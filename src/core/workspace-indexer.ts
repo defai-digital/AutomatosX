@@ -9,7 +9,7 @@
 
 import Database from 'better-sqlite3';
 import { glob } from 'glob';
-import { readFile, stat, mkdir, access } from 'fs/promises';
+import { readFile, stat, access } from 'fs/promises';
 import { statSync, existsSync, mkdirSync } from 'fs';
 import { join, parse, dirname } from 'path';
 import { createHash } from 'crypto';

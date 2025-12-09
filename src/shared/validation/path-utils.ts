@@ -202,7 +202,7 @@ export async function expandShortPath(shortPath: string): Promise<string> {
     // realpath resolves short paths to full paths on Windows
     const expandedPath = await realpath(shortPath);
     return expandedPath;
-  } catch (error) {
+  } catch (_error) {
     // If realpath fails (e.g., path doesn't exist), return original
     return shortPath;
   }

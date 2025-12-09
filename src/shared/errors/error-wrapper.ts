@@ -39,7 +39,7 @@ export function getErrorStack(error: unknown): string | undefined {
  */
 export function isErrorInstance<T extends Error>(
   error: unknown,
-  ErrorClass: new (...args: any[]) => T
+  ErrorClass: new (...args: unknown[]) => T
 ): error is T {
   return error instanceof ErrorClass;
 }

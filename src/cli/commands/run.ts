@@ -8,7 +8,6 @@ import { ProfileLoader } from '../../agents/profile-loader.js';
 import { AbilitiesManager } from '../../agents/abilities-manager.js';
 import { AgentSelector } from '../../agents/agent-selector.js';
 import { AgentExecutor } from '../../agents/executor.js';
-import type { Stage } from '../../types/agent.js';
 import { AgentNotFoundError } from '../../types/agent.js';
 import { StageExecutionController } from '../../core/stage-execution-controller.js';
 import type { ExecutionMode } from '../../types/stage-execution.js';
@@ -21,6 +20,8 @@ import { TeamManager } from '../../core/team-manager.js';
 import { ClaudeProvider } from '../../providers/claude-provider.js';
 import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
+import { GLMProvider } from '../../providers/glm-provider.js';
+import { GrokProvider } from '../../providers/grok-provider.js';
 import { loadConfig } from '../../core/config/loader.js';
 import { logger } from '../../shared/logging/logger.js';
 import { writeAgentStatus } from '../../shared/helpers/agent-status-writer.js';
@@ -40,6 +41,7 @@ import readline from 'readline';
 import yaml from 'js-yaml';
 import type { AgentSelectionResult } from '../../agents/agent-selector.js';
 import { getCurrentPersistedMode, isModePersistenceEnabled } from '../../core/workflow/index.js';
+import { AX_PATHS } from '../../core/validation-limits.js';
 
 /**
  * Display auto-selection result to user
@@ -330,14 +332,14 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
     let workflowConfig: WorkflowTemplate | undefined;
     if (argv.workflow) {
-      const workflowPath = join(await detectProjectRoot(process.cwd()), '.automatosx', 'workflows', `${argv.workflow}.yaml`);
+      const workflowPath = join(await detectProjectRoot(process.cwd()), AX_PATHS.WORKFLOWS, `${argv.workflow}.yaml`);
 
       if (!existsSync(workflowPath)) {
         console.error(chalk.red.bold(`\n❌ Workflow template not found: ${argv.workflow}\n`));
         console.log(chalk.gray(`Expected location: ${workflowPath}`));
         console.log(chalk.gray('\nAvailable workflows:'));
 
-        const workflowsDir = join(await detectProjectRoot(process.cwd()), '.automatosx', 'workflows');
+        const workflowsDir = join(await detectProjectRoot(process.cwd()), AX_PATHS.WORKFLOWS);
         if (existsSync(workflowsDir)) {
           const { readdirSync } = await import('fs');
           const files = readdirSync(workflowsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
@@ -482,11 +484,11 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       // 3. Initialize components
       // v4.10.0+: Initialize TeamManager for team-based configuration
       const teamManager = new TeamManager(
-        join(projectDir, '.automatosx', 'teams')
+        join(projectDir, AX_PATHS.TEAMS)
       );
 
       const profileLoader = new ProfileLoader(
-        join(projectDir, '.automatosx', 'agents'),
+        join(projectDir, AX_PATHS.AGENTS),
         undefined, // fallbackProfilesDir (uses default)
         teamManager
       );
@@ -580,7 +582,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       }
 
       const abilitiesManager = new AbilitiesManager(
-        join(projectDir, '.automatosx', 'abilities')
+        join(projectDir, AX_PATHS.ABILITIES)
       );
 
       // Initialize memory manager (v4.11.0: No embedding provider required)
@@ -595,7 +597,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           // v5.6.24: Lazy initialization - no await needed!
           // Database setup happens on first search() or add() call
           memoryManager = new LazyMemoryManager({
-            dbPath: join(projectDir, '.automatosx', 'memory', 'memory.db')
+            dbPath: join(projectDir, AX_PATHS.MEMORY, 'memory.db')
           });
 
           if (argv.verbose) {
@@ -616,7 +618,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       const pathResolver = new PathResolver({
         projectDir,
         workingDir: process.cwd(),
-        agentWorkspace: join(projectDir, '.automatosx', 'workspaces')
+        agentWorkspace: join(projectDir, AX_PATHS.WORKSPACES)
       });
 
       // 4. Initialize providers from config
@@ -630,7 +632,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           enabled: true,
           priority: claudeConfig.priority,
           timeout: claudeConfig.timeout,
-          command: claudeConfig.command,
+          command: claudeConfig.command || 'claude',
           // Phase 2: Enhanced CLI detection parameters
           customPath: claudeConfig.customPath,
           versionArg: claudeConfig.versionArg,
@@ -645,7 +647,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           enabled: true,
           priority: geminiConfig.priority,
           timeout: geminiConfig.timeout,
-          command: geminiConfig.command,
+          command: geminiConfig.command || 'gemini',
           // Phase 2: Enhanced CLI detection parameters
           customPath: geminiConfig.customPath,
           versionArg: geminiConfig.versionArg,
@@ -654,7 +656,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
       }
 
       // v12.0.0: ax-cli provider removed (deprecated)
-      // GLM and Grok are now SDK-first providers with their own implementations
+      // v12.4.0: GLM and Grok SDK-first providers now properly initialized
       // See: src/providers/glm-provider.ts and src/providers/grok-provider.ts
 
       if (config.providers['openai']?.enabled) {
@@ -664,7 +666,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           enabled: true,
           priority: openaiConfig.priority,
           timeout: openaiConfig.timeout,
-          command: openaiConfig.command,
+          command: openaiConfig.command || 'codex',
           // Phase 2: Enhanced CLI detection parameters
           customPath: openaiConfig.customPath,
           versionArg: openaiConfig.versionArg,
@@ -713,6 +715,38 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         providers.push(provider);
       }
 
+      // v12.4.0: Initialize GLM provider (SDK-first)
+      if (config.providers['glm']?.enabled) {
+        const glmConfig = config.providers['glm'];
+        providers.push(new GLMProvider({
+          name: 'glm',
+          enabled: true,
+          priority: glmConfig.priority,
+          timeout: glmConfig.timeout,
+          mode: 'sdk'  // SDK-first mode
+        }));
+        logger.info('📦 Using GLM SDK integration (Zhipu AI)', {
+          provider: 'glm',
+          model: 'glm-4'
+        });
+      }
+
+      // v12.4.0: Initialize Grok provider (SDK-first)
+      if (config.providers['grok']?.enabled) {
+        const grokConfig = config.providers['grok'];
+        providers.push(new GrokProvider({
+          name: 'grok',
+          enabled: true,
+          priority: grokConfig.priority,
+          timeout: grokConfig.timeout,
+          mode: 'sdk'  // SDK-first mode
+        }));
+        logger.info('📦 Using Grok SDK integration (xAI)', {
+          provider: 'grok',
+          model: 'grok-3'
+        });
+      }
+
       // Phase 2 (v5.6.2): Enable background health checks if configured
       // Phase 2.1 (v5.7.0): Use router.healthCheckInterval from config, with provider-level overrides
       const providerHealthCheckIntervals = providers
@@ -740,7 +774,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
       // Initialize SessionManager
       sessionManager = new SessionManager({
-        persistencePath: join(projectDir, '.automatosx', 'sessions', 'sessions.json')
+        persistencePath: join(projectDir, AX_PATHS.SESSIONS, 'sessions.json')
       });
       await sessionManager.initialize();
 
@@ -855,7 +889,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
 
         // Get stage configuration
         const stageConfig = config.execution?.stages;
-        const checkpointPath = stageConfig?.checkpointPath || join(projectDir, '.automatosx', 'checkpoints');
+        const checkpointPath = stageConfig?.checkpointPath || join(projectDir, AX_PATHS.CHECKPOINTS);
         const cleanupAfterDays = stageConfig?.cleanupAfterDays || 7;
 
         // Enable real-time provider output if verbose or streaming mode (v5.6.5)
@@ -1009,7 +1043,7 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                 autoConfirmCheckpoints: true
               },
               classifier: {
-                patternLibraryPath: join(projectDir, '.automatosx', 'iterate', 'patterns.yaml'),
+                patternLibraryPath: join(projectDir, AX_PATHS.ITERATE, 'patterns.yaml'),
                 strictness: (argv.iterateStrictness || 'balanced') as 'paranoid' | 'balanced' | 'permissive',
                 enableSemanticScoring: true,
                 semanticScoringThreshold: 0.80,

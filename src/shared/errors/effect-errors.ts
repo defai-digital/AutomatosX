@@ -204,7 +204,8 @@ export class SessionLoadError extends Data.TaggedError('SessionLoadError')<{
 /**
  * No providers available
  */
-export class NoProvidersAvailableError extends Data.TaggedError('NoProvidersAvailableError')<{}> {}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export class NoProvidersAvailableError extends Data.TaggedError('NoProvidersAvailableError')<Record<string, never>> {}
 
 /**
  * No suitable provider found

@@ -5,14 +5,15 @@
  */
 
 import type { CommandModule } from 'yargs';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import { ResponseCache } from '../../core/cache/response-cache.js';
 import { loadConfig } from '../../core/config/loader.js';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { printSuccess } from '../../shared/logging/message-formatter.js';
+import { AX_PATHS } from '../../core/validation-limits.js';
 
-const DEFAULT_CACHE_DB_PATH = '.automatosx/cache/responses.db';
+const DEFAULT_CACHE_DB_PATH = join(AX_PATHS.CACHE, 'responses.db');
 
 /**
  * Get response cache instance

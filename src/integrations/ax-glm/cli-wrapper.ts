@@ -13,6 +13,7 @@ import { promisify } from 'util';
 import { exec } from 'child_process';
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 import {
   type GLMCLIConfig,
   type GLMModel,
@@ -49,7 +50,7 @@ export class GLMCliWrapper {
     this.config = {
       command: config.command || GLM_DEFAULT_COMMAND,
       model: config.model || GLM_DEFAULT_MODEL,
-      timeout: config.timeout || 120000
+      timeout: config.timeout || TIMEOUTS.PROVIDER_DEFAULT
     };
 
     logger.debug('[GLM CLI] Wrapper created', {
@@ -64,7 +65,7 @@ export class GLMCliWrapper {
   async isAvailable(): Promise<boolean> {
     try {
       const { stdout } = await execAsync(`which ${this.config.command}`, {
-        timeout: 5000
+        timeout: TIMEOUTS.PROVIDER_DETECTION
       });
 
       this.cliPath = stdout.trim();
@@ -74,7 +75,7 @@ export class GLMCliWrapper {
         try {
           const { stdout: versionOutput } = await execAsync(
             `${this.config.command} --version`,
-            { timeout: 5000 }
+            { timeout: TIMEOUTS.PROVIDER_DETECTION }
           );
           this.cliVersion = versionOutput.trim();
         } catch {

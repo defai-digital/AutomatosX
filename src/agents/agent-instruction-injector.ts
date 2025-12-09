@@ -247,13 +247,14 @@ export class AgentInstructionInjector implements InstructionProvider {
 
   /**
    * Generate instructions based on agent domain
+   * Note: Returns Promise to satisfy interface contract (InstructionProvider)
    */
-  async getInstructions(context: OrchestrationContext): Promise<EmbeddedInstruction[]> {
+  getInstructions(context: OrchestrationContext): Promise<EmbeddedInstruction[]> {
     const instructions: EmbeddedInstruction[] = [];
 
     const domain = this.resolveDomain(context);
     if (!domain) {
-      return instructions;
+      return Promise.resolve(instructions);
     }
 
     const template = getAgentTemplate(domain);
@@ -341,7 +342,7 @@ export class AgentInstructionInjector implements InstructionProvider {
       instructionCount: instructions.length
     });
 
-    return instructions;
+    return Promise.resolve(instructions);
   }
 
   /**

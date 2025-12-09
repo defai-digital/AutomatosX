@@ -21,7 +21,6 @@ import {
 import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
 import type {
   AutomatosXConfig,
-  MemorySearchConfig,
   LoggingRetentionConfig
 } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
@@ -348,9 +347,18 @@ export function validateConfig(config: AutomatosXConfig): string[] {
     }
 
     // NEW: Validate command (prevent command injection)
-    if (!provider.command) {
-      errors.push(`Provider ${name}: command is required`);
-    } else if (!isValidCommand(provider.command)) {
+    // v12.0.0: SDK providers (glm, grok) don't require command
+    const providerType = (provider as { type?: string }).type;
+    const isSDKProvider = providerType === 'sdk';
+
+    if (!isSDKProvider) {
+      if (!provider.command) {
+        errors.push(`Provider ${name}: command is required for CLI/hybrid providers`);
+      } else if (!isValidCommand(provider.command)) {
+        errors.push(`Provider ${name}: command invalid (alphanumeric, dash, underscore only, max 100 chars, no shell metacharacters)`);
+      }
+    } else if (provider.command && !isValidCommand(provider.command)) {
+      // SDK providers can optionally have a command, but it must be valid if present
       errors.push(`Provider ${name}: command invalid (alphanumeric, dash, underscore only, max 100 chars, no shell metacharacters)`);
     }
 

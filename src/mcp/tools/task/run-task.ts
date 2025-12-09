@@ -83,7 +83,6 @@ export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<Run
 
     try {
       const taskEngine = getTaskEngine();
-      const session = deps.getSession();
 
       // Build run options
       const options: RunTaskOptions = {

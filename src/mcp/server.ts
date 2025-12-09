@@ -84,6 +84,11 @@ import { createImplementAndDocumentHandler } from './tools/implement-and-documen
 // Import tool handlers - v10.5.0: Smart Routing
 import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 
+// v12.4.0: Bugfix tools are NOT exposed via MCP
+// They are internal tools used by Quality agent via the bugfix workflow
+// Users should call: run_agent({ agent: "quality", task: "scan for bugs" })
+// This ensures consistent experience with agent context, memory, and orchestration
+
 // Import tool handlers - v13.0.0: Enhanced Service Discovery
 import { createGetCapabilitiesHandler } from './tools/get-capabilities.js';
 
@@ -382,6 +387,8 @@ Use this tool first to understand what AutomatosX offers.`,
       getTaskResultSchema as McpTool,
       listTasksSchema as McpTool,
       deleteTaskSchema as McpTool
+      // v12.4.0: Bugfix tools intentionally NOT exposed via MCP
+      // Access via: run_agent({ agent: "quality", task: "scan for bugs" })
     ];
   }
 
@@ -680,6 +687,10 @@ Use this tool first to understand what AutomatosX offers.`,
     register('get_task_result', createGetTaskResultHandler());
     register('list_tasks', createListTasksHandler());
     register('delete_task', createDeleteTaskHandler());
+
+    // v12.4.0: Bugfix tools intentionally NOT registered
+    // Access via: run_agent({ agent: "quality", task: "scan for bugs" })
+    // This ensures users get full agent value (context, memory, orchestration)
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,

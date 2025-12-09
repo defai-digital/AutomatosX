@@ -2,6 +2,8 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
+// v12.4.0: Custom AutomatosX ESLint rules for preventing timer/resource leaks
+import automatosxPlugin from './tools/eslint-plugin-automatosx/lib/index.js';
 
 export default tseslint.config(
   // Global ignores
@@ -27,6 +29,10 @@ export default tseslint.config(
   // Main source code configuration
   {
     files: ['src/**/*.ts'],
+    plugins: {
+      // v12.4.0: Custom AutomatosX rules for preventing timer/resource leaks
+      automatosx: automatosxPlugin,
+    },
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -57,6 +63,11 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['error', 'warn'] }],
       'no-debugger': 'error',
       'no-alert': 'error',
+      // v12.4.0: AutomatosX custom rules (lenient mode - warn only)
+      // These rules help catch timer leaks and resource management issues
+      'automatosx/no-interval-without-unref': 'warn',
+      'automatosx/eventemitter-requires-destroy': 'warn',
+      'automatosx/timeout-must-clear-on-error': 'off', // Too many false positives in existing code
     },
   },
 

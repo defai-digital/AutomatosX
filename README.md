@@ -12,7 +12,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v12.4.1 | MCP Hybrid Framing & Multi-Protocol Support
+**Status**: ✅ **Production Ready** | v12.5.0 | MCP Hybrid Framing & Multi-Protocol Support
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
@@ -311,6 +311,58 @@ steps:
 ```
 
 **AutomatosX executes everything automatically**, with optimal provider routing.
+
+### 6. Autonomous Bug Fixing (v12.4.0+)
+
+**Automatically detect and fix common bugs in your codebase:**
+
+```bash
+# Scan and fix timer leaks, missing destroy(), and resource issues
+ax bugfix
+
+# Dry-run mode (preview fixes without applying)
+ax bugfix --dry-run
+
+# Focus on specific directory
+ax bugfix --scope src/core/
+
+# Fix specific bug types only
+ax bugfix --types timer_leak,missing_destroy
+```
+
+**What AutomatosX detects and fixes**:
+- **Timer Leaks**: `setInterval`/`setTimeout` without cleanup
+- **Missing Destroy**: EventEmitters without `destroy()` method
+- **Promise Timeout Leaks**: Timeouts not cleared in error paths
+- **Event Leaks**: Event listeners without cleanup
+
+**Safe by default**:
+- Creates backups before any changes
+- Runs TypeScript typecheck after each fix
+- Runs tests to verify fixes don't break functionality
+- Automatic rollback if verification fails
+
+**Example output**:
+```
+[ax bugfix] Scanning src/ for bugs...
+[ax bugfix] Found 18 potential issues:
+  - 12 timer_leak (setInterval without .unref())
+  - 4 missing_destroy (EventEmitter subclass)
+  - 2 promise_timeout_leak
+
+[ax bugfix] Fixing timer_leak in src/core/worker-pool.ts:447
+  - Replaced setInterval with createSafeInterval
+  - Verification: TypeScript ✓ Tests ✓
+
+[ax bugfix] Complete: 15/18 bugs fixed, 3 require manual review
+```
+
+**MCP Integration** - Use bugfix via Quality agent from Claude Code:
+```
+# Via Quality agent (recommended - full context and orchestration)
+run_agent({ agent: "quality", task: "scan src/ for code health issues" })
+run_agent({ agent: "quality", task: "run bugfix workflow with dry-run" })
+```
 
 ---
 

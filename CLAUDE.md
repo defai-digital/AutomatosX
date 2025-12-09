@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v12.4.1) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
+AutomatosX (v12.5.0) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -214,6 +214,142 @@ ax providers trace --follow       # Real-time routing decisions
 - Max delegation depth: 2 (configurable)
 - Max concurrent agents: 4 (configurable)
 - Memory max entries: 10,000 (auto-cleanup)
+
+## Safe Timer Utilities (v12.4.0+)
+
+AutomatosX provides safe timer utilities to prevent process hang and resource leaks.
+
+### Usage
+
+```typescript
+import {
+  createSafeInterval,
+  createSafeTimeout,
+  withTimeout,
+  sleep
+} from '../shared/utils/safe-timers.js';
+
+// Safe interval - automatically calls .unref() to prevent process hang
+const cleanup = createSafeInterval(() => {
+  console.log('tick');
+}, 1000, { name: 'heartbeat' });
+
+// Later: cleanup();
+
+// Safe timeout with cleanup
+const cancel = createSafeTimeout(() => {
+  console.log('done');
+}, 5000);
+
+// Promise with timeout
+const result = await withTimeout(fetch('/api'), 5000, {
+  message: 'API request timed out'
+});
+
+// Sleep with cancellation support
+const controller = new AbortController();
+await sleep(1000, controller.signal);
+```
+
+### Disposable Base Classes
+
+For classes that manage resources (timers, event listeners, connections):
+
+```typescript
+import { Disposable, DisposableEventEmitter } from '../shared/utils/disposable.js';
+
+// For non-EventEmitter classes
+class MyService extends Disposable {
+  private interval: () => void;
+
+  constructor() {
+    super();
+    // createInterval is automatically cleaned up on destroy()
+    this.interval = this.createInterval(() => this.tick(), 1000);
+  }
+
+  protected onDestroy(): void {
+    // Optional: custom cleanup logic
+  }
+}
+
+// For EventEmitter subclasses
+class MyEmitter extends DisposableEventEmitter {
+  constructor() {
+    super();
+    this.createInterval(() => this.emit('tick'), 1000);
+  }
+}
+
+// Usage with async disposal
+await using service = new MyService();
+// service.destroy() called automatically when scope exits
+```
+
+### ESLint Rules
+
+The project includes custom ESLint rules to catch timer/resource issues:
+
+```bash
+# Rules enabled (warn level):
+# - automatosx/no-interval-without-unref
+# - automatosx/eventemitter-requires-destroy
+```
+
+## Autonomous Bug Fixing (v12.4.0+)
+
+AutomatosX includes an autonomous bug detection and fixing system.
+
+### CLI Usage
+
+```bash
+# Scan and fix bugs in current directory
+ax bugfix
+
+# Dry-run mode (preview without changes)
+ax bugfix --dry-run
+
+# Fix specific scope
+ax bugfix --scope src/core/
+
+# Fix specific bug types
+ax bugfix --types timer_leak,missing_destroy
+
+# Verbose output
+ax bugfix --verbose
+```
+
+### Supported Bug Types
+
+| Bug Type | Description | Auto-Fix |
+|----------|-------------|----------|
+| `timer_leak` | setInterval/setTimeout without cleanup | Yes |
+| `missing_destroy` | EventEmitter without destroy() | Yes |
+| `promise_timeout_leak` | setTimeout not cleared on error | Yes |
+| `event_leak` | Event listener without removeListener | Partial |
+
+### Programmatic Usage
+
+```typescript
+import { BugfixController, createDefaultBugfixConfig } from './core/bugfix/index.js';
+
+const controller = new BugfixController({
+  rootDir: process.cwd(),
+  config: {
+    bugTypes: ['timer_leak', 'missing_destroy'],
+    maxBugs: 10,
+    dryRun: false,
+    requireTests: true,
+    requireTypecheck: true,
+  },
+  onProgress: (state, stats) => console.log(state, stats),
+  onBugFound: (bug) => console.log('Found:', bug),
+  onFixApplied: (bug, attempt) => console.log('Fixed:', bug.file),
+});
+
+const result = await controller.execute();
+console.log(`Fixed ${result.stats.bugsFixed} of ${result.stats.bugsFound} bugs`);
+```
 
 ## Working with AutomatosX Agents
 

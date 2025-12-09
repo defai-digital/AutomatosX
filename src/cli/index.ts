@@ -55,6 +55,8 @@ import { uninstallCommand } from './commands/uninstall.js';
 import { modeCommand } from './commands/mode.js';
 import { debugInstructionsCommand } from './commands/debug-instructions.js';
 import { planCommand, iterateCommand, reviewCommand } from './commands/shortcuts.js';
+// v12.4.0: Autonomous bug-fixing workflow
+import { bugfixCommand } from './commands/bugfix.js';
 
 // Mark CLI startup
 globalTracker.mark('cli_start');
@@ -162,6 +164,8 @@ globalTracker.mark('cli_start');
   .command(planCommand)
   .command(iterateCommand)
   .command(reviewCommand)
+  // v12.4.0: Autonomous bug-fixing workflow
+  .command(bugfixCommand)
 
   // Configuration
   .demandCommand(1, 'You must provide a command. Run --help for usage.')

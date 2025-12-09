@@ -6,6 +6,7 @@
 import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import { logger } from '../shared/logging/logger.js';
+import { createSafeInterval } from '../shared/utils/safe-timers.js';
 
 export interface WorkerTask<T = any> {
   id: string;
@@ -61,7 +62,7 @@ export class WorkerPool {
   private config: Required<WorkerPoolConfig>;
   private workerScript: string;
   private shutdownRequested = false;
-  private idleCheckInterval?: NodeJS.Timeout;
+  private idleCheckCleanup?: () => void;
 
   constructor(workerScript: string, config: WorkerPoolConfig = {}) {
     this.workerScript = workerScript;
@@ -145,9 +146,9 @@ export class WorkerPool {
   async shutdown(): Promise<void> {
     this.shutdownRequested = true;
 
-    // Clear idle cleanup interval
-    if (this.idleCheckInterval) {
-      clearInterval(this.idleCheckInterval);
+    // Clear idle cleanup interval using safe timer cleanup
+    if (this.idleCheckCleanup) {
+      this.idleCheckCleanup();
     }
 
     // Reject all queued tasks
@@ -178,10 +179,10 @@ export class WorkerPool {
    * Similar to shutdown() but without async operations
    */
   private cleanup(): void {
-    // Clear idle cleanup interval
-    if (this.idleCheckInterval) {
-      clearInterval(this.idleCheckInterval);
-      this.idleCheckInterval = undefined;
+    // Clear idle cleanup interval using safe timer cleanup
+    if (this.idleCheckCleanup) {
+      this.idleCheckCleanup();
+      this.idleCheckCleanup = undefined;
     }
 
     // Terminate all workers (synchronously)
@@ -442,9 +443,10 @@ export class WorkerPool {
 
   /**
    * Start idle worker cleanup
+   * v12.4.0: Uses createSafeInterval to prevent process hang on exit
    */
   private startIdleCleanup(): void {
-    this.idleCheckInterval = setInterval(() => {
+    this.idleCheckCleanup = createSafeInterval(() => {
       const idleWorkers = this.workers.filter(w => !w.busy);
 
       // FIXED (v6.5.13 Bug #131): Ensure safe calculation of workers to terminate
@@ -465,6 +467,6 @@ export class WorkerPool {
           });
         }
       }
-    }, this.config.idleTimeout);
+    }, this.config.idleTimeout, { name: 'worker-pool-idle-cleanup' });
   }
 }

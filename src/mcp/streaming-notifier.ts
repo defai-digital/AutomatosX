@@ -472,20 +472,19 @@ export class McpStreamingNotifier {
   }
 
   /**
-   * Write notification to stdout with Content-Length framing
+   * Write notification to stdout with newline-delimited framing
+   * v12.5.4: Changed from Content-Length to newline-delimited to match MCP server
    */
   private writeNotification(notification: McpNotification): void {
     try {
       const json = JSON.stringify(notification);
-      const contentLength = Buffer.byteLength(json, 'utf-8');
-      const message = `Content-Length: ${contentLength}\r\n\r\n${json}`;
-
-      process.stdout.write(message);
+      // MCP spec: newline-delimited framing (matches server.ts writeResponse)
+      process.stdout.write(json + '\n');
 
       if (this.options.debug) {
         logger.debug('[MCP Streaming] Notification sent', {
           method: notification.method,
-          contentLength
+          length: json.length
         });
       }
     } catch (error) {
@@ -493,6 +492,36 @@ export class McpStreamingNotifier {
         error: error instanceof Error ? error.message : String(error)
       });
     }
+  }
+
+  /**
+   * v12.5.4: Send a brief activity message to inform users the system is working
+   * This is a simpler API for tool handlers to send progress updates
+   */
+  sendActivityMessage(message: string, progressToken?: string): void {
+    if (!this.options.enabled) return;
+
+    const token = progressToken || `ax-activity-${Date.now()}`;
+    this.sendProgressReport(token, { message });
+  }
+
+  /**
+   * v12.5.4: Send begin activity notification
+   */
+  sendActivityBegin(title: string, message?: string, progressToken?: string): string {
+    if (!this.options.enabled) return '';
+
+    const token = progressToken || `ax-activity-${Date.now()}`;
+    this.sendProgressBegin(token, { title, message, cancellable: false });
+    return token;
+  }
+
+  /**
+   * v12.5.4: Send end activity notification
+   */
+  sendActivityEnd(progressToken: string, message?: string): void {
+    if (!this.options.enabled) return;
+    this.sendProgressEnd(progressToken, message);
   }
 }
 
@@ -519,5 +548,42 @@ export function resetGlobalStreamingNotifier(): void {
   if (globalNotifier) {
     globalNotifier.stop();
     globalNotifier = null;
+  }
+}
+
+// ============================================
+// Convenience Functions (v12.5.4)
+// ============================================
+
+/**
+ * Send a brief progress message through the global notifier
+ * Use this from tool handlers to inform users of activity
+ */
+export function sendMcpProgress(message: string, progressToken?: string): void {
+  const notifier = globalNotifier;
+  if (notifier) {
+    notifier.sendActivityMessage(message, progressToken);
+  }
+}
+
+/**
+ * Send a begin progress notification
+ * Returns the progress token to use for subsequent updates
+ */
+export function sendMcpProgressBegin(title: string, message?: string): string {
+  const notifier = globalNotifier;
+  if (notifier) {
+    return notifier.sendActivityBegin(title, message);
+  }
+  return '';
+}
+
+/**
+ * Send an end progress notification
+ */
+export function sendMcpProgressEnd(progressToken: string, message?: string): void {
+  const notifier = globalNotifier;
+  if (notifier) {
+    notifier.sendActivityEnd(progressToken, message);
   }
 }

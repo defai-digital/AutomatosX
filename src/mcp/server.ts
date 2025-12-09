@@ -111,7 +111,7 @@ import { McpClientPool, getGlobalPool } from '../providers/mcp/pool-manager.js';
 
 // v11.1.0: Unified Event System
 import { getGlobalEventBridge, type EventBridge } from '../core/events/event-bridge.js';
-import { McpStreamingNotifier, getGlobalStreamingNotifier } from './streaming-notifier.js';
+import { McpStreamingNotifier, getGlobalStreamingNotifier, sendMcpProgressBegin, sendMcpProgressEnd } from './streaming-notifier.js';
 import { ClaudeEventNormalizer } from '../core/events/normalizers/claude-normalizer.js';
 import { GeminiEventNormalizer } from '../core/events/normalizers/gemini-normalizer.js';
 import { CodexEventNormalizer } from '../core/events/normalizers/codex-normalizer.js';
@@ -211,6 +211,12 @@ export class McpServer {
     this.version = getVersion();
     this.ajv = new Ajv({ allErrors: true });
     addFormats(this.ajv);
+
+    // v12.5.4: Start streaming notifier early so progress messages work during lazy init
+    if (this.enableStreamingNotifications) {
+      this.streamingNotifier = getGlobalStreamingNotifier({ enabled: true });
+      this.streamingNotifier.start();
+    }
 
     logger.info('[MCP Server] Initializing AutomatosX MCP Server', {
       version: this.version,
@@ -538,15 +544,10 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
     this.eventBridge.registerNormalizer(new GeminiEventNormalizer());
     this.eventBridge.registerNormalizer(new CodexEventNormalizer());
 
-    // Start streaming notifier if enabled
+    // v12.5.4: Streaming notifier is started early in constructor
+    // Here we just log that services are ready
     if (this.enableStreamingNotifications) {
-      this.streamingNotifier = getGlobalStreamingNotifier({
-        enabled: true,
-        eventBridge: this.eventBridge,
-        debug: process.env.AUTOMATOSX_LOG_LEVEL === 'debug'
-      });
-      this.streamingNotifier.start();
-      logger.info('[MCP Server] Streaming notifications enabled');
+      logger.info('[MCP Server] Streaming notifications active');
     }
 
     logger.info('[MCP Server] Services initialized successfully');
@@ -1066,6 +1067,7 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
 
   /**
    * Handle tools/call request
+   * v12.5.4: Added streaming progress notifications
    */
   private async handleToolCall(request: McpToolCallRequest, id: string | number | null): Promise<JsonRpcResponse> {
     const { name, arguments: args } = request.params;
@@ -1099,26 +1101,43 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
       return this.createErrorResponse(requestId, McpErrorCode.RequestCancelled, 'Request was cancelled');
     }
 
+    // v12.5.4: Send progress notification for tool execution start
+    const progressToken = this.enableStreamingNotifications
+      ? sendMcpProgressBegin(`Tool: ${name}`, this.getToolProgressMessage(name, args))
+      : '';
+
     await this.ensureInitialized();
 
     const handler = this.tools.get(name);
     if (!handler) {
+      if (progressToken) sendMcpProgressEnd(progressToken, `Tool not found: ${name}`);
       return this.createErrorResponse(id, McpErrorCode.ToolNotFound, `Tool not found: ${name}`);
     }
 
     const validationError = this.validateToolInput(name, args || {});
     if (validationError) {
+      if (progressToken) sendMcpProgressEnd(progressToken, 'Validation failed');
       return this.createErrorResponse(id, McpErrorCode.InvalidParams, validationError);
     }
 
     try {
+      const startTime = Date.now();
       const result = await handler(args || {}, { signal: abortController?.signal });
+      const duration = Date.now() - startTime;
+
       // If a cancellation arrived while running, honor it
       if (requestId !== null && this.cancelledRequests.has(requestId)) {
         this.cancelledRequests.delete(requestId);
         this.requestControllers.delete(requestId);
+        if (progressToken) sendMcpProgressEnd(progressToken, 'Cancelled');
         return this.createErrorResponse(requestId, McpErrorCode.RequestCancelled, 'Request was cancelled');
       }
+
+      // v12.5.4: Send completion notification
+      if (progressToken) {
+        sendMcpProgressEnd(progressToken, `Done (${duration}ms)`);
+      }
+
       return this.createToolResponse(id, result);
     } catch (error) {
       const err = error as Error;
@@ -1126,16 +1145,68 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
 
       if (cancelled) {
         logger.info('[MCP Server] Tool execution cancelled', { tool: name, id: requestId ?? undefined });
+        if (progressToken) sendMcpProgressEnd(progressToken, 'Cancelled');
         return this.createErrorResponse(id, McpErrorCode.RequestCancelled, 'Request was cancelled');
       }
 
       logger.error('[MCP Server] Tool execution failed', { tool: name, error });
+      if (progressToken) sendMcpProgressEnd(progressToken, `Error: ${err?.message?.substring(0, 50) || 'Unknown'}`);
       return this.createToolResponse(id, `Error: ${err?.message ?? String(error)}`, true);
     } finally {
       if (requestId !== null) {
         this.cancelledRequests.delete(requestId);
         this.requestControllers.delete(requestId);
       }
+    }
+  }
+
+  /**
+   * v12.5.4: Generate brief progress message for tool execution
+   */
+  private getToolProgressMessage(toolName: string, args: Record<string, unknown> | undefined): string {
+    // Provide context-specific messages for key tools
+    switch (toolName) {
+      case 'run_agent': {
+        const agent = args?.agent as string | undefined;
+        const task = args?.task as string | undefined;
+        if (agent) return `Running ${agent} agent...`;
+        if (task) return `Auto-selecting agent for task...`;
+        return 'Executing agent...';
+      }
+      case 'get_agent_context': {
+        const agent = args?.agent as string | undefined;
+        return agent ? `Loading ${agent} context...` : 'Loading agent context...';
+      }
+      case 'search_memory': {
+        const query = args?.query as string | undefined;
+        return query ? `Searching: "${query.substring(0, 30)}..."` : 'Searching memory...';
+      }
+      case 'list_agents':
+        return 'Listing available agents...';
+      case 'get_status':
+        return 'Getting system status...';
+      case 'get_capabilities':
+        return 'Getting capabilities...';
+      case 'session_create':
+        return 'Creating session...';
+      case 'session_list':
+        return 'Listing sessions...';
+      case 'memory_add':
+        return 'Adding to memory...';
+      case 'memory_list':
+        return 'Listing memory entries...';
+      case 'memory_export':
+        return 'Exporting memory...';
+      case 'memory_import':
+        return 'Importing memory...';
+      case 'implement_and_document':
+        return 'Implementing and documenting...';
+      case 'create_task':
+        return 'Creating task...';
+      case 'run_task':
+        return 'Running task...';
+      default:
+        return `Executing ${toolName}...`;
     }
   }
 

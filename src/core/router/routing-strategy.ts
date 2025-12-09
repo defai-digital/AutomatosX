@@ -12,7 +12,7 @@
  * @module core/routing-strategy
  */
 
-import { EventEmitter } from 'events';
+import { DisposableEventEmitter } from '../../shared/utils/disposable.js';
 import type {
   RoutingStrategy,
   RoutingWeights,
@@ -30,7 +30,7 @@ import { logger } from '../../shared/logging/logger.js';
  *
  * Implements multi-factor routing based on configurable weights
  */
-export class RoutingStrategyManager extends EventEmitter {
+export class RoutingStrategyManager extends DisposableEventEmitter {
   private strategy: RoutingStrategy;
   private metricsTracker: ProviderMetricsTracker;
   private minRequestsForScoring: number;

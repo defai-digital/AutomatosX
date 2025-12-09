@@ -15,7 +15,7 @@
  * @module core/provider-metrics-tracker
  */
 
-import { EventEmitter } from 'events';
+import { DisposableEventEmitter } from '../shared/utils/disposable.js';
 import type { ProviderMetrics, ProviderScore, RoutingWeights } from '../types/routing.js';
 import { PROVIDER_PRICING } from '../types/routing.js';
 import { logger } from '../shared/logging/logger.js';
@@ -53,7 +53,7 @@ interface ScoreCacheEntry {
   isDirty: boolean;     // v9.0.3: Marks cache as stale without immediate invalidation
 }
 
-export class ProviderMetricsTracker extends EventEmitter {
+export class ProviderMetricsTracker extends DisposableEventEmitter {
   private metrics: Map<string, RequestRecord[]> = new Map();
   private windowSize: number;
   private minRequests: number;

@@ -25,6 +25,7 @@ import { mapMcpProviderToActual, mapActualProviderToMcp, mapNormalizedCallerToAc
 import { McpClientPool } from '../../providers/mcp/pool-manager.js';
 import type { CrossProviderResult, ExecutionMode } from '../../providers/mcp/types.js';
 import { TIMEOUTS } from '../../core/validation-limits.js';
+import { sendMcpProgress } from '../streaming-notifier.js';
 
 /**
  * v12.5.3: Helper to check if request was cancelled
@@ -252,10 +253,12 @@ export function createRunAgentHandler(
     // v12.5.1: Auto-select agent if not provided
     let autoSelected = false;
     if (!agent && deps.profileLoader) {
+      sendMcpProgress('Auto-selecting best agent...');
       const selector = new AgentSelector(deps.profileLoader);
       const selection = await selector.selectAgent(task);
       agent = selection.agent;
       autoSelected = true;
+      sendMcpProgress(`Selected: ${agent} (${selection.confidence} confidence)`);
       logger.info('[MCP] run_agent auto-selected agent', {
         task: task.substring(0, 100),
         selectedAgent: agent,
@@ -317,6 +320,7 @@ export function createRunAgentHandler(
 
     // Context Mode: Return context for AI assistant to execute
     if (shouldReturnContext) {
+      sendMcpProgress(`Building context for ${agent}...`);
       const startTime = Date.now();
       const agentContext = await buildAgentContext(
         agent,
@@ -350,6 +354,7 @@ export function createRunAgentHandler(
     if (shouldTryMcp && deps.mcpPool) {
       try {
         checkAborted(context?.signal);
+        sendMcpProgress(`Executing via MCP pool (${bestProvider})...`);
 
         const result = await executeViaMcpPool(
           bestProvider,
@@ -375,6 +380,7 @@ export function createRunAgentHandler(
         };
       } catch (mcpError) {
         // MCP pool failed, fall back to CLI spawn
+        sendMcpProgress('MCP pool failed, falling back to CLI...');
         logger.warn('[MCP] MCP pool failed, falling back to CLI spawn', {
           agent,
           provider: bestProvider,
@@ -387,6 +393,7 @@ export function createRunAgentHandler(
     // CLI Spawn: Traditional execution via AgentExecutor
     try {
       checkAborted(context?.signal);
+      sendMcpProgress(`Spawning ${agent} agent via CLI...`);
 
       const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal, MCP_DEFAULT_AGENT_TIMEOUT_MS);
 

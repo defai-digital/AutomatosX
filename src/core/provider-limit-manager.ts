@@ -14,7 +14,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { logger } from '../shared/logging/logger.js';
-import { EventEmitter } from 'events';
+import { DisposableEventEmitter } from '../shared/utils/disposable.js';
 import { detectProjectRoot } from '../shared/validation/path-resolver.js';
 import type { ProviderLimitTrackingConfig } from '../types/config.js';
 import { Mutex } from 'async-mutex';
@@ -90,7 +90,7 @@ export interface LimitCheckResult {
  *
  * Singleton responsible for tracking and managing provider usage limits.
  */
-export class ProviderLimitManager extends EventEmitter {
+export class ProviderLimitManager extends DisposableEventEmitter {
   private static instance: ProviderLimitManager | null = null;
 
   private stateFilePath: string;

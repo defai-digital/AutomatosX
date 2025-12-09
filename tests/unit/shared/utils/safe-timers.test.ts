@@ -17,6 +17,13 @@ import {
 describe('safe-timers', () => {
   // Note: Each test manages its own timer mode (fake or real)
   // Interval tests use real timers with short intervals to avoid infinite loop issues
+  // IMPORTANT: Always restore to real timers in afterEach to prevent test pollution
+
+  // Global afterEach to ensure timers are always restored to real mode
+  // This prevents issues with vitest's global cleanup on Windows
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   describe('createSafeInterval', () => {
     // Interval tests need real timers to avoid fake timer infinite loop issues
@@ -160,9 +167,7 @@ describe('safe-timers', () => {
       vi.useFakeTimers();
     });
 
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+    // Note: afterEach to restore real timers is handled by parent describe block
 
     it('should call callback after specified delay', async () => {
       const callback = vi.fn();

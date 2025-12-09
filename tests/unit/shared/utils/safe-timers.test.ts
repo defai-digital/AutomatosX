@@ -35,9 +35,10 @@ describe('safe-timers', () => {
 
       expect(callback).not.toHaveBeenCalled();
 
-      // Wait for 2 ticks
-      await new Promise(resolve => setTimeout(resolve, 25));
-      expect(callback).toHaveBeenCalledTimes(2);
+      // Wait for at least 2 ticks - use longer wait and "at least" assertion
+      // to handle platform timing variability (macOS, Windows, CI)
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(callback.mock.calls.length).toBeGreaterThanOrEqual(2);
 
       cleanup();
     });

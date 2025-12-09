@@ -187,9 +187,11 @@ export class ProfileLoader {
         // Parse YAML to extract only displayName
         // FIX Bug #104: Validate data is object before accessing properties
         const data = load(content);
-        return data && typeof data === 'object' && !Array.isArray(data) && 'displayName' in data
-          ? (data as any).displayName || null
-          : null;
+        if (data && typeof data === 'object' && !Array.isArray(data) && 'displayName' in data) {
+          const profile = data as { displayName?: string };
+          return profile.displayName ?? null;
+        }
+        return null;
 
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -229,7 +231,7 @@ export class ProfileLoader {
     } catch (error) {
       // Profile not found directly, might be a displayName
       // Only now build the displayName mapping if not already done
-      if ((error as any).name === 'AgentNotFoundError') {
+      if (error instanceof Error && error.name === 'AgentNotFoundError') {
         logger.debug('Direct profile load failed, trying displayName lookup', { identifier });
 
         // Build map lazily if not already built
@@ -718,30 +720,33 @@ export class ProfileLoader {
    * Build profile from raw data with defaults
    * v4.10.0+: Supports team-based configuration inheritance
    */
-  private async buildProfile(data: any, name: string): Promise<AgentProfile> {
+  private async buildProfile(data: unknown, name: string): Promise<AgentProfile> {
     // FIX Bug #104: Validate data is a valid object before accessing properties
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new AgentValidationError(`Invalid profile data for ${name}: expected object, got ${typeof data}`);
     }
 
+    // Cast to record type after validation - Zod validates the actual shape at line 746
+    const profileData = data as Record<string, unknown>;
+
     // Preprocess: If name in YAML has invalid chars, move it to displayName and use filename
-    if (data.name && typeof data.name === 'string') {
+    if (profileData.name && typeof profileData.name === 'string') {
       // Check if name has invalid characters (spaces, etc.)
-      if (!/^[a-zA-Z0-9_-]+$/.test(data.name)) {
+      if (!/^[a-zA-Z0-9_-]+$/.test(profileData.name)) {
         // Move invalid name to displayName if not already set
-        if (!data.displayName) {
-          data.displayName = data.name;
+        if (!profileData.displayName) {
+          profileData.displayName = profileData.name;
         }
         // Use filename as name instead
-        data.name = name;
+        profileData.name = name;
       }
-    } else if (!data.name) {
+    } else if (!profileData.name) {
       // If no name provided, use filename
-      data.name = name;
+      profileData.name = name;
     }
 
     // Validate with Zod schema first (early validation with better error messages)
-    const validationResult = safeValidateAgentProfile(data);
+    const validationResult = safeValidateAgentProfile(profileData);
     if (!validationResult.success) {
       // Note: Zod v3.x uses 'issues' instead of 'errors'
       const validationErrors = validationResult.error.issues.map(e =>
@@ -755,24 +760,24 @@ export class ProfileLoader {
     let teamConfig: TeamConfig | undefined;
 
     // v4.10.0+: Load team configuration if specified
-    if (data.team && this.teamManager) {
+    if (profileData.team && this.teamManager) {
       try {
-        teamConfig = await this.teamManager.loadTeam(data.team);
+        teamConfig = await this.teamManager.loadTeam(profileData.team as string);
         logger.debug('Team configuration loaded for agent', {
           agent: name,
-          team: data.team
+          team: profileData.team
         });
       } catch (error) {
         logger.warn('Failed to load team configuration, using agent defaults', {
           agent: name,
-          team: data.team,
+          team: profileData.team,
           error: (error as Error).message
         });
       }
     }
 
     // Merge abilities: team's sharedAbilities + agent's abilities
-    const abilities = data.abilities || [];
+    const abilities = (profileData.abilities as string[]) || [];
     if (teamConfig?.sharedAbilities) {
       // Combine team shared abilities with agent-specific abilities
       // Remove duplicates using Set
@@ -788,7 +793,7 @@ export class ProfileLoader {
     }
 
     // Merge orchestration: team defaults + agent overrides
-    let orchestration = data.orchestration;
+    let orchestration = profileData.orchestration as AgentProfile['orchestration'];
     if (teamConfig?.orchestration && !orchestration) {
       // Use team orchestration defaults if agent doesn't specify its own
       orchestration = teamConfig.orchestration;
@@ -799,32 +804,32 @@ export class ProfileLoader {
     }
 
     const profile: AgentProfile = {
-      name: data.name || name,
-      displayName: data.displayName,
-      role: data.role,
-      description: data.description,
+      name: (profileData.name as string) || name,
+      displayName: profileData.displayName as string | undefined,
+      role: profileData.role as string,
+      description: profileData.description as string,
       // v4.10.0+: Team field
-      team: data.team,
-      systemPrompt: data.systemPrompt,
+      team: profileData.team as string | undefined,
+      systemPrompt: profileData.systemPrompt as string,
       abilities: abilities,
-      dependencies: data.dependencies,
-      parallel: data.parallel,
+      dependencies: profileData.dependencies as string[] | undefined,
+      parallel: profileData.parallel as boolean | undefined,
       // Enhanced v4.1+ features
-      stages: data.stages,
-      personality: data.personality,
-      thinking_patterns: data.thinking_patterns,
-      abilitySelection: data.abilitySelection,
+      stages: profileData.stages as AgentProfile['stages'],
+      personality: profileData.personality as AgentProfile['personality'],
+      thinking_patterns: profileData.thinking_patterns as string[] | undefined,
+      abilitySelection: profileData.abilitySelection as AgentProfile['abilitySelection'],
       // v5.7.0+: Agent Selection Metadata
-      selectionMetadata: data.selectionMetadata,
+      selectionMetadata: profileData.selectionMetadata as AgentProfile['selectionMetadata'],
       // Provider preferences (deprecated, kept for backward compatibility)
-      provider: data.provider,
-      model: data.model,
-      temperature: data.temperature,
-      maxTokens: data.maxTokens,
+      provider: profileData.provider as string | undefined,
+      model: profileData.model as string | undefined,
+      temperature: profileData.temperature as number | undefined,
+      maxTokens: profileData.maxTokens as number | undefined,
       // Optional
-      tags: data.tags,
-      version: data.version,
-      metadata: data.metadata,
+      tags: profileData.tags as string[] | undefined,
+      version: profileData.version as string | undefined,
+      metadata: profileData.metadata as Record<string, unknown> | undefined,
       // v4.7.0+ Orchestration (merged with team defaults)
       orchestration: orchestration
     };

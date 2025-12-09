@@ -296,45 +296,19 @@ export class AgentInstructionInjector implements InstructionProvider {
 
     // Delegation suggestions
     const taskText = this.extractTaskText(context);
-    if (this.config.delegationDetection) {
-      if (taskText !== this.recentTaskText) {
-        this.recentTaskText = taskText;
-        const delegationContent = this.checkAndFormatDelegation(template, taskText);
-        if (delegationContent) {
-          instructions.push({
-            type: 'delegation',
-            priority: 'high',
-            content: delegationContent,
-            source: INSTRUCTION_SOURCE,
-            createdAt: Date.now(),
-            createdAtTurn: context.turnCount,
-            expiresAfter: 3,
-            id: `agent-delegation-${Date.now()}`
-          });
-        }
-      }
+    const delegationInstruction = this.tryCreateDelegationInstruction(
+      template, taskText, context.turnCount
+    );
+    if (delegationInstruction) {
+      instructions.push(delegationInstruction);
     }
 
     // Context-aware instruction boosting (v11.3.1)
-    if (this.config.contextAwareBoosting && taskText) {
-      const detectedCategories = this.detectContextCategories(taskText);
-      const contextBoostContent = this.formatContextBoost(detectedCategories);
-      if (contextBoostContent) {
-        instructions.push({
-          type: 'context',
-          priority: 'normal',
-          content: contextBoostContent,
-          source: INSTRUCTION_SOURCE,
-          createdAt: Date.now(),
-          createdAtTurn: context.turnCount,
-          expiresAfter: 5,
-          id: `agent-context-boost-${Date.now()}`
-        });
-
-        logger.debug('Context-aware boost applied', {
-          categories: detectedCategories.map(c => c.name)
-        });
-      }
+    const contextInstruction = this.tryCreateContextBoostInstruction(
+      taskText, context.turnCount
+    );
+    if (contextInstruction) {
+      instructions.push(contextInstruction);
     }
 
     logger.debug('Agent instructions generated', {
@@ -468,6 +442,79 @@ export class AgentInstructionInjector implements InstructionProvider {
     lines.push('Use `DELEGATE TO @agent: task` or `@agent task` syntax to delegate.');
 
     return lines.join('\n');
+  }
+
+  /**
+   * Try to create a delegation instruction
+   * Returns null if delegation detection is disabled or no delegation is needed
+   * @since v12.6.1 - Extracted to reduce nesting
+   */
+  private tryCreateDelegationInstruction(
+    template: AgentInstructionTemplate,
+    taskText: string,
+    turnCount: number
+  ): EmbeddedInstruction | null {
+    if (!this.config.delegationDetection) {
+      return null;
+    }
+
+    if (taskText === this.recentTaskText) {
+      return null;
+    }
+
+    this.recentTaskText = taskText;
+    const delegationContent = this.checkAndFormatDelegation(template, taskText);
+
+    if (!delegationContent) {
+      return null;
+    }
+
+    return {
+      type: 'delegation',
+      priority: 'high',
+      content: delegationContent,
+      source: INSTRUCTION_SOURCE,
+      createdAt: Date.now(),
+      createdAtTurn: turnCount,
+      expiresAfter: 3,
+      id: `agent-delegation-${Date.now()}`
+    };
+  }
+
+  /**
+   * Try to create a context boost instruction
+   * Returns null if context boosting is disabled or no boost is needed
+   * @since v12.6.1 - Extracted to reduce nesting
+   */
+  private tryCreateContextBoostInstruction(
+    taskText: string,
+    turnCount: number
+  ): EmbeddedInstruction | null {
+    if (!this.config.contextAwareBoosting || !taskText) {
+      return null;
+    }
+
+    const detectedCategories = this.detectContextCategories(taskText);
+    const contextBoostContent = this.formatContextBoost(detectedCategories);
+
+    if (!contextBoostContent) {
+      return null;
+    }
+
+    logger.debug('Context-aware boost applied', {
+      categories: detectedCategories.map(c => c.name)
+    });
+
+    return {
+      type: 'context',
+      priority: 'normal',
+      content: contextBoostContent,
+      source: INSTRUCTION_SOURCE,
+      createdAt: Date.now(),
+      createdAtTurn: turnCount,
+      expiresAfter: 5,
+      id: `agent-context-boost-${Date.now()}`
+    };
   }
 
   /**

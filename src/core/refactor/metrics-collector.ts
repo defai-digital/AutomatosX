@@ -198,6 +198,13 @@ function countAnyTypes(code: string): number {
 /**
  * Count unused imports (basic detection)
  */
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function countUnusedImports(code: string): number {
   const importMatches = code.match(/import\s+{([^}]+)}\s+from/g);
   if (!importMatches) return 0;
@@ -209,10 +216,22 @@ function countUnusedImports(code: string): number {
     const namedImports = importMatch.match(/{([^}]+)}/);
     const namedImportContent = namedImports?.[1];
     if (namedImportContent) {
-      const names = namedImportContent.split(',').map((n) => n.trim().split(/\s+as\s+/).pop()?.trim() ?? '');
+      const names = namedImportContent
+        .split(',')
+        .map((n) => {
+          // Handle "type Foo" imports by extracting just the name
+          const trimmed = n.trim();
+          const withoutType = trimmed.replace(/^type\s+/, '');
+          return withoutType.split(/\s+as\s+/).pop()?.trim() ?? '';
+        })
+        .filter((name) => name.length > 0 && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name));
       for (const name of names) {
-        if (name && !new RegExp(`\\b${name}\\b`).test(codeWithoutImports)) {
-          unusedCount++;
+        try {
+          if (!new RegExp(`\\b${escapeRegex(name)}\\b`).test(codeWithoutImports)) {
+            unusedCount++;
+          }
+        } catch {
+          // Skip invalid regex patterns
         }
       }
     }

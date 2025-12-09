@@ -102,6 +102,13 @@ interface CostQueryResult {
   routing_optimal: number;
 }
 
+interface RoutingAuditQueryResult {
+  routing_reason: string;
+  total: number;
+  optimal: number;
+  avg_cost: number;
+}
+
 /**
  * Provider Analytics Manager
  *
@@ -337,7 +344,7 @@ export class ProviderAnalytics {
     `;
 
     const timeAgo = Date.now() - (7 * 24 * 60 * 60 * 1000); // 7 days
-    const results = this.db.prepare(query).all(timeAgo) as any[];
+    const results = this.db.prepare(query).all(timeAgo) as RoutingAuditQueryResult[];
 
     const totalRequests = results.reduce((sum, r) => sum + r.total, 0);
     const optimalRoutes = results.reduce((sum, r) => sum + r.optimal, 0);

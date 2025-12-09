@@ -375,7 +375,8 @@ describe('safe-timers', () => {
       await sleep(10); // Use a short real delay
       const elapsed = Date.now() - start;
 
-      expect(elapsed).toBeGreaterThanOrEqual(10);
+      // Allow 2ms tolerance for OS scheduling variance (timers may fire slightly early)
+      expect(elapsed).toBeGreaterThanOrEqual(8);
       expect(elapsed).toBeLessThan(100);
     });
 

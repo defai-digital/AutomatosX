@@ -189,10 +189,10 @@ describe('MCP Tool: run_agent', () => {
         { provider: undefined, skipMemory: undefined }
       );
 
-      // Verify execution
+      // Verify execution (v12.5.3: now includes signal and timeout)
       expect(mockExecute).toHaveBeenCalledWith(
         mockContext,
-        { showProgress: false, verbose: false }
+        expect.objectContaining({ showProgress: false, verbose: false })
       );
     });
 

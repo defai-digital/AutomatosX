@@ -182,24 +182,27 @@ export function createGetCapabilitiesHandler(
       providers.sort((a, b) => b.priority - a.priority);
 
       // Build agent capabilities
+      // v12.5.3: Parallelize profile loading for better performance
       const agentNames = await deps.profileLoader.listProfiles();
-      const agents: AgentCapability[] = [];
-
-      for (const agentName of agentNames) {
-        try {
-          const profile = await deps.profileLoader.loadProfile(agentName);
-          agents.push({
-            name: profile.name,
-            displayName: profile.displayName,
-            role: profile.role,
-            description: profile.systemPrompt?.substring(0, 200),
-            team: profile.team,
-            abilities: profile.abilities || []
-          });
-        } catch (error) {
-          logger.warn(`Failed to load profile for ${agentName}`, { error });
-        }
-      }
+      const agentResults = await Promise.all(
+        agentNames.map(async (agentName) => {
+          try {
+            const profile = await deps.profileLoader.loadProfile(agentName);
+            return {
+              name: profile.name,
+              displayName: profile.displayName,
+              role: profile.role,
+              description: profile.systemPrompt?.substring(0, 200),
+              team: profile.team,
+              abilities: profile.abilities || []
+            } as AgentCapability;
+          } catch (error) {
+            logger.warn(`Failed to load profile for ${agentName}`, { error });
+            return null;
+          }
+        })
+      );
+      const agents = agentResults.filter((a): a is AgentCapability => a !== null);
 
       // Build tool capabilities
       const tools: ToolCapability[] = deps.toolSchemas.map(schema => ({
@@ -208,11 +211,11 @@ export function createGetCapabilitiesHandler(
         category: categorizeTools(schema.name)
       }));
 
-      // Get memory stats
-      const memoryStats = await deps.memoryManager.getStats();
-
-      // Get session stats
-      const activeSessions = await deps.sessionManager.getActiveSessions();
+      // v12.5.3: Parallelize memory and session stats fetching
+      const [memoryStats, activeSessions] = await Promise.all([
+        deps.memoryManager.getStats(),
+        deps.sessionManager.getActiveSessions()
+      ]);
 
       const result: GetCapabilitiesOutput = {
         version,

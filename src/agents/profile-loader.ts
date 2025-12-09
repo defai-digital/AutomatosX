@@ -71,21 +71,30 @@ export class ProfileLoader {
       this.displayNameMap.clear();
 
       try {
+        // v12.5.3: Parallelize directory listing for better performance
+        const [localProfiles, fallbackProfiles] = await Promise.all([
+          this.listProfilesFromDir(this.profilesDir),
+          this.listProfilesFromDir(this.fallbackProfilesDir)
+        ]);
+
         // Priority 1: Process local profiles first (.automatosx/agents)
-        const localProfiles = await this.listProfilesFromDir(this.profilesDir);
+        // Must be sequential to maintain priority order for duplicate detection
         for (const name of localProfiles) {
           await this.addToDisplayNameMap(name, 'local');
         }
 
         // Priority 2: Process fallback profiles (examples/agents)
         // These will NOT override local profiles with the same displayName
-        const fallbackProfiles = await this.listProfilesFromDir(this.fallbackProfilesDir);
-        for (const name of fallbackProfiles) {
-          // Skip if already exists in local profiles (by name)
+        // Filter first, then process remaining sequentially
+        const fallbacksToProcess = fallbackProfiles.filter(name => {
           if (localProfiles.includes(name)) {
             logger.debug('Skipping fallback profile (local override)', { name });
-            continue;
+            return false;
           }
+          return true;
+        });
+
+        for (const name of fallbacksToProcess) {
           await this.addToDisplayNameMap(name, 'fallback');
         }
 

@@ -152,6 +152,8 @@ export class ResourceEnforcer {
         });
       }
     }, this.checkIntervalMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.checkInterval.unref) this.checkInterval.unref();
   }
 
   /**

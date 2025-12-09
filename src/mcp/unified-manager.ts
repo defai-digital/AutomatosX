@@ -30,6 +30,7 @@ import type {
 import { LifecycleLogger, getLifecycleLogger } from './lifecycle-logger.js';
 import { MetricsCollector, getMetricsCollector } from './metrics-collector.js';
 import { ResourceEnforcer, createResourceEnforcer } from './resource-enforcer.js';
+import { TIMEOUTS } from '../core/validation-limits.js';
 
 /**
  * Unified MCP Manager
@@ -463,42 +464,41 @@ export class UnifiedMCPManager implements IMCPManager {
 
   /**
    * Run health check on all servers
+   * v12.5.3: Parallelized health checks for better performance
    *
    * @returns Array of health check results
    */
   async healthCheck(): Promise<MCPHealthCheckResult[]> {
     logger.debug('UnifiedMCPManager: Running health checks');
 
-    const results: MCPHealthCheckResult[] = [];
-
-    for (const [serverName, serverProcess] of this.servers) {
-      const result = await this.healthCheckServer(serverName, serverProcess);
-      results.push(result);
-    }
+    const serverEntries = Array.from(this.servers.entries());
+    const results = await Promise.all(
+      serverEntries.map(([serverName, serverProcess]) =>
+        this.healthCheckServer(serverName, serverProcess)
+      )
+    );
 
     return results;
   }
 
   /**
    * Get metrics for all servers (Phase 4D)
+   * v12.5.3: Parallelized metrics collection for better performance
    *
    * @returns Array of server metrics
    */
   async getMetrics(): Promise<any[]> {
-    const metrics: any[] = [];
+    const runningServers = Array.from(this.servers.entries())
+      .filter(([, serverProcess]) => serverProcess.running && serverProcess.process.pid);
 
-    for (const [serverName, serverProcess] of this.servers) {
-      if (!serverProcess.running || !serverProcess.process.pid) {
-        continue;
-      }
-
-      const serverMetrics = await this.metricsCollector.collectServerMetrics(
-        serverName,
-        serverProcess.process.pid
-      );
-
-      metrics.push(serverMetrics);
-    }
+    const metrics = await Promise.all(
+      runningServers.map(([serverName, serverProcess]) =>
+        this.metricsCollector.collectServerMetrics(
+          serverName,
+          serverProcess.process.pid!
+        )
+      )
+    );
 
     return metrics;
   }
@@ -781,10 +781,11 @@ export class UnifiedMCPManager implements IMCPManager {
 
   /**
    * Start periodic health checking
+   * v12.5.3: Use centralized TIMEOUTS.CONFIG_CACHE_TTL for default
    */
   private startHealthChecking(): void {
     const intervalMs =
-      this.config.healthCheck?.intervalMs || 60000; // Default 1 minute
+      this.config.healthCheck?.intervalMs || TIMEOUTS.CONFIG_CACHE_TTL; // Default 1 minute
 
     logger.info('UnifiedMCPManager: Starting health checks', {
       intervalMs,
@@ -807,6 +808,8 @@ export class UnifiedMCPManager implements IMCPManager {
         });
       }
     }, intervalMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.healthCheckInterval.unref) this.healthCheckInterval.unref();
   }
 
   /**

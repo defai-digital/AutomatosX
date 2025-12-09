@@ -113,7 +113,9 @@ export const TIMEOUTS = {
   /** Quick CLI command timeout (3 seconds) */
   QUICK_COMMAND: 3000,
   /** CLI version check timeout (10 seconds) */
-  VERSION_CHECK: 10000
+  VERSION_CHECK: 10000,
+  /** MCP agent execution timeout (5 minutes) */
+  MCP_AGENT_EXECUTION: 300000
 } as const;
 
 // ============================================

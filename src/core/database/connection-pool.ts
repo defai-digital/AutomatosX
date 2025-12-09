@@ -601,6 +601,8 @@ export class DatabaseConnectionPool {
         healthyConnections: idleConnections.length
       });
     }, this.config.healthCheckInterval);
+    // v12.5.3: Prevent blocking process exit
+    if (this.healthCheckInterval.unref) this.healthCheckInterval.unref();
   }
 
   /**

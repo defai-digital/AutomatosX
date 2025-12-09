@@ -365,6 +365,8 @@ export class ProviderConnectionPool extends EventEmitter {
         logger.error('Cleanup task failed', { error: err.message });
       });
     }, 60000); // Every minute
+    // v12.5.3: Prevent blocking process exit
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref();
 
     // Health checks
     this.healthCheckInterval = setInterval(() => {
@@ -372,6 +374,8 @@ export class ProviderConnectionPool extends EventEmitter {
         logger.error('Health check task failed', { error: err.message });
       });
     }, this.config.healthCheckInterval);
+    // v12.5.3: Prevent blocking process exit
+    if (this.healthCheckInterval.unref) this.healthCheckInterval.unref();
 
     logger.debug('Maintenance tasks started', {
       cleanupInterval: 60000,

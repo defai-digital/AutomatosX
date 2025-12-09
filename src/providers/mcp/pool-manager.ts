@@ -24,6 +24,7 @@ import type {
   PoolEventType
 } from './types.js';
 import { ConnectionTimeoutError } from './types.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
 
 interface PooledClient {
   client: McpClient;
@@ -48,16 +49,19 @@ interface ProviderPool {
   pendingConnections: number;
 }
 
+/**
+ * v12.5.3: Use centralized TIMEOUTS constants
+ */
 const DEFAULT_CONFIG: PoolConfig = {
   maxConnectionsPerProvider: 2,
-  idleTimeoutMs: 300000, // 5 minutes
-  healthCheckIntervalMs: 30000, // 30 seconds
-  acquireTimeoutMs: 10000, // 10 seconds
+  idleTimeoutMs: TIMEOUTS.IDLE_CONNECTION, // 5 minutes
+  healthCheckIntervalMs: TIMEOUTS.MCP_HEALTH_CHECK, // 30 seconds
+  acquireTimeoutMs: TIMEOUTS.VERSION_CHECK, // 10 seconds
   fallbackToCli: true
 };
 
 /** Interval for scanning idle connections (implementation detail, not user-configurable) */
-const IDLE_CLEANUP_INTERVAL_MS = 60000; // 1 minute
+const IDLE_CLEANUP_INTERVAL_MS = TIMEOUTS.CONFIG_CACHE_TTL; // 1 minute
 
 export class McpClientPool extends EventEmitter {
   private config: PoolConfig;
@@ -477,6 +481,8 @@ export class McpClientPool extends EventEmitter {
         });
       }
     }, this.config.healthCheckIntervalMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.healthCheckTimer.unref) this.healthCheckTimer.unref();
   }
 
   private startIdleCleanup(): void {
@@ -513,6 +519,8 @@ export class McpClientPool extends EventEmitter {
         }
       }
     }, IDLE_CLEANUP_INTERVAL_MS);
+    // v12.5.3: Prevent blocking process exit
+    if (this.idleCheckTimer.unref) this.idleCheckTimer.unref();
   }
 
   private emitEvent(type: PoolEventType, provider: string, details?: Record<string, unknown>): void {

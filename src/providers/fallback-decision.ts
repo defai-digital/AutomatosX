@@ -11,6 +11,7 @@
 
 import { logger } from '@/shared/logging/logger.js';
 import { isSDKFallbackEnabled } from '@/core/feature-flags/flags.js';
+import { getErrorMessage } from '@/shared/errors/error-wrapper.js';
 
 /**
  * Fallback decision result
@@ -289,33 +290,7 @@ export function getRetryDelay(error: Error | unknown, providerName: string): num
   return classification.retryDelayMs || 1000;
 }
 
-/**
- * Helper: Extract error message from various error formats
- */
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  if (error && typeof error === 'object') {
-    const obj = error as Record<string, unknown>;
-    if (typeof obj.message === 'string') {
-      return obj.message;
-    }
-    if (typeof obj.error === 'string') {
-      return obj.error;
-    }
-    if (obj.error && typeof obj.error === 'object') {
-      const innerError = obj.error as Record<string, unknown>;
-      if (typeof innerError.message === 'string') {
-        return innerError.message;
-      }
-    }
-  }
-  return String(error);
-}
+// v12.5.3: Removed duplicate getErrorMessage - now imported from @/shared/errors/error-wrapper.js
 
 /**
  * Helper: Extract error code from various error formats

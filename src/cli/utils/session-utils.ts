@@ -57,14 +57,18 @@ function installExitHandler(): void {
     // The real fix is to remove process.exit() calls and let Node exit naturally
   });
 
-  process.on('SIGINT', async () => {
-    await flushAllSessions();
-    process.exit(130); // Standard exit code for SIGINT
+  // v12.5.3: Use void wrapper to properly handle async in signal handlers
+  // Signal handlers can't be truly async, but we can fire-and-forget with proper error handling
+  process.on('SIGINT', () => {
+    void flushAllSessions()
+      .catch(err => logger.error('SIGINT flush failed', { error: (err as Error).message }))
+      .finally(() => process.exit(130)); // Standard exit code for SIGINT
   });
 
-  process.on('SIGTERM', async () => {
-    await flushAllSessions();
-    process.exit(143); // Standard exit code for SIGTERM
+  process.on('SIGTERM', () => {
+    void flushAllSessions()
+      .catch(err => logger.error('SIGTERM flush failed', { error: (err as Error).message }))
+      .finally(() => process.exit(143)); // Standard exit code for SIGTERM
   });
 
   exitHandlerInstalled = true;
@@ -120,4 +124,21 @@ export async function createSessionManager(): Promise<SessionManager> {
       `Make sure you're in an AutomatosX project directory or run 'automatosx setup' first.`
     );
   }
+}
+
+/**
+ * Unregister a session manager from exit cleanup
+ * Call this when done with a session manager to prevent memory leaks
+ * @since v12.5.3
+ */
+export function unregisterSessionManager(manager: SessionManager): void {
+  activeSessionManagers.delete(manager);
+}
+
+/**
+ * Get count of active session managers (for debugging)
+ * @since v12.5.3
+ */
+export function getActiveSessionManagerCount(): number {
+  return activeSessionManagers.size;
 }

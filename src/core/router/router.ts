@@ -1027,6 +1027,8 @@ export class Router {
         logger.error('Health check interval failed', { error: err.message });
       });
     }, intervalMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.healthCheckInterval.unref) this.healthCheckInterval.unref();
 
     // Run immediately on start to warm up caches
     logger.debug('Starting background health checks', {

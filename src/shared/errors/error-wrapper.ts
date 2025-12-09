@@ -10,6 +10,7 @@ import type { BaseError } from './errors.js';
 
 /**
  * Extract error message from unknown error type
+ * v12.5.3: Enhanced to handle nested error objects from API responses
  */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -18,8 +19,23 @@ export function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') {
     return error;
   }
-  if (error && typeof error === 'object' && 'message' in error) {
-    return String(error.message);
+  if (error && typeof error === 'object') {
+    const obj = error as Record<string, unknown>;
+    // Check for nested error.message (common API error format)
+    if (obj.error && typeof obj.error === 'object') {
+      const nested = obj.error as Record<string, unknown>;
+      if (typeof nested.message === 'string') {
+        return nested.message;
+      }
+    }
+    // Check for error as string property
+    if (typeof obj.error === 'string') {
+      return obj.error;
+    }
+    // Check for top-level message
+    if ('message' in obj) {
+      return String(obj.message);
+    }
   }
   return String(error);
 }

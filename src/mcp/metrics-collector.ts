@@ -166,6 +166,8 @@ export class MetricsCollector {
     this.collectionInterval = setInterval(() => {
       this.cleanup();
     }, this.collectionIntervalMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.collectionInterval.unref) this.collectionInterval.unref();
   }
 
   /**

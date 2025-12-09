@@ -432,32 +432,44 @@ export class ConfigManager {
     }
 
     // Set new timeout
-    this.debounceTimeout = setTimeout(async () => {
-      logger.info('ConfigManager: Configuration file changed');
+    this.debounceTimeout = setTimeout(() => {
+      // v12.5.3: Wrap async in void to prevent unhandled rejection and avoid async callback
+      void (async () => {
+        logger.info('ConfigManager: Configuration file changed');
 
-      try {
-        if (this.autoApply) {
-          await this.reload();
-        } else {
-          await this.notifyChange({
-            type: 'modified',
-            path: this.configPath,
-            timestamp: new Date(),
+        try {
+          if (this.autoApply) {
+            await this.reload();
+          } else {
+            await this.notifyChange({
+              type: 'modified',
+              path: this.configPath,
+              timestamp: new Date(),
+            });
+          }
+        } catch (error) {
+          logger.error('ConfigManager: Failed to handle configuration change', {
+            error: (error as Error).message,
           });
-        }
-      } catch (error) {
-        logger.error('ConfigManager: Failed to handle configuration change', {
-          error: (error as Error).message,
-        });
 
-        await this.notifyChange({
-          type: 'modified',
-          path: this.configPath,
-          timestamp: new Date(),
-          errors: [(error as Error).message],
-        });
-      }
+          // Wrap in try-catch to prevent unhandled rejection if notifyChange fails
+          try {
+            await this.notifyChange({
+              type: 'modified',
+              path: this.configPath,
+              timestamp: new Date(),
+              errors: [(error as Error).message],
+            });
+          } catch (notifyError) {
+            logger.error('ConfigManager: Failed to notify change handlers', {
+              error: (notifyError as Error).message,
+            });
+          }
+        }
+      })();
     }, this.debounceMs);
+    // v12.5.3: Prevent blocking process exit
+    if (this.debounceTimeout.unref) this.debounceTimeout.unref();
   }
 
   /**

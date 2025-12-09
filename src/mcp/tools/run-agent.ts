@@ -24,6 +24,17 @@ import { validateAgentName, validateStringParameter } from '../utils/validation.
 import { mapMcpProviderToActual, mapActualProviderToMcp, mapNormalizedCallerToActual } from '../utils/provider-mapping.js';
 import { McpClientPool } from '../../providers/mcp/pool-manager.js';
 import type { CrossProviderResult, ExecutionMode } from '../../providers/mcp/types.js';
+import { TIMEOUTS } from '../../core/validation-limits.js';
+
+/**
+ * v12.5.3: Helper to check if request was cancelled
+ * Reduces duplicated abort checks throughout the handler
+ */
+function checkAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new Error('Request was cancelled');
+  }
+}
 
 /**
  * Execute task via MCP Client Pool (cross-provider execution)
@@ -61,6 +72,14 @@ async function executeViaMcpPool(
 }
 
 /**
+ * Default timeout for MCP-initiated agent executions
+ * v12.5.3: Uses centralized TIMEOUTS.MCP_AGENT_EXECUTION (5 minutes)
+ * This prevents agent processes from hanging indefinitely when called via MCP.
+ * Can be overridden by explicit timeout in execution config.
+ */
+const MCP_DEFAULT_AGENT_TIMEOUT_MS = TIMEOUTS.MCP_AGENT_EXECUTION;
+
+/**
  * Execute task via CLI spawn (traditional execution)
  */
 async function executeViaCli(
@@ -70,7 +89,8 @@ async function executeViaCli(
   no_memory: boolean | undefined,
   deps: RunAgentDependencies,
   isFallback: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeout?: number
 ): Promise<RunAgentOutput> {
   const context = await deps.contextManager.createContext(agent, task, {
     provider: actualProvider,
@@ -79,10 +99,15 @@ async function executeViaCli(
 
   const executor = new AgentExecutor(deps.executorConfig);
   const startTime = Date.now();
+
+  // v12.5.3: Apply default timeout for MCP-initiated executions to prevent hangs
+  const effectiveTimeout = timeout ?? MCP_DEFAULT_AGENT_TIMEOUT_MS;
+
   const result = await executor.execute(context, {
     showProgress: false,
     verbose: false,
-    signal
+    signal,
+    timeout: effectiveTimeout
   });
   const latencyMs = Date.now() - startTime;
 
@@ -215,9 +240,7 @@ export function createRunAgentHandler(
     const { task, provider, no_memory, mode = 'auto' } = input;
     let { agent } = input;
 
-    if (context?.signal?.aborted) {
-      throw new Error('Request was cancelled');
-    }
+    checkAborted(context?.signal);
 
     // Validate task first
     validateStringParameter(task, 'task', {
@@ -281,9 +304,7 @@ export function createRunAgentHandler(
       mode === 'context' ||
       (mode === 'auto' && callerActual === bestProvider && callerProvider !== 'unknown');
 
-    if (context?.signal?.aborted) {
-      throw new Error('Request was cancelled');
-    }
+    checkAborted(context?.signal);
 
     logger.info('[Smart Routing] Decision', {
       mode,
@@ -328,7 +349,7 @@ export function createRunAgentHandler(
 
     if (shouldTryMcp && deps.mcpPool) {
       try {
-        if (context?.signal?.aborted) throw new Error('Request was cancelled');
+        checkAborted(context?.signal);
 
         const result = await executeViaMcpPool(
           bestProvider,
@@ -365,11 +386,9 @@ export function createRunAgentHandler(
 
     // CLI Spawn: Traditional execution via AgentExecutor
     try {
-      if (context?.signal?.aborted) {
-        throw new Error('Request was cancelled');
-      }
+      checkAborted(context?.signal);
 
-      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal);
+      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal, MCP_DEFAULT_AGENT_TIMEOUT_MS);
 
       logger.info('[MCP] run_agent completed (CLI spawn mode)', {
         agent,

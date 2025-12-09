@@ -49,6 +49,8 @@ export class StreamingFeedback {
     this.displayInterval = setInterval(() => {
       this.updateDisplay();
     }, 1000);
+    // v12.5.3: Prevent blocking process exit
+    if (this.displayInterval.unref) this.displayInterval.unref();
   }
 
   /**
@@ -255,6 +257,8 @@ export class SimpleStreamingIndicator {
       const spaces = ' '.repeat(3 - this.dotCount);
       process.stderr.write(`\r🔄 Streaming${dots}${spaces}`);
     }, 500);
+    // v12.5.3: Prevent blocking process exit
+    if (this.interval.unref) this.interval.unref();
   }
 
   stop(): void {

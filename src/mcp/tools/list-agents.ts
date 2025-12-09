@@ -35,17 +35,18 @@ export function createListAgentsHandler(
         })
       );
 
+      // v12.5.3: Use proper type guard instead of non-null assertions
+      const validProfiles = profiles.filter((profile): profile is NonNullable<typeof profile> => profile !== null);
+
       const result: ListAgentsOutput = {
-        agents: profiles
-          .filter((profile) => profile !== null)
-          .map((profile) => ({
-            name: profile!.name,
-            displayName: profile!.displayName,
-            role: profile!.role,
-            team: profile!.team,
-            // v5.7.0+: Include selection metadata for improved routing
-            selectionMetadata: profile!.selectionMetadata
-          }))
+        agents: validProfiles.map((profile) => ({
+          name: profile.name,
+          displayName: profile.displayName,
+          role: profile.role,
+          team: profile.team,
+          // v5.7.0+: Include selection metadata for improved routing
+          selectionMetadata: profile.selectionMetadata
+        }))
       };
 
       logger.info('[MCP] list_agents completed', { count: result.agents.length });

@@ -17,15 +17,18 @@ export default defineConfig({
       checker: 'tsc'
     },
 
-    // Thread pool configuration to prevent memory exhaustion
-    pool: 'threads',
+    // Process pool configuration for native module safety
+    // CRITICAL: Using 'forks' instead of 'threads' to prevent segfaults
+    // with better-sqlite3 and sqlite-vec native modules during cleanup.
+    // Worker threads share native module state, causing race conditions
+    // when multiple threads terminate simultaneously.
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: false,
-        isolate: true,         // Isolate each test file for better stability
-        minThreads: 1,
-        maxThreads: 4,         // Limit concurrent threads to prevent memory issues
-        useAtomics: true       // Better performance with worker threads
+      forks: {
+        singleFork: false,
+        isolate: true,         // Isolate each test file in separate process
+        minForks: 1,
+        maxForks: 4,           // Limit concurrent forks to prevent memory issues
       }
     },
 

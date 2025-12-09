@@ -84,13 +84,21 @@ import { createImplementAndDocumentHandler } from './tools/implement-and-documen
 // Import tool handlers - v10.5.0: Smart Routing
 import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 
-// v12.5.5: Bugfix tools now exposed via MCP for direct client use
+// v12.6.0: Bugfix tools now exposed via MCP for direct client use
 // Removed Quality agent integration due to reliability issues
 import { createBugfixScanHandler, bugfixScanSchema } from './tools/bugfix-scan.js';
 import { createBugfixRunHandler, bugfixRunSchema } from './tools/bugfix-run.js';
 
+// v12.7.0: Refactor tools for autonomous code refactoring
+import { createRefactorScanHandler, refactorScanSchema } from './tools/refactor-scan.js';
+import { createRefactorRunHandler, refactorRunSchema } from './tools/refactor-run.js';
+
 // Import tool handlers - v13.0.0: Enhanced Service Discovery
 import { createGetCapabilitiesHandler } from './tools/get-capabilities.js';
+
+// Import tool handlers - v12.6.0: Multi-Agent Orchestration
+import { createPlanMultiAgentHandler, planMultiAgentSchema } from './tools/plan-multi-agent.js';
+import { createOrchestrateTaskHandler, orchestrateTaskSchema } from './tools/orchestrate-task.js';
 
 // Import tool handlers - v11.3.5: Task Engine
 import {
@@ -249,7 +257,7 @@ export class McpServer {
    * Returns tool schemas that can be provided during MCP handshake
    * before services are initialized.
    *
-   * v12.5.5: Enhanced descriptions with examples, return formats, and use cases
+   * v12.6.0: Enhanced descriptions with examples, return formats, and use cases
    * to improve AI client understanding and tool selection.
    */
   private static getStaticToolSchemas(): McpTool[] {
@@ -270,11 +278,18 @@ export class McpServer {
 
 **Returns**: JSON with execution result, output from the agent, and metadata.
 
-**Examples**:
+**PARALLEL EXECUTION**: For complex tasks requiring multiple agents, you CAN and SHOULD call run_agent multiple times IN PARALLEL when subtasks are independent. This significantly reduces total execution time.
+
+**Example - Single agent**:
 - run_agent({ agent: "backend", task: "Create a REST API endpoint for user authentication with JWT" })
-- run_agent({ agent: "quality", task: "Review the auth module for security issues" })
-- run_agent({ task: "Fix the memory leak in the connection pool" }) → auto-selects "quality"
-- run_agent({ task: "Design a microservices architecture for the payment system" }) → auto-selects "architecture"`,
+
+**Example - PARALLEL execution** (call all three simultaneously):
+Task: "Build authentication system"
+→ run_agent({ agent: "security", task: "Design security requirements and auth flow" })
+→ run_agent({ agent: "backend", task: "Implement JWT authentication API" })  // Can run in parallel with frontend
+→ run_agent({ agent: "frontend", task: "Build login/signup UI components" })  // Can run in parallel with backend
+
+**Tip**: Use \`plan_multi_agent\` first to get an optimal execution plan, or \`orchestrate_task\` for automatic parallel orchestration.`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -805,9 +820,15 @@ Use this tool first to understand what AutomatosX offers.`,
       getTaskResultSchema as McpTool,
       listTasksSchema as McpTool,
       deleteTaskSchema as McpTool,
-      // v12.5.5: Bugfix tools now exposed directly via MCP
+      // v12.6.0: Bugfix tools now exposed directly via MCP
       bugfixScanSchema as McpTool,
-      bugfixRunSchema as McpTool
+      bugfixRunSchema as McpTool,
+      // v12.7.0: Refactor tools for autonomous code refactoring
+      refactorScanSchema as McpTool,
+      refactorRunSchema as McpTool,
+      // v12.6.0: Multi-Agent Orchestration tools
+      planMultiAgentSchema as McpTool,
+      orchestrateTaskSchema as McpTool
     ];
   }
 
@@ -1102,9 +1123,32 @@ Use this tool first to understand what AutomatosX offers.`,
     register('list_tasks', createListTasksHandler());
     register('delete_task', createDeleteTaskHandler());
 
-    // v12.5.5: Bugfix tools now exposed directly via MCP
+    // v12.6.0: Bugfix tools now exposed directly via MCP
     register('bugfix_scan', createBugfixScanHandler());
     register('bugfix_run', createBugfixRunHandler());
+
+    // v12.7.0: Refactor tools for autonomous code refactoring
+    register('refactor_scan', createRefactorScanHandler());
+    register('refactor_run', createRefactorRunHandler());
+
+    // v12.6.0: Multi-Agent Orchestration tools
+    register('plan_multi_agent', createPlanMultiAgentHandler({
+      profileLoader: this.profileLoader,
+      memoryManager: this.memoryManager
+    }));
+    register('orchestrate_task', createOrchestrateTaskHandler({
+      profileLoader: this.profileLoader,
+      memoryManager: this.memoryManager,
+      contextManager: this.contextManager,
+      sessionManager: this.sessionManager,
+      executorConfig: {
+        sessionManager: this.sessionManager,
+        workspaceManager: this.workspaceManager,
+        contextManager: this.contextManager,
+        profileLoader: this.profileLoader
+      },
+      getSession: () => this.session
+    }));
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,

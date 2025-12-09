@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v12.5.5) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
+AutomatosX (v12.6.0) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -317,6 +317,40 @@ ax bugfix --types timer_leak,missing_destroy
 
 # Verbose output
 ax bugfix --verbose
+
+# v12.6.0 Features:
+
+# JSON output for CI/CD integration
+ax bugfix --json
+
+# Generate markdown report
+ax bugfix --report
+ax bugfix --report ./reports/bugfix-report.md
+
+# Git-aware scanning (only scan changed files)
+ax bugfix --changed           # Files changed in working tree
+ax bugfix --staged            # Only staged files
+ax bugfix --since main        # Files changed since branch
+
+# Pre-commit hook check (exit 1 if bugs found)
+ax bugfix check
+ax bugfix check --staged --severity high
+```
+
+### Ignore Comments (v12.6.0)
+
+Skip intentional patterns with ignore comments:
+
+```typescript
+// ax-ignore
+const heartbeat = setInterval(() => ping(), 1000); // Intentionally unref'd elsewhere
+
+// ax-ignore timer_leak
+const interval = setInterval(() => tick(), 5000); // Type-specific ignore
+
+// ax-ignore-start
+// ... code block to ignore ...
+// ax-ignore-end
 ```
 
 ### Supported Bug Types
@@ -325,8 +359,17 @@ ax bugfix --verbose
 |----------|-------------|----------|
 | `timer_leak` | setInterval/setTimeout without cleanup | Yes |
 | `missing_destroy` | EventEmitter without destroy() | Yes |
-| `promise_timeout_leak` | setTimeout not cleared on error | Yes |
+| `promise_timeout_leak` | setTimeout not cleared on error | Partial |
 | `event_leak` | Event listener without removeListener | Partial |
+
+### Pre-commit Hook Integration (v12.6.0)
+
+Add to `.husky/pre-commit`:
+
+```bash
+#!/bin/sh
+ax bugfix check --staged --severity high
+```
 
 ### Programmatic Usage
 
@@ -342,6 +385,7 @@ const controller = new BugfixController({
     requireTests: true,
     requireTypecheck: true,
   },
+  fileFilter: ['src/changed-file.ts'], // Git-aware scanning
   onProgress: (state, stats) => console.log(state, stats),
   onBugFound: (bug) => console.log('Found:', bug),
   onFixApplied: (bug, attempt) => console.log('Fixed:', bug.file),

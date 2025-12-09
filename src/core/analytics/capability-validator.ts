@@ -9,20 +9,32 @@
 
 import type { ProviderMetadata } from '@/types/provider-metadata.js';
 // v9.0.2: Simplified stub since cost tracking was removed in v8.3.0
-const PROVIDER_METADATA: Record<string, any> = {};
+const PROVIDER_METADATA: Record<string, ProviderMetadata> = {};
 const getProviderMetadata = (name: string): ProviderMetadata | null => {
   // Return minimal metadata for validation purposes
   return {
     name,
-    displayName: name,
-    costPerMToken: 0, // Deprecated but kept for type compatibility
-    avgLatencyMs: 0,  // Deprecated but kept for type compatibility
+    cloud: 'on-prem',
+    regions: [],
+    costPerToken: {
+      input: 0,
+      output: 0
+    },
+    latencyEstimate: {
+      p50: 0,
+      p95: 0,
+      p99: 0
+    },
+    reliability: {
+      availability: 1.0,
+      errorRate: 0
+    },
     features: {
       streaming: false,
       functionCalling: false,
       vision: false
     }
-  } as any;
+  };
 };
 import { logger } from '@/shared/logging/logger.js';
 

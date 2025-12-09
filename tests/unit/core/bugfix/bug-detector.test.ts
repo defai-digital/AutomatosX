@@ -356,6 +356,133 @@ class MyHandler {
     });
   });
 
+  describe('ignore comments (v12.6.0)', () => {
+    it('should skip bugs marked with // ax-ignore', async () => {
+      const code = `
+// ax-ignore
+const interval = setInterval(() => {}, 1000);
+const interval2 = setInterval(() => {}, 1000);
+`;
+      await writeFile(join(testDir, 'src', 'ignored.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('ignored.ts')
+      );
+
+      // First setInterval should be ignored, second should be detected
+      expect(timerLeaks.length).toBe(1);
+      expect(timerLeaks[0]?.lineStart).toBeGreaterThan(3);
+    });
+
+    it('should skip specific bug type with // ax-ignore timer_leak', async () => {
+      const code = `
+// ax-ignore timer_leak
+const interval = setInterval(() => {}, 1000);
+`;
+      await writeFile(join(testDir, 'src', 'typed-ignore.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('typed-ignore.ts')
+      );
+
+      expect(timerLeaks.length).toBe(0);
+    });
+
+    it('should not ignore different bug type when specific type is ignored', async () => {
+      // event_leak has lower confidence but we're testing it's not ignored
+      const code = `
+// ax-ignore timer_leak
+emitter.on('data', handler);
+`;
+      await writeFile(join(testDir, 'src', 'specific-ignore.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const eventLeaks = findings.filter(f =>
+        f.type === 'event_leak' && f.file.includes('specific-ignore.ts')
+      );
+
+      // event_leak should still be detected (not ignored)
+      expect(eventLeaks.length).toBe(1);
+    });
+
+    it('should skip bugs in // ax-ignore-start ... // ax-ignore-end block', async () => {
+      const code = `
+// ax-ignore-start
+const interval1 = setInterval(() => {}, 1000);
+const interval2 = setInterval(() => {}, 2000);
+const interval3 = setInterval(() => {}, 3000);
+// ax-ignore-end
+const interval4 = setInterval(() => {}, 4000);
+`;
+      await writeFile(join(testDir, 'src', 'block-ignore.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('block-ignore.ts')
+      );
+
+      // Only the last setInterval should be detected
+      expect(timerLeaks.length).toBe(1);
+      expect(timerLeaks[0]?.lineStart).toBeGreaterThan(6);
+    });
+
+    it('should handle unclosed ignore block (ignores to end of file)', async () => {
+      const code = `
+const interval1 = setInterval(() => {}, 1000);
+// ax-ignore-start
+const interval2 = setInterval(() => {}, 2000);
+const interval3 = setInterval(() => {}, 3000);
+`;
+      await writeFile(join(testDir, 'src', 'unclosed.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('unclosed.ts')
+      );
+
+      // Only the first setInterval should be detected
+      expect(timerLeaks.length).toBe(1);
+      expect(timerLeaks[0]?.lineStart).toBe(2);
+    });
+  });
+
+  describe('file filter (git-aware scanning v12.6.0)', () => {
+    it('should only scan files in the filter list', async () => {
+      const code1 = `const i = setInterval(() => {}, 1000);`;
+      const code2 = `const i = setInterval(() => {}, 1000);`;
+
+      await writeFile(join(testDir, 'src', 'included.ts'), code1);
+      await writeFile(join(testDir, 'src', 'excluded.ts'), code2);
+
+      // Only scan 'included.ts'
+      const findings = await detector.scan(testDir, ['src/included.ts']);
+
+      const includedFindings = findings.filter(f => f.file.includes('included.ts'));
+      const excludedFindings = findings.filter(f => f.file.includes('excluded.ts'));
+
+      expect(includedFindings.length).toBeGreaterThan(0);
+      expect(excludedFindings.length).toBe(0);
+    });
+
+    it('should handle absolute paths in filter', async () => {
+      const code = `const i = setInterval(() => {}, 1000);`;
+      await writeFile(join(testDir, 'src', 'absolute.ts'), code);
+
+      const absolutePath = join(testDir, 'src', 'absolute.ts');
+      const findings = await detector.scan(testDir, [absolutePath]);
+
+      expect(findings.length).toBeGreaterThan(0);
+      expect(findings[0]?.file).toContain('absolute.ts');
+    });
+
+    it('should return empty array if filter contains no scannable files', async () => {
+      const findings = await detector.scan(testDir, ['README.md', 'package.json']);
+      expect(findings.length).toBe(0);
+    });
+  });
+
   describe('finding properties', () => {
     it('should include all required properties in findings', async () => {
       const code = `const interval = setInterval(() => {}, 1000);`;

@@ -39,6 +39,9 @@ export interface BugfixControllerOptions {
   /** Project root directory */
   rootDir?: string;
 
+  /** File filter for git-aware scanning (v12.6.0) */
+  fileFilter?: string[];
+
   /** Progress callback */
   onProgress?: (message: string, data?: Record<string, unknown>) => void;
 
@@ -63,6 +66,7 @@ export interface BugfixControllerOptions {
 export class BugfixController {
   private config: BugfixConfig;
   private rootDir: string;
+  private fileFilter?: string[];
   private state: BugfixState = 'IDLE';
   private sessionId: string;
   private startTime: number = 0;
@@ -88,6 +92,7 @@ export class BugfixController {
   constructor(options: BugfixControllerOptions = {}) {
     this.config = createDefaultBugfixConfig(options.config);
     this.rootDir = options.rootDir || process.cwd();
+    this.fileFilter = options.fileFilter;
     this.sessionId = randomUUID();
 
     // Initialize components
@@ -108,6 +113,7 @@ export class BugfixController {
     logger.debug('BugfixController initialized', {
       sessionId: this.sessionId,
       rootDir: this.rootDir,
+      fileFilter: this.fileFilter?.length,
       config: this.config
     });
   }
@@ -225,7 +231,8 @@ export class BugfixController {
   private async handleScanning(): Promise<void> {
     this.emitProgress('Scanning for bugs...');
 
-    this.findings = await this.detector.scan(this.rootDir);
+    // Pass file filter for git-aware scanning (v12.6.0)
+    this.findings = await this.detector.scan(this.rootDir, this.fileFilter);
 
     if (this.findings.length === 0) {
       this.emitProgress('No bugs found!');

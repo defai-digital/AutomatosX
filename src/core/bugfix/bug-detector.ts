@@ -6,8 +6,14 @@
  * - Layer 2: AST-based detection (medium, <60s)
  * - Layer 3: Test-based detection (slow, <5min)
  *
+ * Supports ignore comments:
+ * - // ax-ignore - Ignore all bugs on next line
+ * - // ax-ignore timer_leak - Ignore specific bug type
+ * - // ax-ignore-start ... // ax-ignore-end - Ignore block
+ *
  * @module core/bugfix/bug-detector
  * @since v12.4.0
+ * @updated v12.6.0 - Added ignore comments support
  */
 
 import { readFile, readdir, stat } from 'fs/promises';
@@ -23,11 +29,23 @@ import type {
 } from './types.js';
 
 /**
+ * Patterns for ignore comments
+ */
+const IGNORE_PATTERNS = {
+  // Match: // ax-ignore or // ax-ignore timer_leak
+  nextLine: /\/\/\s*ax-ignore(?:\s+(\w+))?\s*$/,
+  // Match: // ax-ignore-start
+  blockStart: /\/\/\s*ax-ignore-start\s*$/,
+  // Match: // ax-ignore-end
+  blockEnd: /\/\/\s*ax-ignore-end\s*$/
+};
+
+/**
  * Default detection rules for common bug patterns
  */
 const DEFAULT_DETECTION_RULES: DetectionRule[] = [
   // Timer leak: setInterval without .unref()
-  // v12.5.5: Increased withinLines from 5 to 50 to handle multi-line callbacks
+  // v12.6.0: Increased withinLines from 5 to 50 to handle multi-line callbacks
   // where .unref() is called after the closing brace (some callbacks are 35+ lines)
   // NOTE: This is a workaround - proper fix would use AST-based detection
   {
@@ -59,7 +77,7 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     fileExtensions: ['.ts', '.js', '.mts', '.mjs']
   },
   // Missing destroy: EventEmitter without destroy method
-  // v12.5.5: Increased withinLines from 100 to 800 to scan entire class
+  // v12.6.0: Increased withinLines from 100 to 800 to scan entire class
   // Classes can be large - need to check the whole class for destroy() method
   {
     id: 'missing-destroy-eventemitter',
@@ -106,6 +124,16 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
 ];
 
 /**
+ * Ignore state for a file
+ */
+interface IgnoreState {
+  /** Lines with next-line ignores: Map<lineNumber, bugType | '*'> */
+  nextLineIgnores: Map<number, string>;
+  /** Ranges of block ignores: Array<[startLine, endLine]> */
+  blockIgnores: Array<[number, number]>;
+}
+
+/**
  * Bug Detector class
  *
  * Scans codebase for bugs using configurable detection rules.
@@ -133,28 +161,120 @@ export class BugDetector {
   }
 
   /**
+   * Parse ignore comments from file lines
+   *
+   * Supports:
+   * - // ax-ignore - Ignore all bugs on next line
+   * - // ax-ignore timer_leak - Ignore specific bug type on next line
+   * - // ax-ignore-start ... // ax-ignore-end - Ignore block
+   */
+  private parseIgnoreComments(lines: string[]): IgnoreState {
+    const state: IgnoreState = {
+      nextLineIgnores: new Map(),
+      blockIgnores: []
+    };
+
+    let blockStartLine: number | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line === undefined) continue;
+
+      const lineNumber = i + 1; // 1-based line numbers
+
+      // Check for block start
+      if (IGNORE_PATTERNS.blockStart.test(line)) {
+        blockStartLine = lineNumber;
+        continue;
+      }
+
+      // Check for block end
+      if (IGNORE_PATTERNS.blockEnd.test(line)) {
+        if (blockStartLine !== null) {
+          state.blockIgnores.push([blockStartLine, lineNumber]);
+          blockStartLine = null;
+        }
+        continue;
+      }
+
+      // Check for next-line ignore
+      const nextLineMatch = line.match(IGNORE_PATTERNS.nextLine);
+      if (nextLineMatch) {
+        // The ignore applies to the NEXT line
+        const bugType = nextLineMatch[1] || '*'; // '*' means ignore all
+        state.nextLineIgnores.set(lineNumber + 1, bugType);
+      }
+    }
+
+    // Handle unclosed block (ignore to end of file)
+    if (blockStartLine !== null) {
+      state.blockIgnores.push([blockStartLine, lines.length]);
+    }
+
+    return state;
+  }
+
+  /**
+   * Check if a line should be ignored for a specific bug type
+   */
+  private shouldIgnore(lineNumber: number, bugType: BugType, ignoreState: IgnoreState): boolean {
+    // Check next-line ignores
+    const nextLineIgnore = ignoreState.nextLineIgnores.get(lineNumber);
+    if (nextLineIgnore) {
+      if (nextLineIgnore === '*' || nextLineIgnore === bugType) {
+        return true;
+      }
+    }
+
+    // Check block ignores
+    for (const [start, end] of ignoreState.blockIgnores) {
+      if (lineNumber >= start && lineNumber <= end) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Scan codebase for bugs
    *
    * @param rootDir - Root directory to scan
+   * @param fileFilter - Optional list of files to scan (for git-aware scanning)
    * @returns Array of bug findings
    */
-  async scan(rootDir: string): Promise<BugFinding[]> {
+  async scan(rootDir: string, fileFilter?: string[]): Promise<BugFinding[]> {
     const startTime = Date.now();
     const findings: BugFinding[] = [];
 
     logger.info('Starting bug scan', {
       rootDir,
       scope: this.config.scope,
-      ruleCount: this.rules.length
+      ruleCount: this.rules.length,
+      fileFilter: fileFilter ? fileFilter.length : undefined
     });
 
-    // Determine scan directory
-    const scanDir = this.config.scope
-      ? join(rootDir, this.config.scope)
-      : rootDir;
+    // Get files to scan
+    let files: string[];
 
-    // Get all files to scan
-    const files = await this.getFilesToScan(scanDir, rootDir);
+    if (fileFilter && fileFilter.length > 0) {
+      // Use provided file filter (git-aware scanning)
+      files = fileFilter
+        .map(f => f.startsWith('/') ? f : join(rootDir, f))
+        .filter(f => {
+          const ext = extname(f);
+          return ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'].includes(ext);
+        })
+        .filter(f => !this.isExcluded(relative(rootDir, f)));
+    } else {
+      // Determine scan directory
+      const scanDir = this.config.scope
+        ? join(rootDir, this.config.scope)
+        : rootDir;
+
+      // Get all files to scan
+      files = await this.getFilesToScan(scanDir, rootDir);
+    }
 
     logger.debug('Files to scan', { count: files.length });
 
@@ -211,6 +331,9 @@ export class BugDetector {
     const lines = content.split('\n');
     const relativePath = relative(rootDir, filePath);
 
+    // Parse ignore comments
+    const ignoreState = this.parseIgnoreComments(lines);
+
     // Apply each rule
     for (const rule of this.rules) {
       // Check file extension
@@ -222,7 +345,7 @@ export class BugDetector {
       }
 
       // Apply regex-based detection
-      const ruleFindings = this.applyRule(rule, content, lines, relativePath);
+      const ruleFindings = this.applyRule(rule, content, lines, relativePath, ignoreState);
       findings.push(...ruleFindings);
     }
 
@@ -236,7 +359,8 @@ export class BugDetector {
     rule: DetectionRule,
     content: string,
     lines: string[],
-    filePath: string
+    filePath: string,
+    ignoreState: IgnoreState
   ): BugFinding[] {
     const findings: BugFinding[] = [];
 
@@ -252,6 +376,16 @@ export class BugDetector {
         // Find the line number of this match
         const beforeMatch = content.substring(0, match.index);
         const lineNumber = beforeMatch.split('\n').length;
+
+        // Check if this line should be ignored
+        if (this.shouldIgnore(lineNumber, rule.type, ignoreState)) {
+          logger.debug('Bug ignored by comment', {
+            file: filePath,
+            line: lineNumber,
+            type: rule.type
+          });
+          continue;
+        }
 
         // Check negative pattern (within specified lines)
         if (rule.negativePattern) {
@@ -459,7 +593,7 @@ export class BugDetector {
 /**
  * Create default bugfix configuration
  *
- * v12.5.5: Default maxDurationMinutes set to 45 minutes.
+ * v12.6.0: Default maxDurationMinutes set to 45 minutes.
  * Users can stop the process anytime via MCP cancellation.
  */
 export function createDefaultBugfixConfig(overrides?: Partial<BugfixConfig>): BugfixConfig {

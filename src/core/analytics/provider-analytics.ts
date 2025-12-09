@@ -80,6 +80,28 @@ export interface ProviderMetrics {
   avgCost: number;
 }
 
+// Internal types for SQLite query results
+interface MetricsQueryResult {
+  total_requests: number;
+  success_rate: number;
+  error_rate: number;
+  avg_latency: number;
+  total_cost: number;
+  avg_cost: number;
+}
+
+interface LatencyQueryResult {
+  latency_ms: number | null;
+}
+
+interface CostQueryResult {
+  provider: string;
+  streaming: number;
+  actual_cost: number;
+  request_count: number;
+  routing_optimal: number;
+}
+
 /**
  * Provider Analytics Manager
  *
@@ -216,14 +238,14 @@ export class ProviderAnalytics {
       params.push(options.flagValue ? 1 : 0);
     }
 
-    const result = this.db.prepare(query).get(...params) as any;
+    const result = this.db.prepare(query).get(...params) as MetricsQueryResult | undefined;
 
     // Get percentiles separately
     const percentileQuery = query.replace('SELECT COUNT(*)', 'SELECT latency_ms');
-    const latencies = this.db.prepare(percentileQuery).all(...params) as any[];
+    const latencies = this.db.prepare(percentileQuery).all(...params) as LatencyQueryResult[];
     const sortedLatencies = latencies
       .map(r => r.latency_ms)
-      .filter(l => l !== null)
+      .filter((l): l is number => l !== null)
       .sort((a, b) => a - b);
 
     // FIXED Bug #144: Use centralized percentile utility for consistency
@@ -232,15 +254,15 @@ export class ProviderAnalytics {
     const p99 = getPercentile(sortedLatencies, 99);
 
     return {
-      totalRequests: result.total_requests || 0,
-      successRate: result.success_rate || 0,
-      errorRate: result.error_rate || 0,
-      avgLatency: result.avg_latency || 0,
+      totalRequests: result?.total_requests ?? 0,
+      successRate: result?.success_rate ?? 0,
+      errorRate: result?.error_rate ?? 0,
+      avgLatency: result?.avg_latency ?? 0,
       p50Latency: p50,
       p95Latency: p95,
       p99Latency: p99,
-      totalCost: result.total_cost || 0,
-      avgCost: result.avg_cost || 0
+      totalCost: result?.total_cost ?? 0,
+      avgCost: result?.avg_cost ?? 0
     };
   }
 
@@ -267,7 +289,7 @@ export class ProviderAnalytics {
       GROUP BY provider, streaming, routing_optimal
     `;
 
-    const results = this.db.prepare(query).all(startTs, endTs) as any[];
+    const results = this.db.prepare(query).all(startTs, endTs) as CostQueryResult[];
 
     let totalSpent = 0;
     let optimalSpend = 0;

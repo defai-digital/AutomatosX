@@ -4,7 +4,7 @@
  * Runs autonomous bug-fixing workflow.
  * Scans, analyzes, fixes, and verifies bugs automatically.
  *
- * v12.5.5: Added streaming progress notifications to inform users
+ * v12.6.0: Added streaming progress notifications to inform users
  * that the process is running (prevents "hung" perception).
  *
  * @since v12.4.0
@@ -73,12 +73,12 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
       dryRun: input.dryRun
     });
 
-    // v12.5.5: Start streaming progress notification
+    // v12.6.0: Start streaming progress notification
     const progressToken = sendMcpProgressBegin('Bugfix', 'Starting bug scan...');
 
     try {
       // Note: includePatterns is handled by file scanning, not in BugfixConfig
-      // v12.5.5: Add onProgress callback to send streaming updates
+      // v12.6.0: Add onProgress callback to send streaming updates
       const controller = new BugfixController({
         rootDir: input.path || process.cwd(),
         config: {
@@ -89,7 +89,7 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
           requireTypecheck: input.requireTypecheck ?? true,
           requireTests: input.requireTests ?? false
         },
-        // v12.5.5: Stream brief progress updates to MCP client
+        // v12.6.0: Stream brief progress updates to MCP client
         onProgress: (message: string) => {
           sendMcpProgress(message, progressToken);
         },
@@ -137,13 +137,13 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
         durationMs: output.durationMs
       });
 
-      // v12.5.5: End streaming progress notification
+      // v12.6.0: End streaming progress notification
       sendMcpProgressEnd(progressToken, `Completed: ${output.bugsFixed} bugs fixed`);
 
       return output;
     } catch (error) {
       logger.error('[MCP] bugfix_run failed', { error });
-      // v12.5.5: End streaming progress notification on error
+      // v12.6.0: End streaming progress notification on error
       sendMcpProgressEnd(progressToken, `Error: ${(error as Error).message}`);
       throw new Error(`Bugfix run failed: ${(error as Error).message}`);
     }

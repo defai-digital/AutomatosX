@@ -3,6 +3,7 @@
  *
  * @module cli/commands/bugfix
  * @since v12.4.0
+ * @updated v12.6.0 - Added JSON output, report generation, git-aware scanning, check subcommand
  */
 
 import type { CommandModule } from 'yargs';
@@ -11,9 +12,14 @@ import ora from 'ora';
 import {
   BugfixController,
   createDefaultBugfixConfig,
+  getChangedFiles,
+  generateJsonOutput,
+  writeReport,
+  getDefaultReportPath,
   type BugFinding,
   type FixAttempt,
   type BugfixConfig,
+  type BugfixResult,
   type BugSeverity,
   type BugType
 } from '../../core/bugfix/index.js';
@@ -32,6 +38,13 @@ interface BugfixOptions {
   verbose?: boolean;
   quiet?: boolean;
   types?: string[];
+  // New options (v12.6.0)
+  json?: boolean;
+  report?: boolean | string;
+  changed?: boolean;
+  staged?: boolean;
+  since?: string;
+  check?: boolean;
 }
 
 /**
@@ -81,9 +94,14 @@ function formatBugType(type: BugType): string {
  * Bugfix command implementation
  */
 export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
-  command: 'bugfix',
+  command: 'bugfix [check]',
   describe: 'Find and fix bugs in the codebase',
   builder: {
+    check: {
+      type: 'boolean',
+      default: false,
+      describe: 'Check for bugs without fixing (exit 1 if found) - for pre-commit hooks'
+    },
     auto: {
       type: 'boolean',
       default: false,
@@ -129,6 +147,31 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
         'event_leak',
         'resource_leak'
       ]
+    },
+    // New options (v12.6.0)
+    json: {
+      type: 'boolean',
+      default: false,
+      describe: 'Output results as JSON'
+    },
+    report: {
+      type: 'string',
+      describe: 'Generate markdown report (optionally specify path)',
+      coerce: (val: string | boolean) => val === '' ? true : val
+    },
+    changed: {
+      type: 'boolean',
+      default: false,
+      describe: 'Only scan files changed in git working tree'
+    },
+    staged: {
+      type: 'boolean',
+      default: false,
+      describe: 'Only scan files staged in git'
+    },
+    since: {
+      type: 'string',
+      describe: 'Only scan files changed since branch/commit (e.g., main, HEAD~5)'
     }
   },
   handler: async (argv) => {
@@ -138,23 +181,66 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
     const failedBugs: BugFinding[] = [];
     const skippedBugs: BugFinding[] = [];
 
+    // JSON output mode suppresses all other output
+    const isJsonMode = argv.json === true;
+    const isQuiet = argv.quiet === true || isJsonMode;
+    const isCheckMode = argv.check === true;
+
     // Detect project root
     const rootDir = await detectProjectRoot() || process.cwd();
 
+    // Get file filter for git-aware scanning
+    let fileFilter: string[] | undefined;
+
+    if (argv.changed || argv.staged || argv.since) {
+      fileFilter = await getChangedFiles({
+        changed: argv.changed,
+        staged: argv.staged,
+        since: argv.since,
+        cwd: rootDir
+      });
+
+      if (fileFilter.length === 0) {
+        if (isJsonMode) {
+          console.log(JSON.stringify({
+            version: '12.6.0',
+            timestamp: new Date().toISOString(),
+            message: 'No files to scan',
+            summary: { bugsFound: 0, bugsFixed: 0, bugsFailed: 0, bugsSkipped: 0, successRate: 1, durationMs: 0 },
+            findings: [],
+            fixed: [],
+            failed: [],
+            skipped: []
+          }));
+        } else if (!isQuiet) {
+          console.log(chalk.green('\nNo changed files to scan.\n'));
+        }
+        process.exitCode = 0;
+        return;
+      }
+
+      if (!isQuiet) {
+        console.log(chalk.gray(`  Git filter: ${fileFilter.length} file(s) to scan`));
+      }
+    }
+
     // Build configuration
+    // In check mode, always use dry-run (no fixes)
     const config: Partial<BugfixConfig> = {
-      maxBugs: argv.maxIterations || 10,
+      maxBugs: isCheckMode ? 1000 : (argv.maxIterations || 10), // In check mode, find all bugs
       severityThreshold: (argv.severity || 'medium') as BugSeverity,
       scope: argv.scope,
-      dryRun: argv.dryRun || false,
+      dryRun: isCheckMode ? true : (argv.dryRun || false), // Check mode is always dry-run
       verbose: argv.verbose || false,
       bugTypes: (argv.types as BugType[]) || ['timer_leak', 'missing_destroy', 'promise_timeout_leak']
     };
 
-    if (!argv.quiet) {
+    if (!isQuiet) {
       console.log(chalk.cyan('\n🔧 AutomatosX Bug Fixer\n'));
 
-      if (argv.dryRun) {
+      if (isCheckMode) {
+        console.log(chalk.blue('  🔍 Check mode - scanning for bugs (no fixes)\n'));
+      } else if (argv.dryRun) {
         console.log(chalk.yellow('  ⚠️  Dry run mode - no changes will be made\n'));
       }
 
@@ -162,7 +248,9 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
         console.log(chalk.gray(`  Scope: ${argv.scope}`));
       }
       console.log(chalk.gray(`  Severity threshold: ${argv.severity}`));
-      console.log(chalk.gray(`  Max bugs: ${argv.maxIterations}`));
+      if (!isCheckMode) {
+        console.log(chalk.gray(`  Max bugs: ${argv.maxIterations}`));
+      }
       console.log();
     }
 
@@ -171,8 +259,9 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       const controller = new BugfixController({
         config,
         rootDir,
-        onProgress: (message, data) => {
-          if (argv.quiet) return;
+        fileFilter, // Pass file filter for git-aware scanning
+        onProgress: (message, _data) => {
+          if (isQuiet) return;
 
           if (message.startsWith('Scanning')) {
             spinner.start(message);
@@ -203,7 +292,7 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
           }
         },
         onVerification: (finding, success) => {
-          if (!argv.quiet && argv.verbose) {
+          if (!isQuiet && argv.verbose) {
             const icon = success ? '✓' : '✗';
             console.log(chalk.gray(`   ${icon} Verification: ${success ? 'passed' : 'failed'}`));
           }
@@ -213,8 +302,35 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       // Execute
       const result = await controller.execute();
 
-      // Display results
-      if (!argv.quiet) {
+      // Generate report if requested
+      if (argv.report) {
+        const reportPath = typeof argv.report === 'string'
+          ? argv.report
+          : getDefaultReportPath(rootDir, 'markdown');
+
+        await writeReport(result, reportPath, 'markdown');
+
+        if (!isQuiet) {
+          console.log(chalk.green(`\n📄 Report saved to: ${reportPath}\n`));
+        }
+      }
+
+      // JSON output mode
+      if (isJsonMode) {
+        const jsonOutput = generateJsonOutput(result);
+        console.log(JSON.stringify(jsonOutput, null, 2));
+
+        // Set exit code based on results
+        if (isCheckMode && result.stats.bugsFound > 0) {
+          process.exitCode = 1;
+        } else if (result.stats.bugsFailed > 0) {
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      // Display results (non-JSON mode)
+      if (!isQuiet) {
         spinner.stop();
 
         console.log('\n' + chalk.cyan('━'.repeat(50)));
@@ -235,6 +351,26 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
             console.log(chalk.gray(`   ... and ${findings.length - 20} more`));
           }
           console.log();
+        }
+
+        // In check mode, just show the bugs found
+        if (isCheckMode) {
+          console.log(chalk.cyan('━'.repeat(50)));
+          console.log(chalk.bold('  Summary'));
+          console.log(chalk.cyan('━'.repeat(50)));
+          console.log();
+          console.log(`   Bugs found:    ${result.stats.bugsFound > 0 ? chalk.red(result.stats.bugsFound.toString()) : chalk.green('0')}`);
+          console.log(`   Duration:      ${(result.stats.totalDurationMs / 1000).toFixed(1)}s`);
+          console.log();
+
+          if (result.stats.bugsFound > 0) {
+            console.log(chalk.red('  ✗ Check failed: bugs found in codebase\n'));
+            process.exitCode = 1;
+          } else {
+            console.log(chalk.green('  ✓ Check passed: no bugs found\n'));
+            process.exitCode = 0;
+          }
+          return;
         }
 
         // Fixed bugs
@@ -289,7 +425,7 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
           console.log(chalk.yellow('  ℹ️  This was a dry run. Run without --dry-run to apply fixes.\n'));
         }
       } else {
-        // Quiet mode - just output JSON
+        // Quiet mode - just output JSON summary
         console.log(JSON.stringify({
           found: result.stats.bugsFound,
           fixed: result.stats.bugsFixed,
@@ -306,8 +442,18 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       }
 
     } catch (error) {
-      spinner.fail(chalk.red(`Error: ${(error as Error).message}`));
+      if (!isQuiet) {
+        spinner.fail(chalk.red(`Error: ${(error as Error).message}`));
+      }
       logger.error('Bugfix command failed', { error: (error as Error).message });
+
+      if (isJsonMode) {
+        console.log(JSON.stringify({
+          error: (error as Error).message,
+          summary: { bugsFound: 0, bugsFixed: 0, bugsFailed: 0, bugsSkipped: 0, successRate: 0, durationMs: 0 }
+        }));
+      }
+
       process.exitCode = 1;
     }
   }

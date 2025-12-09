@@ -38,7 +38,67 @@ function checkAborted(signal?: AbortSignal): void {
 }
 
 /**
+ * Provider-specific MCP tool names
+ *
+ * External providers with MCP servers expose different tools:
+ * - Codex: 'codex' tool for task execution
+ * - Claude: 'Task' tool for agent-like tasks
+ * - Gemini: 'execute' tool for tasks
+ *
+ * Note: These map to provider-specific tool interfaces, not 'run_agent'
+ * which is an AutomatosX-specific tool.
+ *
+ * **SDK-based providers NOT supported via MCP pool:**
+ * - ax-glm (GLM/Zhipu AI): Uses direct SDK, no MCP server
+ * - ax-grok (Grok/xAI): Uses direct SDK, no MCP server
+ * - glm: Alias for ax-glm
+ * - grok: Alias for ax-grok
+ *
+ * These providers should fall through to CLI spawn, which internally
+ * uses the SDK adapter for direct API calls.
+ */
+const PROVIDER_MCP_TOOLS: Record<string, { tool: string; buildArgs: (agent: string, task: string) => Record<string, unknown> }> = {
+  codex: {
+    tool: 'codex',
+    buildArgs: (_agent: string, task: string) => ({ prompt: task })
+  },
+  openai: {
+    tool: 'codex',
+    buildArgs: (_agent: string, task: string) => ({ prompt: task })
+  },
+  claude: {
+    tool: 'Task',
+    buildArgs: (agent: string, task: string) => ({
+      description: `Execute ${agent} task`,
+      prompt: task,
+      subagent_type: 'general-purpose'
+    })
+  },
+  'claude-code': {
+    tool: 'Task',
+    buildArgs: (agent: string, task: string) => ({
+      description: `Execute ${agent} task`,
+      prompt: task,
+      subagent_type: 'general-purpose'
+    })
+  },
+  gemini: {
+    tool: 'execute',
+    buildArgs: (_agent: string, task: string) => ({ task })
+  },
+  'gemini-cli': {
+    tool: 'execute',
+    buildArgs: (_agent: string, task: string) => ({ task })
+  }
+  // ax-glm, ax-grok, glm, grok: NOT listed here - intentionally fall through to CLI spawn
+};
+
+/**
  * Execute task via MCP Client Pool (cross-provider execution)
+ *
+ * v12.5.6: Fixed to call provider-specific tools instead of 'run_agent'
+ * External providers (Codex, Claude, Gemini) don't have 'run_agent' tool -
+ * that's an AutomatosX-specific tool.
  */
 async function executeViaMcpPool(
   provider: string,
@@ -49,12 +109,18 @@ async function executeViaMcpPool(
   const startTime = Date.now();
   const client = await pool.acquire(provider);
 
+  // Get provider-specific tool configuration
+  const providerConfig = PROVIDER_MCP_TOOLS[provider];
+  if (!providerConfig) {
+    pool.release(provider, client);
+    throw new Error(`MCP pool execution not supported for provider: ${provider}. Use CLI spawn instead.`);
+  }
+
   try {
-    const result = await client.callTool('run_agent', {
-      agent,
-      task,
-      mode: 'execute'
-    });
+    const result = await client.callTool(
+      providerConfig.tool,
+      providerConfig.buildArgs(agent, task)
+    );
 
     const content = (result.content ?? [])
       .filter((c): c is { type: 'text'; text: string } => c?.type === 'text')

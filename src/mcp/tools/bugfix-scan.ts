@@ -4,7 +4,7 @@
  * Scans codebase for bugs without applying fixes.
  * Returns list of detected bugs with severity and suggested fixes.
  *
- * v12.5.5: Added streaming progress notifications.
+ * v12.6.0: Added streaming progress notifications.
  *
  * @since v12.4.0
  */
@@ -57,7 +57,7 @@ export function createBugfixScanHandler(): ToolHandler<BugfixScanInput, BugfixSc
     const startTime = Date.now();
     logger.info('[MCP] bugfix_scan called', { path: input.path, types: input.types });
 
-    // v12.5.5: Start streaming progress notification
+    // v12.6.0: Start streaming progress notification
     const progressToken = sendMcpProgressBegin('Bug Scan', 'Scanning codebase...');
 
     try {
@@ -125,13 +125,13 @@ export function createBugfixScanHandler(): ToolHandler<BugfixScanInput, BugfixSc
         durationMs: result.durationMs
       });
 
-      // v12.5.5: End streaming progress notification
+      // v12.6.0: End streaming progress notification
       sendMcpProgressEnd(progressToken, `Completed: ${result.total} bugs found`);
 
       return result;
     } catch (error) {
       logger.error('[MCP] bugfix_scan failed', { error });
-      // v12.5.5: End streaming progress notification on error
+      // v12.6.0: End streaming progress notification on error
       sendMcpProgressEnd(progressToken, `Error: ${(error as Error).message}`);
       throw new Error(`Bug scan failed: ${(error as Error).message}`);
     }

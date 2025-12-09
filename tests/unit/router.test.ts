@@ -581,4 +581,223 @@ describe('Router', () => {
       expect(() => router.destroy()).not.toThrow();
     });
   });
+
+  describe('providerCount', () => {
+    it('should return number of configured providers', () => {
+      expect(router.providerCount).toBe(2);
+    });
+
+    it('should return 0 for empty router', () => {
+      const emptyRouter = new Router({
+        providers: [],
+        fallbackEnabled: true
+      });
+
+      expect(emptyRouter.providerCount).toBe(0);
+      emptyRouter.destroy();
+    });
+  });
+
+  describe('getCircuitBreakerStats', () => {
+    it('should return circuit breaker stats for all providers', () => {
+      const stats = router.getCircuitBreakerStats();
+
+      expect(stats).toBeInstanceOf(Map);
+      // Stats are tracked per-provider when used
+    });
+  });
+
+  describe('getHealthCheckStatus', () => {
+    it('should return health check status when disabled', () => {
+      const status = router.getHealthCheckStatus();
+
+      expect(status.enabled).toBe(false);
+      expect(status.interval).toBeUndefined();
+      expect(status.checksPerformed).toBe(0);
+      expect(status.avgDuration).toBe(0);
+      expect(status.successRate).toBe(0);
+      expect(status.providersMonitored).toBe(2);
+      expect(status.providers).toHaveLength(2);
+    });
+
+    it('should return health check status when enabled', async () => {
+      vi.useFakeTimers();
+
+      const routerWithHealthCheck = new Router({
+        providers: [mockProvider1],
+        fallbackEnabled: true,
+        healthCheckInterval: 100
+      });
+
+      // Wait for health check to run
+      await vi.advanceTimersByTimeAsync(200);
+
+      const status = routerWithHealthCheck.getHealthCheckStatus();
+
+      expect(status.enabled).toBe(true);
+      expect(status.interval).toBe(100);
+      expect(status.checksPerformed).toBeGreaterThan(0);
+      expect(status.providersMonitored).toBe(1);
+
+      routerWithHealthCheck.destroy();
+      await vi.advanceTimersByTimeAsync(50);
+      vi.useRealTimers();
+    });
+
+    it('should include provider cache metrics', () => {
+      const status = router.getHealthCheckStatus();
+
+      expect(status.providers).toHaveLength(2);
+      expect(status.providers[0]).toHaveProperty('name');
+      expect(status.providers[0]).toHaveProperty('cacheHitRate');
+      expect(status.providers[0]).toHaveProperty('avgCacheAge');
+      expect(status.providers[0]).toHaveProperty('uptime');
+    });
+  });
+
+  describe('cache integration', () => {
+    let mockCache: any;
+    let routerWithCache: Router;
+
+    beforeEach(() => {
+      mockCache = {
+        isEnabled: true,
+        get: vi.fn().mockReturnValue(null),
+        set: vi.fn()
+      };
+
+      routerWithCache = new Router({
+        providers: [mockProvider1],
+        fallbackEnabled: true,
+        cache: mockCache
+      });
+    });
+
+    afterEach(() => {
+      routerWithCache.destroy();
+    });
+
+    it('should check cache before executing provider', async () => {
+      await routerWithCache.execute(mockRequest);
+
+      expect(mockCache.get).toHaveBeenCalledWith(
+        'provider1',
+        mockRequest.prompt,
+        expect.objectContaining({
+          temperature: mockRequest.temperature,
+          maxTokens: mockRequest.maxTokens
+        })
+      );
+    });
+
+    it('should return cached response when available', async () => {
+      mockCache.get = vi.fn().mockReturnValue('Cached response content');
+
+      const response = await routerWithCache.execute(mockRequest);
+
+      expect(response.content).toBe('Cached response content');
+      expect(response.cached).toBe(true);
+      expect(response.latencyMs).toBe(0);
+      expect(mockProvider1.execute).not.toHaveBeenCalled();
+    });
+
+    it('should cache successful response', async () => {
+      await routerWithCache.execute(mockRequest);
+
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'provider1',
+        mockRequest.prompt,
+        'Response from provider1',
+        expect.objectContaining({
+          temperature: mockRequest.temperature
+        })
+      );
+    });
+
+    it('should not cache failed response', async () => {
+      mockProvider1.execute = vi.fn().mockRejectedValue(new Error('Provider failed'));
+
+      await expect(routerWithCache.execute(mockRequest)).rejects.toThrow();
+      expect(mockCache.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('multi-factor routing', () => {
+    it('should enable multi-factor routing when strategy provided', () => {
+      const routerWithStrategy = new Router({
+        providers: [mockProvider1, mockProvider2],
+        fallbackEnabled: true,
+        strategy: {
+          strategy: 'balanced'
+        }
+      });
+
+      // Router should initialize without errors
+      expect(routerWithStrategy.providerCount).toBe(2);
+
+      routerWithStrategy.destroy();
+    });
+  });
+
+  describe('trace logging', () => {
+    it('should initialize trace logging when workspacePath provided', () => {
+      const routerWithTracing = new Router({
+        providers: [mockProvider1],
+        fallbackEnabled: true,
+        workspacePath: '/tmp/test-workspace',
+        enableTracing: true
+      });
+
+      // Router should initialize without errors
+      expect(routerWithTracing.providerCount).toBe(1);
+
+      routerWithTracing.destroy();
+    });
+
+    it('should not initialize trace logging when enableTracing is false', () => {
+      const routerWithoutTracing = new Router({
+        providers: [mockProvider1],
+        fallbackEnabled: true,
+        workspacePath: '/tmp/test-workspace',
+        enableTracing: false
+      });
+
+      // Router should initialize without errors
+      expect(routerWithoutTracing.providerCount).toBe(1);
+
+      routerWithoutTracing.destroy();
+    });
+  });
+
+  describe('last resort provider logic', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should try unavailable providers when all available fail', async () => {
+      // Provider 1 is available but fails
+      mockProvider1.isAvailable = vi.fn().mockResolvedValue(true);
+      mockProvider1.execute = vi.fn().mockRejectedValue(new Error('Provider1 failed'));
+
+      // Provider 2 is unavailable initially
+      mockProvider2.isAvailable = vi.fn().mockResolvedValue(false);
+      mockProvider2.execute = vi.fn().mockResolvedValue({
+        content: 'Response from provider2 (last resort)',
+        tokensUsed: { prompt: 10, completion: 20, total: 30 },
+        latencyMs: 150,
+        model: 'model2',
+        finishReason: 'stop'
+      } as ExecutionResponse);
+
+      const response = await router.execute(mockRequest);
+
+      // Should have tried provider2 as last resort
+      expect(response.model).toBe('model2');
+      expect(mockProvider2.execute).toHaveBeenCalled();
+    });
+  });
 });

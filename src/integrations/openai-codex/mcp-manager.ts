@@ -8,6 +8,7 @@
 
 import { spawn, type ChildProcess } from 'child_process';
 import { logger } from '../../shared/logging/logger.js';
+import { sleep } from '../../shared/utils/safe-timers.js';
 import type {
   CodexMCPConfig,
   MCPServerStatus,
@@ -134,7 +135,7 @@ export class CodexMCPManager {
    */
   async restartServer(): Promise<MCPServerStatus> {
     await this.stopServer();
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Brief delay
+    await sleep(1000); // Brief delay
     return this.startServer();
   }
 

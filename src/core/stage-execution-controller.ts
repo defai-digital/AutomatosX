@@ -32,6 +32,7 @@ import { PromptManager, createCLIPromptManager } from './prompt-manager.js';
 import { ProgressChannel } from './progress-channel.js';
 import { ProgressRenderer } from '../cli/renderers/progress-renderer.js';
 import { logger } from '../shared/logging/logger.js';
+import { sleep } from '../shared/utils/safe-timers.js';
 import type { IMemoryManager } from '../types/memory.js';
 
 /**
@@ -915,11 +916,11 @@ export class StageExecutionController {
               )
             );
             console.log(chalk.gray(`   Waiting ${delay}ms before retry...`));
-            await new Promise((resolve) => setTimeout(resolve, delay));
+            await sleep(delay);
           } else {
             // Interactive: Ask user (this is handled elsewhere in the flow)
             // Just apply delay if user chose retry
-            await new Promise((resolve) => setTimeout(resolve, delay));
+            await sleep(delay);
           }
         }
 

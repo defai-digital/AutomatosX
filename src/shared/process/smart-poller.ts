@@ -8,6 +8,7 @@
  */
 
 import { logger } from '../logging/logger.js';
+import { sleep } from '../utils/safe-timers.js';
 
 /**
  * Polling options
@@ -37,12 +38,6 @@ export interface PollingOptions<T> {
    */
   intervals?: number[];
 }
-
-/**
- * Sleep utility
- */
-const sleep = (ms: number): Promise<void> =>
-  new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Smart Poller with Exponential Backoff

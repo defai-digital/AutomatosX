@@ -31,6 +31,7 @@ import { LifecycleLogger, getLifecycleLogger } from './lifecycle-logger.js';
 import { MetricsCollector, getMetricsCollector } from './metrics-collector.js';
 import { ResourceEnforcer, createResourceEnforcer } from './resource-enforcer.js';
 import { TIMEOUTS } from '../core/validation-limits.js';
+import { sleep } from '../shared/utils/safe-timers.js';
 
 /**
  * Unified MCP Manager
@@ -196,7 +197,7 @@ export class UnifiedMCPManager implements IMCPManager {
       this.servers.set(config.name, serverProcess);
 
       // Wait briefly for process to initialize (MCP handshake handles actual readiness)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await sleep(100);
 
       // Check if process is still running
       if (childProcess.killed || childProcess.exitCode !== null) {
@@ -348,7 +349,7 @@ export class UnifiedMCPManager implements IMCPManager {
     await this.stopServer(serverName);
 
     // Brief delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await sleep(1000);
 
     // Find server config
     const serverConfig = this.config.servers.find(s => s.name === serverName);

@@ -12,6 +12,7 @@
 
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
+import { sleep } from '../../shared/utils/safe-timers.js';
 import { GLMSdkAdapter } from './sdk-adapter.js';
 import { type GLMModel, GLM_DEFAULT_MODEL } from './types.js';
 
@@ -148,7 +149,7 @@ export class GLMSdkOnlyAdapter {
             attempt: attempt + 1,
             delayMs: delay
           });
-          await this.sleep(delay);
+          await sleep(delay);
           continue;
         }
 
@@ -200,12 +201,6 @@ export class GLMSdkOnlyAdapter {
     return false;
   }
 
-  /**
-   * Sleep utility
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   /**
    * Get the configured model

@@ -11,6 +11,7 @@ import chalk from 'chalk';
 import { getFlagManager } from '@/core/feature-flags/flags.js';
 import { logger } from '@/shared/logging/logger.js';
 import { TIMEOUTS } from '@/core/validation-limits.js';
+import { sleep } from '@/shared/utils/safe-timers.js';
 
 interface FlagsListOptions {
   json?: boolean;
@@ -220,7 +221,7 @@ async function handleKill(argv: FlagsKillOptions): Promise<void> {
   console.log(chalk.yellow('This will immediately disable the feature for ALL users.'));
   console.log(chalk.gray('Press Ctrl+C to cancel, or wait 5 seconds to confirm...\n'));
 
-  await new Promise(resolve => setTimeout(resolve, TIMEOUTS.KILL_SWITCH_DELAY));
+  await sleep(TIMEOUTS.KILL_SWITCH_DELAY);
 
   try {
     await flagManager.killSwitch(flagName, reason);

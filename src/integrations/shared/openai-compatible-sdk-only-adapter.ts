@@ -11,6 +11,7 @@
 
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
+import { sleep } from '../../shared/utils/safe-timers.js';
 import type { OpenAICompatibleSdkAdapter } from './openai-compatible-sdk-adapter.js';
 
 /**
@@ -144,7 +145,7 @@ export class OpenAICompatibleSdkOnlyAdapter {
             attempt: attempt + 1,
             delayMs: delay
           });
-          await this.sleep(delay);
+          await sleep(delay);
           continue;
         }
 
@@ -196,12 +197,6 @@ export class OpenAICompatibleSdkOnlyAdapter {
     return false;
   }
 
-  /**
-   * Sleep utility
-   */
-  protected sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   /**
    * Get the configured model

@@ -11,6 +11,7 @@ import { promisify } from 'util';
 import inquirer from 'inquirer';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
+import { sleep } from '../../shared/utils/safe-timers.js';
 
 const execAsync = promisify(exec);
 
@@ -294,7 +295,7 @@ async function killProcess(pid: number, verbose: boolean): Promise<void> {
     });
 
     // Wait a moment to see if it terminates
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await sleep(1000);
 
     // Check if still running
     try {

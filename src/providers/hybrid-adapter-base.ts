@@ -14,6 +14,7 @@ import { logger } from '../shared/logging/logger.js';
 import { isSDKFirstModeEnabled, isSDKFallbackEnabled } from '../core/feature-flags/flags.js';
 import { decideFallback, FallbackDecision, type ErrorClassification } from './fallback-decision.js';
 import { getProviderMetrics } from '../core/metrics/provider-metrics.js';
+import { sleep } from '../shared/utils/safe-timers.js';
 
 /**
  * Execution mode for hybrid adapter
@@ -264,7 +265,7 @@ export abstract class HybridAdapterBase {
         if (classification.decision === FallbackDecision.RETRY_SDK && attempt < this.maxRetries) {
           // Wait before retry
           const delay = classification.retryDelayMs || 1000;
-          await this.sleep(delay);
+          await sleep(delay);
           continue;
         }
 
@@ -477,13 +478,6 @@ export abstract class HybridAdapterBase {
     } catch {
       // Metrics collection is optional, don't fail on errors
     }
-  }
-
-  /**
-   * Sleep utility
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

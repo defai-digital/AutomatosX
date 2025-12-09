@@ -898,9 +898,9 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
         }
         try {
           const profile = await this.profileLoader.loadProfile(agent);
+          // MCP protocol only supports 'text' content type for prompts
           const content = [
-            { type: 'text', text: `System prompt for ${agent}:\n${profile.systemPrompt || 'No system prompt defined.'}` },
-            { type: 'application/json', json: profile }
+            { type: 'text' as const, text: `System prompt for ${agent}:\n${profile.systemPrompt || 'No system prompt defined.'}\n\nProfile:\n${JSON.stringify(profile, null, 2)}` }
           ];
           return { jsonrpc: '2.0', id, result: { prompt: { name, description: 'Agent context', arguments: [{ name: 'agent', required: true }] }, content } };
         } catch (error) {
@@ -913,9 +913,9 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
           providerCount: this.router?.providerCount ?? 0,
           streamingNotifications: this.enableStreamingNotifications
         };
+        // MCP protocol only supports 'text' content type for prompts
         const content = [
-          { type: 'text', text: `AutomatosX MCP status:\nVersion: ${summary.version}\nProviders: ${summary.providerCount}\nStreaming: ${summary.streamingNotifications}` },
-          { type: 'application/json', json: summary }
+          { type: 'text' as const, text: `AutomatosX MCP status:\nVersion: ${summary.version}\nProviders: ${summary.providerCount}\nStreaming: ${summary.streamingNotifications}\n\nDetails:\n${JSON.stringify(summary, null, 2)}` }
         ];
         return { jsonrpc: '2.0', id, result: { prompt: { name, description: 'AutomatosX status' }, content } };
       }
@@ -943,12 +943,17 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
         profile.role ? `**Role:** ${profile.role}` : '',
         profile.abilities?.length ? `**Abilities:** ${profile.abilities.join(', ')}` : '',
         '',
-        profile.systemPrompt || 'No system prompt defined.'
+        profile.systemPrompt || 'No system prompt defined.',
+        '',
+        '## Profile JSON',
+        '```json',
+        JSON.stringify(profile, null, 2),
+        '```'
       ].filter(Boolean).join('\n');
 
+      // MCP protocol only supports 'text' content type for resources
       const contents: McpResourceReadResponse['contents'] = [
-        { type: 'text', text: summary },
-        { type: 'application/json', json: profile }
+        { type: 'text', text: summary }
       ];
 
       return { jsonrpc: '2.0', id, result: { uri, mimeType: 'text/markdown', contents } };
@@ -996,17 +1001,13 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
 
   /** Create MCP tool response wrapper */
   private createToolResponse(id: string | number | null, result: unknown, isError = false): JsonRpcResponse {
-    let content: McpToolCallResponse['content'];
+    // MCP protocol only supports specific content types: text, image, audio, resource_link, resource
+    // For non-string results, serialize to JSON text
+    const text = typeof result === 'string'
+      ? result
+      : JSON.stringify(result, null, 2);
 
-    if (typeof result === 'string') {
-      content = [{ type: 'text', text: result }];
-    } else {
-      content = [
-        { type: 'application/json', json: result },
-        { type: 'text', text: JSON.stringify(result, null, 2) }
-      ];
-    }
-
+    const content: McpToolCallResponse['content'] = [{ type: 'text', text }];
     const response: McpToolCallResponse = { content, ...(isError && { isError }) };
     return { jsonrpc: '2.0', id, result: response };
   }

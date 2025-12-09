@@ -66,17 +66,22 @@ export async function resolveResourceTemplate(
       profile.role ? `**Role:** ${profile.role}` : '',
       profile.abilities?.length ? `**Abilities:** ${profile.abilities.join(', ')}` : '',
       '',
-      profile.systemPrompt || 'No system prompt defined.'
+      profile.systemPrompt || 'No system prompt defined.',
+      '',
+      '## Profile JSON',
+      '```json',
+      JSON.stringify(profile, null, 2),
+      '```'
     ].filter(Boolean).join('\n');
 
+    // MCP protocol only supports 'text' content type for resources
     return {
       uri: `agent/${agent}`,
       name: `Agent: ${agent}`,
       description: `AutomatosX agent profile for ${agent}`,
       mimeType: 'text/markdown',
       contents: [
-        { type: 'text', text: summary },
-        { type: 'application/json', json: profile }
+        { type: 'text', text: summary }
       ]
     };
   }
@@ -91,14 +96,14 @@ export async function resolveResourceTemplate(
     const readFn = isPrd ? workspaceManager.readPRD.bind(workspaceManager) : workspaceManager.readTmp.bind(workspaceManager);
     const content = await readFn(path);
 
+    // MCP protocol only supports 'text' content type for resources
     return {
       uri: `${isPrd ? 'prd' : 'tmp'}/${path}`,
       name: `${isPrd ? 'PRD' : 'Tmp'}: ${path}`,
       description: `Workspace ${isPrd ? 'PRD' : 'tmp'} file`,
       mimeType: 'text/markdown',
       contents: [
-        { type: 'text', text: content },
-        { type: 'application/json', json: { path, content, workspace: isPrd ? 'PRD' : 'tmp' } }
+        { type: 'text', text: content }
       ]
     };
   }

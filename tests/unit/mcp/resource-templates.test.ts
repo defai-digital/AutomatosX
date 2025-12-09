@@ -34,12 +34,14 @@ describe('resource templates', () => {
 
     expect(profileLoader.loadProfile).toHaveBeenCalledWith('alice');
     expect(result.uri).toBe('agent/alice');
-    expect(result.contents).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'text' }),
-        expect.objectContaining({ type: 'application/json' })
-      ])
+    // MCP protocol only supports 'text' content type for resources
+    expect(result.contents).toHaveLength(1);
+    expect(result.contents[0]).toEqual(
+      expect.objectContaining({ type: 'text' })
     );
+    // Verify the text content includes agent profile information
+    expect((result.contents[0] as { text: string }).text).toContain('# alice');
+    expect((result.contents[0] as { text: string }).text).toContain('Helper');
   });
 
   it('reads workspace PRD template', async () => {

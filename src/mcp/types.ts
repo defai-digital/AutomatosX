@@ -68,10 +68,9 @@ export interface McpToolCallRequest {
 }
 
 export interface McpToolCallResponse {
-  content: Array<
-    | { type: 'text'; text: string }
-    | { type: 'application/json'; json: unknown }
-  >;
+  // MCP protocol supports: text, image, audio, resource_link, resource
+  // We only use 'text' for tool responses (JSON is serialized to text)
+  content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
 }
 
@@ -102,7 +101,8 @@ export interface McpResourceReadRequest {
 export interface McpResourceReadResponse {
   uri: string;
   mimeType?: string;
-  contents: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
+  // MCP protocol supports: text, image, audio, resource_link, resource
+  contents: Array<{ type: 'text'; text: string }>;
 }
 
 // MCP resource templates (v2)
@@ -140,7 +140,8 @@ export interface McpResourceTemplateReadResponse {
   name?: string;
   description?: string;
   mimeType?: string;
-  contents: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
+  // MCP protocol supports: text, image, audio, resource_link, resource
+  contents: Array<{ type: 'text'; text: string }>;
 }
 
 // MCP prompts (optional)
@@ -173,7 +174,8 @@ export interface McpPromptGetRequest {
 
 export interface McpPromptGetResponse {
   prompt: McpPrompt;
-  content: Array<{ type: 'text'; text: string } | { type: 'application/json'; json: unknown }>;
+  // MCP protocol supports: text, image, audio, resource_link, resource
+  content: Array<{ type: 'text'; text: string }>;
 }
 
 export interface McpTool {

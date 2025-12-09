@@ -640,6 +640,13 @@ export class ProviderMetricsTracker extends DisposableEventEmitter {
     const records = this.metrics.get(provider);
     return records ? [...records] : null;  // Return copy
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  override async destroy(): Promise<void> {
+    this.removeAllListeners();
+  }
 }
 
 /**

@@ -19,6 +19,7 @@
 
 import { EventEmitter } from 'node:events';
 import { logger } from '../../shared/logging/logger.js';
+import { sleep } from '../../shared/utils/safe-timers.js';
 
 /**
  * Task queue item
@@ -346,7 +347,7 @@ export class TaskQueueManager extends EventEmitter {
       const start = Date.now();
 
       while (this.running.size > 0 && Date.now() - start < timeout) {
-        await new Promise((r) => setTimeout(r, 100));
+        await sleep(100);
       }
     }
 
@@ -614,6 +615,13 @@ export class TaskQueueManager extends EventEmitter {
     } else {
       this.clientTaskCount.delete(clientId);
     }
+  }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  destroy(): void {
+    this.removeAllListeners();
   }
 }
 

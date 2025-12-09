@@ -138,7 +138,24 @@ export function createListTasksHandler(): ToolHandler<ListTasksToolInput, ListTa
  */
 export const listTasksSchema = {
   name: 'list_tasks',
-  description: 'List tasks with optional filtering. Supports pagination.',
+  description: `List tasks with optional filtering. Supports pagination.
+
+**When to use**: Browse task queue, find tasks to execute, or monitor task status.
+
+**Filters**:
+- status: pending, running, completed, failed, expired
+- type: web_search, code_review, code_generation, analysis, custom
+- engine: gemini, claude, codex, glm, grok
+
+**Returns**: Array of task summaries with pagination info:
+- tasks: [{task_id, type, status, engine, priority, created_at, expires_at, has_result}]
+- total: Total matching tasks
+- has_more: Whether more pages exist
+
+**Examples**:
+- list_tasks({}) - List all tasks
+- list_tasks({ status: "pending" }) - Find pending tasks
+- list_tasks({ type: "code_review", limit: 50 }) - List code reviews`,
   inputSchema: {
     type: 'object' as const,
     properties: {

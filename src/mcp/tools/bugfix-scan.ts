@@ -4,6 +4,8 @@
  * Scans codebase for bugs without applying fixes.
  * Returns list of detected bugs with severity and suggested fixes.
  *
+ * v12.5.5: Added streaming progress notifications.
+ *
  * @since v12.4.0
  */
 
@@ -11,6 +13,7 @@ import type { ToolHandler } from '../types.js';
 import { logger } from '../../shared/logging/logger.js';
 import { BugDetector, createDefaultBugfixConfig } from '../../core/bugfix/bug-detector.js';
 import type { BugType, BugSeverity, BugFinding } from '../../core/bugfix/types.js';
+import { sendMcpProgress, sendMcpProgressBegin, sendMcpProgressEnd } from '../streaming-notifier.js';
 
 export interface BugfixScanInput {
   /** Directory to scan (default: current directory) */
@@ -54,20 +57,26 @@ export function createBugfixScanHandler(): ToolHandler<BugfixScanInput, BugfixSc
     const startTime = Date.now();
     logger.info('[MCP] bugfix_scan called', { path: input.path, types: input.types });
 
+    // v12.5.5: Start streaming progress notification
+    const progressToken = sendMcpProgressBegin('Bug Scan', 'Scanning codebase...');
+
     try {
       const rootDir = input.path || process.cwd();
       const limit = input.limit || 50;
 
       // Build config from input
       // Note: includePatterns is handled by file scanning, not in BugfixConfig
-      const config = createDefaultBugfixConfig({
-        bugTypes: input.types,
-        excludePatterns: input.excludePatterns
-      });
+      // Only pass defined values to avoid overriding defaults with undefined
+      const configOverrides: Partial<Parameters<typeof createDefaultBugfixConfig>[0]> = {};
+      if (input.types) configOverrides.bugTypes = input.types;
+      if (input.excludePatterns) configOverrides.excludePatterns = input.excludePatterns;
+      const config = createDefaultBugfixConfig(configOverrides);
 
       // Create detector and scan
+      sendMcpProgress('Initializing bug detector...', progressToken);
       const detector = new BugDetector(config);
       let findings = await detector.scan(rootDir);
+      sendMcpProgress(`Found ${findings.length} potential bugs`, progressToken);
 
       // Filter by minimum severity
       if (input.minSeverity) {
@@ -116,9 +125,14 @@ export function createBugfixScanHandler(): ToolHandler<BugfixScanInput, BugfixSc
         durationMs: result.durationMs
       });
 
+      // v12.5.5: End streaming progress notification
+      sendMcpProgressEnd(progressToken, `Completed: ${result.total} bugs found`);
+
       return result;
     } catch (error) {
       logger.error('[MCP] bugfix_scan failed', { error });
+      // v12.5.5: End streaming progress notification on error
+      sendMcpProgressEnd(progressToken, `Error: ${(error as Error).message}`);
       throw new Error(`Bug scan failed: ${(error as Error).message}`);
     }
   };
@@ -129,13 +143,11 @@ export const bugfixScanSchema = {
   name: 'bugfix_scan',
   description: `Scan codebase for bugs without applying fixes.
 
-Detects common issues like:
-- Timer leaks (setInterval without cleanup)
-- Missing destroy() in EventEmitter classes
-- Promise timeout leaks
-- Resource management issues
+**Time**: Usually 10-60 seconds. You can stop anytime.
+**Progress**: Streamed notifications show scanning status.
 
-Returns severity-sorted list of findings with auto-fix availability.`,
+Detects: Timer leaks, missing destroy(), promise leaks, resource issues.
+Returns: Severity-sorted findings with auto-fix availability.`,
   inputSchema: {
     type: 'object',
     properties: {

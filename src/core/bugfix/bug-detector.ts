@@ -27,6 +27,9 @@ import type {
  */
 const DEFAULT_DETECTION_RULES: DetectionRule[] = [
   // Timer leak: setInterval without .unref()
+  // v12.5.5: Increased withinLines from 5 to 50 to handle multi-line callbacks
+  // where .unref() is called after the closing brace (some callbacks are 35+ lines)
+  // NOTE: This is a workaround - proper fix would use AST-based detection
   {
     id: 'timer-leak-interval',
     type: 'timer_leak',
@@ -34,7 +37,7 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     description: 'setInterval() without .unref() blocks process exit',
     pattern: 'setInterval\\s*\\(',
     negativePattern: '\\.unref\\s*\\(\\)',
-    withinLines: 5,
+    withinLines: 50,
     confidence: 0.9,
     severity: 'high',
     autoFixable: true,
@@ -56,6 +59,8 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     fileExtensions: ['.ts', '.js', '.mts', '.mjs']
   },
   // Missing destroy: EventEmitter without destroy method
+  // v12.5.5: Increased withinLines from 100 to 800 to scan entire class
+  // Classes can be large - need to check the whole class for destroy() method
   {
     id: 'missing-destroy-eventemitter',
     type: 'missing_destroy',
@@ -63,7 +68,7 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     description: 'Classes extending EventEmitter should have destroy() method',
     pattern: 'class\\s+\\w+\\s+extends\\s+(?:EventEmitter|DisposableEventEmitter)',
     negativePattern: 'destroy\\s*\\(\\s*\\)',
-    withinLines: 100,
+    withinLines: 800,
     confidence: 0.85,
     severity: 'high',
     autoFixable: true,
@@ -113,8 +118,8 @@ export class BugDetector {
     this.config = config;
     this.rules = customRules || DEFAULT_DETECTION_RULES;
 
-    // Filter rules by configured bug types
-    if (config.bugTypes.length > 0) {
+    // Filter rules by configured bug types (defensive check for undefined)
+    if (config.bugTypes && config.bugTypes.length > 0) {
       this.rules = this.rules.filter(rule =>
         config.bugTypes.includes(rule.type)
       );
@@ -369,7 +374,7 @@ export class BugDetector {
       '__mocks__'
     ];
 
-    const exclusions = [...defaultExclusions, ...this.config.excludePatterns];
+    const exclusions = [...defaultExclusions, ...(this.config.excludePatterns || [])];
 
     for (const pattern of exclusions) {
       // Simple glob matching
@@ -453,11 +458,14 @@ export class BugDetector {
 
 /**
  * Create default bugfix configuration
+ *
+ * v12.5.5: Default maxDurationMinutes set to 45 minutes.
+ * Users can stop the process anytime via MCP cancellation.
  */
 export function createDefaultBugfixConfig(overrides?: Partial<BugfixConfig>): BugfixConfig {
   return {
     maxBugs: 10,
-    maxDurationMinutes: 60,
+    maxDurationMinutes: 45,
     maxTokens: 500000,
     maxRetriesPerBug: 3,
     minConfidence: 0.7,

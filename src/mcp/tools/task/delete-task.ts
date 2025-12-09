@@ -107,7 +107,20 @@ export function createDeleteTaskHandler(): ToolHandler<DeleteTaskToolInput, Dele
  */
 export const deleteTaskSchema = {
   name: 'delete_task',
-  description: 'Delete a task and its associated data. Cannot delete running tasks unless force=true.',
+  description: `Delete a task and its associated data. Cannot delete running tasks unless force=true.
+
+**When to use**: Clean up completed tasks, remove failed tasks, or cancel pending tasks.
+
+**Safety**: Running tasks are protected - use force=true to delete anyway.
+
+**Returns**:
+- deleted: Whether deletion succeeded
+- previous_status: Status before deletion
+- message: Human-readable result
+
+**Examples**:
+- delete_task({ task_id: "abc-123" }) - Delete completed task
+- delete_task({ task_id: "abc-123", force: true }) - Force delete running task`,
   inputSchema: {
     type: 'object' as const,
     properties: {

@@ -136,14 +136,33 @@ function mapNormalizedProviderToOriginClient(provider: string): OriginClient {
  */
 export const createTaskSchema = {
   name: 'create_task',
-  description: 'Create a new task with payload for deferred execution. Returns task_id for later execution via run_task.',
+  description: `Create a new task with payload for deferred execution. Returns task_id for later execution via run_task.
+
+**When to use**: For tasks that benefit from decoupled creation and execution:
+- Queue work for later processing
+- Create multiple tasks in batch, then execute selectively
+- Store task definitions for retries on failure
+
+**Task types** optimize routing:
+- web_search: Internet searches, fact-checking (uses Gemini for free tier)
+- code_review: Code analysis, style checks (uses Claude for accuracy)
+- code_generation: Write new code (uses best available coding model)
+- analysis: Data analysis, summarization (general purpose)
+- custom: User-defined tasks
+
+**Workflow**:
+1. create_task({ type: "code_review", payload: { files: ["src/api.ts"] } })
+2. ... later ...
+3. run_task({ task_id: "abc-123" })
+
+**Returns**: task_id, estimated_engine, expires_at, compression info`,
   inputSchema: {
     type: 'object' as const,
     properties: {
       type: {
         type: 'string',
         enum: ['web_search', 'code_review', 'code_generation', 'analysis', 'custom'],
-        description: 'Task type for routing optimization'
+        description: 'Task type: web_search, code_review, code_generation, analysis, or custom'
       },
       payload: {
         type: 'object',

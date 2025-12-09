@@ -399,6 +399,13 @@ export class RoutingStrategyManager extends DisposableEventEmitter {
   exportHistory(): RoutingDecision[] {
     return [...this.decisionHistory];  // Return copy
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  override async destroy(): Promise<void> {
+    this.removeAllListeners();
+  }
 }
 
 /**

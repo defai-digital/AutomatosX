@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../logging/logger.js';
+import { sleep as safeSleep } from '../utils/safe-timers.js';
 
 export interface RetryOptions {
   maxRetries: number;
@@ -78,9 +79,10 @@ export function calculateBackoffDelay(
 
 /**
  * Sleep for specified milliseconds
+ * Uses safe timer that won't prevent process exit
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return safeSleep(ms);
 }
 
 /**

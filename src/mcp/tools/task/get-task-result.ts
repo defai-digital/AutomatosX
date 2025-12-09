@@ -114,7 +114,18 @@ export function createGetTaskResultHandler(): ToolHandler<GetTaskResultToolInput
  */
 export const getTaskResultSchema = {
   name: 'get_task_result',
-  description: 'Retrieve the result of a task. Does not execute - use run_task for execution.',
+  description: `Retrieve the result of a task. Does not execute - use run_task for execution.
+
+**When to use**: Check status or get results of a previously created/executed task.
+
+**Returns**:
+- status: pending, running, completed, failed, or expired
+- result: Output data (null if not completed)
+- engine: Which provider executed the task
+- created_at, completed_at, expires_at: Timestamps
+- error: Details if failed
+
+**Example**: get_task_result({ task_id: "abc-123", include_payload: true })`,
   inputSchema: {
     type: 'object' as const,
     properties: {

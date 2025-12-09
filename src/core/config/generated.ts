@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-09T07:30:09.295Z
+ * Generated: 2025-12-09T08:38:55.241Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -23,12 +23,41 @@ import type { AutomatosXConfig } from '../../types/config.js';
  */
 export const PRECOMPILED_CONFIG: AutomatosXConfig = {
   "providers": {
+    "claude-code": {
+      "enabled": true,
+      "priority": 3,
+      "timeout": 2700000,
+      "command": "claude",
+      "healthCheck": {
+        "enabled": true,
+        "interval": 300000,
+        "timeout": 5000
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 3,
+        "recoveryTimeout": 60000
+      },
+      "processManagement": {
+        "gracefulShutdownTimeout": 5000,
+        "forceKillDelay": 1000
+      },
+      "versionDetection": {
+        "timeout": 5000,
+        "forceKillDelay": 1000,
+        "cacheEnabled": true
+      },
+      "limitTracking": {
+        "enabled": true,
+        "window": "weekly",
+        "resetHourUtc": 0
+      }
+    },
     "gemini-cli": {
       "enabled": true,
-      "priority": 1,
+      "priority": 2,
       "timeout": 2700000,
       "command": "gemini",
-      "description": "#1 Frontend/Design, multimodal, free tier, WebDev Arena leader",
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -56,10 +85,9 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     },
     "openai": {
       "enabled": true,
-      "priority": 3,
+      "priority": 1,
       "timeout": 2700000,
       "command": "codex",
-      "description": "Best reasoning (o3), strategy, 75% accuracy, 192k context",
       "healthCheck": {
         "enabled": true,
         "interval": 300000,
@@ -78,81 +106,6 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
         "timeout": 5000,
         "forceKillDelay": 1000,
         "cacheEnabled": true
-      },
-      "limitTracking": {
-        "enabled": true,
-        "window": "daily",
-        "resetHourUtc": 0
-      }
-    },
-    "claude-code": {
-      "enabled": true,
-      "priority": 2,
-      "timeout": 2700000,
-      "command": "claude",
-      "description": "#1 Coding model, agentic workflows, security, 0% edit error rate",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-      "processManagement": {
-        "gracefulShutdownTimeout": 5000,
-        "forceKillDelay": 1000
-      },
-      "versionDetection": {
-        "timeout": 5000,
-        "forceKillDelay": 1000,
-        "cacheEnabled": true
-      },
-      "limitTracking": {
-        "enabled": true,
-        "window": "weekly",
-        "resetHourUtc": 0
-      }
-    },
-    "glm": {
-      "enabled": true,
-      "priority": 4,
-      "timeout": 2700000,
-      "type": "sdk",
-      "description": "Near Claude coding (48.6%), low cost $3/mo, 200k context, agentic",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
-      },
-      "limitTracking": {
-        "enabled": true,
-        "window": "daily",
-        "resetHourUtc": 0
-      }
-    },
-    "grok": {
-      "enabled": true,
-      "priority": 5,
-      "timeout": 2700000,
-      "type": "sdk",
-      "description": "Fastest (67ms), reasoning (93% AIME), 1M context, DeepSearch",
-      "healthCheck": {
-        "enabled": true,
-        "interval": 300000,
-        "timeout": 5000
-      },
-      "circuitBreaker": {
-        "enabled": true,
-        "failureThreshold": 3,
-        "recoveryTimeout": 60000
       },
       "limitTracking": {
         "enabled": true,
@@ -370,14 +323,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "12.5.4"
+  "version": "12.5.5"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-09T07:30:09.295Z',
+  generatedAt: '2025-12-09T08:38:55.241Z',
   sourceFile: 'ax.config.json',
-  version: '12.5.4'
+  version: '12.5.5'
 } as const;

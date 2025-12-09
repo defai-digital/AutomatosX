@@ -486,6 +486,13 @@ export class McpClient extends EventEmitter {
       this.process = null;
     }
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  destroy(): void {
+    this.removeAllListeners();
+  }
 }
 
 // ============================================

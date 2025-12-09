@@ -727,6 +727,13 @@ export class TaskEngine extends EventEmitter {
       signal?.addEventListener('abort', abortHandler, { once: true });
     });
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  destroy(): void {
+    this.removeAllListeners();
+  }
 }
 
 // ============================================================================

@@ -84,10 +84,10 @@ import { createImplementAndDocumentHandler } from './tools/implement-and-documen
 // Import tool handlers - v10.5.0: Smart Routing
 import { createGetAgentContextHandler } from './tools/get-agent-context.js';
 
-// v12.4.0: Bugfix tools are NOT exposed via MCP
-// They are internal tools used by Quality agent via the bugfix workflow
-// Users should call: run_agent({ agent: "quality", task: "scan for bugs" })
-// This ensures consistent experience with agent context, memory, and orchestration
+// v12.5.5: Bugfix tools now exposed via MCP for direct client use
+// Removed Quality agent integration due to reliability issues
+import { createBugfixScanHandler, bugfixScanSchema } from './tools/bugfix-scan.js';
+import { createBugfixRunHandler, bugfixRunSchema } from './tools/bugfix-run.js';
 
 // Import tool handlers - v13.0.0: Enhanced Service Discovery
 import { createGetCapabilitiesHandler } from './tools/get-capabilities.js';
@@ -248,6 +248,9 @@ export class McpServer {
    * Get static tool schemas (no initialization required)
    * Returns tool schemas that can be provided during MCP handshake
    * before services are initialized.
+   *
+   * v12.5.5: Enhanced descriptions with examples, return formats, and use cases
+   * to improve AI client understanding and tool selection.
    */
   private static getStaticToolSchemas(): McpTool[] {
     return [
@@ -255,37 +258,110 @@ export class McpServer {
         name: 'run_agent',
         description: `Execute an AutomatosX agent with a specific task.
 
-v12.5.1: Agent auto-selection - if agent is omitted, system automatically selects the best agent based on task keywords.
-Uses Smart Routing: returns context for same-provider calls, spawns cross-provider execution.
+**When to use**: Delegate specialized tasks to expert agents. Each agent has domain expertise:
+- "backend": API development, database design, server-side logic
+- "frontend": UI/UX, React components, styling, accessibility
+- "quality": Testing, debugging, bug detection, code review
+- "security": Security audits, vulnerability scanning, auth systems
+- "architecture": System design, tech stack decisions, scalability
+- "devops": CI/CD, Docker, deployment, infrastructure
 
-Examples:
-- With agent: run_agent({ agent: "backend", task: "implement API" })
-- Auto-select: run_agent({ task: "fix bugs in the codebase" }) → selects "quality" agent`,
+**Auto-selection**: If agent is omitted, system analyzes task keywords and selects the best agent.
+
+**Returns**: JSON with execution result, output from the agent, and metadata.
+
+**Examples**:
+- run_agent({ agent: "backend", task: "Create a REST API endpoint for user authentication with JWT" })
+- run_agent({ agent: "quality", task: "Review the auth module for security issues" })
+- run_agent({ task: "Fix the memory leak in the connection pool" }) → auto-selects "quality"
+- run_agent({ task: "Design a microservices architecture for the payment system" }) → auto-selects "architecture"`,
         inputSchema: {
           type: 'object',
           properties: {
-            agent: { type: 'string', description: 'Optional: Agent name (e.g., backend, quality). If omitted, best agent is auto-selected based on task.' },
-            task: { type: 'string', description: 'The task for the agent to perform' },
-            provider: { type: 'string', description: 'Optional: Override the AI provider', enum: ['claude', 'gemini', 'openai'] },
-            no_memory: { type: 'boolean', description: 'Optional: Skip memory injection', default: false },
-            mode: { type: 'string', description: 'Optional: Execution mode - auto (default), context (always return context), execute (always spawn)', enum: ['auto', 'context', 'execute'], default: 'auto' }
+            agent: { type: 'string', description: 'Agent name: backend, frontend, quality, security, architecture, devops. If omitted, auto-selected based on task.' },
+            task: { type: 'string', description: 'Detailed task description. Be specific about requirements and expected outcomes.' },
+            provider: { type: 'string', description: 'AI provider override: claude (best coding), gemini (free tier), openai (balanced)', enum: ['claude', 'gemini', 'openai'] },
+            no_memory: { type: 'boolean', description: 'Skip injecting relevant past context into agent prompt', default: false },
+            mode: { type: 'string', description: 'auto: smart routing, context: return prompt without executing, execute: always spawn process', enum: ['auto', 'context', 'execute'], default: 'auto' }
           },
           required: ['task']
         }
       },
       {
         name: 'list_agents',
-        description: 'List all available AutomatosX agents',
+        description: `List all available AutomatosX agents with their profiles.
+
+**When to use**: Discover available agents before delegating tasks, or to understand agent capabilities.
+
+**Returns**: Array of agent profiles, each containing:
+- name: Agent identifier (e.g., "backend", "quality")
+- displayName: Human-readable name (e.g., "Queenie")
+- role: Job title (e.g., "QA Engineer", "Backend Developer")
+- description: What the agent specializes in
+- abilities: List of capabilities (e.g., ["testing", "debugging"])
+- provider: Preferred AI provider
+- team: Team membership (e.g., "core", "platform")
+
+**Example response**:
+[
+  { "name": "backend", "displayName": "Benny", "role": "Backend Developer", "abilities": ["api-design", "database"] },
+  { "name": "quality", "displayName": "Queenie", "role": "QA Engineer", "abilities": ["testing", "debugging"] }
+]`,
         inputSchema: { type: 'object', properties: {} }
       },
       {
         name: 'search_memory',
-        description: 'Search AutomatosX memory for relevant information',
-        inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, limit: { type: 'number', description: 'Maximum number of results', default: 10 } }, required: ['query'] }
+        description: `Search AutomatosX persistent memory using full-text search.
+
+**What memory contains**: Past task executions, code snippets, architectural decisions, debugging sessions, and context from previous conversations. Memory persists across sessions.
+
+**When to use**:
+- Find previous work on a similar task
+- Retrieve past decisions or implementations
+- Check if a bug was fixed before
+- Get context before starting new work
+
+**Search tips**:
+- Use specific keywords: "authentication JWT" rather than "auth"
+- Include file names: "router.ts error handling"
+- Search by agent: Results include which agent created the entry
+
+**Returns**: Array of memory entries with content, timestamp, agent, and relevance score.
+
+**Examples**:
+- search_memory({ query: "database migration", limit: 5 })
+- search_memory({ query: "authentication security audit" })
+- search_memory({ query: "React component performance optimization" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search terms. Use specific keywords for better results.' },
+            limit: { type: 'number', description: 'Max results to return (default: 10, max: 100)', default: 10 }
+          },
+          required: ['query']
+        }
       },
       {
         name: 'get_status',
-        description: 'Get AutomatosX system status and configuration',
+        description: `Get AutomatosX system status and health information.
+
+**When to use**: Check system health, verify configuration, or diagnose issues.
+
+**Returns**:
+- version: AutomatosX version
+- providers: List of configured AI providers and their availability
+- memory: Stats (entry count, database size, last access)
+- sessions: Active session count and recent activity
+- router: Current routing configuration and provider health
+- uptime: Server uptime and initialization state
+
+**Example response**:
+{
+  "version": "12.5.4",
+  "providers": { "claude": "available", "gemini": "available", "openai": "unavailable" },
+  "memory": { "entries": 1523, "sizeMB": 12.5 },
+  "sessions": { "active": 2, "total": 45 }
+}`,
         inputSchema: { type: 'object', properties: {} }
       },
       // v13.0.0: Enhanced Service Discovery
@@ -306,92 +382,419 @@ Use this tool first to understand what AutomatosX offers.`,
       },
       {
         name: 'session_create',
-        description: 'Create a new multi-agent session',
-        inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'Session name/task description' }, agent: { type: 'string', description: 'Initiating agent name' } }, required: ['name', 'agent'] }
+        description: `Create a new multi-agent collaborative session.
+
+**What sessions are for**: Sessions track complex tasks that involve multiple agents working together. They provide:
+- Task state persistence across agent invocations
+- History of which agents contributed what
+- Ability to resume interrupted work
+- Coordination between agents (e.g., backend implements, quality reviews)
+
+**When to use**:
+- Multi-step tasks requiring multiple agents
+- Long-running work that may span multiple conversations
+- Collaborative workflows (design → implement → review → deploy)
+
+**Returns**: Session object with unique ID, state, timestamps, and task list.
+
+**Example workflow**:
+1. session_create({ name: "Implement auth system", agent: "architecture" })
+2. run_agent({ agent: "backend", task: "Implement JWT auth" })
+3. run_agent({ agent: "quality", task: "Review auth implementation" })
+4. session_complete({ id: "session-uuid" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Descriptive session name (e.g., "Implement user authentication")' },
+            agent: { type: 'string', description: 'Initial agent to assign (e.g., "backend", "architecture")' }
+          },
+          required: ['name', 'agent']
+        }
       },
       {
         name: 'session_list',
-        description: 'List all active sessions',
+        description: `List all active and recent sessions.
+
+**When to use**: Find existing sessions to resume, check what work is in progress, or audit past work.
+
+**Returns**: Array of session summaries with:
+- id: Unique session identifier
+- name: Session description
+- state: "active", "completed", or "failed"
+- createdAt: Session start time
+- updatedAt: Last activity time
+- agents: List of agents that participated
+
+**Example response**:
+[
+  { "id": "abc-123", "name": "Auth system", "state": "active", "agents": ["backend", "quality"] },
+  { "id": "def-456", "name": "API refactor", "state": "completed", "agents": ["architecture", "backend"] }
+]`,
         inputSchema: { type: 'object', properties: {} }
       },
       {
         name: 'session_status',
-        description: 'Get detailed status of a specific session',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' } }, required: ['id'] }
+        description: `Get detailed status of a specific session including task history.
+
+**When to use**: Check progress of a session, see what agents have done, or decide next steps.
+
+**Returns**: Full session details with:
+- id, name, state, timestamps
+- tasks: Array of all tasks executed with results
+- currentAgent: Which agent is active (if any)
+- metadata: Additional context stored with session
+
+**Example**: session_status({ id: "abc-123" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Session ID from session_create or session_list' }
+          },
+          required: ['id']
+        }
       },
       {
         name: 'session_complete',
-        description: 'Mark a session as completed',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' } }, required: ['id'] }
+        description: `Mark a session as successfully completed.
+
+**When to use**: After all tasks in a session are done and verified.
+
+**What it does**:
+- Updates session state to "completed"
+- Records completion timestamp
+- Persists session to history for future reference
+- Releases any held resources
+
+**Example**: session_complete({ id: "abc-123" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Session ID to mark as completed' }
+          },
+          required: ['id']
+        }
       },
       {
         name: 'session_fail',
-        description: 'Mark a session as failed with an error reason',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Session ID' }, reason: { type: 'string', description: 'Failure reason' } }, required: ['id', 'reason'] }
+        description: `Mark a session as failed with an error reason.
+
+**When to use**: When a session cannot be completed due to errors, blockers, or abandonment.
+
+**What it does**:
+- Updates session state to "failed"
+- Records failure reason for debugging
+- Preserves partial work for potential recovery
+
+**Example**: session_fail({ id: "abc-123", reason: "API rate limit exceeded, cannot complete integration" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Session ID to mark as failed' },
+            reason: { type: 'string', description: 'Detailed explanation of why the session failed' }
+          },
+          required: ['id', 'reason']
+        }
       },
       {
         name: 'memory_add',
-        description: 'Add a new memory entry to the system',
-        inputSchema: { type: 'object', properties: { content: { type: 'string', description: 'Memory content' }, metadata: { type: 'object', description: 'Optional metadata (agent, timestamp, etc.)', properties: { agent: { type: 'string' }, timestamp: { type: 'string' } } } }, required: ['content'] }
+        description: `Add a new entry to AutomatosX persistent memory.
+
+**When to use**:
+- Save important decisions or implementations for future reference
+- Store code snippets that worked well
+- Record architectural decisions and their rationale
+- Preserve debugging insights
+
+**Memory is searchable**: Entries are indexed for full-text search via search_memory.
+
+**Best practices**:
+- Include context: what problem was solved, what approach was used
+- Tag with relevant keywords for easier retrieval
+- Include agent name if storing agent output
+
+**Example**: memory_add({ content: "Implemented rate limiting using token bucket algorithm. Config: 100 req/min burst, 10 req/s sustained.", metadata: { agent: "backend", tags: ["rate-limiting", "performance"] } })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            content: { type: 'string', description: 'Content to store. Be descriptive for better searchability.' },
+            metadata: {
+              type: 'object',
+              description: 'Optional metadata for categorization and filtering',
+              properties: {
+                agent: { type: 'string', description: 'Agent that created this entry' },
+                timestamp: { type: 'string', description: 'Custom timestamp (ISO format)' },
+                tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' }
+              }
+            }
+          },
+          required: ['content']
+        }
       },
       {
         name: 'memory_list',
-        description: 'List memory entries with optional filtering',
-        inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Filter by agent name' }, limit: { type: 'number', description: 'Maximum number of entries', default: 50 } } }
+        description: `List memory entries with optional filtering.
+
+**When to use**: Browse memory contents, audit what's stored, or filter by agent.
+
+**Returns**: Array of memory entries sorted by recency, with:
+- id: Unique identifier (use for memory_delete)
+- content: Stored text
+- agent: Source agent (if specified)
+- createdAt: When entry was added
+- metadata: Additional tags/info
+
+**Example**: memory_list({ agent: "backend", limit: 20 })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            agent: { type: 'string', description: 'Filter to entries from specific agent' },
+            limit: { type: 'number', description: 'Max entries to return (default: 50)', default: 50 }
+          }
+        }
       },
       {
         name: 'memory_delete',
-        description: 'Delete a specific memory entry by ID',
-        inputSchema: { type: 'object', properties: { id: { type: 'number', description: 'Memory entry ID' } }, required: ['id'] }
+        description: `Delete a specific memory entry by ID.
+
+**When to use**: Remove outdated, incorrect, or sensitive information from memory.
+
+**Note**: Deletion is permanent. Use memory_list to find the ID first.
+
+**Example**: memory_delete({ id: 42 })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', description: 'Memory entry ID from memory_list' }
+          },
+          required: ['id']
+        }
       },
       {
         name: 'memory_export',
-        description: 'Export all memory entries to a JSON file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Export file path' } }, required: ['path'] }
+        description: `Export all memory entries to a JSON file.
+
+**When to use**:
+- Backup memory before major changes
+- Transfer memory to another system
+- Archive project knowledge
+- Audit stored information
+
+**Returns**: Confirmation with entry count and file path.
+
+**Example**: memory_export({ path: "./backup/memory-2024-01-15.json" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'File path for export (JSON format)' }
+          },
+          required: ['path']
+        }
       },
       {
         name: 'memory_import',
-        description: 'Import memory entries from a JSON file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Import file path' } }, required: ['path'] }
+        description: `Import memory entries from a JSON file.
+
+**When to use**:
+- Restore from backup
+- Load memory from another project
+- Seed new project with existing knowledge
+
+**Format**: JSON array of memory entries (same format as memory_export).
+
+**Note**: Imported entries are merged with existing memory.
+
+**Example**: memory_import({ path: "./backup/memory-2024-01-15.json" })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'File path to import from (JSON format)' }
+          },
+          required: ['path']
+        }
       },
       {
         name: 'memory_stats',
-        description: 'Get detailed memory statistics',
+        description: `Get detailed memory statistics and health information.
+
+**When to use**: Check memory usage, diagnose performance issues, or monitor growth.
+
+**Returns**:
+- totalEntries: Number of memory entries
+- totalSizeBytes: Database size
+- entriesByAgent: Breakdown by agent
+- oldestEntry: Timestamp of oldest entry
+- newestEntry: Timestamp of newest entry
+- averageEntrySize: Bytes per entry
+
+**Example response**:
+{
+  "totalEntries": 1523,
+  "totalSizeBytes": 1245678,
+  "entriesByAgent": { "backend": 456, "quality": 312, "architecture": 89 }
+}`,
         inputSchema: { type: 'object', properties: {} }
       },
       {
         name: 'memory_clear',
-        description: 'Clear all memory entries from the database',
+        description: `Clear ALL memory entries from the database.
+
+**WARNING**: This permanently deletes all stored memory. Use with caution.
+
+**When to use**:
+- Starting fresh on a new project
+- Removing sensitive data
+- Resetting after major changes
+
+**Recommendation**: Use memory_export first to create a backup.
+
+**Returns**: Confirmation with count of deleted entries.`,
         inputSchema: { type: 'object', properties: {} }
       },
       {
         name: 'get_conversation_context',
-        description: 'Retrieve conversation context from the shared context store',
-        inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Optional: Context ID to retrieve' }, source: { type: 'string', description: 'Optional: Filter by source (e.g., gemini-cli)' }, limit: { type: 'number', description: 'Optional: Max results (default: 10)', default: 10 } } }
+        description: `Retrieve conversation context from the shared cross-assistant context store.
+
+**What this is for**: AutomatosX allows different AI assistants (Claude, Gemini, etc.) to share context. This enables workflows where one assistant's work informs another's.
+
+**When to use**:
+- Resume work started by another assistant
+- Get context from a different AI provider's session
+- Check what information was shared across assistants
+
+**Returns**: Array of context entries with:
+- id: Context entry identifier
+- source: Which assistant created it (e.g., "gemini-cli", "claude-code")
+- content: The shared context/information
+- metadata: Topic, participants, tags
+- createdAt: When context was stored
+
+**Example**: get_conversation_context({ source: "gemini-cli", limit: 5 })`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Specific context ID to retrieve' },
+            source: { type: 'string', description: 'Filter by source assistant (e.g., "gemini-cli", "claude-code")' },
+            limit: { type: 'number', description: 'Max entries to return (default: 10)', default: 10 }
+          }
+        }
       },
       {
         name: 'inject_conversation_context',
-        description: 'Inject conversation context into the shared context store',
-        inputSchema: { type: 'object', properties: { source: { type: 'string', description: 'Source assistant (e.g., gemini-cli, claude-code)' }, content: { type: 'string', description: 'Context content' }, metadata: { type: 'object', description: 'Optional metadata', properties: { topic: { type: 'string' }, participants: { type: 'array', items: { type: 'string' } }, tags: { type: 'array', items: { type: 'string' } } } } }, required: ['source', 'content'] }
+        description: `Share conversation context with other AI assistants via the context store.
+
+**What this is for**: Enables cross-assistant collaboration by sharing context between different AI providers.
+
+**When to use**:
+- Hand off work to another AI assistant
+- Share discoveries or decisions across assistants
+- Create checkpoints in multi-assistant workflows
+
+**Best practices**:
+- Include enough context for the other assistant to continue
+- Use descriptive topics and tags
+- List relevant participants (agents involved)
+
+**Example**: inject_conversation_context({
+  source: "claude-code",
+  content: "Completed auth module implementation. JWT tokens work, need security review.",
+  metadata: { topic: "authentication", tags: ["security", "backend"], participants: ["backend", "security"] }
+})`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', description: 'Your assistant identifier (e.g., "claude-code", "gemini-cli")' },
+            content: { type: 'string', description: 'Context to share - be descriptive for handoffs' },
+            metadata: {
+              type: 'object',
+              description: 'Optional categorization',
+              properties: {
+                topic: { type: 'string', description: 'Main topic (e.g., "authentication")' },
+                participants: { type: 'array', items: { type: 'string' }, description: 'Agents involved' },
+                tags: { type: 'array', items: { type: 'string' }, description: 'Searchable tags' }
+              }
+            }
+          },
+          required: ['source', 'content']
+        }
       },
       {
         name: 'implement_and_document',
-        description: 'Implement code and generate documentation atomically to prevent documentation drift',
-        inputSchema: { type: 'object', properties: { task: { type: 'string', description: 'Task description' }, agent: { type: 'string', description: 'Optional: Agent to use (default: backend)' }, documentation: { type: 'object', description: 'Documentation options', properties: { format: { type: 'string', enum: ['markdown', 'jsdoc'], description: 'Doc format (default: markdown)' }, outputPath: { type: 'string', description: 'Optional: Custom doc output path' }, updateChangelog: { type: 'boolean', description: 'Update CHANGELOG.md (default: true)', default: true } } }, provider: { type: 'string', enum: ['claude', 'gemini', 'openai'], description: 'Optional: AI provider override' } }, required: ['task'] }
+        description: `Implement code AND generate documentation in one atomic operation.
+
+**Why this exists**: Prevents "documentation drift" where code changes but docs don't. Both are generated together from the same understanding.
+
+**When to use**:
+- New feature implementations that need docs
+- API changes that require documentation updates
+- Any code change that should be documented
+
+**What it does**:
+1. Runs agent to implement the task
+2. Generates documentation from the implementation
+3. Optionally updates CHANGELOG.md
+4. Returns both code and docs together
+
+**Example**: implement_and_document({
+  task: "Add rate limiting middleware with configurable limits",
+  agent: "backend",
+  documentation: { format: "markdown", updateChangelog: true }
+})`,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task: { type: 'string', description: 'Implementation task - be specific about requirements' },
+            agent: { type: 'string', description: 'Agent to use (default: backend)' },
+            documentation: {
+              type: 'object',
+              description: 'Documentation generation options',
+              properties: {
+                format: { type: 'string', enum: ['markdown', 'jsdoc'], description: 'Doc format (default: markdown)' },
+                outputPath: { type: 'string', description: 'Custom output path for docs' },
+                updateChangelog: { type: 'boolean', description: 'Update CHANGELOG.md (default: true)', default: true }
+              }
+            },
+            provider: { type: 'string', enum: ['claude', 'gemini', 'openai'], description: 'AI provider override' }
+          },
+          required: ['task']
+        }
       },
       // v10.5.0: Smart Routing - Explicit context retrieval
       {
         name: 'get_agent_context',
-        description: `Get agent context without executing. Returns profile, relevant memory, and enhanced prompt for AI assistant to execute directly.
+        description: `Get agent profile and context WITHOUT executing. Returns everything needed for YOU to execute the task directly.
 
-v12.5.1: Agent auto-selection - if agent is omitted, system automatically selects the best agent based on task keywords.`,
+**When to use**:
+- You want to understand an agent's expertise before deciding to delegate
+- You prefer to execute the task yourself with agent guidance
+- You need the agent's system prompt and relevant memory
+
+**What it returns**:
+- profile: Full agent profile (role, abilities, system prompt)
+- memory: Relevant past context from search_memory
+- enhancedPrompt: Ready-to-use prompt incorporating agent expertise
+
+**Auto-selection**: If agent is omitted, system analyzes task and selects the best-matching agent.
+
+**Example**: get_agent_context({
+  task: "Implement caching layer for database queries",
+  includeMemory: true,
+  maxMemoryResults: 5
+})
+
+**Returns example**:
+{
+  "selectedAgent": "backend",
+  "profile": { "role": "Backend Developer", "abilities": [...], "systemPrompt": "..." },
+  "memory": [{ "content": "Previous caching implementation used Redis...", ... }],
+  "enhancedPrompt": "You are a Backend Developer. Your task: Implement caching..."
+}`,
         inputSchema: {
           type: 'object',
           properties: {
-            agent: { type: 'string', description: 'Optional: Agent name (e.g., backend, quality). If omitted, best agent is auto-selected based on task.' },
-            task: { type: 'string', description: 'The task description for context building' },
+            agent: { type: 'string', description: 'Agent name, or omit for auto-selection based on task' },
+            task: { type: 'string', description: 'Task description - used for auto-selection and memory search' },
             includeMemory: { type: 'boolean', description: 'Include relevant memory entries (default: true)', default: true },
-            maxMemoryResults: { type: 'number', description: 'Maximum memory entries to return (default: 5)', default: 5 }
+            maxMemoryResults: { type: 'number', description: 'Max memory entries to include (default: 5)', default: 5 }
           },
           required: ['task']
         }
@@ -401,9 +804,10 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
       runTaskSchema as McpTool,
       getTaskResultSchema as McpTool,
       listTasksSchema as McpTool,
-      deleteTaskSchema as McpTool
-      // v12.4.0: Bugfix tools intentionally NOT exposed via MCP
-      // Access via: run_agent({ agent: "quality", task: "scan for bugs" })
+      deleteTaskSchema as McpTool,
+      // v12.5.5: Bugfix tools now exposed directly via MCP
+      bugfixScanSchema as McpTool,
+      bugfixRunSchema as McpTool
     ];
   }
 
@@ -698,9 +1102,9 @@ v12.5.1: Agent auto-selection - if agent is omitted, system automatically select
     register('list_tasks', createListTasksHandler());
     register('delete_task', createDeleteTaskHandler());
 
-    // v12.4.0: Bugfix tools intentionally NOT registered
-    // Access via: run_agent({ agent: "quality", task: "scan for bugs" })
-    // This ensures users get full agent value (context, memory, orchestration)
+    // v12.5.5: Bugfix tools now exposed directly via MCP
+    register('bugfix_scan', createBugfixScanHandler());
+    register('bugfix_run', createBugfixRunHandler());
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,

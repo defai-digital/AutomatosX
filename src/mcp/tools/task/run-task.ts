@@ -153,7 +153,23 @@ function mapNormalizedProviderToOriginClient(provider: string): OriginClient {
  */
 export const runTaskSchema = {
   name: 'run_task',
-  description: 'Execute a previously created task and return results. Blocks until completion or timeout.',
+  description: `Execute a previously created task and return results. Blocks until completion or timeout.
+
+**When to use**: Execute a task created with create_task.
+
+**Features**:
+- Caching: Identical tasks return cached results (use skip_cache to bypass)
+- Engine override: Force execution on specific provider
+- Timeout control: Adjust for long-running tasks
+
+**Returns**:
+- status: "completed" or "failed"
+- result: Task output (null if failed)
+- engine: Which AI provider executed the task
+- metrics: Duration, token counts
+- cache_hit: Whether result came from cache
+
+**Example**: run_task({ task_id: "abc-123", timeout_ms: 60000 })`,
   inputSchema: {
     type: 'object' as const,
     properties: {
@@ -171,7 +187,7 @@ export const runTaskSchema = {
         minimum: 1000,
         maximum: 300000,
         default: 30000,
-        description: 'Custom timeout in milliseconds'
+        description: 'Custom timeout in milliseconds (default: 30000)'
       },
       skip_cache: {
         type: 'boolean',

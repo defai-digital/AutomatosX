@@ -533,6 +533,13 @@ export class McpClientPool extends EventEmitter {
     this.emit(type, event);
     this.emit('event', event);
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  destroy(): void {
+    this.removeAllListeners();
+  }
 }
 
 // Singleton instance for global use

@@ -199,10 +199,15 @@ export function setupGracefulShutdown(
     const forceExit = options.forceExitOnTimeout ?? DEFAULT_SHUTDOWN_OPTIONS.forceExitOnTimeout;
 
     const shutdownPromise = shutdownManager.shutdown(signal, options);
+    let timeoutId: NodeJS.Timeout | null = null;
     const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         reject(new Error(`Shutdown timeout after ${shutdownTimeout}ms`));
       }, shutdownTimeout);
+      // Unref to allow process to exit if shutdown completes
+      if (timeoutId.unref) {
+        timeoutId.unref();
+      }
     });
 
     try {
@@ -217,6 +222,11 @@ export function setupGracefulShutdown(
       if (forceExit) {
         logger.warn('Forcing process exit due to shutdown timeout/failure');
         process.exit(1);
+      }
+    } finally {
+      // BUG FIX: Clear timeout to prevent resource leak
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
       }
     }
   };
@@ -345,6 +355,7 @@ export class InFlightTracker {
             ));
           }
         }, 100); // Check every 100ms
+        checkInterval.unref(); // Don't block process exit
       });
     } finally {
       // Cleanup: Ensure interval and abort handler are always removed

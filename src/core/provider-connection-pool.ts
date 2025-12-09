@@ -15,6 +15,7 @@
 
 import { logger } from '../shared/logging/logger.js';
 import { EventEmitter } from 'events';
+import { sleep } from '../shared/utils/safe-timers.js';
 
 /**
  * Provider connection instance
@@ -530,10 +531,17 @@ export class ProviderConnectionPool extends EventEmitter {
   }
 
   /**
-   * Sleep utility
+   * Sleep utility - uses safe timer that won't prevent process exit
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return sleep(ms);
+  }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  destroy(): void {
+    this.removeAllListeners();
   }
 }
 

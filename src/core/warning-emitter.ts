@@ -138,12 +138,7 @@ export class WarningEmitter extends EventEmitter {
   }
 
   /**
-   * Destroy warning emitter
-   *
-   * CRITICAL FIX (v5.6.18): Remove all event listeners to prevent memory leak.
-   * Must be called when WarningEmitter instance is no longer needed.
-   *
-   * @since 5.6.18
+   * Clean up resources and remove all event listeners.
    */
   destroy(): void {
     this.removeAllListeners('timeout-warning');

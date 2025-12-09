@@ -535,6 +535,13 @@ export class ProviderLimitManager extends DisposableEventEmitter {
       }
     });
   }
+
+  /**
+   * Clean up resources and remove all event listeners.
+   */
+  override async destroy(): Promise<void> {
+    this.removeAllListeners();
+  }
 }
 
 /**

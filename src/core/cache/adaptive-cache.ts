@@ -402,5 +402,7 @@ export class AdaptiveCache<T = any> {
         });
       }
     }, this.config.cleanupInterval);
+    // v12.5.5: Prevent blocking process exit
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref();
   }
 }

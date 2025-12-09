@@ -4,6 +4,9 @@
  * Runs autonomous bug-fixing workflow.
  * Scans, analyzes, fixes, and verifies bugs automatically.
  *
+ * v12.5.5: Added streaming progress notifications to inform users
+ * that the process is running (prevents "hung" perception).
+ *
  * @since v12.4.0
  */
 
@@ -11,6 +14,7 @@ import type { ToolHandler } from '../types.js';
 import { logger } from '../../shared/logging/logger.js';
 import { BugfixController } from '../../core/bugfix/bugfix-controller.js';
 import type { BugType, BugSeverity } from '../../core/bugfix/types.js';
+import { sendMcpProgress, sendMcpProgressBegin, sendMcpProgressEnd } from '../streaming-notifier.js';
 
 export interface BugfixRunInput {
   /** Directory to scan (default: current directory) */
@@ -69,8 +73,12 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
       dryRun: input.dryRun
     });
 
+    // v12.5.5: Start streaming progress notification
+    const progressToken = sendMcpProgressBegin('Bugfix', 'Starting bug scan...');
+
     try {
       // Note: includePatterns is handled by file scanning, not in BugfixConfig
+      // v12.5.5: Add onProgress callback to send streaming updates
       const controller = new BugfixController({
         rootDir: input.path || process.cwd(),
         config: {
@@ -80,6 +88,17 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
           excludePatterns: input.excludePatterns,
           requireTypecheck: input.requireTypecheck ?? true,
           requireTests: input.requireTests ?? false
+        },
+        // v12.5.5: Stream brief progress updates to MCP client
+        onProgress: (message: string) => {
+          sendMcpProgress(message, progressToken);
+        },
+        onBugFound: (finding) => {
+          sendMcpProgress(`Found: ${finding.type} in ${finding.file}`, progressToken);
+        },
+        onFixApplied: (finding, attempt) => {
+          const status = attempt.status === 'applied' ? '✓' : '○';
+          sendMcpProgress(`${status} Fix applied: ${finding.file}:${finding.lineStart}`, progressToken);
         }
       });
 
@@ -118,9 +137,14 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
         durationMs: output.durationMs
       });
 
+      // v12.5.5: End streaming progress notification
+      sendMcpProgressEnd(progressToken, `Completed: ${output.bugsFixed} bugs fixed`);
+
       return output;
     } catch (error) {
       logger.error('[MCP] bugfix_run failed', { error });
+      // v12.5.5: End streaming progress notification on error
+      sendMcpProgressEnd(progressToken, `Error: ${(error as Error).message}`);
       throw new Error(`Bugfix run failed: ${(error as Error).message}`);
     }
   };
@@ -131,18 +155,17 @@ export const bugfixRunSchema = {
   name: 'bugfix_run',
   description: `Run autonomous bug-fixing workflow.
 
-Executes a complete bugfix cycle:
+**Time limit**: Max 45 minutes. You can stop anytime.
+**Progress**: Streamed notifications show what's happening.
+
+Workflow:
 1. Scans codebase for bugs
-2. Analyzes and prioritizes by severity
-3. Applies automatic fixes with backups
-4. Verifies fixes pass typecheck/tests
+2. Prioritizes by severity
+3. Applies fixes with backups
+4. Verifies via typecheck/tests
 5. Rolls back failed fixes
 
-Safety features:
-- Creates backups before any changes
-- Verifies fixes don't introduce regressions
-- Supports dry-run mode to preview changes
-- Stops at configurable limits (maxBugs, timeout)`,
+Safety: Backups created, dry-run available, stops at limits.`,
   inputSchema: {
     type: 'object',
     properties: {

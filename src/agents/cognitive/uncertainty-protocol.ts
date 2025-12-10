@@ -304,7 +304,8 @@ export function shouldAsk(factors: {
   multipleApproaches: boolean;
   userRequestedConfirmation: boolean;
 }): { shouldAsk: boolean; reason?: string } {
-  const protocol = getUncertaintyProtocol(factors.mode);
+  // Protocol retrieved for potential future use (e.g., threshold-based decisions)
+  const _protocol = getUncertaintyProtocol(factors.mode);
 
   // Always ask for these regardless of mode
   if (factors.userRequestedConfirmation) {
@@ -357,7 +358,8 @@ export function formatAssumptions(assumptions: string[], mode: UncertaintyMode):
     return '';
   }
 
-  const protocol = getUncertaintyProtocol(mode);
+  // Protocol retrieved for potential future use (e.g., custom formatting per mode)
+  const _protocol = getUncertaintyProtocol(mode);
   const formatted = assumptions.map(a => `- ${a}`).join('\n');
 
   if (mode === 'ask_first') {

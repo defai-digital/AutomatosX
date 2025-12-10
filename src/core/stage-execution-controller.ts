@@ -1117,7 +1117,7 @@ export class StageExecutionController {
       stages: stageStates,
       lastCompletedStageIndex: lastCompletedIndex,
       previousOutputs: context.previousOutputs,
-      sharedData: context.accumulatedData as Record<string, unknown>,
+      sharedData: context.accumulatedData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -393,7 +393,7 @@ describe('McpClient', () => {
 
       // Verify request was sent
       expect(mockStdin.write).toHaveBeenCalled();
-      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]!);
+      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]);
       expect(writtenMessage.method).toBe('initialize');
       expect(writtenMessage.params.protocolVersion).toBe('2025-11-25');
       expect(writtenMessage.params.clientInfo.name).toBe('automatosx');
@@ -421,7 +421,7 @@ describe('McpClient', () => {
 
       // Verify initialized notification was sent (should be the second write call)
       expect(mockStdin.write).toHaveBeenCalledTimes(2);
-      const notificationMessage = JSON.parse(mockStdin.write.mock.calls[1]![0]!);
+      const notificationMessage = JSON.parse(mockStdin.write.mock.calls[1]![0]);
       expect(notificationMessage.method).toBe('notifications/initialized');
     });
   });
@@ -469,7 +469,7 @@ describe('McpClient', () => {
       const promise = client.testSendRequest('test', {});
 
       // Get the request ID from the write call
-      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]!);
+      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]);
       const requestId = writtenMessage.id;
 
       // Simulate response
@@ -495,7 +495,7 @@ describe('McpClient', () => {
 
       const promise = client.testSendRequest('test', {});
 
-      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]!);
+      const writtenMessage = JSON.parse(mockStdin.write.mock.calls[0]![0]);
       const requestId = writtenMessage.id;
 
       // Simulate error response

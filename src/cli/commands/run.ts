@@ -33,11 +33,11 @@ import chalk from 'chalk';
 import { join, dirname } from 'path';
 import { writeFileSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import boxen from 'boxen';
+// boxen import removed - unused
 import type { ExecutionResult } from '../../agents/executor.js';
 import { formatOutput, formatForSave } from '../../shared/logging/output-formatter.js';
 import { existsSync, readFileSync } from 'fs';
-import readline from 'readline';
+// readline import removed - unused
 import yaml from 'js-yaml';
 import type { AgentSelectionResult } from '../../agents/agent-selector.js';
 import { getCurrentPersistedMode, isModePersistenceEnabled } from '../../core/workflow/index.js';
@@ -1044,14 +1044,14 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
               },
               classifier: {
                 patternLibraryPath: join(projectDir, AX_PATHS.ITERATE, 'patterns.yaml'),
-                strictness: (argv.iterateStrictness || 'balanced') as 'paranoid' | 'balanced' | 'permissive',
+                strictness: (argv.iterateStrictness || 'balanced'),
                 enableSemanticScoring: true,
                 semanticScoringThreshold: 0.80,
                 contextWindowMessages: 10
               },
               safety: {
                 enableDangerousOperationGuard: true,
-                riskTolerance: (argv.iterateStrictness || 'balanced') as 'paranoid' | 'balanced' | 'permissive',
+                riskTolerance: (argv.iterateStrictness || 'balanced'),
                 dangerousOperations: {
                   fileDelete: 'MEDIUM' as const,
                   gitForce: 'HIGH' as const,

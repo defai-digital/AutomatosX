@@ -20,7 +20,6 @@ import { BaseProvider } from './base-provider.js';
 import type { ProviderConfig, ExecutionRequest, ExecutionResponse, ProviderCapabilities } from '../types/provider.js';
 import { logger } from '../shared/logging/logger.js';
 import { GLMHybridAdapter, type GLMHybridAdapterOptions, GLMSdkOnlyAdapter } from '../integrations/ax-glm/index.js';
-import { isSDKFirstModeEnabled } from '../core/feature-flags/flags.js';
 import type { AdapterMode } from './hybrid-adapter-base.js';
 
 /**

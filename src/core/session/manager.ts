@@ -882,7 +882,7 @@ export class SessionManager {
       if (this.pendingSave) {
         try {
           await this.pendingSave;
-        } catch (err) {
+        } catch {
           // Ignore errors from previous save, we'll try again below
         }
       }
@@ -975,7 +975,7 @@ export class SessionManager {
         // Clean up temp file if rename failed (prevents accumulation)
         try {
           await unlink(tempPath);
-        } catch (unlinkError) {
+        } catch {
           // Ignore unlink errors (file might not exist)
         }
         throw renameError;
@@ -986,7 +986,7 @@ export class SessionManager {
       const tempPath = `${this.persistencePath}.tmp`;
       try {
         await unlink(tempPath);
-      } catch (unlinkError) {
+      } catch {
         // Ignore unlink errors (file might not exist or already cleaned)
       }
 

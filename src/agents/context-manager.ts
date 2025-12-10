@@ -600,10 +600,10 @@ export class ContextManager {
   }
 
   /**
-   * Load project context from AX.md (v7.1.0+)
+   * Load project context from ax.index.json (v12.9.0+)
    *
-   * Loads project-specific instructions from AX.md file if it exists.
-   * Falls back gracefully if file doesn't exist.
+   * Loads project-specific context from ax.index.json and CUSTOM.md.
+   * Falls back gracefully if files don't exist.
    *
    * @param projectDir - Project root directory
    * @returns Project context or null if not found
@@ -621,17 +621,17 @@ export class ContextManager {
       // Check if context exists before loading (faster)
       const exists = await loader.exists();
       if (!exists) {
-        logger.debug('No AX.md found, skipping project context');
+        logger.debug('No ax.index.json or CUSTOM.md found, skipping project context');
         return null;
       }
 
       const context = await loader.load();
 
-      logger.debug('Project context loaded from AX.md', {
-        hasMarkdown: !!context.markdown,
-        hasConfig: !!context.config,
-        agentRules: context.agentRules?.length ?? 0,
-        guardrails: context.guardrails?.length ?? 0
+      logger.debug('Project context loaded', {
+        hasIndex: !!context.index,
+        hasCustomInstructions: !!context.customInstructions,
+        guardrails: context.guardrails?.length ?? 0,
+        isStale: context.isStale
       });
 
       return context;

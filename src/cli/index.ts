@@ -206,7 +206,7 @@ globalTracker.mark('cli_start');
 
     // Store global options in process.env for access by commands
     if (argv.config) {
-      process.env.AUTOMATOSX_CONFIG_PATH = argv.config as string;
+      process.env.AUTOMATOSX_CONFIG_PATH = argv.config;
       logger.debug('Custom config path set', { path: argv.config });
     }
 

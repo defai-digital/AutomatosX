@@ -73,7 +73,7 @@ export function detectDuplication(
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  config: RefactorConfig
+  _config: RefactorConfig
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
 
@@ -138,7 +138,7 @@ function detectDuplicateBlocks(
   }
 
   // Report duplicates
-  for (const [hash, locations] of blockHashes) {
+  for (const [_hash, locations] of blockHashes) {
     if (locations.length > 1) {
       // Only report the second occurrence onward
       for (let i = 1; i < locations.length; i++) {
@@ -212,7 +212,7 @@ function detectRepeatedConditionals(
   }
 
   // Report repeated conditionals
-  for (const [condition, lineNums] of conditionalCounts) {
+  for (const [_condition, lineNums] of conditionalCounts) {
     if (lineNums.length >= 2) {
       // Report on second occurrence
       const firstLine = lineNums[0];

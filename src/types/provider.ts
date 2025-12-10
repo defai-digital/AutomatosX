@@ -57,6 +57,9 @@ export interface ProviderConfig {
   limitTracking?: ProviderLimitTrackingConfig;  // Usage limit tracking configuration
   sandbox?: SandboxConfig;        // v6.0.7 Phase 3: Sandbox security configuration
 
+  // v12.7.0: Execution mode for hybrid providers (Qwen, GLM, Grok)
+  mode?: 'sdk' | 'cli' | 'auto';  // Execution mode: 'sdk' (default), 'cli', or 'auto' (SDK with CLI fallback)
+
   // v13.0.0: ax-cli configuration REMOVED (deprecated)
   // Use ax-glm and ax-grok providers instead
 }

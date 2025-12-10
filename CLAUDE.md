@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AutomatosX (v12.6.2) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), and Grok (xAI) providers.
+AutomatosX (v12.6.3) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), Grok (xAI), and Qwen (Alibaba Cloud) providers.
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -408,19 +408,34 @@ When executing `ax run` commands, **DO NOT prematurely interrupt agents**:
 - Backend agent (implementation): 120-300 seconds
 - Security agent (audit): 90-180 seconds
 
-## SDK-First Providers (v12.0.0)
+## SDK-First Providers (v12.0.0+)
 
-AutomatosX now supports native SDK integration for GLM (Zhipu AI) and Grok (xAI) providers.
+AutomatosX supports native SDK integration for GLM (Zhipu AI), Grok (xAI), and Qwen (Alibaba Cloud) providers.
 
 **SDK-First Providers**:
 - `glm`: GLM-4 and GLM-3 Turbo (API key: `GLM_API_KEY`)
 - `grok`: Grok-3 and Grok-2 (API key: `XAI_API_KEY`)
+- `qwen`: Qwen-Turbo, Qwen-Plus, Qwen-Max, Qwen3-Coder (API key: `DASHSCOPE_API_KEY` or `QWEN_API_KEY`) (v12.7.0)
+
+**Qwen Provider Setup** (v12.7.0):
+```bash
+# Option 1: SDK mode (recommended) - set API key
+export DASHSCOPE_API_KEY=your_api_key
+# or
+export QWEN_API_KEY=your_api_key
+
+# Option 2: CLI mode - install Qwen Code CLI
+npm install -g @qwen-code/qwen-code@latest
+qwen  # First run will prompt for OAuth login (2,000 req/day free tier)
+```
 
 **Key Integration Files**:
 - GLM Adapter: `src/integrations/ax-glm/`
 - Grok Adapter: `src/integrations/ax-grok/`
+- Qwen Adapter: `src/integrations/qwen-code/`
 - GLM Provider: `src/providers/glm-provider.ts`
 - Grok Provider: `src/providers/grok-provider.ts`
+- Qwen Provider: `src/providers/qwen-provider.ts`
 
 ## Git Workflow
 

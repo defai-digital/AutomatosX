@@ -275,7 +275,7 @@ export class McpClientPool extends EventEmitter {
   /** Clear a timer by property name */
   private clearTimer(name: 'healthCheckTimer' | 'idleCheckTimer'): void {
     if (this[name]) {
-      clearInterval(this[name]!);
+      clearInterval(this[name]);
       this[name] = null;
     }
   }

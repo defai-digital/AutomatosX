@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "automatosx": {
+      "command": "automatosx",
+      "args": [
+        "mcp",
+        "server"
+      ],
+      "env": {
+        "AUTOMATOSX_PROJECT_DIR": "/var/folders/0f/85wh7n2s7_3_g34jhtzyvtd00000gn/T/automatosx-cli-test-QlWYzy"
+      }
+    }
+  },
+  "$version": 2
+}

@@ -321,7 +321,7 @@ async function parsePackageJson(projectDir: string, info: ProjectInfo): Promise<
         existsSync(join(projectDir, 'nx.json'))) {
       info.isMonorepo = true;
     }
-  } catch (error) {
+  } catch {
     // Ignore package.json errors
   }
 }
@@ -401,7 +401,7 @@ async function parseReadmeDescription(projectDir: string, info: ProjectInfo): Pr
         info.teamSize = 'Open source community';
       }
     }
-  } catch (error) {
+  } catch {
     // Ignore README errors
   }
 }
@@ -409,7 +409,7 @@ async function parseReadmeDescription(projectDir: string, info: ProjectInfo): Pr
 /**
  * NEW: Categorize npm scripts with intelligent descriptions
  */
-function categorizeScripts(scripts: Record<string, string>, packageManager: string): CategorizedScripts {
+function categorizeScripts(scripts: Record<string, string>, _packageManager: string): CategorizedScripts {
   const categorized: CategorizedScripts = {
     development: [],
     building: [],
@@ -556,7 +556,7 @@ async function analyzeFileStructure(projectDir: string): Promise<FileStructure> 
         if (name === 'docs') {
           structure.docsDirectory = name;
         }
-      } catch (error) {
+      } catch {
         // Ignore errors
       }
     }
@@ -601,7 +601,7 @@ async function countFilesRecursive(dirPath: string, depth: number = 0): Promise<
 /**
  * NEW: Detect key components
  */
-async function detectKeyComponents(projectDir: string, info: ProjectInfo): Promise<Component[]> {
+async function detectKeyComponents(projectDir: string, _info: ProjectInfo): Promise<Component[]> {
   const components: Component[] = [];
 
   // Scan src/ directory
@@ -1021,7 +1021,7 @@ async function detectDatabaseSchema(projectDir: string, info: ProjectInfo): Prom
 /**
  * Detect Prisma schema
  */
-async function detectPrismaSchema(projectDir: string, schemaPath: string, info: ProjectInfo): Promise<DatabaseSchema> {
+async function detectPrismaSchema(projectDir: string, schemaPath: string, _info: ProjectInfo): Promise<DatabaseSchema> {
   const models: DatabaseModel[] = [];
   const migrations = await detectMigrations(projectDir, 'prisma/migrations');
 
@@ -1095,7 +1095,7 @@ async function detectPrismaSchema(projectDir: string, schemaPath: string, info: 
         relations
       });
     }
-  } catch (error) {
+  } catch {
     // Ignore parsing errors
   }
 

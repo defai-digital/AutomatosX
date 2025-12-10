@@ -27,7 +27,7 @@ import { logger } from '../../shared/logging/logger.js';
 import chalk from 'chalk';
 import { existsSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
-import { join, basename } from 'path';
+import { join } from 'path';
 import os from 'os';
 import { printError } from '../../shared/errors/error-formatter.js';
 import { getVersion } from '../../shared/helpers/version.js';
@@ -199,7 +199,7 @@ export const statusCommand: CommandModule<Record<string, unknown>, StatusOptions
       const projectInfo = await getProjectInfo(detectedProjectDir);
 
       // Bug #v8.4.12: Collect provider limit data for JSON output
-      let limitData: {
+      const limitData: {
         limits: Array<{
           provider: string;
           status: string;

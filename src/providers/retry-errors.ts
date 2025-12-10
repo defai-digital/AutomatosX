@@ -100,7 +100,7 @@ export function containsErrorPattern(message: string, patterns: readonly string[
  *
  * v13.0.0: ax-cli removed, GLM and Grok are SDK-first providers
  */
-export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'codex' | 'glm' | 'grok' | 'base';
+export type RetryableProvider = 'claude' | 'gemini' | 'openai' | 'codex' | 'glm' | 'grok' | 'qwen' | 'base';
 
 /**
  * Get all retryable errors for a specific provider
@@ -123,7 +123,8 @@ export function getRetryableErrors(provider: RetryableProvider): readonly string
       return [...baseErrors, ...CODEX_RETRYABLE_ERRORS];
     case 'glm':
     case 'grok':
-      // v12.0.0: GLM/Grok use OpenAI-compatible API, same error patterns
+    case 'qwen':
+      // v12.0.0/v12.7.0: GLM/Grok/Qwen use OpenAI-compatible API, same error patterns
       return [...baseErrors, ...OPENAI_RETRYABLE_ERRORS];
     case 'base':
     default:

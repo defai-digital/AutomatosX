@@ -17,7 +17,6 @@ import type {
   McpInitializeRequest,
   McpInitializeResponse,
   McpToolListRequest,
-  McpToolListResponse,
   McpToolCallRequest,
   McpToolCallResponse,
   McpTool,
@@ -914,6 +913,19 @@ Use this tool first to understand what AutomatosX offers.`,
       }));
     }
 
+    // v12.7.0: Initialize Qwen provider (SDK-first with CLI fallback)
+    if (config.providers['qwen']?.enabled) {
+      const { QwenProvider } = await import('../providers/qwen-provider.js');
+      const qwenConfig = config.providers['qwen'];
+      providers.push(new QwenProvider({
+        name: 'qwen',
+        enabled: true,
+        priority: qwenConfig.priority,
+        timeout: qwenConfig.timeout,
+        mode: qwenConfig.mode || 'sdk'
+      }));
+    }
+
     // Initialize Router
     const healthCheckInterval = config.router?.healthCheckInterval;
     this.router = new Router({
@@ -1243,7 +1255,7 @@ Use this tool first to understand what AutomatosX offers.`,
     // Claude Code v2.0.61 only supports 2024-11-05, not 2025-11-25 or 2024-12-05
     const requestedProtocol = request.params?.protocolVersion;
     const negotiated = MCP_SUPPORTED_VERSIONS.find(version => version === requestedProtocol) ?? '2024-11-05';
-    this.negotiatedProtocolVersion = negotiated as SupportedMcpProtocolVersion;
+    this.negotiatedProtocolVersion = negotiated;
 
     // OPTIMIZATION (v10.3.1): Fast handshake - no blocking initialization!
     // Services are initialized lazily on first tool call instead of during handshake.

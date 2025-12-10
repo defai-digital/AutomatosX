@@ -11,7 +11,7 @@
  */
 
 import type { ToolHandler, McpSession } from '../../types.js';
-import { getTaskEngine, type RunTaskOptions, type TaskEngineType, type OriginClient } from '../../../core/task-engine/index.js';
+import { getTaskEngine, type RunTaskOptions, type OriginClient } from '../../../core/task-engine/index.js';
 import { logger } from '../../../shared/logging/logger.js';
 
 /**
@@ -66,7 +66,7 @@ export interface RunTaskDependencies {
 /**
  * Create the run_task tool handler
  */
-export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<RunTaskToolInput, RunTaskToolOutput> {
+export function createRunTaskHandler(_deps: RunTaskDependencies): ToolHandler<RunTaskToolInput, RunTaskToolOutput> {
   return async (input: RunTaskToolInput, context?: { signal?: AbortSignal }): Promise<RunTaskToolOutput> => {
     const startTime = Date.now();
 
@@ -86,7 +86,7 @@ export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<Run
 
       // Build run options
       const options: RunTaskOptions = {
-        engineOverride: input.engine_override as Exclude<TaskEngineType, 'auto'> | undefined,
+        engineOverride: input.engine_override,
         timeoutMs: input.timeout_ms,
         skipCache: input.skip_cache,
         abortSignal: context?.signal
@@ -96,7 +96,7 @@ export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<Run
 
       const output: RunTaskToolOutput = {
         task_id: result.taskId,
-        status: result.status as 'completed' | 'failed',
+        status: result.status,
         result: result.result,
         engine: result.engine,
         metrics: {
@@ -135,8 +135,9 @@ export function createRunTaskHandler(deps: RunTaskDependencies): ToolHandler<Run
 
 /**
  * Map normalized MCP provider to origin client ID
+ * @internal Reserved for future use
  */
-function mapNormalizedProviderToOriginClient(provider: string): OriginClient {
+function _mapNormalizedProviderToOriginClient(provider: string): OriginClient {
   const mapping: Record<string, OriginClient> = {
     'claude': 'claude-code',
     'gemini': 'gemini-cli',

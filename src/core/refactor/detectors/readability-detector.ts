@@ -108,7 +108,7 @@ export function detectReadability(
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  config: RefactorConfig
+  _config: RefactorConfig
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
 
@@ -431,7 +431,7 @@ function detectHighComplexity(
 
     // Find function body
     let braceCount = 0;
-    let endLine = startLine;
+    let _endLine = startLine; // Track for future range reporting
     let foundStart = false;
     let functionBody = '';
 
@@ -447,7 +447,7 @@ function detectHighComplexity(
       braceCount += opens - closes;
 
       if (foundStart && braceCount === 0) {
-        endLine = i + 1;
+        _endLine = i + 1;
         break;
       }
     }

@@ -508,7 +508,7 @@ export class Router {
 
         if (isRateLimitError) {
           // Rate limit error - record to limitManager and don't penalize
-          const providerError = error as ProviderError;
+          const providerError = error;
           const limitManager = await getProviderLimitManager();
 
           // v6.5.16: Ensure limit is recorded (idempotent - safe to call even if already recorded)

@@ -265,14 +265,14 @@ export class CheckpointManager {
    */
   async migrateCheckpoint(checkpoint: CheckpointData): Promise<CheckpointData> {
     const checkpointVersion = this.parseVersion(checkpoint.schemaVersion);
-    const currentVersion = this.parseVersion(CURRENT_SCHEMA_VERSION);
+    const _currentVersion = this.parseVersion(CURRENT_SCHEMA_VERSION);
 
     // No migration needed
     if (checkpoint.schemaVersion === CURRENT_SCHEMA_VERSION) {
       return checkpoint;
     }
 
-    let migrated = { ...checkpoint };
+    const migrated = { ...checkpoint };
 
     // Apply migrations based on version
     // v1.0.0 → v1.1.0 (future migration example)
@@ -418,7 +418,7 @@ export class CheckpointManager {
    */
   private calculateChecksum(checkpoint: CheckpointData): string {
     // Create a copy without checksum field for calculation
-    const { checksum, updatedAt, ...dataForChecksum } = checkpoint;
+    const { checksum: _checksum, updatedAt: _updatedAt, ...dataForChecksum } = checkpoint;
 
     // Calculate SHA-256 hash
     const hash = createHash('sha256');

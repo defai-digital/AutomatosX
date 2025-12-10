@@ -14,6 +14,34 @@ import type { AgentProfile } from '../types/agent.js';
 import type { ProfileLoader } from './profile-loader.js';
 import { logger } from '../shared/logging/logger.js';
 
+// Cache for compiled RegExp patterns to avoid recreation inside loops
+// Key: pattern string, Value: compiled RegExp or null if invalid
+const regexCache = new Map<string, RegExp | null>();
+
+/**
+ * Get or create a cached RegExp for a pattern
+ * @param pattern - The regex pattern string
+ * @returns Compiled RegExp or null if pattern is invalid
+ */
+function getCachedRegex(pattern: string): RegExp | null {
+  if (regexCache.has(pattern)) {
+    return regexCache.get(pattern) ?? null;
+  }
+
+  try {
+    const regex = new RegExp(pattern, 'i');
+    regexCache.set(pattern, regex);
+    return regex;
+  } catch (error) {
+    logger.debug('Invalid regex pattern cached as null', {
+      pattern,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    regexCache.set(pattern, null);
+    return null;
+  }
+}
+
 /**
  * Agent selection result
  */
@@ -94,19 +122,12 @@ export function scoreAgent(task: string, profile: AgentProfile): number {
   }
 
   // Redirect rules penalty (weight: -15 points)
+  // v12.6.3: Use cached RegExp to avoid recreation inside loop
   if (profile.selectionMetadata?.redirectWhen) {
     for (const rule of profile.selectionMetadata.redirectWhen) {
-      try {
-        const regex = new RegExp(rule.phrase, 'i');
-        if (regex.test(task)) {
-          score -= 15;
-        }
-      } catch (error) {
-        // Invalid regex pattern - log and skip
-        logger.debug('Invalid regex pattern in redirectWhen rule', {
-          pattern: rule.phrase,
-          error: error instanceof Error ? error.message : String(error)
-        });
+      const regex = getCachedRegex(rule.phrase);
+      if (regex && regex.test(task)) {
+        score -= 15;
       }
     }
   }

@@ -12,8 +12,7 @@ import type {
   ParsedSpec,
   SpecValidationResult,
   ValidationIssue,
-  SpecValidatorOptions,
-  SpecTask
+  SpecValidatorOptions
 } from '../../types/spec.js';
 import { SpecGraphBuilder } from './SpecGraphBuilder.js';
 import { logger } from '../../shared/logging/logger.js';

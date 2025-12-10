@@ -15,7 +15,6 @@ import {
   getProjectCommandsPath,
   fileExists,
 } from './utils/file-reader.js';
-import { validateTomlCommand } from './utils/validation.js';
 
 /**
  * Command Manager for Gemini CLI custom commands
@@ -158,7 +157,7 @@ export class CommandManager {
           namespace,
         });
       }
-    } catch (error) {
+    } catch {
       // Directory read failed, return empty array
       return commands;
     }
@@ -220,7 +219,7 @@ export class CommandManager {
    * @param projectDir - Project directory
    * @returns Number of commands
    */
-  async countCommands(projectDir: string): Promise<number> {
+  async countCommands(_projectDir: string): Promise<number> {
     try {
       const commandsDir = getProjectCommandsPath();
       const exists = await fileExists(commandsDir);
@@ -242,7 +241,7 @@ export class CommandManager {
    * @param projectDir - Project directory
    * @returns True if commands directory exists
    */
-  async hasCommandsDir(projectDir: string): Promise<boolean> {
+  async hasCommandsDir(_projectDir: string): Promise<boolean> {
     const commandsDir = getProjectCommandsPath();
     return fileExists(commandsDir);
   }

@@ -14,7 +14,6 @@
  */
 
 import { logger } from '../shared/logging/logger.js';
-import type { MCPHealthCheckResult } from './types-common.js';
 
 /**
  * Server Metrics
@@ -253,8 +252,6 @@ export class MetricsCollector {
     serverName: string,
     pid?: number
   ): Promise<ServerMetrics> {
-    const now = Date.now();
-
     // Get process metrics if PID available
     let cpuUsage = 0;
     let memoryUsage = 0;

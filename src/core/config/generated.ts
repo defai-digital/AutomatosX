@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-09T20:51:48.777Z
+ * Generated: 2025-12-10T05:31:55.173Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -323,14 +323,14 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
     "enableFreeTierPrioritization": true,
     "enableWorkloadAwareRouting": true
   },
-  "version": "12.6.1"
+  "version": "12.6.2"
 } as const;
 
 /**
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-09T20:51:48.777Z',
+  generatedAt: '2025-12-10T05:31:55.173Z',
   sourceFile: 'ax.config.json',
-  version: '12.6.1'
+  version: '12.6.2'
 } as const;

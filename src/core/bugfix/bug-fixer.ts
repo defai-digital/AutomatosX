@@ -15,7 +15,7 @@
 
 import { readFile, writeFile, copyFile, unlink, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, dirname, basename } from 'path';
+import { join, basename } from 'path';
 import { randomUUID } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
 import type {
@@ -380,8 +380,6 @@ export class BugFixer {
     // Direct setInterval without assignment - wrap it
     const directSetIntervalPattern = /setInterval\s*\(/;
     if (directSetIntervalPattern.test(line)) {
-      const indent = line.match(/^(\s*)/)?.[1] || '';
-
       // Replace line with assigned version + unref
       const newLine = line.replace(
         /(setInterval\s*\([^)]+\))/,
@@ -420,7 +418,6 @@ export class BugFixer {
       const match = currentLine.match(classPattern);
       if (match && match[1]) {
         classStartLine = i;
-        className = match[1];
         break;
       }
     }
@@ -490,7 +487,7 @@ export class BugFixer {
   private applyUseDisposableEventEmitterFix(
     finding: BugFinding,
     originalContent: string,
-    lines: string[]
+    _lines: string[]
   ): { fixedContent: string; diff: string } {
     // Replace EventEmitter with DisposableEventEmitter
     let fixedContent = originalContent.replace(

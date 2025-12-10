@@ -12,8 +12,6 @@ import { join, dirname } from 'path';
 import { mkdir } from 'fs/promises';
 import type {
   BugfixResult,
-  BugFinding,
-  FixAttempt,
   BugType,
   BugSeverity
 } from './types.js';

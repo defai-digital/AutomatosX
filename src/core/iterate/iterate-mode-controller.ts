@@ -238,7 +238,7 @@ export class IterateModeController {
 
     // Track accumulated response content
     const responseContents: string[] = [];
-    let totalTokensUsed = { prompt: 0, completion: 0, total: 0 };
+    const totalTokensUsed = { prompt: 0, completion: 0, total: 0 };
     let lastResponse: ExecutionResponse | undefined;
 
     try {

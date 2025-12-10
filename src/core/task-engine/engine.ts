@@ -27,10 +27,7 @@ import {
   type TaskResult,
   type TaskFilter,
   type TaskEngine as TaskEngineType,
-  type LoopGuardConfig,
-  type TaskStoreConfig,
   TaskEngineError,
-  LoopPreventionError,
   isLoopPreventionError
 } from './types.js';
 

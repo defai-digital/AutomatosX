@@ -6,8 +6,6 @@
  */
 
 import { randomUUID } from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
 import type {
   RefactorConfig,
   RefactorState,
@@ -17,12 +15,9 @@ import type {
   RefactorStats,
   RefactorMetrics,
   RefactorControllerOptions,
-  RefactorVerificationResult,
   MetricImprovement,
   RefactorType,
   RefactorSeverity,
-  OverengineeringGuards,
-  DEFAULT_OVERENGINEERING_GUARDS,
 } from './types.js';
 import { createDefaultRefactorConfig } from './types.js';
 import { RefactorDetector } from './refactor-detector.js';

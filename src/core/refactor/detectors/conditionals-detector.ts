@@ -100,7 +100,7 @@ export function detectConditionals(
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  config: RefactorConfig
+  _config: RefactorConfig
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
 
@@ -138,9 +138,9 @@ function detectDeeplyNestedIf(
   const findings: RefactorFinding[] = [];
   const MAX_NESTING = 3;
 
-  let currentNesting = 0;
+  let _currentNesting = 0; // Track for future endLine reporting
   let ifNesting = 0;
-  let ifStartLine = -1;
+  let _ifStartLine = -1; // Track for future range reporting
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -155,7 +155,7 @@ function detectDeeplyNestedIf(
     if (/\bif\s*\(/.test(line)) {
       ifNesting++;
       if (ifNesting === 1) {
-        ifStartLine = lineNum;
+        _ifStartLine = lineNum;
       }
 
       if (ifNesting > MAX_NESTING) {
@@ -180,7 +180,7 @@ function detectDeeplyNestedIf(
       }
     }
 
-    currentNesting += openBraces - closeBraces;
+    _currentNesting += openBraces - closeBraces;
 
     // Reset if nesting when we leave the block
     if (closeBraces > 0 && ifNesting > 0) {

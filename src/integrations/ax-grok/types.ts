@@ -1,25 +1,47 @@
 /**
  * Type definitions for ax-grok integration
  *
+ * v12.8.0: Updated to match ax-cli v4.3.15 SDK
+ *
  * @module integrations/ax-grok/types
  */
 
 /**
- * Supported Grok models
+ * Supported Grok models (ax-cli v4.3.15)
+ *
+ * @see https://github.com/defai-digital/ax-cli
  */
 export type GrokModel =
-  | 'grok-3'         // 131K context, reasoning effort (extended thinking)
-  | 'grok-3-mini'    // Fast, cost-effective
-  | 'grok-2-vision'  // Image understanding
-  | 'grok-2'         // Live web search
-  // Legacy alias
-  | 'grok-beta';     // Maps to grok-3
+  | 'grok-4-0709'        // 131K context, most capable
+  | 'grok-4.1-fast'      // 131K context, with agent tools
+  | 'grok-3'             // 131K context, extended reasoning
+  | 'grok-3-mini'        // 131K context, fast/economical
+  | 'grok-2-vision-1212' // 32K context, vision capability
+  | 'grok-2-image-1212'  // 32K context, image generation
+  | 'grok-2'             // Live web search (legacy)
+  // Convenience aliases
+  | 'grok-latest'        // Maps to grok-4-0709
+  | 'grok-fast'          // Maps to grok-4.1-fast
+  | 'grok-mini'          // Maps to grok-3-mini
+  | 'grok-vision'        // Maps to grok-2-vision-1212
+  | 'grok-image'         // Maps to grok-2-image-1212
+  // Legacy aliases (deprecated)
+  | 'grok-beta'          // Maps to grok-3
+  | 'grok-2-vision';     // Maps to grok-2-vision-1212
 
 /**
- * Model mapping from legacy to current names
+ * Model mapping from aliases/legacy to current names
  */
 export const GROK_MODEL_MAPPING: Record<string, string> = {
-  'grok-beta': 'grok-3'
+  // Convenience aliases (ax-cli v4.3.15)
+  'grok-latest': 'grok-4-0709',
+  'grok-fast': 'grok-4.1-fast',
+  'grok-mini': 'grok-3-mini',
+  'grok-vision': 'grok-2-vision-1212',
+  'grok-image': 'grok-2-image-1212',
+  // Legacy aliases (deprecated)
+  'grok-beta': 'grok-3',
+  'grok-2-vision': 'grok-2-vision-1212'
 };
 
 /**
@@ -72,9 +94,9 @@ export interface GrokExecutionOptions {
 export const GROK_DEFAULT_BASE_URL = 'https://api.x.ai/v1';
 
 /**
- * Default model
+ * Default model (ax-cli v4.3.15: grok-4-0709 is most capable)
  */
-export const GROK_DEFAULT_MODEL: GrokModel = 'grok-3';
+export const GROK_DEFAULT_MODEL: GrokModel = 'grok-4-0709';
 
 /**
  * Default CLI command

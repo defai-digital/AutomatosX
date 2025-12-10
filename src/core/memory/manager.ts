@@ -300,7 +300,7 @@ export class MemoryManager implements IMemoryManager {
       if (this.db) {
         try {
           this.db.close();
-        } catch (closeError) {
+        } catch {
           // Ignore close errors, we're already handling an error
         }
         // Reset state after close
@@ -1389,9 +1389,9 @@ export class MemoryManager implements IMemoryManager {
     }
 
     const {
-      includeEmbeddings = false,
+      includeEmbeddings: _includeEmbeddings = false,
       filters = {},
-      batchSize = 1000,
+      batchSize: _batchSize = 1000,
       pretty = false
     } = options || {};
 

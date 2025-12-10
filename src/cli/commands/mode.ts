@@ -14,7 +14,6 @@ import {
   isValidWorkflowMode,
   saveModeState,
   loadModeState,
-  clearModeState,
   isModePersistenceEnabled
 } from '../../core/workflow/index.js';
 
@@ -81,11 +80,11 @@ export const modeCommand: CommandModule<Record<string, unknown>, ModeOptions> = 
       }
 
       // Display mode change
-      const modeConfig = WORKFLOW_MODES[modeName as WorkflowMode];
+      const modeConfig = WORKFLOW_MODES[modeName];
 
       // v11.3.1: Persist mode to disk
       if (isModePersistenceEnabled()) {
-        const saved = await saveModeState(modeName as WorkflowMode, {
+        const saved = await saveModeState(modeName, {
           setBy: 'cli',
           reason: `ax mode ${modeName}`
         });

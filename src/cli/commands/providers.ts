@@ -253,7 +253,7 @@ async function handleList(config: any, argv: ProvidersOptions): Promise<void> {
   }
 
   // Filter if --available flag
-  let displayProviders = argv.available
+  const displayProviders = argv.available
     ? providers.filter(p => p.enabled && !p.limitInfo?.isBlocked)
     : providers;
 
@@ -321,7 +321,7 @@ async function handleList(config: any, argv: ProvidersOptions): Promise<void> {
     }
 
     if (provider.limitInfo?.isBlocked) {
-      const resetTime = new Date(provider.limitInfo.resetTime!).toLocaleString();
+      const resetTime = new Date(provider.limitInfo.resetTime).toLocaleString();
       console.log(chalk.red(`  ⚠️  BLOCKED until ${resetTime}`));
     }
 

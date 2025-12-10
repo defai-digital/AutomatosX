@@ -9,10 +9,8 @@
 
 import Database from 'better-sqlite3';
 import { glob } from 'glob';
-import { readFile, stat, access } from 'fs/promises';
-import { statSync, existsSync, mkdirSync } from 'fs';
-import { join, parse, dirname } from 'path';
-import { createHash } from 'crypto';
+import { readFile, stat } from 'fs/promises';
+import { join, parse } from 'path';
 import { logger } from '../shared/logging/logger.js';
 import { DatabaseFactory } from '../core/database/factory.js';
 

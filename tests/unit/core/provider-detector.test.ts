@@ -26,6 +26,8 @@ describe('provider-detector', () => {
     delete process.env.GLM_API_KEY;
     delete process.env.XAI_API_KEY;
     delete process.env.GROK_API_KEY;
+    delete process.env.DASHSCOPE_API_KEY;
+    delete process.env.QWEN_API_KEY;
   });
 
   afterEach(() => {
@@ -117,6 +119,52 @@ describe('provider-detector', () => {
       expect(result['grok']).toBe(true);
     });
 
+    it('should detect qwen when qwen command is available', async () => {
+      mockExec.mockImplementation((cmd: any, options: any, callback?: any) => {
+        const cb = typeof options === 'function' ? options : callback;
+        if (cmd.includes('qwen')) {
+          cb(null, { stdout: '/usr/bin/qwen', stderr: '' });
+        } else {
+          cb(new Error('not found'), null);
+        }
+        return {} as any;
+      });
+
+      const detector = new ProviderDetector();
+      const result = await detector.detectAll();
+
+      expect(result['qwen']).toBe(true);
+    });
+
+    it('should detect qwen when DASHSCOPE_API_KEY is set', async () => {
+      mockAllCommandsNotFound();
+      process.env.DASHSCOPE_API_KEY = 'test-api-key';
+
+      const detector = new ProviderDetector();
+      const result = await detector.detectAll();
+
+      expect(result['qwen']).toBe(true);
+    });
+
+    it('should detect qwen when QWEN_API_KEY is set', async () => {
+      mockAllCommandsNotFound();
+      process.env.QWEN_API_KEY = 'test-api-key';
+
+      const detector = new ProviderDetector();
+      const result = await detector.detectAll();
+
+      expect(result['qwen']).toBe(true);
+    });
+
+    it('should not detect qwen when neither CLI nor API key available', async () => {
+      mockAllCommandsNotFound();
+
+      const detector = new ProviderDetector();
+      const result = await detector.detectAll();
+
+      expect(result['qwen']).toBe(false);
+    });
+
     it('should return false for CLI providers not installed', async () => {
       mockAllCommandsNotFound();
 
@@ -172,7 +220,7 @@ describe('provider-detector', () => {
       const result = await detector.detectAllWithInfo();
 
       expect(result).toBeInstanceOf(Array);
-      expect(result.length).toBe(5); // claude-code, gemini-cli, codex, glm, grok
+      expect(result.length).toBe(6); // claude-code, gemini-cli, codex, glm, grok, qwen
 
       const claudeInfo = result.find(p => p.name === 'claude-code');
       expect(claudeInfo).toBeDefined();
@@ -391,6 +439,31 @@ describe('provider-detector', () => {
 
       expect(version).toBe('SDK v1 (grok-3, API ready)');
     });
+
+    it('should return SDK version for Qwen with DASHSCOPE_API_KEY', async () => {
+      process.env.DASHSCOPE_API_KEY = 'test-dashscope-key';
+
+      const detector = new ProviderDetector();
+      const version = await detector.getVersion('qwen');
+
+      expect(version).toBe('SDK v1 (qwen-turbo, API ready)');
+    });
+
+    it('should return SDK version for Qwen with QWEN_API_KEY', async () => {
+      process.env.QWEN_API_KEY = 'test-qwen-key';
+
+      const detector = new ProviderDetector();
+      const version = await detector.getVersion('qwen');
+
+      expect(version).toBe('SDK v1 (qwen-turbo, API ready)');
+    });
+
+    it('should return CLI fallback version for Qwen without API key', async () => {
+      const detector = new ProviderDetector();
+      const version = await detector.getVersion('qwen');
+
+      expect(version).toBe('SDK v1 (qwen-turbo, CLI fallback)');
+    });
   });
 
   describe('getDetectedProviderNames', () => {
@@ -421,7 +494,21 @@ describe('provider-detector', () => {
       const detector = new ProviderDetector();
       const names = await detector.getDetectedProviderNames();
 
+      // glm and grok are always available (SDK-first)
+      // qwen is not available without CLI or API key
       expect(names).toEqual(['glm', 'grok']);
+    });
+
+    it('should include qwen when API key is set', async () => {
+      mockAllCommandsNotFound();
+      process.env.DASHSCOPE_API_KEY = 'test-api-key';
+
+      const detector = new ProviderDetector();
+      const names = await detector.getDetectedProviderNames();
+
+      expect(names).toContain('glm');
+      expect(names).toContain('grok');
+      expect(names).toContain('qwen');
     });
   });
 
@@ -444,6 +531,10 @@ describe('provider-detector', () => {
 
     it('should format grok correctly', () => {
       expect(ProviderDetector.formatProviderName('grok')).toBe('Grok (xAI)');
+    });
+
+    it('should format qwen correctly', () => {
+      expect(ProviderDetector.formatProviderName('qwen')).toBe('Qwen (Alibaba Cloud)');
     });
 
     it('should return original name for unknown provider', () => {

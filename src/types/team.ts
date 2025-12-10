@@ -5,8 +5,6 @@
  * Eliminates duplication of provider settings across agent profiles.
  */
 
-import type { OrchestrationConfig } from './orchestration.js';
-
 /**
  * Team Provider Configuration
  *

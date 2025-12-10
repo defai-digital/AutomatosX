@@ -19,10 +19,7 @@ import {
   normalizePath
 } from '../../shared/validation/path-utils.js';
 import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
-import type {
-  AutomatosXConfig,
-  LoggingRetentionConfig
-} from '../../types/config.js';
+import type { AutomatosXConfig } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import { ConfigError, ErrorCode } from '../../shared/errors/errors.js';
 import { logger } from '../../shared/logging/logger.js';
@@ -34,14 +31,12 @@ import {
   isValidName,
   isValidExtension,
   isPositiveInteger,
-  isNonNegativeInteger,
-  inRange
+  isNonNegativeInteger
 } from '../validation-limits.js';
 import { TTLCache } from '../cache/cache.js';
 import { calculateMaxConcurrentAgents } from '../../shared/helpers/resource-calculator.js';
 import { PRECOMPILED_CONFIG } from './generated.js';
-import { automatosXConfigSchema, safeValidateConfig } from './schemas.js';
-import { ZodError } from 'zod';
+import { safeValidateConfig } from './schemas.js';
 
 /**
  * Configuration cache (process-level)

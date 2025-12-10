@@ -65,7 +65,7 @@ describe('LazyMemoryManager - Race Condition', () => {
   });
 
   it('should initialize only once despite multiple concurrent calls', async () => {
-    let initCount = 0;
+    const initCount = 0;
 
     // Spy on initialization by checking state
     const initialState = manager.isInitialized();

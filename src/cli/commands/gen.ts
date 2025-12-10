@@ -22,7 +22,6 @@ import { getDefaultScaffoldGenerator } from '@/core/spec/ScaffoldGenerator.js';
 import { getDefaultTestGenerator } from '@/core/spec/TestGenerator.js';
 import { validateSpec } from '@/core/spec/SpecSchemaValidator.js';
 import type { SpecYAML } from '@/types/spec-yaml.js';
-import type { DagJson } from '@/types/dag.js';
 import { logger } from '@/shared/logging/logger.js';
 
 interface GenOptions {

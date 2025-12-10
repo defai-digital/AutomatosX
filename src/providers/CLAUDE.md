@@ -25,7 +25,10 @@ All providers extend `BaseProvider` which provides:
 static readonly ALLOWED_PROVIDER_NAMES = [
   'claude', 'claude-code',
   'gemini', 'gemini-cli',
-  'openai', 'codex'
+  'openai', 'codex',
+  'glm', 'ax-glm',        // v12.0.0: Zhipu AI
+  'grok', 'ax-grok',      // v12.4.0: xAI
+  'qwen', 'qwen-code'     // v12.7.0: Alibaba Cloud
 ];
 ```
 

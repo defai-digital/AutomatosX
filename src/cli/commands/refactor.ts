@@ -342,7 +342,7 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
 
     try {
       // Parse focus areas
-      const focusAreas = parseFocusAreas(argv.focus as string[] | undefined);
+      const focusAreas = parseFocusAreas(argv.focus);
       const severityThreshold = parseSeverity(argv.severity);
 
       // Get file filter if git-aware scanning enabled

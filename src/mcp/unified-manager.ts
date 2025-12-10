@@ -23,9 +23,7 @@ import type {
   MCPToolCallRequest,
   MCPToolCallResponse,
   MCPHealthCheckResult,
-  MCPRegistryEntry,
   IMCPManager,
-  KNOWN_MCP_SERVERS,
 } from './types-common.js';
 import { LifecycleLogger, getLifecycleLogger } from './lifecycle-logger.js';
 import { MetricsCollector, getMetricsCollector } from './metrics-collector.js';
@@ -496,7 +494,7 @@ export class UnifiedMCPManager implements IMCPManager {
       runningServers.map(([serverName, serverProcess]) =>
         this.metricsCollector.collectServerMetrics(
           serverName,
-          serverProcess.process.pid!
+          serverProcess.process.pid
         )
       )
     );

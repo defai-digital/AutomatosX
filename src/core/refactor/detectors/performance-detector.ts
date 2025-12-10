@@ -113,7 +113,7 @@ export function detectPerformance(
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  config: RefactorConfig
+  _config: RefactorConfig
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
 

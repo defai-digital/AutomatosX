@@ -14,7 +14,7 @@ import {
   type OrchestrationConfig,
   DEFAULT_ORCHESTRATION_CONFIG
 } from './types.js';
-import { OrchestrationInstructionInjector, type InjectionResult } from './instruction-injector.js';
+import { OrchestrationInstructionInjector } from './instruction-injector.js';
 import { TodoInstructionProvider } from './todo-instruction-provider.js';
 import { MemoryInstructionProvider, type MemorySearchProvider } from './memory-instruction-provider.js';
 import { SessionInstructionProvider, type SessionStateProvider } from './session-instruction-provider.js';

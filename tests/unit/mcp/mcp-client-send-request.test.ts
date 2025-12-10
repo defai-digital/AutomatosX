@@ -28,13 +28,13 @@ describe('McpClient sendRequest', () => {
     };
 
     // Inject a fake process with a failing stdin
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (client as any).process = { stdin: mockStdin };
 
     await expect(client.send('test/method', {}, 5)).rejects.toThrow('stream destroyed');
 
     // Pending request should be cleared and timer should be removed
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((client as any).pendingRequests.size).toBe(0);
   });
 });

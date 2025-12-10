@@ -143,8 +143,9 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('     - Claude Code'));
         console.log(chalk.gray('     - Gemini CLI'));
         console.log(chalk.gray('     - Codex CLI'));
-        console.log(chalk.gray('     - GLM (SDK-first, requires ZAI_API_KEY)'));
+        console.log(chalk.gray('     - GLM (SDK-first, requires GLM_API_KEY)'));
         console.log(chalk.gray('     - Grok (SDK-first, requires XAI_API_KEY)'));
+        console.log(chalk.gray('     - Qwen (SDK-first, requires DASHSCOPE_API_KEY or qwen CLI)'));
         console.log('');
         console.log(chalk.cyan('   💡 After installing, run "ax setup" again to configure.\n'));
 
@@ -255,16 +256,17 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.cyan('🔌 Setting up Gemini CLI integration...'));
         const geminiDir = join(projectDir, '.gemini');
         const geminiDirExistedBefore = await checkExists(geminiDir);
-        geminiMcpStatus = await setupGeminiIntegration(projectDir, packageRoot);
+        geminiMcpStatus = await setupGeminiIntegration(projectDir, packageRoot, argv.force);
         // Only add to rollback if we created it (not if it pre-existed)
         if (!geminiDirExistedBefore) {
           createdResources.push(geminiDir);
         }
         // Report status accurately based on what actually happened
+        // v12.8.0: Now uses `gemini mcp add` for max compatibility
         if (geminiMcpStatus === 'configured') {
-          console.log(chalk.green('   ✓ Gemini CLI MCP integration configured'));
+          console.log(chalk.green('   ✓ Gemini CLI MCP integration configured (gemini mcp add)'));
         } else if (geminiMcpStatus === 'skipped') {
-          console.log(chalk.yellow('   ⚠ Gemini CLI MCP skipped (MCP server not found)'));
+          console.log(chalk.yellow('   ⚠ Gemini CLI not available, skipped MCP setup'));
           console.log(chalk.gray('     CLI integration still works via subprocess'));
         } else {
           console.log(chalk.yellow('   ⚠ Gemini CLI MCP configuration failed'));
@@ -295,40 +297,33 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       let codexMcpStatus: CodexMCPStatus = 'skipped';
       if (providers['codex']) {
         console.log(chalk.cyan('🔌 Setting up Codex CLI MCP integration...'));
-        codexMcpStatus = await setupCodexGlobalMCPConfig();
+        codexMcpStatus = await setupCodexGlobalMCPConfig(argv.force);
+        // v12.8.0: Now uses `codex mcp add` for max compatibility
         if (codexMcpStatus === 'configured') {
-          console.log(chalk.green('   ✓ Codex CLI MCP integration configured'));
+          console.log(chalk.green('   ✓ Codex CLI MCP integration configured (codex mcp add)'));
         } else if (codexMcpStatus === 'skipped') {
-          console.log(chalk.yellow('   ⚠ Codex CLI MCP skipped'));
+          console.log(chalk.yellow('   ⚠ Codex CLI not available, skipped MCP setup'));
         } else {
           console.log(chalk.yellow('   ⚠ Codex CLI MCP configuration failed'));
           console.log(chalk.gray('     CLI integration still works via subprocess'));
         }
       }
 
-      // v12.2.0: Setup GLM (Zhipu AI) MCP configuration
-      // v12.3.0: Changed to Claude Code format (.mcp.json)
-      let glmMcpStatus: SdkMCPStatus = 'skipped';
-      if (providers['glm']) {
-        console.log(chalk.cyan('🔌 Setting up GLM (ax-glm) MCP integration...'));
-        glmMcpStatus = await setupGlmMCPConfig(projectDir);
-        if (glmMcpStatus === 'configured') {
-          console.log(chalk.green('   ✓ GLM MCP integration configured (.ax-glm/.mcp.json)'));
-        } else {
-          console.log(chalk.yellow('   ⚠ GLM MCP configuration failed'));
-        }
-      }
+      // v12.8.0: GLM and Grok MCP setup removed - SDK-only providers
+      // They don't have CLI-based MCP commands. AutomatosX uses them via direct SDK calls.
 
-      // v12.2.0: Setup Grok (xAI) MCP configuration
-      // v12.3.0: Changed to Claude Code format (.mcp.json)
-      let grokMcpStatus: SdkMCPStatus = 'skipped';
-      if (providers['grok']) {
-        console.log(chalk.cyan('🔌 Setting up Grok (ax-grok) MCP integration...'));
-        grokMcpStatus = await setupGrokMCPConfig(projectDir);
-        if (grokMcpStatus === 'configured') {
-          console.log(chalk.green('   ✓ Grok MCP integration configured (.ax-grok/.mcp.json)'));
+      // v12.7.0: Setup Qwen (Alibaba Cloud) MCP configuration
+      // v12.8.0: Uses native `qwen mcp add` command
+      let qwenMcpStatus: SdkMCPStatus = 'skipped';
+      if (providers['qwen']) {
+        console.log(chalk.cyan('🔌 Setting up Qwen MCP integration...'));
+        qwenMcpStatus = await setupQwenMCPConfig(projectDir, argv.force);
+        if (qwenMcpStatus === 'configured') {
+          console.log(chalk.green('   ✓ Qwen MCP integration configured (qwen mcp add)'));
+        } else if (qwenMcpStatus === 'skipped') {
+          console.log(chalk.yellow('   ⚠ Qwen CLI not available, skipped MCP setup'));
         } else {
-          console.log(chalk.yellow('   ⚠ Grok MCP configuration failed'));
+          console.log(chalk.yellow('   ⚠ Qwen MCP configuration failed'));
         }
       }
 
@@ -369,10 +364,12 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         }
       }
 
-      // Create .mcp.json for MCP discovery (v13.0.0 - replaces manifests)
-      console.log(chalk.cyan('🔌 Creating MCP server configuration...'));
-      await createMcpConfig(projectDir);
-      console.log(chalk.green('   ✓ .mcp.json created for MCP discovery'));
+      // Setup Claude Code MCP (v12.8.0 - uses claude mcp add)
+      if (providers['claude-code']) {
+        console.log(chalk.cyan('🔌 Setting up Claude Code MCP integration...'));
+        await createMcpConfig(projectDir, argv.force);
+        console.log(chalk.green('   ✓ Claude Code MCP integration configured (claude mcp add)'));
+      }
 
       // Success message
       console.log(chalk.green.bold('\n✅ AutomatosX set up successfully!\n'));
@@ -385,16 +382,17 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       }
 
       console.log(chalk.gray('Next steps:'));
-      console.log(chalk.gray('  1. Review ax.config.json')); // v9.2.0: Updated config filename
-      console.log(chalk.gray('  2. List agents: automatosx list agents'));
-      console.log(chalk.gray('  3. Run an agent: automatosx run backend "Hello!"\n'));
+      console.log(chalk.gray('  1. Run "ax init" to create project context files (AX.md, CUSTOM.md)'));
+      console.log(chalk.gray('  2. Review ax.config.json')); // v9.2.0: Updated config filename
+      console.log(chalk.gray('  3. List agents: automatosx list agents'));
+      console.log(chalk.gray('  4. Run an agent: automatosx run backend "Hello!"\n'));
 
-      // v13.0.0: MCP-first integration replaces legacy manifest generation
-      console.log(chalk.cyan('MCP Integration (v13.0.0):'));
-      console.log(chalk.gray('  • .mcp.json created for automatic MCP server discovery'));
-      console.log(chalk.gray('  • Claude Code/Gemini CLI will auto-connect to AutomatosX'));
+      // v12.8.0: MCP integration uses native CLI commands for max compatibility
+      console.log(chalk.cyan('MCP Integration (v12.8.0):'));
+      console.log(chalk.gray('  • Native CLI commands used: claude/gemini/codex/qwen mcp add'));
+      console.log(chalk.gray('  • View configured servers: <cli> mcp list'));
       console.log(chalk.gray('  • Use get_capabilities tool to discover agents dynamically'));
-      console.log(chalk.gray('  • No manual registration required\n'));
+      console.log(chalk.gray('  • GLM/Grok are SDK-only (no MCP CLI setup needed)\n'));
 
       if (claudeCodeSetupSucceeded) {
         console.log(chalk.yellow('Legacy Claude Code Manifests (deprecated):'));
@@ -451,8 +449,8 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
         console.log(chalk.gray('  • No special commands needed - just ask naturally!\n'));
       }
 
-      // GLM and Grok SDK-first providers with MCP client support
-      if (providers['glm'] || providers['grok']) {
+      // GLM, Grok, and Qwen SDK-first providers with MCP client support
+      if (providers['glm'] || providers['grok'] || providers['qwen']) {
         console.log(chalk.cyan('SDK-First Providers (MCP Client Mode):'));
         if (providers['glm']) {
           console.log(chalk.gray('  • GLM (Zhipu AI) - API key: GLM_API_KEY'));
@@ -462,8 +460,12 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
           console.log(chalk.gray('  • Grok (xAI) - API key: XAI_API_KEY'));
           console.log(chalk.gray('    MCP: AxGrokWithMcp class connects to AutomatosX MCP server'));
         }
-        console.log(chalk.gray('  • CLI: ax run <agent> "your task" --engine glm|grok'));
-        console.log(chalk.gray('  • SDK: Import AxGlmWithMcp / AxGrokWithMcp for direct MCP integration\n'));
+        if (providers['qwen']) {
+          console.log(chalk.gray('  • Qwen (Alibaba Cloud) - API key: DASHSCOPE_API_KEY or QWEN_API_KEY'));
+          console.log(chalk.gray('    Or install Qwen Code CLI: npm install -g @qwen-code/qwen-code'));
+        }
+        console.log(chalk.gray('  • CLI: ax run <agent> "your task" --engine glm|grok|qwen'));
+        console.log(chalk.gray('  • SDK: Import provider adapters for direct MCP integration\n'));
       }
 
       if (providers['codex']) {
@@ -1239,14 +1241,13 @@ async function updateGitignore(projectDir: string): Promise<void> {
  *
  * v10.2.0: Added MCP (Model Context Protocol) auto-configuration
  * v12.2.0: Fixed to use global ~/.gemini/settings.json (not project-level)
- *          Gemini CLI reads mcpServers from settings.json, NOT mcp-servers.json
+ * v12.8.0: Changed to use native `gemini mcp add` command for max compatibility
  */
 type GeminiMCPStatus = 'configured' | 'skipped' | 'failed';
 
-async function setupGeminiIntegration(_projectDir: string, _packageRoot: string): Promise<GeminiMCPStatus> {
-  // Setup MCP server configuration in global Gemini CLI settings
-  // Note: Gemini CLI reads mcpServers from ~/.gemini/settings.json
-  const mcpStatus = await setupGeminiGlobalMCPConfig();
+async function setupGeminiIntegration(projectDir: string, _packageRoot: string, force = false): Promise<GeminiMCPStatus> {
+  // Setup MCP server configuration using native gemini mcp add command
+  const mcpStatus = await setupGeminiMCPViaCLI(projectDir, force);
 
   // Note: Gemini CLI users should use natural language to interact with AutomatosX
   // No custom slash commands needed - just talk naturally to work with ax agents
@@ -1254,69 +1255,59 @@ async function setupGeminiIntegration(_projectDir: string, _packageRoot: string)
 }
 
 /**
- * Setup Gemini CLI MCP (Model Context Protocol) configuration
+ * Setup Gemini CLI MCP using native `gemini mcp add` command
  *
- * v12.2.0: Writes to global ~/.gemini/settings.json (mcpServers key)
- * Gemini CLI reads MCP configuration from the global settings file, not project-level.
+ * v12.8.0: Uses `gemini mcp add` for maximum compatibility
+ * This ensures proper integration with Gemini CLI's internal MCP system.
  *
- * Reference: https://geminicli.com/docs/tools/mcp-server/
+ * Command: gemini mcp add automatosx automatosx mcp server -s project -e AUTOMATOSX_PROJECT_DIR=<path>
  *
+ * @param projectDir - Project root directory
+ * @param force - If true, remove and re-add MCP server to update config
  * @returns Status of MCP configuration: 'configured' | 'skipped' | 'failed'
  */
-async function setupGeminiGlobalMCPConfig(): Promise<GeminiMCPStatus> {
-  // Gemini CLI reads MCP servers from global settings
-  const homeDir = process.platform === 'win32' ? process.env.USERPROFILE : process.env.HOME;
-  if (!homeDir) {
-    logger.warn('Could not determine home directory for Gemini CLI MCP configuration');
-    return 'skipped';
-  }
-
-  const settingsPath = join(homeDir, '.gemini', 'settings.json');
-  const geminiDir = join(homeDir, '.gemini');
+async function setupGeminiMCPViaCLI(projectDir: string, force = false): Promise<GeminiMCPStatus> {
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
 
   try {
-    // Ensure .gemini directory exists
-    await mkdir(geminiDir, { recursive: true });
+    // Check if automatosx MCP server is already configured
+    const { stdout: listOutput } = await execAsync('gemini mcp list', { timeout: 10000 });
 
-    // Read existing settings if they exist
-    let settings: Record<string, unknown> = {};
-    if (await checkExists(settingsPath)) {
-      const existingContent = await readFile(settingsPath, 'utf-8');
-      try {
-        settings = JSON.parse(existingContent) as Record<string, unknown>;
-      } catch (error) {
-        logger.warn('Failed to parse existing Gemini settings, will merge carefully', {
-          error: (error as Error).message
+    if (listOutput.includes('automatosx')) {
+      if (force) {
+        // Remove existing and re-add with fresh config
+        logger.info('Force mode: removing existing Gemini MCP server');
+        await execAsync('gemini mcp remove automatosx', { timeout: 10000 }).catch(() => {
+          // Ignore remove errors
         });
+      } else {
+        logger.info('Gemini CLI MCP server already configured');
+        return 'configured';
       }
     }
 
-    // Get or create mcpServers object
-    let mcpServers = settings['mcpServers'] as Record<string, unknown> | undefined;
-    if (!mcpServers || typeof mcpServers !== 'object') {
-      mcpServers = {};
-    }
+    // Add automatosx MCP server using gemini mcp add command
+    // -s project: project-level scope (stored in project settings)
+    // -e: environment variable for project directory
+    const addCommand = `gemini mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`;
 
-    // Add AutomatosX MCP server configuration
-    // Using 'automatosx' command directly (requires global install)
-    mcpServers['automatosx'] = {
-      command: 'automatosx',
-      args: ['mcp', 'server']
-    };
+    await execAsync(addCommand, { timeout: 30000 });
 
-    settings['mcpServers'] = mcpServers;
-
-    // Write settings
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-
-    logger.info('Configured Gemini CLI MCP in global settings', {
-      path: settingsPath
-    });
+    logger.info('Configured Gemini CLI MCP via gemini mcp add');
     return 'configured';
   } catch (error) {
+    const errorMessage = (error as Error).message;
+
+    // If gemini command not found, skip silently
+    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
+      logger.debug('Gemini CLI not available, skipping MCP setup');
+      return 'skipped';
+    }
+
     logger.warn('Failed to setup Gemini CLI MCP configuration', {
-      error: (error as Error).message,
-      path: settingsPath
+      error: errorMessage
     });
     return 'failed';
   }
@@ -1326,62 +1317,57 @@ async function setupGeminiGlobalMCPConfig(): Promise<GeminiMCPStatus> {
  * Setup Codex CLI MCP configuration
  *
  * v12.2.0: Added automatic MCP configuration for Codex CLI
- * Writes to global ~/.codex/config.toml (mcp_servers table)
+ * v12.8.0: Changed to use native `codex mcp add` command for max compatibility
  *
- * IMPORTANT: Codex MCP requires increased timeouts due to AutomatosX lazy initialization
- * - startup_timeout_sec = 60 (for MCP handshake)
- * - tool_timeout_sec = 120 (for first tool call with lazy service init)
+ * Command: codex mcp add automatosx --env AUTOMATOSX_PROJECT_DIR=<path> -- automatosx mcp server
+ *
+ * @param force - If true, remove and re-add MCP server to update config
  */
 type CodexMCPStatus = 'configured' | 'skipped' | 'failed';
 
-async function setupCodexGlobalMCPConfig(): Promise<CodexMCPStatus> {
-  const homeDir = process.platform === 'win32' ? process.env.USERPROFILE : process.env.HOME;
-  if (!homeDir) {
-    logger.warn('Could not determine home directory for Codex CLI MCP configuration');
-    return 'skipped';
-  }
-
-  const codexDir = join(homeDir, '.codex');
-  const configPath = join(codexDir, 'config.toml');
+async function setupCodexGlobalMCPConfig(force = false): Promise<CodexMCPStatus> {
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
 
   try {
-    // Ensure .codex directory exists
-    await mkdir(codexDir, { recursive: true });
+    // Check if automatosx MCP server is already configured
+    const { stdout: listOutput } = await execAsync('codex mcp list', { timeout: 10000 });
 
-    // Read existing config if it exists
-    let existingContent = '';
-    if (await checkExists(configPath)) {
-      existingContent = await readFile(configPath, 'utf-8');
+    if (listOutput.includes('automatosx')) {
+      if (force) {
+        // Remove existing and re-add with fresh config
+        logger.info('Force mode: removing existing Codex MCP server');
+        await execAsync('codex mcp remove automatosx', { timeout: 10000 }).catch(() => {
+          // Ignore remove errors
+        });
+      } else {
+        logger.info('Codex CLI MCP server already configured');
+        return 'configured';
+      }
     }
 
-    // Check if automatosx is already configured
-    if (existingContent.includes('[mcp_servers.automatosx]')) {
-      logger.info('Codex CLI MCP already configured for automatosx');
-      return 'configured';
-    }
+    // Add automatosx MCP server using codex mcp add command
+    // Note: Codex uses global scope only, and requires -- before the command
+    // --env: environment variable for project directory
+    const cwd = process.cwd();
+    const addCommand = `codex mcp add automatosx --env "AUTOMATOSX_PROJECT_DIR=${cwd}" -- automatosx mcp server`;
 
-    // Append AutomatosX MCP server configuration
-    // Using TOML format as required by Codex CLI
-    const mcpConfig = `
-# AutomatosX MCP Server - Added by ax setup v12.2.0
-# Increased timeouts for lazy initialization (15-20s on first tool call)
-[mcp_servers.automatosx]
-command = "automatosx"
-args = ["mcp", "server"]
-startup_timeout_sec = 60
-tool_timeout_sec = 120
-`;
+    await execAsync(addCommand, { timeout: 30000 });
 
-    await writeFile(configPath, existingContent + mcpConfig, 'utf-8');
-
-    logger.info('Configured Codex CLI MCP in global config', {
-      path: configPath
-    });
+    logger.info('Configured Codex CLI MCP via codex mcp add');
     return 'configured';
   } catch (error) {
+    const errorMessage = (error as Error).message;
+
+    // If codex command not found, skip silently
+    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
+      logger.debug('Codex CLI not available, skipping MCP setup');
+      return 'skipped';
+    }
+
     logger.warn('Failed to setup Codex CLI MCP configuration', {
-      error: (error as Error).message,
-      path: configPath
+      error: errorMessage
     });
     return 'failed';
   }
@@ -1389,108 +1375,11 @@ tool_timeout_sec = 120
 
 /**
  * SDK Provider MCP status
+ *
+ * v12.8.0: GLM and Grok MCP setup removed - they are SDK-only providers
+ * without CLI-based MCP commands. AutomatosX uses them via direct SDK calls.
  */
 type SdkMCPStatus = 'configured' | 'skipped' | 'failed';
-
-/**
- * Setup GLM (Zhipu AI) MCP configuration
- *
- * v12.2.0: Creates .ax-glm/mcp-config.json for ax-glm integration
- * v12.3.0: Changed to Claude Code format (.mcp.json) - recommended by ax-cli
- *
- * ax-cli loads MCP config in priority order:
- * 1. .ax-glm/.mcp.json (Claude Code format - recommended)
- * 2. .ax-glm/mcp-config.json (legacy format)
- *
- * Note: API key handling is done by ax-glm itself, not AutomatosX
- *
- * @param projectDir - Project root directory
- * @returns Status of MCP configuration
- */
-async function setupGlmMCPConfig(projectDir: string): Promise<SdkMCPStatus> {
-  const configDir = join(projectDir, '.ax-glm');
-  const configPath = join(configDir, '.mcp.json');
-
-  try {
-    // Create .ax-glm directory
-    await mkdir(configDir, { recursive: true });
-
-    // Create MCP configuration in Claude Code format (.mcp.json)
-    // This is the recommended format used by ax-cli
-    const mcpConfig = {
-      mcpServers: {
-        automatosx: {
-          command: 'automatosx',
-          args: ['mcp', 'server'],
-          env: {
-            AUTOMATOSX_PROJECT_DIR: projectDir
-          }
-        }
-      }
-    };
-
-    await writeFile(configPath, JSON.stringify(mcpConfig, null, 2), 'utf-8');
-
-    logger.info('Configured GLM MCP integration', { path: configPath });
-    return 'configured';
-  } catch (error) {
-    logger.warn('Failed to setup GLM MCP configuration', {
-      error: (error as Error).message,
-      path: configPath
-    });
-    return 'failed';
-  }
-}
-
-/**
- * Setup Grok (xAI) MCP configuration
- *
- * v12.2.0: Creates .ax-grok/mcp-config.json for ax-grok integration
- * v12.3.0: Changed to Claude Code format (.mcp.json) - recommended by ax-cli
- *
- * ax-cli loads MCP config in priority order:
- * 1. .ax-grok/.mcp.json (Claude Code format - recommended)
- * 2. .ax-grok/mcp-config.json (legacy format)
- *
- * Note: API key handling is done by ax-grok itself, not AutomatosX
- *
- * @param projectDir - Project root directory
- * @returns Status of MCP configuration
- */
-async function setupGrokMCPConfig(projectDir: string): Promise<SdkMCPStatus> {
-  const configDir = join(projectDir, '.ax-grok');
-  const configPath = join(configDir, '.mcp.json');
-
-  try {
-    // Create .ax-grok directory
-    await mkdir(configDir, { recursive: true });
-
-    // Create MCP configuration in Claude Code format (.mcp.json)
-    // This is the recommended format used by ax-cli
-    const mcpConfig = {
-      mcpServers: {
-        automatosx: {
-          command: 'automatosx',
-          args: ['mcp', 'server'],
-          env: {
-            AUTOMATOSX_PROJECT_DIR: projectDir
-          }
-        }
-      }
-    };
-
-    await writeFile(configPath, JSON.stringify(mcpConfig, null, 2), 'utf-8');
-
-    logger.info('Configured Grok MCP integration', { path: configPath });
-    return 'configured';
-  } catch (error) {
-    logger.warn('Failed to setup Grok MCP configuration', {
-      error: (error as Error).message,
-      path: configPath
-    });
-    return 'failed';
-  }
-}
 
 /**
  * Create workspace directories for organized file management
@@ -1560,72 +1449,127 @@ Created by AutomatosX for organized scratch work.
 // Previous behavior (v11.2.0-v11.2.3): This function configured MCP in global user configs
 // (~/.gemini/settings.json, ~/.codex/config.toml, claude mcp add)
 //
-// This was removed because:
-// 1. AutomatosX uses CLI wrappers for provider connections, NOT MCP
-// 2. Global MCP caused AutomatosX MCP server to boot in EVERY project (6+ second delay)
-// 3. MCP integration is an optional feature, not core functionality
-//
-// To manually enable global MCP, users can run:
-//   claude mcp add --transport stdio automatosx -- automatosx-mcp
-//   # Or add to ~/.gemini/settings.json / ~/.codex/config.toml manually
-
 /**
- * Create .mcp.json for MCP server discovery (v13.0.0)
+ * Setup Claude Code MCP using native `claude mcp add` command
  *
- * This file enables AI assistants (Claude Code, Gemini CLI, etc.) to
- * automatically discover and connect to the AutomatosX MCP server.
+ * v12.8.0: Uses `claude mcp add` for maximum compatibility
+ * This ensures proper integration with Claude Code's internal MCP system.
  *
- * Benefits over legacy manifest generation:
- * - Dynamic capability discovery via get_capabilities tool
- * - No need to regenerate files when agents change
- * - Standard MCP protocol for all clients
- * - Automatic memory and session integration
+ * Command: claude mcp add automatosx -s local -e AUTOMATOSX_PROJECT_DIR=<path> -- automatosx mcp server
+ *
+ * Benefits over .mcp.json file:
+ * - Shows in `claude mcp list`
+ * - Native integration with Claude Code's MCP system
+ * - Future-proof against format changes
  *
  * @param projectDir - Project root directory
+ * @param force - If true, remove and re-add MCP server to update config
  */
-async function createMcpConfig(projectDir: string): Promise<void> {
-  const mcpConfigPath = join(projectDir, '.mcp.json');
-
-  // MCP server configuration for AutomatosX
-  const mcpConfig = {
-    mcpServers: {
-      automatosx: {
-        command: 'automatosx',
-        args: ['mcp', 'server'],
-        env: {
-          AUTOMATOSX_PROJECT_DIR: projectDir
-        }
-      }
-    }
-  };
+async function createMcpConfig(projectDir: string, force = false): Promise<void> {
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
 
   try {
-    // Check if .mcp.json already exists
-    if (await checkExists(mcpConfigPath)) {
-      // Merge with existing config
-      const existingContent = await readFile(mcpConfigPath, 'utf-8');
-      try {
-        const existingConfig = JSON.parse(existingContent) as { mcpServers?: Record<string, unknown> };
-        if (existingConfig.mcpServers) {
-          existingConfig.mcpServers['automatosx'] = mcpConfig.mcpServers.automatosx;
-          await writeFile(mcpConfigPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
-          logger.info('Updated existing .mcp.json with AutomatosX server', { path: mcpConfigPath });
-          return;
-        }
-      } catch {
-        logger.warn('Failed to parse existing .mcp.json, will overwrite', { path: mcpConfigPath });
+    // Check if automatosx MCP server is already configured
+    const { stdout: listOutput } = await execAsync('claude mcp list', { timeout: 10000 });
+
+    if (listOutput.includes('automatosx')) {
+      if (force) {
+        // Remove existing and re-add with fresh config
+        logger.info('Force mode: removing existing Claude Code MCP server');
+        await execAsync('claude mcp remove automatosx', { timeout: 10000 }).catch(() => {
+          // Ignore remove errors
+        });
+      } else {
+        logger.info('Claude Code MCP server already configured');
+        return;
       }
     }
 
-    // Create new .mcp.json
-    await writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), 'utf-8');
-    logger.info('Created .mcp.json for MCP discovery', { path: mcpConfigPath });
+    // Add automatosx MCP server using claude mcp add command
+    // -s local: local scope (project-specific)
+    // -e: environment variable for project directory
+    // --: separator before command
+    const addCommand = `claude mcp add automatosx -s local -e "AUTOMATOSX_PROJECT_DIR=${projectDir}" -- automatosx mcp server`;
+
+    await execAsync(addCommand, { timeout: 30000 });
+
+    logger.info('Configured Claude Code MCP via claude mcp add');
   } catch (error) {
+    const errorMessage = (error as Error).message;
+
+    // If claude command not found, skip silently
+    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
+      logger.debug('Claude Code not available, skipping MCP setup');
+      return;
+    }
+
     // Log error but don't fail setup - MCP is optional enhancement
-    logger.warn('Failed to create .mcp.json', {
-      error: (error as Error).message,
-      path: mcpConfigPath
+    logger.warn('Failed to setup Claude Code MCP configuration', {
+      error: errorMessage
     });
+  }
+}
+
+/**
+ * Setup Qwen (Alibaba Cloud) MCP configuration
+ *
+ * v12.7.0: Creates .qwen/.mcp.json for Qwen Code integration
+ * v12.8.0: Uses native `qwen mcp add` command
+ *
+ * Qwen provider is SDK-first with CLI fallback:
+ * - SDK mode: Uses DASHSCOPE_API_KEY or QWEN_API_KEY via OpenAI-compatible API
+ * - CLI mode: Uses Qwen Code CLI (qwen command) as fallback
+ *
+ * @param projectDir - Project root directory
+ * @param force - If true, remove and re-add MCP server to update config
+ * @returns Status of MCP configuration
+ */
+async function setupQwenMCPConfig(projectDir: string, force = false): Promise<SdkMCPStatus> {
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
+
+  try {
+    // Check if automatosx MCP server is already configured
+    const { stdout: listOutput } = await execAsync('qwen mcp list', { timeout: 10000 });
+
+    if (listOutput.includes('automatosx')) {
+      if (force) {
+        // Remove existing and re-add with fresh config
+        logger.info('Force mode: removing existing Qwen MCP server');
+        await execAsync('qwen mcp remove automatosx', { timeout: 10000 }).catch(() => {
+          // Ignore remove errors
+        });
+      } else {
+        logger.info('Qwen MCP server already configured');
+        return 'configured';
+      }
+    }
+
+    // Add automatosx MCP server using qwen mcp add command
+    // Format: qwen mcp add <name> <command> [args...]
+    // Environment variables are set via -e flag
+    const addCommand = `qwen mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`;
+
+    await execAsync(addCommand, { timeout: 30000 });
+
+    logger.info('Configured Qwen MCP integration via qwen mcp add');
+    return 'configured';
+  } catch (error) {
+    const errorMessage = (error as Error).message;
+
+    // If qwen command not found, skip silently
+    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
+      logger.debug('Qwen CLI not available, skipping MCP setup');
+      return 'skipped';
+    }
+
+    logger.warn('Failed to setup Qwen MCP configuration', {
+      error: errorMessage
+    });
+    return 'failed';
   }
 }
 

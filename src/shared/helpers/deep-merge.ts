@@ -6,6 +6,18 @@
  */
 
 /**
+ * Check if value is a plain object (not array, null, etc.)
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.prototype.toString.call(value) === '[object Object]'
+  );
+}
+
+/**
  * Deep merge two objects with proper null/undefined handling
  *
  * Behavior:
@@ -49,20 +61,23 @@ export function deepMerge<T extends object>(
   user: Partial<T> | undefined | null
 ): T {
   // Handle null/undefined user config
+  // BUG FIX: Return a shallow copy instead of the original reference
+  // to prevent accidental mutation of the defaults object
   if (user === null || user === undefined) {
-    return defaults;
+    return { ...defaults };
   }
 
-  // Start with shallow copy of defaults
-  const result = { ...defaults };
+  // Start with shallow copy of defaults - use Object.assign for proper typing
+  const result = Object.assign({}, defaults);
 
-  // Merge user values
-  for (const key in user) {
+  // Merge user values using Object.keys with proper typing
+  const userKeys = Object.keys(user) as Array<keyof T>;
+  for (const key of userKeys) {
     const userValue = user[key];
 
     // Explicit null = disable feature (set to undefined)
     if (userValue === null) {
-      result[key] = undefined as any;
+      (result as Record<keyof T, unknown>)[key] = undefined;
       continue;
     }
 
@@ -74,18 +89,14 @@ export function deepMerge<T extends object>(
     const defaultValue = defaults[key];
 
     // Recursively merge nested objects
-    if (
-      typeof userValue === 'object' &&
-      typeof defaultValue === 'object' &&
-      !Array.isArray(userValue) &&
-      !Array.isArray(defaultValue) &&
-      userValue !== null &&
-      defaultValue !== null
-    ) {
-      result[key] = deepMerge(defaultValue, userValue as any);
+    if (isPlainObject(userValue) && isPlainObject(defaultValue)) {
+      (result as Record<keyof T, unknown>)[key] = deepMerge(
+        defaultValue as object,
+        userValue as Partial<object>
+      );
     } else {
       // Replace primitives and arrays
-      result[key] = userValue as any;
+      (result as Record<keyof T, unknown>)[key] = userValue;
     }
   }
 

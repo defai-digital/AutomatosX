@@ -201,6 +201,10 @@ export interface ProviderConfig {
   /** Sandbox mode configuration for file system access control */
   sandbox?: SandboxConfig;
 
+  // v12.7.0: Execution mode for hybrid providers (Qwen, GLM, Grok)
+  /** Execution mode: 'sdk' (default), 'cli', or 'auto' (SDK with CLI fallback) */
+  mode?: 'sdk' | 'cli' | 'auto';
+
   // v13.0.0: ax-cli configuration REMOVED (deprecated)
   // Use ax-glm and ax-grok providers instead
 }

@@ -82,7 +82,7 @@ export const resumeCommand: CommandModule<Record<string, unknown>, ResumeOptions
       process.exit(1);
     }
 
-    const runId = argv['run-id'] as string;
+    const runId = argv['run-id'];
 
     console.log(chalk.blue.bold(`\n🔄 AutomatosX - Resuming ${runId.substring(0, 8)}...\n`));
 

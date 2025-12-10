@@ -107,7 +107,7 @@ export function detectHardcode(
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  config: RefactorConfig
+  _config: RefactorConfig
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
 
@@ -281,8 +281,8 @@ function detectHardcodedPaths(
     // Skip comments
     if (/^\s*\/\//.test(line) || /^\s*\*/.test(line)) continue;
 
-    let match;
-    while ((match = pattern.exec(line)) !== null) {
+    let _match;
+    while ((_match = pattern.exec(line)) !== null) {
       findings.push(
         createFinding(
           filePath,
@@ -331,8 +331,8 @@ function detectHardcodedCredentials(
     // Skip example/placeholder values
     if (/(?:example|placeholder|dummy|test|xxx)/i.test(line)) continue;
 
-    let match;
-    while ((match = pattern.exec(line)) !== null) {
+    let _match;
+    while ((_match = pattern.exec(line)) !== null) {
       // Skip process.env references
       if (/process\.env/.test(line)) continue;
 

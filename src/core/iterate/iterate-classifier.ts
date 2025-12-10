@@ -138,7 +138,7 @@ export class IterateClassifier {
           if (candidates.length > 0) {
             // Pick highest confidence
             result = candidates.reduce((best, current) =>
-              current!.confidence > best!.confidence ? current : best
+              current.confidence > best.confidence ? current : best
             );
             method = 'pattern_library'; // Default to pattern
             reason = 'Best match from multiple stages';

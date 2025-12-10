@@ -18,8 +18,7 @@ import { logger } from '../../shared/logging/logger.js';
 import { AX_PATHS, DATABASE } from '../validation-limits.js';
 import {
   decompressPayload,
-  compressWithInfo,
-  isGzipCompressed
+  compressWithInfo
 } from './compression.js';
 import {
   type Task,

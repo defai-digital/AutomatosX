@@ -9,7 +9,7 @@
 
 import { readFile, writeFile, readdir, mkdir, realpath, stat } from 'fs/promises';
 import { join, basename, extname, dirname, relative, sep } from 'path';
-import { parse as parseToml, stringify as stringifyToml } from '@iarna/toml';
+import { parse as parseToml } from '@iarna/toml';
 import type { TomlCommand, CommandInfo, TranslationOptions } from './types.js';
 import { GeminiCLIError, GeminiCLIErrorType } from './types.js';
 import { validateTomlCommand } from './utils/validation.js';
@@ -320,7 +320,7 @@ export class CommandTranslator {
     if (baseDir === undefined) {
       try {
         baseDir = await realpath(dir);
-      } catch (error) {
+      } catch {
         // Directory doesn't exist or not accessible
         return commands;
       }
@@ -345,7 +345,7 @@ export class CommandTranslator {
         let realPath: string;
         try {
           realPath = await realpath(fullPath);
-        } catch (error) {
+        } catch {
           // Skip if can't resolve path
           console.warn(`[Security] Cannot resolve path: ${fullPath}`);
           continue;
@@ -399,7 +399,7 @@ export class CommandTranslator {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // Directory may not exist or not be accessible
       // Return empty array
     }

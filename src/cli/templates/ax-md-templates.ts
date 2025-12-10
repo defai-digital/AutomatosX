@@ -27,7 +27,7 @@ function getCurrentDate(): string {
  * Minimal template - bare essentials
  */
 export function generateMinimalTemplate(context: TemplateContext): string {
-  const { projectName, agents = [], testCommand = 'npm test', buildCommand = 'npm run build' } = context;
+  const { agents = [], testCommand = 'npm test', buildCommand = 'npm run build' } = context;
 
   // Generate agent rules
   const agentRules = agents.length > 0
@@ -50,7 +50,6 @@ ${agentRules}
  */
 export function generateStandardTemplate(context: TemplateContext): string {
   const {
-    projectName,
     projectDescription = '[Brief description of your project]',
     agents = ['backend', 'frontend', 'quality', 'security'],
     testCommand = 'npm test',
@@ -117,7 +116,6 @@ export function generateComprehensiveTemplate(context: TemplateContext): string 
   const {
     projectName,
     projectDescription = '[Brief description of your project]',
-    agents = ['backend', 'frontend', 'quality', 'security', 'devops'],
     testCommand = 'npm test',
     buildCommand = 'npm run build',
     deployCommand = 'npm run deploy:staging',

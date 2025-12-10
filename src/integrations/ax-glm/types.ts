@@ -1,29 +1,48 @@
 /**
  * Type definitions for ax-glm integration
  *
+ * v12.8.0: Updated to match ax-cli v4.3.15 SDK
+ *
  * @module integrations/ax-glm/types
  */
 
 /**
- * Supported GLM models
+ * Supported GLM models (ax-cli v4.3.15)
+ *
+ * @see https://github.com/defai-digital/ax-cli
  */
 export type GLMModel =
-  | 'glm-4.6'      // 200K context, thinking mode
-  | 'glm-4.5v'     // 64K context, vision capability
-  | 'glm-4'        // 128K context (default)
-  | 'glm-4-flash'  // Fast, cost-effective
-  // Legacy aliases
+  | 'glm-4.6'      // 200K context, thinking mode (most capable)
+  | 'glm-4.6v'     // 128K context, vision + thinking
+  | 'glm-4-flash'  // 128K context, fast
+  | 'cogview-4'    // Image generation
+  // Convenience aliases
+  | 'glm-latest'   // Maps to glm-4.6
+  | 'glm-vision'   // Maps to glm-4.6v
+  | 'glm-fast'     // Maps to glm-4-flash
+  | 'glm-image'    // Maps to cogview-4
+  // Legacy aliases (deprecated)
   | 'glm-4-plus'   // Maps to glm-4.6
-  | 'glm-4v'       // Maps to glm-4.5v
+  | 'glm-4.5v'     // Maps to glm-4.6v (upgraded)
+  | 'glm-4v'       // Maps to glm-4.6v
+  | 'glm-4'        // Maps to glm-4.6 (default upgraded)
   | 'glm-4-air'    // Maps to glm-4-flash
   | 'glm-4-airx';  // Maps to glm-4-flash
 
 /**
- * Model mapping from legacy to current names
+ * Model mapping from aliases/legacy to current names
  */
 export const GLM_MODEL_MAPPING: Record<string, string> = {
+  // Convenience aliases (ax-cli v4.3.15)
+  'glm-latest': 'glm-4.6',
+  'glm-vision': 'glm-4.6v',
+  'glm-fast': 'glm-4-flash',
+  'glm-image': 'cogview-4',
+  // Legacy aliases (deprecated)
   'glm-4-plus': 'glm-4.6',
-  'glm-4v': 'glm-4.5v',
+  'glm-4.5v': 'glm-4.6v',
+  'glm-4v': 'glm-4.6v',
+  'glm-4': 'glm-4.6',
   'glm-4-air': 'glm-4-flash',
   'glm-4-airx': 'glm-4-flash'
 };
@@ -76,9 +95,9 @@ export interface GLMExecutionOptions {
 export const GLM_DEFAULT_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
 
 /**
- * Default model
+ * Default model (ax-cli v4.3.15: glm-4.6 is most capable)
  */
-export const GLM_DEFAULT_MODEL: GLMModel = 'glm-4';
+export const GLM_DEFAULT_MODEL: GLMModel = 'glm-4.6';
 
 /**
  * Default CLI command

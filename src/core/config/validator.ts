@@ -4,7 +4,6 @@
  * Validates AutomatosX configuration against schema
  */
 
-import type { ProviderConfig, MemoryConfig, WorkspaceConfig, LoggingConfig } from '../../types/config.js';
 import type { LogLevel } from '../../types/logger.js';
 import { VALIDATION_LIMITS } from '../validation-limits.js';
 

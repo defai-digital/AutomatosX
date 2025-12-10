@@ -11,6 +11,9 @@ import { TeamManager } from '../../../core/team-manager.js';
 import { logger } from '../../../shared/logging/logger.js';
 import { getPackageRoot } from '../../../shared/helpers/package-root.js';
 
+// Pre-compiled RegExp for YAML extension stripping (avoid recreation in loops)
+const YAML_EXT_REGEX = /\.(yaml|yml)$/;
+
 /**
  * Template information
  */
@@ -87,7 +90,7 @@ export async function listAvailableTemplates(baseDir?: string): Promise<Template
       const files = await readdir(projectTemplatesDir);
       for (const file of files) {
         if (extname(file) === '.yaml' || extname(file) === '.yml') {
-          const name = file.replace(/\.(yaml|yml)$/, '');
+          const name = file.replace(YAML_EXT_REGEX, '');
           templates.push({
             name,
             path: join(projectTemplatesDir, file),
@@ -109,7 +112,7 @@ export async function listAvailableTemplates(baseDir?: string): Promise<Template
       const files = await readdir(builtinTemplatesDir);
       for (const file of files) {
         if (extname(file) === '.yaml' || extname(file) === '.yml') {
-          const name = file.replace(/\.(yaml|yml)$/, '');
+          const name = file.replace(YAML_EXT_REGEX, '');
 
           // Skip if already added from project templates
           if (templates.find(t => t.name === name)) {

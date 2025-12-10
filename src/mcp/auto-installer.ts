@@ -13,9 +13,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { writeFile } from 'fs/promises';
 import { logger } from '../shared/logging/logger.js';
-import type { MCPRegistryEntry, MCPDiscoveryResult, KNOWN_MCP_SERVERS } from './types-common.js';
+import type { MCPRegistryEntry, MCPDiscoveryResult } from './types-common.js';
 
 const execAsync = promisify(exec);
 
@@ -198,7 +197,7 @@ export class AutoInstaller {
       logger.debug('AutoInstaller: Executing install command', { command });
 
       // Execute installation
-      const { stdout, stderr } = await execAsync(command, {
+      const { stderr } = await execAsync(command, {
         timeout: options.timeoutMs || 120000, // 2 minutes default
         cwd: options.installDir || this.installDir,
       });

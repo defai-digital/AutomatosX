@@ -11,6 +11,7 @@
  * - Codex CLI (codex)
  * - glm (GLM) - v12.0.0: SDK-first provider (Zhipu AI)
  * - grok (Grok) - v12.0.0: SDK-first provider (xAI)
+ * - qwen (Qwen) - v12.7.0: SDK-first provider with CLI fallback (Alibaba Cloud)
  *
  * @module core/provider-detector
  */
@@ -28,6 +29,7 @@ export interface DetectedProviders {
   'codex': boolean;
   'glm': boolean;
   'grok': boolean;
+  'qwen': boolean;  // v12.7.0: Qwen Code (Alibaba Cloud)
 }
 
 export interface ProviderInfo {
@@ -55,12 +57,14 @@ export interface ProviderInfo {
  */
 export class ProviderDetector {
   // v12.0.0: Removed ax-cli, added glm/grok (SDK-first providers)
+  // v12.7.0: Added qwen (SDK-first with CLI fallback)
   private static readonly PROVIDER_COMMANDS = {
     'claude-code': 'claude',
     'gemini-cli': 'gemini',
     'codex': 'codex',
     'glm': 'glm',      // v12.0.0: Native GLM provider (SDK-first)
-    'grok': 'grok'     // v12.0.0: Native Grok provider (SDK-first)
+    'grok': 'grok',    // v12.0.0: Native Grok provider (SDK-first)
+    'qwen': 'qwen'     // v12.7.0: Qwen Code provider (SDK-first with CLI fallback)
   } as const;
 
   /**
@@ -86,18 +90,26 @@ export class ProviderDetector {
 
     // Run all detections in parallel for better performance
     // v12.0.0: glm/grok are SDK-first, always "available" (no CLI detection needed)
+    // v12.7.0: qwen is SDK-first but also checks for CLI (DASHSCOPE_API_KEY or qwen CLI)
     const results = await Promise.all([
       this.isCommandAvailable('claude-code'),
       this.isCommandAvailable('gemini-cli'),
-      this.isCommandAvailable('codex')
+      this.isCommandAvailable('codex'),
+      this.isCommandAvailable('qwen')
     ]);
+
+    // v12.7.0: Qwen is available if either API key is set OR CLI is installed
+    const qwenApiKeySet = !!(process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY);
+    const qwenCliAvailable = results[3];
+    const qwenAvailable = qwenApiKeySet || qwenCliAvailable;
 
     const detected: DetectedProviders = {
       'claude-code': results[0],
       'gemini-cli': results[1],
       'codex': results[2],
       'glm': true,   // SDK-first: always available via SDK
-      'grok': true   // SDK-first: always available via SDK
+      'grok': true,  // SDK-first: always available via SDK
+      'qwen': qwenAvailable  // v12.7.0: SDK-first with CLI fallback
     };
 
     const foundProviders = Object.entries(detected)
@@ -214,13 +226,17 @@ export class ProviderDetector {
    * ```
    */
   async getVersion(provider: keyof DetectedProviders): Promise<string | undefined> {
-    // Handle SDK-first providers (GLM, Grok) - no CLI to check
+    // Handle SDK-first providers (GLM, Grok, Qwen) - may have CLI fallback
     if (provider === 'glm') {
       return this.getGLMVersion();
     }
 
     if (provider === 'grok') {
       return this.getGrokVersion();
+    }
+
+    if (provider === 'qwen') {
+      return this.getQwenVersion();
     }
 
     const command = ProviderDetector.PROVIDER_COMMANDS[provider];
@@ -276,6 +292,22 @@ export class ProviderDetector {
   }
 
   /**
+   * Get Qwen provider version info (SDK-first with CLI fallback)
+   *
+   * v12.7.0: Qwen is an SDK-first provider using OpenAI-compatible API (DashScope).
+   * Returns SDK info with API key status or CLI availability.
+   */
+  private getQwenVersion(): string {
+    const apiKey = process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY;
+
+    if (apiKey) {
+      return 'SDK v1 (qwen-turbo, API ready)';
+    }
+
+    return 'SDK v1 (qwen-turbo, CLI fallback)';
+  }
+
+  /**
    * Get list of detected provider names
    *
    * Returns a simple array of provider names that were detected.
@@ -312,7 +344,8 @@ export class ProviderDetector {
       'gemini-cli': 'Gemini CLI',
       'codex': 'Codex CLI',
       'glm': 'GLM (Zhipu AI)',
-      'grok': 'Grok (xAI)'
+      'grok': 'Grok (xAI)',
+      'qwen': 'Qwen (Alibaba Cloud)'  // v12.7.0
     };
 
     return nameMap[provider] || provider;

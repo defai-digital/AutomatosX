@@ -61,6 +61,8 @@ export abstract class BaseProvider implements Provider {
     'ax-glm',        // v12.0.0: Alias for glm
     'grok',          // v12.0.0: Native Grok provider (xAI)
     'ax-grok',       // v12.0.0: Alias for grok
+    'qwen',          // v12.7.0: Qwen Code provider (Alibaba Cloud)
+    'qwen-code',     // v12.7.0: Alias for qwen
     'test-provider'  // For unit tests
   ] as const;
 
@@ -293,7 +295,7 @@ export abstract class BaseProvider implements Provider {
               if (line.trim()) {
                 // Show stderr in debug mode or as warnings
                 if (debugMode) {
-                  progressParser!.update({
+                  progressParser.update({
                     type: 'raw',
                     message: chalk.yellow('[stderr] ') + line
                   });
@@ -564,7 +566,7 @@ export abstract class BaseProvider implements Provider {
         if (readlineInterface) {
           try {
             readlineInterface.close();
-          } catch (error) {
+          } catch {
             // Ignore cleanup errors
           } finally {
             readlineInterface = null;
@@ -573,7 +575,7 @@ export abstract class BaseProvider implements Provider {
         if (stderrInterface) {
           try {
             stderrInterface.close();
-          } catch (error) {
+          } catch {
             // Ignore cleanup errors
           } finally {
             stderrInterface = null;
@@ -808,7 +810,7 @@ export abstract class BaseProvider implements Provider {
       }
       // Note: latencyMs is preserved from previous execute() calls
       return available;
-    } catch (error) {
+    } catch {
       this.health.available = false;
       this.health.errorRate = 1;
       this.health.lastCheck = Date.now();
@@ -1023,6 +1025,9 @@ export abstract class BaseProvider implements Provider {
     } else if (providerName === 'grok' || providerName === 'ax-grok') {
       // v12.0.0: Native Grok provider
       retryableProvider = 'grok';
+    } else if (providerName === 'qwen' || providerName === 'qwen-code') {
+      // v12.7.0: Qwen Code provider
+      retryableProvider = 'qwen';
     }
 
     return shouldRetryError(error, retryableProvider);

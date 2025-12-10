@@ -1,83 +1,124 @@
 /**
  * Project Context Loader
  *
- * Loads and parses AX.md project context files
- * Provides project-specific instructions for AutomatosX CLI
+ * Loads and parses project context files (ax-cli compatible):
+ * - ax.index.json (project root) - Shared project index
+ * - .automatosx/CUSTOM.md - Custom AI instructions
+ *
+ * The ax.index.json is the primary source of project understanding.
+ * It's shared across all AI CLIs (ax-cli, ax-glm, ax-grok, automatosx).
  *
  * @since v7.1.0
+ * @updated v12.9.0 - Simplified to ax-cli style (ax.index.json at root)
  */
 
 import { readFile, stat, realpath, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'path';
-import yaml from 'yaml';
 import { logger } from '../shared/logging/logger.js';
 
 // Maximum context size: 100KB (security limit)
 const MAX_CONTEXT_SIZE = 100 * 1024;
 
-// Cache TTL: 5 minutes
+// Default cache TTL: 5 minutes
 const DEFAULT_CACHE_TTL = 300_000;
 
-/**
- * Agent delegation rule parsed from AX.md
- */
-export interface AgentRule {
-  taskType: string;          // e.g., "backend", "frontend"
-  patterns: string[];        // File patterns like ["api/*", "*.go"]
-  defaultAgent: string;      // Agent name like "@backend"
-  autoReview?: boolean;      // Auto-trigger review agent
-  requireApproval?: boolean; // Require user approval
-}
+// 24 hours in milliseconds (for staleness check)
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Project metadata
+ * ax.index.json structure (ax-cli compatible)
  */
-export interface ProjectMetadata {
-  name?: string;
-  version?: string;
-  lastUpdated?: string;
-  description?: string;
-}
+export interface AxIndex {
+  // Core metadata
+  projectName: string;
+  version: string;
+  projectType: string;
+  language: string;
 
-/**
- * Project context configuration from ax.config.yml
- */
-export interface ProjectConfig {
-  agents?: Record<string, {
+  // Stack info
+  framework?: string;
+  buildTool?: string;
+  testFramework?: string;
+  packageManager: string;
+  hasTypeScript: boolean;
+  isMonorepo: boolean;
+
+  // Structure
+  entryPoint?: string;
+  sourceDirectory?: string;
+  testDirectory?: string;
+
+  // Module map
+  modules: Array<{
+    path: string;
+    purpose: string;
     patterns?: string[];
-    default_for?: string[];
-    auto_review?: boolean;
+    exports?: string[];
   }>;
-  rules?: Array<{
+
+  // Key abstractions
+  abstractions: Array<{
     name: string;
-    pattern: string;
-    require_approval?: boolean;
-    agent?: string;
+    type: 'interface' | 'class' | 'function' | 'type' | 'pattern';
+    location: string;
+    description?: string;
   }>;
-  commands?: Record<string, string>;
-  persistent_context?: string[];
-  project?: ProjectMetadata;
+
+  // Commands
+  commands: Record<string, {
+    script: string;
+    description: string;
+    category: 'development' | 'testing' | 'building' | 'quality' | 'deployment' | 'other';
+  }>;
+
+  // Dependencies summary
+  dependencies: {
+    production: string[];
+    development: string[];
+    total: number;
+  };
+
+  // Repository
+  repository?: string;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+
+  // Analysis tier (ax-cli compatible)
+  analysisTier: number;
 }
 
 /**
  * Complete project context
  */
 export interface ProjectContext {
-  markdown?: string;           // Raw AX.md content
-  config?: ProjectConfig;      // Parsed ax.config.yml
-  agentRules?: AgentRule[];    // Extracted agent rules
-  guardrails?: string[];       // Critical prohibitions
-  commands?: Record<string, string>;  // Canonical commands
-  metadata?: ProjectMetadata;  // Project metadata
-  contextPrompt?: string;      // Formatted prompt for injection
+  // ax.index.json content (primary source)
+  index?: AxIndex;
+
+  // Custom instructions from CUSTOM.md
+  customInstructions?: string;
+
+  // Extracted guardrails from CUSTOM.md
+  guardrails?: string[];
+
+  // Commands from index
+  commands?: Record<string, string>;
+
+  // Formatted prompt for agent injection
+  contextPrompt?: string;
+
+  // Staleness info
+  isStale?: boolean;
+  lastUpdated?: Date;
 }
 
 /**
  * Project Context Loader
  *
- * Loads AX.md and ax.config.yml from project root
- * Provides caching and parsing
+ * Loads project context from ax.index.json (ax-cli compatible)
+ * Provides caching and staleness detection
  */
 export class ProjectContextLoader {
   private cache?: ProjectContext;
@@ -111,83 +152,86 @@ export class ProjectContextLoader {
 
     const context: ProjectContext = {};
 
-    // Load AX.md (Markdown)
+    // Load ax.index.json (primary source)
     try {
-      const mdPath = path.join(this.projectRoot, 'AX.md');
-      const resolvedPath = await realpath(mdPath).catch(() => null);
+      const indexPath = path.join(this.projectRoot, 'ax.index.json');
+      const resolvedPath = await realpath(indexPath).catch(() => null);
 
-      // BUG #34 FIX: Security - Use relative() for proper boundary check (prevents /repo vs /repo-archive)
       if (resolvedPath) {
         const rel = path.relative(this.projectRoot, resolvedPath);
         if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
-        const stats = await stat(resolvedPath);
+          const stats = await stat(resolvedPath);
 
-        // Security: Check file size
-        if (stats.size > MAX_CONTEXT_SIZE) {
-          logger.warn('AX.md too large, ignoring', {
-            size: stats.size,
-            limit: MAX_CONTEXT_SIZE
-          });
-        } else {
-          context.markdown = await readFile(resolvedPath, 'utf-8');
-          logger.info('Loaded AX.md', {
-            size: stats.size,
-            lines: context.markdown.split('\n').length
-          });
+          // Security: Check file size
+          if (stats.size > MAX_CONTEXT_SIZE) {
+            logger.warn('ax.index.json too large, ignoring', {
+              size: stats.size,
+              limit: MAX_CONTEXT_SIZE
+            });
+          } else {
+            const indexContent = await readFile(resolvedPath, 'utf-8');
+            context.index = JSON.parse(indexContent) as AxIndex;
+            context.lastUpdated = stats.mtime;
 
-          // Parse markdown sections
-          context.agentRules = this.parseAgentRules(context.markdown);
-          context.guardrails = this.parseGuardrails(context.markdown);
-          context.commands = this.parseCommands(context.markdown);
-          context.metadata = this.parseMetadata(context.markdown);
+            // Check staleness
+            const age = Date.now() - stats.mtime.getTime();
+            context.isStale = age > STALE_THRESHOLD_MS;
+
+            logger.info('Loaded ax.index.json', {
+              projectName: context.index.projectName,
+              projectType: context.index.projectType,
+              isStale: context.isStale,
+              ageHours: Math.floor(age / (1000 * 60 * 60))
+            });
+
+            // Extract commands for easy access
+            if (context.index.commands) {
+              context.commands = {};
+              for (const [name, cmd] of Object.entries(context.index.commands)) {
+                context.commands[name] = cmd.script;
+              }
+            }
+          }
         }
-        }  // BUG #34 FIX: Close the boundary check if-statement
       }
     } catch (error) {
-      // AX.md is optional, ignore if not found
+      // ax.index.json is optional
       if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
-        logger.warn('Error loading AX.md', { error });
+        logger.warn('Error loading ax.index.json', { error });
       }
     }
 
-    // Load ax.config.yml (YAML) - optional, advanced users
+    // Load .automatosx/CUSTOM.md
     try {
-      const ymlPath = path.join(this.projectRoot, 'ax.config.yml');
-      const resolvedPath = await realpath(ymlPath).catch(() => null);
+      const customMdPath = path.join(this.projectRoot, '.automatosx', 'CUSTOM.md');
+      const resolvedPath = await realpath(customMdPath).catch(() => null);
 
-      // BUG #34 FIX: Security - Use relative() for proper boundary check (prevents /repo vs /repo-archive)
       if (resolvedPath) {
         const rel = path.relative(this.projectRoot, resolvedPath);
         if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
-        const stats = await stat(resolvedPath);
+          const stats = await stat(resolvedPath);
 
-        // Security: Check file size
-        if (stats.size > MAX_CONTEXT_SIZE) {
-          logger.warn('ax.config.yml too large, ignoring', {
-            size: stats.size,
-            limit: MAX_CONTEXT_SIZE
-          });
-        } else {
-          const ymlContent = await readFile(resolvedPath, 'utf-8');
-          context.config = yaml.parse(ymlContent) as ProjectConfig;
-          logger.info('Loaded ax.config.yml', {
-            size: stats.size
-          });
+          if (stats.size > MAX_CONTEXT_SIZE) {
+            logger.warn('CUSTOM.md too large, ignoring', {
+              size: stats.size,
+              limit: MAX_CONTEXT_SIZE
+            });
+          } else {
+            context.customInstructions = await readFile(resolvedPath, 'utf-8');
+            logger.info('Loaded CUSTOM.md', {
+              size: stats.size,
+              lines: context.customInstructions.split('\n').length
+            });
 
-          // Merge config into context
-          if (context.config.commands) {
-            context.commands = { ...context.commands, ...context.config.commands };
-          }
-          if (context.config.project) {
-            context.metadata = { ...context.metadata, ...context.config.project };
+            // Parse guardrails from CUSTOM.md
+            context.guardrails = this.parseGuardrails(context.customInstructions);
           }
         }
-        }  // BUG #34 FIX: Close the boundary check if-statement
       }
     } catch (error) {
-      // ax.config.yml is optional, ignore if not found
+      // CUSTOM.md is optional
       if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
-        logger.warn('Error loading ax.config.yml', { error });
+        logger.warn('Error loading CUSTOM.md', { error });
       }
     }
 
@@ -199,11 +243,11 @@ export class ProjectContextLoader {
     this.cacheExpiry = Date.now() + this.cacheTTL;
 
     logger.info('Project context loaded', {
-      hasMarkdown: !!context.markdown,
-      hasConfig: !!context.config,
-      agentRules: context.agentRules?.length ?? 0,
+      hasIndex: !!context.index,
+      hasCustomInstructions: !!context.customInstructions,
       guardrails: context.guardrails?.length ?? 0,
-      commands: Object.keys(context.commands ?? {}).length
+      commands: Object.keys(context.commands ?? {}).length,
+      isStale: context.isStale
     });
 
     return context;
@@ -222,8 +266,8 @@ export class ProjectContextLoader {
    * Check if context exists (without loading)
    */
   async exists(): Promise<boolean> {
-    const mdPath = path.join(this.projectRoot, 'AX.md');
-    const ymlPath = path.join(this.projectRoot, 'ax.config.yml');
+    const indexPath = path.join(this.projectRoot, 'ax.index.json');
+    const customMdPath = path.join(this.projectRoot, '.automatosx', 'CUSTOM.md');
 
     const checkExists = async (filePath: string): Promise<boolean> => {
       try {
@@ -234,92 +278,73 @@ export class ProjectContextLoader {
       }
     };
 
-    const [mdExists, ymlExists] = await Promise.all([
-      checkExists(mdPath),
-      checkExists(ymlPath)
+    const [indexExists, customMdExists] = await Promise.all([
+      checkExists(indexPath),
+      checkExists(customMdPath)
     ]);
 
-    return mdExists || ymlExists;
+    return indexExists || customMdExists;
   }
 
   /**
-   * Parse agent delegation rules from markdown
-   *
-   * Looks for patterns like:
-   * - Backend changes → @backend
-   * - API endpoints → @backend, @security
+   * Check if ax.index.json is stale (older than 24 hours)
    */
-  private parseAgentRules(markdown: string): AgentRule[] {
-    const rules: AgentRule[] = [];
-
-    // Find "## Agent Delegation Rules" section
-    const sectionRegex = /##\s+Agent\s+Delegation\s+Rules[^\n]*\n([\s\S]*?)(?=\n##|$)/i;
-    const match = markdown.match(sectionRegex);
-
-    if (!match || !match[1]) {
-      return rules;
+  async isStale(): Promise<boolean> {
+    try {
+      const indexPath = path.join(this.projectRoot, 'ax.index.json');
+      const stats = await stat(indexPath);
+      const age = Date.now() - stats.mtime.getTime();
+      return age > STALE_THRESHOLD_MS;
+    } catch {
+      return true; // File doesn't exist, consider it stale
     }
-
-    const section = match[1];
-
-    // Parse lines like: "- Backend changes → @backend"
-    // Use non-capturing group for arrow to avoid shifting group numbers
-    const lineRegex = /^[-*]\s+(.+?)\s+(?:→|->)+\s+(.+?)$/gm;
-    let lineMatch;
-
-    while ((lineMatch = lineRegex.exec(section)) !== null) {
-      const taskType = lineMatch[1]?.trim() ?? '';
-      const agentsText = lineMatch[2]?.trim() ?? ''; // Group 2 is now the agents (arrow is non-capturing)
-
-      // Split multiple agents: "@backend, @security"
-      const agents = agentsText.split(',').map(a => a.trim()).filter(Boolean);
-      const defaultAgent = agents[0];
-
-      if (defaultAgent) {
-        rules.push({
-          taskType,
-          patterns: [],  // TODO: Parse file patterns if specified
-          defaultAgent,
-          autoReview: agents.length > 1
-        });
-      }
-    }
-
-    return rules;
   }
 
   /**
-   * Parse guardrails/prohibitions from markdown
+   * Parse guardrails from CUSTOM.md
    *
-   * Looks for "## Critical Guardrails" or "## Critical Rules" section
-   * Extracts items marked with ⚠️ or under NEVER headings
+   * Looks for DO/DON'T sections in ax-cli format
    */
   private parseGuardrails(markdown: string): string[] {
     const guardrails: string[] = [];
 
-    // Find critical sections
-    const sectionRegex = /##\s+(Critical\s+Guardrails|Critical\s+Rules|Never)[^\n]*\n([\s\S]*?)(?=\n##|$)/gi;
+    // Find DON'T section (critical prohibitions)
+    const dontRegex = /###\s+DON'T[^\n]*\n([\s\S]*?)(?=\n###|$)/i;
+    const dontMatch = markdown.match(dontRegex);
+
+    if (dontMatch && dontMatch[1]) {
+      const section = dontMatch[1];
+      const bulletRegex = /^[-*]\s+(.+?)$/gm;
+      let bulletMatch;
+
+      while ((bulletMatch = bulletRegex.exec(section)) !== null) {
+        const rule = bulletMatch[1]?.trim();
+        if (rule) {
+          guardrails.push(rule);
+        }
+      }
+    }
+
+    // Also check for Critical Rules or Guardrails sections
+    const criticalRegex = /##\s+(Critical\s+Guardrails|Critical\s+Rules|Never)[^\n]*\n([\s\S]*?)(?=\n##|$)/gi;
     let match;
 
-    while ((match = sectionRegex.exec(markdown)) !== null) {
+    while ((match = criticalRegex.exec(markdown)) !== null) {
       const section = match[2];
       if (!section) continue;
 
-      // Extract bullet points
       const bulletRegex = /^[-*]\s+(.+?)$/gm;
       let bulletMatch;
 
       while ((bulletMatch = bulletRegex.exec(section)) !== null) {
         let rule = bulletMatch[1]?.trim() ?? '';
-
         // Remove emoji if present
         rule = rule.replace(/^[⚠️❌✅✓⚡🔒]+\s*/, '');
-
         // Remove markdown formatting
-        rule = rule.replace(/\*\*(.+?)\*\*/g, '$1');  // **bold**
-        rule = rule.replace(/`(.+?)`/g, '$1');        // `code`
+        rule = rule.replace(/\*\*(.+?)\*\*/g, '$1');
+        rule = rule.replace(/`(.+?)`/g, '$1');
 
-        if (rule.length > 0) {
+        if (rule.length > 0 && !guardrails.includes(rule)) {
           guardrails.push(rule);
         }
       }
@@ -329,132 +354,61 @@ export class ProjectContextLoader {
   }
 
   /**
-   * Parse commands from markdown code blocks
-   *
-   * Looks for "## Commands" or "## Canonical Commands" section
-   */
-  private parseCommands(markdown: string): Record<string, string> {
-    const commands: Record<string, string> = {};
-
-    // Find commands section
-    const sectionRegex = /##\s+(Canonical\s+)?Commands[^\n]*\n([\s\S]*?)(?=\n##|$)/i;
-    const match = markdown.match(sectionRegex);
-
-    if (!match) {
-      return commands;
-    }
-
-    const section = match[2];
-    if (!section) {
-      return commands;
-    }
-
-    // Extract from code block (```bash ... ```)
-    const codeBlockRegex = /```(?:bash|sh|shell)?\n([\s\S]*?)```/;
-    const codeMatch = section.match(codeBlockRegex);
-
-    if (codeMatch && codeMatch[1]) {
-      const lines = codeMatch[1].split('\n');
-
-      for (const line of lines) {
-        // Parse: "npm test        # Run tests"
-        const cmdMatch = line.match(/^([^\s#]+(?:\s+[^\s#]+)*)\s*#?\s*(.*)$/);
-        if (cmdMatch && cmdMatch[1]) {
-          const cmd = cmdMatch[1].trim();
-          const desc = cmdMatch[2]?.trim() ?? '';
-
-          // Use command as key if no description, otherwise use description
-          const key = desc || cmd;
-          commands[key] = cmd;
-        }
-      }
-    }
-
-    return commands;
-  }
-
-  /**
-   * Parse project metadata from markdown frontmatter or first section
-   */
-  private parseMetadata(markdown: string): ProjectMetadata {
-    const metadata: ProjectMetadata = {};
-
-    // Try to find "Last updated:" line
-    const lastUpdatedMatch = markdown.match(/>\s*Last\s+updated:\s*(.+?)$/im);
-    if (lastUpdatedMatch && lastUpdatedMatch[1]) {
-      metadata.lastUpdated = lastUpdatedMatch[1].trim();
-    }
-
-    // Try to find "Project:" line
-    const projectMatch = markdown.match(/>\s*Project:\s*(.+?)$/im);
-    if (projectMatch && projectMatch[1]) {
-      // Parse "my-app v1.0.0"
-      const parts = projectMatch[1].trim().split(/\s+v/);
-      // split() always returns at least one element, but use optional access for safety
-      metadata.name = parts[0] || '';
-      if (parts.length > 1 && parts[1]) {
-        metadata.version = parts[1];
-      }
-    }
-
-    // Try to extract from first H1
-    const h1Match = markdown.match(/^#\s+(.+?)$/m);
-    if (h1Match && h1Match[1] && !metadata.name) {
-      metadata.name = h1Match[1].replace(/Project Context for AutomatosX/i, '').trim();
-    }
-
-    return metadata;
-  }
-
-  /**
    * Build formatted context prompt for agent injection
    */
   private buildContextPrompt(context: ProjectContext): string {
-    if (!context.markdown && !context.config) {
+    if (!context.index && !context.customInstructions) {
       return '';
     }
 
     let prompt = '\n# PROJECT CONTEXT\n\n';
 
-    // Add guardrails first (highest priority)
+    // Add project info from index
+    if (context.index) {
+      prompt += `**Project:** ${context.index.projectName} v${context.index.version}\n`;
+      prompt += `**Type:** ${context.index.projectType}\n`;
+      prompt += `**Language:** ${context.index.language}`;
+      if (context.index.framework) {
+        prompt += ` + ${context.index.framework}`;
+      }
+      prompt += '\n\n';
+
+      // Add modules
+      if (context.index.modules.length > 0) {
+        prompt += '## Project Structure:\n\n';
+        for (const mod of context.index.modules.slice(0, 10)) {
+          prompt += `- \`${mod.path}/\` - ${mod.purpose}\n`;
+        }
+        prompt += '\n';
+      }
+
+      // Add available commands
+      if (context.commands && Object.keys(context.commands).length > 0) {
+        prompt += '## Available Commands:\n\n';
+        for (const [name, script] of Object.entries(context.commands).slice(0, 10)) {
+          prompt += `- ${name}: \`${script}\`\n`;
+        }
+        prompt += '\n';
+      }
+    }
+
+    // Add guardrails
     if (context.guardrails && context.guardrails.length > 0) {
       prompt += '## CRITICAL RULES (NEVER VIOLATE):\n\n';
-      context.guardrails.forEach(rule => {
+      for (const rule of context.guardrails) {
         prompt += `- ${rule}\n`;
-      });
+      }
       prompt += '\n';
     }
 
-    // Add agent delegation rules
-    if (context.agentRules && context.agentRules.length > 0) {
-      prompt += '## Agent Delegation Rules:\n\n';
-      context.agentRules.forEach(rule => {
-        prompt += `- ${rule.taskType} → ${rule.defaultAgent}\n`;
-      });
-      prompt += '\n';
-    }
-
-    // Add canonical commands
-    if (context.commands && Object.keys(context.commands).length > 0) {
-      prompt += '## Available Commands:\n\n';
-      Object.entries(context.commands).forEach(([desc, cmd]) => {
-        prompt += `- ${desc}: \`${cmd}\`\n`;
-      });
-      prompt += '\n';
-    }
-
-    // Add full markdown context (truncated if too large)
-    if (context.markdown) {
-      const MAX_PROMPT_LENGTH = 10_000; // ~2500 tokens
-      const contextToAdd = context.markdown.length > MAX_PROMPT_LENGTH
-        ? context.markdown.substring(0, MAX_PROMPT_LENGTH) + '\n\n[... context truncated for length ...]'
-        : context.markdown;
-
-      prompt += '## Full Project Context:\n\n';
-      prompt += contextToAdd;
-      prompt += '\n';
+    // Add staleness warning
+    if (context.isStale) {
+      prompt += '⚠️ **Note:** Project index is stale (>24h old). Run `ax init` to update.\n\n';
     }
 
     return prompt;
   }
 }
+
+// Re-export types for backwards compatibility
+export type { AxIndex as ProjectIndex };

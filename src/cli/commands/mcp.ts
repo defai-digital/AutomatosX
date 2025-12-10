@@ -37,11 +37,6 @@ interface McpStatusArgs {
   json?: boolean;
 }
 
-interface McpServerControlArgs {
-  server: string;
-  provider?: string;
-}
-
 interface McpDiscoverArgs {
   install?: boolean;
 }

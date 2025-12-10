@@ -17,10 +17,15 @@ import { ASTAnalyzer, createASTAnalyzer } from '../../bugfix/ast-analyzer.js';
 
 // Shared AST analyzer instance for dead code detection
 let astAnalyzer: ASTAnalyzer | null = null;
+let astInitialized = false;
 
-function getASTAnalyzer(): ASTAnalyzer {
+async function getASTAnalyzer(): Promise<ASTAnalyzer> {
   if (!astAnalyzer) {
     astAnalyzer = createASTAnalyzer(50); // Smaller cache for refactor detector
+  }
+  if (!astInitialized) {
+    await astAnalyzer.init();
+    astInitialized = true;
   }
   return astAnalyzer;
 }
@@ -98,13 +103,13 @@ export const DEAD_CODE_RULES: RefactorRule[] = [
 // Detector Function
 // ============================================================================
 
-export function detectDeadCode(
+export async function detectDeadCode(
   filePath: string,
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
   _config: RefactorConfig
-): RefactorFinding[] {
+): Promise<RefactorFinding[]> {
   const findings: RefactorFinding[] = [];
 
   // Detect unused imports
@@ -113,8 +118,8 @@ export function detectDeadCode(
   // Detect unused variables
   findings.push(...detectUnusedVariables(filePath, content, lines, ignoreState));
 
-  // Detect unreachable code
-  findings.push(...detectUnreachableCode(filePath, content, lines, ignoreState));
+  // Detect unreachable code (async to lazy-load TypeScript)
+  findings.push(...await detectUnreachableCode(filePath, content, lines, ignoreState));
 
   // Detect commented code blocks
   findings.push(...detectCommentedCode(filePath, content, lines, ignoreState));
@@ -279,17 +284,17 @@ function detectUnusedVariables(
  * Detect unreachable code using AST analysis
  * v12.8.0: Phase 4 - Reduced false positives via control flow analysis
  */
-function detectUnreachableCode(
+async function detectUnreachableCode(
   filePath: string,
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState
-): RefactorFinding[] {
+): Promise<RefactorFinding[]> {
   const findings: RefactorFinding[] = [];
 
   try {
     // Use AST-based detection for better accuracy
-    const analyzer = getASTAnalyzer();
+    const analyzer = await getASTAnalyzer();
     const sourceFile = analyzer.parseFile(content, filePath);
     const unreachableInfos = analyzer.analyzeUnreachableCode(sourceFile);
 

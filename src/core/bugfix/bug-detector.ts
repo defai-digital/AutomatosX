@@ -155,6 +155,7 @@ export class BugDetector {
   private rules: DetectionRule[];
   private config: BugfixConfig;
   private astAnalyzer: ASTAnalyzer;
+  private astInitialized = false;
 
   constructor(config: BugfixConfig, customRules?: DetectionRule[]) {
     this.config = config;
@@ -174,6 +175,16 @@ export class BugDetector {
       scope: config.scope,
       astEnabled: true
     });
+  }
+
+  /**
+   * Initialize AST analyzer (lazy loading to avoid bundling issues)
+   */
+  private async initAST(): Promise<void> {
+    if (!this.astInitialized) {
+      await this.astAnalyzer.init();
+      this.astInitialized = true;
+    }
   }
 
   /**
@@ -363,7 +374,7 @@ export class BugDetector {
 
       // v12.8.0: Use AST-based detection for rules that support it
       if (rule.useAST) {
-        const astFindings = this.applyASTRule(rule, content, lines, filePath, relativePath, ignoreState);
+        const astFindings = await this.applyASTRule(rule, content, lines, filePath, relativePath, ignoreState);
         findings.push(...astFindings);
       } else {
         // Apply regex-based detection
@@ -474,14 +485,16 @@ export class BugDetector {
    * Apply AST-based detection rule
    * v12.8.0: Uses TypeScript AST for accurate analysis
    */
-  private applyASTRule(
+  private async applyASTRule(
     rule: DetectionRule,
     content: string,
     lines: string[],
     filePath: string,
     relativePath: string,
     ignoreState: IgnoreState
-  ): BugFinding[] {
+  ): Promise<BugFinding[]> {
+    // Initialize AST analyzer (lazy loading to avoid bundling issues on Windows)
+    await this.initAST();
 
     try {
       // Route to specific AST detection based on rule type

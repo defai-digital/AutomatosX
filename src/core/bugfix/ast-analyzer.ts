@@ -4,12 +4,44 @@
  * Provides TypeScript AST-based analysis for accurate bug detection.
  * Reduces false positives by understanding code structure and semantics.
  *
+ * NOTE: TypeScript is lazy-loaded to avoid bundling issues on Windows.
+ * The bundler's ESM shims create a fake require() that throws errors,
+ * and TypeScript's internal code uses require('fs') for system detection.
+ * By lazy-loading, we avoid this issue at module load time.
+ *
  * @module core/bugfix/ast-analyzer
  * @since v12.8.0
  */
 
-import * as ts from 'typescript';
 import { logger } from '../../shared/logging/logger.js';
+
+// Type-only import for TypeScript API types (doesn't load at runtime)
+import type * as TypeScriptTypes from 'typescript';
+
+// Lazy-loaded TypeScript module
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ts: typeof TypeScriptTypes | null = null;
+
+/**
+ * Lazy-load TypeScript module.
+ * This avoids bundling issues where the ESM shim's fake require() throws errors.
+ */
+async function loadTypeScript(): Promise<typeof TypeScriptTypes> {
+  if (!ts) {
+    ts = await import('typescript');
+  }
+  return ts;
+}
+
+/**
+ * Get TypeScript module (must call loadTypeScript first)
+ */
+function getTS(): typeof TypeScriptTypes {
+  if (!ts) {
+    throw new Error('TypeScript not loaded. Call ASTAnalyzer.init() first.');
+  }
+  return ts;
+}
 
 /**
  * Information about a class found in the AST
@@ -121,7 +153,8 @@ export interface FunctionInfo {
  * AST cache entry
  */
 interface CacheEntry {
-  sourceFile: ts.SourceFile;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sourceFile: any; // TypeScriptTypes.SourceFile - using any to avoid type dependency at module load
   hash: string;
   accessedAt: number;
 }
@@ -131,19 +164,42 @@ interface CacheEntry {
  *
  * Provides TypeScript AST parsing and analysis for bug detection.
  * Uses LRU caching to optimize repeated analysis of the same files.
+ *
+ * IMPORTANT: Call init() before using any analysis methods.
  */
 export class ASTAnalyzer {
   private cache: Map<string, CacheEntry> = new Map();
   private maxCacheSize: number;
+  private initialized = false;
 
   constructor(maxCacheSize = 100) {
     this.maxCacheSize = maxCacheSize;
   }
 
   /**
-   * Parse a TypeScript/JavaScript file into an AST
+   * Initialize the analyzer by loading TypeScript.
+   * Must be called before any parse or analysis methods.
    */
-  parseFile(content: string, filePath: string): ts.SourceFile {
+  async init(): Promise<void> {
+    if (!this.initialized) {
+      await loadTypeScript();
+      this.initialized = true;
+    }
+  }
+
+  /**
+   * Check if the analyzer is initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Parse a TypeScript/JavaScript file into an AST.
+   * Note: init() must be called before this method.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parseFile(content: string, filePath: string): any { // Returns TypeScriptTypes.SourceFile
     const hash = this.hashContent(content);
     const cacheKey = filePath;
 
@@ -155,10 +211,11 @@ export class ASTAnalyzer {
     }
 
     // Parse new AST
-    const sourceFile = ts.createSourceFile(
+    const typescript = getTS();
+    const sourceFile = typescript.createSourceFile(
       filePath,
       content,
-      ts.ScriptTarget.Latest,
+      typescript.ScriptTarget.Latest,
       true, // setParentNodes - needed for traversal
       this.getScriptKind(filePath)
     );
@@ -179,14 +236,17 @@ export class ASTAnalyzer {
   /**
    * Find all class declarations in the file
    */
-  findClasses(sourceFile: ts.SourceFile): ClassInfo[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  findClasses(sourceFile: any): ClassInfo[] {
+    const typescript = getTS();
     const classes: ClassInfo[] = [];
 
-    const visit = (node: ts.Node): void => {
-      if (ts.isClassDeclaration(node) && node.name) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const visit = (node: any): void => {
+      if (typescript.isClassDeclaration(node) && node.name) {
         classes.push(this.extractClassInfo(node, sourceFile));
       }
-      ts.forEachChild(node, visit);
+      typescript.forEachChild(node, visit);
     };
 
     visit(sourceFile);
@@ -196,7 +256,8 @@ export class ASTAnalyzer {
   /**
    * Find classes that extend a specific base class
    */
-  findClassesExtending(sourceFile: ts.SourceFile, baseClassName: string | RegExp): ClassInfo[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  findClassesExtending(sourceFile: any, baseClassName: string | RegExp): ClassInfo[] {
     const allClasses = this.findClasses(sourceFile);
 
     return allClasses.filter(cls => {
@@ -230,11 +291,11 @@ export class ASTAnalyzer {
   /**
    * Find all function calls matching a pattern
    */
-  findCalls(sourceFile: ts.SourceFile, functionName: string | RegExp): CallInfo[] {
+  findCalls(sourceFile: TypeScriptTypes.SourceFile, functionName: string | RegExp): CallInfo[] {
     const calls: CallInfo[] = [];
 
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node)) {
+    const visit = (node: TypeScriptTypes.Node): void => {
+      if (getTS().isCallExpression(node)) {
         const callName = this.getCallExpressionName(node);
 
         const matches = typeof functionName === 'string'
@@ -257,7 +318,7 @@ export class ASTAnalyzer {
           });
         }
       }
-      ts.forEachChild(node, visit);
+      getTS().forEachChild(node, visit);
     };
 
     visit(sourceFile);
@@ -267,20 +328,20 @@ export class ASTAnalyzer {
   /**
    * Find the enclosing function for a given line number
    */
-  findEnclosingFunction(sourceFile: ts.SourceFile, lineNumber: number): FunctionInfo | null {
+  findEnclosingFunction(sourceFile: TypeScriptTypes.SourceFile, lineNumber: number): FunctionInfo | null {
     let result: FunctionInfo | null = null;
     const position = sourceFile.getPositionOfLineAndCharacter(lineNumber - 1, 0);
 
-    const visit = (node: ts.Node): void => {
+    const visit = (node: TypeScriptTypes.Node): void => {
       const start = sourceFile.getLineAndCharacterOfPosition(node.getStart());
       const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
 
       if (position >= node.getStart() && position <= node.getEnd()) {
         if (
-          ts.isFunctionDeclaration(node) ||
-          ts.isFunctionExpression(node) ||
-          ts.isArrowFunction(node) ||
-          ts.isMethodDeclaration(node)
+          getTS().isFunctionDeclaration(node) ||
+          getTS().isFunctionExpression(node) ||
+          getTS().isArrowFunction(node) ||
+          getTS().isMethodDeclaration(node)
         ) {
           const funcInfo = this.extractFunctionInfo(node, sourceFile);
           // Keep the innermost (most specific) function
@@ -288,7 +349,7 @@ export class ASTAnalyzer {
             result = funcInfo;
           }
         }
-        ts.forEachChild(node, visit);
+        getTS().forEachChild(node, visit);
       }
     };
 
@@ -299,7 +360,7 @@ export class ASTAnalyzer {
   /**
    * Track variable usage throughout the file
    */
-  trackVariableUsage(sourceFile: ts.SourceFile, variableName: string): VariableUsage | null {
+  trackVariableUsage(sourceFile: TypeScriptTypes.SourceFile, variableName: string): VariableUsage | null {
     let declarationLine = -1;
     const usageLines: number[] = [];
     let usedInCleanup = false;
@@ -307,9 +368,9 @@ export class ASTAnalyzer {
 
     const cleanupMethods = ['clearInterval', 'clearTimeout', 'removeListener', 'removeEventListener', 'off', 'destroy', 'dispose', 'close'];
 
-    const visit = (node: ts.Node): void => {
+    const visit = (node: TypeScriptTypes.Node): void => {
       // Find declaration
-      if (ts.isVariableDeclaration(node)) {
+      if (getTS().isVariableDeclaration(node)) {
         if (node.name.getText(sourceFile) === variableName) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
           declarationLine = line + 1;
@@ -317,21 +378,21 @@ export class ASTAnalyzer {
       }
 
       // Find usages
-      if (ts.isIdentifier(node) && node.text === variableName) {
+      if (getTS().isIdentifier(node) && node.text === variableName) {
         // Skip the declaration itself
-        if (!ts.isVariableDeclaration(node.parent) || node.parent.name !== node) {
+        if (!getTS().isVariableDeclaration(node.parent) || node.parent.name !== node) {
           const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
           usageLines.push(line + 1);
 
           // Check if used in cleanup call
           const parent = node.parent;
-          if (ts.isCallExpression(parent)) {
+          if (getTS().isCallExpression(parent)) {
             const callName = this.getCallExpressionName(parent);
             if (cleanupMethods.includes(callName)) {
               usedInCleanup = true;
               cleanupMethod = callName;
             }
-          } else if (ts.isCallExpression(parent?.parent)) {
+          } else if (getTS().isCallExpression(parent?.parent)) {
             // Check if passed as argument to cleanup function
             const callName = this.getCallExpressionName(parent.parent);
             if (cleanupMethods.includes(callName)) {
@@ -342,7 +403,7 @@ export class ASTAnalyzer {
         }
       }
 
-      ts.forEachChild(node, visit);
+      getTS().forEachChild(node, visit);
     };
 
     visit(sourceFile);
@@ -363,7 +424,7 @@ export class ASTAnalyzer {
   /**
    * Check if a method in a class calls clearInterval/clearTimeout on a variable
    */
-  methodClearsTimer(sourceFile: ts.SourceFile, classInfo: ClassInfo, methodName: string, variableName: string): boolean {
+  methodClearsTimer(sourceFile: TypeScriptTypes.SourceFile, classInfo: ClassInfo, methodName: string, variableName: string): boolean {
     const method = classInfo.methods.find(m => m.name === methodName);
     if (!method) return false;
 
@@ -400,7 +461,7 @@ export class ASTAnalyzer {
    * Analyze Promise+setTimeout patterns for potential leaks
    * v12.8.0: Phase 3 - Reduced false positives for simple sleep utilities
    */
-  analyzePromiseTimeouts(sourceFile: ts.SourceFile, content: string): PromiseTimeoutInfo[] {
+  analyzePromiseTimeouts(sourceFile: TypeScriptTypes.SourceFile, content: string): PromiseTimeoutInfo[] {
     const results: PromiseTimeoutInfo[] = [];
 
     // First, check if the entire content matches any safe patterns
@@ -410,18 +471,18 @@ export class ASTAnalyzer {
       }
     }
 
-    const visit = (node: ts.Node): void => {
+    const visit = (node: TypeScriptTypes.Node): void => {
       // Look for: new Promise(...)
-      if (ts.isNewExpression(node) &&
-          ts.isIdentifier(node.expression) &&
+      if (getTS().isNewExpression(node) &&
+          getTS().isIdentifier(node.expression) &&
           node.expression.text === 'Promise') {
 
         const promisePos = sourceFile.getLineAndCharacterOfPosition(node.getStart());
         const promiseLine = promisePos.line + 1;
 
         // Find setTimeout/setInterval calls within this Promise
-        const findTimerCalls = (innerNode: ts.Node): void => {
-          if (ts.isCallExpression(innerNode)) {
+        const findTimerCalls = (innerNode: TypeScriptTypes.Node): void => {
+          if (getTS().isCallExpression(innerNode)) {
             const callName = this.getCallExpressionName(innerNode);
             if (callName === 'setTimeout' || callName === 'setInterval') {
               const timerPos = sourceFile.getLineAndCharacterOfPosition(innerNode.getStart());
@@ -454,13 +515,13 @@ export class ASTAnalyzer {
               });
             }
           }
-          ts.forEachChild(innerNode, findTimerCalls);
+          getTS().forEachChild(innerNode, findTimerCalls);
         };
 
-        ts.forEachChild(node, findTimerCalls);
+        getTS().forEachChild(node, findTimerCalls);
       }
 
-      ts.forEachChild(node, visit);
+      getTS().forEachChild(node, visit);
     };
 
     visit(sourceFile);
@@ -470,7 +531,7 @@ export class ASTAnalyzer {
   /**
    * Check if a Promise has cleanup (finally/catch/then with clearTimeout, or clearTimeout in executor)
    */
-  private hasCleanupInPromise(promiseNode: ts.NewExpression, sourceFile: ts.SourceFile): boolean {
+  private hasCleanupInPromise(promiseNode: TypeScriptTypes.NewExpression, sourceFile: TypeScriptTypes.SourceFile): boolean {
     // Strategy 1: Check if clearTimeout is called anywhere inside the Promise executor body
     // This handles patterns like:
     //   new Promise((resolve, reject) => {
@@ -484,14 +545,14 @@ export class ASTAnalyzer {
     // Strategy 2: Look at the parent chain for .finally(), .catch(), or .then() with clearTimeout
     // This handles patterns like:
     //   new Promise(...).then(...).catch(() => { clearTimeout(id); })
-    let current: ts.Node = promiseNode;
+    let current: TypeScriptTypes.Node = promiseNode;
 
     while (current.parent) {
       const parent = current.parent;
 
       // Check for .finally(), .catch(), or .then() call with clearTimeout
-      if (ts.isCallExpression(parent) &&
-          ts.isPropertyAccessExpression(parent.expression)) {
+      if (getTS().isCallExpression(parent) &&
+          getTS().isPropertyAccessExpression(parent.expression)) {
         const propName = parent.expression.name.text;
         // Check .finally(), .catch(), and .then() - all can contain cleanup code
         if (propName === 'finally' || propName === 'catch' || propName === 'then') {
@@ -504,7 +565,7 @@ export class ASTAnalyzer {
       }
 
       // Check for try/finally block containing this promise
-      if (ts.isTryStatement(parent)) {
+      if (getTS().isTryStatement(parent)) {
         if (parent.finallyBlock) {
           const finallyText = parent.finallyBlock.getText(sourceFile);
           if (/clearTimeout/i.test(finallyText)) {
@@ -524,8 +585,8 @@ export class ASTAnalyzer {
    */
   private checkPromiseTimeoutAllowlist(
     functionName: string,
-    promiseNode: ts.NewExpression,
-    sourceFile: ts.SourceFile
+    promiseNode: TypeScriptTypes.NewExpression,
+    sourceFile: TypeScriptTypes.SourceFile
   ): { isAllowlisted: boolean; reason?: string } {
     // Check function name against allowlist
     // Use exact match or prefix match (e.g., "sleepMs" matches "sleep", "delayAsync" matches "delay")
@@ -561,9 +622,9 @@ export class ASTAnalyzer {
     const promiseArgs = promiseNode.arguments;
     if (promiseArgs && promiseArgs.length > 0) {
       const promiseArg = promiseArgs[0];
-      if (promiseArg && ts.isArrowFunction(promiseArg)) {
+      if (promiseArg && getTS().isArrowFunction(promiseArg)) {
         const body = promiseArg.body;
-        if (ts.isCallExpression(body)) {
+        if (getTS().isCallExpression(body)) {
           const callName = this.getCallExpressionName(body);
           if (callName === 'setTimeout') {
             // Check if the callback is just the resolve function
@@ -574,10 +635,10 @@ export class ASTAnalyzer {
               const params = promiseArg.parameters;
               if (params.length >= 1) {
                 const resolveParam = params[0];
-                if (resolveParam && ts.isIdentifier(resolveParam.name)) {
+                if (resolveParam && getTS().isIdentifier(resolveParam.name)) {
                   const resolveParamName = resolveParam.name.text;
                   // Resolve is passed directly to setTimeout
-                  if (firstArg && ts.isIdentifier(firstArg) && firstArg.text === resolveParamName) {
+                  if (firstArg && getTS().isIdentifier(firstArg) && firstArg.text === resolveParamName) {
                     return {
                       isAllowlisted: true,
                       reason: 'Simple Promise with direct resolve to setTimeout - no cleanup needed'
@@ -592,13 +653,13 @@ export class ASTAnalyzer {
     }
 
     // Check if this is an inline await (await new Promise(...))
-    if (ts.isAwaitExpression(promiseNode.parent)) {
+    if (getTS().isAwaitExpression(promiseNode.parent)) {
       // Check if the Promise callback passes resolve directly to setTimeout
       if (promiseArgs && promiseArgs.length > 0) {
         const promiseArg = promiseArgs[0];
-        if (promiseArg && ts.isArrowFunction(promiseArg)) {
+        if (promiseArg && getTS().isArrowFunction(promiseArg)) {
           const body = promiseArg.body;
-          if (ts.isCallExpression(body)) {
+          if (getTS().isCallExpression(body)) {
             const callName = this.getCallExpressionName(body);
             if (callName === 'setTimeout') {
               return {
@@ -618,16 +679,16 @@ export class ASTAnalyzer {
    * Analyze code for unreachable code patterns
    * v12.8.0: Phase 4 - Control flow analysis to reduce false positives
    */
-  analyzeUnreachableCode(sourceFile: ts.SourceFile): UnreachableCodeInfo[] {
+  analyzeUnreachableCode(sourceFile: TypeScriptTypes.SourceFile): UnreachableCodeInfo[] {
     const results: UnreachableCodeInfo[] = [];
 
-    const visit = (node: ts.Node): void => {
+    const visit = (node: TypeScriptTypes.Node): void => {
       // Check blocks (function bodies, if blocks, etc.)
-      if (ts.isBlock(node)) {
+      if (getTS().isBlock(node)) {
         this.analyzeBlockForUnreachable(node, sourceFile, results);
       }
 
-      ts.forEachChild(node, visit);
+      getTS().forEachChild(node, visit);
     };
 
     visit(sourceFile);
@@ -638,8 +699,8 @@ export class ASTAnalyzer {
    * Analyze a block for unreachable statements
    */
   private analyzeBlockForUnreachable(
-    block: ts.Block,
-    sourceFile: ts.SourceFile,
+    block: TypeScriptTypes.Block,
+    sourceFile: TypeScriptTypes.SourceFile,
     results: UnreachableCodeInfo[]
   ): void {
     const statements = block.statements;
@@ -658,7 +719,7 @@ export class ASTAnalyzer {
         // This statement is after a terminator - check if it's a false positive
 
         // Check 1: Is this a case/default label in a switch?
-        if (ts.isCaseClause(stmt.parent) || ts.isDefaultClause(stmt.parent)) {
+        if (getTS().isCaseClause(stmt.parent) || getTS().isDefaultClause(stmt.parent)) {
           // This is a case label after break - NOT unreachable
           results.push({
             line: stmtLine,
@@ -706,15 +767,15 @@ export class ASTAnalyzer {
       }
 
       // Check if this statement is a terminator
-      if (ts.isReturnStatement(stmt)) {
+      if (getTS().isReturnStatement(stmt)) {
         foundTerminator = true;
         terminatorLine = stmtLine;
         terminatorReason = 'return';
-      } else if (ts.isThrowStatement(stmt)) {
+      } else if (getTS().isThrowStatement(stmt)) {
         foundTerminator = true;
         terminatorLine = stmtLine;
         terminatorReason = 'throw';
-      } else if (ts.isBreakStatement(stmt)) {
+      } else if (getTS().isBreakStatement(stmt)) {
         // Break only terminates within switch/loop context
         if (this.isInSwitchOrLoop(stmt)) {
           // Don't mark as terminator for outer block - break only affects inner construct
@@ -723,7 +784,7 @@ export class ASTAnalyzer {
           terminatorLine = stmtLine;
           terminatorReason = 'break';
         }
-      } else if (ts.isContinueStatement(stmt)) {
+      } else if (getTS().isContinueStatement(stmt)) {
         // Continue only terminates within loop context
         if (!this.isInLoop(stmt)) {
           foundTerminator = true;
@@ -737,13 +798,13 @@ export class ASTAnalyzer {
   /**
    * Check if a node is inside a switch case
    */
-  private isInSwitchCase(node: ts.Node): boolean {
-    let current: ts.Node | undefined = node.parent;
+  private isInSwitchCase(node: TypeScriptTypes.Node): boolean {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
     while (current) {
-      if (ts.isCaseClause(current) || ts.isDefaultClause(current)) {
+      if (getTS().isCaseClause(current) || getTS().isDefaultClause(current)) {
         return true;
       }
-      if (ts.isSwitchStatement(current)) {
+      if (getTS().isSwitchStatement(current)) {
         return false; // Found switch but not inside a case
       }
       current = current.parent;
@@ -754,10 +815,10 @@ export class ASTAnalyzer {
   /**
    * Find parent switch case clause
    */
-  private findParentSwitchCase(node: ts.Node): ts.CaseClause | ts.DefaultClause | null {
-    let current: ts.Node | undefined = node.parent;
+  private findParentSwitchCase(node: TypeScriptTypes.Node): TypeScriptTypes.CaseClause | TypeScriptTypes.DefaultClause | null {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
     while (current) {
-      if (ts.isCaseClause(current) || ts.isDefaultClause(current)) {
+      if (getTS().isCaseClause(current) || getTS().isDefaultClause(current)) {
         return current;
       }
       current = current.parent;
@@ -768,20 +829,20 @@ export class ASTAnalyzer {
   /**
    * Check if a node is inside a switch statement or loop
    */
-  private isInSwitchOrLoop(node: ts.Node): boolean {
-    let current: ts.Node | undefined = node.parent;
+  private isInSwitchOrLoop(node: TypeScriptTypes.Node): boolean {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
     while (current) {
-      if (ts.isSwitchStatement(current) ||
-          ts.isForStatement(current) ||
-          ts.isForInStatement(current) ||
-          ts.isForOfStatement(current) ||
-          ts.isWhileStatement(current) ||
-          ts.isDoStatement(current)) {
+      if (getTS().isSwitchStatement(current) ||
+          getTS().isForStatement(current) ||
+          getTS().isForInStatement(current) ||
+          getTS().isForOfStatement(current) ||
+          getTS().isWhileStatement(current) ||
+          getTS().isDoStatement(current)) {
         return true;
       }
-      if (ts.isFunctionDeclaration(current) ||
-          ts.isFunctionExpression(current) ||
-          ts.isArrowFunction(current)) {
+      if (getTS().isFunctionDeclaration(current) ||
+          getTS().isFunctionExpression(current) ||
+          getTS().isArrowFunction(current)) {
         return false; // Hit function boundary
       }
       current = current.parent;
@@ -792,19 +853,19 @@ export class ASTAnalyzer {
   /**
    * Check if a node is inside a loop
    */
-  private isInLoop(node: ts.Node): boolean {
-    let current: ts.Node | undefined = node.parent;
+  private isInLoop(node: TypeScriptTypes.Node): boolean {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
     while (current) {
-      if (ts.isForStatement(current) ||
-          ts.isForInStatement(current) ||
-          ts.isForOfStatement(current) ||
-          ts.isWhileStatement(current) ||
-          ts.isDoStatement(current)) {
+      if (getTS().isForStatement(current) ||
+          getTS().isForInStatement(current) ||
+          getTS().isForOfStatement(current) ||
+          getTS().isWhileStatement(current) ||
+          getTS().isDoStatement(current)) {
         return true;
       }
-      if (ts.isFunctionDeclaration(current) ||
-          ts.isFunctionExpression(current) ||
-          ts.isArrowFunction(current)) {
+      if (getTS().isFunctionDeclaration(current) ||
+          getTS().isFunctionExpression(current) ||
+          getTS().isArrowFunction(current)) {
         return false; // Hit function boundary
       }
       current = current.parent;
@@ -816,7 +877,7 @@ export class ASTAnalyzer {
    * Analyze setInterval/setTimeout calls for potential timer leaks
    * v12.8.0: Phase 5 - Variable tracking and destroy() method analysis
    */
-  analyzeTimerLeaks(sourceFile: ts.SourceFile, content: string): TimerLeakInfo[] {
+  analyzeTimerLeaks(sourceFile: TypeScriptTypes.SourceFile, content: string): TimerLeakInfo[] {
     const results: TimerLeakInfo[] = [];
 
     // Find all setInterval calls (primary target for leaks)
@@ -835,7 +896,7 @@ export class ASTAnalyzer {
    */
   private analyzeTimerCall(
     call: CallInfo,
-    sourceFile: ts.SourceFile,
+    sourceFile: TypeScriptTypes.SourceFile,
     content: string,
     timerType: 'setInterval' | 'setTimeout'
   ): TimerLeakInfo {
@@ -956,7 +1017,7 @@ export class ASTAnalyzer {
   /**
    * Find the enclosing class for a given line
    */
-  findEnclosingClass(sourceFile: ts.SourceFile, lineNumber: number): ClassInfo | null {
+  findEnclosingClass(sourceFile: TypeScriptTypes.SourceFile, lineNumber: number): ClassInfo | null {
     const allClasses = this.findClasses(sourceFile);
 
     // Find the most specific (innermost) class containing this line
@@ -1010,12 +1071,12 @@ export class ASTAnalyzer {
     return hash.toString(16);
   }
 
-  private getScriptKind(filePath: string): ts.ScriptKind {
-    if (filePath.endsWith('.tsx')) return ts.ScriptKind.TSX;
-    if (filePath.endsWith('.ts')) return ts.ScriptKind.TS;
-    if (filePath.endsWith('.jsx')) return ts.ScriptKind.JSX;
-    if (filePath.endsWith('.mjs') || filePath.endsWith('.mts')) return ts.ScriptKind.TS;
-    return ts.ScriptKind.JS;
+  private getScriptKind(filePath: string): TypeScriptTypes.ScriptKind {
+    if (filePath.endsWith('.tsx')) return getTS().ScriptKind.TSX;
+    if (filePath.endsWith('.ts')) return getTS().ScriptKind.TS;
+    if (filePath.endsWith('.jsx')) return getTS().ScriptKind.JSX;
+    if (filePath.endsWith('.mjs') || filePath.endsWith('.mts')) return getTS().ScriptKind.TS;
+    return getTS().ScriptKind.JS;
   }
 
   private evictOldest(): void {
@@ -1037,7 +1098,7 @@ export class ASTAnalyzer {
     }
   }
 
-  private extractClassInfo(node: ts.ClassDeclaration, sourceFile: ts.SourceFile): ClassInfo {
+  private extractClassInfo(node: TypeScriptTypes.ClassDeclaration, sourceFile: TypeScriptTypes.SourceFile): ClassInfo {
     const name = node.name?.getText(sourceFile) || '<anonymous>';
     const { line: startLine } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
     const { line: endLine } = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
@@ -1048,11 +1109,11 @@ export class ASTAnalyzer {
     // Extract heritage clauses
     if (node.heritageClauses) {
       for (const clause of node.heritageClauses) {
-        if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+        if (clause.token === getTS().SyntaxKind.ExtendsKeyword) {
           for (const type of clause.types) {
             extendsClause.push(type.expression.getText(sourceFile));
           }
-        } else if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
+        } else if (clause.token === getTS().SyntaxKind.ImplementsKeyword) {
           for (const type of clause.types) {
             implementsClause.push(type.expression.getText(sourceFile));
           }
@@ -1065,8 +1126,8 @@ export class ASTAnalyzer {
     const properties: PropertyInfo[] = [];
 
     for (const member of node.members) {
-      if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member)) {
-        const methodName = ts.isConstructorDeclaration(member)
+      if (getTS().isMethodDeclaration(member) || getTS().isConstructorDeclaration(member)) {
+        const methodName = getTS().isConstructorDeclaration(member)
           ? 'constructor'
           : (member.name?.getText(sourceFile) || '<anonymous>');
 
@@ -1082,7 +1143,7 @@ export class ASTAnalyzer {
           modifiers,
           isAbstract: modifiers.includes('abstract')
         });
-      } else if (ts.isPropertyDeclaration(member)) {
+      } else if (getTS().isPropertyDeclaration(member)) {
         const propName = member.name?.getText(sourceFile) || '<anonymous>';
         const { line } = sourceFile.getLineAndCharacterOfPosition(member.getStart());
 
@@ -1096,7 +1157,7 @@ export class ASTAnalyzer {
     }
 
     const isAbstract = node.modifiers?.some(
-      mod => mod.kind === ts.SyntaxKind.AbstractKeyword
+      mod => mod.kind === getTS().SyntaxKind.AbstractKeyword
     ) || false;
 
     return {
@@ -1112,29 +1173,29 @@ export class ASTAnalyzer {
   }
 
   private extractFunctionInfo(
-    node: ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration,
-    sourceFile: ts.SourceFile
+    node: TypeScriptTypes.FunctionDeclaration | TypeScriptTypes.FunctionExpression | TypeScriptTypes.ArrowFunction | TypeScriptTypes.MethodDeclaration,
+    sourceFile: TypeScriptTypes.SourceFile
   ): FunctionInfo {
     let name = '';
 
-    if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) {
+    if (getTS().isFunctionDeclaration(node) || getTS().isMethodDeclaration(node)) {
       name = node.name?.getText(sourceFile) || '';
-    } else if (ts.isFunctionExpression(node)) {
+    } else if (getTS().isFunctionExpression(node)) {
       name = node.name?.getText(sourceFile) || '';
     }
     // Arrow functions don't have names, but we might get it from parent
-    if (!name && ts.isVariableDeclaration(node.parent)) {
+    if (!name && getTS().isVariableDeclaration(node.parent)) {
       name = node.parent.name.getText(sourceFile);
     }
 
     const { line: startLine } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
     const { line: endLine } = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
 
-    const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
-    const isAsync = modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword) || false;
+    const modifiers = getTS().canHaveModifiers(node) ? getTS().getModifiers(node) : undefined;
+    const isAsync = modifiers?.some(mod => mod.kind === getTS().SyntaxKind.AsyncKeyword) || false;
 
     const isGenerator = !!(
-      (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) &&
+      (getTS().isFunctionDeclaration(node) || getTS().isFunctionExpression(node)) &&
       node.asteriskToken
     );
 
@@ -1154,33 +1215,33 @@ export class ASTAnalyzer {
     };
   }
 
-  private getModifiers(node: ts.Node): string[] {
+  private getModifiers(node: TypeScriptTypes.Node): string[] {
     const modifiers: string[] = [];
 
-    const mods = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    const mods = getTS().canHaveModifiers(node) ? getTS().getModifiers(node) : undefined;
     if (!mods) return modifiers;
 
     for (const mod of mods) {
       switch (mod.kind) {
-        case ts.SyntaxKind.PublicKeyword:
+        case getTS().SyntaxKind.PublicKeyword:
           modifiers.push('public');
           break;
-        case ts.SyntaxKind.PrivateKeyword:
+        case getTS().SyntaxKind.PrivateKeyword:
           modifiers.push('private');
           break;
-        case ts.SyntaxKind.ProtectedKeyword:
+        case getTS().SyntaxKind.ProtectedKeyword:
           modifiers.push('protected');
           break;
-        case ts.SyntaxKind.StaticKeyword:
+        case getTS().SyntaxKind.StaticKeyword:
           modifiers.push('static');
           break;
-        case ts.SyntaxKind.AsyncKeyword:
+        case getTS().SyntaxKind.AsyncKeyword:
           modifiers.push('async');
           break;
-        case ts.SyntaxKind.AbstractKeyword:
+        case getTS().SyntaxKind.AbstractKeyword:
           modifiers.push('abstract');
           break;
-        case ts.SyntaxKind.ReadonlyKeyword:
+        case getTS().SyntaxKind.ReadonlyKeyword:
           modifiers.push('readonly');
           break;
       }
@@ -1189,49 +1250,49 @@ export class ASTAnalyzer {
     return modifiers;
   }
 
-  private getCallExpressionName(node: ts.CallExpression): string {
+  private getCallExpressionName(node: TypeScriptTypes.CallExpression): string {
     const expression = node.expression;
 
-    if (ts.isIdentifier(expression)) {
+    if (getTS().isIdentifier(expression)) {
       return expression.text;
     }
 
-    if (ts.isPropertyAccessExpression(expression)) {
+    if (getTS().isPropertyAccessExpression(expression)) {
       return expression.name.text;
     }
 
     return '';
   }
 
-  private isReturnValueCaptured(node: ts.CallExpression): boolean {
+  private isReturnValueCaptured(node: TypeScriptTypes.CallExpression): boolean {
     const parent = node.parent;
 
     // Check if assigned to a variable
-    if (ts.isVariableDeclaration(parent)) {
+    if (getTS().isVariableDeclaration(parent)) {
       return true;
     }
 
     // Check if part of property assignment
-    if (ts.isPropertyAssignment(parent)) {
+    if (getTS().isPropertyAssignment(parent)) {
       return true;
     }
 
     // Check if assigned with = operator
-    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+    if (getTS().isBinaryExpression(parent) && parent.operatorToken.kind === getTS().SyntaxKind.EqualsToken) {
       return true;
     }
 
     return false;
   }
 
-  private getCapturedVariableName(node: ts.CallExpression): string | undefined {
+  private getCapturedVariableName(node: TypeScriptTypes.CallExpression): string | undefined {
     const parent = node.parent;
 
-    if (ts.isVariableDeclaration(parent)) {
+    if (getTS().isVariableDeclaration(parent)) {
       return parent.name.getText();
     }
 
-    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+    if (getTS().isBinaryExpression(parent) && parent.operatorToken.kind === getTS().SyntaxKind.EqualsToken) {
       return parent.left.getText();
     }
 
@@ -1242,17 +1303,17 @@ export class ASTAnalyzer {
    * Check if a call expression has .unref() chained directly
    * e.g., setInterval(...).unref() or setInterval(...).unref?.()
    */
-  private hasChainedUnrefCall(node: ts.CallExpression): boolean {
+  private hasChainedUnrefCall(node: TypeScriptTypes.CallExpression): boolean {
     const parent = node.parent;
 
     // Pattern: setInterval(...).unref()
     // AST: CallExpression(PropertyAccessExpression(CallExpression, 'unref'))
-    if (ts.isPropertyAccessExpression(parent)) {
+    if (getTS().isPropertyAccessExpression(parent)) {
       const propertyName = parent.name.text;
       if (propertyName === 'unref') {
         // Check if the property access is called (i.e., .unref())
         const grandParent = parent.parent;
-        if (ts.isCallExpression(grandParent) && grandParent.expression === parent) {
+        if (getTS().isCallExpression(grandParent) && grandParent.expression === parent) {
           return true;
         }
       }
@@ -1260,10 +1321,10 @@ export class ASTAnalyzer {
 
     // Pattern: setInterval(...).unref?.() (optional chaining)
     // AST structure is different for optional chaining
-    if (ts.isCallChain && ts.isCallChain(parent)) {
+    if (getTS().isCallChain && getTS().isCallChain(parent)) {
       // Check if it's calling 'unref' via optional chain
-      const expression = (parent as ts.CallExpression).expression;
-      if (ts.isPropertyAccessExpression(expression) && expression.name.text === 'unref') {
+      const expression = (parent as TypeScriptTypes.CallExpression).expression;
+      if (getTS().isPropertyAccessExpression(expression) && expression.name.text === 'unref') {
         return true;
       }
     }

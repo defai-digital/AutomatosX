@@ -190,7 +190,7 @@ export class RefactorDetector {
         findings.push(...detectConditionals(filePath, content, lines, ignoreState, this.config));
         break;
       case 'dead_code':
-        findings.push(...detectDeadCode(filePath, content, lines, ignoreState, this.config));
+        findings.push(...await detectDeadCode(filePath, content, lines, ignoreState, this.config));
         break;
       case 'type_safety':
         findings.push(...detectTypeSafety(filePath, content, lines, ignoreState, this.config));

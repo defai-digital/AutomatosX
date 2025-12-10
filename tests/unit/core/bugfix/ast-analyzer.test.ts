@@ -15,8 +15,9 @@ import {
 describe('ASTAnalyzer', () => {
   let analyzer: ASTAnalyzer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     analyzer = createASTAnalyzer();
+    await analyzer.init();
   });
 
   afterEach(() => {
@@ -528,8 +529,9 @@ describe('ASTAnalyzer', () => {
       expect(stats.size).toBe(0);
     });
 
-    it('should evict oldest entries when cache is full', () => {
+    it('should evict oldest entries when cache is full', async () => {
       const smallCacheAnalyzer = new ASTAnalyzer(3);
+      await smallCacheAnalyzer.init();
 
       // Fill cache
       smallCacheAnalyzer.parseFile('class A {}', 'a.ts');
@@ -570,8 +572,9 @@ describe('ASTAnalyzer', () => {
 describe('Large class handling (false positive reduction)', () => {
   let analyzer: ASTAnalyzer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     analyzer = createASTAnalyzer();
+    await analyzer.init();
   });
 
   afterEach(() => {
@@ -676,8 +679,9 @@ describe('Large class handling (false positive reduction)', () => {
 describe('analyzePromiseTimeouts (Phase 3 - promise_timeout_leak)', () => {
   let analyzer: ASTAnalyzer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     analyzer = createASTAnalyzer();
+    await analyzer.init();
   });
 
   afterEach(() => {
@@ -826,8 +830,9 @@ describe('analyzePromiseTimeouts (Phase 3 - promise_timeout_leak)', () => {
 describe('analyzeUnreachableCode (Phase 4 - dead_code)', () => {
   let analyzer: ASTAnalyzer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     analyzer = createASTAnalyzer();
+    await analyzer.init();
   });
 
   afterEach(() => {
@@ -963,8 +968,9 @@ describe('analyzeUnreachableCode (Phase 4 - dead_code)', () => {
 describe('analyzeTimerLeaks (Phase 5 - timer_leak)', () => {
   let analyzer: ASTAnalyzer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     analyzer = createASTAnalyzer();
+    await analyzer.init();
   });
 
   afterEach(() => {

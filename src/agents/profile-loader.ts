@@ -24,6 +24,9 @@ import {
 } from '../shared/profiling/performance-markers.js';
 import { safeValidateAgentProfile } from './agent-schemas.js';
 import { getPackageRoot } from '../shared/helpers/package-root.js';
+import { composePrompt, AUTOMATOSX_REPO_CONTEXT } from './cognitive/prompt-composer.js';
+import { DEFAULT_COGNITIVE_CONFIG } from '../types/cognitive.js';
+import type { CognitiveFrameworkConfig, ComposedPrompt } from '../types/cognitive.js';
 
 /**
  * Profile Loader - Load and validate agent profiles
@@ -916,5 +919,94 @@ export class ProfileLoader {
     }
 
     return undefined;
+  }
+
+  /**
+   * Compose cognitive prompt for an agent
+   * v13.0.0+: Assembles the full prompt with reasoning scaffold, checklist, etc.
+   *
+   * @param agentName - Agent name or displayName
+   * @param overrideConfig - Optional config overrides
+   * @returns Composed prompt with all cognitive framework components
+   */
+  async composeAgentPrompt(
+    agentName: string,
+    overrideConfig?: Partial<CognitiveFrameworkConfig>
+  ): Promise<ComposedPrompt> {
+    const profile = await this.loadProfile(agentName);
+
+    // Use agent's cognitive framework config, or infer defaults
+    let config: CognitiveFrameworkConfig = profile.cognitiveFramework
+      ? { ...profile.cognitiveFramework }
+      : this.inferCognitiveConfig(profile);
+
+    // Apply overrides if provided
+    if (overrideConfig) {
+      config = { ...config, ...overrideConfig };
+    }
+
+    // Compose the prompt
+    const composed = composePrompt({
+      basePrompt: profile.systemPrompt,
+      config,
+      repoContext: AUTOMATOSX_REPO_CONTEXT,
+    });
+
+    logger.debug('Composed cognitive prompt', {
+      agent: agentName,
+      scaffold: config.scaffold,
+      checklist: config.checklist,
+      outputContract: config.outputContract,
+      estimatedTokens: composed.estimatedTokens,
+    });
+
+    return composed;
+  }
+
+  /**
+   * Infer cognitive config from agent profile when not explicitly specified
+   * v13.0.0+: Smart defaults based on agent role and abilities
+   */
+  private inferCognitiveConfig(profile: AgentProfile): CognitiveFrameworkConfig {
+    const role = profile.role.toLowerCase();
+    const name = profile.name.toLowerCase();
+
+    // Infer checklist from role/name
+    let checklist: CognitiveFrameworkConfig['checklist'] = 'none';
+
+    if (role.includes('backend') || name === 'backend' || role.includes('api')) {
+      checklist = 'backend';
+    } else if (role.includes('frontend') || name === 'frontend' || role.includes('ui')) {
+      checklist = 'frontend';
+    } else if (role.includes('security') || name === 'security') {
+      checklist = 'security';
+    } else if (role.includes('qa') || role.includes('quality') || name === 'quality' || role.includes('test')) {
+      checklist = 'quality';
+    } else if (role.includes('architect') || name === 'architecture') {
+      checklist = 'architecture';
+    } else if (role.includes('devops') || name === 'devops' || role.includes('infrastructure')) {
+      checklist = 'devops';
+    } else if (role.includes('data') || name === 'data' || role.includes('pipeline')) {
+      checklist = 'data';
+    } else if (role.includes('product') || name === 'product') {
+      checklist = 'product';
+    }
+
+    return {
+      ...DEFAULT_COGNITIVE_CONFIG,
+      checklist,
+    };
+  }
+
+  /**
+   * Get the composed system prompt for an agent
+   * v13.0.0+: Convenience method that returns just the prompt text
+   *
+   * @param agentName - Agent name or displayName
+   * @returns Full composed prompt text
+   */
+  async getComposedPrompt(agentName: string): Promise<string> {
+    const composed = await this.composeAgentPrompt(agentName);
+    return composed.text;
   }
 }

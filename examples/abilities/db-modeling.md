@@ -156,3 +156,12 @@ Use CHECK constraints for valid states
 - [ ] Schema documented
 - [ ] Backup/restore verified
 - [ ] Security audit completed
+
+## Application Hints
+
+When modeling databases:
+- Choose data types for expected growth; BIGINT for IDs that may exceed 2 billion
+- Use TIMESTAMPTZ (not TIMESTAMP) for all date/time columns to avoid timezone bugs
+- Never use FLOAT/DOUBLE for money; use DECIMAL or store as integer cents
+- Design migrations to be reversible and test rollback before deploying
+- Add indexes based on actual query patterns, not theoretical access needs

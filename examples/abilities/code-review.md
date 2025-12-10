@@ -40,3 +40,12 @@ Perform thorough code reviews focusing on quality, security, and maintainability
 3. Identify issues and improvements
 4. Prioritize findings (critical/major/minor)
 5. Provide actionable, constructive feedback
+
+## Application Hints
+
+When reviewing code:
+- Focus on correctness and security first; style issues are secondary
+- Verify edge cases and error paths are handled, not just the happy path
+- Check that tests cover the changed behavior, not just line coverage
+- Prioritize feedback by severity (critical/major/minor) to respect author's time
+- Provide specific improvements with code examples rather than vague criticism

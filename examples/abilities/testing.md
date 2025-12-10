@@ -45,3 +45,12 @@ Write comprehensive, maintainable tests for software systems.
 - Slow tests (block development)
 - Flaky tests (non-deterministic)
 - No tests (technical debt)
+
+## Application Hints
+
+When writing tests:
+- Test behavior, not implementation details; tests should survive refactoring
+- Prioritize critical paths and edge cases over chasing coverage percentages
+- Keep tests independent; shared state between tests causes flaky failures
+- Make test names describe the expected behavior, not the method being tested
+- Fix flaky tests immediately; they erode trust in the entire test suite

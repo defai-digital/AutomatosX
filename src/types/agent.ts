@@ -5,6 +5,7 @@
 import type { Provider } from './provider.js';
 import type { MemoryEntry } from './memory.js';
 import type { OrchestrationConfig, OrchestrationMetadata, Session } from './orchestration.js';
+import type { CognitiveFrameworkConfig } from './cognitive.js';
 
 /**
  * Stage - A step in the agent's workflow
@@ -175,6 +176,9 @@ export interface AgentProfile {
 
   // v5.7.0+ Agent Selection Metadata
   selectionMetadata?: SelectionMetadata;  // Structured data for agent selection accuracy
+
+  // v13.0.0+ Cognitive Framework
+  cognitiveFramework?: CognitiveFrameworkConfig;  // Cognitive prompt engineering configuration
 
   /**
    * Provider configuration (v4.10.0+)

@@ -157,3 +157,12 @@ POST /api/v1/resources
 - [ ] Contract tests written
 - [ ] Load testing performed
 - [ ] Security audit completed
+
+## Application Hints
+
+When designing APIs:
+- Prioritize backward compatibility; breaking changes require explicit versioning strategy
+- Validate request/response schemas before implementation (use OpenAPI spec as contract)
+- Consider rate limiting and pagination for all list endpoints from the start
+- Check idempotency requirements for payment, financial, or state-changing operations
+- Document error codes and response formats before writing endpoint logic

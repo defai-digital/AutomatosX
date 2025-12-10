@@ -78,3 +78,12 @@ Before deploying:
 - [ ] Core Web Vitals measured and acceptable
 - [ ] Production build tested
 - [ ] Caching strategy configured
+
+## Application Hints
+
+When optimizing performance:
+- Measure before optimizing; profile to identify actual bottlenecks, not assumed ones
+- Target Core Web Vitals thresholds (LCP < 2.5s, FID < 100ms, CLS < 0.1)
+- Prefer code splitting and lazy loading over micro-optimizations
+- Don't over-memoize; useMemo/useCallback have overhead and should be profiled
+- Test performance with production builds; dev mode hides real performance issues

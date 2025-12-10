@@ -49,3 +49,12 @@ const results = await db.query(query, [email]);
 - ✅ Secrets not hardcoded
 - ✅ TLS 1.2+ required
 - ✅ No sensitive data in logs
+
+## Application Hints
+
+When reviewing for security:
+- Check authorization on every endpoint; authentication alone is not sufficient
+- Verify parameterized queries for all database operations, including ORMs
+- Ensure secrets are never hardcoded; check for API keys in config files and env vars
+- Validate all user input at trust boundaries, not deep in business logic
+- Review logging to ensure no PII, tokens, or credentials are exposed

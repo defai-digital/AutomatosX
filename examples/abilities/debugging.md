@@ -41,3 +41,12 @@ Systematically identify and fix bugs in code.
 - Type mismatches
 - Resource leaks (memory, file handles)
 - Logic errors in conditionals
+
+## Application Hints
+
+When debugging:
+- Reproduce the issue first; never attempt to fix what you cannot reliably reproduce
+- Isolate to the smallest failing case before investigating root cause
+- Verify the fix doesn't introduce regressions by running the full test suite
+- Document the root cause in the commit message, not just the symptom
+- Check for similar patterns elsewhere in the codebase that may have the same bug

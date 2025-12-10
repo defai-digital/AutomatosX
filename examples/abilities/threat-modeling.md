@@ -47,3 +47,12 @@ fs.writeFile(`./uploads/${filename}`, content);
 - Prioritize by risk (likelihood × impact)
 - Document mitigations
 - Review with security team
+
+## Application Hints
+
+When threat modeling:
+- Identify assets and trust boundaries first before analyzing specific threats
+- Apply STRIDE per component or data flow, not globally across the entire system
+- Prioritize threats by (Impact × Likelihood); don't attempt to fix everything
+- Document residual risks explicitly; security is about informed trade-offs
+- Update the threat model when architecture changes, not just at initial design

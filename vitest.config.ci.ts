@@ -16,6 +16,11 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
+// Detect Windows for pool configuration
+// Windows + worker threads + native modules (better-sqlite3) = ACCESS_VIOLATION crash
+// Solution: Use 'forks' pool on Windows (child processes instead of threads)
+const isWindows = process.platform === 'win32';
+
 export default defineConfig({
   test: {
     globals: true,
@@ -24,22 +29,30 @@ export default defineConfig({
     hookTimeout: 30000,       // 30 seconds for hooks
     teardownTimeout: 10000,   // 10 seconds for teardown
 
-    // Thread pool configuration - single-threaded for Windows stability
-    // Windows + SQLite + worker threads = crashes. Use single thread to ensure stability.
-    // This trades speed for reliability. All 65 test files will run sequentially.
-    pool: 'threads',
+    // Pool configuration: Use 'forks' on Windows, 'threads' elsewhere
+    // Windows + SQLite + worker threads = crashes (exit code 3221225477)
+    // Forks use child processes which handle native modules safely
+    pool: isWindows ? 'forks' : 'threads',
     poolOptions: {
+      // Threads pool options (Linux/macOS)
       threads: {
-        singleThread: true,    // Run all tests in single thread (Windows-safe)
+        singleThread: true,    // Run all tests in single thread
         isolate: true,         // Isolate each test file for stability
         minThreads: 1,
         maxThreads: 1,         // Single thread only
         useAtomics: false      // Disabled for single-threaded mode
+      },
+      // Forks pool options (Windows)
+      forks: {
+        singleFork: true,      // Run all tests in single fork (sequential)
+        isolate: true,         // Isolate each test file for stability
+        minForks: 1,
+        maxForks: 1            // Single fork only
       }
     },
 
     // File parallelism and resource limits
-    fileParallelism: false,    // Disabled for single-threaded mode
+    fileParallelism: false,    // Disabled for single-threaded/single-fork mode
     maxConcurrency: 1,         // Single test at a time
 
     // Auto-cleanup for mocks and timers

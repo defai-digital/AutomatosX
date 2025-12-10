@@ -235,11 +235,12 @@ export async function loadConfigFile(path: string): Promise<AutomatosXConfig> {
     }
 
     // Handle file system errors
-    if ((error as any).code === 'ENOENT') {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
       throw ConfigError.notFound(path);
     }
 
-    if ((error as any).code === 'EACCES') {
+    if (nodeError.code === 'EACCES') {
       throw new ConfigError(
         `Permission denied reading config: ${path}`,
         ErrorCode.CONFIG_PARSE_ERROR,
@@ -859,7 +860,8 @@ export async function saveConfigFile(
     }
 
     // Handle file system errors
-    if ((error as any).code === 'EACCES') {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'EACCES') {
       throw new ConfigError(
         `Permission denied writing config: ${path}`,
         ErrorCode.CONFIG_PARSE_ERROR,
@@ -868,7 +870,7 @@ export async function saveConfigFile(
           'Run with appropriate user privileges',
           'Verify the directory is writable'
         ],
-        { path, error: (error as Error).message }
+        { path, error: nodeError.message }
       );
     }
 

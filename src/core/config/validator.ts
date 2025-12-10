@@ -96,7 +96,7 @@ function validateProviders(providers: any): ValidationError[] {
 
   // Validate each provider
   for (const [name, provider] of Object.entries(providers)) {
-    errors.push(...validateProvider(name, provider as any));
+    errors.push(...validateProvider(name, provider as Record<string, unknown>));
   }
 
   // Check for at least one enabled provider
@@ -114,7 +114,7 @@ function validateProviders(providers: any): ValidationError[] {
 /**
  * Validate single provider configuration
  */
-function validateProvider(name: string, provider: any): ValidationError[] {
+function validateProvider(name: string, provider: Record<string, unknown>): ValidationError[] {
   const errors: ValidationError[] = [];
   const basePath = `providers.${name}`;
 

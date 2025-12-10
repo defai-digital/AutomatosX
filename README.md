@@ -12,7 +12,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v12.8.2 | CI/CD Improvements
+**Status**: ✅ **Production Ready** | v12.8.3 | MCP Agent Timeout Increase
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

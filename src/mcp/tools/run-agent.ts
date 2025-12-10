@@ -140,7 +140,7 @@ async function executeViaMcpPool(
 
 /**
  * Default timeout for MCP-initiated agent executions
- * v12.5.3: Uses centralized TIMEOUTS.MCP_AGENT_EXECUTION (5 minutes)
+ * v12.5.3: Uses centralized TIMEOUTS.MCP_AGENT_EXECUTION (30 minutes)
  * This prevents agent processes from hanging indefinitely when called via MCP.
  * Can be overridden by explicit timeout in execution config.
  */

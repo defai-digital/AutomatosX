@@ -65,6 +65,15 @@ export const AX_PATHS = {
 } as const;
 
 // ============================================
+// Time Unit Constants (milliseconds)
+// ============================================
+
+/** Time unit constants for readable timeout definitions */
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+
+// ============================================
 // Timeout Constants (milliseconds)
 // ============================================
 
@@ -73,49 +82,49 @@ export const AX_PATHS = {
  */
 export const TIMEOUTS = {
   /** Default provider execution timeout (2 minutes) */
-  PROVIDER_DEFAULT: 120000,
+  PROVIDER_DEFAULT: 2 * MINUTE,
   /** Provider detection/health check timeout (5 seconds) */
-  PROVIDER_DETECTION: 5000,
+  PROVIDER_DETECTION: 5 * SECOND,
   /** Database busy timeout (5 seconds) */
-  DATABASE_BUSY: 5000,
+  DATABASE_BUSY: 5 * SECOND,
   /** Provider cooldown after failure (30 seconds) */
-  PROVIDER_COOLDOWN: 30000,
+  PROVIDER_COOLDOWN: 30 * SECOND,
   /** Circuit breaker recovery timeout (1 minute) */
-  CIRCUIT_BREAKER_RECOVERY: 60000,
+  CIRCUIT_BREAKER_RECOVERY: 1 * MINUTE,
   /** Circuit breaker failure window (5 minutes) */
-  CIRCUIT_BREAKER_WINDOW: 300000,
+  CIRCUIT_BREAKER_WINDOW: 5 * MINUTE,
   /** Health check interval (5 minutes) */
-  HEALTH_CHECK_INTERVAL: 300000,
+  HEALTH_CHECK_INTERVAL: 5 * MINUTE,
   /** Idle connection timeout (5 minutes) */
-  IDLE_CONNECTION: 300000,
+  IDLE_CONNECTION: 5 * MINUTE,
   /** User decision/prompt timeout (10 minutes) */
-  USER_DECISION: 600000,
+  USER_DECISION: 10 * MINUTE,
   /** Maximum execution timeout (1 hour) */
-  MAX_EXECUTION: 3600000,
+  MAX_EXECUTION: 1 * HOUR,
   /** Default global timeout (25 minutes) */
-  GLOBAL_DEFAULT: 1500000,
+  GLOBAL_DEFAULT: 25 * MINUTE,
   /** Config cache TTL (1 minute) */
-  CONFIG_CACHE_TTL: 60000,
+  CONFIG_CACHE_TTL: 1 * MINUTE,
   /** Score cache TTL (5 minutes) */
-  SCORE_CACHE_TTL: 300000,
+  SCORE_CACHE_TTL: 5 * MINUTE,
   /** MCP health check interval (30 seconds) */
-  MCP_HEALTH_CHECK: 30000,
+  MCP_HEALTH_CHECK: 30 * SECOND,
   /** CLI command confirmation delay (5 seconds) */
-  CLI_CONFIRM_DELAY: 5000,
+  CLI_CONFIRM_DELAY: 5 * SECOND,
   /** Kill switch confirmation delay (5 seconds) */
-  KILL_SWITCH_DELAY: 5000,
+  KILL_SWITCH_DELAY: 5 * SECOND,
   /** Minimum rollout duration (1 hour) */
-  MIN_ROLLOUT_DURATION: 3600000,
+  MIN_ROLLOUT_DURATION: 1 * HOUR,
   /** Graceful shutdown timeout (30 seconds) */
-  GRACEFUL_SHUTDOWN: 30000,
+  GRACEFUL_SHUTDOWN: 30 * SECOND,
   /** Package installation timeout (1 minute) */
-  PACKAGE_INSTALL: 60000,
+  PACKAGE_INSTALL: 1 * MINUTE,
   /** Quick CLI command timeout (3 seconds) */
-  QUICK_COMMAND: 3000,
+  QUICK_COMMAND: 3 * SECOND,
   /** CLI version check timeout (10 seconds) */
-  VERSION_CHECK: 10000,
-  /** MCP agent execution timeout (5 minutes) */
-  MCP_AGENT_EXECUTION: 300000
+  VERSION_CHECK: 10 * SECOND,
+  /** MCP agent execution timeout (30 minutes) */
+  MCP_AGENT_EXECUTION: 30 * MINUTE
 } as const;
 
 // ============================================

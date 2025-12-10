@@ -601,7 +601,7 @@ export class DynamicOptimizer extends EventEmitter {
         this.state.performanceHistory[provider] = [];
       }
 
-      const history = this.state.performanceHistory[provider]!;
+      const history = this.state.performanceHistory[provider];
       history.push(snapshot);
 
       // Trim history

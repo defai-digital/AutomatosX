@@ -409,14 +409,12 @@ export class BugFixer {
     // Find the class definition
     const classPattern = /class\s+(\w+)\s+extends\s+(?:EventEmitter|DisposableEventEmitter)/;
     let classStartLine = -1;
-    let className = '';
 
     for (let i = 0; i < lines.length; i++) {
       const currentLine = lines[i];
       if (!currentLine) continue;
 
-      const match = currentLine.match(classPattern);
-      if (match && match[1]) {
+      if (classPattern.test(currentLine)) {
         classStartLine = i;
         break;
       }
@@ -485,7 +483,7 @@ export class BugFixer {
    * Apply use DisposableEventEmitter fix
    */
   private applyUseDisposableEventEmitterFix(
-    finding: BugFinding,
+    _finding: BugFinding,
     originalContent: string,
     _lines: string[]
   ): { fixedContent: string; diff: string } {

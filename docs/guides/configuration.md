@@ -136,12 +136,12 @@ The minimal `ax.config.json`:
 
 ### Provider Priority
 
-Providers are tried in priority order (1 = highest):
+Providers are tried in priority order (1 = highest). AutomatosX does not manage free-tier routing.
 
 ```json
 {
   "providers": {
-    "gemini-cli": { "priority": 1 },    // Tried first (free tier!)
+    "gemini-cli": { "priority": 1 },    // Tried first
     "claude-code": { "priority": 2 },   // Fallback if Gemini unavailable
     "openai": { "priority": 3 }         // Last resort
   }
@@ -226,7 +226,7 @@ gemini --version
 - `manual` - Require manual approval for each edit
 - `none` - No approval required (use with caution)
 
-See [Gemini Integration Guide](./gemini-integration.md) for cost optimization tips.
+See [Gemini Integration Guide](../providers/gemini.md) for provider setup tips.
 
 #### Codex CLI CLI
 
@@ -704,8 +704,8 @@ Ensure priority values are **unique integers**:
 ## See Also
 
 - [Quick Start Guide](./quick-start.md) - Get up and running
-- [Provider Comparison](./provider-comparison.md) - Compare Claude, Gemini, OpenAI
-- [Gemini Integration](./gemini-integration.md) - Cost optimization with Gemini
+- [Provider Comparison](../providers/overview.md) - Compare Claude, Gemini, OpenAI
+- [Gemini Integration](../providers/gemini.md) - Configure Gemini provider
 - [Team Configuration](./team-configuration.md) - Organize agents into teams
 - [CLI Commands Reference](../reference/cli-commands.md) - Complete command list
 - [Troubleshooting](../troubleshooting/common-issues.md) - Common issues and solutions

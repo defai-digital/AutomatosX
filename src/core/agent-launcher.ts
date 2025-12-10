@@ -324,18 +324,27 @@ export async function isProviderAvailable(provider: MCPProvider): Promise<boolea
       shell: true
     });
 
+    let resolved = false;
+    const safeResolve = (value: boolean) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutId);
+        resolve(value);
+      }
+    };
+
     child.on('close', (code) => {
-      resolve(code === 0);
+      safeResolve(code === 0);
     });
 
     child.on('error', () => {
-      resolve(false);
+      safeResolve(false);
     });
 
     // Timeout after 5 seconds
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       child.kill();
-      resolve(false);
+      safeResolve(false);
     }, 5000);
   });
 }

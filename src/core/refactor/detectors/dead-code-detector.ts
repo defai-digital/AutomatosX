@@ -3,6 +3,7 @@
  * Detects unused imports, variables, functions, and unreachable code
  * @module core/refactor/detectors/dead-code-detector
  * @version 12.7.0
+ * @updated 12.8.0 - Added AST-based unreachable code detection (Phase 4)
  */
 
 import type {
@@ -12,6 +13,17 @@ import type {
   RefactorIgnoreState,
 } from '../types.js';
 import { createFinding } from '../refactor-detector.js';
+import { ASTAnalyzer, createASTAnalyzer } from '../../bugfix/ast-analyzer.js';
+
+// Shared AST analyzer instance for dead code detection
+let astAnalyzer: ASTAnalyzer | null = null;
+
+function getASTAnalyzer(): ASTAnalyzer {
+  if (!astAnalyzer) {
+    astAnalyzer = createASTAnalyzer(50); // Smaller cache for refactor detector
+  }
+  return astAnalyzer;
+}
 
 // ============================================================================
 // Detection Rules
@@ -42,12 +54,14 @@ export const DEAD_CODE_RULES: RefactorRule[] = [
     suggestion: 'Remove unused variable or prefix with underscore',
     fileExtensions: ['.ts', '.tsx', '.js', '.jsx'],
   },
+  // v12.8.0: Changed to AST-based detection for better accuracy
+  // AST analysis correctly handles switch/case statements and nested blocks
   {
     id: 'unreachable-code',
     type: 'dead_code',
     description: 'Code after return/throw/break is unreachable',
     pattern: /(?:return|throw|break|continue)\s+[^;]*;\s*\n\s*[^}\s]/,
-    detector: 'regex',
+    detector: 'ast', // Changed from 'regex' to 'ast'
     severity: 'medium',
     confidence: 0.95,
     autoFixable: true,
@@ -261,9 +275,66 @@ function detectUnusedVariables(
   return findings;
 }
 
+/**
+ * Detect unreachable code using AST analysis
+ * v12.8.0: Phase 4 - Reduced false positives via control flow analysis
+ */
 function detectUnreachableCode(
   filePath: string,
   content: string,
+  lines: string[],
+  ignoreState: RefactorIgnoreState
+): RefactorFinding[] {
+  const findings: RefactorFinding[] = [];
+
+  try {
+    // Use AST-based detection for better accuracy
+    const analyzer = getASTAnalyzer();
+    const sourceFile = analyzer.parseFile(content, filePath);
+    const unreachableInfos = analyzer.analyzeUnreachableCode(sourceFile);
+
+    for (const info of unreachableInfos) {
+      // Skip false positives (switch case statements, etc.)
+      if (info.isFalsePositive) {
+        continue;
+      }
+
+      // Check if should ignore
+      if (shouldIgnoreLine(info.line, 'dead_code', ignoreState)) {
+        continue;
+      }
+
+      findings.push(
+        createFinding(
+          filePath,
+          info.line,
+          info.line,
+          'dead_code',
+          'medium',
+          `Unreachable code after ${info.reason} statement`,
+          info.code,
+          'unreachable-code',
+          0.95,
+          'static',
+          'Remove unreachable code',
+          { linesRemoved: 1 }
+        )
+      );
+    }
+  } catch {
+    // Fallback to regex-based detection on AST failure
+    findings.push(...detectUnreachableCodeFallback(filePath, lines, ignoreState));
+  }
+
+  return findings;
+}
+
+/**
+ * Fallback regex-based detection for unreachable code
+ * Used when AST parsing fails
+ */
+function detectUnreachableCodeFallback(
+  filePath: string,
   lines: string[],
   ignoreState: RefactorIgnoreState
 ): RefactorFinding[] {
@@ -305,7 +376,7 @@ function detectUnreachableCode(
             'Unreachable code after return/throw/break',
             lines[j] || '',
             'unreachable-code',
-            0.95,
+            0.85, // Lower confidence for fallback
             'static',
             'Remove unreachable code',
             { linesRemoved: 1 }

@@ -16,6 +16,7 @@ import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-help
 import { ProfileLoader } from '../../agents/profile-loader.js';
 import { TeamManager } from '../../core/team-manager.js';
 import { ProviderDetector } from '../../core/provider-detector.js';
+import { RoutingConfigurator } from '../../core/routing-configurator.js';
 
 interface SetupOptions {
   force?: boolean;
@@ -232,6 +233,39 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
       await createDefaultConfig(configPath, argv.force ?? false, version);
       createdResources.push(configPath);
       console.log(chalk.green('   ✓ Configuration created'));
+
+      // v13.0.0: Auto-configure provider routing based on detection
+      console.log(chalk.cyan('🔧 Configuring optimal provider routing...'));
+      const routingConfigurator = new RoutingConfigurator();
+      await routingConfigurator.detectCapabilities();
+      const routingRecommendation = routingConfigurator.generateRecommendation();
+
+      // Show recommendation report
+      if (Object.keys(routingRecommendation.providers).length > 0) {
+        console.log('');
+        console.log(chalk.cyan('📊 Provider Routing Configuration:'));
+        console.log('');
+        const report = routingConfigurator.generateReport(routingRecommendation);
+        for (const line of report.split('\n')) {
+          console.log(chalk.gray(`   ${line}`));
+        }
+        console.log('');
+
+        // Apply recommendation to config
+        const { applied, changes } = await routingConfigurator.applyRecommendation(
+          configPath,
+          routingRecommendation,
+          { preserveCustomizations: !argv.force }
+        );
+
+        if (applied) {
+          console.log(chalk.green(`   ✓ Provider routing optimized (${changes.length} changes)`));
+        } else {
+          console.log(chalk.yellow('   ⚠ Routing configuration preserved (use --force to override)'));
+        }
+      } else {
+        console.log(chalk.yellow('   ⚠ No providers available for routing configuration'));
+      }
 
       // Setup Claude Code integration (ONLY if detected)
       if (providers['claude-code']) {

@@ -34,7 +34,8 @@ export default defineConfig([
       'yargs',            // CLI parser (works better external)
       'find-up',          // File finder
       'js-yaml',          // YAML parser
-      'openai'            // OpenAI SDK
+      'openai',           // OpenAI SDK
+      'typescript'        // TypeScript compiler (uses dynamic requires for fs)
     ]
   },
   // MCP Server build
@@ -70,7 +71,8 @@ export default defineConfig([
       'yargs',            // CLI parser (works better external)
       'find-up',          // File finder
       'js-yaml',          // YAML parser
-      'openai'            // OpenAI SDK
+      'openai',           // OpenAI SDK
+      'typescript'        // TypeScript compiler (uses dynamic requires for fs)
     ]
   }
 ]);

@@ -257,10 +257,6 @@ echo "All tasks completed!"
 ```yaml
 # auth-workflow.ax.yaml
 name: Authentication Feature
-policy:
-  constraints:
-    maxLatency: 5000
-    privacy: private
 
 tasks:
   # Design phase

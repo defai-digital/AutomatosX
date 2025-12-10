@@ -30,6 +30,18 @@ interface CreateOptions {
   interactive?: boolean;
 }
 
+/**
+ * Agent template YAML structure
+ */
+interface AgentTemplateYaml {
+  name?: string;
+  role?: string;
+  description?: string;
+  team?: string;
+  display_name?: string;
+  [key: string]: unknown;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const createCommand: CommandModule<{}, CreateOptions> = {
   command: 'create <agent>',
@@ -122,7 +134,7 @@ export const createCommand: CommandModule<{}, CreateOptions> = {
       // 4. Load template
       const templatePath = findTemplate(templateName);
       const templateContent = await readFile(templatePath, 'utf-8');
-      const templateYaml = loadYaml(templateContent) as any;
+      const templateYaml = loadYaml(templateContent) as AgentTemplateYaml;
 
       // 5. Collect variables (keep undefined if not provided to allow template defaults)
       const variables: TemplateVariables = {

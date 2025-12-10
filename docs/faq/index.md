@@ -229,7 +229,7 @@ If you used API keys directly before, follow each provider’s CLI authenticatio
 No, you need at least one provider CLI installed and authenticated:
 
 - **Recommended**: Install `claude` CLI (most capable)
-- **Free option**: Gemini CLI offers generous free tier
+- **Cost-aware option**: Set Gemini CLI as highest priority for lower-cost runs (AutomatosX does not manage free-tier quotas)
 - **For testing**: Use mock providers (`AX_MOCK_PROVIDERS=true`)
 
 **Important**: Codex CLI CLI requires your project to be a git repository (`git init`). Other providers don't have this requirement.

@@ -65,6 +65,10 @@ status/
 .automatosx/
 .automatosx-backups/
 
+# Generated project context files (ax init)
+ax.index.json
+ax.summary.json
+
 # Checkpoint files (resumable execution state)
 checkpoints/
 *.checkpoint
@@ -120,6 +124,7 @@ test-*.js
 .claude/
 .gemini/
 .grok/
+.qwen/
 .ax-cli/
 .ax-glm/
 .ax-grok/

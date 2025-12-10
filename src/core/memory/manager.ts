@@ -33,6 +33,25 @@ import { MemoryCleanupStrategies } from './cleanup-strategies.js';
 // v4.11.0: VECTOR_DIMENSIONS removed (FTS5 only, no vector search)
 
 /**
+ * Raw database row from memory_entries table
+ */
+interface MemoryEntryRow {
+  id: number;
+  content: string;
+  metadata: string | null;
+  created_at: number;
+  last_accessed_at: number | null;
+  access_count: number;
+}
+
+/**
+ * Search result row with relevance score from FTS5
+ */
+interface SearchResultRow extends MemoryEntryRow {
+  relevance: number;
+}
+
+/**
  * Memory Manager using SQLite + FTS5 for full-text search
  *
  * Features:
@@ -643,10 +662,10 @@ export class MemoryManager implements IMemoryManager {
       }
 
       // v5.7.0: Use prepared statement for basic search (no filters) - 20-30% faster
-      let results: any[];
+      let results: SearchResultRow[];
       if (conditions.length === 0) {
         // Fast path: Use prepared statement for basic search
-        results = this.statements.searchFTS!.all(ftsQuery, limit) as any[];
+        results = this.statements.searchFTS!.all(ftsQuery, limit) as SearchResultRow[];
       } else {
         // Slow path: Build dynamic query for filtered searches
         const metadataWhere = ` AND ${conditions.join(' AND ')}`;
@@ -666,7 +685,7 @@ export class MemoryManager implements IMemoryManager {
           LIMIT ?
         `;
         const finalParams = [ftsQuery, ...params, limit];
-        results = this.db.prepare(sql).all(...finalParams) as any[];
+        results = this.db.prepare(sql).all(...finalParams) as SearchResultRow[];
       }
 
       // Phase 1.1: Update access tracking with batch UPDATE for atomicity and performance
@@ -732,7 +751,7 @@ export class MemoryManager implements IMemoryManager {
         SELECT *
         FROM memory_entries
         WHERE id = ?
-      `).get(id) as any;
+      `).get(id) as MemoryEntryRow | undefined;
 
       if (!row) return null;
 
@@ -916,7 +935,7 @@ export class MemoryManager implements IMemoryManager {
         ${offsetClause}
       `;
 
-      const rows = this.db.prepare(sql).all(...params) as any[];
+      const rows = this.db.prepare(sql).all(...params) as MemoryEntryRow[];
 
       return rows.map(row => {
         return {

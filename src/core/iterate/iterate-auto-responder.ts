@@ -28,6 +28,27 @@ import { load as yamlLoad } from 'js-yaml';
 import { existsSync } from 'fs';
 
 /**
+ * Raw template entry from YAML file
+ */
+interface RawTemplateEntry {
+  template?: string;
+  priority?: number;
+  provider?: string | null;
+  description?: string;
+}
+
+/**
+ * Raw template library structure from YAML
+ */
+interface RawTemplateLibrary {
+  version: string;
+  updatedAt?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  templates: Record<string, RawTemplateEntry[]>;
+}
+
+/**
  * Context for response generation
  */
 export interface ResponseContext {
@@ -230,38 +251,43 @@ export class IterateAutoResponder {
     try {
       // Read YAML file
       const fileContent = await readFile(path, 'utf-8');
-      const parsed = yamlLoad(fileContent) as any;
+      const rawParsed: unknown = yamlLoad(fileContent);
 
-      // Validate structure
-      if (!parsed || typeof parsed !== 'object') {
+      // Validate structure with type guard
+      if (!rawParsed || typeof rawParsed !== 'object') {
         throw new Error('Invalid template library format: not an object');
       }
 
-      if (!parsed.version || typeof parsed.version !== 'string') {
+      const parsed = rawParsed as Record<string, unknown>;
+
+      if (!parsed['version'] || typeof parsed['version'] !== 'string') {
         throw new Error('Invalid template library: missing version');
       }
 
-      if (!parsed.templates || typeof parsed.templates !== 'object') {
+      if (!parsed['templates'] || typeof parsed['templates'] !== 'object') {
         throw new Error('Invalid template library: missing templates object');
       }
+
+      // Now we can safely cast to our known structure
+      const rawLibrary = parsed as unknown as RawTemplateLibrary;
 
       // Build TemplateLibrary structure
       const templates: Partial<Record<ClassificationType, ResponseTemplate[]>> = {};
 
-      for (const [type, templateArray] of Object.entries(parsed.templates)) {
+      for (const [type, templateArray] of Object.entries(rawLibrary.templates)) {
         if (!Array.isArray(templateArray)) {
           logger.warn('Skipping invalid template array', { type });
           continue;
         }
 
         // Sort by priority before storing (descending)
-        const sortedArray = [...templateArray].sort((a: any, b: any) => {
+        const sortedArray = [...templateArray].sort((a: RawTemplateEntry, b: RawTemplateEntry) => {
           const priorityA = typeof a.priority === 'number' ? a.priority : 5;
           const priorityB = typeof b.priority === 'number' ? b.priority : 5;
           return priorityB - priorityA;
         });
 
-        templates[type as ClassificationType] = sortedArray.map((t: any) => ({
+        templates[type as ClassificationType] = sortedArray.map((t: RawTemplateEntry) => ({
           template: t.template || '',
           type: type as ClassificationType,
           priority: typeof t.priority === 'number' ? t.priority : 5,
@@ -271,10 +297,10 @@ export class IterateAutoResponder {
       }
 
       this.templates = {
-        version: parsed.version,
-        updatedAt: parsed.updatedAt || new Date().toISOString(),
+        version: rawLibrary.version,
+        updatedAt: rawLibrary.updatedAt || new Date().toISOString(),
         templates: templates as Record<ClassificationType, ResponseTemplate[]>,
-        metadata: parsed.metadata || (parsed.description ? { description: parsed.description } : undefined)
+        metadata: rawLibrary.metadata || (rawLibrary.description ? { description: rawLibrary.description } : undefined)
       };
 
       logger.info('Template library loaded successfully', {
@@ -349,25 +375,27 @@ export class IterateAutoResponder {
       return null;
     }
 
-    // Filter by provider: provider-specific templates OR generic templates (provider: null)
+    // First, try to find provider-specific templates
     const providerLower = provider.toLowerCase();
-    const matchingTemplates = templatesForType.filter(t => {
-      if (t.provider === null) {
-        return true; // Generic template, applies to all providers
-      }
-      return t.provider?.toLowerCase() === providerLower;
-    });
+    const providerSpecificTemplates = templatesForType.filter(t =>
+      t.provider?.toLowerCase() === providerLower
+    );
 
-    if (matchingTemplates.length === 0) {
-      // No matching templates, try generic fallback
-      const genericTemplates = templatesForType.filter(t => t.provider === null);
-      if (genericTemplates.length === 0) {
-        return null;
-      }
-      return this.selectFromCandidates(genericTemplates);
+    // If provider-specific templates exist, use them
+    if (providerSpecificTemplates.length > 0) {
+      return this.selectFromCandidates(providerSpecificTemplates);
     }
 
-    return this.selectFromCandidates(matchingTemplates);
+    // Fallback to generic templates (provider: null or undefined)
+    const genericTemplates = templatesForType.filter(t =>
+      t.provider === null || t.provider === undefined
+    );
+
+    if (genericTemplates.length === 0) {
+      return null;
+    }
+
+    return this.selectFromCandidates(genericTemplates);
   }
 
   /**
@@ -468,10 +496,8 @@ export class IterateAutoResponder {
    */
   private applyProviderFormatting(
     response: string,
-    provider: string
+    _provider: string
   ): string {
-    const providerLower = provider.toLowerCase();
-
     // Provider-specific formatting is mostly handled by provider-specific templates
     // This method provides minor adjustments if needed
 

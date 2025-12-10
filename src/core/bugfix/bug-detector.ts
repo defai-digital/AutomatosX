@@ -3,7 +3,7 @@
  *
  * Detects bugs in the codebase using multiple strategies:
  * - Layer 1: Static regex-based detection (fast, <10s)
- * - Layer 2: AST-based detection (medium, <60s)
+ * - Layer 2: AST-based detection (medium, <60s) - v12.8.0
  * - Layer 3: Test-based detection (slow, <5min)
  *
  * Supports ignore comments:
@@ -14,12 +14,14 @@
  * @module core/bugfix/bug-detector
  * @since v12.4.0
  * @updated v12.6.0 - Added ignore comments support
+ * @updated v12.8.0 - Added AST-based detection for missing_destroy (reduced false positives)
  */
 
 import { readFile, readdir, stat } from 'fs/promises';
 import { join, extname, relative, isAbsolute } from 'path';
 import { randomUUID } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
+import { ASTAnalyzer, ALLOWLISTS, createASTAnalyzer } from './ast-analyzer.js';
 import type {
   BugFinding,
   BugType,
@@ -44,25 +46,29 @@ const IGNORE_PATTERNS = {
  * Default detection rules for common bug patterns
  */
 const DEFAULT_DETECTION_RULES: DetectionRule[] = [
-  // Timer leak: setInterval without .unref()
-  // v12.6.0: Increased withinLines from 5 to 50 to handle multi-line callbacks
-  // where .unref() is called after the closing brace (some callbacks are 35+ lines)
-  // NOTE: This is a workaround - proper fix would use AST-based detection
+  // Timer leak: setInterval without cleanup
+  // v12.8.0: Now uses AST-based detection with variable tracking and destroy() analysis
+  // This eliminates false positives from timers that are properly cleaned up
   {
     id: 'timer-leak-interval',
     type: 'timer_leak',
-    name: 'setInterval without unref',
-    description: 'setInterval() without .unref() blocks process exit',
+    name: 'setInterval without cleanup',
+    description: 'setInterval() without clearInterval or .unref() may block process exit',
     pattern: 'setInterval\\s*\\(',
-    negativePattern: '\\.unref\\s*\\(\\)',
-    withinLines: 50,
-    confidence: 0.9,
+    // v12.8.0: negativePattern no longer used - AST handles cleanup detection
+    negativePattern: undefined,
+    withinLines: undefined,
+    confidence: 0.92, // Higher confidence with AST-based detection
     severity: 'high',
     autoFixable: true,
     fixTemplate: 'add_unref',
-    fileExtensions: ['.ts', '.js', '.mts', '.mjs']
+    fileExtensions: ['.ts', '.js', '.mts', '.mjs'],
+    // v12.8.0: Flag to use AST-based detection
+    useAST: true
   },
   // Timer leak: setTimeout in promise without cleanup
+  // v12.8.0: Now uses AST-based detection to identify safe sleep/delay patterns
+  // This reduces false positives from simple utilities like sleep() or delay()
   {
     id: 'timer-leak-timeout-promise',
     type: 'promise_timeout_leak',
@@ -71,27 +77,33 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     pattern: 'new\\s+Promise[^}]*setTimeout\\s*\\(',
     negativePattern: 'finally|clearTimeout',
     withinLines: 20,
-    confidence: 0.7,
+    confidence: 0.85, // Higher with AST-based detection
     severity: 'medium',
     autoFixable: false, // Complex, needs manual review
-    fileExtensions: ['.ts', '.js', '.mts', '.mjs']
+    fileExtensions: ['.ts', '.js', '.mts', '.mjs'],
+    // v12.8.0: Flag to use AST-based detection
+    useAST: true
   },
   // Missing destroy: EventEmitter without destroy method
-  // v12.6.0: Increased withinLines from 100 to 800 to scan entire class
-  // Classes can be large - need to check the whole class for destroy() method
+  // v12.8.0: Now uses AST-based detection for accurate class boundary analysis
+  // The regex pattern is kept as a pre-filter, but actual detection is done via AST
+  // This eliminates false positives from large classes where destroy() is far from class declaration
   {
     id: 'missing-destroy-eventemitter',
     type: 'missing_destroy',
     name: 'EventEmitter without destroy',
     description: 'Classes extending EventEmitter should have destroy() method',
     pattern: 'class\\s+\\w+\\s+extends\\s+(?:EventEmitter|DisposableEventEmitter)',
-    negativePattern: 'destroy\\s*\\(\\s*\\)',
-    withinLines: 800,
-    confidence: 0.85,
+    // v12.8.0: negativePattern no longer used - AST handles method detection
+    negativePattern: undefined,
+    withinLines: undefined,
+    confidence: 0.95, // Higher confidence with AST-based detection
     severity: 'high',
     autoFixable: true,
     fixTemplate: 'add_destroy_method',
-    fileExtensions: ['.ts', '.js', '.mts', '.mjs']
+    fileExtensions: ['.ts', '.js', '.mts', '.mjs'],
+    // v12.8.0: Flag to use AST-based detection
+    useAST: true
   },
   // Event leak: .on() without corresponding cleanup
   {
@@ -137,14 +149,17 @@ interface IgnoreState {
  * Bug Detector class
  *
  * Scans codebase for bugs using configurable detection rules.
+ * v12.8.0: Added AST-based detection for improved accuracy.
  */
 export class BugDetector {
   private rules: DetectionRule[];
   private config: BugfixConfig;
+  private astAnalyzer: ASTAnalyzer;
 
   constructor(config: BugfixConfig, customRules?: DetectionRule[]) {
     this.config = config;
     this.rules = customRules || DEFAULT_DETECTION_RULES;
+    this.astAnalyzer = createASTAnalyzer();
 
     // Filter rules by configured bug types (defensive check for undefined)
     if (config.bugTypes && config.bugTypes.length > 0) {
@@ -156,7 +171,8 @@ export class BugDetector {
     logger.debug('BugDetector initialized', {
       ruleCount: this.rules.length,
       bugTypes: config.bugTypes,
-      scope: config.scope
+      scope: config.scope,
+      astEnabled: true
     });
   }
 
@@ -345,9 +361,15 @@ export class BugDetector {
         }
       }
 
-      // Apply regex-based detection
-      const ruleFindings = this.applyRule(rule, content, lines, relativePath, ignoreState);
-      findings.push(...ruleFindings);
+      // v12.8.0: Use AST-based detection for rules that support it
+      if (rule.useAST) {
+        const astFindings = this.applyASTRule(rule, content, lines, filePath, relativePath, ignoreState);
+        findings.push(...astFindings);
+      } else {
+        // Apply regex-based detection
+        const ruleFindings = this.applyRule(rule, content, lines, relativePath, ignoreState);
+        findings.push(...ruleFindings);
+      }
     }
 
     return findings;
@@ -442,6 +464,387 @@ export class BugDetector {
         ruleId: rule.id,
         file: filePath,
         error: (error as Error).message
+      });
+    }
+
+    return findings;
+  }
+
+  /**
+   * Apply AST-based detection rule
+   * v12.8.0: Uses TypeScript AST for accurate analysis
+   */
+  private applyASTRule(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+
+    try {
+      // Route to specific AST detection based on rule type
+      switch (rule.type) {
+        case 'missing_destroy':
+          return this.detectMissingDestroyAST(rule, content, lines, filePath, relativePath, ignoreState);
+        case 'promise_timeout_leak':
+          return this.detectPromiseTimeoutLeakAST(rule, content, lines, filePath, relativePath, ignoreState);
+        case 'timer_leak':
+          return this.detectTimerLeakAST(rule, content, lines, filePath, relativePath, ignoreState);
+        default:
+          // Fallback to regex for unsupported AST rule types
+          logger.warn('AST detection not implemented for rule type', { type: rule.type });
+          return this.applyRule(rule, content, lines, relativePath, ignoreState);
+      }
+    } catch (error) {
+      logger.warn('AST rule application failed', {
+        ruleId: rule.id,
+        file: filePath,
+        error: (error as Error).message
+      });
+      // Fallback to regex detection on AST failure
+      return this.applyRule(rule, content, lines, relativePath, ignoreState);
+    }
+  }
+
+  /**
+   * AST-based detection for missing_destroy bug type
+   * v12.8.0: Accurate class boundary detection eliminates false positives
+   */
+  private detectMissingDestroyAST(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+    const findings: BugFinding[] = [];
+
+    // Parse AST
+    const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+
+    // Find classes extending EventEmitter or DisposableEventEmitter
+    const eventEmitterPattern = /^(EventEmitter|DisposableEventEmitter|SafeEventEmitter)$/;
+    const classes = this.astAnalyzer.findClassesExtending(sourceFile, eventEmitterPattern);
+
+    for (const classInfo of classes) {
+      // Check if line should be ignored
+      if (this.shouldIgnore(classInfo.startLine, rule.type, ignoreState)) {
+        logger.debug('Class ignored by comment', {
+          file: relativePath,
+          class: classInfo.name,
+          line: classInfo.startLine
+        });
+        continue;
+      }
+
+      // Check 1: Does class already have a destroy-like method?
+      if (this.astAnalyzer.classHasDestroyMethod(classInfo)) {
+        logger.debug('Class has destroy method - no bug', {
+          file: relativePath,
+          class: classInfo.name,
+          methods: classInfo.methods.map(m => m.name)
+        });
+        continue;
+      }
+
+      // Check 2: Does parent class handle destroy (allowlisted base classes)?
+      const extendsAllowlistedBase = classInfo.extendsClause.some(base =>
+        ALLOWLISTS.missingDestroy.baseClassesWithDestroy.includes(base)
+      );
+      if (extendsAllowlistedBase) {
+        logger.debug('Class extends base with destroy - no bug', {
+          file: relativePath,
+          class: classInfo.name,
+          extends: classInfo.extendsClause
+        });
+        continue;
+      }
+
+      // Check 3: Does class implement allowlisted interface?
+      const implementsDestroyInterface = classInfo.implementsClause.some(iface =>
+        ALLOWLISTS.missingDestroy.interfacesWithDestroy.includes(iface)
+      );
+      if (implementsDestroyInterface) {
+        logger.debug('Class implements destroy interface - no bug', {
+          file: relativePath,
+          class: classInfo.name,
+          implements: classInfo.implementsClause
+        });
+        continue;
+      }
+
+      // Check 4: Is this an abstract class? (subclasses may implement destroy)
+      if (classInfo.isAbstract) {
+        // Still flag but with lower confidence
+        logger.debug('Abstract class without destroy - flagging with lower confidence', {
+          file: relativePath,
+          class: classInfo.name
+        });
+      }
+
+      // Extract context (first few lines of class)
+      const contextStart = Math.max(0, classInfo.startLine - 2);
+      const contextEnd = Math.min(lines.length, classInfo.startLine + 5);
+      const context = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Bug found - class extends EventEmitter but has no destroy method
+      const finding: BugFinding = {
+        id: randomUUID(),
+        file: relativePath,
+        lineStart: classInfo.startLine,
+        lineEnd: Math.min(classInfo.startLine + 10, classInfo.endLine),
+        type: rule.type,
+        severity: rule.severity,
+        message: `Class '${classInfo.name}' extends ${classInfo.extendsClause.join(', ')} but has no destroy() method. ` +
+                 `EventEmitter subclasses should implement destroy() to clean up listeners.`,
+        context,
+        fixStrategy: rule.autoFixable ? rule.fixTemplate : undefined,
+        confidence: classInfo.isAbstract ? rule.confidence * 0.7 : rule.confidence,
+        detectionMethod: 'ast',
+        metadata: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          className: classInfo.name,
+          extendsClause: classInfo.extendsClause,
+          implementsClause: classInfo.implementsClause,
+          isAbstract: classInfo.isAbstract,
+          existingMethods: classInfo.methods.map(m => m.name)
+        },
+        detectedAt: new Date().toISOString()
+      };
+
+      findings.push(finding);
+
+      logger.debug('Missing destroy bug detected (AST)', {
+        file: relativePath,
+        class: classInfo.name,
+        line: classInfo.startLine,
+        confidence: finding.confidence
+      });
+    }
+
+    return findings;
+  }
+
+  /**
+   * AST-based detection for promise_timeout_leak bug type
+   * v12.8.0: Phase 3 - Identifies safe sleep/delay patterns to reduce false positives
+   */
+  private detectPromiseTimeoutLeakAST(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+    const findings: BugFinding[] = [];
+
+    // Skip test files entirely (allowlisted)
+    if (this.astAnalyzer.isTestFile(filePath)) {
+      logger.debug('Skipping test file for promise_timeout_leak', { file: relativePath });
+      return findings;
+    }
+
+    // Check if file matches allowlisted patterns
+    for (const pattern of ALLOWLISTS.promiseTimeout.filePatterns) {
+      if (pattern.test(filePath)) {
+        logger.debug('Skipping allowlisted file pattern', { file: relativePath, pattern: pattern.source });
+        return findings;
+      }
+    }
+
+    // Parse AST and analyze Promise+setTimeout patterns
+    const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    const promiseTimeouts = this.astAnalyzer.analyzePromiseTimeouts(sourceFile, content);
+
+    for (const info of promiseTimeouts) {
+      // Check if line should be ignored
+      if (this.shouldIgnore(info.promiseLine, rule.type, ignoreState)) {
+        logger.debug('Promise+setTimeout ignored by comment', {
+          file: relativePath,
+          line: info.promiseLine
+        });
+        continue;
+      }
+
+      // Skip if this is an allowlisted pattern (simple sleep/delay)
+      if (info.isAllowlisted) {
+        logger.debug('Promise+setTimeout is allowlisted', {
+          file: relativePath,
+          line: info.promiseLine,
+          reason: info.allowlistReason
+        });
+        continue;
+      }
+
+      // Skip if cleanup is already present
+      if (info.hasCleanup) {
+        logger.debug('Promise+setTimeout has cleanup', {
+          file: relativePath,
+          line: info.promiseLine
+        });
+        continue;
+      }
+
+      // Extract context
+      const contextStart = Math.max(0, info.promiseLine - 2);
+      const contextEnd = Math.min(lines.length, info.timeoutLine + 3);
+      const context = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Calculate confidence based on factors
+      let confidence = rule.confidence;
+
+      // Lower confidence if timeout ID is captured (might have cleanup elsewhere)
+      if (info.timeoutIdCaptured) {
+        confidence *= 0.8; // 20% reduction
+      }
+
+      // Lower confidence for anonymous functions (harder to track)
+      if (!info.enclosingFunction) {
+        confidence *= 0.9; // 10% reduction
+      }
+
+      // Bug found
+      const finding: BugFinding = {
+        id: randomUUID(),
+        file: relativePath,
+        lineStart: info.promiseLine,
+        lineEnd: info.timeoutLine,
+        type: rule.type,
+        severity: rule.severity,
+        message: `Promise contains setTimeout without cleanup. ` +
+                 `If the Promise is rejected before the timeout fires, the timer will still run. ` +
+                 `Consider using try/finally with clearTimeout or Promise.race with AbortController.`,
+        context,
+        fixStrategy: undefined, // Complex, needs manual review
+        confidence,
+        detectionMethod: 'ast',
+        metadata: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          promiseLine: info.promiseLine,
+          timeoutLine: info.timeoutLine,
+          enclosingFunction: info.enclosingFunction,
+          timeoutIdCaptured: info.timeoutIdCaptured
+        },
+        detectedAt: new Date().toISOString()
+      };
+
+      findings.push(finding);
+
+      logger.debug('Promise timeout leak detected (AST)', {
+        file: relativePath,
+        line: info.promiseLine,
+        confidence: finding.confidence
+      });
+    }
+
+    return findings;
+  }
+
+  /**
+   * AST-based detection for timer_leak bug type
+   * v12.8.0: Phase 5 - Variable tracking and destroy() method analysis
+   */
+  private detectTimerLeakAST(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+    const findings: BugFinding[] = [];
+
+    // Skip test files entirely
+    if (this.astAnalyzer.isTestFile(filePath)) {
+      logger.debug('Skipping test file for timer_leak', { file: relativePath });
+      return findings;
+    }
+
+    // Parse AST and analyze timer patterns
+    const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    const timerLeaks = this.astAnalyzer.analyzeTimerLeaks(sourceFile, content);
+
+    for (const info of timerLeaks) {
+      // Check if line should be ignored
+      if (this.shouldIgnore(info.line, rule.type, ignoreState)) {
+        logger.debug('Timer leak ignored by comment', {
+          file: relativePath,
+          line: info.line
+        });
+        continue;
+      }
+
+      // Skip if this is a false positive (has proper cleanup)
+      if (info.isFalsePositive) {
+        logger.debug('Timer has proper cleanup - not a leak', {
+          file: relativePath,
+          line: info.line,
+          reason: info.falsePositiveReason
+        });
+        continue;
+      }
+
+      // Extract context
+      const contextStart = Math.max(0, info.line - 2);
+      const contextEnd = Math.min(lines.length, info.line + 5);
+      const context = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Calculate confidence based on factors
+      let confidence = rule.confidence;
+
+      // Higher confidence if value is not captured (definite leak)
+      if (!info.isValueCaptured) {
+        confidence = 0.98; // Very high confidence - cannot be cleared
+      }
+
+      // Build detailed message
+      let message = `setInterval() `;
+      if (!info.isValueCaptured) {
+        message += `return value is not captured - timer cannot be cleared and will block process exit. `;
+      } else {
+        message += `(${info.capturedVariable}) has no cleanup. `;
+        message += `No clearInterval() or .unref() found. `;
+      }
+      message += `Consider using .unref() for non-blocking timers or clearInterval() in a destroy() method.`;
+
+      // Bug found
+      const finding: BugFinding = {
+        id: randomUUID(),
+        file: relativePath,
+        lineStart: info.line,
+        lineEnd: info.line + 3,
+        type: rule.type,
+        severity: rule.severity,
+        message,
+        context,
+        fixStrategy: rule.autoFixable ? rule.fixTemplate : undefined,
+        confidence,
+        detectionMethod: 'ast',
+        metadata: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          timerType: info.timerType,
+          isValueCaptured: info.isValueCaptured,
+          capturedVariable: info.capturedVariable,
+          enclosingClass: info.enclosingClass,
+          enclosingFunction: info.enclosingFunction
+        },
+        detectedAt: new Date().toISOString()
+      };
+
+      findings.push(finding);
+
+      logger.debug('Timer leak detected (AST)', {
+        file: relativePath,
+        line: info.line,
+        confidence: finding.confidence,
+        capturedVariable: info.capturedVariable
       });
     }
 

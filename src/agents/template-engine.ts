@@ -110,11 +110,12 @@ export class TemplateEngine {
    * // Result: { name: 'backend', role: 'Developer' }
    * ```
    */
-  renderObject<T extends Record<string, any>>(
+  renderObject<T extends Record<string, unknown>>(
     obj: T,
     variables: TemplateVariables
   ): T {
-    const result: any = Array.isArray(obj) ? [] : {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic template rendering requires flexible typing
+    const result: Record<string, unknown> = Array.isArray(obj) ? ([] as any) : {};
 
     for (const key in obj) {
       const value = obj[key];
@@ -124,7 +125,8 @@ export class TemplateEngine {
         result[key] = this.render(value, variables);
       } else if (typeof value === 'object' && value !== null) {
         // Recursively render nested objects/arrays
-        result[key] = this.renderObject(value, variables);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Recursive call needs flexible typing
+        result[key] = this.renderObject(value as Record<string, any>, variables);
       } else {
         // Keep other types as-is
         result[key] = value;

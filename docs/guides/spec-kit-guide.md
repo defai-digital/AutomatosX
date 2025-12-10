@@ -1,5 +1,7 @@
 # Spec-Kit Usage Guide
 
+> Note: Routing in v12.7.x is priority-based only; policy/free-tier cost routing described in older versions is not available.
+
 ## What is Spec-Kit?
 
 Spec-Kit is AutomatosX's YAML-driven workflow generation system that enables declarative, reproducible, and cost-optimized AI agent workflows. Instead of running agents individually, you define entire projects as specifications that AutomatosX orchestrates automatically.
@@ -48,16 +50,6 @@ metadata:
   description: Complete authentication system
   tags: [auth, api, security]
 
-policy:
-  goals: [cost, reliability]
-  constraints:
-    cost:
-      maxPerRequest: 0.10
-    latency:
-      p95: 30000
-    privacy:
-      allowedClouds: [aws, gcp]
-
 actors:
   design:
     agent: architecture
@@ -93,33 +85,9 @@ metadata:
   tags: [tag1, tag2]        # Categorization tags
 ```
 
-### 2. Policy
+### 2. Policy (not supported in v12.7.x)
 
-Define how providers should be selected:
-
-#### Goals
-- `cost`: Minimize cost (prioritize free tiers, cheaper providers)
-- `latency`: Minimize response time (prioritize faster providers)
-- `reliability`: Maximize uptime (prioritize stable providers)
-- `balanced`: Balance all factors
-
-#### Constraints
-
-```yaml
-policy:
-  goals: [cost, reliability]
-  constraints:
-    cost:
-      maxPerRequest: 0.10    # Max cost per single request
-      maxPerDay: 5.00        # Max daily cost budget
-    latency:
-      p95: 30000             # 95th percentile latency in ms
-      max: 60000             # Maximum acceptable latency
-    privacy:
-      allowedClouds: [aws, gcp]      # Allowed cloud providers
-      allowedRegions: [us-east-1]    # Allowed regions
-      dataRetention: 30               # Data retention in days
-```
+Policy-based provider selection was removed. Omit `policy` blocks and control provider selection via priorities in `ax.config.json`.
 
 ### 3. Actors
 
@@ -280,30 +248,9 @@ ax gen plan auth-system.yaml  # Hash: def456 (changed!)
 
 The system warns you when executing a spec whose plan is outdated.
 
-### Policy-Driven Provider Selection
+### Policy-Driven Provider Selection (removed)
 
-Based on your policy, AutomatosX intelligently selects providers:
-
-```yaml
-policy:
-  goals: [cost]  # Minimize cost
-  # Result: Prioritizes Gemini (1500 free requests/day)
-```
-
-```yaml
-policy:
-  goals: [latency]  # Minimize latency
-  # Result: Prioritizes fastest providers (Claude)
-```
-
-```yaml
-policy:
-  goals: [cost, reliability]  # Balance cost and reliability
-  constraints:
-    privacy:
-      allowedClouds: [aws]  # Only AWS-based providers
-  # Result: Claude (AWS) chosen as best balance
-```
+Policy-based provider selection was removed in v12.7.x. Use provider priorities in `ax.config.json` to control routing.
 
 ### Parallel Execution with Dependency Graphs
 
@@ -417,9 +364,6 @@ metadata:
   version: 1.0.0
   description: Review code for quality issues
 
-policy:
-  goals: [cost]
-
 actors:
   review:
     agent: quality
@@ -437,12 +381,6 @@ metadata:
   name: feature-development
   version: 1.0.0
   description: Complete feature development workflow
-
-policy:
-  goals: [cost, reliability]
-  constraints:
-    cost:
-      maxPerDay: 2.00
 
 actors:
   design:
@@ -483,14 +421,6 @@ metadata:
   version: 1.0.0
   description: Complete microservice with deployment
   tags: [microservice, k8s, api]
-
-policy:
-  goals: [reliability, cost]
-  constraints:
-    latency:
-      p95: 45000
-    privacy:
-      allowedClouds: [aws, gcp]
 
 actors:
   architecture:
@@ -568,10 +498,7 @@ Visualize the graph to find circular references.
 
 ### "Cost constraint exceeded"
 
-Either:
-1. Increase cost constraints in policy
-2. Use cheaper providers (Gemini free tier)
-3. Reduce scope of tasks
+Policy cost constraints are not supported in v12.7.x. Use provider priorities and scope control instead.
 
 ### "Provider not available"
 
@@ -593,5 +520,5 @@ ax providers list
 
 ---
 
-**Version**: 6.5.13
-**Last Updated**: 2025-11-01
+**Version**: 12.7.x
+**Last Updated**: 2025-02-01

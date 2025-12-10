@@ -30,6 +30,28 @@ import { load as yamlLoad } from 'js-yaml';
 import { existsSync } from 'fs';
 
 /**
+ * Raw pattern entry from YAML file
+ */
+interface RawPatternEntry {
+  pattern?: string;
+  confidence?: number;
+  description?: string;
+  provider?: string | null;
+  priority?: number;
+}
+
+/**
+ * Raw pattern library structure from YAML
+ */
+interface RawPatternLibrary {
+  version: string;
+  updatedAt?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  patterns: Record<string, RawPatternEntry[]>;
+}
+
+/**
  * Iterate Classifier
  *
  * Classifies AI responses using multi-stage pipeline for high accuracy and low latency.
@@ -208,38 +230,43 @@ export class IterateClassifier {
     try {
       // Read YAML file
       const fileContent = await readFile(path, 'utf-8');
-      const parsed = yamlLoad(fileContent) as any;
+      const rawParsed: unknown = yamlLoad(fileContent);
 
-      // Validate structure
-      if (!parsed || typeof parsed !== 'object') {
+      // Validate structure with type guard
+      if (!rawParsed || typeof rawParsed !== 'object') {
         throw new Error('Invalid pattern library format: not an object');
       }
 
-      if (!parsed.version || typeof parsed.version !== 'string') {
+      const parsed = rawParsed as Record<string, unknown>;
+
+      if (!parsed['version'] || typeof parsed['version'] !== 'string') {
         throw new Error('Invalid pattern library: missing version');
       }
 
-      if (!parsed.patterns || typeof parsed.patterns !== 'object') {
+      if (!parsed['patterns'] || typeof parsed['patterns'] !== 'object') {
         throw new Error('Invalid pattern library: missing patterns object');
       }
+
+      // Now we can safely cast to our known structure
+      const rawLibrary = parsed as unknown as RawPatternLibrary;
 
       // Build PatternLibrary structure
       const patterns: Partial<Record<ClassificationType, ClassificationPattern[]>> = {};
 
-      for (const [type, patternArray] of Object.entries(parsed.patterns)) {
+      for (const [type, patternArray] of Object.entries(rawLibrary.patterns)) {
         if (!Array.isArray(patternArray)) {
           logger.warn('Skipping invalid pattern array', { type });
           continue;
         }
 
         // Sort by priority before converting to ClassificationPattern (descending)
-        const sortedArray = [...patternArray].sort((a: any, b: any) => {
+        const sortedArray = [...patternArray].sort((a: RawPatternEntry, b: RawPatternEntry) => {
           const priorityA = typeof a.priority === 'number' ? a.priority : 5;
           const priorityB = typeof b.priority === 'number' ? b.priority : 5;
           return priorityB - priorityA;
         });
 
-        patterns[type as ClassificationType] = sortedArray.map((p: any) => ({
+        patterns[type as ClassificationType] = sortedArray.map((p: RawPatternEntry) => ({
           pattern: p.pattern || '',
           type: type as ClassificationType,
           confidence: typeof p.confidence === 'number' ? p.confidence : 0.8,
@@ -249,10 +276,10 @@ export class IterateClassifier {
       }
 
       this.patterns = {
-        version: parsed.version,
-        updatedAt: parsed.updatedAt || new Date().toISOString(),
+        version: rawLibrary.version,
+        updatedAt: rawLibrary.updatedAt || new Date().toISOString(),
         patterns: patterns as Record<ClassificationType, ClassificationPattern[]>,
-        metadata: parsed.metadata || (parsed.description ? { description: parsed.description } : undefined)
+        metadata: rawLibrary.metadata || (rawLibrary.description ? { description: rawLibrary.description } : undefined)
       };
 
       // Compile patterns

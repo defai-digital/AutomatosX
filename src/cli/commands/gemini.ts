@@ -956,6 +956,15 @@ const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
 
         let stdout = '';
         let stderr = '';
+        let resolved = false;
+
+        const safeResolve = (result: CheckResult) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            resolve(result);
+          }
+        };
 
         child.stdout?.on('data', (data) => {
           stdout += data.toString();
@@ -967,14 +976,14 @@ const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
 
         child.on('close', (code) => {
           if (code === 0 && stdout.trim()) {
-            resolve({
+            safeResolve({
               name: 'CLI Version',
               status: 'pass',
               message: 'Gemini CLI version detected',
               details: stdout.trim(),
             });
           } else {
-            resolve({
+            safeResolve({
               name: 'CLI Version',
               status: 'warn',
               message: 'Could not detect version',
@@ -983,9 +992,9 @@ const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
           }
         });
 
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           child.kill();
-          resolve({
+          safeResolve({
             name: 'CLI Version',
             status: 'fail',
             message: 'Version check timed out',

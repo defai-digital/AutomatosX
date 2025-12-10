@@ -570,6 +570,43 @@ export interface OpenAIConfig {
 // Router Configuration (v5.7.0+)
 // ========================================
 
+/**
+ * Agent-Provider Affinity Configuration (v13.0.0+)
+ * Maps agents to their preferred providers
+ */
+export interface AgentAffinityConfig {
+  /** Primary provider for this agent */
+  primary: string | null;
+  /** Fallback chain in order of preference */
+  fallback: string[];
+}
+
+/**
+ * Ability Routing Configuration (v13.0.0+)
+ * Maps ability types to preferred providers
+ */
+export interface AbilityRoutingConfig {
+  /** Providers preferred for this ability type, in order */
+  preferredProviders: string[];
+}
+
+/**
+ * Routing Configuration (v13.0.0+)
+ * Auto-configured provider routing based on detection
+ */
+export interface RoutingConfig {
+  /** Whether this was auto-configured (vs manually set) */
+  autoConfigured?: boolean;
+  /** Timestamp of last auto-configuration */
+  lastConfiguredAt?: string;
+  /** Routing strategy: 'capability-based' | 'priority-only' | 'round-robin' */
+  strategy?: 'capability-based' | 'priority-only' | 'round-robin';
+  /** Agent-to-provider affinity mappings */
+  agentAffinities?: Record<string, AgentAffinityConfig>;
+  /** Ability-type to provider routing */
+  abilityRouting?: Record<string, AbilityRoutingConfig>;
+}
+
 export interface RouterConfig {
   healthCheckInterval?: number;         // Background health check interval (ms), optional
   providerCooldownMs?: number;          // Cooldown period for failed providers (ms)
@@ -577,6 +614,8 @@ export interface RouterConfig {
   circuitBreakerWindowMs?: number;      // v11.1.0: Time window for counting failures (default: 300000 = 5 min)
   enableFreeTierPrioritization?: boolean;  // Enable prioritization of free tier providers (default: true)
   enableWorkloadAwareRouting?: boolean;    // Enable workload-aware provider routing (default: true)
+  // v13.0.0: Auto-configured routing
+  routing?: RoutingConfig;
 }
 
 // ========================================

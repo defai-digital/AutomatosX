@@ -1,4 +1,6 @@
-# SDK Package Availability Report
+# SDK Package Availability Report (Archived)
+
+> Archived for historical reference. Do not treat as current implementation guidance; provider support in v12.7.x uses existing SDKs/CLIs only.
 
 **Date:** 2025-12-07
 **Purpose:** Validate SDK packages for PRD-012 Provider Architecture Refactoring

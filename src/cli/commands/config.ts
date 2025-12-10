@@ -2,7 +2,7 @@
  * Config Command - Manage AutomatosX configuration
  */
 
-import type { CommandModule } from 'yargs';
+import type { CommandModule, Argv } from 'yargs';
 import { access } from 'fs/promises';
 import { resolve } from 'path';
 import { constants } from 'fs';
@@ -14,6 +14,7 @@ import { printError } from '../../shared/errors/error-formatter.js';
 import { printSuccess, formatInfo, formatKeyValue, formatWarning } from '../../shared/logging/message-formatter.js';
 import { validateConfig, formatValidationErrors } from '../../core/config/validator.js';
 import { loadConfigFile, saveConfigFile } from '../../core/config/loader.js';
+import { routingSubcommand } from './config-routing.js';
 
 interface ConfigOptions {
   get?: string;
@@ -29,8 +30,10 @@ export const configCommand: CommandModule<Record<string, unknown>, ConfigOptions
   command: 'config',
   describe: 'Manage AutomatosX configuration',
 
-  builder: (yargs) => {
+  builder: (yargs: Argv) => {
     return yargs
+      // Register routing as a nested subcommand
+      .command(routingSubcommand)
       .option('get', {
         alias: 'g',
         describe: 'Get configuration value',
@@ -71,7 +74,9 @@ export const configCommand: CommandModule<Record<string, unknown>, ConfigOptions
       .example('$0 config --get logging.level', 'Get log level')
       .example('$0 config --set logging.level --value debug', 'Set log level to debug')
       .example('$0 config --validate', 'Validate configuration')
-      .example('$0 config --reset', 'Reset to default configuration');
+      .example('$0 config --reset', 'Reset to default configuration')
+      .example('$0 config routing', 'Auto-configure provider routing')
+      .example('$0 config routing --show', 'Show current routing configuration');
   },
 
   handler: async (argv) => {

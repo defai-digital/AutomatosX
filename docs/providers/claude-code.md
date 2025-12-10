@@ -12,7 +12,6 @@ AutomatosX supports Anthropic's Claude Code CLI as a provider, enabling you to l
 - ✅ Excellent code analysis and security auditing
 - ✅ Strong architectural decision-making capabilities
 - ✅ Automatic process management and cleanup
-- ✅ Cost estimation and usage tracking
 
 **Best For**:
 - Code reviews requiring deep analysis
@@ -47,9 +46,9 @@ AutomatosX supports Anthropic's Claude Code CLI as a provider, enabling you to l
 6. **Problem-Solving** - Best at tackling novel or ambiguous problems
 
 **❌ Use alternatives when**:
-1. **Cost is primary concern** → Use Gemini (96% cheaper)
-2. **Speed is critical** → Use OpenAI (20% faster)
-3. **Simple/repetitive tasks** → Use Gemini free tier
+1. **Cost is primary concern** → Use Gemini (set priority higher)
+2. **Speed is critical** → Use OpenAI
+3. **Simple/repetitive tasks** → Use Gemini
 4. **High volume workloads** → Use Gemini for cost efficiency
 
 ### Cost Considerations
@@ -61,7 +60,7 @@ AutomatosX supports Anthropic's Claude Code CLI as a provider, enabling you to l
 | **Code review** (5K tokens) | $0.045 | - | Quality-critical: Worth the cost |
 | **Security audit** (8K tokens) | $0.072 | - | Safety-critical: Worth the cost |
 
-**Recommendation**: Use AutomatosX's policy-driven routing to automatically use Claude only for quality-critical tasks while routing cost-sensitive workloads to Gemini.
+**Recommendation**: Set provider priorities so Claude is used when quality is needed and Gemini/OpenAI handle cost/speed-sensitive tasks.
 
 ---
 
@@ -252,7 +251,7 @@ Track usage and costs:
 ### Basic Agent Execution
 
 ```bash
-# Run an agent with Claude (auto-selected by policy)
+# Run an agent (default routing uses provider priorities)
 ax run backend "Review this authentication implementation for security issues"
 
 # Force use of Claude provider
@@ -304,33 +303,21 @@ ax session run "security-audit" security "Prioritize the vulnerabilities by seve
 ax session run "security-audit" backend "Recommend specific fixes for each issue"
 ```
 
-### Policy-Driven Routing
+### Provider Priorities
 
-Let AutomatosX automatically select Claude for quality-critical tasks:
+Set provider priorities to prefer Claude for quality-critical tasks:
 
-```yaml
-# workflow.ax.yaml
-policy:
-  goal: reliability  # Prioritize quality over cost
-  constraints:
-    reliability:
-      minAvailability: 0.998
-
-actors:
-  - id: code-review
-    agent: security
-    description: Review authentication implementation
-    # AutomatosX will select Claude (99.8% availability, best quality)
+```json
+{
+  "providers": {
+    "claude-code": { "enabled": true, "priority": 1 },
+    "gemini-cli": { "enabled": true, "priority": 2 },
+    "openai": { "enabled": true, "priority": 3 }
+  }
+}
 ```
 
-```bash
-# Execute workflow
-ax run workflow.ax.yaml
-
-# Check routing decision
-ax providers trace
-# Output: SELECTION claude-code score=0.98 (quality-optimal)
-```
+Routing is priority-based with health/fallback; no policy scoring or trace command.
 
 ---
 
@@ -446,7 +433,7 @@ ax run backend "Refactor this module while maintaining backward compatibility" -
 **❌ Avoid Claude for**:
 
 ```bash
-# Simple tasks - Use Gemini (free tier)
+# Simple tasks - Use Gemini (cost-aware)
 ax run frontend "Add a dark mode toggle button"
 
 # Repetitive tasks - Use Gemini (cost-effective)
@@ -811,44 +798,21 @@ ax provider-limits
 }
 ```
 
-### Optimize Costs with Routing
+### Optimize Costs with Priorities
 
-Use AutomatosX to automatically use cheaper providers when appropriate:
+Set provider priorities to control when Claude is used:
 
-```yaml
-# workflow.ax.yaml
-policy:
-  goal: balanced  # Balance cost and quality
-  constraints:
-    cost:
-      maxPerRequest: 0.05  # Max $0.05 per request
-
-actors:
-  - id: simple-task
-    agent: backend
-    description: Add logging to functions
-    # AutomatosX selects Gemini ($0.0025 vs Claude $0.09)
-
-  - id: complex-task
-    agent: security
-    description: Security audit of authentication
-    # AutomatosX selects Claude (quality-critical)
+```json
+{
+  "providers": {
+    "claude-code": { "enabled": true, "priority": 2 },
+    "gemini-cli": { "enabled": true, "priority": 1 },
+    "openai": { "enabled": true, "priority": 3 }
+  }
+}
 ```
 
-### Monitor Routing Decisions
-
-```bash
-# View real-time routing
-ax providers trace --follow
-
-# Filter Claude-specific decisions
-ax providers trace | grep claude-code
-
-# Example output:
-# 14:23:45 POLICY       claude-code    goal=reliability, passed=3/3
-# 14:23:45 SELECTION    claude-code    score=0.98 (quality-optimal)
-# 14:23:56 EXECUTION    claude-code    ✓ 11234ms, $0.089, tokens=9876
-```
+Routing is priority-based with fallback; provider trace commands and policy scoring are not available.
 
 ---
 
@@ -883,34 +847,22 @@ metadata:
   id: balanced-workflow
   name: Cost-Optimized Development
 
-policy:
-  goal: balanced
-  constraints:
-    cost:
-      maxDaily: 5.00
-    reliability:
-      minAvailability: 0.995
-
 actors:
   - id: design
     agent: product
     description: Design feature architecture
-    # Policy selects: Claude (high-value decision)
 
   - id: implement
     agent: backend
     description: Implement feature based on design
-    # Policy selects: Gemini (cost-effective execution)
 
   - id: review
     agent: security
     description: Security review of implementation
-    # Policy selects: Claude (quality-critical)
 
   - id: test
     agent: quality
     description: Write comprehensive test suite
-    # Policy selects: Gemini (cost-effective, high volume)
 ```
 
 ---

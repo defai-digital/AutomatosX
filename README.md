@@ -12,7 +12,7 @@
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-blue.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v12.7.0 | Cognitive Prompt Engineering Framework
+**Status**: ✅ **Production Ready** | v12.8.0 | AST-Based Bug Detection
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
@@ -48,6 +48,9 @@
 ✅ Multi-Provider: Auto-routes to Claude/Gemini/OpenAI optimally
 ✅ Complete Observability: JSONL trace logs for every decision
 ✅ Workflow Automation: YAML specs for complex multi-step tasks
+✅ Autonomous Bug Fixing: Detect and fix timer leaks, resource issues (v12.6.0)
+✅ Autonomous Refactoring: Improve code quality with safety guards (v12.7.0)
+✅ AST-Based Detection: Reduced false positives via TypeScript AST analysis (v12.8.0)
 ```
 
 **Total Monthly Cost**: $60/mo (same unlimited usage)
@@ -116,7 +119,7 @@ ax setup --claude-code
 **What you get**:
 - ✅ 18 slash commands (`/agent-backend`, `/agent-frontend`, etc.)
 - ✅ Multi-agent orchestration (`/automatosx`)
-- ✅ MCP server with 17 tools
+- ✅ MCP server with 27 tools (including bugfix and refactor)
 - ✅ Auto-generated manifests
 - ✅ One-command diagnostics (`ax doctor --claude-code`)
 
@@ -153,66 +156,76 @@ ax setup
 
 ---
 
-## 💬 Natural Language Examples (How You'll Use It)
+## 💬 Just Talk Naturally (Interactive Mode)
 
-### Example 1: Multi-Agent Collaboration
+**Simply ask Claude Code to work with AutomatosX agents. No special commands needed.**
 
-**You say to Claude Code**:
+### 🐛 Find and Fix Bugs
+
 ```
-"Work with AutomatosX agents to build a payment system.
-Let the backend agent implement the API, security agent audit it,
-and quality agent write tests. Save everything to memory."
-```
-
-**What AutomatosX does automatically**:
-1. Product agent designs architecture
-2. Backend agent implements API (routed to Gemini - cost-efficient)
-3. Security agent audits code (routed to Claude - best reasoning)
-4. Quality agent writes tests (routed to Gemini - fast)
-5. Everything saved to memory for future tasks
-6. Complete trace log for observability
-
-**Cost**: $0 additional (using CLI subscriptions)
-**Time**: 60% faster (parallel execution)
-**Quality**: 3 specialized agents vs 1 generalist
-
-### Example 2: Persistent Memory
-
-**Day 1 - You say**:
-```
-"Design a calculator app with add/subtract features.
-Save the architecture to AutomatosX memory."
+"Please work with ax to find and fix bugs in src/core/"
 ```
 
-**Day 7 - You say**:
+AutomatosX automatically:
+- Scans for timer leaks, resource issues, type errors
+- Shows you what it found with severity levels
+- Fixes auto-fixable bugs with verification
+- Creates backups and rolls back if tests fail
+
+### 📝 Review and Improve PRD
+
 ```
-"Implement the calculator API we designed last week."
-```
-
-**AutomatosX automatically**:
-- Searches memory for "calculator" design
-- Injects full context into prompt (< 1ms search)
-- Zero token waste (no repetition)
-- Perfect continuity (like talking to same person)
-
-**Savings**: 50-80% fewer tokens (no context repetition)
-
-### Example 3: Cost Optimization
-
-**You say**:
-```
-"Review this 10,000-line codebase for bugs.
-Use cost-efficient routing - this is routine analysis."
+"Please review the PRD in docs/spec.md and discuss with ax agents to improve it"
 ```
 
-**AutomatosX automatically**:
-- Routes to Gemini (routine task = cost-efficient)
-- Uses Gemini Advanced unlimited plan ($20/mo)
-- Instead of Claude API ($150-300/mo for this volume)
-- Same quality, 80% cost savings
+AutomatosX automatically:
+- Product agent analyzes requirements completeness
+- Architecture agent identifies technical gaps
+- Security agent flags compliance concerns
+- Returns actionable suggestions for improvement
 
-**API Cost (without AutomatosX)**: ~$45 (10K lines × $15/1M tokens)
-**CLI Cost (with AutomatosX)**: $0 (already paying $20/mo Gemini Advanced)
+### 🔧 Refactor Code
+
+```
+"Please refactor the session manager using ax, focus on reducing complexity"
+```
+
+AutomatosX automatically:
+- Measures current metrics (complexity, duplication)
+- Identifies refactoring opportunities
+- Applies changes with safety guards
+- Verifies metrics improved (rollback if not)
+
+### 🔒 Security Audit
+
+```
+"Ask the ax security agent to audit the authentication module"
+```
+
+AutomatosX automatically:
+- Routes to Claude (best reasoning for security)
+- Checks for OWASP vulnerabilities
+- Reviews auth flow and token handling
+- Saves findings to memory for future reference
+
+### 💾 Remember Anything
+
+```
+"Save this API design to ax memory for later"
+```
+
+```
+"What did we decide about the database schema last week?"
+```
+
+AutomatosX automatically:
+- Stores context with full-text search (< 1ms)
+- Retrieves relevant history when needed
+- Zero token waste on repetition
+
+---
+
+> 📚 **Want CLI commands?** See [Full Documentation](docs/full-features.md) for `ax bugfix`, `ax refactor`, and all CLI options.
 
 ---
 
@@ -312,57 +325,31 @@ steps:
 
 **AutomatosX executes everything automatically**, with optimal provider routing.
 
-### 6. Autonomous Bug Fixing (v12.4.0+)
+### 6. Autonomous Bug Fixing (v12.6.0)
 
-**Automatically detect and fix common bugs in your codebase:**
-
-```bash
-# Scan and fix timer leaks, missing destroy(), and resource issues
-ax bugfix
-
-# Dry-run mode (preview fixes without applying)
-ax bugfix --dry-run
-
-# Focus on specific directory
-ax bugfix --scope src/core/
-
-# Fix specific bug types only
-ax bugfix --types timer_leak,missing_destroy
+**Just ask naturally:**
+```
+"Please work with ax to find and fix bugs in this project"
 ```
 
-**What AutomatosX detects and fixes**:
-- **Timer Leaks**: `setInterval`/`setTimeout` without cleanup
-- **Missing Destroy**: EventEmitters without `destroy()` method
-- **Promise Timeout Leaks**: Timeouts not cleared in error paths
-- **Event Leaks**: Event listeners without cleanup
+**What it detects**: Timer leaks, missing destroy(), promise leaks, event leaks, race conditions, memory leaks, uncaught promises, deprecated APIs, security issues, type errors (13 types total)
 
-**Safe by default**:
-- Creates backups before any changes
-- Runs TypeScript typecheck after each fix
-- Runs tests to verify fixes don't break functionality
-- Automatic rollback if verification fails
+**Safety**: Backups created, typecheck verification, test verification, automatic rollback on failure
 
-**Example output**:
+> 📚 **Full CLI reference**: See [Bugfix Documentation](docs/guides/bugfix.md) for `ax bugfix --dry-run`, `--staged`, `--json`, pre-commit hooks, and ignore comments
+
+### 7. Autonomous Code Refactoring (v12.7.0)
+
+**Just ask naturally:**
 ```
-[ax bugfix] Scanning src/ for bugs...
-[ax bugfix] Found 18 potential issues:
-  - 12 timer_leak (setInterval without .unref())
-  - 4 missing_destroy (EventEmitter subclass)
-  - 2 promise_timeout_leak
-
-[ax bugfix] Fixing timer_leak in src/core/worker-pool.ts:447
-  - Replaced setInterval with createSafeInterval
-  - Verification: TypeScript ✓ Tests ✓
-
-[ax bugfix] Complete: 15/18 bugs fixed, 3 require manual review
+"Please refactor src/core/ using ax, focus on reducing complexity"
 ```
 
-**MCP Integration** - Use bugfix via Quality agent from Claude Code:
-```
-# Via Quality agent (recommended - full context and orchestration)
-run_agent({ agent: "quality", task: "scan src/ for code health issues" })
-run_agent({ agent: "quality", task: "run bugfix workflow with dry-run" })
-```
+**What it improves**: Dead code removal, type safety (`any` types), complex conditionals, hardcoded values, naming, duplication, readability, performance
+
+**Safety**: Metrics must improve or changes are rejected. Overengineering guards prevent unnecessary abstractions. Automatic rollback on failure.
+
+> 📚 **Full CLI reference**: See [Refactor Documentation](docs/guides/refactor.md) for `ax refactor scan`, `--dry-run`, `--no-llm`, and all focus areas
 
 ---
 
@@ -661,6 +648,8 @@ Save everything to shared memory."
 - [Persistent Memory Guide](docs/guides/memory.md) - Context management
 - [Workflow Automation](docs/guides/spec-kit-guide.md) - YAML workflows
 - [Observability](docs/advanced/observability.md) - Trace logging
+- [Autonomous Bug Fixing](docs/guides/bugfix.md) - Detect and fix bugs automatically
+- [Autonomous Refactoring](docs/guides/refactor.md) - Improve code quality with safety guards
 
 ### For Advanced Users (5% Who Need CLI)
 - **[Full Features List](docs/full-features.md)** - All CLI commands and capabilities
@@ -680,7 +669,7 @@ Save everything to shared memory."
 
 ```bash
 npm install -g @defai.digital/automatosx
-ax --version  # v12.0.1
+ax --version  # v12.7.0
 ```
 
 ### Initialize Your Project
@@ -714,8 +703,8 @@ ax setup
 
 ## 🚦 Production Readiness
 
-✅ **v12.0.1 Released** - Bug Fixes & Provider Architecture Improvements
-✅ **2,512+ Tests Passing** - Comprehensive coverage
+✅ **v12.7.0 Released** - Cognitive Prompt Engineering Framework + Autonomous Refactoring
+✅ **3,148+ Tests Passing** - Comprehensive coverage
 ✅ **TypeScript Strict Mode** - Type-safe codebase
 ✅ **Zero Resource Leaks** - Clean shutdown guaranteed
 ✅ **Cross-Platform** - macOS, Windows, Ubuntu

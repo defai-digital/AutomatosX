@@ -1814,17 +1814,26 @@ async function runMcpDiagnostics(verbose: boolean): Promise<void> {
 
       const initResult = await new Promise<boolean>((resolve) => {
         let output = '';
+        let resolved = false;
+        const safeResolve = (value: boolean) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            proc.kill();
+            resolve(value);
+          }
+        };
+
         proc.stderr?.on('data', (data) => {
           output += data.toString();
           // Check for successful initialization message
           if (output.includes('Server started successfully')) {
-            resolve(true);
+            safeResolve(true);
           }
         });
 
-        setTimeout(() => {
-          proc.kill();
-          resolve(output.includes('Server started') || output.includes('MCP Server'));
+        const timeoutId = setTimeout(() => {
+          safeResolve(output.includes('Server started') || output.includes('MCP Server'));
         }, 3000);
       });
 

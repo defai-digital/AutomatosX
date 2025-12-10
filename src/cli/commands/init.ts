@@ -59,6 +59,45 @@ interface VersionCheckCache {
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * ax.summary.json structure (ax-cli compatible)
+ *
+ * A compact summary (~500 tokens) designed for fast prompt injection.
+ * Contains essential project metadata without the full analysis.
+ *
+ * @since v12.10.0
+ */
+interface AxSummary {
+  // Schema version for future compatibility
+  schemaVersion: string;
+
+  // Generation timestamp
+  generatedAt: string;
+
+  // Core project info
+  project: {
+    name: string;
+    type: string;
+    language: string;
+    version?: string;
+  };
+
+  // Key directories
+  directories: Record<string, string>;
+
+  // Essential commands
+  commands: Record<string, string>;
+
+  // Tech stack (compact list)
+  techStack: string[];
+
+  // Critical gotchas/rules (max 5)
+  gotchas: string[];
+
+  // Reference to full index
+  indexFile: string;
+}
+
+/**
  * ax.index.json structure (ax-cli compatible)
  *
  * This is the shared project index used by all AI CLIs:
@@ -241,6 +280,89 @@ function generateAxIndex(info: ProjectInfo): AxIndex {
     createdAt: now,
     updatedAt: now,
     analysisTier: 3 // Default to comprehensive analysis
+  };
+}
+
+/**
+ * Generate ax.summary.json content (ax-cli compatible)
+ *
+ * A compact summary (~500 tokens) for fast prompt injection.
+ * Contains essential project metadata without the full analysis.
+ *
+ * @since v12.10.0
+ */
+function generateAxSummary(info: ProjectInfo, index: AxIndex): AxSummary {
+  // Build tech stack (compact list)
+  const techStack: string[] = [];
+  if (info.language) techStack.push(info.language);
+  if (info.framework) techStack.push(info.framework);
+  if (info.buildTool) techStack.push(info.buildTool);
+  if (info.testFramework) techStack.push(info.testFramework);
+  if (info.packageManager && info.packageManager !== 'npm') {
+    techStack.push(info.packageManager);
+  }
+
+  // Build directories (top 5)
+  const directories: Record<string, string> = {};
+  if (info.fileStructure?.directories) {
+    for (const dir of info.fileStructure.directories.slice(0, 5)) {
+      directories[dir.path] = dir.purpose || `Contains ${dir.fileCount} files`;
+    }
+  }
+
+  // Build commands (top 5 essential)
+  const commands: Record<string, string> = {};
+  const essentialCommands = ['build', 'test', 'dev', 'lint', 'typecheck'];
+  for (const cmdName of essentialCommands) {
+    const cmd = index.commands[cmdName];
+    if (cmd) {
+      commands[cmdName] = cmd.script;
+    }
+  }
+  // Fill remaining slots with other commands
+  const remaining = 5 - Object.keys(commands).length;
+  if (remaining > 0) {
+    for (const [name, cmd] of Object.entries(index.commands)) {
+      if (!commands[name] && Object.keys(commands).length < 5) {
+        commands[name] = cmd.script;
+      }
+    }
+  }
+
+  // Build gotchas (critical rules/warnings, max 5)
+  const gotchas: string[] = [];
+
+  // Add technology-specific gotchas
+  if (info.hasTypeScript) {
+    gotchas.push('TypeScript strict mode is enabled');
+  }
+  if (info.isMonorepo) {
+    gotchas.push('Monorepo structure - run commands from package directory');
+  }
+  if (info.packageManager === 'pnpm') {
+    gotchas.push('Uses pnpm - ensure dependencies are installed with pnpm');
+  }
+  if (info.language === 'TypeScript' && info.dependencies.some(d => d.includes('esm') || d.includes('module'))) {
+    gotchas.push('ESM modules - imports require .js extension even for .ts files');
+  }
+  if (info.testFramework) {
+    gotchas.push(`Tests use ${info.testFramework} - run tests before committing`);
+  }
+
+  return {
+    schemaVersion: '1.0',
+    generatedAt: new Date().toISOString(),
+    project: {
+      name: info.name,
+      type: detectArchitectureType(info),
+      language: info.language,
+      version: info.version
+    },
+    directories,
+    commands,
+    techStack,
+    gotchas: gotchas.slice(0, 5),
+    indexFile: 'ax.index.json'
   };
 }
 
@@ -646,6 +768,7 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
     }
 
     const indexPath = join(projectDir, 'ax.index.json');
+    const summaryPath = join(projectDir, 'ax.summary.json');
     const automatosxDir = join(projectDir, '.automatosx');
     const customMdPath = join(automatosxDir, 'CUSTOM.md');
 
@@ -705,6 +828,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
         console.log(chalk.green(`✓ Created ax.index.json (${projectType} project)`));
       }
 
+      // Generate and write ax.summary.json (always regenerated with index)
+      const summaryContent = generateAxSummary(projectInfo, indexContent);
+      await atomicWrite(summaryPath, JSON.stringify(summaryContent, null, 2));
+      console.log(chalk.green('✓ Created ax.summary.json (fast context loading)'));
+
       // Ensure .automatosx directory exists
       await mkdir(automatosxDir, { recursive: true });
 
@@ -727,10 +855,11 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
       // Summary
       console.log('');
       console.log(chalk.cyan('Project initialized:'));
-      console.log(chalk.gray('  • ax.index.json    - Shared project index (auto-rebuilds after 24h)'));
+      console.log(chalk.gray('  • ax.summary.json  - Fast context (~500 tokens) injected into prompts'));
+      console.log(chalk.gray('  • ax.index.json    - Full project analysis (read on-demand)'));
       console.log(chalk.gray('  • CUSTOM.md        - Custom AI instructions (edit to customize)'));
       console.log('');
-      console.log(chalk.gray('Agents will use ax.index.json to understand your project.'));
+      console.log(chalk.gray('Token savings: ax.summary.json provides quick context, AI reads ax.index.json when needed.'));
 
       logger.info('Project initialized', {
         projectName: projectInfo.name,

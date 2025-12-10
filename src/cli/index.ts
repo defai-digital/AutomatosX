@@ -26,6 +26,7 @@ const VERSION = getVersion();
 // Import all commands directly (lazy loading broke command options)
 import { cacheCommand } from './commands/cache.js';
 import { configCommand } from './commands/config.js';
+// Note: configRoutingCommand is now a nested subcommand inside configCommand
 import { setupCommand } from './commands/setup.js';
 import { initCommand } from './commands/init.js';
 import { configureCommand } from './commands/configure.js';

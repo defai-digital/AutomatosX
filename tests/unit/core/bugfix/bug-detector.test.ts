@@ -99,6 +99,131 @@ const interval3 = setInterval(() => {}, 3000);
 
       expect(timerLeaks.length).toBe(3);
     });
+
+    // v12.8.0 Phase 5: AST-based detection with variable tracking
+    it('should NOT flag setInterval with clearInterval in same scope (AST)', async () => {
+      const code = `
+function startPolling() {
+  const intervalId = setInterval(() => {
+    console.log('polling');
+  }, 5000);
+
+  // Cleanup after 30 seconds
+  setTimeout(() => {
+    clearInterval(intervalId);
+  }, 30000);
+}
+`;
+      await writeFile(join(testDir, 'src', 'polling-cleanup.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('polling-cleanup.ts')
+      );
+
+      expect(timerLeaks.length).toBe(0);
+    });
+
+    it('should NOT flag setInterval cleared in destroy() method (AST)', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class PollingService extends EventEmitter {
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+
+  start() {
+    this.heartbeatInterval = setInterval(() => {
+      this.emit('heartbeat');
+    }, 1000);
+  }
+
+  destroy() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    this.removeAllListeners();
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'service-with-destroy.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('service-with-destroy.ts')
+      );
+
+      expect(timerLeaks.length).toBe(0);
+    });
+
+    it('should detect uncaptured setInterval (cannot be cleared) with high confidence', async () => {
+      const code = `
+// This is a definite leak - return value not captured
+setInterval(() => {
+  console.log('this will run forever');
+}, 1000);
+`;
+      await writeFile(join(testDir, 'src', 'uncaptured-interval.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeak = findings.find(f =>
+        f.type === 'timer_leak' && f.file.includes('uncaptured-interval.ts')
+      );
+
+      expect(timerLeak).toBeDefined();
+      expect(timerLeak?.confidence).toBeGreaterThanOrEqual(0.98);
+    });
+
+    it('should NOT flag setInterval with chained .unref() (AST)', async () => {
+      const code = `
+// Chained unref - no variable needed
+setInterval(() => {
+  console.log('background task');
+}, 60000).unref();
+`;
+      await writeFile(join(testDir, 'src', 'chained-unref.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeaks = findings.filter(f =>
+        f.type === 'timer_leak' && f.file.includes('chained-unref.ts')
+      );
+
+      expect(timerLeaks.length).toBe(0);
+    });
+
+    it('should use AST detection method for timer_leak (v12.8.0)', async () => {
+      const code = `
+const leakyInterval = setInterval(() => {}, 1000);
+// No cleanup
+`;
+      await writeFile(join(testDir, 'src', 'ast-detection.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeak = findings.find(f =>
+        f.type === 'timer_leak' && f.file.includes('ast-detection.ts')
+      );
+
+      expect(timerLeak).toBeDefined();
+      expect(timerLeak?.detectionMethod).toBe('ast');
+    });
+
+    it('should include metadata about captured variable', async () => {
+      const code = `
+const myTimer = setInterval(() => {
+  console.log('tick');
+}, 1000);
+`;
+      await writeFile(join(testDir, 'src', 'timer-metadata.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timerLeak = findings.find(f =>
+        f.type === 'timer_leak' && f.file.includes('timer-metadata.ts')
+      );
+
+      expect(timerLeak).toBeDefined();
+      expect(timerLeak?.metadata?.capturedVariable).toBe('myTimer');
+      expect(timerLeak?.metadata?.isValueCaptured).toBe(true);
+    });
   });
 
   describe('missing_destroy detection', () => {
@@ -151,7 +276,9 @@ class MyEmitter extends EventEmitter {
       expect(missingDestroy.length).toBe(0);
     });
 
-    it('should detect DisposableEventEmitter class without destroy', async () => {
+    it('should NOT flag DisposableEventEmitter class (parent has destroy)', async () => {
+      // v12.8.0: DisposableEventEmitter is in the allowlist because the parent
+      // class already provides destroy() - no need for subclass to implement it
       const code = `
 import { DisposableEventEmitter } from '@/shared/utils';
 
@@ -164,11 +291,225 @@ class MyService extends DisposableEventEmitter {
       await writeFile(join(testDir, 'src', 'service.ts'), code);
 
       const findings = await detector.scan(testDir);
-      const missingDestroy = findings.find(f =>
+      const missingDestroy = findings.filter(f =>
         f.type === 'missing_destroy' && f.file.includes('service.ts')
       );
 
+      // Should NOT flag - DisposableEventEmitter already has destroy()
+      expect(missingDestroy.length).toBe(0);
+    });
+
+    it('should detect plain EventEmitter class without destroy', async () => {
+      // Plain EventEmitter does NOT have destroy, so subclass needs it
+      const code = `
+import { EventEmitter } from 'events';
+
+class MyService extends EventEmitter {
+  constructor() {
+    super();
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'plain-service.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.find(f =>
+        f.type === 'missing_destroy' && f.file.includes('plain-service.ts')
+      );
+
       expect(missingDestroy).toBeDefined();
+    });
+
+    // v12.8.0: AST-based detection tests
+    it('should not flag class with dispose method (AST)', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class MyEmitter extends EventEmitter {
+  constructor() {
+    super();
+  }
+
+  dispose() {
+    this.removeAllListeners();
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'dispose-emitter.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.filter(f =>
+        f.type === 'missing_destroy' && f.file.includes('dispose-emitter.ts')
+      );
+
+      expect(missingDestroy.length).toBe(0);
+    });
+
+    it('should not flag class with cleanup method (AST)', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class MyEmitter extends EventEmitter {
+  cleanup() {
+    this.removeAllListeners();
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'cleanup-emitter.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.filter(f =>
+        f.type === 'missing_destroy' && f.file.includes('cleanup-emitter.ts')
+      );
+
+      expect(missingDestroy.length).toBe(0);
+    });
+
+    it('should find destroy() at end of large class (AST - false positive fix)', async () => {
+      // This test verifies the fix for the false positive where destroy()
+      // was beyond the withinLines scan limit
+      const methods = Array(50).fill(null).map((_, i) =>
+        `  method${i}() { console.log('method ${i}'); }`
+      ).join('\n');
+
+      const code = `
+import { EventEmitter } from 'events';
+
+class LargeEmitter extends EventEmitter {
+  constructor() {
+    super();
+  }
+
+${methods}
+
+  // destroy at the end - beyond old regex withinLines limit
+  destroy() {
+    this.removeAllListeners();
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'large-emitter.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.filter(f =>
+        f.type === 'missing_destroy' && f.file.includes('large-emitter.ts')
+      );
+
+      // Should NOT flag - destroy exists (even though far from class declaration)
+      expect(missingDestroy.length).toBe(0);
+    });
+
+    it('should not confuse destroy in different class (AST - false positive fix)', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class MyEmitter extends EventEmitter {
+  constructor() {
+    super();
+  }
+  start() {}
+}
+
+// Different class with destroy - should not affect MyEmitter
+class Helper {
+  destroy() {
+    console.log('helper destroyed');
+  }
+}
+`;
+      await writeFile(join(testDir, 'src', 'two-classes.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.filter(f =>
+        f.type === 'missing_destroy' && f.file.includes('two-classes.ts')
+      );
+
+      // Should flag MyEmitter (it has no destroy), not be confused by Helper.destroy
+      expect(missingDestroy.length).toBe(1);
+      expect(missingDestroy[0]?.metadata?.className).toBe('MyEmitter');
+    });
+
+    it('should use AST detection method (v12.8.0)', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class NoDestroy extends EventEmitter {
+  start() {}
+}
+`;
+      await writeFile(join(testDir, 'src', 'ast-detection.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.find(f =>
+        f.type === 'missing_destroy' && f.file.includes('ast-detection.ts')
+      );
+
+      expect(missingDestroy).toBeDefined();
+      expect(missingDestroy?.detectionMethod).toBe('ast');
+      expect(missingDestroy?.confidence).toBeGreaterThanOrEqual(0.9);
+    });
+
+    it('should have higher confidence with AST detection', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class NoDestroyEmitter extends EventEmitter {
+  constructor() { super(); }
+}
+`;
+      await writeFile(join(testDir, 'src', 'high-confidence.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.find(f =>
+        f.type === 'missing_destroy' && f.file.includes('high-confidence.ts')
+      );
+
+      // AST detection should have 0.95 confidence
+      expect(missingDestroy?.confidence).toBe(0.95);
+    });
+
+    it('should include class metadata in finding', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+class MyEmitter extends EventEmitter {
+  constructor() { super(); }
+  start() {}
+  stop() {}
+}
+`;
+      await writeFile(join(testDir, 'src', 'metadata.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.find(f =>
+        f.type === 'missing_destroy' && f.file.includes('metadata.ts')
+      );
+
+      expect(missingDestroy?.metadata?.className).toBe('MyEmitter');
+      expect(missingDestroy?.metadata?.extendsClause).toContain('EventEmitter');
+      expect(missingDestroy?.metadata?.existingMethods).toContain('start');
+      expect(missingDestroy?.metadata?.existingMethods).toContain('stop');
+    });
+
+    it('should flag abstract class with lower confidence', async () => {
+      const code = `
+import { EventEmitter } from 'events';
+
+abstract class BaseEmitter extends EventEmitter {
+  abstract process(): void;
+}
+`;
+      await writeFile(join(testDir, 'src', 'abstract-emitter.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const missingDestroy = findings.find(f =>
+        f.type === 'missing_destroy' && f.file.includes('abstract-emitter.ts')
+      );
+
+      expect(missingDestroy).toBeDefined();
+      expect(missingDestroy?.metadata?.isAbstract).toBe(true);
+      // Abstract classes get 0.95 * 0.7 = 0.665 confidence
+      expect(missingDestroy?.confidence).toBeLessThan(0.7);
     });
   });
 
@@ -224,6 +565,88 @@ function waitWithTimeout(promise, ms) {
       );
 
       expect(timeoutLeaks.length).toBe(0);
+    });
+
+    // v12.8.0 Phase 3: AST-based detection with allowlists
+    it('should NOT flag simple sleep utility (AST allowlist)', async () => {
+      const code = `
+// Simple sleep utility - should NOT be flagged
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function doSomething() {
+  await sleep(1000);
+  console.log('done');
+}
+`;
+      await writeFile(join(testDir, 'src', 'sleep-utility.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timeoutLeaks = findings.filter(f =>
+        f.type === 'promise_timeout_leak' && f.file.includes('sleep-utility.ts')
+      );
+
+      // Simple sleep patterns should be allowlisted
+      expect(timeoutLeaks.length).toBe(0);
+    });
+
+    it('should NOT flag delay utility (AST allowlist by name)', async () => {
+      const code = `
+// Delay utility - should NOT be flagged
+export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+`;
+      await writeFile(join(testDir, 'src', 'delay-utility.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timeoutLeaks = findings.filter(f =>
+        f.type === 'promise_timeout_leak' && f.file.includes('delay-utility.ts')
+      );
+
+      expect(timeoutLeaks.length).toBe(0);
+    });
+
+    it('should use AST detection method for promise_timeout_leak (v12.8.0)', async () => {
+      const code = `
+function fetchWithTimeout(url: string, ms: number) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject('timeout'), ms);
+    fetch(url).then(result => {
+      resolve(result);
+    });
+  });
+}
+`;
+      await writeFile(join(testDir, 'src', 'ast-detection.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timeoutLeak = findings.find(f =>
+        f.type === 'promise_timeout_leak' && f.file.includes('ast-detection.ts')
+      );
+
+      expect(timeoutLeak).toBeDefined();
+      expect(timeoutLeak?.detectionMethod).toBe('ast');
+    });
+
+    it('should include enclosing function in metadata', async () => {
+      const code = `
+function myTimeoutFunction(url: string) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(), 5000);
+    doSomething();
+  });
+}
+
+function doSomething() {}
+`;
+      await writeFile(join(testDir, 'src', 'metadata-timeout.ts'), code);
+
+      const findings = await detector.scan(testDir);
+      const timeoutLeak = findings.find(f =>
+        f.type === 'promise_timeout_leak' && f.file.includes('metadata-timeout.ts')
+      );
+
+      expect(timeoutLeak?.metadata?.enclosingFunction).toBe('myTimeoutFunction');
     });
   });
 

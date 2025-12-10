@@ -27,9 +27,19 @@ import {
   PerformanceTimer
 } from '../../shared/profiling/performance-markers.js';
 import type { RoutingConfig } from '../../types/routing.js';
+import type { RoutingConfig as ConfigRoutingConfig } from '../../types/config.js';
 import { getRoutingStrategyManager } from './routing-strategy.js';
 import { getProviderMetricsTracker } from '../provider-metrics-tracker.js';
 import { CircuitBreaker } from './circuit-breaker.js';
+import { RouterAffinityManager } from './affinity-manager.js';
+import { RouterAbilityManager, type AbilityType } from './ability-manager.js';
+import {
+  DynamicOptimizer,
+  getDynamicOptimizer,
+  type DynamicOptimizerConfig,
+  type OptimizationRecommendation,
+  type ProviderPerformanceSnapshot
+} from './dynamic-optimizer.js';
 
 // v8.3.0: Removed policy-driven routing, free-tier, workload analysis, cost tracking
 
@@ -52,6 +62,23 @@ export interface RouterConfig {
   enableTracing?: boolean; // Phase 2.3: Enable trace logging (default: false)
   enableFreeTierPrioritization?: boolean; // v6.3.1: Enable free tier prioritization (default: true)
   enableWorkloadAwareRouting?: boolean; // v6.3.1: Enable workload-aware routing (default: true)
+  // v13.1.0: Agent-provider affinity routing configuration
+  agentAffinities?: ConfigRoutingConfig;
+  // v14.0.0: Dynamic optimization configuration
+  dynamicOptimizer?: Partial<DynamicOptimizerConfig>;
+  enableDynamicOptimization?: boolean; // v14.0.0: Enable dynamic performance optimization (default: false)
+}
+
+/**
+ * Execution options for Router.execute()
+ * v13.1.0: Added agentName for affinity-based routing
+ * v13.2.0: Added abilityType for ability-based routing
+ */
+export interface RouterExecuteOptions {
+  /** Agent name for affinity-based provider selection */
+  agentName?: string;
+  /** Ability type for ability-based provider selection */
+  abilityType?: AbilityType | string;
 }
 
 export class Router {
@@ -79,6 +106,15 @@ export class Router {
 
   // v9.0.2: Extracted circuit breaker (better modularity and testability)
   private circuitBreaker: CircuitBreaker;
+
+  // v13.1.0: Agent-provider affinity routing
+  private affinityManager: RouterAffinityManager;
+
+  // v13.2.0: Ability-based provider routing
+  private abilityManager: RouterAbilityManager;
+
+  // v14.0.0: Dynamic performance optimization
+  private dynamicOptimizer?: DynamicOptimizer;
 
   constructor(config: RouterConfig) {
     // v6.3.1: Store config for feature flags
@@ -120,6 +156,44 @@ export class Router {
       logger.info('Multi-factor routing enabled', {
         strategy: strategyManager.getStrategy().name,
         weights: strategyManager.getWeights()
+      });
+    }
+
+    // v13.1.0: Initialize agent-provider affinity manager
+    this.affinityManager = new RouterAffinityManager(config.agentAffinities);
+    if (this.affinityManager.isEnabled()) {
+      const stats = this.affinityManager.getStats();
+      logger.info('Agent affinity routing enabled', {
+        agentCount: stats.agentCount,
+        strategy: stats.strategy,
+        lastConfiguredAt: stats.lastConfiguredAt
+      });
+    }
+
+    // v13.2.0: Initialize ability-based provider routing manager
+    this.abilityManager = new RouterAbilityManager(config.agentAffinities);
+    if (this.abilityManager.isEnabled()) {
+      const stats = this.abilityManager.getStats();
+      logger.info('Ability routing enabled', {
+        abilityCount: stats.abilityCount,
+        configuredAbilities: stats.configuredAbilities
+      });
+    }
+
+    // v14.0.0: Initialize dynamic optimizer if enabled
+    if (config.enableDynamicOptimization) {
+      this.dynamicOptimizer = getDynamicOptimizer(config.dynamicOptimizer);
+      // Initialize asynchronously (non-blocking)
+      void this.dynamicOptimizer.initialize().then(() => {
+        const stats = this.dynamicOptimizer?.getStats();
+        logger.info('Dynamic optimization enabled', {
+          isInitialized: stats?.isInitialized,
+          providersTracked: stats?.providersTracked
+        });
+      }).catch(err => {
+        logger.warn('Failed to initialize DynamicOptimizer', {
+          error: err instanceof Error ? err.message : String(err)
+        });
       });
     }
 
@@ -207,8 +281,12 @@ export class Router {
 
   /**
    * Execute request with automatic provider fallback
+   * v13.1.0: Added options parameter for agent-specific affinity routing
+   *
+   * @param request - Execution request
+   * @param options - Optional execution options including agentName for affinity routing
    */
-  async execute(request: ExecutionRequest): Promise<ExecutionResponse> {
+  async execute(request: ExecutionRequest, options?: RouterExecuteOptions): Promise<ExecutionResponse> {
     const timer = new PerformanceTimer(
       ComponentType.ROUTER,
       'execute',
@@ -287,6 +365,56 @@ export class Router {
     // v8.3.0: Simple priority-based failover (no policy evaluation, free-tier, or workload routing)
     let providersToTry = availableProviders;
 
+    // v13.1.0: Apply agent-provider affinity reordering if agentName provided
+    const agentName = options?.agentName;
+    if (agentName && this.affinityManager.isEnabled()) {
+      const providerNames = availableProviders.map(p => p.name);
+      const reorderedNames = this.affinityManager.reorderByAffinity({
+        agentName,
+        availableProviders: providerNames
+      });
+
+      // Reorder providers to match affinity order
+      providersToTry = reorderedNames
+        .map(name => availableProviders.find(p => p.name === name))
+        .filter((p): p is Provider => p !== undefined);
+
+      const firstProvider = providersToTry[0];
+      if (providersToTry.length > 0 && firstProvider) {
+        logger.debug('Provider order adjusted by agent affinity', {
+          agentName,
+          originalOrder: providerNames,
+          affinityOrder: reorderedNames,
+          selected: firstProvider.name
+        });
+      }
+    }
+
+    // v13.2.0: Apply ability-based routing if abilityType provided
+    const abilityType = options?.abilityType;
+    if (abilityType && this.abilityManager.isEnabled()) {
+      const providerNames = providersToTry.map(p => p.name);
+      const reorderedNames = this.abilityManager.reorderByAbility({
+        abilityType,
+        availableProviders: providerNames
+      });
+
+      // Reorder providers to match ability routing
+      providersToTry = reorderedNames
+        .map(name => availableProviders.find(p => p.name === name))
+        .filter((p): p is Provider => p !== undefined);
+
+      const firstProvider = providersToTry[0];
+      if (providersToTry.length > 0 && firstProvider) {
+        logger.debug('Provider order adjusted by ability routing', {
+          abilityType,
+          originalOrder: providerNames,
+          abilityOrder: reorderedNames,
+          selected: firstProvider.name
+        });
+      }
+    }
+
     // Phase 3: Reorder providers using multi-factor routing if enabled
     // Note: Policy-driven routing has already filtered providers above
     if (this.useMultiFactorRouting) {
@@ -330,6 +458,46 @@ export class Router {
           error: (scoringError as Error).message
         });
         // Continue with original priority order
+      }
+    }
+
+    // v14.0.0: Apply dynamic performance-based optimization if enabled
+    if (this.dynamicOptimizer) {
+      try {
+        const providerNames = providersToTry.map(p => p.name);
+
+        // Build health status map from circuit breaker
+        const healthStatus = new Map<string, boolean>();
+        for (const provider of providersToTry) {
+          const isHealthy = !this.circuitBreaker.isOpen(provider.name);
+          healthStatus.set(provider.name, isHealthy);
+        }
+
+        // Get performance-optimized order
+        const optimizedOrder = await this.dynamicOptimizer.reorderByPerformance(
+          providerNames,
+          healthStatus
+        );
+
+        // Reorder providers to match optimized order
+        const originalOrder = providersToTry.map(p => p.name);
+        providersToTry = optimizedOrder
+          .map(name => availableProviders.find(p => p.name === name))
+          .filter((p): p is Provider => p !== undefined);
+
+        const firstProvider = providersToTry[0];
+        if (providersToTry.length > 0 && firstProvider && originalOrder[0] !== optimizedOrder[0]) {
+          logger.debug('Provider order adjusted by dynamic optimization', {
+            originalOrder,
+            optimizedOrder,
+            selected: firstProvider.name
+          });
+        }
+      } catch (optimizerError) {
+        logger.warn('Dynamic optimization failed, continuing with current order', {
+          error: (optimizerError as Error).message
+        });
+        // Continue with current order
       }
     }
 
@@ -913,12 +1081,36 @@ export class Router {
 
   /**
    * Select best provider based on health and availability
+   * v13.1.0: Added optional agentName for affinity-based selection
+   *
+   * @param agentName - Optional agent name for affinity-based selection
    */
-  async selectProvider(): Promise<Provider | null> {
+  async selectProvider(agentName?: string): Promise<Provider | null> {
     const availableProviders = await this.getAvailableProviders();
 
     if (availableProviders.length === 0) {
       return null;
+    }
+
+    // v13.1.0: Apply agent affinity reordering if agentName provided
+    if (agentName && this.affinityManager.isEnabled()) {
+      const providerNames = availableProviders.map(p => p.name);
+      const reorderedNames = this.affinityManager.reorderByAffinity({
+        agentName,
+        availableProviders: providerNames
+      });
+
+      // Find the first provider in affinity order
+      for (const name of reorderedNames) {
+        const provider = availableProviders.find(p => p.name === name);
+        if (provider) {
+          logger.debug('Provider selected by agent affinity', {
+            agentName,
+            selected: provider.name
+          });
+          return provider;
+        }
+      }
     }
 
     // Return first available provider (already sorted by priority)
@@ -1057,6 +1249,12 @@ export class Router {
       this.tracer.close();
       logger.debug('Router trace logger closed');
     }
+
+    // v14.0.0: Destroy dynamic optimizer
+    if (this.dynamicOptimizer) {
+      this.dynamicOptimizer.destroy();
+      logger.debug('Dynamic optimizer destroyed');
+    }
   }
 
   /**
@@ -1123,5 +1321,247 @@ export class Router {
       return Date.now() + 60000; // Default: 1 minute from now
     }
     return Math.min(...limitedProviders.map(p => p.resetAtMs));
+  }
+
+  /**
+   * Get agent affinity routing stats
+   * v13.1.0: New API for affinity routing observability
+   */
+  getAffinityStats(): {
+    enabled: boolean;
+    agentCount: number;
+    strategy: string | undefined;
+    lastConfiguredAt: string | undefined;
+  } {
+    return this.affinityManager.getStats();
+  }
+
+  /**
+   * Update agent affinity configuration at runtime
+   * v13.1.0: Allows updating affinities without recreating the router
+   *
+   * @param routingConfig - New routing configuration
+   */
+  updateAffinityConfig(routingConfig: ConfigRoutingConfig): void {
+    this.affinityManager.updateConfig(routingConfig);
+    logger.info('Router affinity config updated', {
+      agentCount: Object.keys(routingConfig.agentAffinities ?? {}).length,
+      strategy: routingConfig.strategy
+    });
+  }
+
+  /**
+   * Get agent affinity for a specific agent
+   * v13.1.0: For debugging and inspection
+   *
+   * @param agentName - Name of the agent
+   */
+  getAgentAffinity(agentName: string): {
+    hasAffinity: boolean;
+    primary: string | null;
+    fallback: string[];
+    source: 'config' | 'default';
+  } {
+    return this.affinityManager.getAgentAffinity(agentName);
+  }
+
+  /**
+   * Get ability routing stats
+   * v13.2.0: New API for ability routing observability
+   */
+  getAbilityStats(): {
+    enabled: boolean;
+    abilityCount: number;
+    strategy: string | undefined;
+    lastConfiguredAt: string | undefined;
+    configuredAbilities: string[];
+  } {
+    return this.abilityManager.getStats();
+  }
+
+  /**
+   * Update ability routing configuration at runtime
+   * v13.2.0: Allows updating ability routing without recreating the router
+   *
+   * @param routingConfig - New routing configuration
+   */
+  updateAbilityConfig(routingConfig: ConfigRoutingConfig): void {
+    this.abilityManager.updateConfig(routingConfig);
+    logger.info('Router ability config updated', {
+      abilityCount: Object.keys(routingConfig.abilityRouting ?? {}).length,
+      strategy: routingConfig.strategy
+    });
+  }
+
+  /**
+   * Get ability routing for a specific ability type
+   * v13.2.0: For debugging and inspection
+   *
+   * @param abilityType - Type of ability (e.g., 'code-generation')
+   */
+  getAbilityRouting(abilityType: string): {
+    hasRouting: boolean;
+    preferredProviders: string[];
+    source: 'config' | 'default';
+  } {
+    return this.abilityManager.getAbilityRouting(abilityType);
+  }
+
+  /**
+   * Get all known ability types
+   * v13.2.0: For discovery and validation
+   */
+  getKnownAbilities(): readonly string[] {
+    return this.abilityManager.getKnownAbilities();
+  }
+
+  /**
+   * Check if an ability type is valid/known
+   * v13.2.0: For validation
+   */
+  isKnownAbility(abilityType: string): boolean {
+    return this.abilityManager.isKnownAbility(abilityType);
+  }
+
+  // ============================================================================
+  // v14.0.0: Dynamic Optimization API
+  // ============================================================================
+
+  /**
+   * Check if dynamic optimization is enabled
+   * v14.0.0: For feature detection
+   */
+  isDynamicOptimizationEnabled(): boolean {
+    return this.dynamicOptimizer !== undefined;
+  }
+
+  /**
+   * Get dynamic optimizer stats
+   * v14.0.0: For monitoring and debugging
+   */
+  getDynamicOptimizerStats(): {
+    enabled: boolean;
+    isInitialized: boolean;
+    lastOptimizationAt: string | null;
+    providersTracked: number;
+    totalCostUsd: number;
+    adaptivePriorities: Record<string, number>;
+  } | null {
+    if (!this.dynamicOptimizer) {
+      return null;
+    }
+
+    const stats = this.dynamicOptimizer.getStats();
+    const costSummary = this.dynamicOptimizer.getCostSummary();
+
+    return {
+      enabled: true,
+      isInitialized: stats.isInitialized,
+      lastOptimizationAt: stats.lastOptimizationAt > 0
+        ? new Date(stats.lastOptimizationAt).toISOString()
+        : null,
+      providersTracked: stats.providersTracked,
+      totalCostUsd: costSummary.totalCostUsd,
+      adaptivePriorities: this.dynamicOptimizer.getAdaptivePriorities()
+    };
+  }
+
+  /**
+   * Get optimization recommendations for providers
+   * v14.0.0: Returns suggestions for improving provider performance
+   *
+   * @param providers - Optional list of providers to get recommendations for
+   */
+  async getOptimizationRecommendations(
+    providers?: string[]
+  ): Promise<OptimizationRecommendation[]> {
+    if (!this.dynamicOptimizer) {
+      return [];
+    }
+
+    const targetProviders = providers ?? this.providers.map(p => p.name);
+    return this.dynamicOptimizer.generateRecommendations(targetProviders);
+  }
+
+  /**
+   * Get performance snapshot for a specific provider
+   * v14.0.0: For detailed provider performance analysis
+   *
+   * @param providerName - Name of the provider
+   */
+  async getProviderPerformanceSnapshot(
+    providerName: string
+  ): Promise<ProviderPerformanceSnapshot | null> {
+    if (!this.dynamicOptimizer) {
+      return null;
+    }
+
+    return this.dynamicOptimizer.getPerformanceSnapshot(providerName);
+  }
+
+  /**
+   * Track cost for a provider
+   * v14.0.0: For cost optimization tracking
+   *
+   * @param providerName - Name of the provider
+   * @param costUsd - Cost in USD
+   */
+  trackProviderCost(providerName: string, costUsd: number): void {
+    if (this.dynamicOptimizer) {
+      this.dynamicOptimizer.trackCost(providerName, costUsd);
+    }
+  }
+
+  /**
+   * Get cost summary across all providers
+   * v14.0.0: For cost monitoring
+   */
+  getCostSummary(): {
+    totalCostUsd: number;
+    costByProvider: Record<string, number>;
+    topSpenders: Array<{ provider: string; costUsd: number }>;
+  } | null {
+    if (!this.dynamicOptimizer) {
+      return null;
+    }
+
+    return this.dynamicOptimizer.getCostSummary();
+  }
+
+  /**
+   * Apply an optimization recommendation
+   * v14.0.0: Manually apply a generated recommendation
+   *
+   * @param recommendation - The recommendation to apply
+   */
+  async applyOptimizationRecommendation(
+    recommendation: OptimizationRecommendation
+  ): Promise<boolean> {
+    if (!this.dynamicOptimizer) {
+      return false;
+    }
+
+    return this.dynamicOptimizer.applyRecommendation(recommendation);
+  }
+
+  /**
+   * Update dynamic optimizer configuration at runtime
+   * v14.0.0: Allows updating optimizer settings without recreating the router
+   *
+   * @param config - Partial configuration to update
+   */
+  updateDynamicOptimizerConfig(config: Partial<DynamicOptimizerConfig>): void {
+    if (!this.dynamicOptimizer) {
+      logger.warn('Cannot update optimizer config - dynamic optimization not enabled');
+      return;
+    }
+
+    // Note: DynamicOptimizer doesn't currently support runtime config updates
+    // This is a placeholder for future implementation
+    logger.info('Dynamic optimizer config update requested', {
+      enableAdaptivePriorities: config.enableAdaptivePriorities,
+      enableCostOptimization: config.enableCostOptimization,
+      enableHealthReordering: config.enableHealthReordering
+    });
   }
 }

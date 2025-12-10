@@ -379,14 +379,11 @@ automatosx config --set providers.claude.model --value claude-3-opus-20240229
 
 ### Gemini API errors
 
-#### Free Tier Not Working
-
-**Symptom**: Gemini always shows paid usage, never uses free tier
+#### Authentication or quota errors
 
 **Causes**:
-1. Free tier quota already exhausted
-2. Gemini CLI not authenticated
-3. Free tier tracking disabled
+1. Gemini CLI not authenticated
+2. Provider-level quota exceeded (managed by your account)
 
 **Solution**:
 
@@ -394,50 +391,20 @@ automatosx config --set providers.claude.model --value claude-3-opus-20240229
 # Check authentication
 gemini whoami
 
-# Check free tier status
-ax free-tier status
+# If not authenticated:
+gemini login
 
-# Expected output:
-# Daily Requests:  342 / 1,500 (23%)
-# Daily Tokens:    256,789 / 1,000,000 (26%)
-# Status: ✅ Healthy
+# Configure fallback priorities if a provider is rate limited
+ax config --set providers.gemini-cli.priority --value 1
+ax config --set providers.claude-code.priority --value 2
+ax config --set providers.openai.priority --value 3
 
-# If exhausted, wait for midnight UTC reset
-# Or enable fallback providers:
-# Edit ax.config.json:
-{
-  "providers": {
-    "gemini-cli": { "priority": 1 },
-    "openai": { "priority": 2 }  // Fallback when free tier exhausted
-  }
-}
-
-# Check tracking is enabled
-cat ax.config.json | grep -A3 "limitTracking"
-# Should show: "enabled": true, "window": "daily"
+# Verify provider health
+ax providers info gemini-cli
+ax doctor gemini-cli
 ```
 
-#### Error: `RESOURCE_EXHAUSTED`
-
-**Cause**: Free tier limit reached (1,500 requests/day or 1M tokens/day)
-
-**Solution**:
-
-```bash
-# Check current usage
-ax free-tier status
-
-# View usage history
-ax free-tier history --days 7
-
-# Options:
-# 1. Wait for midnight UTC reset (automatic)
-# 2. Enable fallback providers (automatic with multi-provider setup)
-# 3. Upgrade to paid tier (10K requests/day, 10M tokens/day)
-
-# Check when quota resets
-ax free-tier status | grep "Resets in"
-```
+If a provider is unavailable or throttled, routing will fall back based on priority.
 
 #### Error: "Authentication failed"
 
@@ -565,7 +532,7 @@ ax run backend "test"
 # Check trace for why Gemini wasn't selected
 ```
 
-See also: [Gemini Integration Guide](docs/guide/gemini-integration.md) for detailed troubleshooting
+See also: [Gemini Provider Guide](../providers/gemini.md) for detailed troubleshooting
 
 ### Provider selection not working
 

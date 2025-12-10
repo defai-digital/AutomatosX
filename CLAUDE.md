@@ -5,14 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ---
 
 **File Management**:
-- Store temporary files and generated reports in `automatosx/tmp/`
-- Store PRD (Product Requirement Document) files in `automatosx/PRD/`
+- `automatosx/PRD/` - Product Requirement Documents
+- `automatosx/REPORT/` - Reports and analysis
+- `automatosx/tmp/` - Temporary files
 
 ---
 
 ## Project Overview
 
-AutomatosX (v12.7.0) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), Grok (xAI), and Qwen (Alibaba Cloud) providers.
+AutomatosX (v12.8.0) is an AI Agent Orchestration Platform that combines workflow templates, persistent memory, and multi-agent collaboration. It's a production-ready CLI tool that supports Claude Code, Gemini CLI, Codex CLI, GLM (Zhipu AI), Grok (xAI), and Qwen (Alibaba Cloud) providers.
 
 **Repository**: https://github.com/defai-digital/automatosx
 
@@ -98,6 +99,51 @@ Use Zod for validating external data (API responses, config files, user input):
 const result = Schema.safeParse(rawResponse);
 if (!result.success) throw new ProviderError('Invalid response');
 ```
+
+### Embedded Instructions Token Budget (v12.7.1)
+
+The orchestration system manages token budgets for runtime-injected instructions:
+
+| Type | Budget | Purpose |
+|------|--------|---------|
+| memory | 600 | Past context from memory search |
+| task | 500 | Todo reminders |
+| mode | 400 | Workflow mode instructions |
+| session | 300 | Multi-agent collaboration |
+| context | 300 | Context-aware boosted reminders |
+| delegation | 200 | Delegation suggestions |
+| **Total** | **2000** | Max embedded instructions |
+| **Reserve** | **+300** | Critical instructions only |
+
+**Important:** Critical priority instructions can exceed `maxTotal` by using the `criticalReserve`. This means actual max tokens can reach 2300 (2000 + 300). This is by design for guardrails and critical system messages.
+
+**Configuration:** `src/core/orchestration/types.ts:275-286`
+
+### Project Context Files (v12.10.0)
+
+AutomatosX uses a two-file approach for token-efficient project context:
+
+| File | Size | Purpose |
+|------|------|---------|
+| `ax.summary.json` | ~200 tokens | Compact summary injected into prompts |
+| `ax.index.json` | ~2000 tokens | Full analysis, read on-demand |
+
+**Token savings: ~90%** by injecting the summary instead of the full index.
+
+The `ax init` command generates both files:
+```bash
+ax init           # Create/update both files
+ax init --force   # Force regenerate all files
+```
+
+**Flow:**
+1. `ax.summary.json` is injected into the system prompt (fast, ~200 tokens)
+2. The prompt tells AI: "For full project analysis, read: ax.index.json"
+3. AI reads full index only when detailed information is needed
+
+**Files:**
+- Summary generation: `src/cli/commands/init.ts:generateAxSummary()`
+- Context loading: `src/core/project-context.ts:loadSummary()`
 
 ## Architecture Overview
 
@@ -355,12 +401,39 @@ const interval = setInterval(() => tick(), 5000); // Type-specific ignore
 
 ### Supported Bug Types
 
-| Bug Type | Description | Auto-Fix |
-|----------|-------------|----------|
-| `timer_leak` | setInterval/setTimeout without cleanup | Yes |
-| `missing_destroy` | EventEmitter without destroy() | Yes |
-| `promise_timeout_leak` | setTimeout not cleared on error | Partial |
-| `event_leak` | Event listener without removeListener | Partial |
+| Bug Type | Description | Auto-Fix | AST-Based |
+|----------|-------------|----------|-----------|
+| `timer_leak` | setInterval/setTimeout without cleanup | Yes | Yes (v12.8.0) |
+| `missing_destroy` | EventEmitter without destroy() | Yes | Yes |
+| `promise_timeout_leak` | setTimeout not cleared on error | Partial | Yes |
+| `event_leak` | Event listener without removeListener | Partial | No |
+
+### AST-Based Detection (v12.8.0+)
+
+The bugfix module uses TypeScript AST analysis for reduced false positives:
+
+**timer_leak detection checks:**
+- Variable tracking for setInterval/setTimeout return values
+- `.unref()` calls (chained or on variable)
+- `clearInterval()`/`clearTimeout()` calls in same scope
+- Cleanup in `destroy()`, `dispose()`, `cleanup()` methods
+- Class hierarchy analysis for proper lifecycle management
+
+**Example (not flagged as leak):**
+```typescript
+class Heartbeat extends Disposable {
+  private interval: NodeJS.Timeout;
+
+  start() {
+    this.interval = setInterval(() => this.tick(), 1000);
+  }
+
+  destroy() {
+    clearInterval(this.interval);  // Cleaned up properly
+    super.destroy();
+  }
+}
+```
 
 ### Pre-commit Hook Integration (v12.6.0)
 

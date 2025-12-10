@@ -1,7 +1,7 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "12.7.0",
-  "description": "Provider-agnostic AI orchestration platform with 20+ specialized agents, persistent memory, and multi-provider routing for Claude Code, Gemini CLI, Codex CLI, GLM, and Grok",
+  "version": "12.8.0",
+  "description": "AI Agent Orchestration Platform with 20+ specialized agents, persistent memory, MCP server, and intelligent multi-provider routing for Claude Code, Gemini CLI, Codex CLI, GLM, Grok, and Qwen",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -136,12 +136,20 @@
     "automation",
     "llm",
     "claude",
+    "claude-code",
     "gemini",
     "openai",
+    "codex",
+    "grok",
+    "qwen",
+    "glm",
+    "mcp",
+    "model-context-protocol",
+    "multi-agent",
+    "ai-agents",
     "vector-search",
     "sqlite",
-    "typescript",
-    "ai-agents"
+    "typescript"
   ],
   "author": "AutomatosX Team",
   "license": "Apache-2.0",

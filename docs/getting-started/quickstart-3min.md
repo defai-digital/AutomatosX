@@ -1,6 +1,8 @@
 # ⚡ 3-Minute Quickstart
 
-**Get started with AutomatosX in under 3 minutes**
+**Get started with AutomatosX in under 3 minutes (v12.7.x)**
+
+> Note: Routing is priority-based with fallback. There is no free-tier/policy routing, and CLI commands expect an explicit agent when running tasks.
 
 ---
 
@@ -10,20 +12,20 @@ Before you begin, ensure you have:
 
 - **Node.js >= 24.0.0** ([Download](https://nodejs.org/))
 - **One AI provider CLI** installed:
-  - **Gemini CLI** (recommended, free): `npm install -g @google/gemini-cli`
-  - **Claude Code**: Already configured if you're using it now
-  - **Codex CLI**: `npm install -g openai-cli`
+  - **Gemini CLI**: `npm install -g @google/gemini-cli`
+  - **Claude Code**: already configured if you're using it now
+  - **OpenAI CLI**: `npm install -g @openai/openai`
 
 ---
 
 ## Install AutomatosX (30 seconds)
 
 ```bash
-# Install globally
-npm install -g @defai.digital/automatosx
+# Install locally (recommended)
+pnpm add -D @defai.digital/automatosx
 
 # Initialize in your project
-ax setup
+pnpm ax setup
 ```
 
 Done! AutomatosX is now ready to use.
@@ -105,31 +107,15 @@ Talk to Codex naturally:
 
 ## Your First Commands (1 minute)
 
-**Note**: If you prefer direct CLI usage, you can use `ax run` with just your task description. AutomatosX will automatically select the best agent(s)!
+**Note**: Use `ax run <agent> "task"` to run a specific agent. Routing between providers is priority-based.
 
-### Let AutomatosX Choose the Right Agent (Recommended)
-
-```bash
-# AutomatosX analyzes task and picks the best agent
-ax run "Explain this codebase structure"
-
-# AutomatosX selects security agent for auditing
-ax run "Audit src/auth.ts for vulnerabilities"
-
-# AutomatosX picks quality agent for testing
-ax run "Write tests for the authentication module"
-
-# AutomatosX uses architecture agent for design
-ax run "Design a microservices architecture for this project"
-```
-
-### Or Specify an Agent Directly (Optional)
+### Run with an Agent
 
 ```bash
-# You CAN still specify agents if needed
 ax run backend "Explain this codebase structure"
 ax run security "Audit src/auth.ts for vulnerabilities"
 ax run quality "Write tests for the authentication module"
+ax run architecture "Design a microservices architecture"
 ```
 
 ### Check Available Agents
@@ -138,37 +124,26 @@ ax run quality "Write tests for the authentication module"
 ax list agents
 ```
 
-You'll see 20+ specialized agents including:
+You'll see example agents including:
 - `backend`, `frontend`, `fullstack`
 - `security`, `quality`, `devops`
 - `architecture`, `product`, `data`
-- And more...
-
-But remember: **You don't need to choose** - AutomatosX does it for you!
+- And more in `examples/agents/`
 
 ---
 
 ## Try Multi-Agent Collaboration (1 minute)
 
-`ax` automatically coordinates multiple agents for complex tasks:
+Run agents individually or coordinate via specs/sessions:
 
 ```bash
-# ax analyzes this complex task and orchestrates multiple agents
-ax run "Build a user authentication feature with database, API, and tests"
-```
+ax run product "Draft auth feature scope"
+ax run backend "Implement auth API"
+ax run security "Audit auth API"
+ax run quality "Write tests for auth API"
 
-**What happens:**
-1. 🎯 `ax` analyzes the full scope of your request
-2. 📋 Selects **product agent** to design the system architecture
-3. ⚙️ Delegates to **backend agent** to implement the API endpoints
-4. 🔒 Brings in **security agent** to audit for vulnerabilities
-5. ✅ Assigns **quality agent** to write comprehensive tests
-
-All automatically, in optimal sequence!
-
-**You can also specify agents if needed:**
-```bash
-ax run product "Build a user authentication feature with database, API, and tests"
+# Or use a spec file
+ax spec run examples/specs/automatosx-release.ax.yaml
 ```
 
 ---
@@ -195,9 +170,6 @@ ax providers list
 
 # Check provider health
 ax doctor gemini-cli
-
-# View free-tier quota
-ax free-tier status
 ```
 
 ### Try Advanced Features
@@ -244,38 +216,22 @@ If you're using Claude Code, you can ask naturally:
 
 Claude Code will automatically use AutomatosX for you!
 
-### 3. Cost is Optimized Automatically
+### 3. Cost & Routing
 
-AutomatosX prioritizes free tiers:
-- **Gemini**: 1,500 free requests/day (used first)
-- **Fallback**: Paid providers only when needed
-- **Smart routing**: Based on task requirements
+Set provider priorities in `ax.config.json` (priority-based fallback). AutomatosX does not manage free-tier quotas.
 
-Result: **60-80% cost reduction** compared to single-provider usage.
+### 4. Sessions and Specs
 
-### 4. Parallel Execution Saves Time
-
-For multi-step tasks:
+Use sessions or specs to coordinate multiple steps:
 
 ```bash
-ax run product "Complex project" --parallel
-```
+ax session create "project-x" backend security quality
+ax session use project-x
+ax run backend "Implement API"
+ax run security "Audit API"
+ax run quality "Write tests"
 
-Independent tasks run simultaneously, cutting execution time by 50-70%.
-
-### 5. Resume Support for Long Tasks
-
-Never lose progress on long-running tasks:
-
-```bash
-# Start resumable task
-ax run backend "Refactor codebase" --resumable
-
-# If interrupted, resume with:
-ax resume <run-id>
-
-# List all resumable runs
-ax runs list
+ax spec run examples/specs/automatosx-release.ax.yaml
 ```
 
 ---
@@ -313,12 +269,6 @@ ax list agents  # See all available agents
 ```bash
 # Streaming output (see progress in real-time)
 ax run backend "task" --streaming
-
-# Parallel execution (faster for multi-step tasks)
-ax run product "complex task" --parallel
-
-# Check free-tier quota
-ax free-tier status
 ```
 
 ---

@@ -288,31 +288,30 @@ export class ContextManager {
 
     const searchQuery = query || context.task;
 
-    // v9.0.0+: Truncate query to max length (Zod validation limit)
+    // v12.7.1: Extract keywords instead of truncating for better memory search
     // Memory search has a 1000 character limit for the search text
     const MAX_QUERY_LENGTH = 1000;
-    const truncatedQuery = searchQuery.length > MAX_QUERY_LENGTH
-      ? searchQuery.substring(0, MAX_QUERY_LENGTH)
-      : searchQuery;
+    const optimizedQuery = this.extractSearchKeywords(searchQuery, MAX_QUERY_LENGTH);
 
-    if (truncatedQuery !== searchQuery) {
-      logger.debug('Memory search query truncated', {
+    if (optimizedQuery !== searchQuery) {
+      logger.debug('Memory search query optimized', {
         originalLength: searchQuery.length,
-        truncatedLength: truncatedQuery.length,
-        maxLength: MAX_QUERY_LENGTH
+        optimizedLength: optimizedQuery.length,
+        maxLength: MAX_QUERY_LENGTH,
+        method: searchQuery.length > MAX_QUERY_LENGTH ? 'keyword_extraction' : 'passthrough'
       });
     }
 
     try {
       const results = await this.config.memoryManager.search({
-        text: truncatedQuery,  // Use truncated query
+        text: optimizedQuery,  // Use optimized query with keywords
         limit
       });
 
       context.memory = results.map(r => r.entry);
 
       logger.debug('Memory injected', {
-        query: truncatedQuery.substring(0, 100) + (truncatedQuery.length > 100 ? '...' : ''),
+        query: optimizedQuery.substring(0, 100) + (optimizedQuery.length > 100 ? '...' : ''),
         count: context.memory.length
       });
 
@@ -323,6 +322,99 @@ export class ContextManager {
       // Continue without memory
       context.memory = [];
     }
+  }
+
+  /**
+   * Extract meaningful keywords from a query for memory search
+   *
+   * Instead of truncating long queries (which loses context at the end),
+   * this extracts the most meaningful terms for FTS5 search.
+   *
+   * @param query - The full query text
+   * @param maxLength - Maximum output length
+   * @returns Optimized search query with keywords
+   *
+   * @since v12.7.1
+   */
+  private extractSearchKeywords(query: string, maxLength: number): string {
+    // If already within limit, return as-is
+    if (query.length <= maxLength) {
+      return query;
+    }
+
+    // Common stop words to filter out (extends FTS5 stopwords)
+    const stopWords = new Set([
+      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+      'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
+      'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+      'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought',
+      'used', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it',
+      'we', 'they', 'what', 'which', 'who', 'whom', 'when', 'where', 'why', 'how',
+      'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some',
+      'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too',
+      'very', 'just', 'also', 'now', 'here', 'there', 'then', 'once', 'please',
+      'want', 'need', 'help', 'me', 'my', 'your', 'our', 'their', 'its'
+    ]);
+
+    // Extract words (alphanumeric sequences, preserving case for proper nouns)
+    const words = query.match(/[a-zA-Z0-9_-]+/g) || [];
+
+    // Score words by importance
+    const wordScores = new Map<string, number>();
+
+    for (const word of words) {
+      const lower = word.toLowerCase();
+
+      // Skip stop words and very short words
+      if (stopWords.has(lower) || word.length < 3) {
+        continue;
+      }
+
+      // Calculate importance score
+      let score = wordScores.get(lower) || 0;
+
+      // Boost technical terms (CamelCase, snake_case, contains numbers)
+      if (/[A-Z]/.test(word) && /[a-z]/.test(word)) score += 3;  // CamelCase
+      if (word.includes('_') || word.includes('-')) score += 2;  // snake_case/kebab
+      if (/\d/.test(word)) score += 2;  // Contains numbers (e.g., v12, API2)
+
+      // Boost longer words (more specific)
+      if (word.length > 8) score += 2;
+      if (word.length > 5) score += 1;
+
+      // Frequency boost (appears multiple times = more important)
+      score += 1;
+
+      wordScores.set(lower, score);
+    }
+
+    // Sort by score descending
+    const sortedWords = Array.from(wordScores.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([word]) => word);
+
+    // Build result within limit, preserving highest-scored terms
+    const result: string[] = [];
+    let currentLength = 0;
+
+    for (const word of sortedWords) {
+      const wordWithSpace = result.length > 0 ? ` ${word}` : word;
+      if (currentLength + wordWithSpace.length > maxLength) {
+        break;
+      }
+      result.push(word);
+      currentLength += wordWithSpace.length;
+    }
+
+    // If we got fewer than 5 keywords, also include first 200 chars as fallback
+    if (result.length < 5) {
+      const prefix = query.substring(0, Math.min(200, maxLength - currentLength - 1));
+      if (prefix && currentLength + prefix.length + 1 <= maxLength) {
+        return `${prefix} ${result.join(' ')}`.trim();
+      }
+    }
+
+    return result.join(' ');
   }
 
   /**

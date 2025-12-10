@@ -20,7 +20,7 @@ AutomatosX is a **CLI-based AI agent orchestration platform** that allows you to
 ## Prerequisites
 
 - **Node.js** 24.0.0 or higher installed
-- **npm** or **pnpm** package manager
+- **pnpm** package manager (recommended)
 - **Optional**: Claude Code, VS Code, or any terminal environment
 
 **Check Your Node.js Version**:
@@ -36,42 +36,29 @@ node --version
 
 ## Step 1: Install AutomatosX
 
-### Install Globally
+### Install (project local, recommended)
 
-**All Platforms** (Windows, macOS, Linux):
+```bash
+pnpm add -D @defai.digital/automatosx
+pnpm ax --version  # Expected: 12.7.x
+```
+
+### Alternative: Global install
 
 ```bash
 npm install -g @defai.digital/automatosx
-```
-
-**Verify Installation**:
-
-```bash
 ax --version
-# Expected output: 6.3.8 (or later)
-```
-
-### Alternative: Use npx
-
-If you prefer not to install globally:
-
-```bash
-npx @defai.digital/automatosx --version
-npx @defai.digital/automatosx setup
-npx @defai.digital/automatosx list agents
 ```
 
 ### Update to Latest Version
 
 ```bash
-# Use built-in update command
-ax update
-
-# Or via npm
-npm install -g @defai.digital/automatosx@latest
+pnpm up @defai.digital/automatosx
+# Or use built-in update
+pnpm ax update
 ```
 
-**Troubleshooting**: If `ax` command not found, see [Installation Guide](./installation.md#troubleshooting) for PATH configuration.
+**Troubleshooting**: If `ax` command not found, ensure your pnpm/npm bin directory is on PATH or use `pnpm ax`.
 
 ---
 
@@ -118,15 +105,15 @@ ax status
 📊 AutomatosX Status
 
 System:
-  Version: 6.3.8
+  Version: 12.7.x
   Node: v24.0.0
   Platform: darwin arm64
 
 Resources:
-  ✓ agents (24 agents)
-  ✓ abilities (56 abilities)
-  ✓ teams (5 teams)
-  ✓ memory (1 file, 8 KB)
+  ✓ agents (examples)
+  ✓ abilities (examples)
+  ✓ teams (examples)
+  ✓ memory (1 file)
 
 Providers:
   ✓ claude-code: available (priority: 1)
@@ -164,7 +151,7 @@ ax run backend "Explain TypeScript in one sentence"
 **Expected output**:
 
 ```
-🤖 AutomatosX v6.3.8
+🤖 AutomatosX v12.7.x
 
 Agent: backend (Bob)
 Task: Explain TypeScript in one sentence
@@ -190,13 +177,13 @@ Once you've verified AutomatosX works, install a provider CLI for real responses
 npm install -g @anthropic-ai/claude-code
 claude login
 
-# Gemini CLI (recommended for cost - free tier!)
+# Gemini CLI (recommended for cost-aware runs)
 curl -fsSL https://gemini.google.com/install.sh | sh
 gemini login
 
-# Codex CLI
-npm install -g @openai/codex
-codex auth login
+# OpenAI CLI
+npm install -g @openai/openai
+openai auth login
 ```
 
 Then run normally:
@@ -217,7 +204,7 @@ ax run backend "What is TypeScript?"
 ax list agents
 ```
 
-**Available agents**: backend, frontend, fullstack, mobile, devops, security, quality, product, data, writer, and more (24 total).
+**Available agents**: backend, frontend, fullstack, mobile, devops, security, quality, product, data, writer, and more (examples bundled in `examples/agents/`).
 
 ### Search Conversation History
 
@@ -328,19 +315,19 @@ Any AI assistant with terminal access can use AutomatosX. See [AX-GUIDE.md](../.
 
 - **[Core Concepts](./core-concepts.md)** - Understand agents, profiles, and abilities
 - **[Configuration Guide](./configuration.md)** - Provider setup, cost optimization, advanced config
-- **[Agent Communication & Memory](./agent-communication.md)** - How agents remember and collaborate
+- **[Agent Communication & Memory](../guides/agent-communication.md)** - How agents remember and collaborate
 
 ### Hands-On Tutorials
 
 - **[Creating Your First Agent](../tutorials/first-agent.md)** - Build a custom agent from scratch
 - **[Memory Management](../tutorials/memory-management.md)** - Master the memory system
-- **[Multi-Agent Orchestration](./multi-agent-orchestration.md)** - Coordinate multiple agents
+- **[Multi-Agent Orchestration](../guides/multi-agent-orchestration.md)** - Coordinate multiple agents
 
 ### Platform-Specific Guides
 
-- **[Gemini Integration](./gemini-integration.md)** - Cost optimization with Gemini's free tier (99.6% savings!)
-- **[Provider Comparison](./provider-comparison.md)** - Compare Claude, Gemini, OpenAI
-- **[Team Configuration](./team-configuration.md)** - Organize agents into teams
+- **[Gemini Integration](../providers/gemini.md)** - Configure Gemini as a cost-aware provider
+- **[Provider Comparison](../providers/overview.md)** - Compare Claude, Gemini, OpenAI
+- **[Team Configuration](../guides/team-configuration.md)** - Organize agents into teams
 
 ### Reference Documentation
 
@@ -429,7 +416,7 @@ A: No, AutomatosX is a standalone CLI tool. It works inside Claude Code, VS Code
 A: Yes, use `AX_MOCK_PROVIDERS=true` for testing. For real responses, install at least one provider CLI.
 
 **Q: Which provider should I use?**
-A: **Gemini CLI** for cost savings (99.6% cheaper, free tier), **Claude Code** for quality, **OpenAI** for specific models. See [Provider Comparison](./provider-comparison.md).
+A: Set provider priorities based on your goals: Gemini CLI for cost-aware runs, Claude Code for quality, OpenAI for speed/control. See [Provider Comparison](../providers/overview.md).
 
 **Q: How do I update AutomatosX?**
 A: Run `ax update` or `npm install -g @defai.digital/automatosx@latest`.

@@ -498,13 +498,13 @@ ax session status <id>  # See what subagent 1 is doing
 
 **Each AutomatosX agent call:**
 - Uses shared memory (SQLite)
-- Routed through policy system
+- Routed via priority-based provider selection with fallback
 - Respects rate limits
 
 **Combined:**
 - Monitor total API usage across all subagents
 - Watch for provider rate limits
-- Consider using free-tier providers for parallel work (Gemini)
+- Prefer lower-cost providers by setting priorities
 
 ---
 

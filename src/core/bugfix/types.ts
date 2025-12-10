@@ -330,6 +330,12 @@ export interface DetectionRule {
 
   /** File extensions to apply to */
   fileExtensions?: string[];
+
+  /**
+   * Use AST-based detection instead of regex
+   * @since v12.8.0
+   */
+  useAST?: boolean;
 }
 
 /**

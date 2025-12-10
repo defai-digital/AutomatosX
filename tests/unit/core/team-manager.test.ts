@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'path';
 import { TeamManager } from '../../../src/core/team-manager.js';
 import { TeamNotFoundError, TeamValidationError } from '../../../src/types/team.js';
 
@@ -21,6 +22,9 @@ vi.mock('js-yaml', () => ({
 
 import { readFile, readdir } from 'fs/promises';
 import { load } from 'js-yaml';
+
+// Platform-agnostic test paths
+const TEST_TEAMS_DIR = path.join('/test', 'teams');
 
 describe('TeamManager', () => {
   let teamManager: TeamManager;
@@ -41,7 +45,7 @@ describe('TeamManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    teamManager = new TeamManager('/test/teams');
+    teamManager = new TeamManager(TEST_TEAMS_DIR);
   });
 
   afterEach(() => {
@@ -56,7 +60,7 @@ describe('TeamManager', () => {
       const team = await teamManager.loadTeam('core');
 
       expect(team).toEqual(validTeamConfig);
-      expect(mockReadFile).toHaveBeenCalledWith('/test/teams/core.yaml', 'utf-8');
+      expect(mockReadFile).toHaveBeenCalledWith(path.join(TEST_TEAMS_DIR, 'core.yaml'), 'utf-8');
     });
 
     it('should cache loaded team', async () => {
@@ -98,7 +102,7 @@ describe('TeamManager', () => {
       const teams = await teamManager.getAllTeams();
 
       expect(teams).toHaveLength(2);
-      expect(mockReaddir).toHaveBeenCalledWith('/test/teams');
+      expect(mockReaddir).toHaveBeenCalledWith(TEST_TEAMS_DIR);
     });
 
     it('should filter only YAML files', async () => {

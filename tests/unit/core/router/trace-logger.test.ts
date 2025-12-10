@@ -63,8 +63,9 @@ describe('trace-logger', () => {
           enabled: true
         });
 
+        // Use platform-agnostic path checking
         expect(mockMkdirSync).toHaveBeenCalledWith(
-          expect.stringContaining('.automatosx/logs'),
+          expect.stringMatching(/\.automatosx[/\\]logs/),
           { recursive: true }
         );
 
@@ -566,11 +567,12 @@ describe('trace-logger', () => {
           enabled: true
         });
 
-        const path = tracer.getTraceFile();
+        const tracePath = tracer.getTraceFile();
 
-        expect(path).toContain('/test/workspace');
-        expect(path).toContain('.automatosx/logs');
-        expect(path).toContain('router.trace.jsonl');
+        // Use platform-agnostic path checking
+        expect(tracePath).toMatch(/[/\\]test[/\\]workspace/);
+        expect(tracePath).toMatch(/\.automatosx[/\\]logs/);
+        expect(tracePath).toContain('router.trace.jsonl');
 
         tracer.close();
       });
@@ -582,7 +584,8 @@ describe('trace-logger', () => {
       const tracer = createTraceLogger('/test/workspace');
 
       expect(tracer).toBeInstanceOf(RouterTraceLogger);
-      expect(tracer.getTraceFile()).toContain('/test/workspace');
+      // Use platform-agnostic path checking
+      expect(tracer.getTraceFile()).toMatch(/[/\\]test[/\\]workspace/);
 
       tracer.close();
     });

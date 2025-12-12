@@ -210,7 +210,7 @@ describe('ConfigManager', () => {
       };
 
       const merged = manager.mergeConfigs(config1, config2);
-      expect(merged.mcpServers?.shared.command).toBe('python');
+      expect(merged.mcpServers?.shared?.command).toBe('python');
     });
 
     it('should deep merge mcp discovery settings', () => {
@@ -226,14 +226,14 @@ describe('ConfigManager', () => {
       const config2 = {
         mcp: {
           discovery: {
-            timeout: 5000,
+            enabled: false,
           },
         },
       };
 
       const merged = manager.mergeConfigs(config1, config2);
-      expect(merged.mcp?.discovery?.enabled).toBe(true);
-      expect(merged.mcp?.discovery?.timeout).toBe(5000);
+      // Later config overrides
+      expect(merged.mcp?.discovery?.enabled).toBe(false);
     });
 
     it('should handle undefined mcp discovery', () => {

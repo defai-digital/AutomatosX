@@ -361,6 +361,9 @@ describe('ManifestGenerator', () => {
     it('should use final fallback when no info available', async () => {
       mockProfiles.set('backend', {
         name: 'backend',
+        role: '',
+        description: '',
+        systemPrompt: '',
         abilities: [],
       } as AgentProfile);
 
@@ -399,7 +402,9 @@ describe('ManifestGenerator', () => {
     it('should handle agents without displayName', async () => {
       mockProfiles.set('simple', {
         name: 'simple',
+        role: 'Agent',
         description: 'A simple agent',
+        systemPrompt: '',
         abilities: [],
       } as AgentProfile);
       (mockProfileLoader.listProfiles as ReturnType<typeof vi.fn>).mockResolvedValue(['simple']);

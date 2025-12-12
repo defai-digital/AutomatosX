@@ -111,7 +111,8 @@ describe('HybridCodexAdapter', () => {
     it('should accept sdk options', () => {
       const adapter = new HybridCodexAdapter({
         sdk: {
-          apiKey: 'test-key',
+          streamingEnabled: true,
+          reuseThreads: true,
         },
       });
       expect(adapter).toBeDefined();

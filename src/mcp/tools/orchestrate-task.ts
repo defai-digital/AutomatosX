@@ -38,6 +38,13 @@ export interface SubtaskResult {
   durationMs: number;
 }
 
+export type GroupMetric = {
+  level: number;
+  parallelized: boolean;
+  durationMs: number;
+  taskCount: number;
+};
+
 /**
  * Input for orchestrate_task tool
  */
@@ -46,6 +53,10 @@ export interface OrchestrateTaskInput {
   task: string;
   /** Execution mode */
   mode?: 'plan_only' | 'execute' | 'execute_parallel';
+  /** Optional: Maximum concurrent subtasks when parallelizing (default: 3) */
+  maxParallel?: number;
+  /** Optional: Per-subtask timeout in milliseconds (default: 5 minutes) */
+  subtaskTimeoutMs?: number;
   /** Optional: Preferred agents */
   preferredAgents?: string[];
   /** Optional: Max subtasks */
@@ -72,6 +83,8 @@ export interface OrchestrateTaskOutput {
     success: boolean;
     /** Results per subtask */
     results: SubtaskResult[];
+    /** Per-group execution metrics */
+    groupMetrics: GroupMetric[];
     /** Total duration */
     totalDurationMs: number;
     /** Session ID (if created) */
@@ -96,11 +109,16 @@ export interface OrchestrateTaskDependencies {
 async function executeSubtask(
   subtask: PlannedSubtask,
   deps: OrchestrateTaskDependencies,
+  timeoutMs: number,
   signal?: AbortSignal
 ): Promise<SubtaskResult> {
   const startTime = Date.now();
 
   try {
+    if (signal?.aborted) {
+      throw new Error('Execution cancelled');
+    }
+
     sendMcpProgress(`Executing ${subtask.agent}: ${subtask.task.substring(0, 40)}...`);
 
     const context = await deps.contextManager.createContext(subtask.agent, subtask.task, {
@@ -112,7 +130,7 @@ async function executeSubtask(
       showProgress: false,
       verbose: false,
       signal,
-      timeout: 300000 // 5 minutes per subtask
+      timeout: timeoutMs
     });
 
     return {
@@ -129,7 +147,7 @@ async function executeSubtask(
       task: subtask.task,
       agent: subtask.agent,
       status: 'failed',
-      error: (error as Error).message,
+      error: (error as Error).message.toLowerCase().includes('cancel') ? 'Execution cancelled' : (error as Error).message,
       durationMs: Date.now() - startTime
     };
   }
@@ -144,59 +162,106 @@ async function executeGroup(
   deps: OrchestrateTaskDependencies,
   parallel: boolean,
   continueOnFailure: boolean,
+  maxParallel: number,
+  subtaskTimeoutMs: number,
   signal?: AbortSignal
 ): Promise<SubtaskResult[]> {
   const tasksToExecute = subtasks.filter(t => group.tasks.includes(t.id));
 
-  if (parallel && group.canParallelize) {
-    // Execute in parallel
-    sendMcpProgress(`Level ${group.level}: Executing ${tasksToExecute.length} tasks in parallel...`);
+  const results: SubtaskResult[] = [];
 
-    const results = await Promise.all(
-      tasksToExecute.map(subtask => executeSubtask(subtask, deps, signal))
-    );
+  if (parallel && group.canParallelize && maxParallel > 1) {
+    // Execute with bounded parallelism
+    const controller = new AbortController();
+    let aborted = false;
 
-    return results;
-  } else {
-    // Execute sequentially
-    const results: SubtaskResult[] = [];
-
-    for (const subtask of tasksToExecute) {
-      if (signal?.aborted) {
-        results.push({
-          id: subtask.id,
-          task: subtask.task,
-          agent: subtask.agent,
+    if (signal) {
+      if (signal.aborted) {
+        return tasksToExecute.map(t => ({
+          id: t.id,
+          task: t.task,
+          agent: t.agent,
           status: 'skipped',
           error: 'Execution cancelled',
           durationMs: 0
-        });
-        continue;
+        }));
       }
+      signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
 
-      const result = await executeSubtask(subtask, deps, signal);
-      results.push(result);
+    sendMcpProgress(`Level ${group.level}: Executing up to ${Math.min(maxParallel, tasksToExecute.length)} tasks in parallel...`);
 
-      // Stop on failure if not continuing
-      if (result.status === 'failed' && !continueOnFailure) {
-        // Mark remaining as skipped
-        const remaining = tasksToExecute.slice(tasksToExecute.indexOf(subtask) + 1);
-        for (const r of remaining) {
-          results.push({
-            id: r.id,
-            task: r.task,
-            agent: r.agent,
-            status: 'skipped',
-            error: 'Previous task failed',
-            durationMs: 0
-          });
+    const queue = [...tasksToExecute];
+    const workers = Array.from({ length: Math.min(maxParallel, queue.length) }, async () => {
+      while (queue.length && !aborted) {
+        const subtask = queue.shift();
+        if (!subtask) break;
+
+        const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, controller.signal);
+        results.push(result);
+
+        if (result.status === 'failed' && !continueOnFailure) {
+          aborted = true;
+          controller.abort();
         }
-        break;
+      }
+    });
+
+    await Promise.all(workers);
+
+    // Mark any not-started tasks as skipped if we aborted early
+    if (aborted && queue.length) {
+      for (const remaining of queue) {
+        results.push({
+          id: remaining.id,
+          task: remaining.task,
+          agent: remaining.agent,
+          status: 'skipped',
+          error: 'Previous task failed',
+          durationMs: 0
+        });
       }
     }
 
     return results;
   }
+
+  // Execute sequentially
+  for (const subtask of tasksToExecute) {
+    if (signal?.aborted) {
+      results.push({
+        id: subtask.id,
+        task: subtask.task,
+        agent: subtask.agent,
+        status: 'skipped',
+        error: 'Execution cancelled',
+        durationMs: 0
+      });
+      continue;
+    }
+
+    const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, signal);
+    results.push(result);
+
+    // Stop on failure if not continuing
+    if (result.status === 'failed' && !continueOnFailure) {
+      // Mark remaining as skipped
+      const remaining = tasksToExecute.slice(tasksToExecute.indexOf(subtask) + 1);
+      for (const r of remaining) {
+        results.push({
+          id: r.id,
+          task: r.task,
+          agent: r.agent,
+          status: 'skipped',
+          error: 'Previous task failed',
+          durationMs: 0
+        });
+      }
+      break;
+    }
+  }
+
+  return results;
 }
 
 export function createOrchestrateTaskHandler(
@@ -214,6 +279,8 @@ export function createOrchestrateTaskHandler(
       mode = 'plan_only',
       preferredAgents,
       maxSubtasks = 6,
+      maxParallel = 3,
+      subtaskTimeoutMs = 300000,
       continueOnFailure = true,
       createSession = false,
       includeMemory = false
@@ -256,11 +323,12 @@ export function createOrchestrateTaskHandler(
     const parallel = mode === 'execute_parallel';
     const results: SubtaskResult[] = [];
     let sessionId: string | undefined;
+    const groupMetrics: GroupMetric[] = [];
 
     // Create session if requested
     if (createSession && deps.sessionManager) {
       try {
-        const session = await deps.sessionManager.createSession(task, plan.uniqueAgents[0] || 'orchestrator');
+        const session = await deps.sessionManager.createSession(task, 'orchestrator');
         sessionId = session.id;
         sendMcpProgress(`Created session: ${sessionId}`);
       } catch (error) {
@@ -274,6 +342,8 @@ export function createOrchestrateTaskHandler(
     const completedTasks = new Set<string>();
 
     for (const group of plan.executionPlan) {
+      const groupStart = Date.now();
+
       // Check if dependencies are met
       const groupTasks = plan.subtasks.filter(t => group.tasks.includes(t.id));
       const canExecute = groupTasks.every(t =>
@@ -302,6 +372,8 @@ export function createOrchestrateTaskHandler(
         deps,
         parallel,
         continueOnFailure,
+        Math.max(1, Math.floor(maxParallel)),
+        subtaskTimeoutMs,
         context?.signal
       );
 
@@ -334,6 +406,13 @@ export function createOrchestrateTaskHandler(
         }
         break;
       }
+
+      groupMetrics.push({
+        level: group.level,
+        parallelized: parallel && group.canParallelize && maxParallel > 1,
+        durationMs: Date.now() - groupStart,
+        taskCount: groupTasks.length
+      });
     }
 
     const totalDurationMs = Date.now() - startTime;
@@ -378,6 +457,7 @@ export function createOrchestrateTaskHandler(
       execution: {
         success,
         results,
+        groupMetrics,
         totalDurationMs,
         sessionId
       },
@@ -442,6 +522,16 @@ This will:
         type: 'array',
         items: { type: 'string' },
         description: 'Optional: Prefer these agents for subtask assignment'
+      },
+      maxParallel: {
+        type: 'number',
+        description: 'Maximum concurrent subtasks when parallelizing (default: 3)',
+        default: 3
+      },
+      subtaskTimeoutMs: {
+        type: 'number',
+        description: 'Per-subtask timeout in milliseconds (default: 300000)',
+        default: 300000
       },
       maxSubtasks: {
         type: 'number',

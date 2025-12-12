@@ -85,7 +85,10 @@ describe('MCP Bugfix Tools', () => {
           severity: 'high',
           message: 'setInterval without cleanup',
           confidence: 0.95,
-          fixStrategy: 'add_cleanup'
+          fixStrategy: 'add_cleanup',
+          context: 'setInterval(() => tick(), 1000)',
+          detectionMethod: 'ast',
+          detectedAt: new Date().toISOString()
         },
         {
           id: 'bug-2',
@@ -95,7 +98,10 @@ describe('MCP Bugfix Tools', () => {
           type: 'missing_destroy',
           severity: 'medium',
           message: 'EventEmitter without destroy method',
-          confidence: 0.85
+          confidence: 0.85,
+          context: 'class MyEmitter extends EventEmitter',
+          detectionMethod: 'ast',
+          detectedAt: new Date().toISOString()
         }
       ];
 
@@ -127,7 +133,10 @@ describe('MCP Bugfix Tools', () => {
           type: 'timer_leak',
           severity: 'low',
           message: 'Low severity issue',
-          confidence: 0.7
+          confidence: 0.7,
+          context: 'setInterval code',
+          detectionMethod: 'regex',
+          detectedAt: new Date().toISOString()
         },
         {
           id: 'bug-2',
@@ -137,7 +146,10 @@ describe('MCP Bugfix Tools', () => {
           type: 'timer_leak',
           severity: 'high',
           message: 'High severity issue',
-          confidence: 0.9
+          confidence: 0.9,
+          context: 'setInterval code',
+          detectionMethod: 'ast',
+          detectedAt: new Date().toISOString()
         },
         {
           id: 'bug-3',
@@ -147,7 +159,10 @@ describe('MCP Bugfix Tools', () => {
           type: 'timer_leak',
           severity: 'critical',
           message: 'Critical issue',
-          confidence: 0.99
+          confidence: 0.99,
+          context: 'setInterval code',
+          detectionMethod: 'ast',
+          detectedAt: new Date().toISOString()
         }
       ];
 
@@ -174,7 +189,10 @@ describe('MCP Bugfix Tools', () => {
         type: 'timer_leak' as const,
         severity: 'low' as const,
         message: `Issue ${i}`,
-        confidence: 0.8
+        confidence: 0.8,
+        context: 'setInterval code',
+        detectionMethod: 'regex' as const,
+        detectedAt: new Date().toISOString()
       }));
 
       const { BugDetector } = await import('../../../../src/core/bugfix/bug-detector.js');
@@ -242,7 +260,10 @@ describe('MCP Bugfix Tools', () => {
           severity: 'high',
           message: 'Has fix',
           confidence: 0.9,
-          fixStrategy: 'add_cleanup'
+          fixStrategy: 'add_cleanup',
+          context: 'setInterval code',
+          detectionMethod: 'ast',
+          detectedAt: new Date().toISOString()
         },
         {
           id: 'bug-2',
@@ -252,7 +273,10 @@ describe('MCP Bugfix Tools', () => {
           type: 'custom',
           severity: 'low',
           message: 'No fix',
-          confidence: 0.8
+          confidence: 0.8,
+          context: 'custom code pattern',
+          detectionMethod: 'pattern',
+          detectedAt: new Date().toISOString()
           // No fixStrategy
         }
       ];

@@ -248,9 +248,10 @@ describe('orchestrate_task MCP tool', () => {
       // With maxParallel = 1, execution runs sequentially
       // groupMetrics may be empty or have entries with parallelized=false
       const groupMetrics = result.execution?.groupMetrics ?? [];
-      if (groupMetrics.length > 0) {
+      const firstMetric = groupMetrics[0];
+      if (firstMetric) {
         // If there are group metrics, the first group should not be parallelized
-        expect(groupMetrics[0].parallelized).toBe(false);
+        expect(firstMetric.parallelized).toBe(false);
       }
       // Main assertion: execution completed successfully with sequential processing
       expect(result.execution?.success).toBeDefined();

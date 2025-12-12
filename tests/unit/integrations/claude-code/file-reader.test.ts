@@ -47,7 +47,7 @@ describe('file-reader utilities', () => {
   describe('getProjectConfigPath', () => {
     it('should return path relative to project directory', () => {
       const path = getProjectConfigPath('/my/project');
-      expect(path).toBe('/my/project/.claude/config.json');
+      expect(path).toBe(join('/my/project', '.claude', 'config.json'));
     });
 
     it('should use cwd when no project directory provided', () => {
@@ -66,7 +66,7 @@ describe('file-reader utilities', () => {
   describe('getProjectCommandsPath', () => {
     it('should return path relative to project directory', () => {
       const path = getProjectCommandsPath('/my/project');
-      expect(path).toBe('/my/project/.claude/commands');
+      expect(path).toBe(join('/my/project', '.claude', 'commands'));
     });
 
     it('should use cwd when no project directory provided', () => {
@@ -78,7 +78,7 @@ describe('file-reader utilities', () => {
   describe('getProjectMCPPath', () => {
     it('should return path relative to project directory', () => {
       const path = getProjectMCPPath('/my/project');
-      expect(path).toBe('/my/project/.claude/mcp');
+      expect(path).toBe(join('/my/project', '.claude', 'mcp'));
     });
 
     it('should use cwd when no project directory provided', () => {

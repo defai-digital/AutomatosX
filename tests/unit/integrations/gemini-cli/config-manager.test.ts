@@ -11,18 +11,37 @@ import { GeminiCLIError, GeminiCLIErrorType } from '../../../../src/integrations
 // Use a consistent mock project root for cross-platform testing
 const MOCK_PROJECT_ROOT = '/mock/project';
 
-// Mock fs/promises
+// Mock fs/promises with memfs
 vi.mock('fs/promises', async () => {
   const memfs = await import('memfs');
   return memfs.fs.promises;
+});
+
+// Mock fs module for realpath
+vi.mock('fs', async () => {
+  const memfs = await import('memfs');
+  return memfs.fs;
 });
 
 vi.mock('os', () => ({
   homedir: () => '/home/user',
 }));
 
+// Mock path to always use forward slashes (like memfs expects)
+vi.mock('path', async () => {
+  const actual = await vi.importActual<typeof import('path')>('path');
+  return {
+    ...actual,
+    join: (...args: string[]) => args.join('/').replace(/\/+/g, '/'),
+    resolve: (...args: string[]) => '/' + args.filter(Boolean).join('/').replace(/\/+/g, '/'),
+    normalize: (p: string) => p.replace(/\\/g, '/'),
+    basename: (p: string) => p.split('/').pop() || '',
+    dirname: (p: string) => p.split('/').slice(0, -1).join('/') || '/',
+    isAbsolute: (p: string) => p.startsWith('/'),
+  };
+});
+
 // Mock process.cwd to return consistent path across platforms
-const originalCwd = process.cwd;
 vi.spyOn(process, 'cwd').mockReturnValue(MOCK_PROJECT_ROOT);
 
 vi.mock('../../../../src/shared/logging/logger.js', () => ({
@@ -33,6 +52,81 @@ vi.mock('../../../../src/shared/logging/logger.js', () => ({
     error: vi.fn(),
   },
 }));
+
+// Mock file-reader to skip real filesystem checks in tests
+vi.mock('../../../../src/integrations/gemini-cli/utils/file-reader.js', async () => {
+  const memfs = await import('memfs');
+  const types = await import('../../../../src/integrations/gemini-cli/types.js');
+
+  // Return a modified version that uses memfs and skips validatePath
+  return {
+    // Path getters (using correct function names)
+    getUserConfigPath: () => '/home/user/.gemini/settings.json',
+    getProjectConfigPath: (projectDir?: string) =>
+      `${projectDir || MOCK_PROJECT_ROOT}/.gemini/settings.json`,
+    getUserCommandsPath: () => '/home/user/.gemini/commands',
+    getProjectCommandsPath: (projectDir?: string) =>
+      `${projectDir || MOCK_PROJECT_ROOT}/.gemini/commands`,
+
+    // File operations using memfs
+    readJsonFile: async <T>(filePath: string): Promise<T> => {
+      try {
+        const content = await memfs.fs.promises.readFile(filePath, 'utf-8');
+        return JSON.parse(content as string) as T;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new types.GeminiCLIError(
+            types.GeminiCLIErrorType.CONFIG_NOT_FOUND,
+            `File not found: ${filePath}`
+          );
+        }
+        throw error;
+      }
+    },
+    safeReadFile: async (filePath: string): Promise<string> => {
+      try {
+        return await memfs.fs.promises.readFile(filePath, 'utf-8') as string;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new types.GeminiCLIError(
+            types.GeminiCLIErrorType.CONFIG_NOT_FOUND,
+            `File not found: ${filePath}`
+          );
+        }
+        throw error;
+      }
+    },
+    safeWriteFile: async (filePath: string, content: string): Promise<void> => {
+      await memfs.fs.promises.writeFile(filePath, content, 'utf-8');
+    },
+    writeJsonFile: async <T>(filePath: string, data: T): Promise<void> => {
+      await memfs.fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    },
+    validatePath: vi.fn(), // No-op in tests
+    fileExists: async (filePath: string): Promise<boolean> => {
+      try {
+        await memfs.fs.promises.access(filePath);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    fileExistsDetailed: async (filePath: string): Promise<{ exists: boolean; isFile: boolean; isDirectory: boolean }> => {
+      try {
+        const stats = await memfs.fs.promises.stat(filePath);
+        return {
+          exists: true,
+          isFile: stats.isFile(),
+          isDirectory: stats.isDirectory(),
+        };
+      } catch {
+        return { exists: false, isFile: false, isDirectory: false };
+      }
+    },
+    // Re-export any constants
+    MAX_FILE_SIZE: 10 * 1024 * 1024,
+  };
+});
 
 describe('ConfigManager', () => {
   // Paths must match the actual implementation in utils/file-reader.ts

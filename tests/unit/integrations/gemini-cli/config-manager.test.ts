@@ -97,10 +97,10 @@ vi.mock('../../../../src/integrations/gemini-cli/utils/file-reader.js', async ()
       }
     },
     safeWriteFile: async (filePath: string, content: string): Promise<void> => {
-      await memfs.fs.promises.writeFile(filePath, content, 'utf-8');
+      await memfs.fs.promises.writeFile(filePath, content, { encoding: 'utf-8' });
     },
     writeJsonFile: async <T>(filePath: string, data: T): Promise<void> => {
-      await memfs.fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      await memfs.fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), { encoding: 'utf-8' });
     },
     validatePath: vi.fn(), // No-op in tests
     fileExists: async (filePath: string): Promise<boolean> => {

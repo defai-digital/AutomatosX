@@ -8,6 +8,9 @@ import { vol } from 'memfs';
 import { ConfigManager } from '../../../../src/integrations/gemini-cli/config-manager.js';
 import { GeminiCLIError, GeminiCLIErrorType } from '../../../../src/integrations/gemini-cli/types.js';
 
+// Use a consistent mock project root for cross-platform testing
+const MOCK_PROJECT_ROOT = '/mock/project';
+
 // Mock fs/promises
 vi.mock('fs/promises', async () => {
   const memfs = await import('memfs');
@@ -17,6 +20,10 @@ vi.mock('fs/promises', async () => {
 vi.mock('os', () => ({
   homedir: () => '/home/user',
 }));
+
+// Mock process.cwd to return consistent path across platforms
+const originalCwd = process.cwd;
+vi.spyOn(process, 'cwd').mockReturnValue(MOCK_PROJECT_ROOT);
 
 vi.mock('../../../../src/shared/logging/logger.js', () => ({
   logger: {
@@ -30,7 +37,7 @@ vi.mock('../../../../src/shared/logging/logger.js', () => ({
 describe('ConfigManager', () => {
   // Paths must match the actual implementation in utils/file-reader.ts
   const userConfigPath = '/home/user/.gemini/settings.json';
-  const projectConfigPath = `${process.cwd()}/.gemini/settings.json`;
+  const projectConfigPath = `${MOCK_PROJECT_ROOT}/.gemini/settings.json`;
 
   beforeEach(() => {
     vi.clearAllMocks();

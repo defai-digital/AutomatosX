@@ -6,8 +6,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { vol } from 'memfs';
+import { join, sep } from 'path';
 import { CommandTranslator } from '../../../../src/integrations/gemini-cli/command-translator.js';
 import { GeminiCLIError, GeminiCLIErrorType } from '../../../../src/integrations/gemini-cli/types.js';
+
+// Helper to normalize paths for cross-platform testing
+const normalizePath = (p: string) => p.replace(/[\\/]/g, sep);
 
 // Mock fs/promises
 vi.mock('fs/promises', async () => {
@@ -436,8 +440,8 @@ Some instructions.
       const translator = new CommandTranslator();
       const outputPath = await translator.importCommand('importme', '/output');
 
-      expect(outputPath).toBe('/output/gemini-importme.md');
-      expect(vol.existsSync('/output/gemini-importme.md')).toBe(true);
+      expect(normalizePath(outputPath)).toBe(normalizePath('/output/gemini-importme.md'));
+      expect(vol.existsSync(outputPath)).toBe(true);
     });
 
     it('should handle command names with colons', async () => {
@@ -451,7 +455,7 @@ Some instructions.
       const outputPath = await translator.importCommand('ns:cmd', '/output');
 
       // Colons should be replaced with hyphens
-      expect(outputPath).toBe('/output/gemini-ns-cmd.md');
+      expect(normalizePath(outputPath)).toBe(normalizePath('/output/gemini-ns-cmd.md'));
     });
 
     it('should throw when command not found', async () => {

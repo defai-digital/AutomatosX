@@ -14,7 +14,11 @@ export default defineConfig([
     outDir: 'dist',
     target: 'node20',
     banner: {
-      js: '#!/usr/bin/env node'
+      // Create proper require function for ESM - fixes Windows compatibility
+      // where dynamic require fails without this shim
+      js: `#!/usr/bin/env node
+import { createRequire as __createRequire } from 'module';
+const require = __createRequire(import.meta.url);`
     },
     // External packages that should not be bundled
     // These packages have dynamic requires, native dependencies, or work better when loaded at runtime
@@ -51,7 +55,11 @@ export default defineConfig([
     outDir: 'dist/mcp',
     target: 'node20',
     banner: {
-      js: '#!/usr/bin/env node'
+      // Create proper require function for ESM - fixes Windows compatibility
+      // where dynamic require fails without this shim
+      js: `#!/usr/bin/env node
+import { createRequire as __createRequire } from 'module';
+const require = __createRequire(import.meta.url);`
     },
     // External packages that should not be bundled
     // These packages have dynamic requires, native dependencies, or work better when loaded at runtime

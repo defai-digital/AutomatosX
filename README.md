@@ -13,7 +13,7 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D24.0.0-blue?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-**Status**: ✅ **Production Ready** | v12.8.6 | Integration Module ESLint/TypeScript Fixes
+**Status**: ✅ **Production Ready** | v12.8.7 | Integration Module ESLint/TypeScript Fixes
 
 > 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 

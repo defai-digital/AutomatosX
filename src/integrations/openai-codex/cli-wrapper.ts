@@ -8,15 +8,21 @@
 
 import { spawn } from 'child_process';
 import { logger } from '../../shared/logging/logger.js';
-import readline from 'readline';
+import * as readline from 'readline';
 import type {
   CodexConfig,
   CodexExecutionOptions,
   CodexExecutionResult,
+  IProgressRenderer,
 } from './types.js';
 import { CodexError, CodexErrorType } from './types.js';
-import { CodexProgressRenderer } from './progress-renderer.js';
 import { getDefaultInjector } from './prompt-injector.js';
+
+/**
+ * Maximum buffer size for stdout/stderr (10MB)
+ * Prevents memory exhaustion from very large process output
+ */
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 
 /**
  * Codex CLI Wrapper
@@ -92,6 +98,11 @@ export class CodexCLI {
         duration,
       });
 
+      // Re-throw CodexError directly to preserve error type and context
+      if (error instanceof CodexError) {
+        throw error;
+      }
+
       throw new CodexError(
         CodexErrorType.EXECUTION_FAILED,
         `Codex execution failed: ${(error as Error).message}`,
@@ -135,7 +146,7 @@ export class CodexCLI {
   /**
    * Cleanup resources
    */
-  async cleanup(): Promise<void> {
+  cleanup(): void {
     logger.debug('CodexCLI.cleanup', {
       activeProcesses: this.activeProcesses.size,
     });
@@ -214,9 +225,9 @@ export class CodexCLI {
 
       this.activeProcesses.add(child);
 
-      // Setup timeout
+      // Setup timeout - use unref() to prevent keeping process alive
       const effectiveTimeout = timeout || this.config.timeout || 60000;
-      timeoutHandle = setTimeout(() => {
+      const timer = setTimeout(() => {
         hasTimedOut = true;
         child.kill('SIGTERM');
 
@@ -228,24 +239,56 @@ export class CodexCLI {
           )
         );
       }, effectiveTimeout);
+      timer.unref();
+      timeoutHandle = timer;
 
-      // Write prompt to stdin
+      // Write prompt to stdin (with error handling)
       if (prompt && child.stdin) {
-        child.stdin.write(prompt);
-        child.stdin.end();
+        try {
+          child.stdin.write(prompt);
+          child.stdin.end();
+        } catch (stdinError) {
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+          }
+          this.activeProcesses.delete(child);
+          reject(
+            new CodexError(
+              CodexErrorType.EXECUTION_FAILED,
+              `Failed to write to stdin: ${stdinError instanceof Error ? stdinError.message : String(stdinError)}`,
+              { error: stdinError }
+            )
+          );
+          return;
+        }
       }
 
-      // Capture stdout
+      // Capture stdout (with buffer size limit)
       if (child.stdout) {
         child.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
+          if (stdout.length < MAX_BUFFER_SIZE) {
+            stdout += data.toString();
+            // Truncate if we exceed the limit
+            if (stdout.length > MAX_BUFFER_SIZE) {
+              stdout = stdout.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('Codex stdout truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
         });
       }
 
-      // Capture stderr
+      // Capture stderr (with buffer size limit)
       if (child.stderr) {
         child.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
+          if (stderr.length < MAX_BUFFER_SIZE) {
+            stderr += data.toString();
+            // Truncate if we exceed the limit
+            if (stderr.length > MAX_BUFFER_SIZE) {
+              stderr = stderr.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('Codex stderr truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
         });
       }
 
@@ -262,14 +305,17 @@ export class CodexCLI {
           return; // Already rejected
         }
 
-        if (code === 0) {
-          resolve({ stdout, stderr, exitCode: code });
+        // Handle null exit code (process killed without exit code)
+        const exitCode = code ?? 1;
+
+        if (exitCode === 0) {
+          resolve({ stdout, stderr, exitCode });
         } else {
           reject(
             new CodexError(
               CodexErrorType.EXECUTION_FAILED,
-              `Codex process exited with code ${code}`,
-              { code, stderr }
+              `Codex process exited with code ${exitCode}`,
+              { code: exitCode, stderr }
             )
           );
         }
@@ -304,7 +350,7 @@ export class CodexCLI {
     args: string[],
     prompt: string,
     timeout?: number,
-    renderer?: CodexProgressRenderer
+    renderer?: IProgressRenderer
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     return new Promise((resolve, reject) => {
       let stdout = '';
@@ -328,9 +374,9 @@ export class CodexCLI {
 
       this.activeProcesses.add(child);
 
-      // Setup timeout
+      // Setup timeout - use unref() to prevent keeping process alive
       const effectiveTimeout = timeout || this.config.timeout || 60000;
-      timeoutHandle = setTimeout(() => {
+      const timer = setTimeout(() => {
         hasTimedOut = true;
         child.kill('SIGTERM');
 
@@ -346,11 +392,32 @@ export class CodexCLI {
           )
         );
       }, effectiveTimeout);
+      timer.unref();
+      timeoutHandle = timer;
 
-      // Write prompt to stdin
+      // Write prompt to stdin (with error handling)
       if (prompt && child.stdin) {
-        child.stdin.write(prompt);
-        child.stdin.end();
+        try {
+          child.stdin.write(prompt);
+          child.stdin.end();
+        } catch (stdinError) {
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+          }
+          this.activeProcesses.delete(child);
+          if (renderer) {
+            renderer.fail('Failed to write to stdin');
+          }
+          reject(
+            new CodexError(
+              CodexErrorType.EXECUTION_FAILED,
+              `Failed to write to stdin: ${stdinError instanceof Error ? stdinError.message : String(stdinError)}`,
+              { error: stdinError }
+            )
+          );
+          return;
+        }
       }
 
       // Process stdout line-by-line for streaming
@@ -364,7 +431,14 @@ export class CodexCLI {
         });
 
         rl.on('line', (line: string) => {
-          stdout += line + '\n';
+          // Buffer size limit check
+          if (stdout.length < MAX_BUFFER_SIZE) {
+            stdout += line + '\n';
+            if (stdout.length > MAX_BUFFER_SIZE) {
+              stdout = stdout.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('Codex stdout truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
           // Feed line to progress renderer (it will parse JSONL events)
           renderer.processLine(line);
         });
@@ -374,18 +448,35 @@ export class CodexCLI {
           logger.warn('Readline error during streaming', {
             error: error.message
           });
+          // Close readline interface to prevent resource leak
+          if (rl) {
+            rl.close();
+            rl = null;
+          }
         });
       } else if (child.stdout) {
-        // No renderer - just capture output
+        // No renderer - just capture output (with buffer size limit)
         child.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
+          if (stdout.length < MAX_BUFFER_SIZE) {
+            stdout += data.toString();
+            if (stdout.length > MAX_BUFFER_SIZE) {
+              stdout = stdout.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('Codex stdout truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
         });
       }
 
-      // Capture stderr
+      // Capture stderr (with buffer size limit)
       if (child.stderr) {
         child.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
+          if (stderr.length < MAX_BUFFER_SIZE) {
+            stderr += data.toString();
+            if (stderr.length > MAX_BUFFER_SIZE) {
+              stderr = stderr.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('Codex stderr truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
         });
       }
 
@@ -408,20 +499,23 @@ export class CodexCLI {
           return; // Already rejected
         }
 
-        if (code === 0) {
+        // Handle null exit code (process killed without exit code)
+        const exitCode = code ?? 1;
+
+        if (exitCode === 0) {
           if (renderer) {
             renderer.succeed('Execution complete');
           }
-          resolve({ stdout, stderr, exitCode: code });
+          resolve({ stdout, stderr, exitCode });
         } else {
           if (renderer) {
-            renderer.fail(`Process exited with code ${code}`);
+            renderer.fail(`Process exited with code ${exitCode}`);
           }
           reject(
             new CodexError(
               CodexErrorType.EXECUTION_FAILED,
-              `Codex process exited with code ${code}`,
-              { code, stderr }
+              `Codex process exited with code ${exitCode}`,
+              { code: exitCode, stderr }
             )
           );
         }

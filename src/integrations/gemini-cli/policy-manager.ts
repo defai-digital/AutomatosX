@@ -45,7 +45,8 @@ export class GeminiPolicyManager {
    * Validate an operation against policy rules
    */
   validateOperation(context: PolicyContext): PolicyValidationResult {
-    const startTime = Date.now();
+    // Note: startTime reserved for future performance metrics
+    const _startTime = Date.now();
     this.stats.totalValidations++;
 
     const result: PolicyValidationResult = {

@@ -78,12 +78,14 @@ export class CodexSdkAdapter {
 
       // Use buffered mode with timeout wrapper
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
+        const timer = setTimeout(() => {
           reject(new CodexError(
             CodexErrorType.TIMEOUT,
             `SDK execution timeout after ${effectiveTimeout}ms`
           ));
         }, effectiveTimeout);
+        timer.unref();
+        timeoutId = timer;
       });
 
       const result = await Promise.race([thread.run(prompt), timeoutPromise]);
@@ -105,14 +107,16 @@ export class CodexSdkAdapter {
         : undefined;
 
       // Clear thread if not reusing
-      // BUG FIX: Properly dispose thread resources before setting to null
-      // to prevent memory leaks from unclosed thread objects. The Codex SDK
-      // thread may hold references to internal state that needs cleanup.
+      // BUG FIX: Capture thread reference first to prevent race condition where
+      // two concurrent requests could try to dispose the same thread.
       if (!this.options.reuseThreads && this.activeThread) {
+        const threadToDispose = this.activeThread;
+        this.activeThread = null; // Clear reference immediately to prevent double disposal
+
         try {
           // Try to dispose if method exists (SDK may add it in future versions)
           // Use type assertion to check for dispose method at runtime
-          const threadWithDispose = this.activeThread as unknown as { dispose?: () => void | Promise<void> };
+          const threadWithDispose = threadToDispose as unknown as { dispose?: () => void | Promise<void> };
           if (typeof threadWithDispose.dispose === 'function') {
             const disposeResult = threadWithDispose.dispose();
             if (disposeResult instanceof Promise) {
@@ -124,7 +128,6 @@ export class CodexSdkAdapter {
             error: disposeError instanceof Error ? disposeError.message : String(disposeError)
           });
         }
-        this.activeThread = null;
       }
 
       return {
@@ -189,7 +192,7 @@ export class CodexSdkAdapter {
     });
   }
 
-  async destroy(): Promise<void> {
+  destroy(): void {
     this.activeThread = null;
     this.codex = null;
     this.sdkModule = null;

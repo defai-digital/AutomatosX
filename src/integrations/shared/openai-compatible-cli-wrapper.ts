@@ -10,13 +10,9 @@
  */
 
 import { spawn } from 'child_process';
-import { promisify } from 'util';
-import { exec } from 'child_process';
 import type { ExecutionRequest, ExecutionResponse } from '../../types/provider.js';
 import { logger } from '../../shared/logging/logger.js';
-import { TIMEOUTS } from '../../core/validation-limits.js';
-
-const execAsync = promisify(exec);
+import { findOnPath } from '../../core/cli-provider-detector.js';
 
 /**
  * Configuration for OpenAI-compatible CLI wrappers
@@ -71,31 +67,19 @@ export class OpenAICompatibleCliWrapper {
 
   /**
    * Check if CLI is available
+   *
+   * Uses findOnPath for consistent detection across all CLI wrappers.
    */
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): boolean {
     try {
-      const whichCommand = process.platform === 'win32' ? 'where' : 'which';
-      const { stdout } = await execAsync(`${whichCommand} ${this.config.command}`, {
-        timeout: TIMEOUTS.PROVIDER_DETECTION
-      });
+      const result = findOnPath(this.config.command);
 
-      this.cliPath = stdout.trim();
-
-      if (this.cliPath) {
-        // Try to get version
-        try {
-          const { stdout: versionOutput } = await execAsync(
-            `${this.config.command} --version`,
-            { timeout: TIMEOUTS.PROVIDER_DETECTION }
-          );
-          this.cliVersion = versionOutput.trim();
-        } catch {
-          this.cliVersion = 'unknown';
-        }
+      if (result.found) {
+        this.cliPath = result.path ?? null;
+        this.cliVersion = 'unknown'; // Version detection can be added by subclasses
 
         logger.debug(`${this.logPrefix} CLI available`, {
-          path: this.cliPath,
-          version: this.cliVersion
+          path: this.cliPath
         });
 
         return true;
@@ -113,8 +97,8 @@ export class OpenAICompatibleCliWrapper {
   /**
    * Initialize the CLI wrapper
    */
-  async initialize(): Promise<void> {
-    const available = await this.isAvailable();
+  initialize(): void {
+    const available = this.isAvailable();
     if (!available) {
       throw new Error(`${this.config.command} CLI is not installed or not in PATH`);
     }
@@ -197,30 +181,51 @@ export class OpenAICompatibleCliWrapper {
 
   /**
    * Spawn CLI process and get output
+   *
+   * BUG FIX: Properly implement timeout handling with manual setTimeout
+   * since Node's spawn() doesn't support timeout option.
    */
   protected spawnCLI(args: string[], prompt: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const proc = spawn(this.config.command, args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: this.config.timeout
+      const child = spawn(this.config.command, args, {
+        stdio: ['pipe', 'pipe', 'pipe']
       });
 
       let stdout = '';
       let stderr = '';
+      let hasTimedOut = false;
 
-      proc.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
+      // Manual timeout since spawn doesn't support timeout option
+      const timer = setTimeout(() => {
+        hasTimedOut = true;
+        child.kill('SIGTERM');
+        reject(new Error(`CLI timeout after ${this.config.timeout}ms`));
+      }, this.config.timeout);
+      timer.unref(); // Prevent timer from keeping process alive
 
-      proc.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
+      // Capture stdout (with null check for safety)
+      if (child.stdout) {
+        child.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+      }
 
-      proc.on('error', (error) => {
+      // Capture stderr (with null check for safety)
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+      }
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
         reject(new Error(`CLI process error: ${error.message}`));
       });
 
-      proc.on('close', (code) => {
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        if (hasTimedOut) return; // Already rejected
+
         if (code === 0) {
           resolve(stdout);
         } else {
@@ -230,9 +235,26 @@ export class OpenAICompatibleCliWrapper {
         }
       });
 
-      // Write prompt to stdin
-      proc.stdin.write(prompt);
-      proc.stdin.end();
+      // Write prompt to stdin (with null check)
+      if (child.stdin) {
+        try {
+          const canContinue = child.stdin.write(prompt);
+          if (!canContinue && typeof child.stdin.once === 'function') {
+            // Handle backpressure: wait for 'drain' event before ending
+            child.stdin.once('drain', () => {
+              child.stdin?.end();
+            });
+          } else {
+            child.stdin.end();
+          }
+        } catch (err) {
+          clearTimeout(timer);
+          reject(new Error(`Failed to write to stdin: ${err instanceof Error ? err.message : String(err)}`));
+        }
+      } else {
+        clearTimeout(timer);
+        reject(new Error('CLI stdin not available'));
+      }
     });
   }
 
@@ -295,7 +317,7 @@ export class OpenAICompatibleCliWrapper {
   /**
    * Clean up resources
    */
-  async destroy(): Promise<void> {
+  destroy(): void {
     // No persistent resources to clean up
     logger.debug(`${this.logPrefix} Wrapper destroyed`);
   }

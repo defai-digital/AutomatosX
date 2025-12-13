@@ -44,7 +44,8 @@ const TokenUsageEventSchema = BaseEventSchema.extend({
   outputTokens: z.number().int().nonnegative()
 });
 
-const CodexEventSchema = z.discriminatedUnion('type', [
+// Schema used for type inference - validation is done manually for better error handling
+const _CodexEventSchema = z.discriminatedUnion('type', [
   ProgressEventSchema,
   CompletionEventSchema,
   ErrorEventSchema,
@@ -54,7 +55,7 @@ const CodexEventSchema = z.discriminatedUnion('type', [
 
 // ========== Types ==========
 
-type CodexEvent = z.infer<typeof CodexEventSchema>;
+type CodexEvent = z.infer<typeof _CodexEventSchema>;
 type CodexEventCallback = (event: CodexEvent) => void;
 
 export interface EventStatistics {

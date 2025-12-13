@@ -323,7 +323,7 @@ export class CodexBridge {
   /**
    * Determine if MCP should be used
    */
-  private async shouldUseMCP(options: CodexBridgeOptions): Promise<boolean> {
+  private shouldUseMCP(options: CodexBridgeOptions): boolean {
     // Force CLI mode
     if (options.forceCLI) {
       return false;
@@ -398,11 +398,11 @@ let defaultBridge: CodexBridge | null = null;
 /**
  * Get default Codex bridge instance
  *
- * @param config - Configuration (optional)
+ * @param config - Configuration (optional, only used for initial creation)
  * @returns Default bridge instance
  */
 export function getDefaultBridge(config?: CodexBridgeConfig): CodexBridge {
-  if (!defaultBridge || config) {
+  if (!defaultBridge) {
     defaultBridge = new CodexBridge(
       config || {
         cli: {
@@ -419,6 +419,24 @@ export function getDefaultBridge(config?: CodexBridgeConfig): CodexBridge {
         autoStartMCP: false,
       }
     );
+  } else if (config) {
+    // BUG FIX: Warn instead of silently replacing to prevent resource leaks
+    logger.warn('CodexBridge already initialized, ignoring new config', {
+      hint: 'Use resetDefaultBridge() to recreate with new config'
+    });
   }
   return defaultBridge;
+}
+
+/**
+ * Reset the default Codex bridge instance
+ *
+ * Use this to recreate the bridge with a new configuration.
+ * Ensures proper cleanup of existing resources.
+ */
+export async function resetDefaultBridge(): Promise<void> {
+  if (defaultBridge) {
+    await defaultBridge.cleanup();
+    defaultBridge = null;
+  }
 }

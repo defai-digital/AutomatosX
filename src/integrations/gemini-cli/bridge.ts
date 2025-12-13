@@ -25,23 +25,10 @@ import {
   writeJsonFile,
   readJsonFile,
 } from './utils/file-reader.js';
-import { validateMCPServer, isValidServerName } from './utils/validation.js';
+import { validateMCPServer, isValidServerName, ALLOWED_COMMANDS } from './utils/validation.js';
 
 const accessAsync = promisify(access);
 const realpathAsync = promisify(realpath);
-
-/**
- * Allowed commands for MCP servers (whitelist)
- */
-const ALLOWED_COMMANDS = [
-  'node',
-  'python',
-  'python3',
-  'ax',
-  'gemini',
-  'npm',
-  'npx',
-];
 
 /**
  * Gemini CLI Bridge

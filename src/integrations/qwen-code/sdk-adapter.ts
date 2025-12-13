@@ -175,6 +175,14 @@ export class QwenSdkAdapter {
         promptLength: request.prompt.length
       });
 
+      // Verify client was initialized successfully
+      if (!this.client) {
+        throw new Error(
+          'Qwen SDK client not initialized. ' +
+          'Ensure API key is set via DASHSCOPE_API_KEY or QWEN_API_KEY environment variable.'
+        );
+      }
+
       // Make API call using OpenAI SDK
       const openaiClient = this.client as {
         chat: {
@@ -199,7 +207,9 @@ export class QwenSdkAdapter {
         throw new Error('Qwen API returned empty choices array');
       }
       const choice = response.choices[0];
-      const content = choice?.message?.content || '';
+      // Validate content is actually a string (API could return null/undefined/other types)
+      const rawContent = choice?.message?.content;
+      const content = typeof rawContent === 'string' ? rawContent : '';
       const finishReason = choice?.finish_reason || 'unknown';
 
       logger.debug('[Qwen SDK] Request completed', {
@@ -242,7 +252,7 @@ export class QwenSdkAdapter {
   /**
    * Clean up resources
    */
-  async destroy(): Promise<void> {
+  destroy(): void {
     this.client = null;
     this.initialized = false;
     logger.debug('[Qwen SDK] Adapter destroyed');

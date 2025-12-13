@@ -9,6 +9,25 @@
 import type { ChildProcess } from 'child_process';
 
 /**
+ * Progress Renderer Interface
+ *
+ * Minimal interface for streaming progress rendering to avoid circular deps.
+ * The actual CodexProgressRenderer class implements this interface.
+ */
+export interface IProgressRenderer {
+  /** Start rendering with an optional initial message */
+  start(initialMessage?: string): void;
+  /** Process a JSONL line from streaming output */
+  processLine(line: string): void;
+  /** Stop rendering with success */
+  succeed(message?: string): void;
+  /** Stop rendering with error */
+  fail(message?: string): void;
+  /** Stop rendering without status */
+  stop(): void;
+}
+
+/**
  * Codex CLI Configuration
  */
 export interface CodexConfig {
@@ -39,7 +58,7 @@ export interface CodexMCPConfig {
   /** Transport protocol (stdio only for now) */
   transport: 'stdio';
   /** Additional config overrides */
-  configOverrides?: Record<string, any>;
+  configOverrides?: Record<string, unknown>;
 }
 
 /**
@@ -63,7 +82,7 @@ export interface CodexExecutionOptions {
   /** Working directory */
   cwd?: string;
   /** Progress renderer for streaming mode */
-  progressRenderer?: any; // CodexProgressRenderer (avoid circular dep)
+  progressRenderer?: IProgressRenderer;
 }
 
 /**
@@ -126,15 +145,23 @@ export enum CodexErrorType {
 
 /**
  * Codex Integration Error
+ *
+ * Custom error class for Codex provider errors with type classification
+ * and optional details for debugging.
  */
 export class CodexError extends Error {
   constructor(
-    public readonly type: CodexErrorType,
+    public type: CodexErrorType,
     message: string,
-    public readonly context?: Record<string, any>
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'CodexError';
+
+    // Capture stack trace, excluding constructor call from it
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, CodexError);
+    }
   }
 }
 

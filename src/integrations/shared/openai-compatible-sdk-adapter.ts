@@ -157,6 +157,14 @@ export class OpenAICompatibleSdkAdapter {
       await this.initialize();
     }
 
+    // Verify client was initialized successfully
+    if (!this.client) {
+      throw new Error(
+        `${this.config.providerName} SDK client not initialized. ` +
+        `Ensure API key is set via ${this.config.apiKeyEnvVar} environment variable.`
+      );
+    }
+
     const startTime = Date.now();
 
     try {
@@ -205,7 +213,9 @@ export class OpenAICompatibleSdkAdapter {
       }
 
       const choice = response.choices[0];
-      const content = choice?.message?.content || '';
+      // BUG FIX: Validate content is actually a string (API could return null/undefined/other types)
+      const rawContent = choice?.message?.content;
+      const content = typeof rawContent === 'string' ? rawContent : '';
       const finishReason = choice?.finish_reason || 'unknown';
 
       logger.debug(`${this.logPrefix} Request completed`, {
@@ -248,7 +258,7 @@ export class OpenAICompatibleSdkAdapter {
   /**
    * Clean up resources
    */
-  async destroy(): Promise<void> {
+  destroy(): void {
     this.client = null;
     this.initialized = false;
     logger.debug(`${this.logPrefix} Adapter destroyed`);

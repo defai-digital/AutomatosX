@@ -26,7 +26,10 @@ const PackageJsonSchema = z.object({
   devDependencies: z.record(z.string(), z.string()).optional()
 });
 
-const ProjectInfoSchema = z.object({
+// Project info schema - used for type inference
+// Note: The schema is defined but validation is done manually
+// to provide better error messages during project detection
+const _ProjectInfoSchema = z.object({
   type: z.enum(['nodejs', 'python', 'go', 'rust', 'unknown']),
   name: z.string().optional(),
   description: z.string().optional(),
@@ -35,8 +38,8 @@ const ProjectInfoSchema = z.object({
   buildTool: z.string().optional()
 });
 
-type PackageJson = z.infer<typeof PackageJsonSchema>;
-type ProjectInfo = z.infer<typeof ProjectInfoSchema>;
+type _PackageJson = z.infer<typeof PackageJsonSchema>;
+type ProjectInfo = z.infer<typeof _ProjectInfoSchema>;
 
 // ========== Types ==========
 

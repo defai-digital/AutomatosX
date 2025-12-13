@@ -107,7 +107,7 @@ export class CodexMCPManager {
       await this.waitForExit(this.serverProcess.process, 5000);
 
       logger.info('CodexMCPManager: MCP server stopped gracefully');
-    } catch (error) {
+    } catch {
       // Force kill if graceful shutdown fails
       logger.warn('CodexMCPManager: Forcing server termination');
       this.serverProcess.process.kill('SIGKILL');

@@ -14,9 +14,13 @@ import type {
 } from '../types.js';
 
 /**
- * Allowed commands for MCP servers
+ * Allowed commands for MCP servers (whitelist)
+ *
+ * This whitelist is used for security validation when registering
+ * MCP servers. Only these commands are permitted to prevent
+ * arbitrary command execution.
  */
-const ALLOWED_COMMANDS = [
+export const ALLOWED_COMMANDS = [
   'node',
   'python',
   'python3',
@@ -168,9 +172,12 @@ export function validateMCPServer(
     if (typeof server.auth !== 'object') {
       errors.push(`${name}: auth must be an object`);
     } else {
-      if (server.auth.type && server.auth.type !== 'oauth2') {
+      // Runtime check for unknown auth types from config files
+      // Cast to string since external data may not match type definition
+      const authType = server.auth.type as string | undefined;
+      if (authType && authType !== 'oauth2') {
         warnings.push(
-          `${name}: Unknown auth type "${server.auth.type}". Only "oauth2" is documented.`
+          `${name}: Unknown auth type "${authType}". Only "oauth2" is documented.`
         );
       }
 

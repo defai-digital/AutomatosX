@@ -156,30 +156,27 @@ export class HybridCodexAdapter {
    * in SDK destroy would prevent CLI cleanup from running.
    */
   async destroy(): Promise<void> {
-    const cleanupPromises: Promise<void>[] = [];
-
+    // Destroy SDK adapter (synchronous)
     if (this.sdkAdapter) {
-      cleanupPromises.push(
-        this.sdkAdapter.destroy().catch(err => {
-          logger.warn('Error destroying SDK adapter', {
-            error: err instanceof Error ? err.message : String(err)
-          });
-        })
-      );
+      try {
+        this.sdkAdapter.destroy();
+      } catch (err: unknown) {
+        logger.warn('Error destroying SDK adapter', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
     }
 
+    // Cleanup CLI adapter (async)
     if (this.cliAdapter) {
-      cleanupPromises.push(
-        this.cliAdapter.cleanup().catch(err => {
-          logger.warn('Error cleaning up CLI adapter', {
-            error: err instanceof Error ? err.message : String(err)
-          });
-        })
-      );
+      try {
+        this.cliAdapter.cleanup();
+      } catch (err: unknown) {
+        logger.warn('Error cleaning up CLI adapter', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
     }
-
-    // Wait for all cleanup to complete
-    await Promise.allSettled(cleanupPromises);
 
     this.sdkAdapter = null;
     this.cliAdapter = null;

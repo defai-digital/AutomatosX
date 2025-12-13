@@ -395,7 +395,7 @@ export class CommandTranslator {
             });
           } catch (error) {
             // Skip files that can't be parsed
-            console.error(`Failed to parse ${realPath}: ${error}`);
+            console.error(`Failed to parse ${realPath}: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       }

@@ -10,7 +10,7 @@
  */
 
 import { spawn } from 'child_process';
-import readline from 'readline';
+import * as readline from 'readline';
 import { logger } from '../../shared/logging/logger.js';
 import { TIMEOUTS } from '../../core/validation-limits.js';
 import { findOnPath } from '../../core/cli-provider-detector.js';
@@ -36,6 +36,12 @@ const NON_INTERACTIVE_ENV: Readonly<Record<string, string>> = {
  * Time to wait after SIGTERM before escalating to SIGKILL
  */
 const SIGKILL_ESCALATION_MS = 5000;
+
+/**
+ * Maximum buffer size for stdout/stderr (10MB)
+ * Prevents memory exhaustion from very large process output
+ */
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 
 /**
  * Qwen Code CLI Wrapper
@@ -74,7 +80,7 @@ export class QwenCliWrapper {
   /**
    * Check if Qwen CLI is available on PATH
    */
-  async isAvailable(): Promise<boolean> {
+  isAvailable(): boolean {
     // Mock mode bypass
     if (process.env.AX_MOCK_PROVIDERS === 'true') {
       return true;
@@ -142,6 +148,7 @@ export class QwenCliWrapper {
       let forceKillTimer: NodeJS.Timeout | null = null;
       let readlineInterface: readline.Interface | null = null;
       let responseStarted = false;
+      let settled = false; // BUG FIX: Track if promise is already settled
 
       // Cleanup helper
       const cleanup = () => {
@@ -177,8 +184,13 @@ export class QwenCliWrapper {
             return; // Skip the prompt echo
           }
 
-          if (responseStarted) {
+          if (responseStarted && stdout.length < MAX_BUFFER_SIZE) {
             stdout += line + '\n';
+            // Truncate if we exceed the limit
+            if (stdout.length > MAX_BUFFER_SIZE) {
+              stdout = stdout.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('[Qwen CLI] stdout truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
           }
         });
 
@@ -189,10 +201,17 @@ export class QwenCliWrapper {
         });
       }
 
-      // Capture stderr
+      // Capture stderr (with buffer size limit)
       if (child.stderr) {
         child.stderr.on('data', (data) => {
-          stderr += data.toString();
+          if (stderr.length < MAX_BUFFER_SIZE) {
+            stderr += data.toString();
+            // Truncate if we exceed the limit
+            if (stderr.length > MAX_BUFFER_SIZE) {
+              stderr = stderr.slice(0, MAX_BUFFER_SIZE);
+              logger.warn('[Qwen CLI] stderr truncated due to size limit', { limit: MAX_BUFFER_SIZE });
+            }
+          }
         });
       }
 
@@ -210,20 +229,26 @@ export class QwenCliWrapper {
           child.stdin.write('\n');
           child.stdin.end();
         } catch (error) {
+          settled = true; // BUG FIX: Mark as settled to prevent double resolution
           cleanup();
           child.kill('SIGTERM');
           reject(new Error(`Failed to write to Qwen stdin: ${error instanceof Error ? error.message : String(error)}`));
           return;
         }
       } else {
+        settled = true; // BUG FIX: Mark as settled to prevent double resolution
         cleanup();
         reject(new Error('Qwen CLI stdin not available'));
         return;
       }
 
-      // Handle process completion
-      child.on('close', (code, signal) => {
+      // Handle process completion (use once() to prevent listener leaks)
+      child.once('close', (code, signal) => {
         cleanup();
+
+        // BUG FIX: Skip if promise already settled (e.g., stdin write failed)
+        if (settled) return;
+        settled = true;
 
         const latencyMs = Date.now() - startTime;
 
@@ -254,17 +279,22 @@ export class QwenCliWrapper {
         }
       });
 
-      // Handle process errors
-      child.on('error', (error) => {
+      // Handle process errors (use once() to prevent listener leaks)
+      child.once('error', (error) => {
         cleanup();
+
+        // BUG FIX: Skip if promise already settled
+        if (settled) return;
+        settled = true;
+
         logger.error('[Qwen CLI] Process error', {
           error: error.message
         });
         reject(new Error(`Failed to spawn Qwen CLI: ${error.message}`));
       });
 
-      // Timeout handling
-      timeoutId = setTimeout(() => {
+      // Timeout handling - use unref() to prevent keeping process alive
+      const timer = setTimeout(() => {
         if (child.pid && !child.killed) {
           logger.warn('[Qwen CLI] Killing process due to timeout', {
             pid: child.pid,
@@ -274,7 +304,7 @@ export class QwenCliWrapper {
           child.kill('SIGTERM');
 
           // Escalate to SIGKILL if needed
-          forceKillTimer = setTimeout(() => {
+          const killTimer = setTimeout(() => {
             if (child.pid) {
               try {
                 process.kill(child.pid, 0);
@@ -285,8 +315,12 @@ export class QwenCliWrapper {
               }
             }
           }, SIGKILL_ESCALATION_MS);
+          killTimer.unref();
+          forceKillTimer = killTimer;
         }
       }, this.config.timeout);
+      timer.unref();
+      timeoutId = timer;
     });
   }
 

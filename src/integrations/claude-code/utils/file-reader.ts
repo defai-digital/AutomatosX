@@ -2,14 +2,128 @@
  * Claude Code Integration - File Reader Utilities
  *
  * Provides utilities for reading and writing Claude Code configuration files.
+ * Includes path validation to prevent directory traversal attacks.
  *
  * @module integrations/claude-code/utils/file-reader
  */
 
-import { readFile, writeFile, access } from 'fs/promises';
-import { join } from 'path';
+import { readFile, writeFile, access, realpath, stat } from 'fs/promises';
+import { join, normalize, dirname, basename } from 'path';
 import { homedir } from 'os';
 import { ClaudeCodeError, ClaudeCodeErrorType } from '../types.js';
+
+/**
+ * Maximum allowed file size (10MB)
+ */
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+/**
+ * Get allowed base paths for Claude Code configuration
+ *
+ * Returns paths dynamically to handle process.cwd() changes.
+ *
+ * @returns Array of allowed base paths
+ */
+function getAllowedBasePaths(): string[] {
+  return [
+    join(homedir(), '.claude'),
+    join(process.cwd(), '.claude'),
+  ];
+}
+
+/**
+ * Validate that a file path is within allowed directories
+ *
+ * Resolves symbolic links to prevent bypass attempts.
+ * Prevents directory traversal attacks.
+ *
+ * @param filePath - Path to validate
+ * @throws {ClaudeCodeError} If path is invalid or outside allowed directories
+ */
+export async function validatePath(filePath: string): Promise<void> {
+  const normalized = normalize(filePath);
+
+  // Check for directory traversal in raw path
+  if (normalized.includes('..')) {
+    throw new ClaudeCodeError(
+      ClaudeCodeErrorType.VALIDATION_ERROR,
+      'Path contains directory traversal',
+      { path: filePath }
+    );
+  }
+
+  // Resolve symlinks to real path
+  let realPath: string;
+  try {
+    realPath = await realpath(normalized);
+  } catch {
+    // File doesn't exist yet - validate parent directory
+    const parent = dirname(normalized);
+    try {
+      const parentReal = await realpath(parent);
+      realPath = join(parentReal, basename(normalized));
+    } catch {
+      // Parent doesn't exist - check against normalized path
+      realPath = normalized;
+    }
+  }
+
+  // Check if real path is within allowed directories
+  const allowedPaths = getAllowedBasePaths();
+  const isAllowed = allowedPaths.some((basePath) =>
+    realPath.startsWith(normalize(basePath))
+  );
+
+  if (!isAllowed) {
+    throw new ClaudeCodeError(
+      ClaudeCodeErrorType.VALIDATION_ERROR,
+      'Path is outside allowed directories',
+      { path: filePath, realPath, allowedPaths }
+    );
+  }
+}
+
+/**
+ * Safely read a file with path validation and size limits
+ *
+ * @param filePath - Path to file
+ * @returns File contents as string
+ * @throws {ClaudeCodeError} If file cannot be read, path is invalid, or file is too large
+ */
+export async function safeReadFile(filePath: string): Promise<string> {
+  await validatePath(filePath);
+
+  // Check file size before reading
+  try {
+    const fileStats = await stat(filePath);
+
+    if (fileStats.size > MAX_FILE_SIZE) {
+      throw new ClaudeCodeError(
+        ClaudeCodeErrorType.FILE_ERROR,
+        `File exceeds maximum allowed size (${MAX_FILE_SIZE} bytes): ${filePath}`,
+        { path: filePath, size: fileStats.size, maxSize: MAX_FILE_SIZE }
+      );
+    }
+  } catch (error) {
+    if (error instanceof ClaudeCodeError) {
+      throw error;
+    }
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new ClaudeCodeError(
+        ClaudeCodeErrorType.FILE_ERROR,
+        `File not found: ${filePath}`,
+        { path: filePath }
+      );
+    }
+    throw new ClaudeCodeError(
+      ClaudeCodeErrorType.FILE_ERROR,
+      `Failed to check file: ${filePath}`,
+      { path: filePath, error }
+    );
+  }
+
+  return readFile(filePath, 'utf-8');
+}
 
 /**
  * Get path to global Claude Code configuration

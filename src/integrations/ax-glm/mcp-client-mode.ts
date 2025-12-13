@@ -359,7 +359,22 @@ export class AxGlmWithMcp {
           }
         }
       } catch (error) {
-        logger.error('[ax-glm MCP] Failed to parse response:', { error: (error as Error).message });
+        logger.error('[ax-glm MCP] Failed to parse response:', {
+          error: (error as Error).message,
+          message: jsonMessage.slice(0, 200) // Log first 200 chars for debugging
+        });
+
+        // BUG FIX: Try to extract request ID and reject the pending request
+        // This prevents requests from hanging until timeout when server sends malformed JSON
+        const idMatch = jsonMessage.match(/"id"\s*:\s*(\d+)/);
+        if (idMatch && idMatch[1]) {
+          const id = parseInt(idMatch[1], 10);
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            this.pendingRequests.delete(id);
+            pending.reject(new Error(`MCP server sent malformed response: ${(error as Error).message}`));
+          }
+        }
       }
     }
   }
@@ -371,6 +386,9 @@ export class AxGlmWithMcp {
     if (!this.mcpProcess?.stdin) {
       throw new Error('MCP connection not established');
     }
+
+    // BUG FIX: Capture stdin reference to avoid race condition with disconnect()
+    const stdin = this.mcpProcess.stdin;
 
     const id = ++this.requestId;
     const request: JsonRpcRequest = {
@@ -393,7 +411,7 @@ export class AxGlmWithMcp {
         reject(new Error(`MCP request timeout: ${method}`));
       }, 30000);
 
-      this.mcpProcess!.stdin!.write(message, (error) => {
+      stdin.write(message, (error) => {
         if (error) {
           clearTimeout(timeout);
           this.pendingRequests.delete(id);
@@ -572,7 +590,14 @@ export class AxGlmWithMcp {
       this.mcpProcess = null;
     }
     this.connected = false;
+
+    // BUG FIX: Reject all pending requests before clearing to prevent hanging promises
+    for (const [id, { reject }] of this.pendingRequests) {
+      reject(new Error('MCP connection closed'));
+      logger.debug('[ax-glm MCP] Rejected pending request on disconnect', { id });
+    }
     this.pendingRequests.clear();
+
     await this.glmSdk.destroy();
     logger.info('[ax-glm MCP] Disconnected from AutomatosX');
   }

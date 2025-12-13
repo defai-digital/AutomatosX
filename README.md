@@ -2,7 +2,7 @@
 
 *The Invisible Power Addon for Vibe Coding CLI*
 
-**AutomatosX transforms your AI coding assistant into a multi-agent enterprise platform** - with 20+ specialized agents, persistent memory, and 80% cost savings through intelligent multi-provider routing. **You keep using Claude Code or Codex exactly as before**, but now with superpowers.
+**AutomatosX transforms your AI coding assistant into a multi-agent enterprise platform** - with 10 specialized agents, persistent memory, and 80% cost savings through intelligent multi-provider routing. **You keep using Claude Code or Codex exactly as before**, but now with superpowers.
 
 
 [![downloads](https://img.shields.io/npm/dt/@defai.digital/automatosx?style=flat-square&logo=npm&label=downloads)](https://npm-stat.com/charts.html?package=%40defai.digital%2Fautomatox)
@@ -15,7 +15,9 @@
 
 **Status**: ✅ **Production Ready** | v12.8.7 | Integration Module ESLint/TypeScript Fixes
 
-> 🎯 **What AutomatosX Does**: Adds 20+ specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
+**History**: See the [Project History](docs/contributing/project-history.md) for a concise timeline from the Tokyo AI Expo origins through v12.x.
+
+> 🎯 **What AutomatosX Does**: Adds 10 specialized agents, persistent memory, workflow automation, and 80% cost savings to Claude Code/Codex - **without changing how you work**.
 
 > 💡 **No Learning Curve**: Keep using Claude Code naturally. AutomatosX runs invisibly in the background, giving you enterprise capabilities automatically.
 
@@ -45,7 +47,7 @@
 ```
 ✅ 80% Cost Savings: $60/mo total (multi-provider routing)
 ✅ Perfect Memory: Remembers everything forever (SQLite FTS5)
-✅ 20+ Specialized Agents: Backend, security, DevOps experts
+✅ 10 Specialized Agents: Backend, security, DevOps experts
 ✅ Multi-Provider: Auto-routes to Claude/Gemini/OpenAI optimally
 ✅ Complete Observability: JSONL trace logs for every decision
 ✅ Workflow Automation: YAML specs for complex multi-step tasks
@@ -232,18 +234,32 @@ AutomatosX automatically:
 
 ## 🎯 What You Get (Automatically)
 
-### 1. 20+ Specialized Agents
+### 1. 10 Specialized Agents
 
 **No setup needed - just mention them in conversation:**
 
-- **Backend Agent (Bob)**: Go/Rust systems, API design, databases
-- **Security Agent (Steve)**: Threat modeling, penetration testing, audits
-- **Frontend Agent (Frank)**: React/Next.js, UI/UX, responsive design
-- **DevOps Agent (Oliver)**: CI/CD, Kubernetes, infrastructure
-- **Quality Agent (Queenie)**: Test planning, QA automation
-- **Product Agent (Paris)**: Requirements, roadmaps, user stories
-- **Data Agent (Daisy)**: ETL pipelines, data warehouses
-- ... [13 more agents](docs/full-features.md#agents)
+#### Core Agents (Recommended for Daily Use)
+
+| Agent | Best For | Example Prompt |
+|-------|----------|----------------|
+| **backend** | API design, databases, server logic | "Design REST API for user authentication with JWT" |
+| **frontend** | React components, UI/UX, accessibility | "Build responsive dashboard component with data grid" |
+| **quality** | Testing, QA automation, code review | "Write unit tests for the payment module" |
+| **architecture** | System design, scalability, tech decisions | "Design microservices architecture for order system" |
+| **security** | Security audits, vulnerabilities, auth | "Audit this code for OWASP Top 10 vulnerabilities" |
+| **devops** | CI/CD pipelines, Docker, infrastructure | "Create GitHub Actions workflow for deployment" |
+
+#### Extended Agents (Specialized Workflows)
+
+| Agent | Best For | Example Prompt |
+|-------|----------|----------------|
+| **data** | Data pipelines, ETL, analytics | "Build ETL pipeline for user analytics data" |
+| **product** | Requirements, user stories, acceptance criteria | "Write user stories for checkout flow feature" |
+| **writer** | Technical documentation, API docs, guides | "Write API documentation for the auth endpoints" |
+| **design** | UX/UI design, wireframes, design systems | "Design user flow for onboarding experience" |
+
+> **Tip**: Use `ax list agents --examples` to see all agents with usage examples.
+> Use `ax list agents --all` to see specialty agents (ML, quantum, mobile, etc.)
 
 **Example**:
 ```
@@ -251,6 +267,39 @@ AutomatosX automatically:
 "Backend agent, optimize this database query."
 "DevOps agent, set up the CI/CD pipeline."
 ```
+
+#### Quick Guide: Choosing the Right Agent
+
+**Building something?**
+- API/database work → `backend` (Bob)
+- UI components → `frontend` (Frank)
+- Mobile apps → `mobile` (Maya)
+- Both together → Start with `backend`, then `frontend`
+
+**Data & ML?**
+- ML models, algorithms → `data-scientist` (Dana)
+- Data pipelines, ETL → `data` (Daisy)
+
+**Scientific & Research?**
+- Quantum computing → `quantum-engineer` (Quinn)
+- Space/aerospace → `aerospace-scientist` (Astrid)
+
+**Reviewing code?**
+- General review/tests → `quality` (Queenie)
+- Security concerns → `security` (Steve)
+- Architecture decisions → `architecture` (Avery)
+
+**Setting up infrastructure?**
+- CI/CD, Docker, deploy → `devops` (Oliver)
+
+**Planning & docs?**
+- Requirements/stories → `product` (Paris)
+- Documentation → `writer` (Wendy)
+- UX flows → `design` (Debbee)
+
+**Not sure?** Just describe your task naturally - AutomatosX routes to the best agent automatically.
+
+> **Learn more**: See [Agent Guide](docs/guides/agents.md) for detailed usage patterns and advanced workflows.
 
 ### 2. Persistent Memory (Context That Never Expires)
 
@@ -561,7 +610,7 @@ Transform AI agents into **governable workforce**:
 | **Multi-Provider** | ✅ Auto-routing | ⚠️ Claude only | ⚠️ Gemini only | ⚠️ Limited |
 | **Cost Savings** | ✅ 80% via routing | ❌ Pay-as-you-go | ❌ Pay-as-you-go | ❌ Pay-as-you-go |
 | **Persistent Memory** | ✅ Forever | ❌ Session-only | ❌ Session-only | ❌ Session-only |
-| **Multi-Agent Teams** | ✅ 20 specialists | ❌ Single agent | ❌ Single agent | ❌ Single agent |
+| **Multi-Agent Teams** | ✅ 10 specialists | ❌ Single agent | ❌ Single agent | ❌ Single agent |
 | **Workflow Automation** | ✅ YAML specs | ❌ | ❌ | ❌ |
 | **Observability** | ✅ Complete traces | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
 | **Offline-Friendly** | ✅ 100% local | ⚠️ Hybrid | ⚠️ Hybrid | ⚠️ Cloud |
@@ -682,7 +731,7 @@ ax setup
 
 **What `ax setup` does:**
 - ✅ Creates `.automatosx/` directory
-- ✅ Installs all 20 specialized agents
+- ✅ Installs 10 specialized agents (6 core + 4 extended)
 - ✅ Generates optimal configuration
 - ✅ Initializes persistent memory database
 - ✅ Sets up trace logging
@@ -745,7 +794,7 @@ AutomatosX uses an **open-core model** with three editions:
 
 **What's Included**:
 - ✅ Full source code on GitHub
-- ✅ Core orchestration engine + 20+ AI agents
+- ✅ Core orchestration engine + 10 AI agents (6 core + 4 extended)
 - ✅ Persistent memory system (SQLite FTS5)
 - ✅ Multi-provider routing (Claude, Gemini, Codex CLI)
 - ✅ Workflow specs and execution

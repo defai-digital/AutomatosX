@@ -14,6 +14,8 @@ import {
   DEVOPS_TEMPLATE,
   WRITER_TEMPLATE,
   STANDARD_TEMPLATE,
+  PRODUCT_TEMPLATE,
+  DESIGN_TEMPLATE,
   getAgentTemplate,
   isValidAgentDomain,
   getDelegationSuggestions
@@ -34,6 +36,8 @@ describe('Agent Instruction Templates', () => {
         'mobile',
         'writer',
         'researcher',
+        'product',   // v12.9.0
+        'design',    // v12.9.0
         'standard'
       ];
 
@@ -155,6 +159,58 @@ describe('Agent Instruction Templates', () => {
     });
   });
 
+  describe('Product template (v12.9.0)', () => {
+    it('should have acceptance criteria reminders', () => {
+      expect(PRODUCT_TEMPLATE.domainReminders.some(r =>
+        r.toLowerCase().includes('acceptance criteria')
+      )).toBe(true);
+    });
+
+    it('should have user stories in reminders', () => {
+      expect(PRODUCT_TEMPLATE.domainReminders.some(r =>
+        r.toLowerCase().includes('user stor')
+      )).toBe(true);
+    });
+
+    it('should have delegation triggers for design and backend', () => {
+      const agents = PRODUCT_TEMPLATE.delegationTriggers.map(t => t.suggestedAgent);
+      expect(agents).toContain('design');
+      expect(agents).toContain('backend');
+    });
+
+    it('should mention INVEST criteria', () => {
+      expect(PRODUCT_TEMPLATE.qualityChecklist.some(c =>
+        c.includes('INVEST')
+      )).toBe(true);
+    });
+  });
+
+  describe('Design template (v12.9.0)', () => {
+    it('should have accessibility reminders', () => {
+      expect(DESIGN_TEMPLATE.domainReminders.some(r =>
+        r.toLowerCase().includes('accessibility') || r.includes('WCAG')
+      )).toBe(true);
+    });
+
+    it('should have design system reminders', () => {
+      expect(DESIGN_TEMPLATE.domainReminders.some(r =>
+        r.toLowerCase().includes('design system')
+      )).toBe(true);
+    });
+
+    it('should have delegation triggers for frontend and product', () => {
+      const agents = DESIGN_TEMPLATE.delegationTriggers.map(t => t.suggestedAgent);
+      expect(agents).toContain('frontend');
+      expect(agents).toContain('product');
+    });
+
+    it('should mention responsive breakpoints', () => {
+      expect(DESIGN_TEMPLATE.qualityChecklist.some(c =>
+        c.toLowerCase().includes('responsive') || c.toLowerCase().includes('breakpoint')
+      )).toBe(true);
+    });
+  });
+
   describe('Standard template', () => {
     it('should have general-purpose reminders', () => {
       expect(STANDARD_TEMPLATE.domainReminders.some(r =>
@@ -174,6 +230,8 @@ describe('Agent Instruction Templates', () => {
       expect(getAgentTemplate('backend').domain).toBe('backend');
       expect(getAgentTemplate('frontend').domain).toBe('frontend');
       expect(getAgentTemplate('security').domain).toBe('security');
+      expect(getAgentTemplate('product').domain).toBe('product');   // v12.9.0
+      expect(getAgentTemplate('design').domain).toBe('design');     // v12.9.0
     });
 
     it('should return standard template for unknown domains', () => {
@@ -189,6 +247,8 @@ describe('Agent Instruction Templates', () => {
       expect(isValidAgentDomain('frontend')).toBe(true);
       expect(isValidAgentDomain('security')).toBe(true);
       expect(isValidAgentDomain('standard')).toBe(true);
+      expect(isValidAgentDomain('product')).toBe(true);   // v12.9.0
+      expect(isValidAgentDomain('design')).toBe(true);    // v12.9.0
     });
 
     it('should return false for invalid domains', () => {

@@ -3,7 +3,7 @@
 Complete installation and configuration guide for Windows 10 and Windows 11 users.
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v6.3.8+
+**Applies to**: AutomatosX v12.x (originally authored on v6.3.8; commands unchanged)
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11
 

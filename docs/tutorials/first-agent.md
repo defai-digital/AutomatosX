@@ -2,6 +2,8 @@
 
 Learn how to create a custom AI agent from scratch using AutomatosX.
 
+> Note: Sample outputs in this tutorial were captured on AutomatosX v6.3.8. Commands and configuration remain compatible with v12.x; version banners will reflect your installed release.
+
 ---
 
 ## What You'll Build

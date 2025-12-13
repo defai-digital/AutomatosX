@@ -32,6 +32,7 @@ import { IterateError } from '../../types/iterate.js';
 import { IterateClassifier } from './iterate-classifier.js';
 import { IterateAutoResponder } from './iterate-auto-responder.js';
 import { IterateStatusRenderer } from '../../cli/renderers/iterate-status-renderer.js';
+import { QuestionResponder, type ProviderExecutor } from './question-responder.js';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync } from 'fs';
 import { appendFile } from 'fs/promises';
@@ -64,6 +65,18 @@ export class IterateModeController {
   private classifier: IterateClassifier;
   private responder: IterateAutoResponder;
   private statusRenderer?: IterateStatusRenderer;
+
+  /**
+   * LLM-powered question responder for auto-answering genuine questions
+   * @since v12.9.0
+   */
+  private questionResponder?: QuestionResponder;
+
+  /**
+   * Provider executor for question answering (injected via setProviderExecutor)
+   * @since v12.9.0
+   */
+  private providerExecutor?: ProviderExecutor;
 
   /**
    * Create IterateModeController
@@ -107,11 +120,43 @@ export class IterateModeController {
       maxDuration: config.defaults.maxDurationMinutes,
       maxTokens: config.defaults.maxTotalTokens,
       strictness: config.classifier.strictness,
-      hasStatusRenderer: !!statusRenderer
+      hasStatusRenderer: !!statusRenderer,
+      questionResponderEnabled: config.questionResponder?.enabled || false
     });
 
     // Auto-load patterns and templates (non-blocking)
     this.initPromise = this.loadPatternsAndTemplates();
+  }
+
+  /**
+   * Set the provider executor for question answering
+   *
+   * This must be called before genuine questions can be auto-answered.
+   * The executor is a function that takes an ExecutionRequest and returns
+   * an ExecutionResponse, typically wrapping a provider's execute method.
+   *
+   * @param executor - Provider executor function
+   * @param sessionId - Session ID for logging
+   * @since v12.9.0
+   */
+  setProviderExecutor(executor: ProviderExecutor, sessionId: string): void {
+    this.providerExecutor = executor;
+
+    // Initialize question responder if config is provided
+    if (this.config.questionResponder?.enabled && executor) {
+      this.questionResponder = new QuestionResponder(
+        this.config.questionResponder,
+        executor,
+        sessionId,
+        dirname(this.config.classifier.patternLibraryPath).replace('/iterate', '/logs')
+      );
+
+      logger.info('Question responder initialized', {
+        provider: this.config.questionResponder.provider,
+        confidenceThreshold: this.config.questionResponder.confidenceThreshold,
+        maxAutoAnswers: this.config.questionResponder.maxAutoAnswers
+      });
+    }
   }
 
   /**
@@ -586,7 +631,7 @@ export class IterateModeController {
     }
 
     // Step 6: Determine action based on classification type
-    const action = this.determineAction(classification, response);
+    const action = await this.determineAction(classification, response);
 
     // Step 7: Generate auto-response if continuing or stopping (acknowledgment)
     // First check auto-response limit before generating a new one
@@ -657,14 +702,70 @@ export class IterateModeController {
    * @returns Action to take
    * @private
    */
-  private determineAction(
+  private async determineAction(
     classification: import('../../types/iterate.js').Classification,
     response: ExecutionResponse
-  ): IterateAction {
+  ): Promise<IterateAction> {
     const { type, confidence } = classification;
 
     // Genuine questions → PAUSE
     if (type === 'genuine_question') {
+      // v12.9.0: Try LLM-powered auto-answering if enabled
+      if (this.questionResponder?.isEnabled()) {
+        const question = response.content || '';
+
+        // Check blocklist first (fast path)
+        if (this.questionResponder.mustPause(question)) {
+          logger.debug('Question matches must-pause pattern, pausing', {
+            questionPreview: question.substring(0, 100)
+          });
+          return {
+            type: 'pause',
+            reason: 'Question matches sensitive pattern - requires user input',
+            pauseReason: 'genuine_question',
+            context: question.substring(0, 200)
+          };
+        }
+
+        // Build question context
+        const questionContext = {
+          question,
+          recentMessages: this.getRecentMessages().map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          task: this.state?.metadata.task || 'unknown task',
+          agent: this.state?.metadata.agent || 'unknown agent',
+          mainProvider: response.model || 'unknown'
+        };
+
+        // Try to auto-answer
+        const answer = await this.questionResponder.answer(questionContext);
+
+        if (answer) {
+          logger.info('Question auto-answered by LLM', {
+            questionPreview: question.substring(0, 50),
+            answerPreview: answer.answer.substring(0, 50),
+            confidence: answer.confidence
+          });
+          return {
+            type: 'continue',
+            reason: 'Question auto-answered by LLM responder',
+            response: answer.answer,
+            metadata: {
+              autoAnswered: true,
+              confidence: answer.confidence,
+              latencyMs: answer.latencyMs,
+              tokensUsed: answer.tokensUsed
+            }
+          };
+        }
+
+        // If answer is null, fall through to pause
+        logger.debug('Question responder returned null, pausing for user');
+      }
+
+      // Default: pause for user
       return {
         type: 'pause',
         reason: 'Genuine question detected',
@@ -1005,7 +1106,9 @@ export class IterateModeController {
         blocked: 0
       },
       stopReason,
-      successRate
+      successRate,
+      // v12.9.0: Include question responder stats if available
+      questionResponder: this.questionResponder?.getStats()
     };
   }
 

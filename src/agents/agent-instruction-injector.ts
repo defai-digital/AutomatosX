@@ -193,6 +193,50 @@ export class AgentInstructionInjector implements InstructionProvider {
   }
 
   /**
+   * Create a markdown section with heading and bullet items
+   * @since v12.8.8 - Extracted to reduce duplication
+   */
+  private formatMarkdownSection(
+    heading: string,
+    items: string[],
+    options?: { prefix?: string; intro?: string }
+  ): string {
+    const lines = [heading, ''];
+    if (options?.intro) {
+      lines.push(options.intro);
+    }
+    const prefix = options?.prefix ?? '- ';
+    for (const item of items) {
+      lines.push(`${prefix}${item}`);
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * Create an embedded instruction with common defaults
+   * @since v12.8.8 - Extracted to reduce duplication
+   */
+  private createInstruction(
+    type: EmbeddedInstruction['type'],
+    priority: EmbeddedInstruction['priority'],
+    content: string,
+    turnCount: number,
+    expiresAfter: number,
+    idSuffix: string
+  ): EmbeddedInstruction {
+    return {
+      type,
+      priority,
+      content,
+      source: INSTRUCTION_SOURCE,
+      createdAt: Date.now(),
+      createdAtTurn: turnCount,
+      expiresAfter,
+      id: `agent-${idSuffix}-${Date.now()}`
+    };
+  }
+
+  /**
    * Set the current agent domain
    */
   setDomain(domain: string): void {
@@ -264,16 +308,10 @@ export class AgentInstructionInjector implements InstructionProvider {
     // Domain reminders
     if (turnsSinceReminder >= this.config.reminderFrequency) {
       const reminderContent = this.formatDomainReminders(template);
-      instructions.push({
-        type: 'delegation',
-        priority: 'normal',
-        content: reminderContent,
-        source: INSTRUCTION_SOURCE,
-        createdAt: Date.now(),
-        createdAtTurn: context.turnCount,
-        expiresAfter: this.config.reminderFrequency,
-        id: `agent-reminder-${domain}-${Date.now()}`
-      });
+      instructions.push(this.createInstruction(
+        'delegation', 'normal', reminderContent, context.turnCount,
+        this.config.reminderFrequency, `reminder-${domain}`
+      ));
       this.lastReminderTurn = context.turnCount;
     }
 
@@ -281,16 +319,10 @@ export class AgentInstructionInjector implements InstructionProvider {
     if (this.config.includeQualityChecklist &&
         turnsSinceQuality >= this.config.qualityChecklistFrequency) {
       const checklistContent = this.formatQualityChecklist(template);
-      instructions.push({
-        type: 'delegation',
-        priority: 'normal',
-        content: checklistContent,
-        source: INSTRUCTION_SOURCE,
-        createdAt: Date.now(),
-        createdAtTurn: context.turnCount,
-        expiresAfter: this.config.qualityChecklistFrequency,
-        id: `agent-quality-${domain}-${Date.now()}`
-      });
+      instructions.push(this.createInstruction(
+        'delegation', 'normal', checklistContent, context.turnCount,
+        this.config.qualityChecklistFrequency, `quality-${domain}`
+      ));
       this.lastQualityCheckTurn = context.turnCount;
     }
 
@@ -398,17 +430,11 @@ export class AgentInstructionInjector implements InstructionProvider {
    * Format quality checklist
    */
   private formatQualityChecklist(template: AgentInstructionTemplate): string {
-    const lines = [
+    return this.formatMarkdownSection(
       `## Quality Checklist (${template.displayName})`,
-      '',
-      'Before completing, verify:'
-    ];
-
-    for (const item of template.qualityChecklist) {
-      lines.push(`- [ ] ${item}`);
-    }
-
-    return lines.join('\n');
+      template.qualityChecklist,
+      { prefix: '- [ ] ', intro: 'Before completing, verify:' }
+    );
   }
 
   /**
@@ -469,16 +495,9 @@ export class AgentInstructionInjector implements InstructionProvider {
       return null;
     }
 
-    return {
-      type: 'delegation',
-      priority: 'high',
-      content: delegationContent,
-      source: INSTRUCTION_SOURCE,
-      createdAt: Date.now(),
-      createdAtTurn: turnCount,
-      expiresAfter: 3,
-      id: `agent-delegation-${Date.now()}`
-    };
+    return this.createInstruction(
+      'delegation', 'high', delegationContent, turnCount, 3, 'delegation'
+    );
   }
 
   /**
@@ -505,16 +524,9 @@ export class AgentInstructionInjector implements InstructionProvider {
       categories: detectedCategories.map(c => c.name)
     });
 
-    return {
-      type: 'context',
-      priority: 'normal',
-      content: contextBoostContent,
-      source: INSTRUCTION_SOURCE,
-      createdAt: Date.now(),
-      createdAtTurn: turnCount,
-      expiresAfter: 5,
-      id: `agent-context-boost-${Date.now()}`
-    };
+    return this.createInstruction(
+      'context', 'normal', contextBoostContent, turnCount, 5, 'context-boost'
+    );
   }
 
   /**
@@ -552,8 +564,6 @@ export class AgentInstructionInjector implements InstructionProvider {
       return null;
     }
 
-    const lines: string[] = [];
-
     // Collect unique checklist items from matched categories
     const allChecklistItems = new Set<string>();
     const categoryNames: string[] = [];
@@ -569,15 +579,11 @@ export class AgentInstructionInjector implements InstructionProvider {
       return null;
     }
 
-    lines.push(`## Context-Aware Reminders (${categoryNames.join(', ')})`);
-    lines.push('');
-    lines.push('Based on task keywords, ensure you:');
-
-    for (const item of Array.from(allChecklistItems).slice(0, 5)) {
-      lines.push(`- ${item}`);
-    }
-
-    return lines.join('\n');
+    return this.formatMarkdownSection(
+      `## Context-Aware Reminders (${categoryNames.join(', ')})`,
+      Array.from(allChecklistItems).slice(0, 5),
+      { intro: 'Based on task keywords, ensure you:' }
+    );
   }
 
   /**

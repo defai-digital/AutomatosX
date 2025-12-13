@@ -54,6 +54,10 @@ export interface RefactorRunOutput {
     successRate: number;
     iterationsCompleted: number;
   };
+  /** v12.10.0: Auto-refactored count (PRD-022) */
+  autoRefactoredCount: number;
+  /** v12.10.0: Manual review count (PRD-022) */
+  manualReviewCount: number;
   /** Metrics before refactoring */
   metricsBefore: {
     linesOfCode: number;
@@ -84,6 +88,16 @@ export interface RefactorRunOutput {
     severity: RefactorSeverity;
     message: string;
     suggestion?: string;
+    /** v12.10.0: Whether this was auto-refactored (PRD-022) */
+    autoRefactored: boolean;
+  }>;
+  /** v12.10.0: Manual review items (PRD-022) */
+  manualReview: Array<{
+    file: string;
+    line: number;
+    type: RefactorType;
+    message: string;
+    reason: string;
   }>;
 }
 
@@ -133,6 +147,28 @@ export function createRefactorRunHandler(): ToolHandler<RefactorRunInput, Refact
       sendMcpProgress('Executing refactoring workflow...', progressToken);
       const result = await controller.execute();
 
+      // v12.10.0: Calculate auto-refactored vs manual review counts (PRD-022)
+      const autoRefactoredCount = result.attempts.filter(
+        (a) => a.status === 'success' && a.autoApplied
+      ).length;
+      const manualReviewCount = result.attempts.filter(
+        (a) => a.status === 'skipped'
+      ).length;
+
+      // v12.10.0: Build manual review list (PRD-022)
+      const manualReviewList = result.attempts
+        .filter((a) => a.status === 'skipped')
+        .map((a) => {
+          const finding = result.findings.find((f) => f.id === a.findingId);
+          return {
+            file: finding?.file || 'unknown',
+            line: finding?.lineStart || 0,
+            type: finding?.type || ('dead_code' as RefactorType),
+            message: finding?.message || 'Unknown',
+            reason: a.error || 'Complex pattern requires manual review',
+          };
+        });
+
       const output: RefactorRunOutput = {
         status: result.finalState === 'COMPLETE' ? 'completed' : 'failed',
         sessionId: result.sessionId,
@@ -145,6 +181,8 @@ export function createRefactorRunHandler(): ToolHandler<RefactorRunInput, Refact
           successRate: result.stats.successRate,
           iterationsCompleted: result.stats.iterationsCompleted,
         },
+        autoRefactoredCount,
+        manualReviewCount,
         metricsBefore: {
           linesOfCode: result.metricsBefore.linesOfCode,
           avgComplexity: result.metricsBefore.avgCyclomaticComplexity,
@@ -166,14 +204,19 @@ export function createRefactorRunHandler(): ToolHandler<RefactorRunInput, Refact
             changePercent: i.improvementPercent,
             meetsThreshold: i.meetsThreshold,
           })),
-        findings: result.findings.slice(0, 20).map((f) => ({
-          file: f.file,
-          line: f.lineStart,
-          type: f.type,
-          severity: f.severity,
-          message: f.message,
-          suggestion: f.suggestedFix,
-        })),
+        findings: result.findings.slice(0, 20).map((f) => {
+          const attempt = result.attempts.find((a) => a.findingId === f.id);
+          return {
+            file: f.file,
+            line: f.lineStart,
+            type: f.type,
+            severity: f.severity,
+            message: f.message,
+            suggestion: f.suggestedFix,
+            autoRefactored: attempt?.status === 'success' && attempt?.autoApplied === true,
+          };
+        }),
+        manualReview: manualReviewList,
       };
 
       logger.info('[MCP] refactor_run completed', {

@@ -16,6 +16,7 @@ import type {
   RefactorIgnoreState,
 } from '../types.js';
 import { createFinding } from '../refactor-detector.js';
+import { shouldIgnoreLine, escapeRegex } from './detector-utils.js';
 import { ASTAnalyzer, createASTAnalyzer } from '../../bugfix/ast-analyzer.js';
 import type { SemanticDeadCodeAnalyzer, PySemanticDeadCodeAnalyzer } from '../semantic/index.js';
 
@@ -774,26 +775,5 @@ function detectCommentedCode(
 }
 
 // ============================================================================
-// Utilities
+// Utilities (now imported from detector-utils.ts)
 // ============================================================================
-
-function shouldIgnoreLine(
-  lineNum: number,
-  type: 'dead_code',
-  ignoreState: RefactorIgnoreState
-): boolean {
-  if (ignoreState.ignoreAllLines.has(lineNum)) return true;
-
-  const typeIgnores = ignoreState.ignoreTypeLines.get(lineNum);
-  if (typeIgnores?.has(type)) return true;
-
-  for (const block of ignoreState.ignoreBlocks) {
-    if (lineNum >= block.start && lineNum <= block.end) return true;
-  }
-
-  return false;
-}
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}

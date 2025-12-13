@@ -1358,9 +1358,7 @@ async function updateGitignore(projectDir: string): Promise<void> {
  * v12.2.0: Fixed to use global ~/.gemini/settings.json (not project-level)
  * v12.8.0: Changed to use native `gemini mcp add` command for max compatibility
  */
-type GeminiMCPStatus = 'configured' | 'skipped' | 'failed';
-
-async function setupGeminiIntegration(projectDir: string, _packageRoot: string, force = false): Promise<GeminiMCPStatus> {
+async function setupGeminiIntegration(projectDir: string, _packageRoot: string, force = false): Promise<MCPStatus> {
   if (shouldSkipExternalMcpSetup()) {
     logger.info('Skipping Gemini MCP setup (test/sandbox mode)');
     return 'skipped';
@@ -1378,59 +1376,18 @@ async function setupGeminiIntegration(projectDir: string, _packageRoot: string, 
  * Setup Gemini CLI MCP using native `gemini mcp add` command
  *
  * v12.8.0: Uses `gemini mcp add` for maximum compatibility
- * This ensures proper integration with Gemini CLI's internal MCP system.
- *
- * Command: gemini mcp add automatosx automatosx mcp server -s project -e AUTOMATOSX_PROJECT_DIR=<path>
+ * v12.8.7: Refactored to use generic setupMCPViaCLI helper
  *
  * @param projectDir - Project root directory
  * @param force - If true, remove and re-add MCP server to update config
  * @returns Status of MCP configuration: 'configured' | 'skipped' | 'failed'
  */
 async function setupGeminiMCPViaCLI(projectDir: string, force = false): Promise<GeminiMCPStatus> {
-  const { exec } = await import('child_process');
-  const { promisify } = await import('util');
-  const execAsync = promisify(exec);
-
-  try {
-    // Check if automatosx MCP server is already configured
-    const { stdout: listOutput } = await execAsync('gemini mcp list', { timeout: 10000 });
-
-    if (listOutput.includes('automatosx')) {
-      if (force) {
-        // Remove existing and re-add with fresh config
-        logger.info('Force mode: removing existing Gemini MCP server');
-        await execAsync('gemini mcp remove automatosx', { timeout: 10000 }).catch(() => {
-          // Ignore remove errors
-        });
-      } else {
-        logger.info('Gemini CLI MCP server already configured');
-        return 'configured';
-      }
-    }
-
-    // Add automatosx MCP server using gemini mcp add command
-    // -s project: project-level scope (stored in project settings)
-    // -e: environment variable for project directory
-    const addCommand = `gemini mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`;
-
-    await execAsync(addCommand, { timeout: 30000 });
-
-    logger.info('Configured Gemini CLI MCP via gemini mcp add');
-    return 'configured';
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-
-    // If gemini command not found, skip silently
-    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
-      logger.debug('Gemini CLI not available, skipping MCP setup');
-      return 'skipped';
-    }
-
-    logger.warn('Failed to setup Gemini CLI MCP configuration', {
-      error: errorMessage
-    });
-    return 'failed';
-  }
+  return setupMCPViaCLI({
+    cli: 'gemini',
+    providerName: 'Gemini CLI',
+    addCommand: `gemini mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`
+  }, force);
 }
 
 /**
@@ -1438,73 +1395,105 @@ async function setupGeminiMCPViaCLI(projectDir: string, force = false): Promise<
  *
  * v12.2.0: Added automatic MCP configuration for Codex CLI
  * v12.8.0: Changed to use native `codex mcp add` command for max compatibility
- *
- * Command: codex mcp add automatosx --env AUTOMATOSX_PROJECT_DIR=<path> -- automatosx mcp server
+ * v12.8.7: Refactored to use generic setupMCPViaCLI helper
  *
  * @param force - If true, remove and re-add MCP server to update config
  */
-type CodexMCPStatus = 'configured' | 'skipped' | 'failed';
-
 async function setupCodexGlobalMCPConfig(force = false): Promise<CodexMCPStatus> {
   if (shouldSkipExternalMcpSetup()) {
     logger.info('Skipping Codex MCP setup (test/sandbox mode)');
     return 'skipped';
   }
 
+  const cwd = process.cwd();
+  return setupMCPViaCLI({
+    cli: 'codex',
+    providerName: 'Codex CLI',
+    // Note: Codex uses global scope only, and requires -- before the command
+    addCommand: `codex mcp add automatosx --env "AUTOMATOSX_PROJECT_DIR=${cwd}" -- automatosx mcp server`
+  }, force);
+}
+
+/**
+ * MCP setup status for CLI providers
+ */
+type MCPStatus = 'configured' | 'skipped' | 'failed';
+
+/**
+ * Generic MCP setup configuration
+ */
+interface MCPSetupConfig {
+  /** CLI command name (e.g., 'claude', 'gemini', 'codex', 'qwen') */
+  cli: string;
+  /** The full add command to run */
+  addCommand: string;
+  /** Human-readable provider name for logging */
+  providerName: string;
+}
+
+/**
+ * Generic MCP setup helper using native CLI mcp commands
+ *
+ * v12.8.0: Consolidates duplicated MCP setup logic across providers.
+ * All CLI providers follow the same pattern:
+ * 1. Check if already configured via `<cli> mcp list`
+ * 2. Remove if force mode via `<cli> mcp remove automatosx`
+ * 3. Add via the provided add command
+ *
+ * NOTE: Callers are responsible for checking shouldSkipExternalMcpSetup()
+ * before calling this function if they need to skip in test/sandbox mode.
+ *
+ * @param config - MCP setup configuration
+ * @param force - If true, remove and re-add MCP server
+ * @returns Status of MCP configuration
+ */
+async function setupMCPViaCLI(config: MCPSetupConfig, force = false): Promise<MCPStatus> {
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
 
   try {
     // Check if automatosx MCP server is already configured
-    const { stdout: listOutput } = await execAsync('codex mcp list', { timeout: 10000 });
+    const { stdout: listOutput } = await execAsync(`${config.cli} mcp list`, { timeout: 10000 });
 
     if (listOutput.includes('automatosx')) {
       if (force) {
         // Remove existing and re-add with fresh config
-        logger.info('Force mode: removing existing Codex MCP server');
-        await execAsync('codex mcp remove automatosx', { timeout: 10000 }).catch(() => {
+        logger.info(`Force mode: removing existing ${config.providerName} MCP server`);
+        await execAsync(`${config.cli} mcp remove automatosx`, { timeout: 10000 }).catch(() => {
           // Ignore remove errors
         });
       } else {
-        logger.info('Codex CLI MCP server already configured');
+        logger.info(`${config.providerName} MCP server already configured`);
         return 'configured';
       }
     }
 
-    // Add automatosx MCP server using codex mcp add command
-    // Note: Codex uses global scope only, and requires -- before the command
-    // --env: environment variable for project directory
-    const cwd = process.cwd();
-    const addCommand = `codex mcp add automatosx --env "AUTOMATOSX_PROJECT_DIR=${cwd}" -- automatosx mcp server`;
+    // Add automatosx MCP server
+    await execAsync(config.addCommand, { timeout: 30000 });
 
-    await execAsync(addCommand, { timeout: 30000 });
-
-    logger.info('Configured Codex CLI MCP via codex mcp add');
+    logger.info(`Configured ${config.providerName} MCP via ${config.cli} mcp add`);
     return 'configured';
   } catch (error) {
     const errorMessage = (error as Error).message;
 
-    // If codex command not found, skip silently
+    // If CLI command not found, skip silently
     if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
-      logger.debug('Codex CLI not available, skipping MCP setup');
+      logger.debug(`${config.providerName} CLI not available, skipping MCP setup`);
       return 'skipped';
     }
 
-    logger.warn('Failed to setup Codex CLI MCP configuration', {
+    logger.warn(`Failed to setup ${config.providerName} MCP configuration`, {
       error: errorMessage
     });
     return 'failed';
   }
 }
 
-/**
- * SDK Provider MCP status
- *
- * v12.8.0: GLM and Grok MCP setup removed - they are SDK-only providers
- * without CLI-based MCP commands. AutomatosX uses them via direct SDK calls.
- */
-type SdkMCPStatus = 'configured' | 'skipped' | 'failed';
+// Legacy type alias for backward compatibility
+type GeminiMCPStatus = MCPStatus;
+type CodexMCPStatus = MCPStatus;
+type SdkMCPStatus = MCPStatus;
 
 /**
  * Create workspace directories for organized file management
@@ -1578,9 +1567,7 @@ Created by AutomatosX for organized scratch work.
  * Setup Claude Code MCP using native `claude mcp add` command
  *
  * v12.8.0: Uses `claude mcp add` for maximum compatibility
- * This ensures proper integration with Claude Code's internal MCP system.
- *
- * Command: claude mcp add automatosx -s local -e AUTOMATOSX_PROJECT_DIR=<path> -- automatosx mcp server
+ * v12.8.7: Refactored to use generic setupMCPViaCLI helper
  *
  * Benefits over .mcp.json file:
  * - Shows in `claude mcp list`
@@ -1596,50 +1583,15 @@ async function createMcpConfig(projectDir: string, force = false): Promise<void>
     return;
   }
 
-  const { exec } = await import('child_process');
-  const { promisify } = await import('util');
-  const execAsync = promisify(exec);
-
-  try {
-    // Check if automatosx MCP server is already configured
-    const { stdout: listOutput } = await execAsync('claude mcp list', { timeout: 10000 });
-
-    if (listOutput.includes('automatosx')) {
-      if (force) {
-        // Remove existing and re-add with fresh config
-        logger.info('Force mode: removing existing Claude Code MCP server');
-        await execAsync('claude mcp remove automatosx', { timeout: 10000 }).catch(() => {
-          // Ignore remove errors
-        });
-      } else {
-        logger.info('Claude Code MCP server already configured');
-        return;
-      }
-    }
-
-    // Add automatosx MCP server using claude mcp add command
+  // Note: This function returns void for backward compatibility
+  // The underlying helper returns MCPStatus
+  await setupMCPViaCLI({
+    cli: 'claude',
+    providerName: 'Claude Code',
     // -s local: local scope (project-specific)
-    // -e: environment variable for project directory
     // --: separator before command
-    const addCommand = `claude mcp add automatosx -s local -e "AUTOMATOSX_PROJECT_DIR=${projectDir}" -- automatosx mcp server`;
-
-    await execAsync(addCommand, { timeout: 30000 });
-
-    logger.info('Configured Claude Code MCP via claude mcp add');
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-
-    // If claude command not found, skip silently
-    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
-      logger.debug('Claude Code not available, skipping MCP setup');
-      return;
-    }
-
-    // Log error but don't fail setup - MCP is optional enhancement
-    logger.warn('Failed to setup Claude Code MCP configuration', {
-      error: errorMessage
-    });
-  }
+    addCommand: `claude mcp add automatosx -s local -e "AUTOMATOSX_PROJECT_DIR=${projectDir}" -- automatosx mcp server`
+  }, force);
 }
 
 /**
@@ -1647,6 +1599,7 @@ async function createMcpConfig(projectDir: string, force = false): Promise<void>
  *
  * v12.7.0: Creates .qwen/.mcp.json for Qwen Code integration
  * v12.8.0: Uses native `qwen mcp add` command
+ * v12.8.7: Refactored to use generic setupMCPViaCLI helper
  *
  * Qwen provider is SDK-first with CLI fallback:
  * - SDK mode: Uses DASHSCOPE_API_KEY or QWEN_API_KEY via OpenAI-compatible API
@@ -1662,50 +1615,11 @@ async function setupQwenMCPConfig(projectDir: string, force = false): Promise<Sd
     return 'skipped';
   }
 
-  const { exec } = await import('child_process');
-  const { promisify } = await import('util');
-  const execAsync = promisify(exec);
-
-  try {
-    // Check if automatosx MCP server is already configured
-    const { stdout: listOutput } = await execAsync('qwen mcp list', { timeout: 10000 });
-
-    if (listOutput.includes('automatosx')) {
-      if (force) {
-        // Remove existing and re-add with fresh config
-        logger.info('Force mode: removing existing Qwen MCP server');
-        await execAsync('qwen mcp remove automatosx', { timeout: 10000 }).catch(() => {
-          // Ignore remove errors
-        });
-      } else {
-        logger.info('Qwen MCP server already configured');
-        return 'configured';
-      }
-    }
-
-    // Add automatosx MCP server using qwen mcp add command
-    // Format: qwen mcp add <name> <command> [args...]
-    // Environment variables are set via -e flag
-    const addCommand = `qwen mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`;
-
-    await execAsync(addCommand, { timeout: 30000 });
-
-    logger.info('Configured Qwen MCP integration via qwen mcp add');
-    return 'configured';
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-
-    // If qwen command not found, skip silently
-    if (errorMessage.includes('command not found') || errorMessage.includes('not recognized')) {
-      logger.debug('Qwen CLI not available, skipping MCP setup');
-      return 'skipped';
-    }
-
-    logger.warn('Failed to setup Qwen MCP configuration', {
-      error: errorMessage
-    });
-    return 'failed';
-  }
+  return setupMCPViaCLI({
+    cli: 'qwen',
+    providerName: 'Qwen',
+    addCommand: `qwen mcp add automatosx automatosx mcp server -s project -e "AUTOMATOSX_PROJECT_DIR=${projectDir}"`
+  }, force);
 }
 
 /**

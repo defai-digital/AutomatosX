@@ -3,7 +3,7 @@
 This guide provides comprehensive troubleshooting solutions for AutomatosX on Windows 10 and Windows 11.
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v6.3.8+
+**Applies to**: AutomatosX v12.x (originally authored on v6.3.8; steps remain valid)
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11
 
@@ -603,6 +603,6 @@ Please include the following in your issue:
 ---
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v6.3.8+
+**Applies to**: AutomatosX v12.x (originally authored on v6.3.8; steps remain valid)
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11

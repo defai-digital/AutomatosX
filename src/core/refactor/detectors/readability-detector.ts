@@ -12,6 +12,7 @@ import type {
   RefactorIgnoreState,
 } from '../types.js';
 import { createFinding } from '../refactor-detector.js';
+import { shouldIgnoreLine, calculateCyclomaticComplexity } from './detector-utils.js';
 
 // ============================================================================
 // Detection Rules
@@ -479,48 +480,8 @@ function detectHighComplexity(
 }
 
 // ============================================================================
-// Utilities
+// Utilities (now imported from detector-utils.ts)
 // ============================================================================
 
-function calculateCyclomaticComplexity(code: string): number {
-  let complexity = 1;
-
-  const patterns = [
-    /\bif\s*\(/g,
-    /\belse\s+if\s*\(/g,
-    /\bwhile\s*\(/g,
-    /\bfor\s*\(/g,
-    /\bcase\s+[^:]+:/g,
-    /\bcatch\s*\(/g,
-    /\?\s*[^:]+\s*:/g,
-    /&&/g,
-    /\|\|/g,
-    /\?\?/g,
-  ];
-
-  for (const pattern of patterns) {
-    const matches = code.match(pattern);
-    if (matches) {
-      complexity += matches.length;
-    }
-  }
-
-  return complexity;
-}
-
-function shouldIgnoreLine(
-  lineNum: number,
-  type: 'readability',
-  ignoreState: RefactorIgnoreState
-): boolean {
-  if (ignoreState.ignoreAllLines.has(lineNum)) return true;
-
-  const typeIgnores = ignoreState.ignoreTypeLines.get(lineNum);
-  if (typeIgnores?.has(type)) return true;
-
-  for (const block of ignoreState.ignoreBlocks) {
-    if (lineNum >= block.start && lineNum <= block.end) return true;
-  }
-
-  return false;
-}
+// calculateCyclomaticComplexity is now imported from detector-utils.ts
+// shouldIgnoreLine is now imported from detector-utils.ts

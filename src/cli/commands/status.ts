@@ -24,6 +24,7 @@ import { loadConfig } from '../../core/config/loader.js';
 import type { AutomatosXConfig } from '../../types/config.js';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import { logger } from '../../shared/logging/logger.js';
+import { formatBytes, formatUptime } from '../../shared/helpers/format-utils.js';
 import chalk from 'chalk';
 import { existsSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
@@ -687,31 +688,4 @@ async function getProjectInfo(projectDir: string): Promise<{
   }
 }
 
-/**
- * Format bytes to human-readable string
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
-
-/**
- * Format uptime to human-readable string
- */
-function formatUptime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  const parts = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-
-  return parts.join(' ');
-}
+// formatBytes and formatUptime are now imported from shared/helpers/format-utils.ts

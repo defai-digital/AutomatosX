@@ -1,6 +1,8 @@
 # Installation
 
-This guide will help you install AutomatosX v6.3.8 and get your development environment set up.
+> Note: This guide was authored for AutomatosX v6.3.8. Steps remain valid for the current v12.x releases, but see `docs/getting-started/quickstart-3min.md` for the fastest, up-to-date path.
+
+This guide will help you install AutomatosX and get your development environment set up.
 
 ## Prerequisites
 
@@ -29,8 +31,8 @@ nvm use 24
 **Using fnm**:
 
 ```bash
-fnm install 20
-fnm use 20
+fnm install 24
+fnm use 24
 ```
 
 ### Package Manager

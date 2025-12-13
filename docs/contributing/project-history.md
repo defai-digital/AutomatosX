@@ -797,25 +797,75 @@ Version 4.0 addresses the #1 blocker:
 - Complete configuration system overhaul
 - 99.2% bundle reduction (46MB → 381KB)
 - Critical bug fixes (timeout, delegation parser, FTS5)
-- **Status**: Current production release (v5.0.1)
+- **Status**: Released (v5.0.1)
+
+### V6.x Stability & Platform Support
+
+- Windows-first provider auto-detection (v6.3.8)
+- Terminal mode and iteration ergonomics hardened
+- Cost estimation disabled by default for predictability (v6.5.11+)
+- Provider setup guidance for Windows/Linux consolidated
+- **Status**: Shipped
+
+### V7.x (Incremental Reliability)
+
+- Continued CLI resiliency and provider detection fixes
+- Prep work for routing simplification
+- **Status**: Shipped
+
+### V8.x Routing Simplification & Background Monitoring
+
+- Removed policy/free-tier routing in favor of priority-based selection (v8.3.0)
+- Background Agent Monitor for zero-polling notifications (v8.5.0+)
+- Token-limit flags introduced alongside legacy cost flags (v8.6.0)
+- **Status**: Shipped; groundwork for v9 token-first model
+
+### V9.0 Token-First Controls
+
+- Cost-based limits fully removed; token-based limits enforced by default (v9.0.0)
+- Backward-compatible path completed from v8.6.0 deprecations
+- **Status**: Shipped
+
+### V10.0 MCP & Claude Code Integration
+
+- Native Claude Code integration over MCP; dropped CLAUDE.md reliance
+- Bidirectional MCP communication and session history support
+- **Status**: Shipped
+
+### V11.x Native Provider Expansion
+
+- Added native GLM/Grok providers; extended provider matrix
+- Embedded instructions hardened (v11.3.0)
+- Deprecation warnings for ax-cli ahead of removal
+- **Status**: Shipped
+
+### V12.x Native-Only Providers & Autonomous Workflows
+
+- ax-cli provider removed; native providers only (v12.0.0)
+- Priority-based routing formalized; policy/free-tier routing remains removed
+- Autonomous bug fixing (v12.6.0) and code refactoring (v12.7.0)
+- AST-based detection to cut false positives (v12.8.x)
+- **Status**: Current production release (v12.8.7 on this branch)
 
 ---
 
 This history demonstrates AutomatosX's evolution from a specific customer solution to a lightweight, production-ready AI agent orchestration platform. The journey reflects multiple pivotal transitions:
 
-**The V3.1 → V4.0 Story**: Choosing **radical simplicity** over incremental improvement. Sometimes the best path forward is to start fresh, question every assumption, and rebuild with lessons learned. Result: 87% smaller, 62x faster, infinitely more maintainable.
+**The V3.1 → V5.0 Story**: Choosing **radical simplicity** over incremental improvement. Sometimes the best path forward is to start fresh, question every assumption, and rebuild with lessons learned. Result: 87% smaller, 62x faster, infinitely more maintainable.
 
-**The V4.0 → V5.0 Story**: Listening to community feedback and rapidly iterating. Adding developer-friendly features (templates, configuration transparency) while achieving **99.2% further bundle reduction** (46MB → 381KB). Proving that "lightweight" can always get lighter without sacrificing features.
+**The V5.0 → V8.0 Story**: Listening to community feedback and rapidly iterating. Adding developer-friendly features (templates, configuration transparency) while achieving **99.2% further bundle reduction** (46MB → 381KB). Proving that "lightweight" can always get lighter without sacrificing features.
 
-The journey from Tokyo AI Expo to v5.0 represents not just technical evolution, but a fundamental understanding that **lightweight, type-safe, accessible, and fast** beats "feature-rich but bloated" every time.
+**The V8.0 → V12.0 Story**: Converging on a native-provider, token-first platform with built-in autonomous workflows (bug fixing, refactoring) and MCP-native integrations. Stability and determinism over policy routing; safety rails via AST-based detection.
 
-**Key Milestone**: From 340MB (v3.1) → 46MB (v4.0) → 381KB (v5.0) = **99.9% total reduction**
+The journey from Tokyo AI Expo to v12 shows that **lightweight, type-safe, accessible, and fast** beats "feature-rich but bloated" every time—and now scales with autonomous maintenance built in.
+
+**Key Milestone**: From 340MB (v3.1) → 46MB (v4.0) → 381KB (v5.0) and onward to native-only providers with autonomous tooling (v12.x).
 
 ---
 
-**Last Updated**: October 9, 2025
-**Current Version**: v5.0.1
+**Last Updated**: Aligned with v12.8.7 (current branch)
+**Current Version**: v12.8.7
 **Status**: Production Release - Published to npm and GitHub
-**Bundle Size**: 381 KB
-**Tests**: 1,050 (100% pass rate)
-**Dependencies**: 19 direct packages
+**Bundle Size**: ~Sub-1MB bundles maintained since v5
+**Tests**: Extensive automated suites (unit, integration, smoke)
+**Dependencies**: Lean direct dependencies with MCP-native integrations

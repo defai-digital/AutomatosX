@@ -7,7 +7,7 @@
  * To modify config, edit ax.config.json instead.
  * (Generated from: ax.config.json)
  *
- * Generated: 2025-12-13T05:04:54.065Z
+ * Generated: 2025-12-13T10:21:56.869Z
  */
 
 import type { AutomatosXConfig } from '../../types/config.js';
@@ -316,6 +316,51 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
       "defaultLimit": 10
     }
   },
+  "bugfix": {
+    "defaultSeverityThreshold": "medium",
+    "defaultBugTypes": [
+      "timer_leak",
+      "missing_destroy",
+      "promise_timeout_leak"
+    ],
+    "maxBugs": 10,
+    "minConfidence": 0.5,
+    "llmTriage": {
+      "enabled": false,
+      "provider": "claude",
+      "minConfidenceToSkip": 0.9,
+      "maxConfidenceToForce": 0.7,
+      "batchSize": 5,
+      "maxRequestsPerRun": 10,
+      "timeoutMs": 15000,
+      "fallbackBehavior": "bypass"
+    }
+  },
+  "refactor": {
+    "defaultSeverityThreshold": "low",
+    "defaultFocusAreas": [
+      "dead_code",
+      "type_safety",
+      "conditionals",
+      "hardcoded_values",
+      "naming",
+      "duplication",
+      "readability",
+      "performance"
+    ],
+    "maxFindings": 50,
+    "minConfidence": 0.7,
+    "llmTriage": {
+      "enabled": false,
+      "provider": "claude",
+      "minConfidenceToSkip": 0.9,
+      "maxConfidenceToForce": 0.5,
+      "batchSize": 5,
+      "maxRequestsPerRun": 10,
+      "timeoutMs": 15000,
+      "fallbackBehavior": "bypass"
+    }
+  },
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000,
@@ -330,7 +375,7 @@ export const PRECOMPILED_CONFIG: AutomatosXConfig = {
  * Metadata about the precompiled config
  */
 export const PRECOMPILED_CONFIG_META = {
-  generatedAt: '2025-12-13T05:04:54.065Z',
+  generatedAt: '2025-12-13T10:21:56.869Z',
   sourceFile: 'ax.config.json',
   version: '12.8.7'
 } as const;

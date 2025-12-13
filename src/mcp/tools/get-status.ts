@@ -11,6 +11,7 @@ import { SessionManager } from '../../core/session/manager.js';
 import { Router } from '../../core/router/router.js';
 import { logger } from '../../shared/logging/logger.js';
 import { getVersion } from '../../shared/helpers/version.js';
+import { formatBytes } from '../../shared/helpers/format-utils.js';
 import { mapActualProviderToMcp } from '../utils/provider-mapping.js';
 
 export interface GetStatusDependencies {
@@ -42,14 +43,7 @@ export function createGetStatusHandler(
       const availableProviders = await deps.router.getAvailableProviders();
       const providers = availableProviders.map((p) => mapActualProviderToMcp(p.name));
 
-      // Format dbSize as human-readable string
-      const formatBytes = (bytes: number): string => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
-      };
+      // formatBytes is imported from shared/helpers/format-utils.ts
 
       const result: GetStatusOutput = {
         version,

@@ -8,9 +8,11 @@
  * - Integration with IterateModeController patterns
  * - Memory-driven pattern learning
  * - Bounded retries and stop conditions
+ * - v12.9.0: LLM triage for false positive filtering (PRD-020)
  *
  * @module core/bugfix/bugfix-controller
  * @since v12.4.0
+ * @updated v12.9.0 - Added TRIAGE state and LLM triage filter integration (PRD-020)
  */
 
 import { randomUUID } from 'crypto';
@@ -18,6 +20,13 @@ import { logger } from '../../shared/logging/logger.js';
 import { BugDetector, createDefaultBugfixConfig } from './bug-detector.js';
 import { BugFixer } from './bug-fixer.js';
 import { VerificationGate } from './verification-gate.js';
+import {
+  LLMTriageFilter,
+  DEFAULT_LLM_TRIAGE_CONFIG,
+  type TriageResult,
+  type TriageMetrics,
+} from './llm-triage/index.js';
+import type { Router } from '../router/router.js';
 import type {
   BugFinding,
   FixAttempt,
@@ -42,6 +51,14 @@ export interface BugfixControllerOptions {
   /** File filter for git-aware scanning (v12.6.0) */
   fileFilter?: string[];
 
+  /**
+   * Router for LLM triage (v12.9.0)
+   * Required when llmTriage.enabled is true.
+   * @since v12.9.0
+   * @see PRD-020: LLM Triage Filter for Bugfix Tool
+   */
+  router?: Router;
+
   /** Progress callback */
   onProgress?: (message: string, data?: Record<string, unknown>) => void;
 
@@ -53,6 +70,13 @@ export interface BugfixControllerOptions {
 
   /** Verification callback */
   onVerification?: (finding: BugFinding, success: boolean) => void;
+
+  /**
+   * Triage complete callback (v12.9.0)
+   * Called after LLM triage is complete with results and metrics.
+   * @since v12.9.0
+   */
+  onTriageComplete?: (results: TriageResult[], metrics: TriageMetrics) => void;
 }
 
 /**
@@ -60,8 +84,10 @@ export interface BugfixControllerOptions {
  *
  * Main orchestrator for autonomous bug-fixing workflow.
  *
- * State Machine:
- * IDLE → SCANNING → ANALYZING → PLANNING → FIXING → VERIFYING → LEARNING → (ITERATING | COMPLETE)
+ * State Machine (v12.9.0 updated):
+ * IDLE → SCANNING → [TRIAGE (optional)] → ANALYZING → PLANNING → FIXING → VERIFYING → LEARNING → (ITERATING | COMPLETE)
+ *
+ * @updated v12.9.0 - Added optional TRIAGE state between SCANNING and ANALYZING (PRD-020)
  */
 export class BugfixController {
   private config: BugfixConfig;
@@ -77,6 +103,12 @@ export class BugfixController {
   private fixer: BugFixer;
   private verifier: VerificationGate;
 
+  // v12.9.0: LLM Triage Filter (PRD-020)
+  private triageFilter?: LLMTriageFilter;
+  private rawFindings: BugFinding[] = []; // Findings before triage
+  private triageResults: TriageResult[] = []; // Results after triage
+  private triageMetrics?: TriageMetrics; // Metrics from triage
+
   // Session data
   private findings: BugFinding[] = [];
   private attempts: FixAttempt[] = [];
@@ -88,6 +120,7 @@ export class BugfixController {
   private onBugFound?: (finding: BugFinding) => void;
   private onFixApplied?: (finding: BugFinding, attempt: FixAttempt) => void;
   private onVerification?: (finding: BugFinding, success: boolean) => void;
+  private onTriageComplete?: (results: TriageResult[], metrics: TriageMetrics) => void;
 
   constructor(options: BugfixControllerOptions = {}) {
     this.config = createDefaultBugfixConfig(options.config);
@@ -104,17 +137,37 @@ export class BugfixController {
       cwd: this.rootDir
     });
 
+    // v12.9.0: Initialize LLM Triage Filter if enabled (PRD-020)
+    if (this.config.llmTriage?.enabled) {
+      const triageConfig = {
+        ...DEFAULT_LLM_TRIAGE_CONFIG,
+        ...this.config.llmTriage,
+      };
+      this.triageFilter = new LLMTriageFilter({
+        config: triageConfig,
+        router: options.router,
+        logger: {
+          debug: (msg, meta) => logger.debug(msg, meta),
+          info: (msg, meta) => logger.info(msg, meta),
+          warn: (msg, meta) => logger.warn(msg, meta),
+          error: (msg, meta) => logger.error(msg, meta),
+        },
+      });
+    }
+
     // Store callbacks
     this.onProgress = options.onProgress;
     this.onBugFound = options.onBugFound;
     this.onFixApplied = options.onFixApplied;
     this.onVerification = options.onVerification;
+    this.onTriageComplete = options.onTriageComplete;
 
     logger.debug('BugfixController initialized', {
       sessionId: this.sessionId,
       rootDir: this.rootDir,
       fileFilter: this.fileFilter?.length,
-      config: this.config
+      config: this.config,
+      llmTriageEnabled: !!this.triageFilter,
     });
   }
 
@@ -148,6 +201,9 @@ export class BugfixController {
           this.state = 'SCANNING';
         } else if (currentState === 'SCANNING') {
           await this.handleScanning();
+        } else if (currentState === 'TRIAGE') {
+          // v12.9.0: New TRIAGE state (PRD-020)
+          await this.handleTriage();
         } else if (currentState === 'ANALYZING') {
           this.handleAnalyzing();
         } else if (currentState === 'PLANNING') {
@@ -227,26 +283,118 @@ export class BugfixController {
 
   /**
    * Handle SCANNING state
+   *
+   * @updated v12.9.0 - Transitions to TRIAGE state when LLM triage is enabled (PRD-020)
    */
   private async handleScanning(): Promise<void> {
     this.emitProgress('Scanning for bugs...');
 
     // Pass file filter for git-aware scanning (v12.6.0)
-    this.findings = await this.detector.scan(this.rootDir, this.fileFilter);
+    const scannedFindings = await this.detector.scan(this.rootDir, this.fileFilter);
 
-    if (this.findings.length === 0) {
+    if (scannedFindings.length === 0) {
       this.emitProgress('No bugs found!');
       this.state = 'COMPLETE';
       return;
     }
 
-    this.emitProgress(`Found ${this.findings.length} bugs`);
+    this.emitProgress(`Found ${scannedFindings.length} bugs`);
 
-    for (const finding of this.findings) {
+    for (const finding of scannedFindings) {
       this.onBugFound?.(finding);
     }
 
-    this.state = 'ANALYZING';
+    // v12.9.0: If LLM triage is enabled, transition to TRIAGE state (PRD-020)
+    if (this.triageFilter) {
+      this.rawFindings = scannedFindings;
+      this.state = 'TRIAGE';
+    } else {
+      this.findings = scannedFindings;
+      this.state = 'ANALYZING';
+    }
+  }
+
+  /**
+   * Handle TRIAGE state (v12.9.0)
+   *
+   * Uses LLM to filter false positives from detected findings.
+   * Findings rejected by LLM are removed from the list.
+   *
+   * @since v12.9.0
+   * @see PRD-020: LLM Triage Filter for Bugfix Tool
+   */
+  private async handleTriage(): Promise<void> {
+    if (!this.triageFilter) {
+      // Should not happen, but handle gracefully
+      this.findings = this.rawFindings;
+      this.state = 'ANALYZING';
+      return;
+    }
+
+    this.emitProgress('Running LLM triage to filter false positives...', {
+      totalFindings: this.rawFindings.length,
+    });
+
+    try {
+      // Run triage
+      this.triageResults = await this.triageFilter.triage(this.rawFindings);
+      this.triageMetrics = this.triageFilter.getMetrics();
+
+      // Filter out rejected findings (false positives)
+      this.findings = this.triageResults
+        .filter(r => r.verdict?.accepted !== false)
+        .map(r => r.original);
+
+      // Calculate triage stats
+      const accepted = this.triageResults.filter(r => r.verdict?.accepted === true).length;
+      const rejected = this.triageResults.filter(r => r.verdict?.accepted === false).length;
+      const skipped = this.triageResults.filter(r => r.source === 'ast').length;
+
+      this.emitProgress('LLM triage complete', {
+        accepted,
+        rejected,
+        skipped,
+        remaining: this.findings.length,
+        llmRequests: this.triageMetrics?.llmRequests,
+        durationMs: this.triageMetrics?.triageDurationMs,
+      });
+
+      // Update token count
+      if (this.triageMetrics) {
+        this.totalTokens += this.triageMetrics.llmTokensUsed;
+      }
+
+      // Call triage complete callback
+      if (this.onTriageComplete && this.triageMetrics) {
+        this.onTriageComplete(this.triageResults, this.triageMetrics);
+      }
+
+      logger.info('Triage complete', {
+        sessionId: this.sessionId,
+        originalCount: this.rawFindings.length,
+        filteredCount: this.findings.length,
+        rejectedCount: rejected,
+        metrics: this.triageMetrics,
+      });
+
+    } catch (error) {
+      // On triage error, fall back to original findings
+      logger.error('Triage failed, using original findings', {
+        sessionId: this.sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      this.emitProgress('Triage failed, using original findings');
+      this.findings = this.rawFindings;
+    }
+
+    // Transition to ANALYZING
+    if (this.findings.length === 0) {
+      this.emitProgress('No bugs remaining after triage');
+      this.state = 'COMPLETE';
+    } else {
+      this.state = 'ANALYZING';
+    }
   }
 
   /**

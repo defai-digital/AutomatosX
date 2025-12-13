@@ -165,6 +165,14 @@ export interface RefactorAttempt {
   metricsBefore?: Partial<RefactorMetrics>;
   /** Metrics after refactoring */
   metricsAfter?: Partial<RefactorMetrics>;
+  /**
+   * Whether this refactor was automatically applied without manual intervention.
+   * - true: Auto-applied and verified (status = 'success')
+   * - false: Skipped (needs manual review) or failed
+   * @since v12.10.0
+   * @see PRD-022: Refactor Tool LLM Enhancement
+   */
+  autoApplied?: boolean;
 }
 
 // ============================================================================
@@ -512,6 +520,11 @@ export interface RefactorControllerOptions {
   config?: Partial<RefactorConfig>;
   /** Specific files to scan */
   fileFilter?: string[];
+  /**
+   * Router for LLM requests (required for LLM-based refactoring)
+   * @since v12.10.0
+   */
+  router?: import('../router/router.js').Router;
   /** Progress callback */
   onProgress?: (state: RefactorState, message: string, data?: Record<string, unknown>) => void;
   /** Finding callback */

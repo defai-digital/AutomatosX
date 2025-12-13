@@ -9,6 +9,8 @@
  *
  * v10.6.0: Cross-provider execution uses MCP Client Pool for faster subsequent calls.
  * Falls back to CLI spawn if MCP connection fails.
+ *
+ * v12.9.0: Added iterate mode with auto-answer support for autonomous execution.
  */
 
 import type { ToolHandler, RunAgentInput, RunAgentOutput, McpSession } from '../types.js';
@@ -26,6 +28,10 @@ import { McpClientPool } from '../../providers/mcp/pool-manager.js';
 import type { CrossProviderResult, ExecutionMode } from '../../providers/mcp/types.js';
 import { TIMEOUTS } from '../../core/validation-limits.js';
 import { sendMcpProgress } from '../streaming-notifier.js';
+// v12.9.0: Iterate mode support
+import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
+import { DEFAULT_MUST_PAUSE_PATTERNS } from '../../core/iterate/question-responder.js';
+import type { IterateConfig } from '../../types/iterate.js';
 
 /**
  * v12.5.3: Helper to check if request was cancelled
@@ -147,7 +153,23 @@ async function executeViaMcpPool(
 const MCP_DEFAULT_AGENT_TIMEOUT_MS = TIMEOUTS.MCP_AGENT_EXECUTION;
 
 /**
+ * Iterate mode options for MCP execution
+ * v12.9.0: Added for autonomous iterate mode support
+ */
+interface IterateModeOptions {
+  /** Number of iterations */
+  iterations: number;
+  /** Enable auto-answer for technical questions */
+  autoAnswer?: boolean;
+  /** Provider for auto-answering questions */
+  autoAnswerProvider?: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+  /** Confidence threshold for auto-answers */
+  autoAnswerThreshold?: number;
+}
+
+/**
  * Execute task via CLI spawn (traditional execution)
+ * v12.9.0: Added iterate mode support with auto-answer
  */
 async function executeViaCli(
   agent: string,
@@ -157,7 +179,8 @@ async function executeViaCli(
   deps: RunAgentDependencies,
   isFallback: boolean,
   signal?: AbortSignal,
-  timeout?: number
+  timeout?: number,
+  iterateOptions?: IterateModeOptions
 ): Promise<RunAgentOutput> {
   const context = await deps.contextManager.createContext(agent, task, {
     provider: actualProvider,
@@ -170,13 +193,148 @@ async function executeViaCli(
   // v12.5.3: Apply default timeout for MCP-initiated executions to prevent hangs
   const effectiveTimeout = timeout ?? MCP_DEFAULT_AGENT_TIMEOUT_MS;
 
+  // v12.9.0: Set up iterate mode if enabled
+  let iterateController: IterateModeController | undefined;
+  let iterateStats: RunAgentOutput['iterateStats'];
+
+  if (iterateOptions && iterateOptions.iterations > 0) {
+    const iterateConfig: IterateConfig = {
+      enabled: true,
+      defaults: {
+        maxDurationMinutes: 120,
+        maxTotalTokens: 1000000,
+        maxTokensPerIteration: 50000,
+        warnAtTokenPercent: [75, 90],
+        maxIterationsPerRun: iterateOptions.iterations,
+        maxIterationsPerStage: Math.min(50, iterateOptions.iterations),
+        maxAutoResponsesPerStage: 30,
+        autoConfirmCheckpoints: true
+      },
+      classifier: {
+        patternLibraryPath: '', // Empty = use semantic scoring only
+        strictness: 'balanced',
+        enableSemanticScoring: true,
+        semanticScoringThreshold: 0.80,
+        contextWindowMessages: 10
+      },
+      safety: {
+        enableDangerousOperationGuard: true,
+        riskTolerance: 'balanced',
+        dangerousOperations: {
+          fileDelete: 'MEDIUM',
+          gitForce: 'HIGH',
+          writeOutsideWorkspace: 'HIGH',
+          secretsInCode: 'HIGH',
+          shellCommands: 'MEDIUM',
+          packageInstall: 'MEDIUM',
+          databaseDrop: 'HIGH',
+          databaseTruncate: 'HIGH',
+          databaseDelete: 'HIGH'
+        },
+        enableTimeTracking: true,
+        enableIterationTracking: true
+      },
+      telemetry: {
+        level: 'info',
+        logAutoResponses: true,
+        logClassifications: true,
+        logSafetyChecks: true,
+        emitMetrics: true
+      },
+      notifications: {
+        warnAtTimePercent: [75, 90],
+        pauseOnGenuineQuestion: true,
+        pauseOnHighRiskOperation: true
+      },
+      // v12.9.0: Question responder configuration
+      questionResponder: iterateOptions.autoAnswer ? {
+        enabled: true,
+        provider: iterateOptions.autoAnswerProvider || 'gemini',
+        confidenceThreshold: iterateOptions.autoAnswerThreshold || 0.7,
+        maxAutoAnswers: 50,
+        timeout: 30000,
+        mustPausePatterns: DEFAULT_MUST_PAUSE_PATTERNS
+      } : undefined
+    };
+
+    iterateController = new IterateModeController(iterateConfig);
+
+    // Set up provider executor for question answering if auto-answer is enabled
+    if (iterateOptions.autoAnswer) {
+      const questionAnswerProvider = iterateOptions.autoAnswerProvider || 'gemini';
+      sendMcpProgress(`Setting up auto-answer with ${questionAnswerProvider}...`);
+
+      const providerConfig = {
+        name: questionAnswerProvider,
+        enabled: true,
+        priority: 1,
+        timeout: 30000
+      };
+
+      // Dynamic import providers based on selection to avoid loading all providers
+      let qaProvider;
+      switch (questionAnswerProvider) {
+        case 'claude': {
+          const { ClaudeProvider } = await import('../../providers/claude-provider.js');
+          qaProvider = new ClaudeProvider(providerConfig);
+          break;
+        }
+        case 'openai': {
+          const { OpenAIProvider } = await import('../../providers/openai-provider.js');
+          qaProvider = new OpenAIProvider(providerConfig);
+          break;
+        }
+        case 'glm': {
+          const { GLMProvider } = await import('../../providers/glm-provider.js');
+          qaProvider = new GLMProvider(providerConfig);
+          break;
+        }
+        case 'grok': {
+          const { GrokProvider } = await import('../../providers/grok-provider.js');
+          qaProvider = new GrokProvider(providerConfig);
+          break;
+        }
+        case 'gemini':
+        default: {
+          const { GeminiProvider } = await import('../../providers/gemini-provider.js');
+          qaProvider = new GeminiProvider(providerConfig);
+          break;
+        }
+      }
+
+      const sessionId = `mcp-qa-${Date.now()}`;
+      iterateController.setProviderExecutor(
+        async (request) => qaProvider.execute(request),
+        sessionId
+      );
+    }
+
+    sendMcpProgress(`Running ${iterateOptions.iterations} iteration(s) with ${iterateOptions.autoAnswer ? 'auto-answer' : 'manual'} mode...`);
+  }
+
   const result = await executor.execute(context, {
     showProgress: false,
     verbose: false,
     signal,
-    timeout: effectiveTimeout
+    timeout: effectiveTimeout,
+    // v12.9.0: Pass iterate hooks if controller is set up
+    hooks: iterateController ? {
+      onPostResponse: async (response) => iterateController!.handleResponse(response)
+    } : undefined
   });
   const latencyMs = Date.now() - startTime;
+
+  // v12.9.0: Collect iterate stats if controller was used
+  if (iterateController) {
+    const stats = iterateController.getStats();
+    const qrStats = stats.questionResponder;
+    iterateStats = {
+      iterations: stats.totalIterations || 1,
+      autoAnswered: qrStats?.autoAnswered || 0,
+      pausedForUser: qrStats?.pausedForUser || 0,
+      tokensUsed: qrStats?.tokensUsed || 0
+    };
+  }
 
   const executionMode: ExecutionMode = isFallback ? 'cli_fallback' : 'cli_spawn';
 
@@ -192,7 +350,8 @@ async function executeViaCli(
       : undefined,
     latencyMs,
     routingDecision: 'executed',
-    executionMode
+    executionMode,
+    iterateStats
   };
 }
 
@@ -304,7 +463,17 @@ export function createRunAgentHandler(
   deps: RunAgentDependencies
 ): ToolHandler<RunAgentInput, RunAgentOutput> {
   return async (input: RunAgentInput, context?: { signal?: AbortSignal }): Promise<RunAgentOutput> => {
-    const { task, provider, no_memory, mode = 'auto' } = input;
+    const {
+      task,
+      provider,
+      no_memory,
+      mode = 'auto',
+      // v12.9.0: Iterate mode parameters
+      iterate,
+      autoAnswer,
+      autoAnswerProvider,
+      autoAnswerThreshold
+    } = input;
     let { agent } = input;
 
     checkAborted(context?.signal);
@@ -357,7 +526,11 @@ export function createRunAgentHandler(
       mode,
       callerProvider,
       callerActual,
-      no_memory
+      no_memory,
+      // v12.9.0: Iterate mode logging
+      iterate,
+      autoAnswer,
+      autoAnswerProvider
     });
 
     // Determine best provider (from router or use specified)
@@ -461,7 +634,17 @@ export function createRunAgentHandler(
       checkAborted(context?.signal);
       sendMcpProgress(`Spawning ${agent} agent via CLI...`);
 
-      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal, MCP_DEFAULT_AGENT_TIMEOUT_MS);
+      // v12.9.0: Build iterate options if iterate mode is enabled
+      const iterateOptions: IterateModeOptions | undefined = iterate && iterate > 0
+        ? {
+            iterations: iterate,
+            autoAnswer,
+            autoAnswerProvider,
+            autoAnswerThreshold
+          }
+        : undefined;
+
+      const result = await executeViaCli(agent, task, actualProvider, no_memory, deps, shouldTryMcp, context?.signal, MCP_DEFAULT_AGENT_TIMEOUT_MS, iterateOptions);
 
       logger.info('[MCP] run_agent completed (CLI spawn mode)', {
         agent,

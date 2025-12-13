@@ -4,6 +4,8 @@
 
 本指南教你如何在終端環境中直接使用 AutomatosX，不依賴 Claude Code 或其他 IDE 整合。
 
+> Note: Examples were captured on AutomatosX v6.3.8. Commands and flags remain valid on v12.x; version banners in sample output will show current values.
+
 ---
 
 ## 📋 目錄

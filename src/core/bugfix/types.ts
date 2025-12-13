@@ -119,6 +119,15 @@ export interface FixAttempt {
 
   /** Duration in milliseconds */
   durationMs: number;
+
+  /**
+   * Whether this fix was automatically applied without manual intervention.
+   * - true: Auto-fixed and verified (status = 'verified')
+   * - false: Skipped (needs manual review) or failed
+   * @since v12.9.1
+   * @see PRD-021: Bugfix Auto-Fix Markers and Report Defaults
+   */
+  autoFixed?: boolean;
 }
 
 /**
@@ -169,10 +178,13 @@ export interface VerificationResult {
 
 /**
  * Bugfix state machine states
+ *
+ * @updated v12.9.0 - Added TRIAGE state for LLM false positive filtering (PRD-020)
  */
 export type BugfixState =
   | 'IDLE'        // Waiting for command
   | 'SCANNING'    // Detecting bugs (Layer 1-3)
+  | 'TRIAGE'      // v12.9.0: LLM triage to filter false positives (optional)
   | 'ANALYZING'   // Classifying and prioritizing
   | 'PLANNING'    // Generating fix strategy
   | 'FIXING'      // Applying fix
@@ -181,6 +193,16 @@ export type BugfixState =
   | 'ITERATING'   // Retrying after failure
   | 'COMPLETE'    // All bugs fixed or max reached
   | 'FAILED';     // Unrecoverable error
+
+/**
+ * LLM Triage Configuration (imported from llm-triage module)
+ * @since v12.9.0
+ * @see PRD-020: LLM Triage Filter for Bugfix Tool
+ */
+export type { LLMTriageConfig } from './llm-triage/types.js';
+
+// Re-export for convenience
+import type { LLMTriageConfig } from './llm-triage/types.js';
 
 /**
  * Bugfix session configuration
@@ -238,6 +260,16 @@ export interface BugfixConfig {
 
   /** Enable metrics tracking */
   trackMetrics?: boolean;
+
+  // v12.9.0: PRD-020 LLM Triage Filter
+
+  /**
+   * Optional LLM triage configuration
+   * When enabled, detected findings are verified by LLM to filter false positives.
+   * @since v12.9.0
+   * @see PRD-020: LLM Triage Filter for Bugfix Tool
+   */
+  llmTriage?: LLMTriageConfig;
 }
 
 /**

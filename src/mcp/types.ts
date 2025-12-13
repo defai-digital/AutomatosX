@@ -245,6 +245,7 @@ export interface McpSessionManagerConfig {
 
 // run_agent (v10.5.0: Added mode for Smart Routing)
 // v12.5.1: Made agent optional - system auto-selects best agent based on task
+// v12.9.0: Added iterate mode with auto-answer support
 export interface RunAgentInput {
   /** Agent name. If omitted, system auto-selects the best agent for the task. */
   agent?: string;
@@ -253,6 +254,14 @@ export interface RunAgentInput {
   no_memory?: boolean;
   /** v10.5.0: Execution mode - auto (default), context (always return context), execute (always spawn) */
   mode?: 'auto' | 'context' | 'execute';
+  /** v12.9.0: Number of autonomous iterations (iterate mode) */
+  iterate?: number;
+  /** v12.9.0: Enable LLM-powered auto-answering for technical questions in iterate mode */
+  autoAnswer?: boolean;
+  /** v12.9.0: Provider for auto-answer feature (default: gemini for cost efficiency) */
+  autoAnswerProvider?: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+  /** v12.9.0: Confidence threshold for auto-answers (0.0-1.0, default: 0.7) */
+  autoAnswerThreshold?: number;
 }
 
 export interface RunAgentOutput {
@@ -284,6 +293,13 @@ export interface RunAgentOutput {
     enhancedPrompt: string;
     detectedCaller: string;
     recommendedProvider: string;
+  };
+  /** v12.9.0: Iterate mode statistics (when iterate parameter is used) */
+  iterateStats?: {
+    iterations: number;
+    autoAnswered: number;
+    pausedForUser: number;
+    tokensUsed: number;
   };
 }
 

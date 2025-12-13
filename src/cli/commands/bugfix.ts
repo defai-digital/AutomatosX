@@ -19,18 +19,25 @@ import {
   type BugfixConfig,
   type BugSeverity,
   type BugType,
+  type LLMTriageProvider,
+  type TriageMetrics,
   getMetricsTracker
 } from '../../core/bugfix/index.js';
+import { Router } from '../../core/router/router.js';
+import { ClaudeProvider } from '../../providers/claude-provider.js';
+import { GeminiProvider } from '../../providers/gemini-provider.js';
+import { createOpenAIProviderSync } from '../../providers/openai-provider-factory.js';
 import { logger } from '../../shared/logging/logger.js';
 import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
 import { getVersion } from '../../shared/helpers/version.js';
 import { formatSeverity } from '../../shared/logging/severity-formatter.js';
+import { loadConfig } from '../../core/config/loader.js';
+import type { Provider } from '../../types/provider.js';
 
 /**
  * CLI options for bugfix command
  */
 interface BugfixOptions {
-  auto?: boolean;
   scope?: string;
   severity?: string;
   maxIterations?: number;
@@ -41,6 +48,7 @@ interface BugfixOptions {
   // New options (v12.6.0)
   json?: boolean;
   report?: boolean | string;
+  noReport?: boolean;
   changed?: boolean;
   staged?: boolean;
   since?: string;
@@ -49,6 +57,10 @@ interface BugfixOptions {
   minConfidence?: number;
   verifyLint?: boolean;
   verifyStrict?: boolean;
+  // New options (v12.9.0) - PRD-020 LLM Triage
+  llmTriage?: boolean;
+  llmProvider?: string;
+  llmMaxRequests?: number;
 }
 
 /**
@@ -86,11 +98,6 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       type: 'boolean',
       default: false,
       describe: 'Check for bugs without fixing (exit 1 if found) - for pre-commit hooks'
-    },
-    auto: {
-      type: 'boolean',
-      default: false,
-      describe: 'Run autonomously without prompts'
     },
     scope: {
       type: 'string',
@@ -149,8 +156,13 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
     },
     report: {
       type: 'string',
-      describe: 'Generate markdown report (optionally specify path)',
+      describe: 'Generate markdown report (optionally specify path). Default: auto-generate when bugs are fixed',
       coerce: (val: string | boolean) => val === '' ? true : val
+    },
+    'no-report': {
+      type: 'boolean',
+      default: false,
+      describe: 'Disable automatic report generation'
     },
     changed: {
       type: 'boolean',
@@ -182,6 +194,23 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       type: 'boolean',
       default: false,
       describe: 'Run strict TypeScript check after fixes'
+    },
+    // New options (v12.9.0) - PRD-020 LLM Triage
+    'llm-triage': {
+      type: 'boolean',
+      default: false,
+      describe: 'Enable LLM-based triage to filter false positives'
+    },
+    'llm-provider': {
+      type: 'string',
+      choices: ['claude', 'gemini', 'openai'],
+      default: 'claude',
+      describe: 'Provider for LLM triage'
+    },
+    'llm-max-requests': {
+      type: 'number',
+      default: 10,
+      describe: 'Max LLM requests per run (cost cap)'
     }
   },
   handler: async (argv) => {
@@ -247,8 +276,80 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       minConfidence: argv.minConfidence ?? 0.5,
       // v12.9.0: PRD-018 enhanced verification
       verifyLint: argv.verifyLint || false,
-      verifyStrict: argv.verifyStrict || false
+      verifyStrict: argv.verifyStrict || false,
+      // v12.9.0: PRD-020 LLM Triage
+      llmTriage: argv.llmTriage ? {
+        enabled: true,
+        provider: (argv.llmProvider || 'claude') as LLMTriageProvider,
+        maxRequestsPerRun: argv.llmMaxRequests || 10,
+        minConfidenceToSkip: 0.9,
+        maxConfidenceToForce: 0.7,
+        batchSize: 5,
+        timeoutMs: 15000,
+        fallbackBehavior: 'bypass',
+      } : undefined,
     };
+
+    // v12.9.0: Create Router for LLM triage if enabled (PRD-020)
+    let router: Router | undefined;
+    let triageStats: TriageMetrics | undefined;
+
+    if (argv.llmTriage) {
+      try {
+        const appConfig = await loadConfig(rootDir);
+        const providers: Provider[] = [];
+
+        // Create provider based on llm-provider flag
+        const llmProvider = argv.llmProvider || 'claude';
+
+        if (llmProvider === 'claude' && appConfig.providers['claude']?.enabled) {
+          const claudeConfig = appConfig.providers['claude'];
+          providers.push(new ClaudeProvider({
+            name: 'claude',
+            enabled: true,
+            priority: claudeConfig.priority || 1,
+            timeout: claudeConfig.timeout || 120000,
+          }));
+        } else if (llmProvider === 'gemini' && appConfig.providers['gemini']?.enabled) {
+          const geminiConfig = appConfig.providers['gemini'];
+          providers.push(new GeminiProvider({
+            name: 'gemini',
+            enabled: true,
+            priority: geminiConfig.priority || 2,
+            timeout: geminiConfig.timeout || 120000,
+          }));
+        } else if (llmProvider === 'openai' && appConfig.providers['openai']?.enabled) {
+          const openaiConfig = appConfig.providers['openai'];
+          const openaiProvider = createOpenAIProviderSync({
+            name: 'openai',
+            enabled: true,
+            priority: openaiConfig.priority || 3,
+            timeout: openaiConfig.timeout || 120000,
+          });
+          providers.push(openaiProvider);
+        }
+
+        if (providers.length > 0) {
+          router = new Router({
+            providers,
+            fallbackEnabled: false,
+          });
+        } else {
+          if (!isQuiet) {
+            console.log(chalk.yellow(`\n  ⚠️  LLM provider '${llmProvider}' not configured or enabled.`));
+            console.log(chalk.yellow(`     LLM triage will fall back to AST results.\n`));
+          }
+        }
+      } catch (err) {
+        logger.warn('Failed to create router for LLM triage', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        if (!isQuiet) {
+          console.log(chalk.yellow('\n  ⚠️  Failed to initialize LLM provider for triage.'));
+          console.log(chalk.yellow('     Falling back to AST results.\n'));
+        }
+      }
+    }
 
     if (!isQuiet) {
       console.log(chalk.cyan('\n🔧 AutomatosX Bug Fixer\n'));
@@ -266,6 +367,9 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       if (!isCheckMode) {
         console.log(chalk.gray(`  Max bugs: ${argv.maxIterations}`));
       }
+      if (argv.llmTriage) {
+        console.log(chalk.gray(`  LLM triage: ${argv.llmProvider || 'claude'} (max ${argv.llmMaxRequests || 10} requests)`));
+      }
       console.log();
     }
 
@@ -275,6 +379,7 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
         config,
         rootDir,
         fileFilter, // Pass file filter for git-aware scanning
+        router, // v12.9.0: Router for LLM triage (PRD-020)
         onProgress: (message, _data) => {
           if (isQuiet) return;
 
@@ -282,6 +387,13 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
             spinner.start(message);
           } else if (message.includes('Found')) {
             spinner.succeed(message);
+          } else if (message.startsWith('Running LLM triage')) {
+            // v12.9.0: LLM triage progress
+            spinner.start(chalk.cyan(message));
+          } else if (message.includes('LLM triage complete')) {
+            spinner.succeed(chalk.cyan('LLM triage complete'));
+          } else if (message.includes('Triage failed')) {
+            spinner.warn(chalk.yellow(message));
           } else if (message.startsWith('Fixing')) {
             spinner.start(message);
           } else if (message.includes('verified') || message.includes('Verified')) {
@@ -311,28 +423,68 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
             const icon = success ? '✓' : '✗';
             console.log(chalk.gray(`   ${icon} Verification: ${success ? 'passed' : 'failed'}`));
           }
-        }
+        },
+        // v12.9.0: Triage complete callback (PRD-020)
+        onTriageComplete: (_results, metrics) => {
+          triageStats = metrics;
+          if (!isQuiet && argv.verbose) {
+            console.log(chalk.gray(`   Triage: ${metrics.findingsAccepted} accepted, ${metrics.findingsRejected} rejected, ${metrics.findingsSkipped} skipped`));
+          }
+        },
       });
 
       // Execute
       const result = await controller.execute();
 
-      // Generate report if requested
-      if (argv.report) {
-        const reportPath = typeof argv.report === 'string'
-          ? argv.report
-          : getDefaultReportPath(rootDir, 'markdown');
+      // v12.9.1: Auto-generate report by default when bugs are fixed (PRD-021)
+      // Conditions for auto-report:
+      // - Not in check mode (check mode just scans, doesn't fix)
+      // - Not in dry-run mode (dry-run is just a preview)
+      // - Not disabled via --no-report
+      // - At least one bug was fixed (skip if zero fixes)
+      // - Either explicit --report flag OR auto-generate
+      const shouldGenerateReport = !isCheckMode &&
+        !argv.dryRun &&
+        !argv.noReport &&
+        (argv.report || result.stats.bugsFixed > 0);
 
-        await writeReport(result, reportPath, 'markdown');
+      let reportPath: string | undefined;
+
+      if (shouldGenerateReport) {
+        // Use custom path if provided, otherwise use REPORT/ directory
+        if (typeof argv.report === 'string') {
+          reportPath = argv.report;
+        } else {
+          // Default to REPORT/ directory (PRD-021)
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          reportPath = `${rootDir}/REPORT/bugfix-${timestamp}.md`;
+        }
+
+        // v12.9.0: Pass triage metrics to report (PRD-020)
+        await writeReport(result, reportPath, 'markdown', {
+          triageMetrics: triageStats,
+          triageProvider: argv.llmProvider || 'claude',
+          originalFindingsCount: findings.length,
+        });
 
         if (!isQuiet) {
-          console.log(chalk.green(`\n📄 Report saved to: ${reportPath}\n`));
+          console.log(chalk.green(`\n📄 Report saved to: ${reportPath}`));
+          if (!argv.report) {
+            console.log(chalk.gray('   (Use --no-report to disable automatic report generation)\n'));
+          } else {
+            console.log();
+          }
         }
       }
 
       // JSON output mode
       if (isJsonMode) {
-        const jsonOutput = generateJsonOutput(result);
+        // v12.9.0: Pass triage metrics to JSON output (PRD-020)
+        const jsonOutput = generateJsonOutput(result, {
+          triageMetrics: triageStats,
+          triageProvider: argv.llmProvider || 'claude',
+          originalFindingsCount: findings.length,
+        });
         console.log(JSON.stringify(jsonOutput, null, 2));
 
         // Set exit code based on results
@@ -388,12 +540,12 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
           return;
         }
 
-        // Fixed bugs
+        // v12.9.1: Fixed bugs with AUTO marker (PRD-021)
         if (fixedBugs.length > 0) {
-          console.log(chalk.green.bold(`✅ Fixed: ${fixedBugs.length} bug(s)\n`));
+          console.log(chalk.green.bold(`✅ Auto-Fixed: ${fixedBugs.length} bug(s)\n`));
 
           for (const bug of fixedBugs.slice(0, 10)) {
-            console.log(chalk.green(`   ✓ ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
+            console.log(chalk.green(`   ✓ [AUTO] ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
           }
 
           if (fixedBugs.length > 10) {
@@ -402,38 +554,38 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
           console.log();
         }
 
-        // Failed bugs
+        // v12.9.1: Failed bugs with FAILED marker (PRD-021)
         if (failedBugs.length > 0) {
           console.log(chalk.red.bold(`❌ Failed: ${failedBugs.length} bug(s)\n`));
 
           for (const bug of failedBugs.slice(0, 5)) {
-            console.log(chalk.red(`   ✗ ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
+            console.log(chalk.red(`   ✗ [FAILED] ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
           }
           console.log();
         }
 
-        // Skipped bugs
+        // v12.9.1: Skipped bugs with MANUAL marker (PRD-021)
         if (skippedBugs.length > 0) {
-          console.log(chalk.yellow.bold(`⚠️  Skipped (manual review needed): ${skippedBugs.length} bug(s)\n`));
+          console.log(chalk.yellow.bold(`⚠️  Manual Review Needed: ${skippedBugs.length} bug(s)\n`));
 
           for (const bug of skippedBugs.slice(0, 5)) {
-            console.log(chalk.yellow(`   → ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
+            console.log(chalk.yellow(`   → [MANUAL] ${formatBugType(bug.type)} in ${bug.file}:${bug.lineStart}`));
           }
           console.log();
         }
 
-        // Summary
+        // Summary with auto-fixed count
         console.log(chalk.cyan('━'.repeat(50)));
         console.log(chalk.bold('  Summary'));
         console.log(chalk.cyan('━'.repeat(50)));
         console.log();
-        console.log(`   Bugs found:    ${result.stats.bugsFound}`);
-        console.log(`   Bugs fixed:    ${chalk.green(result.stats.bugsFixed.toString())}`);
-        console.log(`   Bugs failed:   ${result.stats.bugsFailed > 0 ? chalk.red(result.stats.bugsFailed.toString()) : '0'}`);
-        console.log(`   Bugs skipped:  ${result.stats.bugsSkipped}`);
-        console.log(`   Success rate:  ${(result.stats.successRate * 100).toFixed(1)}%`);
-        console.log(`   Duration:      ${(result.stats.totalDurationMs / 1000).toFixed(1)}s`);
-        console.log(`   Stop reason:   ${result.stats.stopReason}`);
+        console.log(`   Bugs found:      ${result.stats.bugsFound}`);
+        console.log(`   Auto-fixed:      ${chalk.green(result.stats.bugsFixed.toString())}`);
+        console.log(`   Failed:          ${result.stats.bugsFailed > 0 ? chalk.red(result.stats.bugsFailed.toString()) : '0'}`);
+        console.log(`   Manual review:   ${result.stats.bugsSkipped > 0 ? chalk.yellow(result.stats.bugsSkipped.toString()) : '0'}`);
+        console.log(`   Success rate:    ${(result.stats.successRate * 100).toFixed(1)}%`);
+        console.log(`   Duration:        ${(result.stats.totalDurationMs / 1000).toFixed(1)}s`);
+        console.log(`   Stop reason:     ${result.stats.stopReason}`);
         console.log();
 
         if (argv.dryRun) {

@@ -5,15 +5,18 @@
  * Stores metrics in SQLite for persistence across sessions.
  *
  * v12.9.0: PRD-018 - Metrics tracking implementation
+ * v12.9.0: PRD-020 - LLM Triage metrics tracking
  *
  * @module core/bugfix/metrics-tracker
  * @since v12.9.0
+ * @updated v12.9.0 - Added triage metrics (PRD-020)
  */
 
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { logger } from '../../shared/logging/logger.js';
 import type { BugFinding, BugType, BugSeverity } from './types.js';
+import type { TriageMetrics, TriageResult } from './llm-triage/types.js';
 
 // Lazy-load better-sqlite3 to avoid bundling issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,9 +84,57 @@ export interface MetricsSummary {
 }
 
 /**
- * Metrics database schema version
+ * Triage run record stored in database (v12.9.0)
+ *
+ * @since v12.9.0
+ * @see PRD-020: LLM Triage Filter for Bugfix Tool
  */
-const SCHEMA_VERSION = 1;
+export interface TriageRunRecord {
+  id: number;
+  sessionId: string;
+  findingsTotal: number;
+  findingsTriaged: number;
+  findingsAccepted: number;
+  findingsRejected: number;
+  findingsSkipped: number;
+  findingsFallback: number;
+  llmRequests: number;
+  llmTokensUsed: number;
+  llmCostEstimateUsd: number;
+  triageDurationMs: number;
+  provider: string;
+  createdAt: string;
+}
+
+/**
+ * Triage summary for reports (v12.9.0)
+ *
+ * @since v12.9.0
+ * @see PRD-020: LLM Triage Filter for Bugfix Tool
+ */
+export interface TriageSummary {
+  enabled: boolean;
+  provider?: string;
+  findingsTotal: number;
+  findingsTriaged: number;
+  findingsAccepted: number;
+  findingsRejected: number;
+  findingsSkipped: number;
+  findingsFallback: number;
+  llmRequests: number;
+  llmTokensUsed: number;
+  llmCostEstimateUsd: number;
+  triageDurationMs: number;
+  /** Precision improvement from triage (false positives removed / total triaged) */
+  precisionImprovement?: number;
+}
+
+/**
+ * Metrics database schema version
+ * v1: Initial schema (detection_metrics)
+ * v2: Added triage_runs table and LLM columns (PRD-020)
+ */
+const SCHEMA_VERSION = 2;
 
 /**
  * MetricsTracker class
@@ -161,19 +212,109 @@ export class MetricsTracker {
         fix_successful INTEGER,
         feedback TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        -- v12.9.0: LLM triage columns (PRD-020)
+        llm_triaged INTEGER DEFAULT NULL,
+        llm_accepted INTEGER DEFAULT NULL,
+        llm_confidence REAL DEFAULT NULL,
+        llm_reason TEXT DEFAULT NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_metrics_rule ON detection_metrics(rule_id);
       CREATE INDEX IF NOT EXISTS idx_metrics_type ON detection_metrics(bug_type);
       CREATE INDEX IF NOT EXISTS idx_metrics_fp ON detection_metrics(is_false_positive);
       CREATE INDEX IF NOT EXISTS idx_metrics_created ON detection_metrics(created_at);
+
+      -- v12.9.0: Triage runs table (PRD-020)
+      CREATE TABLE IF NOT EXISTS triage_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        findings_total INTEGER NOT NULL,
+        findings_triaged INTEGER NOT NULL,
+        findings_accepted INTEGER NOT NULL,
+        findings_rejected INTEGER NOT NULL,
+        findings_skipped INTEGER NOT NULL,
+        findings_fallback INTEGER NOT NULL DEFAULT 0,
+        llm_requests INTEGER NOT NULL,
+        llm_tokens_used INTEGER DEFAULT 0,
+        llm_cost_estimate_usd REAL DEFAULT 0,
+        triage_duration_ms INTEGER NOT NULL,
+        provider TEXT DEFAULT 'claude',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_triage_session ON triage_runs(session_id);
+      CREATE INDEX IF NOT EXISTS idx_triage_created ON triage_runs(created_at);
     `);
 
     // Check/update schema version
     const versionRow = this.db.prepare('SELECT version FROM schema_version LIMIT 1').get();
     if (!versionRow) {
       this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(SCHEMA_VERSION);
+    } else {
+      // Run migrations if needed
+      this.runMigrations((versionRow as { version: number }).version);
+    }
+  }
+
+  /**
+   * Run schema migrations
+   */
+  private runMigrations(currentVersion: number): void {
+    if (currentVersion < 2) {
+      // Migrate to v2: Add LLM triage columns and table
+      logger.info('Migrating metrics schema to v2 (PRD-020 triage support)');
+
+      try {
+        // Add LLM columns to detection_metrics (SQLite doesn't support IF NOT EXISTS for columns)
+        const columns = this.db.prepare("PRAGMA table_info(detection_metrics)").all() as Array<{ name: string }>;
+        const columnNames = new Set(columns.map(c => c.name));
+
+        if (!columnNames.has('llm_triaged')) {
+          this.db.exec('ALTER TABLE detection_metrics ADD COLUMN llm_triaged INTEGER DEFAULT NULL');
+        }
+        if (!columnNames.has('llm_accepted')) {
+          this.db.exec('ALTER TABLE detection_metrics ADD COLUMN llm_accepted INTEGER DEFAULT NULL');
+        }
+        if (!columnNames.has('llm_confidence')) {
+          this.db.exec('ALTER TABLE detection_metrics ADD COLUMN llm_confidence REAL DEFAULT NULL');
+        }
+        if (!columnNames.has('llm_reason')) {
+          this.db.exec('ALTER TABLE detection_metrics ADD COLUMN llm_reason TEXT DEFAULT NULL');
+        }
+
+        // Create triage_runs table (IF NOT EXISTS handles this)
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS triage_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            findings_total INTEGER NOT NULL,
+            findings_triaged INTEGER NOT NULL,
+            findings_accepted INTEGER NOT NULL,
+            findings_rejected INTEGER NOT NULL,
+            findings_skipped INTEGER NOT NULL,
+            findings_fallback INTEGER NOT NULL DEFAULT 0,
+            llm_requests INTEGER NOT NULL,
+            llm_tokens_used INTEGER DEFAULT 0,
+            llm_cost_estimate_usd REAL DEFAULT 0,
+            triage_duration_ms INTEGER NOT NULL,
+            provider TEXT DEFAULT 'claude',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_triage_session ON triage_runs(session_id);
+          CREATE INDEX IF NOT EXISTS idx_triage_created ON triage_runs(created_at);
+        `);
+
+        // Update schema version
+        this.db.prepare('UPDATE schema_version SET version = ?').run(2);
+
+        logger.info('Schema migration to v2 complete');
+      } catch (error) {
+        logger.warn('Schema migration failed (may already be at v2)', {
+          error: (error as Error).message
+        });
+      }
     }
   }
 
@@ -567,6 +708,329 @@ export class MetricsTracker {
         error: (error as Error).message,
         file,
         line
+      });
+      return null;
+    }
+  }
+
+  // ==========================================================================
+  // v12.9.0: LLM Triage Metrics (PRD-020)
+  // ==========================================================================
+
+  /**
+   * Record triage results for a bugfix session (v12.9.0)
+   *
+   * Stores both the triage run summary and updates individual detection metrics
+   * with LLM verdict information.
+   *
+   * @param sessionId - Bugfix session ID
+   * @param metrics - Triage metrics from LLMTriageFilter
+   * @param results - Individual triage results
+   * @param provider - LLM provider used (claude, gemini, openai)
+   * @returns Record ID or -1 on failure
+   *
+   * @since v12.9.0
+   * @see PRD-020: LLM Triage Filter for Bugfix Tool
+   */
+  recordTriageResults(
+    sessionId: string,
+    metrics: TriageMetrics,
+    results: TriageResult[],
+    provider: string = 'claude'
+  ): number {
+    if (!this.initialized || !this.db) {
+      logger.debug('MetricsTracker not initialized, skipping recordTriageResults');
+      return -1;
+    }
+
+    try {
+      // Insert triage run summary
+      const stmt = this.db.prepare(`
+        INSERT INTO triage_runs (
+          session_id, findings_total, findings_triaged, findings_accepted,
+          findings_rejected, findings_skipped, findings_fallback,
+          llm_requests, llm_tokens_used, llm_cost_estimate_usd,
+          triage_duration_ms, provider
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
+        sessionId,
+        metrics.findingsTotal,
+        metrics.findingsTriaged,
+        metrics.findingsAccepted,
+        metrics.findingsRejected,
+        metrics.findingsSkipped,
+        metrics.findingsFallback,
+        metrics.llmRequests,
+        metrics.llmTokensUsed,
+        metrics.llmCostEstimateUsd,
+        metrics.triageDurationMs,
+        provider
+      );
+
+      const triageRunId = Number(result.lastInsertRowid);
+
+      logger.debug('Triage run recorded', {
+        id: triageRunId,
+        sessionId,
+        findingsTotal: metrics.findingsTotal,
+        rejected: metrics.findingsRejected,
+        provider
+      });
+
+      // Update individual detection metrics with LLM verdicts
+      for (const triageResult of results) {
+        if (triageResult.verdict) {
+          this.updateDetectionWithTriageVerdict(
+            triageResult.original.file,
+            triageResult.original.lineStart,
+            triageResult.verdict.accepted,
+            triageResult.verdict.confidence,
+            triageResult.verdict.reason
+          );
+        }
+      }
+
+      return triageRunId;
+    } catch (error) {
+      logger.warn('Failed to record triage results', {
+        error: (error as Error).message,
+        sessionId
+      });
+      return -1;
+    }
+  }
+
+  /**
+   * Update a detection metric with LLM triage verdict (v12.9.0)
+   *
+   * @private
+   */
+  private updateDetectionWithTriageVerdict(
+    file: string,
+    line: number,
+    accepted: boolean,
+    confidence: number,
+    reason?: string
+  ): void {
+    try {
+      this.db.prepare(`
+        UPDATE detection_metrics
+        SET llm_triaged = 1,
+            llm_accepted = ?,
+            llm_confidence = ?,
+            llm_reason = ?,
+            updated_at = datetime('now')
+        WHERE file = ? AND line = ?
+      `).run(
+        accepted ? 1 : 0,
+        confidence,
+        reason || null,
+        file,
+        line
+      );
+    } catch (error) {
+      logger.debug('Failed to update detection with triage verdict', {
+        error: (error as Error).message,
+        file,
+        line
+      });
+    }
+  }
+
+  /**
+   * Get triage run by session ID (v12.9.0)
+   *
+   * @param sessionId - Bugfix session ID
+   * @returns Triage run record or null
+   *
+   * @since v12.9.0
+   */
+  getTriageRun(sessionId: string): TriageRunRecord | null {
+    if (!this.initialized || !this.db) return null;
+
+    try {
+      const row = this.db.prepare(`
+        SELECT * FROM triage_runs WHERE session_id = ? ORDER BY id DESC LIMIT 1
+      `).get(sessionId) as {
+        id: number;
+        session_id: string;
+        findings_total: number;
+        findings_triaged: number;
+        findings_accepted: number;
+        findings_rejected: number;
+        findings_skipped: number;
+        findings_fallback: number;
+        llm_requests: number;
+        llm_tokens_used: number;
+        llm_cost_estimate_usd: number;
+        triage_duration_ms: number;
+        provider: string;
+        created_at: string;
+      } | undefined;
+
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        sessionId: row.session_id,
+        findingsTotal: row.findings_total,
+        findingsTriaged: row.findings_triaged,
+        findingsAccepted: row.findings_accepted,
+        findingsRejected: row.findings_rejected,
+        findingsSkipped: row.findings_skipped,
+        findingsFallback: row.findings_fallback,
+        llmRequests: row.llm_requests,
+        llmTokensUsed: row.llm_tokens_used,
+        llmCostEstimateUsd: row.llm_cost_estimate_usd,
+        triageDurationMs: row.triage_duration_ms,
+        provider: row.provider,
+        createdAt: row.created_at
+      };
+    } catch (error) {
+      logger.warn('Failed to get triage run', {
+        error: (error as Error).message,
+        sessionId
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Get recent triage runs (v12.9.0)
+   *
+   * @param limit - Maximum number of runs to return (default 10)
+   * @returns Array of triage run records
+   *
+   * @since v12.9.0
+   */
+  getRecentTriageRuns(limit: number = 10): TriageRunRecord[] {
+    if (!this.initialized || !this.db) return [];
+
+    try {
+      const rows = this.db.prepare(`
+        SELECT * FROM triage_runs ORDER BY created_at DESC LIMIT ?
+      `).all(limit) as Array<{
+        id: number;
+        session_id: string;
+        findings_total: number;
+        findings_triaged: number;
+        findings_accepted: number;
+        findings_rejected: number;
+        findings_skipped: number;
+        findings_fallback: number;
+        llm_requests: number;
+        llm_tokens_used: number;
+        llm_cost_estimate_usd: number;
+        triage_duration_ms: number;
+        provider: string;
+        created_at: string;
+      }>;
+
+      return rows.map(row => ({
+        id: row.id,
+        sessionId: row.session_id,
+        findingsTotal: row.findings_total,
+        findingsTriaged: row.findings_triaged,
+        findingsAccepted: row.findings_accepted,
+        findingsRejected: row.findings_rejected,
+        findingsSkipped: row.findings_skipped,
+        findingsFallback: row.findings_fallback,
+        llmRequests: row.llm_requests,
+        llmTokensUsed: row.llm_tokens_used,
+        llmCostEstimateUsd: row.llm_cost_estimate_usd,
+        triageDurationMs: row.triage_duration_ms,
+        provider: row.provider,
+        createdAt: row.created_at
+      }));
+    } catch (error) {
+      logger.warn('Failed to get recent triage runs', {
+        error: (error as Error).message
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get triage summary statistics (v12.9.0)
+   *
+   * @returns Summary of all triage runs
+   *
+   * @since v12.9.0
+   */
+  getTriageSummary(): TriageSummary | null {
+    if (!this.initialized || !this.db) return null;
+
+    try {
+      const row = this.db.prepare(`
+        SELECT
+          COUNT(*) as run_count,
+          SUM(findings_total) as total_findings,
+          SUM(findings_triaged) as total_triaged,
+          SUM(findings_accepted) as total_accepted,
+          SUM(findings_rejected) as total_rejected,
+          SUM(findings_skipped) as total_skipped,
+          SUM(findings_fallback) as total_fallback,
+          SUM(llm_requests) as total_requests,
+          SUM(llm_tokens_used) as total_tokens,
+          SUM(llm_cost_estimate_usd) as total_cost,
+          SUM(triage_duration_ms) as total_duration
+        FROM triage_runs
+      `).get() as {
+        run_count: number;
+        total_findings: number | null;
+        total_triaged: number | null;
+        total_accepted: number | null;
+        total_rejected: number | null;
+        total_skipped: number | null;
+        total_fallback: number | null;
+        total_requests: number | null;
+        total_tokens: number | null;
+        total_cost: number | null;
+        total_duration: number | null;
+      };
+
+      if (!row || row.run_count === 0) {
+        return {
+          enabled: false,
+          findingsTotal: 0,
+          findingsTriaged: 0,
+          findingsAccepted: 0,
+          findingsRejected: 0,
+          findingsSkipped: 0,
+          findingsFallback: 0,
+          llmRequests: 0,
+          llmTokensUsed: 0,
+          llmCostEstimateUsd: 0,
+          triageDurationMs: 0
+        };
+      }
+
+      // Calculate precision improvement
+      const totalTriaged = row.total_triaged || 0;
+      const totalRejected = row.total_rejected || 0;
+      const precisionImprovement = totalTriaged > 0
+        ? totalRejected / totalTriaged
+        : 0;
+
+      return {
+        enabled: true,
+        findingsTotal: row.total_findings || 0,
+        findingsTriaged: totalTriaged,
+        findingsAccepted: row.total_accepted || 0,
+        findingsRejected: totalRejected,
+        findingsSkipped: row.total_skipped || 0,
+        findingsFallback: row.total_fallback || 0,
+        llmRequests: row.total_requests || 0,
+        llmTokensUsed: row.total_tokens || 0,
+        llmCostEstimateUsd: row.total_cost || 0,
+        triageDurationMs: row.total_duration || 0,
+        precisionImprovement
+      };
+    } catch (error) {
+      logger.warn('Failed to get triage summary', {
+        error: (error as Error).message
       });
       return null;
     }

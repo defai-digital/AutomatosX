@@ -227,3 +227,10 @@ snapshots/
 .pnpm-lock.yaml
 # Note: package-lock.json and pnpm-lock.yaml are tracked for CI reproducibility
 CLAUDE.md
+
+# Sensitive documentation
+QWEN.md
+CLAUDE.md
+*.npm-cache
+REPORT/
+coverage-report.json

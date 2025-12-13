@@ -293,6 +293,38 @@
       "defaultLimit": 10
     }
   },
+  "bugfix": {
+    "defaultSeverityThreshold": "medium",
+    "defaultBugTypes": ["timer_leak", "missing_destroy", "promise_timeout_leak"],
+    "maxBugs": 10,
+    "minConfidence": 0.5,
+    "llmTriage": {
+      "enabled": false,
+      "provider": "claude",
+      "minConfidenceToSkip": 0.9,
+      "maxConfidenceToForce": 0.7,
+      "batchSize": 5,
+      "maxRequestsPerRun": 10,
+      "timeoutMs": 15000,
+      "fallbackBehavior": "bypass"
+    }
+  },
+  "refactor": {
+    "defaultSeverityThreshold": "low",
+    "defaultFocusAreas": ["dead_code", "type_safety", "conditionals", "hardcoded_values", "naming", "duplication", "readability", "performance"],
+    "maxFindings": 50,
+    "minConfidence": 0.7,
+    "llmTriage": {
+      "enabled": false,
+      "provider": "claude",
+      "minConfidenceToSkip": 0.9,
+      "maxConfidenceToForce": 0.5,
+      "batchSize": 5,
+      "maxRequestsPerRun": 10,
+      "timeoutMs": 15000,
+      "fallbackBehavior": "bypass"
+    }
+  },
   "router": {
     "healthCheckInterval": 60000,
     "providerCooldownMs": 30000,

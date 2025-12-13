@@ -8,10 +8,43 @@
  * @updated v12.6.0 - Added git-aware scanning, JSON output, report generation
  * @updated v12.8.0 - Added AST-based detection for reduced false positives
  * @updated v12.9.0 - PRD-018: Added confidence filtering, enhanced verification, metrics tracking
+ * @updated v12.9.0 - PRD-020: Added LLM triage filter for false positive reduction
  */
 
 // Types
 export * from './types.js';
+
+// LLM Triage Filter (v12.9.0) - PRD-020
+export {
+  // Types
+  type LLMTriageConfig,
+  type LLMTriageProvider,
+  type LLMTriageFallbackBehavior,
+  type TriageSource,
+  type TriageVerdict,
+  type TriageResult,
+  type TriageMetrics,
+  type LLMTriageBatchResponse,
+  type TriageBatch,
+  type TriageFilterOptions,
+  type TriagePrompt,
+  type ParseResult,
+  // Constants
+  DEFAULT_LLM_TRIAGE_CONFIG,
+  CONFIDENCE_BOUNDS,
+  BATCH_LIMITS,
+  REQUEST_LIMITS,
+  TIMEOUT_CONFIG,
+  COST_ESTIMATES,
+  // Components
+  LLMTriageFilter,
+  createTriageFilter,
+  buildTriagePrompt,
+  estimateTokens,
+  parseTriageResponse,
+  validateVerdictCoverage,
+  createDefaultVerdicts,
+} from './llm-triage/index.js';
 
 // Components
 export { BugDetector, createDefaultBugfixConfig } from './bug-detector.js';
@@ -71,11 +104,14 @@ export {
   type GitFilterOptions
 } from './git-utils.js';
 
-// Report generation (v12.6.0)
+// Report generation (v12.6.0, updated v12.9.0)
 export {
   generateJsonOutput,
   generateMarkdownReport,
   writeReport,
   getDefaultReportPath,
-  type BugfixJsonOutput
+  type BugfixJsonOutput,
+  type JsonOutputOptions,
+  type MarkdownReportOptions,
+  type WriteReportOptions
 } from './report-generator.js';

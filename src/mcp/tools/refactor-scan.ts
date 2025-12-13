@@ -55,6 +55,8 @@ export interface RefactorScanOutput {
     message: string;
     suggestion?: string;
     confidence: number;
+    /** v12.10.0: Whether this can be auto-refactored (PRD-022) */
+    autoRefactorable: boolean;
   }>;
 }
 
@@ -125,6 +127,8 @@ export function createRefactorScanHandler(): ToolHandler<RefactorScanInput, Refa
           message: f.message,
           suggestion: f.suggestedFix,
           confidence: f.confidence,
+          // v12.10.0: Flag if finding can be auto-refactored (PRD-022)
+          autoRefactorable: f.estimatedImpact.safeToAutoFix === true,
         })),
       };
 

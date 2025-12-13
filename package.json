@@ -50,6 +50,7 @@
     "version:beta": "npm version prerelease --preid=beta -m 'chore: bump version to %s'",
     "version:rc": "npm version prerelease --preid=rc -m 'chore: bump version to %s'",
     "sync:all-versions": "node tools/sync-all-versions.js",
+    "sync:ax-core": "pnpm update @defai.digital/ax-core @defai.digital/ax-cli --latest",
     "prerelease": "npm run sync:all-versions && npm run typecheck && npm run test:all",
     "release:check": "node tools/check-release.js",
     "check:size": "bash tools/check-package-size.sh",
@@ -97,8 +98,8 @@
     "vitest": "^4.0.15"
   },
   "dependencies": {
-    "@defai.digital/ax-cli": "^4.1.15",
-    "@defai.digital/ax-core": "^4.4.20",
+    "@defai.digital/ax-cli": "^4.0.0",
+    "@defai.digital/ax-core": "^4.0.0",
     "@iarna/toml": "^2.2.5",
     "@openai/codex-sdk": "^0.65.0",
     "ajv": "^8.17.1",

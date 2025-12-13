@@ -24,6 +24,10 @@ import {
   type PlannedSubtask,
   type ExecutionGroup
 } from './plan-multi-agent.js';
+// v12.9.0: Iterate mode support for auto-answer
+import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
+import { DEFAULT_MUST_PAUSE_PATTERNS } from '../../core/iterate/question-responder.js';
+import type { IterateConfig, QuestionResponderStats } from '../../types/iterate.js';
 
 /**
  * Execution result for a single subtask
@@ -36,6 +40,12 @@ export interface SubtaskResult {
   output?: string;
   error?: string;
   durationMs: number;
+  /** v12.9.0: Auto-answer stats for this subtask */
+  autoAnswerStats?: {
+    autoAnswered: number;
+    pausedForUser: number;
+    tokensUsed: number;
+  };
 }
 
 export type GroupMetric = {
@@ -67,6 +77,13 @@ export interface OrchestrateTaskInput {
   createSession?: boolean;
   /** Optional: Include memory context */
   includeMemory?: boolean;
+  // v12.9.0: Auto-answer parameters for subtask execution
+  /** Enable LLM-powered auto-answering for technical questions during subtask execution */
+  autoAnswer?: boolean;
+  /** Provider for auto-answer feature (default: gemini for cost efficiency) */
+  autoAnswerProvider?: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+  /** Confidence threshold for auto-answers (0.0-1.0, default: 0.7) */
+  autoAnswerThreshold?: number;
 }
 
 /**
@@ -89,6 +106,13 @@ export interface OrchestrateTaskOutput {
     totalDurationMs: number;
     /** Session ID (if created) */
     sessionId?: string;
+    /** v12.9.0: Auto-answer statistics (if autoAnswer was enabled) */
+    autoAnswerStats?: {
+      totalQuestions: number;
+      autoAnswered: number;
+      pausedForUser: number;
+      tokensUsed: number;
+    };
   };
   /** Summary message */
   summary: string;
@@ -104,13 +128,24 @@ export interface OrchestrateTaskDependencies {
 }
 
 /**
+ * v12.9.0: Auto-answer options for subtask execution
+ */
+interface AutoAnswerOptions {
+  enabled: boolean;
+  provider: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+  threshold: number;
+}
+
+/**
  * Execute a single subtask
+ * v12.9.0: Added auto-answer support
  */
 async function executeSubtask(
   subtask: PlannedSubtask,
   deps: OrchestrateTaskDependencies,
   timeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  autoAnswerOptions?: AutoAnswerOptions
 ): Promise<SubtaskResult> {
   const startTime = Date.now();
 
@@ -126,12 +161,139 @@ async function executeSubtask(
     });
 
     const executor = new AgentExecutor(deps.executorConfig);
+
+    // v12.9.0: Set up iterate controller with auto-answer if enabled
+    let iterateController: IterateModeController | undefined;
+    if (autoAnswerOptions?.enabled) {
+      const iterateConfig: IterateConfig = {
+        enabled: true,
+        defaults: {
+          maxDurationMinutes: 60,
+          maxTotalTokens: 500000,
+          maxTokensPerIteration: 50000,
+          warnAtTokenPercent: [75, 90],
+          maxIterationsPerRun: 10,
+          maxIterationsPerStage: 5,
+          maxAutoResponsesPerStage: 20,
+          autoConfirmCheckpoints: true
+        },
+        classifier: {
+          patternLibraryPath: '', // Empty = use semantic scoring only
+          strictness: 'balanced',
+          enableSemanticScoring: true,
+          semanticScoringThreshold: 0.80,
+          contextWindowMessages: 10
+        },
+        safety: {
+          enableDangerousOperationGuard: true,
+          riskTolerance: 'balanced',
+          dangerousOperations: {
+            fileDelete: 'MEDIUM',
+            gitForce: 'HIGH',
+            writeOutsideWorkspace: 'HIGH',
+            secretsInCode: 'HIGH',
+            shellCommands: 'MEDIUM',
+            packageInstall: 'MEDIUM',
+            databaseDrop: 'HIGH',
+            databaseTruncate: 'HIGH',
+            databaseDelete: 'HIGH'
+          },
+          enableTimeTracking: true,
+          enableIterationTracking: true
+        },
+        telemetry: {
+          level: 'info',
+          logAutoResponses: true,
+          logClassifications: true,
+          logSafetyChecks: true,
+          emitMetrics: true
+        },
+        notifications: {
+          warnAtTimePercent: [75, 90],
+          pauseOnGenuineQuestion: true,
+          pauseOnHighRiskOperation: true
+        },
+        questionResponder: {
+          enabled: true,
+          provider: autoAnswerOptions.provider,
+          confidenceThreshold: autoAnswerOptions.threshold,
+          maxAutoAnswers: 20,
+          timeout: 30000,
+          mustPausePatterns: DEFAULT_MUST_PAUSE_PATTERNS
+        }
+      };
+
+      iterateController = new IterateModeController(iterateConfig);
+
+      // Set up provider executor
+      const providerConfig = {
+        name: autoAnswerOptions.provider,
+        enabled: true,
+        priority: 1,
+        timeout: 30000
+      };
+
+      // Dynamic import providers based on selection to avoid loading all providers
+      let qaProvider;
+      switch (autoAnswerOptions.provider) {
+        case 'claude': {
+          const { ClaudeProvider } = await import('../../providers/claude-provider.js');
+          qaProvider = new ClaudeProvider(providerConfig);
+          break;
+        }
+        case 'openai': {
+          const { OpenAIProvider } = await import('../../providers/openai-provider.js');
+          qaProvider = new OpenAIProvider(providerConfig);
+          break;
+        }
+        case 'glm': {
+          const { GLMProvider } = await import('../../providers/glm-provider.js');
+          qaProvider = new GLMProvider(providerConfig);
+          break;
+        }
+        case 'grok': {
+          const { GrokProvider } = await import('../../providers/grok-provider.js');
+          qaProvider = new GrokProvider(providerConfig);
+          break;
+        }
+        case 'gemini':
+        default: {
+          const { GeminiProvider } = await import('../../providers/gemini-provider.js');
+          qaProvider = new GeminiProvider(providerConfig);
+          break;
+        }
+      }
+
+      const sessionId = `orchestrate-qa-${subtask.id}-${Date.now()}`;
+      iterateController.setProviderExecutor(
+        async (request) => qaProvider.execute(request),
+        sessionId
+      );
+    }
+
     const result = await executor.execute(context, {
       showProgress: false,
       verbose: false,
       signal,
-      timeout: timeoutMs
+      timeout: timeoutMs,
+      hooks: iterateController ? {
+        onPostResponse: async (response) => iterateController!.handleResponse(response)
+      } : undefined
     });
+
+    // Collect auto-answer stats if available
+    let autoAnswerStats: SubtaskResult['autoAnswerStats'];
+    if (iterateController) {
+      const stats = iterateController.getStats();
+      const qrStats = stats.questionResponder;
+      if (qrStats) {
+        autoAnswerStats = {
+          autoAnswered: qrStats.autoAnswered,
+          pausedForUser: qrStats.pausedForUser,
+          tokensUsed: qrStats.tokensUsed
+        };
+      }
+    }
 
     return {
       id: subtask.id,
@@ -139,7 +301,8 @@ async function executeSubtask(
       agent: subtask.agent,
       status: 'completed',
       output: result.response.content,
-      durationMs: Date.now() - startTime
+      durationMs: Date.now() - startTime,
+      autoAnswerStats
     };
   } catch (error) {
     return {
@@ -155,6 +318,7 @@ async function executeSubtask(
 
 /**
  * Execute subtasks in a group (parallel or sequential)
+ * v12.9.0: Added auto-answer support
  */
 async function executeGroup(
   group: ExecutionGroup,
@@ -164,7 +328,8 @@ async function executeGroup(
   continueOnFailure: boolean,
   maxParallel: number,
   subtaskTimeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  autoAnswerOptions?: AutoAnswerOptions
 ): Promise<SubtaskResult[]> {
   const tasksToExecute = subtasks.filter(t => group.tasks.includes(t.id));
 
@@ -197,7 +362,7 @@ async function executeGroup(
         const subtask = queue.shift();
         if (!subtask) break;
 
-        const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, controller.signal);
+        const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, controller.signal, autoAnswerOptions);
         results.push(result);
 
         if (result.status === 'failed' && !continueOnFailure) {
@@ -240,7 +405,7 @@ async function executeGroup(
       continue;
     }
 
-    const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, signal);
+    const result = await executeSubtask(subtask, deps, subtaskTimeoutMs, signal, autoAnswerOptions);
     results.push(result);
 
     // Stop on failure if not continuing
@@ -283,14 +448,29 @@ export function createOrchestrateTaskHandler(
       subtaskTimeoutMs = 300000,
       continueOnFailure = true,
       createSession = false,
-      includeMemory = false
+      includeMemory = false,
+      // v12.9.0: Auto-answer parameters
+      autoAnswer = false,
+      autoAnswerProvider = 'gemini',
+      autoAnswerThreshold = 0.7
     } = input;
+
+    // v12.9.0: Build auto-answer options if enabled
+    const autoAnswerOptions: AutoAnswerOptions | undefined = autoAnswer
+      ? {
+          enabled: true,
+          provider: autoAnswerProvider,
+          threshold: autoAnswerThreshold
+        }
+      : undefined;
 
     logger.info('[MCP] orchestrate_task called', {
       taskPreview: task.substring(0, 100),
       mode,
       maxSubtasks,
-      createSession
+      createSession,
+      autoAnswer,
+      autoAnswerProvider
     });
 
     // Phase 1: Planning
@@ -366,6 +546,7 @@ export function createOrchestrateTaskHandler(
       }
 
       // Execute group
+      // v12.9.0: Pass auto-answer options to group execution
       const groupResults = await executeGroup(
         group,
         plan.subtasks,
@@ -374,7 +555,8 @@ export function createOrchestrateTaskHandler(
         continueOnFailure,
         Math.max(1, Math.floor(maxParallel)),
         subtaskTimeoutMs,
-        context?.signal
+        context?.signal,
+        autoAnswerOptions
       );
 
       results.push(...groupResults);
@@ -434,22 +616,41 @@ export function createOrchestrateTaskHandler(
       }
     }
 
+    // v12.9.0: Aggregate auto-answer stats from all subtasks
+    let autoAnswerStats: { totalQuestions: number; autoAnswered: number; pausedForUser: number; tokensUsed: number } | undefined;
+    if (autoAnswer) {
+      const totals = results.reduce((acc, r) => {
+        if (r.autoAnswerStats) {
+          acc.autoAnswered += r.autoAnswerStats.autoAnswered;
+          acc.pausedForUser += r.autoAnswerStats.pausedForUser;
+          acc.tokensUsed += r.autoAnswerStats.tokensUsed;
+        }
+        return acc;
+      }, { totalQuestions: 0, autoAnswered: 0, pausedForUser: 0, tokensUsed: 0 });
+      totals.totalQuestions = totals.autoAnswered + totals.pausedForUser;
+      autoAnswerStats = totals;
+    }
+
     logger.info('[MCP] orchestrate_task completed', {
       mode,
       success,
       completed: completedCount,
       failed: failedCount,
       skipped: skippedCount,
-      totalDurationMs
+      totalDurationMs,
+      autoAnswerStats
     });
 
     // Build summary
+    const autoAnswerSummary = autoAnswerStats && autoAnswerStats.totalQuestions > 0
+      ? ` Auto-answered ${autoAnswerStats.autoAnswered} of ${autoAnswerStats.totalQuestions} questions.`
+      : '';
     const summary = success
       ? `Successfully executed ${completedCount} subtasks in ${(totalDurationMs / 1000).toFixed(1)}s. ` +
-        `${parallel ? 'Parallel execution' : 'Sequential execution'} used.`
+        `${parallel ? 'Parallel execution' : 'Sequential execution'} used.${autoAnswerSummary}`
       : `Execution completed with ${failedCount} failures. ` +
         `${completedCount} completed, ${skippedCount} skipped. ` +
-        `Total time: ${(totalDurationMs / 1000).toFixed(1)}s`;
+        `Total time: ${(totalDurationMs / 1000).toFixed(1)}s${autoAnswerSummary}`;
 
     return {
       mode,
@@ -459,7 +660,8 @@ export function createOrchestrateTaskHandler(
         results,
         groupMetrics,
         totalDurationMs,
-        sessionId
+        sessionId,
+        autoAnswerStats
       },
       summary
     };
@@ -552,6 +754,24 @@ This will:
         type: 'boolean',
         description: 'Include relevant memory context in planning (default: false)',
         default: false
+      },
+      // v12.9.0: Auto-answer parameters
+      autoAnswer: {
+        type: 'boolean',
+        description: 'Enable LLM-powered auto-answering for technical questions during subtask execution (default: false)',
+        default: false
+      },
+      autoAnswerProvider: {
+        type: 'string',
+        description: 'Provider for auto-answer feature (default: gemini for cost efficiency)',
+        enum: ['gemini', 'claude', 'openai', 'glm', 'grok']
+      },
+      autoAnswerThreshold: {
+        type: 'number',
+        description: 'Confidence threshold for auto-answers (0.0-1.0, default: 0.7)',
+        minimum: 0,
+        maximum: 1,
+        default: 0.7
       }
     },
     required: ['task']

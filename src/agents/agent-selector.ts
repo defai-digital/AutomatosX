@@ -13,6 +13,11 @@
 import type { AgentProfile } from '../types/agent.js';
 import type { ProfileLoader } from './profile-loader.js';
 import { logger } from '../shared/logging/logger.js';
+import {
+  canAutoRoute,
+  getRoutingWeight,
+  isDeprecatedAgent
+} from './agent-tiers.js';
 
 // Cache for compiled RegExp patterns to avoid recreation inside loops
 // Key: pattern string, Value: compiled RegExp or null if invalid
@@ -73,12 +78,14 @@ export interface AgentSelectionResult {
  * - Ability keywords: +3 points each
  * - Negative intents: -20 points
  * - Redirect rules: -15 points
+ * - Tier routing weight: multiplier (v12.9.0)
  *
  * @param task - Task description
  * @param profile - Agent profile
+ * @param agentName - Agent name for tier lookup
  * @returns Score (non-negative)
  */
-export function scoreAgent(task: string, profile: AgentProfile): number {
+export function scoreAgent(task: string, profile: AgentProfile, agentName?: string): number {
   let score = 0;
   const taskLower = task.toLowerCase();
 
@@ -139,6 +146,12 @@ export function scoreAgent(task: string, profile: AgentProfile): number {
         score += 3;
       }
     }
+  }
+
+  // v12.9.0: Apply tier routing weight multiplier
+  if (agentName) {
+    const routingWeight = getRoutingWeight(agentName);
+    score = Math.floor(score * routingWeight);
   }
 
   return Math.max(0, score); // Ensure non-negative
@@ -248,12 +261,30 @@ export class AgentSelector {
       return this.createFallbackResult(task);
     }
 
+    // v12.9.0: Filter to only agents that support auto-routing
+    // Excludes specialty agents (require explicit selection) and deprecated agents
+    const autoRoutableAgents = agentNames.filter(name => {
+      if (!canAutoRoute(name)) {
+        logger.debug(`[AgentSelector] Excluding agent from auto-selection: ${name}`, {
+          reason: isDeprecatedAgent(name) ? 'deprecated' : 'requires explicit selection'
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (autoRoutableAgents.length === 0) {
+      logger.warn('[AgentSelector] No auto-routable agents found, using fallback');
+      return this.createFallbackResult(task);
+    }
+
     // Score each agent (parallel loading for better performance)
     const profileResults = await Promise.all(
-      agentNames.map(async (name) => {
+      autoRoutableAgents.map(async (name) => {
         try {
           const profile = await this.profileLoader.loadProfile(name);
-          return { name, profile, score: scoreAgent(task, profile) };
+          // v12.9.0: Pass agent name for tier weight lookup
+          return { name, profile, score: scoreAgent(task, profile, name) };
         } catch (error) {
           logger.debug(`[AgentSelector] Failed to load profile: ${name}`, { error });
           return null;

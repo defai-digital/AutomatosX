@@ -46,6 +46,10 @@ export interface BugfixRunOutput {
   bugsFailed: number;
   /** Number of bugs skipped (no auto-fix available) */
   bugsSkipped: number;
+  /** v12.9.1: Number of bugs auto-fixed (PRD-021) */
+  autoFixedCount: number;
+  /** v12.9.1: Number of bugs requiring manual review (PRD-021) */
+  manualReviewCount: number;
   /** Success rate (0-1) */
   successRate: number;
   /** Total duration in ms */
@@ -60,6 +64,16 @@ export interface BugfixRunOutput {
     line: number;
     type: BugType;
     message: string;
+    /** v12.9.1: Whether this was auto-fixed (PRD-021) */
+    autoFixed: boolean;
+  }>;
+  /** v12.9.1: Bugs requiring manual review (PRD-021) */
+  manualReview: Array<{
+    file: string;
+    line: number;
+    type: BugType;
+    message: string;
+    reason: string;
   }>;
   /** Error message if failed */
   error?: string;
@@ -104,7 +118,7 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
 
       const result = await controller.execute();
 
-      // Build output
+      // v12.9.1: Build output with autoFixed markers (PRD-021)
       const fixed = result.attempts
         .filter(a => a.status === 'verified')
         .map(a => {
@@ -113,7 +127,22 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
             file: finding?.file || 'unknown',
             line: finding?.lineStart || 0,
             type: finding?.type || 'custom' as BugType,
-            message: finding?.message || 'Fixed'
+            message: finding?.message || 'Fixed',
+            autoFixed: true // All verified fixes are auto-fixed
+          };
+        });
+
+      // v12.9.1: Build manual review list from skipped bugs (PRD-021)
+      const manualReviewList = result.attempts
+        .filter(a => a.status === 'skipped')
+        .map(a => {
+          const finding = result.findings.find(f => f.id === a.bugId);
+          return {
+            file: finding?.file || 'unknown',
+            line: finding?.lineStart || 0,
+            type: finding?.type || 'custom' as BugType,
+            message: finding?.message || 'Unknown',
+            reason: a.error || 'No automatic fix available'
           };
         });
 
@@ -123,11 +152,14 @@ export function createBugfixRunHandler(): ToolHandler<BugfixRunInput, BugfixRunO
         bugsFixed: result.stats.bugsFixed,
         bugsFailed: result.stats.bugsFailed,
         bugsSkipped: result.stats.bugsSkipped,
+        autoFixedCount: result.stats.bugsFixed, // All verified = auto-fixed
+        manualReviewCount: result.stats.bugsSkipped, // Count
         successRate: result.stats.successRate,
         durationMs: result.stats.totalDurationMs,
         finalState: result.finalState,
         bySeverity: result.stats.bugsBySeverity,
         fixed,
+        manualReview: manualReviewList,
         error: result.error
       };
 

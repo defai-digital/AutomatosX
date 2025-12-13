@@ -10,6 +10,7 @@
 
 /**
  * Agent domain types
+ * @since v12.9.0 - Added 'product' and 'design' domains
  */
 export type AgentDomain =
   | 'backend'
@@ -20,9 +21,15 @@ export type AgentDomain =
   | 'architecture'
   | 'devops'
   | 'data'
+  | 'data-scientist'   // v12.9.0: ML/analytics specialist
   | 'mobile'
+  | 'quantum-engineer' // v12.9.0: Quantum specialist
+  | 'aerospace-scientist' // v12.9.0: Aerospace specialist
+  | 'creative-marketer' // v12.9.0: Marketing specialist
   | 'writer'
   | 'researcher'
+  | 'product'   // v12.9.0: Product management
+  | 'design'    // v12.9.0: UX/UI design
   | 'standard';
 
 /**
@@ -418,6 +425,293 @@ export const STANDARD_TEMPLATE: AgentInstructionTemplate = {
 };
 
 /**
+ * Product agent template
+ * @since v12.9.0
+ */
+export const PRODUCT_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'product',
+  displayName: 'Product Manager',
+  domainReminders: [
+    'Define clear acceptance criteria',
+    'Write user stories from the user perspective',
+    'Prioritize based on business value and effort',
+    'Consider edge cases and error scenarios',
+    'Document non-functional requirements'
+  ],
+  qualityChecklist: [
+    'User stories follow INVEST criteria',
+    'Acceptance criteria are testable',
+    'Edge cases are documented',
+    'Dependencies are identified',
+    'Success metrics are defined'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['implement', 'code', 'build', 'develop', 'fix'],
+      suggestedAgent: 'backend',
+      reason: 'Implementation should be handled by engineering'
+    },
+    {
+      keywords: ['design', 'wireframe', 'mockup', 'UI', 'UX'],
+      suggestedAgent: 'design',
+      reason: 'Design work should be handled by design specialist'
+    },
+    {
+      keywords: ['architecture', 'system design', 'scalability'],
+      suggestedAgent: 'architecture',
+      reason: 'Technical architecture needs architect review'
+    }
+  ],
+  antiPatterns: [
+    'Avoid vague requirements without acceptance criteria',
+    'Don\'t skip user research and validation',
+    'Avoid scope creep without proper evaluation',
+    'Don\'t ignore technical constraints'
+  ],
+  bestPractices: [
+    'Start with the problem, not the solution',
+    'Validate assumptions with data',
+    'Keep requirements atomic and testable',
+    'Collaborate early with engineering and design'
+  ]
+};
+
+/**
+ * Design agent template
+ * @since v12.9.0
+ */
+export const DESIGN_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'design',
+  displayName: 'UX/UI Designer',
+  domainReminders: [
+    'Design for accessibility (WCAG compliance)',
+    'Follow established design system patterns',
+    'Consider responsive design across breakpoints',
+    'Document interaction states and transitions',
+    'Validate designs with user feedback'
+  ],
+  qualityChecklist: [
+    'Designs meet accessibility standards',
+    'Components follow design system',
+    'All interaction states are defined',
+    'Responsive breakpoints are considered',
+    'User flows are documented'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['implement', 'code', 'React', 'CSS', 'component'],
+      suggestedAgent: 'frontend',
+      reason: 'Implementation should be handled by frontend'
+    },
+    {
+      keywords: ['requirements', 'user story', 'acceptance'],
+      suggestedAgent: 'product',
+      reason: 'Requirements definition is product responsibility'
+    }
+  ],
+  antiPatterns: [
+    'Avoid designing without user research',
+    'Don\'t ignore accessibility requirements',
+    'Avoid inconsistent patterns across screens',
+    'Don\'t skip design documentation'
+  ],
+  bestPractices: [
+    'Design mobile-first, then scale up',
+    'Use consistent spacing and typography',
+    'Document component states thoroughly',
+    'Test designs with real users'
+  ]
+};
+
+/**
+ * Data Scientist template
+ * @since v12.9.0
+ */
+const DATA_SCIENTIST_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'data-scientist',
+  displayName: 'Data Scientist',
+  domainReminders: [
+    'Validate data quality and assumptions before modeling',
+    'Guard against leakage between train/validation/test splits',
+    'Establish simple baselines before complex models',
+    'Track reproducibility (seeds, environments, datasets)',
+    'Choose metrics that reflect the business objective'
+  ],
+  qualityChecklist: [
+    'Datasets are split correctly with no leakage',
+    'Features are scaled/encoded appropriately',
+    'Evaluation uses the right metrics for the task',
+    'Randomness is seeded for reproducibility',
+    'Results include error bars or confidence measures'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['pipeline', 'etl', 'ingest', 'warehouse'],
+      suggestedAgent: 'data',
+      reason: 'Data engineering tasks are better handled by the data engineer'
+    },
+    {
+      keywords: ['deploy', 'endpoint', 'serve', 'inference'],
+      suggestedAgent: 'backend',
+      reason: 'Serving models needs backend/API implementation'
+    }
+  ],
+  antiPatterns: [
+    'Training and evaluating on the same dataset',
+    'Ignoring class imbalance or skewed distributions',
+    'Selecting models without comparing against baselines',
+    'Relying on accuracy for imbalanced problems'
+  ],
+  bestPractices: [
+    'Start with simple, explainable models',
+    'Use cross-validation when data is limited',
+    'Monitor for drift and plan retraining triggers',
+    'Document data lineage and feature definitions'
+  ]
+};
+
+/**
+ * Quantum Engineer template
+ * @since v12.9.0
+ */
+const QUANTUM_ENGINEER_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'quantum-engineer',
+  displayName: 'Quantum Engineer',
+  domainReminders: [
+    'Minimize circuit depth and qubit count for NISQ hardware',
+    'Prefer simulator checks before targeting real devices',
+    'Account for noise models and measurement error',
+    'Clearly separate classical vs quantum workloads',
+    'Validate gate sets and constraints for the target backend'
+  ],
+  qualityChecklist: [
+    'Circuit depth and width match hardware constraints',
+    'Noise/measurement error is considered in results',
+    'Classical pre/post-processing steps are defined',
+    'Resource estimates (shots, qubits) are documented',
+    'Fallback/approximation strategy is noted'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['api', 'service', 'integration', 'endpoint'],
+      suggestedAgent: 'backend',
+      reason: 'Backend integration is better owned by backend engineers'
+    },
+    {
+      keywords: ['dataset', 'features', 'ml', 'model'],
+      suggestedAgent: 'data-scientist',
+      reason: 'Data preparation and modeling should involve data science'
+    }
+  ],
+  antiPatterns: [
+    'Designing circuits without checking hardware limits',
+    'Ignoring decoherence or noise impacts',
+    'Using brute-force search on large state spaces',
+    'Skipping validation against classical baselines'
+  ],
+  bestPractices: [
+    'Use parameterized circuits with optimization loops',
+    'Benchmark against classical alternatives',
+    'Keep entanglement localized where possible',
+    'Log assumptions, approximations, and limitations'
+  ]
+};
+
+/**
+ * Aerospace Scientist template
+ * @since v12.9.0
+ */
+const AEROSPACE_SCIENTIST_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'aerospace-scientist',
+  displayName: 'Aerospace Scientist',
+  domainReminders: [
+    'Keep units and reference frames explicit (SI by default)',
+    'Validate propagation methods and numerical stability',
+    'Account for environmental factors and perturbations',
+    'Check safety margins and operational constraints',
+    'Document assumptions for trajectories and controls'
+  ],
+  qualityChecklist: [
+    'Units are consistent and conversions are verified',
+    'Reference frames are documented and used correctly',
+    'Numerical integration tolerances are appropriate',
+    'Failure/anomaly modes are considered',
+    'Telemetry/ephemeris sources are cited'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['pipeline', 'telemetry', 'analytics'],
+      suggestedAgent: 'data',
+      reason: 'Data engineering helps with telemetry processing at scale'
+    },
+    {
+      keywords: ['api', 'service', 'backend', 'integration'],
+      suggestedAgent: 'backend',
+      reason: 'Service integration belongs with backend specialists'
+    }
+  ],
+  antiPatterns: [
+    'Mixing units or frames without explicit conversions',
+    'Ignoring numerical error accumulation in propagation',
+    'Relying on unchecked default constants',
+    'Skipping validation against authoritative references'
+  ],
+  bestPractices: [
+    'Use double precision for critical calculations',
+    'Cross-check results with reference ephemerides or tools',
+    'Apply sanity checks on bounds and invariants',
+    'Capture uncertainties and margins in outputs'
+  ]
+};
+
+/**
+ * Creative Marketer template
+ * @since v12.9.0
+ */
+const CREATIVE_MARKETER_TEMPLATE: AgentInstructionTemplate = {
+  domain: 'creative-marketer',
+  displayName: 'Creative Marketer',
+  domainReminders: [
+    'Anchor messaging on target audience and value prop',
+    'Keep brand voice and guardrails consistent',
+    'Tailor copy to the distribution channel',
+    'Use clear CTAs and measurable goals',
+    'Respect compliance/safety constraints'
+  ],
+  qualityChecklist: [
+    'Value proposition is explicit',
+    'Tone matches brand guidelines',
+    'CTA is clear and actionable',
+    'Claims avoid overpromising',
+    'Channel-specific nuances are considered'
+  ],
+  delegationTriggers: [
+    {
+      keywords: ['visual', 'layout', 'mock', 'design'],
+      suggestedAgent: 'design',
+      reason: 'Visual execution should be handled by the design specialist'
+    },
+    {
+      keywords: ['requirement', 'acceptance', 'story'],
+      suggestedAgent: 'product',
+      reason: 'Product should refine requirements and acceptance criteria'
+    }
+  ],
+  antiPatterns: [
+    'Generic buzzwords without benefits',
+    'Unsubstantiated or risky claims',
+    'Ignoring channel constraints (length, format)',
+    'Overloading copy without a single CTA'
+  ],
+  bestPractices: [
+    'Lead with the user problem and outcome',
+    'Use concise, scannable structure',
+    'Test variants when possible',
+    'Align messaging with campaign metrics'
+  ]
+};
+
+/**
  * Derived templates - defined as constants to avoid runtime object creation
  */
 const FULLSTACK_TEMPLATE: AgentInstructionTemplate = {
@@ -446,6 +740,7 @@ const RESEARCHER_TEMPLATE: AgentInstructionTemplate = {
 
 /**
  * All agent templates indexed by domain
+ * @since v12.9.0 - Added product and design templates
  */
 export const AGENT_TEMPLATES: Record<AgentDomain, AgentInstructionTemplate> = {
   backend: BACKEND_TEMPLATE,
@@ -456,9 +751,15 @@ export const AGENT_TEMPLATES: Record<AgentDomain, AgentInstructionTemplate> = {
   architecture: ARCHITECTURE_TEMPLATE,
   devops: DEVOPS_TEMPLATE,
   data: DATA_TEMPLATE,
+  'data-scientist': DATA_SCIENTIST_TEMPLATE,
   mobile: MOBILE_TEMPLATE,
+  'quantum-engineer': QUANTUM_ENGINEER_TEMPLATE,
+  'aerospace-scientist': AEROSPACE_SCIENTIST_TEMPLATE,
+  'creative-marketer': CREATIVE_MARKETER_TEMPLATE,
   writer: WRITER_TEMPLATE,
   researcher: RESEARCHER_TEMPLATE,
+  product: PRODUCT_TEMPLATE,   // v12.9.0
+  design: DESIGN_TEMPLATE,     // v12.9.0
   standard: STANDARD_TEMPLATE
 };
 
@@ -474,7 +775,7 @@ export function getAgentTemplate(domain: AgentDomain): AgentInstructionTemplate 
  * Check if a domain is recognized
  */
 export function isValidAgentDomain(domain: string): domain is AgentDomain {
-  return domain in AGENT_TEMPLATES;
+  return Object.hasOwn(AGENT_TEMPLATES, domain);
 }
 
 /**

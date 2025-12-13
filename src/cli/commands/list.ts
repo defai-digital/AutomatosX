@@ -1,5 +1,6 @@
 /**
  * List Command - List agents, abilities, or providers
+ * @since v12.9.0 - Added --all and --examples flags for agent tiering
  */
 
 import type { CommandModule } from 'yargs';
@@ -8,10 +9,17 @@ import { join } from 'path';
 import chalk from 'chalk';
 import { logger } from '../../shared/logging/logger.js';
 import { PathResolver, detectProjectRoot } from '../../shared/validation/path-resolver.js';
+import {
+  AGENT_TIER_MAP,
+  type AgentTier,
+  getAgentTierConfig
+} from '../../agents/agent-tiers.js';
 
 interface ListOptions {
   type: 'agents' | 'abilities' | 'providers';
   format?: 'text' | 'json';
+  all?: boolean;
+  examples?: boolean;
 }
 
 export const listCommand: CommandModule<Record<string, unknown>, ListOptions> = {
@@ -31,6 +39,18 @@ export const listCommand: CommandModule<Record<string, unknown>, ListOptions> = 
         type: 'string',
         choices: ['text', 'json'] as const,
         default: 'text'
+      })
+      .option('all', {
+        alias: 'a',
+        describe: 'Show all agents including specialty/hidden (agents only)',
+        type: 'boolean',
+        default: false
+      })
+      .option('examples', {
+        alias: 'e',
+        describe: 'Show example prompts for each agent (agents only)',
+        type: 'boolean',
+        default: false
       }) as any;
   },
 
@@ -46,7 +66,10 @@ export const listCommand: CommandModule<Record<string, unknown>, ListOptions> = 
 
       switch (argv.type) {
         case 'agents':
-          await listAgents(pathResolver, argv.format || 'text');
+          await listAgents(pathResolver, argv.format || 'text', {
+            showAll: argv.all || false,
+            showExamples: argv.examples || false
+          });
           break;
         case 'abilities':
           await listAbilities(pathResolver, argv.format || 'text');
@@ -66,9 +89,23 @@ export const listCommand: CommandModule<Record<string, unknown>, ListOptions> = 
 };
 
 /**
- * List available agents
+ * Options for listing agents
+ * @since v12.9.0
  */
-async function listAgents(pathResolver: PathResolver, format: 'text' | 'json'): Promise<void> {
+interface ListAgentsOptions {
+  showAll: boolean;
+  showExamples: boolean;
+}
+
+/**
+ * List available agents with tiering support
+ * @since v12.9.0 - Added tier grouping, --all, and --examples
+ */
+async function listAgents(
+  pathResolver: PathResolver,
+  format: 'text' | 'json',
+  options: ListAgentsOptions
+): Promise<void> {
   const agentsDir = pathResolver.getAgentsDirectory();
   const { existsSync } = await import('fs');
   const projectDir = await detectProjectRoot();
@@ -128,45 +165,118 @@ async function listAgents(pathResolver: PathResolver, format: 'text' | 'json'): 
     // Sort by name
     agentFiles.sort((a, b) => a.file.localeCompare(b.file));
 
-    const agents = [];
+    const agents: Array<{
+      id: string;
+      name: string;
+      description: string;
+      abilities: string[];
+      source: string;
+      tier: AgentTier;
+      visible: boolean;
+      examplePrompt: string;
+    }> = [];
 
     for (const { file, path: agentPath, source } of agentFiles) {
       try {
         const content = await readFile(agentPath, 'utf-8');
         const agent = load(content) as any;
 
-        const name = agent.displayName || agent.name || file.replace(/\.(yaml|yml)$/, '');
-        const description = agent.description || 'No description';
+        // Bug fix v12.9.0: Use filename for tier lookup (AGENT_TIER_MAP keys match filenames)
+        // The YAML 'name' field may differ (e.g., "Backend Developer" vs "backend")
+        const agentId = file.replace(/\.(yaml|yml)$/, '');
+        const name = agent.displayName || agent.name || agentId;
+
+        // Get tier configuration using filename-based ID
+        const tierConfig = getAgentTierConfig(agentId);
+
+        // Use tier config description if available, otherwise fall back to YAML
+        const description = tierConfig?.description || agent.description || 'No description';
+        const tier = tierConfig?.tier ?? 'extended';
+        const visible = tierConfig?.visible ?? true;
+        const examplePrompt = tierConfig?.examplePrompt ?? '';
+
+        // Skip hidden agents unless --all flag is used
+        // Track skipped count for summary message
+        if (!options.showAll && !visible) {
+          continue;
+        }
 
         const agentInfo = {
+          id: agentId,
           name,
           description,
           abilities: agent.abilities || [],
-          source
+          source,
+          tier,
+          visible,
+          examplePrompt
         };
 
         agents.push(agentInfo);
-      } catch (error) {
-        // Skip agents that fail to load in JSON mode
+      } catch {
+        // Skip agents that fail to load
       }
     }
 
     if (format === 'json') {
       console.log(JSON.stringify({ agents, total: agents.length }, null, 2));
     } else {
-      console.log(chalk.blue.bold('\n🤖 Available Agents:\n'));
+      // Group agents by tier for display
+      const tierOrder: AgentTier[] = ['core', 'extended', 'specialty', 'deprecated'];
+      const tierLabels: Record<AgentTier, string> = {
+        core: '🎯 Core Agents (Recommended)',
+        extended: '📦 Extended Agents',
+        specialty: '🔬 Specialty Agents',
+        deprecated: '⚠️  Deprecated Agents'
+      };
+      const tierColors: Record<AgentTier, typeof chalk.cyan> = {
+        core: chalk.cyan,
+        extended: chalk.blue,
+        specialty: chalk.magenta,
+        deprecated: chalk.yellow
+      };
 
-      for (const agent of agents) {
-        console.log(chalk.cyan(`  • ${agent.name}`) + chalk.gray(` (${agent.source})`));
-        console.log(chalk.gray(`    ${agent.description}`));
+      console.log(chalk.bold('\n🤖 Available Agents\n'));
 
-        if (agent.abilities && agent.abilities.length > 0) {
-          console.log(chalk.gray(`    Abilities: ${agent.abilities.join(', ')}`));
+      let visibleCount = 0;
+
+      for (const tier of tierOrder) {
+        const tierAgents = agents.filter(a => a.tier === tier);
+        if (tierAgents.length === 0) continue;
+
+        // Note: Hidden/deprecated agents are already filtered out at line 200
+        // unless --all flag was used, so no need to check again here
+
+        console.log(chalk.bold(tierLabels[tier]) + '\n');
+        const color = tierColors[tier];
+
+        for (const agent of tierAgents) {
+          visibleCount++;
+          console.log(color(`  ${agent.id}`) + chalk.gray(` - ${agent.description}`));
+
+          if (options.showExamples && agent.examplePrompt) {
+            console.log(chalk.gray(`    Example: "${agent.examplePrompt}"`));
+          }
         }
         console.log();
       }
 
-      console.log(chalk.gray(`Total: ${agents.length} agent(s)\n`));
+      // Summary
+      console.log(chalk.gray('─'.repeat(50)));
+      console.log(chalk.gray(`Showing ${visibleCount} agent(s)`));
+
+      if (!options.showAll) {
+        const totalHidden = Object.values(AGENT_TIER_MAP).filter(c => !c.visible).length;
+        if (totalHidden > 0) {
+          console.log(chalk.gray(`Use --all to show ${totalHidden} hidden specialty agents`));
+        }
+      }
+
+      if (!options.showExamples) {
+        console.log(chalk.gray('Use --examples to show usage examples'));
+      }
+
+      console.log();
     }
 
   } catch (error) {

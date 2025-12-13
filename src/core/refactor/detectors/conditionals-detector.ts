@@ -12,6 +12,7 @@ import type {
   RefactorIgnoreState,
 } from '../types.js';
 import { createFinding } from '../refactor-detector.js';
+import { shouldIgnoreLine } from './detector-utils.js';
 
 // ============================================================================
 // Detection Rules
@@ -452,22 +453,5 @@ function detectTernaryWithBoolean(
 }
 
 // ============================================================================
-// Utilities
+// Utilities (now imported from detector-utils.ts)
 // ============================================================================
-
-function shouldIgnoreLine(
-  lineNum: number,
-  type: 'conditionals',
-  ignoreState: RefactorIgnoreState
-): boolean {
-  if (ignoreState.ignoreAllLines.has(lineNum)) return true;
-
-  const typeIgnores = ignoreState.ignoreTypeLines.get(lineNum);
-  if (typeIgnores?.has(type)) return true;
-
-  for (const block of ignoreState.ignoreBlocks) {
-    if (lineNum >= block.start && lineNum <= block.end) return true;
-  }
-
-  return false;
-}

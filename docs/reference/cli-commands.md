@@ -2,6 +2,8 @@
 
 Complete reference for all AutomatosX CLI commands.
 
+> Note: Examples in this file were captured on AutomatosX v6.3.8. Command names and flags are unchanged in v12.x; version banners in sample output will show current values.
+
 ---
 
 ## Global Options

@@ -33,6 +33,7 @@ import {
   type RunStatusInfo
 } from '../../shared/helpers/run-cleanup.js';
 import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
+import { DEFAULT_MUST_PAUSE_PATTERNS } from '../../core/iterate/question-responder.js';
 import type { ExecutionHooks } from '../../agents/executor.js';
 import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
 import { VerbosityManager, VerbosityLevel } from '../../shared/logging/verbosity-manager.js';
@@ -111,6 +112,10 @@ interface RunOptions {
   iterateWarnAtTokenPercent?: number[];
   // v8.6.0: Deprecated cost-based limits (kept for backward compatibility)
   iterateMaxCost?: number;
+  // v12.9.0: Question responder for auto-answering genuine questions
+  autoAnswer?: boolean;
+  autoAnswerProvider?: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+  autoAnswerThreshold?: number;
   // v11.0.0: Workflow templates for multi-step tasks
   workflow?: string;
   // v11.1.0: Agent auto-selection
@@ -268,6 +273,23 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         describe: '[DEPRECATED] Max cost for iterate mode (use --iterate-max-tokens instead)',
         type: 'number',
         hidden: true // Hide from help but still accept for backward compat
+      })
+      // v12.9.0: Question responder options
+      .option('auto-answer', {
+        describe: 'Enable LLM-powered auto-answering for technical questions in iterate mode (v12.9.0)',
+        type: 'boolean',
+        default: false
+      })
+      .option('auto-answer-provider', {
+        describe: 'Provider to use for auto-answering questions (default: gemini for free tier)',
+        type: 'string',
+        choices: ['gemini', 'claude', 'openai', 'glm', 'grok'],
+        default: 'gemini'
+      })
+      .option('auto-answer-threshold', {
+        describe: 'Confidence threshold for auto-answers (0-1, default: 0.7)',
+        type: 'number',
+        default: 0.7
       })
       .option('workflow', {
         alias: 'w',
@@ -1084,11 +1106,71 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
                 warnAtTimePercent: [75, 90],
                 pauseOnGenuineQuestion: true,
                 pauseOnHighRiskOperation: true
-              }
+              },
+              // v12.9.0: Question responder configuration
+              questionResponder: argv.autoAnswer ? {
+                enabled: true,
+                provider: (argv.autoAnswerProvider || 'gemini') as 'gemini' | 'claude' | 'openai' | 'glm' | 'grok',
+                confidenceThreshold: argv.autoAnswerThreshold || 0.7,
+                maxAutoAnswers: 50,
+                timeout: 30000,
+                mustPausePatterns: DEFAULT_MUST_PAUSE_PATTERNS
+              } : undefined
             },
             sessionManager,
             statusRenderer
           );
+
+          // v12.9.0: Set up provider executor for question answering if auto-answer is enabled
+          if (argv.autoAnswer) {
+            // Create a provider executor that uses the router
+            const questionAnswerProvider = argv.autoAnswerProvider || 'gemini';
+            logger.info('Auto-answer enabled', {
+              provider: questionAnswerProvider,
+              threshold: argv.autoAnswerThreshold || 0.7
+            });
+
+            // The provider executor will be set up when we have the session ID
+            // For now, create a simple executor using a fresh provider
+            const { GeminiProvider } = await import('../../providers/gemini-provider.js');
+            const { ClaudeProvider } = await import('../../providers/claude-provider.js');
+            const { OpenAIProvider } = await import('../../providers/openai-provider.js');
+
+            // Create provider based on config
+            let qaProvider;
+            const providerConfig = {
+              name: questionAnswerProvider,
+              enabled: true,
+              priority: 1,
+              timeout: 30000
+            };
+
+            switch (questionAnswerProvider) {
+              case 'claude':
+                qaProvider = new ClaudeProvider(providerConfig);
+                break;
+              case 'openai':
+                qaProvider = new OpenAIProvider(providerConfig);
+                break;
+              case 'glm':
+                qaProvider = new GLMProvider(providerConfig);
+                break;
+              case 'grok':
+                qaProvider = new GrokProvider(providerConfig);
+                break;
+              case 'gemini':
+              default:
+                qaProvider = new GeminiProvider(providerConfig);
+                break;
+            }
+
+            // Set the provider executor
+            const sessionId = `qa-${Date.now()}`;
+            iterateController.setProviderExecutor(
+              async (request) => qaProvider.execute(request),
+              sessionId
+            );
+          }
 
           // Create hook that delegates to controller
           iterateHooks = {

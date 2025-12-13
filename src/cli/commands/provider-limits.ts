@@ -8,32 +8,15 @@
 import type { CommandModule } from 'yargs';
 import { getProviderLimitManager } from '../../core/provider-limit-manager.js';
 import { logger } from '../../shared/logging/logger.js';
+import { formatDurationHuman } from '../../shared/helpers/format-utils.js';
 import chalk from 'chalk';
 
 interface ProviderLimitsOptions {
   json?: boolean;
 }
 
-/**
- * Format duration string (e.g., "2h 30m", "45m", "< 1m")
- */
-function formatDuration(ms: number): string {
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (hours > 0) {
-    if (minutes > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${hours}h`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
-
-  return '< 1m';
-}
+// Alias for backward compatibility
+const formatDuration = formatDurationHuman;
 
 export const providerLimitsCommand: CommandModule<Record<string, unknown>, ProviderLimitsOptions> = {
   command: 'provider-limits',

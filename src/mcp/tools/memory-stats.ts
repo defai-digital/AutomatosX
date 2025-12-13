@@ -7,6 +7,7 @@
 import type { ToolHandler, MemoryStatsOutput } from '../types.js';
 import type { IMemoryManager } from '../../types/memory.js';
 import { logger } from '../../shared/logging/logger.js';
+import { formatBytes } from '../../shared/helpers/format-utils.js';
 
 export interface MemoryStatsDependencies {
   memoryManager: IMemoryManager;
@@ -30,15 +31,6 @@ export function createMemoryStatsHandler(
         const agent = (entry.metadata?.agent as string | undefined) || 'unknown';
         byAgent[agent] = (byAgent[agent] || 0) + 1;
       }
-
-      // Format dbSize as human-readable string
-      const formatBytes = (bytes: number): string => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
-      };
 
       const result: MemoryStatsOutput = {
         totalEntries: stats.totalEntries,

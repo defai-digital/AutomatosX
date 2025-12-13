@@ -1,7 +1,7 @@
 /**
  * Autonomous Refactor Tool
  * @module core/refactor
- * @version 12.7.0
+ * @version 12.10.0
  */
 
 // Types
@@ -51,3 +51,17 @@ export { TYPE_SAFETY_RULES, detectTypeSafety } from './detectors/type-safety-det
 
 // Semantic Analysis (PRD-019) - TypeScript Language Service integration
 export * from './semantic/index.js';
+
+// LLM-based Refactoring (PRD-022) - v12.10.0
+export {
+  LLMRefactorService,
+  createRefactorService,
+  buildRefactorPrompt,
+  parseRefactorResponse,
+  DEFAULT_LLM_REFACTOR_CONFIG,
+} from './llm-refactor/index.js';
+export type {
+  LLMRefactorConfig,
+  LLMRefactorMetrics,
+  RefactorOperationResult,
+} from './llm-refactor/index.js';

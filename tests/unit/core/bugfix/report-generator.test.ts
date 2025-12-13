@@ -262,12 +262,13 @@ describe('Report Generator', () => {
       expect(markdown).toContain('**Timer Leak**: 1');
     });
 
-    it('should include fixed bugs section with diff', () => {
+    // v12.9.1: Section renamed to Auto-Fixed Bugs with markers (PRD-021)
+    it('should include auto-fixed bugs section with diff and markers', () => {
       const result = createMockResult();
       const markdown = generateMarkdownReport(result);
 
-      expect(markdown).toContain('## Fixed Bugs');
-      expect(markdown).toContain('### src/test.ts:10');
+      expect(markdown).toContain('## Auto-Fixed Bugs');
+      expect(markdown).toContain('✓ [AUTO]');
       expect(markdown).toContain('**Diff:**');
       expect(markdown).toContain('```diff');
     });
@@ -339,6 +340,166 @@ describe('Report Generator', () => {
 
       // Should match pattern like bugfix-2025-12-09T...
       expect(path).toMatch(/bugfix-\d{4}-\d{2}-\d{2}T/);
+    });
+  });
+
+  /**
+   * v12.9.0: LLM Triage output tests (PRD-020)
+   */
+  describe('LLM Triage Output (v12.9.0)', () => {
+    const createTriageMetrics = () => ({
+      findingsTotal: 10,
+      findingsTriaged: 8,
+      findingsAccepted: 5,
+      findingsRejected: 3,
+      findingsSkipped: 2,
+      findingsFallback: 0,
+      llmRequests: 3,
+      llmTokensUsed: 1500,
+      llmCostEstimateUsd: 0.0045,
+      triageDurationMs: 2500
+    });
+
+    describe('generateJsonOutput with triage', () => {
+      it('should include triage section when triageMetrics provided', () => {
+        const result = createMockResult();
+        const json = generateJsonOutput(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'claude'
+        });
+
+        expect(json.triage).toBeDefined();
+        expect(json.triage?.enabled).toBe(true);
+        expect(json.triage?.provider).toBe('claude');
+      });
+
+      it('should include all triage metrics fields', () => {
+        const result = createMockResult();
+        const triageMetrics = createTriageMetrics();
+        const json = generateJsonOutput(result, {
+          triageMetrics,
+          triageProvider: 'gemini'
+        });
+
+        expect(json.triage?.findingsTriaged).toBe(8);
+        expect(json.triage?.findingsAccepted).toBe(5);
+        expect(json.triage?.findingsRejected).toBe(3);
+        expect(json.triage?.findingsSkipped).toBe(2);
+        expect(json.triage?.findingsFallback).toBe(0);
+        expect(json.triage?.llmRequests).toBe(3);
+        expect(json.triage?.llmTokensUsed).toBe(1500);
+        expect(json.triage?.llmCostEstimateUsd).toBe(0.0045);
+        expect(json.triage?.durationMs).toBe(2500);
+      });
+
+      it('should not include triage section when no triageMetrics', () => {
+        const result = createMockResult();
+        const json = generateJsonOutput(result);
+
+        expect(json.triage).toBeUndefined();
+      });
+
+      it('should use default provider when not specified', () => {
+        const result = createMockResult();
+        const json = generateJsonOutput(result, {
+          triageMetrics: createTriageMetrics()
+        });
+
+        expect(json.triage?.provider).toBe('claude');
+      });
+
+      it('should include triage summary fields when originalFindingsCount provided', () => {
+        const result = createMockResult();
+        const json = generateJsonOutput(result, {
+          triageMetrics: createTriageMetrics(),
+          originalFindingsCount: 10
+        });
+
+        expect(json.summary.bugsAfterTriage).toBeDefined();
+        expect(json.summary.triageFiltered).toBe(3);
+      });
+    });
+
+    describe('generateMarkdownReport with triage', () => {
+      it('should include LLM Triage section when triageMetrics provided', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'claude'
+        });
+
+        expect(markdown).toContain('## LLM Triage');
+        expect(markdown).toContain('LLM triage was used to filter false positives');
+      });
+
+      it('should include triage metrics table', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'gemini'
+        });
+
+        expect(markdown).toContain('| Provider | gemini |');
+        expect(markdown).toContain('| Findings Scanned | 10 |');
+        expect(markdown).toContain('| Sent to LLM | 8 |');
+        expect(markdown).toContain('| Accepted (Real Bugs) | 5 |');
+        expect(markdown).toContain('| Rejected (False Positives) | 3 |');
+        expect(markdown).toContain('| Skipped (High Confidence) | 2 |');
+      });
+
+      it('should include LLM cost and token info', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'claude'
+        });
+
+        expect(markdown).toContain('| LLM Requests | 3 |');
+        expect(markdown).toContain('| Tokens Used | 1500 |');
+        expect(markdown).toContain('| Estimated Cost | $0.0045 |');
+      });
+
+      it('should include filter rate calculation', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'claude'
+        });
+
+        // 3 rejected / 8 triaged = 37.5%
+        expect(markdown).toContain('37.5%');
+        expect(markdown).toContain('false positives');
+      });
+
+      it('should include fallback count when present', () => {
+        const result = createMockResult();
+        const triageMetrics = createTriageMetrics();
+        triageMetrics.findingsFallback = 2;
+
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics,
+          triageProvider: 'claude'
+        });
+
+        expect(markdown).toContain('| Fallback (LLM Unavailable) | 2 |');
+      });
+
+      it('should not include fallback row when zero', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result, {
+          triageMetrics: createTriageMetrics(),
+          triageProvider: 'claude'
+        });
+
+        expect(markdown).not.toContain('Fallback (LLM Unavailable)');
+      });
+
+      it('should not include LLM Triage section when no triageMetrics', () => {
+        const result = createMockResult();
+        const markdown = generateMarkdownReport(result);
+
+        expect(markdown).not.toContain('## LLM Triage');
+      });
     });
   });
 });

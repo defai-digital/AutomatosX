@@ -194,6 +194,112 @@ export interface IterateDefaults {
   autoConfirmCheckpoints: boolean;
 }
 
+// ============================================================================
+// Question Responder Types (v12.9.0)
+// ============================================================================
+
+/**
+ * Configuration for LLM-powered question responder
+ * @since v12.9.0
+ */
+export interface QuestionResponderConfig {
+  /** Enable LLM-powered question answering (default: false) */
+  enabled: boolean;
+
+  /** Provider to use for question answering (default: 'gemini') */
+  provider: 'gemini' | 'claude' | 'openai' | 'glm' | 'grok';
+
+  /** Minimum confidence to auto-answer (0-1, default: 0.7) */
+  confidenceThreshold: number;
+
+  /** Maximum auto-answers per session (default: 50) */
+  maxAutoAnswers: number;
+
+  /** Timeout for question answering in ms (default: 30000) */
+  timeout: number;
+
+  /** Regex patterns that must always pause for user */
+  mustPausePatterns: string[];
+
+  /** Custom system prompt for question answering */
+  systemPrompt?: string;
+}
+
+/**
+ * Context provided to question responder
+ * @since v12.9.0
+ */
+export interface QuestionContext {
+  /** The question being asked */
+  question: string;
+
+  /** Recent conversation messages */
+  recentMessages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+
+  /** Current task description */
+  task: string;
+
+  /** Agent performing the task */
+  agent: string;
+
+  /** Recently modified files */
+  recentFiles?: string[];
+
+  /** Provider being used for main execution */
+  mainProvider: string;
+}
+
+/**
+ * Result from question answering
+ * @since v12.9.0
+ */
+export interface QuestionAnswer {
+  /** The answer text */
+  answer: string;
+
+  /** Confidence score (0-1) */
+  confidence: number;
+
+  /** Tokens used for this answer */
+  tokensUsed: number;
+
+  /** Latency in milliseconds */
+  latencyMs: number;
+}
+
+/**
+ * Statistics for question responder
+ * @since v12.9.0
+ */
+export interface QuestionResponderStats {
+  /** Total questions received */
+  totalQuestions: number;
+
+  /** Questions successfully auto-answered */
+  autoAnswered: number;
+
+  /** Questions that required user pause */
+  pausedForUser: number;
+
+  /** Questions blocked by must-pause patterns */
+  blockedByPattern: number;
+
+  /** Questions below confidence threshold */
+  belowThreshold: number;
+
+  /** Total tokens used */
+  tokensUsed: number;
+
+  /** Average confidence of accepted answers */
+  avgConfidence: number;
+
+  /** Average latency in ms */
+  avgLatencyMs: number;
+}
+
 /**
  * Complete iterate mode configuration
  */
@@ -215,6 +321,12 @@ export interface IterateConfig {
 
   /** Notification configuration */
   notifications: NotificationConfig;
+
+  /**
+   * Question responder configuration
+   * @since v12.9.0
+   */
+  questionResponder?: QuestionResponderConfig;
 }
 
 // ============================================================================
@@ -477,6 +589,12 @@ export interface IterateStats {
 
   /** Success rate (0-1) */
   successRate: number;
+
+  /**
+   * Question responder statistics
+   * @since v12.9.0
+   */
+  questionResponder?: QuestionResponderStats;
 }
 
 // ============================================================================

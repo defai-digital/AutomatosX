@@ -8,6 +8,8 @@
 import type { CommandModule } from 'yargs';
 import chalk from 'chalk';
 import ora from 'ora';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   RefactorController,
   type RefactorFinding,
@@ -35,11 +37,14 @@ interface RefactorOptions {
   quiet?: boolean;
   json?: boolean;
   report?: boolean | string;
+  noReport?: boolean;
   changed?: boolean;
   staged?: boolean;
   since?: string;
   check?: boolean;
   severity?: string;
+  triage?: boolean;
+  triageProvider?: string;
 }
 
 /**
@@ -58,6 +63,32 @@ function formatRefactorType(type: RefactorType): string {
   };
 
   return typeNames[type] || type;
+}
+
+/**
+ * v12.10.0: Status markers for refactoring results (PRD-022)
+ */
+const STATUS_MARKERS = {
+  auto: chalk.green('✓ [AUTO]'),
+  manual: chalk.yellow('⚠ [MANUAL]'),
+  skipped: chalk.gray('○ [SKIPPED]'),
+  failed: chalk.red('✗ [FAILED]'),
+} as const;
+
+/**
+ * v12.10.0: Get status marker based on attempt status (PRD-022)
+ */
+function getStatusMarker(status: string, autoApplied?: boolean): string {
+  if (status === 'success' && autoApplied) {
+    return STATUS_MARKERS.auto;
+  }
+  if (status === 'skipped') {
+    return STATUS_MARKERS.manual;
+  }
+  if (status === 'failed' || status === 'rolled_back') {
+    return STATUS_MARKERS.failed;
+  }
+  return STATUS_MARKERS.skipped;
 }
 
 /**
@@ -117,28 +148,75 @@ function parseSeverity(input: string | undefined): RefactorSeverity {
 
 /**
  * Generate JSON output
+ * v12.10.0: Added autoRefactored, manualReview fields (PRD-022)
  */
 function generateJsonOutput(result: RefactorResult): string {
+  // v12.10.0: Calculate counts for auto-refactored vs manual review (PRD-022)
+  const autoRefactoredCount = result.attempts.filter(
+    (a) => a.status === 'success' && a.autoApplied
+  ).length;
+  const manualReviewCount = result.attempts.filter(
+    (a) => a.status === 'skipped'
+  ).length;
+
+  // v12.10.0: Build autoRefactored list
+  const autoRefactored = result.attempts
+    .filter((a) => a.status === 'success' && a.autoApplied)
+    .map((a) => {
+      const finding = result.findings.find((f) => f.id === a.findingId);
+      return {
+        file: finding?.file || 'unknown',
+        line: finding?.lineStart || 0,
+        type: finding?.type || 'dead_code',
+        message: finding?.message || 'Refactored',
+        autoRefactored: true,
+      };
+    });
+
+  // v12.10.0: Build manual review list
+  const manualReview = result.attempts
+    .filter((a) => a.status === 'skipped')
+    .map((a) => {
+      const finding = result.findings.find((f) => f.id === a.findingId);
+      return {
+        file: finding?.file || 'unknown',
+        line: finding?.lineStart || 0,
+        type: finding?.type || 'dead_code',
+        message: finding?.message || 'Unknown',
+        reason: a.error || 'Complex pattern requires manual review',
+      };
+    });
+
   return JSON.stringify(
     {
       sessionId: result.sessionId,
       startedAt: result.startedAt,
       endedAt: result.endedAt,
       finalState: result.finalState,
-      stats: result.stats,
+      stats: {
+        ...result.stats,
+        autoRefactoredCount,
+        manualReviewCount,
+      },
       metricsBefore: result.metricsBefore,
       metricsAfter: result.metricsAfter,
       improvements: result.improvements,
-      findings: result.findings.map((f) => ({
-        id: f.id,
-        file: f.file,
-        line: f.lineStart,
-        type: f.type,
-        severity: f.severity,
-        message: f.message,
-        suggestion: f.suggestedFix,
-        confidence: f.confidence,
-      })),
+      findings: result.findings.map((f) => {
+        const attempt = result.attempts.find((a) => a.findingId === f.id);
+        return {
+          id: f.id,
+          file: f.file,
+          line: f.lineStart,
+          type: f.type,
+          severity: f.severity,
+          message: f.message,
+          suggestion: f.suggestedFix,
+          confidence: f.confidence,
+          autoRefactored: attempt?.status === 'success' && attempt?.autoApplied,
+        };
+      }),
+      autoRefactored,
+      manualReview,
     },
     null,
     2
@@ -147,8 +225,20 @@ function generateJsonOutput(result: RefactorResult): string {
 
 /**
  * Generate markdown report
+ * v12.10.0: Updated with auto-refactor markers (PRD-022)
  */
 function generateMarkdownReport(result: RefactorResult): string {
+  // v12.10.0: Calculate counts for auto-refactored vs manual review (PRD-022)
+  const autoRefactoredCount = result.attempts.filter(
+    (a) => a.status === 'success' && a.autoApplied
+  ).length;
+  const manualReviewCount = result.attempts.filter(
+    (a) => a.status === 'skipped'
+  ).length;
+  const failedCount = result.attempts.filter(
+    (a) => a.status === 'failed' || a.status === 'rolled_back'
+  ).length;
+
   const lines: string[] = [
     '# Refactoring Report',
     '',
@@ -162,8 +252,9 @@ function generateMarkdownReport(result: RefactorResult): string {
     `| Metric | Value |`,
     `|--------|-------|`,
     `| Opportunities Found | ${result.stats.opportunitiesFound} |`,
-    `| Refactors Applied | ${result.stats.refactorsApplied} |`,
-    `| Refactors Skipped | ${result.stats.refactorsSkipped} |`,
+    `| Auto-Refactored | ${autoRefactoredCount} |`,
+    `| Manual Review | ${manualReviewCount} |`,
+    `| Failed | ${failedCount} |`,
     `| Success Rate | ${(result.stats.successRate * 100).toFixed(1)}% |`,
     '',
   ];
@@ -176,11 +267,58 @@ function generateMarkdownReport(result: RefactorResult): string {
 
     for (const imp of result.improvements) {
       if (imp.improvementPercent !== 0) {
-        const change =
-          imp.improvementPercent > 0
-            ? chalk.green(`+${imp.improvementPercent.toFixed(1)}%`)
-            : chalk.red(`${imp.improvementPercent.toFixed(1)}%`);
-        lines.push(`| ${imp.metric} | ${imp.before} | ${imp.after} | ${change} |`);
+        const changeSign = imp.improvementPercent > 0 ? '+' : '';
+        lines.push(`| ${imp.metric} | ${imp.before} | ${imp.after} | ${changeSign}${imp.improvementPercent.toFixed(1)}% |`);
+      }
+    }
+    lines.push('');
+  }
+
+  // v12.10.0: Add auto-refactored section (PRD-022)
+  const autoRefactored = result.attempts.filter((a) => a.status === 'success' && a.autoApplied);
+  if (autoRefactored.length > 0) {
+    lines.push('## Auto-Refactored', '');
+    lines.push('| Status | Type | File | Line | Message |');
+    lines.push('|--------|------|------|------|---------|');
+
+    for (const attempt of autoRefactored) {
+      const finding = result.findings.find((f) => f.id === attempt.findingId);
+      if (finding) {
+        lines.push(`| [AUTO] | ${formatRefactorType(finding.type)} | ${finding.file} | ${finding.lineStart} | ${finding.message} |`);
+      }
+    }
+    lines.push('');
+  }
+
+  // v12.10.0: Add manual review required section (PRD-022)
+  const manualReview = result.attempts.filter((a) => a.status === 'skipped');
+  if (manualReview.length > 0) {
+    lines.push('## Manual Review Required', '');
+    lines.push('| Type | File | Line | Message | Reason |');
+    lines.push('|------|------|------|---------|--------|');
+
+    for (const attempt of manualReview) {
+      const finding = result.findings.find((f) => f.id === attempt.findingId);
+      if (finding) {
+        const reason = attempt.error || 'Complex pattern requires manual review';
+        lines.push(`| ${formatRefactorType(finding.type)} | ${finding.file} | ${finding.lineStart} | ${finding.message} | ${reason} |`);
+      }
+    }
+    lines.push('');
+  }
+
+  // v12.10.0: Add failed section (PRD-022)
+  const failed = result.attempts.filter((a) => a.status === 'failed' || a.status === 'rolled_back');
+  if (failed.length > 0) {
+    lines.push('## Failed Refactors', '');
+    lines.push('| Type | File | Line | Error |');
+    lines.push('|------|------|------|-------|');
+
+    for (const attempt of failed) {
+      const finding = result.findings.find((f) => f.id === attempt.findingId);
+      if (finding) {
+        const error = attempt.error || 'Unknown error';
+        lines.push(`| ${formatRefactorType(finding.type)} | ${finding.file} | ${finding.lineStart} | ${error} |`);
       }
     }
     lines.push('');
@@ -198,12 +336,21 @@ function generateMarkdownReport(result: RefactorResult): string {
   }
   lines.push('');
 
-  // Add detailed findings
-  if (result.findings.length > 0) {
+  // Add detailed findings (optional, verbose)
+  if (result.findings.length > 0 && result.findings.length <= 20) {
     lines.push('## Detailed Findings', '');
 
     for (const finding of result.findings) {
-      lines.push(`### ${finding.file}:${finding.lineStart}`);
+      const attempt = result.attempts.find((a) => a.findingId === finding.id);
+      const marker = attempt?.status === 'success' && attempt?.autoApplied
+        ? '[AUTO]'
+        : attempt?.status === 'skipped'
+        ? '[MANUAL]'
+        : attempt?.status === 'failed'
+        ? '[FAILED]'
+        : '';
+
+      lines.push(`### ${marker} ${finding.file}:${finding.lineStart}`);
       lines.push('');
       lines.push(`- **Type**: ${formatRefactorType(finding.type)}`);
       lines.push(`- **Severity**: ${finding.severity}`);
@@ -311,6 +458,22 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
       describe: 'Generate markdown report (optional path)',
       default: undefined,
     },
+    'no-report': {
+      type: 'boolean',
+      describe: 'Disable automatic report generation',
+      default: false,
+    },
+    triage: {
+      type: 'boolean',
+      describe: 'Enable LLM triage to filter false positives',
+      default: false,
+    },
+    'triage-provider': {
+      type: 'string',
+      describe: 'Provider for LLM triage (claude, gemini, openai)',
+      choices: ['claude', 'gemini', 'openai'],
+      default: 'claude',
+    },
     changed: {
       type: 'boolean',
       describe: 'Only scan git changed files',
@@ -375,8 +538,12 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
         },
         onFindingFound: (finding: RefactorFinding) => {
           if (!isQuiet && !argv.json) {
+            // v12.10.0: Show auto-fix marker based on safeToAutoFix (PRD-022)
+            const autoFixMarker = finding.estimatedImpact?.safeToAutoFix
+              ? chalk.green('[AUTO]')
+              : chalk.yellow('[MANUAL]');
             console.log(
-              `  ${formatSeverity(finding.severity)} ${chalk.cyan(formatRefactorType(finding.type))} ${finding.file}:${finding.lineStart}`
+              `  ${formatSeverity(finding.severity)} ${autoFixMarker} ${chalk.cyan(formatRefactorType(finding.type))} ${finding.file}:${finding.lineStart}`
             );
             console.log(`    ${finding.message}`);
             if (finding.suggestedFix && argv.verbose) {
@@ -453,12 +620,26 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
       if (argv.json) {
         console.log(generateJsonOutput(result));
       } else if (!isQuiet) {
+        // v12.10.0: Calculate auto-applied vs manual review counts (PRD-022)
+        const autoAppliedCount = result.attempts.filter(
+          (a) => a.status === 'success' && a.autoApplied
+        ).length;
+        const manualReviewCount = result.attempts.filter(
+          (a) => a.status === 'skipped'
+        ).length;
+        const failedCount = result.attempts.filter(
+          (a) => a.status === 'failed' || a.status === 'rolled_back'
+        ).length;
+
         console.log('');
         console.log(chalk.bold('Refactoring Summary'));
         console.log('─'.repeat(40));
         console.log(`  Opportunities found: ${chalk.cyan(result.stats.opportunitiesFound)}`);
-        console.log(`  Refactors applied:   ${chalk.green(result.stats.refactorsApplied)}`);
-        console.log(`  Refactors skipped:   ${chalk.yellow(result.stats.refactorsSkipped)}`);
+        console.log(`  ${STATUS_MARKERS.auto} Auto-applied:   ${chalk.green(autoAppliedCount)}`);
+        console.log(`  ${STATUS_MARKERS.manual} Manual review:  ${chalk.yellow(manualReviewCount)}`);
+        if (failedCount > 0) {
+          console.log(`  ${STATUS_MARKERS.failed} Failed:         ${chalk.red(failedCount)}`);
+        }
         console.log(`  Duration:            ${(result.stats.totalDurationMs / 1000).toFixed(1)}s`);
         console.log(`  Status:              ${result.finalState}`);
 
@@ -467,11 +648,34 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
         }
       }
 
-      // Generate report if requested
-      if (argv.report !== undefined) {
-        const reportPath =
-          typeof argv.report === 'string' ? argv.report : './refactor-report.md';
-        const fs = await import('fs');
+      // v12.10.0: Auto-generate report by default when refactors are applied (PRD-022)
+      const autoAppliedCount = result.attempts.filter(
+        (a) => a.status === 'success' && a.autoApplied
+      ).length;
+      const shouldGenerateReport = !isCheck &&
+        !argv.dryRun &&
+        !argv.noReport &&
+        (argv.report !== undefined || autoAppliedCount > 0);
+
+      if (shouldGenerateReport) {
+        // Determine report path
+        let reportPath: string;
+        if (typeof argv.report === 'string') {
+          // User provided explicit path: --report ./path.md
+          reportPath = argv.report;
+        } else if (argv.report === true) {
+          // User passed --report flag without path (legacy behavior)
+          reportPath = './refactor-report.md';
+        } else {
+          // Auto-generated report: default to REPORT/ directory (PRD-022)
+          const reportDir = 'REPORT';
+          if (!fs.existsSync(reportDir)) {
+            fs.mkdirSync(reportDir, { recursive: true });
+          }
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          reportPath = path.join(reportDir, `refactor-${timestamp}.md`);
+        }
+
         fs.writeFileSync(reportPath, generateMarkdownReport(result));
         if (!isQuiet) {
           console.log(`\n${chalk.green('✓')} Report saved to ${reportPath}`);

@@ -649,6 +649,50 @@ export interface CostEstimationConfig {
 // v13.0.0: AxCliSdkConfig REMOVED (ax-cli deprecated)
 // Use GLM and Grok SDK-first providers instead
 
+// ========================================
+// Bugfix Configuration (v12.9.0+)
+// ========================================
+
+/**
+ * CLI-level Bugfix Configuration (v12.9.0+)
+ * Default settings for the bugfix command
+ */
+export interface BugfixDefaultsConfig {
+  /** Default minimum severity threshold */
+  defaultSeverityThreshold?: 'low' | 'medium' | 'high' | 'critical';
+  /** Default bug types to scan for */
+  defaultBugTypes?: string[];
+  /** Maximum bugs to fix per session */
+  maxBugs?: number;
+  /** Minimum confidence threshold (0.0-1.0) */
+  minConfidence?: number;
+  /** LLM Triage configuration */
+  llmTriage?: BugfixLLMTriageConfig;
+}
+
+/**
+ * LLM Triage Configuration for Bugfix (v12.9.0+)
+ * PRD-020: LLM-based false positive filtering
+ */
+export interface BugfixLLMTriageConfig {
+  /** Enable LLM triage (default: false) */
+  enabled?: boolean;
+  /** LLM provider to use (default: 'claude') */
+  provider?: 'claude' | 'gemini' | 'openai';
+  /** Skip LLM for findings >= this confidence (default: 0.9) */
+  minConfidenceToSkip?: number;
+  /** Force LLM for findings <= this confidence (default: 0.7) */
+  maxConfidenceToForce?: number;
+  /** Findings per LLM batch (default: 5) */
+  batchSize?: number;
+  /** Max LLM requests per run (default: 10) */
+  maxRequestsPerRun?: number;
+  /** LLM call timeout in ms (default: 15000) */
+  timeoutMs?: number;
+  /** Behavior when LLM unavailable (default: 'bypass') */
+  fallbackBehavior?: 'bypass' | 'drop' | 'ast-only';
+}
+
 /**
  * Feature Flags Configuration (v12.0.0+)
  * Controls gradual rollout of new features
@@ -666,6 +710,51 @@ export interface FeatureFlagsConfig {
   deprecationWarnings?: boolean;
   /** Enable provider metrics collection (default: true) */
   providerMetrics?: boolean;
+}
+
+// ========================================
+// Refactor Configuration (v12.10.0+)
+// ========================================
+
+/**
+ * LLM Triage Configuration for Refactor (v12.10.0+)
+ * PRD-022: LLM-based false positive filtering for refactoring
+ */
+export interface RefactorLLMTriageConfig {
+  /** Enable LLM triage (default: false) */
+  enabled?: boolean;
+  /** LLM provider to use (default: 'claude') */
+  provider?: 'claude' | 'gemini' | 'openai';
+  /** Skip LLM for findings >= this confidence (default: 0.9) */
+  minConfidenceToSkip?: number;
+  /** Force LLM for findings <= this confidence (default: 0.5) */
+  maxConfidenceToForce?: number;
+  /** Findings per LLM batch (default: 5) */
+  batchSize?: number;
+  /** Max LLM requests per run (default: 10) */
+  maxRequestsPerRun?: number;
+  /** LLM call timeout in ms (default: 15000) */
+  timeoutMs?: number;
+  /** Behavior when LLM unavailable (default: 'bypass') */
+  fallbackBehavior?: 'bypass' | 'drop' | 'static-only';
+}
+
+/**
+ * CLI-level Refactor Configuration (v12.10.0+)
+ * Default settings for the refactor command
+ * @see PRD-022: Refactor Tool LLM Enhancement
+ */
+export interface RefactorDefaultsConfig {
+  /** Default minimum severity threshold */
+  defaultSeverityThreshold?: 'low' | 'medium' | 'high' | 'critical';
+  /** Default focus areas to scan for */
+  defaultFocusAreas?: string[];
+  /** Maximum findings per session */
+  maxFindings?: number;
+  /** Minimum confidence threshold (0.0-1.0) */
+  minConfidence?: number;
+  /** LLM Triage configuration */
+  llmTriage?: RefactorLLMTriageConfig;
 }
 
 export interface AutomatosXConfig {
@@ -688,6 +777,8 @@ export interface AutomatosXConfig {
   costEstimation?: CostEstimationConfig;  // v6.5.11: Cost estimation control
   // v13.0.0: axCliSdk REMOVED (ax-cli deprecated)
   featureFlags?: FeatureFlagsConfig;  // v12.0.0: Feature flags
+  bugfix?: BugfixDefaultsConfig;  // v12.9.0: PRD-020 - Bugfix command defaults
+  refactor?: RefactorDefaultsConfig;  // v12.10.0: PRD-022 - Refactor command defaults
 }
 
 // ========================================

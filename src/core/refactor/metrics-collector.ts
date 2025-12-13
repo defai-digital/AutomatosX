@@ -8,42 +8,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { RefactorMetrics, MetricImprovement } from './types.js';
+import { escapeRegex, calculateCyclomaticComplexity } from './detectors/detector-utils.js';
 
 // ============================================================================
 // Metric Calculation Utilities
 // ============================================================================
 
-/**
- * Calculate cyclomatic complexity for a function/method
- * McCabe complexity = E - N + 2P where E=edges, N=nodes, P=connected components
- * Simplified: count decision points + 1
- */
-function calculateCyclomaticComplexity(code: string): number {
-  // Count decision points
-  const decisionPatterns = [
-    /\bif\s*\(/g,
-    /\belse\s+if\s*\(/g,
-    /\bwhile\s*\(/g,
-    /\bfor\s*\(/g,
-    /\bcase\s+[^:]+:/g,
-    /\bcatch\s*\(/g,
-    /\?\s*[^:]+\s*:/g, // Ternary
-    /&&/g,
-    /\|\|/g,
-    /\?\?/g, // Nullish coalescing
-  ];
-
-  let complexity = 1; // Base complexity
-
-  for (const pattern of decisionPatterns) {
-    const matches = code.match(pattern);
-    if (matches) {
-      complexity += matches.length;
-    }
-  }
-
-  return complexity;
-}
+// calculateCyclomaticComplexity is now imported from detector-utils.ts
 
 /**
  * Calculate cognitive complexity (SonarQube-style)
@@ -197,14 +168,8 @@ function countAnyTypes(code: string): number {
 
 /**
  * Count unused imports (basic detection)
+ * Note: escapeRegex is now imported from detector-utils.ts
  */
-/**
- * Escape special regex characters in a string
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function countUnusedImports(code: string): number {
   const importMatches = code.match(/import\s+{([^}]+)}\s+from/g);
   if (!importMatches) return 0;

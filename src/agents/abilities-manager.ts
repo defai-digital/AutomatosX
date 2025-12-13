@@ -54,33 +54,39 @@ export class AbilitiesManager {
     ];
 
     for (const abilityPath of paths) {
-      try {
-        const content = await readFile(abilityPath, 'utf-8');
+      const content = await this.tryReadAbilityFile(abilityPath);
+      if (content === null) continue;
 
-        // Security: Limit file size to prevent DoS (max 500KB for ability)
-        if (content.length > 500 * 1024) {
-          throw new Error('Ability file too large (max 500KB)');
-        }
-
-        // Cache it
-        this.cache.set(name, content);
-
-        logger.trace('Ability loaded', { name, path: abilityPath });
-        return content;
-
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          // Try next path
-          continue;
-        }
-        throw error;
-      }
+      this.cache.set(name, content);
+      logger.trace('Ability loaded', { name, path: abilityPath });
+      return content;
     }
 
-    // If not found in any location, log debug and return empty string
-    // This is expected behavior - not all agents have all abilities
+    // Not found in any location - expected behavior for missing abilities
     logger.debug('Ability not found in any location', { name });
-    return ''; // Return empty string for missing abilities
+    return '';
+  }
+
+  /**
+   * Try to read an ability file, returns null if not found
+   * @since v12.8.8 - Extracted to reduce nesting
+   */
+  private async tryReadAbilityFile(path: string): Promise<string | null> {
+    try {
+      const content = await readFile(path, 'utf-8');
+
+      // Security: Limit file size to prevent DoS (max 500KB)
+      if (content.length > 500 * 1024) {
+        throw new Error('Ability file too large (max 500KB)');
+      }
+
+      return content;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

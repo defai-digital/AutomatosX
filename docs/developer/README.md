@@ -137,7 +137,7 @@ Internal project details:
 
 - **[Project History](./internals/project-history.md)** 📜
   - Development timeline
-  - Major milestones (v4.0 → v9.0)
+  - Major milestones (v4.0 → v12.0)
   - Evolution of features
   - Architecture decisions
 

@@ -12,6 +12,7 @@ import { getOptimizationAnalyzer } from '../../core/analytics/OptimizationAnalyz
 import { loadConfig } from '../../core/config/loader.js';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
+import { formatBytes, formatDurationMs, formatPercentage } from '../../shared/helpers/format-utils.js';
 import type { TimePeriod } from '../../types/telemetry.js';
 import type { TelemetryCollector } from '../../core/telemetry/TelemetryCollector.js';
 
@@ -375,31 +376,6 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-/**
- * Format duration in milliseconds
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = seconds / 60;
-  return `${minutes.toFixed(1)}m`;
-}
-
-/**
- * Format percentage
- */
-function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
-
-/**
- * Format bytes
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-}
+// formatDurationMs, formatPercentage, formatBytes are now imported from shared/helpers/format-utils.ts
+// Alias formatDuration to formatDurationMs for backward compatibility
+const formatDuration = formatDurationMs;

@@ -3,7 +3,7 @@
 This guide provides comprehensive troubleshooting solutions for AutomatosX on Windows 10 and Windows 11.
 
 **Last Updated**: 2025-10-14
-**Applies to**: AutomatosX v6.3.8+
+**Applies to**: AutomatosX v12.x (originally authored on v6.3.8; steps remain valid)
 **Platform**: Windows 10/11
 **Tested on**: Windows 10, Windows 11
 
@@ -14,10 +14,10 @@ This guide provides comprehensive troubleshooting solutions for AutomatosX on Wi
 Before diving into detailed troubleshooting, verify these essentials:
 
 - ✅ **Node.js**: v24.0.0 or higher installed
-- ✅ **AutomatosX**: Latest version (v5.3.1+)
+- ✅ **AutomatosX**: Latest version (v12.x recommended)
 - ✅ **Setup**: Run `ax setup` in your project directory
 - ✅ **Provider CLIs**: At least one provider CLI installed (Claude, Gemini, or OpenAI)
-- ✅ **Provider Detection**: AutomatosX v6.3.8+ automatically detects providers on Windows
+- ✅ **Provider Detection**: AutomatosX v6.3.8+ (and v12.x) automatically detects providers on Windows
 
 ---
 

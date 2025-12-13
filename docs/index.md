@@ -74,7 +74,7 @@ Please use [GitHub Issues](https://github.com/defai-digital/automatosx/issues) f
 
 ## Version
 
-Current release: v12.7.x (see `package.json` for exact version)
+Current release: v12.8.x (see `package.json` for exact version)
 
 ## License
 

@@ -2,10 +2,11 @@
  * Refactor Controller
  * Main orchestrator for the autonomous refactoring workflow
  * @module core/refactor/refactor-controller
- * @version 12.7.0
+ * @version 12.10.0
  */
 
 import { randomUUID } from 'crypto';
+import * as path from 'path';
 import type {
   RefactorConfig,
   RefactorState,
@@ -22,6 +23,8 @@ import type {
 import { createDefaultRefactorConfig } from './types.js';
 import { RefactorDetector } from './refactor-detector.js';
 import { MetricsCollector } from './metrics-collector.js';
+import { LLMRefactorService } from './llm-refactor/index.js';
+import type { Router } from '../router/router.js';
 
 // ============================================================================
 // Constants
@@ -45,10 +48,13 @@ export class RefactorController {
   private metricsAfter: RefactorMetrics | null = null;
   private currentIteration = 0;
   private stopReason = '';
+  private stopRequested = false;
 
   // Components
   private detector: RefactorDetector;
   private metricsCollector: MetricsCollector;
+  private llmRefactorService: LLMRefactorService | null = null;
+  private router: Router | null = null;
 
   // Callbacks
   private onProgress?: RefactorControllerOptions['onProgress'];
@@ -70,6 +76,25 @@ export class RefactorController {
     // Initialize components
     this.detector = new RefactorDetector(this.config);
     this.metricsCollector = new MetricsCollector(this.config.excludePatterns);
+
+    // Initialize LLM refactor service if router provided and LLM enabled
+    this.router = options.router ?? null;
+    if (this.router && this.config.useLLMForRefactoring) {
+      this.llmRefactorService = new LLMRefactorService({
+        router: this.router,
+        config: {
+          enabled: true,
+          provider: 'claude', // Default to Claude
+          maxRequestsPerRun: 20,
+          timeoutMs: 60000,
+          batchSize: 3,
+          temperature: 0.2,
+          maxTokens: 4000,
+          requireVerification: this.config.requireTypecheck || this.config.requireTests,
+          fallbackBehavior: 'mark_manual',
+        },
+      });
+    }
 
     // Register callbacks
     this.onProgress = options.onProgress;
@@ -120,6 +145,13 @@ export class RefactorController {
   private shouldContinue(): boolean {
     // Check terminal states
     if (this.state === 'COMPLETE' || this.state === 'FAILED') {
+      return false;
+    }
+
+    // Check if stop was requested
+    if (this.stopRequested) {
+      this.stopReason = 'Stop requested by user';
+      this.state = 'COMPLETE';
       return false;
     }
 
@@ -293,30 +325,96 @@ export class RefactorController {
   private async handleRefactoring(): Promise<void> {
     this.emitProgress('Applying refactorings...');
 
-    // For now, we only report findings (LLM integration would be Phase 3)
-    // This implements the scan-and-report functionality
+    // Check if LLM refactoring is available
+    if (!this.config.useLLMForRefactoring || !this.llmRefactorService) {
+      // Skip all findings without LLM
+      for (const finding of this.findings) {
+        const attempt: RefactorAttempt = {
+          id: randomUUID(),
+          findingId: finding.id,
+          status: 'skipped',
+          startedAt: new Date().toISOString(),
+          endedAt: new Date().toISOString(),
+          error: this.llmRefactorService
+            ? 'LLM disabled - manual fix required'
+            : 'No LLM router available - manual fix required',
+          autoApplied: false,
+        };
+        this.attempts.push(attempt);
+      }
+      this.state = 'VERIFYING';
+      return;
+    }
 
-    for (const finding of this.findings) {
+    // Use LLM service to refactor findings
+    this.emitProgress(`Processing ${this.findings.length} findings with LLM...`);
+
+    const results = await this.llmRefactorService.refactor(this.findings, this.rootDir);
+
+    // Process results and create attempts
+    for (const result of results) {
+      const finding = this.findings.find((f) => f.id === result.findingId);
+      if (!finding) continue;
+
       const attempt: RefactorAttempt = {
         id: randomUUID(),
-        findingId: finding.id,
-        status: 'skipped',
+        findingId: result.findingId,
+        status: 'pending',
         startedAt: new Date().toISOString(),
-        endedAt: new Date().toISOString(),
+        autoApplied: false,
       };
 
-      // Without LLM, we can only auto-fix certain patterns
-      if (!this.config.useLLMForRefactoring) {
+      if (!result.success) {
+        // LLM failed to generate refactoring
         attempt.status = 'skipped';
-        attempt.error = 'LLM disabled - manual fix required';
+        attempt.error = result.error || 'LLM refactoring failed';
+        attempt.endedAt = new Date().toISOString();
+      } else if (!result.safeToAutoApply) {
+        // LLM generated code but marked for manual review
+        attempt.status = 'skipped';
+        attempt.error = result.manualReviewReason || 'Requires manual review';
+        attempt.appliedFix = result.refactoredCode;
+        attempt.endedAt = new Date().toISOString();
       } else {
-        // TODO: Phase 3 - LLM-based refactoring
-        attempt.status = 'skipped';
-        attempt.error = 'LLM refactoring not yet implemented';
+        // Safe to auto-apply - attempt to apply the refactoring
+        this.emitProgress(`Applying refactoring to ${finding.file}:${finding.lineStart}...`);
+
+        const applyResult = await this.llmRefactorService.applyRefactoring(
+          result,
+          finding.file,
+          this.rootDir
+        );
+
+        if (applyResult.success) {
+          attempt.status = 'success';
+          attempt.appliedFix = result.refactoredCode;
+          attempt.backupPath = applyResult.backupPath;
+          attempt.autoApplied = true;
+          attempt.endedAt = new Date().toISOString();
+
+          // Emit callback
+          if (this.onRefactorApplied) {
+            this.onRefactorApplied(finding, attempt);
+          }
+        } else {
+          attempt.status = 'failed';
+          attempt.error = applyResult.error || 'Failed to apply refactoring';
+          attempt.endedAt = new Date().toISOString();
+        }
       }
 
       this.attempts.push(attempt);
     }
+
+    // Log LLM metrics
+    const llmMetrics = this.llmRefactorService.getMetrics();
+    this.emitProgress('LLM refactoring complete', {
+      refactored: llmMetrics.findingsRefactored,
+      skipped: llmMetrics.findingsSkipped,
+      failed: llmMetrics.findingsFailed,
+      llmRequests: llmMetrics.llmRequests,
+      estimatedCost: `$${llmMetrics.llmCostEstimateUsd.toFixed(4)}`,
+    });
 
     this.state = 'VERIFYING';
   }
@@ -324,23 +422,100 @@ export class RefactorController {
   private async handleVerifying(): Promise<void> {
     this.emitProgress('Verifying changes...');
 
+    const startTime = Date.now();
+    let typecheckPassed = true;
+    let testsPassed = true;
+    let typecheckErrors: string[] = [];
+    let failedTests: string[] = [];
+
     // Run TypeScript typecheck if required
     if (this.config.requireTypecheck) {
       const typecheckResult = await this.runTypecheck();
-      if (!typecheckResult.success) {
-        this.emitProgress('Typecheck failed - would rollback in full implementation');
+      typecheckPassed = typecheckResult.success;
+      typecheckErrors = typecheckResult.errors;
+      if (!typecheckPassed) {
+        this.emitProgress('Typecheck failed', { errors: typecheckErrors.slice(0, 5) });
       }
     }
 
-    // Run tests if required
-    if (this.config.requireTests) {
+    // Run tests if required (only if typecheck passed)
+    if (this.config.requireTests && typecheckPassed) {
       const testResult = await this.runTests();
-      if (!testResult.success) {
-        this.emitProgress('Tests failed - would rollback in full implementation');
+      testsPassed = testResult.success;
+      failedTests = testResult.failed;
+      if (!testsPassed) {
+        this.emitProgress('Tests failed', { errors: failedTests.slice(0, 5) });
       }
+    }
+
+    const verificationFailed = !typecheckPassed || !testsPassed;
+
+    // Build verification result and invoke callback
+    const verificationResult: import('./types.js').RefactorVerificationResult = {
+      success: !verificationFailed,
+      typecheckPassed,
+      testsPassed,
+      noNewErrors: typecheckErrors.length === 0,
+      semanticEquivalenceVerified: false, // Not implemented yet
+      metricsImproved: false, // Will be determined in COMPARING_METRICS
+      guardsPasssed: true, // Assumed passed if we got here
+      affectedTests: [],
+      failedTests,
+      newErrors: typecheckErrors,
+      durationMs: Date.now() - startTime,
+      guardViolations: [],
+    };
+
+    // Invoke the verification callback
+    this.onVerification?.(verificationResult);
+
+    // If verification failed, rollback all successful attempts
+    if (verificationFailed) {
+      this.emitProgress('Verification failed - rolling back changes...');
+
+      for (const attempt of this.attempts) {
+        if (attempt.status === 'success' && attempt.backupPath) {
+          const finding = this.findings.find(f => f.id === attempt.findingId);
+          if (finding && this.llmRefactorService) {
+            // Ensure we pass absolute path for restoration
+            const absoluteFilePath = this.resolveFilePath(finding.file);
+            const restored = await this.llmRefactorService.restoreFromBackup(
+              attempt.backupPath,
+              absoluteFilePath
+            );
+            if (restored) {
+              attempt.status = 'rolled_back';
+              this.emitProgress(`Rolled back: ${finding.file}`);
+            } else {
+              attempt.status = 'failed';
+              attempt.error = 'Rollback failed';
+              this.emitProgress(`Failed to rollback: ${finding.file}`, { backupPath: attempt.backupPath });
+            }
+          }
+        }
+      }
+
+      // Mark any remaining successful attempts as failed due to verification
+      for (const attempt of this.attempts) {
+        if (attempt.status === 'success') {
+          attempt.status = 'failed';
+          attempt.error = 'Verification failed (typecheck/tests)';
+        }
+      }
+
+      this.stopReason = 'Verification failed - changes rolled back';
+      this.state = 'COMPLETE';
+      return;
     }
 
     this.state = 'COMPARING_METRICS';
+  }
+
+  /**
+   * Resolve a file path to absolute, joining with rootDir if relative
+   */
+  private resolveFilePath(filePath: string): string {
+    return path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
   }
 
   private async handleComparingMetrics(): Promise<void> {
@@ -598,6 +773,14 @@ export class RefactorController {
 
   getConfig(): RefactorConfig {
     return this.config;
+  }
+
+  /**
+   * Request the controller to stop at the next opportunity
+   */
+  stop(): void {
+    this.stopRequested = true;
+    this.emitProgress('Stop requested');
   }
 }
 

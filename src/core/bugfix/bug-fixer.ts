@@ -161,7 +161,7 @@ export class BugFixer {
       }
 
       // Generate fix
-      const { fixedContent, diff } = await this.generateFix(finding, originalContent, lines, strategy);
+      const { fixedContent, diff } = this.generateFix(finding, originalContent, lines, strategy);
 
       if (!fixedContent || fixedContent === originalContent) {
         return this.createAttempt(attemptId, finding.id, 1, strategy, '', 'skipped', startTime, 'No changes needed');
@@ -299,12 +299,12 @@ export class BugFixer {
   /**
    * Generate fix for a finding
    */
-  private async generateFix(
+  private generateFix(
     finding: BugFinding,
     originalContent: string,
     lines: string[],
     strategy: string
-  ): Promise<{ fixedContent: string; diff: string }> {
+  ): { fixedContent: string; diff: string } {
     let fixedContent = originalContent;
     let diff = '';
 
@@ -412,7 +412,7 @@ export class BugFixer {
 
     for (let i = 0; i < lines.length; i++) {
       const currentLine = lines[i];
-      if (!currentLine) continue;
+      if (currentLine === undefined) continue;
 
       if (classPattern.test(currentLine)) {
         classStartLine = i;
@@ -430,8 +430,10 @@ export class BugFixer {
 
     for (let i = classStartLine; i < lines.length; i++) {
       const line = lines[i];
-      if (!line) continue;
+      if (line === undefined) continue;
 
+      // Note: This simple brace counting doesn't account for braces in strings or comments
+      // For production code, a proper AST parser should be used
       braceCount += (line.match(/{/g) || []).length;
       braceCount -= (line.match(/}/g) || []).length;
 
@@ -449,7 +451,7 @@ export class BugFixer {
     let indent = '  ';
     for (let i = classStartLine + 1; i < classEndLine; i++) {
       const indentLine = lines[i];
-      if (!indentLine) continue;
+      if (indentLine === undefined || indentLine === '') continue;
 
       const indentMatch = indentLine.match(/^(\s+)\S/);
       if (indentMatch && indentMatch[1]) {

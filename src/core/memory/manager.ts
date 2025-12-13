@@ -1360,9 +1360,12 @@ export class MemoryManager implements IMemoryManager {
       await rename(tempPath, this.config.dbPath);
 
       // Step 5: Reopen database and reinitialize
-      this.db = new Database(this.config.dbPath);
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma(`busy_timeout = ${this.config.busyTimeout}`);  // v5.6.18: Configurable lock timeout
+      // BUG FIX: Use DatabaseFactory for consistent initialization (handles WAL, busyTimeout, directory)
+      this.db = DatabaseFactory.create(this.config.dbPath, {
+        busyTimeout: this.config.busyTimeout,
+        enableWal: true,
+        createDir: true
+      });
 
       // Phase 2.1 Fix: Reinitialize completely (rebuild statements, recount entries)
       // This ensures prepared statements are bound to the new connection

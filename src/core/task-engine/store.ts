@@ -914,12 +914,16 @@ interface InMemoryTask extends Task {
  * Provides functional parity for MCP task tools without persistence.
  */
 export class InMemoryTaskStore implements TaskStoreLike {
-  private tasks = new Map<string, InMemoryTask>();
+  private static sharedStores = new Map<string, Map<string, InMemoryTask>>();
+  private readonly tasks: Map<string, InMemoryTask>;
+  private readonly storeKey: string;
   private config: Required<TaskStoreConfig>;
   private closed = false;
 
   constructor(config: Partial<TaskStoreConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.storeKey = this.config.dbPath ?? DEFAULT_CONFIG.dbPath;
+    this.tasks = InMemoryTaskStore.getOrCreateStore(this.storeKey);
     logger.warn('Using in-memory task store fallback (SQLite unavailable)', {
       nodeVersion: process.version
     });
@@ -951,6 +955,14 @@ export class InMemoryTaskStore implements TaskStoreLike {
       ? estimateEngine(validated.type)
       : validated.engine;
 
+    let compressionRatio = 1;
+    if (this.config.compressionEnabled) {
+      const compression = compressWithInfo(validated.payload, {
+        level: this.config.compressionLevel
+      });
+      compressionRatio = compression.ratio;
+    }
+
     const task: InMemoryTask = {
       id,
       type: validated.type,
@@ -973,7 +985,7 @@ export class InMemoryTaskStore implements TaskStoreLike {
       error: null,
       retryCount: 0,
       payloadHash: hashPayload(payloadJson),
-      compressionRatio: 1
+      compressionRatio
     };
 
     this.tasks.set(id, task);
@@ -984,7 +996,7 @@ export class InMemoryTaskStore implements TaskStoreLike {
       estimatedEngine: estimatedEngine ?? null,
       expiresAt,
       payloadSize,
-      compressionRatio: 1
+      compressionRatio
     };
   }
 
@@ -1174,6 +1186,15 @@ export class InMemoryTaskStore implements TaskStoreLike {
     if (this.closed) {
       throw new TaskEngineError('TaskStore is closed', 'STORE_ERROR');
     }
+  }
+
+  private static getOrCreateStore(key: string): Map<string, InMemoryTask> {
+    let store = this.sharedStores.get(key);
+    if (!store) {
+      store = new Map<string, InMemoryTask>();
+      this.sharedStores.set(key, store);
+    }
+    return store;
   }
 }
 

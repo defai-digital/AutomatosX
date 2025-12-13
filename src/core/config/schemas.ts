@@ -34,8 +34,18 @@ export const providerNameSchema = z.enum([
   'ax-glm',        // v12.0.0: Alias for glm
   'grok',          // v12.0.0: Native Grok provider (xAI)
   'ax-grok',       // v12.0.0: Alias for grok
+  'qwen',          // v12.8.4: Native Qwen provider (Alibaba Cloud)
+  'qwen-code',     // v12.8.4: Alias for qwen
+  'ax-qwen',       // v12.8.4: Alias for qwen
   'test-provider'
 ]).describe('Provider name (whitelisted for security)');
+
+/**
+ * SDK-first providers that don't require a command field
+ * These providers primarily use SDK and optionally CLI as fallback
+ * v12.8.4: Added to fix validation error for codex and qwen
+ */
+const SDK_FIRST_PROVIDERS = new Set(['codex', 'qwen', 'qwen-code', 'glm', 'ax-glm', 'grok', 'ax-grok', 'ax-qwen']);
 
 /**
  * Command name schema for CLI commands
@@ -155,15 +165,16 @@ const limitTrackingConfigSchema = z.object({
 /**
  * Provider type for SDK-based providers
  * v12.0.0: Added for GLM and Grok providers that use SDK instead of CLI
+ * v12.8.4: Removed default('cli') to allow SDK-first providers to work without explicit type
  */
-const providerTypeSchema = z.enum(['cli', 'sdk', 'hybrid']).default('cli');
+const providerTypeSchema = z.enum(['cli', 'sdk', 'hybrid']);
 
 const providerConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  priority: positiveIntSchema,
-  timeout: timeoutSchema,
+  priority: positiveIntSchema.optional().default(50),  // v12.8.4: Make optional with default
+  timeout: timeoutSchema.optional().default(120000),   // v12.8.4: Make optional with default (2 minutes)
   type: providerTypeSchema.optional(),
-  command: commandSchema.optional(),  // Optional for SDK providers (glm, grok)
+  command: commandSchema.optional(),  // Optional for SDK/hybrid providers (glm, grok, codex, qwen)
   description: z.string().optional(),  // Provider description
   model: z.string().optional(),  // Model name override
   healthCheck: healthCheckConfigSchema.optional(),
@@ -173,15 +184,22 @@ const providerConfigSchema = z.object({
   limitTracking: limitTrackingConfigSchema.optional()
 }).refine(
   (data) => {
-    // CLI and hybrid providers require a command
-    // SDK providers don't need a command
-    if (data.type === 'sdk') {
-      return true;  // SDK providers don't need command
+    // v12.8.4: SDK and hybrid providers don't require a command
+    // SDK providers use API/SDK directly
+    // Hybrid providers use SDK as primary with CLI fallback (command is optional)
+    // Only pure CLI providers require a command
+    if (data.type === 'sdk' || data.type === 'hybrid') {
+      return true;  // SDK and hybrid providers don't need command
     }
-    return data.command !== undefined;  // CLI/hybrid providers need command
+    // If type is not explicitly set, default behavior allows missing command
+    // This enables SDK-first providers (codex, qwen, glm, grok) to work without explicit type
+    if (data.type === undefined) {
+      return true;  // Allow undefined type with missing command (runtime detection)
+    }
+    return data.command !== undefined;  // CLI providers need command
   },
   {
-    message: 'CLI and hybrid providers require a command field',
+    message: 'CLI providers require a command field',
     path: ['command']
   }
 ).describe('Provider configuration');

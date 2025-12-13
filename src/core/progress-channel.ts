@@ -182,6 +182,8 @@ export class ProgressChannel {
       this.processQueueTimeout = undefined;
       this.processQueue();
     }, this.throttleMs);
+    // Prevent timer from keeping process alive
+    if (this.processQueueTimeout.unref) this.processQueueTimeout.unref();
   }
 
   /**
@@ -208,6 +210,8 @@ export class ProgressChannel {
         this.processQueueTimeout = undefined;
         this.processQueue();
       }, this.throttleMs);
+      // Prevent timer from keeping process alive
+      if (this.processQueueTimeout.unref) this.processQueueTimeout.unref();
     } else {
       this.processing = false;
     }

@@ -390,6 +390,8 @@ export class WorkerPool {
         this.processQueue();
       }
     }, this.config.taskTimeout);
+    // Prevent timer from keeping process alive
+    if (timeout.unref) timeout.unref();
 
     // Send task to worker
     workerInfo.worker.postMessage(queuedTask.task);

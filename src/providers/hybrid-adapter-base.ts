@@ -172,6 +172,16 @@ export interface HybridAdapterBaseOptions {
  * - Metrics collection for observability
  * - Feature flag integration
  */
+
+/**
+ * Compute bounded backoff with jitter to avoid synchronized retries.
+ */
+function computeBackoffDelay(baseMs: number, attempt: number, maxMs = 15000): number {
+  const backoff = Math.min(baseMs * Math.pow(2, attempt), maxMs);
+  const jitter = 0.5 + Math.random(); // 0.5x–1.5x
+  return Math.floor(backoff * jitter);
+}
+
 export abstract class HybridAdapterBase {
   protected readonly mode: AdapterMode;
   protected activeMode: 'sdk' | 'cli' | null = null;
@@ -264,7 +274,7 @@ export abstract class HybridAdapterBase {
 
         if (classification.decision === FallbackDecision.RETRY_SDK && attempt < this.maxRetries) {
           // Wait before retry
-          const delay = classification.retryDelayMs || 1000;
+          const delay = computeBackoffDelay(classification.retryDelayMs || 1000, attempt);
           await sleep(delay);
           continue;
         }

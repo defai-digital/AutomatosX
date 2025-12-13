@@ -4,8 +4,11 @@
  * @module core/refactor/detectors/dead-code-detector
  * @version 12.7.0
  * @updated 12.8.0 - Added AST-based unreachable code detection (Phase 4)
+ * @updated 12.9.0 - Added TypeScript Language Service integration (PRD-019)
+ * @updated 12.10.0 - Added Python dead code detection support
  */
 
+import { extname } from 'path';
 import type {
   RefactorFinding,
   RefactorRule,
@@ -14,10 +17,21 @@ import type {
 } from '../types.js';
 import { createFinding } from '../refactor-detector.js';
 import { ASTAnalyzer, createASTAnalyzer } from '../../bugfix/ast-analyzer.js';
+import type { SemanticDeadCodeAnalyzer, PySemanticDeadCodeAnalyzer } from '../semantic/index.js';
 
 // Shared AST analyzer instance for dead code detection
 let astAnalyzer: ASTAnalyzer | null = null;
 let astInitialized = false;
+
+// Shared semantic analyzer instance (PRD-019)
+let semanticAnalyzer: SemanticDeadCodeAnalyzer | null = null;
+let semanticInitialized = false;
+let semanticRootDir: string | null = null;
+
+// Shared Python semantic analyzer instance (v12.10.0)
+let pySemanticAnalyzer: PySemanticDeadCodeAnalyzer | null = null;
+let pySemanticInitialized = false;
+let pySemanticRootDir: string | null = null;
 
 async function getASTAnalyzer(): Promise<ASTAnalyzer> {
   if (!astAnalyzer) {
@@ -28,6 +42,96 @@ async function getASTAnalyzer(): Promise<ASTAnalyzer> {
     astInitialized = true;
   }
   return astAnalyzer;
+}
+
+/**
+ * Get or create a semantic analyzer for high-precision dead code detection
+ * PRD-019: TypeScript Language Service integration
+ */
+async function getSemanticAnalyzer(rootDir: string): Promise<SemanticDeadCodeAnalyzer> {
+  // Recreate analyzer if rootDir changed (bug fix: analyzer cached wrong rootDir)
+  if (semanticAnalyzer && semanticRootDir !== rootDir) {
+    semanticAnalyzer.dispose();
+    semanticAnalyzer = null;
+    semanticInitialized = false;
+  }
+
+  if (!semanticAnalyzer) {
+    // Lazy-load to avoid bundling issues
+    const { createSemanticAnalyzer } = await import('../semantic/index.js');
+    semanticAnalyzer = createSemanticAnalyzer(rootDir, {
+      includeExports: false,
+      includeTypeOnly: false,
+      minConfidence: 0.7,
+    });
+    semanticRootDir = rootDir;
+  }
+  if (!semanticInitialized) {
+    await semanticAnalyzer.init();
+    semanticInitialized = true;
+  }
+  return semanticAnalyzer;
+}
+
+/**
+ * Get or create a Python semantic analyzer for dead code detection
+ * v12.10.0: Python dead code detection support
+ */
+async function getPySemanticAnalyzer(rootDir: string): Promise<PySemanticDeadCodeAnalyzer> {
+  // Recreate analyzer if rootDir changed (bug fix: analyzer cached wrong rootDir)
+  if (pySemanticAnalyzer && pySemanticRootDir !== rootDir) {
+    pySemanticAnalyzer.dispose();
+    pySemanticAnalyzer = null;
+    pySemanticInitialized = false;
+  }
+
+  if (!pySemanticAnalyzer) {
+    // Lazy-load to avoid bundling issues
+    const { createPySemanticAnalyzer } = await import('../semantic/index.js');
+    pySemanticAnalyzer = createPySemanticAnalyzer(rootDir, {
+      includeExports: false,
+      includePrivate: true,
+      minConfidence: 0.7,
+    });
+    pySemanticRootDir = rootDir;
+  }
+  if (!pySemanticInitialized) {
+    await pySemanticAnalyzer.init();
+    pySemanticInitialized = true;
+  }
+  return pySemanticAnalyzer;
+}
+
+/**
+ * Dispose of the semantic analyzer (call when done with analysis)
+ */
+export function disposeSemanticAnalyzer(): void {
+  if (semanticAnalyzer) {
+    semanticAnalyzer.dispose();
+    semanticAnalyzer = null;
+    semanticInitialized = false;
+    semanticRootDir = null;
+  }
+}
+
+/**
+ * Dispose of the Python semantic analyzer (call when done with analysis)
+ */
+export function disposePySemanticAnalyzer(): void {
+  if (pySemanticAnalyzer) {
+    pySemanticAnalyzer.dispose();
+    pySemanticAnalyzer = null;
+    pySemanticInitialized = false;
+    pySemanticRootDir = null;
+  }
+}
+
+/**
+ * Dispose of all semantic analyzers
+ */
+export function disposeAllSemanticAnalyzers(): void {
+  disposeSemanticAnalyzer();
+  disposePySemanticAnalyzer();
 }
 
 // ============================================================================
@@ -85,6 +189,19 @@ export const DEAD_CODE_RULES: RefactorRule[] = [
     requiresLLM: false,
     suggestion: 'Remove commented code (use version control for history)',
   },
+  // v12.9.0: PRD-019 semantic analysis rule for high-precision detection
+  {
+    id: 'semantic-dead-code',
+    type: 'dead_code',
+    description: 'Symbol declared but never used (TypeScript Language Service)',
+    detector: 'semantic',
+    severity: 'medium',
+    confidence: 0.95, // High confidence from type-aware analysis
+    autoFixable: true,
+    requiresLLM: false,
+    suggestion: 'Remove unused symbol',
+    fileExtensions: ['.ts', '.tsx'],
+  },
   {
     id: 'empty-function',
     type: 'dead_code',
@@ -97,21 +214,97 @@ export const DEAD_CODE_RULES: RefactorRule[] = [
     requiresLLM: false,
     suggestion: 'Implement function or add TODO comment',
   },
+  // v12.10.0: Python dead code detection rules
+  {
+    id: 'py-unused-import',
+    type: 'dead_code',
+    description: 'Python import is not used in the file',
+    detector: 'semantic',
+    severity: 'low',
+    confidence: 0.9,
+    autoFixable: true,
+    requiresLLM: false,
+    suggestion: 'Remove unused import',
+    fileExtensions: ['.py', '.pyw'],
+  },
+  {
+    id: 'py-unused-function',
+    type: 'dead_code',
+    description: 'Python function is defined but never called',
+    detector: 'semantic',
+    severity: 'medium',
+    confidence: 0.85,
+    autoFixable: true,
+    requiresLLM: false,
+    suggestion: 'Remove unused function',
+    fileExtensions: ['.py', '.pyw'],
+  },
+  {
+    id: 'py-unused-class',
+    type: 'dead_code',
+    description: 'Python class is defined but never used',
+    detector: 'semantic',
+    severity: 'medium',
+    confidence: 0.85,
+    autoFixable: true,
+    requiresLLM: false,
+    suggestion: 'Remove unused class',
+    fileExtensions: ['.py', '.pyw'],
+  },
+  {
+    id: 'py-unused-variable',
+    type: 'dead_code',
+    description: 'Python variable is assigned but never used',
+    detector: 'semantic',
+    severity: 'low',
+    confidence: 0.85,
+    autoFixable: true,
+    requiresLLM: false,
+    suggestion: 'Remove unused variable',
+    fileExtensions: ['.py', '.pyw'],
+  },
 ];
 
 // ============================================================================
 // Detector Function
 // ============================================================================
 
+/**
+ * Options for dead code detection
+ */
+export interface DeadCodeDetectionOptions {
+  /** Use semantic analysis (TypeScript Language Service) for high-precision detection */
+  useSemantic?: boolean;
+  /** Root directory for semantic analysis (required if useSemantic is true) */
+  rootDir?: string;
+}
+
 export async function detectDeadCode(
   filePath: string,
   content: string,
   lines: string[],
   ignoreState: RefactorIgnoreState,
-  _config: RefactorConfig
+  _config: RefactorConfig,
+  options?: DeadCodeDetectionOptions
 ): Promise<RefactorFinding[]> {
   const findings: RefactorFinding[] = [];
+  const ext = extname(filePath).toLowerCase();
 
+  // v12.10.0: Use Python semantic analysis for Python files
+  if (options?.useSemantic && options.rootDir && (ext === '.py' || ext === '.pyw')) {
+    findings.push(...await detectPythonSemanticDeadCode(filePath, options.rootDir, ignoreState));
+    return findings;
+  }
+
+  // Use semantic analysis for high-precision detection (PRD-019)
+  if (options?.useSemantic && options.rootDir && filePath.match(/\.[tj]sx?$/)) {
+    findings.push(...await detectSemanticDeadCode(filePath, options.rootDir, ignoreState));
+    // Skip regex-based detection when using semantic analysis
+    // (semantic analysis is more accurate)
+    return findings;
+  }
+
+  // Fallback to regex-based detection
   // Detect unused imports
   findings.push(...detectUnusedImports(filePath, content, lines, ignoreState));
 
@@ -125,6 +318,131 @@ export async function detectDeadCode(
   findings.push(...detectCommentedCode(filePath, content, lines, ignoreState));
 
   return findings;
+}
+
+/**
+ * Detect dead code using TypeScript Language Service (PRD-019)
+ * High-precision detection with proper symbol resolution
+ */
+async function detectSemanticDeadCode(
+  filePath: string,
+  rootDir: string,
+  ignoreState: RefactorIgnoreState
+): Promise<RefactorFinding[]> {
+  const findings: RefactorFinding[] = [];
+
+  try {
+    const analyzer = await getSemanticAnalyzer(rootDir);
+    const result = await analyzer.analyze([filePath]);
+
+    for (const finding of result.findings) {
+      const lineNum = finding.symbol.line;
+
+      // Check if should ignore
+      if (shouldIgnoreLine(lineNum, 'dead_code', ignoreState)) {
+        continue;
+      }
+
+      // Convert semantic finding to refactor finding
+      findings.push(
+        createFinding(
+          filePath,
+          lineNum,
+          lineNum,
+          'dead_code',
+          finding.falsePositiveRisk === 'low' ? 'medium' : 'low',
+          `${finding.symbol.kind} '${finding.symbol.name}' is ${finding.reason.replace(/_/g, ' ')}`,
+          finding.symbol.declarations[0]?.text.split('\n')[0] || '',
+          'semantic-dead-code',
+          finding.confidence,
+          'static',
+          finding.suggestedAction === 'remove'
+            ? `Remove unused ${finding.symbol.kind} '${finding.symbol.name}'`
+            : `Review ${finding.symbol.kind} '${finding.symbol.name}'`,
+          { linesRemoved: 1, safeToAutoFix: finding.safeToAutoFix }
+        )
+      );
+    }
+  } catch (error) {
+    // Log but don't fail - fallback to regex detection is handled by caller
+    console.warn('Semantic dead code analysis failed:', error);
+  }
+
+  return findings;
+}
+
+/**
+ * Detect dead code in Python files using Python semantic analyzer
+ * v12.10.0: Python dead code detection support
+ */
+async function detectPythonSemanticDeadCode(
+  filePath: string,
+  rootDir: string,
+  ignoreState: RefactorIgnoreState
+): Promise<RefactorFinding[]> {
+  const findings: RefactorFinding[] = [];
+
+  try {
+    const analyzer = await getPySemanticAnalyzer(rootDir);
+    const result = await analyzer.analyze([filePath]);
+
+    for (const finding of result.findings) {
+      const lineNum = finding.symbol.line;
+
+      // Check if should ignore
+      if (shouldIgnoreLine(lineNum, 'dead_code', ignoreState)) {
+        continue;
+      }
+
+      // Map Python symbol kind to rule ID
+      const ruleId = mapPySymbolKindToRuleId(finding.symbol.kind);
+
+      // Convert Python finding to refactor finding
+      findings.push(
+        createFinding(
+          filePath,
+          lineNum,
+          lineNum,
+          'dead_code',
+          finding.falsePositiveRisk === 'low' ? 'medium' : 'low',
+          finding.explanation,
+          `${finding.symbol.kind} ${finding.symbol.name}`,
+          ruleId,
+          finding.confidence,
+          'static',
+          finding.suggestedAction === 'remove'
+            ? `Remove unused ${finding.symbol.kind} '${finding.symbol.name}'`
+            : `Review ${finding.symbol.kind} '${finding.symbol.name}'`,
+          { linesRemoved: 1, safeToAutoFix: finding.safeToAutoFix }
+        )
+      );
+    }
+  } catch (error) {
+    // Log but don't fail - Python analysis is best-effort
+    console.warn('Python semantic dead code analysis failed:', error);
+  }
+
+  return findings;
+}
+
+/**
+ * Map Python symbol kind to corresponding rule ID
+ */
+function mapPySymbolKindToRuleId(kind: string): string {
+  switch (kind) {
+    case 'import':
+      return 'py-unused-import';
+    case 'function':
+    case 'method':
+      return 'py-unused-function';
+    case 'class':
+      return 'py-unused-class';
+    case 'variable':
+    case 'parameter':
+      return 'py-unused-variable';
+    default:
+      return 'py-unused-variable';
+  }
 }
 
 // ============================================================================

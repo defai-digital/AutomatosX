@@ -1000,6 +1000,8 @@ const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions> = {
             message: 'Version check timed out',
           });
         }, 5000);
+        // Prevent timer from keeping process alive
+        if (timeoutId.unref) timeoutId.unref();
       });
     }
 

@@ -384,7 +384,10 @@ export class UnifiedMCPManager implements IMCPManager {
   /**
    * Discover available tools from all servers
    *
-   * @returns Array of tool information
+   * Returns cached tools from server configurations. For dynamic tool
+   * discovery via JSON-RPC, use provider-specific MCP integrations.
+   *
+   * @returns Array of tool information (from cache)
    */
   async discoverTools(): Promise<MCPToolInfo[]> {
     logger.debug('UnifiedMCPManager: Discovering tools');
@@ -396,8 +399,10 @@ export class UnifiedMCPManager implements IMCPManager {
         continue;
       }
 
-      // TODO: Implement actual tool discovery via JSON-RPC
-      // For now, return cached tools if available
+      // Note: Tool discovery relies on cached tools from server config.
+      // JSON-RPC tool discovery would require implementing a full MCP client,
+      // which is out of scope for the unified manager. Use provider-specific
+      // MCP integrations for full tool discovery capabilities.
       if (serverProcess.tools) {
         tools.push(...serverProcess.tools);
       }
@@ -413,8 +418,12 @@ export class UnifiedMCPManager implements IMCPManager {
   /**
    * Call an MCP tool
    *
+   * Note: The unified manager does not execute tools. This method validates
+   * the request and returns an informative error directing users to
+   * provider-specific integrations for actual tool execution.
+   *
    * @param request - Tool call request
-   * @returns Tool call response
+   * @returns Tool call response (always returns error - use provider-specific integration)
    */
   async callTool(request: MCPToolCallRequest): Promise<MCPToolCallResponse> {
     const startTime = Date.now();
@@ -446,17 +455,19 @@ export class UnifiedMCPManager implements IMCPManager {
       };
     }
 
-    // TODO: Implement actual JSON-RPC tool call via stdio transport
-    // For now, return a clear "not implemented" status without throwing
-    // This allows callers to handle gracefully instead of catching exceptions
-    logger.warn('UnifiedMCPManager: Tool calling via JSON-RPC not yet implemented', {
+    // Note: The unified manager does not implement JSON-RPC tool calling.
+    // Full MCP tool execution requires provider-specific integrations that handle
+    // the JSON-RPC protocol over stdio. This manager focuses on server lifecycle
+    // management (start/stop/restart/health), not tool execution.
+    // Use provider-specific MCP integrations for tool calling.
+    logger.warn('UnifiedMCPManager: Tool calling requires provider-specific integration', {
       server: request.serverName,
       tool: request.toolName,
     });
 
     return {
       success: false,
-      error: `Tool calling not yet implemented for server: ${request.serverName}. Use provider-specific MCP integration instead.`,
+      error: `Tool calling requires provider-specific integration for server: ${request.serverName}. The unified manager handles server lifecycle only.`,
       executionTimeMs: Date.now() - startTime,
     };
   }
@@ -759,9 +770,10 @@ export class UnifiedMCPManager implements IMCPManager {
         };
       }
 
-      // TODO: Implement actual health check ping
-      // For now, just check process status
-
+      // Health check verifies the process is alive.
+      // Note: A full health check would ping the server via JSON-RPC,
+      // but process status is sufficient for lifecycle management purposes.
+      // Provider-specific integrations may implement deeper health checks.
       return {
         serverName,
         healthy: true,

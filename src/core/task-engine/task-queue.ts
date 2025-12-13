@@ -152,6 +152,7 @@ export class TaskQueueManager extends EventEmitter {
   private readonly config: Required<TaskQueueConfig>;
   private queues: Map<number, QueuedTask[]> = new Map();
   private running: Map<string, QueuedTask> = new Map();
+  private retrying: Map<string, { task: QueuedTask; timeoutId: NodeJS.Timeout }> = new Map(); // Bug fix: track tasks during retry delay
   private clientTaskCount: Map<string, number> = new Map();
   private closed = false;
   private processing = false;
@@ -298,8 +299,10 @@ export class TaskQueueManager extends EventEmitter {
 
   /**
    * Cancel a queued task
+   * Bug fix: Also cancels tasks that are in retry delay period
    */
   cancel(taskId: string): boolean {
+    // Check queued tasks
     for (const [, queue] of this.queues) {
       const index = queue.findIndex((t) => t.taskId === taskId);
       if (index !== -1) {
@@ -311,6 +314,17 @@ export class TaskQueueManager extends EventEmitter {
         return true;
       }
     }
+
+    // Bug fix: Check tasks in retry delay period
+    const retryingEntry = this.retrying.get(taskId);
+    if (retryingEntry) {
+      clearTimeout(retryingEntry.timeoutId);
+      this.retrying.delete(taskId);
+      retryingEntry.task.reject(new Error('Task cancelled during retry delay'));
+      this.decrementClientCount(retryingEntry.task.clientId);
+      return true;
+    }
+
     return false;
   }
 
@@ -335,6 +349,7 @@ export class TaskQueueManager extends EventEmitter {
 
   /**
    * Shutdown the queue manager
+   * Bug fix: Properly clean up running and retrying tasks with stats and clientCount
    */
   async shutdown(graceful = true): Promise<void> {
     if (this.closed) return;
@@ -354,9 +369,22 @@ export class TaskQueueManager extends EventEmitter {
     // Reject remaining queued tasks
     this.clear();
 
-    // Reject running tasks
+    // Bug fix: Clear retrying tasks (tasks waiting for retry delay)
+    for (const [taskId, entry] of this.retrying) {
+      clearTimeout(entry.timeoutId);
+      entry.task.reject(new Error('TaskQueueManager shutting down'));
+      this.decrementClientCount(entry.task.clientId);
+      this.stats.totalProcessed++;
+      this.stats.totalFailed++;
+    }
+    this.retrying.clear();
+
+    // Bug fix: Reject running tasks with proper cleanup
     for (const [taskId, task] of this.running) {
       task.reject(new Error('TaskQueueManager shutting down'));
+      this.decrementClientCount(task.clientId);
+      this.stats.totalProcessed++;
+      this.stats.totalFailed++;
       this.running.delete(taskId);
     }
 
@@ -541,6 +569,7 @@ export class TaskQueueManager extends EventEmitter {
 
   /**
    * Handle task failure
+   * Bug fix: Track tasks during retry delay in `retrying` map so they can be cancelled
    */
   private handleFailure(task: QueuedTask, error: Error): void {
     if (task.retryCount < task.maxRetries) {
@@ -558,9 +587,14 @@ export class TaskQueueManager extends EventEmitter {
 
       this.emit('task:retry', task.taskId, task.retryCount);
 
-      setTimeout(() => {
+      // Bug fix: Track retry timeout so task can be cancelled during delay
+      const timeoutId = setTimeout(() => {
+        // Remove from retrying map when retry fires
+        this.retrying.delete(task.taskId);
+
         if (this.closed) {
           task.reject(error);
+          this.decrementClientCount(task.clientId);
           return;
         }
 
@@ -569,6 +603,9 @@ export class TaskQueueManager extends EventEmitter {
         queue.unshift(task);
         this.processQueue();
       }, delay);
+
+      // Bug fix: Track task during retry delay period
+      this.retrying.set(task.taskId, { task, timeoutId });
     } else {
       // Final failure
       this.decrementClientCount(task.clientId);

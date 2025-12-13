@@ -13,7 +13,8 @@
  * @since v12.8.0
  */
 
-import { logger } from '../../shared/logging/logger.js';
+// Logger import removed - currently unused but kept for future debugging
+// import { logger } from '../../shared/logging/logger.js';
 
 // Type-only import for TypeScript API types (doesn't load at runtime)
 import type * as TypeScriptTypes from 'typescript';
@@ -243,12 +244,16 @@ export class ASTAnalyzer {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const visit = (node: any): void => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       if (typescript.isClassDeclaration(node) && node.name) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         classes.push(this.extractClassInfo(node, sourceFile));
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       typescript.forEachChild(node, visit);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     visit(sourceFile);
     return classes;
   }
@@ -333,8 +338,9 @@ export class ASTAnalyzer {
     const position = sourceFile.getPositionOfLineAndCharacter(lineNumber - 1, 0);
 
     const visit = (node: TypeScriptTypes.Node): void => {
-      const start = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-      const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+      // Note: start/end positions used for potential future diagnostics
+      const _start = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+      const _end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
 
       if (position >= node.getStart() && position <= node.getEnd()) {
         if (
@@ -452,7 +458,8 @@ export class ASTAnalyzer {
       /\.bench\.[tj]sx?$/,
       /__tests__\//,
       /test\/fixtures\//,
-      /tests?\//
+      // Match /test/ or /tests/ as standalone directory names, not part of other words like "bugfix-test-123"
+      /\/tests?\//
     ];
     return testPatterns.some(pattern => pattern.test(filePath));
   }
@@ -532,17 +539,20 @@ export class ASTAnalyzer {
    * Check if a Promise has cleanup (finally/catch/then with clearTimeout, or clearTimeout in executor)
    */
   private hasCleanupInPromise(promiseNode: TypeScriptTypes.NewExpression, sourceFile: TypeScriptTypes.SourceFile): boolean {
-    // Strategy 1: Check if clearTimeout is called anywhere inside the Promise executor body
+    // Cleanup pattern regex: matches clearTimeout or clearInterval
+    const cleanupPattern = /clear(?:Timeout|Interval)/i;
+
+    // Strategy 1: Check if clearTimeout/clearInterval is called anywhere inside the Promise executor body
     // This handles patterns like:
     //   new Promise((resolve, reject) => {
     //     promise.then(() => { clearTimeout(id); ... })
     //   })
     const promiseText = promiseNode.getText(sourceFile);
-    if (/clearTimeout/i.test(promiseText)) {
+    if (cleanupPattern.test(promiseText)) {
       return true;
     }
 
-    // Strategy 2: Look at the parent chain for .finally(), .catch(), or .then() with clearTimeout
+    // Strategy 2: Look at the parent chain for .finally(), .catch(), or .then() with cleanup
     // This handles patterns like:
     //   new Promise(...).then(...).catch(() => { clearTimeout(id); })
     let current: TypeScriptTypes.Node = promiseNode;
@@ -550,15 +560,15 @@ export class ASTAnalyzer {
     while (current.parent) {
       const parent = current.parent;
 
-      // Check for .finally(), .catch(), or .then() call with clearTimeout
+      // Check for .finally(), .catch(), or .then() call with cleanup
       if (getTS().isCallExpression(parent) &&
           getTS().isPropertyAccessExpression(parent.expression)) {
         const propName = parent.expression.name.text;
         // Check .finally(), .catch(), and .then() - all can contain cleanup code
         if (propName === 'finally' || propName === 'catch' || propName === 'then') {
-          // Check if clearTimeout is called inside the callback
+          // Check if cleanup is called inside the callback
           const callText = parent.getText(sourceFile);
-          if (/clearTimeout/i.test(callText)) {
+          if (cleanupPattern.test(callText)) {
             return true;
           }
         }
@@ -568,7 +578,7 @@ export class ASTAnalyzer {
       if (getTS().isTryStatement(parent)) {
         if (parent.finallyBlock) {
           const finallyText = parent.finallyBlock.getText(sourceFile);
-          if (/clearTimeout/i.test(finallyText)) {
+          if (cleanupPattern.test(finallyText)) {
             return true;
           }
         }
@@ -577,7 +587,65 @@ export class ASTAnalyzer {
       current = parent;
     }
 
+    // Strategy 3: Check for cleanup() function pattern in enclosing scope
+    // This handles patterns like:
+    //   const cleanup = () => { clearTimeout(timeoutId); };
+    //   const promise = new Promise(...);
+    //   try { ... } catch { cleanup(); }
+    // Look for cleanup/clear function definitions in the same scope that contain clearTimeout/clearInterval
+    const enclosingBlock = this.findEnclosingBlock(promiseNode);
+    if (enclosingBlock) {
+      const blockText = enclosingBlock.getText(sourceFile);
+      // Check if there's a cleanup function defined that contains clearTimeout/clearInterval
+      // Pattern: const cleanup = ... clearTimeout ... or function cleanup() { ... clearTimeout ... }
+      if (/(?:const|let|var|function)\s+cleanup\s*[=:(][\s\S]*?clear(?:Timeout|Interval)/i.test(blockText)) {
+        return true;
+      }
+      // Also check for clear() function pattern
+      if (/(?:const|let|var|function)\s+clear\s*[=:(][\s\S]*?clear(?:Timeout|Interval)/i.test(blockText)) {
+        return true;
+      }
+
+      // Strategy 4: Check if clearTimeout/clearInterval is called anywhere in the enclosing function
+      // This handles patterns where cleanup is in try/catch/finally outside the Promise:
+      //   let timeoutHandle;
+      //   try {
+      //     const promise = new Promise(...setTimeout...);
+      //     await promise;
+      //     clearTimeout(timeoutHandle); // cleanup in try
+      //   } catch {
+      //     clearTimeout(timeoutHandle); // cleanup in catch
+      //   }
+      if (/clear(?:Timeout|Interval)\s*\(/i.test(blockText)) {
+        return true;
+      }
+    }
+
     return false;
+  }
+
+  /**
+   * Find the enclosing block (function body, arrow function body, etc.)
+   */
+  private findEnclosingBlock(node: TypeScriptTypes.Node): TypeScriptTypes.Block | null {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
+    while (current) {
+      if (getTS().isBlock(current)) {
+        return current;
+      }
+      if (getTS().isFunctionDeclaration(current) ||
+          getTS().isFunctionExpression(current) ||
+          getTS().isArrowFunction(current) ||
+          getTS().isMethodDeclaration(current)) {
+        // Get the body of the function
+        const body = (current as { body?: TypeScriptTypes.Node }).body;
+        if (body && getTS().isBlock(body)) {
+          return body;
+        }
+      }
+      current = current.parent;
+    }
+    return null;
   }
 
   /**
@@ -900,7 +968,8 @@ export class ASTAnalyzer {
     content: string,
     timerType: 'setInterval' | 'setTimeout'
   ): TimerLeakInfo {
-    const lines = content.split('\n');
+    // Content already parsed via sourceFile - lines array kept for potential future use
+    const _lines = content.split('\n');
 
     // Find enclosing function
     const enclosingFunc = this.findEnclosingFunction(sourceFile, call.line);
@@ -1015,6 +1084,280 @@ export class ASTAnalyzer {
   }
 
   /**
+   * Analyze event listeners for potential leaks
+   * v12.9.0: PRD-018 - AST-based detection for event_leak
+   */
+  analyzeEventListeners(sourceFile: TypeScriptTypes.SourceFile, _content: string): EventListenerInfo[] {
+    const results: EventListenerInfo[] = [];
+    const removals = new Set<string>();
+
+    // First pass: collect all removal calls
+    const collectRemovals = (node: TypeScriptTypes.Node): void => {
+      if (getTS().isCallExpression(node)) {
+        const callName = this.getCallExpressionName(node);
+        if (['off', 'removeListener', 'removeEventListener', 'removeAllListeners'].includes(callName)) {
+          // Try to get the event name from the first argument
+          const args = node.arguments;
+          if (args.length > 0) {
+            const firstArg = args[0];
+            if (firstArg && getTS().isStringLiteral(firstArg)) {
+              removals.add(firstArg.text);
+            }
+          }
+          // Also mark 'removeAllListeners' as removing all events
+          if (callName === 'removeAllListeners') {
+            removals.add('*');
+          }
+        }
+      }
+      getTS().forEachChild(node, collectRemovals);
+    };
+    collectRemovals(sourceFile);
+
+    // Second pass: find all listener registrations
+    const visit = (node: TypeScriptTypes.Node): void => {
+      if (getTS().isCallExpression(node)) {
+        const callName = this.getCallExpressionName(node);
+        if (['on', 'addListener', 'addEventListener', 'once'].includes(callName)) {
+          const args = node.arguments;
+          if (args.length > 0) {
+            const firstArg = args[0];
+            if (firstArg && getTS().isStringLiteral(firstArg)) {
+              const eventName = firstArg.text;
+              const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+              const lineNum = line + 1;
+
+              // Get enclosing context
+              const enclosingFunc = this.findEnclosingFunction(sourceFile, lineNum);
+              const enclosingClass = this.findEnclosingClass(sourceFile, lineNum);
+
+              // Check for cleanup in destroy method
+              let hasCleanupInDestroyMethod = false;
+              if (enclosingClass) {
+                for (const methodName of ALLOWLISTS.timerLeak.cleanupMethods) {
+                  if (this.methodRemovesListener(sourceFile, enclosingClass, methodName, eventName)) {
+                    hasCleanupInDestroyMethod = true;
+                    break;
+                  }
+                }
+              }
+
+              const isOneTimeListener = callName === 'once';
+              const hasCorrespondingRemoval = removals.has(eventName) || removals.has('*') || isOneTimeListener;
+
+              results.push({
+                eventName,
+                line: lineNum,
+                method: callName as 'on' | 'addListener' | 'addEventListener' | 'once',
+                hasCorrespondingRemoval,
+                enclosingClass: enclosingClass?.name,
+                enclosingFunction: enclosingFunc?.name,
+                hasCleanupInDestroyMethod,
+                isOneTimeListener
+              });
+            }
+          }
+        }
+      }
+      getTS().forEachChild(node, visit);
+    };
+    visit(sourceFile);
+
+    return results;
+  }
+
+  /**
+   * Check if a method removes a specific event listener
+   */
+  private methodRemovesListener(
+    sourceFile: TypeScriptTypes.SourceFile,
+    classInfo: ClassInfo,
+    methodName: string,
+    eventName: string
+  ): boolean {
+    const method = classInfo.methods.find(m => m.name === methodName);
+    if (!method) return false;
+
+    // Get the source text between method start and end
+    const startPos = sourceFile.getPositionOfLineAndCharacter(method.startLine - 1, 0);
+    const endPos = sourceFile.getPositionOfLineAndCharacter(method.endLine - 1, 0);
+    const methodText = sourceFile.text.substring(startPos, endPos);
+
+    // Check for removal patterns
+    const patterns = [
+      new RegExp(`\\.off\\s*\\(\\s*['"]${this.escapeRegex(eventName)}['"]`),
+      new RegExp(`\\.removeListener\\s*\\(\\s*['"]${this.escapeRegex(eventName)}['"]`),
+      new RegExp(`\\.removeEventListener\\s*\\(\\s*['"]${this.escapeRegex(eventName)}['"]`),
+      /\.removeAllListeners\s*\(/
+    ];
+
+    return patterns.some(pattern => pattern.test(methodText));
+  }
+
+  /**
+   * Analyze Promises for error handling
+   * v12.9.0: PRD-018 - AST-based detection for uncaught_promise
+   */
+  analyzePromiseErrorHandling(sourceFile: TypeScriptTypes.SourceFile, content: string): PromiseErrorInfo[] {
+    const results: PromiseErrorInfo[] = [];
+
+    // Check for global error handlers
+    const hasGlobalHandler =
+      /process\.on\s*\(\s*['"]unhandledRejection['"]/.test(content) ||
+      /window\.addEventListener\s*\(\s*['"]unhandledrejection['"]/.test(content);
+
+    const visit = (node: TypeScriptTypes.Node): void => {
+      // Look for: new Promise(...)
+      if (getTS().isNewExpression(node) &&
+          getTS().isIdentifier(node.expression) &&
+          node.expression.text === 'Promise') {
+
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+        const lineNum = line + 1;
+
+        // Get enclosing context
+        const enclosingFunc = this.findEnclosingFunction(sourceFile, lineNum);
+
+        // Check for various error handling patterns
+        const errorInfo = this.analyzePromiseErrorContext(node, sourceFile);
+
+        results.push({
+          line: lineNum,
+          hasErrorHandler: errorInfo.hasErrorHandler,
+          errorHandlerType: errorInfo.type,
+          isAwaited: errorInfo.isAwaited,
+          enclosingFunction: enclosingFunc?.name,
+          hasGlobalErrorHandler: hasGlobalHandler
+        });
+      }
+
+      // Also check for Promise.reject(), Promise.all(), etc.
+      if (getTS().isCallExpression(node)) {
+        const expression = node.expression;
+        if (getTS().isPropertyAccessExpression(expression) &&
+            getTS().isIdentifier(expression.expression) &&
+            expression.expression.text === 'Promise') {
+          const methodName = expression.name.text;
+          // Skip .resolve, .all, .race etc. that return Promises
+          if (['all', 'race', 'allSettled', 'any'].includes(methodName)) {
+            const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+            const lineNum = line + 1;
+
+            const enclosingFunc = this.findEnclosingFunction(sourceFile, lineNum);
+            const errorInfo = this.analyzePromiseErrorContext(node, sourceFile);
+
+            results.push({
+              line: lineNum,
+              hasErrorHandler: errorInfo.hasErrorHandler,
+              errorHandlerType: errorInfo.type,
+              isAwaited: errorInfo.isAwaited,
+              enclosingFunction: enclosingFunc?.name,
+              hasGlobalErrorHandler: hasGlobalHandler
+            });
+          }
+        }
+      }
+
+      getTS().forEachChild(node, visit);
+    };
+    visit(sourceFile);
+
+    return results;
+  }
+
+  /**
+   * Analyze error handling context for a Promise node
+   */
+  private analyzePromiseErrorContext(
+    node: TypeScriptTypes.Node,
+    sourceFile: TypeScriptTypes.SourceFile
+  ): { hasErrorHandler: boolean; type: 'catch' | 'try-catch' | 'then-reject' | 'none'; isAwaited: boolean } {
+    let current: TypeScriptTypes.Node = node;
+    let isAwaited = false;
+
+    // Check if awaited
+    if (getTS().isAwaitExpression(node.parent)) {
+      isAwaited = true;
+      current = node.parent;
+    }
+
+    // Check if in try block (for awaited promises)
+    if (isAwaited && this.isInsideTryBlock(current)) {
+      return { hasErrorHandler: true, type: 'try-catch', isAwaited };
+    }
+
+    // Walk up to find .catch() or .then(_, errorHandler)
+    let walker: TypeScriptTypes.Node | undefined = node.parent;
+    while (walker) {
+      // Check for .catch()
+      if (getTS().isCallExpression(walker) &&
+          getTS().isPropertyAccessExpression(walker.expression) &&
+          walker.expression.name.text === 'catch') {
+        return { hasErrorHandler: true, type: 'catch', isAwaited };
+      }
+
+      // Check for .then(_, errorHandler) - second argument is error handler
+      if (getTS().isCallExpression(walker) &&
+          getTS().isPropertyAccessExpression(walker.expression) &&
+          walker.expression.name.text === 'then' &&
+          walker.arguments.length >= 2) {
+        return { hasErrorHandler: true, type: 'then-reject', isAwaited };
+      }
+
+      // Check if stored in variable that later has .catch()
+      if (getTS().isVariableDeclaration(walker)) {
+        const varName = walker.name.getText(sourceFile);
+        // Check if .catch is called on this variable later in the same block
+        const varUsage = this.trackVariableUsage(sourceFile, varName);
+        if (varUsage) {
+          // Check if any usage is a .catch() call
+          const fileText = sourceFile.text;
+          const catchPattern = new RegExp(`${this.escapeRegex(varName)}\\s*\\.\\s*catch\\s*\\(`);
+          if (catchPattern.test(fileText)) {
+            return { hasErrorHandler: true, type: 'catch', isAwaited };
+          }
+        }
+      }
+
+      walker = walker.parent;
+    }
+
+    return { hasErrorHandler: false, type: 'none', isAwaited };
+  }
+
+  /**
+   * Check if a node is inside a try block
+   */
+  private isInsideTryBlock(node: TypeScriptTypes.Node): boolean {
+    let current: TypeScriptTypes.Node | undefined = node.parent;
+    while (current) {
+      if (getTS().isTryStatement(current)) {
+        // Check if we're in the try block, not catch/finally
+        const tryBlock = current.tryBlock;
+        if (this.isDescendantOf(node, tryBlock)) {
+          return true;
+        }
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
+  /**
+   * Check if a node is a descendant of another node
+   */
+  private isDescendantOf(node: TypeScriptTypes.Node, ancestor: TypeScriptTypes.Node): boolean {
+    let current: TypeScriptTypes.Node | undefined = node;
+    while (current) {
+      if (current === ancestor) {
+        return true;
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
+  /**
    * Find the enclosing class for a given line
    */
   findEnclosingClass(sourceFile: TypeScriptTypes.SourceFile, lineNumber: number): ClassInfo | null {
@@ -1066,7 +1409,7 @@ export class ASTAnalyzer {
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash | 0; // Convert to 32-bit integer (| 0 is the correct idiom)
     }
     return hash.toString(16);
   }
@@ -1405,6 +1748,48 @@ export const ALLOWLISTS = {
     ],
   }
 };
+
+/**
+ * Information about event listener registration
+ * @since v12.9.0 - PRD-018
+ */
+export interface EventListenerInfo {
+  /** Event name being listened to */
+  eventName: string;
+  /** Line number of the listener registration */
+  line: number;
+  /** Method used: on, addListener, addEventListener */
+  method: 'on' | 'addListener' | 'addEventListener' | 'once';
+  /** Whether there's a corresponding removal */
+  hasCorrespondingRemoval: boolean;
+  /** Enclosing class name (if any) */
+  enclosingClass?: string;
+  /** Enclosing function name (if any) */
+  enclosingFunction?: string;
+  /** Whether removal is in a cleanup method */
+  hasCleanupInDestroyMethod: boolean;
+  /** Whether this is a one-time listener (once) */
+  isOneTimeListener: boolean;
+}
+
+/**
+ * Information about Promise error handling
+ * @since v12.9.0 - PRD-018
+ */
+export interface PromiseErrorInfo {
+  /** Line number of the Promise */
+  line: number;
+  /** Whether the Promise has error handling */
+  hasErrorHandler: boolean;
+  /** Type of error handling: catch, try-catch, or none */
+  errorHandlerType: 'catch' | 'try-catch' | 'then-reject' | 'none';
+  /** Whether the Promise is awaited */
+  isAwaited: boolean;
+  /** Enclosing function name */
+  enclosingFunction?: string;
+  /** Whether there's a global error handler in the file */
+  hasGlobalErrorHandler: boolean;
+}
 
 /**
  * Information about setTimeout/setInterval in Promise

@@ -18,10 +18,13 @@ import {
   type BugFinding,
   type BugfixConfig,
   type BugSeverity,
-  type BugType
+  type BugType,
+  getMetricsTracker
 } from '../../core/bugfix/index.js';
 import { logger } from '../../shared/logging/logger.js';
 import { detectProjectRoot } from '../../shared/validation/path-resolver.js';
+import { getVersion } from '../../shared/helpers/version.js';
+import { formatSeverity } from '../../shared/logging/severity-formatter.js';
 
 /**
  * CLI options for bugfix command
@@ -42,26 +45,10 @@ interface BugfixOptions {
   staged?: boolean;
   since?: string;
   check?: boolean;
-}
-
-/**
- * Format severity with color
- */
-function formatSeverity(severity: BugSeverity): string {
-  switch (severity) {
-    case 'critical':
-      return chalk.bgRed.white(' CRITICAL ');
-    case 'high':
-      return chalk.red('[HIGH]');
-    case 'medium':
-      return chalk.yellow('[MED]');
-    case 'low':
-      return chalk.gray('[LOW]');
-    default: {
-      const s = severity as string;
-      return `[${s.toUpperCase()}]`;
-    }
-  }
+  // New options (v12.9.0) - PRD-018
+  minConfidence?: number;
+  verifyLint?: boolean;
+  verifyStrict?: boolean;
 }
 
 /**
@@ -143,7 +130,15 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
         'missing_destroy',
         'promise_timeout_leak',
         'event_leak',
-        'resource_leak'
+        'resource_leak',
+        'memory_leak',
+        'race_condition',
+        'uncaught_promise',
+        'deprecated_api',
+        'security_issue',
+        'type_error',
+        'test_failure',
+        'custom'
       ]
     },
     // New options (v12.6.0)
@@ -170,6 +165,23 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
     since: {
       type: 'string',
       describe: 'Only scan files changed since branch/commit (e.g., main, HEAD~5)'
+    },
+    // New options (v12.9.0) - PRD-018
+    'min-confidence': {
+      type: 'number',
+      default: 0.5,
+      describe: 'Minimum confidence threshold (0.0-1.0) for bug detection',
+      coerce: (val: number) => Math.max(0, Math.min(1, val))
+    },
+    'verify-lint': {
+      type: 'boolean',
+      default: false,
+      describe: 'Run ESLint verification after fixes'
+    },
+    'verify-strict': {
+      type: 'boolean',
+      default: false,
+      describe: 'Run strict TypeScript check after fixes'
     }
   },
   handler: async (argv) => {
@@ -201,7 +213,7 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       if (fileFilter.length === 0) {
         if (isJsonMode) {
           console.log(JSON.stringify({
-            version: '12.6.0',
+            version: getVersion(),
             timestamp: new Date().toISOString(),
             message: 'No files to scan',
             summary: { bugsFound: 0, bugsFixed: 0, bugsFailed: 0, bugsSkipped: 0, successRate: 1, durationMs: 0 },
@@ -230,7 +242,12 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
       scope: argv.scope,
       dryRun: isCheckMode ? true : (argv.dryRun || false), // Check mode is always dry-run
       verbose: argv.verbose || false,
-      bugTypes: (argv.types as BugType[]) || ['timer_leak', 'missing_destroy', 'promise_timeout_leak']
+      bugTypes: (argv.types as BugType[]) || ['timer_leak', 'missing_destroy', 'promise_timeout_leak'],
+      // v12.9.0: PRD-018 confidence filtering
+      minConfidence: argv.minConfidence ?? 0.5,
+      // v12.9.0: PRD-018 enhanced verification
+      verifyLint: argv.verifyLint || false,
+      verifyStrict: argv.verifyStrict || false
     };
 
     if (!isQuiet) {
@@ -458,3 +475,210 @@ export const bugfixCommand: CommandModule<{}, BugfixOptions> = {
 };
 
 export default bugfixCommand;
+
+/**
+ * Bugfix feedback subcommand - Mark false positives
+ * v12.9.0: PRD-018 - False positive feedback system
+ */
+interface FeedbackOptions {
+  file: string;
+  line: number;
+  feedback?: string;
+  truePositive?: boolean;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export const bugfixFeedbackCommand: CommandModule<{}, FeedbackOptions> = {
+  command: 'bugfix:feedback',
+  describe: 'Report a false positive or confirm a true positive',
+  builder: {
+    file: {
+      type: 'string',
+      demandOption: true,
+      describe: 'File path where the bug was detected'
+    },
+    line: {
+      type: 'number',
+      demandOption: true,
+      describe: 'Line number of the detected bug'
+    },
+    feedback: {
+      type: 'string',
+      describe: 'Optional feedback explaining why this is a false positive'
+    },
+    'true-positive': {
+      type: 'boolean',
+      default: false,
+      describe: 'Mark as true positive instead of false positive'
+    }
+  },
+  handler: async (argv) => {
+    const rootDir = await detectProjectRoot() || process.cwd();
+    const tracker = getMetricsTracker(rootDir);
+
+    try {
+      await tracker.init();
+
+      // Find the metric
+      const metric = tracker.findByLocation(argv.file, argv.line);
+
+      if (!metric) {
+        console.log(chalk.yellow(`\nNo detection found at ${argv.file}:${argv.line}`));
+        console.log(chalk.gray('Make sure the file path and line number match a previous detection.\n'));
+        process.exitCode = 1;
+        return;
+      }
+
+      if (argv.truePositive) {
+        tracker.markTruePositive(metric.id);
+        console.log(chalk.green(`\n✓ Marked as TRUE POSITIVE: ${argv.file}:${argv.line}`));
+        console.log(chalk.gray(`  Rule: ${metric.ruleId}`));
+        console.log(chalk.gray(`  Type: ${metric.bugType}\n`));
+      } else {
+        tracker.markFalsePositive(metric.id, argv.feedback);
+        console.log(chalk.yellow(`\n⚠ Marked as FALSE POSITIVE: ${argv.file}:${argv.line}`));
+        console.log(chalk.gray(`  Rule: ${metric.ruleId}`));
+        console.log(chalk.gray(`  Type: ${metric.bugType}`));
+        if (argv.feedback) {
+          console.log(chalk.gray(`  Feedback: ${argv.feedback}`));
+        }
+        console.log(chalk.gray('\n  This feedback helps improve detection accuracy.\n'));
+      }
+
+    } catch (error) {
+      console.log(chalk.red(`\nError: ${(error as Error).message}\n`));
+      process.exitCode = 1;
+    } finally {
+      tracker.close();
+    }
+  }
+};
+
+/**
+ * Bugfix metrics subcommand - View detection metrics
+ * v12.9.0: PRD-018 - Metrics tracking
+ */
+interface MetricsOptions {
+  json?: boolean;
+  rule?: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export const bugfixMetricsCommand: CommandModule<{}, MetricsOptions> = {
+  command: 'bugfix:metrics',
+  describe: 'View bugfix detection metrics and accuracy stats',
+  builder: {
+    json: {
+      type: 'boolean',
+      default: false,
+      describe: 'Output as JSON'
+    },
+    rule: {
+      type: 'string',
+      describe: 'Filter by specific rule ID'
+    }
+  },
+  handler: async (argv) => {
+    const rootDir = await detectProjectRoot() || process.cwd();
+    const tracker = getMetricsTracker(rootDir);
+
+    try {
+      await tracker.init();
+
+      if (argv.rule) {
+        // Show metrics for specific rule
+        const metrics = tracker.getRuleMetrics(argv.rule);
+
+        if (!metrics) {
+          console.log(chalk.yellow(`\nNo metrics found for rule: ${argv.rule}\n`));
+          process.exitCode = 1;
+          return;
+        }
+
+        if (argv.json) {
+          console.log(JSON.stringify(metrics, null, 2));
+        } else {
+          console.log(chalk.cyan('\n📊 Rule Metrics: ') + chalk.bold(argv.rule) + '\n');
+          console.log(`   Bug Type:       ${metrics.bugType}`);
+          console.log(`   Total:          ${metrics.totalDetections}`);
+          console.log(`   True Positives: ${chalk.green(metrics.truePositives.toString())}`);
+          console.log(`   False Positives:${chalk.red(metrics.falsePositives.toString())}`);
+          console.log(`   Unclassified:   ${metrics.unclassified}`);
+          console.log(`   Precision:      ${(metrics.precision * 100).toFixed(1)}%`);
+          console.log(`   Avg Confidence: ${(metrics.averageConfidence * 100).toFixed(1)}%`);
+          console.log(`   Fixes Attempted:${metrics.fixesAttempted}`);
+          console.log(`   Fixes Success:  ${metrics.fixesSuccessful}`);
+          console.log();
+        }
+        return;
+      }
+
+      // Show full summary
+      const summary = tracker.getSummary();
+
+      if (!summary || summary.totalDetections === 0) {
+        console.log(chalk.yellow('\nNo detection metrics available yet.'));
+        console.log(chalk.gray('Run `ax bugfix` to start collecting metrics.\n'));
+        return;
+      }
+
+      if (argv.json) {
+        console.log(JSON.stringify(summary, null, 2));
+        return;
+      }
+
+      // Display summary
+      console.log(chalk.cyan('\n📊 Bugfix Detection Metrics\n'));
+      console.log(chalk.cyan('━'.repeat(50)));
+
+      // Overall stats
+      console.log(chalk.bold('\n  Overall Statistics\n'));
+      console.log(`   Total Detections:  ${summary.totalDetections}`);
+      console.log(`   True Positives:    ${chalk.green(summary.totalTruePositives.toString())}`);
+      console.log(`   False Positives:   ${chalk.red(summary.totalFalsePositives.toString())}`);
+      console.log(`   Unclassified:      ${summary.totalUnclassified}`);
+      console.log(`   Overall Precision: ${chalk.bold((summary.overallPrecision * 100).toFixed(1) + '%')}`);
+
+      // By type
+      console.log(chalk.bold('\n  By Bug Type\n'));
+      for (const [type, stats] of Object.entries(summary.byType)) {
+        const precisionStr = stats.truePositives + stats.falsePositives > 0
+          ? `${(stats.precision * 100).toFixed(0)}%`
+          : 'N/A';
+        console.log(`   ${type.padEnd(22)} ${stats.detections.toString().padStart(4)} detections, precision: ${precisionStr}`);
+      }
+
+      // By rule
+      if (summary.byRule.length > 0) {
+        console.log(chalk.bold('\n  By Detection Rule\n'));
+        for (const rule of summary.byRule.slice(0, 10)) {
+          const precisionStr = rule.truePositives + rule.falsePositives > 0
+            ? `${(rule.precision * 100).toFixed(0)}%`
+            : 'N/A';
+          console.log(`   ${rule.ruleId.padEnd(25)} ${rule.totalDetections.toString().padStart(4)} detections, precision: ${precisionStr}`);
+        }
+      }
+
+      // Recent false positives
+      if (summary.recentFalsePositives.length > 0) {
+        console.log(chalk.bold('\n  Recent False Positives\n'));
+        for (const fp of summary.recentFalsePositives.slice(0, 5)) {
+          console.log(chalk.gray(`   ${fp.file}:${fp.line} (${fp.ruleId})`));
+          if (fp.feedback) {
+            console.log(chalk.gray(`     Feedback: ${fp.feedback}`));
+          }
+        }
+      }
+
+      console.log(chalk.cyan('\n━'.repeat(50)));
+      console.log(chalk.gray('\n  Use `ax bugfix:feedback` to report false positives.'));
+      console.log(chalk.gray('  Use `ax bugfix:metrics --rule <rule-id>` for detailed rule metrics.\n'));
+
+    } catch (error) {
+      console.log(chalk.red(`\nError: ${(error as Error).message}\n`));
+      process.exitCode = 1;
+    } finally {
+      tracker.close();
+    }
+  }
+};

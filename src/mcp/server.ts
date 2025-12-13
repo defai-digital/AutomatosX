@@ -163,8 +163,11 @@ function normalizeClientProvider(clientName: string): McpSession['normalizedProv
 }
 
 export class McpServer {
-  // Use 'any' for heterogeneous tool handlers to avoid unsafe type casts
-  // Runtime validation via validateToolInput provides type safety
+  // Heterogeneous tool handler map - different tools have different I/O types.
+  // TypeScript cannot express Map<string, ToolHandler<T1, R1> | ToolHandler<T2, R2> | ...>
+  // so we use any for the generic parameters. Type safety is enforced at runtime
+  // via JSON Schema validation (validateToolInput) before handler execution.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private tools: Map<string, ToolHandler<any, any>> = new Map();
   private toolSchemas: McpTool[] = [];
   private initialized = false;

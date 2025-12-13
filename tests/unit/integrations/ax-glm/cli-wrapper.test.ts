@@ -1,30 +1,19 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { EventEmitter } from 'events';
-import { spawn, exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import type { ExecutionRequest } from '../../../../src/types/provider.js';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
-  exec: vi.fn(),
 }));
 
-const versionRef = vi.hoisted(() => ({ result: { stdout: '1.2.3', stderr: '' }, error: null as Error | null }));
-const availabilityRef = vi.hoisted(() => ({ available: true }));
+const availabilityRef = vi.hoisted(() => ({ available: true, path: '/usr/local/bin/ax-glm' }));
 
-vi.mock('util', () => ({
-  promisify: vi.fn(() => (cmd: string) => {
-    if (cmd.includes('which')) {
-      return availabilityRef.available
-        ? Promise.resolve({ stdout: '/usr/local/bin/ax-glm', stderr: '' })
-        : Promise.reject(new Error('not found'));
-    }
-    if (cmd.includes('--version')) {
-      if (versionRef.error) return Promise.reject(versionRef.error);
-      return Promise.resolve(versionRef.result);
-    }
-    return Promise.resolve({ stdout: '', stderr: '' });
-  }),
+vi.mock('../../../../src/core/cli-provider-detector.js', () => ({
+  findOnPath: vi.fn(() => ({
+    found: availabilityRef.available,
+    path: availabilityRef.available ? availabilityRef.path : undefined
+  })),
 }));
 
 vi.mock('../../../../src/shared/logging/logger.js', () => ({
@@ -39,28 +28,13 @@ vi.mock('../../../../src/shared/logging/logger.js', () => ({
 import { GLMCliWrapper } from '../../../../src/integrations/ax-glm/cli-wrapper.js';
 
 describe('GLMCliWrapper', () => {
-  let mockExec: Mock;
   let mockSpawn: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     availabilityRef.available = true;
-    versionRef.error = null;
-    versionRef.result = { stdout: '1.2.3', stderr: '' };
-    mockExec = exec as unknown as Mock;
+    availabilityRef.path = '/usr/local/bin/ax-glm';
     mockSpawn = spawn as unknown as Mock;
-
-    mockExec.mockImplementation((cmd: string, _opts: unknown, cb?: (err: unknown, res: unknown) => void) => {
-      const result = cmd.includes('which')
-        ? availabilityRef.available
-          ? { stdout: '/usr/local/bin/ax-glm', stderr: '' }
-          : { stdout: '', stderr: 'not found' }
-        : { stdout: '1.2.3', stderr: '' };
-      const error = cmd.includes('which') && !availabilityRef.available ? new Error('not found') : null;
-      if (typeof cb === 'function') cb(error, result);
-      if (error) throw error;
-      return result;
-    });
   });
 
   describe('isAvailable', () => {
@@ -75,9 +49,7 @@ describe('GLMCliWrapper', () => {
       expect(await wrapper.isAvailable()).toBe(false);
     });
 
-    it('sets version to unknown on version error', async () => {
-      versionRef.error = new Error('no version');
-      versionRef.result = { stdout: '', stderr: '' };
+    it('sets version to unknown (version detection not implemented in base)', async () => {
       const wrapper = new GLMCliWrapper();
       await wrapper.isAvailable();
       expect(wrapper.getVersion()).toBe('unknown');
@@ -85,15 +57,15 @@ describe('GLMCliWrapper', () => {
   });
 
   describe('initialize', () => {
-    it('succeeds when available', async () => {
+    it('succeeds when available', () => {
       const wrapper = new GLMCliWrapper();
-      await expect(wrapper.initialize()).resolves.not.toThrow();
+      expect(() => wrapper.initialize()).not.toThrow();
     });
 
-    it('throws when unavailable', async () => {
+    it('throws when unavailable', () => {
       availabilityRef.available = false;
       const wrapper = new GLMCliWrapper();
-      await expect(wrapper.initialize()).rejects.toThrow('ax-glm CLI is not installed');
+      expect(() => wrapper.initialize()).toThrow('ax-glm CLI is not installed');
     });
   });
 
@@ -150,6 +122,40 @@ describe('GLMCliWrapper', () => {
       }, 5);
 
       await expect(promise).rejects.toThrow(/spawn fail/);
+    });
+  });
+
+  describe('constructor', () => {
+    it('should create wrapper with default config', () => {
+      const wrapper = new GLMCliWrapper();
+      expect(wrapper.getModel()).toBe('glm-4.6');
+      expect(wrapper.getCommand()).toBe('ax-glm');
+    });
+
+    it('should create wrapper with custom model', () => {
+      const wrapper = new GLMCliWrapper({ model: 'glm-4' });
+      expect(wrapper.getModel()).toBe('glm-4');
+    });
+
+    it('should create wrapper with custom command', () => {
+      const wrapper = new GLMCliWrapper({ command: 'custom-glm' });
+      expect(wrapper.getCommand()).toBe('custom-glm');
+    });
+  });
+
+  describe('getVersion', () => {
+    it('should return null before initialization', () => {
+      const wrapper = new GLMCliWrapper();
+      expect(wrapper.getVersion()).toBeNull();
+    });
+  });
+
+  describe('destroy', () => {
+    it('should clean up resources', async () => {
+      const wrapper = new GLMCliWrapper();
+      await wrapper.destroy();
+      // Should not throw
+      expect(wrapper).toBeDefined();
     });
   });
 });

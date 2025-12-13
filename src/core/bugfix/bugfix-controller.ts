@@ -149,17 +149,17 @@ export class BugfixController {
         } else if (currentState === 'SCANNING') {
           await this.handleScanning();
         } else if (currentState === 'ANALYZING') {
-          await this.handleAnalyzing();
+          this.handleAnalyzing();
         } else if (currentState === 'PLANNING') {
-          await this.handlePlanning();
+          this.handlePlanning();
         } else if (currentState === 'FIXING') {
           await this.handleFixing();
         } else if (currentState === 'VERIFYING') {
           await this.handleVerifying();
         } else if (currentState === 'LEARNING') {
-          await this.handleLearning();
+          this.handleLearning();
         } else if (currentState === 'ITERATING') {
-          await this.handleIterating();
+          this.handleIterating();
         } else if (currentState === 'COMPLETE' || currentState === 'FAILED') {
           // Terminal states - exit loop
           break;
@@ -252,7 +252,7 @@ export class BugfixController {
   /**
    * Handle ANALYZING state
    */
-  private async handleAnalyzing(): Promise<void> {
+  private handleAnalyzing(): void {
     this.emitProgress('Analyzing bugs...');
 
     // Findings are already sorted by severity and confidence in detector
@@ -273,7 +273,7 @@ export class BugfixController {
   /**
    * Handle PLANNING state
    */
-  private async handlePlanning(): Promise<void> {
+  private handlePlanning(): void {
     const finding = this.findings[this.currentBugIndex];
 
     if (!finding) {
@@ -402,7 +402,7 @@ export class BugfixController {
   /**
    * Handle LEARNING state
    */
-  private async handleLearning(): Promise<void> {
+  private handleLearning(): void {
     const finding = this.findings[this.currentBugIndex];
 
     if (!finding) {
@@ -420,6 +420,9 @@ export class BugfixController {
       file: finding.file
     });
 
+    // Clear retry count for this bug since it's complete
+    this.retryCount.delete(finding.id);
+
     // Move to next bug
     this.currentBugIndex++;
 
@@ -433,7 +436,7 @@ export class BugfixController {
   /**
    * Handle ITERATING state (retry logic)
    */
-  private async handleIterating(): Promise<void> {
+  private handleIterating(): void {
     const finding = this.findings[this.currentBugIndex];
 
     if (!finding) {
@@ -448,6 +451,9 @@ export class BugfixController {
       this.emitProgress(`Max retries reached for ${finding.file}`, {
         retries: currentRetries
       });
+
+      // Clear retry count for this bug since we're done with it
+      this.retryCount.delete(finding.id);
 
       this.currentBugIndex++;
 
@@ -588,6 +594,9 @@ export class BugfixController {
   async stop(): Promise<void> {
     logger.info('Stopping bugfix session', { sessionId: this.sessionId });
     this.state = 'COMPLETE';
+
+    // Clear retry counts to prevent memory leak
+    this.retryCount.clear();
 
     // Cleanup any pending backups
     await this.fixer.cleanupBackups();

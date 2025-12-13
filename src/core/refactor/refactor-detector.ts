@@ -31,7 +31,8 @@ import { TYPE_SAFETY_RULES, detectTypeSafety } from './detectors/type-safety-det
 // Constants
 // ============================================================================
 
-const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+// v12.10.0: Added Python extensions for dead code detection
+const SUPPORTED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.pyw'];
 
 // ============================================================================
 // RefactorDetector Class

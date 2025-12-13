@@ -347,18 +347,30 @@ export class DagGenerator {
 
   /**
    * Count nodes that can be executed in parallel
+   * BUG FIX: Added cycle detection with visiting set to prevent infinite recursion
    */
   private countParallelizableNodes(dag: DagJson): number {
     // Group nodes by depth level
     const depthLevels = new Map<number, string[]>();
 
     const depths = new Map<string, number>();
+    const visiting = new Set<string>(); // Track nodes being visited to detect cycles
+
     const calculateDepth = (nodeId: string): number => {
       if (depths.has(nodeId)) return depths.get(nodeId)!;
+
+      // BUG FIX: Detect cycle - if we're already visiting this node, we have a cycle
+      // Return 0 to break the recursion (cycle was already detected in validate())
+      if (visiting.has(nodeId)) {
+        return 0;
+      }
+
+      visiting.add(nodeId);
 
       const node = dag.nodes.find(n => n.id === nodeId);
       if (!node || !node.dependencies || node.dependencies.length === 0) {
         depths.set(nodeId, 0);
+        visiting.delete(nodeId);
         return 0;
       }
 
@@ -367,6 +379,7 @@ export class DagGenerator {
       const maxDepDep = depthValues.length > 0 ? Math.max(...depthValues) : -1;
       const depth = maxDepDep + 1;
       depths.set(nodeId, depth);
+      visiting.delete(nodeId);
       return depth;
     };
 

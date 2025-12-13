@@ -63,6 +63,7 @@ export abstract class BaseProvider implements Provider {
     'ax-grok',       // v12.0.0: Alias for grok
     'qwen',          // v12.7.0: Qwen Code provider (Alibaba Cloud)
     'qwen-code',     // v12.7.0: Alias for qwen
+    'ax-qwen',       // v12.8.4: Alias for qwen (consistency with ax-glm, ax-grok)
     'test-provider'  // For unit tests
   ] as const;
 

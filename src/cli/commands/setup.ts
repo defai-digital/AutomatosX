@@ -10,7 +10,7 @@ import chalk from 'chalk';
 import { DEFAULT_CONFIG } from '../../types/config.js';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
-import { PromptHelper } from '../../shared/helpers/prompt-helper.js';
+import { withPrompt } from '../../shared/helpers/prompt-helper.js';
 import { getPackageRoot } from '../../shared/helpers/package-root.js';
 import { ClaudeCodeSetupHelper } from '../../integrations/claude-code/setup-helper.js';
 import { ProfileLoader } from '../../agents/profile-loader.js';
@@ -22,6 +22,21 @@ interface SetupOptions {
   force?: boolean;
   path?: string;
   claudeCode?: boolean;  // DEPRECATED: v13.0.0 - MCP discovery replaces manifest generation
+}
+
+/**
+ * Guard to avoid running external MCP setup commands when tests/sandboxes are active.
+ * We skip when:
+ * - Explicitly requested via env flags
+ * - Running under Vitest/Node test envs (prevents writes to HOME in CI sandboxes)
+ */
+function shouldSkipExternalMcpSetup(): boolean {
+  return (
+    process.env.AUTOMATOSX_SKIP_MCP_SETUP === 'true' ||
+    process.env.AX_MOCK_PROVIDERS === 'true' ||
+    process.env.VITEST === '1' ||
+    process.env.NODE_ENV === 'test'
+  );
 }
 
 export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> = {
@@ -152,19 +167,15 @@ export const setupCommand: CommandModule<Record<string, unknown>, SetupOptions> 
 
         // Interactive prompt to continue or exit
         if (process.stdout.isTTY && process.stdin.isTTY) {
-          const prompt = new PromptHelper();
-          try {
+          const shouldContinue = await withPrompt(async (prompt) => {
             const answer = await prompt.question(
               chalk.cyan('   Continue setup without provider integration? (y/N): ')
             );
-            const shouldContinue = answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+            return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+          });
 
-            if (!shouldContinue) {
-              prompt.close();
-              process.exit(0);
-            }
-          } finally {
-            prompt.close();
+          if (!shouldContinue) {
+            process.exit(0);
           }
         } else {
           // Non-interactive mode: continue but warn
@@ -1091,7 +1102,11 @@ agents:
 }
 
 /**
- * Create default configuration file
+ * Create or update configuration file
+ *
+ * Behavior:
+ * - `ax setup --force`: Delete existing config and create fresh one from DEFAULT_CONFIG
+ * - `ax setup` (no force): Merge missing fields into existing config (non-destructive)
  */
 async function createDefaultConfig(
   configPath: string,
@@ -1100,20 +1115,86 @@ async function createDefaultConfig(
 ): Promise<void> {
   const exists = await checkExists(configPath);
 
-  if (exists && !force) {
-    return; // Don't overwrite existing config unless forced
+  if (force) {
+    // --force: Create fresh config from defaults
+    const config = {
+      ...DEFAULT_CONFIG,
+      version
+    };
+    const content = JSON.stringify(config, null, 2);
+    await writeFile(configPath, content, 'utf-8');
+    return;
   }
 
-  const config = {
-    ...DEFAULT_CONFIG,
-    // Add metadata
-    // Note: $schema removed because schema directory is not copied to user projects
-    // Users should rely on IDE JSON Schema plugins that fetch from npm package
-    version
-  };
+  if (!exists) {
+    // No existing config: Create from defaults
+    const config = {
+      ...DEFAULT_CONFIG,
+      version
+    };
+    const content = JSON.stringify(config, null, 2);
+    await writeFile(configPath, content, 'utf-8');
+    return;
+  }
 
-  const content = JSON.stringify(config, null, 2);
-  await writeFile(configPath, content, 'utf-8');
+  // Existing config without --force: Merge missing fields (non-destructive)
+  try {
+    const existingContent = await readFile(configPath, 'utf-8');
+    const existingConfig = JSON.parse(existingContent) as Record<string, unknown>;
+
+    // Deep merge missing fields from DEFAULT_CONFIG
+    const mergedConfig = deepMergeConfig(DEFAULT_CONFIG as unknown as Record<string, unknown>, existingConfig);
+    mergedConfig.version = version;
+
+    const content = JSON.stringify(mergedConfig, null, 2);
+    await writeFile(configPath, content, 'utf-8');
+
+    logger.info('Merged missing fields into existing config', { configPath });
+  } catch (error) {
+    // If parsing fails, log warning but don't overwrite
+    logger.warn('Could not parse existing config for merge, skipping update', {
+      configPath,
+      error: (error as Error).message
+    });
+  }
+}
+
+/**
+ * Deep merge config objects, preserving existing values
+ *
+ * - Existing values in `target` are preserved
+ * - Missing keys from `defaults` are added to `target`
+ * - For nested objects, recursively merge
+ * - For arrays, keep target's array (don't merge arrays)
+ */
+function deepMergeConfig(
+  defaults: Record<string, unknown>,
+  target: Record<string, unknown>
+): Record<string, unknown> {
+  const result = { ...target };
+
+  for (const key of Object.keys(defaults)) {
+    if (!(key in result)) {
+      // Key missing in target: add from defaults
+      result[key] = defaults[key];
+    } else if (
+      typeof defaults[key] === 'object' &&
+      defaults[key] !== null &&
+      !Array.isArray(defaults[key]) &&
+      typeof result[key] === 'object' &&
+      result[key] !== null &&
+      !Array.isArray(result[key])
+    ) {
+      // Both are objects: recursively merge
+      result[key] = deepMergeConfig(
+        defaults[key] as Record<string, unknown>,
+        result[key] as Record<string, unknown>
+      );
+    }
+    // Otherwise: keep target's value (including arrays)
+  }
+
+  return result;
 }
 
 /**
@@ -1280,6 +1361,11 @@ async function updateGitignore(projectDir: string): Promise<void> {
 type GeminiMCPStatus = 'configured' | 'skipped' | 'failed';
 
 async function setupGeminiIntegration(projectDir: string, _packageRoot: string, force = false): Promise<GeminiMCPStatus> {
+  if (shouldSkipExternalMcpSetup()) {
+    logger.info('Skipping Gemini MCP setup (test/sandbox mode)');
+    return 'skipped';
+  }
+
   // Setup MCP server configuration using native gemini mcp add command
   const mcpStatus = await setupGeminiMCPViaCLI(projectDir, force);
 
@@ -1360,6 +1446,11 @@ async function setupGeminiMCPViaCLI(projectDir: string, force = false): Promise<
 type CodexMCPStatus = 'configured' | 'skipped' | 'failed';
 
 async function setupCodexGlobalMCPConfig(force = false): Promise<CodexMCPStatus> {
+  if (shouldSkipExternalMcpSetup()) {
+    logger.info('Skipping Codex MCP setup (test/sandbox mode)');
+    return 'skipped';
+  }
+
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
@@ -1500,6 +1591,11 @@ Created by AutomatosX for organized scratch work.
  * @param force - If true, remove and re-add MCP server to update config
  */
 async function createMcpConfig(projectDir: string, force = false): Promise<void> {
+  if (shouldSkipExternalMcpSetup()) {
+    logger.info('Skipping Claude Code MCP setup (test/sandbox mode)');
+    return;
+  }
+
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
@@ -1561,6 +1657,11 @@ async function createMcpConfig(projectDir: string, force = false): Promise<void>
  * @returns Status of MCP configuration
  */
 async function setupQwenMCPConfig(projectDir: string, force = false): Promise<SdkMCPStatus> {
+  if (shouldSkipExternalMcpSetup()) {
+    logger.info('Skipping Qwen MCP setup (test/sandbox mode)');
+    return 'skipped';
+  }
+
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
@@ -1659,3 +1760,36 @@ async function cleanupForceMode(projectDir: string): Promise<void> {
     });
   }
 }
+
+/**
+ * Export internal functions for testing
+ * @internal - Not part of public API
+ */
+export const __testing__ = {
+  shouldSkipExternalMcpSetup,
+  checkExists,
+  createDirectoryStructure,
+  validateEnvironment,
+  rollbackCreatedResources,
+  copyExampleFiles,
+  copyExampleTeams,
+  copyExampleAgents,
+  copyExampleAbilities,
+  copyExampleTemplates,
+  copyWorkflowTemplates,
+  copyIterateConfig,
+  createDefaultIterateConfig,
+  createDefaultWorkflowTemplates,
+  createDefaultConfig,
+  deepMergeConfig,
+  setupClaudeIntegration,
+  initializeGitRepository,
+  updateGitignore,
+  setupGeminiIntegration,
+  setupGeminiMCPViaCLI,
+  setupCodexGlobalMCPConfig,
+  createWorkspaceDirectories,
+  createMcpConfig,
+  setupQwenMCPConfig,
+  cleanupForceMode
+};

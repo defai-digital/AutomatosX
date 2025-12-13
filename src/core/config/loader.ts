@@ -343,34 +343,41 @@ export function validateConfig(config: AutomatosXConfig): string[] {
     }
 
     // NEW: Validate command (prevent command injection)
-    // v12.0.0: SDK providers (glm, grok) don't require command
+    // v12.8.4: SDK and hybrid providers don't require command (SDK-first with optional CLI fallback)
+    // Only pure CLI providers require a command field
     const providerType = (provider as { type?: string }).type;
-    const isSDKProvider = providerType === 'sdk';
+    const isSDKOrHybridProvider = providerType === 'sdk' || providerType === 'hybrid' || providerType === undefined;
 
-    if (!isSDKProvider) {
+    if (!isSDKOrHybridProvider) {
+      // Pure CLI provider - command is required
       if (!provider.command) {
-        errors.push(`Provider ${name}: command is required for CLI/hybrid providers`);
+        errors.push(`Provider ${name}: command is required for CLI providers`);
       } else if (!isValidCommand(provider.command)) {
         errors.push(`Provider ${name}: command invalid (alphanumeric, dash, underscore only, max 100 chars, no shell metacharacters)`);
       }
     } else if (provider.command && !isValidCommand(provider.command)) {
-      // SDK providers can optionally have a command, but it must be valid if present
+      // SDK/hybrid providers can optionally have a command, but it must be valid if present
       errors.push(`Provider ${name}: command invalid (alphanumeric, dash, underscore only, max 100 chars, no shell metacharacters)`);
     }
 
     // Existing: Min validation + NEW: Max validation
-    if (!isPositiveInteger(provider.priority)) {
-      errors.push(`Provider ${name}: priority must be a positive integer`);
+    // v12.8.4: priority and timeout are optional with Zod defaults, so only validate if explicitly set
+    if (provider.priority !== undefined) {
+      if (!isPositiveInteger(provider.priority)) {
+        errors.push(`Provider ${name}: priority must be a positive integer`);
+      }
     }
 
-    if (!isPositiveInteger(provider.timeout)) {
-      errors.push(`Provider ${name}: timeout must be a positive integer`);
-    } else {
-      if (provider.timeout < VALIDATION_LIMITS.MIN_TIMEOUT) {
-        errors.push(`Provider ${name}: timeout must be >= ${VALIDATION_LIMITS.MIN_TIMEOUT}ms`);
-      }
-      if (provider.timeout > VALIDATION_LIMITS.MAX_TIMEOUT) {
-        errors.push(`Provider ${name}: timeout must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms (1 hour max)`);
+    if (provider.timeout !== undefined) {
+      if (!isPositiveInteger(provider.timeout)) {
+        errors.push(`Provider ${name}: timeout must be a positive integer`);
+      } else {
+        if (provider.timeout < VALIDATION_LIMITS.MIN_TIMEOUT) {
+          errors.push(`Provider ${name}: timeout must be >= ${VALIDATION_LIMITS.MIN_TIMEOUT}ms`);
+        }
+        if (provider.timeout > VALIDATION_LIMITS.MAX_TIMEOUT) {
+          errors.push(`Provider ${name}: timeout must be <= ${VALIDATION_LIMITS.MAX_TIMEOUT}ms (1 hour max)`);
+        }
       }
     }
 

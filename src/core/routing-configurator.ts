@@ -640,20 +640,63 @@ export class RoutingConfigurator {
       return { applied: false, changes: ['Skipped: manual configuration preserved'] };
     }
 
-    // Update provider priorities
+    // Update provider priorities and fill missing fields
     const providers = (existingConfig.providers ?? {}) as Record<string, Record<string, unknown>>;
     for (const [name, config] of Object.entries(recommendation.providers)) {
-      if (!providers[name]) {
-        providers[name] = {};
-      }
+      const isNewProvider = !providers[name];
+      const capability = this.capabilities.get(name);
 
-      const oldPriority = providers[name].priority;
-      if (oldPriority !== config.priority) {
-        changes.push(`${name}: priority ${oldPriority ?? 'unset'} → ${config.priority}`);
-        providers[name].priority = config.priority;
-      }
+      if (isNewProvider) {
+        // v12.8.4: Create complete provider config for newly detected providers
+        // This ensures validation passes and provides proper defaults
+        providers[name] = {
+          enabled: config.enabled,
+          priority: config.priority,
+          timeout: 2700000,  // 45 minutes default
+          // Set type based on execution mode
+          type: capability?.executionMode === 'cli' ? 'cli'
+            : capability?.executionMode === 'sdk' ? 'sdk'
+            : 'hybrid',
+          // Only set command for CLI providers that have a known command
+          ...(capability?.executionMode === 'cli' && PROVIDER_COMMANDS[name]
+            ? { command: PROVIDER_COMMANDS[name] }
+            : {}),
+        };
+        changes.push(`${name}: added new provider config (priority ${config.priority}, type ${providers[name].type})`);
+      } else {
+        // Existing provider: update priority and fill missing required fields
+        const providerConfig = providers[name]!;
+        const oldPriority = providerConfig.priority;
+        if (oldPriority !== config.priority) {
+          changes.push(`${name}: priority ${oldPriority ?? 'unset'} → ${config.priority}`);
+          providerConfig.priority = config.priority;
+        }
 
-      providers[name].enabled = config.enabled;
+        providerConfig.enabled = config.enabled;
+
+        // v12.8.4: Fill in missing required fields for existing providers
+        if (providerConfig.timeout === undefined) {
+          providerConfig.timeout = 2700000;  // 45 minutes default
+          changes.push(`${name}: added missing timeout (2700000)`);
+        }
+
+        if (providerConfig.type === undefined && capability) {
+          providerConfig.type = capability.executionMode === 'cli' ? 'cli'
+            : capability.executionMode === 'sdk' ? 'sdk'
+            : 'hybrid';
+          changes.push(`${name}: added missing type (${providerConfig.type})`);
+        }
+
+        // Add command for CLI providers if missing
+        if (
+          providerConfig.command === undefined &&
+          capability?.executionMode === 'cli' &&
+          PROVIDER_COMMANDS[name]
+        ) {
+          providerConfig.command = PROVIDER_COMMANDS[name];
+          changes.push(`${name}: added missing command (${PROVIDER_COMMANDS[name]})`);
+        }
+      }
     }
 
     existingConfig.providers = providers;

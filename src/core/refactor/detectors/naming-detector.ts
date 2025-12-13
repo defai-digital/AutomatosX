@@ -308,7 +308,9 @@ function detectGenericNames(
 ): RefactorFinding[] {
   const findings: RefactorFinding[] = [];
   const genericNames = ['data', 'result', 'value', 'item', 'temp', 'tmp', 'foo', 'bar', 'baz', 'obj', 'arr'];
-  const pattern = new RegExp(`(?:const|let|var)\\s+(${genericNames.join('|')})\\s*[=:]`, 'gi');
+  // Case-sensitive pattern to match only lowercase generic names
+  // UPPER_CASE constants like DATA, RESULT are valid naming conventions
+  const pattern = new RegExp(`(?:const|let|var)\\s+(${genericNames.join('|')})\\s*[=:]`, 'g');
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -324,6 +326,12 @@ function detectGenericNames(
     if (match) {
       const varName = match[1];
       if (varName === undefined) continue;
+
+      // Skip if it's UPPER_SNAKE_CASE (valid constant naming)
+      if (varName === varName.toUpperCase()) {
+        pattern.lastIndex = 0;
+        continue;
+      }
 
       findings.push(
         createFinding(

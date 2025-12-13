@@ -22,6 +22,108 @@ import { createSafeInterval, createSafeTimeout } from './safe-timers.js';
 export type CleanupTask = () => void | Promise<void>;
 
 /**
+ * Shared cleanup logic used by both Disposable and DisposableEventEmitter.
+ * Uses composition to avoid code duplication.
+ *
+ * @internal
+ */
+class DisposableCore {
+  readonly cleanupTasks: CleanupTask[] = [];
+  destroyed = false;
+
+  constructor(private readonly name?: string) {}
+
+  registerCleanup(task: CleanupTask): void {
+    if (this.destroyed) {
+      logger.warn('registerCleanup called after destroy', { name: this.name });
+      return;
+    }
+    this.cleanupTasks.push(task);
+  }
+
+  createInterval(
+    callback: () => void | Promise<void>,
+    intervalMs: number,
+    name?: string
+  ): () => void {
+    const cleanup = createSafeInterval(callback, intervalMs, {
+      name: name || `${this.name || 'Disposable'}-interval`
+    });
+    this.registerCleanup(cleanup);
+    return cleanup;
+  }
+
+  createTimeout(
+    callback: () => void | Promise<void>,
+    delayMs: number,
+    name?: string
+  ): () => void {
+    const cleanup = createSafeTimeout(callback, delayMs, {
+      name: name || `${this.name || 'Disposable'}-timeout`
+    });
+    this.registerCleanup(cleanup);
+    return cleanup;
+  }
+
+  async executeCleanup(
+    onDestroy: () => void | Promise<void>,
+    additionalCleanup?: () => void
+  ): Promise<void> {
+    if (this.destroyed) {
+      logger.debug('destroy() called on already-destroyed object', { name: this.name });
+      return;
+    }
+
+    this.destroyed = true;
+
+    logger.debug('Destroying disposable', {
+      name: this.name,
+      cleanupTaskCount: this.cleanupTasks.length
+    });
+
+    // Call onDestroy hook
+    try {
+      await onDestroy();
+    } catch (error) {
+      logger.error('Error in onDestroy hook', {
+        name: this.name,
+        error: (error as Error).message
+      });
+    }
+
+    // Execute cleanup tasks in reverse order (LIFO)
+    const errors: Error[] = [];
+
+    while (this.cleanupTasks.length > 0) {
+      const task = this.cleanupTasks.pop()!;
+      try {
+        await task();
+      } catch (error) {
+        errors.push(error as Error);
+        logger.error('Cleanup task error', {
+          name: this.name,
+          error: (error as Error).message
+        });
+      }
+    }
+
+    // Additional cleanup (e.g., remove event listeners)
+    if (additionalCleanup) {
+      additionalCleanup();
+    }
+
+    if (errors.length > 0) {
+      logger.warn('Destroy completed with errors', {
+        name: this.name,
+        errorCount: errors.length
+      });
+    } else {
+      logger.debug('Destroy completed successfully', { name: this.name });
+    }
+  }
+}
+
+/**
  * Abstract base class for disposable objects.
  *
  * Provides automatic resource cleanup for:
@@ -58,80 +160,58 @@ export type CleanupTask = () => void | Promise<void>;
  * ```
  */
 export abstract class Disposable {
-  /** Registered cleanup tasks */
-  protected readonly cleanupTasks: CleanupTask[] = [];
-
-  /** Whether destroy() has been called */
-  protected destroyed = false;
+  private readonly _core: DisposableCore;
 
   /** Name for logging (optional, can be set by subclasses) */
   protected readonly disposableName?: string;
 
+  constructor() {
+    this._core = new DisposableCore(this.disposableName);
+  }
+
+  /** Registered cleanup tasks (for subclass access) */
+  protected get cleanupTasks(): CleanupTask[] {
+    return this._core.cleanupTasks;
+  }
+
+  /** Whether destroy() has been called */
+  protected get destroyed(): boolean {
+    return this._core.destroyed;
+  }
+
   /**
    * Register a cleanup task to be executed on destroy.
-   *
    * Tasks are executed in reverse order (LIFO) to handle dependencies.
-   *
-   * @param task - Cleanup function to register
    */
   protected registerCleanup(task: CleanupTask): void {
-    if (this.destroyed) {
-      logger.warn('registerCleanup called after destroy', {
-        name: this.disposableName
-      });
-      return;
-    }
-
-    this.cleanupTasks.push(task);
+    this._core.registerCleanup(task);
   }
 
   /**
    * Create a safe interval that is automatically cleaned up on destroy.
-   *
-   * @param callback - Function to call on each tick
-   * @param intervalMs - Interval duration in milliseconds
-   * @param name - Optional name for debugging
-   * @returns Cleanup function to stop the interval early
    */
   protected createInterval(
     callback: () => void | Promise<void>,
     intervalMs: number,
     name?: string
   ): () => void {
-    const cleanup = createSafeInterval(callback, intervalMs, {
-      name: name || `${this.disposableName || 'Disposable'}-interval`
-    });
-
-    this.registerCleanup(cleanup);
-    return cleanup;
+    return this._core.createInterval(callback, intervalMs, name);
   }
 
   /**
    * Create a safe timeout that is automatically cleaned up on destroy.
-   *
-   * @param callback - Function to call when timeout fires
-   * @param delayMs - Delay duration in milliseconds
-   * @param name - Optional name for debugging
-   * @returns Cleanup function to cancel the timeout early
    */
   protected createTimeout(
     callback: () => void | Promise<void>,
     delayMs: number,
     name?: string
   ): () => void {
-    const cleanup = createSafeTimeout(callback, delayMs, {
-      name: name || `${this.disposableName || 'Disposable'}-timeout`
-    });
-
-    this.registerCleanup(cleanup);
-    return cleanup;
+    return this._core.createTimeout(callback, delayMs, name);
   }
 
   /**
    * Hook called before cleanup tasks are executed.
-   *
    * Override this method to perform custom cleanup logic.
-   * Called once, before any cleanup tasks run.
    */
   protected onDestroy(): void | Promise<void> {
     // Default: no-op, override in subclasses
@@ -139,84 +219,18 @@ export abstract class Disposable {
 
   /**
    * Destroy the object and clean up all resources.
-   *
-   * 1. Calls onDestroy() hook
-   * 2. Executes all cleanup tasks in reverse order
-   * 3. Marks object as destroyed
-   *
    * Safe to call multiple times (idempotent).
    */
   async destroy(): Promise<void> {
-    if (this.destroyed) {
-      logger.debug('destroy() called on already-destroyed object', {
-        name: this.disposableName
-      });
-      return;
-    }
-
-    this.destroyed = true;
-
-    logger.debug('Destroying disposable', {
-      name: this.disposableName,
-      cleanupTaskCount: this.cleanupTasks.length
-    });
-
-    // Call onDestroy hook
-    try {
-      await this.onDestroy();
-    } catch (error) {
-      logger.error('Error in onDestroy hook', {
-        name: this.disposableName,
-        error: (error as Error).message
-      });
-    }
-
-    // Execute cleanup tasks in reverse order (LIFO)
-    const errors: Error[] = [];
-
-    while (this.cleanupTasks.length > 0) {
-      const task = this.cleanupTasks.pop()!;
-
-      try {
-        await task();
-      } catch (error) {
-        errors.push(error as Error);
-        logger.error('Cleanup task error', {
-          name: this.disposableName,
-          error: (error as Error).message
-        });
-      }
-    }
-
-    if (errors.length > 0) {
-      logger.warn('Destroy completed with errors', {
-        name: this.disposableName,
-        errorCount: errors.length
-      });
-    } else {
-      logger.debug('Destroy completed successfully', {
-        name: this.disposableName
-      });
-    }
+    await this._core.executeCleanup(() => this.onDestroy());
   }
 
-  /**
-   * Check if this object has been destroyed.
-   */
+  /** Check if this object has been destroyed. */
   get isDestroyed(): boolean {
-    return this.destroyed;
+    return this._core.destroyed;
   }
 
-  /**
-   * Symbol.asyncDispose implementation for using() syntax.
-   *
-   * Enables usage with ECMAScript explicit resource management:
-   * ```typescript
-   * await using service = new MyService();
-   * // ... use service ...
-   * // Automatically destroyed when scope exits
-   * ```
-   */
+  /** Symbol.asyncDispose implementation for using() syntax. */
   async [Symbol.asyncDispose](): Promise<void> {
     await this.destroy();
   }
@@ -225,7 +239,7 @@ export abstract class Disposable {
 /**
  * Abstract base class for disposable EventEmitters.
  *
- * Extends Disposable with automatic event listener cleanup:
+ * Extends EventEmitter with automatic resource cleanup:
  * - All listeners removed on destroy()
  * - Safe interval/timeout creation
  * - Event listener tracking
@@ -257,81 +271,58 @@ export abstract class Disposable {
  * ```
  */
 export abstract class DisposableEventEmitter extends EventEmitter {
-  /** Registered cleanup tasks */
-  protected readonly cleanupTasks: CleanupTask[] = [];
-
-  /** Whether destroy() has been called */
-  protected destroyed = false;
+  private readonly _core: DisposableCore;
 
   /** Name for logging (optional, can be set by subclasses) */
   protected readonly disposableName?: string;
 
+  constructor() {
+    super();
+    this._core = new DisposableCore(this.disposableName);
+  }
+
+  /** Registered cleanup tasks (for subclass access) */
+  protected get cleanupTasks(): CleanupTask[] {
+    return this._core.cleanupTasks;
+  }
+
+  /** Whether destroy() has been called */
+  protected get destroyed(): boolean {
+    return this._core.destroyed;
+  }
+
   /**
    * Register a cleanup task to be executed on destroy.
-   *
    * Tasks are executed in reverse order (LIFO) to handle dependencies.
-   *
-   * @param task - Cleanup function to register
    */
   protected registerCleanup(task: CleanupTask): void {
-    if (this.destroyed) {
-      logger.warn('registerCleanup called after destroy', {
-        name: this.disposableName
-      });
-      return;
-    }
-
-    this.cleanupTasks.push(task);
+    this._core.registerCleanup(task);
   }
 
   /**
    * Create a safe interval that is automatically cleaned up on destroy.
-   *
-   * @param callback - Function to call on each tick
-   * @param intervalMs - Interval duration in milliseconds
-   * @param name - Optional name for debugging
-   * @returns Cleanup function to stop the interval early
    */
   protected createInterval(
     callback: () => void | Promise<void>,
     intervalMs: number,
     name?: string
   ): () => void {
-    const cleanup = createSafeInterval(callback, intervalMs, {
-      name: name || `${this.disposableName || 'DisposableEventEmitter'}-interval`
-    });
-
-    this.registerCleanup(cleanup);
-    return cleanup;
+    return this._core.createInterval(callback, intervalMs, name);
   }
 
   /**
    * Create a safe timeout that is automatically cleaned up on destroy.
-   *
-   * @param callback - Function to call when timeout fires
-   * @param delayMs - Delay duration in milliseconds
-   * @param name - Optional name for debugging
-   * @returns Cleanup function to cancel the timeout early
    */
   protected createTimeout(
     callback: () => void | Promise<void>,
     delayMs: number,
     name?: string
   ): () => void {
-    const cleanup = createSafeTimeout(callback, delayMs, {
-      name: name || `${this.disposableName || 'DisposableEventEmitter'}-timeout`
-    });
-
-    this.registerCleanup(cleanup);
-    return cleanup;
+    return this._core.createTimeout(callback, delayMs, name);
   }
 
   /**
    * Hook called before cleanup tasks are executed.
-   *
-   * Override this method to perform custom cleanup logic.
-   * Called once, before any cleanup tasks run.
-   *
    * Note: Event listeners are still active when this is called,
    * so you can emit final events (e.g., 'shutdown', 'close').
    */
@@ -341,92 +332,21 @@ export abstract class DisposableEventEmitter extends EventEmitter {
 
   /**
    * Destroy the object and clean up all resources.
-   *
-   * 1. Calls onDestroy() hook (listeners still active)
-   * 2. Executes all cleanup tasks in reverse order
-   * 3. Removes all event listeners
-   * 4. Marks object as destroyed
-   *
    * Safe to call multiple times (idempotent).
    */
   async destroy(): Promise<void> {
-    if (this.destroyed) {
-      logger.debug('destroy() called on already-destroyed object', {
-        name: this.disposableName
-      });
-      return;
-    }
-
-    this.destroyed = true;
-
-    const listenerCount = this.listenerCount('error') +
-      this.eventNames().reduce((sum, name) => sum + this.listenerCount(name), 0);
-
-    logger.debug('Destroying disposable event emitter', {
-      name: this.disposableName,
-      cleanupTaskCount: this.cleanupTasks.length,
-      listenerCount
-    });
-
-    // Call onDestroy hook (listeners still active for final events)
-    try {
-      await this.onDestroy();
-    } catch (error) {
-      logger.error('Error in onDestroy hook', {
-        name: this.disposableName,
-        error: (error as Error).message
-      });
-    }
-
-    // Execute cleanup tasks in reverse order (LIFO)
-    const errors: Error[] = [];
-
-    while (this.cleanupTasks.length > 0) {
-      const task = this.cleanupTasks.pop()!;
-
-      try {
-        await task();
-      } catch (error) {
-        errors.push(error as Error);
-        logger.error('Cleanup task error', {
-          name: this.disposableName,
-          error: (error as Error).message
-        });
-      }
-    }
-
-    // Remove all event listeners
-    this.removeAllListeners();
-
-    if (errors.length > 0) {
-      logger.warn('Destroy completed with errors', {
-        name: this.disposableName,
-        errorCount: errors.length
-      });
-    } else {
-      logger.debug('Destroy completed successfully', {
-        name: this.disposableName
-      });
-    }
+    await this._core.executeCleanup(
+      () => this.onDestroy(),
+      () => this.removeAllListeners()
+    );
   }
 
-  /**
-   * Check if this object has been destroyed.
-   */
+  /** Check if this object has been destroyed. */
   get isDestroyed(): boolean {
-    return this.destroyed;
+    return this._core.destroyed;
   }
 
-  /**
-   * Symbol.asyncDispose implementation for using() syntax.
-   *
-   * Enables usage with ECMAScript explicit resource management:
-   * ```typescript
-   * await using source = new MyEventSource();
-   * // ... use source ...
-   * // Automatically destroyed when scope exits
-   * ```
-   */
+  /** Symbol.asyncDispose implementation for using() syntax. */
   async [Symbol.asyncDispose](): Promise<void> {
     await this.destroy();
   }

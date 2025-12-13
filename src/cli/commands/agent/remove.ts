@@ -10,7 +10,7 @@ import { join } from 'path';
 import chalk from 'chalk';
 import { ProfileLoader } from '../../../agents/profile-loader.js';
 import { TeamManager } from '../../../core/team-manager.js';
-import { PromptHelper } from '../../../shared/helpers/prompt-helper.js';
+import { withPrompt } from '../../../shared/helpers/prompt-helper.js';
 
 interface RemoveOptions {
   agent: string;
@@ -118,14 +118,11 @@ export const removeCommand: CommandModule<{}, RemoveOptions> = {
 
 /**
  * Ask for user confirmation
- * v9.0.2: Refactored to use PromptHelper for automatic cleanup
+ * v12.8.5: Refactored to use withPrompt() for automatic cleanup
  */
 async function askConfirmation(question: string): Promise<boolean> {
-  const prompt = new PromptHelper();
-  try {
+  return withPrompt(async (prompt) => {
     const answer = await prompt.question(chalk.yellow(`\n${question} (y/N): `));
     return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-  } finally {
-    prompt.close();
-  }
+  });
 }

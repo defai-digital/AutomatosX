@@ -33,10 +33,7 @@ import { homedir } from 'os';
 import chalk from 'chalk';
 import { logger } from '../../shared/logging/logger.js';
 import { printError } from '../../shared/errors/error-formatter.js';
-import {
-  detectProjectInfo,
-  type ProjectInfo
-} from './project-detector.js';
+import { detectProjectInfo, type ProjectInfo } from './project-detector.js';
 
 const execAsync = promisify(exec);
 
@@ -773,6 +770,9 @@ export const initCommand: CommandModule<Record<string, unknown>, InitOptions> = 
     const customMdPath = join(automatosxDir, 'CUSTOM.md');
 
     try {
+      // Ensure workspace directory exists before writing CUSTOM.md
+      await mkdir(automatosxDir, { recursive: true });
+
       // Check if index exists and its age
       const indexExists = await access(indexPath, constants.F_OK).then(() => true).catch(() => false);
       let indexAge: number | null = null;

@@ -44,6 +44,20 @@ export interface VerificationOptions {
 
   /** Working directory */
   cwd: string;
+
+  // v12.9.0: PRD-018 Enhanced verification options
+
+  /** Run ESLint check */
+  lint: boolean;
+
+  /** Run strict TypeScript check */
+  strictCheck: boolean;
+
+  /** Lint command */
+  lintCommand: string;
+
+  /** Custom verification commands */
+  customCommands: string[];
 }
 
 /**
@@ -57,7 +71,12 @@ const DEFAULT_OPTIONS: VerificationOptions = {
   timeout: 120000, // 2 minutes
   testCommand: 'npm test',
   typecheckCommand: 'npm run typecheck',
-  cwd: process.cwd()
+  cwd: process.cwd(),
+  // v12.9.0: PRD-018 Enhanced verification
+  lint: false,
+  strictCheck: false,
+  lintCommand: 'npx eslint --format json',
+  customCommands: []
 };
 
 /**
@@ -74,6 +93,8 @@ export class VerificationGate {
     logger.debug('VerificationGate initialized', {
       typecheck: this.options.typecheck,
       tests: this.options.tests,
+      lint: this.options.lint,
+      strictCheck: this.options.strictCheck,
       timeout: this.options.timeout
     });
   }
@@ -105,7 +126,12 @@ export class VerificationGate {
       affectedTests: [],
       failedTests: [],
       newErrors: [],
-      durationMs: 0
+      durationMs: 0,
+      // v12.9.0: PRD-018 Enhanced verification
+      lintPassed: true,
+      lintIssues: [],
+      strictCheckPassed: true,
+      strictErrors: []
     };
 
     try {
@@ -161,6 +187,63 @@ export class VerificationGate {
         result.coverageMaintained = true;
       }
 
+      // v12.9.0: PRD-018 Enhanced verification gates
+
+      // Gate 5: ESLint check
+      if (this.options.lint && result.success) {
+        logger.debug('Running lint gate');
+        const lintResult = await this.runLint(affectedFiles);
+        result.lintPassed = lintResult.passed;
+        result.lintIssues = lintResult.issues;
+
+        if (!lintResult.passed) {
+          result.success = false;
+          logger.warn('Lint failed', {
+            bugId: finding.id,
+            issues: lintResult.issues.slice(0, 5)
+          });
+        } else {
+          logger.debug('Lint passed');
+        }
+      }
+
+      // Gate 6: Strict TypeScript check
+      if (this.options.strictCheck && result.success) {
+        logger.debug('Running strict TypeScript check gate');
+        const strictResult = await this.runStrictCheck(affectedFiles);
+        result.strictCheckPassed = strictResult.passed;
+        result.strictErrors = strictResult.newErrors;
+
+        if (!strictResult.passed) {
+          result.success = false;
+          logger.warn('Strict TypeScript check failed', {
+            bugId: finding.id,
+            errors: strictResult.newErrors.slice(0, 5)
+          });
+        } else {
+          logger.debug('Strict TypeScript check passed');
+        }
+      }
+
+      // Gate 7: Custom commands
+      if (this.options.customCommands.length > 0 && result.success) {
+        for (const cmd of this.options.customCommands) {
+          logger.debug('Running custom command', { command: cmd });
+          const customResult = await this.runCommand(cmd, 'custom');
+
+          if (!customResult.success) {
+            result.success = false;
+            result.newErrors.push(`Custom command failed: ${cmd}`);
+            logger.warn('Custom command failed', {
+              bugId: finding.id,
+              command: cmd,
+              errors: customResult.errors
+            });
+            break;
+          }
+        }
+      }
+
     } catch (error) {
       result.success = false;
       result.newErrors = [(error as Error).message];
@@ -178,6 +261,8 @@ export class VerificationGate {
       success: result.success,
       typecheckPassed: result.typecheckPassed,
       testsPassed: result.testsPassed,
+      lintPassed: result.lintPassed,
+      strictCheckPassed: result.strictCheckPassed,
       durationMs: result.durationMs
     });
 
@@ -218,8 +303,8 @@ export class VerificationGate {
       const parts = command.split(' ');
       const cmd = parts[0];
       const args = parts.slice(1);
-      const errors: string[] = [];
       let stderr = '';
+      let finished = false; // Guard against double-resolution
 
       if (!cmd) {
         resolve({ success: false, errors: ['Empty command'] });
@@ -234,10 +319,15 @@ export class VerificationGate {
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      // Timeout handling
+      // Timeout handling with guard
       const timeoutId = setTimeout(() => {
+        if (finished) return;
+        finished = true;
         proc.kill('SIGTERM');
-        errors.push(`${name} timed out after ${this.options.timeout}ms`);
+        resolve({
+          success: false,
+          errors: [`${name} timed out after ${this.options.timeout}ms`]
+        });
       }, this.options.timeout);
 
       // Unref timeout to prevent blocking process exit
@@ -250,6 +340,8 @@ export class VerificationGate {
       });
 
       proc.on('close', (code) => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timeoutId);
 
         if (code === 0) {
@@ -269,6 +361,8 @@ export class VerificationGate {
       });
 
       proc.on('error', (err) => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timeoutId);
         resolve({
           success: false,
@@ -279,9 +373,81 @@ export class VerificationGate {
   }
 
   /**
+   * Run ESLint check on affected files
+   * v12.9.0: PRD-018 - ESLint verification gate
+   */
+  private async runLint(
+    affectedFiles: string[]
+  ): Promise<{ passed: boolean; issues: string[] }> {
+    const issues: string[] = [];
+
+    // Build lint command for affected files
+    const files = affectedFiles.join(' ');
+    const command = `${this.options.lintCommand} ${files}`;
+
+    const result = await this.runCommand(command, 'lint');
+
+    if (!result.success) {
+      // Try to parse ESLint JSON output
+      try {
+        // If it's JSON output, parse it
+        const jsonMatch = result.errors.join('\n').match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const lintResults = JSON.parse(jsonMatch[0]) as Array<{
+            filePath: string;
+            messages: Array<{ ruleId: string; message: string; line: number; severity: number }>;
+          }>;
+
+          for (const fileResult of lintResults) {
+            for (const msg of fileResult.messages) {
+              if (msg.severity >= 2) { // Only errors, not warnings
+                issues.push(`${fileResult.filePath}:${msg.line}: ${msg.ruleId} - ${msg.message}`);
+              }
+            }
+          }
+        } else {
+          // Not JSON, use raw errors
+          issues.push(...result.errors);
+        }
+      } catch {
+        // Parsing failed, use raw errors
+        issues.push(...result.errors);
+      }
+    }
+
+    return {
+      passed: result.success || issues.length === 0,
+      issues
+    };
+  }
+
+  /**
+   * Run strict TypeScript check
+   * v12.9.0: PRD-018 - Strict TypeScript verification gate
+   */
+  private async runStrictCheck(
+    affectedFiles: string[]
+  ): Promise<{ passed: boolean; newErrors: string[] }> {
+    // Run TypeScript with strict mode on affected files
+    // We create a temporary tsconfig.strict.json that extends the main one
+    // but with strict: true
+
+    // For simplicity, we run tsc with --strict flag on the affected files
+    const files = affectedFiles.join(' ');
+    const command = `npx tsc --strict --noEmit ${files}`;
+
+    const result = await this.runCommand(command, 'strict-check');
+
+    return {
+      passed: result.success,
+      newErrors: result.errors
+    };
+  }
+
+  /**
    * Quick verification (typecheck only)
    */
-  async quickVerify(finding: BugFinding): Promise<boolean> {
+  async quickVerify(_finding: BugFinding): Promise<boolean> {
     const result = await this.runTypecheck();
     return result.success;
   }

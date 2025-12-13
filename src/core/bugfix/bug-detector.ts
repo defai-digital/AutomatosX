@@ -22,6 +22,7 @@ import { join, extname, relative, isAbsolute } from 'path';
 import { randomUUID } from 'crypto';
 import { logger } from '../../shared/logging/logger.js';
 import { ASTAnalyzer, ALLOWLISTS, createASTAnalyzer } from './ast-analyzer.js';
+import { PythonASTBridge, type PythonASTQuery } from './python-ast-bridge.js';
 import type {
   BugFinding,
   BugType,
@@ -106,32 +107,36 @@ const DEFAULT_DETECTION_RULES: DetectionRule[] = [
     useAST: true
   },
   // Event leak: .on() without corresponding cleanup
+  // v12.9.0: PRD-018 - Upgraded to AST-based detection
   {
     id: 'event-leak-on',
     type: 'event_leak',
     name: 'Event listener without cleanup',
     description: '.on() or .addListener() without corresponding .off() or .removeListener()',
     pattern: '\\.(on|addListener)\\s*\\([\'"`]\\w+[\'"`]',
-    negativePattern: '\\.(off|removeListener|removeAllListeners)\\s*\\(',
-    withinLines: 50,
-    confidence: 0.6, // Lower confidence - may have false positives
+    negativePattern: undefined, // v12.9.0: AST handles cleanup detection
+    withinLines: undefined,
+    confidence: 0.85, // Increased from 0.60 with AST detection
     severity: 'medium',
     autoFixable: false,
-    fileExtensions: ['.ts', '.js', '.mts', '.mjs']
+    fileExtensions: ['.ts', '.js', '.mts', '.mjs'],
+    useAST: true // v12.9.0: Enable AST detection
   },
   // Uncaught promise: Promise without catch
+  // v12.9.0: PRD-018 - Upgraded to AST-based detection
   {
     id: 'uncaught-promise',
     type: 'uncaught_promise',
     name: 'Promise without error handling',
     description: 'Promise should have .catch() or be awaited in try/catch',
     pattern: 'new\\s+Promise\\s*\\([^)]+\\)',
-    negativePattern: '\\.catch\\s*\\(|try\\s*\\{',
-    withinLines: 10,
-    confidence: 0.5, // Low confidence - many false positives
-    severity: 'low',
+    negativePattern: undefined, // v12.9.0: AST handles error handling detection
+    withinLines: undefined,
+    confidence: 0.80, // Increased from 0.50 with AST detection
+    severity: 'medium', // Upgraded from low
     autoFixable: false,
-    fileExtensions: ['.ts', '.js', '.mts', '.mjs']
+    fileExtensions: ['.ts', '.js', '.mts', '.mjs'],
+    useAST: true // v12.9.0: Enable AST detection
   }
 ];
 
@@ -156,6 +161,7 @@ export class BugDetector {
   private config: BugfixConfig;
   private astAnalyzer: ASTAnalyzer;
   private astInitialized = false;
+  private pythonBridge?: PythonASTBridge;
 
   constructor(config: BugfixConfig, customRules?: DetectionRule[]) {
     this.config = config;
@@ -291,7 +297,7 @@ export class BugDetector {
         .map(f => isAbsolute(f) ? f : join(rootDir, f))
         .filter(f => {
           const ext = extname(f);
-          return ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'].includes(ext);
+          return ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx', '.py'].includes(ext);
         })
         .filter(f => !this.isExcluded(relative(rootDir, f)));
     } else {
@@ -320,7 +326,10 @@ export class BugDetector {
     }
 
     // Filter by severity threshold
-    const filteredFindings = this.filterBySeverity(findings);
+    let filteredFindings = this.filterBySeverity(findings);
+
+    // v12.9.0: PRD-018 - Filter by confidence threshold
+    filteredFindings = this.filterByConfidence(filteredFindings);
 
     // Sort by severity (highest first) then by confidence
     filteredFindings.sort((a, b) => {
@@ -349,6 +358,13 @@ export class BugDetector {
   }
 
   /**
+   * Scan a single file (public entry for targeted detection)
+   */
+  async detectFile(filePath: string, rootDir: string): Promise<BugFinding[]> {
+    return this.scanFile(filePath, rootDir);
+  }
+
+  /**
    * Scan a single file for bugs
    */
   private async scanFile(filePath: string, rootDir: string): Promise<BugFinding[]> {
@@ -358,6 +374,11 @@ export class BugDetector {
     const content = await readFile(filePath, 'utf-8');
     const lines = content.split('\n');
     const relativePath = relative(rootDir, filePath);
+    const ext = extname(filePath);
+
+    if (ext === '.py') {
+      return this.scanPythonFile(filePath, rootDir, content, lines);
+    }
 
     // Parse ignore comments
     const ignoreState = this.parseIgnoreComments(lines);
@@ -482,6 +503,133 @@ export class BugDetector {
   }
 
   /**
+   * Bridge-based Python analysis (uses Python's stdlib ast via subprocess)
+   */
+  private async scanPythonFile(
+    filePath: string,
+    rootDir: string,
+    content: string,
+    lines: string[]
+  ): Promise<BugFinding[]> {
+    const queries = this.buildPythonQueries();
+    if (queries.length === 0) {
+      return [];
+    }
+
+    if (!this.pythonBridge) {
+      this.pythonBridge = new PythonASTBridge({ timeoutMs: 800 });
+    }
+
+    try {
+      const response = await this.pythonBridge.analyze({
+        path: filePath,
+        content,
+        queries
+      });
+
+      if (response.parseErrors && response.parseErrors.length > 0) {
+        logger.warn('Python AST parse errors', {
+          file: relative(rootDir, filePath),
+          errors: response.parseErrors
+        });
+        return [];
+      }
+
+      const severityMap: Record<string, BugSeverity> = {
+        resource_leak: 'high',
+        missing_context_manager: 'medium',
+        async_resource_leak: 'medium',
+        executor_leak: 'high',
+        exception_handling: 'medium'
+      };
+
+      const typeMap: Record<string, BugType> = {
+        resource_leak: 'resource_leak',
+        missing_context_manager: 'resource_leak',
+        async_resource_leak: 'resource_leak',
+        executor_leak: 'resource_leak',
+        exception_handling: 'security_issue'
+      };
+
+      return response.findings.map(finding => {
+        const contextStart = Math.max(0, finding.line - 2);
+        const contextEnd = Math.min(lines.length, (finding.endLine ?? finding.line) + 1);
+        const context = lines.slice(contextStart, contextEnd).join('\n');
+
+        const mappedType = typeMap[finding.type] ?? 'resource_leak';
+        const mappedSeverity = severityMap[finding.type] ?? 'medium';
+
+        return {
+          id: randomUUID(),
+          file: relative(rootDir, filePath),
+          lineStart: finding.line || 1,
+          lineEnd: finding.endLine ?? finding.line ?? 1,
+          type: mappedType,
+          severity: mappedSeverity,
+          message: finding.message || 'Potential Python resource issue',
+          context,
+          confidence: 0.72,
+          detectionMethod: 'ast',
+          metadata: {
+            pythonVersion: response.pythonVersion,
+            bridgeFindingType: finding.type,
+            bridgeMetadata: finding.metadata
+          },
+          detectedAt: new Date().toISOString()
+        };
+      });
+    } catch (error) {
+      logger.warn('Python AST bridge failed', {
+        file: relative(rootDir, filePath),
+        error: (error as Error).message
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Build Python AST queries based on configured bug types
+   *
+   * Python files have their own detection categories that map loosely to TypeScript types:
+   * - resource_leak, timer_leak → resource_leak, missing_context_manager, async_resource_leak, executor_leak
+   * - security_issue → exception_handling
+   *
+   * We scan Python files more inclusively since Python bug patterns differ from TypeScript.
+   */
+  private buildPythonQueries(): PythonASTQuery[] {
+    const queries: PythonASTQuery[] = [];
+    const bugTypes = new Set(this.config.bugTypes);
+
+    // Python resource issues map to multiple TypeScript categories
+    // If any resource-related type is configured, scan for all Python resource issues
+    const hasResourceType = bugTypes.size === 0 ||
+      bugTypes.has('resource_leak') ||
+      bugTypes.has('timer_leak') ||
+      bugTypes.has('missing_destroy') ||
+      bugTypes.has('event_leak');
+
+    if (hasResourceType) {
+      queries.push(
+        { type: 'resource_leak', patterns: ['open', 'socket.socket'] },
+        { type: 'missing_context_manager' },
+        { type: 'async_resource_leak', patterns: ['aiofiles.open'] },
+        { type: 'executor_leak', patterns: ['concurrent.futures.ThreadPoolExecutor', 'concurrent.futures.ProcessPoolExecutor'] }
+      );
+    }
+
+    // Security/exception handling
+    const hasSecurityType = bugTypes.size === 0 ||
+      bugTypes.has('security_issue') ||
+      bugTypes.has('uncaught_promise'); // Exception handling is similar concept
+
+    if (hasSecurityType) {
+      queries.push({ type: 'exception_handling' });
+    }
+
+    return queries;
+  }
+
+  /**
    * Apply AST-based detection rule
    * v12.8.0: Uses TypeScript AST for accurate analysis
    */
@@ -505,6 +653,11 @@ export class BugDetector {
           return this.detectPromiseTimeoutLeakAST(rule, content, lines, filePath, relativePath, ignoreState);
         case 'timer_leak':
           return this.detectTimerLeakAST(rule, content, lines, filePath, relativePath, ignoreState);
+        // v12.9.0: PRD-018 - New AST-based detection
+        case 'event_leak':
+          return this.detectEventLeakAST(rule, content, lines, filePath, relativePath, ignoreState);
+        case 'uncaught_promise':
+          return this.detectUncaughtPromiseAST(rule, content, lines, filePath, relativePath, ignoreState);
         default:
           // Fallback to regex for unsupported AST rule types
           logger.warn('AST detection not implemented for rule type', { type: rule.type });
@@ -672,6 +825,7 @@ export class BugDetector {
 
     // Parse AST and analyze Promise+setTimeout patterns
     const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const promiseTimeouts = this.astAnalyzer.analyzePromiseTimeouts(sourceFile, content);
 
     for (const info of promiseTimeouts) {
@@ -711,9 +865,10 @@ export class BugDetector {
       // Calculate confidence based on factors
       let confidence = rule.confidence;
 
-      // Lower confidence if timeout ID is captured (might have cleanup elsewhere)
+      // Slightly lower confidence if timeout ID is captured (might have cleanup elsewhere)
+      // Note: AST already verified no cleanup in this scope, so reduction is modest
       if (info.timeoutIdCaptured) {
-        confidence *= 0.8; // 20% reduction
+        confidence *= 0.9; // 10% reduction (down from 20%, since AST verified no cleanup)
       }
 
       // Lower confidence for anonymous functions (harder to track)
@@ -781,6 +936,7 @@ export class BugDetector {
 
     // Parse AST and analyze timer patterns
     const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const timerLeaks = this.astAnalyzer.analyzeTimerLeaks(sourceFile, content);
 
     for (const info of timerLeaks) {
@@ -865,6 +1021,213 @@ export class BugDetector {
   }
 
   /**
+   * AST-based detection for event_leak bug type
+   * v12.9.0: PRD-018 - Accurate event listener cleanup detection
+   */
+  private detectEventLeakAST(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+    const findings: BugFinding[] = [];
+
+    // Skip test files entirely
+    if (this.astAnalyzer.isTestFile(filePath)) {
+      logger.debug('Skipping test file for event_leak', { file: relativePath });
+      return findings;
+    }
+
+    // Parse AST and analyze event listeners
+    const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const listeners = this.astAnalyzer.analyzeEventListeners(sourceFile, content);
+
+    for (const info of listeners) {
+      // Check if line should be ignored
+      if (this.shouldIgnore(info.line, rule.type, ignoreState)) {
+        logger.debug('Event listener ignored by comment', {
+          file: relativePath,
+          line: info.line
+        });
+        continue;
+      }
+
+      // Skip if has corresponding removal or cleanup
+      if (info.hasCorrespondingRemoval || info.hasCleanupInDestroyMethod || info.isOneTimeListener) {
+        logger.debug('Event listener has cleanup - not a leak', {
+          file: relativePath,
+          line: info.line,
+          eventName: info.eventName,
+          reason: info.isOneTimeListener ? 'once listener' :
+                  info.hasCleanupInDestroyMethod ? 'cleanup in destroy method' : 'corresponding removal'
+        });
+        continue;
+      }
+
+      // Extract context
+      const contextStart = Math.max(0, info.line - 2);
+      const contextEnd = Math.min(lines.length, info.line + 3);
+      const context = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Calculate confidence based on factors
+      let confidence = rule.confidence;
+
+      // Lower confidence if in a function (might be cleaned up elsewhere)
+      if (info.enclosingFunction && !info.enclosingClass) {
+        confidence *= 0.85;
+      }
+
+      // Higher confidence if in a class method without destroy cleanup
+      if (info.enclosingClass && !info.hasCleanupInDestroyMethod) {
+        confidence = Math.min(0.95, confidence * 1.1);
+      }
+
+      // Bug found
+      const finding: BugFinding = {
+        id: randomUUID(),
+        file: relativePath,
+        lineStart: info.line,
+        lineEnd: info.line + 1,
+        type: rule.type,
+        severity: rule.severity,
+        message: `Event listener for '${info.eventName}' registered with .${info.method}() has no corresponding cleanup. ` +
+                 `Add .off('${info.eventName}') or .removeListener('${info.eventName}') in a cleanup/destroy method.`,
+        context,
+        fixStrategy: undefined, // Requires manual review
+        confidence,
+        detectionMethod: 'ast',
+        metadata: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          eventName: info.eventName,
+          method: info.method,
+          enclosingClass: info.enclosingClass,
+          enclosingFunction: info.enclosingFunction
+        },
+        detectedAt: new Date().toISOString()
+      };
+
+      findings.push(finding);
+
+      logger.debug('Event leak detected (AST)', {
+        file: relativePath,
+        line: info.line,
+        eventName: info.eventName,
+        confidence: finding.confidence
+      });
+    }
+
+    return findings;
+  }
+
+  /**
+   * AST-based detection for uncaught_promise bug type
+   * v12.9.0: PRD-018 - Accurate Promise error handling detection
+   */
+  private detectUncaughtPromiseAST(
+    rule: DetectionRule,
+    content: string,
+    lines: string[],
+    filePath: string,
+    relativePath: string,
+    ignoreState: IgnoreState
+  ): BugFinding[] {
+    const findings: BugFinding[] = [];
+
+    // Skip test files entirely
+    if (this.astAnalyzer.isTestFile(filePath)) {
+      logger.debug('Skipping test file for uncaught_promise', { file: relativePath });
+      return findings;
+    }
+
+    // Parse AST and analyze Promise error handling
+    const sourceFile = this.astAnalyzer.parseFile(content, filePath);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const promises = this.astAnalyzer.analyzePromiseErrorHandling(sourceFile, content);
+
+    for (const info of promises) {
+      // Check if line should be ignored
+      if (this.shouldIgnore(info.line, rule.type, ignoreState)) {
+        logger.debug('Promise ignored by comment', {
+          file: relativePath,
+          line: info.line
+        });
+        continue;
+      }
+
+      // Skip if has error handling
+      if (info.hasErrorHandler) {
+        logger.debug('Promise has error handling - not uncaught', {
+          file: relativePath,
+          line: info.line,
+          handlerType: info.errorHandlerType
+        });
+        continue;
+      }
+
+      // Skip if there's a global error handler
+      if (info.hasGlobalErrorHandler) {
+        logger.debug('File has global unhandledRejection handler', {
+          file: relativePath,
+          line: info.line
+        });
+        continue;
+      }
+
+      // Extract context
+      const contextStart = Math.max(0, info.line - 2);
+      const contextEnd = Math.min(lines.length, info.line + 5);
+      const context = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Calculate confidence based on factors
+      let confidence = rule.confidence;
+
+      // Lower confidence if awaited (might be caught at call site)
+      if (info.isAwaited) {
+        confidence *= 0.7;
+      }
+
+      // Bug found
+      const finding: BugFinding = {
+        id: randomUUID(),
+        file: relativePath,
+        lineStart: info.line,
+        lineEnd: info.line + 3,
+        type: rule.type,
+        severity: rule.severity,
+        message: `Promise without error handling. ` +
+                 `Add .catch() handler or wrap in try/catch if awaited.`,
+        context,
+        fixStrategy: undefined, // Requires manual review
+        confidence,
+        detectionMethod: 'ast',
+        metadata: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          isAwaited: info.isAwaited,
+          enclosingFunction: info.enclosingFunction,
+          hasGlobalErrorHandler: info.hasGlobalErrorHandler
+        },
+        detectedAt: new Date().toISOString()
+      };
+
+      findings.push(finding);
+
+      logger.debug('Uncaught promise detected (AST)', {
+        file: relativePath,
+        line: info.line,
+        isAwaited: info.isAwaited,
+        confidence: finding.confidence
+      });
+    }
+
+    return findings;
+  }
+
+  /**
    * Get all files to scan
    */
   private async getFilesToScan(scanDir: string, rootDir: string): Promise<string[]> {
@@ -890,7 +1253,7 @@ export class BugDetector {
           } else if (stats.isFile()) {
             // Check if file has a supported extension
             const ext = extname(fullPath);
-            if (['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'].includes(ext)) {
+            if (['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx', '.py'].includes(ext)) {
               files.push(fullPath);
             }
           }
@@ -966,6 +1329,27 @@ export class BugDetector {
   }
 
   /**
+   * Filter findings by confidence threshold
+   * v12.9.0: PRD-018 - Confidence filtering to reduce false positives
+   */
+  private filterByConfidence(findings: BugFinding[]): BugFinding[] {
+    const threshold = this.config.minConfidence ?? 0.5;
+
+    const filtered = findings.filter(finding => finding.confidence >= threshold);
+
+    if (filtered.length < findings.length) {
+      const removed = findings.length - filtered.length;
+      logger.debug('Filtered low-confidence findings', {
+        threshold,
+        removed,
+        remaining: filtered.length
+      });
+    }
+
+    return filtered;
+  }
+
+  /**
    * Get detection rules
    */
   getRules(): DetectionRule[] {
@@ -1019,7 +1403,7 @@ export function createDefaultBugfixConfig(overrides?: Partial<BugfixConfig>): Bu
     maxDurationMinutes: 45,
     maxTokens: 500000,
     maxRetriesPerBug: 3,
-    minConfidence: 0.7,
+    minConfidence: 0.5, // Lower default to allow AST-verified findings with reduced confidence
     bugTypes: ['timer_leak', 'missing_destroy', 'promise_timeout_leak'],
     severityThreshold: 'medium',
     excludePatterns: [],

@@ -8,36 +8,20 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vite
 import { GrokCliWrapper } from '../../../../src/integrations/ax-grok/cli-wrapper.js';
 import type { ExecutionRequest } from '../../../../src/types/provider.js';
 import { spawn } from 'child_process';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { EventEmitter } from 'events';
 
 // Mock child_process
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
-  exec: vi.fn(),
 }));
 
-const versionResultRef = vi.hoisted(() => ({
-  result: { stdout: '1.0.0', stderr: '' },
-  error: null as Error | null
-}));
-const availabilityRef = vi.hoisted(() => ({ available: true }));
+const availabilityRef = vi.hoisted(() => ({ available: true, path: '/usr/local/bin/ax-grok' }));
 
-vi.mock('util', () => ({
-  promisify: vi.fn(() => (cmd: string) => {
-    if (cmd.includes('which')) {
-      if (!availabilityRef.available) {
-        return Promise.reject(new Error('not found'));
-      }
-      return Promise.resolve({ stdout: '/usr/local/bin/ax-grok', stderr: '' });
-    }
-    if (cmd.includes('--version')) {
-      if (versionResultRef.error) return Promise.reject(versionResultRef.error);
-      return Promise.resolve(versionResultRef.result);
-    }
-    return Promise.resolve({ stdout: '', stderr: '' });
-  }),
+vi.mock('../../../../src/core/cli-provider-detector.js', () => ({
+  findOnPath: vi.fn(() => ({
+    found: availabilityRef.available,
+    path: availabilityRef.available ? availabilityRef.path : undefined
+  })),
 }));
 
 vi.mock('../../../../src/shared/logging/logger.js', () => ({
@@ -50,48 +34,13 @@ vi.mock('../../../../src/shared/logging/logger.js', () => ({
 }));
 
 describe('GrokCliWrapper', () => {
-  let mockExec: Mock;
   let mockSpawn: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    versionResultRef.error = null;
-    versionResultRef.result = { stdout: '1.0.0', stderr: '' };
     availabilityRef.available = true;
-
-    mockExec = exec as unknown as Mock;
+    availabilityRef.path = '/usr/local/bin/ax-grok';
     mockSpawn = spawn as unknown as Mock;
-
-    // Default mock respects availability and version refs
-    mockExec.mockImplementation((cmd: string, _options: unknown, callback?: (error: unknown, result: unknown) => void) => {
-      const isWhich = cmd.includes('which');
-      const isVersion = cmd.includes('--version');
-
-      const result = isWhich
-        ? {
-            stdout: availabilityRef.available ? '/usr/local/bin/ax-grok' : '',
-            stderr: availabilityRef.available ? '' : 'not found',
-          }
-        : isVersion
-          ? versionResultRef.result
-          : { stdout: '', stderr: '' };
-
-      const error = isWhich
-        ? availabilityRef.available ? null : new Error('not found')
-        : isVersion && versionResultRef.error
-          ? versionResultRef.error
-          : null;
-
-      if (typeof callback === 'function') {
-        callback(error, result);
-      }
-
-      if (error) {
-        throw error;
-      }
-
-      return result;
-    });
   });
 
   afterEach(() => {
@@ -136,34 +85,24 @@ describe('GrokCliWrapper', () => {
       expect(result).toBe(false);
     });
 
-    it('should detect CLI version', async () => {
-      const wrapper = new GrokCliWrapper();
-      await wrapper.isAvailable();
-      expect(wrapper.getVersion()).toBe('1.0.0');
-    });
-
-    it('should handle version detection failure gracefully', async () => {
-      versionResultRef.error = new Error('version not available');
-      versionResultRef.result = { stdout: '', stderr: '' };
-
+    it('should set version to unknown (version detection not implemented in base)', async () => {
       const wrapper = new GrokCliWrapper();
       await wrapper.isAvailable();
       expect(wrapper.getVersion()).toBe('unknown');
-      versionResultRef.error = null;
     });
   });
 
   describe('initialize', () => {
-    it('should initialize when CLI is available', async () => {
+    it('should initialize when CLI is available', () => {
       const wrapper = new GrokCliWrapper();
-      await expect(wrapper.initialize()).resolves.not.toThrow();
+      expect(() => wrapper.initialize()).not.toThrow();
     });
 
-    it('should throw when CLI is not available', async () => {
+    it('should throw when CLI is not available', () => {
       availabilityRef.available = false;
 
       const wrapper = new GrokCliWrapper();
-      await expect(wrapper.initialize()).rejects.toThrow(
+      expect(() => wrapper.initialize()).toThrow(
         'ax-grok CLI is not installed or not in PATH'
       );
     });

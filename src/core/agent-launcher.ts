@@ -227,6 +227,8 @@ export async function launchAgent(options: AgentLaunchOptions): Promise<AgentPro
       });
       childProcess.kill('SIGTERM');
     }, timeout);
+    // Prevent timer from keeping process alive
+    if (timeoutHandle.unref) timeoutHandle.unref();
   }
 
   // Create completion promise
@@ -346,5 +348,7 @@ export async function isProviderAvailable(provider: MCPProvider): Promise<boolea
       child.kill();
       safeResolve(false);
     }, 5000);
+    // Prevent timer from keeping process alive
+    if (timeoutId.unref) timeoutId.unref();
   });
 }

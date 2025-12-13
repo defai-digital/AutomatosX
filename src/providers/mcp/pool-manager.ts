@@ -427,6 +427,8 @@ export class McpClientPool extends EventEmitter {
   }
 
   private async waitForConnection(provider: string, pool: ProviderPool): Promise<McpClient> {
+    // Timeout is stored in waitQueue and cleared in releaseClient() and destroy()
+    // ax-ignore promise_timeout_leak
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         const index = pool.waitQueue.findIndex(w => w.resolve === resolve);

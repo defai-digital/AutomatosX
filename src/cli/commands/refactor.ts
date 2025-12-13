@@ -17,6 +17,7 @@ import {
   type RefactorState,
 } from '../../core/refactor/index.js';
 import { logger } from '../../shared/logging/logger.js';
+import { formatSeverity } from '../../shared/logging/severity-formatter.js';
 
 /**
  * CLI options for refactor command
@@ -39,26 +40,6 @@ interface RefactorOptions {
   since?: string;
   check?: boolean;
   severity?: string;
-}
-
-/**
- * Format severity with color
- */
-function formatSeverity(severity: RefactorSeverity): string {
-  switch (severity) {
-    case 'critical':
-      return chalk.bgRed.white(' CRITICAL ');
-    case 'high':
-      return chalk.red('[HIGH]');
-    case 'medium':
-      return chalk.yellow('[MED]');
-    case 'low':
-      return chalk.gray('[LOW]');
-    default: {
-      const s = severity as string;
-      return `[${s.toUpperCase()}]`;
-    }
-  }
 }
 
 /**
@@ -256,7 +237,17 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
     focus: {
       type: 'array',
       describe:
-        'Focus areas: duplication, readability, performance, hardcoded, naming, conditionals, dead_code, type_safety',
+        'Focus areas: duplication, readability, performance, hardcoded_values, naming, conditionals, dead_code, type_safety',
+      choices: [
+        'duplication',
+        'readability',
+        'performance',
+        'hardcoded_values',
+        'naming',
+        'conditionals',
+        'dead_code',
+        'type_safety',
+      ],
       default: undefined,
     },
     iterations: {
@@ -281,7 +272,7 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
     },
     'no-llm': {
       type: 'boolean',
-      describe: 'Static-only mode (no LLM, fast, no API costs)',
+      describe: 'static-only mode (no LLM, fast, no API costs)',
       default: false,
     },
     'max-changes': {
@@ -297,6 +288,7 @@ export const refactorCommand: CommandModule<object, RefactorOptions> = {
     severity: {
       type: 'string',
       describe: 'Minimum severity: low, medium, high, critical',
+      choices: ['low', 'medium', 'high', 'critical'],
       default: 'low',
     },
     verbose: {

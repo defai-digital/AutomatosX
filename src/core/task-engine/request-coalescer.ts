@@ -292,6 +292,8 @@ export class RequestCoalescer<T = unknown> {
       timeoutId = setTimeout(() => {
         reject(new Error(`Request coalescer timeout after ${this.config.timeoutMs}ms`));
       }, this.config.timeoutMs);
+      // Prevent timer from keeping process alive
+      if (timeoutId.unref) timeoutId.unref();
     });
 
     try {

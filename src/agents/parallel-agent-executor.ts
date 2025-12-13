@@ -48,7 +48,9 @@ export class ParallelAgentExecutor {
   private graphBuilder: DependencyGraphBuilder;
   private planner: ExecutionPlanner;
   private agentExecutor: AgentExecutor;
-  private abortController?: AbortController;
+  // v12.8.3 Bug fix: Removed instance-level abortController
+  // It was causing race conditions when execute() was called concurrently
+  // Now using local abortController variable in execute() method
 
   constructor() {
     this.graphBuilder = new DependencyGraphBuilder();
@@ -93,12 +95,15 @@ export class ParallelAgentExecutor {
     });
 
     // Setup cancellation
+    // v12.8.3 Bug fix: Use local abortController instead of instance property
+    // This prevents race conditions when execute() is called concurrently
+    let abortController: AbortController | undefined;
     let abortHandler: (() => void) | undefined;
     if (options.signal) {
-      this.abortController = new AbortController();
+      abortController = new AbortController();
       abortHandler = () => {
         logger.warn('Execution cancellation requested');
-        this.abortController?.abort();
+        abortController?.abort();
       };
       options.signal.addEventListener('abort', abortHandler);
     }
@@ -115,8 +120,8 @@ export class ParallelAgentExecutor {
           mode: level.executionMode
         });
 
-        // Check for cancellation
-        if (this.abortController?.signal.aborted) {
+        // Check for cancellation (v12.8.3: use local abortController)
+        if (abortController?.signal.aborted) {
           logger.warn('Execution cancelled', { level: level.level });
           this.markRemainingAsCancelled(graph, level.level, timeline);
           break;
@@ -124,8 +129,8 @@ export class ParallelAgentExecutor {
 
         // Execute batches for this level
         for (const batch of level.parallelBatches) {
-          // Check for cancellation before each batch
-          if (this.abortController?.signal.aborted) {
+          // Check for cancellation before each batch (v12.8.3: use local abortController)
+          if (abortController?.signal.aborted) {
             this.markBatchAsCancelled(batch, graph, timeline, startTime);
             break;
           }
@@ -134,8 +139,8 @@ export class ParallelAgentExecutor {
             // Execute batch in parallel
             await this.executeBatchParallel(batch, graph, context, options, results, timeline, startTime);
           } else {
-            // Execute batch sequentially
-            await this.executeBatchSequential(batch, graph, context, options, results, timeline, startTime);
+            // Execute batch sequentially (v12.8.3: pass local abortController)
+            await this.executeBatchSequential(batch, graph, context, options, results, timeline, startTime, abortController);
           }
 
           // Check if we should stop due to failures
@@ -256,6 +261,7 @@ export class ParallelAgentExecutor {
 
   /**
    * Execute a batch of agents sequentially
+   * v12.8.3: Added abortController parameter to fix race condition
    */
   private async executeBatchSequential(
     batch: string[],
@@ -264,13 +270,14 @@ export class ParallelAgentExecutor {
     options: ParallelExecutionOptions,
     results: Map<string, DelegationResult>,
     timeline: TimelineEntry[],
-    executionStartTime: number
+    executionStartTime: number,
+    abortController?: AbortController
   ): Promise<void> {
     logger.info('Executing batch sequentially', { agents: batch });
 
     for (const agentName of batch) {
-      // Check for cancellation
-      if (this.abortController?.signal.aborted) {
+      // Check for cancellation (v12.8.3: use local abortController parameter)
+      if (abortController?.signal.aborted) {
         this.markBatchAsCancelled(batch.slice(batch.indexOf(agentName)), graph, timeline, executionStartTime);
         break;
       }

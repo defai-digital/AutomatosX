@@ -77,7 +77,7 @@ export interface RefactorRule {
   /** Patterns that indicate this is NOT an issue */
   negativePatterns?: RegExp[];
   /** Detection method */
-  detector: 'regex' | 'ast' | 'typescript_analyzer' | 'call_graph' | 'control_flow' | 'token_hash';
+  detector: 'regex' | 'ast' | 'typescript_analyzer' | 'call_graph' | 'control_flow' | 'token_hash' | 'semantic';
   /** Severity of findings from this rule */
   severity: RefactorSeverity;
   /** Confidence score (0-1) */
@@ -124,6 +124,8 @@ export interface RefactorFinding {
     duplication?: number;
     readability?: number;
     linesRemoved?: number;
+    /** Whether this finding is safe to auto-fix (PRD-019) */
+    safeToAutoFix?: boolean;
   };
   /** Confidence score (0-1) */
   confidence: number;

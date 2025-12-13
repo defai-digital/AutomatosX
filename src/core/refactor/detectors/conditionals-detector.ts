@@ -138,26 +138,28 @@ function detectDeeplyNestedIf(
   const findings: RefactorFinding[] = [];
   const MAX_NESTING = 3;
 
-  let _currentNesting = 0; // Track for future endLine reporting
-  let ifNesting = 0;
-  let _ifStartLine = -1; // Track for future range reporting
+  // Track if-block depth using a stack approach
+  // Each entry represents the brace depth when an 'if' was encountered
+  const ifBraceDepths: number[] = [];
+  let currentBraceDepth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line === undefined) continue;
     const lineNum = i + 1;
 
-    // Track overall brace nesting
+    // Track brace depth changes
     const openBraces = (line.match(/{/g) || []).length;
     const closeBraces = (line.match(/}/g) || []).length;
 
-    // Track if statement nesting
+    // Check for if statement BEFORE updating brace depth
+    // This handles 'if (condition) {' on the same line
     if (/\bif\s*\(/.test(line)) {
-      ifNesting++;
-      if (ifNesting === 1) {
-        _ifStartLine = lineNum;
-      }
+      // Push the depth where this if statement starts
+      // Add openBraces since the if's opening brace is on this line
+      ifBraceDepths.push(currentBraceDepth + openBraces);
 
+      const ifNesting = ifBraceDepths.length;
       if (ifNesting > MAX_NESTING) {
         if (!shouldIgnoreLine(lineNum, 'conditionals', ignoreState)) {
           findings.push(
@@ -180,11 +182,18 @@ function detectDeeplyNestedIf(
       }
     }
 
-    _currentNesting += openBraces - closeBraces;
+    // Update brace depth
+    currentBraceDepth += openBraces - closeBraces;
 
-    // Reset if nesting when we leave the block
-    if (closeBraces > 0 && ifNesting > 0) {
-      ifNesting = Math.max(0, ifNesting - closeBraces);
+    // Pop if-blocks that have closed
+    // When brace depth drops below an if's recorded depth, that if block has ended
+    while (ifBraceDepths.length > 0) {
+      const topIfDepth = ifBraceDepths[ifBraceDepths.length - 1];
+      if (topIfDepth !== undefined && currentBraceDepth < topIfDepth) {
+        ifBraceDepths.pop();
+      } else {
+        break;
+      }
     }
   }
 

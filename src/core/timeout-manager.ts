@@ -293,6 +293,8 @@ export class TimeoutManager {
 
         this.warningEmitter.emitWarning(event);
       }, resolved.warningAt);
+      // Prevent timer from keeping process alive
+      if (warningTimer.unref) warningTimer.unref();
     }
 
     // Return monitor handle

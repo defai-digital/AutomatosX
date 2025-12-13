@@ -1180,5 +1180,7 @@ export class SessionManager {
           this.pendingSave = undefined;
         });
     }, 100); // 100ms debounce
+    // Prevent timer from keeping process alive
+    if (this.saveTimeout.unref) this.saveTimeout.unref();
   }
 }

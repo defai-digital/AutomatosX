@@ -427,22 +427,13 @@ export class DatabaseConnectionPool {
 
   /**
    * Initialize connection pools
+   *
+   * BUG FIX: Write connections MUST be created first because they can create
+   * the database file (fileMustExist=false), while read connections require
+   * the file to exist (fileMustExist=true).
    */
   private initializePools(): void {
-    // Create read-only connections
-    for (let i = 0; i < this.config.readPoolSize; i++) {
-      const db = this.createConnection(true);
-      this.readPool.push({
-        db,
-        busy: false,
-        readonly: true,
-        createdAt: Date.now(),
-        lastUsed: Date.now(),
-        queryCount: 0
-      });
-    }
-
-    // Create write connections
+    // Create write connections FIRST - they can create the database file
     for (let i = 0; i < this.config.writePoolSize; i++) {
       const db = this.createConnection(false);
       this.writePool.push({
@@ -455,9 +446,22 @@ export class DatabaseConnectionPool {
       });
     }
 
+    // Create read-only connections AFTER write - requires existing file
+    for (let i = 0; i < this.config.readPoolSize; i++) {
+      const db = this.createConnection(true);
+      this.readPool.push({
+        db,
+        busy: false,
+        readonly: true,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+        queryCount: 0
+      });
+    }
+
     logger.debug('Connection pools created', {
-      readConnections: this.readPool.length,
-      writeConnections: this.writePool.length
+      writeConnections: this.writePool.length,
+      readConnections: this.readPool.length
     });
   }
 

@@ -10,7 +10,7 @@ import { join } from 'path';
 import { load as loadYaml } from 'js-yaml';
 import chalk from 'chalk';
 import { TemplateEngine, type TemplateVariables } from '../../../agents/template-engine.js';
-import { PromptHelper } from '../../../shared/helpers/prompt-helper.js';
+import { withPrompt } from '../../../shared/helpers/prompt-helper.js';
 import { getPackageRoot } from '../../../shared/helpers/package-root.js';
 import {
   listAvailableTemplates,
@@ -307,18 +307,15 @@ function extractDefault(value: string): string | undefined {
 
 /**
  * Ask user for input
- * v9.0.2: Refactored to use PromptHelper for automatic cleanup
+ * v12.8.5: Refactored to use withPrompt() for automatic cleanup
  */
 async function ask(question: string, defaultValue?: string): Promise<string> {
-  const prompt = new PromptHelper();
-  try {
+  return withPrompt(async (prompt) => {
     const displayPrompt = defaultValue
       ? `${question} [${chalk.gray(defaultValue)}]: `
       : `${question}: `;
 
     const answer = await prompt.question(displayPrompt);
     return answer.trim() || defaultValue || '';
-  } finally {
-    prompt.close();
-  }
+  });
 }

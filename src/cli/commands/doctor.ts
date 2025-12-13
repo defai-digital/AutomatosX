@@ -45,6 +45,7 @@ interface DoctorOptions {
   grok?: boolean;
   memory?: boolean;
   mcp?: boolean;  // v13.0.0: MCP server diagnostics
+  sqlite?: boolean;  // v12.8.4: Native SQLite module diagnostics
   full?: boolean;
 }
 
@@ -111,6 +112,11 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
         type: 'boolean',
         default: false
       })
+      .option('sqlite', {
+        describe: 'Run native SQLite module diagnostics (better-sqlite3, sqlite-vec)',
+        type: 'boolean',
+        default: false
+      })
       .option('full', {
         describe: 'Run all comprehensive diagnostics',
         type: 'boolean',
@@ -126,6 +132,7 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       .example('ax doctor --grok', 'Check Grok/xAI provider')
       .example('ax doctor --memory', 'Check memory system health')
       .example('ax doctor --mcp', 'Check MCP server health')
+      .example('ax doctor --sqlite', 'Check native SQLite modules')
       .example('ax doctor --full', 'Run all comprehensive diagnostics');
   },
 
@@ -169,6 +176,12 @@ export const doctorCommand: CommandModule<Record<string, unknown>, DoctorOptions
       // v13.0.0: If --mcp flag is set, run MCP server diagnostics only
       if (argv.mcp) {
         await runMcpDiagnostics(verbose);
+        return;
+      }
+
+      // v12.8.4: If --sqlite flag is set, run native SQLite module diagnostics only
+      if (argv.sqlite) {
+        await runSqliteDiagnostics(verbose);
         return;
       }
 
@@ -1300,6 +1313,8 @@ async function checkApiEndpoint(
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
+    // Prevent timer from keeping process alive
+    if (timeout.unref) timeout.unref();
     const response = await fetch(url, {
       method: 'HEAD',
       signal: controller.signal
@@ -1835,6 +1850,8 @@ async function runMcpDiagnostics(verbose: boolean): Promise<void> {
         const timeoutId = setTimeout(() => {
           safeResolve(output.includes('Server started') || output.includes('MCP Server'));
         }, 3000);
+        // Prevent timer from keeping process alive
+        if (timeoutId.unref) timeoutId.unref();
       });
 
       serverStarts = initResult;
@@ -1931,5 +1948,214 @@ async function runMcpDiagnostics(verbose: boolean): Promise<void> {
     console.log(chalk.cyan('Registration:'));
     console.log(chalk.gray('  Claude Code: claude mcp add automatosx'));
     console.log(chalk.gray('  Manual: Add to .mcp.json in project root\n'));
+  }
+}
+
+/**
+ * Run native SQLite module diagnostics
+ * v12.8.4: Added for better-sqlite3 binary compatibility troubleshooting
+ */
+async function runSqliteDiagnostics(verbose: boolean): Promise<void> {
+  console.log(chalk.bold('\n🔍 Native SQLite Module Diagnostics\n'));
+
+  const checks: Array<{ name: string; passed: boolean; message: string; fix?: string; details?: string }> = [];
+
+  // System info
+  console.log(chalk.dim(`  Node.js: ${process.version}`));
+  console.log(chalk.dim(`  Platform: ${process.platform}-${process.arch}`));
+  console.log('');
+
+  // Check 1: better-sqlite3 module loads
+  let betterSqlite3Version = '';
+  let sqliteVersion = '';
+  let betterSqlite3Works = false;
+
+  try {
+    const Database = (await import('better-sqlite3')).default;
+    const pkg = await import('better-sqlite3/package.json', { with: { type: 'json' } }).catch(() => ({ default: { version: 'unknown' } }));
+    betterSqlite3Version = pkg.default.version || 'unknown';
+
+    // Test actual database operations
+    const db = new Database(':memory:');
+    const result = db.prepare('SELECT sqlite_version() as version').get() as { version: string };
+    sqliteVersion = result.version;
+    db.close();
+    betterSqlite3Works = true;
+
+    checks.push({
+      name: 'better-sqlite3',
+      passed: true,
+      message: `v${betterSqlite3Version} (SQLite ${sqliteVersion})`,
+      details: verbose ? 'Native module loaded and executed successfully' : undefined
+    });
+  } catch (error) {
+    const errorMessage = (error as Error).message || String(error);
+    const isNativeError =
+      errorMessage.includes('NODE_MODULE_VERSION') ||
+      errorMessage.includes('was compiled against a different Node.js version') ||
+      errorMessage.includes('.node') ||
+      errorMessage.includes('module did not self-register');
+
+    checks.push({
+      name: 'better-sqlite3',
+      passed: false,
+      message: isNativeError ? 'Binary incompatible with current Node.js' : 'Failed to load',
+      fix: 'npm run rebuild:native',
+      details: verbose ? errorMessage.split('\n')[0] : undefined
+    });
+  }
+
+  // Check 2: sqlite-vec extension loads
+  try {
+    const sqliteVec = await import('sqlite-vec');
+    const version = (sqliteVec as { version?: string }).version || 'loaded';
+
+    // If better-sqlite3 works, test loading the extension
+    if (betterSqlite3Works) {
+      const Database = (await import('better-sqlite3')).default;
+      const db = new Database(':memory:');
+      sqliteVec.load(db);
+      db.close();
+    }
+
+    checks.push({
+      name: 'sqlite-vec',
+      passed: true,
+      message: `Extension ${version}`,
+      details: verbose ? 'Vector search extension loaded successfully' : undefined
+    });
+  } catch (error) {
+    const errorMessage = (error as Error).message || String(error);
+    const isNotInstalled = errorMessage.includes('Cannot find module');
+    const isNativeError =
+      errorMessage.includes('NODE_MODULE_VERSION') ||
+      errorMessage.includes('was compiled against a different Node.js version');
+
+    if (isNotInstalled) {
+      checks.push({
+        name: 'sqlite-vec',
+        passed: true,
+        message: 'Not installed (optional)',
+        details: verbose ? 'Vector search extension not required for basic operation' : undefined
+      });
+    } else {
+      checks.push({
+        name: 'sqlite-vec',
+        passed: false,
+        message: isNativeError ? 'Binary incompatible' : 'Failed to load',
+        fix: 'npm run rebuild:native',
+        details: verbose ? errorMessage.split('\n')[0] : undefined
+      });
+    }
+  }
+
+  // Check 3: Verify prebuilt binaries exist
+  let prebuiltExists = false;
+  try {
+    const { existsSync } = await import('fs');
+    const { join, dirname } = await import('path');
+    const { fileURLToPath } = await import('url');
+
+    // Find better-sqlite3 in node_modules
+    const betterSqlite3Path = join(process.cwd(), 'node_modules', 'better-sqlite3');
+    const prebuiltPath = join(betterSqlite3Path, 'prebuilds');
+    const buildPath = join(betterSqlite3Path, 'build', 'Release');
+
+    if (existsSync(prebuiltPath)) {
+      prebuiltExists = true;
+      checks.push({
+        name: 'Prebuilt Binaries',
+        passed: true,
+        message: 'Found in node_modules/better-sqlite3/prebuilds/',
+        details: verbose ? `Platform: ${process.platform}-${process.arch}` : undefined
+      });
+    } else if (existsSync(buildPath)) {
+      checks.push({
+        name: 'Compiled Binary',
+        passed: true,
+        message: 'Found in node_modules/better-sqlite3/build/Release/',
+        details: verbose ? 'Compiled from source (no prebuilt available)' : undefined
+      });
+    } else {
+      checks.push({
+        name: 'Native Binary',
+        passed: false,
+        message: 'No binary found',
+        fix: 'npm rebuild better-sqlite3',
+        details: verbose ? 'Neither prebuilt nor compiled binary exists' : undefined
+      });
+    }
+  } catch {
+    // Skip this check if we can't access filesystem
+  }
+
+  // Check 4: C++ build tools (for fallback compilation)
+  let hasBuildTools = false;
+  try {
+    if (process.platform === 'win32') {
+      execSync('where cl.exe', { stdio: 'pipe', timeout: 5000 });
+      hasBuildTools = true;
+    } else {
+      execSync('which gcc || which clang', { stdio: 'pipe', timeout: 5000 });
+      hasBuildTools = true;
+    }
+  } catch {
+    hasBuildTools = false;
+  }
+
+  checks.push({
+    name: 'C++ Build Tools',
+    passed: hasBuildTools,
+    message: hasBuildTools ? 'Available for fallback compilation' : 'Not found (optional)',
+    fix: hasBuildTools ? undefined : (
+      process.platform === 'darwin' ? 'xcode-select --install' :
+      process.platform === 'win32' ? 'npm install -g windows-build-tools' :
+      'sudo apt-get install build-essential'
+    ),
+    details: verbose && !hasBuildTools ? 'Required if prebuilt binaries are unavailable' : undefined
+  });
+
+  // Display results
+  checks.forEach(check => {
+    const spinner = ora();
+    if (check.passed) {
+      spinner.succeed(chalk.green(`${check.name}: ${check.message}`));
+    } else {
+      spinner.fail(chalk.red(`${check.name}: ${check.message}`));
+    }
+    if (check.details) {
+      console.log(chalk.dim(`  └─ ${check.details}`));
+    }
+  });
+
+  // Summary
+  const passedCount = checks.filter(c => c.passed).length;
+  const totalCount = checks.length;
+
+  console.log(chalk.bold('\n📊 Summary\n'));
+  console.log(chalk.green(`✓ Passed: ${passedCount}/${totalCount}`));
+
+  if (passedCount < totalCount) {
+    console.log(chalk.red(`✗ Failed: ${totalCount - passedCount}/${totalCount}`));
+
+    const failedChecks = checks.filter(c => !c.passed && c.fix);
+    if (failedChecks.length > 0) {
+      console.log(chalk.bold.yellow('\n💡 Quick Fix:\n'));
+      console.log(chalk.cyan('  npm run rebuild:native'));
+      console.log('');
+      console.log(chalk.dim('Or if that fails, try a clean install:'));
+      console.log(chalk.dim('  rm -rf node_modules && npm install'));
+      console.log('');
+    }
+
+    process.exit(1);
+  } else {
+    console.log(chalk.bold.green('\n✅ All native SQLite modules are working!\n'));
+
+    console.log(chalk.cyan('Troubleshooting Tips:'));
+    console.log(chalk.gray('  • After switching Node.js versions: npm run rebuild:native'));
+    console.log(chalk.gray('  • After git pull with dependency changes: npm install'));
+    console.log(chalk.gray('  • Binary mismatch errors: rm -rf node_modules && npm install'));
+    console.log(chalk.gray(''));
   }
 }

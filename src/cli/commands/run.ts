@@ -25,6 +25,13 @@ import { GrokProvider } from '../../providers/grok-provider.js';
 import { loadConfig } from '../../core/config/loader.js';
 import { logger } from '../../shared/logging/logger.js';
 import { writeAgentStatus } from '../../shared/helpers/agent-status-writer.js';
+import {
+  cleanupResources,
+  shutdownProcessManager,
+  closeStdioStreams,
+  type RunCleanupContext,
+  type RunStatusInfo
+} from '../../shared/helpers/run-cleanup.js';
 import { IterateModeController } from '../../core/iterate/iterate-mode-controller.js';
 import type { ExecutionHooks } from '../../agents/executor.js';
 import { IterateStatusRenderer } from '../renderers/iterate-status-renderer.js';
@@ -1102,6 +1109,8 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
           const timeoutId = setTimeout(() => {
             controller.abort();
           }, timeoutMs);
+          // Prevent timer from keeping process alive
+          if (timeoutId.unref) timeoutId.unref();
 
           try {
             result = await executor.execute(context, {
@@ -1251,21 +1260,14 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }
       }
 
-      // 12. Cleanup resources
-      await contextManager.cleanup(context);
-
-      // Clean up memory manager (close database connections)
-      if (memoryManager) {
-        await memoryManager.close();
-      }
-
-      // Clean up router (stop health checks)
-      if (router) {
-        router.destroy();
-      }
-
-      // Ensure event loop completes all pending operations
-      await new Promise(resolve => setImmediate(resolve));
+      // 12. Cleanup resources (using shared helper)
+      const cleanupCtx: RunCleanupContext = {
+        memoryManager,
+        router,
+        contextManager,
+        context
+      };
+      await cleanupResources(cleanupCtx, false);
 
       // v8.5.8 Phase 3: Show completion message only in normal/verbose mode
       if (!verbosity.isQuiet()) {
@@ -1288,27 +1290,9 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         }
       }
 
-      // Graceful shutdown: cleanup all child processes before exit
-      // Fixes: Background tasks hanging when run via Claude Code
-      try {
-        const { processManager } = await import('../../shared/process/process-manager.js');
-        await processManager.shutdown(3000); // 3 second timeout
-      } catch (shutdownError) {
-        logger.error('Process manager shutdown failed', {
-          error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
-        });
-        // Continue with process exit anyway
-      }
-
-      // Close stdio streams to signal completion
-      if (process.stdout.writable) {
-        process.stdout.end();
-      }
-      if (process.stderr.writable) {
-        process.stderr.end();
-      }
-
-      // Write agent completion status for background notification system (v8.5.0)
+      // Graceful shutdown and write status
+      await shutdownProcessManager(3000);
+      closeStdioStreams();
       await writeAgentStatus({
         agent: resolvedAgentName,
         status: 'completed',
@@ -1339,42 +1323,17 @@ export const runCommand: CommandModule<Record<string, unknown>, RunOptions> = {
         stack: err.stack
       });
 
-      // Cleanup resources even on error
+      // Cleanup resources even on error (using shared helper with error suppression)
       try {
-        if (memoryManager) {
-          await memoryManager.close();
-        }
-        if (router) {
-          router.destroy();
-        }
-        // Clean up context (workspace, temp files)
-        if (contextManager && context) {
-          await contextManager.cleanup(context).catch(cleanupErr => {
-            const errMsg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
-            logger.debug('Context cleanup error', { error: errMsg });
-          });
-        }
-        // Ensure event loop completes all pending operations
-        await new Promise(resolve => setImmediate(resolve));
-
-        // Graceful shutdown: cleanup all child processes before exit
-        try {
-          const { processManager } = await import('../../shared/process/process-manager.js');
-          await processManager.shutdown(3000); // 3 second timeout
-        } catch (shutdownError) {
-          logger.error('Process manager shutdown failed', {
-            error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
-          });
-          // Continue with process exit anyway
-        }
-
-        // Close stdio streams
-        if (process.stdout.writable) {
-          process.stdout.end();
-        }
-        if (process.stderr.writable) {
-          process.stderr.end();
-        }
+        const cleanupCtx: RunCleanupContext = {
+          memoryManager,
+          router,
+          contextManager,
+          context
+        };
+        await cleanupResources(cleanupCtx, true); // suppress errors
+        await shutdownProcessManager(3000);
+        closeStdioStreams();
 
         // Write agent failure status for background notification system (v8.5.0)
         await writeAgentStatus({

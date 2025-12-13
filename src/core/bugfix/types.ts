@@ -151,6 +151,20 @@ export interface VerificationResult {
 
   /** Duration in milliseconds */
   durationMs: number;
+
+  // v12.9.0: PRD-018 Enhanced verification
+
+  /** ESLint verification passed */
+  lintPassed?: boolean;
+
+  /** ESLint issues found */
+  lintIssues?: string[];
+
+  /** Strict TypeScript check passed */
+  strictCheckPassed?: boolean;
+
+  /** Strict TypeScript errors */
+  strictErrors?: string[];
 }
 
 /**
@@ -184,7 +198,7 @@ export interface BugfixConfig {
   /** Maximum retries per bug */
   maxRetriesPerBug: number;
 
-  /** Minimum confidence for auto-fix */
+  /** Minimum confidence for auto-fix (0.0-1.0) */
   minConfidence: number;
 
   /** Bug types to scan for */
@@ -213,6 +227,17 @@ export interface BugfixConfig {
 
   /** Verbose output */
   verbose: boolean;
+
+  // v12.9.0: PRD-018 Enhanced verification options
+
+  /** Run ESLint verification after fixes */
+  verifyLint?: boolean;
+
+  /** Run strict TypeScript check after fixes */
+  verifyStrict?: boolean;
+
+  /** Enable metrics tracking */
+  trackMetrics?: boolean;
 }
 
 /**

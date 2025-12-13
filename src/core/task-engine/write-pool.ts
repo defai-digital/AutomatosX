@@ -325,6 +325,8 @@ export class WritePool {
           reject(new Error('Connection acquire timeout'));
         }
       }, this.config.acquireTimeoutMs);
+      // Prevent timer from keeping process alive
+      if (request.timeoutId.unref) request.timeoutId.unref();
     });
   }
 

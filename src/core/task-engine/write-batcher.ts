@@ -124,6 +124,8 @@ export class WriteBatcher {
       return Promise.reject(new Error('WriteBatcher is closed'));
     }
 
+    // Timer is stored in this.flushTimer and cleared in flush() method
+    // ax-ignore promise_timeout_leak
     return new Promise<T>((resolve, reject) => {
       this.queue.push({
         stmt,
@@ -138,6 +140,8 @@ export class WriteBatcher {
       } else if (!this.flushTimer) {
         // Start batch window timer
         this.flushTimer = setTimeout(() => this.flush(), this.config.batchWindowMs);
+        // Prevent timer from keeping process alive
+        if (this.flushTimer.unref) this.flushTimer.unref();
       }
     });
   }
@@ -198,6 +202,8 @@ export class WriteBatcher {
     // Process remaining queue if any
     if (this.queue.length > 0 && !this.flushTimer && !this.closed) {
       this.flushTimer = setTimeout(() => this.flush(), this.config.batchWindowMs);
+      // Prevent timer from keeping process alive
+      if (this.flushTimer.unref) this.flushTimer.unref();
     }
   }
 

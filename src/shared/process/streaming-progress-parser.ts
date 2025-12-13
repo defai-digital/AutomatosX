@@ -63,6 +63,12 @@ export class StreamingProgressParser {
     try {
       const parsed = JSON.parse(line);
 
+      // Handle new streaming event format (AX CLI stream-json)
+      const typedEvent = this.parseTypedEvent(parsed);
+      if (typedEvent) {
+        return typedEvent;
+      }
+
       // Parse user message (task description)
       if (parsed.role === 'user') {
         return {
@@ -114,6 +120,101 @@ export class StreamingProgressParser {
         };
       }
       return null;
+    }
+  }
+
+  /**
+   * Parse streaming events that use { type: string } shapes
+   * instead of the older chat message format.
+   */
+  private parseTypedEvent(parsed: any): ProgressUpdate | null {
+    if (!parsed || typeof parsed !== 'object' || !parsed.type) {
+      return null;
+    }
+
+    switch (parsed.type) {
+      case 'content':
+      case 'message': {
+        const content = parsed.content || parsed.message;
+        if (typeof content === 'string' && content.trim()) {
+          return {
+            type: 'response',
+            message: 'Generating response...',
+            details: content.substring(0, 100)
+          };
+        }
+        return {
+          type: 'response',
+          message: 'Generating response...'
+        };
+      }
+
+      case 'reasoning': {
+        const reasoning = typeof parsed.reasoningContent === 'string'
+          ? parsed.reasoningContent
+          : typeof parsed.message === 'string'
+            ? parsed.message
+            : null;
+        if (reasoning) {
+          return {
+            type: 'thinking',
+            message: 'Thinking...',
+            details: reasoning.substring(0, 100)
+          };
+        }
+        return {
+          type: 'thinking',
+          message: 'Thinking...'
+        };
+      }
+
+      case 'progress': {
+        const baseMessage = typeof parsed.message === 'string' && parsed.message.trim()
+          ? parsed.message.trim()
+          : 'Working...';
+        const percentage = typeof parsed.percentage === 'number'
+          ? ` (${Math.round(parsed.percentage)}%)`
+          : '';
+        return {
+          type: 'thinking',
+          message: `${baseMessage}${percentage}`
+        };
+      }
+
+      case 'tool_calls': {
+        const toolName = parsed.toolCalls?.[0]?.function?.name || 'tool';
+        return {
+          type: 'tool_call',
+          message: this.formatToolCallMessage(toolName)
+        };
+      }
+
+      case 'token_count': {
+        if (typeof parsed.tokenCount === 'number') {
+          return {
+            type: 'response',
+            message: `Streaming tokens: ${parsed.tokenCount}`
+          };
+        }
+        return null;
+      }
+
+      case 'error': {
+        const errorMessage = parsed.error || parsed.message;
+        if (typeof errorMessage === 'string') {
+          return {
+            type: 'error',
+            message: errorMessage
+          };
+        }
+        return {
+          type: 'error',
+          message: 'Streaming error occurred'
+        };
+      }
+
+      default:
+        return null;
     }
   }
 

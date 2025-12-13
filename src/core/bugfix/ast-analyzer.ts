@@ -1086,6 +1086,7 @@ export class ASTAnalyzer {
   /**
    * Analyze event listeners for potential leaks
    * v12.9.0: PRD-018 - AST-based detection for event_leak
+   * v12.9.2: PRD-022 - Added process signal and child process allowlists
    */
   analyzeEventListeners(sourceFile: TypeScriptTypes.SourceFile, _content: string): EventListenerInfo[] {
     const results: EventListenerInfo[] = [];
@@ -1127,6 +1128,18 @@ export class ASTAnalyzer {
               const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
               const lineNum = line + 1;
 
+              // v12.9.2: PRD-022 - Skip process signal handlers (intentionally lifetime handlers)
+              if (this.isProcessSignalHandler(node, eventName, sourceFile)) {
+                getTS().forEachChild(node, visit);
+                return;
+              }
+
+              // v12.9.2: PRD-022 - Skip child process event handlers (auto-cleaned on process exit)
+              if (this.isChildProcessHandler(node, sourceFile)) {
+                getTS().forEachChild(node, visit);
+                return;
+              }
+
               // Get enclosing context
               const enclosingFunc = this.findEnclosingFunction(sourceFile, lineNum);
               const enclosingClass = this.findEnclosingClass(sourceFile, lineNum);
@@ -1143,7 +1156,9 @@ export class ASTAnalyzer {
               }
 
               const isOneTimeListener = callName === 'once';
-              const hasCorrespondingRemoval = removals.has(eventName) || removals.has('*') || isOneTimeListener;
+              // v12.9.2: PRD-022 - Auto-cleanup events (exit, close, end, etc.) don't need explicit removal
+              const isAutoCleanupEvent = ALLOWLISTS.eventLeak.autoCleanupEvents.includes(eventName);
+              const hasCorrespondingRemoval = removals.has(eventName) || removals.has('*') || isOneTimeListener || isAutoCleanupEvent;
 
               results.push({
                 eventName,
@@ -1164,6 +1179,98 @@ export class ASTAnalyzer {
     visit(sourceFile);
 
     return results;
+  }
+
+  /**
+   * Check if an event listener is a process signal handler
+   * v12.9.2: PRD-022 - Process signals are intentionally lifetime handlers
+   */
+  private isProcessSignalHandler(
+    node: TypeScriptTypes.CallExpression,
+    eventName: string,
+    _sourceFile: TypeScriptTypes.SourceFile
+  ): boolean {
+    // Check if event name is a process signal
+    if (!ALLOWLISTS.eventLeak.processSignals.includes(eventName)) {
+      return false;
+    }
+
+    // Check if the call is on the 'process' object
+    const expression = node.expression;
+    if (getTS().isPropertyAccessExpression(expression)) {
+      const obj = expression.expression;
+      // Check for 'process.on(...)' pattern
+      if (getTS().isIdentifier(obj) && obj.text === 'process') {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if an event listener is on a child process or self-cleaning object
+   * v12.9.2: PRD-022 - Child process events are cleaned up when process exits
+   */
+  private isChildProcessHandler(
+    node: TypeScriptTypes.CallExpression,
+    sourceFile: TypeScriptTypes.SourceFile
+  ): boolean {
+    const expression = node.expression;
+    if (!getTS().isPropertyAccessExpression(expression)) {
+      return false;
+    }
+
+    // Get the object the method is called on
+    const obj = expression.expression;
+
+    // Check for patterns like: child.stdout.on, child.stderr.on, child.on
+    // Pattern 1: Direct property access (e.g., child.on)
+    if (getTS().isIdentifier(obj)) {
+      // Look back to see if this variable was assigned from spawn/exec/fork
+      const varName = obj.text;
+      return this.isChildProcessVariable(varName, sourceFile);
+    }
+
+    // Pattern 2: Nested property access (e.g., child.stdout.on, child.stderr.on)
+    if (getTS().isPropertyAccessExpression(obj)) {
+      const propName = obj.name.text;
+      // stdout, stderr, stdin are child process streams
+      if (['stdout', 'stderr', 'stdin'].includes(propName)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a variable name is assigned from a child process creation function
+   */
+  private isChildProcessVariable(varName: string, sourceFile: TypeScriptTypes.SourceFile): boolean {
+    let isChildProcess = false;
+
+    const visit = (node: TypeScriptTypes.Node): void => {
+      // Look for: const/let/var varName = spawn/exec/fork/execFile(...)
+      if (getTS().isVariableDeclaration(node) &&
+          getTS().isIdentifier(node.name) &&
+          node.name.text === varName &&
+          node.initializer &&
+          getTS().isCallExpression(node.initializer)) {
+
+        const callName = this.getCallExpressionName(node.initializer);
+        // Child process creation functions
+        if (['spawn', 'exec', 'fork', 'execFile', 'execSync', 'spawnSync'].includes(callName)) {
+          isChildProcess = true;
+        }
+      }
+      if (!isChildProcess) {
+        getTS().forEachChild(node, visit);
+      }
+    };
+
+    visit(sourceFile);
+    return isChildProcess;
   }
 
   /**
@@ -1267,6 +1374,7 @@ export class ASTAnalyzer {
 
   /**
    * Analyze error handling context for a Promise node
+   * v12.9.2: PRD-022 - Added .catch(reject) pattern recognition
    */
   private analyzePromiseErrorContext(
     node: TypeScriptTypes.Node,
@@ -1284,6 +1392,13 @@ export class ASTAnalyzer {
     // Check if in try block (for awaited promises)
     if (isAwaited && this.isInsideTryBlock(current)) {
       return { hasErrorHandler: true, type: 'try-catch', isAwaited };
+    }
+
+    // v12.9.2: PRD-022 - Check for .catch(reject) pattern inside Promise executor
+    // Pattern: new Promise((resolve, reject) => { somePromise.then(...).catch(reject) })
+    // This is valid error handling - errors bubble to outer Promise
+    if (getTS().isNewExpression(node) && this.hasCatchRejectPatternInExecutor(node)) {
+      return { hasErrorHandler: true, type: 'then-reject', isAwaited };
     }
 
     // Walk up to find .catch() or .then(_, errorHandler)
@@ -1323,6 +1438,72 @@ export class ASTAnalyzer {
     }
 
     return { hasErrorHandler: false, type: 'none', isAwaited };
+  }
+
+  /**
+   * Check for .catch(reject) pattern inside a Promise executor
+   * v12.9.2: PRD-022 - Recognize .catch(reject) as valid error propagation
+   *
+   * Pattern: new Promise((resolve, reject) => {
+   *   someAsyncOp().then(result => resolve(result)).catch(reject)
+   * })
+   *
+   * This is valid - errors propagate to the outer Promise's reject handler
+   */
+  private hasCatchRejectPatternInExecutor(promiseNode: TypeScriptTypes.NewExpression): boolean {
+    const args = promiseNode.arguments;
+    if (!args || args.length === 0) return false;
+
+    const executorArg = args[0];
+    if (!executorArg) return false;
+
+    // Get the reject parameter name from the executor
+    let rejectParamName: string | null = null;
+
+    if (getTS().isArrowFunction(executorArg) || getTS().isFunctionExpression(executorArg)) {
+      const params = executorArg.parameters;
+      // Promise executor has (resolve, reject) - reject is second param
+      if (params.length >= 2) {
+        const rejectParam = params[1];
+        if (rejectParam && getTS().isIdentifier(rejectParam.name)) {
+          rejectParamName = rejectParam.name.text;
+        }
+      }
+    }
+
+    if (!rejectParamName) return false;
+
+    // Look for .catch(rejectParamName) pattern in the executor body
+    let hasCatchReject = false;
+
+    const visit = (node: TypeScriptTypes.Node): void => {
+      if (hasCatchReject) return; // Already found
+
+      // Look for .catch(reject) or .catch(rej) etc.
+      if (getTS().isCallExpression(node) &&
+          getTS().isPropertyAccessExpression(node.expression) &&
+          node.expression.name.text === 'catch') {
+
+        const catchArgs = node.arguments;
+        if (catchArgs.length >= 1) {
+          const arg = catchArgs[0];
+          // Check if argument matches the reject parameter name
+          if (arg && getTS().isIdentifier(arg) && arg.text === rejectParamName) {
+            hasCatchReject = true;
+            return;
+          }
+        }
+      }
+
+      getTS().forEachChild(node, visit);
+    };
+
+    // Visit the executor body
+    if (getTS().isArrowFunction(executorArg) || getTS().isFunctionExpression(executorArg)) {
+      visit(executorArg.body);
+    }
+
+    return hasCatchReject;
   }
 
   /**
@@ -1746,6 +1927,24 @@ export const ALLOWLISTS = {
       'Destroyable',
       'IClosable',
     ],
+  },
+
+  /**
+   * Event listeners that are intentionally lifetime handlers
+   * v12.9.2: PRD-022 - Process signal handlers and child process events
+   */
+  eventLeak: {
+    /** Process signal events - intentionally never removed */
+    processSignals: [
+      'SIGINT', 'SIGTERM', 'SIGKILL', 'SIGHUP', 'SIGQUIT',
+      'uncaughtException', 'unhandledRejection', 'exit',
+      'beforeExit', 'disconnect', 'warning', 'multipleResolves'
+    ],
+
+    /** Events that are inherently one-time or auto-cleanup */
+    autoCleanupEvents: [
+      'exit', 'close', 'end', 'finish', 'error', 'timeout'
+    ]
   }
 };
 

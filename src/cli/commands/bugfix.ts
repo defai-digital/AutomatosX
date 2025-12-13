@@ -14,7 +14,6 @@ import {
   getChangedFiles,
   generateJsonOutput,
   writeReport,
-  getDefaultReportPath,
   type BugFinding,
   type BugfixConfig,
   type BugSeverity,

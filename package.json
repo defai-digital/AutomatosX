@@ -98,6 +98,7 @@
   },
   "dependencies": {
     "@defai.digital/ax-cli": "^4.1.15",
+    "@defai.digital/ax-core": "^4.4.20",
     "@iarna/toml": "^2.2.5",
     "@openai/codex-sdk": "^0.65.0",
     "ajv": "^8.17.1",

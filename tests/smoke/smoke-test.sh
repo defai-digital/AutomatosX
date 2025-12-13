@@ -61,17 +61,19 @@ echo ""
 echo "🔍 Step 3: Testing CLI availability..."
 
 # Test automatosx command
-if ! npx automatosx --version > /dev/null 2>&1; then
+CLI_OUTPUT=$(npx automatosx --version 2>&1) || {
     echo "   ✗ 'automatosx' command not available"
+    echo "   Error output: $CLI_OUTPUT"
     exit 1
-fi
+}
 echo "   ✓ 'automatosx' command available"
 
 # Test ax alias
-if ! npx ax --version > /dev/null 2>&1; then
+AX_OUTPUT=$(npx ax --version 2>&1) || {
     echo "   ✗ 'ax' alias not available"
+    echo "   Error output: $AX_OUTPUT"
     exit 1
-fi
+}
 echo "   ✓ 'ax' alias available"
 echo ""
 

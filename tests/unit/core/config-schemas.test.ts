@@ -195,13 +195,16 @@ describe('Config Schemas - Zod Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should require command for CLI providers', () => {
+    it('should require command for explicit CLI providers (type: cli)', () => {
+      // v12.8.4: Only providers with explicit type: 'cli' require command
+      // Providers without type are treated as potentially SDK-first and don't require command
       const config = {
         providers: {
           'claude-code': {
             enabled: true,
             priority: 1,
             timeout: 120000,
+            type: 'cli',  // Explicit CLI type
             // Missing command for CLI provider
           }
         }
@@ -214,7 +217,26 @@ describe('Config Schemas - Zod Validation', () => {
       }
     });
 
-    it('should require command for hybrid providers', () => {
+    it('should allow providers without command when type is not specified (SDK-first support)', () => {
+      // v12.8.4: Providers without explicit type can omit command (SDK-first providers like codex, qwen)
+      const config = {
+        providers: {
+          'codex': {
+            enabled: true,
+            priority: 1,
+            // No type specified - treated as potentially SDK-first
+            // No command required
+          }
+        }
+      };
+
+      const result = safeValidateConfig(config as any);
+      expect(result.success).toBe(true);  // Should pass - SDK-first providers don't need command
+    });
+
+    it('should allow hybrid providers without command (v12.8.4 - SDK-first with optional CLI)', () => {
+      // v12.8.4: Hybrid providers don't require command because they use SDK as primary
+      // and CLI as fallback. The command is optional for SDK/hybrid providers.
       const config = {
         providers: {
           'openai': {
@@ -222,16 +244,13 @@ describe('Config Schemas - Zod Validation', () => {
             priority: 1,
             timeout: 120000,
             type: 'hybrid',
-            // Missing command for hybrid provider
+            // Command is optional for hybrid providers
           }
         }
       };
 
       const result = safeValidateConfig(config as any);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.some(e => e.message.includes('command'))).toBe(true);
-      }
+      expect(result.success).toBe(true);  // Hybrid providers don't require command
     });
   });
 

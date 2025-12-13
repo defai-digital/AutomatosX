@@ -437,13 +437,13 @@ describe('CodexError', () => {
     expect(error.name).toBe('CodexError');
   });
 
-  it('should store context', () => {
+  it('should store details', () => {
     const error = new CodexError(CodexErrorType.EXECUTION_FAILED, 'Failed', {
       exitCode: 1,
       stderr: 'Error output',
     });
 
-    expect(error.context).toEqual({
+    expect(error.details).toEqual({
       exitCode: 1,
       stderr: 'Error output',
     });

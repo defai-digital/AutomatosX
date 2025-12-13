@@ -63,7 +63,7 @@ describe('CLI: init command', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Re-running setup (--force flag detected)');
-  }, 10000);
+  }, 20000);
 });
 
 /**

@@ -23,7 +23,22 @@ vi.mock('../../../../src/integrations/gemini-cli/config-manager.js', () => {
   };
 });
 vi.mock('../../../../src/integrations/gemini-cli/utils/file-reader.js');
-vi.mock('../../../../src/integrations/gemini-cli/utils/validation.js');
+vi.mock('../../../../src/integrations/gemini-cli/utils/validation.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../src/integrations/gemini-cli/utils/validation.js')>();
+  return {
+    ...actual,
+    // Keep actual ALLOWED_COMMANDS but mock the functions
+    ALLOWED_COMMANDS: actual.ALLOWED_COMMANDS,
+    isValidServerName: vi.fn(),
+    validateMCPServer: vi.fn(),
+    validateGeminiConfig: vi.fn(),
+    validateTomlCommand: vi.fn(),
+    isValidCommandName: vi.fn(),
+    sanitizeEnv: vi.fn(),
+    hasWarnings: vi.fn(),
+    getValidationSummary: vi.fn(),
+  };
+});
 vi.mock('fs', () => ({
   access: vi.fn((_path, _mode, callback) => callback(null)),
   constants: { X_OK: 1 },

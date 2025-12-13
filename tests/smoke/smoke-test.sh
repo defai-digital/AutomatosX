@@ -10,6 +10,11 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DIR=$(mktemp -d)
 TARBALL=""
 
+# Use local cache and disable git hooks/non-CI prompts to avoid permission issues in sandboxed environments
+export CI=1
+export HUSKY=0
+export npm_config_cache="$PROJECT_ROOT/.npm-cache"
+
 echo "🧪 AutomatosX Smoke Tests"
 echo "========================="
 echo ""

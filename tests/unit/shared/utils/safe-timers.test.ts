@@ -94,7 +94,7 @@ describe('safe-timers', () => {
     });
 
     it('should support AbortSignal for cancellation', async () => {
-      vi.useRealTimers();
+      vi.useFakeTimers();
 
       const controller = new AbortController();
       const callback = vi.fn();
@@ -103,17 +103,18 @@ describe('safe-timers', () => {
         signal: controller.signal
       });
 
-      // Wait for 1 tick
-      await new Promise(resolve => setTimeout(resolve, 15));
+      // Advance one tick
+      vi.advanceTimersByTime(12);
       expect(callback).toHaveBeenCalledTimes(1);
 
       controller.abort();
 
       // Wait to verify no more calls
-      await new Promise(resolve => setTimeout(resolve, 30));
+      vi.advanceTimersByTime(30);
       expect(callback).toHaveBeenCalledTimes(1);
 
       cleanup();
+      vi.useRealTimers();
     });
 
     it('should return no-op cleanup if signal is already aborted', async () => {

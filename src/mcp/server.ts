@@ -92,6 +92,13 @@ import { createBugfixRunHandler, bugfixRunSchema } from './tools/bugfix-run.js';
 import { createRefactorScanHandler, refactorScanSchema } from './tools/refactor-scan.js';
 import { createRefactorRunHandler, refactorRunSchema } from './tools/refactor-run.js';
 
+// v12.9.0: Design Stabilizer tools for design system enforcement
+import { createDesignCheckHandler, designCheckSchema } from './tools/design-check.js';
+import { createDesignCheckStreamHandler, designCheckStreamSchema } from './tools/design-check-stream.js';
+import { createDesignRulesHandler, designRulesSchema } from './tools/design-rules.js';
+import { createDesignSuggestFixesHandler, designSuggestFixesSchema } from './tools/design-suggest-fixes.js';
+import { createDesignApplyFixesHandler, designApplyFixesSchema } from './tools/design-apply-fixes.js';
+
 // Import tool handlers - v13.0.0: Enhanced Service Discovery
 import { createGetCapabilitiesHandler } from './tools/get-capabilities.js';
 
@@ -299,7 +306,12 @@ Task: "Build authentication system"
             task: { type: 'string', description: 'Detailed task description. Be specific about requirements and expected outcomes.' },
             provider: { type: 'string', description: 'AI provider override: claude (best coding), gemini (free tier), openai (balanced)', enum: ['claude', 'gemini', 'openai'] },
             no_memory: { type: 'boolean', description: 'Skip injecting relevant past context into agent prompt', default: false },
-            mode: { type: 'string', description: 'auto: smart routing, context: return prompt without executing, execute: always spawn process', enum: ['auto', 'context', 'execute'], default: 'auto' }
+            mode: { type: 'string', description: 'auto: smart routing, context: return prompt without executing, execute: always spawn process', enum: ['auto', 'context', 'execute'], default: 'auto' },
+            // v12.9.0: Iterate mode parameters
+            iterate: { type: 'integer', description: 'Number of autonomous iterations (iterate mode). When set, agent runs multiple iterations automatically.', minimum: 1, maximum: 50 },
+            autoAnswer: { type: 'boolean', description: 'Enable LLM-powered auto-answering for technical questions in iterate mode. Requires iterate > 0.', default: false },
+            autoAnswerProvider: { type: 'string', description: 'Provider for auto-answer feature (default: gemini for cost efficiency)', enum: ['gemini', 'claude', 'openai', 'glm', 'grok'] },
+            autoAnswerThreshold: { type: 'number', description: 'Confidence threshold for auto-answers (0.0-1.0, default: 0.7)', minimum: 0, maximum: 1, default: 0.7 }
           },
           required: ['task']
         }
@@ -830,7 +842,13 @@ Use this tool first to understand what AutomatosX offers.`,
       refactorRunSchema as McpTool,
       // v12.6.0: Multi-Agent Orchestration tools
       planMultiAgentSchema as McpTool,
-      orchestrateTaskSchema as McpTool
+      orchestrateTaskSchema as McpTool,
+      // v12.9.0: Design Stabilizer tools
+      designCheckSchema as McpTool,
+      designCheckStreamSchema as McpTool,
+      designRulesSchema as McpTool,
+      designSuggestFixesSchema as McpTool,
+      designApplyFixesSchema as McpTool
     ];
   }
 
@@ -1164,6 +1182,15 @@ Use this tool first to understand what AutomatosX offers.`,
       },
       getSession: () => this.session
     }));
+
+    // v12.9.0: Design Stabilizer tools
+    register('design_check', createDesignCheckHandler({
+      memoryManager: this.memoryManager
+    }));
+    register('design_check_stream', createDesignCheckStreamHandler());
+    register('design_rules', createDesignRulesHandler());
+    register('design_suggest_fixes', createDesignSuggestFixesHandler());
+    register('design_apply_fixes', createDesignApplyFixesHandler());
 
     logger.info('[MCP Server] Registered tools', {
       count: this.tools.size,

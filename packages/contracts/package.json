@@ -1,0 +1,45 @@
+{
+  "name": "@automatosx/contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Contract schemas and behavioral invariants - Single Source of Truth",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./workflow/v1": {
+      "types": "./dist/workflow/v1/index.d.ts",
+      "import": "./dist/workflow/v1/index.js"
+    },
+    "./mcp/v1": {
+      "types": "./dist/mcp/v1/index.d.ts",
+      "import": "./dist/mcp/v1/index.js"
+    },
+    "./routing/v1": {
+      "types": "./dist/routing/v1/index.d.ts",
+      "import": "./dist/routing/v1/index.js"
+    },
+    "./memory/v1": {
+      "types": "./dist/memory/v1/index.d.ts",
+      "import": "./dist/memory/v1/index.js"
+    },
+    "./trace/v1": {
+      "types": "./dist/trace/v1/index.d.ts",
+      "import": "./dist/trace/v1/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "files": [
+    "dist",
+    "src/**/*.schema.json"
+  ]
+}

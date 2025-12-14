@@ -1,0 +1,21 @@
+{
+  "name": "@automatosx/memory-domain",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Memory domain - event sourcing following contract invariants",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*"
+  }
+}

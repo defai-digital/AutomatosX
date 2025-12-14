@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../contracts" },
+    { "path": "../../core/memory-domain" },
+    { "path": "../../core/trace-domain" }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/memory/v1/event.schema.json",
+  "title": "Memory Event Contract V1",
+  "description": "Defines the structure of memory events for event sourcing",
+  "type": "object",
+  "required": ["eventId", "type", "timestamp", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "conversation.created",
+        "conversation.updated",
+        "message.added",
+        "memory.stored",
+        "memory.retrieved",
+        "memory.deleted",
+        "context.snapshot"
+      ],
+      "description": "Type of memory event"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event occurred"
+    },
+    "aggregateId": {
+      "type": "string",
+      "description": "ID of the aggregate this event belongs to (e.g., conversation ID)"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version number for optimistic concurrency"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific data"
+    },
+    "metadata": {
+      "$ref": "#/$defs/EventMetadata",
+      "description": "Event metadata for auditing and tracing"
+    }
+  },
+  "$defs": {
+    "EventMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID linking related events"
+        },
+        "causationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the event that caused this event"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User who triggered the event"
+        },
+        "source": {
+          "type": "string",
+          "description": "System component that generated the event"
+        }
+      }
+    },
+    "ConversationCreatedPayload": {
+      "type": "object",
+      "required": ["conversationId"],
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "initialContext": {
+          "type": "object"
+        }
+      }
+    },
+    "MessageAddedPayload": {
+      "type": "object",
+      "required": ["messageId", "role", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "messageId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant", "system"]
+        },
+        "content": {
+          "type": "string"
+        },
+        "tokenCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "MemoryStoredPayload": {
+      "type": "object",
+      "required": ["key", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {},
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time to live in milliseconds"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@automatosx/sqlite-adapter",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*",
+    "@automatosx/memory-domain": "workspace:*",
+    "@automatosx/trace-domain": "workspace:*",
+    "better-sqlite3": "^11.6.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "typescript": "^5.7.2"
+  }
+}

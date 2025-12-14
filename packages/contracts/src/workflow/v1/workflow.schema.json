@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/workflow/v1/workflow.schema.json",
+  "title": "Workflow Contract V1",
+  "description": "Defines the structure of a workflow with steps, retry policies, and execution order",
+  "type": "object",
+  "required": ["workflowId", "version", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "workflowId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique identifier for the workflow"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the workflow definition"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Human-readable name for the workflow"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Description of what this workflow accomplishes"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/WorkflowStep"
+      },
+      "description": "Ordered list of steps to execute"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional metadata for the workflow"
+    }
+  },
+  "$defs": {
+    "WorkflowStep": {
+      "type": "object",
+      "required": ["stepId", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "stepId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Unique identifier for this step within the workflow"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["prompt", "tool", "conditional", "loop", "parallel"],
+          "description": "Type of step execution"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Human-readable name for the step"
+        },
+        "inputSchema": {
+          "$ref": "#/$defs/SchemaReference",
+          "description": "JSON Schema reference for step input validation"
+        },
+        "outputSchema": {
+          "$ref": "#/$defs/SchemaReference",
+          "description": "JSON Schema reference for step output validation"
+        },
+        "retryPolicy": {
+          "$ref": "#/$defs/RetryPolicy",
+          "description": "Retry behavior for this step"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "description": "Timeout in milliseconds (1s to 1h)"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Step-type-specific configuration"
+        }
+      }
+    },
+    "RetryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 1,
+          "description": "Maximum number of retry attempts"
+        },
+        "backoffMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 60000,
+          "default": 1000,
+          "description": "Initial backoff delay in milliseconds"
+        },
+        "backoffMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2,
+          "description": "Multiplier for exponential backoff"
+        },
+        "retryOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["timeout", "rate_limit", "server_error", "network_error"]
+          },
+          "description": "Error types that trigger retry"
+        }
+      }
+    },
+    "SchemaReference": {
+      "type": "object",
+      "required": ["$ref"],
+      "additionalProperties": false,
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "URI reference to the schema"
+        }
+      }
+    }
+  }
+}

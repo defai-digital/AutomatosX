@@ -1,0 +1,1 @@
+- old automatosx repo location ~/code/automatosx

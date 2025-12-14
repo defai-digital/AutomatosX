@@ -1,0 +1,28 @@
+{
+  "name": "@automatosx/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Command-line interface for AutomatosX workflow automation",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "automatosx": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*",
+    "@automatosx/workflow-engine": "workspace:*",
+    "@automatosx/routing-engine": "workspace:*",
+    "@automatosx/memory-domain": "workspace:*",
+    "@automatosx/trace-domain": "workspace:*"
+  }
+}

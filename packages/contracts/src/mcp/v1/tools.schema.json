@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/mcp/v1/tools.schema.json",
+  "title": "MCP Tool Contract V1",
+  "description": "Defines the structure of MCP tools with input/output schemas and error handling",
+  "type": "object",
+  "required": ["name", "description", "inputSchema"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique identifier for the tool"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "Human-readable description of what the tool does"
+    },
+    "inputSchema": {
+      "type": "object",
+      "description": "JSON Schema for tool input validation"
+    },
+    "outputSchema": {
+      "type": "object",
+      "description": "JSON Schema for tool output validation"
+    },
+    "errorCodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ErrorCode"
+      },
+      "description": "List of standardized error codes this tool may return"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional tool metadata"
+    }
+  },
+  "$defs": {
+    "ErrorCode": {
+      "type": "object",
+      "required": ["code", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "Standardized error code (e.g., INVALID_INPUT, RESOURCE_NOT_FOUND)"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Description of when this error occurs"
+        },
+        "retryable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this error type is safe to retry"
+        }
+      }
+    },
+    "ToolResult": {
+      "type": "object",
+      "required": ["success"],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the tool execution succeeded"
+        },
+        "data": {
+          "description": "Result data on success"
+        },
+        "error": {
+          "$ref": "#/$defs/ToolError",
+          "description": "Error details on failure"
+        }
+      }
+    },
+    "ToolError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "Standardized error code"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error context"
+        }
+      }
+    }
+  }
+}

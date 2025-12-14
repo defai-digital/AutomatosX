@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true
+  },
+  "references": [
+    { "path": "./packages/contracts" },
+    { "path": "./packages/core/workflow-engine" },
+    { "path": "./packages/core/routing-engine" },
+    { "path": "./packages/core/memory-domain" },
+    { "path": "./packages/core/trace-domain" },
+    { "path": "./packages/adapters/sqlite" },
+    { "path": "./packages/adapters/providers" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mcp-server" },
+    { "path": "./tests" }
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

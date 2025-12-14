@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/routing/v1/decision.schema.json",
+  "title": "Routing Decision Contract V1",
+  "description": "Defines the structure of routing decisions for model selection",
+  "type": "object",
+  "required": ["requestId", "input", "decision", "timestamp"],
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this routing request"
+    },
+    "input": {
+      "$ref": "#/$defs/RoutingInput",
+      "description": "Input context for the routing decision"
+    },
+    "decision": {
+      "$ref": "#/$defs/RoutingDecision",
+      "description": "The routing decision made"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the decision was made"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional metadata for the routing decision"
+    }
+  },
+  "$defs": {
+    "RoutingInput": {
+      "type": "object",
+      "required": ["taskType"],
+      "additionalProperties": false,
+      "properties": {
+        "taskType": {
+          "type": "string",
+          "enum": ["chat", "completion", "code", "analysis", "creative"],
+          "description": "Type of task to route"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget",
+          "description": "Budget constraints for the request"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "default": "medium",
+          "description": "Risk tolerance level"
+        },
+        "requirements": {
+          "$ref": "#/$defs/ModelRequirements",
+          "description": "Specific model requirements"
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional context for routing"
+        }
+      }
+    },
+    "Budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxCostUsd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum cost in USD for this request"
+        },
+        "maxTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum tokens to use"
+        },
+        "maxLatencyMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum acceptable latency in milliseconds"
+        }
+      }
+    },
+    "ModelRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minContextLength": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum context window required"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["vision", "function_calling", "json_mode", "streaming"]
+          },
+          "description": "Required model capabilities"
+        },
+        "preferredProviders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of preferred provider names"
+        },
+        "excludedModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Models to exclude from selection"
+        }
+      }
+    },
+    "RoutingDecision": {
+      "type": "object",
+      "required": ["selectedModel", "provider", "reasoning"],
+      "additionalProperties": false,
+      "properties": {
+        "selectedModel": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The selected model identifier"
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["anthropic", "openai", "google", "local"],
+          "description": "The provider for the selected model"
+        },
+        "isExperimental": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the selected model is experimental"
+        },
+        "estimatedCostUsd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Estimated cost for this request"
+        },
+        "reasoning": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Human-readable explanation of the decision"
+        },
+        "fallbackModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered list of fallback models if primary fails"
+        }
+      }
+    }
+  }
+}

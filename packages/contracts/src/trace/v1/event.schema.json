@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/trace/v1/event.schema.json",
+  "title": "Trace Event Contract V1",
+  "description": "Defines the structure of trace events for execution tracing and replay",
+  "type": "object",
+  "required": ["traceId", "eventId", "type", "timestamp"],
+  "additionalProperties": false,
+  "properties": {
+    "traceId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the trace (spans entire run)"
+    },
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event"
+    },
+    "parentEventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the parent event for hierarchical tracing"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "run.start",
+        "run.end",
+        "decision.routing",
+        "step.start",
+        "step.execute",
+        "step.end",
+        "tool.invoke",
+        "tool.result",
+        "memory.write",
+        "memory.read",
+        "error"
+      ],
+      "description": "Type of trace event"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event occurred"
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Duration of the operation in milliseconds"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sequence number within the trace for ordering"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific data"
+    },
+    "context": {
+      "$ref": "#/$defs/TraceContext",
+      "description": "Contextual information for the event"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "success", "failure", "skipped"],
+      "description": "Status of the traced operation"
+    }
+  },
+  "$defs": {
+    "TraceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workflowId": {
+          "type": "string",
+          "description": "ID of the workflow being executed"
+        },
+        "stepId": {
+          "type": "string",
+          "description": "ID of the current step"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model being used"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Provider for the model"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User triggering the execution"
+        }
+      }
+    },
+    "RunStartPayload": {
+      "type": "object",
+      "required": ["workflowId"],
+      "additionalProperties": false,
+      "properties": {
+        "workflowId": {
+          "type": "string"
+        },
+        "workflowVersion": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object"
+        }
+      }
+    },
+    "RunEndPayload": {
+      "type": "object",
+      "required": ["success"],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "output": {
+          "type": "object"
+        },
+        "error": {
+          "type": "object"
+        },
+        "totalDurationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stepCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "RoutingDecisionPayload": {
+      "type": "object",
+      "required": ["selectedModel", "provider", "reasoning"],
+      "additionalProperties": false,
+      "properties": {
+        "selectedModel": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "estimatedCostUsd": {
+          "type": "number"
+        }
+      }
+    },
+    "StepExecutePayload": {
+      "type": "object",
+      "required": ["stepId", "stepType"],
+      "additionalProperties": false,
+      "properties": {
+        "stepId": {
+          "type": "string"
+        },
+        "stepType": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "ErrorPayload": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "string"
+        },
+        "context": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

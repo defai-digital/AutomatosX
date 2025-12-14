@@ -1,0 +1,34 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../dist/tests",
+    "composite": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      "@automatosx/contracts": ["../packages/contracts/src/index.ts"],
+      "@automatosx/workflow-engine": ["../packages/core/workflow-engine/src/index.ts"],
+      "@automatosx/routing-engine": ["../packages/core/routing-engine/src/index.ts"],
+      "@automatosx/memory-domain": ["../packages/core/memory-domain/src/index.ts"],
+      "@automatosx/trace-domain": ["../packages/core/trace-domain/src/index.ts"],
+      "@automatosx/sqlite-adapter": ["../packages/adapters/sqlite/src/index.ts"],
+      "@automatosx/provider-adapters": ["../packages/adapters/providers/src/index.ts"],
+      "@automatosx/cli": ["../packages/cli/src/index.ts"],
+      "@automatosx/mcp-server": ["../packages/mcp-server/src/index.ts"]
+    },
+    "baseUrl": "."
+  },
+  "include": ["./**/*.ts"],
+  "references": [
+    { "path": "../packages/contracts" },
+    { "path": "../packages/core/workflow-engine" },
+    { "path": "../packages/core/routing-engine" },
+    { "path": "../packages/core/memory-domain" },
+    { "path": "../packages/core/trace-domain" },
+    { "path": "../packages/adapters/sqlite" },
+    { "path": "../packages/adapters/providers" },
+    { "path": "../packages/cli" },
+    { "path": "../packages/mcp-server" }
+  ]
+}

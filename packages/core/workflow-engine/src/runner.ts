@@ -1,4 +1,4 @@
-import type { WorkflowStep, RetryPolicy } from '@automatosx/contracts';
+import { type WorkflowStep, type RetryPolicy, DEFAULT_RETRY_POLICY } from '@automatosx/contracts';
 import type {
   WorkflowResult,
   WorkflowRunnerConfig,
@@ -8,7 +8,7 @@ import type {
   PreparedWorkflow,
 } from './types.js';
 import { WorkflowErrorCodes } from './types.js';
-import { prepareWorkflow } from './validation.js';
+import { prepareWorkflow, deepFreezeStepResult } from './validation.js';
 import { defaultStepExecutor, createStepError, normalizeError } from './executor.js';
 import {
   mergeRetryPolicy,
@@ -43,12 +43,7 @@ export class WorkflowRunner {
   constructor(config: WorkflowRunnerConfig = {}) {
     this.config = {
       stepExecutor: config.stepExecutor ?? defaultStepExecutor,
-      defaultRetryPolicy: config.defaultRetryPolicy ?? {
-        maxAttempts: 1,
-        backoffMs: 1000,
-        backoffMultiplier: 2,
-        retryOn: ['timeout', 'rate_limit', 'server_error', 'network_error'],
-      },
+      defaultRetryPolicy: config.defaultRetryPolicy ?? DEFAULT_RETRY_POLICY,
     };
 
     if (config.onStepStart !== undefined) {
@@ -101,20 +96,23 @@ export class WorkflowRunner {
 
       // Execute step with retry logic (INV-WF-002)
       const result = await this.executeStepWithRetry(step, context);
-      stepResults.push(result);
 
-      // Notify step complete
-      this.config.onStepComplete?.(step, result);
+      // Freeze step result to ensure immutability
+      const frozenResult = deepFreezeStepResult(result);
+      stepResults.push(frozenResult);
+
+      // Notify step complete (pass frozen result for consistency)
+      this.config.onStepComplete?.(step, frozenResult);
 
       // Stop on failure
-      if (!result.success) {
+      if (!frozenResult.success) {
         const workflowError: WorkflowResult['error'] = {
           code: WorkflowErrorCodes.STEP_EXECUTION_FAILED,
-          message: `Step ${step.stepId} failed: ${result.error?.message ?? 'Unknown error'}`,
+          message: `Step ${step.stepId} failed: ${frozenResult.error?.message ?? 'Unknown error'}`,
           failedStepId: step.stepId,
         };
-        if (result.error?.details !== undefined) {
-          workflowError.details = result.error.details;
+        if (frozenResult.error?.details !== undefined) {
+          workflowError.details = frozenResult.error.details;
         }
         return {
           workflowId: workflow.workflowId,

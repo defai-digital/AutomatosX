@@ -1,6 +1,6 @@
 {
   "name": "automatosx",
-  "version": "0.0.0",
+  "version": "13.0.0",
   "private": true,
   "type": "module",
   "description": "Contract-first monorepo with AI-safe governance",
@@ -13,7 +13,8 @@
     "typecheck": "tsc --build",
     "deps:check": "dependency-cruiser packages --config .dependency-cruiser.cjs",
     "deps:graph": "dependency-cruiser packages --config .dependency-cruiser.cjs --output-type dot | dot -T svg > dependency-graph.svg",
-    "validate": "pnpm typecheck && pnpm lint && pnpm deps:check && pnpm test"
+    "contracts:check": "bash scripts/check-contracts.sh",
+    "validate": "pnpm typecheck && pnpm lint && pnpm deps:check && pnpm contracts:check && pnpm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -24,6 +25,7 @@
     "eslint": "^9.16.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",
+    "vite-tsconfig-paths": "^6.0.1",
     "vitest": "^2.1.8"
   },
   "packageManager": "pnpm@9.15.0",

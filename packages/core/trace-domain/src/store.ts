@@ -1,11 +1,11 @@
 import type { TraceEvent } from '@automatosx/contracts';
-import type { TraceWriter, TraceReader, TraceSummary } from './types.js';
+import type { TraceSummary, TraceStore } from './types.js';
 
 /**
  * In-memory trace store implementation
  * INV-TR-004: Each trace is independent and self-contained
  */
-export class InMemoryTraceStore implements TraceWriter, TraceReader {
+export class InMemoryTraceStore implements TraceStore {
   private readonly traces = new Map<string, TraceEvent[]>();
   private readonly summaries = new Map<string, TraceSummary>();
 
@@ -126,6 +126,19 @@ export class InMemoryTraceStore implements TraceWriter, TraceReader {
     if (event.status !== undefined) {
       summary.status = event.status;
     }
+  }
+
+  /**
+   * Deletes a trace and all its events
+   * @returns true if trace existed and was deleted
+   */
+  deleteTrace(traceId: string): Promise<boolean> {
+    const existed = this.traces.has(traceId);
+    if (existed) {
+      this.traces.delete(traceId);
+      this.summaries.delete(traceId);
+    }
+    return Promise.resolve(existed);
   }
 
   /**

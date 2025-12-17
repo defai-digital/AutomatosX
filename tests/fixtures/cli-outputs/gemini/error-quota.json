@@ -1,0 +1,17 @@
+{
+  "provider": "gemini",
+  "scenario": "error-quota",
+  "outputFormat": "stream-json",
+  "capturedAt": "2025-12-17T10:00:00Z",
+  "cliVersion": "1.0.0",
+  "rawOutput": {
+    "stdout": "",
+    "stderr": "Error: RESOURCE_EXHAUSTED: Quota exceeded for quota metric 'Generate content requests' and limit 'GenerateContent requests per minute per project'",
+    "exitCode": 1
+  },
+  "expected": {
+    "content": "",
+    "isError": true,
+    "errorCategory": "quota"
+  }
+}

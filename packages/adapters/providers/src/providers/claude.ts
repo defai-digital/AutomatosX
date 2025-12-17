@@ -1,21 +1,27 @@
 /**
  * Claude CLI provider configuration
  *
- * CLI: claude --print --output-format stream-json
- * Auth: Handled by Claude CLI (~/.claude/ config)
+ * CLI: claude
+ * Auth: Handled entirely by Claude CLI (~/.claude/ config)
+ * Model: Uses CLI's default model (we don't specify)
+ *
+ * @see https://github.com/anthropics/claude-code
  */
 
 import type { CLIProviderConfig } from '../types.js';
 
 /**
  * Claude provider configuration
+ *
+ * Design: AutomatosX does NOT manage credentials or model selection.
+ * The Claude CLI handles all authentication and uses its configured default model.
  */
 export const claudeConfig: CLIProviderConfig = {
   providerId: 'claude',
   command: 'claude',
-  args: ['--print', '--output-format', 'stream-json'],
+  args: ['--print', '--output-format', 'stream-json', '--verbose'],
   env: {
-    // Non-interactive mode
+    // Non-interactive mode flags
     TERM: 'dumb',
     NO_COLOR: '1',
     CI: 'true',
@@ -24,35 +30,11 @@ export const claudeConfig: CLIProviderConfig = {
   timeout: 120000, // 2 minutes
   models: [
     {
-      modelId: 'claude-sonnet-4-20250514',
-      name: 'Claude Sonnet 4',
+      modelId: 'default',
+      name: 'Claude Default',
       contextWindow: 200000,
       capabilities: ['text', 'code', 'vision'],
       isDefault: true,
-    },
-    {
-      modelId: 'claude-opus-4-20250514',
-      name: 'Claude Opus 4',
-      contextWindow: 200000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'claude-3-5-sonnet-20241022',
-      name: 'Claude 3.5 Sonnet',
-      contextWindow: 200000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'claude-3-5-haiku-20241022',
-      name: 'Claude 3.5 Haiku',
-      contextWindow: 200000,
-      capabilities: ['text', 'code'],
-    },
-    {
-      modelId: 'claude-3-opus-20240229',
-      name: 'Claude 3 Opus',
-      contextWindow: 200000,
-      capabilities: ['text', 'code', 'vision'],
     },
   ],
 };

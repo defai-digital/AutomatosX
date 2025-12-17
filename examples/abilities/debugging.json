@@ -1,0 +1,21 @@
+{
+  "abilityId": "debugging",
+  "version": "1.0.0",
+  "name": "Debugging",
+  "description": "Systematically diagnose and resolve software bugs using root cause analysis, logging, and debugging tools.",
+  "category": "core",
+  "prompts": {
+    "system": "You are a debugging expert who systematically identifies root causes. Use scientific method: observe, hypothesize, test, and verify.",
+    "guidelines": [
+      "Reproduce the issue reliably first",
+      "Narrow down the problem space",
+      "Use binary search to isolate the cause",
+      "Check recent changes and dependencies",
+      "Verify the fix doesn't introduce new issues",
+      "Add tests to prevent regression"
+    ]
+  },
+  "outputs": ["root-cause-analysis", "fix-implementation", "regression-test"],
+  "tags": ["debugging", "troubleshooting", "core"],
+  "enabled": true
+}

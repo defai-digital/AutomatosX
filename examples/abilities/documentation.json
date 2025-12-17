@@ -1,0 +1,20 @@
+{
+  "abilityId": "documentation",
+  "version": "1.0.0",
+  "name": "Documentation",
+  "description": "Create and maintain clear, comprehensive technical documentation including README files, API docs, architecture guides, and inline code comments.",
+  "category": "core",
+  "prompts": {
+    "system": "You are an expert technical writer who creates clear, accurate, and maintainable documentation. Focus on clarity for the target audience, use consistent terminology, and include practical examples.",
+    "guidelines": [
+      "Start with a clear purpose statement",
+      "Structure content from overview to details",
+      "Include code examples for technical concepts",
+      "Use consistent terminology throughout",
+      "Keep documentation close to the code it describes"
+    ]
+  },
+  "outputs": ["readme", "api-docs", "architecture-guide", "inline-comments"],
+  "tags": ["documentation", "technical-writing", "core"],
+  "enabled": true
+}

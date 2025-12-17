@@ -1,16 +1,31 @@
 // Main CLI exports
 export { run, createCLI } from './cli.js';
-export { parseArgs, formatOutput } from './parser.js';
+export { parseArgs, formatOutput, parseTime } from './parser.js';
 
 // Command exports
 export {
   runCommand,
   listCommand,
   traceCommand,
+  doctorCommand,
+  guardCommand,
   helpCommand,
   versionCommand,
   CLI_VERSION,
+  // High-value additions
+  resumeCommand,
+  historyCommand,
+  statusCommand,
+  cleanupCommand,
 } from './commands/index.js';
+
+// Utility exports
+export {
+  checkDangerousOp,
+  listDangerousOperations,
+  isDangerousOp,
+  type DangerousOpOptions,
+} from './utils/index.js';
 
 // Type exports
 export type {

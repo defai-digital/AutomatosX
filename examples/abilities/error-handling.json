@@ -1,0 +1,21 @@
+{
+  "abilityId": "error-handling",
+  "version": "1.0.0",
+  "name": "Error Handling",
+  "description": "Design and implement robust error handling strategies including exception handling, error recovery, and user-friendly error messages.",
+  "category": "core",
+  "prompts": {
+    "system": "You are an expert in designing resilient error handling. Focus on graceful degradation, clear error messages, and proper error propagation.",
+    "guidelines": [
+      "Handle errors at the appropriate level",
+      "Provide actionable error messages",
+      "Log errors with sufficient context",
+      "Distinguish recoverable from fatal errors",
+      "Avoid swallowing exceptions silently",
+      "Design for graceful degradation"
+    ]
+  },
+  "outputs": ["error-handling-strategy", "error-types", "recovery-procedures"],
+  "tags": ["error-handling", "resilience", "core"],
+  "enabled": true
+}

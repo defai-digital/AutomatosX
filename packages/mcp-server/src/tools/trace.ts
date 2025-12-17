@@ -1,4 +1,9 @@
 import type { MCPTool, ToolHandler } from '../types.js';
+import {
+  createListResponse,
+  successResponse,
+} from '../utils/response.js';
+import { storeArtifact } from '../utils/artifact-store.js';
 
 /**
  * Trace list tool definition
@@ -6,6 +11,7 @@ import type { MCPTool, ToolHandler } from '../types.js';
 export const traceListTool: MCPTool = {
   name: 'trace_list',
   description: 'List recent execution traces',
+  idempotent: true,
   inputSchema: {
     type: 'object',
     properties: {
@@ -29,6 +35,7 @@ export const traceListTool: MCPTool = {
 export const traceGetTool: MCPTool = {
   name: 'trace_get',
   description: 'Get detailed information about a specific trace',
+  idempotent: true,
   inputSchema: {
     type: 'object',
     properties: {
@@ -47,6 +54,7 @@ export const traceGetTool: MCPTool = {
 export const traceAnalyzeTool: MCPTool = {
   name: 'trace_analyze',
   description: 'Analyze a trace for performance issues or errors',
+  idempotent: true,
   inputSchema: {
     type: 'object',
     properties: {
@@ -61,40 +69,29 @@ export const traceAnalyzeTool: MCPTool = {
 
 /**
  * Handler for trace_list tool
+ * INV-MCP-RESP-002: Arrays limited to 10 items with pagination
  */
 export const handleTraceList: ToolHandler = (args) => {
-  const limit = (args.limit as number | undefined) ?? 10;
   const status = args.status as string | undefined;
-
-  const now = new Date();
 
   // Sample traces
   const traces = [
     {
-      traceId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      workflowId: 'data-pipeline',
-      startTime: new Date(now.getTime() - 60000).toISOString(),
-      endTime: new Date(now.getTime() - 55000).toISOString(),
-      status: 'success',
-      eventCount: 8,
+      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      label: 'data-pipeline',
+      status: 'success' as const,
       durationMs: 5000,
     },
     {
-      traceId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-      workflowId: 'code-review',
-      startTime: new Date(now.getTime() - 120000).toISOString(),
-      endTime: new Date(now.getTime() - 115000).toISOString(),
-      status: 'success',
-      eventCount: 6,
+      id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+      label: 'code-review',
+      status: 'success' as const,
       durationMs: 5000,
     },
     {
-      traceId: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-      workflowId: 'deploy-staging',
-      startTime: new Date(now.getTime() - 180000).toISOString(),
-      endTime: new Date(now.getTime() - 178000).toISOString(),
-      status: 'failure',
-      eventCount: 4,
+      id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
+      label: 'deploy-staging',
+      status: 'failure' as const,
       durationMs: 2000,
     },
   ];
@@ -103,128 +100,114 @@ export const handleTraceList: ToolHandler = (args) => {
     ? traces.filter((t) => t.status === status)
     : traces;
 
-  const limited = filtered.slice(0, limit);
-
-  return Promise.resolve({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ traces: limited }, null, 2),
-      },
-    ],
-  });
+  // Use createListResponse for automatic pagination (max 10 items)
+  return Promise.resolve(createListResponse(filtered, {
+    domain: 'traces',
+    idField: 'id',
+    labelField: 'label',
+    limit: 10,
+  }));
 };
 
 /**
  * Handler for trace_get tool
+ * INV-MCP-RESP-001: Response < 10KB with summary, events stored as artifact
  */
-export const handleTraceGet: ToolHandler = (args) => {
+export const handleTraceGet: ToolHandler = async (args) => {
   const traceId = args.traceId as string;
 
   const now = new Date();
 
-  // Sample trace detail
-  const trace = {
-    traceId,
-    workflowId: 'data-pipeline',
-    startTime: new Date(now.getTime() - 60000).toISOString(),
-    endTime: new Date(now.getTime() - 55000).toISOString(),
-    status: 'success',
-    durationMs: 5000,
-    events: [
-      {
-        eventId: crypto.randomUUID(),
-        type: 'run.start',
-        sequence: 0,
-        timestamp: new Date(now.getTime() - 60000).toISOString(),
-        payload: { workflowId: 'data-pipeline' },
+  // Sample trace detail - full events stored as artifact
+  const fullEvents = [
+    {
+      eventId: crypto.randomUUID(),
+      type: 'run.start',
+      sequence: 0,
+      timestamp: new Date(now.getTime() - 60000).toISOString(),
+      payload: { workflowId: 'data-pipeline' },
+    },
+    {
+      eventId: crypto.randomUUID(),
+      type: 'decision.routing',
+      sequence: 1,
+      timestamp: new Date(now.getTime() - 59500).toISOString(),
+      payload: {
+        selectedModel: 'claude-3-5-sonnet-20241022',
+        provider: 'anthropic',
       },
-      {
-        eventId: crypto.randomUUID(),
-        type: 'decision.routing',
-        sequence: 1,
-        timestamp: new Date(now.getTime() - 59500).toISOString(),
-        payload: { model: 'claude-3-5-sonnet-20241022', budget: 'standard' },
-      },
-      {
-        eventId: crypto.randomUUID(),
-        type: 'step.execute',
-        sequence: 2,
-        timestamp: new Date(now.getTime() - 59000).toISOString(),
-        payload: { stepId: 'step-1', stepName: 'Initialize' },
-        status: 'success',
-        durationMs: 500,
-      },
-      {
-        eventId: crypto.randomUUID(),
-        type: 'step.execute',
-        sequence: 3,
-        timestamp: new Date(now.getTime() - 57000).toISOString(),
-        payload: { stepId: 'step-2', stepName: 'Process' },
-        status: 'success',
-        durationMs: 2000,
-      },
-      {
-        eventId: crypto.randomUUID(),
-        type: 'run.end',
-        sequence: 4,
-        timestamp: new Date(now.getTime() - 55000).toISOString(),
-        payload: { success: true },
-        status: 'success',
-      },
-    ],
-  };
+    },
+    {
+      eventId: crypto.randomUUID(),
+      type: 'step.execute',
+      sequence: 2,
+      timestamp: new Date(now.getTime() - 59000).toISOString(),
+      payload: { stepId: 'step-1', stepName: 'Initialize' },
+      status: 'success',
+      durationMs: 500,
+    },
+    {
+      eventId: crypto.randomUUID(),
+      type: 'step.execute',
+      sequence: 3,
+      timestamp: new Date(now.getTime() - 57000).toISOString(),
+      payload: { stepId: 'step-2', stepName: 'Process' },
+      status: 'success',
+      durationMs: 2000,
+    },
+    {
+      eventId: crypto.randomUUID(),
+      type: 'run.end',
+      sequence: 4,
+      timestamp: new Date(now.getTime() - 55000).toISOString(),
+      payload: { success: true },
+      status: 'success',
+    },
+  ];
 
-  return Promise.resolve({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(trace, null, 2),
-      },
-    ],
-  });
+  // Store full events as artifact
+  const artifactRef = await storeArtifact(`trace:${traceId}`, { events: fullEvents });
+
+  // Return summary with only first/last events
+  return successResponse(
+    `Trace ${traceId}: success (5000ms, ${fullEvents.length} events)`,
+    {
+      traceId,
+      workflowId: 'data-pipeline',
+      status: 'success',
+      durationMs: 5000,
+      eventCount: fullEvents.length,
+      // Only include first and last events in response
+      firstEvent: { type: fullEvents[0]?.type, timestamp: fullEvents[0]?.timestamp },
+      lastEvent: { type: fullEvents[fullEvents.length - 1]?.type, status: 'success' },
+      artifactRef,
+      hasMore: true,
+    }
+  );
 };
 
 /**
  * Handler for trace_analyze tool
+ * INV-MCP-RESP-006: Response includes summary field with key metrics only
  */
 export const handleTraceAnalyze: ToolHandler = (args) => {
   const traceId = args.traceId as string;
 
-  // Sample analysis
-  const analysis = {
-    traceId,
-    summary: 'Trace completed successfully with no critical issues.',
-    performance: {
-      totalDuration: 5000,
-      averageStepDuration: 1250,
-      slowestStep: {
-        stepId: 'step-2',
-        stepName: 'Process',
-        durationMs: 2000,
+  // Return optimized analysis with summary and key metrics
+  return Promise.resolve(successResponse(
+    'Trace OK: 5000ms, 3 steps, no issues',
+    {
+      traceId,
+      status: 'success',
+      performance: {
+        totalDuration: 5000,
+        stepCount: 3,
+        slowestStep: 'Process (2000ms)',
       },
-    },
-    issues: [],
-    recommendations: [
-      {
-        type: 'optimization',
-        message: 'Consider caching the results of step-2 for repeated inputs.',
-        severity: 'low',
-      },
-    ],
-    metrics: {
-      stepCount: 3,
-      successRate: 1.0,
-      errorCount: 0,
-    },
-  };
-
-  return Promise.resolve({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(analysis, null, 2),
-      },
-    ],
-  });
+      issueCount: 0,
+      recommendationCount: 1,
+      // Only include top recommendation
+      topRecommendation: 'Consider caching step-2 results',
+    }
+  ));
 };

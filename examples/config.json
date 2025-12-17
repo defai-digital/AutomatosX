@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "defaultProvider": "claude",
+  "providers": [
+    {
+      "providerId": "claude",
+      "priority": 90,
+      "enabled": true
+    },
+    {
+      "providerId": "gemini",
+      "priority": 80,
+      "enabled": true
+    }
+  ],
+  "features": {
+    "enableTracing": true,
+    "enableMemoryPersistence": true,
+    "enableGuard": true,
+    "enableMetrics": false
+  },
+  "iterate": {
+    "maxIterations": 20,
+    "maxTimeMs": 300000,
+    "autoConfirm": false
+  },
+  "workspace": {
+    "dataDir": ".automatosx",
+    "memoryDbPath": "memory.db",
+    "traceDbPath": "traces.db",
+    "sessionDbPath": "sessions.db"
+  },
+  "preferences": {
+    "colorOutput": true,
+    "verboseErrors": false,
+    "confirmDestructive": true,
+    "defaultOutputFormat": "text"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "abilityId": "test-generation",
+  "version": "1.0.0",
+  "name": "Test Generation",
+  "description": "Generate comprehensive test suites from code including unit tests, integration tests, and edge case coverage.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a test generation expert. Create meaningful tests that catch real bugs and document behavior.",
+    "guidelines": [
+      "Analyze code to identify test cases",
+      "Cover happy paths and edge cases",
+      "Generate descriptive test names",
+      "Include boundary value tests",
+      "Create tests for error conditions",
+      "Balance coverage with maintainability"
+    ]
+  },
+  "outputs": ["test-suite", "test-cases", "coverage-plan"],
+  "tags": ["testing", "generation", "specialized"],
+  "enabled": true
+}

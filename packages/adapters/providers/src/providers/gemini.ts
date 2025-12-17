@@ -1,21 +1,27 @@
 /**
  * Gemini CLI provider configuration
  *
- * CLI: gemini --approval-mode auto_edit --output-format stream-json
- * Auth: Handled by Gemini CLI (Google Cloud auth or ~/.gemini/ config)
+ * CLI: gemini
+ * Auth: Handled entirely by Gemini CLI (Google Cloud auth)
+ * Model: Uses CLI's default model (we don't specify)
+ *
+ * @see https://github.com/google-gemini/gemini-cli
  */
 
 import type { CLIProviderConfig } from '../types.js';
 
 /**
  * Gemini provider configuration
+ *
+ * Design: AutomatosX does NOT manage credentials or model selection.
+ * The Gemini CLI handles all authentication and uses its configured default model.
  */
 export const geminiConfig: CLIProviderConfig = {
   providerId: 'gemini',
   command: 'gemini',
   args: ['--approval-mode', 'auto_edit', '--output-format', 'stream-json'],
   env: {
-    // Non-interactive mode
+    // Non-interactive mode flags
     TERM: 'dumb',
     NO_COLOR: '1',
     CI: 'true',
@@ -24,35 +30,11 @@ export const geminiConfig: CLIProviderConfig = {
   timeout: 120000, // 2 minutes
   models: [
     {
-      modelId: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
+      modelId: 'default',
+      name: 'Gemini Default',
       contextWindow: 1000000,
       capabilities: ['text', 'code', 'vision'],
       isDefault: true,
-    },
-    {
-      modelId: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
-      contextWindow: 1000000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'gemini-2.0-flash',
-      name: 'Gemini 2.0 Flash',
-      contextWindow: 1000000,
-      capabilities: ['text', 'code'],
-    },
-    {
-      modelId: 'gemini-1.5-pro',
-      name: 'Gemini 1.5 Pro',
-      contextWindow: 2000000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'gemini-1.5-flash',
-      name: 'Gemini 1.5 Flash',
-      contextWindow: 1000000,
-      capabilities: ['text', 'code', 'vision'],
     },
   ],
 };

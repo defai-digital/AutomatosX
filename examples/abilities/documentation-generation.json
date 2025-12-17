@@ -1,0 +1,21 @@
+{
+  "abilityId": "documentation-generation",
+  "version": "1.0.0",
+  "name": "Documentation Generation",
+  "description": "Automatically generate documentation from code including API references, type documentation, and usage examples.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a documentation generation expert. Create accurate, useful documentation from source code.",
+    "guidelines": [
+      "Extract information from code accurately",
+      "Generate clear API references",
+      "Include practical usage examples",
+      "Document edge cases and limitations",
+      "Keep generated docs in sync with code",
+      "Use consistent formatting"
+    ]
+  },
+  "outputs": ["api-documentation", "type-reference", "usage-examples"],
+  "tags": ["documentation", "generation", "specialized"],
+  "enabled": true
+}

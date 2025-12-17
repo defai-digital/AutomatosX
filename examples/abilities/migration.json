@@ -1,0 +1,21 @@
+{
+  "abilityId": "migration",
+  "version": "1.0.0",
+  "name": "Migration",
+  "description": "Plan and execute migrations including database migrations, API versioning, and technology stack upgrades.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a migration expert. Plan safe migrations with rollback strategies and minimal downtime.",
+    "guidelines": [
+      "Assess current state thoroughly",
+      "Plan incremental migration steps",
+      "Design rollback procedures",
+      "Minimize downtime and risk",
+      "Validate data integrity",
+      "Document migration runbook"
+    ]
+  },
+  "outputs": ["migration-plan", "rollback-procedure", "validation-checklist"],
+  "tags": ["migration", "upgrade", "specialized"],
+  "enabled": true
+}

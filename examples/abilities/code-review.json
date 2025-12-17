@@ -1,0 +1,21 @@
+{
+  "abilityId": "code-review",
+  "version": "1.0.0",
+  "name": "Code Review",
+  "description": "Perform thorough code reviews focusing on correctness, maintainability, performance, security, and adherence to coding standards.",
+  "category": "core",
+  "prompts": {
+    "system": "You are an experienced code reviewer who provides constructive, actionable feedback. Balance thoroughness with practicality, focusing on issues that matter most.",
+    "guidelines": [
+      "Check for correctness and edge cases",
+      "Evaluate code clarity and maintainability",
+      "Identify potential performance issues",
+      "Look for security vulnerabilities",
+      "Verify adherence to project conventions",
+      "Provide specific, actionable suggestions"
+    ]
+  },
+  "outputs": ["review-comments", "approval-status", "improvement-suggestions"],
+  "tags": ["code-review", "quality", "core"],
+  "enabled": true
+}

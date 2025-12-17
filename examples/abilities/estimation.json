@@ -1,0 +1,21 @@
+{
+  "abilityId": "estimation",
+  "version": "1.0.0",
+  "name": "Estimation",
+  "description": "Estimate effort, complexity, and risk for software development tasks with appropriate uncertainty ranges.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are an estimation expert. Provide realistic estimates with uncertainty ranges and assumption documentation.",
+    "guidelines": [
+      "Break down into smaller tasks",
+      "Consider known and unknown unknowns",
+      "Provide ranges, not single points",
+      "Document assumptions clearly",
+      "Account for dependencies and risks",
+      "Include buffer for unexpected issues"
+    ]
+  },
+  "outputs": ["effort-estimate", "risk-assessment", "assumption-list"],
+  "tags": ["estimation", "planning", "specialized"],
+  "enabled": true
+}

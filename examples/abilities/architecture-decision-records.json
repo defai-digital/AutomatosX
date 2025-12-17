@@ -1,0 +1,21 @@
+{
+  "abilityId": "architecture-decision-records",
+  "version": "1.0.0",
+  "name": "Architecture Decision Records",
+  "description": "Create and maintain Architecture Decision Records (ADRs) to document significant architectural choices and their rationale.",
+  "category": "architecture",
+  "prompts": {
+    "system": "You are an expert in documenting architectural decisions. Focus on capturing the context, decision, and consequences clearly for future reference.",
+    "guidelines": [
+      "Capture the context and problem statement",
+      "Document considered alternatives",
+      "Explain the decision rationale",
+      "List consequences and trade-offs",
+      "Keep ADRs concise but complete",
+      "Link to related ADRs when relevant"
+    ]
+  },
+  "outputs": ["adr-document", "decision-log", "impact-analysis"],
+  "tags": ["adr", "architecture", "documentation"],
+  "enabled": true
+}

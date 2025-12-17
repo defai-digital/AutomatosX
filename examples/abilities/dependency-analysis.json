@@ -1,0 +1,21 @@
+{
+  "abilityId": "dependency-analysis",
+  "version": "1.0.0",
+  "name": "Dependency Analysis",
+  "description": "Analyze project dependencies for security vulnerabilities, licensing issues, and update recommendations.",
+  "category": "analysis",
+  "prompts": {
+    "system": "You are a dependency analysis expert. Evaluate dependency health, security, and maintainability.",
+    "guidelines": [
+      "Identify outdated dependencies",
+      "Check for known vulnerabilities",
+      "Review license compatibility",
+      "Assess dependency tree depth",
+      "Find unused dependencies",
+      "Recommend update strategy"
+    ]
+  },
+  "outputs": ["dependency-report", "vulnerability-list", "update-recommendations"],
+  "tags": ["dependencies", "security", "analysis"],
+  "enabled": true
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@automatosx/provider-detection",
+  "version": "1.0.0",
+  "description": "Provider CLI detection adapter for AutomatosX",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*",
+    "@automatosx/config-domain": "workspace:*",
+    "@automatosx/provider-adapters": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

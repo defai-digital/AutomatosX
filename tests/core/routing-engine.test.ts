@@ -35,7 +35,6 @@ describe('Routing Engine', () => {
           provider: 'anthropic',
           displayName: 'Model B',
           isExperimental: false,
-          costPerMillionTokens: 1,
           contextLength: 8000,
           capabilities: [],
           priority: 50,
@@ -46,7 +45,6 @@ describe('Routing Engine', () => {
           provider: 'anthropic',
           displayName: 'Model A',
           isExperimental: false,
-          costPerMillionTokens: 1,
           contextLength: 8000,
           capabilities: [],
           priority: 50,
@@ -71,76 +69,7 @@ describe('Routing Engine', () => {
     });
   });
 
-  describe('INV-RT-002: Budget Respect', () => {
-    it('should not select models exceeding budget', () => {
-      const expensiveModels: ModelDefinition[] = [
-        {
-          id: 'cheap-model',
-          provider: 'local',
-          displayName: 'Cheap Model',
-          isExperimental: false,
-          costPerMillionTokens: 0.1,
-          contextLength: 8000,
-          capabilities: [],
-          priority: 30,
-          optimizedFor: ['chat'],
-        },
-        {
-          id: 'expensive-model',
-          provider: 'anthropic',
-          displayName: 'Expensive Model',
-          isExperimental: false,
-          costPerMillionTokens: 100,
-          contextLength: 200000,
-          capabilities: ['vision'],
-          priority: 100,
-          optimizedFor: ['chat', 'code'],
-        },
-      ];
-
-      const engine = createRoutingEngine({ models: expensiveModels });
-      const input: RoutingInput = {
-        taskType: 'chat',
-        budget: { maxCostUsd: 0.001 }, // Very low budget
-        riskLevel: 'medium',
-      };
-
-      const result = engine.route(input);
-      expect(result.selectedModel).toBe('cheap-model');
-    });
-
-    it('should throw when no model fits budget', () => {
-      const expensiveModels: ModelDefinition[] = [
-        {
-          id: 'expensive',
-          provider: 'anthropic',
-          displayName: 'Expensive',
-          isExperimental: false,
-          costPerMillionTokens: 1000,
-          contextLength: 8000,
-          capabilities: [],
-          priority: 50,
-          optimizedFor: ['chat'],
-        },
-      ];
-
-      const engine = createRoutingEngine({ models: expensiveModels });
-      const input: RoutingInput = {
-        taskType: 'chat',
-        budget: { maxCostUsd: 0.0000001 }, // Impossibly low
-        riskLevel: 'medium',
-      };
-
-      expect(() => engine.route(input)).toThrow(RoutingError);
-      try {
-        engine.route(input);
-      } catch (err) {
-        expect((err as RoutingError).code).toBe(RoutingErrorCodes.NO_SUITABLE_MODEL);
-      }
-    });
-  });
-
-  describe('INV-RT-003: Risk Gating', () => {
+  describe('INV-RT-002: Risk Gating', () => {
     it('should never select experimental models for high risk', () => {
       const mixedModels: ModelDefinition[] = [
         {
@@ -148,7 +77,6 @@ describe('Routing Engine', () => {
           provider: 'google',
           displayName: 'Experimental',
           isExperimental: true,
-          costPerMillionTokens: 0.1,
           contextLength: 128000,
           capabilities: ['vision', 'function_calling'],
           priority: 100, // Highest priority
@@ -159,7 +87,6 @@ describe('Routing Engine', () => {
           provider: 'anthropic',
           displayName: 'Stable',
           isExperimental: false,
-          costPerMillionTokens: 5,
           contextLength: 8000,
           capabilities: [],
           priority: 30, // Lower priority
@@ -176,6 +103,7 @@ describe('Routing Engine', () => {
       const result = engine.route(input);
       expect(result.selectedModel).toBe('stable');
       expect(result.isExperimental).toBe(false);
+      expect(result.constraints.riskCompliant).toBe(true);
     });
 
     it('should allow experimental for low risk', () => {
@@ -191,7 +119,7 @@ describe('Routing Engine', () => {
     });
   });
 
-  describe('INV-RT-004: Reasoning Requirement', () => {
+  describe('INV-RT-003: Reasoning Requirement', () => {
     it('should always include reasoning', () => {
       const engine = createRoutingEngine();
       const input: RoutingInput = {
@@ -217,7 +145,7 @@ describe('Routing Engine', () => {
     });
   });
 
-  describe('INV-RT-005: Fallback Consistency', () => {
+  describe('INV-RT-004: Fallback Consistency', () => {
     it('should provide fallback models', () => {
       const engine = createRoutingEngine();
       const input: RoutingInput = {
@@ -226,10 +154,12 @@ describe('Routing Engine', () => {
       };
 
       const result = engine.route(input);
+      // fallbackModels is now required (may be empty array)
+      expect(result.fallbackModels).toBeDefined();
+      expect(Array.isArray(result.fallbackModels)).toBe(true);
       // Should have fallbacks if multiple models are available
       if (DEFAULT_MODELS.length > 1) {
-        expect(result.fallbackModels).toBeDefined();
-        expect(result.fallbackModels?.length).toBeGreaterThan(0);
+        expect(result.fallbackModels.length).toBeGreaterThan(0);
       }
     });
 
@@ -243,12 +173,53 @@ describe('Routing Engine', () => {
       const result = engine.route(input);
 
       // Verify no fallback is experimental
-      if (result.fallbackModels !== undefined) {
-        for (const fallbackId of result.fallbackModels) {
-          const model = engine.getModel(fallbackId);
-          expect(model?.isExperimental).toBe(false);
-        }
+      for (const fallbackId of result.fallbackModels) {
+        const model = engine.getModel(fallbackId);
+        expect(model?.isExperimental).toBe(false);
       }
+    });
+  });
+
+  describe('INV-RT-005: Capability Match', () => {
+    it('should return constraints object with capabilitiesMet', () => {
+      const engine = createRoutingEngine();
+      const input: RoutingInput = {
+        taskType: 'chat',
+        riskLevel: 'medium',
+        requirements: {
+          capabilities: ['streaming'],
+        },
+      };
+
+      const result = engine.route(input);
+      expect(result.constraints).toBeDefined();
+      expect(result.constraints.capabilitiesMet).toBe(true);
+      expect(result.constraints.riskCompliant).toBe(true);
+    });
+
+    it('should disqualify models missing required capabilities', () => {
+      const model: ModelDefinition = {
+        id: 'no-vision',
+        provider: 'anthropic',
+        displayName: 'No Vision',
+        isExperimental: false,
+        contextLength: 8000,
+        capabilities: ['function_calling'],
+        priority: 50,
+        optimizedFor: ['chat'],
+      };
+
+      const context = {
+        taskType: 'chat' as const,
+        riskLevel: 'medium' as const,
+        requiredCapabilities: ['vision' as const],
+        preferredProviders: [],
+        excludedModels: [],
+      };
+
+      const scored = scoreModel(model, context);
+      expect(scored.disqualified).toBe(true);
+      expect(scored.disqualificationReason).toContain('vision');
     });
   });
 
@@ -259,7 +230,6 @@ describe('Routing Engine', () => {
         provider: 'anthropic',
         displayName: 'Test',
         isExperimental: false,
-        costPerMillionTokens: 1,
         contextLength: 8000,
         capabilities: [],
         priority: 50,
@@ -288,32 +258,6 @@ describe('Routing Engine', () => {
       // Should score higher for optimized task
       expect(codeScore.score).toBeGreaterThan(chatScore.score);
     });
-
-    it('should disqualify models missing required capabilities', () => {
-      const model: ModelDefinition = {
-        id: 'no-vision',
-        provider: 'anthropic',
-        displayName: 'No Vision',
-        isExperimental: false,
-        costPerMillionTokens: 1,
-        contextLength: 8000,
-        capabilities: ['function_calling'],
-        priority: 50,
-        optimizedFor: ['chat'],
-      };
-
-      const context = {
-        taskType: 'chat' as const,
-        riskLevel: 'medium' as const,
-        requiredCapabilities: ['vision' as const],
-        preferredProviders: [],
-        excludedModels: [],
-      };
-
-      const scored = scoreModel(model, context);
-      expect(scored.disqualified).toBe(true);
-      expect(scored.disqualificationReason).toContain('vision');
-    });
   });
 
   describe('Routing Record', () => {
@@ -329,6 +273,7 @@ describe('Routing Engine', () => {
       expect(record.requestId).toBeDefined();
       expect(record.input).toEqual(input);
       expect(record.decision).toBeDefined();
+      expect(record.decision.constraints).toBeDefined();
       expect(record.timestamp).toBeDefined();
     });
   });

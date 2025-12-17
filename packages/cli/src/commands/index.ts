@@ -1,4 +1,24 @@
 export { runCommand } from './run.js';
 export { listCommand } from './list.js';
 export { traceCommand } from './trace.js';
+export { doctorCommand } from './doctor.js';
+export { guardCommand } from './guard.js';
+export { callCommand } from './call.js';
+export { agentCommand } from './agent.js';
+export { abilityCommand } from './ability.js';
+export { sessionCommand } from './session.js';
+export { setupCommand } from './setup.js';
+export { configCommand } from './config.js';
+export { bugfixCommand } from './bugfix.js';
+export { refactorCommand } from './refactor.js';
 export { helpCommand, versionCommand, CLI_VERSION } from './help.js';
+
+// High-value additions
+export { resumeCommand } from './resume.js';
+export { historyCommand } from './history.js';
+export { statusCommand } from './status.js';
+export { cleanupCommand } from './cleanup.js';
+export { iterateCommand } from './iterate.js';
+
+// MCP server
+export { mcpCommand } from './mcp.js';

@@ -1,5 +1,6 @@
 import {
   validateRoutingInput,
+  validateRoutingDecision,
   type RoutingInput,
   type RoutingDecision,
   type RoutingRecord,
@@ -33,10 +34,12 @@ export class RoutingError extends Error {
  *
  * Invariants enforced:
  * - INV-RT-001: Determinism - identical inputs yield identical outputs
- * - INV-RT-002: Budget respect - lower budgets don't select higher-cost models
- * - INV-RT-003: Risk gating - high risk never selects experimental models
- * - INV-RT-004: Reasoning requirement - all decisions include reasoning
- * - INV-RT-005: Fallback consistency - fallbacks satisfy same constraints
+ * - INV-RT-002: Risk gating - high risk never selects experimental models
+ * - INV-RT-003: Reasoning required - all decisions include reasoning
+ * - INV-RT-004: Fallback consistency - fallbacks satisfy same constraints
+ * - INV-RT-005: Capability match - selected model has required capabilities
+ *
+ * Note: Cost-based routing is intentionally excluded by design.
  */
 export class RoutingEngine {
   private readonly models: Map<string, ModelDefinition>;
@@ -94,26 +97,39 @@ export class RoutingEngine {
       );
     }
 
-    // Build fallback list (INV-RT-005: same constraints apply)
+    // Build fallback list (INV-RT-004: same constraints apply)
     const fallbacks = eligible
       .slice(1, 4) // Up to 3 fallbacks
       .map((m) => m.model.id);
 
-    // INV-RT-004: Build reasoning
+    // INV-RT-003: Build reasoning
     const reasoning = this.buildReasoning(selected, context);
 
-    // Estimate cost
-    const estimatedCostUsd =
-      (selected.model.costPerMillionTokens / 1000000) * 1000;
+    // INV-RT-005: Verify capabilities met
+    const capabilitiesMet = context.requiredCapabilities.every((cap) =>
+      selected.model.capabilities.includes(cap)
+    );
 
-    return {
+    // INV-RT-002: Verify risk compliance
+    const riskCompliant = !(
+      context.riskLevel === 'high' && selected.model.isExperimental
+    );
+
+    const decision: RoutingDecision = {
       selectedModel: selected.model.id,
       provider: selected.model.provider,
       isExperimental: selected.model.isExperimental,
-      estimatedCostUsd,
       reasoning,
-      fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
+      fallbackModels: fallbacks,
+      constraints: {
+        capabilitiesMet,
+        riskCompliant,
+      },
     };
+
+    // Validate output decision matches contract schema
+    // This ensures all invariants are enforced in the returned object
+    return validateRoutingDecision(decision);
   }
 
   /**
@@ -136,9 +152,7 @@ export class RoutingEngine {
   private buildContext(input: RoutingInput): RoutingContext {
     return {
       taskType: input.taskType,
-      budgetMaxCost: input.budget?.maxCostUsd,
-      budgetMaxTokens: input.budget?.maxTokens,
-      budgetMaxLatency: input.budget?.maxLatencyMs,
+      maxLatencyMs: input.requirements?.maxLatencyMs,
       riskLevel: input.riskLevel,
       requiredCapabilities: input.requirements?.capabilities ?? [],
       preferredProviders: input.requirements?.preferredProviders ?? [],
@@ -149,7 +163,7 @@ export class RoutingEngine {
 
   /**
    * Builds human-readable reasoning for the decision
-   * INV-RT-004: Reasoning is required and must reference input factors
+   * INV-RT-003: Reasoning is required and must reference input factors
    */
   private buildReasoning(selected: ScoredModel, context: RoutingContext): string {
     const parts: string[] = [];

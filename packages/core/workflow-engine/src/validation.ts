@@ -2,7 +2,7 @@ import {
   WorkflowSchema,
   type Workflow,
 } from '@automatosx/contracts';
-import type { PreparedWorkflow } from './types.js';
+import type { PreparedWorkflow, StepResult } from './types.js';
 import { WorkflowErrorCodes } from './types.js';
 
 /**
@@ -91,4 +91,12 @@ export function prepareWorkflow(data: unknown): PreparedWorkflow {
     workflow: frozenWorkflow,
     stepIds,
   };
+}
+
+/**
+ * Deep freezes a step result to ensure immutability
+ * This prevents subsequent steps from accidentally modifying previous results
+ */
+export function deepFreezeStepResult(result: StepResult): Readonly<StepResult> {
+  return deepFreeze(structuredClone(result)) as Readonly<StepResult>;
 }

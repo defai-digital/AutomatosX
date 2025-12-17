@@ -1,0 +1,16 @@
+{
+  "provider": "claude",
+  "scenario": "success-stream",
+  "outputFormat": "stream-json",
+  "capturedAt": "2025-12-17T10:00:00Z",
+  "cliVersion": "1.0.0",
+  "rawOutput": {
+    "stdout": "{\"type\":\"turn.started\",\"id\":\"turn_456\"}\n{\"type\":\"content\",\"content\":\"Here's a simple \"}\n{\"type\":\"content\",\"content\":\"Python function:\"}\n{\"type\":\"content\",\"content\":\"\\n\\ndef hello():\\n    print('Hello!')\"}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":15,\"output_tokens\":25}}",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "expected": {
+    "content": "Here's a simple Python function:\n\ndef hello():\n    print('Hello!')",
+    "isError": false
+  }
+}

@@ -1,0 +1,192 @@
+/**
+ * Provider Detection Adapter
+ *
+ * Implements the ProviderDetectionPort interface for detecting installed provider CLIs.
+ *
+ * Invariants:
+ * - INV-CFG-ADP-002: Detection times out after 5s
+ * - INV-CFG-ADP-003: No network calls during detection
+ *
+ * Note: AutomatosX does NOT check authentication.
+ * All CLIs handle their own authentication internally.
+ */
+
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import type { ProviderDetectionPort, DetectionOptions } from '@automatosx/config-domain';
+import {
+  type ProviderId,
+  type ProviderDetectionResult,
+  type ProviderDetectionSummary,
+  KNOWN_PROVIDERS,
+  PROVIDER_DEFAULTS,
+  createDetectionSummary,
+} from '@automatosx/contracts';
+
+const execAsync = promisify(exec);
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Default detection timeout (5 seconds)
+ * INV-CFG-ADP-002: Detection times out after 5s
+ */
+const DEFAULT_TIMEOUT = 5000;
+
+/**
+ * Timeout for individual command check (1 second)
+ */
+const COMMAND_CHECK_TIMEOUT = 1000;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Checks if a CLI command is available on the system PATH
+ */
+async function isCommandAvailable(command: string): Promise<boolean> {
+  try {
+    const whichCommand = process.platform === 'win32' ? 'where' : 'which';
+    await execAsync(`${whichCommand} ${command}`, { timeout: COMMAND_CHECK_TIMEOUT });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gets the version of a CLI command
+ */
+async function getCommandVersion(command: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execAsync(`${command} --version`, {
+      timeout: COMMAND_CHECK_TIMEOUT,
+    });
+    // Extract version number from output
+    const versionMatch = /(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)/.exec(stdout);
+    return versionMatch?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+// ============================================================================
+// Detection Adapter Implementation
+// ============================================================================
+
+/**
+ * Detects a single provider
+ *
+ * Note: AutomatosX does NOT check authentication.
+ * All CLIs handle their own auth internally.
+ * If a CLI is detected, it's considered ready to use.
+ */
+async function detectProvider(providerId: ProviderId): Promise<ProviderDetectionResult> {
+  const defaults = PROVIDER_DEFAULTS[providerId];
+  const command = defaults.command;
+
+  // Check if command is available
+  const detected = await isCommandAvailable(command);
+
+  if (!detected) {
+    return {
+      providerId,
+      detected: false,
+      command,
+    };
+  }
+
+  // Get command version
+  const version = await getCommandVersion(command);
+
+  return {
+    providerId,
+    detected: true,
+    command,
+    version,
+  };
+}
+
+/**
+ * Detects all known providers in parallel
+ */
+async function detectAllProviders(
+  options?: DetectionOptions
+): Promise<ProviderDetectionSummary> {
+  const providersToDetect = options?.providers ?? [...KNOWN_PROVIDERS];
+  const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
+
+  // Create a timeout promise
+  const timeoutPromise = new Promise<ProviderDetectionResult[]>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Detection timed out after ${timeout}ms`));
+    }, timeout);
+  });
+
+  // Detect all providers in parallel
+  const detectionPromise = Promise.all(
+    providersToDetect.map((providerId) =>
+      detectProvider(providerId).catch((error) => ({
+        providerId,
+        detected: false,
+        command: PROVIDER_DEFAULTS[providerId].command,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }))
+    )
+  );
+
+  try {
+    const results = await Promise.race([detectionPromise, timeoutPromise]);
+    return createDetectionSummary(results);
+  } catch (error) {
+    // On timeout, return partial results
+    return {
+      timestamp: new Date().toISOString(),
+      totalProviders: providersToDetect.length,
+      detectedCount: 0,
+      results: providersToDetect.map((providerId) => ({
+        providerId,
+        detected: false,
+        command: PROVIDER_DEFAULTS[providerId].command,
+        error: error instanceof Error ? error.message : 'Detection timed out',
+      })),
+    };
+  }
+}
+
+// ============================================================================
+// Exported Adapter
+// ============================================================================
+
+/**
+ * Provider detection adapter
+ *
+ * Implements the ProviderDetectionPort interface for the config domain.
+ *
+ * Note: AutomatosX is a pure orchestrator.
+ * All CLIs handle their own authentication internally.
+ */
+export const providerDetectionAdapter: ProviderDetectionPort = {
+  detectProvider,
+  detectAllProviders,
+};
+
+/**
+ * Creates a provider detection adapter with custom options
+ */
+export function createProviderDetectionAdapter(
+  defaultOptions?: DetectionOptions
+): ProviderDetectionPort {
+  return {
+    detectProvider,
+    async detectAllProviders(options?: DetectionOptions) {
+      return detectAllProviders({
+        ...defaultOptions,
+        ...options,
+      });
+    },
+  };
+}

@@ -39,24 +39,28 @@ module.exports = {
       },
     },
     // Rule 4: cli can depend on contracts and core only (NOT adapters)
+    // Exception: bootstrap.ts/bootstrap.js is the composition root - allowed to import adapters
     {
       name: 'cli-no-adapters',
       severity: 'error',
-      comment: 'CLI must not depend on adapters directly',
+      comment: 'CLI must not depend on adapters directly (except bootstrap)',
       from: {
         path: '^packages/cli',
+        pathNot: '^packages/cli/(src|dist)/bootstrap\\.(ts|js|d\\.ts)$',
       },
       to: {
         path: '^packages/adapters',
       },
     },
     // Rule 5: mcp-server can depend on contracts and core only (NOT adapters)
+    // Exception: bootstrap.ts/bootstrap.js is the composition root - allowed to import adapters
     {
       name: 'mcp-server-no-adapters',
       severity: 'error',
-      comment: 'MCP Server must not depend on adapters directly',
+      comment: 'MCP Server must not depend on adapters directly (except bootstrap)',
       from: {
         path: '^packages/mcp-server',
+        pathNot: '^packages/mcp-server/(src|dist)/bootstrap\\.(ts|js|d\\.ts)$',
       },
       to: {
         path: '^packages/adapters',

@@ -1,0 +1,21 @@
+{
+  "abilityId": "testing",
+  "version": "1.0.0",
+  "name": "Testing",
+  "description": "Design and implement comprehensive test suites including unit tests, integration tests, and end-to-end tests with proper coverage.",
+  "category": "core",
+  "prompts": {
+    "system": "You are a testing expert who designs effective test strategies. Focus on testing behavior, not implementation details. Prioritize tests that catch real bugs.",
+    "guidelines": [
+      "Test behavior, not implementation",
+      "Cover happy paths and edge cases",
+      "Write descriptive test names",
+      "Keep tests independent and isolated",
+      "Use appropriate test doubles",
+      "Aim for meaningful coverage, not 100%"
+    ]
+  },
+  "outputs": ["test-suite", "test-plan", "coverage-report"],
+  "tags": ["testing", "quality", "core"],
+  "enabled": true
+}

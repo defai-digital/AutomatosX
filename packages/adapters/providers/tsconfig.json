@@ -2,11 +2,18 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@automatosx/contracts": ["../../contracts/src/index.ts"],
+      "@automatosx/contracts/resilience/v1": ["../../contracts/src/resilience/v1/index.ts"],
+      "@automatosx/resilience-domain": ["../../core/resilience-domain/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "references": [
     { "path": "../../contracts" },
-    { "path": "../../core/routing-engine" }
+    { "path": "../../core/routing-engine" },
+    { "path": "../../core/resilience-domain" }
   ]
 }

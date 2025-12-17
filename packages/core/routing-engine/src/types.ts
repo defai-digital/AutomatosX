@@ -2,13 +2,15 @@ import type { Provider, TaskType, ModelCapability } from '@automatosx/contracts'
 
 /**
  * Model definition for routing
+ *
+ * Note: Cost fields are intentionally excluded.
+ * AutomatosX does NOT perform cost-based routing as costs change frequently.
  */
 export interface ModelDefinition {
   id: string;
   provider: Provider;
   displayName: string;
   isExperimental: boolean;
-  costPerMillionTokens: number;
   contextLength: number;
   capabilities: ModelCapability[];
   /**
@@ -41,9 +43,7 @@ export interface RoutingEngineConfig {
  */
 export interface RoutingContext {
   taskType: TaskType;
-  budgetMaxCost?: number | undefined;
-  budgetMaxTokens?: number | undefined;
-  budgetMaxLatency?: number | undefined;
+  maxLatencyMs?: number | undefined;
   riskLevel: 'low' | 'medium' | 'high';
   requiredCapabilities: ModelCapability[];
   preferredProviders: string[];
@@ -67,7 +67,6 @@ export interface ScoredModel {
  */
 export const RoutingErrorCodes = {
   NO_SUITABLE_MODEL: 'ROUTING_NO_SUITABLE_MODEL',
-  BUDGET_EXCEEDED: 'ROUTING_BUDGET_EXCEEDED',
   CAPABILITY_NOT_FOUND: 'ROUTING_CAPABILITY_NOT_FOUND',
   INVALID_INPUT: 'ROUTING_INVALID_INPUT',
 } as const;

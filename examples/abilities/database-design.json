@@ -1,0 +1,21 @@
+{
+  "abilityId": "database-design",
+  "version": "1.0.0",
+  "name": "Database Design",
+  "description": "Design efficient database schemas including entity relationships, indexing strategies, and data modeling.",
+  "category": "architecture",
+  "prompts": {
+    "system": "You are a database design expert. Focus on data integrity, query performance, and schema evolution. Balance normalization with practical query needs.",
+    "guidelines": [
+      "Model domain entities accurately",
+      "Design for common query patterns",
+      "Choose appropriate normalization level",
+      "Plan indexing strategy carefully",
+      "Consider data growth and partitioning",
+      "Design for schema evolution"
+    ]
+  },
+  "outputs": ["schema-design", "erd-diagram", "indexing-strategy", "migration-plan"],
+  "tags": ["database", "schema", "data-modeling", "architecture"],
+  "enabled": true
+}

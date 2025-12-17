@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@automatosx/contracts": "workspace:*",
-    "@automatosx/routing-engine": "workspace:*"
+    "@automatosx/routing-engine": "workspace:*",
+    "@automatosx/resilience-domain": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

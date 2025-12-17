@@ -40,6 +40,17 @@ export interface TraceReader {
 }
 
 /**
+ * Trace store interface with delete capability (for cleanup operations)
+ */
+export interface TraceStore extends TraceWriter, TraceReader {
+  /**
+   * Deletes a trace and all its events
+   * @returns true if trace existed and was deleted
+   */
+  deleteTrace(traceId: string): Promise<boolean>;
+}
+
+/**
  * Summary of a trace
  */
 export interface TraceSummary {

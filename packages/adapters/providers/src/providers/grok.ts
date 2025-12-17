@@ -2,54 +2,40 @@
  * Grok CLI provider configuration
  *
  * CLI: ax-grok
- * Auth: Handled by ax-grok CLI (XAI_API_KEY)
+ * Auth: Handled entirely by ax-grok CLI
+ * Model: Uses CLI's default model (we don't specify)
  *
- * Grok is xAI's language model.
- * @see https://x.ai/
+ * @see https://github.com/anthropics/ax-cli
  */
 
 import type { CLIProviderConfig } from '../types.js';
 
 /**
  * Grok provider configuration
+ *
+ * Design: AutomatosX does NOT manage credentials or model selection.
+ * The ax-grok CLI handles all authentication and uses its configured default model.
  */
 export const grokConfig: CLIProviderConfig = {
   providerId: 'grok',
   command: 'ax-grok',
-  args: [],
+  args: ['--prompt'],  // Prompt text will be appended as next argument
+  promptStyle: 'arg',  // Pass prompt as command-line argument (not stdin)
   env: {
-    // Non-interactive mode
+    // Non-interactive mode flags
     TERM: 'dumb',
     NO_COLOR: '1',
     CI: 'true',
   },
-  outputFormat: 'text',
-  timeout: 120000, // 2 minutes
+  outputFormat: 'stream-json',  // ax-grok outputs JSON Lines: {"role":"assistant","content":"..."}
+  timeout: 60000, // 1 minute (ax-grok has shutdown hang issue, timeout kills it)
   models: [
     {
-      modelId: 'grok-3',
-      name: 'Grok 3',
+      modelId: 'default',
+      name: 'Grok Default',
       contextWindow: 131000,
       capabilities: ['text', 'code'],
       isDefault: true,
-    },
-    {
-      modelId: 'grok-3-fast',
-      name: 'Grok 3 Fast',
-      contextWindow: 131000,
-      capabilities: ['text', 'code'],
-    },
-    {
-      modelId: 'grok-2',
-      name: 'Grok 2',
-      contextWindow: 131000,
-      capabilities: ['text', 'code'],
-    },
-    {
-      modelId: 'grok-2-vision',
-      name: 'Grok 2 Vision',
-      contextWindow: 32000,
-      capabilities: ['text', 'code', 'vision'],
     },
   ],
 };

@@ -1,0 +1,21 @@
+{
+  "abilityId": "rust",
+  "version": "1.0.0",
+  "name": "Rust",
+  "description": "Expert Rust development including ownership model, lifetime management, and systems programming patterns.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a Rust expert. Write safe, efficient code that leverages the ownership model to prevent bugs at compile time.",
+    "guidelines": [
+      "Embrace the borrow checker",
+      "Prefer stack allocation when possible",
+      "Use Result and Option for errors",
+      "Leverage zero-cost abstractions",
+      "Write idiomatic Rust with iterators",
+      "Document unsafe blocks thoroughly"
+    ]
+  },
+  "outputs": ["rust-code", "cargo-config", "documentation"],
+  "tags": ["rust", "systems", "implementation"],
+  "enabled": true
+}

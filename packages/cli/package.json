@@ -1,12 +1,13 @@
 {
   "name": "@automatosx/cli",
-  "version": "1.0.0",
+  "version": "13.0.0",
   "type": "module",
   "description": "Command-line interface for AutomatosX workflow automation",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "automatosx": "./dist/bin.js"
+    "automatosx": "./dist/bin.js",
+    "ax": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -23,6 +24,19 @@
     "@automatosx/workflow-engine": "workspace:*",
     "@automatosx/routing-engine": "workspace:*",
     "@automatosx/memory-domain": "workspace:*",
-    "@automatosx/trace-domain": "workspace:*"
+    "@automatosx/trace-domain": "workspace:*",
+    "@automatosx/agent-domain": "workspace:*",
+    "@automatosx/ability-domain": "workspace:*",
+    "@automatosx/session-domain": "workspace:*",
+    "@automatosx/config-domain": "workspace:*",
+    "@automatosx/context-domain": "workspace:*",
+    "@automatosx/iterate-domain": "workspace:*",
+    "@automatosx/guard": "workspace:*",
+    "@automatosx/provider-adapters": "workspace:*",
+    "@automatosx/agent-execution": "workspace:*",
+    "@automatosx/analysis-domain": "workspace:*",
+    "@automatosx/cross-cutting": "workspace:*",
+    "@automatosx/sqlite-adapter": "workspace:*",
+    "@automatosx/mcp-server": "workspace:*"
   }
 }

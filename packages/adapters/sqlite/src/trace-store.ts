@@ -1,5 +1,5 @@
 import type { TraceEvent, TraceStatus } from '@automatosx/contracts';
-import type { TraceWriter, TraceReader, TraceSummary } from '@automatosx/trace-domain';
+import type { TraceStore, TraceSummary } from '@automatosx/trace-domain';
 import type Database from 'better-sqlite3';
 
 /**
@@ -25,11 +25,11 @@ export const SqliteTraceStoreErrorCodes = {
 } as const;
 
 /**
- * SQLite implementation of TraceWriter and TraceReader
+ * SQLite implementation of TraceStore
  * INV-TR-002: Events are strictly ordered by sequence
  * INV-TR-004: Each trace is independent and self-contained
  */
-export class SqliteTraceStore implements TraceWriter, TraceReader {
+export class SqliteTraceStore implements TraceStore {
   private readonly db: Database.Database;
   private readonly eventsTable: string;
   private readonly summariesTable: string;
@@ -259,6 +259,34 @@ export class SqliteTraceStore implements TraceWriter, TraceReader {
   clear(): void {
     this.db.exec(`DELETE FROM ${this.eventsTable}`);
     this.db.exec(`DELETE FROM ${this.summariesTable}`);
+  }
+
+  /**
+   * Deletes a trace and all its events
+   * @returns true if trace existed and was deleted
+   */
+  deleteTrace(traceId: string): Promise<boolean> {
+    try {
+      // Delete events for this trace
+      const deleteEventsStmt = this.db.prepare(`
+        DELETE FROM ${this.eventsTable} WHERE trace_id = ?
+      `);
+      const eventsResult = deleteEventsStmt.run(traceId);
+
+      // Delete summary for this trace
+      const deleteSummaryStmt = this.db.prepare(`
+        DELETE FROM ${this.summariesTable} WHERE trace_id = ?
+      `);
+      deleteSummaryStmt.run(traceId);
+
+      // Return true if any events were deleted
+      return Promise.resolve(eventsResult.changes > 0);
+    } catch (error) {
+      throw new SqliteTraceStoreError(
+        SqliteTraceStoreErrorCodes.DATABASE_ERROR,
+        `Failed to delete trace: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 }
 

@@ -30,3 +30,10 @@ coverage/
 
 # Generated
 dependency-graph.svg
+
+# Local data
+.automatosx/memory/
+ax.index.json
+ax.summary.json
+checkpoints/
+tmp/

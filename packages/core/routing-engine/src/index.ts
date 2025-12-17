@@ -12,3 +12,22 @@ export {
   type RoutingContext,
   type ScoredModel,
 } from './types.js';
+
+// Re-export contract types for consumer convenience
+export type {
+  TaskType,
+  RiskLevel,
+  Provider,
+  ModelCapability,
+  RoutingInput,
+  RoutingConstraints,
+  RoutingDecision,
+  RoutingRecord,
+} from '@automatosx/contracts';
+
+// Re-export validation functions
+export {
+  validateRoutingInput,
+  validateRoutingDecision,
+  validateRoutingRecord,
+} from '@automatosx/contracts';

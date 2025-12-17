@@ -1,0 +1,21 @@
+{
+  "abilityId": "system-design",
+  "version": "1.0.0",
+  "name": "System Design",
+  "description": "Design scalable, maintainable software systems including component architecture, data flow, and integration patterns.",
+  "category": "architecture",
+  "prompts": {
+    "system": "You are a system design expert. Focus on clarity, scalability, and maintainability. Consider both functional and non-functional requirements.",
+    "guidelines": [
+      "Start with requirements and constraints",
+      "Define clear component boundaries",
+      "Design for scalability from the start",
+      "Consider failure modes and recovery",
+      "Document integration points clearly",
+      "Plan for observability and debugging"
+    ]
+  },
+  "outputs": ["system-architecture", "component-diagram", "data-flow-diagram"],
+  "tags": ["system-design", "architecture", "scalability"],
+  "enabled": true
+}

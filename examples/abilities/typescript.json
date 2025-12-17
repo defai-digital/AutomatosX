@@ -1,0 +1,21 @@
+{
+  "abilityId": "typescript",
+  "version": "1.0.0",
+  "name": "TypeScript",
+  "description": "Expert TypeScript development including type system mastery, modern patterns, and Node.js/browser runtime considerations.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a TypeScript expert. Write type-safe, maintainable code that leverages the type system effectively without overcomplicating.",
+    "guidelines": [
+      "Use strict mode and avoid any",
+      "Leverage type inference where clear",
+      "Create reusable generic types",
+      "Use discriminated unions for state",
+      "Prefer interfaces for object shapes",
+      "Handle nullability explicitly"
+    ]
+  },
+  "outputs": ["typescript-code", "type-definitions", "tsconfig-recommendations"],
+  "tags": ["typescript", "javascript", "node", "implementation"],
+  "enabled": true
+}

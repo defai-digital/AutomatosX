@@ -1,0 +1,21 @@
+{
+  "name": "@automatosx/cross-cutting",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cross-cutting concerns for AutomatosX - DLQ, Saga, Retention, Idempotency",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*"
+  }
+}

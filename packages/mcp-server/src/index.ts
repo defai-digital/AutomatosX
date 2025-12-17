@@ -26,6 +26,53 @@ export {
   handleMemorySearch,
 } from './tools/index.js';
 
+// Resource exports
+export {
+  ALL_RESOURCES,
+  RESOURCE_HANDLERS,
+  readResource,
+  findResourceHandler,
+  WORKFLOW_RESOURCES,
+  AGENT_RESOURCES,
+  POLICY_RESOURCES,
+  SESSION_RESOURCES,
+} from './resources/index.js';
+
+// Prompt exports
+export {
+  ALL_PROMPTS,
+  PROMPT_HANDLERS,
+  getPrompt,
+  getPromptHandler,
+  executePrompt,
+  reviewChangesPrompt,
+  explainWorkflowPrompt,
+  troubleshootSessionPrompt,
+} from './prompts/index.js';
+
+// Trace wrapper exports
+export {
+  withTracing,
+  wrapHandlersWithTracing,
+  setTraceCollector,
+  getTraceCollector,
+  initializeDefaultTracing,
+  InMemoryTraceCollector,
+  type TraceCollector,
+} from './trace-wrapper.js';
+
+// Validation exports
+export {
+  validateOutput,
+  withValidation,
+  wrapHandlersWithValidation,
+  parseToolResultContent,
+  setValidationLogger,
+  type ValidationResult,
+  type ValidationLogger,
+  type OutputSchemaRegistry,
+} from './validation.js';
+
 // Type exports
 export type {
   MCPTool,
@@ -39,6 +86,13 @@ export type {
   MCPResponse,
   MCPError,
   ToolHandler,
+  MCPResource,
+  MCPResourceContent,
+  ResourceHandler,
+  MCPPrompt,
+  MCPPromptArgument,
+  MCPPromptMessage,
+  PromptHandler,
 } from './types.js';
 
 export { MCPErrorCodes } from './types.js';

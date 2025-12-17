@@ -1,15 +1,12 @@
-import type { RetryPolicy } from '@automatosx/contracts';
+import {
+  type RetryPolicy,
+  DEFAULT_RETRY_POLICY,
+  DEFAULT_BACKOFF_CAP_MS,
+} from '@automatosx/contracts';
 import type { StepError } from './types.js';
 
-/**
- * Default retry policy
- */
-export const DEFAULT_RETRY_POLICY: Required<RetryPolicy> = {
-  maxAttempts: 1,
-  backoffMs: 1000,
-  backoffMultiplier: 2,
-  retryOn: ['timeout', 'rate_limit', 'server_error', 'network_error'],
-};
+// Re-export for backwards compatibility
+export { DEFAULT_RETRY_POLICY };
 
 /**
  * Merges a partial retry policy with defaults
@@ -74,7 +71,7 @@ export function calculateBackoff(
 ): number {
   // Exponential backoff: baseDelay * multiplier^(attempt-1)
   const delay = policy.backoffMs * Math.pow(policy.backoffMultiplier, attempt - 1);
-  return Math.min(delay, 60000); // Cap at 60 seconds
+  return Math.min(delay, DEFAULT_BACKOFF_CAP_MS); // Cap at contract-defined max
 }
 
 /**

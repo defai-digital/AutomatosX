@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://automatosx.dev/schemas/routing/v1/decision.schema.json",
   "title": "Routing Decision Contract V1",
-  "description": "Defines the structure of routing decisions for model selection",
+  "description": "Defines the structure of routing decisions for model selection. Note: Cost-based routing is intentionally excluded by design.",
   "type": "object",
   "required": ["requestId", "input", "decision", "timestamp"],
   "additionalProperties": false,
@@ -42,10 +42,6 @@
           "enum": ["chat", "completion", "code", "analysis", "creative"],
           "description": "Type of task to route"
         },
-        "budget": {
-          "$ref": "#/$defs/Budget",
-          "description": "Budget constraints for the request"
-        },
         "riskLevel": {
           "type": "string",
           "enum": ["low", "medium", "high"],
@@ -63,27 +59,6 @@
         }
       }
     },
-    "Budget": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "maxCostUsd": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Maximum cost in USD for this request"
-        },
-        "maxTokens": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Maximum tokens to use"
-        },
-        "maxLatencyMs": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Maximum acceptable latency in milliseconds"
-        }
-      }
-    },
     "ModelRequirements": {
       "type": "object",
       "additionalProperties": false,
@@ -92,6 +67,11 @@
           "type": "integer",
           "minimum": 1,
           "description": "Minimum context window required"
+        },
+        "maxLatencyMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum acceptable latency in milliseconds"
         },
         "capabilities": {
           "type": "array",
@@ -117,9 +97,24 @@
         }
       }
     },
+    "RoutingConstraints": {
+      "type": "object",
+      "required": ["capabilitiesMet", "riskCompliant"],
+      "additionalProperties": false,
+      "properties": {
+        "capabilitiesMet": {
+          "type": "boolean",
+          "description": "Whether all required capabilities are met"
+        },
+        "riskCompliant": {
+          "type": "boolean",
+          "description": "Whether the selection complies with risk requirements"
+        }
+      }
+    },
     "RoutingDecision": {
       "type": "object",
-      "required": ["selectedModel", "provider", "reasoning"],
+      "required": ["selectedModel", "provider", "reasoning", "fallbackModels", "constraints"],
       "additionalProperties": false,
       "properties": {
         "selectedModel": {
@@ -137,11 +132,6 @@
           "default": false,
           "description": "Whether the selected model is experimental"
         },
-        "estimatedCostUsd": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Estimated cost for this request"
-        },
         "reasoning": {
           "type": "string",
           "minLength": 1,
@@ -154,6 +144,10 @@
             "type": "string"
           },
           "description": "Ordered list of fallback models if primary fails"
+        },
+        "constraints": {
+          "$ref": "#/$defs/RoutingConstraints",
+          "description": "Validation results for routing constraints"
         }
       }
     }

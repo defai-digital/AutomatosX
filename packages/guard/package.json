@@ -1,0 +1,22 @@
+{
+  "name": "@automatosx/guard",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Post-check AI coding governance engine for AutomatosX",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*",
+    "@automatosx/trace-domain": "workspace:*"
+  }
+}

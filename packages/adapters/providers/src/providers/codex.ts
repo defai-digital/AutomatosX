@@ -1,58 +1,40 @@
 /**
  * Codex (OpenAI) CLI provider configuration
  *
- * CLI: codex --json
- * Auth: Handled by Codex CLI (OpenAI auth)
+ * CLI: codex
+ * Auth: Handled entirely by Codex CLI (OpenAI auth)
+ * Model: Uses CLI's default model (we don't specify)
+ *
+ * @see https://github.com/openai/codex
  */
 
 import type { CLIProviderConfig } from '../types.js';
 
 /**
  * Codex provider configuration
+ *
+ * Design: AutomatosX does NOT manage credentials or model selection.
+ * The Codex CLI handles all authentication and uses its configured default model.
  */
 export const codexConfig: CLIProviderConfig = {
   providerId: 'codex',
   command: 'codex',
-  args: ['--json'],
+  args: ['exec', '--json', '--skip-git-repo-check'],
   env: {
-    // Non-interactive mode
+    // Non-interactive mode flags
     TERM: 'dumb',
     NO_COLOR: '1',
     CI: 'true',
   },
-  outputFormat: 'json',
+  outputFormat: 'stream-json',
   timeout: 120000, // 2 minutes
   models: [
     {
-      modelId: 'gpt-4o',
-      name: 'GPT-4o',
+      modelId: 'default',
+      name: 'Codex Default',
       contextWindow: 128000,
       capabilities: ['text', 'code', 'vision'],
       isDefault: true,
-    },
-    {
-      modelId: 'gpt-4o-mini',
-      name: 'GPT-4o Mini',
-      contextWindow: 128000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'gpt-4-turbo',
-      name: 'GPT-4 Turbo',
-      contextWindow: 128000,
-      capabilities: ['text', 'code', 'vision'],
-    },
-    {
-      modelId: 'o1',
-      name: 'o1',
-      contextWindow: 200000,
-      capabilities: ['text', 'code'],
-    },
-    {
-      modelId: 'o1-mini',
-      name: 'o1 Mini',
-      contextWindow: 128000,
-      capabilities: ['text', 'code'],
     },
   ],
 };

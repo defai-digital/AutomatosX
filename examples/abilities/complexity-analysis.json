@@ -1,0 +1,21 @@
+{
+  "abilityId": "complexity-analysis",
+  "version": "1.0.0",
+  "name": "Complexity Analysis",
+  "description": "Analyze code complexity including cyclomatic complexity, cognitive complexity, and coupling metrics.",
+  "category": "analysis",
+  "prompts": {
+    "system": "You are a complexity analysis expert. Identify complex code that may be hard to maintain or prone to bugs.",
+    "guidelines": [
+      "Calculate cyclomatic complexity",
+      "Assess cognitive complexity",
+      "Analyze coupling and cohesion",
+      "Identify deeply nested code",
+      "Find overly long functions",
+      "Recommend simplification strategies"
+    ]
+  },
+  "outputs": ["complexity-report", "hotspot-identification", "simplification-recommendations"],
+  "tags": ["complexity", "maintainability", "analysis"],
+  "enabled": true
+}

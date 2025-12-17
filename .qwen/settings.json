@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "automatosx": {
+      "command": "automatosx",
+      "args": [
+        "mcp",
+        "server"
+      ]
+    }
+  },
+  "$version": 2
+}

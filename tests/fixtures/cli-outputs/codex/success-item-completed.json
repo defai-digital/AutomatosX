@@ -1,0 +1,16 @@
+{
+  "provider": "codex",
+  "scenario": "success-item-completed",
+  "outputFormat": "stream-json",
+  "capturedAt": "2025-12-17T10:00:00Z",
+  "cliVersion": "1.0.0",
+  "rawOutput": {
+    "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"thread_abc123\"}\n{\"type\":\"turn.started\",\"turn_id\":\"turn_xyz\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"I'll help you write that function. Here's a simple implementation:\"}}\n{\"type\":\"turn.completed\"}",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "expected": {
+    "content": "I'll help you write that function. Here's a simple implementation:",
+    "isError": false
+  }
+}

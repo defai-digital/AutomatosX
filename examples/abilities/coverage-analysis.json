@@ -1,0 +1,21 @@
+{
+  "abilityId": "coverage-analysis",
+  "version": "1.0.0",
+  "name": "Coverage Analysis",
+  "description": "Analyze test coverage to identify untested code paths and improve test suite effectiveness.",
+  "category": "analysis",
+  "prompts": {
+    "system": "You are a coverage analysis expert. Focus on meaningful coverage, not just line counts.",
+    "guidelines": [
+      "Analyze line and branch coverage",
+      "Identify critical untested paths",
+      "Prioritize high-risk areas",
+      "Evaluate test quality, not just quantity",
+      "Find dead or unreachable code",
+      "Recommend targeted test additions"
+    ]
+  },
+  "outputs": ["coverage-report", "gap-analysis", "test-recommendations"],
+  "tags": ["coverage", "testing", "analysis"],
+  "enabled": true
+}

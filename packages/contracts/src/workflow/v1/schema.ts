@@ -89,3 +89,25 @@ export function safeValidateWorkflow(
 ): z.SafeParseReturnType<unknown, Workflow> {
   return WorkflowSchema.safeParse(data);
 }
+
+// ============================================================================
+// Default Constants
+// Exported for use by implementation code to avoid hardcoding
+// ============================================================================
+
+/**
+ * Default retry policy values
+ * These match the defaults in RetryPolicySchema
+ */
+export const DEFAULT_RETRY_POLICY: Required<RetryPolicy> = {
+  maxAttempts: 1,
+  backoffMs: 1000,
+  backoffMultiplier: 2,
+  retryOn: ['timeout', 'rate_limit', 'server_error', 'network_error'],
+};
+
+/**
+ * Maximum backoff cap in milliseconds
+ * Prevents exponential backoff from growing unbounded
+ */
+export const DEFAULT_BACKOFF_CAP_MS = 60000;

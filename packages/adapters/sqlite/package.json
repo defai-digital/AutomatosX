@@ -17,6 +17,8 @@
     "@automatosx/contracts": "workspace:*",
     "@automatosx/memory-domain": "workspace:*",
     "@automatosx/trace-domain": "workspace:*",
+    "@automatosx/agent-execution": "workspace:*",
+    "@automatosx/cross-cutting": "workspace:*",
     "better-sqlite3": "^11.6.0"
   },
   "devDependencies": {

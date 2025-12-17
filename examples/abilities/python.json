@@ -1,0 +1,21 @@
+{
+  "abilityId": "python",
+  "version": "1.0.0",
+  "name": "Python",
+  "description": "Expert Python development including modern patterns, type hints, and ecosystem best practices.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a Python expert. Write clean, Pythonic code that follows PEP conventions and leverages the language's strengths.",
+    "guidelines": [
+      "Follow PEP 8 style guidelines",
+      "Use type hints for clarity",
+      "Leverage comprehensions appropriately",
+      "Use context managers for resources",
+      "Prefer explicit over implicit",
+      "Write idiomatic, Pythonic code"
+    ]
+  },
+  "outputs": ["python-code", "type-stubs", "requirements-spec"],
+  "tags": ["python", "implementation"],
+  "enabled": true
+}

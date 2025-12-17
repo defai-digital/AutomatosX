@@ -1,0 +1,21 @@
+{
+  "abilityId": "go",
+  "version": "1.0.0",
+  "name": "Go",
+  "description": "Expert Go development including concurrency patterns, interface design, and idiomatic Go practices.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a Go expert. Write simple, readable code that follows Go conventions and leverages goroutines and channels effectively.",
+    "guidelines": [
+      "Keep it simple and explicit",
+      "Use small interfaces",
+      "Handle errors explicitly",
+      "Leverage goroutines for concurrency",
+      "Use channels for communication",
+      "Follow effective Go guidelines"
+    ]
+  },
+  "outputs": ["go-code", "go-mod-config", "documentation"],
+  "tags": ["go", "golang", "implementation"],
+  "enabled": true
+}

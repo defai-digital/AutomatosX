@@ -74,3 +74,10 @@ export {
   createProviderRegistry,
   createEmptyRegistry,
 } from './registry.js';
+
+// Resilient Provider Registry
+export {
+  ResilientProviderRegistry,
+  createResilientProviderRegistry,
+  type ResilientRegistryConfig,
+} from './resilient-registry.js';

@@ -13,6 +13,12 @@ export {
   normalizeError,
 } from './executor.js';
 export {
+  createRealStepExecutor,
+  type PromptExecutorLike,
+  type ToolExecutorLike,
+  type RealStepExecutorConfig,
+} from './step-executor-factory.js';
+export {
   DEFAULT_RETRY_POLICY,
   mergeRetryPolicy,
   shouldRetry,
@@ -31,3 +37,45 @@ export {
   type WorkflowRunnerConfig,
   type PreparedWorkflow,
 } from './types.js';
+
+// Re-export contract types for consumer convenience
+export type {
+  Workflow,
+  WorkflowStep,
+  RetryPolicy,
+  SchemaReference,
+  StepType,
+} from '@automatosx/contracts';
+
+// Re-export validation schemas
+export {
+  WorkflowSchema,
+  WorkflowStepSchema,
+  RetryPolicySchema,
+} from '@automatosx/contracts';
+
+// Step Guard exports
+export {
+  StepGuardEngine,
+  createStepGuardEngine,
+  createGateRegistry,
+  ProgressTracker,
+  createProgressTracker,
+  DEFAULT_STEP_GUARD_ENGINE_CONFIG,
+  type GateCheckFn,
+  type GateRegistry,
+  type StepGuardEngineConfig,
+} from './step-guard.js';
+
+// Re-export step guard contract types
+export type {
+  WorkflowStepGuard,
+  StepGuardResult,
+  StepGuardContext,
+  StepGuardPolicy,
+  StepGateResult,
+  GuardPosition,
+  GuardCheckStatus,
+  StageProgressEvent,
+  StageProgressStatus,
+} from '@automatosx/contracts';

@@ -1,0 +1,21 @@
+{
+  "abilityId": "code-analysis",
+  "version": "1.0.0",
+  "name": "Code Analysis",
+  "description": "Analyze code structure, quality, and patterns to identify improvements and understand system behavior.",
+  "category": "analysis",
+  "prompts": {
+    "system": "You are a code analysis expert. Provide actionable insights about code quality, structure, and potential improvements.",
+    "guidelines": [
+      "Analyze code structure and organization",
+      "Identify code smells and anti-patterns",
+      "Assess maintainability and readability",
+      "Find duplication and redundancy",
+      "Evaluate naming and conventions",
+      "Suggest concrete improvements"
+    ]
+  },
+  "outputs": ["analysis-report", "improvement-recommendations", "metrics-summary"],
+  "tags": ["code-analysis", "quality", "analysis"],
+  "enabled": true
+}

@@ -1,0 +1,21 @@
+{
+  "abilityId": "sql",
+  "version": "1.0.0",
+  "name": "SQL",
+  "description": "Expert SQL development including query optimization, schema design, and database-specific features.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a SQL expert. Write efficient, readable queries that perform well at scale and maintain data integrity.",
+    "guidelines": [
+      "Write readable, formatted queries",
+      "Use appropriate joins and subqueries",
+      "Consider query execution plans",
+      "Design for index utilization",
+      "Use transactions appropriately",
+      "Handle NULL values carefully"
+    ]
+  },
+  "outputs": ["sql-queries", "schema-migrations", "optimization-recommendations"],
+  "tags": ["sql", "database", "implementation"],
+  "enabled": true
+}

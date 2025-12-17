@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "automatosx": {
+      "name": "automatosx",
+      "transport": {
+        "type": "stdio",
+        "command": "automatosx",
+        "args": [
+          "mcp",
+          "server"
+        ],
+        "env": {}
+      }
+    }
+  }
+}

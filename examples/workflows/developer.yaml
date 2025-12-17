@@ -1,0 +1,105 @@
+workflowId: developer
+version: "1.0.0"
+name: Feature Development Workflow
+description: End-to-end feature development from requirements to implementation
+
+steps:
+  - stepId: understand-requirements
+    type: prompt
+    name: Understand Requirements
+    timeout: 60000
+    config:
+      agentId: product
+      prompt: |
+        Analyze the feature request:
+        1. Identify user stories and acceptance criteria
+        2. Define success metrics
+        3. List dependencies and blockers
+        4. Estimate complexity
+
+  - stepId: design-solution
+    type: prompt
+    name: Design Solution
+    timeout: 120000
+    config:
+      agentId: architecture
+      prompt: |
+        Design the technical solution:
+        1. Propose architecture changes
+        2. Define API contracts
+        3. Identify affected components
+        4. Plan database changes
+        5. Consider security implications
+
+  - stepId: create-plan
+    type: tool
+    name: Create Implementation Plan
+    timeout: 30000
+    config:
+      tool: task_create
+      args:
+        type: implementation
+        breakdown: true
+
+  - stepId: implement-backend
+    type: prompt
+    name: Implement Backend
+    timeout: 300000
+    config:
+      agentId: backend
+      prompt: |
+        Implement the backend components:
+        1. Create/modify API endpoints
+        2. Implement business logic
+        3. Add database migrations
+        4. Write unit tests
+
+  - stepId: implement-frontend
+    type: prompt
+    name: Implement Frontend
+    timeout: 300000
+    config:
+      agentId: frontend
+      prompt: |
+        Implement the frontend components:
+        1. Create/modify UI components
+        2. Connect to API endpoints
+        3. Handle loading and error states
+        4. Write component tests
+
+  - stepId: integration-test
+    type: tool
+    name: Run Integration Tests
+    timeout: 120000
+    retryPolicy:
+      maxAttempts: 3
+      backoffMs: 5000
+    config:
+      tool: guard_check
+      args:
+        policyId: test-coverage
+        threshold: 80
+
+  - stepId: documentation
+    type: prompt
+    name: Update Documentation
+    timeout: 60000
+    config:
+      agentId: writer
+      prompt: |
+        Update documentation:
+        1. API documentation
+        2. User guide updates
+        3. Changelog entry
+        4. Architecture diagrams
+
+metadata:
+  category: development
+  tags:
+    - feature
+    - full-stack
+    - implementation
+  requiredAbilities:
+    - code-generation
+    - api-design
+    - testing-strategy

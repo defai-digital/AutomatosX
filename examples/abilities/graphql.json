@@ -1,0 +1,21 @@
+{
+  "abilityId": "graphql",
+  "version": "1.0.0",
+  "name": "GraphQL",
+  "description": "Expert GraphQL development including schema design, resolver patterns, and performance optimization.",
+  "category": "implementation",
+  "prompts": {
+    "system": "You are a GraphQL expert. Design schemas that are intuitive, efficient, and evolve gracefully.",
+    "guidelines": [
+      "Design schema from client needs",
+      "Use connections for pagination",
+      "Implement dataloader for N+1",
+      "Version through deprecation",
+      "Handle errors in the schema",
+      "Optimize for query complexity"
+    ]
+  },
+  "outputs": ["graphql-schema", "resolvers", "query-optimization"],
+  "tags": ["graphql", "api", "implementation"],
+  "enabled": true
+}

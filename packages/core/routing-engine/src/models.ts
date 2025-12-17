@@ -2,7 +2,9 @@ import type { ModelDefinition } from './types.js';
 
 /**
  * Default model registry with common models
- * Note: Costs and capabilities are illustrative
+ *
+ * Note: Cost fields are intentionally excluded.
+ * AutomatosX does NOT perform cost-based routing as costs change frequently.
  */
 export const DEFAULT_MODELS: ModelDefinition[] = [
   // Anthropic Models
@@ -11,7 +13,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'anthropic',
     displayName: 'Claude 3 Opus',
     isExperimental: false,
-    costPerMillionTokens: 15.0,
     contextLength: 200000,
     capabilities: ['vision', 'function_calling', 'json_mode', 'streaming'],
     priority: 100,
@@ -22,7 +23,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'anthropic',
     displayName: 'Claude 3 Sonnet',
     isExperimental: false,
-    costPerMillionTokens: 3.0,
     contextLength: 200000,
     capabilities: ['vision', 'function_calling', 'json_mode', 'streaming'],
     priority: 80,
@@ -33,7 +33,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'anthropic',
     displayName: 'Claude 3 Haiku',
     isExperimental: false,
-    costPerMillionTokens: 0.25,
     contextLength: 200000,
     capabilities: ['vision', 'function_calling', 'json_mode', 'streaming'],
     priority: 60,
@@ -46,7 +45,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'google',
     displayName: 'Gemini Pro',
     isExperimental: false,
-    costPerMillionTokens: 0.5,
     contextLength: 32000,
     capabilities: ['function_calling', 'json_mode', 'streaming'],
     priority: 70,
@@ -57,7 +55,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'google',
     displayName: 'Gemini Ultra',
     isExperimental: true, // Marked as experimental
-    costPerMillionTokens: 10.0,
     contextLength: 128000,
     capabilities: ['vision', 'function_calling', 'json_mode', 'streaming'],
     priority: 90,
@@ -70,7 +67,6 @@ export const DEFAULT_MODELS: ModelDefinition[] = [
     provider: 'local',
     displayName: 'Local Llama',
     isExperimental: false,
-    costPerMillionTokens: 0,
     contextLength: 8000,
     capabilities: ['streaming'],
     priority: 30,

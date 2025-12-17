@@ -4,7 +4,14 @@ import type { ModelDefinition, RoutingContext, ScoredModel } from './types.js';
  * Scores a model against routing context
  * Returns a score from 0-100 and reasons for the score
  *
- * INV-RT-001: Deterministic scoring - same inputs always produce same scores
+ * Routing Invariants:
+ * - INV-RT-001: Deterministic scoring - same inputs always produce same scores
+ * - INV-RT-002: Risk gating - high risk never selects experimental models
+ * - INV-RT-003: Reasoning required - all decisions include reasoning
+ * - INV-RT-004: Fallback consistency - fallbacks satisfy same constraints
+ * - INV-RT-005: Capability match - selected model has required capabilities
+ *
+ * Note: Cost-based routing is intentionally excluded by design.
  */
 export function scoreModel(
   model: ModelDefinition,
@@ -15,7 +22,7 @@ export function scoreModel(
   let disqualified = false;
   let disqualificationReason: string | undefined;
 
-  // INV-RT-003: Risk gating - high risk never selects experimental
+  // INV-RT-002: Risk gating - high risk never selects experimental
   if (context.riskLevel === 'high' && model.isExperimental) {
     disqualified = true;
     disqualificationReason = 'Experimental models not allowed for high-risk tasks';
@@ -39,27 +46,6 @@ export function scoreModel(
       disqualified,
       disqualificationReason,
     };
-  }
-
-  // INV-RT-002: Budget respect - check cost constraints
-  if (context.budgetMaxCost !== undefined) {
-    // Estimate cost for typical request (assume 1000 tokens)
-    const estimatedCost = (model.costPerMillionTokens / 1000000) * 1000;
-    if (estimatedCost > context.budgetMaxCost) {
-      disqualified = true;
-      disqualificationReason = `Model cost ($${estimatedCost.toFixed(4)}) exceeds budget ($${context.budgetMaxCost.toFixed(4)})`;
-      return {
-        model,
-        score: 0,
-        reasons: [disqualificationReason],
-        disqualified,
-        disqualificationReason,
-      };
-    }
-    // Bonus for cost efficiency
-    const costEfficiency = 1 - estimatedCost / context.budgetMaxCost;
-    score += costEfficiency * 10;
-    reasons.push(`Cost efficient: ${(costEfficiency * 100).toFixed(0)}% under budget`);
   }
 
   // Check context length requirement

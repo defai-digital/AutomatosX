@@ -1,0 +1,216 @@
+/**
+ * Gate Executor
+ *
+ * Orchestrates the execution of governance gates and produces results.
+ *
+ * Invariants:
+ * - INV-GUARD-004: Order Independence - gates may execute in any order
+ * - INV-GUARD-005: Fail Fast Option - implementation may stop on first FAIL
+ * - INV-GUARD-006: No Side Effects - gate execution must not modify files
+ * - INV-GUARD-RES-001: Status Determination - FAIL > WARN > PASS
+ * - INV-GUARD-RES-002: Suggestion Quality - every FAIL has actionable suggestion
+ * - INV-GUARD-RES-003: Traceability - all results include timestamp
+ */
+
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import type {
+  GovernanceContext,
+  GateResult,
+  GuardResult,
+  GateType,
+  GateExecutor,
+} from './types.js';
+import { pathViolationGate } from './gates/path.js';
+import { changeRadiusGate } from './gates/change-radius.js';
+import { dependencyGate } from './gates/dependency.js';
+import { contractTestGate } from './gates/contract-tests.js';
+import { configValidationGate, sensitiveChangeGate } from './gates/config.js';
+
+const execAsync = promisify(exec);
+
+/**
+ * Gate registry
+ */
+const GATES: Record<GateType, GateExecutor> = {
+  path_violation: pathViolationGate,
+  change_radius: changeRadiusGate,
+  dependency: dependencyGate,
+  contract_tests: contractTestGate,
+  config_validation: configValidationGate,
+  sensitive_change: sensitiveChangeGate,
+};
+
+/**
+ * Gets list of changed files from git
+ */
+export async function getChangedFiles(baseBranch: string): Promise<string[]> {
+  try {
+    const { stdout } = await execAsync(
+      `git diff --name-only ${baseBranch}...HEAD`,
+      { cwd: process.cwd() }
+    );
+
+    return stdout
+      .trim()
+      .split('\n')
+      .filter((f) => f.length > 0);
+  } catch {
+    // Fallback to comparing with HEAD~1 if branch comparison fails
+    try {
+      const { stdout } = await execAsync('git diff --name-only HEAD~1', {
+        cwd: process.cwd(),
+      });
+
+      return stdout
+        .trim()
+        .split('\n')
+        .filter((f) => f.length > 0);
+    } catch {
+      // If that also fails, check staged files
+      const { stdout } = await execAsync('git diff --name-only --cached', {
+        cwd: process.cwd(),
+      });
+
+      return stdout
+        .trim()
+        .split('\n')
+        .filter((f) => f.length > 0);
+    }
+  }
+}
+
+/**
+ * Generates suggestions based on gate failures
+ * INV-GUARD-RES-002: Every FAIL result must include actionable suggestions
+ */
+interface PathViolationDetails {
+  forbiddenPathViolations?: string[];
+  outsideAllowedPaths?: string[];
+}
+
+interface ContractTestDetails {
+  modifiedTestFiles?: string[];
+}
+
+function generateSuggestions(gateResults: GateResult[]): string[] {
+  const suggestions: string[] = [];
+
+  for (const result of gateResults) {
+    if (result.status !== 'FAIL') continue;
+
+    switch (result.gate) {
+      case 'path_violation': {
+        const details = result.details as PathViolationDetails | undefined;
+        const forbidden = details?.forbiddenPathViolations;
+        if (forbidden !== undefined && forbidden.length > 0) {
+          suggestions.push(
+            `Revert changes to forbidden paths: ${forbidden.slice(0, 3).join(', ')}`
+          );
+        }
+        const outside = details?.outsideAllowedPaths;
+        if (outside !== undefined && outside.length > 0) {
+          suggestions.push(
+            'Move changes to allowed paths or update the policy scope'
+          );
+        }
+        break;
+      }
+      case 'change_radius': {
+        suggestions.push('Split changes into smaller, focused PRs');
+        suggestions.push('Each PR should modify fewer packages');
+        break;
+      }
+      case 'dependency': {
+        suggestions.push('Fix import statements to respect layer boundaries');
+        suggestions.push('Check .dependency-cruiser.cjs for allowed patterns');
+        break;
+      }
+      case 'contract_tests': {
+        const details = result.details as ContractTestDetails | undefined;
+        const modified = details?.modifiedTestFiles;
+        if (modified !== undefined && modified.length > 0) {
+          suggestions.push('Do not modify contract test files during feature work');
+          suggestions.push('Contract tests are the source of truth');
+        } else {
+          suggestions.push('Fix the code to pass contract tests');
+          suggestions.push('Run: pnpm test:contract to see failures');
+        }
+        break;
+      }
+      case 'config_validation': {
+        suggestions.push('Validate config with: ax config show');
+        suggestions.push('Ensure config.json is valid JSON matching the schema');
+        suggestions.push('Run: ax doctor to verify configuration');
+        break;
+      }
+      case 'sensitive_change': {
+        suggestions.push('Review security-sensitive config changes carefully');
+        suggestions.push('Consider the impact of disabling tracing or guard');
+        suggestions.push('Document reasons for sensitive config changes');
+        break;
+      }
+    }
+  }
+
+  return [...new Set(suggestions)]; // Deduplicate
+}
+
+/**
+ * Executes all enabled gates for a governance context
+ *
+ * INV-GUARD-004: Order Independence - results consistent regardless of order
+ * INV-GUARD-006: No Side Effects - no files or state modified
+ * INV-GUARD-RES-001: Status = FAIL if any gate FAILs, WARN if any WARN, else PASS
+ * INV-GUARD-RES-003: Result includes timestamp for traceability
+ */
+export async function executeGates(
+  context: GovernanceContext,
+  changedFiles: string[]
+): Promise<GuardResult> {
+  const gateResults: GateResult[] = [];
+
+  // Execute each enabled gate
+  for (const gateType of context.enabledGates) {
+    const gate = GATES[gateType];
+    const result = await gate(context, changedFiles);
+    gateResults.push(result);
+  }
+
+  // Determine overall status
+  const hasFail = gateResults.some((r) => r.status === 'FAIL');
+  const hasWarn = gateResults.some((r) => r.status === 'WARN');
+
+  let status: 'PASS' | 'FAIL' | 'WARN';
+  if (hasFail) {
+    status = 'FAIL';
+  } else if (hasWarn) {
+    status = 'WARN';
+  } else {
+    status = 'PASS';
+  }
+
+  // Generate summary
+  const passed = gateResults.filter((r) => r.status === 'PASS').length;
+  const failed = gateResults.filter((r) => r.status === 'FAIL').length;
+  const warned = gateResults.filter((r) => r.status === 'WARN').length;
+
+  let summary: string;
+  if (status === 'PASS') {
+    summary = `All ${String(gateResults.length)} governance checks passed`;
+  } else if (status === 'FAIL') {
+    summary = `${String(failed)} check(s) failed, ${String(passed)} passed`;
+  } else {
+    summary = `${String(warned)} warning(s), ${String(passed)} passed`;
+  }
+
+  return {
+    status,
+    policyId: context.policyId,
+    target: context.target,
+    gates: gateResults,
+    summary,
+    suggestions: generateSuggestions(gateResults),
+    timestamp: new Date().toISOString(),
+  };
+}

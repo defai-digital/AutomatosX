@@ -148,9 +148,6 @@
         },
         "reasoning": {
           "type": "string"
-        },
-        "estimatedCostUsd": {
-          "type": "number"
         }
       }
     },

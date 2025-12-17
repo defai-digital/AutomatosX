@@ -6,9 +6,47 @@ export {
   StepTypeSchema,
   validateWorkflow,
   safeValidateWorkflow,
+  DEFAULT_RETRY_POLICY,
+  DEFAULT_BACKOFF_CAP_MS,
   type Workflow,
   type WorkflowStep,
   type RetryPolicy,
   type SchemaReference,
   type StepType,
 } from './schema.js';
+
+// Step Guard exports
+export {
+  // Schemas
+  GuardPositionSchema,
+  GuardFailActionSchema,
+  WorkflowStepGuardSchema,
+  GuardCheckStatusSchema,
+  StepGateResultSchema,
+  StepGuardResultSchema,
+  StepGuardPolicySchema,
+  StepGuardContextSchema,
+  StageProgressStatusSchema,
+  StageProgressEventSchema,
+  GoalAnchorTriggerSchema,
+  GoalAnchorConfigSchema,
+  GoalAnchorContextSchema,
+  // Types
+  type GuardPosition,
+  type GuardFailAction,
+  type WorkflowStepGuard,
+  type GuardCheckStatus,
+  type StepGateResult,
+  type StepGuardResult,
+  type StepGuardPolicy,
+  type StepGuardContext,
+  type StageProgressStatus,
+  type StageProgressEvent,
+  type GoalAnchorTrigger,
+  type GoalAnchorConfig,
+  type GoalAnchorContext,
+  // Constants and helpers
+  DEFAULT_STEP_GUARD,
+  createStepGuardResult,
+  createProgressEvent,
+} from './step-guard.js';

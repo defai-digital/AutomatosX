@@ -23,6 +23,7 @@ export {
   type TraceErrorCode,
   type TraceWriter,
   type TraceReader,
+  type TraceStore,
   type TraceSummary,
   type ActiveTrace,
   type TraceOptions,

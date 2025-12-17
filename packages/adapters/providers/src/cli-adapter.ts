@@ -39,11 +39,17 @@ export function createCLIAdapter(config: CLIProviderConfig): LLMProvider {
         // Build prompt from messages
         const prompt = buildPromptFromMessages(request.messages, request.systemPrompt);
 
+        // Determine how to pass the prompt based on promptStyle
+        const useArgStyle = config.promptStyle === 'arg';
+        const args = useArgStyle
+          ? [...config.args, prompt]  // Append prompt as argument
+          : [...config.args];         // Use stdin for prompt
+
         // Spawn CLI process
         const result = await spawnCLI({
           command: config.command,
-          args: config.args,
-          stdin: prompt,
+          args,
+          stdin: useArgStyle ? '' : prompt,  // Only use stdin if not using arg style
           env: config.env,
           timeout: request.timeout ?? config.timeout,
         });

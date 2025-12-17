@@ -1,0 +1,16 @@
+{
+  "provider": "gemini",
+  "scenario": "success-simple",
+  "outputFormat": "json",
+  "capturedAt": "2025-12-17T10:00:00Z",
+  "cliVersion": "1.0.0",
+  "rawOutput": {
+    "stdout": "{\"content\":\"Hello! I'm Gemini, your AI assistant. How can I help you today?\"}",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "expected": {
+    "content": "Hello! I'm Gemini, your AI assistant. How can I help you today?",
+    "isError": false
+  }
+}

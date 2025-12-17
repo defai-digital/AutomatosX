@@ -45,10 +45,10 @@ describe('CLI Adapter', () => {
       expect(models.length).toBeGreaterThan(0);
     });
 
-    it('supports models defined in config', () => {
+    it('supports default model', () => {
       const adapter = createCLIAdapter(claudeConfig);
-      expect(adapter.supportsModel('claude-sonnet-4-20250514')).toBe(true);
-      expect(adapter.supportsModel('claude-3-5-sonnet-20241022')).toBe(true);
+      // All providers use CLI's default model - we don't specify individual models
+      expect(adapter.supportsModel('default')).toBe(true);
       expect(adapter.supportsModel('nonexistent-model')).toBe(false);
     });
 
@@ -91,7 +91,7 @@ describe('CLI Adapter', () => {
     it('codex config has correct structure', () => {
       expect(codexConfig.providerId).toBe('codex');
       expect(codexConfig.command).toBe('codex');
-      expect(codexConfig.outputFormat).toBe('json');
+      expect(codexConfig.outputFormat).toBe('stream-json');
     });
 
     it('qwen config has correct structure', () => {
@@ -103,14 +103,16 @@ describe('CLI Adapter', () => {
     it('glm config has correct structure', () => {
       expect(glmConfig.providerId).toBe('glm');
       expect(glmConfig.command).toBe('ax-glm');
-      expect(glmConfig.outputFormat).toBe('text');
+      expect(glmConfig.outputFormat).toBe('stream-json');
+      expect(glmConfig.promptStyle).toBe('arg');
       expect(glmConfig.models.length).toBeGreaterThan(0);
     });
 
     it('grok config has correct structure', () => {
       expect(grokConfig.providerId).toBe('grok');
       expect(grokConfig.command).toBe('ax-grok');
-      expect(grokConfig.outputFormat).toBe('text');
+      expect(grokConfig.outputFormat).toBe('stream-json');
+      expect(grokConfig.promptStyle).toBe('arg');
       expect(grokConfig.models.length).toBeGreaterThan(0);
     });
 
@@ -163,9 +165,9 @@ describe('CLI Adapter', () => {
 
     it('gets provider by model', () => {
       const registry = createProviderRegistry();
-      const provider = registry.getByModel('gpt-4o');
+      // All providers use 'default' model - getByModel returns first match
+      const provider = registry.getByModel('default');
       expect(provider).toBeDefined();
-      expect(provider?.providerId).toBe('codex');
     });
 
     it('returns undefined for unknown model', () => {
@@ -175,15 +177,16 @@ describe('CLI Adapter', () => {
 
     it('checks if model exists', () => {
       const registry = createProviderRegistry();
-      expect(registry.hasModel('claude-sonnet-4-20250514')).toBe(true);
-      expect(registry.hasModel('gemini-2.5-pro')).toBe(true);
+      // All providers have 'default' model
+      expect(registry.hasModel('default')).toBe(true);
       expect(registry.hasModel('unknown')).toBe(false);
     });
 
     it('gets all models across providers', () => {
       const registry = createProviderRegistry();
       const models = registry.getAllModels();
-      expect(models.length).toBeGreaterThan(10);
+      // 6 providers, each with 1 'default' model
+      expect(models.length).toBe(6);
       expect(models.some((m) => m.providerId === 'claude')).toBe(true);
       expect(models.some((m) => m.providerId === 'gemini')).toBe(true);
     });
@@ -388,10 +391,10 @@ describe('GLM and Grok CLI Adapters', () => {
       expect(adapter.config.command).toBe('ax-glm');
     });
 
-    it('supports GLM models', () => {
+    it('supports GLM default model', () => {
       const adapter = createCLIAdapter(glmConfig);
-      expect(adapter.supportsModel('glm-4-plus')).toBe(true);
-      expect(adapter.supportsModel('glm-4-air')).toBe(true);
+      // GLM uses CLI's default model - we don't specify individual models
+      expect(adapter.supportsModel('default')).toBe(true);
       expect(adapter.supportsModel('nonexistent-model')).toBe(false);
     });
   });
@@ -407,10 +410,10 @@ describe('GLM and Grok CLI Adapters', () => {
       expect(adapter.config.command).toBe('ax-grok');
     });
 
-    it('supports Grok models', () => {
+    it('supports Grok default model', () => {
       const adapter = createCLIAdapter(grokConfig);
-      expect(adapter.supportsModel('grok-3')).toBe(true);
-      expect(adapter.supportsModel('grok-2')).toBe(true);
+      // Grok uses CLI's default model - we don't specify individual models
+      expect(adapter.supportsModel('default')).toBe(true);
       expect(adapter.supportsModel('nonexistent-model')).toBe(false);
     });
   });

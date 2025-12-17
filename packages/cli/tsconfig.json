@@ -11,6 +11,19 @@
     { "path": "../core/workflow-engine" },
     { "path": "../core/routing-engine" },
     { "path": "../core/memory-domain" },
-    { "path": "../core/trace-domain" }
+    { "path": "../core/trace-domain" },
+    { "path": "../core/agent-domain" },
+    { "path": "../core/session-domain" },
+    { "path": "../core/config-domain" },
+    { "path": "../core/context-domain" },
+    { "path": "../core/iterate-domain" },
+    { "path": "../core/ability-domain" },
+    { "path": "../core/analysis-domain" },
+    { "path": "../guard" },
+    { "path": "../adapters/providers" },
+    { "path": "../adapters/sqlite" },
+    { "path": "../core/agent-execution" },
+    { "path": "../core/cross-cutting" },
+    { "path": "../mcp-server" }
   ]
 }

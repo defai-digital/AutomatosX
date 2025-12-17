@@ -10,6 +10,15 @@
 import type { ParsedOutput, TokenUsage, CLIProviderConfig } from './types.js';
 
 /**
+ * Strips ANSI escape codes from text
+ * These are terminal control sequences like colors, cursor movement, etc.
+ */
+function stripAnsi(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+}
+
+/**
  * Parses CLI output based on the expected format
  *
  * @param stdout - Raw stdout from CLI process
@@ -20,13 +29,16 @@ export function parseOutput(
   stdout: string,
   format: CLIProviderConfig['outputFormat']
 ): ParsedOutput {
+  // Strip ANSI escape codes first
+  const cleaned = stripAnsi(stdout);
+
   switch (format) {
     case 'json':
-      return parseJSON(stdout);
+      return parseJSON(cleaned);
     case 'stream-json':
-      return parseStreamJSON(stdout);
+      return parseStreamJSON(cleaned);
     case 'text':
-      return parseText(stdout);
+      return parseText(cleaned);
   }
 }
 
@@ -70,16 +82,27 @@ function parseStreamJSON(stdout: string): ParsedOutput {
       continue;
     }
 
+    // Skip known informational lines from CLIs
+    if (trimmedLine.startsWith('Reading prompt from stdin')) {
+      continue;
+    }
+
     try {
       const data = JSON.parse(trimmedLine) as Record<string, unknown>;
       const chunk = extractContent(data);
       if (chunk.length > 0) {
         contentChunks.push(chunk);
       }
-      lastMetadata = data;
+      // Store metadata from turn.completed for usage info
+      if (data.type === 'turn.completed') {
+        lastMetadata = data;
+      }
     } catch {
-      // Non-JSON line, might be raw content
-      contentChunks.push(trimmedLine);
+      // Non-JSON line - skip non-content lines
+      // Only add if it looks like actual content (not CLI progress messages)
+      if (!trimmedLine.includes('...') && trimmedLine.length > 10) {
+        contentChunks.push(trimmedLine);
+      }
     }
   }
 
@@ -103,6 +126,45 @@ function parseText(stdout: string): ParsedOutput {
  * Tries common field names used by different providers
  */
 function extractContent(data: Record<string, unknown>): string {
+  // Handle Codex-style item.completed events
+  // {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+  if (data.type === 'item.completed' && typeof data.item === 'object' && data.item !== null) {
+    const item = data.item as Record<string, unknown>;
+    // Only extract agent_message type, not reasoning
+    if (item.type === 'agent_message' && typeof item.text === 'string') {
+      return item.text;
+    }
+    return '';
+  }
+
+  // Skip non-content events (thread.started, turn.started, turn.completed, etc.)
+  if (data.type === 'thread.started' || data.type === 'turn.started' || data.type === 'turn.completed') {
+    return '';
+  }
+
+  // Handle ax-glm/ax-grok style: {"role":"assistant","content":"..."}
+  // Only extract assistant messages, skip user messages
+  if (data.role === 'assistant' && typeof data.content === 'string') {
+    return data.content;
+  }
+  if (data.role === 'user') {
+    return '';  // Skip user echo
+  }
+
+  // Handle ax-glm/ax-grok --json output: {"messages":[{"role":"assistant","content":"..."}]}
+  if (Array.isArray(data.messages)) {
+    const assistantMessages = data.messages
+      .filter((msg): msg is { role: string; content: string } => {
+        if (typeof msg !== 'object' || msg === null) return false;
+        const m = msg as Record<string, unknown>;
+        return m.role === 'assistant' && typeof m.content === 'string';
+      })
+      .map((msg) => msg.content);
+    if (assistantMessages.length > 0) {
+      return assistantMessages.join('\n');
+    }
+  }
+
   // Common response field names
   const contentFields = ['content', 'text', 'response', 'message', 'output', 'result'];
 

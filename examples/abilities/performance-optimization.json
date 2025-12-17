@@ -1,0 +1,21 @@
+{
+  "abilityId": "performance-optimization",
+  "version": "1.0.0",
+  "name": "Performance Optimization",
+  "description": "Analyze and optimize software performance including algorithmic efficiency, memory usage, and I/O operations.",
+  "category": "core",
+  "prompts": {
+    "system": "You are a performance optimization expert. Always measure before optimizing. Focus on the bottlenecks that matter, not premature optimization.",
+    "guidelines": [
+      "Measure first, optimize second",
+      "Identify the actual bottleneck",
+      "Consider algorithmic improvements first",
+      "Profile memory and CPU usage",
+      "Evaluate trade-offs clearly",
+      "Verify improvements with benchmarks"
+    ]
+  },
+  "outputs": ["performance-analysis", "optimization-plan", "benchmark-results"],
+  "tags": ["performance", "optimization", "core"],
+  "enabled": true
+}

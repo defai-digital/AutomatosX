@@ -5,6 +5,7 @@ import {
   runCommand,
   listCommand,
   traceCommand,
+  doctorCommand,
   helpCommand,
   versionCommand,
   CLI_VERSION,
@@ -95,6 +96,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(false);
@@ -113,6 +118,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -131,6 +140,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -150,6 +163,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -169,6 +186,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: 2,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -189,6 +210,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -206,6 +231,10 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
@@ -225,10 +254,14 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('automatosx');
+      expect(result.message).toContain('AutomatosX');
       expect(result.message).toContain('Commands:');
     });
   });
@@ -245,10 +278,102 @@ describe('CLI', () => {
         traceId: undefined,
         limit: undefined,
         input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
       });
 
       expect(result.success).toBe(true);
       expect(result.message).toContain(CLI_VERSION);
+    });
+  });
+
+  describe('Doctor Command', () => {
+    it('should run system health check', async () => {
+      const result = await doctorCommand([], {
+        help: false,
+        version: false,
+        verbose: false,
+        format: 'text',
+        workflowDir: undefined,
+        workflowId: undefined,
+        traceId: undefined,
+        limit: undefined,
+        input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
+      });
+
+      expect(result.success).toBeDefined();
+      expect(result.exitCode).toBeDefined();
+      expect(result.message).toBeDefined();
+    });
+
+    it('should support JSON format output', async () => {
+      const result = await doctorCommand([], {
+        help: false,
+        version: false,
+        verbose: false,
+        format: 'json',
+        workflowDir: undefined,
+        workflowId: undefined,
+        traceId: undefined,
+        limit: undefined,
+        input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
+      });
+
+      expect(result.success).toBeDefined();
+      expect(result.data).toBeDefined();
+      expect(typeof result.data).toBe('object');
+    });
+
+    it('should check specific provider when argument provided', async () => {
+      const result = await doctorCommand(['claude'], {
+        help: false,
+        version: false,
+        verbose: false,
+        format: 'text',
+        workflowDir: undefined,
+        workflowId: undefined,
+        traceId: undefined,
+        limit: undefined,
+        input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
+      });
+
+      expect(result.success).toBeDefined();
+      expect(result.exitCode).toBeDefined();
+    });
+
+    it('should support verbose mode', async () => {
+      const result = await doctorCommand([], {
+        help: false,
+        version: false,
+        verbose: true,
+        format: 'text',
+        workflowDir: undefined,
+        workflowId: undefined,
+        traceId: undefined,
+        limit: undefined,
+        input: undefined,
+        iterate: false,
+        maxIterations: undefined,
+        maxTime: undefined,
+        noContext: false,
+      });
+
+      expect(result.success).toBeDefined();
+      expect(result.message).toBeDefined();
     });
   });
 });

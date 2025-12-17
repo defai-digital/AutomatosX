@@ -40,6 +40,18 @@ export interface CLIOptions {
   traceId: string | undefined;
   limit: number | undefined;
   input: string | undefined;
+  // Iterate mode options
+  iterate: boolean;
+  maxIterations: number | undefined;
+  maxTime: string | undefined;
+  noContext: boolean;
+  // Ability-related options
+  category: string | undefined;
+  tags: string[] | undefined;
+  agent: string | undefined;
+  task: string | undefined;
+  core: string | undefined;
+  maxTokens: number | undefined;
 }
 
 /**
@@ -67,8 +79,24 @@ export const CLI_COMMANDS = {
   RUN: 'run',
   LIST: 'list',
   TRACE: 'trace',
+  DOCTOR: 'doctor',
+  GUARD: 'guard',
+  CALL: 'call',
+  AGENT: 'agent',
+  ABILITY: 'ability',
+  SESSION: 'session',
+  SETUP: 'setup',
+  CONFIG: 'config',
+  BUGFIX: 'bugfix',
+  REFACTOR: 'refactor',
   HELP: 'help',
   VERSION: 'version',
+  // High-value additions
+  RESUME: 'resume',
+  HISTORY: 'history',
+  STATUS: 'status',
+  CLEANUP: 'cleanup',
+  ITERATE: 'iterate',
 } as const;
 
 export type CLICommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];

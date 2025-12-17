@@ -1,0 +1,16 @@
+{
+  "provider": "claude",
+  "scenario": "success-simple",
+  "outputFormat": "stream-json",
+  "capturedAt": "2025-12-17T10:00:00Z",
+  "cliVersion": "1.0.0",
+  "rawOutput": {
+    "stdout": "{\"type\":\"turn.started\",\"id\":\"turn_123\"}\n{\"type\":\"content\",\"content\":\"Hello! How can I help you today?\"}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":10,\"output_tokens\":8}}",
+    "stderr": "",
+    "exitCode": 0
+  },
+  "expected": {
+    "content": "Hello! How can I help you today?",
+    "isError": false
+  }
+}

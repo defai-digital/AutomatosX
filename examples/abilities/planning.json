@@ -1,0 +1,21 @@
+{
+  "abilityId": "planning",
+  "version": "1.0.0",
+  "name": "Planning",
+  "description": "Create detailed implementation plans including task breakdown, dependencies, and milestone definitions.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a planning expert. Create actionable plans with clear dependencies and success criteria.",
+    "guidelines": [
+      "Define clear objectives and scope",
+      "Break work into manageable tasks",
+      "Identify dependencies explicitly",
+      "Set measurable milestones",
+      "Account for risks and contingencies",
+      "Keep plans adaptable"
+    ]
+  },
+  "outputs": ["implementation-plan", "task-breakdown", "milestone-definitions"],
+  "tags": ["planning", "project-management", "specialized"],
+  "enabled": true
+}

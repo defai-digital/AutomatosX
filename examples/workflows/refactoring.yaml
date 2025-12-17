@@ -1,0 +1,105 @@
+workflowId: refactoring
+version: "1.0.0"
+name: Code Refactoring Workflow
+description: Systematic code refactoring with safety checks
+
+steps:
+  - stepId: scan-opportunities
+    type: tool
+    name: Scan for Refactoring Opportunities
+    timeout: 120000
+    config:
+      tool: refactor_scan
+      args:
+        types:
+          - extract-function
+          - extract-variable
+          - simplify-conditional
+          - remove-duplication
+          - improve-types
+          - modernize-syntax
+        minConfidence: 0.7
+
+  - stepId: prioritize-refactoring
+    type: prompt
+    name: Prioritize Refactoring Tasks
+    timeout: 60000
+    config:
+      agentId: architecture
+      prompt: |
+        Prioritize refactoring opportunities:
+        1. Impact on maintainability
+        2. Risk level (breaking changes)
+        3. Effort required
+        4. Dependencies affected
+
+  - stepId: create-safety-net
+    type: tool
+    name: Ensure Test Coverage
+    timeout: 120000
+    config:
+      tool: guard_check
+      args:
+        policyId: test-coverage
+        threshold: 80
+        scope: affected-files
+
+  - stepId: apply-refactoring
+    type: tool
+    name: Apply Refactoring
+    timeout: 180000
+    retryPolicy:
+      maxAttempts: 1
+      backoffMs: 1000
+    config:
+      tool: refactor_apply
+      args:
+        dryRun: false
+        createBackup: true
+        runTests: true
+
+  - stepId: verify-behavior
+    type: tool
+    name: Verify Behavior Unchanged
+    timeout: 120000
+    config:
+      tool: guard_check
+      args:
+        policyId: test-pass
+        compareBaseline: true
+
+  - stepId: review-changes
+    type: prompt
+    name: Review Refactored Code
+    timeout: 60000
+    config:
+      agentId: quality
+      prompt: |
+        Review refactored code:
+        1. Verify readability improved
+        2. Check for new issues
+        3. Validate patterns applied correctly
+        4. Ensure documentation updated
+
+  - stepId: update-documentation
+    type: prompt
+    name: Update Documentation
+    timeout: 30000
+    config:
+      agentId: writer
+      prompt: |
+        Update affected documentation:
+        1. API changes
+        2. Architecture changes
+        3. Migration notes if needed
+
+metadata:
+  category: maintenance
+  tags:
+    - refactoring
+    - code-quality
+    - maintenance
+  requiredAbilities:
+    - clean-code
+    - design-patterns
+    - testing-strategy

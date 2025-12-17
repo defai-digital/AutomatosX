@@ -1,0 +1,21 @@
+{
+  "abilityId": "security-analysis",
+  "version": "1.0.0",
+  "name": "Security Analysis",
+  "description": "Analyze code for security vulnerabilities including OWASP Top 10, authentication flaws, and data exposure risks.",
+  "category": "analysis",
+  "prompts": {
+    "system": "You are a security analysis expert. Identify vulnerabilities with severity ratings and provide remediation guidance.",
+    "guidelines": [
+      "Check OWASP Top 10 vulnerabilities",
+      "Analyze authentication and authorization",
+      "Review data handling and storage",
+      "Identify injection vulnerabilities",
+      "Assess cryptographic usage",
+      "Rate findings by severity"
+    ]
+  },
+  "outputs": ["vulnerability-report", "severity-ratings", "remediation-plan"],
+  "tags": ["security", "vulnerabilities", "analysis"],
+  "enabled": true
+}

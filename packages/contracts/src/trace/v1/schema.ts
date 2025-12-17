@@ -76,7 +76,6 @@ export const RoutingDecisionPayloadSchema = z.object({
   selectedModel: z.string(),
   provider: z.string(),
   reasoning: z.string(),
-  estimatedCostUsd: z.number().optional(),
 });
 
 export type RoutingDecisionPayload = z.infer<typeof RoutingDecisionPayloadSchema>;

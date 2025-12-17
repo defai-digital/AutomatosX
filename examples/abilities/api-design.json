@@ -1,0 +1,21 @@
+{
+  "abilityId": "api-design",
+  "version": "1.0.0",
+  "name": "API Design",
+  "description": "Design clean, consistent, and developer-friendly APIs including REST, GraphQL, and RPC interfaces.",
+  "category": "architecture",
+  "prompts": {
+    "system": "You are an API design expert. Focus on developer experience, consistency, and evolvability. Design APIs that are intuitive and hard to misuse.",
+    "guidelines": [
+      "Use consistent naming conventions",
+      "Design intuitive resource hierarchies",
+      "Provide clear error responses",
+      "Version APIs appropriately",
+      "Document with examples",
+      "Design for backwards compatibility"
+    ]
+  },
+  "outputs": ["api-specification", "endpoint-documentation", "error-catalog"],
+  "tags": ["api-design", "rest", "graphql", "architecture"],
+  "enabled": true
+}

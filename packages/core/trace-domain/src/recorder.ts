@@ -200,15 +200,13 @@ export class TraceRecorder {
     traceId: string,
     selectedModel: string,
     provider: string,
-    reasoning: string,
-    estimatedCostUsd?: number
+    reasoning: string
   ): Promise<string> {
     return this.recordEvent(traceId, 'decision.routing', {
       payload: {
         selectedModel,
         provider,
         reasoning,
-        estimatedCostUsd,
       },
     });
   }

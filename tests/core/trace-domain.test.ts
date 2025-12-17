@@ -157,8 +157,7 @@ describe('Trace Domain', () => {
         traceId,
         'claude-3-opus',
         'anthropic',
-        'Selected for code tasks',
-        0.05
+        'Selected for code tasks'
       );
 
       const events = await store.getTrace(traceId);

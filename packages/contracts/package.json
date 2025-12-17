@@ -10,25 +10,101 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./workflow/v1": {
-      "types": "./dist/workflow/v1/index.d.ts",
-      "import": "./dist/workflow/v1/index.js"
+    "./ability/v1": {
+      "types": "./dist/ability/v1/index.d.ts",
+      "import": "./dist/ability/v1/index.js"
+    },
+    "./agent/v1": {
+      "types": "./dist/agent/v1/index.d.ts",
+      "import": "./dist/agent/v1/index.js"
+    },
+    "./analysis/v1": {
+      "types": "./dist/analysis/v1/index.d.ts",
+      "import": "./dist/analysis/v1/index.js"
+    },
+    "./bugfix/v1": {
+      "types": "./dist/bugfix/v1/index.d.ts",
+      "import": "./dist/bugfix/v1/index.js"
+    },
+    "./cli/v1": {
+      "types": "./dist/cli/v1/index.d.ts",
+      "import": "./dist/cli/v1/index.js"
+    },
+    "./config/v1": {
+      "types": "./dist/config/v1/index.d.ts",
+      "import": "./dist/config/v1/index.js"
+    },
+    "./context/v1": {
+      "types": "./dist/context/v1/index.d.ts",
+      "import": "./dist/context/v1/index.js"
+    },
+    "./cross-cutting/v1": {
+      "types": "./dist/cross-cutting/v1/index.d.ts",
+      "import": "./dist/cross-cutting/v1/index.js"
+    },
+    "./design/v1": {
+      "types": "./dist/design/v1/index.d.ts",
+      "import": "./dist/design/v1/index.js"
+    },
+    "./guard/v1": {
+      "types": "./dist/guard/v1/index.d.ts",
+      "import": "./dist/guard/v1/index.js"
+    },
+    "./iterate/v1": {
+      "types": "./dist/iterate/v1/index.d.ts",
+      "import": "./dist/iterate/v1/index.js"
     },
     "./mcp/v1": {
       "types": "./dist/mcp/v1/index.d.ts",
       "import": "./dist/mcp/v1/index.js"
     },
-    "./routing/v1": {
-      "types": "./dist/routing/v1/index.d.ts",
-      "import": "./dist/routing/v1/index.js"
-    },
     "./memory/v1": {
       "types": "./dist/memory/v1/index.d.ts",
       "import": "./dist/memory/v1/index.js"
     },
+    "./orchestration/v1": {
+      "types": "./dist/orchestration/v1/index.d.ts",
+      "import": "./dist/orchestration/v1/index.js"
+    },
+    "./provider/v1": {
+      "types": "./dist/provider/v1/index.d.ts",
+      "import": "./dist/provider/v1/index.js"
+    },
+    "./refactor/v1": {
+      "types": "./dist/refactor/v1/index.d.ts",
+      "import": "./dist/refactor/v1/index.js"
+    },
+    "./resilience/v1": {
+      "types": "./dist/resilience/v1/index.d.ts",
+      "import": "./dist/resilience/v1/index.js"
+    },
+    "./routing/v1": {
+      "types": "./dist/routing/v1/index.d.ts",
+      "import": "./dist/routing/v1/index.js"
+    },
+    "./session/v1": {
+      "types": "./dist/session/v1/index.d.ts",
+      "import": "./dist/session/v1/index.js"
+    },
+    "./storage/v1": {
+      "types": "./dist/storage/v1/index.d.ts",
+      "import": "./dist/storage/v1/index.js"
+    },
+    "./telemetry/v1": {
+      "types": "./dist/telemetry/v1/index.d.ts",
+      "import": "./dist/telemetry/v1/index.js"
+    },
+    "./token-budget/v1": {
+      "types": "./dist/token-budget/v1/index.d.ts",
+      "import": "./dist/token-budget/v1/index.js"
+    },
     "./trace/v1": {
       "types": "./dist/trace/v1/index.d.ts",
       "import": "./dist/trace/v1/index.js"
+    },
+    "./workflow/v1": {
+      "types": "./dist/workflow/v1/index.d.ts",
+      "import": "./dist/workflow/v1/index.js"
     }
   },
   "scripts": {

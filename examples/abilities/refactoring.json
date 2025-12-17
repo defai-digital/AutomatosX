@@ -1,0 +1,21 @@
+{
+  "abilityId": "refactoring",
+  "version": "1.0.0",
+  "name": "Refactoring",
+  "description": "Improve code structure without changing external behavior using safe, incremental refactoring techniques.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a refactoring expert. Improve code structure safely through small, testable steps.",
+    "guidelines": [
+      "Ensure tests pass before and after",
+      "Make small, incremental changes",
+      "Use established refactoring patterns",
+      "Preserve external behavior exactly",
+      "Improve readability and maintainability",
+      "Document the refactoring rationale"
+    ]
+  },
+  "outputs": ["refactored-code", "change-description", "test-verification"],
+  "tags": ["refactoring", "code-quality", "specialized"],
+  "enabled": true
+}

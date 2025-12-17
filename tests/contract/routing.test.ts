@@ -3,7 +3,7 @@ import {
   RoutingInputSchema,
   RoutingDecisionSchema,
   RoutingRecordSchema,
-  BudgetSchema,
+  RoutingConstraintsSchema,
   ModelRequirementsSchema,
   validateRoutingInput,
   validateRoutingDecision,
@@ -29,14 +29,10 @@ describe('Routing Decision Contract V1', () => {
     it('should validate a complete routing input', () => {
       const input: RoutingInput = {
         taskType: 'code',
-        budget: {
-          maxCostUsd: 0.1,
-          maxTokens: 4000,
-          maxLatencyMs: 5000,
-        },
         riskLevel: 'high',
         requirements: {
           minContextLength: 8000,
+          maxLatencyMs: 5000,
           capabilities: ['function_calling', 'json_mode'],
           preferredProviders: ['anthropic', 'openai'],
           excludedModels: ['experimental-model'],
@@ -56,9 +52,12 @@ describe('Routing Decision Contract V1', () => {
         selectedModel: 'claude-3-opus',
         provider: 'anthropic',
         isExperimental: false,
-        estimatedCostUsd: 0.05,
-        reasoning: 'Selected based on task complexity and budget constraints',
+        reasoning: 'Selected based on task complexity and capability requirements',
         fallbackModels: ['claude-3-sonnet', 'gpt-4'],
+        constraints: {
+          capabilitiesMet: true,
+          riskCompliant: true,
+        },
       };
 
       const result = RoutingDecisionSchema.safeParse(decision);
@@ -76,7 +75,12 @@ describe('Routing Decision Contract V1', () => {
           selectedModel: 'gpt-4',
           provider: 'openai',
           isExperimental: false,
-          reasoning: 'Cost-effective for analysis tasks',
+          reasoning: 'Optimal for analysis tasks',
+          fallbackModels: [],
+          constraints: {
+            capabilitiesMet: true,
+            riskCompliant: true,
+          },
         },
         timestamp: '2024-12-14T12:00:00Z',
         metadata: { source: 'api' },
@@ -105,39 +109,7 @@ describe('Routing Decision Contract V1', () => {
     });
   });
 
-  describe('INV-RT-002: Budget Respect', () => {
-    it('should validate budget constraints', () => {
-      const validBudgets = [
-        { maxCostUsd: 0 },
-        { maxCostUsd: 1.5 },
-        { maxTokens: 1 },
-        { maxTokens: 100000 },
-        { maxLatencyMs: 1 },
-        { maxLatencyMs: 60000 },
-      ];
-
-      for (const budget of validBudgets) {
-        const result = BudgetSchema.safeParse(budget);
-        expect(result.success).toBe(true);
-      }
-    });
-
-    it('should reject invalid budget values', () => {
-      const invalidBudgets = [
-        { maxCostUsd: -1 }, // negative cost
-        { maxTokens: 0 }, // zero tokens
-        { maxTokens: -100 }, // negative tokens
-        { maxLatencyMs: 0 }, // zero latency
-      ];
-
-      for (const budget of invalidBudgets) {
-        const result = BudgetSchema.safeParse(budget);
-        expect(result.success).toBe(false);
-      }
-    });
-  });
-
-  describe('INV-RT-003: Risk Gating', () => {
+  describe('INV-RT-002: Risk Gating', () => {
     it('should accept all valid risk levels', () => {
       const validLevels = ['low', 'medium', 'high'];
 
@@ -161,11 +133,13 @@ describe('Routing Decision Contract V1', () => {
     });
   });
 
-  describe('INV-RT-004: Reasoning Requirement', () => {
+  describe('INV-RT-003: Reasoning Requirement', () => {
     it('should require non-empty reasoning', () => {
       const decisionWithoutReasoning = {
         selectedModel: 'claude-3',
         provider: 'anthropic',
+        fallbackModels: [],
+        constraints: { capabilitiesMet: true, riskCompliant: true },
         // reasoning is missing
       };
 
@@ -178,6 +152,8 @@ describe('Routing Decision Contract V1', () => {
         selectedModel: 'claude-3',
         provider: 'anthropic',
         reasoning: '',
+        fallbackModels: [],
+        constraints: { capabilitiesMet: true, riskCompliant: true },
       };
 
       const result = RoutingDecisionSchema.safeParse(
@@ -190,11 +166,68 @@ describe('Routing Decision Contract V1', () => {
       const decision = {
         selectedModel: 'claude-3',
         provider: 'anthropic',
-        reasoning: 'Selected for optimal cost-performance balance',
+        reasoning: 'Selected for optimal capability-performance balance',
+        fallbackModels: [],
+        constraints: { capabilitiesMet: true, riskCompliant: true },
       };
 
       const result = RoutingDecisionSchema.safeParse(decision);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('INV-RT-004: Fallback Consistency', () => {
+    it('should require fallbackModels array', () => {
+      const decisionWithoutFallbacks = {
+        selectedModel: 'claude-3',
+        provider: 'anthropic',
+        reasoning: 'Test reasoning',
+        constraints: { capabilitiesMet: true, riskCompliant: true },
+        // fallbackModels is missing
+      };
+
+      const result = RoutingDecisionSchema.safeParse(decisionWithoutFallbacks);
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept empty fallbackModels array', () => {
+      const decision = {
+        selectedModel: 'claude-3',
+        provider: 'anthropic',
+        reasoning: 'Test reasoning',
+        fallbackModels: [],
+        constraints: { capabilitiesMet: true, riskCompliant: true },
+      };
+
+      const result = RoutingDecisionSchema.safeParse(decision);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('INV-RT-005: Capability Match (Constraints)', () => {
+    it('should require constraints object', () => {
+      const decisionWithoutConstraints = {
+        selectedModel: 'claude-3',
+        provider: 'anthropic',
+        reasoning: 'Test reasoning',
+        fallbackModels: [],
+        // constraints is missing
+      };
+
+      const result = RoutingDecisionSchema.safeParse(decisionWithoutConstraints);
+      expect(result.success).toBe(false);
+    });
+
+    it('should validate constraints schema', () => {
+      const validConstraints = { capabilitiesMet: true, riskCompliant: true };
+      const result = RoutingConstraintsSchema.safeParse(validConstraints);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject invalid constraints', () => {
+      const invalidConstraints = { capabilitiesMet: 'yes', riskCompliant: 1 };
+      const result = RoutingConstraintsSchema.safeParse(invalidConstraints);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -223,6 +256,24 @@ describe('Routing Decision Contract V1', () => {
       const result = ModelRequirementsSchema.safeParse(requirements);
       expect(result.success).toBe(false);
     });
+
+    it('should validate maxLatencyMs', () => {
+      const requirements = {
+        maxLatencyMs: 5000,
+      };
+
+      const result = ModelRequirementsSchema.safeParse(requirements);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject invalid maxLatencyMs', () => {
+      const invalidValues = [0, -1, -100];
+
+      for (const maxLatencyMs of invalidValues) {
+        const result = ModelRequirementsSchema.safeParse({ maxLatencyMs });
+        expect(result.success).toBe(false);
+      }
+    });
   });
 
   describe('Provider Validation', () => {
@@ -234,6 +285,8 @@ describe('Routing Decision Contract V1', () => {
           selectedModel: 'test-model',
           provider,
           reasoning: 'Test reasoning',
+          fallbackModels: [],
+          constraints: { capabilitiesMet: true, riskCompliant: true },
         };
         const result = RoutingDecisionSchema.safeParse(decision);
         expect(result.success).toBe(true);
@@ -245,6 +298,8 @@ describe('Routing Decision Contract V1', () => {
         selectedModel: 'test-model',
         provider: 'unknown-provider',
         reasoning: 'Test reasoning',
+        fallbackModels: [],
+        constraints: { capabilitiesMet: true, riskCompliant: true },
       };
       const result = RoutingDecisionSchema.safeParse(decision);
       expect(result.success).toBe(false);

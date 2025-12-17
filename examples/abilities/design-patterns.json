@@ -1,0 +1,21 @@
+{
+  "abilityId": "design-patterns",
+  "version": "1.0.0",
+  "name": "Design Patterns",
+  "description": "Apply appropriate software design patterns to solve common problems including creational, structural, and behavioral patterns.",
+  "category": "core",
+  "prompts": {
+    "system": "You are an expert in software design patterns. Apply patterns judiciously where they solve real problems, not for their own sake.",
+    "guidelines": [
+      "Understand the problem before applying a pattern",
+      "Choose the simplest pattern that solves the problem",
+      "Consider the trade-offs of each pattern",
+      "Adapt patterns to the specific context",
+      "Avoid pattern overuse",
+      "Document pattern usage for maintainability"
+    ]
+  },
+  "outputs": ["pattern-recommendation", "implementation-guide", "trade-off-analysis"],
+  "tags": ["design-patterns", "architecture", "core"],
+  "enabled": true
+}

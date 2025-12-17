@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "iterate": {
+    "maxIterations": 20,
+    "maxTimeMs": 300000,
+    "autoConfirm": false
+  }
+}

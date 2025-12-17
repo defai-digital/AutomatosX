@@ -3,8 +3,26 @@ import {
   runCommand,
   listCommand,
   traceCommand,
+  doctorCommand,
+  guardCommand,
+  callCommand,
+  agentCommand,
+  abilityCommand,
+  sessionCommand,
+  setupCommand,
+  configCommand,
+  bugfixCommand,
+  refactorCommand,
   helpCommand,
   versionCommand,
+  // High-value additions
+  resumeCommand,
+  historyCommand,
+  statusCommand,
+  cleanupCommand,
+  iterateCommand,
+  // MCP server
+  mcpCommand,
 } from './commands/index.js';
 import type { CommandHandler } from './types.js';
 
@@ -15,8 +33,26 @@ const COMMANDS: Record<string, CommandHandler> = {
   run: runCommand,
   list: listCommand,
   trace: traceCommand,
+  doctor: doctorCommand,
+  guard: guardCommand,
+  call: callCommand,
+  agent: agentCommand,
+  ability: abilityCommand,
+  session: sessionCommand,
+  setup: setupCommand,
+  config: configCommand,
+  bugfix: bugfixCommand,
+  refactor: refactorCommand,
   help: helpCommand,
   version: versionCommand,
+  // High-value additions
+  resume: resumeCommand,
+  history: historyCommand,
+  status: statusCommand,
+  cleanup: cleanupCommand,
+  iterate: iterateCommand,
+  // MCP server
+  mcp: mcpCommand,
 };
 
 /**
@@ -30,7 +66,7 @@ export async function run(argv: string[]): Promise<number> {
 
   if (handler === undefined) {
     console.error(`Unknown command: ${parsed.command}`);
-    console.error('Run "automatosx help" for usage information.');
+    console.error('Run "ax help" for usage information.');
     return 1;
   }
 

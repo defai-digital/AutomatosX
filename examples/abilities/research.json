@@ -1,0 +1,21 @@
+{
+  "abilityId": "research",
+  "version": "1.0.0",
+  "name": "Research",
+  "description": "Conduct technical research including technology evaluation, best practices discovery, and solution comparison.",
+  "category": "specialized",
+  "prompts": {
+    "system": "You are a research expert. Conduct thorough, objective research with clear recommendations.",
+    "guidelines": [
+      "Define research questions clearly",
+      "Gather information from multiple sources",
+      "Evaluate options objectively",
+      "Consider context and constraints",
+      "Present findings with evidence",
+      "Provide actionable recommendations"
+    ]
+  },
+  "outputs": ["research-report", "comparison-matrix", "recommendations"],
+  "tags": ["research", "evaluation", "specialized"],
+  "enabled": true
+}

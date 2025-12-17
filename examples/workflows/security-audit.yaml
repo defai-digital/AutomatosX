@@ -1,0 +1,135 @@
+workflowId: security-audit
+version: "1.0.0"
+name: Security Audit Workflow
+description: Comprehensive security audit and vulnerability assessment
+
+steps:
+  - stepId: define-scope
+    type: prompt
+    name: Define Audit Scope
+    timeout: 30000
+    config:
+      agentId: security
+      prompt: |
+        Define security audit scope:
+        1. Systems and components to audit
+        2. Compliance requirements
+        3. Previous audit findings
+        4. Known vulnerabilities to check
+
+  - stepId: dependency-scan
+    type: tool
+    name: Scan Dependencies
+    timeout: 120000
+    config:
+      tool: bugfix_scan
+      args:
+        categories:
+          - security
+        paths:
+          - package.json
+          - pnpm-lock.yaml
+
+  - stepId: code-security-scan
+    type: tool
+    name: Static Security Analysis
+    timeout: 180000
+    config:
+      tool: bugfix_scan
+      args:
+        categories:
+          - security
+          - injection
+          - authentication
+        minSeverity: low
+        useAst: true
+
+  - stepId: authentication-review
+    type: prompt
+    name: Review Authentication
+    timeout: 90000
+    config:
+      agentId: security
+      prompt: |
+        Review authentication mechanisms:
+        1. Password policies and storage
+        2. Session management
+        3. Token handling
+        4. MFA implementation
+        5. OAuth/OIDC configuration
+
+  - stepId: authorization-review
+    type: prompt
+    name: Review Authorization
+    timeout: 90000
+    config:
+      agentId: security
+      prompt: |
+        Review authorization mechanisms:
+        1. Role-based access control
+        2. Permission enforcement
+        3. Resource ownership checks
+        4. API endpoint protection
+
+  - stepId: data-protection-review
+    type: prompt
+    name: Review Data Protection
+    timeout: 90000
+    config:
+      agentId: security
+      prompt: |
+        Review data protection:
+        1. Encryption at rest
+        2. Encryption in transit
+        3. PII handling
+        4. Data retention policies
+        5. Backup security
+
+  - stepId: infrastructure-review
+    type: prompt
+    name: Review Infrastructure Security
+    timeout: 90000
+    config:
+      agentId: devops
+      prompt: |
+        Review infrastructure security:
+        1. Network segmentation
+        2. Firewall rules
+        3. Container security
+        4. Secret management
+        5. Logging and monitoring
+
+  - stepId: generate-report
+    type: prompt
+    name: Generate Security Report
+    timeout: 120000
+    config:
+      agentId: security
+      prompt: |
+        Generate security audit report:
+        1. Executive summary
+        2. Findings by severity
+        3. Risk assessment
+        4. Remediation recommendations
+        5. Compliance status
+
+  - stepId: create-remediation-tasks
+    type: tool
+    name: Create Remediation Tasks
+    timeout: 30000
+    config:
+      tool: task_create
+      args:
+        type: security-remediation
+        priority: severity-based
+
+metadata:
+  category: security
+  tags:
+    - security
+    - audit
+    - compliance
+  requiredAbilities:
+    - security
+    - infrastructure
+    - compliance

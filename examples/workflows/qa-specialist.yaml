@@ -1,0 +1,116 @@
+workflowId: qa-specialist
+version: "1.0.0"
+name: Quality Assurance Workflow
+description: Comprehensive testing and quality assurance process
+
+steps:
+  - stepId: analyze-changes
+    type: prompt
+    name: Analyze Changes for Testing
+    timeout: 60000
+    config:
+      agentId: quality
+      prompt: |
+        Analyze changes to determine testing needs:
+        1. Identify affected features
+        2. Determine test types needed
+        3. Assess risk level
+        4. Plan test coverage
+
+  - stepId: create-test-plan
+    type: prompt
+    name: Create Test Plan
+    timeout: 60000
+    config:
+      agentId: quality
+      prompt: |
+        Create comprehensive test plan:
+        1. Unit test requirements
+        2. Integration test scenarios
+        3. E2E test cases
+        4. Performance test criteria
+        5. Security test checklist
+
+  - stepId: generate-unit-tests
+    type: prompt
+    name: Generate Unit Tests
+    timeout: 180000
+    config:
+      agentId: quality
+      prompt: |
+        Generate unit tests:
+        1. Test happy paths
+        2. Test edge cases
+        3. Test error handling
+        4. Aim for high coverage
+
+  - stepId: generate-integration-tests
+    type: prompt
+    name: Generate Integration Tests
+    timeout: 180000
+    config:
+      agentId: quality
+      prompt: |
+        Generate integration tests:
+        1. API endpoint tests
+        2. Database integration tests
+        3. External service mocks
+        4. Data flow verification
+
+  - stepId: run-tests
+    type: tool
+    name: Execute Test Suite
+    timeout: 300000
+    retryPolicy:
+      maxAttempts: 2
+      backoffMs: 5000
+    config:
+      tool: guard_check
+      args:
+        policyId: test-suite
+        parallel: true
+
+  - stepId: analyze-coverage
+    type: tool
+    name: Analyze Test Coverage
+    timeout: 60000
+    config:
+      tool: metrics_query
+      args:
+        metric: test-coverage
+        breakdown: file
+
+  - stepId: performance-test
+    type: tool
+    name: Run Performance Tests
+    timeout: 300000
+    config:
+      tool: metrics_record
+      args:
+        metric: performance
+        type: benchmark
+
+  - stepId: generate-report
+    type: prompt
+    name: Generate QA Report
+    timeout: 60000
+    config:
+      agentId: writer
+      prompt: |
+        Generate QA report:
+        1. Test execution summary
+        2. Coverage analysis
+        3. Issues found
+        4. Performance metrics
+        5. Recommendations
+
+metadata:
+  category: quality
+  tags:
+    - testing
+    - qa
+    - quality-assurance
+  requiredAbilities:
+    - testing-strategy
+    - code-review
+    - performance-optimization

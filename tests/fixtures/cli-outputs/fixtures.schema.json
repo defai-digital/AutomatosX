@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/cli-output-fixture.schema.json",
+  "title": "CLI Output Fixture",
+  "description": "Schema for CLI output test fixtures used in consumer-driven contract testing",
+  "type": "object",
+  "required": ["provider", "scenario", "outputFormat", "rawOutput", "expected"],
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Provider ID (claude, gemini, codex, qwen, glm, grok)",
+      "enum": ["claude", "gemini", "codex", "qwen", "glm", "grok"]
+    },
+    "scenario": {
+      "type": "string",
+      "description": "Scenario description for this fixture",
+      "minLength": 1
+    },
+    "outputFormat": {
+      "type": "string",
+      "description": "Expected output format from this provider",
+      "enum": ["json", "stream-json", "text"]
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 datetime when this fixture was captured"
+    },
+    "cliVersion": {
+      "type": "string",
+      "description": "Version of the CLI that produced this output"
+    },
+    "rawOutput": {
+      "type": "object",
+      "description": "Raw CLI output",
+      "required": ["stdout"],
+      "additionalProperties": false,
+      "properties": {
+        "stdout": {
+          "type": "string",
+          "description": "Standard output from CLI process"
+        },
+        "stderr": {
+          "type": "string",
+          "description": "Standard error from CLI process",
+          "default": ""
+        },
+        "exitCode": {
+          "type": "integer",
+          "description": "Exit code from CLI process",
+          "default": 0
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "description": "Expected parsing result",
+      "required": ["content"],
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Expected extracted content"
+        },
+        "isError": {
+          "type": "boolean",
+          "description": "Whether this output represents an error",
+          "default": false
+        },
+        "errorCategory": {
+          "type": "string",
+          "description": "Expected error category if isError is true",
+          "enum": [
+            "authentication",
+            "quota",
+            "rate_limit",
+            "validation",
+            "network",
+            "server",
+            "timeout",
+            "not_found",
+            "configuration",
+            "unknown"
+          ]
+        }
+      }
+    }
+  }
+}

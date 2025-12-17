@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://automatosx.dev/schemas/guard/v1/policy.json",
+  "title": "AX Guard Policy",
+  "description": "Policy definition for AI coding governance",
+  "type": "object",
+  "properties": {
+    "policyId": {
+      "type": "string",
+      "description": "Unique identifier for this policy",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "allowedPaths": {
+      "type": "array",
+      "description": "Glob patterns for paths that may be modified. Supports {{variable}} placeholders.",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "forbiddenPaths": {
+      "type": "array",
+      "description": "Glob patterns for paths that must not be modified",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "requiredContracts": {
+      "type": "array",
+      "description": "Contract test suites that must pass",
+      "items": {
+        "type": "string",
+        "enum": ["workflow", "routing", "memory", "trace", "mcp"]
+      },
+      "default": []
+    },
+    "gates": {
+      "type": "array",
+      "description": "Gates to execute for this policy",
+      "items": {
+        "type": "string",
+        "enum": ["path_violation", "dependency", "change_radius", "contract_tests"]
+      },
+      "default": ["path_violation", "change_radius"]
+    },
+    "changeRadiusLimit": {
+      "type": "integer",
+      "description": "Maximum number of packages that can be modified",
+      "minimum": 1,
+      "default": 3
+    }
+  },
+  "required": ["policyId"],
+  "additionalProperties": false
+}

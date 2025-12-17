@@ -1,0 +1,21 @@
+{
+  "name": "@automatosx/agent-execution",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Agent execution domain for AutomatosX - checkpoints, delegation, parallel execution",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@automatosx/contracts": "workspace:*"
+  }
+}

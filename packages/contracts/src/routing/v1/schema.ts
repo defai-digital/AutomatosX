@@ -40,21 +40,14 @@ export const ModelCapabilitySchema = z.enum([
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 
 /**
- * Budget constraints
- */
-export const BudgetSchema = z.object({
-  maxCostUsd: z.number().min(0).optional(),
-  maxTokens: z.number().int().min(1).optional(),
-  maxLatencyMs: z.number().int().min(1).optional(),
-});
-
-export type Budget = z.infer<typeof BudgetSchema>;
-
-/**
  * Model requirements
+ *
+ * Note: AutomatosX intentionally does NOT perform cost calculations.
+ * Cost-based routing is excluded by design as costs change frequently.
  */
 export const ModelRequirementsSchema = z.object({
   minContextLength: z.number().int().min(1).optional(),
+  maxLatencyMs: z.number().int().min(1).optional(),
   capabilities: z.array(ModelCapabilitySchema).optional(),
   preferredProviders: z.array(z.string()).optional(),
   excludedModels: z.array(z.string()).optional(),
@@ -67,7 +60,6 @@ export type ModelRequirements = z.infer<typeof ModelRequirementsSchema>;
  */
 export const RoutingInputSchema = z.object({
   taskType: TaskTypeSchema,
-  budget: BudgetSchema.optional(),
   riskLevel: RiskLevelSchema.default('medium'),
   requirements: ModelRequirementsSchema.optional(),
   context: z.record(z.unknown()).optional(),
@@ -76,15 +68,25 @@ export const RoutingInputSchema = z.object({
 export type RoutingInput = z.infer<typeof RoutingInputSchema>;
 
 /**
+ * Routing constraints validation result
+ */
+export const RoutingConstraintsSchema = z.object({
+  capabilitiesMet: z.boolean(),
+  riskCompliant: z.boolean(),
+});
+
+export type RoutingConstraints = z.infer<typeof RoutingConstraintsSchema>;
+
+/**
  * Routing decision output
  */
 export const RoutingDecisionSchema = z.object({
   selectedModel: z.string().min(1),
   provider: ProviderSchema,
   isExperimental: z.boolean().default(false),
-  estimatedCostUsd: z.number().min(0).optional(),
   reasoning: z.string().min(1).max(512),
-  fallbackModels: z.array(z.string()).optional(),
+  fallbackModels: z.array(z.string()),
+  constraints: RoutingConstraintsSchema,
 });
 
 export type RoutingDecision = z.infer<typeof RoutingDecisionSchema>;

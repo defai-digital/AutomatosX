@@ -199,6 +199,13 @@ export interface CLIProviderConfig {
    * Available models
    */
   models: readonly ModelConfig[];
+
+  /**
+   * How the prompt is passed to the CLI
+   * - 'stdin': Write prompt to stdin (default for claude, gemini, codex)
+   * - 'arg': Pass prompt as command-line argument (for ax-glm, ax-grok)
+   */
+  promptStyle?: 'stdin' | 'arg' | undefined;
 }
 
 /**

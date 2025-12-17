@@ -11,6 +11,11 @@
     { "path": "../core/workflow-engine" },
     { "path": "../core/routing-engine" },
     { "path": "../core/memory-domain" },
-    { "path": "../core/trace-domain" }
+    { "path": "../core/trace-domain" },
+    { "path": "../core/config-domain" },
+    { "path": "../guard" },
+    { "path": "../core/agent-domain" },
+    { "path": "../core/session-domain" },
+    { "path": "../adapters/providers" }
   ]
 }

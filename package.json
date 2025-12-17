@@ -3,7 +3,13 @@
   "version": "13.0.0",
   "private": true,
   "type": "module",
-  "description": "Contract-first monorepo with AI-safe governance",
+  "description": "Contract-first AI orchestration platform with multi-provider routing, event-sourced memory, and governance gates",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git"
+  },
   "scripts": {
     "build": "pnpm -r build",
     "test": "vitest run",

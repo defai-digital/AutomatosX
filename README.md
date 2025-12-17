@@ -2,9 +2,9 @@
 
 **AI-powered workflow automation with multi-provider orchestration**
 
-[![Version](https://img.shields.io/badge/version-13.0.0-blue.svg)](https://github.com/automatosx/automatosx)
+[![Version](https://img.shields.io/badge/version-13.0.0-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
 ---
 
@@ -37,7 +37,7 @@ AutomatosX is a contract-first AI orchestration platform that unifies multiple L
 
 ```bash
 # Clone the repository
-git clone https://github.com/automatosx/automatosx.git
+git clone https://github.com/defai-digital/automatosx.git
 cd automatosx
 
 # Install dependencies
@@ -511,7 +511,11 @@ AutomatosX enforces strict invariants across all domains:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+**Open Source Edition**: Apache License 2.0 - see [LICENSE](LICENSE) for details.
+
+**Commercial Editions**: AutomatosX Pro and Enterprise editions are available with additional features, priority support, and enterprise compliance. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for details.
+
+**© 2024-2025 DEFAI Private Limited. All rights reserved.**
 
 ---
 

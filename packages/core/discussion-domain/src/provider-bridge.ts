@@ -1,0 +1,346 @@
+/**
+ * Discussion Provider Bridge
+ *
+ * Bridges the discussion-domain's DiscussionProviderExecutor interface
+ * to the provider-adapters' ProviderRegistry.
+ *
+ * This adapter pattern allows the discussion domain to remain decoupled
+ * from the concrete provider implementation details.
+ */
+
+import type {
+  DiscussionProviderExecutor,
+  ProviderExecuteRequest,
+  ProviderExecuteResult,
+} from './types.js';
+
+/**
+ * Minimal LLMProvider interface (mirrors provider-adapters without importing)
+ */
+interface LLMProviderLike {
+  providerId: string;
+  complete(request: CompletionRequestLike): Promise<CompletionResponseLike>;
+  checkHealth(): Promise<HealthCheckResultLike>;
+  isAvailable(): Promise<boolean>;
+}
+
+/**
+ * Minimal CompletionRequest interface
+ */
+interface CompletionRequestLike {
+  requestId: string;
+  model: string;
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  maxTokens?: number | undefined;
+  temperature?: number | undefined;
+  timeout?: number | undefined;
+  systemPrompt?: string | undefined;
+}
+
+/**
+ * Minimal CompletionResponse interface (discriminated union)
+ */
+type CompletionResponseLike =
+  | {
+      success: true;
+      requestId: string;
+      content: string;
+      model: string;
+      usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+      latencyMs: number;
+    }
+  | {
+      success: false;
+      requestId: string;
+      error: {
+        category: string;
+        message: string;
+        shouldRetry: boolean;
+      };
+      latencyMs: number;
+    };
+
+/**
+ * Minimal HealthCheckResult interface
+ */
+interface HealthCheckResultLike {
+  healthy: boolean;
+  message?: string | undefined;
+  latencyMs: number;
+}
+
+/**
+ * Minimal ProviderRegistry interface
+ */
+export interface ProviderRegistryLike {
+  get(providerId: string): LLMProviderLike | undefined;
+  getAll(): LLMProviderLike[];
+  has(providerId: string): boolean;
+}
+
+/**
+ * Options for creating the provider bridge
+ */
+export interface ProviderBridgeOptions {
+  /**
+   * Default timeout per provider call in milliseconds
+   */
+  defaultTimeoutMs?: number | undefined;
+
+  /**
+   * Default max tokens per response
+   */
+  defaultMaxTokens?: number | undefined;
+
+  /**
+   * Whether to perform health checks before considering a provider available
+   */
+  performHealthChecks?: boolean | undefined;
+
+  /**
+   * Cache health check results for this many milliseconds
+   */
+  healthCheckCacheMs?: number | undefined;
+}
+
+/**
+ * Creates a DiscussionProviderExecutor that bridges to a ProviderRegistry
+ *
+ * @param registry - The provider registry to bridge to
+ * @param options - Bridge configuration options
+ * @returns A DiscussionProviderExecutor implementation
+ */
+export function createProviderBridge(
+  registry: ProviderRegistryLike,
+  options: ProviderBridgeOptions = {}
+): DiscussionProviderExecutor {
+  const {
+    defaultTimeoutMs = 120000,
+    defaultMaxTokens = 4000,
+    performHealthChecks = true,
+    healthCheckCacheMs = 60000,
+  } = options;
+
+  // Cache for health check results
+  const healthCache = new Map<string, { healthy: boolean; timestamp: number }>();
+
+  return {
+    async execute(request: ProviderExecuteRequest): Promise<ProviderExecuteResult> {
+      const startTime = Date.now();
+      const { providerId, prompt, systemPrompt, temperature, maxTokens, timeoutMs } = request;
+
+      // Get provider from registry
+      const provider = registry.get(providerId);
+
+      if (!provider) {
+        return {
+          success: false,
+          error: `Provider ${providerId} not found in registry`,
+          retryable: false,
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      try {
+        // Check abort signal
+        if (request.abortSignal?.aborted) {
+          return {
+            success: false,
+            error: 'Request aborted',
+            retryable: false,
+            durationMs: Date.now() - startTime,
+          };
+        }
+
+        // Build messages array
+        const messages: CompletionRequestLike['messages'] = [];
+
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt });
+        }
+
+        messages.push({ role: 'user', content: prompt });
+
+        // Build completion request
+        const completionRequest: CompletionRequestLike = {
+          requestId: `discuss-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          model: 'default',
+          messages,
+          maxTokens: maxTokens ?? defaultMaxTokens,
+          temperature: temperature ?? 0.7,
+          timeout: timeoutMs ?? defaultTimeoutMs,
+        };
+
+        // Execute the completion
+        const response = await provider.complete(completionRequest);
+
+        if (response.success) {
+          return {
+            success: true,
+            content: response.content,
+            durationMs: response.latencyMs,
+            tokenCount: response.usage.totalTokens,
+          };
+        } else {
+          return {
+            success: false,
+            error: response.error.message,
+            retryable: response.error.shouldRetry,
+            durationMs: response.latencyMs,
+          };
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        return {
+          success: false,
+          error: errorMessage,
+          retryable: true, // Assume retryable for unexpected errors
+          durationMs: Date.now() - startTime,
+        };
+      }
+    },
+
+    async isAvailable(providerId: string): Promise<boolean> {
+      const provider = registry.get(providerId);
+
+      if (!provider) {
+        return false;
+      }
+
+      // Check cache first
+      const cached = healthCache.get(providerId);
+      if (cached && Date.now() - cached.timestamp < healthCheckCacheMs) {
+        return cached.healthy;
+      }
+
+      // Perform health check if enabled
+      if (performHealthChecks) {
+        try {
+          const health = await provider.checkHealth();
+          healthCache.set(providerId, {
+            healthy: health.healthy,
+            timestamp: Date.now(),
+          });
+          return health.healthy;
+        } catch {
+          healthCache.set(providerId, {
+            healthy: false,
+            timestamp: Date.now(),
+          });
+          return false;
+        }
+      }
+
+      // If health checks disabled, just check if provider exists
+      return true;
+    },
+
+    async getAvailableProviders(): Promise<string[]> {
+      const allProviders = registry.getAll();
+      const available: string[] = [];
+
+      // Check each provider's availability
+      for (const provider of allProviders) {
+        // Check cache first
+        const cached = healthCache.get(provider.providerId);
+        if (cached && Date.now() - cached.timestamp < healthCheckCacheMs) {
+          if (cached.healthy) {
+            available.push(provider.providerId);
+          }
+          continue;
+        }
+
+        // Perform health check if enabled
+        if (performHealthChecks) {
+          try {
+            const health = await provider.checkHealth();
+            healthCache.set(provider.providerId, {
+              healthy: health.healthy,
+              timestamp: Date.now(),
+            });
+            if (health.healthy) {
+              available.push(provider.providerId);
+            }
+          } catch {
+            healthCache.set(provider.providerId, {
+              healthy: false,
+              timestamp: Date.now(),
+            });
+          }
+        } else {
+          // If health checks disabled, assume available
+          available.push(provider.providerId);
+        }
+      }
+
+      return available;
+    },
+  };
+}
+
+/**
+ * Creates a provider bridge with a custom provider map (for testing)
+ *
+ * @param providers - Map of provider ID to execute function
+ * @returns A DiscussionProviderExecutor implementation
+ */
+export function createSimpleProviderBridge(
+  providers: Map<
+    string,
+    (prompt: string, systemPrompt?: string) => Promise<{ content: string; tokenCount?: number }>
+  >
+): DiscussionProviderExecutor {
+  return {
+    async execute(request: ProviderExecuteRequest): Promise<ProviderExecuteResult> {
+      const startTime = Date.now();
+      const { providerId, prompt, systemPrompt } = request;
+
+      const executeFunc = providers.get(providerId);
+
+      if (!executeFunc) {
+        return {
+          success: false,
+          error: `Provider ${providerId} not available`,
+          retryable: false,
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      try {
+        if (request.abortSignal?.aborted) {
+          return {
+            success: false,
+            error: 'Request aborted',
+            retryable: false,
+            durationMs: Date.now() - startTime,
+          };
+        }
+
+        const result = await executeFunc(prompt, systemPrompt);
+
+        return {
+          success: true,
+          content: result.content,
+          durationMs: Date.now() - startTime,
+          tokenCount: result.tokenCount,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          retryable: true,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    },
+
+    async isAvailable(providerId: string): Promise<boolean> {
+      return providers.has(providerId);
+    },
+
+    async getAvailableProviders(): Promise<string[]> {
+      return Array.from(providers.keys());
+    },
+  };
+}

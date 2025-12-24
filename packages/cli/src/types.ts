@@ -87,8 +87,9 @@ export const CLI_COMMANDS = {
   SESSION: 'session',
   SETUP: 'setup',
   CONFIG: 'config',
-  BUGFIX: 'bugfix',
-  REFACTOR: 'refactor',
+  REVIEW: 'review',
+  SCAFFOLD: 'scaffold',
+  DISCUSS: 'discuss',
   HELP: 'help',
   VERSION: 'version',
   // High-value additions

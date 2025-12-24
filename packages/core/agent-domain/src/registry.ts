@@ -15,7 +15,7 @@ import type { AgentRegistry, AgentFilter } from './types.js';
  * In-memory agent registry implementation
  */
 export class InMemoryAgentRegistry implements AgentRegistry {
-  private readonly agents: Map<string, AgentProfile> = new Map();
+  private readonly agents = new Map<string, AgentProfile>();
 
   /**
    * Register a new agent profile

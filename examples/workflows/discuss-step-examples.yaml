@@ -1,0 +1,157 @@
+# Discuss Step Examples
+#
+# This workflow demonstrates the new 'discuss' step type which enables
+# structured multi-model discussions with built-in consensus mechanisms.
+#
+# The discuss step replaces manual parallel+prompt orchestration with a single
+# declarative step that handles rounds, provider coordination, and consensus.
+#
+# Usage:
+#   ax run discuss-step-examples --input '{"question": "What is the best API design approach?"}'
+#
+# Available Patterns:
+#   - synthesis: Models discuss in rounds, one synthesizes final answer
+#   - voting: Models vote on options with confidence levels
+#   - debate: Structured debate with proponent/opponent/judge roles
+#   - critique: One model proposes, others critique, then revision
+#
+# Consensus Methods:
+#   - synthesis: Single model synthesizes all perspectives
+#   - voting: Count votes with threshold
+#   - moderator: Designated judge picks winner
+
+workflowId: discuss-step-examples
+version: "1.0.0"
+name: Discuss Step Examples
+description: >
+  Demonstrates the discuss step type with various patterns and consensus
+  mechanisms for multi-model collaboration.
+
+steps:
+  # Example 1: Synthesis Pattern
+  # Multiple models discuss, Claude synthesizes the final answer
+  - stepId: synthesis-discussion
+    type: discuss
+    name: Synthesis Discussion
+    timeout: 180000
+    config:
+      pattern: synthesis
+      providers:
+        - claude
+        - glm
+        - qwen
+      prompt: |
+        Consider this question: {{input.question}}
+
+        Provide your perspective focusing on:
+        1. Key considerations
+        2. Trade-offs
+        3. Your recommended approach
+      rounds: 2
+      consensus:
+        method: synthesis
+        synthesizer: claude
+        includeDissent: true
+      providerTimeout: 60000
+      continueOnProviderFailure: true
+      minProviders: 2
+
+  # Example 2: Voting Pattern
+  # Models vote on options from the synthesis
+  - stepId: voting-discussion
+    type: discuss
+    name: Framework Vote
+    timeout: 120000
+    dependencies:
+      - synthesis-discussion
+    config:
+      pattern: voting
+      providers:
+        - claude
+        - glm
+        - qwen
+        - gemini
+      prompt: |
+        Based on the previous synthesis:
+
+        {{steps.synthesis-discussion.output.synthesis}}
+
+        Vote on the best approach:
+        1. Option A: Conservative, well-tested approach
+        2. Option B: Modern, innovative approach
+        3. Option C: Hybrid approach balancing both
+
+        Choose the option that best addresses the original question.
+      rounds: 1
+      consensus:
+        method: voting
+        threshold: 0.5
+        includeDissent: true
+      minProviders: 3
+
+  # Example 3: Critique Pattern (Architecture Review)
+  - stepId: critique-review
+    type: discuss
+    name: Architecture Critique
+    timeout: 180000
+    dependencies:
+      - voting-discussion
+    config:
+      pattern: critique
+      providers:
+        - claude
+        - glm
+        - qwen
+      prompt: |
+        The team voted for: {{steps.voting-discussion.output.consensus.winner}}
+
+        Now propose a detailed implementation plan for this approach.
+        Other models will critique and you'll refine based on feedback.
+
+        Include:
+        - Architecture diagram (ASCII)
+        - Key components
+        - API contracts
+        - Data flow
+      rounds: 3
+      consensus:
+        method: synthesis
+        synthesizer: claude
+      continueOnProviderFailure: true
+      minProviders: 2
+
+  # Store final results
+  - stepId: store-results
+    type: tool
+    name: Store Discussion Results
+    timeout: 10000
+    dependencies:
+      - critique-review
+    config:
+      tool: memory_store
+      args:
+        namespace: discussions
+        key: "discuss-example-{{now | timestamp}}"
+        value:
+          question: "{{input.question}}"
+          synthesis: "{{steps.synthesis-discussion.output.synthesis}}"
+          vote_result: "{{steps.voting-discussion.output.consensus}}"
+          final_plan: "{{steps.critique-review.output.synthesis}}"
+          timestamp: "{{now}}"
+
+metadata:
+  category: collaboration
+  tags:
+    - discuss-step
+    - multi-model
+    - synthesis
+    - voting
+    - critique
+    - consensus
+  requiredAbilities: []
+  estimatedDuration: 480000
+  providers:
+    - claude
+    - glm
+    - qwen
+    - gemini

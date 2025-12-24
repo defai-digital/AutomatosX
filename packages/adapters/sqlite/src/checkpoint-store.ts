@@ -33,7 +33,16 @@ export const SqliteCheckpointStoreErrorCodes = {
   DATABASE_ERROR: 'SQLITE_CHECKPOINT_DATABASE_ERROR',
   INVALID_CHECKPOINT: 'SQLITE_CHECKPOINT_INVALID',
   SERIALIZATION_ERROR: 'SQLITE_CHECKPOINT_SERIALIZATION_ERROR',
+  INVALID_TABLE_NAME: 'SQLITE_CHECKPOINT_INVALID_TABLE_NAME',
 } as const;
+
+/**
+ * Validates a SQL table name to prevent SQL injection
+ * Only allows alphanumeric characters and underscores, must start with letter or underscore
+ */
+function isValidTableName(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
+}
 
 /**
  * SQLite implementation of CheckpointStorage
@@ -47,6 +56,13 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
   private readonly tableName: string;
 
   constructor(db: Database.Database, tableName = 'checkpoints') {
+    // Validate table name to prevent SQL injection
+    if (!isValidTableName(tableName)) {
+      throw new SqliteCheckpointStoreError(
+        SqliteCheckpointStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
     this.db = db;
     this.tableName = tableName;
     this.initialize();
@@ -287,16 +303,28 @@ interface CheckpointRow {
 }
 
 /**
- * Converts a database row to a Checkpoint
+ * Safely parses JSON with error handling
  */
+function safeJsonParse<T>(json: string, fieldName: string, checkpointId: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    throw new SqliteCheckpointStoreError(
+      SqliteCheckpointStoreErrorCodes.SERIALIZATION_ERROR,
+      `Failed to parse ${fieldName} for checkpoint ${checkpointId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      { checkpointId, fieldName }
+    );
+  }
+}
+
 function rowToCheckpoint(row: CheckpointRow): Checkpoint {
   const checkpoint: Checkpoint = {
     checkpointId: row.checkpoint_id,
     agentId: row.agent_id,
     stepIndex: row.step_index,
     completedStepId: row.completed_step_id,
-    stepOutputs: JSON.parse(row.step_outputs) as Record<string, unknown>,
-    context: JSON.parse(row.context) as Record<string, unknown>,
+    stepOutputs: safeJsonParse<Record<string, unknown>>(row.step_outputs, 'stepOutputs', row.checkpoint_id),
+    context: safeJsonParse<Record<string, unknown>>(row.context, 'context', row.checkpoint_id),
     createdAt: row.created_at,
   };
 
@@ -307,7 +335,7 @@ function rowToCheckpoint(row: CheckpointRow): Checkpoint {
     checkpoint.workflowId = row.workflow_id;
   }
   if (row.memory_snapshot !== null) {
-    checkpoint.memorySnapshot = JSON.parse(row.memory_snapshot);
+    checkpoint.memorySnapshot = safeJsonParse<{ key: string; value?: unknown; namespace?: string }[]>(row.memory_snapshot, 'memorySnapshot', row.checkpoint_id);
   }
   if (row.expires_at !== null) {
     checkpoint.expiresAt = row.expires_at;

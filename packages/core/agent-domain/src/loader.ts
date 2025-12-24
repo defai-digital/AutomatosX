@@ -30,7 +30,7 @@ const DEFAULT_EXTENSIONS = ['.yaml', '.yml', '.json'];
  */
 export class FileSystemAgentLoader implements AgentLoader {
   private readonly config: Required<AgentLoaderConfig>;
-  private cache: Map<string, AgentProfile> = new Map();
+  private cache = new Map<string, AgentProfile>();
   private loaded = false;
 
   constructor(config: AgentLoaderConfig) {

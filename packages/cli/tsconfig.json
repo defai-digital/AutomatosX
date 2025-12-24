@@ -19,6 +19,7 @@
     { "path": "../core/iterate-domain" },
     { "path": "../core/ability-domain" },
     { "path": "../core/analysis-domain" },
+    { "path": "../core/review-domain" },
     { "path": "../guard" },
     { "path": "../adapters/providers" },
     { "path": "../adapters/sqlite" },

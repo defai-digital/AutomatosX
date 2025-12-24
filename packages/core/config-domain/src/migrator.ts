@@ -84,7 +84,7 @@ export const MIGRATIONS: Record<string, MigrationInfo> = {
       const cfg = config as Record<string, unknown>;
       return {
         ...cfg,
-        features: cfg['features'] ?? DEFAULT_CONFIG.features,
+        features: cfg.features ?? DEFAULT_CONFIG.features,
         version: '0.9.1',
       };
     },
@@ -99,7 +99,7 @@ export const MIGRATIONS: Record<string, MigrationInfo> = {
       const cfg = config as Record<string, unknown>;
       return {
         ...cfg,
-        workspace: cfg['workspace'] ?? DEFAULT_CONFIG.workspace,
+        workspace: cfg.workspace ?? DEFAULT_CONFIG.workspace,
         version: '0.10.0',
       };
     },
@@ -115,22 +115,22 @@ export const MIGRATIONS: Record<string, MigrationInfo> = {
       // Convert providers from array to Record format if needed
       let providers: Record<string, unknown> = {};
 
-      if (Array.isArray(cfg['providers'])) {
+      if (Array.isArray(cfg.providers)) {
         // Convert array format to Record format
-        for (const p of cfg['providers']) {
+        for (const p of cfg.providers) {
           const provider = p as Record<string, unknown>;
-          const providerId = provider['providerId'] as string;
+          const providerId = provider.providerId as string;
           if (providerId) {
             providers[providerId] = {
-              enabled: provider['enabled'] ?? true,
-              priority: provider['priority'] ?? 50,
-              command: provider['command'],
+              enabled: provider.enabled ?? true,
+              priority: provider.priority ?? 50,
+              command: provider.command,
             };
           }
         }
-      } else if (cfg['providers'] && typeof cfg['providers'] === 'object') {
+      } else if (cfg.providers && typeof cfg.providers === 'object') {
         // Already in Record format
-        providers = cfg['providers'] as Record<string, unknown>;
+        providers = cfg.providers as Record<string, unknown>;
       }
 
       return {
@@ -154,7 +154,7 @@ export function getConfigVersion(config: unknown): string | undefined {
     return undefined;
   }
   const cfg = config as Record<string, unknown>;
-  const version = cfg['version'];
+  const version = cfg.version;
   if (typeof version !== 'string') {
     return undefined;
   }

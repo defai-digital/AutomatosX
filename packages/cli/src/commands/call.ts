@@ -407,7 +407,7 @@ async function executeIterateMode(
   console.log('');
 
   // Conversation history for multi-turn
-  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [
     { role: 'user', content: initialPrompt },
   ];
 

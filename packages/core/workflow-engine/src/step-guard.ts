@@ -83,7 +83,7 @@ export const DEFAULT_STEP_GUARD_ENGINE_CONFIG: StepGuardEngineConfig = {
 export class StepGuardEngine {
   private readonly config: StepGuardEngineConfig;
   private readonly gateRegistry: GateRegistry;
-  private readonly policies: Map<string, StepGuardPolicy> = new Map();
+  private readonly policies = new Map<string, StepGuardPolicy>();
   private readonly onProgressEvent: ((event: StageProgressEvent) => void) | undefined;
 
   constructor(config: Partial<StepGuardEngineConfig> = {}) {
@@ -320,26 +320,195 @@ export class StepGuardEngine {
    * Register default gates
    */
   private registerDefaultGates(): void {
-    // Validation gate - always passes (placeholder)
-    this.gateRegistry.register('validation', async (_context) => ({
-      gateId: 'validation',
-      status: 'PASS' as GuardCheckStatus,
-      message: 'Validation passed',
-    }));
+    // Validation gate - validates step configuration based on step type
+    this.gateRegistry.register('validation', async (context) => {
+      const config = context.stepConfig;
+      const errors: string[] = [];
+      const warnings: string[] = [];
 
-    // Capability gate - checks if agent has required capabilities
-    this.gateRegistry.register('capability', async (context) => {
-      // Placeholder - in real implementation would check agent capabilities
+      // Only validate step config if it's provided
+      // When stepConfig is undefined, the step is assumed to be configured elsewhere
+      if (config !== undefined && Object.keys(config).length > 0) {
+        // Validate based on step type
+        switch (context.stepType) {
+          case 'prompt':
+            // Prompt steps require a prompt field
+            if (!config.prompt && !config.template) {
+              errors.push('Prompt step requires "prompt" or "template" in config');
+            }
+            break;
+
+          case 'tool':
+            // Tool steps require a tool name
+            if (!config.toolName && !config.tool) {
+              errors.push('Tool step requires "toolName" or "tool" in config');
+            }
+            break;
+
+          case 'conditional':
+            // Conditional steps require a condition
+            if (!config.condition && !config.when) {
+              errors.push('Conditional step requires "condition" or "when" in config');
+            }
+            break;
+
+          case 'loop':
+            // Loop steps require items or count
+            if (!config.items && !config.count && !config.until) {
+              errors.push('Loop step requires "items", "count", or "until" in config');
+            }
+            break;
+
+          case 'discuss':
+            // Discuss steps require a topic/prompt and providers
+            if (!config.prompt && !config.topic) {
+              errors.push('Discuss step requires "prompt" or "topic" in config');
+            }
+            break;
+
+          case 'delegate':
+            // Delegate steps require target agent
+            if (!config.agentId && !config.targetAgent) {
+              errors.push('Delegate step requires "agentId" or "targetAgent" in config');
+            }
+            break;
+        }
+      }
+
+      // Check step ID format (should be kebab-case) - warn but don't fail
+      if (!/^[a-z][a-z0-9-]*$/.test(context.stepId)) {
+        warnings.push(`Step ID "${context.stepId}" should be kebab-case (lowercase letters, numbers, hyphens)`);
+      }
+
+      if (errors.length > 0) {
+        return {
+          gateId: 'validation',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Validation failed: ${errors.join('; ')}`,
+          details: { errors, warnings },
+        };
+      }
+
+      if (warnings.length > 0) {
+        return {
+          gateId: 'validation',
+          status: 'WARN' as GuardCheckStatus,
+          message: `Validation passed with warnings: ${warnings.join('; ')}`,
+          details: { warnings },
+        };
+      }
+
       return {
-        gateId: 'capability',
+        gateId: 'validation',
         status: 'PASS' as GuardCheckStatus,
-        message: `Agent ${context.agentId} has required capabilities`,
+        message: 'Step configuration is valid',
+        details: { stepType: context.stepType },
       };
     });
 
-    // Resource gate - checks resource limits
+    // Capability gate - checks if infrastructure is available for step type
+    this.gateRegistry.register('capability', async (context) => {
+      const warnings: string[] = [];
+
+      // Check capabilities based on step type
+      switch (context.stepType) {
+        case 'prompt':
+        case 'discuss':
+          // These require LLM provider access
+          // In a full implementation, we'd check if providers are configured
+          break;
+
+        case 'tool':
+          // Check if the tool is available
+          const toolName = (context.stepConfig as Record<string, unknown> | undefined)?.toolName ??
+                          (context.stepConfig as Record<string, unknown> | undefined)?.tool;
+          if (toolName && typeof toolName === 'string') {
+            // Could check tool registry here
+            // For now, warn if it's an unknown tool type
+            const knownTools = ['read', 'write', 'search', 'execute', 'fetch'];
+            if (!knownTools.includes(toolName.toLowerCase())) {
+              warnings.push(`Tool "${toolName}" may require custom executor`);
+            }
+          }
+          break;
+
+        case 'delegate':
+          // Delegation requires agent registry
+          const targetAgent = (context.stepConfig as Record<string, unknown> | undefined)?.agentId ??
+                             (context.stepConfig as Record<string, unknown> | undefined)?.targetAgent;
+          if (!targetAgent) {
+            warnings.push('Delegate step has no target agent specified');
+          }
+          break;
+      }
+
+      if (warnings.length > 0) {
+        return {
+          gateId: 'capability',
+          status: 'WARN' as GuardCheckStatus,
+          message: `Capability warnings: ${warnings.join('; ')}`,
+          details: { warnings, agentId: context.agentId },
+        };
+      }
+
+      return {
+        gateId: 'capability',
+        status: 'PASS' as GuardCheckStatus,
+        message: `Agent ${context.agentId} has required capabilities for ${context.stepType} step`,
+        details: { stepType: context.stepType },
+      };
+    });
+
+    // Resource gate - checks resource limits and thresholds
     this.gateRegistry.register('resource', async (context) => {
-      // Placeholder - in real implementation would check resource usage
+      const issues: string[] = [];
+
+      // Check step limit thresholds
+      const MAX_STEPS_WARNING = 50;
+      const MAX_STEPS_LIMIT = 100;
+
+      if (context.totalSteps > MAX_STEPS_LIMIT) {
+        return {
+          gateId: 'resource',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Workflow exceeds maximum step limit (${context.totalSteps} > ${MAX_STEPS_LIMIT})`,
+          details: {
+            totalSteps: context.totalSteps,
+            limit: MAX_STEPS_LIMIT,
+          },
+        };
+      }
+
+      if (context.totalSteps > MAX_STEPS_WARNING) {
+        issues.push(`Workflow has ${context.totalSteps} steps (warning threshold: ${MAX_STEPS_WARNING})`);
+      }
+
+      // Check if we're past the halfway point (useful for long workflows)
+      const progress = (context.stepIndex + 1) / context.totalSteps;
+      if (progress > 0.9 && context.totalSteps > 10) {
+        // Nearing completion - just informational
+      }
+
+      // Check for potential infinite loops (same step appearing in outputs)
+      const outputKeys = Object.keys(context.previousOutputs);
+      const currentStepOutputCount = outputKeys.filter(k => k.startsWith(context.stepId)).length;
+      if (currentStepOutputCount > 5) {
+        issues.push(`Step "${context.stepId}" has run ${currentStepOutputCount} times - possible loop`);
+      }
+
+      if (issues.length > 0) {
+        return {
+          gateId: 'resource',
+          status: 'WARN' as GuardCheckStatus,
+          message: `Resource warnings: ${issues.join('; ')}`,
+          details: {
+            stepIndex: context.stepIndex,
+            totalSteps: context.totalSteps,
+            warnings: issues,
+          },
+        };
+      }
+
       return {
         gateId: 'resource',
         status: 'PASS' as GuardCheckStatus,
@@ -347,6 +516,7 @@ export class StepGuardEngine {
         details: {
           stepIndex: context.stepIndex,
           totalSteps: context.totalSteps,
+          remainingSteps: context.totalSteps - context.stepIndex - 1,
         },
       };
     });

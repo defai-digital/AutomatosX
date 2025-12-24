@@ -23,7 +23,16 @@ export const SqliteEventStoreErrorCodes = {
   VERSION_CONFLICT: 'SQLITE_VERSION_CONFLICT',
   INVALID_EVENT: 'SQLITE_INVALID_EVENT',
   DATABASE_ERROR: 'SQLITE_DATABASE_ERROR',
+  INVALID_TABLE_NAME: 'SQLITE_INVALID_TABLE_NAME',
 } as const;
+
+/**
+ * Validates a SQL table name to prevent SQL injection
+ * Only allows alphanumeric characters and underscores, must start with letter or underscore
+ */
+function isValidTableName(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
+}
 
 /**
  * SQLite implementation of EventStore
@@ -36,6 +45,13 @@ export class SqliteEventStore implements EventStore {
   private readonly tableName: string;
 
   constructor(db: Database.Database, tableName = 'memory_events') {
+    // Validate table name to prevent SQL injection
+    if (!isValidTableName(tableName)) {
+      throw new SqliteEventStoreError(
+        SqliteEventStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
     this.db = db;
     this.tableName = tableName;
     this.initialize();
@@ -88,19 +104,28 @@ export class SqliteEventStore implements EventStore {
 
     const aggregateId = event.aggregateId ?? 'global';
 
-    // Check version ordering if version is specified (INV-MEM-004)
-    if (event.version !== undefined) {
-      const currentVersion = await this.getVersion(aggregateId);
-      if (event.version !== currentVersion + 1) {
-        throw new SqliteEventStoreError(
-          SqliteEventStoreErrorCodes.VERSION_CONFLICT,
-          `Version conflict: expected ${String(currentVersion + 1)}, got ${String(event.version)}`,
-          { expected: currentVersion + 1, actual: event.version }
-        );
-      }
-    }
+    // Use a transaction to atomically check version and insert
+    // This prevents TOCTOU race conditions between version check and insert
+    const transaction = this.db.transaction(() => {
+      // Check version ordering if version is specified (INV-MEM-004)
+      if (event.version !== undefined) {
+        const versionStmt = this.db.prepare(`
+          SELECT MAX(version) as max_version, COUNT(*) as count
+          FROM ${this.tableName}
+          WHERE aggregate_id = ?
+        `);
+        const row = versionStmt.get(aggregateId) as { max_version: number | null; count: number };
+        const currentVersion = row.count === 0 ? 0 : (row.max_version ?? row.count);
 
-    try {
+        if (event.version !== currentVersion + 1) {
+          throw new SqliteEventStoreError(
+            SqliteEventStoreErrorCodes.VERSION_CONFLICT,
+            `Version conflict: expected ${String(currentVersion + 1)}, got ${String(event.version)}`,
+            { expected: currentVersion + 1, actual: event.version }
+          );
+        }
+      }
+
       const stmt = this.db.prepare(`
         INSERT INTO ${this.tableName} (
           event_id, type, aggregate_id, version, timestamp, payload, metadata
@@ -116,7 +141,14 @@ export class SqliteEventStore implements EventStore {
         JSON.stringify(event.payload),
         event.metadata !== undefined ? JSON.stringify(event.metadata) : null
       );
+    });
+
+    try {
+      transaction();
     } catch (error) {
+      if (error instanceof SqliteEventStoreError) {
+        throw error;
+      }
       if (
         error instanceof Error &&
         error.message.includes('UNIQUE constraint failed')
@@ -221,6 +253,21 @@ interface EventRow {
 }
 
 /**
+ * Safely parses JSON with error handling
+ */
+function safeJsonParse<T>(json: string, fieldName: string, eventId: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    throw new SqliteEventStoreError(
+      SqliteEventStoreErrorCodes.DATABASE_ERROR,
+      `Failed to parse ${fieldName} for event ${eventId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      { eventId, fieldName }
+    );
+  }
+}
+
+/**
  * Converts a database row to a MemoryEvent
  */
 function rowToEvent(row: EventRow): MemoryEvent {
@@ -228,7 +275,7 @@ function rowToEvent(row: EventRow): MemoryEvent {
     eventId: row.event_id,
     type: row.type as MemoryEventType,
     timestamp: row.timestamp,
-    payload: JSON.parse(row.payload) as Record<string, unknown>,
+    payload: safeJsonParse<Record<string, unknown>>(row.payload, 'payload', row.event_id),
   };
 
   if (row.aggregate_id !== null) {
@@ -238,7 +285,7 @@ function rowToEvent(row: EventRow): MemoryEvent {
     event.version = row.version;
   }
   if (row.metadata !== null) {
-    event.metadata = JSON.parse(row.metadata) as MemoryEvent['metadata'];
+    event.metadata = safeJsonParse<MemoryEvent['metadata']>(row.metadata, 'metadata', row.event_id);
   }
 
   return event;

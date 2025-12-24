@@ -5,15 +5,7 @@
  */
 
 import type { MCPPrompt, MCPPromptMessage, PromptHandler } from '../types.js';
-import {
-  createSessionStore,
-  createSessionManager,
-  DEFAULT_SESSION_DOMAIN_CONFIG,
-} from '@automatosx/session-domain';
-
-// Create shared store and manager instances
-const store = createSessionStore();
-const manager = createSessionManager(store, DEFAULT_SESSION_DOMAIN_CONFIG);
+import { getSharedSessionManager } from '../session-accessor.js';
 
 // ============================================================================
 // Prompt Definition
@@ -50,6 +42,7 @@ export const handleTroubleshootSession: PromptHandler = async (args) => {
   const sessionId = args.sessionId ?? '';
   const symptoms = args.symptoms ?? 'No specific symptoms provided';
 
+  const manager = getSharedSessionManager();
   const session = await manager.getSession(sessionId);
 
   if (session === undefined) {

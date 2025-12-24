@@ -9,7 +9,9 @@ export {
   AgentPersonalitySchema,
   AbilitySelectionSchema,
   RedirectRuleSchema,
+  AgentCategorySchema,
   SelectionMetadataSchema,
+  ProviderAffinitySchema,
   OrchestrationConfigSchema,
   AgentRetryPolicySchema,
   AgentStepTypeSchema,
@@ -59,6 +61,14 @@ export {
   ToolExecutorConfigSchema,
   ToolExecutorErrorCodes,
 
+  // Agent Selection Contracts (MCP Tools)
+  AgentRecommendRequestSchema,
+  AgentMatchSchema,
+  AgentRecommendResultSchema,
+  AgentCapabilitiesRequestSchema,
+  AgentCapabilitiesResultSchema,
+  AgentSelectionContextSchema,
+
   // Validation Functions
   validateAgentProfile,
   safeValidateAgentProfile,
@@ -70,6 +80,10 @@ export {
   validateParallelExecutionConfig,
   validateToolExecutionResult,
   validateToolExecutionRequest,
+  validateAgentRecommendRequest,
+  validateAgentRecommendResult,
+  validateAgentCapabilitiesRequest,
+  validateAgentCapabilitiesResult,
 
   // Factory Functions
   createDefaultCheckpointConfig,
@@ -82,7 +96,9 @@ export {
   type AgentPersonality,
   type AbilitySelection,
   type RedirectRule,
+  type AgentCategory,
   type SelectionMetadata,
+  type ProviderAffinity,
   type OrchestrationConfig,
   type AgentRetryPolicy,
   type AgentStepType,
@@ -113,6 +129,12 @@ export {
   type ToolExecutionRequest,
   type ToolExecutorConfig,
   type ToolExecutorErrorCode,
+  type AgentRecommendRequest,
+  type AgentMatch,
+  type AgentRecommendResult,
+  type AgentCapabilitiesRequest,
+  type AgentCapabilitiesResult,
+  type AgentSelectionContext,
 } from './schema.js';
 
 // Storage Port Interfaces (Ports & Adapters pattern)

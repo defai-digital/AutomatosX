@@ -72,6 +72,24 @@ async function executeStepByType(
       return executeLoopStep(step, context);
     case 'parallel':
       return executeParallelStep(step, context);
+    case 'discuss':
+      // Discussion steps are handled by the discussion-domain executor
+      // For now, return a placeholder indicating this needs the discussion executor
+      return {
+        stepId: step.stepId,
+        success: false,
+        error: 'Discussion steps require the discussion-domain executor',
+        durationMs: 0,
+      };
+    case 'delegate':
+      // Delegate steps are handled by the agent-domain executor
+      // For now, return a placeholder indicating this needs the agent executor
+      return {
+        stepId: step.stepId,
+        success: false,
+        error: 'Delegate steps require the agent-domain executor',
+        durationMs: 0,
+      };
     default: {
       // TypeScript exhaustiveness check
       const _exhaustive: never = step.type;
@@ -116,7 +134,7 @@ interface LoopStepConfig {
 }
 
 interface ParallelStepConfig {
-  tasks?: Array<{ id: string; value: unknown }>; // Parallel tasks
+  tasks?: { id: string; value: unknown }[]; // Parallel tasks
   concurrency?: number; // Max concurrent tasks (default: 5)
   failFast?: boolean; // Stop on first failure (default: false)
 }
@@ -311,7 +329,7 @@ async function executeParallelStep(
   }
 
   // Process tasks in batches for concurrency control
-  const results: Array<{ id: string; success: boolean; output?: unknown; error?: string }> = [];
+  const results: { id: string; success: boolean; output?: unknown; error?: string }[] = [];
   let hasFailure = false;
 
   for (let i = 0; i < tasks.length; i += concurrency) {

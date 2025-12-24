@@ -213,7 +213,7 @@ export interface EventStoragePort {
     fromVersion?: number;
     toVersion?: number;
     limit?: number;
-  }): Promise<Array<{
+  }): Promise<{
     eventId: string;
     aggregateId: string;
     type: string;
@@ -221,7 +221,7 @@ export interface EventStoragePort {
     version: number;
     payload: Record<string, unknown>;
     metadata?: Record<string, unknown>;
-  }>>;
+  }[]>;
 
   /**
    * Get events by type
@@ -230,13 +230,13 @@ export interface EventStoragePort {
     fromTime?: string;
     toTime?: string;
     limit?: number;
-  }): Promise<Array<{
+  }): Promise<{
     eventId: string;
     aggregateId: string;
     type: string;
     timestamp: string;
     payload: Record<string, unknown>;
-  }>>;
+  }[]>;
 }
 
 /**
@@ -274,7 +274,7 @@ export interface TraceStoragePort {
    * Get all events for a trace
    * INV-TR-STORE-002: Returns in sequence order
    */
-  getTrace(traceId: string): Promise<Array<{
+  getTrace(traceId: string): Promise<{
     traceId: string;
     eventId: string;
     type: string;
@@ -284,7 +284,7 @@ export interface TraceStoragePort {
     payload?: Record<string, unknown>;
     status?: string;
     durationMs?: number;
-  }>>;
+  }[]>;
 
   /**
    * Get a specific event

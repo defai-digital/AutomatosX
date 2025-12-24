@@ -218,18 +218,10 @@ export function createIdempotencyManager(
       const existing = await storage.get(key);
 
       if (!existing) {
-        // Entry was deleted or expired, create new completed entry
-        const expiresAt = calculateExpiration(cfg.ttlSeconds);
-        const entry: IdempotencyCacheEntry = {
-          key,
-          requestHash: '',
-          response,
-          createdAt: new Date().toISOString(),
-          expiresAt,
-          status: 'completed',
-          updatedAt: new Date().toISOString(),
-        };
-        await storage.set(entry);
+        // Entry was deleted or expired during processing.
+        // Don't create a new entry with empty requestHash as this would
+        // violate INV-ID-002 (hash mismatch detection). Future requests
+        // with this key will simply reprocess, which is safe.
         return;
       }
 

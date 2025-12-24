@@ -55,6 +55,7 @@ describe('StepGuardEngine', () => {
       name: 'Test Policy',
       enabled: true,
       priority: 10,
+      workflowPatterns: ['*'],
       agentPatterns: ['*'],
       guards: [
         {
@@ -72,7 +73,7 @@ describe('StepGuardEngine', () => {
       engine.registerPolicy(testPolicy);
       const policies = engine.getPolicies();
       expect(policies).toHaveLength(1);
-      expect(policies[0].policyId).toBe('test-policy');
+      expect(policies[0]!.policyId).toBe('test-policy');
     });
 
     it('removes policies', () => {
@@ -106,7 +107,8 @@ describe('StepGuardEngine', () => {
         name: 'Custom Gate Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'custom-guard',
@@ -131,7 +133,7 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].gates[0].status).toBe('PASS');
+      expect(results[0]!.gates[0]!.status).toBe('PASS');
     });
   });
 
@@ -143,7 +145,8 @@ describe('StepGuardEngine', () => {
         name: 'Before Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'pre-guard',
@@ -168,8 +171,8 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].guardId).toBe('pre-guard');
-      expect(results[0].position).toBe('before');
+      expect(results[0]!.guardId).toBe('pre-guard');
+      expect(results[0]!.position).toBe('before');
     });
 
     it('skips after guards in runBeforeGuards', async () => {
@@ -178,7 +181,8 @@ describe('StepGuardEngine', () => {
         name: 'Mixed Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'before-guard',
@@ -211,7 +215,7 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].guardId).toBe('before-guard');
+      expect(results[0]!.guardId).toBe('before-guard');
     });
 
     it('returns empty array when disabled', async () => {
@@ -222,7 +226,8 @@ describe('StepGuardEngine', () => {
         name: 'Test',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'guard',
@@ -258,7 +263,8 @@ describe('StepGuardEngine', () => {
         name: 'After Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'post-guard',
@@ -283,8 +289,8 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runAfterGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].guardId).toBe('post-guard');
-      expect(results[0].position).toBe('after');
+      expect(results[0]!.guardId).toBe('post-guard');
+      expect(results[0]!.position).toBe('after');
     });
   });
 
@@ -350,6 +356,7 @@ describe('StepGuardEngine', () => {
         name: 'Agent Specific',
         enabled: true,
         priority: 10,
+        workflowPatterns: ['*'],
         agentPatterns: ['agent-1'],
         guards: [
           {
@@ -368,7 +375,8 @@ describe('StepGuardEngine', () => {
         name: 'All Agents',
         enabled: true,
         priority: 5,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'general-guard',
@@ -386,7 +394,8 @@ describe('StepGuardEngine', () => {
         name: 'Disabled',
         enabled: false,
         priority: 100,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'disabled-guard',
@@ -414,7 +423,7 @@ describe('StepGuardEngine', () => {
       const results = await engine.runBeforeGuards(context);
       // Should only match 'all-agents' policy, not 'agent-specific'
       expect(results).toHaveLength(1);
-      expect(results[0].guardId).toBe('general-guard');
+      expect(results[0]!.guardId).toBe('general-guard');
     });
 
     it('matches specific agent patterns', async () => {
@@ -463,8 +472,8 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       // agent-specific (priority 10) should come before all-agents (priority 5)
-      expect(results[0].guardId).toBe('specific-guard');
-      expect(results[1].guardId).toBe('general-guard');
+      expect(results[0]!.guardId).toBe('specific-guard');
+      expect(results[1]!.guardId).toBe('general-guard');
     });
   });
 
@@ -475,7 +484,8 @@ describe('StepGuardEngine', () => {
         name: 'Step Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'all-steps',
@@ -561,7 +571,8 @@ describe('StepGuardEngine', () => {
         name: 'Missing Gate Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'missing-gate-guard',
@@ -586,8 +597,8 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].gates[0].status).toBe('WARN');
-      expect(results[0].gates[0].message).toContain('not found');
+      expect(results[0]!.gates[0]!.status).toBe('WARN');
+      expect(results[0]!.gates[0]!.message).toContain('not found');
     });
 
     it('handles gate errors', async () => {
@@ -601,7 +612,8 @@ describe('StepGuardEngine', () => {
         name: 'Error Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'error-guard',
@@ -626,9 +638,9 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].gates[0].status).toBe('FAIL');
-      expect(results[0].gates[0].message).toBe('Gate execution failed');
-      expect(results[0].blocked).toBe(true); // onFail is 'block'
+      expect(results[0]!.gates[0]!.status).toBe('FAIL');
+      expect(results[0]!.gates[0]!.message).toBe('Gate execution failed');
+      expect(results[0]!.blocked).toBe(true); // onFail is 'block'
     });
 
     // INV-GATE-001: Gates execute independently
@@ -650,7 +662,8 @@ describe('StepGuardEngine', () => {
         name: 'Multi Gate Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'multi-guard',
@@ -675,9 +688,9 @@ describe('StepGuardEngine', () => {
 
       const results = await engine.runBeforeGuards(context);
       expect(results).toHaveLength(1);
-      expect(results[0].gates).toHaveLength(2);
-      expect(results[0].gates[0].status).toBe('FAIL');
-      expect(results[0].gates[1].status).toBe('PASS');
+      expect(results[0]!.gates).toHaveLength(2);
+      expect(results[0]!.gates[0]!.status).toBe('FAIL');
+      expect(results[0]!.gates[1]!.status).toBe('PASS');
     });
   });
 
@@ -688,7 +701,8 @@ describe('StepGuardEngine', () => {
         name: 'Validation Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'validation-guard',
@@ -712,8 +726,8 @@ describe('StepGuardEngine', () => {
       };
 
       const results = await engine.runBeforeGuards(context);
-      expect(results[0].gates[0].gateId).toBe('validation');
-      expect(results[0].gates[0].status).toBe('PASS');
+      expect(results[0]!.gates[0]!.gateId).toBe('validation');
+      expect(results[0]!.gates[0]!.status).toBe('PASS');
     });
 
     it('has progress gate with percentage', async () => {
@@ -722,7 +736,8 @@ describe('StepGuardEngine', () => {
         name: 'Progress Policy',
         enabled: true,
         priority: 10,
-        agentPatterns: ['*'],
+        workflowPatterns: ['*'],
+      agentPatterns: ['*'],
         guards: [
           {
             guardId: 'progress-guard',
@@ -746,8 +761,8 @@ describe('StepGuardEngine', () => {
       };
 
       const results = await engine.runBeforeGuards(context);
-      expect(results[0].gates[0].gateId).toBe('progress');
-      expect(results[0].gates[0].details?.percentComplete).toBe(75); // (2+1)/4 * 100
+      expect(results[0]!.gates[0]!.gateId).toBe('progress');
+      expect(results[0]!.gates[0]!.details?.percentComplete).toBe(75); // (2+1)/4 * 100
     });
   });
 
@@ -769,14 +784,14 @@ describe('StepGuardEngine', () => {
       );
 
       expect(events).toHaveLength(1);
-      expect(events[0].executionId).toBe('exec-123');
-      expect(events[0].status).toBe('starting');
+      expect(events[0]!.executionId).toBe('exec-123');
+      expect(events[0]!.status).toBe('starting');
     });
 
     it('does nothing when no callback configured', () => {
       // Should not throw
       expect(() =>
-        engine.emitProgress('exec-123', 'agent-1', 0, 5, 'init', 'prompt', 'starting')
+        { engine.emitProgress('exec-123', 'agent-1', 0, 5, 'init', 'prompt', 'starting'); }
       ).not.toThrow();
     });
   });
@@ -793,6 +808,7 @@ describe('GateRegistry', () => {
     const gate: GateCheckFn = async () => ({
       gateId: 'test',
       status: 'PASS',
+      message: 'Passed',
     });
 
     registry.register('test', gate);
@@ -807,6 +823,7 @@ describe('GateRegistry', () => {
     const gate: GateCheckFn = async () => ({
       gateId: 'test',
       status: 'PASS',
+      message: 'Passed',
     });
 
     registry.register('test', gate);
@@ -815,8 +832,8 @@ describe('GateRegistry', () => {
   });
 
   it('lists all gate IDs', () => {
-    registry.register('gate-1', async () => ({ gateId: 'gate-1', status: 'PASS' }));
-    registry.register('gate-2', async () => ({ gateId: 'gate-2', status: 'PASS' }));
+    registry.register('gate-1', async () => ({ gateId: 'gate-1', status: 'PASS', message: 'Passed' }));
+    registry.register('gate-2', async () => ({ gateId: 'gate-2', status: 'PASS', message: 'Passed' }));
 
     const ids = registry.list();
     expect(ids).toContain('gate-1');
@@ -846,11 +863,11 @@ describe('ProgressTracker', () => {
       tracker.starting(0, 'init', 'prompt');
 
       expect(events).toHaveLength(1);
-      expect(events[0].type).toBe('stage.progress');
-      expect(events[0].status).toBe('starting');
-      expect(events[0].stageIndex).toBe(0);
-      expect(events[0].stageName).toBe('init');
-      expect(events[0].stageType).toBe('prompt');
+      expect(events[0]!.type).toBe('stage.progress');
+      expect(events[0]!.status).toBe('starting');
+      expect(events[0]!.stageIndex).toBe(0);
+      expect(events[0]!.stageName).toBe('init');
+      expect(events[0]!.stageType).toBe('prompt');
     });
   });
 
@@ -860,8 +877,8 @@ describe('ProgressTracker', () => {
       tracker.completed(1, 'process', 'tool', 150);
 
       expect(events).toHaveLength(1);
-      expect(events[0].status).toBe('completed');
-      expect(events[0].durationMs).toBe(150);
+      expect(events[0]!.status).toBe('completed');
+      expect(events[0]!.durationMs).toBe(150);
     });
   });
 
@@ -870,9 +887,9 @@ describe('ProgressTracker', () => {
       tracker.failed(2, 'validate', 'conditional', 'Validation failed', 50);
 
       expect(events).toHaveLength(1);
-      expect(events[0].status).toBe('failed');
-      expect(events[0].error).toBe('Validation failed');
-      expect(events[0].durationMs).toBe(50);
+      expect(events[0]!.status).toBe('failed');
+      expect(events[0]!.error).toBe('Validation failed');
+      expect(events[0]!.durationMs).toBe(50);
     });
   });
 
@@ -881,7 +898,7 @@ describe('ProgressTracker', () => {
       tracker.skipped(3, 'optional', 'prompt');
 
       expect(events).toHaveLength(1);
-      expect(events[0].status).toBe('skipped');
+      expect(events[0]!.status).toBe('skipped');
     });
   });
 
@@ -902,35 +919,35 @@ describe('ProgressTracker', () => {
       tracker.blocked(1, 'step-1', 'prompt', guardResult);
 
       expect(events).toHaveLength(1);
-      expect(events[0].status).toBe('blocked');
-      expect(events[0].guardResult).toEqual(guardResult);
+      expect(events[0]!.status).toBe('blocked');
+      expect(events[0]!.guardResult).toEqual(guardResult);
     });
   });
 
   describe('event properties', () => {
     it('includes executionId', () => {
       tracker.starting(0, 'init', 'prompt');
-      expect(events[0].executionId).toBe('exec-123');
+      expect(events[0]!.executionId).toBe('exec-123');
     });
 
     it('includes agentId', () => {
       tracker.starting(0, 'init', 'prompt');
-      expect(events[0].agentId).toBe('agent-1');
+      expect(events[0]!.agentId).toBe('agent-1');
     });
 
     it('includes sessionId', () => {
       tracker.starting(0, 'init', 'prompt');
-      expect(events[0].sessionId).toBe('session-1');
+      expect(events[0]!.sessionId).toBe('session-1');
     });
 
     it('includes stageTotal', () => {
       tracker.starting(0, 'init', 'prompt');
-      expect(events[0].stageTotal).toBe(5);
+      expect(events[0]!.stageTotal).toBe(5);
     });
 
     it('includes timestamp', () => {
       tracker.starting(0, 'init', 'prompt');
-      expect(events[0].timestamp).toBeDefined();
+      expect(events[0]!.timestamp).toBeDefined();
     });
   });
 });

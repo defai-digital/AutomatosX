@@ -8,8 +8,6 @@
  */
 
 import { z } from 'zod';
-import { BugSeveritySchema, BugCategorySchema } from '../../../bugfix/v1/schema.js';
-import { RefactorImpactSchema } from '../../../refactor/v1/schema.js';
 import { DesignTypeSchema, DesignStatusSchema } from '../../../design/v1/schema.js';
 import { MetricCategorySchema } from '../../../telemetry/v1/schema.js';
 import {
@@ -17,38 +15,6 @@ import {
   AbilityInjectionRequestSchema,
   AbilityInjectionResultSchema,
 } from '../../../ability/v1/schema.js';
-
-// ============================================================================
-// Bugfix Tool Schemas
-// ============================================================================
-
-/**
- * bugfix_list input schema
- */
-export const BugfixListInputSchema = z.object({
-  scanId: z.string().uuid().optional(),
-  severity: BugSeveritySchema.optional(),
-  category: BugCategorySchema.optional(),
-  limit: z.number().int().min(1).max(500).default(50),
-});
-
-export type BugfixListInput = z.infer<typeof BugfixListInputSchema>;
-
-// ============================================================================
-// Refactor Tool Schemas
-// ============================================================================
-
-/**
- * refactor_list input schema
- */
-export const RefactorListInputSchema = z.object({
-  scanId: z.string().uuid().optional(),
-  type: z.string().optional(),
-  impact: RefactorImpactSchema.optional(),
-  limit: z.number().int().min(1).max(500).default(50),
-});
-
-export type RefactorListInput = z.infer<typeof RefactorListInputSchema>;
 
 // ============================================================================
 // Design Tool Schemas

@@ -1,0 +1,43 @@
+# {{pascalCase domainName}} Domain Invariants
+
+## Overview
+
+This document defines the behavioral invariants for the {{pascalCase domainName}} domain.
+
+## Schema Invariants
+
+### INV-{{upperCase (substring domainName 0 3)}}-001: Valid ID Format
+{{pascalCase domainName}} ID MUST be a valid UUID v4.
+- **Enforcement**: schema
+- **Test**: `z.string().uuid()` rejects invalid UUIDs
+
+### INV-{{upperCase (substring domainName 0 3)}}-002: Valid Status
+Status MUST be one of the defined enum values.
+- **Enforcement**: schema
+- **Test**: `z.enum([...])` rejects invalid values
+
+## Runtime Invariants
+
+### INV-{{upperCase (substring domainName 0 3)}}-101: Status Transitions
+Status transitions MUST follow the defined state machine.
+- **Enforcement**: runtime
+- **Valid Transitions**:
+  ```
+  draft     → active, cancelled
+  active    → completed, cancelled
+  completed → (terminal)
+  cancelled → (terminal)
+  ```
+
+### INV-{{upperCase (substring domainName 0 3)}}-102: Timestamp Consistency
+UpdatedAt MUST be >= CreatedAt.
+- **Enforcement**: runtime
+- **Test**: Update with earlier timestamp → error
+
+## Business Invariants
+
+### INV-{{upperCase (substring domainName 0 3)}}-201: [Business Rule]
+[Description]
+- **Enforcement**: [schema|runtime|test]
+- **Test**: [Verification method]
+- **Owner**: [Team]

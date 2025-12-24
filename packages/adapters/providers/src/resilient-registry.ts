@@ -28,6 +28,14 @@ import {
   type CircuitBreakerConfig,
   type RateLimiterConfig,
 } from '@automatosx/contracts/resilience/v1';
+import {
+  CIRCUIT_FAILURE_THRESHOLD,
+  CIRCUIT_RESET_TIMEOUT,
+  CIRCUIT_FAILURE_WINDOW,
+  CIRCUIT_QUEUE_TIMEOUT,
+  RATE_LIMIT_RPM_DEFAULT,
+  RETRY_DELAY_DEFAULT,
+} from '@automatosx/contracts';
 
 /**
  * Configuration for resilient provider registry
@@ -45,15 +53,15 @@ export interface ResilientRegistryConfig {
 
 const DEFAULT_CONFIG: Required<ResilientRegistryConfig> = {
   circuitBreaker: {
-    failureThreshold: 5,
-    resetTimeoutMs: 30000,
+    failureThreshold: CIRCUIT_FAILURE_THRESHOLD,
+    resetTimeoutMs: CIRCUIT_RESET_TIMEOUT,
     halfOpenMaxAttempts: 1,
-    failureWindowMs: 60000,
+    failureWindowMs: CIRCUIT_FAILURE_WINDOW,
   },
   rateLimiter: {
-    requestsPerMinute: 60,
+    requestsPerMinute: RATE_LIMIT_RPM_DEFAULT,
     maxQueueSize: 100,
-    queueTimeoutMs: 30000,
+    queueTimeoutMs: CIRCUIT_QUEUE_TIMEOUT,
     burstMultiplier: 1.5,
   },
   enableMetrics: true,
@@ -82,7 +90,18 @@ export class ResilientProviderRegistry {
     config?: ResilientRegistryConfig
   ) {
     this.baseRegistry = baseRegistry;
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    // Deep merge config to preserve nested defaults
+    this.config = {
+      circuitBreaker: {
+        ...DEFAULT_CONFIG.circuitBreaker,
+        ...config?.circuitBreaker,
+      },
+      rateLimiter: {
+        ...DEFAULT_CONFIG.rateLimiter,
+        ...config?.rateLimiter,
+      },
+      enableMetrics: config?.enableMetrics ?? DEFAULT_CONFIG.enableMetrics,
+    };
 
     // Create global rate limiter
     this.rateLimiter = createRateLimiter(this.config.rateLimiter);
@@ -149,7 +168,7 @@ export class ResilientProviderRegistry {
             : 'Rate limit exceeded',
         shouldRetry: true,
         shouldFallback: false,
-        retryAfterMs: rateLimitResult.retryAfterMs ?? 1000,
+        retryAfterMs: rateLimitResult.retryAfterMs ?? RETRY_DELAY_DEFAULT,
         originalError: undefined,
       };
 
@@ -164,7 +183,15 @@ export class ResilientProviderRegistry {
     // Execute with circuit breaker protection
     try {
       const response = await resilient.circuitBreaker.execute(async () => {
-        return provider.complete(request);
+        const result = await provider.complete(request);
+        // Throw error for failed responses that should trip the circuit breaker
+        // This ensures the circuit breaker tracks provider failures, not just exceptions
+        if (!result.success && result.error?.shouldFallback) {
+          const error = new Error(result.error.message);
+          (error as Error & { response: typeof result }).response = result;
+          throw error;
+        }
+        return result;
       });
 
       // Record success metrics
@@ -204,7 +231,38 @@ export class ResilientProviderRegistry {
     } catch (error) {
       const latencyMs = Date.now() - startTime;
 
-      // Record failure metrics
+      // Check if this is a provider failure (has attached response)
+      // We know it's a CompletionFailure because we only throw when success: false
+      const errorWithResponse = error as Error & { response?: CompletionResponse };
+      if (errorWithResponse.response !== undefined && !errorWithResponse.response.success) {
+        // Return the original failed response - circuit breaker already recorded the failure
+        const response = errorWithResponse.response;
+
+        // Record failure metrics
+        if (this.metrics) {
+          this.metrics.recordRequest({
+            timestamp: new Date().toISOString(),
+            providerId: provider.providerId,
+            operation: 'complete',
+            success: false,
+            durationMs: response.latencyMs,
+            errorCode: response.error.category,
+          });
+
+          this.metrics.recordError({
+            timestamp: new Date().toISOString(),
+            code: response.error.category,
+            message: response.error.message,
+            providerId: provider.providerId,
+            operation: 'complete',
+            recoverable: response.error.shouldRetry,
+          });
+        }
+
+        return response;
+      }
+
+      // Record failure metrics for circuit breaker errors
       if (this.metrics) {
         this.metrics.recordRequest({
           timestamp: new Date().toISOString(),
@@ -222,7 +280,7 @@ export class ResilientProviderRegistry {
         message: error instanceof Error ? error.message : 'Circuit breaker is open',
         shouldRetry: true,
         shouldFallback: true,
-        retryAfterMs: 30000, // Default circuit breaker reset time
+        retryAfterMs: CIRCUIT_RESET_TIMEOUT,
         originalError: error instanceof Error ? error : undefined,
       };
 

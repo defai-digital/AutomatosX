@@ -26,8 +26,27 @@ import { changeRadiusGate } from './gates/change-radius.js';
 import { dependencyGate } from './gates/dependency.js';
 import { contractTestGate } from './gates/contract-tests.js';
 import { configValidationGate, sensitiveChangeGate } from './gates/config.js';
+import { secretsDetectionGate } from './gates/secrets.js';
 
 const execAsync = promisify(exec);
+
+/**
+ * Agent selection gate wrapper
+ *
+ * The agent_selection gate is designed to be used with specific selection context
+ * via the agentSelectionGate function. In the standard gate execution flow (which
+ * operates on changed files), it returns PASS as a placeholder.
+ *
+ * For actual agent selection validation, use agentSelectionGate directly with
+ * the AgentSelectionGateContext parameter.
+ */
+const agentSelectionGateWrapper: GateExecutor = async () => {
+  return {
+    gate: 'agent_selection',
+    status: 'PASS',
+    message: 'Agent selection gate requires specific selection context; use agentSelectionGate directly',
+  };
+};
 
 /**
  * Gate registry
@@ -39,6 +58,8 @@ const GATES: Record<GateType, GateExecutor> = {
   contract_tests: contractTestGate,
   config_validation: configValidationGate,
   sensitive_change: sensitiveChangeGate,
+  secrets_detection: secretsDetectionGate,
+  agent_selection: agentSelectionGateWrapper,
 };
 
 /**
@@ -91,6 +112,15 @@ interface PathViolationDetails {
 
 interface ContractTestDetails {
   modifiedTestFiles?: string[];
+}
+
+interface SecretsDetectionDetails {
+  secrets?: {
+    file: string;
+    line: number;
+    type: string;
+    severity: string;
+  }[];
 }
 
 function generateSuggestions(gateResults: GateResult[]): string[] {
@@ -148,6 +178,24 @@ function generateSuggestions(gateResults: GateResult[]): string[] {
         suggestions.push('Review security-sensitive config changes carefully');
         suggestions.push('Consider the impact of disabling tracing or guard');
         suggestions.push('Document reasons for sensitive config changes');
+        break;
+      }
+      case 'secrets_detection': {
+        const details = result.details as SecretsDetectionDetails | undefined;
+        const secrets = details?.secrets;
+        if (secrets !== undefined && secrets.length > 0) {
+          // Show first few secret locations
+          const locations = secrets.slice(0, 3).map(s => `${s.file}:${s.line}`);
+          suggestions.push(`Remove hardcoded secrets from: ${locations.join(', ')}`);
+        }
+        suggestions.push('Use environment variables or secret management for credentials');
+        suggestions.push('Add false positives to .secretsignore file if needed');
+        break;
+      }
+      case 'agent_selection': {
+        suggestions.push('Verify the selected agent is enabled and has required capabilities');
+        suggestions.push('Check agent selection confidence threshold in policy');
+        suggestions.push('Ensure agent is not in the excluded list');
         break;
       }
     }

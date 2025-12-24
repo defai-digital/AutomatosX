@@ -9,6 +9,7 @@ export {
   traceCommand,
   doctorCommand,
   guardCommand,
+  discussCommand,
   helpCommand,
   versionCommand,
   CLI_VERSION,
@@ -26,6 +27,9 @@ export {
   isDangerousOp,
   type DangerousOpOptions,
 } from './utils/index.js';
+
+// Bootstrap exports (for testing)
+export { resetStepExecutor } from './bootstrap.js';
 
 // Type exports
 export type {

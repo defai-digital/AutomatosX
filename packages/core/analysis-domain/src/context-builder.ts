@@ -10,6 +10,7 @@ import {
   type CodeContext,
   type AnalysisFile,
   getLanguageFromPath,
+  LIMIT_LINES_PER_FILE,
 } from '@automatosx/contracts';
 import type { CodeContextBuilder, GatherOptions } from './types.js';
 
@@ -53,7 +54,7 @@ export class ContextBuilderError extends Error {
  */
 const DEFAULT_OPTIONS: GatherOptions = {
   maxFiles: 20,
-  maxLinesPerFile: 1000,
+  maxLinesPerFile: LIMIT_LINES_PER_FILE,
 };
 
 /**

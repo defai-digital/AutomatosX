@@ -94,6 +94,10 @@ export default defineConfig({
         __dirname,
         'packages/core/analysis-domain/src/index.ts'
       ),
+      '@automatosx/review-domain': resolve(
+        __dirname,
+        'packages/core/review-domain/src/index.ts'
+      ),
       '@automatosx/resilience-domain': resolve(
         __dirname,
         'packages/core/resilience-domain/src/index.ts'

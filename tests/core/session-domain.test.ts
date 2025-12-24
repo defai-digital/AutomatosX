@@ -118,6 +118,7 @@ describe('Session Domain', () => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           version: 1,
+          appliedPolicies: [],
         };
 
         await expect(

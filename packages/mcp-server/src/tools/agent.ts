@@ -1,6 +1,13 @@
 import type { MCPTool, ToolHandler } from '../types.js';
-import type { AgentProfile, AgentResult } from '@automatosx/contracts';
+import type { AgentProfile, AgentResult, AgentCategory } from '@automatosx/contracts';
+import { LIMIT_AGENTS } from '@automatosx/contracts';
 import type { AgentFilter } from '@automatosx/agent-domain';
+import {
+  getAvailableTemplates,
+  createWorkflowFromTemplate,
+  isValidTemplateName,
+  createAgentSelectionService,
+} from '@automatosx/agent-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
   getSharedRegistry,
@@ -28,7 +35,7 @@ export const agentListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of agents to return',
-        default: 50,
+        default: LIMIT_AGENTS,
       },
     },
   },
@@ -207,6 +214,11 @@ export const agentRegisterTool: MCPTool = {
         items: { type: 'string' },
         description: 'Tags for categorization',
       },
+      workflowTemplate: {
+        type: 'string',
+        enum: ['prompt-response', 'research', 'code-review', 'multi-step', 'delegate-chain', 'agent-selection'],
+        description: 'Use a predefined workflow template instead of custom workflow steps',
+      },
       workflow: {
         type: 'array',
         items: {
@@ -223,7 +235,7 @@ export const agentRegisterTool: MCPTool = {
           },
           required: ['stepId', 'name', 'type'],
         },
-        description: 'Workflow steps to execute when agent runs',
+        description: 'Workflow steps to execute when agent runs (ignored if workflowTemplate is provided)',
       },
       enabled: {
         type: 'boolean',
@@ -516,12 +528,13 @@ export const handleAgentRegister: ToolHandler = async (args) => {
   const team = args.team as string | undefined;
   const capabilities = args.capabilities as string[] | undefined;
   const tags = args.tags as string[] | undefined;
-  const workflow = args.workflow as Array<{
+  const workflowTemplate = args.workflowTemplate as string | undefined;
+  const workflow = args.workflow as {
     stepId: string;
     name: string;
     type: string;
     config?: Record<string, unknown>;
-  }> | undefined;
+  }[] | undefined;
   const enabled = (args.enabled as boolean | undefined) ?? true;
 
   try {
@@ -560,7 +573,53 @@ export const handleAgentRegister: ToolHandler = async (args) => {
       };
     }
 
-    // Register the agent with workflow if provided
+    // Resolve workflow: template takes precedence over custom workflow
+    let resolvedWorkflow: {
+      stepId: string;
+      name: string;
+      type: 'prompt' | 'tool' | 'conditional' | 'loop' | 'parallel' | 'delegate' | 'discuss';
+      config: Record<string, unknown>;
+    }[] | undefined;
+
+    if (workflowTemplate !== undefined) {
+      // Validate template name
+      if (!isValidTemplateName(workflowTemplate)) {
+        const availableTemplates = getAvailableTemplates();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error: 'INVALID_WORKFLOW_TEMPLATE',
+                message: `Unknown workflow template "${workflowTemplate}". Available templates: ${availableTemplates.join(', ')}`,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Create workflow from template
+      const templateWorkflow = createWorkflowFromTemplate(workflowTemplate);
+      if (templateWorkflow !== undefined) {
+        resolvedWorkflow = templateWorkflow.map(step => ({
+          stepId: step.stepId,
+          name: step.name,
+          type: step.type,
+          config: step.config ?? {},
+        }));
+      }
+    } else if (workflow !== undefined && workflow.length > 0) {
+      // Use custom workflow
+      resolvedWorkflow = workflow.map(step => ({
+        stepId: step.stepId,
+        name: step.name,
+        type: step.type as 'prompt' | 'tool' | 'conditional' | 'loop' | 'parallel' | 'delegate' | 'discuss',
+        config: step.config ?? {},
+      }));
+    }
+
+    // Register the agent with resolved workflow
     const profile: AgentProfile = {
       agentId,
       description,
@@ -569,16 +628,18 @@ export const handleAgentRegister: ToolHandler = async (args) => {
       team,
       capabilities: capabilities ?? [],
       tags: tags ?? [],
-      workflow: workflow?.map(step => ({
-        stepId: step.stepId,
-        name: step.name,
-        type: step.type as 'prompt' | 'tool' | 'conditional' | 'loop' | 'parallel' | 'delegate',
-        config: step.config ?? {},
-      })),
+      workflow: resolvedWorkflow,
       enabled,
     };
 
     await registry.register(profile);
+
+    // Build response message
+    const responseMessage = workflowTemplate !== undefined
+      ? `Agent "${agentId}" registered successfully with "${workflowTemplate}" workflow template`
+      : resolvedWorkflow !== undefined
+        ? `Agent "${agentId}" registered successfully with ${resolvedWorkflow.length} workflow step(s)`
+        : `Agent "${agentId}" registered successfully`;
 
     return {
       content: [
@@ -588,7 +649,9 @@ export const handleAgentRegister: ToolHandler = async (args) => {
             {
               registered: true,
               agentId,
-              message: `Agent "${agentId}" registered successfully`,
+              message: responseMessage,
+              workflowTemplate: workflowTemplate ?? null,
+              workflowSteps: resolvedWorkflow?.length ?? 0,
               createdAt: new Date().toISOString(),
             },
             null,
@@ -666,6 +729,250 @@ export const handleAgentRemove: ToolHandler = async (args) => {
           type: 'text',
           text: JSON.stringify({
             error: 'AGENT_REMOVE_FAILED',
+            message,
+          }),
+        },
+      ],
+      isError: true,
+    };
+  }
+};
+
+// ============================================================================
+// Agent Recommendation Tool (INV-AGT-SEL-001 through INV-AGT-SEL-006)
+// ============================================================================
+
+/**
+ * Agent recommend tool definition
+ * INV-MCP-004: Idempotent - read-only operation
+ * INV-AGT-SEL-001: Selection is deterministic
+ * INV-AGT-SEL-004: Always returns at least one result
+ */
+export const agentRecommendTool: MCPTool = {
+  name: 'agent_recommend',
+  description: 'Recommend the best agent for a given task. Returns ranked matches with confidence scores. Use this to auto-route tasks to appropriate agents. Read-only, no side effects.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      task: {
+        type: 'string',
+        description: 'Task description to match against agents (max 2000 chars)',
+      },
+      team: {
+        type: 'string',
+        description: 'Filter by team name',
+      },
+      requiredCapabilities: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Required capabilities the agent must have',
+      },
+      excludeAgents: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Agent IDs to exclude from matching',
+      },
+      maxResults: {
+        type: 'number',
+        description: 'Maximum number of recommendations (default 3)',
+        default: 3,
+      },
+    },
+    required: ['task'],
+  },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      recommended: { type: 'string', description: 'Best matching agent ID' },
+      confidence: { type: 'number', description: 'Match confidence 0-1' },
+      reason: { type: 'string', description: 'Why this agent was selected' },
+      alternatives: {
+        type: 'array',
+        description: 'Alternative agent matches',
+        items: {
+          type: 'object',
+          properties: {
+            agentId: { type: 'string' },
+            confidence: { type: 'number' },
+            reason: { type: 'string' },
+          },
+        },
+      },
+    },
+    required: ['recommended', 'confidence', 'reason', 'alternatives'],
+  },
+  idempotent: true,
+};
+
+/**
+ * Handler for agent_recommend tool
+ * Implements INV-AGT-SEL-001 through INV-AGT-SEL-006
+ * Uses AgentSelectionService domain module for proper separation
+ */
+export const handleAgentRecommend: ToolHandler = async (args) => {
+  const task = args.task as string;
+  const team = args.team as string | undefined;
+  const requiredCapabilities = args.requiredCapabilities as string[] | undefined;
+  const excludeAgents = args.excludeAgents as string[] | undefined;
+  const maxResults = (args.maxResults as number | undefined) ?? 3;
+
+  try {
+    const registry = await getSharedRegistry();
+    // Use domain service for agent selection (INV-AGT-SEL-001 through INV-AGT-SEL-006)
+    const selectionService = createAgentSelectionService(registry);
+
+    // INV-AGT-SEL-001: Selection is deterministic (same input = same output)
+    const result = await selectionService.recommend({
+      task,
+      team,
+      requiredCapabilities,
+      excludeAgents,
+      maxResults,
+    });
+
+    // INV-AGT-SEL-004: Always returns at least one result (service handles fallback)
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              recommended: result.recommended,
+              confidence: result.confidence,
+              reason: result.reason,
+              alternatives: result.alternatives.map(alt => ({
+                agentId: alt.agentId,
+                confidence: alt.confidence,
+              })),
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            error: 'AGENT_RECOMMEND_FAILED',
+            message,
+          }),
+        },
+      ],
+      isError: true,
+    };
+  }
+};
+
+// ============================================================================
+// Agent Capabilities Tool
+// ============================================================================
+
+/**
+ * Agent capabilities tool definition
+ * INV-MCP-004: Idempotent - read-only operation
+ */
+export const agentCapabilitiesTool: MCPTool = {
+  name: 'agent_capabilities',
+  description: 'List all unique capabilities across agents with mapping to agent IDs. Use for capability-based routing and discovery. Read-only, no side effects.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      category: {
+        type: 'string',
+        enum: ['orchestrator', 'implementer', 'reviewer', 'specialist', 'generalist'],
+        description: 'Filter by agent category',
+      },
+      includeDisabled: {
+        type: 'boolean',
+        description: 'Include disabled agents (default false)',
+        default: false,
+      },
+    },
+  },
+  outputSchema: {
+    type: 'object',
+    properties: {
+      capabilities: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'All unique capabilities',
+      },
+      agentsByCapability: {
+        type: 'object',
+        description: 'Capability → agent IDs mapping',
+        additionalProperties: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      capabilitiesByAgent: {
+        type: 'object',
+        description: 'Agent ID → capabilities mapping',
+        additionalProperties: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      categoriesByAgent: {
+        type: 'object',
+        description: 'Agent ID → category mapping',
+        additionalProperties: { type: 'string' },
+      },
+    },
+    required: ['capabilities', 'agentsByCapability', 'capabilitiesByAgent'],
+  },
+  idempotent: true,
+};
+
+/**
+ * Handler for agent_capabilities tool
+ * Uses AgentSelectionService domain module for proper separation
+ */
+export const handleAgentCapabilities: ToolHandler = async (args) => {
+  const category = args.category as AgentCategory | undefined;
+  const includeDisabled = (args.includeDisabled as boolean | undefined) ?? false;
+
+  try {
+    const registry = await getSharedRegistry();
+    // Use domain service for capabilities discovery
+    const selectionService = createAgentSelectionService(registry);
+
+    // Delegate to domain service
+    const result = await selectionService.getCapabilities({
+      category,
+      includeDisabled,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              capabilities: result.capabilities,
+              agentsByCapability: result.agentsByCapability,
+              capabilitiesByAgent: result.capabilitiesByAgent,
+              categoriesByAgent: result.categoriesByAgent,
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            error: 'AGENT_CAPABILITIES_FAILED',
             message,
           }),
         },

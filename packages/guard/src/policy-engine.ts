@@ -73,6 +73,102 @@ const BUILTIN_POLICIES: Record<string, Policy> = {
     gates: ['path_violation', 'config_validation', 'sensitive_change'],
     changeRadiusLimit: 2,
   },
+
+  /**
+   * ML Governance Policy (PRD v15)
+   *
+   * Governance gates for ML lifecycle workflows including:
+   * - Experiment tracking
+   * - Model evaluation
+   * - Model registry
+   * - Model monitoring
+   * - A/B testing
+   */
+  'ml-governance': {
+    policyId: 'ml-governance',
+    allowedPaths: [
+      'packages/core/ml-lifecycle-domain/**',
+      'packages/contracts/src/ml-lifecycle/**',
+      'examples/workflows/ml-*',
+      'examples/agents/ml*',
+      'examples/agents/data-*',
+      'tests/core/ml-*',
+      'tests/contract/ml-*',
+    ],
+    forbiddenPaths: [
+      // Cannot modify core routing during ML workflows
+      'packages/core/routing-engine/**',
+      // Cannot modify provider adapters
+      'packages/adapters/providers/**',
+      // Cannot modify guard itself
+      'packages/guard/**',
+    ],
+    requiredContracts: ['ml-lifecycle', 'workflow-templates', 'memory'],
+    gates: ['path_violation', 'dependency', 'contract_tests'],
+    changeRadiusLimit: 4,
+  },
+
+  /**
+   * Business Governance Policy (PRD v15)
+   *
+   * Governance gates for business workflows including:
+   * - Product discovery
+   * - Strategic planning
+   * - Technology research
+   */
+  'business-governance': {
+    policyId: 'business-governance',
+    allowedPaths: [
+      'examples/workflows/product-*',
+      'examples/workflows/strategic-*',
+      'examples/workflows/technology-*',
+      'examples/agents/product*',
+      'examples/agents/cto*',
+      'examples/agents/ceo*',
+      'examples/agents/researcher*',
+      'packages/contracts/src/workflow-templates/**',
+    ],
+    forbiddenPaths: [
+      // Cannot modify core packages during business workflows
+      'packages/core/**',
+      // Cannot modify adapters
+      'packages/adapters/**',
+      // Cannot modify guard
+      'packages/guard/**',
+    ],
+    requiredContracts: ['workflow-templates'],
+    gates: ['path_violation', 'change_radius'],
+    changeRadiusLimit: 3,
+  },
+
+  /**
+   * Infrastructure Governance Policy (PRD v15)
+   *
+   * Governance gates for infrastructure/DevOps workflows including:
+   * - Infrastructure automation
+   * - CI/CD pipelines
+   * - Cloud provisioning
+   */
+  'infrastructure-governance': {
+    policyId: 'infrastructure-governance',
+    allowedPaths: [
+      'examples/workflows/infrastructure-*',
+      'examples/agents/devops*',
+      '.github/**',
+      'docker/**',
+      'terraform/**',
+      'k8s/**',
+    ],
+    forbiddenPaths: [
+      // Cannot modify production secrets
+      '**/.env*',
+      '**/credentials*',
+      '**/secrets*',
+    ],
+    requiredContracts: ['workflow-templates'],
+    gates: ['path_violation', 'secrets_detection', 'change_radius'],
+    changeRadiusLimit: 5,
+  },
 };
 
 /**

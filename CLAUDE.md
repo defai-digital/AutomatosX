@@ -36,11 +36,12 @@ pnpm validate
 # Run CLI (after build)
 pnpm ax <command>
 # Examples:
-pnpm ax doctor              # Check provider health
-pnpm ax call claude "..."   # Direct provider call
-pnpm ax agent list          # List agents
-pnpm ax bugfix scan src/    # Scan for bugs
-pnpm ax refactor scan src/  # Scan for refactoring
+pnpm ax doctor                              # Check provider health
+pnpm ax call claude "..."                   # Direct provider call
+pnpm ax agent list                          # List agents
+pnpm ax scaffold project my-app -m order    # Scaffold new project
+pnpm ax scaffold contract billing           # Scaffold contract
+pnpm ax scaffold domain billing             # Scaffold domain
 ```
 
 ## Architecture Overview
@@ -73,6 +74,7 @@ AutomatosX is a **contract-first AI orchestration platform** that unifies multip
 - `core/*` → only contracts (and other core packages)
 - `adapters/*` → contracts and core only
 - `cli`, `mcp-server` → contracts and core only (NOT adapters directly)
+- **Exception**: `bootstrap.ts` files are composition roots - they ARE allowed to import adapters
 - No circular dependencies allowed
 
 ### Key Directories
@@ -83,10 +85,12 @@ AutomatosX is a **contract-first AI orchestration platform** that unifies multip
 | `packages/core/*/src/` | Domain logic implementations |
 | `packages/adapters/providers/src/` | CLI-based LLM provider adapters (claude, gemini, codex, etc.) |
 | `packages/mcp-server/src/tools/` | MCP tool implementations |
+| `templates/` | Project scaffold templates (monorepo, standalone) |
 | `tests/contract/` | Contract validation tests |
 | `tests/core/` | Domain logic unit tests |
 | `tests/integration/` | Integration tests |
 | `tests/application/` | E2E tests |
+| `tests/cli/` | CLI command tests |
 
 ### Contract-First Design
 
@@ -117,6 +121,8 @@ Providers use external CLI tools - AutomatosX does NOT manage credentials:
 - `ax-glm` - [ax-cli](https://github.com/defai-digital/ax-cli) GLM wrapper (ZAI_API_KEY)
 - `ax-grok` - [ax-cli](https://github.com/defai-digital/ax-cli) Grok wrapper (XAI_API_KEY)
 
+Provider configurations are centralized in `packages/cli/src/bootstrap.ts` (PROVIDER_CONFIGS).
+
 ### Test Organization
 
 Tests mirror the architecture layers:
@@ -134,6 +140,12 @@ Use Vitest with the `--run` flag for single runs. The config in `vitest.config.t
 - **Guard system**: Post-check governance gates enforce policy compliance after AI code generation
 - **CLI-only providers**: Simplifies credential management, leverages existing auth flows
 - **Dependency injection for executors**: Core domains provide stub implementations with runtime warnings; production code injects real executors via config
+- **Hexagonal Architecture**: CLI/MCP Server depend on port interfaces; only `bootstrap.ts` knows about concrete adapter implementations
+
+## Environment Variables
+
+- `AX_STORAGE` - Storage mode: `sqlite` (default) or `memory`
+- `AX_MCP_TOOL_PREFIX` - Optional prefix for MCP tool names (e.g., `ax_`)
 
 ## Storage Architecture
 
@@ -157,11 +169,64 @@ MCP tools in `packages/mcp-server/src/tools/` are organized by domain:
 - `ability.ts` - Ability injection (`ability_list`, `ability_inject`)
 - `config.ts` - Configuration (`config_get`, `config_set`, `config_show`)
 
-## Guard Policies
+## Guard System
 
-Built-in policies in `packages/guard/src/policies/`:
+Built-in policies:
 - `provider-refactor` - Provider adapter changes (2 package radius)
 - `bugfix` - Bug fixes (3 package radius)
 - `rebuild` - Major refactoring (10 package radius)
 
-Gates check: path violations, change radius, dependency boundaries, contract tests
+Gates in `packages/guard/src/gates/`:
+- `path.ts` - Enforce allowed/forbidden paths
+- `change-radius.ts` - Limit number of packages modified
+- `dependency.ts` - Check import boundaries
+- `contract-tests.ts` - Verify contract tests pass
+- `secrets.ts` - Detect potential secrets in code
+
+## Scaffold System
+
+The CLI provides contract-first scaffolding for creating new projects, domains, and guard policies.
+
+### Commands
+
+```bash
+# Create a new project from template
+pnpm ax scaffold project <name> -m <domain> [-t monorepo|standalone] [-s @scope]
+
+# Scaffold contract (Zod schemas + invariants)
+pnpm ax scaffold contract <name> [-d description] [--dry-run]
+
+# Scaffold domain implementation
+pnpm ax scaffold domain <name> [--no-tests] [--no-guard]
+
+# Scaffold guard policy
+pnpm ax scaffold guard <policy-id> [-r radius] [-g gates]
+```
+
+### Templates
+
+Templates are in `templates/`:
+- `templates/monorepo/` - Multi-package monorepo structure
+- `templates/standalone/` - Single-package project structure
+
+Each template has:
+- `template.json` - Configuration and structure definition
+- `*.hbs` - Handlebars template files
+
+### Template Variables
+
+- `{{projectName}}` - Project name
+- `{{domainName}}` - Domain name
+- `{{scope}}` - NPM package scope
+- `{{pascalCase domainName}}` - PascalCase domain name
+- `{{upperCase (substring domainName 0 3)}}` - 3-letter domain code
+
+### Invariant Naming
+
+Invariants follow the pattern `INV-XXX-NNN`:
+- `XXX` - 3-letter domain code (e.g., ORD, PAY)
+- `NNN` - Sequence number
+  - `001-099` - Schema invariants
+  - `100-199` - Runtime invariants
+  - `200-299` - Business invariants
+  - `300-399` - Cross-aggregate invariants

@@ -7,6 +7,12 @@
 
 import type { MCPTool, ToolHandler } from '../types.js';
 import type { Ability, AbilityInjectionResult } from '@automatosx/contracts';
+import {
+  LIMIT_AGENTS,
+  LIMIT_ABILITIES_INJECT,
+  LIMIT_ABILITY_TOKENS,
+  PRIORITY_DEFAULT,
+} from '@automatosx/contracts';
 import type { AbilityFilter } from '@automatosx/ability-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
@@ -44,7 +50,7 @@ export const abilityListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of abilities to return',
-        default: 50,
+        default: LIMIT_AGENTS,
       },
     },
   },
@@ -141,12 +147,12 @@ export const abilityInjectTool: MCPTool = {
       maxAbilities: {
         type: 'number',
         description: 'Maximum number of abilities to inject',
-        default: 10,
+        default: LIMIT_ABILITIES_INJECT,
       },
       maxTokens: {
         type: 'number',
         description: 'Maximum total tokens for injected content',
-        default: 50000,
+        default: LIMIT_ABILITY_TOKENS,
       },
       includeMetadata: {
         type: 'boolean',
@@ -208,8 +214,8 @@ export const abilityRegisterTool: MCPTool = {
       },
       priority: {
         type: 'number',
-        description: 'Priority for load order (1-100, default 50)',
-        default: 50,
+        description: 'Priority for load order (1-100)',
+        default: PRIORITY_DEFAULT,
       },
       enabled: {
         type: 'boolean',

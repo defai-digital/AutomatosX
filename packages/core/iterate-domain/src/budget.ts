@@ -26,7 +26,7 @@ import type { IBudgetTracker } from './types.js';
 export class BudgetTracker implements IBudgetTracker {
   private budget: IterateBudget;
   private consumed: BudgetConsumed;
-  private startTime: number = 0;
+  private startTime = 0;
 
   constructor(budget?: Partial<IterateBudget>) {
     this.budget = {

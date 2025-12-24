@@ -1,8 +1,19 @@
 {
   "name": "@automatosx/agent-domain",
-  "version": "1.0.0",
-  "description": "Agent profiles and orchestration for AutomatosX",
+  "version": "13.0.0",
   "type": "module",
+  "description": "Agent profiles and orchestration for AutomatosX",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/core/agent-domain"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -11,24 +22,30 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/agent-execution": "workspace:*",
     "@automatosx/ability-domain": "workspace:*",
+    "@automatosx/agent-execution": "workspace:*",
+    "@automatosx/contracts": "workspace:*",
     "yaml": "^2.8.1"
-  },
-  "peerDependencies": {
-    "zod": "^3.23.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
   },
-  "files": [
-    "dist",
-    "src"
-  ]
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  }
 }

@@ -1,0 +1,84 @@
+# Payment Domain Guard Policy
+#
+# This policy governs changes to the payment domain packages.
+# Use with: ax guard check --policy payment-development --paths <changed-paths>
+
+policy_id: payment-development
+
+description: |
+  Guard policy for payment domain development.
+  Ensures changes stay within domain boundaries and follow contract-first principles.
+
+# Paths that can be modified under this policy
+allowed_paths:
+  # Contract package
+  - packages/contracts/src/payment/**
+  - packages/contracts/src/payment/v1/schema.ts
+  - packages/contracts/src/payment/v1/invariants.md
+  - packages/contracts/src/payment/v1/index.ts
+
+  # Domain package
+  - packages/core/payment-domain/**
+  - packages/core/payment-domain/src/**
+
+  # Tests
+  - tests/contract/payment.test.ts
+  - tests/core/payment-domain.test.ts
+  - tests/integration/payment/**
+
+# Paths that MUST NOT be modified
+forbidden_paths:
+  # Other domains' contracts
+  - packages/contracts/src/*/v1/schema.ts
+  - "!packages/contracts/src/payment/v1/schema.ts"
+
+  # Core infrastructure (should not be touched for domain changes)
+  - packages/cli/**
+  - packages/mcp-server/**
+  - packages/guard/**
+
+  # Other domains
+  - packages/core/routing-domain/**
+  - packages/core/memory-domain/**
+  - packages/core/trace-domain/**
+  - packages/core/session-domain/**
+  - packages/core/workflow-domain/**
+
+  # Adapters (payment should use interfaces, not modify adapters)
+  - packages/adapters/**
+
+# Required contracts that must exist/pass
+required_contracts:
+  - payment
+
+# Gates to run
+gates:
+  # Check file paths are within allowed boundaries
+  - path_violation
+
+  # Check import dependencies don't violate architecture
+  - dependency
+
+  # Limit number of packages that can be modified
+  - change_radius
+
+  # Ensure contract tests pass
+  - contract_tests
+
+  # Check for potential secrets
+  - secrets_detection
+
+# Maximum number of packages that can be modified in one PR
+change_radius_limit: 3
+
+# Variables for path interpolation
+variables:
+  domain: payment
+  team: payments
+
+# Metadata
+metadata:
+  owner: payments-team
+  created_at: "2025-12-19"
+  severity: high
+  auto_apply: false

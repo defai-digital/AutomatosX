@@ -204,10 +204,22 @@ export function wrapHandlersWithTracing(
 
 /**
  * Initializes default trace collector if not already set
+ * Returns the collector, which may be InMemoryTraceCollector or a custom implementation
  */
-export function initializeDefaultTracing(): InMemoryTraceCollector {
+export function initializeDefaultTracing(): TraceCollector {
   if (globalCollector === undefined) {
     globalCollector = new InMemoryTraceCollector();
   }
-  return globalCollector as InMemoryTraceCollector;
+  return globalCollector;
+}
+
+/**
+ * Gets the trace collector as InMemoryTraceCollector if it is one
+ * Returns undefined if no collector is set or if it's a different implementation
+ */
+export function getInMemoryTraceCollector(): InMemoryTraceCollector | undefined {
+  if (globalCollector instanceof InMemoryTraceCollector) {
+    return globalCollector;
+  }
+  return undefined;
 }

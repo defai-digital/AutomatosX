@@ -12,7 +12,13 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { validateAgentProfile, type AgentProfile } from '@automatosx/contracts';
+import {
+  validateAgentProfile,
+  type AgentProfile,
+  DATA_DIR_NAME,
+  AGENTS_FILENAME,
+  DEFAULT_SCHEMA_VERSION,
+} from '@automatosx/contracts';
 import { InMemoryAgentRegistry } from './registry.js';
 import type { AgentRegistry, AgentFilter } from './types.js';
 
@@ -176,7 +182,7 @@ export class PersistentAgentRegistry implements AgentRegistry {
 
     // Create data structure
     const data = {
-      version: '1.0.0',
+      version: DEFAULT_SCHEMA_VERSION,
       updatedAt: new Date().toISOString(),
       agents,
     };
@@ -210,7 +216,7 @@ export class PersistentAgentRegistry implements AgentRegistry {
  * @example
  * ```typescript
  * const registry = createPersistentAgentRegistry({
- *   storagePath: '.automatosx/agents.json',
+ *   storagePath: getDefaultAgentStoragePath(),
  * });
  * ```
  */
@@ -222,8 +228,8 @@ export function createPersistentAgentRegistry(
 
 /**
  * Gets the default storage path for agents
- * Uses .automatosx/agents.json in current working directory
+ * Uses DATA_DIR_NAME/AGENTS_FILENAME in current working directory
  */
 export function getDefaultAgentStoragePath(): string {
-  return path.join(process.cwd(), '.automatosx', 'agents.json');
+  return path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
 }

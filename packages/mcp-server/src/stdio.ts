@@ -8,6 +8,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { MCP_SERVER_NAME, DEFAULT_SCHEMA_VERSION } from '@automatosx/contracts';
 
 import { ALL_TOOLS, TOOL_HANDLERS } from './tools/index.js';
 import { ALL_RESOURCES, readResource } from './resources/index.js';
@@ -25,8 +26,8 @@ export async function runStdioServer(): Promise<void> {
   // Create MCP server with official SDK
   const server = new Server(
     {
-      name: 'automatosx-mcp',
-      version: '1.0.0',
+      name: MCP_SERVER_NAME,
+      version: DEFAULT_SCHEMA_VERSION, // Server software version, not protocol version
     },
     {
       capabilities: {
@@ -71,7 +72,7 @@ export async function runStdioServer(): Promise<void> {
       // Map our MCPToolResult to SDK's CallToolResult format
       return {
         content: result.content.map((c) => ({
-          type: c.type as 'text' | 'image' | 'resource',
+          type: c.type,
           text: c.text,
           data: c.data,
           mimeType: c.mimeType,

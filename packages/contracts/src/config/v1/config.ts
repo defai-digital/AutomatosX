@@ -9,6 +9,21 @@
  */
 
 import { z } from 'zod';
+import {
+  DATA_DIR_NAME,
+  MEMORY_DB_FILENAME,
+  TRACE_DB_FILENAME,
+  SESSION_DB_FILENAME,
+  TIMEOUT_WORKFLOW_STEP,
+  TIMEOUT_HEALTH_CHECK,
+  TIMEOUT_GRACEFUL_SHUTDOWN,
+  TIMEOUT_FORCE_KILL,
+  TIMEOUT_PROVIDER_DEFAULT,
+  INTERVAL_HEALTH_CHECK,
+  CIRCUIT_RECOVERY_TIMEOUT,
+  RETRY_MAX_DEFAULT,
+  RETRY_DELAY_DEFAULT,
+} from '../../constants.js';
 
 // ============================================================================
 // Constants
@@ -176,10 +191,10 @@ export type FeatureFlags = z.infer<typeof FeatureFlagsSchema>;
  */
 export const WorkspaceConfigSchema = z.object({
   rootPath: z.string().optional(),
-  dataDir: z.string().default('.automatosx'),
-  memoryDbPath: z.string().default('memory.db'),
-  traceDbPath: z.string().default('traces.db'),
-  sessionDbPath: z.string().default('sessions.db'),
+  dataDir: z.string().default(DATA_DIR_NAME),
+  memoryDbPath: z.string().default(MEMORY_DB_FILENAME),
+  traceDbPath: z.string().default(TRACE_DB_FILENAME),
+  sessionDbPath: z.string().default(SESSION_DB_FILENAME),
 });
 export type WorkspaceConfig = z.infer<typeof WorkspaceConfigSchema>;
 
@@ -294,25 +309,25 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     'claude-code': {
       enabled: true,
       priority: 3,
-      timeout: 2700000,
+      timeout: TIMEOUT_WORKFLOW_STEP,
       command: 'claude',
       healthCheck: {
         enabled: true,
-        interval: 300000,
-        timeout: 5000,
+        interval: INTERVAL_HEALTH_CHECK,
+        timeout: TIMEOUT_HEALTH_CHECK,
       },
       circuitBreaker: {
         enabled: true,
-        failureThreshold: 3,
-        recoveryTimeout: 60000,
+        failureThreshold: RETRY_MAX_DEFAULT,
+        recoveryTimeout: CIRCUIT_RECOVERY_TIMEOUT,
       },
       processManagement: {
-        gracefulShutdownTimeout: 5000,
-        forceKillDelay: 1000,
+        gracefulShutdownTimeout: TIMEOUT_GRACEFUL_SHUTDOWN,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
       },
       versionDetection: {
-        timeout: 5000,
-        forceKillDelay: 1000,
+        timeout: TIMEOUT_HEALTH_CHECK,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
         cacheEnabled: true,
       },
       limitTracking: {
@@ -324,25 +339,25 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     'gemini-cli': {
       enabled: true,
       priority: 2,
-      timeout: 2700000,
+      timeout: TIMEOUT_WORKFLOW_STEP,
       command: 'gemini',
       healthCheck: {
         enabled: true,
-        interval: 300000,
-        timeout: 5000,
+        interval: INTERVAL_HEALTH_CHECK,
+        timeout: TIMEOUT_HEALTH_CHECK,
       },
       circuitBreaker: {
         enabled: true,
-        failureThreshold: 3,
-        recoveryTimeout: 60000,
+        failureThreshold: RETRY_MAX_DEFAULT,
+        recoveryTimeout: CIRCUIT_RECOVERY_TIMEOUT,
       },
       processManagement: {
-        gracefulShutdownTimeout: 5000,
-        forceKillDelay: 1000,
+        gracefulShutdownTimeout: TIMEOUT_GRACEFUL_SHUTDOWN,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
       },
       versionDetection: {
-        timeout: 5000,
-        forceKillDelay: 1000,
+        timeout: TIMEOUT_HEALTH_CHECK,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
         cacheEnabled: true,
       },
       limitTracking: {
@@ -354,25 +369,25 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     openai: {
       enabled: true,
       priority: 1,
-      timeout: 2700000,
+      timeout: TIMEOUT_WORKFLOW_STEP,
       command: 'codex',
       healthCheck: {
         enabled: true,
-        interval: 300000,
-        timeout: 5000,
+        interval: INTERVAL_HEALTH_CHECK,
+        timeout: TIMEOUT_HEALTH_CHECK,
       },
       circuitBreaker: {
         enabled: true,
-        failureThreshold: 3,
-        recoveryTimeout: 60000,
+        failureThreshold: RETRY_MAX_DEFAULT,
+        recoveryTimeout: CIRCUIT_RECOVERY_TIMEOUT,
       },
       processManagement: {
-        gracefulShutdownTimeout: 5000,
-        forceKillDelay: 1000,
+        gracefulShutdownTimeout: TIMEOUT_GRACEFUL_SHUTDOWN,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
       },
       versionDetection: {
-        timeout: 5000,
-        forceKillDelay: 1000,
+        timeout: TIMEOUT_HEALTH_CHECK,
+        forceKillDelay: TIMEOUT_FORCE_KILL,
         cacheEnabled: true,
       },
       limitTracking: {
@@ -385,9 +400,9 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
   defaultProvider: 'claude-code',
 
   executionPolicy: {
-    defaultTimeoutMs: 120000,
-    maxRetries: 3,
-    retryDelayMs: 1000,
+    defaultTimeoutMs: TIMEOUT_PROVIDER_DEFAULT,
+    maxRetries: RETRY_MAX_DEFAULT,
+    retryDelayMs: RETRY_DELAY_DEFAULT,
     enableParallelExecution: false,
   },
 
@@ -400,10 +415,10 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
   },
 
   workspace: {
-    dataDir: '.automatosx',
-    memoryDbPath: 'memory.db',
-    traceDbPath: 'traces.db',
-    sessionDbPath: 'sessions.db',
+    dataDir: DATA_DIR_NAME,
+    memoryDbPath: MEMORY_DB_FILENAME,
+    traceDbPath: TRACE_DB_FILENAME,
+    sessionDbPath: SESSION_DB_FILENAME,
   },
 
   preferences: {

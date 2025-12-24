@@ -8,6 +8,7 @@
  * @see https://github.com/anthropics/claude-code
  */
 
+import { TIMEOUT_PROVIDER_DEFAULT } from '@automatosx/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**
@@ -27,7 +28,7 @@ export const claudeConfig: CLIProviderConfig = {
     CI: 'true',
   },
   outputFormat: 'stream-json',
-  timeout: 120000, // 2 minutes
+  timeout: TIMEOUT_PROVIDER_DEFAULT,
   models: [
     {
       modelId: 'default',

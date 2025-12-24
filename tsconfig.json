@@ -39,6 +39,8 @@
     { "path": "./packages/core/iterate-domain" },
     { "path": "./packages/core/analysis-domain" },
     { "path": "./packages/core/resilience-domain" },
+    { "path": "./packages/core/mcp-runtime" },
+    { "path": "./packages/core/review-domain" },
     { "path": "./packages/adapters/sqlite" },
     { "path": "./packages/adapters/providers" },
     { "path": "./packages/adapters/provider-detection" },
@@ -47,5 +49,5 @@
     { "path": "./packages/mcp-server" },
     { "path": "./tests" }
   ],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["node_modules", "dist", "coverage", "examples"]
 }

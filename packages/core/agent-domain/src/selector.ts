@@ -2,12 +2,15 @@
  * Agent Selector
  *
  * Selects the best agent for a given task based on keywords,
- * capabilities, and context.
+ * capabilities, context, and example tasks.
  *
  * Invariants:
- * - INV-AGT-SEL-001: Selection must return at least one result or throw
+ * - INV-AGT-SEL-001: Selection is deterministic (same input = same output)
  * - INV-AGT-SEL-002: Confidence scores must be between 0 and 1
  * - INV-AGT-SEL-003: Results must be sorted by confidence descending
+ * - INV-AGT-SEL-004: Always returns at least one result (fallback to 'standard')
+ * - INV-AGT-SEL-005: exampleTasks boost confidence when matched
+ * - INV-AGT-SEL-006: notForTasks reduce confidence when matched
  */
 
 import type { AgentProfile } from '@automatosx/contracts';
@@ -101,6 +104,10 @@ export class KeywordAgentSelector implements AgentSelector {
 
   /**
    * Score an agent for a task
+   *
+   * Implements invariants:
+   * - INV-AGT-SEL-005: exampleTasks boost confidence when matched
+   * - INV-AGT-SEL-006: notForTasks reduce confidence when matched
    */
   private scoreAgent(
     agent: AgentProfile,
@@ -108,10 +115,39 @@ export class KeywordAgentSelector implements AgentSelector {
     context?: AgentSelectionContext
   ): AgentSelectionResult {
     const taskLower = task.toLowerCase();
+    const taskNormalized = this.normalizeText(taskLower);
     const taskWords = this.extractWords(taskLower);
 
     let score = 0;
     const reasons: string[] = [];
+
+    // INV-AGT-SEL-005: Score based on exampleTasks (highest priority)
+    const exampleTasks = agent.selectionMetadata?.exampleTasks ?? [];
+    for (const example of exampleTasks) {
+      const exampleNormalized = this.normalizeText(example.toLowerCase());
+      if (taskNormalized === exampleNormalized) {
+        // Exact match (normalized) adds +0.6
+        score += 0.6;
+        reasons.push(`exact example match: "${example}"`);
+        break; // Only count best match
+      } else if (taskLower.includes(example.toLowerCase()) || example.toLowerCase().includes(taskLower)) {
+        // Substring match adds +0.4
+        score += 0.4;
+        reasons.push(`example match: "${example}"`);
+        break; // Only count best match
+      }
+    }
+
+    // INV-AGT-SEL-006: Negative score for notForTasks
+    const notForTasks = agent.selectionMetadata?.notForTasks ?? [];
+    for (const notFor of notForTasks) {
+      if (taskLower.includes(notFor.toLowerCase()) || notFor.toLowerCase().includes(taskLower)) {
+        // NotForTask match subtracts -0.5
+        score -= 0.5;
+        reasons.push(`not-for match: "${notFor}"`);
+        break; // Only count first match
+      }
+    }
 
     // Score based on primary intents
     const primaryIntents = agent.selectionMetadata?.primaryIntents ?? [];
@@ -228,6 +264,16 @@ export class KeywordAgentSelector implements AgentSelector {
       reason: reasons.length > 0 ? reasons.join('; ') : 'no specific match',
       alternatives: [],
     };
+  }
+
+  /**
+   * Normalize text for comparison (remove punctuation, extra spaces)
+   */
+  private normalizeText(text: string): string {
+    return text
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   /**

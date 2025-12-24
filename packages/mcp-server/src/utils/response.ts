@@ -54,12 +54,12 @@ export interface MCPResponseContract {
   /** Optional count for list/scan results */
   count?: number;
   /** Optional top N items */
-  items?: Array<{
+  items?: {
     id: string;
     label: string;
     severity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
     [key: string]: unknown;
-  }>;
+  }[];
   /** Reference to full data stored externally */
   artifactRef?: string;
   /** Indicates more data available */

@@ -210,7 +210,7 @@ function deepMerge<T extends Record<string, unknown>>(
 ): T {
   const result = { ...base };
 
-  for (const key of Object.keys(override) as Array<keyof T>) {
+  for (const key of Object.keys(override) as (keyof T)[]) {
     const overrideValue = override[key];
     const baseValue = base[key];
 
@@ -248,8 +248,8 @@ function deepMerge<T extends Record<string, unknown>>(
 export function diffConfigs(
   oldConfig: AutomatosXConfig,
   newConfig: AutomatosXConfig
-): Array<{ path: string; oldValue: unknown; newValue: unknown }> {
-  const diffs: Array<{ path: string; oldValue: unknown; newValue: unknown }> = [];
+): { path: string; oldValue: unknown; newValue: unknown }[] {
+  const diffs: { path: string; oldValue: unknown; newValue: unknown }[] = [];
 
   function compare(
     oldObj: unknown,

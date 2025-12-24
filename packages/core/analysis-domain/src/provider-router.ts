@@ -5,6 +5,7 @@
  * Eliminates the mock provider by connecting to real provider registry.
  */
 
+import { TIMEOUT_PROVIDER_DEFAULT, PROVIDER_DEFAULT } from '@automatosx/contracts';
 import type {
   AnalysisProvider,
   ProviderRouter,
@@ -20,7 +21,7 @@ export interface ProviderLike {
   complete(request: {
     requestId: string;
     model: string;
-    messages: Array<{ role: string; content: string }>;
+    messages: { role: string; content: string }[];
     maxTokens?: number;
     temperature?: number;
     timeout?: number;
@@ -48,10 +49,10 @@ export interface AnalysisProviderRouterConfig {
   /** Provider registry to use */
   registry: ProviderRegistryLike;
 
-  /** Default provider ID (defaults to 'claude') */
+  /** Default provider ID */
   defaultProvider?: string;
 
-  /** Default timeout in ms (defaults to 120000) */
+  /** Default timeout in ms */
   defaultTimeout?: number;
 }
 
@@ -61,7 +62,7 @@ export interface AnalysisProviderRouterConfig {
 export function createAnalysisProviderRouter(
   config: AnalysisProviderRouterConfig
 ): ProviderRouter {
-  const { registry, defaultProvider = 'claude', defaultTimeout = 120000 } = config;
+  const { registry, defaultProvider = PROVIDER_DEFAULT, defaultTimeout = TIMEOUT_PROVIDER_DEFAULT } = config;
 
   return {
     async getProvider(providerId: string): Promise<AnalysisProvider> {
@@ -119,13 +120,13 @@ function wrapAsAnalysisProvider(
       });
 
       // Handle failure response
-      if ('success' in response && response.success === false) {
+      if ('success' in response && !response.success) {
         const errorResponse = response as { success: false; error: unknown };
         throw new Error(`Provider error: ${JSON.stringify(errorResponse.error)}`);
       }
 
       // Handle success response
-      if ('success' in response && response.success === true) {
+      if ('success' in response && response.success) {
         const successResponse = response as { success: true; content: string; tokensUsed?: number };
         const result: ProviderResponse = {
           content: successResponse.content,

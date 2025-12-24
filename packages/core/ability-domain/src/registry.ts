@@ -11,7 +11,7 @@ import type { AbilityRegistry, AbilityFilter } from './types.js';
  * In-memory ability registry implementation
  */
 export class InMemoryAbilityRegistry implements AbilityRegistry {
-  private abilities: Map<string, Ability> = new Map();
+  private abilities = new Map<string, Ability>();
 
   async register(ability: Ability): Promise<void> {
     this.abilities.set(ability.abilityId, ability);

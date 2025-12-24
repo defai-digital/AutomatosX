@@ -11,14 +11,14 @@
  */
 
 import {
-  type RateLimitConfig,
-  type RateLimitState,
-  type RateLimitEvent,
-  type RateLimitEventType,
-  type RateLimitStateEnum,
-  createDefaultRateLimitConfig,
-  createInitialRateLimitState,
-  RateLimitErrorCodes,
+  type ProviderRateLimitConfig as RateLimitConfig,
+  type ProviderRateLimitState as RateLimitState,
+  type ProviderRateLimitEvent as RateLimitEvent,
+  type ProviderRateLimitEventType as RateLimitEventType,
+  type ProviderRateLimitStateEnum as RateLimitStateEnum,
+  createDefaultProviderRateLimitConfig as createDefaultRateLimitConfig,
+  createInitialProviderRateLimitState as createInitialRateLimitState,
+  ProviderRateLimitErrorCodes as RateLimitErrorCodes,
 } from '@automatosx/contracts';
 
 /**
@@ -84,7 +84,7 @@ export function createRateLimiter(
       details,
     };
     events.push(event);
-    listeners.forEach((listener) => listener(event));
+    listeners.forEach((listener) => { listener(event); });
   }
 
   // INV-RL-001: Token bucket refills at configured rate

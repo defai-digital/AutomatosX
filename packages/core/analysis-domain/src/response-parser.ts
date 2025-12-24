@@ -61,13 +61,13 @@ export function createAnalysisResponseParser(): AnalysisResponseParser {
  */
 function extractJson(response: string): string | null {
   // Try to find JSON in code blocks
-  const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const codeBlockMatch = /```(?:json)?\s*([\s\S]*?)```/.exec(response);
   if (codeBlockMatch?.[1]) {
     return codeBlockMatch[1].trim();
   }
 
   // Try to find raw JSON object
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
+  const jsonMatch = /\{[\s\S]*\}/.exec(response);
   if (jsonMatch) {
     return jsonMatch[0];
   }

@@ -44,7 +44,31 @@ export const RedirectRuleSchema = z.object({
 export type RedirectRule = z.infer<typeof RedirectRuleSchema>;
 
 /**
+ * Agent category for routing classification
+ *
+ * Categories help CLI understand agent roles:
+ * - orchestrator: Delegates to others (CEO, CTO, architecture)
+ * - implementer: Executes tasks directly (backend, frontend, devops)
+ * - reviewer: Reviews/audits work (reviewer, security, quality)
+ * - specialist: Domain expert (blockchain, ml-engineer, quantum)
+ * - generalist: Fallback agent (standard)
+ */
+export const AgentCategorySchema = z.enum([
+  'orchestrator',
+  'implementer',
+  'reviewer',
+  'specialist',
+  'generalist',
+]);
+
+export type AgentCategory = z.infer<typeof AgentCategorySchema>;
+
+/**
  * Selection metadata for agent routing
+ *
+ * Invariants:
+ * - INV-AGT-SEL-005: exampleTasks boost confidence when matched
+ * - INV-AGT-SEL-006: notForTasks reduce confidence when matched
  */
 export const SelectionMetadataSchema = z.object({
   primaryIntents: z.array(z.string().max(100)).max(20).optional(),
@@ -53,9 +77,43 @@ export const SelectionMetadataSchema = z.object({
   redirectWhen: z.array(RedirectRuleSchema).max(10).optional(),
   keywords: z.array(z.string().max(50)).max(50).optional(),
   antiKeywords: z.array(z.string().max(50)).max(50).optional(),
+  // NEW: Explicit task examples for better matching
+  exampleTasks: z.array(z.string().max(200)).max(10).optional()
+    .describe('Example tasks this agent handles well'),
+  notForTasks: z.array(z.string().max(200)).max(10).optional()
+    .describe('Tasks this agent should NOT handle'),
+  // NEW: Agent category for grouping
+  agentCategory: AgentCategorySchema.optional()
+    .describe('Agent classification for routing'),
 });
 
 export type SelectionMetadata = z.infer<typeof SelectionMetadataSchema>;
+
+/**
+ * Provider affinity configuration for multi-model discussions
+ *
+ * Invariants:
+ * - INV-AGT-AFF-001: Preferred providers are prioritized in discussions
+ * - INV-AGT-AFF-002: Default synthesizer is used for consensus when not specified
+ */
+export const ProviderAffinitySchema = z.object({
+  /** Preferred providers for this agent's discussions (ordered by preference) */
+  preferred: z.array(z.string().max(50)).max(6).optional(),
+
+  /** Provider to use for synthesis/consensus */
+  defaultSynthesizer: z.string().max(50).optional(),
+
+  /** Providers to exclude from discussions */
+  excluded: z.array(z.string().max(50)).max(6).optional(),
+
+  /** Override provider for specific task types */
+  taskOverrides: z.record(z.string(), z.string().max(50)).optional(),
+
+  /** Provider-specific temperature overrides */
+  temperatureOverrides: z.record(z.string(), z.number().min(0).max(2)).optional(),
+});
+
+export type ProviderAffinity = z.infer<typeof ProviderAffinitySchema>;
 
 /**
  * Orchestration configuration
@@ -84,7 +142,7 @@ export const AgentRetryPolicySchema = z.object({
 export type AgentRetryPolicy = z.infer<typeof AgentRetryPolicySchema>;
 
 /**
- * Agent step type enumeration (includes 'delegate' for agent orchestration)
+ * Agent step type enumeration (includes 'delegate' and 'discuss' for multi-model)
  */
 export const AgentStepTypeSchema = z.enum([
   'prompt',
@@ -93,6 +151,7 @@ export const AgentStepTypeSchema = z.enum([
   'loop',
   'parallel',
   'delegate',
+  'discuss', // Multi-model discussion step
 ]);
 
 export type AgentStepType = z.infer<typeof AgentStepTypeSchema>;
@@ -175,6 +234,9 @@ const AgentProfileBaseSchema = z.object({
   // Orchestration
   orchestration: OrchestrationConfigSchema.optional(),
 
+  // Provider Affinity (for multi-model discussions)
+  providerAffinity: ProviderAffinitySchema.optional(),
+
   // Selection Metadata
   selectionMetadata: SelectionMetadataSchema.optional(),
 
@@ -215,7 +277,7 @@ export const AgentProfileSchema = AgentProfileBaseSchema.superRefine((data, ctx)
 
     // INV-AGT-WF-001: Validate prompt steps have non-empty prompt
     if (step.type === 'prompt') {
-      const config = step.config as Record<string, unknown>;
+      const config = step.config;
       const prompt = config.prompt;
 
       if (!prompt || (typeof prompt === 'string' && prompt.trim() === '')) {
@@ -229,7 +291,7 @@ export const AgentProfileSchema = AgentProfileBaseSchema.superRefine((data, ctx)
 
     // INV-AGT-WF-002: Validate delegate steps have targetAgent
     if (step.type === 'delegate') {
-      const config = step.config as Record<string, unknown>;
+      const config = step.config;
       const targetAgent = config.targetAgent;
 
       if (!targetAgent || (typeof targetAgent === 'string' && targetAgent.trim() === '')) {
@@ -903,7 +965,7 @@ export function createDefaultParallelExecutionConfig(): ParallelExecutionConfig 
 export function createRootDelegationContext(
   agentId: string,
   taskId: string,
-  maxDepth: number = 3
+  maxDepth = 3
 ): DelegationContext {
   return {
     currentDepth: 0,
@@ -1039,7 +1101,7 @@ export function createToolExecutionSuccess(
 export function createToolExecutionFailure(
   error: string,
   errorCode: ToolExecutorErrorCode,
-  retryable: boolean = false,
+  retryable = false,
   durationMs?: number
 ): ToolExecutionResult {
   return Object.freeze({
@@ -1049,4 +1111,151 @@ export function createToolExecutionFailure(
     retryable,
     durationMs,
   });
+}
+
+// ============================================================================
+// Agent Selection Contracts (MCP Tools)
+// ============================================================================
+
+/**
+ * Agent recommendation request schema
+ *
+ * Invariants:
+ * - INV-AGT-SEL-001: Selection is deterministic (same input = same output)
+ * - INV-AGT-SEL-004: Always returns at least one result (fallback to 'standard')
+ */
+export const AgentRecommendRequestSchema = z.object({
+  /** Task description to match against agents */
+  task: z.string().min(1).max(2000).describe('Task description to match'),
+
+  /** Filter by team */
+  team: z.string().max(100).optional().describe('Filter by team'),
+
+  /** Required capabilities */
+  requiredCapabilities: z.array(z.string().max(100)).max(10).optional()
+    .describe('Required capabilities'),
+
+  /** Agents to exclude from matching */
+  excludeAgents: z.array(z.string().max(50)).max(20).optional()
+    .describe('Agents to exclude'),
+
+  /** Maximum number of results */
+  maxResults: z.number().int().min(1).max(10).default(3)
+    .describe('Max recommendations'),
+});
+
+export type AgentRecommendRequest = z.infer<typeof AgentRecommendRequestSchema>;
+
+/**
+ * Agent match result (used in alternatives)
+ */
+export const AgentMatchSchema = z.object({
+  agentId: z.string(),
+  confidence: z.number().min(0).max(1),
+  reason: z.string().optional(),
+});
+
+export type AgentMatch = z.infer<typeof AgentMatchSchema>;
+
+/**
+ * Agent recommendation result schema
+ *
+ * Invariants:
+ * - INV-AGT-SEL-002: Confidence is between 0 and 1
+ * - INV-AGT-SEL-003: Results sorted by confidence descending
+ */
+export const AgentRecommendResultSchema = z.object({
+  /** Best matching agent ID */
+  recommended: z.string().describe('Best matching agent ID'),
+
+  /** Match confidence 0-1 */
+  confidence: z.number().min(0).max(1).describe('Match confidence 0-1'),
+
+  /** Why this agent was selected */
+  reason: z.string().describe('Why this agent was selected'),
+
+  /** Alternative agent matches */
+  alternatives: z.array(AgentMatchSchema).describe('Alternative agent matches'),
+});
+
+export type AgentRecommendResult = z.infer<typeof AgentRecommendResultSchema>;
+
+/**
+ * Agent capabilities query request schema
+ */
+export const AgentCapabilitiesRequestSchema = z.object({
+  /** Filter by agent category */
+  category: AgentCategorySchema.optional()
+    .describe('Filter by agent category'),
+
+  /** Include disabled agents */
+  includeDisabled: z.boolean().default(false)
+    .describe('Include disabled agents'),
+});
+
+export type AgentCapabilitiesRequest = z.infer<typeof AgentCapabilitiesRequestSchema>;
+
+/**
+ * Agent capabilities result schema
+ */
+export const AgentCapabilitiesResultSchema = z.object({
+  /** All unique capabilities */
+  capabilities: z.array(z.string()).describe('All unique capabilities'),
+
+  /** Capability → agent IDs mapping */
+  agentsByCapability: z.record(z.string(), z.array(z.string()))
+    .describe('Capability → agent IDs'),
+
+  /** Agent ID → capabilities mapping */
+  capabilitiesByAgent: z.record(z.string(), z.array(z.string()))
+    .describe('Agent ID → capabilities'),
+
+  /** Agent ID → category mapping */
+  categoriesByAgent: z.record(z.string(), AgentCategorySchema).optional()
+    .describe('Agent ID → category'),
+});
+
+export type AgentCapabilitiesResult = z.infer<typeof AgentCapabilitiesResultSchema>;
+
+/**
+ * Agent selection context for the selector
+ */
+export const AgentSelectionContextSchema = z.object({
+  team: z.string().optional(),
+  requiredCapabilities: z.array(z.string()).optional(),
+  excludeAgents: z.array(z.string()).optional(),
+});
+
+export type AgentSelectionContext = z.infer<typeof AgentSelectionContextSchema>;
+
+// ============================================================================
+// Validation Functions for Selection Contracts
+// ============================================================================
+
+/**
+ * Validates agent recommendation request
+ */
+export function validateAgentRecommendRequest(data: unknown): AgentRecommendRequest {
+  return AgentRecommendRequestSchema.parse(data);
+}
+
+/**
+ * Validates agent recommendation result
+ */
+export function validateAgentRecommendResult(data: unknown): AgentRecommendResult {
+  return AgentRecommendResultSchema.parse(data);
+}
+
+/**
+ * Validates agent capabilities request
+ */
+export function validateAgentCapabilitiesRequest(data: unknown): AgentCapabilitiesRequest {
+  return AgentCapabilitiesRequestSchema.parse(data);
+}
+
+/**
+ * Validates agent capabilities result
+ */
+export function validateAgentCapabilitiesResult(data: unknown): AgentCapabilitiesResult {
+  return AgentCapabilitiesResultSchema.parse(data);
 }

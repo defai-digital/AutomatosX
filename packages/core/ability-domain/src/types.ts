@@ -2,7 +2,12 @@
  * Ability Domain Types
  */
 
-import type { Ability, AbilityInjectionResult } from '@automatosx/contracts';
+import {
+  type Ability,
+  type AbilityInjectionResult,
+  LIMIT_ABILITY_TOKENS,
+  LIMIT_ABILITIES_INJECT,
+} from '@automatosx/contracts';
 
 /**
  * Ability registry interface
@@ -138,7 +143,7 @@ export interface AbilityDomainConfig {
  */
 export const DEFAULT_ABILITY_DOMAIN_CONFIG: AbilityDomainConfig = {
   abilitiesDir: 'examples/abilities',
-  maxAbilitiesPerAgent: 10,
-  maxTokensPerInjection: 50000,
+  maxAbilitiesPerAgent: LIMIT_ABILITIES_INJECT,
+  maxTokensPerInjection: LIMIT_ABILITY_TOKENS,
   cacheEnabled: true,
 };

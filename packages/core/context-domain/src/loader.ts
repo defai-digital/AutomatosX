@@ -16,6 +16,7 @@ import {
   MAX_CONTEXT_FILE_SIZE,
   MAX_CONTEXT_TOTAL_SIZE,
   CONTEXT_DIRECTORY,
+  DATA_DIR_NAME,
   type ContextFile,
   type ProjectContext,
   type ContextLoaderConfig,
@@ -54,7 +55,7 @@ export class ContextLoader implements IContextLoader {
    * Get the context directory path for a project
    */
   getContextPath(projectPath: string): string {
-    return path.join(projectPath, '.automatosx', CONTEXT_DIRECTORY);
+    return path.join(projectPath, DATA_DIR_NAME, CONTEXT_DIRECTORY);
   }
 
   /**
@@ -93,7 +94,7 @@ export class ContextLoader implements IContextLoader {
 
       // Load files with size limits
       const loadedFiles: ContextFile[] = [];
-      const skippedReasons: Array<{ filename: string; reason: string }> = [];
+      const skippedReasons: { filename: string; reason: string }[] = [];
       let totalSize = 0;
 
       for (const fileInfo of fileInfos) {

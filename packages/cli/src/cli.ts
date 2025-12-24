@@ -11,8 +11,9 @@ import {
   sessionCommand,
   setupCommand,
   configCommand,
-  bugfixCommand,
-  refactorCommand,
+  reviewCommand,
+  scaffoldCommand,
+  discussCommand,
   helpCommand,
   versionCommand,
   // High-value additions
@@ -41,8 +42,9 @@ const COMMANDS: Record<string, CommandHandler> = {
   session: sessionCommand,
   setup: setupCommand,
   config: configCommand,
-  bugfix: bugfixCommand,
-  refactor: refactorCommand,
+  review: reviewCommand,
+  scaffold: scaffoldCommand,
+  discuss: discussCommand,
   help: helpCommand,
   version: versionCommand,
   // High-value additions

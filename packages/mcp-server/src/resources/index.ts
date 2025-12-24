@@ -76,6 +76,13 @@ function extractTemplateParams(template: string): string[] {
 }
 
 /**
+ * Escapes special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Matches a URI against a template and extracts parameters
  * e.g., matchUriTemplate("automatosx://workflows/abc", "automatosx://workflows/{id}")
  * returns { id: "abc" }
@@ -84,9 +91,11 @@ function matchUriTemplate(
   uri: string,
   template: string
 ): { match: boolean; params: Record<string, string> } {
-  // Convert template to regex
+  // Convert template to regex, escaping special characters first
   const paramNames = extractTemplateParams(template);
-  const regexPattern = template.replace(/\{([^}]+)\}/g, '([^/]+)');
+  // First escape all regex special chars, then replace escaped \{...\} with capture groups
+  const escaped = escapeRegex(template);
+  const regexPattern = escaped.replace(/\\\{([^}]+)\\\}/g, '([^/]+)');
   const regex = new RegExp(`^${regexPattern}$`);
 
   const matchResult = uri.match(regex);

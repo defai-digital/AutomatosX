@@ -20,6 +20,15 @@ import {
   DEFAULT_CONFIG,
   KNOWN_PROVIDERS,
   PROVIDER_DEFAULTS,
+  DATA_DIR_NAME,
+  CONFIG_FILENAME,
+  TIMEOUT_SETUP_ADD,
+  TIMEOUT_SETUP_REMOVE,
+  TIMEOUT_HEALTH_CHECK,
+  TIMEOUT_WORKFLOW_STEP,
+  DEFAULT_SCHEMA_VERSION,
+  ITERATE_MAX_DEFAULT,
+  ITERATE_TIMEOUT_DEFAULT,
   type AutomatosXConfig,
   type ProviderId,
   type ProviderDetectionResult,
@@ -37,6 +46,46 @@ const execAsync = promisify(exec);
 // Constants
 // ============================================================================
 
+/** MCP server name registered with provider CLIs */
+const MCP_SERVER_NAME = 'automatosx';
+
+/** Fallback CLI command when binary path cannot be determined */
+const CLI_FALLBACK_COMMAND = 'ax';
+
+/** Node.js executable for running scripts */
+const NODE_EXECUTABLE = 'node';
+
+/** MCP subcommand arguments */
+const MCP_SUBCOMMAND_ARGS = 'mcp server';
+
+/** Conventions file name in context directory */
+const CONVENTIONS_FILENAME = 'conventions.md';
+
+/** Provider name display width for aligned output */
+const PROVIDER_NAME_WIDTH = 10;
+
+/** Default error message when error type is unknown */
+const DEFAULT_ERROR_MESSAGE = 'Unknown error';
+
+/** Stderr redirect suffix for shell commands */
+const STDERR_REDIRECT = '2>&1';
+
+/** Regex pattern to extract semver version from CLI output */
+const VERSION_PATTERN = /(\d+\.\d+\.\d+)/;
+
+/** Platform-specific command to find executables */
+const WHICH_COMMAND = process.platform === 'win32' ? 'where' : 'which';
+
+/** CLI argument flags */
+const CLI_FLAGS = {
+  force: ['--force', '-f'],
+  nonInteractive: ['--non-interactive', '-y'],
+  local: ['--local', '-l'],
+  global: ['--global', '-g'],
+  skipProject: ['--skip-project', '--no-project'],
+} as const;
+
+/** Terminal color codes */
 const COLORS = {
   reset: '\x1b[0m',
   green: '\x1b[32m',
@@ -45,76 +94,112 @@ const COLORS = {
   cyan: '\x1b[36m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
-};
+} as const;
 
+/** Terminal output icons */
 const ICONS = {
   check: `${COLORS.green}\u2713${COLORS.reset}`,
   cross: `${COLORS.red}\u2717${COLORS.reset}`,
   warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
   arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
+} as const;
+
+// ============================================================================
+// MCP Configuration for Providers
+// ============================================================================
+
+/**
+ * MCP command format types:
+ * - 'standard': <cli> mcp add <name> <command> [args...]
+ * - 'claude': <cli> mcp add <name> -s local <command> [args...]
+ * - 'ax-wrapper': <cli> mcp add <name> --command <cmd> --args <args...>
+ */
+type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper';
+
+/** Provider MCP CLI configuration */
+interface ProviderMCPConfig {
+  cliName: string;
+  format: MCPCommandFormat;
+}
+
+/** MCP configuration for each provider */
+const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig> = {
+  claude: { cliName: 'claude', format: 'claude' },
+  gemini: { cliName: 'gemini', format: 'standard' },
+  codex: { cliName: 'codex', format: 'standard' },
+  qwen: { cliName: 'qwen', format: 'standard' },
+  glm: { cliName: 'ax-glm', format: 'ax-wrapper' },
+  grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
+  'ax-cli': { cliName: 'ax-cli', format: 'ax-wrapper' },
 };
 
-// ============================================================================
-// MCP Configuration for Providers (using CLI commands - best practice)
-// ============================================================================
-
 /**
- * MCP server name for AutomatosX
+ * Get the absolute path to the CLI binary.
+ * Uses process.argv[1] which works for both global and local installations.
  */
-const AUTOMATOSX_MCP_SERVER_NAME = 'automatosx';
+function getCLIBinaryPath(): string {
+  const binPath = process.argv[1];
+  return binPath || CLI_FALLBACK_COMMAND;
+}
 
 /**
- * Get the CLI command to add AutomatosX MCP server for each provider
- *
- * Best practice: Use each provider's native CLI commands instead of
- * directly modifying config files. This ensures proper formatting,
- * validation, and compatibility.
+ * Check if a path is absolute (Unix or Windows style)
+ */
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith('/') || path.includes('\\');
+}
+
+/**
+ * Build the MCP server command parts based on binary path.
+ * Returns { command, args } for use in MCP add commands.
+ */
+function buildMCPServerCommand(binPath: string): { command: string; args: string } {
+  if (isAbsolutePath(binPath)) {
+    return { command: NODE_EXECUTABLE, args: `"${binPath}" ${MCP_SUBCOMMAND_ARGS}` };
+  }
+  return { command: binPath, args: MCP_SUBCOMMAND_ARGS };
+}
+
+/**
+ * Get the CLI command to add AutomatosX MCP server for a provider.
+ * Uses provider's native CLI to ensure proper formatting and validation.
  */
 function getMCPAddCommand(providerId: ProviderId): string | null {
-  switch (providerId) {
+  const config = PROVIDER_MCP_CONFIGS[providerId];
+  if (!config) return null;
+
+  const binPath = getCLIBinaryPath();
+  const { command, args } = buildMCPServerCommand(binPath);
+
+  switch (config.format) {
+    case 'standard':
+      return `${config.cliName} mcp add ${MCP_SERVER_NAME} ${command} ${args}`;
+
     case 'claude':
-      // Claude Code: claude mcp add <name> <command> [args...]
-      return `claude mcp add ${AUTOMATOSX_MCP_SERVER_NAME} automatosx mcp server`;
-    case 'gemini':
-      // Gemini CLI: gemini mcp add <name> <command> [args...]
-      return `gemini mcp add ${AUTOMATOSX_MCP_SERVER_NAME} automatosx mcp server`;
-    case 'codex':
-      // Codex CLI: codex mcp add <name> <command> [args...]
-      return `codex mcp add ${AUTOMATOSX_MCP_SERVER_NAME} automatosx mcp server`;
-    case 'qwen':
-      // Qwen: qwen mcp add <name> <command> [args...]
-      return `qwen mcp add ${AUTOMATOSX_MCP_SERVER_NAME} automatosx mcp server`;
-    case 'glm':
-      // ax-glm: ax-glm mcp add <name> --command <cmd> --args <args...>
-      return `ax-glm mcp add ${AUTOMATOSX_MCP_SERVER_NAME} --command automatosx --args mcp server`;
-    case 'grok':
-      // ax-grok: ax-grok mcp add <name> --command <cmd> --args <args...>
-      return `ax-grok mcp add ${AUTOMATOSX_MCP_SERVER_NAME} --command automatosx --args mcp server`;
+      // Claude uses -s local to add to user's local config (not project .mcp.json)
+      return `${config.cliName} mcp add ${MCP_SERVER_NAME} -s local ${command} ${args}`;
+
+    case 'ax-wrapper':
+      if (isAbsolutePath(binPath)) {
+        return `${config.cliName} mcp add ${MCP_SERVER_NAME} --command ${NODE_EXECUTABLE} --args "${binPath}" ${MCP_SUBCOMMAND_ARGS}`;
+      }
+      return `${config.cliName} mcp add ${MCP_SERVER_NAME} --command ${CLI_FALLBACK_COMMAND} --args ${MCP_SUBCOMMAND_ARGS}`;
+
     default:
       return null;
   }
 }
 
 /**
- * Get the CLI command to remove MCP server for each provider
+ * Get the CLI command to remove MCP server for a provider.
  */
 function getMCPRemoveCommand(providerId: ProviderId): string | null {
-  switch (providerId) {
-    case 'claude':
-      return `claude mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    case 'gemini':
-      return `gemini mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    case 'codex':
-      return `codex mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    case 'qwen':
-      return `qwen mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    case 'glm':
-      return `ax-glm mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    case 'grok':
-      return `ax-grok mcp remove ${AUTOMATOSX_MCP_SERVER_NAME}`;
-    default:
-      return null;
-  }
+  const config = PROVIDER_MCP_CONFIGS[providerId];
+  if (!config) return null;
+
+  // Claude requires explicit scope flag
+  const scopeFlag = config.format === 'claude' ? ' -s local' : '';
+  return `${config.cliName} mcp remove ${MCP_SERVER_NAME}${scopeFlag}`;
 }
 
 /**
@@ -142,18 +227,18 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<{
     // Step 1: Always remove first for clean state (ignore errors - may not exist)
     if (removeCommand) {
       try {
-        await execAsync(`${removeCommand} 2>&1`, { timeout: 15000 });
+        await execAsync(`${removeCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_REMOVE });
       } catch {
         // Ignore - server might not exist, that's OK
       }
     }
 
     // Step 2: Add automatosx MCP server using provider's native CLI
-    await execAsync(`${addCommand} 2>&1`, { timeout: 30000 });
+    await execAsync(`${addCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_ADD });
 
     return { success: true, skipped: false };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
     // Extract meaningful error from command output if available
     const cleanError = errorMessage.includes('Command failed')
       ? errorMessage.split('\n').pop() || errorMessage
@@ -192,12 +277,12 @@ async function configureMCPForAllProviders(): Promise<{
   configured: string[];
   skipped: string[];
   notInstalled: string[];
-  failed: Array<{ providerId: string; error: string }>;
+  failed: { providerId: string; error: string }[];
 }> {
   const configured: string[] = [];
   const skipped: string[] = [];
   const notInstalled: string[] = [];
-  const failed: Array<{ providerId: string; error: string }> = [];
+  const failed: { providerId: string; error: string }[] = [];
 
   // Step 1: Use doctor check to determine installed CLIs
   const installedCLIs = await getInstalledProviderCLIs();
@@ -220,7 +305,7 @@ async function configureMCPForAllProviders(): Promise<{
     } else {
       failed.push({
         providerId,
-        error: result.error || 'Unknown error',
+        error: result.error || DEFAULT_ERROR_MESSAGE,
       });
     }
   }
@@ -237,8 +322,7 @@ async function configureMCPForAllProviders(): Promise<{
  */
 async function isCommandAvailable(command: string): Promise<boolean> {
   try {
-    const whichCommand = process.platform === 'win32' ? 'where' : 'which';
-    await execAsync(`${whichCommand} ${command}`);
+    await execAsync(`${WHICH_COMMAND} ${command}`);
     return true;
   } catch {
     return false;
@@ -250,10 +334,10 @@ async function isCommandAvailable(command: string): Promise<boolean> {
  */
 async function getCommandVersion(command: string): Promise<string | undefined> {
   try {
-    const { stdout } = await execAsync(`${command} --version 2>&1`, {
-      timeout: 5000,
+    const { stdout } = await execAsync(`${command} --version ${STDERR_REDIRECT}`, {
+      timeout: TIMEOUT_HEALTH_CHECK,
     });
-    const versionMatch = /(\d+\.\d+\.\d+)/.exec(stdout);
+    const versionMatch = VERSION_PATTERN.exec(stdout);
     return versionMatch?.[1];
   } catch {
     return undefined;
@@ -304,7 +388,7 @@ async function detectAllProviders(): Promise<ProviderDetectionResult[]> {
 // ============================================================================
 
 /**
- * Template for conventions.md
+ * Template for project conventions file
  */
 const CONVENTIONS_TEMPLATE = `# Project Conventions
 
@@ -337,10 +421,10 @@ const CONVENTIONS_TEMPLATE = `# Project Conventions
  * Template for project config.json
  */
 const PROJECT_CONFIG_TEMPLATE = {
-  version: '1.0.0',
+  version: DEFAULT_SCHEMA_VERSION,
   iterate: {
-    maxIterations: 20,
-    maxTimeMs: 300000,
+    maxIterations: ITERATE_MAX_DEFAULT,
+    maxTimeMs: ITERATE_TIMEOUT_DEFAULT,
     autoConfirm: false,
   },
 };
@@ -355,12 +439,12 @@ async function createProjectStructure(
   const created: string[] = [];
   const skipped: string[] = [];
 
-  const automatosxDir = join(projectDir, '.automatosx');
+  const automatosxDir = join(projectDir, DATA_DIR_NAME);
   const contextDir = join(automatosxDir, CONTEXT_DIRECTORY);
-  const configPath = join(automatosxDir, 'config.json');
-  const conventionsPath = join(contextDir, 'conventions.md');
+  const configPath = join(automatosxDir, CONFIG_FILENAME);
+  const conventionsPath = join(contextDir, CONVENTIONS_FILENAME);
 
-  // Create .automatosx directory
+  // Create data directory
   try {
     await mkdir(automatosxDir, { recursive: true });
   } catch {
@@ -378,18 +462,18 @@ async function createProjectStructure(
   const configExists = await fileExists(configPath);
   if (!configExists || force) {
     await writeFile(configPath, JSON.stringify(PROJECT_CONFIG_TEMPLATE, null, 2) + '\n');
-    created.push('.automatosx/config.json');
+    created.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME}`);
   } else {
-    skipped.push('.automatosx/config.json (already exists)');
+    skipped.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME} (already exists)`);
   }
 
-  // Create conventions.md template
+  // Create conventions template
   const conventionsExists = await fileExists(conventionsPath);
   if (!conventionsExists || force) {
     await writeFile(conventionsPath, CONVENTIONS_TEMPLATE);
-    created.push('.automatosx/context/conventions.md');
+    created.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}`);
   } else {
-    skipped.push('.automatosx/context/conventions.md (already exists)');
+    skipped.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME} (already exists)`);
   }
 
   return { created, skipped };
@@ -455,7 +539,7 @@ async function runSetup(options: SetupOptions): Promise<{
     providersConfig[p.providerId] = {
       enabled: true,
       priority: defaults.priority,
-      timeout: 2700000, // 45 minutes default
+      timeout: TIMEOUT_WORKFLOW_STEP,
       command: defaults.command,
     };
   }
@@ -489,6 +573,13 @@ async function runSetup(options: SetupOptions): Promise<{
 // ============================================================================
 
 /**
+ * Check if an argument matches any of the given flags
+ */
+function matchesFlag(arg: string, flags: readonly string[]): boolean {
+  return flags.includes(arg);
+}
+
+/**
  * Parses setup-specific arguments
  */
 function parseSetupArgs(args: string[]): SetupOptions {
@@ -498,15 +589,15 @@ function parseSetupArgs(args: string[]): SetupOptions {
   let skipProjectStructure = false;
 
   for (const arg of args) {
-    if (arg === '--force' || arg === '-f') {
+    if (matchesFlag(arg, CLI_FLAGS.force)) {
       force = true;
-    } else if (arg === '--non-interactive' || arg === '-y') {
+    } else if (matchesFlag(arg, CLI_FLAGS.nonInteractive)) {
       nonInteractive = true;
-    } else if (arg === '--local' || arg === '-l') {
+    } else if (matchesFlag(arg, CLI_FLAGS.local)) {
       scope = 'local';
-    } else if (arg === '--global' || arg === '-g') {
+    } else if (matchesFlag(arg, CLI_FLAGS.global)) {
       scope = 'global';
-    } else if (arg === '--skip-project' || arg === '--no-project') {
+    } else if (matchesFlag(arg, CLI_FLAGS.skipProject)) {
       skipProjectStructure = true;
     }
   }
@@ -529,7 +620,7 @@ function formatProviderResult(result: ProviderDetectionResult): string {
     status = `${ICONS.check} Detected${result.version !== undefined ? ` (v${result.version})` : ''}`;
   }
 
-  return `  ${result.providerId.padEnd(10)} ${status}`;
+  return `  ${result.providerId.padEnd(PROVIDER_NAME_WIDTH)} ${status}`;
 }
 
 /**
@@ -652,7 +743,7 @@ export async function setupCommand(
       output.push('');
       output.push(`${COLORS.bold}Next Steps${COLORS.reset}`);
       output.push(`  1. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify installation`);
-      output.push(`  2. Edit ${COLORS.cyan}.automatosx/context/conventions.md${COLORS.reset} to add your project conventions`);
+      output.push(`  2. Edit ${COLORS.cyan}${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}${COLORS.reset} to add your project conventions`);
       output.push(`  3. Run ${COLORS.cyan}ax call --iterate <provider> "task"${COLORS.reset} to use iterate mode`);
       output.push('');
     }
@@ -694,7 +785,7 @@ export async function setupCommand(
       exitCode: 0,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
 
     if (isJson) {
       return {

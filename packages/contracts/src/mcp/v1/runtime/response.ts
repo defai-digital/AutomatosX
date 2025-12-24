@@ -36,7 +36,7 @@ export type MCPErrorCode = z.infer<typeof MCPErrorCodeSchema>;
 // Error Retryability Mapping
 // ============================================================================
 
-export const RETRYABLE_ERRORS: Set<MCPErrorCode> = new Set([
+export const RETRYABLE_ERRORS = new Set<MCPErrorCode>([
   'TOOL_TIMEOUT',
   'RATE_LIMITED',
   'MEMORY_PRESSURE',

@@ -34,7 +34,16 @@ export const SqliteDeadLetterStoreErrorCodes = {
   DATABASE_ERROR: 'SQLITE_DLQ_DATABASE_ERROR',
   INVALID_ENTRY: 'SQLITE_DLQ_INVALID_ENTRY',
   SERIALIZATION_ERROR: 'SQLITE_DLQ_SERIALIZATION_ERROR',
+  INVALID_TABLE_NAME: 'SQLITE_DLQ_INVALID_TABLE_NAME',
 } as const;
+
+/**
+ * Validates a SQL table name to prevent SQL injection
+ * Only allows alphanumeric characters and underscores, must start with letter or underscore
+ */
+function isValidTableName(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
+}
 
 /**
  * SQLite implementation of DeadLetterStorage
@@ -49,6 +58,13 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
   private readonly tableName: string;
 
   constructor(db: Database.Database, tableName = 'dead_letter_entries') {
+    // Validate table name to prevent SQL injection
+    if (!isValidTableName(tableName)) {
+      throw new SqliteDeadLetterStoreError(
+        SqliteDeadLetterStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
     this.db = db;
     this.tableName = tableName;
     this.initialize();
@@ -344,15 +360,27 @@ interface DeadLetterRow {
 }
 
 /**
- * Converts a database row to a DeadLetterEntry
+ * Safely parses JSON with error handling
  */
+function safeJsonParse<T>(json: string, fieldName: string, entryId: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    throw new SqliteDeadLetterStoreError(
+      SqliteDeadLetterStoreErrorCodes.SERIALIZATION_ERROR,
+      `Failed to parse ${fieldName} for entry ${entryId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      { entryId, fieldName }
+    );
+  }
+}
+
 function rowToDeadLetterEntry(row: DeadLetterRow): DeadLetterEntry {
   const entry: DeadLetterEntry = {
     entryId: row.entry_id,
     originalEventId: row.original_event_id,
     eventType: row.event_type,
-    eventPayload: row.event_payload !== null ? JSON.parse(row.event_payload) : undefined,
-    error: JSON.parse(row.error),
+    eventPayload: row.event_payload !== null ? safeJsonParse<unknown>(row.event_payload, 'eventPayload', row.entry_id) : undefined,
+    error: safeJsonParse<{ code: string; message: string; stack?: string; originalError?: string }>(row.error, 'error', row.entry_id),
     retryCount: row.retry_count,
     maxRetries: row.max_retries,
     status: row.status as DeadLetterStatus,
@@ -370,7 +398,7 @@ function rowToDeadLetterEntry(row: DeadLetterRow): DeadLetterEntry {
     entry.correlationId = row.correlation_id;
   }
   if (row.context !== null) {
-    entry.context = JSON.parse(row.context);
+    entry.context = safeJsonParse<Record<string, unknown>>(row.context, 'context', row.entry_id);
   }
   if (row.resolution_notes !== null) {
     entry.resolutionNotes = row.resolution_notes;

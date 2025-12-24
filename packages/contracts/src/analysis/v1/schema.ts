@@ -6,6 +6,17 @@
  */
 
 import { z } from 'zod';
+import {
+  ANALYSIS_MAX_FILES_DEFAULT,
+  ANALYSIS_MAX_FILES_LIMIT,
+  ANALYSIS_MAX_LINES_LIMIT,
+  LIMIT_LINES_PER_FILE,
+  TIMEOUT_ANALYSIS,
+  TIMEOUT_ANALYSIS_MIN,
+  TIMEOUT_ANALYSIS_MAX,
+  STRING_LENGTH_CONTENT,
+  STRING_LENGTH_LONG,
+} from '../../constants.js';
 
 // ============================================================================
 // Analysis Task Types
@@ -50,16 +61,16 @@ export const AnalysisRequestSchema = z.object({
   severity: AnalysisSeverityFilterSchema.default('all'),
 
   /** Maximum files to analyze */
-  maxFiles: z.number().int().min(1).max(100).default(20),
+  maxFiles: z.number().int().min(1).max(ANALYSIS_MAX_FILES_LIMIT).default(ANALYSIS_MAX_FILES_DEFAULT),
 
   /** Maximum lines per file to include */
-  maxLinesPerFile: z.number().int().min(100).max(5000).default(1000),
+  maxLinesPerFile: z.number().int().min(100).max(ANALYSIS_MAX_LINES_LIMIT).default(LIMIT_LINES_PER_FILE),
 
   /** Provider to use (optional - uses routing if not specified) */
   providerId: z.string().optional(),
 
   /** Request timeout in ms */
-  timeoutMs: z.number().int().min(5000).max(120000).default(60000),
+  timeoutMs: z.number().int().min(TIMEOUT_ANALYSIS_MIN).max(TIMEOUT_ANALYSIS_MAX).default(TIMEOUT_ANALYSIS),
 });
 
 export type AnalysisRequest = z.infer<typeof AnalysisRequestSchema>;
@@ -97,10 +108,10 @@ export const AnalysisFindingSchema = z.object({
   category: z.string().max(50),
 
   /** Suggested fix or improvement */
-  suggestion: z.string().max(5000).optional(),
+  suggestion: z.string().max(STRING_LENGTH_CONTENT).optional(),
 
   /** Code snippet showing the issue */
-  codeSnippet: z.string().max(1000).optional(),
+  codeSnippet: z.string().max(STRING_LENGTH_LONG).optional(),
 
   /** Confidence score 0-1 */
   confidence: z.number().min(0).max(1),
@@ -126,7 +137,7 @@ export const AnalysisResultSchema = z.object({
   findings: z.array(AnalysisFindingSchema),
 
   /** Summary of findings */
-  summary: z.string().max(1000),
+  summary: z.string().max(STRING_LENGTH_LONG),
 
   /** Files that were analyzed */
   filesAnalyzed: z.array(z.string()),
@@ -282,14 +293,14 @@ export function filterFindingsBySeverity(
 export function groupFindingsByCategory(
   findings: AnalysisFinding[]
 ): Record<string, AnalysisFinding[]> {
-  return findings.reduce(
+  return findings.reduce<Record<string, AnalysisFinding[]>>(
     (acc, finding) => {
       const category = finding.category;
       if (!acc[category]) acc[category] = [];
       acc[category].push(finding);
       return acc;
     },
-    {} as Record<string, AnalysisFinding[]>
+    {}
   );
 }
 

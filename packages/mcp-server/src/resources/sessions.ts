@@ -9,16 +9,8 @@
  */
 
 import type { MCPResource, MCPResourceContent, ResourceHandler } from '../types.js';
-import {
-  createSessionStore,
-  createSessionManager,
-  DEFAULT_SESSION_DOMAIN_CONFIG,
-  type Session,
-} from '@automatosx/session-domain';
-
-// Create shared store and manager instances
-const store = createSessionStore();
-const manager = createSessionManager(store, DEFAULT_SESSION_DOMAIN_CONFIG);
+import type { Session } from '@automatosx/session-domain';
+import { getSharedSessionManager } from '../session-accessor.js';
 
 // ============================================================================
 // Resource Definitions
@@ -45,6 +37,7 @@ export const activeSessionsResource: MCPResource = {
  * INV-MCP-RES-003: No sensitive data (e.g., full metadata) exposed
  */
 export const handleActiveSessions: ResourceHandler = async (): Promise<MCPResourceContent> => {
+  const manager = getSharedSessionManager();
   const sessions = await manager.listSessions({ status: 'active' });
 
   const sessionSummaries = sessions.map((s: Session) => ({

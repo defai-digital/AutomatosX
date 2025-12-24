@@ -92,7 +92,7 @@ describe('Config Domain', () => {
         logLevel: 'info',
         features: { enableTracing: true },
         providers: [{ providerId: 'claude', priority: 1 }],
-      } as Parameters<typeof getValue>[0];
+      } as unknown as Parameters<typeof getValue>[0];
 
       it('should get top-level value', () => {
         expect(getValue(config, 'logLevel')).toBe('info');

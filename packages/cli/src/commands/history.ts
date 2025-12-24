@@ -181,7 +181,7 @@ async function getRunHistory(
 
     // Map domain records to contract RunRecord type
     // They should be compatible but we cast explicitly for safety
-    return domainRecords as RunRecord[];
+    return domainRecords;
   } catch {
     // Return empty array on error
     return [];

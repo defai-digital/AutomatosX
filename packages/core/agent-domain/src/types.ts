@@ -2,18 +2,22 @@
  * Agent Domain Types
  */
 
-import type {
-  AgentProfile,
-  AgentResult,
-  AgentRunOptions,
-  AgentError,
-  AgentEvent,
-  AgentWorkflowStep,
-  ToolExecutionResult,
-  DelegationContext,
-  DelegationCheckResult,
-  DelegationResult,
-  DelegationRequest as ContractDelegationRequest,
+import {
+  type AgentProfile,
+  type AgentResult,
+  type AgentRunOptions,
+  type AgentError,
+  type AgentEvent,
+  type AgentWorkflowStep,
+  type ToolExecutionResult,
+  type DelegationContext,
+  type DelegationCheckResult,
+  type DelegationResult,
+  type DelegationRequest as ContractDelegationRequest,
+  TIMEOUT_PROVIDER_DEFAULT,
+  LIMIT_EVENT_BUFFER,
+  PROVIDER_DEFAULT,
+  LIMIT_DELEGATION_DEPTH,
 } from '@automatosx/contracts';
 
 /**
@@ -679,11 +683,11 @@ export interface AgentDomainConfig {
  * Default agent domain configuration
  */
 export const DEFAULT_AGENT_DOMAIN_CONFIG: AgentDomainConfig = {
-  maxDelegationDepth: 5,
-  defaultTimeout: 120000, // 2 minutes
+  maxDelegationDepth: LIMIT_DELEGATION_DEPTH,
+  defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
   enableCheckpoints: true,
-  eventBufferSize: 1000,
-  defaultProvider: 'claude',
+  eventBufferSize: LIMIT_EVENT_BUFFER,
+  defaultProvider: PROVIDER_DEFAULT,
 };
 
 // ============================================================================
@@ -742,10 +746,10 @@ export interface AgentSelectionResult {
   /** Reason for selection */
   reason: string;
   /** Alternative agents considered */
-  alternatives: Array<{
+  alternatives: {
     agentId: string;
     confidence: number;
-  }>;
+  }[];
 }
 
 /**

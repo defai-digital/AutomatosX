@@ -26,7 +26,7 @@ export const agentGuidePrompt: MCPPrompt = {
  * Handler for agent-guide prompt
  */
 export const handleAgentGuide: PromptHandler = async (args) => {
-  const topic = (args.topic as string | undefined) ?? 'all';
+  const topic = (args.topic) ?? 'all';
 
   const sections: string[] = [];
 

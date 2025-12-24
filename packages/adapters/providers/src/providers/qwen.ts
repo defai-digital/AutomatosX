@@ -8,6 +8,7 @@
  * @see https://github.com/QwenLM/qwen-code
  */
 
+import { TIMEOUT_PROVIDER_DEFAULT } from '@automatosx/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**
@@ -27,7 +28,7 @@ export const qwenConfig: CLIProviderConfig = {
     CI: 'true',
   },
   outputFormat: 'text',
-  timeout: 120000, // 2 minutes
+  timeout: TIMEOUT_PROVIDER_DEFAULT,
   models: [
     {
       modelId: 'default',

@@ -76,8 +76,23 @@ export const explainWorkflowPrompt: MCPPrompt = {
  * Handler for explain-workflow prompt
  */
 export const handleExplainWorkflow: PromptHandler = async (args) => {
-  const workflowId = args.workflowId ?? '';
+  const workflowId = args.workflowId;
   const detail = args.detail ?? 'standard';
+
+  // Explicit validation for required workflowId
+  if (workflowId === undefined || workflowId === null || workflowId === '') {
+    const availableWorkflows = Object.keys(SAMPLE_WORKFLOWS).join(', ');
+    const messages: MCPPromptMessage[] = [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `Error: workflowId is required. Please provide a workflow ID. Available workflows: ${availableWorkflows}`,
+        },
+      },
+    ];
+    return { description: 'Missing required workflowId parameter', messages };
+  }
 
   const workflow = SAMPLE_WORKFLOWS[workflowId];
 

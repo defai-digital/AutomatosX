@@ -5,6 +5,19 @@
  */
 
 import { z } from 'zod';
+import {
+  RETRY_MAX_DEFAULT,
+  RETRY_MAX_LIMIT,
+  RETRY_DELAY_DEFAULT,
+  RETRY_DELAY_MAX,
+  RETRY_BACKOFF_CAP,
+  TIMEOUT_ORCHESTRATION_EXECUTION,
+  TIMEOUT_ORCHESTRATION_GRACEFUL,
+  TIMEOUT_QUEUE_MAX,
+  TIMEOUT_SESSION,
+  STRING_LENGTH_CONTENT,
+  STRING_LENGTH_LONG,
+} from '../../constants.js';
 
 // ============================================================================
 // Task Status and Priority Schemas
@@ -65,9 +78,9 @@ export type TaskDependency = z.infer<typeof TaskDependencySchema>;
  * Orchestration retry policy
  */
 export const OrchRetryPolicySchema = z.object({
-  maxAttempts: z.number().int().min(1).max(10).default(3),
-  initialDelayMs: z.number().int().min(100).max(60000).default(1000),
-  maxDelayMs: z.number().int().min(1000).max(3600000).default(30000),
+  maxAttempts: z.number().int().min(1).max(RETRY_MAX_LIMIT).default(RETRY_MAX_DEFAULT),
+  initialDelayMs: z.number().int().min(100).max(RETRY_BACKOFF_CAP).default(RETRY_DELAY_DEFAULT),
+  maxDelayMs: z.number().int().min(RETRY_DELAY_DEFAULT).max(TIMEOUT_SESSION).default(RETRY_DELAY_MAX),
   backoffMultiplier: z.number().min(1).max(5).default(2),
   retryableErrors: z.array(z.string().max(100)).max(20).optional(),
 });
@@ -77,9 +90,9 @@ export type OrchRetryPolicy = z.infer<typeof OrchRetryPolicySchema>;
  * Task timeout policy
  */
 export const TimeoutPolicySchema = z.object({
-  executionTimeoutMs: z.number().int().min(1000).max(86400000).default(300000),
-  queueTimeoutMs: z.number().int().min(1000).max(86400000).optional(),
-  gracefulShutdownMs: z.number().int().min(1000).max(60000).default(10000),
+  executionTimeoutMs: z.number().int().min(RETRY_DELAY_DEFAULT).max(TIMEOUT_QUEUE_MAX).default(TIMEOUT_ORCHESTRATION_EXECUTION),
+  queueTimeoutMs: z.number().int().min(RETRY_DELAY_DEFAULT).max(TIMEOUT_QUEUE_MAX).optional(),
+  gracefulShutdownMs: z.number().int().min(RETRY_DELAY_DEFAULT).max(RETRY_BACKOFF_CAP).default(TIMEOUT_ORCHESTRATION_GRACEFUL),
 });
 export type TimeoutPolicy = z.infer<typeof TimeoutPolicySchema>;
 
@@ -114,7 +127,7 @@ export const TaskExecutionSchema = z.object({
   startedAt: z.string().datetime().optional(),
   completedAt: z.string().datetime().optional(),
   output: z.record(z.string(), z.unknown()).optional(),
-  error: z.string().max(5000).optional(),
+  error: z.string().max(STRING_LENGTH_CONTENT).optional(),
   progress: z.number().min(0).max(100).optional(),
   lastHeartbeat: z.string().datetime().optional(),
 });
@@ -129,7 +142,7 @@ export type TaskExecution = z.infer<typeof TaskExecutionSchema>;
  */
 export const QueueCreateRequestSchema = z.object({
   name: z.string().max(100),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(STRING_LENGTH_LONG).optional(),
   maxConcurrency: z.number().int().min(1).max(100).default(5),
   defaultPriority: OrchTaskPrioritySchema.default('medium'),
   defaultRetryPolicy: OrchRetryPolicySchema.optional(),

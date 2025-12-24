@@ -7,6 +7,12 @@ export {
   RoutingDecisionPayloadSchema,
   StepExecutePayloadSchema,
   ErrorPayloadSchema,
+  // Discussion trace payloads
+  DiscussionStartPayloadSchema,
+  DiscussionRoundPayloadSchema,
+  DiscussionProviderPayloadSchema,
+  DiscussionConsensusPayloadSchema,
+  DiscussionEndPayloadSchema,
   TraceEventSchema,
   TraceSchema,
   createTraceEvent,
@@ -24,6 +30,12 @@ export {
   type RoutingDecisionPayload,
   type StepExecutePayload,
   type ErrorPayload,
+  // Discussion trace types
+  type DiscussionStartPayload,
+  type DiscussionRoundPayload,
+  type DiscussionProviderPayload,
+  type DiscussionConsensusPayload,
+  type DiscussionEndPayload,
   type TraceEvent,
   type Trace,
 } from './schema.js';

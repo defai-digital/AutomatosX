@@ -1,17 +1,46 @@
 import type { MCPTool } from './types.js';
+import { MCP_TOOL_PREFIX_DEFAULT, ENV_MCP_TOOL_PREFIX } from '@automatosx/contracts';
 
 /**
  * Reads and sanitizes the tool prefix from environment or provided override.
- * Prefix is limited to [a-zA-Z0-9_-] and will be suffixed with '_' if missing.
+ *
+ * Priority order:
+ * 1. prefixOverride parameter (for testing/programmatic use)
+ * 2. AX_MCP_TOOL_PREFIX environment variable
+ * 3. MCP_TOOL_PREFIX_DEFAULT constant ('ax')
+ *
+ * Prefix is limited to [a-zA-Z0-9_-] per SEP-986 and will be suffixed with '_'.
+ * To disable prefixing, set AX_MCP_TOOL_PREFIX='' (empty string).
+ *
+ * Example tool names with default prefix:
+ * - ax_config_set
+ * - ax_agent_list
+ * - ax_workflow_run
  */
 export function getToolPrefix(prefixOverride?: string): string {
-  const rawPrefix = (prefixOverride ?? process.env.AX_MCP_TOOL_PREFIX ?? '').trim();
-
-  if (rawPrefix === '') {
-    return '';
+  // Check for explicit override first
+  if (prefixOverride !== undefined) {
+    const rawPrefix = prefixOverride.trim();
+    if (rawPrefix === '') {
+      return '';
+    }
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return sanitized.endsWith('_') ? sanitized : `${sanitized}_`;
   }
 
-  const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+  // Check environment variable (explicit empty string disables prefixing)
+  const envPrefix = process.env[ENV_MCP_TOOL_PREFIX];
+  if (envPrefix !== undefined) {
+    const rawPrefix = envPrefix.trim();
+    if (rawPrefix === '') {
+      return '';
+    }
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return sanitized.endsWith('_') ? sanitized : `${sanitized}_`;
+  }
+
+  // Use default prefix
+  const sanitized = MCP_TOOL_PREFIX_DEFAULT.replace(/[^a-zA-Z0-9_-]/g, '_');
   return sanitized.endsWith('_') ? sanitized : `${sanitized}_`;
 }
 

@@ -222,9 +222,10 @@ export class WorkflowRunner {
       return this.config.stepExecutor(step, context);
     }
 
-    // Execute with timeout
+    // Execute with timeout (using cancellable timeout to prevent timer leaks)
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<StepResult>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         const stepError = createStepError(
           WorkflowErrorCodes.STEP_TIMEOUT,
           `Step ${step.stepId} timed out after ${String(timeout)}ms`,
@@ -234,10 +235,25 @@ export class WorkflowRunner {
       }, timeout);
     });
 
-    return Promise.race([
-      this.config.stepExecutor(step, context),
-      timeoutPromise,
-    ]);
+    try {
+      const result = await Promise.race([
+        this.config.stepExecutor(step, context),
+        timeoutPromise,
+      ]);
+
+      // Clean up timeout
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+
+      return result;
+    } catch (error) {
+      // Clean up timeout on error too
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      throw error;
+    }
   }
 
   /**

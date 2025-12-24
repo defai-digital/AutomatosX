@@ -12,13 +12,13 @@
 
 import {
   type CircuitState,
-  type CircuitBreakerConfig,
-  type CircuitBreakerState,
-  type CircuitBreakerEvent,
-  type CircuitBreakerEventType,
-  createDefaultCircuitBreakerConfig,
-  createInitialCircuitBreakerState,
-  CircuitBreakerErrorCodes,
+  type ProviderCircuitBreakerConfig as CircuitBreakerConfig,
+  type ProviderCircuitBreakerState as CircuitBreakerState,
+  type ProviderCircuitBreakerEvent as CircuitBreakerEvent,
+  type ProviderCircuitBreakerEventType as CircuitBreakerEventType,
+  createDefaultProviderCircuitBreakerConfig as createDefaultCircuitBreakerConfig,
+  createInitialProviderCircuitBreakerState as createInitialCircuitBreakerState,
+  ProviderCircuitBreakerErrorCodes as CircuitBreakerErrorCodes,
 } from '@automatosx/contracts';
 
 /**
@@ -82,7 +82,7 @@ export function createCircuitBreaker(
       details,
     };
     events.push(event);
-    listeners.forEach((listener) => listener(event));
+    listeners.forEach((listener) => { listener(event); });
   }
 
   function transitionTo(newState: CircuitState): void {

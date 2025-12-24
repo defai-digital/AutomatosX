@@ -87,8 +87,7 @@ export const TOOL_CATEGORIES: Record<string, ToolCategory> = {
   config_show: 'query',
   ability_list: 'query',
   guard_list: 'query',
-  bugfix_list: 'query',
-  refactor_list: 'query',
+  review_list: 'query',
   workflow_list: 'query',
   workflow_describe: 'query',
 
@@ -106,16 +105,13 @@ export const TOOL_CATEGORIES: Record<string, ToolCategory> = {
   guard_apply: 'mutation',
 
   // Scan tools
-  bugfix_scan: 'scan',
-  refactor_scan: 'scan',
+  review_analyze: 'scan',
   trace_analyze: 'scan',
   guard_check: 'scan',
 
   // Execution tools
   agent_run: 'execution',
   workflow_run: 'execution',
-  bugfix_run: 'execution',
-  refactor_apply: 'execution',
   ability_inject: 'execution',
 };
 

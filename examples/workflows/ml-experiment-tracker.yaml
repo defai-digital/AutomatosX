@@ -1,0 +1,150 @@
+workflowId: ml-experiment-tracker
+name: ML Experiment Tracker
+description: Track, compare, and manage ML experiments for reproducibility
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - experiments
+  - tracking
+  - reproducibility
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+    - statistical-analysis
+    - data-analysis
+  estimatedDuration: 300
+  complexity: medium
+
+steps:
+  - stepId: define-experiment
+    name: Define Experiment
+    type: prompt
+    timeout: 60000
+    config:
+      agent: ml-engineer
+      task: |
+        Define the ML experiment with the following structure:
+
+        ## Experiment Definition
+
+        1. **Hypothesis**: What are we testing?
+        2. **Baseline Model**: What is the current best model?
+        3. **Metrics to Track**:
+           - Primary metric (optimization target)
+           - Secondary metrics (guardrails)
+        4. **Success Criteria**: What improvement is significant?
+        5. **Dataset Version**: Which data split are we using?
+
+        Provide structured output for logging.
+
+  - stepId: log-parameters
+    name: Log Experiment Parameters
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-experiments
+      key: "{{experiment_id}}/parameters"
+      value:
+        experiment_id: "{{experiment_id}}"
+        experiment_name: "{{experiment_name}}"
+        hypothesis: "{{hypothesis}}"
+        model_type: "{{model_type}}"
+        hyperparameters: "{{hyperparameters}}"
+        dataset_version: "{{dataset_version}}"
+        baseline_model: "{{baseline_model}}"
+        success_criteria: "{{success_criteria}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"
+        status: "running"
+
+  - stepId: log-metrics
+    name: Log Training Metrics
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-experiments
+      key: "{{experiment_id}}/metrics"
+      value:
+        experiment_id: "{{experiment_id}}"
+        metrics:
+          accuracy: "{{accuracy}}"
+          precision: "{{precision}}"
+          recall: "{{recall}}"
+          f1_score: "{{f1_score}}"
+          auc_roc: "{{auc_roc}}"
+          loss: "{{loss}}"
+        training_metrics:
+          training_time_seconds: "{{training_time}}"
+          epochs_completed: "{{epochs}}"
+          early_stopping_epoch: "{{early_stop_epoch}}"
+        resource_usage:
+          peak_memory_mb: "{{peak_memory}}"
+          gpu_utilization: "{{gpu_util}}"
+        logged_at: "{{timestamp}}"
+
+  - stepId: compare-experiments
+    name: Compare with Baseline
+    type: prompt
+    timeout: 120000
+    config:
+      agent: data-scientist
+      task: |
+        Compare experiment {{experiment_id}} against the baseline model.
+
+        ## Analysis Required
+
+        1. **Metric Comparison**:
+           - Calculate absolute and relative improvement
+           - For each metric: baseline vs experiment
+
+        2. **Statistical Significance**:
+           - Is the improvement statistically significant?
+           - Calculate p-value if applicable
+           - Report confidence intervals
+
+        3. **Trade-off Analysis**:
+           - Accuracy vs inference latency
+           - Model complexity vs performance
+           - Training cost vs improvement
+
+        4. **Recommendation**:
+           - PROMOTE: Significant improvement, ready for production
+           - ITERATE: Promising but needs refinement
+           - REJECT: No improvement or regression
+
+        Provide structured recommendation with justification.
+
+  - stepId: update-status
+    name: Update Experiment Status
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-experiments
+      key: "{{experiment_id}}/status"
+      value:
+        experiment_id: "{{experiment_id}}"
+        status: "{{recommendation}}"
+        comparison_summary: "{{comparison_summary}}"
+        statistical_significance: "{{p_value}}"
+        recommendation_rationale: "{{rationale}}"
+        completed_at: "{{timestamp}}"
+
+  - stepId: store-comparison-report
+    name: Store Comparison Report
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-experiment-reports
+      key: "{{experiment_id}}/comparison"
+      ttl: 7776000
+      value:
+        experiment_id: "{{experiment_id}}"
+        baseline_id: "{{baseline_model}}"
+        full_report: "{{comparison_report}}"
+        created_at: "{{timestamp}}"

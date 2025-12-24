@@ -1,5 +1,6 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import { randomUUID } from 'crypto';
+import { LIMIT_EVENT_BUFFER } from '@automatosx/contracts';
 
 /**
  * Metrics record tool definition
@@ -202,11 +203,11 @@ interface MetricRecord {
   type: string;
   category: string;
   unit: string;
-  values: Array<{
+  values: {
     value: number;
     labels: Record<string, string>;
     timestamp: string;
-  }>;
+  }[];
   currentValue: number;
 }
 
@@ -221,7 +222,7 @@ const metricStore = new Map<string, MetricRecord>();
 const timerStore = new Map<string, TimerRecord>();
 
 // Initialize default metrics
-function ensureMetric(name: string, type: string = 'gauge'): MetricRecord {
+function ensureMetric(name: string, type = 'gauge'): MetricRecord {
   let metric = metricStore.get(name);
   if (metric === undefined) {
     const category = name.split('_')[0] ?? 'custom';
@@ -258,8 +259,8 @@ export const handleMetricsRecord: ToolHandler = async (args) => {
     });
 
     // Keep only last 1000 values
-    if (metric.values.length > 1000) {
-      metric.values = metric.values.slice(-1000);
+    if (metric.values.length > LIMIT_EVENT_BUFFER) {
+      metric.values = metric.values.slice(-LIMIT_EVENT_BUFFER);
     }
 
     return {
@@ -313,8 +314,8 @@ export const handleMetricsIncrement: ToolHandler = async (args) => {
       timestamp: new Date().toISOString(),
     });
 
-    if (metric.values.length > 1000) {
-      metric.values = metric.values.slice(-1000);
+    if (metric.values.length > LIMIT_EVENT_BUFFER) {
+      metric.values = metric.values.slice(-LIMIT_EVENT_BUFFER);
     }
 
     return {
@@ -661,8 +662,8 @@ export const handleTimerStop: ToolHandler = async (args) => {
       timestamp: new Date().toISOString(),
     });
 
-    if (metric.values.length > 1000) {
-      metric.values = metric.values.slice(-1000);
+    if (metric.values.length > LIMIT_EVENT_BUFFER) {
+      metric.values = metric.values.slice(-LIMIT_EVENT_BUFFER);
     }
 
     // Clean up timer

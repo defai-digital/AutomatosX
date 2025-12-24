@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "automatosx": {
-      "command": "automatosx",
+      "command": "node",
       "args": [
+        "/Users/automatosx/code/automatosx/packages/cli/dist/bin.js",
         "mcp",
         "server"
       ]

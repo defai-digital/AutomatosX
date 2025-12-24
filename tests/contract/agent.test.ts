@@ -21,6 +21,12 @@ import {
   validateAgentProfile,
   safeValidateAgentProfile,
   AgentErrorCode,
+  // Agent Selection Schemas (INV-AGT-SEL)
+  AgentRecommendRequestSchema,
+  AgentRecommendResultSchema,
+  AgentMatchSchema,
+  AgentCapabilitiesRequestSchema,
+  AgentCapabilitiesResultSchema,
 } from '@automatosx/contracts';
 
 describe('Agent Contract', () => {
@@ -709,6 +715,387 @@ describe('Agent Execution Invariants', () => {
 // ============================================================================
 // Agent Orchestration Invariant Tests
 // ============================================================================
+
+// ============================================================================
+// Agent Selection Invariant Tests (INV-AGT-SEL-001 to INV-AGT-SEL-006)
+// ============================================================================
+
+describe('INV-AGT-SEL: Agent Selection Invariants', () => {
+  describe('INV-AGT-SEL-001: Selection Determinism', () => {
+    it('should produce same result for same input', () => {
+      // Selection metadata for deterministic scoring
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test agent for selection',
+        selectionMetadata: {
+          primaryIntents: ['code review', 'testing'],
+          keywords: ['review', 'test', 'quality'],
+        },
+      };
+
+      const parsed1 = AgentProfileSchema.parse(profile);
+      const parsed2 = AgentProfileSchema.parse(profile);
+      const parsed3 = AgentProfileSchema.parse(profile);
+
+      // Same profile should produce identical parsed results
+      expect(parsed1.selectionMetadata).toEqual(parsed2.selectionMetadata);
+      expect(parsed2.selectionMetadata).toEqual(parsed3.selectionMetadata);
+    });
+
+    it('should validate selection metadata schema', () => {
+      const profile = {
+        agentId: 'deterministic-agent',
+        description: 'Agent with selection metadata',
+        selectionMetadata: {
+          primaryIntents: ['build', 'deploy'],
+          secondarySignals: ['ci', 'cd'],
+          keywords: ['pipeline', 'docker'],
+          antiKeywords: ['manual', 'local'],
+          exampleTasks: ['build the docker image', 'deploy to staging'],
+          notForTasks: ['write tests', 'review code'],
+          agentCategory: 'implementer',
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.selectionMetadata?.primaryIntents).toHaveLength(2);
+        expect(result.data.selectionMetadata?.agentCategory).toBe('implementer');
+      }
+    });
+  });
+
+  describe('INV-AGT-SEL-002: Confidence Range', () => {
+    it('should validate AgentRecommendResult confidence is between 0 and 1', () => {
+      // Test schema validation for confidence range
+      const validResult = {
+        recommended: 'test-agent',
+        confidence: 0.85,
+        reason: 'Best match for task',
+        alternatives: [],
+      };
+
+      const result = AgentRecommendResultSchema.safeParse(validResult);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject confidence below 0', () => {
+      const invalidResult = {
+        recommended: 'test-agent',
+        confidence: -0.5, // Invalid: below 0
+        reason: 'Invalid confidence',
+        alternatives: [],
+      };
+
+      const result = AgentRecommendResultSchema.safeParse(invalidResult);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject confidence above 1', () => {
+      const invalidResult = {
+        recommended: 'test-agent',
+        confidence: 1.5, // Invalid: above 1
+        reason: 'Invalid confidence',
+        alternatives: [],
+      };
+
+      const result = AgentRecommendResultSchema.safeParse(invalidResult);
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept boundary values 0 and 1', () => {
+      const zeroConfidence = {
+        recommended: 'fallback-agent',
+        confidence: 0,
+        reason: 'No match found',
+        alternatives: [],
+      };
+
+      const maxConfidence = {
+        recommended: 'best-agent',
+        confidence: 1,
+        reason: 'Perfect match',
+        alternatives: [],
+      };
+
+      expect(AgentRecommendResultSchema.safeParse(zeroConfidence).success).toBe(true);
+      expect(AgentRecommendResultSchema.safeParse(maxConfidence).success).toBe(true);
+    });
+  });
+
+  describe('INV-AGT-SEL-003: Result Ordering', () => {
+    it('should validate alternatives have required fields', () => {
+      const result = {
+        recommended: 'best-agent',
+        confidence: 0.9,
+        reason: 'Best match',
+        alternatives: [
+          { agentId: 'second-agent', confidence: 0.7 },
+          { agentId: 'third-agent', confidence: 0.5 },
+        ],
+      };
+
+      const parsed = AgentRecommendResultSchema.safeParse(result);
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.alternatives).toHaveLength(2);
+        expect(parsed.data.alternatives[0]!.confidence).toBe(0.7);
+      }
+    });
+
+    it('should validate AgentMatch schema in alternatives', () => {
+      const match = {
+        agentId: 'test-agent',
+        confidence: 0.75,
+        reason: 'Partial match',
+      };
+
+      const result = AgentMatchSchema.safeParse(match);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('INV-AGT-SEL-004: Fallback Agent', () => {
+    it('should support standard agent profile', () => {
+      // The standard agent is the fallback - must always exist
+      const standardProfile = {
+        agentId: 'standard',
+        description: 'Default fallback agent for general tasks',
+        selectionMetadata: {
+          agentCategory: 'generalist',
+          exampleTasks: ['help me with this task', 'general coding'],
+        },
+        enabled: true,
+      };
+
+      const result = AgentProfileSchema.safeParse(standardProfile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.selectionMetadata?.agentCategory).toBe('generalist');
+        expect(result.data.enabled).toBe(true);
+      }
+    });
+
+    it('should validate AgentRecommendRequest schema', () => {
+      const request = {
+        task: 'Review this pull request',
+        team: 'engineering',
+        requiredCapabilities: ['code-review'],
+        excludeAgents: ['backend'],
+        maxResults: 3,
+      };
+
+      const result = AgentRecommendRequestSchema.safeParse(request);
+      expect(result.success).toBe(true);
+    });
+
+    it('should require task in request', () => {
+      const invalidRequest = {
+        team: 'engineering',
+        maxResults: 3,
+      };
+
+      const result = AgentRecommendRequestSchema.safeParse(invalidRequest);
+      expect(result.success).toBe(false);
+    });
+
+    it('should default maxResults to 3', () => {
+      const request = {
+        task: 'Some task',
+      };
+
+      const parsed = AgentRecommendRequestSchema.parse(request);
+      expect(parsed.maxResults).toBe(3);
+    });
+  });
+
+  describe('INV-AGT-SEL-005: Example Task Matching', () => {
+    it('should support exampleTasks in selection metadata', () => {
+      const profile = {
+        agentId: 'backend-agent',
+        description: 'Backend development agent',
+        selectionMetadata: {
+          exampleTasks: [
+            'create a REST API endpoint',
+            'write database migrations',
+            'optimize SQL queries',
+            'implement authentication',
+          ],
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.selectionMetadata?.exampleTasks).toHaveLength(4);
+        expect(result.data.selectionMetadata?.exampleTasks![0]).toBe('create a REST API endpoint');
+      }
+    });
+
+    it('should enforce exampleTasks max length', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test agent',
+        selectionMetadata: {
+          exampleTasks: Array(11).fill('task'), // Max is 10
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(false);
+    });
+
+    it('should enforce individual exampleTask max length', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test agent',
+        selectionMetadata: {
+          exampleTasks: ['a'.repeat(201)], // Max is 200
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('INV-AGT-SEL-006: Negative Task Exclusion', () => {
+    it('should support notForTasks in selection metadata', () => {
+      const profile = {
+        agentId: 'frontend-agent',
+        description: 'Frontend development agent',
+        selectionMetadata: {
+          notForTasks: [
+            'database migrations',
+            'backend API',
+            'server configuration',
+            'deployment scripts',
+          ],
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.selectionMetadata?.notForTasks).toHaveLength(4);
+        expect(result.data.selectionMetadata?.notForTasks![0]).toBe('database migrations');
+      }
+    });
+
+    it('should enforce notForTasks max length', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test agent',
+        selectionMetadata: {
+          notForTasks: Array(11).fill('not this'), // Max is 10
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(false);
+    });
+
+    it('should support both exampleTasks and notForTasks together', () => {
+      const profile = {
+        agentId: 'reviewer-agent',
+        description: 'Code review specialist',
+        selectionMetadata: {
+          agentCategory: 'reviewer',
+          exampleTasks: ['review pull request', 'code review'],
+          notForTasks: ['write code', 'implement feature'],
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.selectionMetadata?.exampleTasks).toHaveLength(2);
+        expect(result.data.selectionMetadata?.notForTasks).toHaveLength(2);
+        expect(result.data.selectionMetadata?.agentCategory).toBe('reviewer');
+      }
+    });
+  });
+
+  describe('AgentCategory Validation', () => {
+    it('should validate all category values', () => {
+      const categories = ['orchestrator', 'implementer', 'reviewer', 'specialist', 'generalist'];
+
+      for (const category of categories) {
+        const profile = {
+          agentId: `${category}-agent`,
+          description: `A ${category} agent`,
+          selectionMetadata: {
+            agentCategory: category,
+          },
+        };
+
+        const result = AgentProfileSchema.safeParse(profile);
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject invalid category', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test agent',
+        selectionMetadata: {
+          agentCategory: 'invalid-category',
+        },
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('AgentCapabilitiesRequest Validation', () => {
+    it('should validate capabilities request', () => {
+      const request = {
+        category: 'implementer',
+        includeDisabled: false,
+      };
+
+      const result = AgentCapabilitiesRequestSchema.safeParse(request);
+      expect(result.success).toBe(true);
+    });
+
+    it('should default includeDisabled to false', () => {
+      const request = {};
+
+      const parsed = AgentCapabilitiesRequestSchema.parse(request);
+      expect(parsed.includeDisabled).toBe(false);
+    });
+  });
+
+  describe('AgentCapabilitiesResult Validation', () => {
+    it('should validate capabilities result', () => {
+      const result = {
+        capabilities: ['code-review', 'testing', 'deployment'],
+        agentsByCapability: {
+          'code-review': ['reviewer', 'backend'],
+          testing: ['qa-engineer'],
+          deployment: ['devops'],
+        },
+        capabilitiesByAgent: {
+          reviewer: ['code-review'],
+          backend: ['code-review'],
+          'qa-engineer': ['testing'],
+          devops: ['deployment'],
+        },
+        categoriesByAgent: {
+          reviewer: 'reviewer',
+          backend: 'implementer',
+          'qa-engineer': 'specialist',
+          devops: 'implementer',
+        },
+      };
+
+      const validation = AgentCapabilitiesResultSchema.safeParse(result);
+      expect(validation.success).toBe(true);
+    });
+  });
+});
 
 describe('Agent Orchestration Invariants', () => {
   describe('Delegation Depth', () => {

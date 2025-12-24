@@ -12,6 +12,7 @@ import {
   type AgentWorkflowStep,
   AgentErrorCode,
   AgentRunOptionsSchema,
+  LIMIT_ABILITY_TOKENS_AGENT,
 } from '@automatosx/contracts';
 import type {
   AgentExecutor,
@@ -39,8 +40,8 @@ import { stubDelegationTrackerFactory } from './stub-delegation-tracker.js';
  * INV-AGT-ABL-003: Token limits are respected during injection
  */
 export class DefaultAgentExecutor implements AgentExecutor {
-  private readonly executions: Map<string, ExecutionState> = new Map();
-  private readonly stepExecutors: Map<string, StepExecutorFn> = new Map();
+  private readonly executions = new Map<string, ExecutionState>();
+  private readonly stepExecutors = new Map<string, StepExecutorFn>();
   private readonly promptExecutor: PromptExecutor;
   private readonly toolExecutor: ToolExecutor | undefined;
   private readonly abilityManager: AbilityManagerLike | undefined;
@@ -63,7 +64,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
     // Ability injection configuration
     this.abilityManager = config.abilityManager;
     this.enableAbilityInjection = config.enableAbilityInjection ?? (config.abilityManager !== undefined);
-    this.maxAbilityTokens = config.maxAbilityTokens ?? 10000;
+    this.maxAbilityTokens = config.maxAbilityTokens ?? LIMIT_ABILITY_TOKENS_AGENT;
 
     // Delegation tracker factory (use stub if not provided)
     this.delegationTrackerFactory = config.delegationTrackerFactory ?? stubDelegationTrackerFactory;
@@ -282,7 +283,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
    */
   async cancel(executionId: string): Promise<void> {
     const state = this.executions.get(executionId);
-    if (state !== undefined && state.status === 'running') {
+    if (state?.status === 'running') {
       state.status = 'cancelled';
       state.completedAt = new Date().toISOString();
     }
@@ -352,13 +353,16 @@ export class DefaultAgentExecutor implements AgentExecutor {
     let retryCount = 0;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Apply timeout with proper cleanup
+      const timeout = step.timeoutMs ?? this.config.defaultTimeout;
+      const { promise: timeoutPromise, cancel: cancelTimeout } = this.createTimeout(timeout, step.stepId);
+
       try {
-        // Apply timeout
-        const timeout = step.timeoutMs ?? this.config.defaultTimeout;
         const result = await Promise.race([
           executor(step, context),
-          this.createTimeout(timeout, step.stepId),
+          timeoutPromise,
         ]);
+        cancelTimeout(); // Clean up the timer
 
         if (result.success) {
           return {
@@ -378,6 +382,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
           await this.sleep(backoff);
         }
       } catch (error) {
+        cancelTimeout(); // Clean up the timer on error too
         lastError = {
           code: AgentErrorCode.AGENT_STAGE_FAILED,
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -413,25 +418,180 @@ export class DefaultAgentExecutor implements AgentExecutor {
   }
 
   /**
-   * Evaluate a condition expression
+   * Evaluate a condition expression safely without using eval/Function
+   *
+   * Supports patterns:
+   * - ${variable} === value
+   * - ${variable} !== value
+   * - ${variable} > value
+   * - ${variable} < value
+   * - ${variable} >= value
+   * - ${variable} <= value
+   * - ${variable} (truthy check)
+   * - !${variable} (falsy check)
+   * - condition && condition
+   * - condition || condition
    */
   private evaluateCondition(
     condition: string,
     outputs: Record<string, unknown>
   ): boolean {
-    // Simple condition evaluation - supports basic expressions
     try {
-      // Replace variable references with values
-      const evaluated = condition.replace(
-        /\$\{(\w+)\}/g,
-        (_, key) => JSON.stringify(outputs[key])
-      );
+      // Handle logical operators by recursively evaluating sub-conditions
+      // Check for || first (lower precedence)
+      const orParts = this.splitByOperator(condition, '||');
+      if (orParts.length > 1) {
+        return orParts.some((part) => this.evaluateCondition(part.trim(), outputs));
+      }
 
-      // Safe evaluation using Function constructor
-      const fn = new Function('outputs', `return ${evaluated}`);
-      return Boolean(fn(outputs));
-    } catch {
+      // Check for && (higher precedence than ||)
+      const andParts = this.splitByOperator(condition, '&&');
+      if (andParts.length > 1) {
+        return andParts.every((part) => this.evaluateCondition(part.trim(), outputs));
+      }
+
+      // Handle negation
+      const trimmed = condition.trim();
+      if (trimmed.startsWith('!')) {
+        return !this.evaluateCondition(trimmed.slice(1).trim(), outputs);
+      }
+
+      // Handle parentheses
+      if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+        return this.evaluateCondition(trimmed.slice(1, -1), outputs);
+      }
+
+      // Parse comparison expression: ${variable} op value
+      const comparisonMatch = /^\$\{(\w+(?:\.\w+)*)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
+      if (comparisonMatch) {
+        const [, keyPath, op, rawValue] = comparisonMatch;
+        const actualValue = this.getConditionValue(outputs, keyPath!);
+        const expectedValue = this.parseValue(rawValue!.trim());
+        return this.compareValues(actualValue, expectedValue, op!);
+      }
+
+      // Handle simple variable reference (truthy check): ${variable}
+      const varMatch = /^\$\{(\w+(?:\.\w+)*)\}$/.exec(trimmed);
+      if (varMatch) {
+        const value = this.getConditionValue(outputs, varMatch[1]!);
+        return Boolean(value);
+      }
+
+      // Handle literal boolean
+      if (trimmed === 'true') return true;
+      if (trimmed === 'false') return false;
+
+      // Unknown pattern - fail safely
+      console.warn(`[evaluateCondition] Unknown condition pattern: ${condition}`);
       return false;
+    } catch (error) {
+      console.warn(`[evaluateCondition] Error evaluating condition: ${condition}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Split condition by operator, respecting parentheses
+   */
+  private splitByOperator(condition: string, operator: string): string[] {
+    const parts: string[] = [];
+    let current = '';
+    let depth = 0;
+    let i = 0;
+
+    while (i < condition.length) {
+      const char = condition[i];
+
+      if (char === '(') {
+        depth++;
+        current += char;
+      } else if (char === ')') {
+        depth--;
+        current += char;
+      } else if (depth === 0 && condition.slice(i, i + operator.length) === operator) {
+        parts.push(current);
+        current = '';
+        i += operator.length;
+        continue;
+      } else {
+        current += char;
+      }
+      i++;
+    }
+
+    if (current) {
+      parts.push(current);
+    }
+
+    return parts;
+  }
+
+  /**
+   * Get nested value from object using dot notation (for condition evaluation)
+   */
+  private getConditionValue(obj: Record<string, unknown>, path: string): unknown {
+    const parts = path.split('.');
+    let current: unknown = obj;
+
+    for (const part of parts) {
+      if (current === null || current === undefined) {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[part];
+    }
+
+    return current;
+  }
+
+  /**
+   * Parse a value string into its actual type
+   */
+  private parseValue(value: string): unknown {
+    // String literal
+    if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
+      return value.slice(1, -1);
+    }
+
+    // Null/undefined
+    if (value === 'null') return null;
+    if (value === 'undefined') return undefined;
+
+    // Boolean
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+
+    // Number
+    const num = Number(value);
+    if (!isNaN(num)) return num;
+
+    // Default to string
+    return value;
+  }
+
+  /**
+   * Compare two values using the specified operator
+   */
+  private compareValues(actual: unknown, expected: unknown, op: string): boolean {
+    switch (op) {
+      case '===':
+        return actual === expected;
+      case '!==':
+        return actual !== expected;
+      case '==':
+        return actual == expected;
+      case '!=':
+        return actual != expected;
+      case '>':
+        return (actual as number) > (expected as number);
+      case '<':
+        return (actual as number) < (expected as number);
+      case '>=':
+        return (actual as number) >= (expected as number);
+      case '<=':
+        return (actual as number) <= (expected as number);
+      default:
+        return false;
     }
   }
 
@@ -471,13 +631,18 @@ export class DefaultAgentExecutor implements AgentExecutor {
   }
 
   /**
-   * Create timeout promise
+   * Create timeout promise with cancellation support
    */
-  private createTimeout(ms: number, stepId: string): Promise<StepExecutionResult> {
-    return new Promise((_, reject) =>
-      setTimeout(
+  private createTimeout(ms: number, stepId: string): {
+    promise: Promise<StepExecutionResult>;
+    cancel: () => void;
+  } {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const promise = new Promise<StepExecutionResult>((_, reject) => {
+      timeoutId = setTimeout(
         () =>
-          reject({
+          { reject({
             success: false,
             error: {
               code: AgentErrorCode.AGENT_STAGE_FAILED,
@@ -487,10 +652,18 @@ export class DefaultAgentExecutor implements AgentExecutor {
             },
             durationMs: ms,
             retryCount: 0,
-          }),
+          }); },
         ms
-      )
-    );
+      );
+    });
+
+    const cancel = (): void => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    return { promise, cancel };
   }
 
   /**

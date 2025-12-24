@@ -16,6 +16,10 @@ export {
   createRealStepExecutor,
   type PromptExecutorLike,
   type ToolExecutorLike,
+  type DiscussionExecutorLike,
+  type DiscussStepConfigLike,
+  type DiscussionProgressEventLike,
+  type DiscussionResultLike,
   type RealStepExecutorConfig,
 } from './step-executor-factory.js';
 export {
@@ -53,6 +57,17 @@ export {
   WorkflowStepSchema,
   RetryPolicySchema,
 } from '@automatosx/contracts';
+
+// Workflow Loader exports
+export {
+  FileSystemWorkflowLoader,
+  createWorkflowLoader,
+  findWorkflowDir,
+  DEFAULT_WORKFLOW_DIRS,
+  type WorkflowLoader,
+  type WorkflowLoaderConfig,
+  type WorkflowInfo,
+} from './loader.js';
 
 // Step Guard exports
 export {

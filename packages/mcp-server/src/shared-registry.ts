@@ -28,6 +28,11 @@ import {
   createToolExecutionSuccess,
   createToolExecutionFailure,
   ToolExecutorErrorCodes,
+  DATA_DIR_NAME,
+  AGENTS_FILENAME,
+  TIMEOUT_PROVIDER_DEFAULT,
+  LIMIT_ABILITY_TOKENS_AGENT,
+  PROVIDER_DEFAULT,
 } from '@automatosx/contracts';
 import {
   createAbilityRegistry,
@@ -63,7 +68,7 @@ export {
 } from './registry-accessor.js';
 
 // Storage path for persistent agents
-const AGENT_STORAGE_PATH = path.join(process.cwd(), '.automatosx', 'agents.json');
+const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
 
 // Path to example agents (relative to workspace root)
 const EXAMPLE_AGENTS_DIR = path.join(process.cwd(), 'examples', 'agents');
@@ -147,7 +152,7 @@ function parseToolResultContent(result: MCPToolResult): unknown {
 
   // Get the first text content
   const textContent = result.content.find((c) => c.type === 'text');
-  if (!textContent || textContent.text === undefined) {
+  if (textContent?.text === undefined) {
     return undefined;
   }
 
@@ -169,8 +174,8 @@ async function initializeRegistry(): Promise<void> {
 
   // Create prompt executor
   const promptExecutor = createProviderPromptExecutor(_providerRegistry, {
-    defaultProvider: 'claude',
-    defaultTimeout: 120000,
+    defaultProvider: PROVIDER_DEFAULT,
+    defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
   });
 
   // Create tool executor bridge (INV-TOOL-001, INV-TOOL-002, INV-TOOL-003)
@@ -199,7 +204,7 @@ async function initializeRegistry(): Promise<void> {
     // INV-AGT-ABL-001: Ability manager for prompt injection
     abilityManager,
     enableAbilityInjection: true,
-    maxAbilityTokens: 10000,
+    maxAbilityTokens: LIMIT_ABILITY_TOKENS_AGENT,
     checkpointConfig: {
       enabled: true,
       intervalSteps: 1,
@@ -245,8 +250,12 @@ async function loadExampleAbilities(abilityRegistry: AbilityRegistry): Promise<v
     for (const ability of abilities) {
       try {
         await abilityRegistry.register(ability);
-      } catch {
-        // Ignore duplicate registration errors
+      } catch (error) {
+        // Log duplicate registration but don't fail
+        const isDuplicate = error instanceof Error && error.message.includes('already');
+        if (!isDuplicate) {
+          console.warn(`Failed to register ability ${ability.abilityId}:`, error instanceof Error ? error.message : error);
+        }
       }
     }
   } catch (error) {
@@ -277,8 +286,12 @@ async function loadExampleAgents(registry: AgentRegistry): Promise<void> {
       if (!exists) {
         try {
           await registry.register(agent);
-        } catch {
-          // Ignore duplicate registration errors
+        } catch (error) {
+          // Log duplicate registration but don't fail
+          const isDuplicate = error instanceof Error && error.message.includes('already');
+          if (!isDuplicate) {
+            console.warn(`Failed to register agent ${agent.agentId}:`, error instanceof Error ? error.message : error);
+          }
         }
       }
     }

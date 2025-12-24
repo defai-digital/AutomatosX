@@ -1,0 +1,70 @@
+# User Authentication Domain Guard Policy
+#
+# This policy governs changes to the user authentication domain.
+# Security-sensitive domain with strict controls.
+
+policy_id: user-auth-development
+
+description: |
+  Guard policy for user authentication domain.
+  High security sensitivity - changes require careful review.
+
+allowed_paths:
+  # Contract package
+  - packages/contracts/src/user-auth/**
+  - packages/contracts/src/user-auth/v1/schema.ts
+  - packages/contracts/src/user-auth/v1/invariants.md
+  - packages/contracts/src/user-auth/v1/index.ts
+
+  # Domain package
+  - packages/core/user-auth-domain/**
+  - packages/core/user-auth-domain/src/**
+
+  # Tests
+  - tests/contract/user-auth.test.ts
+  - tests/core/user-auth-domain.test.ts
+  - tests/integration/auth/**
+  - tests/security/auth/**
+
+forbidden_paths:
+  # Other domains' contracts
+  - packages/contracts/src/*/v1/schema.ts
+  - "!packages/contracts/src/user-auth/v1/schema.ts"
+
+  # Infrastructure
+  - packages/cli/**
+  - packages/mcp-server/**
+  - packages/guard/**
+
+  # Other domains
+  - packages/core/payment-domain/**
+  - packages/core/routing-domain/**
+  - packages/core/memory-domain/**
+  - packages/core/trace-domain/**
+
+  # Adapters
+  - packages/adapters/**
+
+required_contracts:
+  - user-auth
+
+gates:
+  - path_violation
+  - dependency
+  - change_radius
+  - contract_tests
+  - secrets_detection  # Critical for auth domain
+
+# Stricter change radius for security-sensitive domain
+change_radius_limit: 2
+
+variables:
+  domain: user-auth
+  team: security
+
+metadata:
+  owner: security-team
+  created_at: "2025-12-19"
+  severity: critical
+  security_review_required: true
+  auto_apply: false

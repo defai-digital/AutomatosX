@@ -9,14 +9,28 @@
 
 import { spawn, exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { TIMEOUT_GRACEFUL_SHUTDOWN } from '@automatosx/contracts';
 import type { SpawnOptions, SpawnResult } from './types.js';
 
 const execAsync = promisify(exec);
 
 /**
- * Default grace period before SIGKILL (ms)
+ * Default grace period before SIGKILL
  */
-const SIGKILL_GRACE_PERIOD = 5000;
+const SIGKILL_GRACE_PERIOD = TIMEOUT_GRACEFUL_SHUTDOWN;
+
+/**
+ * Validates a command name to prevent command injection
+ * Only allows alphanumeric characters, hyphens, underscores, and dots
+ *
+ * @param command - The command to validate
+ * @returns true if the command is safe, false otherwise
+ */
+function isValidCommandName(command: string): boolean {
+  // Must be non-empty and contain only safe characters
+  // Allows: letters, numbers, hyphens, underscores, dots (for extensions like .exe)
+  return /^[a-zA-Z0-9_.-]+$/.test(command);
+}
 
 /**
  * Spawns a CLI process and returns the result
@@ -26,6 +40,12 @@ const SIGKILL_GRACE_PERIOD = 5000;
  */
 export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
   return new Promise((resolve, reject) => {
+    // Validate command name to prevent injection
+    if (!isValidCommandName(options.command)) {
+      reject(new Error(`Invalid command name: ${options.command}`));
+      return;
+    }
+
     const child = spawn(options.command, [...options.args], {
       env: { ...process.env, ...options.env } as NodeJS.ProcessEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -36,6 +56,7 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     let stderr = '';
     let timedOut = false;
     let killed = false;
+    let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     // Timeout handling with graceful shutdown
     const timeoutId = setTimeout(() => {
@@ -46,7 +67,7 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       child.kill('SIGTERM');
 
       // If still running after grace period, force kill
-      setTimeout(() => {
+      killTimeoutId = setTimeout(() => {
         if (!child.killed) {
           child.kill('SIGKILL');
         }
@@ -63,6 +84,15 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       stderr += data.toString();
     });
 
+    // Handle stdin errors (e.g., EPIPE if process exits immediately)
+    child.stdin.on('error', (err: Error & { code?: string }) => {
+      // EPIPE is expected if the child process exits before reading all input
+      // We ignore it since the 'close' event will still fire
+      if (err.code !== 'EPIPE') {
+        stderr += `stdin error: ${err.message}\n`;
+      }
+    });
+
     // Write prompt to stdin and close
     if (options.stdin.length > 0) {
       child.stdin.write(options.stdin);
@@ -72,6 +102,9 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     // Handle process completion
     child.on('close', (code: number | null) => {
       clearTimeout(timeoutId);
+      if (killTimeoutId !== undefined) {
+        clearTimeout(killTimeoutId);
+      }
 
       resolve({
         stdout,
@@ -84,6 +117,9 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     // Handle spawn errors (command not found, etc.)
     child.on('error', (error: Error) => {
       clearTimeout(timeoutId);
+      if (killTimeoutId !== undefined) {
+        clearTimeout(killTimeoutId);
+      }
       reject(error);
     });
   });
@@ -96,6 +132,11 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
  * @returns Promise resolving to true if available, false otherwise
  */
 export async function isCommandAvailable(command: string): Promise<boolean> {
+  // Validate command to prevent command injection
+  if (!isValidCommandName(command)) {
+    return false;
+  }
+
   try {
     // Use 'which' on Unix, 'where' on Windows
     const whichCommand = process.platform === 'win32' ? 'where' : 'which';
@@ -117,6 +158,16 @@ export async function getCommandVersion(
   command: string,
   versionFlag = '--version'
 ): Promise<string | undefined> {
+  // Validate command to prevent command injection
+  if (!isValidCommandName(command)) {
+    return undefined;
+  }
+
+  // Validate versionFlag - only allow flags starting with - and containing safe chars
+  if (!/^--?[a-zA-Z0-9_-]+$/.test(versionFlag)) {
+    return undefined;
+  }
+
   try {
     const { stdout } = await execAsync(`${command} ${versionFlag}`);
     // Extract version number from output (common patterns)

@@ -23,6 +23,7 @@ export const KNOWN_PROVIDERS = [
   'qwen',
   'glm',
   'grok',
+  'ax-cli',
 ] as const;
 
 export const ProviderIdSchema = z.enum(KNOWN_PROVIDERS);
@@ -110,6 +111,10 @@ export const PROVIDER_DEFAULTS: Record<ProviderId, ProviderDefault> = {
   },
   grok: {
     command: 'ax-grok',
+    priority: 50,
+  },
+  'ax-cli': {
+    command: 'ax-cli',
     priority: 50,
   },
 };

@@ -15,3 +15,11 @@ export {
   isSensitivePath,
   getSensitivePaths,
 } from './config.js';
+
+// Agent selection governance gate (INV-AGT-SEL)
+export {
+  agentSelectionGate,
+  validateSelectionPolicy,
+  type AgentSelectionGateContext,
+  type AgentSelectionGateConfig,
+} from './agent-selection.js';

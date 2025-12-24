@@ -14,7 +14,7 @@
  */
 
 import type { GateResult, GateExecutor, GovernanceContext } from '../types.js';
-import { safeValidateConfig } from '@automatosx/contracts';
+import { safeValidateConfig, CONFIG_FILENAME, DATA_DIR_NAME } from '@automatosx/contracts';
 
 /**
  * Sensitive config paths that require extra scrutiny
@@ -41,8 +41,8 @@ export const configValidationGate: GateExecutor = async (
 ): Promise<GateResult> => {
   // Check if any config files were changed
   const configFiles = changedFiles.filter((file) =>
-    file.endsWith('config.json') &&
-    (file.includes('.automatosx/') || file.includes('automatosx/'))
+    file.endsWith(CONFIG_FILENAME) &&
+    (file.includes(`${DATA_DIR_NAME}/`) || file.includes('automatosx/'))
   );
 
   if (configFiles.length === 0) {
@@ -107,8 +107,8 @@ export const sensitiveChangeGate: GateExecutor = async (
 ): Promise<GateResult> => {
   // Check if any config files were changed
   const configFiles = changedFiles.filter((file) =>
-    file.endsWith('config.json') &&
-    (file.includes('.automatosx/') || file.includes('automatosx/'))
+    file.endsWith(CONFIG_FILENAME) &&
+    (file.includes(`${DATA_DIR_NAME}/`) || file.includes('automatosx/'))
   );
 
   if (configFiles.length === 0) {

@@ -12,6 +12,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { TIMEOUT_GATE_DEPENDENCY } from '@automatosx/contracts';
 import type { GovernanceContext, GateResult } from '../types.js';
 
 const execAsync = promisify(exec);
@@ -31,7 +32,7 @@ async function runDependencyCruiser(
     // Use --output-type err to get just violations
     const { stdout, stderr } = await execAsync(
       `npx dependency-cruiser ${files.join(' ')} --config .dependency-cruiser.cjs --output-type err 2>&1`,
-      { cwd: process.cwd(), timeout: 60000 }
+      { cwd: process.cwd(), timeout: TIMEOUT_GATE_DEPENDENCY }
     );
 
     // If there's output, there are violations

@@ -124,8 +124,8 @@ describe('Config Contract V1', () => {
       const config: AutomatosXConfig = {
         ...DEFAULT_CONFIG,
         providers: {
-          'claude-code': { priority: 1, enabled: true, command: 'claude' },
-          'gemini-cli': { priority: 2, enabled: true, command: 'gemini' },
+          'claude-code': { priority: 1, enabled: true, command: 'claude', timeout: 2700000 },
+          'gemini-cli': { priority: 2, enabled: true, command: 'gemini', timeout: 2700000 },
         },
         defaultProvider: 'claude-code',
       };
@@ -422,14 +422,14 @@ describe('Config Events Contract', () => {
 
   describe('CONFIG_TRANSITIONS', () => {
     it('should define valid transitions from uninitialized', () => {
-      const transitions = CONFIG_TRANSITIONS['uninitialized'];
+      const transitions = CONFIG_TRANSITIONS.uninitialized;
       expect(transitions).toContain('valid');
       // From uninitialized, can only go to valid (create config)
       expect(transitions).not.toContain('invalid');
     });
 
     it('should define valid transitions from valid', () => {
-      const transitions = CONFIG_TRANSITIONS['valid'];
+      const transitions = CONFIG_TRANSITIONS.valid;
       expect(transitions).toContain('valid');
       expect(transitions).toContain('invalid');
       expect(transitions).toContain('migrating');
@@ -815,7 +815,9 @@ describe('INV-CFG-GOV: Config Governance Invariants', () => {
 
       expect(event.timestamp).toBeDefined();
       expect(event.type).toBe('config.created');
-      expect(event.payload.scope).toBe('global');
+      if (event.payload.type === 'created') {
+        expect(event.payload.scope).toBe('global');
+      }
     });
 
     it('should include old and new values in update events', () => {
@@ -829,9 +831,11 @@ describe('INV-CFG-GOV: Config Governance Invariants', () => {
       );
 
       expect(event.payload.type).toBe('updated');
-      expect(event.payload.path).toBe('logLevel');
-      expect(event.payload.oldValue).toBe('info');
-      expect(event.payload.newValue).toBe('debug');
+      if (event.payload.type === 'updated') {
+        expect(event.payload.path).toBe('logLevel');
+        expect(event.payload.oldValue).toBe('info');
+        expect(event.payload.newValue).toBe('debug');
+      }
     });
 
     it('should validate event schema', () => {

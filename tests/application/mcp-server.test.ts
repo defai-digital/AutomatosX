@@ -10,12 +10,25 @@ import type { MCPRequest } from '@automatosx/mcp-server';
 
 describe('MCP Server', () => {
   let server: MCPServer;
+  const originalPrefix = process.env.AX_MCP_TOOL_PREFIX;
 
   beforeEach(() => {
+    // Disable default prefix for backward compatibility in most tests
+    // Tests for namespacing explicitly set/unset this
+    process.env.AX_MCP_TOOL_PREFIX = '';
     server = createMCPServer({
       name: 'test-server',
       version: '1.0.0',
     });
+  });
+
+  afterEach(() => {
+    // Restore original prefix
+    if (originalPrefix === undefined) {
+      delete process.env.AX_MCP_TOOL_PREFIX;
+    } else {
+      process.env.AX_MCP_TOOL_PREFIX = originalPrefix;
+    }
   });
 
   describe('Server Lifecycle', () => {
@@ -620,14 +633,81 @@ describe('MCP Server', () => {
   });
 
   describe('Tool Namespacing', () => {
-    const originalPrefix = process.env.AX_MCP_TOOL_PREFIX;
+    it('applies default ax_ prefix when env var not set', async () => {
+      // Remove env var to test default behavior
+      delete process.env.AX_MCP_TOOL_PREFIX;
 
-    afterEach(() => {
-      process.env.AX_MCP_TOOL_PREFIX = originalPrefix;
+      const defaultPrefixServer = createMCPServer({
+        name: 'test-server',
+        version: '1.0.0',
+      });
+
+      await defaultPrefixServer.handleRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+      });
+
+      const listResponse = await defaultPrefixServer.handleRequest({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+      });
+
+      expect(listResponse.error).toBeUndefined();
+      const tools = (listResponse.result as { tools: { name: string }[] }).tools;
+
+      // Default prefix is 'ax_' - all tools should be prefixed
+      expect(tools.every((tool) => tool.name.startsWith('ax_'))).toBe(true);
+      expect(tools.some((tool) => tool.name === 'ax_workflow_list')).toBe(true);
+      expect(tools.some((tool) => tool.name === 'ax_config_set')).toBe(true);
+
+      // Should be able to call tools with prefix
+      const callResponse = await defaultPrefixServer.handleRequest({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: {
+          name: 'ax_workflow_list',
+          arguments: {},
+        },
+      });
+
+      expect(callResponse.error).toBeUndefined();
+      expect(callResponse.result).toBeDefined();
     });
 
-    it('applies AX_MCP_TOOL_PREFIX and routes prefixed tool calls', async () => {
-      process.env.AX_MCP_TOOL_PREFIX = 'ax_';
+    it('disables prefix when env var set to empty string', async () => {
+      process.env.AX_MCP_TOOL_PREFIX = '';
+
+      const unprefixedServer = createMCPServer({
+        name: 'test-server',
+        version: '1.0.0',
+      });
+
+      await unprefixedServer.handleRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+      });
+
+      const listResponse = await unprefixedServer.handleRequest({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+      });
+
+      expect(listResponse.error).toBeUndefined();
+      const tools = (listResponse.result as { tools: { name: string }[] }).tools;
+
+      // No prefix - tools should have original names
+      expect(tools.some((tool) => tool.name === 'workflow_list')).toBe(true);
+      expect(tools.some((tool) => tool.name === 'config_set')).toBe(true);
+      expect(tools.every((tool) => !tool.name.startsWith('ax_'))).toBe(true);
+    });
+
+    it('applies custom AX_MCP_TOOL_PREFIX and routes prefixed tool calls', async () => {
+      process.env.AX_MCP_TOOL_PREFIX = 'custom_';
       const namespacedServer = createMCPServer({
         name: 'test-server',
         version: '1.0.0',
@@ -647,14 +727,14 @@ describe('MCP Server', () => {
 
       expect(listResponse.error).toBeUndefined();
       const tools = (listResponse.result as { tools: { name: string }[] }).tools;
-      expect(tools.some((tool) => tool.name === 'ax_workflow_list')).toBe(true);
+      expect(tools.some((tool) => tool.name === 'custom_workflow_list')).toBe(true);
 
       const callResponse = await namespacedServer.handleRequest({
         jsonrpc: '2.0',
         id: 3,
         method: 'tools/call',
         params: {
-          name: 'ax_workflow_list',
+          name: 'custom_workflow_list',
           arguments: {},
         },
       });

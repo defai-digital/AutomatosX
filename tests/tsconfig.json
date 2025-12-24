@@ -30,6 +30,9 @@
       "@automatosx/ability-domain": ["../packages/core/ability-domain/src/index.ts"],
       "@automatosx/analysis-domain": ["../packages/core/analysis-domain/src/index.ts"],
       "@automatosx/resilience-domain": ["../packages/core/resilience-domain/src/index.ts"],
+      "@automatosx/mcp-runtime": ["../packages/core/mcp-runtime/src/index.ts"],
+      "@automatosx/review-domain": ["../packages/core/review-domain/src/index.ts"],
+      "@automatosx/discussion-domain": ["../packages/core/discussion-domain/src/index.ts"],
       "@automatosx/contracts/resilience/v1/index.js": ["../packages/contracts/src/resilience/v1/index.ts"]
     },
     "baseUrl": "."
@@ -58,6 +61,9 @@
     { "path": "../packages/core/iterate-domain" },
     { "path": "../packages/core/ability-domain" },
     { "path": "../packages/core/analysis-domain" },
-    { "path": "../packages/core/resilience-domain" }
+    { "path": "../packages/core/resilience-domain" },
+    { "path": "../packages/core/mcp-runtime" },
+    { "path": "../packages/core/review-domain" },
+    { "path": "../packages/core/discussion-domain" }
   ]
 }

@@ -2,8 +2,13 @@
 
 **AI-powered workflow automation with multi-provider orchestration**
 
-[![Version](https://img.shields.io/badge/version-13.0.0-blue.svg)](https://github.com/defai-digital/automatosx)
-[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org)
+[![npm version](https://img.shields.io/npm/v/@automatosx/cli.svg)](https://www.npmjs.com/package/@automatosx/cli)
+[![downloads](https://img.shields.io/npm/dm/@automatosx/cli.svg)](https://www.npmjs.com/package/@automatosx/cli)
+[![CI](https://github.com/defai-digital/automatosx/actions/workflows/ci.yml/badge.svg)](https://github.com/defai-digital/automatosx/actions/workflows/ci.yml)
+[![macOS](https://img.shields.io/badge/macOS-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![Windows](https://img.shields.io/badge/Windows-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
 ---
@@ -30,17 +35,29 @@ AutomatosX is a contract-first AI orchestration platform that unifies multiple L
 ### Prerequisites
 
 - Node.js >= 20.0.0
-- pnpm >= 9.15.0
 - At least one provider CLI installed (claude, gemini, codex, etc.)
 
-### Setup
+### Install from npm (Recommended)
+
+```bash
+# Install globally
+npm install -g @automatosx/cli
+
+# Initialize configuration and detect providers
+ax setup
+
+# Verify installation
+ax doctor
+```
+
+### Install from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/defai-digital/automatosx.git
 cd automatosx
 
-# Install dependencies
+# Install dependencies (requires pnpm >= 9.15.0)
 pnpm install
 
 # Build all packages
@@ -54,10 +71,10 @@ pnpm ax setup
 
 ```bash
 # Check system health
-pnpm ax doctor
+ax doctor
 
 # Check specific provider
-pnpm ax doctor claude
+ax doctor claude
 ```
 
 ---
@@ -81,36 +98,72 @@ AutomatosX uses external CLI tools for provider access. Install the CLIs you nee
 
 ```bash
 # Call Claude directly
-pnpm ax call claude "Explain this code"
+ax call claude "Explain this code"
 
 # Call with file context
-pnpm ax call claude --file ./src/index.ts "Review this implementation"
+ax call claude --file ./src/index.ts "Review this implementation"
 
 # Call Gemini
-pnpm ax call gemini "Summarize the key points"
+ax call gemini "Summarize the key points"
 ```
 
 ### 3. Execute Workflows
 
 ```bash
 # List available workflows
-pnpm ax list
+ax list
 
 # Run a workflow
-pnpm ax run code-reviewer
+ax run code-reviewer
 
 # Run with input
-pnpm ax run code-reviewer --input '{"files": ["src/index.ts"]}'
+ax run code-reviewer --input '{"files": ["src/index.ts"]}'
 ```
 
 ### 4. View Traces
 
 ```bash
 # List recent traces
-pnpm ax trace
+ax trace
 
 # View specific trace
-pnpm ax trace <trace-id> --verbose
+ax trace <trace-id> --verbose
+```
+
+---
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| **[Quickstart](docs/quickstart.md)** | Get running in 5 minutes |
+| **[Building Software](docs/building-software.md)** | Complete guide to building quality software with ax |
+| **[Improving Apps](docs/improving-apps.md)** | Modernize and improve existing applications |
+| **[Multi-Model Discussion](docs/guides/discussion.md)** | Multi-provider collaboration and consensus |
+| **[Scaffold Reference](docs/scaffold.md)** | Contract-first scaffolding documentation |
+
+### Example Resources
+
+| Resource | Description |
+|----------|-------------|
+| [Workflows](examples/workflows/) | Pre-built workflow templates (code-reviewer, developer, security-audit, etc.) |
+| [Agents](examples/agents/) | Specialized agent profiles (fullstack, backend, security, architecture, etc.) |
+| [Abilities](examples/abilities/) | Knowledge modules for agents (TypeScript, React, API design, etc.) |
+
+### Quick Examples
+
+```bash
+# Create a new project with contract-first approach
+ax scaffold project my-app --domain order --template standalone
+
+# Review code for security issues
+ax review analyze src/ --focus security
+
+# Run the developer workflow
+ax run developer --input '{"feature": "Add user authentication"}'
+
+# Use a specialized agent
+ax agent run fullstack --input '{"query": "Build a REST API for orders"}'
 ```
 
 ---
@@ -154,6 +207,7 @@ pnpm ax trace <trace-id> --verbose
 | `@automatosx/routing-engine` | Deterministic model selection |
 | `@automatosx/memory-domain` | Event-sourced conversation state |
 | `@automatosx/trace-domain` | Execution tracing and replay |
+| `@automatosx/discussion-domain` | Multi-model discussion orchestration |
 | `@automatosx/provider-adapters` | CLI-based LLM integration |
 | `@automatosx/resilience-domain` | Rate limiting, circuit breakers, metrics |
 | `@automatosx/sqlite` | SQLite persistence adapters |
@@ -237,21 +291,66 @@ ax guard list                     # List policies
 ax guard apply --policy <p>       # Apply policy
 ```
 
-### Analysis Commands
+### Scaffold Commands
 
 ```bash
-# Bug detection
-ax bugfix scan src/               # Scan for bugs
-ax bugfix scan src/ --min-severity medium
-ax bugfix run --bug-id <id>       # Fix a bug
-ax bugfix list                    # List detected bugs
+# Project scaffolding
+ax scaffold project <name>        # Create new project
+ax scaffold project my-app -m order -t standalone
+ax scaffold project my-app --domain billing --template monorepo
 
-# Refactoring
-ax refactor scan src/             # Scan for opportunities
-ax refactor scan src/ --type extract-function
-ax refactor apply --id <id>       # Apply refactoring
-ax refactor list                  # List opportunities
+# Contract scaffolding
+ax scaffold contract <name>       # Generate Zod schemas + invariants
+ax scaffold contract payment --dry-run
+
+# Domain scaffolding
+ax scaffold domain <name>         # Generate domain implementation
+ax scaffold domain billing --no-tests --no-guard
+
+# Guard policy scaffolding
+ax scaffold guard <policy-id>     # Generate guard policy
+ax scaffold guard payment-dev -r 3 -g path,dependency
 ```
+
+### Review Commands
+
+```bash
+# Code review
+ax review analyze src/            # Analyze code
+ax review analyze src/ --focus security
+ax review analyze src/ --focus architecture
+ax review list                    # List recent reviews
+```
+
+### Discussion Commands
+
+The Multi-Model Discussion System enables multiple AI providers to collaborate on complex topics through structured dialogue patterns.
+
+```bash
+# Quick discussion (2-3 providers, single round synthesis)
+ax discuss quick "What's the best approach for rate limiting?"
+ax discuss quick "Compare REST vs GraphQL" --providers claude,gemini,codex
+
+# Full discussion with pattern selection
+ax discuss "Design a microservices architecture" --pattern synthesis
+ax discuss "Should we use NoSQL or SQL?" --pattern voting --rounds 3
+ax discuss "Review this security approach" --pattern critique --rounds 3
+
+# Debate pattern (proponent, opponent, judge)
+ax discuss "Monolith vs microservices for startups" --pattern debate --rounds 2
+
+# With context
+ax discuss "Optimize this code" --pattern critique --context "$(cat ./src/api.ts)"
+
+# JSON output
+ax discuss "Best testing strategy" --format json
+```
+
+**Discussion Patterns**:
+- **synthesis**: Multiple providers discuss freely, then synthesize insights (default)
+- **voting**: Providers vote on options, consensus by threshold
+- **critique**: One proposes, others critique, revision cycle
+- **debate**: Structured debate with proponent, opponent, judge roles
 
 ---
 
@@ -262,42 +361,47 @@ AutomatosX includes an MCP (Model Context Protocol) server for integration with 
 ### Starting the Server
 
 ```bash
-# Start MCP server
-node packages/mcp-server/dist/bin.js
+# Start MCP server (when installed globally)
+automatosx mcp server
+
+# Or run directly
+ax mcp server
 ```
 
 ### Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `run_agent` | Execute a specialized agent |
-| `list_agents` | List available agents |
-| `get_agent_context` | Get agent profile and context |
-| `plan_multi_agent` | Create multi-agent execution plan |
-| `orchestrate_task` | Orchestrate complex multi-agent tasks |
-| `session_create` | Create collaborative session |
-| `session_status` | Get session status |
-| `session_complete` | Complete a session |
-| `memory_add` | Add to persistent memory |
-| `memory_list` | List memory entries |
-| `search_memory` | Search memory with full-text search |
-| `bugfix_scan` | Scan for bugs |
-| `bugfix_run` | Run autonomous bug fixing |
-| `refactor_scan` | Scan for refactoring opportunities |
-| `refactor_run` | Run autonomous refactoring |
-| `guard_check` | Run governance check |
-| `get_status` | Get system status |
+| `ax_agent_run` | Execute a specialized agent |
+| `ax_agent_list` | List available agents |
+| `ax_agent_get` | Get agent profile and details |
+| `ax_agent_register` | Register a new agent |
+| `ax_agent_recommend` | Recommend best agent for a task |
+| `ax_session_create` | Create collaborative session |
+| `ax_session_status` | Get session status |
+| `ax_session_complete` | Complete a session |
+| `ax_memory_store` | Store value in memory |
+| `ax_memory_retrieve` | Retrieve value from memory |
+| `ax_memory_search` | Search memory entries |
+| `ax_review_analyze` | AI-powered code review |
+| `ax_discuss` | Multi-model discussion with patterns |
+| `ax_discuss_quick` | Quick 2-3 provider consensus |
+| `ax_guard_check` | Run governance check |
+| `ax_guard_list` | List governance policies |
+| `ax_workflow_run` | Execute a workflow |
+| `ax_trace_list` | List execution traces |
+| `ax_ability_inject` | Inject abilities into agent context |
 
 ### Configuration for Claude Code
 
-Add to your Claude Code MCP settings:
+After installing with `ax setup`, the MCP server is automatically configured for supported providers. To manually configure, add to your MCP settings:
 
 ```json
 {
   "mcpServers": {
     "automatosx": {
-      "command": "node",
-      "args": ["/path/to/automatosx/packages/mcp-server/dist/bin.js"]
+      "command": "automatosx",
+      "args": ["mcp", "server"]
     }
   }
 }
@@ -506,6 +610,14 @@ AutomatosX enforces strict invariants across all domains:
 - **INV-MCP-003**: Idempotent tools safe to retry
 - **INV-MCP-004**: Error codes from defined set only
 - **INV-MCP-005**: No side effects from failed tools
+
+### Discussion Domain
+- **INV-DIS-001**: Minimum 2 providers for any discussion
+- **INV-DIS-002**: Discussion continues if one provider fails
+- **INV-DIS-003**: Synthesis produced even with partial participation
+- **INV-DIS-004**: Provider responses tracked per round
+- **INV-DIS-005**: Consensus method determines final outcome
+- **INV-DIS-006**: All discussion results include provenance
 
 ---
 

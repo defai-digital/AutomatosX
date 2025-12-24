@@ -1,7 +1,46 @@
-import type { MCPTool, ToolHandler } from '../types.js';
-import { createWorkflowRunner } from '@automatosx/workflow-engine';
-import type { StepContext } from '@automatosx/workflow-engine';
-import type { Workflow, WorkflowStep } from '@automatosx/contracts';
+import type { MCPTool, ToolHandler, MCPToolResult } from '../types.js';
+import {
+  createWorkflowRunner,
+  createWorkflowLoader,
+  findWorkflowDir,
+  defaultStepExecutor,
+  type WorkflowInfo,
+  type StepExecutor,
+} from '@automatosx/workflow-engine';
+import { LIMIT_WORKFLOWS } from '@automatosx/contracts';
+import { getStepExecutor } from '../bootstrap.js';
+
+// Check if we're in test environment
+const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+
+// ============================================================================
+// Workflow Loader Singleton
+// ============================================================================
+
+let _workflowLoader: ReturnType<typeof createWorkflowLoader> | null = null;
+
+function getWorkflowLoader(): ReturnType<typeof createWorkflowLoader> {
+  if (_workflowLoader === null) {
+    const workflowDir = findWorkflowDir(process.cwd()) ?? 'examples/workflows';
+    _workflowLoader = createWorkflowLoader({ workflowsDir: workflowDir });
+  }
+  return _workflowLoader;
+}
+
+/**
+ * Get the appropriate step executor based on environment
+ * Uses placeholder in tests, production executor otherwise
+ */
+function getWorkflowStepExecutor(): StepExecutor {
+  if (isTestEnv) {
+    return defaultStepExecutor;
+  }
+  return getStepExecutor();
+}
+
+// ============================================================================
+// Tool Definitions
+// ============================================================================
 
 /**
  * Workflow run tool definition
@@ -42,7 +81,7 @@ export const workflowListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of workflows to return',
-        default: 10,
+        default: LIMIT_WORKFLOWS,
       },
     },
   },
@@ -66,38 +105,45 @@ export const workflowDescribeTool: MCPTool = {
   },
 };
 
+// ============================================================================
+// Tool Handlers
+// ============================================================================
+
 /**
  * Handler for workflow_run tool
  */
-export const handleWorkflowRun: ToolHandler = async (args) => {
+export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResult> => {
   const workflowId = args.workflowId as string;
   const input = (args.input as Record<string, unknown> | undefined) ?? {};
 
   try {
-    const runner = createWorkflowRunner({
-      stepExecutor: (step: WorkflowStep, context: StepContext) => {
-        const startTime = Date.now();
-        return Promise.resolve({
-          stepId: step.stepId,
-          success: true,
-          output: { [`${step.stepId}_result`]: 'completed', ...context.input as Record<string, unknown> },
-          durationMs: Date.now() - startTime,
-          retryCount: 0,
-        });
-      },
-    });
+    // Load workflow from file
+    const loader = getWorkflowLoader();
+    const workflow = await loader.load(workflowId);
 
-    // Create sample workflow
-    const workflow: Workflow = {
-      workflowId,
-      version: '1.0.0',
-      name: `Workflow ${workflowId}`,
-      steps: [
-        { stepId: 'step-1', name: 'Initialize', type: 'tool', config: { action: 'init' } },
-        { stepId: 'step-2', name: 'Process', type: 'tool', config: { action: 'process' } },
-        { stepId: 'step-3', name: 'Complete', type: 'tool', config: { action: 'complete' } },
-      ],
-    };
+    if (!workflow) {
+      const available = await loader.loadAll();
+      const ids = available.map(w => w.workflowId).slice(0, 5).join(', ');
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: `Workflow "${workflowId}" not found`,
+              availableWorkflows: ids,
+              hint: 'Use workflow_list to see all available workflows',
+            }, null, 2),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Create workflow runner with production step executor
+    // Uses placeholder executor in test environment to avoid real LLM calls
+    const runner = createWorkflowRunner({
+      stepExecutor: getWorkflowStepExecutor(),
+    });
 
     // Execute workflow
     const result = await runner.run(workflow, input);
@@ -108,12 +154,21 @@ export const handleWorkflowRun: ToolHandler = async (args) => {
           type: 'text',
           text: JSON.stringify({
             success: result.success,
-            workflowId,
-            stepsCompleted: result.stepResults.map((s) => s.stepId),
+            workflowId: workflow.workflowId,
+            name: workflow.name,
+            version: workflow.version,
+            stepsCompleted: result.stepResults.map((s) => ({
+              stepId: s.stepId,
+              success: s.success,
+              durationMs: s.durationMs,
+            })),
             output: result.output,
+            totalDurationMs: result.totalDurationMs,
+            error: result.error,
           }, null, 2),
         },
       ],
+      isError: !result.success,
     };
   } catch (error) {
     return {
@@ -131,66 +186,115 @@ export const handleWorkflowRun: ToolHandler = async (args) => {
 /**
  * Handler for workflow_list tool
  */
-export const handleWorkflowList: ToolHandler = (args) => {
-  const status = args.status as string | undefined;
-  const limit = (args.limit as number | undefined) ?? 10;
+export const handleWorkflowList: ToolHandler = async (args): Promise<MCPToolResult> => {
+  const status = args.status as 'active' | 'inactive' | 'draft' | undefined;
+  const limit = (args.limit as number | undefined) ?? LIMIT_WORKFLOWS;
 
-  // Sample workflows
-  const workflows = [
-    { id: 'data-pipeline', name: 'Data Pipeline', version: '1.0.0', status: 'active', stepCount: 5 },
-    { id: 'code-review', name: 'Code Review', version: '2.1.0', status: 'active', stepCount: 3 },
-    { id: 'deploy-staging', name: 'Deploy to Staging', version: '1.2.0', status: 'active', stepCount: 7 },
-    { id: 'test-suite', name: 'Test Suite', version: '1.0.0', status: 'draft', stepCount: 4 },
-  ];
+  try {
+    const loader = getWorkflowLoader();
+    const allWorkflows = await loader.listAll();
 
-  const filtered = status !== undefined
-    ? workflows.filter((w) => w.status === status)
-    : workflows;
+    // Filter by status if specified
+    const filtered = status !== undefined
+      ? allWorkflows.filter((w: WorkflowInfo) => w.status === status)
+      : allWorkflows;
 
-  const limited = filtered.slice(0, limit);
+    // Apply limit
+    const limited = filtered.slice(0, limit);
 
-  return Promise.resolve({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify({ workflows: limited }, null, 2),
-      },
-    ],
-  });
+    // Format for output
+    const workflows = limited.map((w: WorkflowInfo) => ({
+      id: w.id,
+      name: w.name,
+      version: w.version,
+      description: w.description,
+      stepCount: w.stepCount,
+      status: w.status,
+    }));
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            count: workflows.length,
+            total: allWorkflows.length,
+            workflows,
+          }, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error listing workflows: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
+      ],
+      isError: true,
+    };
+  }
 };
 
 /**
  * Handler for workflow_describe tool
  */
-export const handleWorkflowDescribe: ToolHandler = (args) => {
+export const handleWorkflowDescribe: ToolHandler = async (args): Promise<MCPToolResult> => {
   const workflowId = args.workflowId as string;
 
-  // Sample workflow details
-  const workflow = {
-    id: workflowId,
-    name: `Workflow ${workflowId}`,
-    version: '1.0.0',
-    description: `Automated workflow for ${workflowId}`,
-    status: 'active',
-    steps: [
-      { stepId: 'step-1', name: 'Initialize', type: 'tool', description: 'Set up the workflow context' },
-      { stepId: 'step-2', name: 'Process', type: 'tool', description: 'Main processing step' },
-      { stepId: 'step-3', name: 'Complete', type: 'tool', description: 'Finalize and cleanup' },
-    ],
-    inputSchema: {
-      type: 'object',
-      properties: {
-        input: { type: 'string', description: 'Input data for the workflow' },
-      },
-    },
-  };
+  try {
+    const loader = getWorkflowLoader();
+    const workflow = await loader.load(workflowId);
 
-  return Promise.resolve({
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(workflow, null, 2),
-      },
-    ],
-  });
+    if (!workflow) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: `Workflow "${workflowId}" not found`,
+              hint: 'Use workflow_list to see all available workflows',
+            }, null, 2),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Format workflow for output
+    const description = {
+      workflowId: workflow.workflowId,
+      name: workflow.name,
+      version: workflow.version,
+      description: workflow.description,
+      steps: workflow.steps.map((step) => ({
+        stepId: step.stepId,
+        name: step.name,
+        type: step.type,
+        timeout: step.timeout,
+        config: step.config,
+      })),
+      metadata: workflow.metadata,
+    };
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(description, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error describing workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
+      ],
+      isError: true,
+    };
+  }
 };

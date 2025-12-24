@@ -1,8 +1,27 @@
 {
   "name": "@automatosx/contracts",
-  "version": "1.0.0",
+  "version": "13.0.0",
   "type": "module",
-  "description": "Contract schemas and behavioral invariants - Single Source of Truth",
+  "description": "Contract schemas and behavioral invariants for AutomatosX - Single Source of Truth",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "keywords": [
+    "automatosx",
+    "contracts",
+    "schemas",
+    "zod",
+    "typescript",
+    "types"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -21,10 +40,6 @@
     "./analysis/v1": {
       "types": "./dist/analysis/v1/index.d.ts",
       "import": "./dist/analysis/v1/index.js"
-    },
-    "./bugfix/v1": {
-      "types": "./dist/bugfix/v1/index.d.ts",
-      "import": "./dist/bugfix/v1/index.js"
     },
     "./cli/v1": {
       "types": "./dist/cli/v1/index.d.ts",
@@ -70,9 +85,9 @@
       "types": "./dist/provider/v1/index.d.ts",
       "import": "./dist/provider/v1/index.js"
     },
-    "./refactor/v1": {
-      "types": "./dist/refactor/v1/index.d.ts",
-      "import": "./dist/refactor/v1/index.js"
+    "./review/v1": {
+      "types": "./dist/review/v1/index.d.ts",
+      "import": "./dist/review/v1/index.js"
     },
     "./resilience/v1": {
       "types": "./dist/resilience/v1/index.d.ts",
@@ -107,15 +122,21 @@
       "import": "./dist/workflow/v1/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src/**/*.schema.json"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
     "zod": "^3.24.1"
-  },
-  "files": [
-    "dist",
-    "src/**/*.schema.json"
-  ]
+  }
 }

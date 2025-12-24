@@ -1,0 +1,102 @@
+/**
+ * {{pascalCase domainName}} Service
+ */
+
+import {
+  type {{pascalCase domainName}},
+  type {{pascalCase domainName}}Id,
+  type {{pascalCase domainName}}Status,
+  {{pascalCase domainName}}Schema,
+  {{pascalCase domainName}}ErrorCode,
+} from '../../contracts/{{domainName}}/index.js';
+import type { {{pascalCase domainName}}Repository } from './repository.js';
+
+// ============================================================================
+// Service Implementation
+// ============================================================================
+
+export class {{pascalCase domainName}}Service {
+  constructor(private readonly repository: {{pascalCase domainName}}Repository) {}
+
+  async getById(id: {{pascalCase domainName}}Id): Promise<{{pascalCase domainName}}> {
+    const entity = await this.repository.findById(id);
+    if (!entity) {
+      throw new {{pascalCase domainName}}NotFoundError(id);
+    }
+    return entity;
+  }
+
+  async create(data: Omit<{{pascalCase domainName}}, 'id' | 'createdAt' | 'updatedAt'>): Promise<{{pascalCase domainName}}> {
+    const now = new Date().toISOString();
+    const entity: {{pascalCase domainName}} = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Validate against schema
+    {{pascalCase domainName}}Schema.parse(entity);
+
+    await this.repository.save(entity);
+    return entity;
+  }
+
+  async updateStatus(id: {{pascalCase domainName}}Id, newStatus: {{pascalCase domainName}}Status): Promise<{{pascalCase domainName}}> {
+    const entity = await this.getById(id);
+
+    // INV-{{upperCase (substring domainName 0 3)}}-101: Validate status transition
+    this.validateStatusTransition(entity.status, newStatus);
+
+    const updated: {{pascalCase domainName}} = {
+      ...entity,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.repository.save(updated);
+    return updated;
+  }
+
+  async delete(id: {{pascalCase domainName}}Id): Promise<boolean> {
+    return this.repository.delete(id);
+  }
+
+  private validateStatusTransition(
+    currentStatus: {{pascalCase domainName}}Status,
+    newStatus: {{pascalCase domainName}}Status
+  ): void {
+    const validTransitions: Record<{{pascalCase domainName}}Status, {{pascalCase domainName}}Status[]> = {
+      draft: ['active', 'cancelled'],
+      active: ['completed', 'cancelled'],
+      completed: [],
+      cancelled: [],
+    };
+
+    if (!validTransitions[currentStatus].includes(newStatus)) {
+      throw new {{pascalCase domainName}}InvalidStatusError(currentStatus, newStatus);
+    }
+  }
+}
+
+// ============================================================================
+// Domain Errors
+// ============================================================================
+
+export class {{pascalCase domainName}}NotFoundError extends Error {
+  readonly code = {{pascalCase domainName}}ErrorCode.NOT_FOUND;
+
+  constructor(id: {{pascalCase domainName}}Id) {
+    super(`{{pascalCase domainName}} not found: ${id}`);
+    this.name = '{{pascalCase domainName}}NotFoundError';
+  }
+}
+
+export class {{pascalCase domainName}}InvalidStatusError extends Error {
+  readonly code = {{pascalCase domainName}}ErrorCode.INVALID_STATUS;
+
+  constructor(currentStatus: {{pascalCase domainName}}Status, newStatus: {{pascalCase domainName}}Status) {
+    super(`Invalid status transition: ${currentStatus} → ${newStatus}`);
+    this.name = '{{pascalCase domainName}}InvalidStatusError';
+  }
+}

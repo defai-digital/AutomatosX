@@ -1,0 +1,170 @@
+# Code Review Discussion Workflow
+#
+# Multiple AI models collaboratively review code using the discuss step.
+# Leverages different model strengths for comprehensive review.
+#
+# Usage:
+#   ax run code-review-discussion --input '{"code": "...", "focus": "security"}'
+#
+# Model Roles:
+#   - Claude: Security and correctness analysis
+#   - GLM: Performance and implementation patterns
+#   - Qwen: Edge cases and mathematical correctness
+#
+# Focus Options: security, performance, maintainability, all
+
+workflowId: code-review-discussion
+version: "1.0.0"
+name: Multi-Model Code Review
+description: >
+  Multiple AI models discuss and critique code, reaching consensus on
+  improvements through structured rounds of review and synthesis.
+
+steps:
+  # Step 1: Initial critique from multiple perspectives
+  - stepId: multi-perspective-review
+    type: discuss
+    name: Multi-Perspective Code Review
+    timeout: 180000
+    config:
+      pattern: critique
+      providers:
+        - claude
+        - glm
+        - qwen
+      prompt: |
+        Review this code for {{input.focus | default: "all"}} concerns:
+
+        ```
+        {{input.code}}
+        ```
+
+        Each reviewer should:
+        1. Identify issues from your expertise area
+        2. Rate severity (critical/major/minor)
+        3. Suggest specific fixes with code examples
+        4. Consider edge cases and failure modes
+
+        Expertise areas:
+        - Security vulnerabilities (OWASP top 10, injection, auth)
+        - Performance bottlenecks (O(n), memory, I/O)
+        - Maintainability issues (code smells, complexity)
+        - Type safety and correctness
+      rounds: 3
+      consensus:
+        method: synthesis
+        synthesizer: claude
+        includeDissent: true
+      providerTimeout: 60000
+      continueOnProviderFailure: true
+      minProviders: 2
+
+  # Step 2: Vote on priority of fixes
+  - stepId: prioritize-fixes
+    type: discuss
+    name: Prioritize Fixes
+    timeout: 120000
+    dependencies:
+      - multi-perspective-review
+    config:
+      pattern: voting
+      providers:
+        - claude
+        - glm
+        - qwen
+      prompt: |
+        Based on the review synthesis:
+
+        {{steps.multi-perspective-review.output.synthesis}}
+
+        Vote on which category of issues to address FIRST:
+        1. Security vulnerabilities
+        2. Performance issues
+        3. Maintainability improvements
+        4. Type safety fixes
+
+        Consider:
+        - Production impact
+        - Fix complexity
+        - Technical debt
+      rounds: 1
+      consensus:
+        method: voting
+        threshold: 0.5
+        includeDissent: true
+      minProviders: 2
+
+  # Step 3: Generate refactored code
+  - stepId: generate-fix
+    type: discuss
+    name: Generate Fixed Code
+    timeout: 180000
+    dependencies:
+      - prioritize-fixes
+    config:
+      pattern: synthesis
+      providers:
+        - claude
+        - glm
+      prompt: |
+        Generate the improved code based on:
+
+        Priority: {{steps.prioritize-fixes.output.consensus.winner}}
+
+        Review findings:
+        {{steps.multi-perspective-review.output.synthesis}}
+
+        Original code:
+        ```
+        {{input.code}}
+        ```
+
+        Requirements:
+        1. Fix the highest priority issues identified
+        2. Preserve existing functionality
+        3. Add inline comments explaining changes
+        4. Include any necessary type annotations
+        5. Follow existing code style
+      rounds: 2
+      consensus:
+        method: synthesis
+        synthesizer: claude
+        includeDissent: true
+      minProviders: 2
+
+  # Store results
+  - stepId: store-review
+    type: tool
+    name: Store Review Results
+    timeout: 10000
+    dependencies:
+      - generate-fix
+    config:
+      tool: memory_store
+      args:
+        namespace: code-reviews
+        key: "review-{{now | timestamp}}"
+        value:
+          originalCode: "{{input.code}}"
+          focus: "{{input.focus | default: 'all'}}"
+          reviewFindings: "{{steps.multi-perspective-review.output.synthesis}}"
+          prioritizedFocus: "{{steps.prioritize-fixes.output.consensus.winner}}"
+          improvedCode: "{{steps.generate-fix.output.synthesis}}"
+          timestamp: "{{now}}"
+
+metadata:
+  category: code-review
+  tags:
+    - discuss-step
+    - code-review
+    - multi-model
+    - security
+    - quality
+  requiredAbilities:
+    - code-review
+    - security-practices
+  estimatedDuration: 300000
+  providers:
+    - claude
+    - glm
+    - qwen

@@ -38,6 +38,13 @@
 2. **No Test Modification**: If contract test files themselves are modified, gate MUST FAIL
 3. **Test Isolation**: Contract tests MUST run in isolation from other tests
 
+### Secrets Detection Gate
+
+1. **Pattern Matching**: Gate MUST scan changed file contents for common secret patterns (API keys, passwords, connection strings)
+2. **Location Reporting**: Detected secrets MUST report file path and line number
+3. **Ignore Support**: Gate MUST respect `.secretsignore` file for false positive suppression
+4. **No False Negatives**: Gate MUST detect common patterns (AWS keys, GitHub tokens, generic API keys, passwords, connection strings)
+
 ## Result Invariants
 
 1. **Status Determination**:

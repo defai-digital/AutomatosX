@@ -1,0 +1,304 @@
+# Multi-Model Discussion Workflow
+#
+# This workflow enables multiple LLM providers to discuss a topic,
+# building on each other's insights to reach a richer conclusion
+# than any single model could provide.
+#
+# Usage:
+#   ax run multi-model-discussion --input '{"topic": "Best architecture for real-time chat"}'
+#
+# Supported providers: claude, gemini, codex, qwen, glm, grok
+#
+# Provider Strengths:
+#   - Claude: Nuanced reasoning, synthesis (used as synthesizer)
+#   - Gemini: Research, long context (1M+ tokens)
+#   - Codex: Code generation, OpenAI ecosystem
+#   - Qwen: OCR (75% = GPT-4o), 29 languages, translation, math
+#   - GLM: Agentic coding (73.8% SWE-bench), tool use, 1/7th cost of Claude
+#   - Grok: Real-time info, Twitter/X integration
+
+workflowId: multi-model-discussion
+version: "1.0.0"
+name: Multi-Model Discussion
+description: >
+  Multiple AI models discuss a topic from their unique perspectives,
+  then synthesize into a unified conclusion. Leverages cognitive
+  diversity of different LLMs for more robust outcomes.
+
+steps:
+  # Step 1: Gather initial perspectives from each model in parallel
+  - stepId: gather-perspectives
+    type: parallel
+    name: Gather Diverse Perspectives
+    timeout: 120000
+    config:
+      failureStrategy: failSafe  # Continue even if one provider fails
+      steps:
+        - stepId: claude-perspective
+          type: prompt
+          config:
+            provider: claude
+            prompt: |
+              You are Claude, known for nuanced reasoning and careful analysis.
+
+              Topic for discussion: {{input.topic}}
+
+              Provide your unique perspective on this topic. Focus on:
+              - Nuanced considerations others might miss
+              - Ethical and safety implications
+              - Long-term consequences
+
+              Be thorough but concise.
+
+        - stepId: glm-perspective
+          type: prompt
+          config:
+            provider: glm
+            prompt: |
+              You are GLM, known for agentic coding (73.8% SWE-bench) and practical execution.
+
+              Topic for discussion: {{input.topic}}
+
+              Provide your unique perspective on this topic. Focus on:
+              - Step-by-step execution approach
+              - Tool usage and automation opportunities
+              - Practical implementation with code examples
+              - Cost-effective solutions
+
+              Be thorough but concise.
+
+        - stepId: qwen-perspective
+          type: prompt
+          config:
+            provider: qwen
+            prompt: |
+              You are Qwen, known for multilingual understanding, OCR, and mathematical reasoning.
+
+              Topic for discussion: {{input.topic}}
+
+              Provide your unique perspective on this topic. Focus on:
+              - Mathematical and algorithmic analysis
+              - Multilingual and cross-cultural considerations
+              - Document and data processing approaches
+              - Precision and accuracy requirements
+
+              Be thorough but concise.
+
+        - stepId: gemini-perspective
+          type: prompt
+          config:
+            provider: gemini
+            prompt: |
+              You are Gemini, known for broad research and long-context understanding.
+
+              Topic for discussion: {{input.topic}}
+
+              Provide your unique perspective on this topic. Focus on:
+              - Latest trends and research
+              - Real-world examples and case studies
+              - Large-scale system considerations
+
+              Be thorough but concise.
+
+  # Step 2: Cross-pollinate ideas - each model responds to others
+  - stepId: cross-discuss
+    type: parallel
+    name: Cross-Discussion Round
+    timeout: 120000
+    dependencies:
+      - gather-perspectives
+    config:
+      failureStrategy: failSafe
+      steps:
+        - stepId: claude-responds
+          type: prompt
+          config:
+            provider: claude
+            prompt: |
+              Review these perspectives from other AI models:
+
+              ## GLM's Perspective (Agentic Coding Expert):
+              {{steps.glm-perspective.output}}
+
+              ## Qwen's Perspective (Multilingual & Math Expert):
+              {{steps.qwen-perspective.output}}
+
+              ## Gemini's Perspective (Research Expert):
+              {{steps.gemini-perspective.output}}
+
+              Now respond:
+              1. What do you agree with?
+              2. What do you respectfully disagree with? Why?
+              3. What important points were missed?
+              4. How can these perspectives be combined?
+
+        - stepId: glm-responds
+          type: prompt
+          config:
+            provider: glm
+            prompt: |
+              Review these perspectives from other AI models:
+
+              ## Claude's Perspective (Reasoning Expert):
+              {{steps.claude-perspective.output}}
+
+              ## Qwen's Perspective (Multilingual & Math Expert):
+              {{steps.qwen-perspective.output}}
+
+              ## Gemini's Perspective (Research Expert):
+              {{steps.gemini-perspective.output}}
+
+              Now respond:
+              1. What do you agree with?
+              2. What do you respectfully disagree with? Why?
+              3. What practical implementation details were missed?
+              4. How can we execute on these ideas efficiently?
+
+        - stepId: qwen-responds
+          type: prompt
+          config:
+            provider: qwen
+            prompt: |
+              Review these perspectives from other AI models:
+
+              ## Claude's Perspective (Reasoning Expert):
+              {{steps.claude-perspective.output}}
+
+              ## GLM's Perspective (Agentic Coding Expert):
+              {{steps.glm-perspective.output}}
+
+              ## Gemini's Perspective (Research Expert):
+              {{steps.gemini-perspective.output}}
+
+              Now respond:
+              1. What do you agree with?
+              2. What mathematical or algorithmic considerations were missed?
+              3. What multilingual or cross-cultural aspects should be considered?
+              4. How can these perspectives be synthesized?
+
+        - stepId: gemini-responds
+          type: prompt
+          config:
+            provider: gemini
+            prompt: |
+              Review these perspectives from other AI models:
+
+              ## Claude's Perspective (Reasoning Expert):
+              {{steps.claude-perspective.output}}
+
+              ## GLM's Perspective (Agentic Coding Expert):
+              {{steps.glm-perspective.output}}
+
+              ## Qwen's Perspective (Multilingual & Math Expert):
+              {{steps.qwen-perspective.output}}
+
+              Now respond:
+              1. What do you agree with?
+              2. What research or evidence supports or contradicts these views?
+              3. What important points were missed?
+              4. How can these perspectives be combined?
+
+  # Step 3: Synthesize all perspectives into final answer
+  - stepId: synthesize
+    type: prompt
+    name: Synthesize Consensus
+    timeout: 90000
+    dependencies:
+      - cross-discuss
+    config:
+      provider: claude  # Claude synthesizes due to nuanced reasoning
+      prompt: |
+        You are synthesizing a multi-model discussion into a final answer.
+
+        ## Original Topic:
+        {{input.topic}}
+
+        ## Initial Perspectives:
+
+        ### Claude (Reasoning & Ethics Expert):
+        {{steps.claude-perspective.output}}
+
+        ### GLM (Agentic Coding Expert - 73.8% SWE-bench):
+        {{steps.glm-perspective.output}}
+
+        ### Qwen (Multilingual & Math Expert - 75% OCR accuracy):
+        {{steps.qwen-perspective.output}}
+
+        ### Gemini (Research & Long-Context Expert):
+        {{steps.gemini-perspective.output}}
+
+        ## Discussion Responses:
+
+        ### Claude's Response to Others:
+        {{steps.claude-responds.output}}
+
+        ### GLM's Response to Others:
+        {{steps.glm-responds.output}}
+
+        ### Qwen's Response to Others:
+        {{steps.qwen-responds.output}}
+
+        ### Gemini's Response to Others:
+        {{steps.gemini-responds.output}}
+
+        ## Your Task:
+
+        Synthesize all perspectives into a comprehensive answer:
+
+        1. **Areas of Strong Agreement**: What do all models agree on?
+        2. **Key Disagreements**: Where do perspectives differ? Why?
+        3. **Unique Insights**: What did each model contribute uniquely?
+           - Claude: (reasoning/ethics insights)
+           - GLM: (practical execution insights)
+           - Qwen: (mathematical/multilingual insights)
+           - Gemini: (research/context insights)
+        4. **Synthesis**: Combine the best insights into a unified recommendation
+        5. **Conclusion**: Provide a clear, actionable answer to the original topic
+
+        Be thorough, balanced, and actionable.
+
+  # Step 4: Store discussion results
+  - stepId: store-result
+    type: tool
+    name: Store Discussion
+    timeout: 10000
+    dependencies:
+      - synthesize
+    config:
+      tool: memory_store
+      args:
+        namespace: discussions
+        key: "{{input.topic | slugify}}"
+        value:
+          topic: "{{input.topic}}"
+          perspectives:
+            claude: "{{steps.claude-perspective.output}}"
+            glm: "{{steps.glm-perspective.output}}"
+            qwen: "{{steps.qwen-perspective.output}}"
+            gemini: "{{steps.gemini-perspective.output}}"
+          responses:
+            claude: "{{steps.claude-responds.output}}"
+            glm: "{{steps.glm-responds.output}}"
+            qwen: "{{steps.qwen-responds.output}}"
+            gemini: "{{steps.gemini-responds.output}}"
+          synthesis: "{{steps.synthesize.output}}"
+          timestamp: "{{now}}"
+          providers: ["claude", "glm", "qwen", "gemini"]
+
+metadata:
+  category: collaboration
+  tags:
+    - multi-model
+    - discussion
+    - consensus
+    - ai-collaboration
+    - glm
+    - qwen
+  requiredAbilities: []
+  estimatedDuration: 360000  # ~6 minutes (4 providers)
+  estimatedCost: medium  # GLM is 1/7th cost of Claude, Qwen is cost-effective
+  providers:
+    - claude   # Synthesis & reasoning
+    - glm      # Agentic coding & execution
+    - qwen     # Multilingual & math
+    - gemini   # Research & long context

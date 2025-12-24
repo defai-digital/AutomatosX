@@ -18,6 +18,8 @@ import {
   DEFAULT_CONFIG,
   ConfigErrorCode,
   ConfigError,
+  DATA_DIR_NAME,
+  CONFIG_FILENAME,
 } from '@automatosx/contracts';
 
 // ============================================================================
@@ -28,16 +30,16 @@ import {
  * Configuration file paths
  */
 export const CONFIG_PATHS = {
-  global: path.join(os.homedir(), '.automatosx', 'config.json'),
-  local: path.join(process.cwd(), '.automatosx', 'config.json'),
+  global: path.join(os.homedir(), DATA_DIR_NAME, CONFIG_FILENAME),
+  local: path.join(process.cwd(), DATA_DIR_NAME, CONFIG_FILENAME),
 } as const;
 
 /**
  * Data directory paths
  */
 export const DATA_PATHS = {
-  global: path.join(os.homedir(), '.automatosx'),
-  local: path.join(process.cwd(), '.automatosx'),
+  global: path.join(os.homedir(), DATA_DIR_NAME),
+  local: path.join(process.cwd(), DATA_DIR_NAME),
 } as const;
 
 // ============================================================================
@@ -200,7 +202,7 @@ function deepMerge<T extends Record<string, unknown>>(
 ): T {
   const result = { ...base };
 
-  for (const key of Object.keys(override) as Array<keyof T>) {
+  for (const key of Object.keys(override) as (keyof T)[]) {
     const overrideValue = override[key];
     const baseValue = base[key];
 

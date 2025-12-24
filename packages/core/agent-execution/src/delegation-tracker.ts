@@ -58,7 +58,7 @@ export interface DelegationTracker {
 export function createDelegationTracker(
   agentId: string,
   parentContext?: DelegationContext,
-  maxDepth: number = 3
+  maxDepth = 3
 ): DelegationTracker {
   // Initialize context - either from parent or create new root
   let context: DelegationContext;

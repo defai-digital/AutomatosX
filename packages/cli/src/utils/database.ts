@@ -11,6 +11,14 @@
 import { existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
+import {
+  DATA_DIR_NAME,
+  DATABASE_FILENAME,
+  ENV_DATA_DIR,
+  ENV_STORAGE_MODE,
+  STORAGE_MODE_SQLITE,
+  STORAGE_MODE_MEMORY,
+} from '@automatosx/contracts';
 
 /**
  * Database configuration
@@ -30,18 +38,18 @@ export interface DatabaseConfig {
  * Gets the data directory path
  */
 export function getDataDirectory(): string {
-  const customDir = process.env['AX_DATA_DIR'];
+  const customDir = process.env[ENV_DATA_DIR];
   if (customDir) {
     return customDir;
   }
-  return join(homedir(), '.automatosx');
+  return join(homedir(), DATA_DIR_NAME);
 }
 
 /**
  * Gets the database file path
  */
 export function getDatabasePath(): string {
-  return join(getDataDirectory(), 'data.db');
+  return join(getDataDirectory(), DATABASE_FILENAME);
 }
 
 /**
@@ -58,11 +66,11 @@ export function ensureDataDirectory(): void {
  * Gets the configured storage mode
  */
 export function getStorageMode(): 'sqlite' | 'memory' {
-  const mode = process.env['AX_STORAGE']?.toLowerCase();
-  if (mode === 'memory') {
-    return 'memory';
+  const mode = process.env[ENV_STORAGE_MODE]?.toLowerCase();
+  if (mode === STORAGE_MODE_MEMORY) {
+    return STORAGE_MODE_MEMORY;
   }
-  return 'sqlite'; // Default to sqlite
+  return STORAGE_MODE_SQLITE; // Default to sqlite
 }
 
 /**
@@ -124,11 +132,11 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
   const path = getDatabasePath();
 
   // If memory mode is explicitly set, don't try SQLite
-  if (storageMode === 'memory') {
+  if (storageMode === STORAGE_MODE_MEMORY) {
     _databaseConfig = {
       path,
       sqliteAvailable: false,
-      storageMode: 'memory',
+      storageMode: STORAGE_MODE_MEMORY,
     };
     return _databaseConfig;
   }
@@ -140,7 +148,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
     _databaseConfig = {
       path,
       sqliteAvailable: false,
-      storageMode: 'memory',
+      storageMode: STORAGE_MODE_MEMORY,
       initError: 'better-sqlite3 package not available',
     };
     return _databaseConfig;
@@ -153,7 +161,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
     _databaseConfig = {
       path,
       sqliteAvailable: false,
-      storageMode: 'memory',
+      storageMode: STORAGE_MODE_MEMORY,
       initError: `Failed to create data directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
     return _databaseConfig;
@@ -162,7 +170,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
   _databaseConfig = {
     path,
     sqliteAvailable: true,
-    storageMode: 'sqlite',
+    storageMode: STORAGE_MODE_SQLITE,
   };
 
   return _databaseConfig;
@@ -199,7 +207,7 @@ export function resetDatabaseState(): void {
  */
 export async function isPersistentStorageAvailable(): Promise<boolean> {
   const config = await getDatabaseConfig();
-  return config.sqliteAvailable && config.storageMode === 'sqlite';
+  return config.sqliteAvailable && config.storageMode === STORAGE_MODE_SQLITE;
 }
 
 /**

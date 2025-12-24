@@ -1,22 +1,41 @@
 {
   "name": "@automatosx/provider-adapters",
-  "version": "1.0.0",
+  "version": "13.0.0",
   "type": "module",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/adapters/providers"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@automatosx/contracts": "workspace:*",
-    "@automatosx/routing-engine": "workspace:*",
-    "@automatosx/resilience-domain": "workspace:*"
+    "@automatosx/resilience-domain": "workspace:*",
+    "@automatosx/routing-engine": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

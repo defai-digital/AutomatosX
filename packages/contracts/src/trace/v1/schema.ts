@@ -15,6 +15,12 @@ export const TraceEventTypeSchema = z.enum([
   'memory.write',
   'memory.read',
   'error',
+  // Discussion-specific events
+  'discussion.start',
+  'discussion.round',
+  'discussion.provider',
+  'discussion.consensus',
+  'discussion.end',
 ]);
 
 export type TraceEventType = z.infer<typeof TraceEventTypeSchema>;
@@ -104,6 +110,84 @@ export const ErrorPayloadSchema = z.object({
 });
 
 export type ErrorPayload = z.infer<typeof ErrorPayloadSchema>;
+
+// ============================================================================
+// Discussion Trace Event Payloads
+// ============================================================================
+
+/**
+ * Payload for discussion.start event
+ */
+export const DiscussionStartPayloadSchema = z.object({
+  pattern: z.string(),
+  providers: z.array(z.string()),
+  rounds: z.number().int().min(1),
+  topic: z.string(),
+  consensusMethod: z.string(),
+});
+
+export type DiscussionStartPayload = z.infer<typeof DiscussionStartPayloadSchema>;
+
+/**
+ * Payload for discussion.round event
+ */
+export const DiscussionRoundPayloadSchema = z.object({
+  roundNumber: z.number().int().min(1),
+  participatingProviders: z.array(z.string()),
+  failedProviders: z.array(z.string()).optional(),
+  responseCount: z.number().int().min(0),
+  durationMs: z.number().int().min(0),
+});
+
+export type DiscussionRoundPayload = z.infer<typeof DiscussionRoundPayloadSchema>;
+
+/**
+ * Payload for discussion.provider event
+ */
+export const DiscussionProviderPayloadSchema = z.object({
+  providerId: z.string(),
+  roundNumber: z.number().int().min(1),
+  success: z.boolean(),
+  durationMs: z.number().int().min(0),
+  tokenCount: z.number().int().min(0).optional(),
+  role: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type DiscussionProviderPayload = z.infer<typeof DiscussionProviderPayloadSchema>;
+
+/**
+ * Payload for discussion.consensus event
+ */
+export const DiscussionConsensusPayloadSchema = z.object({
+  method: z.string(),
+  success: z.boolean(),
+  winner: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  votes: z.record(z.number()).optional(),
+  durationMs: z.number().int().min(0),
+});
+
+export type DiscussionConsensusPayload = z.infer<typeof DiscussionConsensusPayloadSchema>;
+
+/**
+ * Payload for discussion.end event
+ */
+export const DiscussionEndPayloadSchema = z.object({
+  success: z.boolean(),
+  pattern: z.string(),
+  participatingProviders: z.array(z.string()),
+  failedProviders: z.array(z.string()),
+  totalRounds: z.number().int().min(0),
+  totalDurationMs: z.number().int().min(0),
+  synthesisLength: z.number().int().min(0).optional(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+  }).optional(),
+});
+
+export type DiscussionEndPayload = z.infer<typeof DiscussionEndPayloadSchema>;
 
 /**
  * Trace event schema

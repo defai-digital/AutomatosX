@@ -33,7 +33,7 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /overloaded/i,
     /RATE_LIMIT_EXCEEDED/i,
     /throttl/i,
-    /429/,
+    /\b429\b/,  // Word boundary to prevent false matches like "4290"
   ],
 
   // Authentication - don't retry
@@ -44,8 +44,8 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /PERMISSION_DENIED/i,
     /authentication.?failed/i,
     /not.?authenticated/i,
-    /401/,
-    /403/,
+    /\b401\b/,  // Word boundary to prevent false matches
+    /\b403\b/,  // Word boundary to prevent false matches
   ],
 
   // Validation - don't retry
@@ -55,7 +55,7 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /bad.?request/i,
     /validation.?error/i,
     /invalid.?parameter/i,
-    /400/,
+    /\b400\b/,  // Word boundary to prevent false matches
   ],
 
   // Network - retry
@@ -75,10 +75,10 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /internal.?server.?error/i,
     /service.?unavailable/i,
     /bad.?gateway/i,
-    /500/,
-    /502/,
-    /503/,
-    /504/,
+    /\b500\b/,  // Word boundary to prevent false matches
+    /\b502\b/,  // Word boundary to prevent false matches
+    /\b503\b/,  // Word boundary to prevent false matches
+    /\b504\b/,  // Word boundary to prevent false matches
   ],
 
   // Timeout - retry or fallback
@@ -95,7 +95,7 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /ENOENT/,
     /not.?found/i,
     /model.?not.?found/i,
-    /404/,
+    /\b404\b/,  // Word boundary to prevent false matches
   ],
 
   // Configuration - don't retry
@@ -148,6 +148,18 @@ export function classifyError(error: unknown): ClassifiedError {
 }
 
 /**
+ * Safely truncates a string without cutting in the middle of multi-byte UTF-8 characters
+ * Uses Array.from to properly handle grapheme clusters
+ */
+function safeTruncate(str: string, maxLength: number): string {
+  const chars = Array.from(str);
+  if (chars.length <= maxLength) {
+    return str;
+  }
+  return chars.slice(0, maxLength).join('');
+}
+
+/**
  * Classifies a CLI spawn result
  *
  * @param result - The spawn result to classify
@@ -173,7 +185,7 @@ export function classifySpawnResult(result: SpawnResult): ClassifiedError {
 
   return {
     category,
-    message: errorText.slice(0, 500), // Truncate long error messages
+    message: safeTruncate(errorText, 500), // Truncate long error messages safely
     shouldRetry: guidance.shouldRetry,
     shouldFallback: guidance.shouldFallback,
     retryAfterMs: extractRetryAfter(errorText),

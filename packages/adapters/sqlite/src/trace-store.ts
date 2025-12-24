@@ -320,6 +320,21 @@ interface TraceSummaryRow {
 }
 
 /**
+ * Safely parses JSON with error handling
+ */
+function safeJsonParse<T>(json: string, fieldName: string, eventId: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    throw new SqliteTraceStoreError(
+      SqliteTraceStoreErrorCodes.DATABASE_ERROR,
+      `Failed to parse ${fieldName} for event ${eventId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      { eventId, fieldName }
+    );
+  }
+}
+
+/**
  * Converts a database row to a TraceEvent
  */
 function rowToTraceEvent(row: TraceEventRow): TraceEvent {
@@ -337,10 +352,10 @@ function rowToTraceEvent(row: TraceEventRow): TraceEvent {
     event.parentEventId = row.parent_event_id;
   }
   if (row.payload !== null) {
-    event.payload = JSON.parse(row.payload) as Record<string, unknown>;
+    event.payload = safeJsonParse<Record<string, unknown>>(row.payload, 'payload', row.event_id);
   }
   if (row.context !== null) {
-    event.context = JSON.parse(row.context) as TraceEvent['context'];
+    event.context = safeJsonParse<TraceEvent['context']>(row.context, 'context', row.event_id);
   }
   if (row.status !== null) {
     event.status = row.status as TraceStatus;

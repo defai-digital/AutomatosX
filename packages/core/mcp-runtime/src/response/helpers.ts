@@ -8,6 +8,8 @@ import type {
 import {
   DEFAULT_RESPONSE_LIMITS,
   isRetryableError,
+  TIMEOUT_HEALTH_CHECK,
+  TIMEOUT_ORCHESTRATION_GRACEFUL,
 } from '@automatosx/contracts';
 
 // ============================================================================
@@ -15,10 +17,10 @@ import {
 // ============================================================================
 
 export interface MCPToolResult {
-  content: Array<{
+  content: {
     type: 'text';
     text: string;
-  }>;
+  }[];
   isError?: boolean;
 }
 
@@ -219,7 +221,7 @@ export function createNotFoundResponse(
  */
 export function createValidationErrorResponse(
   message: string,
-  errors: Array<{ path: string; message: string }>,
+  errors: { path: string; message: string }[],
   options: { startTime?: number; requestId?: string } = {}
 ): MCPToolResult {
   const errorOptions: {
@@ -252,7 +254,7 @@ export function createTimeoutResponse(
     requestId?: string;
   } = {
     context: { timeoutMs },
-    retryAfterMs: Math.min(timeoutMs, 5000),
+    retryAfterMs: Math.min(timeoutMs, TIMEOUT_HEALTH_CHECK),
   };
 
   if (options.startTime !== undefined) {
@@ -279,7 +281,7 @@ export function createMemoryPressureResponse(
     requestId?: string;
   } = {
     context: { pressureLevel },
-    retryAfterMs: 10000,
+    retryAfterMs: TIMEOUT_ORCHESTRATION_GRACEFUL,
   };
 
   if (options.startTime !== undefined) {
@@ -338,7 +340,7 @@ export function createInternalErrorResponse(
 export function truncateString(
   str: string,
   maxLength: number,
-  suffix: string = '... [truncated]'
+  suffix = '... [truncated]'
 ): { text: string; truncated: boolean } {
   if (str.length <= maxLength) {
     return { text: str, truncated: false };

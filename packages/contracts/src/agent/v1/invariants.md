@@ -192,6 +192,73 @@ This document defines the non-negotiable behavioral requirements for the agent d
 - Abilities prioritized by relevance
 - Truncation with warning if limit reached
 
+## Agent Selection Invariants
+
+### INV-AGT-SEL-001: Selection Determinism
+
+**Statement:** Agent selection MUST be deterministic - same task + context = same result.
+
+**Rationale:** Non-deterministic selection causes unpredictable behavior and debugging difficulties.
+
+**Enforcement:**
+- Scoring algorithm has no random components
+- Results sorted by score then agentId for tie-breaking
+- Tests verify same input produces same output
+
+### INV-AGT-SEL-002: Confidence Range
+
+**Statement:** Selection confidence MUST be between 0 and 1 inclusive.
+
+**Rationale:** Normalized confidence enables threshold-based decisions.
+
+**Enforcement:**
+- Score clamped via `Math.max(0, Math.min(1, score))`
+- Values outside range logged as error
+- Schema validation enforces range
+
+### INV-AGT-SEL-003: Result Ordering
+
+**Statement:** Selection results MUST be sorted by confidence descending.
+
+**Rationale:** Best match should always be first in results.
+
+**Enforcement:**
+- Results sorted before return
+- Tests verify ordering invariant
+
+### INV-AGT-SEL-004: Fallback Agent
+
+**Statement:** Selection MUST always return at least one result (fallback to `standard`).
+
+**Rationale:** Empty results cause caller errors. Fallback ensures graceful degradation.
+
+**Enforcement:**
+- If no matches, return `standard` agent with confidence 0.5
+- `standard` agent MUST always exist and be enabled
+- Tests verify fallback behavior
+
+### INV-AGT-SEL-005: Example Task Matching
+
+**Statement:** `exampleTasks` MUST boost confidence when matched.
+
+**Rationale:** Explicit examples are highest-quality signal for matching.
+
+**Enforcement:**
+- Example task substring match adds +0.4 confidence
+- Exact match (normalized) adds +0.6 confidence
+- Tests verify example matching boost
+
+### INV-AGT-SEL-006: Negative Task Exclusion
+
+**Statement:** `notForTasks` MUST reduce confidence when matched.
+
+**Rationale:** Explicit exclusions prevent misrouting.
+
+**Enforcement:**
+- NotForTask match subtracts -0.5 confidence
+- Can drive confidence to 0 (but not below)
+- Agent still selectable if other signals strong
+
 ## Testing Requirements
 
 Each invariant must have corresponding tests:
@@ -212,6 +279,12 @@ Each invariant must have corresponding tests:
 14. `INV-AGT-ABL-001`: Test abilities injected before prompt
 15. `INV-AGT-ABL-002`: Test core abilities always included
 16. `INV-AGT-ABL-003`: Test token limit respected
+17. `INV-AGT-SEL-001`: Test selection determinism
+18. `INV-AGT-SEL-002`: Test confidence range clamping
+19. `INV-AGT-SEL-003`: Test result ordering
+20. `INV-AGT-SEL-004`: Test fallback to standard agent
+21. `INV-AGT-SEL-005`: Test exampleTasks boost confidence
+22. `INV-AGT-SEL-006`: Test notForTasks reduce confidence
 
 ## Version History
 

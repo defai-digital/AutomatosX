@@ -98,6 +98,31 @@ export { FileSystemAgentLoader, createAgentLoader } from './loader.js';
 // Selector
 export { KeywordAgentSelector, createAgentSelector } from './selector.js';
 
+// Selection Service (INV-AGT-SEL-001 to INV-AGT-SEL-006)
+export {
+  AgentSelectionService,
+  createAgentSelectionService,
+  type AgentSelectionServicePort,
+} from './selection-service.js';
+
+// Workflow Templates
+export {
+  WORKFLOW_TEMPLATES,
+  PROMPT_RESPONSE_TEMPLATE,
+  RESEARCH_TEMPLATE,
+  CODE_REVIEW_TEMPLATE,
+  MULTI_STEP_TEMPLATE,
+  DELEGATE_CHAIN_TEMPLATE,
+  AGENT_SELECTION_TEMPLATE,
+  getWorkflowTemplate,
+  getAvailableTemplates,
+  createWorkflowFromTemplate,
+  isValidTemplateName,
+  getTemplateDescription,
+  type WorkflowTemplateName,
+  type WorkflowTemplate,
+} from './workflow-templates.js';
+
 // Stub factories (for DI fallbacks)
 export { stubDelegationTrackerFactory, resetStubWarning as resetDelegationStubWarning } from './stub-delegation-tracker.js';
 export { stubCheckpointStorageFactory, stubCheckpointManagerFactory, resetCheckpointStubWarning } from './stub-checkpoint.js';

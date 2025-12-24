@@ -290,7 +290,9 @@ describe('INV-MCP-005: Input Isolation', () => {
       expect(schema).toBeDefined();
 
       // Schema should have a safeParse method (Zod)
-      expect(typeof schema.safeParse).toBe('function');
+      if (schema) {
+        expect(typeof schema.safeParse).toBe('function');
+      }
     }
   });
 
@@ -328,9 +330,10 @@ describe('MCP Tool Invariants - Cross-Validation', () => {
 
   it('should categorize all tools by domain', () => {
     const domains = [
-      'agent', 'bugfix', 'config', 'design', 'guard', 'memory',
-      'orchestration', 'refactor', 'session', 'telemetry', 'trace',
-      'workflow', 'task', 'queue', 'metrics', 'timer',
+      'ability', 'agent', 'config', 'design', 'directory', 'file',
+      'guard', 'memory', 'metrics', 'orchestration', 'queue',
+      'scaffold', 'session', 'task', 'telemetry', 'timer', 'trace',
+      'workflow',
     ];
 
     const categorized = ALL_TOOLS.filter((tool) =>

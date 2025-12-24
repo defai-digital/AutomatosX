@@ -309,12 +309,15 @@ describe('INV-GUARD-RAD: Change Radius Gate', () => {
 // ============================================================================
 
 describe('INV-GUARD-RES: Result Invariants', () => {
+  // Type for gate results that can be PASS, FAIL, or WARN
+  interface GateResult { status: 'PASS' | 'FAIL' | 'WARN' }
+
   describe('INV-GUARD-RES-001: Status Determination', () => {
     it('should return FAIL if any gate fails', () => {
-      const results = [
-        { status: 'PASS' as const },
-        { status: 'FAIL' as const },
-        { status: 'PASS' as const },
+      const results: GateResult[] = [
+        { status: 'PASS' },
+        { status: 'FAIL' },
+        { status: 'PASS' },
       ];
 
       const hasFail = results.some((r) => r.status === 'FAIL');
@@ -326,10 +329,10 @@ describe('INV-GUARD-RES: Result Invariants', () => {
     });
 
     it('should return WARN if any gate warns and none fail', () => {
-      const results = [
-        { status: 'PASS' as const },
-        { status: 'WARN' as const },
-        { status: 'PASS' as const },
+      const results: GateResult[] = [
+        { status: 'PASS' },
+        { status: 'WARN' },
+        { status: 'PASS' },
       ];
 
       const hasFail = results.some((r) => r.status === 'FAIL');
@@ -341,10 +344,10 @@ describe('INV-GUARD-RES: Result Invariants', () => {
     });
 
     it('should return PASS only if all gates pass', () => {
-      const results = [
-        { status: 'PASS' as const },
-        { status: 'PASS' as const },
-        { status: 'PASS' as const },
+      const results: GateResult[] = [
+        { status: 'PASS' },
+        { status: 'PASS' },
+        { status: 'PASS' },
       ];
 
       const hasFail = results.some((r) => r.status === 'FAIL');
@@ -356,10 +359,10 @@ describe('INV-GUARD-RES: Result Invariants', () => {
     });
 
     it('should prefer FAIL over WARN', () => {
-      const results = [
-        { status: 'WARN' as const },
-        { status: 'FAIL' as const },
-        { status: 'WARN' as const },
+      const results: GateResult[] = [
+        { status: 'WARN' },
+        { status: 'FAIL' },
+        { status: 'WARN' },
       ];
 
       const hasFail = results.some((r) => r.status === 'FAIL');

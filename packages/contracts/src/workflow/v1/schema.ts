@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  RETRY_MAX_LIMIT,
+  RETRY_DELAY_DEFAULT,
+  RETRY_BACKOFF_CAP,
+  TIMEOUT_SESSION,
+} from '../../constants.js';
 
 /**
  * Schema reference for input/output validation
@@ -13,8 +19,8 @@ export type SchemaReference = z.infer<typeof SchemaReferenceSchema>;
  * Retry policy for step execution
  */
 export const RetryPolicySchema = z.object({
-  maxAttempts: z.number().int().min(1).max(10).default(1),
-  backoffMs: z.number().int().min(100).max(60000).default(1000),
+  maxAttempts: z.number().int().min(1).max(RETRY_MAX_LIMIT).default(1),
+  backoffMs: z.number().int().min(100).max(RETRY_BACKOFF_CAP).default(RETRY_DELAY_DEFAULT),
   backoffMultiplier: z.number().min(1).max(5).default(2),
   retryOn: z
     .array(z.enum(['timeout', 'rate_limit', 'server_error', 'network_error']))
@@ -32,6 +38,8 @@ export const StepTypeSchema = z.enum([
   'conditional',
   'loop',
   'parallel',
+  'discuss', // Multi-model discussion step
+  'delegate', // Delegate to another agent
 ]);
 
 export type StepType = z.infer<typeof StepTypeSchema>;
@@ -50,7 +58,7 @@ export const WorkflowStepSchema = z.object({
   inputSchema: SchemaReferenceSchema.optional(),
   outputSchema: SchemaReferenceSchema.optional(),
   retryPolicy: RetryPolicySchema.optional(),
-  timeout: z.number().int().min(1000).max(3600000).optional(),
+  timeout: z.number().int().min(RETRY_DELAY_DEFAULT).max(TIMEOUT_SESSION).optional(),
   config: z.record(z.unknown()).optional(),
 });
 
@@ -101,7 +109,7 @@ export function safeValidateWorkflow(
  */
 export const DEFAULT_RETRY_POLICY: Required<RetryPolicy> = {
   maxAttempts: 1,
-  backoffMs: 1000,
+  backoffMs: RETRY_DELAY_DEFAULT,
   backoffMultiplier: 2,
   retryOn: ['timeout', 'rate_limit', 'server_error', 'network_error'],
 };
@@ -110,4 +118,4 @@ export const DEFAULT_RETRY_POLICY: Required<RetryPolicy> = {
  * Maximum backoff cap in milliseconds
  * Prevents exponential backoff from growing unbounded
  */
-export const DEFAULT_BACKOFF_CAP_MS = 60000;
+export const DEFAULT_BACKOFF_CAP_MS = RETRY_BACKOFF_CAP;

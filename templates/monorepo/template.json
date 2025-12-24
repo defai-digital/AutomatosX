@@ -1,0 +1,106 @@
+{
+  "name": "monorepo",
+  "displayName": "Contract-First Monorepo",
+  "description": "A monorepo structure with contracts, core domains, and adapters",
+  "version": "1.0.0",
+  "category": "project",
+  "variables": {
+    "projectName": {
+      "type": "string",
+      "description": "Project name (kebab-case)",
+      "required": true,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "scope": {
+      "type": "string",
+      "description": "NPM package scope",
+      "default": "@myorg"
+    },
+    "domainName": {
+      "type": "string",
+      "description": "Initial domain name",
+      "required": true
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name",
+      "default": ""
+    }
+  },
+  "structure": [
+    {
+      "type": "directory",
+      "path": "packages/contracts/src/{{domainName}}/v1"
+    },
+    {
+      "type": "directory",
+      "path": "packages/core/{{domainName}}-domain/src"
+    },
+    {
+      "type": "directory",
+      "path": "packages/adapters"
+    },
+    {
+      "type": "directory",
+      "path": "tests/contract"
+    },
+    {
+      "type": "directory",
+      "path": "tests/core"
+    },
+    {
+      "type": "file",
+      "path": "package.json",
+      "template": "package.json.hbs"
+    },
+    {
+      "type": "file",
+      "path": "pnpm-workspace.yaml",
+      "template": "pnpm-workspace.yaml.hbs"
+    },
+    {
+      "type": "file",
+      "path": "tsconfig.json",
+      "template": "tsconfig.json.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/contracts/package.json",
+      "template": "contracts-package.json.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/contracts/src/{{domainName}}/v1/schema.ts",
+      "template": "schema.ts.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/contracts/src/{{domainName}}/v1/invariants.md",
+      "template": "invariants.md.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/contracts/src/{{domainName}}/v1/index.ts",
+      "template": "contract-index.ts.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/core/{{domainName}}-domain/package.json",
+      "template": "domain-package.json.hbs"
+    },
+    {
+      "type": "file",
+      "path": "packages/core/{{domainName}}-domain/src/index.ts",
+      "template": "domain-index.ts.hbs"
+    },
+    {
+      "type": "file",
+      "path": "tests/contract/{{domainName}}.test.ts",
+      "template": "contract-test.ts.hbs"
+    }
+  ],
+  "postCreate": [
+    "pnpm install",
+    "pnpm build"
+  ]
+}

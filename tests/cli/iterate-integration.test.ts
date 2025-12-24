@@ -157,10 +157,7 @@ describe('Iterate Controller Integration', () => {
   it('should create controller with budget', async () => {
     const { IterateController } = await import('@automatosx/iterate-domain');
 
-    const controller = new IterateController({
-      maxIterations: 10,
-      maxTimeMs: 60000,
-    });
+    const controller = new IterateController();
 
     const state = controller.start({
       task: 'Test task',
@@ -194,10 +191,7 @@ describe('Iterate Controller Integration', () => {
   it('should enforce budget limits', async () => {
     const { IterateController } = await import('@automatosx/iterate-domain');
 
-    const controller = new IterateController({
-      maxIterations: 2,
-      maxTimeMs: 60000,
-    });
+    const controller = new IterateController();
 
     let state = controller.start({
       task: 'Test',

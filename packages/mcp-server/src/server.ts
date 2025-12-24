@@ -6,10 +6,12 @@ import type {
   MCPTool,
 } from './types.js';
 import { MCPErrorCodes } from './types.js';
+import { MCP_SERVER_NAME, MCP_PROTOCOL_VERSION, DEFAULT_SCHEMA_VERSION } from '@automatosx/contracts';
 import { ALL_TOOLS, TOOL_HANDLERS } from './tools/index.js';
 import { ALL_RESOURCES, readResource } from './resources/index.js';
 import { ALL_PROMPTS, executePrompt, getPrompt } from './prompts/index.js';
 import { getToolPrefix, namespaceTools, resolveToolName } from './tool-namespacing.js';
+import { getRateLimiter } from './middleware/rate-limiter.js';
 
 /**
  * MCP Server implementation
@@ -89,7 +91,7 @@ export class MCPServer {
       jsonrpc: '2.0',
       id: request.id,
       result: {
-        protocolVersion: '2024-11-05',
+        protocolVersion: MCP_PROTOCOL_VERSION,
         capabilities: {
           tools: {},
           resources: {},
@@ -129,6 +131,8 @@ export class MCPServer {
 
   /**
    * Handles tools/call request
+   * INV-MCP-006: Rate limits enforced per tool
+   * INV-MCP-007: RATE_LIMITED errors include retryAfter
    */
   private async handleToolsCall(request: MCPRequest): Promise<MCPResponse> {
     if (!this.initialized) {
@@ -168,6 +172,38 @@ export class MCPServer {
           code: MCPErrorCodes.INVALID_PARAMS,
           message: `Unknown tool: ${params.name}`,
         },
+      };
+    }
+
+    // Check rate limits before executing tool
+    // INV-MCP-006: Rate limits enforced per tool
+    const rateLimiter = getRateLimiter();
+    const rateLimitResult = rateLimiter.checkAndConsume(toolName);
+
+    if (!rateLimitResult.allowed) {
+      // INV-MCP-007: RATE_LIMITED errors include retryAfter
+      const error = rateLimiter.createError(toolName, rateLimitResult);
+      const errorResult: MCPToolResult = {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: error.code,
+              message: error.message,
+              toolName: error.toolName,
+              retryAfter: error.retryAfter,
+              limit: error.limit,
+              windowSeconds: error.windowSeconds,
+            }),
+          },
+        ],
+        isError: true,
+      };
+
+      return {
+        jsonrpc: '2.0',
+        id: request.id,
+        result: errorResult,
       };
     }
 
@@ -403,8 +439,8 @@ export class MCPServer {
  */
 export function createMCPServer(config?: Partial<MCPServerConfig>): MCPServer {
   return new MCPServer({
-    name: config?.name ?? 'automatosx-mcp',
-    version: config?.version ?? '1.0.0',
+    name: config?.name ?? MCP_SERVER_NAME,
+    version: config?.version ?? DEFAULT_SCHEMA_VERSION, // Server software version
     description: config?.description ?? 'AutomatosX MCP Server',
   });
 }

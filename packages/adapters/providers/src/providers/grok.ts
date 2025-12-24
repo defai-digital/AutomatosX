@@ -8,6 +8,7 @@
  * @see https://github.com/anthropics/ax-cli
  */
 
+import { TIMEOUT_PROVIDER_SHORT } from '@automatosx/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**
@@ -28,7 +29,7 @@ export const grokConfig: CLIProviderConfig = {
     CI: 'true',
   },
   outputFormat: 'stream-json',  // ax-grok outputs JSON Lines: {"role":"assistant","content":"..."}
-  timeout: 60000, // 1 minute (ax-grok has shutdown hang issue, timeout kills it)
+  timeout: TIMEOUT_PROVIDER_SHORT, // ax-grok has shutdown hang issue, timeout kills it
   models: [
     {
       modelId: 'default',

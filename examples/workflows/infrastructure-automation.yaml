@@ -1,0 +1,283 @@
+workflowId: infrastructure-automation
+name: Infrastructure Automation Workflow
+description: Automate infrastructure provisioning, configuration, and management
+version: "1.0.0"
+category: infrastructure
+tags:
+  - devops
+  - infrastructure
+  - automation
+  - cloud
+
+metadata:
+  requiredAbilities:
+    - infrastructure-as-code
+    - cloud-architecture
+    - ci-cd
+  estimatedDuration: 300
+  complexity: high
+
+steps:
+  - stepId: requirements-gathering
+    name: Gather Infrastructure Requirements
+    type: prompt
+    timeout: 120000
+    config:
+      agent: devops
+      task: |
+        Gather and document infrastructure requirements.
+
+        ## Infrastructure Requirements
+
+        1. **Service Requirements**:
+           - Service name and purpose
+           - Expected load (requests/second)
+           - Data storage needs
+           - Compute requirements
+
+        2. **Availability Requirements**:
+           - Uptime SLA (99.9%, 99.99%, etc.)
+           - RPO (Recovery Point Objective)
+           - RTO (Recovery Time Objective)
+           - Disaster recovery needs
+
+        3. **Security Requirements**:
+           - Network isolation needs
+           - Encryption requirements
+           - Access control
+           - Compliance requirements
+
+        4. **Cost Constraints**:
+           - Monthly budget
+           - Cost optimization priorities
+           - Reserved vs on-demand
+
+        5. **Integration Requirements**:
+           - Existing services to connect
+           - External APIs
+           - Data pipelines
+
+  - stepId: architecture-design
+    name: Design Infrastructure Architecture
+    type: prompt
+    timeout: 180000
+    config:
+      agent: devops
+      task: |
+        Design infrastructure architecture.
+
+        ## Architecture Design
+
+        1. **Compute Layer**:
+           - Kubernetes cluster configuration
+           - Node pools and sizing
+           - Auto-scaling configuration
+
+        2. **Data Layer**:
+           - Database selection and configuration
+           - Caching layer
+           - Object storage
+
+        3. **Network Layer**:
+           - VPC design
+           - Subnets and routing
+           - Load balancing
+           - CDN configuration
+
+        4. **Security Layer**:
+           - IAM roles and policies
+           - Network security groups
+           - Secrets management
+           - Encryption at rest/transit
+
+        5. **Observability Layer**:
+           - Logging infrastructure
+           - Metrics collection
+           - Tracing
+           - Alerting
+
+        6. **Cost Estimation**:
+           - Monthly cost breakdown
+           - Cost optimization opportunities
+
+  - stepId: generate-terraform
+    name: Generate Terraform Code
+    type: prompt
+    timeout: 300000
+    config:
+      agent: devops
+      task: |
+        Generate Terraform infrastructure-as-code.
+
+        ## Terraform Modules
+
+        1. **Network Module**:
+           - VPC, subnets, routing tables
+           - Internet gateway, NAT gateway
+           - Security groups
+
+        2. **Compute Module**:
+           - Kubernetes cluster (EKS/GKE/AKS)
+           - Node groups with auto-scaling
+           - Instance types and spot instances
+
+        3. **Data Module**:
+           - Database instances (RDS/CloudSQL)
+           - Redis/Elasticache
+           - S3/GCS buckets
+
+        4. **Security Module**:
+           - IAM roles and policies
+           - Service accounts
+           - Secrets manager configuration
+
+        5. **Variables and Outputs**:
+           - Environment-specific variables
+           - Sensitive variable handling
+           - Output values for integration
+
+  - stepId: generate-kubernetes
+    name: Generate Kubernetes Manifests
+    type: prompt
+    timeout: 180000
+    config:
+      agent: devops
+      task: |
+        Generate Kubernetes manifests.
+
+        ## Kubernetes Resources
+
+        1. **Namespace and RBAC**:
+           - Namespace definition
+           - ServiceAccount
+           - Role and RoleBinding
+
+        2. **Workloads**:
+           - Deployment/StatefulSet
+           - ConfigMap
+           - Secret references
+
+        3. **Networking**:
+           - Service
+           - Ingress
+           - NetworkPolicy
+
+        4. **Scaling**:
+           - HorizontalPodAutoscaler
+           - PodDisruptionBudget
+
+        5. **Observability**:
+           - ServiceMonitor (Prometheus)
+           - PodMonitor
+
+  - stepId: setup-cicd
+    name: Setup CI/CD Pipeline
+    type: prompt
+    timeout: 180000
+    config:
+      agent: devops
+      task: |
+        Configure CI/CD pipeline for infrastructure.
+
+        ## CI/CD Configuration
+
+        1. **Terraform Pipeline**:
+           - Plan stage
+           - Apply stage (with approval)
+           - State management
+
+        2. **Kubernetes Pipeline**:
+           - Manifest validation
+           - Dry-run apply
+           - Progressive rollout
+
+        3. **Security Scanning**:
+           - Terraform security scan (tfsec)
+           - Container image scanning
+           - Secrets detection
+
+        4. **Notifications**:
+           - Deployment notifications
+           - Failure alerts
+           - Approval requests
+
+  - stepId: validation
+    name: Validate Infrastructure
+    type: prompt
+    timeout: 120000
+    config:
+      agent: devops
+      task: |
+        Validate infrastructure configuration.
+
+        ## Validation Checks
+
+        1. **Terraform Validation**:
+           - terraform validate
+           - terraform plan review
+           - Cost estimation
+
+        2. **Security Validation**:
+           - tfsec scan results
+           - checkov scan results
+           - Policy compliance
+
+        3. **Kubernetes Validation**:
+           - kubeval/kubeconform
+           - OPA/Gatekeeper policies
+           - Resource quota compliance
+
+        4. **Documentation**:
+           - Architecture diagram
+           - Runbook
+           - Disaster recovery procedure
+
+  - stepId: generate-documentation
+    name: Generate Documentation
+    type: prompt
+    timeout: 120000
+    config:
+      agent: writer
+      task: |
+        Create infrastructure documentation.
+
+        ## Documentation
+
+        1. **Architecture Overview**:
+           - System diagram
+           - Component descriptions
+           - Data flow
+
+        2. **Runbook**:
+           - Common operations
+           - Troubleshooting guides
+           - Escalation procedures
+
+        3. **Disaster Recovery**:
+           - Backup procedures
+           - Recovery steps
+           - RTO/RPO verification
+
+        4. **Security Documentation**:
+           - Access control matrix
+           - Encryption details
+           - Compliance mapping
+
+  - stepId: store-infrastructure
+    name: Store Infrastructure Record
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: infrastructure
+      key: "{{service_name}}/{{environment}}"
+      value:
+        service_name: "{{service_name}}"
+        environment: "{{environment}}"
+        architecture: "{{architecture}}"
+        terraform_modules: "{{terraform_modules}}"
+        kubernetes_manifests: "{{kubernetes_manifests}}"
+        cost_estimate: "{{cost_estimate}}"
+        documentation: "{{documentation}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"

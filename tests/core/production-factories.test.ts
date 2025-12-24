@@ -377,12 +377,14 @@ describe('DelegationTrackerFactory', () => {
         handledBy: 'agent-2',
         result: 'Result 1',
         durationMs: 100,
+        finalDepth: 1,
       };
 
       const result2 = {
         success: false,
         handledBy: 'agent-3',
         durationMs: 50,
+        finalDepth: 1,
       };
 
       tracker.recordResult(result1);
@@ -450,9 +452,9 @@ describe('ParallelExecutorFactory', () => {
       const layers = executor.buildExecutionLayers(steps);
 
       expect(layers).toHaveLength(3);
-      expect(layers[0].map((s) => s.stepId)).toEqual(['a']);
-      expect(layers[1].map((s) => s.stepId).sort()).toEqual(['b', 'c']);
-      expect(layers[2].map((s) => s.stepId)).toEqual(['d']);
+      expect(layers[0]!.map((s) => s.stepId)).toEqual(['a']);
+      expect(layers[1]!.map((s) => s.stepId).sort()).toEqual(['b', 'c']);
+      expect(layers[2]!.map((s) => s.stepId)).toEqual(['d']);
     });
 
     it('handles steps with no dependencies', () => {
@@ -654,7 +656,8 @@ describe('ParallelExecutorFactory', () => {
 
       const result = await executor.executeGroup(steps, executorFn);
 
-      expect(result.stepResults[0].durationMs).toBeGreaterThanOrEqual(10);
+      // Allow for timing variance - setTimeout(10) may complete slightly under 10ms
+      expect(result.stepResults[0]!.durationMs).toBeGreaterThanOrEqual(8);
     });
   });
 });

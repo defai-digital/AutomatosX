@@ -484,9 +484,9 @@ describe('MCP Runtime Domain', () => {
         const response = createSuccessResponse({ foo: 'bar' });
 
         expect(response.content).toHaveLength(1);
-        expect(response.content[0].type).toBe('text');
+        expect(response.content[0]!.type).toBe('text');
 
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
         expect(parsed.success).toBe(true);
         expect(parsed.data).toEqual({ foo: 'bar' });
       });
@@ -496,7 +496,7 @@ describe('MCP Runtime Domain', () => {
 
         expect(response.isError).toBe(true);
 
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
         expect(parsed.success).toBe(false);
         expect(parsed.error.code).toBe('NOT_FOUND');
         expect(parsed.error.message).toBe('Resource not found');
@@ -506,7 +506,7 @@ describe('MCP Runtime Domain', () => {
     describe('INV-MCP-RESP-002: Error Code Required', () => {
       it('should include error code in all error responses', () => {
         const response = createErrorResponse('INTERNAL_ERROR', 'Something went wrong');
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
 
         expect(parsed.error.code).toBeDefined();
         expect(typeof parsed.error.code).toBe('string');
@@ -517,7 +517,7 @@ describe('MCP Runtime Domain', () => {
       it('should include duration when startTime provided', () => {
         const startTime = Date.now() - 100; // 100ms ago
         const response = createSuccessResponse({ data: 'test' }, { startTime });
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
 
         expect(parsed.metadata?.durationMs).toBeGreaterThanOrEqual(100);
       });
@@ -526,14 +526,14 @@ describe('MCP Runtime Domain', () => {
     describe('INV-MCP-RESP-006: Retryable Accuracy', () => {
       it('should mark timeout errors as retryable', () => {
         const response = createErrorResponse('TOOL_TIMEOUT', 'Timed out');
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
 
         expect(parsed.error.retryable).toBe(true);
       });
 
       it('should mark validation errors as not retryable', () => {
         const response = createErrorResponse('INVALID_INPUT', 'Bad input');
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
 
         expect(parsed.error.retryable).toBe(false);
       });
@@ -543,7 +543,7 @@ describe('MCP Runtime Domain', () => {
       it('should create paginated list response', () => {
         const items = [1, 2, 3, 4, 5];
         const response = createListResponse(items, { limit: 3, offset: 0, total: 10 });
-        const parsed = JSON.parse(response.content[0].text);
+        const parsed = JSON.parse(response.content[0]!.text);
 
         expect(parsed.data.items).toHaveLength(3);
         expect(parsed.data.pagination.total).toBe(10);
@@ -583,7 +583,7 @@ describe('MCP Runtime Domain', () => {
 
         expect(result.valid).toBe(false);
         if (!result.valid) {
-          expect(result.errors[0].code).toBe('ARRAY_TOO_LARGE');
+          expect(result.errors[0]!.code).toBe('ARRAY_TOO_LARGE');
         }
       });
 
@@ -615,7 +615,7 @@ describe('MCP Runtime Domain', () => {
 
         expect(result.valid).toBe(false);
         if (!result.valid) {
-          const error = result.errors[0];
+          const error = result.errors[0]!;
           expect(error.path).toBeDefined();
           expect(error.limit).toBeDefined();
           expect(error.actual).toBeDefined();
@@ -637,7 +637,7 @@ describe('MCP Runtime Domain', () => {
 
         expect(result.valid).toBe(false);
         if (!result.valid) {
-          expect(result.errors[0].code).toBe('STRING_TOO_LONG');
+          expect(result.errors[0]!.code).toBe('STRING_TOO_LONG');
         }
       });
     });
@@ -775,7 +775,7 @@ describe('MCP Runtime Domain', () => {
         });
 
         expect(result.gates.length).toBeGreaterThan(0);
-        expect(result.gates.every((g) => g.gate && g.status && g.message)).toBe(true);
+        expect(result.gates.every((g: { gate: string; status: string; message: string }) => g.gate && g.status && g.message)).toBe(true);
       });
     });
   });

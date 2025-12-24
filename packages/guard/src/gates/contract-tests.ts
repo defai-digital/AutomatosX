@@ -12,6 +12,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { TIMEOUT_GATE_CONTRACT_TEST } from '@automatosx/contracts';
 import type { GovernanceContext, GateResult } from '../types.js';
 
 const execAsync = promisify(exec);
@@ -68,7 +69,7 @@ async function runContractTests(
   try {
     const { stdout } = await execAsync(
       `npx vitest run ${testFiles.join(' ')} --reporter=line`,
-      { cwd: process.cwd(), timeout: 120000 }
+      { cwd: process.cwd(), timeout: TIMEOUT_GATE_CONTRACT_TEST }
     );
 
     return { passed: true, output: stdout };

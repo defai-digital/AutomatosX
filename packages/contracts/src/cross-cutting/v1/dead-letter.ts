@@ -11,6 +11,17 @@
  */
 
 import { z } from 'zod';
+import {
+  RETRY_MAX_DEFAULT,
+  RETRY_MAX_LIMIT,
+  TIMEOUT_EXTENDED,
+  TIMEOUT_SESSION,
+  BACKOFF_MULTIPLIER_DEFAULT,
+  RETENTION_DAYS_DEFAULT,
+  LIMIT_STORE_ENTRIES,
+  LIMIT_RETRY_BATCH,
+  LIMIT_DEAD_LETTER,
+} from '../../constants.js';
 
 /**
  * Dead letter entry status
@@ -103,28 +114,28 @@ export const DLQConfigSchema = z.object({
   enabled: z.boolean().default(true),
 
   /** Maximum retry attempts */
-  maxRetries: z.number().int().min(0).max(10).default(3),
+  maxRetries: z.number().int().min(0).max(RETRY_MAX_LIMIT).default(RETRY_MAX_DEFAULT),
 
   /** Initial retry delay in ms */
-  retryDelayMs: z.number().int().min(1000).max(3600000).default(60000),
+  retryDelayMs: z.number().int().min(1000).max(TIMEOUT_SESSION).default(TIMEOUT_EXTENDED),
 
   /** Backoff multiplier for exponential backoff */
-  retryBackoffMultiplier: z.number().min(1).max(5).default(2),
+  retryBackoffMultiplier: z.number().min(1).max(5).default(BACKOFF_MULTIPLIER_DEFAULT),
 
   /** Maximum backoff delay in ms */
-  maxRetryDelayMs: z.number().int().min(1000).max(86400000).default(3600000),
+  maxRetryDelayMs: z.number().int().min(1000).max(86400000).default(TIMEOUT_SESSION),
 
   /** Retention period in days */
-  retentionDays: z.number().int().min(1).max(90).default(7),
+  retentionDays: z.number().int().min(1).max(90).default(RETENTION_DAYS_DEFAULT),
 
   /** Maximum entries to retain */
-  maxEntries: z.number().int().min(100).max(100000).default(10000),
+  maxEntries: z.number().int().min(100).max(100000).default(LIMIT_STORE_ENTRIES),
 
   /** Enable automatic retry processing */
   autoRetry: z.boolean().default(true),
 
   /** Batch size for retry processing */
-  retryBatchSize: z.number().int().min(1).max(100).default(10),
+  retryBatchSize: z.number().int().min(1).max(100).default(LIMIT_RETRY_BATCH),
 });
 
 export type DLQConfig = z.infer<typeof DLQConfigSchema>;
@@ -164,7 +175,7 @@ export const DLQListOptionsSchema = z.object({
   nextRetryBefore: z.string().datetime().optional(),
   createdAfter: z.string().datetime().optional(),
   createdBefore: z.string().datetime().optional(),
-  limit: z.number().int().min(1).max(1000).default(100),
+  limit: z.number().int().min(1).max(1000).default(LIMIT_DEAD_LETTER),
   offset: z.number().int().min(0).default(0),
 });
 

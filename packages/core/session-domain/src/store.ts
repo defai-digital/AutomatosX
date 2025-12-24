@@ -14,7 +14,7 @@ import type { SessionStore, SessionFilter } from './types.js';
  * In-memory session store implementation
  */
 export class InMemorySessionStore implements SessionStore {
-  private readonly sessions: Map<string, Session> = new Map();
+  private readonly sessions = new Map<string, Session>();
 
   /**
    * Create a new session

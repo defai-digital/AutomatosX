@@ -11,6 +11,12 @@
  */
 
 import { z } from 'zod';
+import {
+  IDEMPOTENCY_TTL_SECONDS,
+  LIMIT_STORE_ENTRIES,
+  CLEANUP_INTERVAL_SECONDS,
+  TIMEOUT_SAGA_DEFAULT,
+} from '../../constants.js';
 
 /**
  * Idempotency check status
@@ -77,16 +83,16 @@ export const IdempotencyConfigSchema = z.object({
   enabled: z.boolean().default(true),
 
   /** TTL for cached responses in seconds */
-  ttlSeconds: z.number().int().min(60).max(86400).default(3600),
+  ttlSeconds: z.number().int().min(60).max(86400).default(IDEMPOTENCY_TTL_SECONDS),
 
   /** Maximum cached entries */
-  maxEntries: z.number().int().min(100).max(100000).default(10000),
+  maxEntries: z.number().int().min(100).max(100000).default(LIMIT_STORE_ENTRIES),
 
   /** Cleanup interval in seconds */
-  cleanupIntervalSeconds: z.number().int().min(60).max(3600).default(300),
+  cleanupIntervalSeconds: z.number().int().min(60).max(3600).default(CLEANUP_INTERVAL_SECONDS),
 
   /** Lock timeout for processing state in ms */
-  lockTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
+  lockTimeoutMs: z.number().int().min(1000).max(300000).default(TIMEOUT_SAGA_DEFAULT),
 
   /** Include request body in hash */
   hashRequestBody: z.boolean().default(true),

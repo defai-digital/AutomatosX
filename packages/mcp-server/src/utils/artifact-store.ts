@@ -39,7 +39,7 @@ export async function storeArtifact(
  */
 export async function retrieveArtifact(ref: string): Promise<unknown | undefined> {
   // Parse reference URI
-  const match = ref.match(/^ax:\/\/([^/]+)\/(.+)$/);
+  const match = /^ax:\/\/([^/]+)\/(.+)$/.exec(ref);
   if (!match) {
     throw new Error(`Invalid artifact reference: ${ref}`);
   }
@@ -55,7 +55,7 @@ export async function retrieveArtifact(ref: string): Promise<unknown | undefined
  * Check if an artifact exists
  */
 export async function hasArtifact(ref: string): Promise<boolean> {
-  const match = ref.match(/^ax:\/\/([^/]+)\/(.+)$/);
+  const match = /^ax:\/\/([^/]+)\/(.+)$/.exec(ref);
   if (!match) return false;
 
   const [, domain, id] = match;
@@ -67,7 +67,7 @@ export async function hasArtifact(ref: string): Promise<boolean> {
  * Delete an artifact
  */
 export async function deleteArtifact(ref: string): Promise<boolean> {
-  const match = ref.match(/^ax:\/\/([^/]+)\/(.+)$/);
+  const match = /^ax:\/\/([^/]+)\/(.+)$/.exec(ref);
   if (!match) return false;
 
   const [, domain, id] = match;

@@ -8,8 +8,8 @@
  */
 
 import type {
-  CircuitBreakerConfig,
-  RateLimitConfig,
+  ProviderCircuitBreakerConfig as CircuitBreakerConfig,
+  ProviderRateLimitConfig as RateLimitConfig,
   HealthCheckConfig,
   HealthStatus,
 } from '@automatosx/contracts';
@@ -311,8 +311,8 @@ function isRateLimitError(error: unknown): boolean {
 function extractRetryAfter(error: unknown): number | undefined {
   if (error instanceof Error) {
     // Try to extract from error message or properties
-    const match = error.message.match(/retry[- ]?after[:\s]*(\d+)/i);
-    if (match && match[1]) {
+    const match = /retry[- ]?after[:\s]*(\d+)/i.exec(error.message);
+    if (match?.[1]) {
       return parseInt(match[1], 10) * 1000; // Convert to ms
     }
   }

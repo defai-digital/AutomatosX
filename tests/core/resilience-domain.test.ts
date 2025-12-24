@@ -430,10 +430,10 @@ describe('Metrics Collector', () => {
     });
 
     const stats = mc.getStats();
-    expect(stats.byProvider['claude']?.requests).toBe(1);
-    expect(stats.byProvider['gemini']?.requests).toBe(1);
-    expect(stats.byProvider['claude']?.tokens).toBe(300);
-    expect(stats.byProvider['gemini']?.tokens).toBe(150);
+    expect(stats.byProvider.claude?.requests).toBe(1);
+    expect(stats.byProvider.gemini?.requests).toBe(1);
+    expect(stats.byProvider.claude?.tokens).toBe(300);
+    expect(stats.byProvider.gemini?.tokens).toBe(150);
   });
 
   it('should reset all metrics', () => {

@@ -15,9 +15,10 @@ import {
   type AgentRegistry,
 } from '@automatosx/agent-domain';
 import type { AgentProfile } from '@automatosx/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME } from '@automatosx/contracts';
 
 // Storage path for persistent agents (matches MCP server)
-const AGENT_STORAGE_PATH = path.join(process.cwd(), '.automatosx', 'agents.json');
+const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
 
 // Path to example agents (relative to workspace root)
 const EXAMPLE_AGENTS_DIR = path.join(process.cwd(), 'examples', 'agents');

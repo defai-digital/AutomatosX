@@ -104,8 +104,8 @@ export const configShowTool: MCPTool = {
 export const handleConfigGet: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<MCPToolResult> => {
-  const path = args['path'] as string;
-  const scope = (args['scope'] as 'global' | 'local' | 'merged') ?? 'merged';
+  const path = args.path as string;
+  const scope = (args.scope as 'global' | 'local' | 'merged') ?? 'merged';
 
   try {
     const store = createConfigStore();
@@ -167,9 +167,9 @@ export const handleConfigGet: ToolHandler = async (
 export const handleConfigSet: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<MCPToolResult> => {
-  const path = args['path'] as string;
-  const valueStr = args['value'] as string;
-  const scope = (args['scope'] as 'global' | 'local') ?? 'global';
+  const path = args.path as string;
+  const valueStr = args.value as string;
+  const scope = (args.scope as 'global' | 'local') ?? 'global';
 
   try {
     // Parse value (try JSON first, fallback to string)
@@ -244,7 +244,7 @@ export const handleConfigSet: ToolHandler = async (
 export const handleConfigShow: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<MCPToolResult> => {
-  const scope = (args['scope'] as 'global' | 'local' | 'merged') ?? 'merged';
+  const scope = (args.scope as 'global' | 'local' | 'merged') ?? 'merged';
 
   try {
     const store = createConfigStore();

@@ -74,7 +74,7 @@ export function createMetricsCollector(
     let start: Date;
     if (timeRange.start.startsWith('-')) {
       // Relative time like '-1h', '-30m', '-1d'
-      const match = timeRange.start.match(/^-(\d+)([smhd])$/);
+      const match = /^-(\d+)([smhd])$/.exec(timeRange.start);
       if (match) {
         const value = parseInt(match[1]!, 10);
         const unit = match[2];

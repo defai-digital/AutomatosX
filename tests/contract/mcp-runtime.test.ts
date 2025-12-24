@@ -220,8 +220,8 @@ describe('MCP Runtime Contracts', () => {
       });
 
       it('should categorize scan tools', () => {
-        expect(TOOL_CATEGORIES.bugfix_scan).toBe('scan');
-        expect(TOOL_CATEGORIES.refactor_scan).toBe('scan');
+        expect(TOOL_CATEGORIES.review_analyze).toBe('scan');
+        expect(TOOL_CATEGORIES.trace_analyze).toBe('scan');
       });
 
       it('should categorize execution tools', () => {
@@ -236,7 +236,7 @@ describe('MCP Runtime Contracts', () => {
 
         expect(getToolTimeout('memory_retrieve', config)).toBe(10_000); // query
         expect(getToolTimeout('memory_store', config)).toBe(30_000); // mutation
-        expect(getToolTimeout('bugfix_scan', config)).toBe(120_000); // scan
+        expect(getToolTimeout('review_analyze', config)).toBe(120_000); // scan
         expect(getToolTimeout('agent_run', config)).toBe(1_200_000); // execution
       });
 
@@ -362,8 +362,8 @@ describe('MCP Runtime Contracts', () => {
       it('should include tool-specific array limits', () => {
         const limits = MCPRequestLimitsSchema.parse({});
 
-        expect(limits.toolArrayLimits.bugfix_scan).toBe(100);
-        expect(limits.toolArrayLimits.refactor_scan).toBe(100);
+        expect(limits.toolArrayLimits.review_analyze).toBe(100);
+        expect(limits.toolArrayLimits.memory_bulk_delete).toBe(1000);
       });
     });
 
@@ -437,14 +437,13 @@ describe('MCP Runtime Contracts', () => {
     });
 
     describe('TOOL_ARRAY_FIELDS', () => {
-      it('should define array fields for bugfix_scan', () => {
-        expect(TOOL_ARRAY_FIELDS.bugfix_scan).toContain('paths');
-        expect(TOOL_ARRAY_FIELDS.bugfix_scan).toContain('categories');
+      it('should define array fields for review_analyze', () => {
+        expect(TOOL_ARRAY_FIELDS.review_analyze).toContain('paths');
+        expect(TOOL_ARRAY_FIELDS.review_analyze).toContain('excludePatterns');
       });
 
-      it('should define array fields for refactor_scan', () => {
-        expect(TOOL_ARRAY_FIELDS.refactor_scan).toContain('paths');
-        expect(TOOL_ARRAY_FIELDS.refactor_scan).toContain('types');
+      it('should define array fields for memory_bulk_delete', () => {
+        expect(TOOL_ARRAY_FIELDS.memory_bulk_delete).toContain('keys');
       });
     });
 

@@ -1,0 +1,356 @@
+workflowId: contract-first-project
+version: "1.0.0"
+name: Contract-First Project Scaffold
+description: Generate a complete contract-first project structure with schemas, invariants, domain packages, and guard policies
+
+metadata:
+  category: scaffold
+  tags:
+    - contract-first
+    - scaffold
+    - architecture
+    - ddd
+    - domain-modeling
+  requiredAbilities:
+    - contract-first
+    - domain-modeling
+    - invariant-writing
+  estimatedDuration: 180
+  complexity: high
+
+steps:
+  - stepId: gather-requirements
+    name: Gather Domain Requirements
+    description: Analyze input to identify bounded context, entities, and business rules
+    type: prompt
+    timeout: 120000
+    config:
+      agentId: contract-architect
+      prompt: |
+        Analyze the domain requirements and identify:
+
+        ## 1. Bounded Context
+        - What is the core domain?
+        - What problem does it solve?
+        - Who are the main actors/users?
+
+        ## 2. Entity Discovery
+        - What are the main entities?
+        - Which entities are **aggregate roots**?
+        - What are the entity relationships?
+
+        ## 3. Value Objects
+        - What immutable value types exist?
+        - What are their validation rules?
+
+        ## 4. Domain Events
+        - What state transitions occur?
+        - What events should be emitted?
+
+        ## 5. Business Invariants
+        - What rules must ALWAYS hold?
+        - What constraints exist?
+
+        Input: {{input}}
+
+  - stepId: design-schemas
+    name: Design Zod Schemas
+    description: Generate complete Zod schemas for all entities and value objects
+    type: tool
+    timeout: 60000
+    dependencies:
+      - gather-requirements
+    config:
+      tool: design_schema
+      passContext: true
+
+  - stepId: enhance-schemas
+    name: Enhance Schema Design
+    description: Add validation rules, refinements, and type exports
+    type: prompt
+    timeout: 90000
+    dependencies:
+      - design-schemas
+    config:
+      agentId: contract-architect
+      prompt: |
+        Enhance the generated schemas with:
+
+        1. **Validation Rules**:
+           - String patterns (regex)
+           - Number ranges (min/max)
+           - Array constraints
+           - Custom refinements
+
+        2. **Type Exports**:
+           - Export all inferred types
+           - Create validation functions
+           - Add factory functions
+
+        3. **Documentation**:
+           - JSDoc comments for all schemas
+           - Reference invariants in comments
+
+        Base Schema:
+        {{steps.design-schemas.output}}
+
+        Requirements Context:
+        {{steps.gather-requirements.output}}
+
+  - stepId: write-invariants
+    name: Write Invariant Documentation
+    description: Create comprehensive invariants.md with all behavioral guarantees
+    type: prompt
+    timeout: 90000
+    dependencies:
+      - enhance-schemas
+    config:
+      agentId: contract-architect
+      prompt: |
+        Create a complete invariants.md file for this domain.
+
+        ## Format
+
+        ```markdown
+        # {{domain_name}} Domain Invariants
+
+        ## Schema Invariants
+        [Invariants enforced by Zod schema validation]
+
+        ### INV-XXX-001: [Name]
+        [Description]
+        - **Enforcement**: schema
+        - **Test**: [Zod validation rule]
+
+        ## Runtime Invariants
+        [Invariants enforced by application code]
+
+        ### INV-XXX-010: [Name]
+        [Description]
+        - **Enforcement**: runtime
+        - **Test**: [Code assertion]
+
+        ## Business Invariants
+        [Invariants enforced by tests and reviews]
+
+        ### INV-XXX-020: [Name]
+        [Description]
+        - **Enforcement**: test
+        - **Test**: [Test case description]
+        ```
+
+        Requirements:
+        {{steps.gather-requirements.output}}
+
+        Schema:
+        {{steps.enhance-schemas.output}}
+
+  - stepId: design-package-structure
+    name: Design Package Structure
+    description: Define the complete package and file structure
+    type: prompt
+    timeout: 60000
+    dependencies:
+      - write-invariants
+    config:
+      agentId: contract-architect
+      prompt: |
+        Design the complete package structure:
+
+        ```
+        packages/
+        ├── contracts/src/{{domain}}/v1/
+        │   ├── schema.ts          # Zod schemas
+        │   ├── invariants.md      # Behavioral guarantees
+        │   └── index.ts           # Public exports
+        ├── core/{{domain}}-domain/
+        │   ├── src/
+        │   │   ├── index.ts       # Public API
+        │   │   ├── types.ts       # Internal types
+        │   │   ├── errors.ts      # Domain errors
+        │   │   └── {{entity}}.ts  # Entity logic
+        │   ├── package.json
+        │   └── tsconfig.json
+        └── tests/
+            ├── contract/{{domain}}.test.ts
+            └── core/{{domain}}-domain.test.ts
+        ```
+
+        For each file, provide:
+        1. Purpose
+        2. Key exports
+        3. Dependencies
+
+  - stepId: generate-guard-policy
+    name: Generate Guard Policy
+    description: Create guard policy YAML for governance
+    type: prompt
+    timeout: 30000
+    dependencies:
+      - design-package-structure
+    config:
+      agentId: contract-architect
+      prompt: |
+        Generate a guard policy YAML:
+
+        ```yaml
+        policy_id: {{domain}}-development
+
+        allowed_paths:
+          - packages/contracts/src/{{domain}}/**
+          - packages/core/{{domain}}-domain/**
+          - tests/contract/{{domain}}.test.ts
+          - tests/core/{{domain}}-domain.test.ts
+
+        forbidden_paths:
+          - packages/cli/**
+          - packages/mcp-server/**
+          - packages/contracts/src/*/v1/schema.ts  # Other domains
+
+        required_contracts: []
+
+        gates:
+          - path_violation
+          - dependency
+          - change_radius
+          - contract_tests
+
+        change_radius_limit: 2
+        ```
+
+        Customize based on domain complexity and dependencies.
+
+  - stepId: generate-test-scaffolds
+    name: Generate Test Scaffolds
+    description: Create test file scaffolds for contracts and domain
+    type: prompt
+    timeout: 60000
+    dependencies:
+      - enhance-schemas
+    config:
+      agentId: quality
+      prompt: |
+        Generate test scaffolds for the domain:
+
+        ## 1. Contract Tests (tests/contract/{{domain}}.test.ts)
+
+        ```typescript
+        import { describe, it, expect } from 'vitest';
+        import { {{Schema}}Schema, validate{{Schema}} } from '@pkg/contracts';
+
+        describe('{{domain}} contracts', () => {
+          describe('{{Schema}}Schema', () => {
+            it('should validate valid input', () => {
+              // Test valid data
+            });
+
+            it('should reject invalid input', () => {
+              // Test invalid data
+            });
+
+            // Invariant tests
+            it('should enforce INV-XXX-001', () => {
+              // Test invariant
+            });
+          });
+        });
+        ```
+
+        ## 2. Domain Tests (tests/core/{{domain}}-domain.test.ts)
+
+        ```typescript
+        import { describe, it, expect } from 'vitest';
+        import { {{Entity}} } from '@pkg/{{domain}}-domain';
+
+        describe('{{domain}} domain', () => {
+          describe('{{Entity}}', () => {
+            it('should create valid entity', () => {
+              // Test creation
+            });
+
+            it('should handle state transitions', () => {
+              // Test behavior
+            });
+          });
+        });
+        ```
+
+        Schema Context:
+        {{steps.enhance-schemas.output}}
+
+  - stepId: generate-summary
+    name: Generate Implementation Summary
+    description: Create comprehensive summary with all artifacts ready to copy
+    type: prompt
+    timeout: 90000
+    dependencies:
+      - generate-guard-policy
+      - generate-test-scaffolds
+    config:
+      agentId: writer
+      prompt: |
+        Create a comprehensive implementation summary.
+
+        # {{domain}} Domain - Contract-First Scaffold
+
+        ## Overview
+        [Brief description from requirements]
+
+        ## Generated Artifacts
+
+        ### 1. Schema (packages/contracts/src/{{domain}}/v1/schema.ts)
+        ```typescript
+        [Complete schema code from enhance-schemas]
+        ```
+
+        ### 2. Invariants (packages/contracts/src/{{domain}}/v1/invariants.md)
+        ```markdown
+        [Complete invariants from write-invariants]
+        ```
+
+        ### 3. Package Structure
+        [File tree from design-package-structure]
+
+        ### 4. Guard Policy (packages/guard/policies/{{domain}}.yaml)
+        ```yaml
+        [Policy from generate-guard-policy]
+        ```
+
+        ### 5. Test Scaffolds
+        [Tests from generate-test-scaffolds]
+
+        ## Implementation Checklist
+
+        - [ ] Create contract package directory
+        - [ ] Add schema.ts with Zod schemas
+        - [ ] Add invariants.md documentation
+        - [ ] Create domain package
+        - [ ] Implement domain logic
+        - [ ] Add guard policy
+        - [ ] Write contract tests
+        - [ ] Write domain tests
+        - [ ] Run `ax guard check --policy {{domain}}-development`
+
+        ## Commands
+
+        ```bash
+        # Verify agent is available
+        ax agent list | grep contract-architect
+
+        # Run guard check after implementation
+        ax guard check --policy {{domain}}-development --paths packages/contracts/src/{{domain}} packages/core/{{domain}}-domain
+        ```
+
+        Compile ALL outputs from previous steps into this summary.
+
+  - stepId: store-result
+    name: Store Scaffold Result
+    description: Persist the scaffold result in memory for future reference
+    type: tool
+    timeout: 10000
+    dependencies:
+      - generate-summary
+    config:
+      tool: memory_store
+      namespace: scaffold
+      key: "{{domain}}/{{timestamp}}"

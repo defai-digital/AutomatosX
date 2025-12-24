@@ -31,3 +31,28 @@ export * from './prompts/index.js';
 
 // Runtime schemas (cache, timeout, response, limits)
 export * from './runtime/index.js';
+
+// Rate limiting schemas (selective export to avoid conflicts with runtime/timeout.js)
+export {
+  // Schema exports (prefixed to avoid conflict with runtime/timeout.js)
+  ToolCategorySchema as McpRateLimitToolCategorySchema,
+  RateLimitConfigSchema,
+  RateLimitStateSchema,
+  RateLimitResultSchema,
+  RateLimitErrorSchema,
+  // Type exports
+  type ToolCategory as McpRateLimitToolCategory,
+  type RateLimitConfig,
+  type RateLimitState,
+  type RateLimitResult,
+  type RateLimitError,
+  // Constants (prefixed to avoid conflict)
+  DEFAULT_RATE_LIMITS,
+  TOOL_CATEGORIES as MCP_RATE_LIMIT_TOOL_CATEGORIES,
+  // Functions
+  getToolCategory,
+  getDefaultRateLimit,
+  createRateLimitError,
+  validateRateLimitConfig,
+  safeValidateRateLimitConfig,
+} from './rate-limit.schema.js';

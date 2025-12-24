@@ -78,7 +78,7 @@ export function createCircuitBreaker(
   let failureTimestamps: number[] = [];
   let openedAt: number | null = null;
   let halfOpenAttempts = 0;
-  const listeners: Set<CircuitBreakerListener> = new Set();
+  const listeners = new Set<CircuitBreakerListener>();
 
   function emit(event: CircuitBreakerEvent): void {
     for (const listener of listeners) {

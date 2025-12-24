@@ -386,7 +386,12 @@ class ProductionParallelExecutor implements ParallelExecutorPort {
     const completed = new Set<string>();
     const remaining = [...steps];
 
-    while (remaining.length > 0) {
+    // Guard against infinite loops with max iteration limit
+    const maxIterations = steps.length + 1;
+    let iterations = 0;
+
+    while (remaining.length > 0 && iterations < maxIterations) {
+      iterations++;
       const layer: AgentWorkflowStep[] = [];
       const toRemove: number[] = [];
 
@@ -412,6 +417,11 @@ class ProductionParallelExecutor implements ParallelExecutorPort {
 
       if (layer.length === 0 && remaining.length > 0) {
         // Circular dependency or unresolvable - add remaining as single layer
+        const unresolvableSteps = remaining.map((s) => s.stepId).join(', ');
+        console.warn(
+          `[buildExecutionLayers] Circular or unresolvable dependencies detected. ` +
+          `Unresolvable steps: ${unresolvableSteps}`
+        );
         layers.push(remaining);
         break;
       }
@@ -422,6 +432,13 @@ class ProductionParallelExecutor implements ParallelExecutorPort {
           completed.add(step.stepId);
         }
       }
+    }
+
+    if (iterations >= maxIterations) {
+      console.error(
+        `[buildExecutionLayers] Max iterations (${maxIterations}) reached. ` +
+        `This indicates a bug in the algorithm or malformed input.`
+      );
     }
 
     return layers;

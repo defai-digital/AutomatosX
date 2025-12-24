@@ -1,8 +1,27 @@
 {
   "name": "@automatosx/mcp-server",
-  "version": "1.0.0",
+  "version": "13.0.0",
   "type": "module",
-  "description": "MCP (Model Context Protocol) server for AutomatosX",
+  "description": "MCP (Model Context Protocol) server for AutomatosX - Exposes AI orchestration tools via MCP",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "automatosx",
+    "ai",
+    "llm",
+    "server"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -14,22 +33,33 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/workflow-engine": "workspace:*",
-    "@automatosx/routing-engine": "workspace:*",
-    "@automatosx/memory-domain": "workspace:*",
-    "@automatosx/trace-domain": "workspace:*",
-    "@automatosx/guard": "workspace:*",
-    "@automatosx/agent-domain": "workspace:*",
-    "@automatosx/session-domain": "workspace:*",
-    "@automatosx/config-domain": "workspace:*",
     "@automatosx/ability-domain": "workspace:*",
+    "@automatosx/agent-domain": "workspace:*",
+    "@automatosx/config-domain": "workspace:*",
+    "@automatosx/contracts": "workspace:*",
+    "@automatosx/discussion-domain": "workspace:*",
+    "@automatosx/guard": "workspace:*",
+    "@automatosx/memory-domain": "workspace:*",
     "@automatosx/provider-adapters": "workspace:*",
+    "@automatosx/review-domain": "workspace:*",
+    "@automatosx/routing-engine": "workspace:*",
+    "@automatosx/session-domain": "workspace:*",
+    "@automatosx/trace-domain": "workspace:*",
+    "@automatosx/workflow-engine": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "hono": "^4.0.0",
     "zod": "^3.22.4"

@@ -186,6 +186,7 @@ describe('Step Guard Contract', () => {
         description: 'Enforces strict validation',
         enabled: true,
         priority: 100,
+        workflowPatterns: ['*'],
         agentPatterns: ['*'],
         guards: [
           {
@@ -386,7 +387,7 @@ describe('Step Guard Contract', () => {
         'guard-1',
         'step-1',
         'before',
-        [{ gateId: 'test', status: 'PASS' }],
+        [{ gateId: 'test', status: 'PASS', message: 'Passed' }],
         false
       );
 

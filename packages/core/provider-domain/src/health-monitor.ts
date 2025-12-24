@@ -18,7 +18,7 @@ import {
   type HealthEventType,
   type HealthLevel,
   type CircuitState,
-  type RateLimitStateEnum,
+  type ProviderRateLimitStateEnum as RateLimitStateEnum,
   createDefaultHealthCheckConfig,
   calculatePercentile,
   HealthErrorCodes,
@@ -120,7 +120,7 @@ export function createHealthMonitor(
       details,
     };
     events.push(event);
-    listeners.forEach((listener) => listener(event));
+    listeners.forEach((listener) => { listener(event); });
   }
 
   // INV-HM-001: Maintain bounded latency samples
@@ -302,16 +302,25 @@ export function createHealthMonitor(
         };
       }
 
+      // Create cancellable timeout to prevent timer leaks
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => { reject(new Error('Health check timeout')); },
+          cfg.timeoutMs
+        );
+      });
+
       try {
         const result = await Promise.race([
           healthCheckFn(),
-          new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error('Health check timeout')),
-              cfg.timeoutMs
-            )
-          ),
+          timeoutPromise,
         ]);
+
+        // Clean up timeout
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
 
         const latencyMs = Date.now() - startTime;
 
@@ -334,6 +343,10 @@ export function createHealthMonitor(
           checkType: 'active',
         };
       } catch (error) {
+        // Clean up timeout on error too
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
         const latencyMs = Date.now() - startTime;
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';

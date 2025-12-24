@@ -26,7 +26,7 @@ const DEFAULT_EXTENSIONS = ['.md'];
  */
 export class FileSystemAbilityLoader implements AbilityLoader {
   private readonly config: Required<AbilityLoaderConfig>;
-  private cache: Map<string, Ability> = new Map();
+  private cache = new Map<string, Ability>();
   private loaded = false;
 
   constructor(config: AbilityLoaderConfig) {

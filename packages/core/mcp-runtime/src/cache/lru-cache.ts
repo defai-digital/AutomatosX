@@ -20,7 +20,7 @@ import type {
  * - INV-MCP-CACHE-006: Size accuracy
  */
 export class LRUCache {
-  private readonly cache: Map<string, MCPCacheEntry> = new Map();
+  private readonly cache = new Map<string, MCPCacheEntry>();
   private readonly config: MCPCacheConfig;
   private currentSizeBytes = 0;
   private hitCount = 0;

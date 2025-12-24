@@ -3,7 +3,7 @@
  *
  * Checks:
  * - Node.js version
- * - Provider CLI availability (claude, gemini, codex, qwen, ax-glm, ax-grok)
+ * - Provider CLI availability (claude, gemini, codex, qwen, ax-glm, ax-grok, ax-cli)
  * - File system permissions
  * - Configuration validity
  */
@@ -15,6 +15,7 @@ import { constants } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
+import { DATA_DIR_NAME } from '@automatosx/contracts';
 
 const execAsync = promisify(exec);
 
@@ -78,6 +79,12 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
     name: 'Grok',
     command: 'ax-grok',
     installHint: 'npm install -g ax-grok',
+  },
+  {
+    id: 'ax-cli',
+    name: 'AX-CLI',
+    command: 'ax-cli',
+    installHint: 'npm install -g @defai.digital/ax-cli',
   },
 ];
 
@@ -224,27 +231,27 @@ export async function checkAllProviders(
  * Checks .automatosx directory
  */
 async function checkAutomatosxDir(): Promise<CheckResult> {
-  const dir = join(homedir(), '.automatosx');
+  const dir = join(homedir(), DATA_DIR_NAME);
 
   try {
     const stats = await stat(dir);
     if (stats.isDirectory()) {
       return {
-        name: '.automatosx directory',
+        name: `${DATA_DIR_NAME} directory`,
         status: 'pass',
         message: 'exists',
         details: dir,
       };
     }
     return {
-      name: '.automatosx directory',
+      name: `${DATA_DIR_NAME} directory`,
       status: 'fail',
       message: 'not a directory',
       fix: `rm ${dir} && mkdir -p ${dir}`,
     };
   } catch {
     return {
-      name: '.automatosx directory',
+      name: `${DATA_DIR_NAME} directory`,
       status: 'warn',
       message: 'does not exist (will be created on first use)',
       fix: `mkdir -p ${dir}`,

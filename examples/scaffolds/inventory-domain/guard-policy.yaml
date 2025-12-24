@@ -1,0 +1,64 @@
+# Inventory Domain Guard Policy
+#
+# This policy governs changes to the inventory management domain.
+
+policy_id: inventory-development
+
+description: |
+  Guard policy for inventory domain development.
+  Moderate complexity with cross-aggregate concerns.
+
+allowed_paths:
+  # Contract package
+  - packages/contracts/src/inventory/**
+  - packages/contracts/src/inventory/v1/schema.ts
+  - packages/contracts/src/inventory/v1/invariants.md
+  - packages/contracts/src/inventory/v1/index.ts
+
+  # Domain package
+  - packages/core/inventory-domain/**
+  - packages/core/inventory-domain/src/**
+
+  # Tests
+  - tests/contract/inventory.test.ts
+  - tests/core/inventory-domain.test.ts
+  - tests/integration/inventory/**
+
+forbidden_paths:
+  # Other domains' contracts
+  - packages/contracts/src/*/v1/schema.ts
+  - "!packages/contracts/src/inventory/v1/schema.ts"
+
+  # Infrastructure
+  - packages/cli/**
+  - packages/mcp-server/**
+  - packages/guard/**
+
+  # Other domains
+  - packages/core/payment-domain/**
+  - packages/core/user-auth-domain/**
+  - packages/core/routing-domain/**
+
+  # Adapters
+  - packages/adapters/**
+
+required_contracts:
+  - inventory
+
+gates:
+  - path_violation
+  - dependency
+  - change_radius
+  - contract_tests
+
+change_radius_limit: 3
+
+variables:
+  domain: inventory
+  team: supply-chain
+
+metadata:
+  owner: supply-chain-team
+  created_at: "2025-12-19"
+  severity: medium
+  auto_apply: false

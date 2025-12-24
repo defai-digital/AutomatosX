@@ -49,7 +49,7 @@ export interface ConfigEventStore {
  * Suitable for development and testing
  */
 export class InMemoryConfigEventStore implements ConfigEventStore {
-  private events: Map<string, ConfigEvent[]> = new Map();
+  private events = new Map<string, ConfigEvent[]>();
 
   async append(scope: 'global' | 'local', events: ConfigEvent[]): Promise<void> {
     const existing = this.events.get(scope) ?? [];

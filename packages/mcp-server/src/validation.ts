@@ -133,15 +133,25 @@ export function createNotImplementedError(
 /**
  * Deep freezes an object to prevent mutation
  * INV-MCP-005: Tools MUST NOT modify their input objects
+ *
+ * Handles circular references by tracking visited objects
  */
-export function deepFreeze<T>(obj: T): T {
+export function deepFreeze<T>(obj: T, visited = new WeakSet()): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
+  // Check for circular reference
+  if (visited.has(obj)) {
+    return obj; // Already frozen or in process of being frozen
+  }
+
+  // Mark as visited before recursing to handle circular refs
+  visited.add(obj);
+
   // Freeze arrays
   if (Array.isArray(obj)) {
-    obj.forEach((item) => deepFreeze(item));
+    obj.forEach((item) => deepFreeze(item, visited));
     return Object.freeze(obj) as T;
   }
 
@@ -150,7 +160,7 @@ export function deepFreeze<T>(obj: T): T {
   for (const name of propNames) {
     const value = (obj as Record<string, unknown>)[name];
     if (value !== null && typeof value === 'object') {
-      deepFreeze(value);
+      deepFreeze(value, visited);
     }
   }
 
@@ -162,7 +172,7 @@ export function deepFreeze<T>(obj: T): T {
  * This allows using schemas from contracts without direct zod dependency
  */
 interface ZodLikeSchema<T> {
-  safeParse(data: unknown): { success: true; data: T } | { success: false; error: { errors: Array<{ path: (string | number)[]; message: string }> } };
+  safeParse(data: unknown): { success: true; data: T } | { success: false; error: { errors: { path: (string | number)[]; message: string }[] } };
 }
 
 // ============================================================================

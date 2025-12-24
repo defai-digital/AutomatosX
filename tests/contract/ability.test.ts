@@ -456,9 +456,9 @@ describe('INV-ABL: Ability Registry Invariants', () => {
       // Sort descending by priority (INV-ABL-002)
       const sorted = [...abilities].sort((a, b) => b.priority - a.priority);
 
-      expect(sorted[0].abilityId).toBe('high');
-      expect(sorted[1].abilityId).toBe('medium');
-      expect(sorted[2].abilityId).toBe('low');
+      expect(sorted[0]!.abilityId).toBe('high');
+      expect(sorted[1]!.abilityId).toBe('medium');
+      expect(sorted[2]!.abilityId).toBe('low');
     });
   });
 

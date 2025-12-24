@@ -178,12 +178,12 @@ describe('CLI Output Consumer-Driven Contracts', () => {
 
   describe('INV-CLI-PARSE-003: Error Classification Coverage', () => {
     // Test all error categories have correct guidance
-    const errorCategoryTests: Array<{
+    const errorCategoryTests: {
       category: string;
       patterns: string[];
       shouldRetry: boolean;
       shouldFallback: boolean;
-    }> = [
+    }[] = [
       {
         category: 'quota',
         patterns: ['insufficient_quota', 'RESOURCE_EXHAUSTED', 'quota_exceeded'],

@@ -11,6 +11,7 @@ import {
   createAbilityManager,
   DEFAULT_ABILITY_DOMAIN_CONFIG,
 } from '@automatosx/ability-domain';
+import { LIMIT_ABILITY_TOKENS_AGENT } from '@automatosx/contracts';
 
 // Singleton registry for demo purposes
 const registry = createAbilityRegistry();
@@ -223,7 +224,7 @@ async function injectAbilities(options: CLIOptions): Promise<CommandResult> {
       ? options.core.split(',').map((s) => s.trim())
       : undefined;
     const maxAbilities = options.limit ?? 10;
-    const maxTokens = options.maxTokens ?? 10000;
+    const maxTokens = options.maxTokens ?? LIMIT_ABILITY_TOKENS_AGENT;
 
     const result = await manager.injectAbilities(
       agentId,

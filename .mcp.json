@@ -1,9 +1,11 @@
 {
-  "automatosx": {
-    "command": "node",
-    "args": ["./packages/mcp-server/dist/bin.js"],
-    "env": {
-      "AX_MCP_TOOL_PREFIX": "ax_"
+  "mcpServers": {
+    "automatosx": {
+      "command": "node",
+      "args": ["./packages/mcp-server/dist/bin.js"],
+      "env": {
+        "AX_MCP_TOOL_PREFIX": "ax_"
+      }
     }
   }
 }

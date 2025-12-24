@@ -8,6 +8,7 @@
  * @see https://github.com/google-gemini/gemini-cli
  */
 
+import { TIMEOUT_PROVIDER_DEFAULT } from '@automatosx/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**
@@ -27,7 +28,7 @@ export const geminiConfig: CLIProviderConfig = {
     CI: 'true',
   },
   outputFormat: 'stream-json',
-  timeout: 120000, // 2 minutes
+  timeout: TIMEOUT_PROVIDER_DEFAULT,
   models: [
     {
       modelId: 'default',

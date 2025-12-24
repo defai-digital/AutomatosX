@@ -53,11 +53,15 @@ export {
   agentGetTool,
   agentRegisterTool,
   agentRemoveTool,
+  agentRecommendTool,
+  agentCapabilitiesTool,
   handleAgentList,
   handleAgentRun,
   handleAgentGet,
   handleAgentRegister,
   handleAgentRemove,
+  handleAgentRecommend,
+  handleAgentCapabilities,
 } from './agent.js';
 
 // Ability tools (core only - admin tools moved to CLI)
@@ -96,25 +100,47 @@ export {
   handleConfigShow,
 } from './config.js';
 
-// Bugfix tools
+// Review tools (replaces bugfix and refactor)
 export {
-  bugfixScanTool,
-  bugfixRunTool,
-  bugfixListTool,
-  handleBugfixScan,
-  handleBugfixRun,
-  handleBugfixList,
-} from './bugfix.js';
+  reviewAnalyzeTool,
+  reviewListTool,
+  handleReviewAnalyze,
+  handleReviewList,
+} from './review.js';
 
-// Refactor tools
+// File System tools
 export {
-  refactorScanTool,
-  refactorApplyTool,
-  refactorListTool,
-  handleRefactorScan,
-  handleRefactorApply,
-  handleRefactorList,
-} from './refactor.js';
+  fileWriteTool,
+  directoryCreateTool,
+  fileExistsTool,
+  handleFileWrite,
+  handleDirectoryCreate,
+  handleFileExists,
+  FILE_SYSTEM_TOOLS,
+  FILE_SYSTEM_HANDLERS,
+} from './file-system.js';
+
+// Scaffold tools
+export {
+  scaffoldContractTool,
+  scaffoldDomainTool,
+  scaffoldGuardTool,
+  handleScaffoldContract,
+  handleScaffoldDomain,
+  handleScaffoldGuard,
+  SCAFFOLD_TOOLS,
+  SCAFFOLD_HANDLERS,
+} from './scaffold.js';
+
+// Discuss tools
+export {
+  discussTool,
+  discussQuickTool,
+  handleDiscuss,
+  handleDiscussQuick,
+  DISCUSS_TOOLS,
+  DISCUSS_HANDLERS,
+} from './discuss.js';
 
 // Re-export for convenience
 import {
@@ -163,11 +189,15 @@ import {
   agentGetTool,
   agentRegisterTool,
   agentRemoveTool,
+  agentRecommendTool,
+  agentCapabilitiesTool,
   handleAgentList,
   handleAgentRun,
   handleAgentGet,
   handleAgentRegister,
   handleAgentRemove,
+  handleAgentRecommend,
+  handleAgentCapabilities,
 } from './agent.js';
 
 import {
@@ -204,32 +234,48 @@ import {
 } from './config.js';
 
 import {
-  bugfixScanTool,
-  bugfixRunTool,
-  bugfixListTool,
-  handleBugfixScan,
-  handleBugfixRun,
-  handleBugfixList,
-} from './bugfix.js';
+  reviewAnalyzeTool,
+  reviewListTool,
+  handleReviewAnalyze,
+  handleReviewList,
+} from './review.js';
 
 import {
-  refactorScanTool,
-  refactorApplyTool,
-  refactorListTool,
-  handleRefactorScan,
-  handleRefactorApply,
-  handleRefactorList,
-} from './refactor.js';
+  fileWriteTool,
+  directoryCreateTool,
+  fileExistsTool,
+  handleFileWrite,
+  handleDirectoryCreate,
+  handleFileExists,
+} from './file-system.js';
+
+import {
+  scaffoldContractTool,
+  scaffoldDomainTool,
+  scaffoldGuardTool,
+  handleScaffoldContract,
+  handleScaffoldDomain,
+  handleScaffoldGuard,
+} from './scaffold.js';
+
+import {
+  discussTool,
+  discussQuickTool,
+  handleDiscuss,
+  handleDiscussQuick,
+} from './discuss.js';
 
 /**
- * All available tools (37 total)
+ * All available tools (44 total)
  *
- * Removed tools (27):
+ * Removed tools:
  * - design_* (5): LLM generates OpenAPI/Zod/diagrams natively
  * - task_*, queue_* (7): Advanced orchestration, most users don't need
  * - metrics_*, timer_*, telemetry_* (7): Observability, not core function
  * - memory_export, memory_import, memory_stats, memory_bulk_delete, memory_clear (5): Rare admin ops
  * - ability_get, ability_register, ability_remove (3): Use CLI for setup, not runtime
+ * - bugfix_* (3): Replaced by review_analyze --focus correctness
+ * - refactor_* (3): Replaced by review_analyze --focus maintainability
  */
 export const ALL_TOOLS: MCPTool[] = [
   // Workflow tools (3)
@@ -250,12 +296,14 @@ export const ALL_TOOLS: MCPTool[] = [
   guardCheckTool,
   guardListTool,
   guardApplyTool,
-  // Agent tools (5)
+  // Agent tools (7) - includes recommend and capabilities
   agentListTool,
   agentRunTool,
   agentGetTool,
   agentRegisterTool,
   agentRemoveTool,
+  agentRecommendTool,
+  agentCapabilitiesTool,
   // Ability tools (2) - core only
   abilityListTool,
   abilityInjectTool,
@@ -271,18 +319,24 @@ export const ALL_TOOLS: MCPTool[] = [
   configGetTool,
   configSetTool,
   configShowTool,
-  // Bugfix tools (3)
-  bugfixScanTool,
-  bugfixRunTool,
-  bugfixListTool,
-  // Refactor tools (3)
-  refactorScanTool,
-  refactorApplyTool,
-  refactorListTool,
+  // Review tools (2) - replaces bugfix and refactor
+  reviewAnalyzeTool,
+  reviewListTool,
+  // File System tools (3)
+  fileWriteTool,
+  directoryCreateTool,
+  fileExistsTool,
+  // Scaffold tools (3)
+  scaffoldContractTool,
+  scaffoldDomainTool,
+  scaffoldGuardTool,
+  // Discuss tools (2)
+  discussTool,
+  discussQuickTool,
 ];
 
 /**
- * Raw tool handlers by name (37 handlers)
+ * Raw tool handlers by name (44 handlers)
  * These are the unwrapped handlers - use TOOL_HANDLERS for production
  */
 const RAW_HANDLERS: Record<string, ToolHandler> = {
@@ -304,12 +358,14 @@ const RAW_HANDLERS: Record<string, ToolHandler> = {
   guard_check: handleGuardCheck,
   guard_list: handleGuardList,
   guard_apply: handleGuardApply,
-  // Agent handlers (5)
+  // Agent handlers (7) - includes recommend and capabilities
   agent_list: handleAgentList,
   agent_run: handleAgentRun,
   agent_get: handleAgentGet,
   agent_register: handleAgentRegister,
   agent_remove: handleAgentRemove,
+  agent_recommend: handleAgentRecommend,
+  agent_capabilities: handleAgentCapabilities,
   // Ability handlers (2) - core only
   ability_list: handleAbilityList,
   ability_inject: handleAbilityInject,
@@ -325,14 +381,20 @@ const RAW_HANDLERS: Record<string, ToolHandler> = {
   config_get: handleConfigGet,
   config_set: handleConfigSet,
   config_show: handleConfigShow,
-  // Bugfix handlers (3)
-  bugfix_scan: handleBugfixScan,
-  bugfix_run: handleBugfixRun,
-  bugfix_list: handleBugfixList,
-  // Refactor handlers (3)
-  refactor_scan: handleRefactorScan,
-  refactor_apply: handleRefactorApply,
-  refactor_list: handleRefactorList,
+  // Review handlers (2) - replaces bugfix and refactor
+  review_analyze: handleReviewAnalyze,
+  review_list: handleReviewList,
+  // File System handlers (3)
+  file_write: handleFileWrite,
+  directory_create: handleDirectoryCreate,
+  file_exists: handleFileExists,
+  // Scaffold handlers (3)
+  scaffold_contract: handleScaffoldContract,
+  scaffold_domain: handleScaffoldDomain,
+  scaffold_guard: handleScaffoldGuard,
+  // Discuss handlers (2)
+  discuss: handleDiscuss,
+  discuss_quick: handleDiscussQuick,
 };
 
 /**

@@ -5,6 +5,15 @@
  */
 
 import { z } from 'zod';
+import {
+  LIMIT_DELEGATION_DEPTH,
+  LIMIT_CONCURRENT_EXECUTIONS,
+  RATE_LIMIT_RPM_DEFAULT,
+  RATE_LIMIT_TPM_DEFAULT,
+  TIMEOUT_SESSION,
+  PRIORITY_DEFAULT,
+  PRIORITY_MAX,
+} from '../../constants.js';
 
 /**
  * Available gate types
@@ -16,6 +25,8 @@ export const GateTypeSchema = z.enum([
   'contract_tests',
   'config_validation',
   'sensitive_change',
+  'secrets_detection',
+  'agent_selection',
 ]);
 
 export type GateType = z.infer<typeof GateTypeSchema>;
@@ -25,10 +36,17 @@ export type GateType = z.infer<typeof GateTypeSchema>;
  */
 export const ContractTypeSchema = z.enum([
   'workflow',
+  'workflow-templates',
+  'ml-lifecycle',
   'routing',
   'memory',
   'trace',
   'mcp',
+  'agent',
+  'session',
+  'config',
+  'guard',
+  'ability',
 ]);
 
 export type ContractType = z.infer<typeof ContractTypeSchema>;
@@ -143,18 +161,18 @@ export const AgentPolicySchema = z.object({
   forbiddenDelegates: z.array(z.string()).default([]),
 
   /** Maximum delegation depth */
-  maxDelegationDepth: z.number().int().min(0).max(10).default(3),
+  maxDelegationDepth: z.number().int().min(0).max(10).default(LIMIT_DELEGATION_DEPTH),
 
   // === Resource Limits (INV-AP-003) ===
 
   /** Max tokens per request */
-  maxTokensPerRequest: z.number().int().min(1).max(1000000).default(100000),
+  maxTokensPerRequest: z.number().int().min(1).max(1000000).default(RATE_LIMIT_TPM_DEFAULT),
 
   /** Max requests per minute */
-  maxRequestsPerMinute: z.number().int().min(1).max(1000).default(60),
+  maxRequestsPerMinute: z.number().int().min(1).max(1000).default(RATE_LIMIT_RPM_DEFAULT),
 
   /** Max concurrent executions */
-  maxConcurrentExecutions: z.number().int().min(1).max(10).default(3),
+  maxConcurrentExecutions: z.number().int().min(1).max(10).default(LIMIT_CONCURRENT_EXECUTIONS),
 
   /** Max session duration in ms */
   maxSessionDurationMs: z
@@ -162,7 +180,7 @@ export const AgentPolicySchema = z.object({
     .int()
     .min(60000)
     .max(86400000)
-    .default(3600000),
+    .default(TIMEOUT_SESSION),
 
   // === Capability Control ===
 
@@ -194,7 +212,7 @@ export const AgentPolicySchema = z.object({
   enabled: z.boolean().default(true),
 
   /** Priority for policy merging (INV-AP-001) */
-  priority: z.number().int().min(0).max(100).default(50),
+  priority: z.number().int().min(0).max(PRIORITY_MAX).default(PRIORITY_DEFAULT),
 
   /** Policy description */
   description: z.string().optional(),
@@ -301,7 +319,7 @@ export function validateAgentPolicy(data: unknown): AgentPolicy {
 /**
  * Creates default agent policy (permissive)
  */
-export function createDefaultAgentPolicy(agentId: string = '*'): AgentPolicy {
+export function createDefaultAgentPolicy(agentId = '*'): AgentPolicy {
   return AgentPolicySchema.parse({ policyId: 'default', agentId });
 }
 
@@ -310,7 +328,7 @@ export function createDefaultAgentPolicy(agentId: string = '*'): AgentPolicy {
  */
 export function createRestrictiveAgentPolicy(
   policyId: string,
-  agentId: string = '*'
+  agentId = '*'
 ): AgentPolicy {
   return {
     policyId,

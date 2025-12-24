@@ -9,8 +9,9 @@ export { abilityCommand } from './ability.js';
 export { sessionCommand } from './session.js';
 export { setupCommand } from './setup.js';
 export { configCommand } from './config.js';
-export { bugfixCommand } from './bugfix.js';
-export { refactorCommand } from './refactor.js';
+export { reviewCommand } from './review.js';
+export { scaffoldCommand } from './scaffold.js';
+export { discussCommand } from './discuss.js';
 export { helpCommand, versionCommand, CLI_VERSION } from './help.js';
 
 // High-value additions

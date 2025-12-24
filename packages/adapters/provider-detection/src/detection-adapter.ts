@@ -21,6 +21,8 @@ import {
   KNOWN_PROVIDERS,
   PROVIDER_DEFAULTS,
   createDetectionSummary,
+  TIMEOUT_HEALTH_CHECK,
+  TIMEOUT_FORCE_KILL,
 } from '@automatosx/contracts';
 
 const execAsync = promisify(exec);
@@ -30,24 +32,42 @@ const execAsync = promisify(exec);
 // ============================================================================
 
 /**
- * Default detection timeout (5 seconds)
+ * Default detection timeout
  * INV-CFG-ADP-002: Detection times out after 5s
  */
-const DEFAULT_TIMEOUT = 5000;
+const DEFAULT_TIMEOUT = TIMEOUT_HEALTH_CHECK;
 
 /**
- * Timeout for individual command check (1 second)
+ * Timeout for individual command check
  */
-const COMMAND_CHECK_TIMEOUT = 1000;
+const COMMAND_CHECK_TIMEOUT = TIMEOUT_FORCE_KILL;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
 /**
+ * Validates a command name to prevent command injection
+ * Only allows alphanumeric characters, hyphens, underscores, and dots
+ *
+ * @param command - The command to validate
+ * @returns true if the command is safe, false otherwise
+ */
+function isValidCommandName(command: string): boolean {
+  // Must be non-empty and contain only safe characters
+  // Allows: letters, numbers, hyphens, underscores, dots (for extensions like .exe)
+  return /^[a-zA-Z0-9_.-]+$/.test(command);
+}
+
+/**
  * Checks if a CLI command is available on the system PATH
  */
 async function isCommandAvailable(command: string): Promise<boolean> {
+  // Validate command to prevent command injection
+  if (!isValidCommandName(command)) {
+    return false;
+  }
+
   try {
     const whichCommand = process.platform === 'win32' ? 'where' : 'which';
     await execAsync(`${whichCommand} ${command}`, { timeout: COMMAND_CHECK_TIMEOUT });
@@ -61,6 +81,11 @@ async function isCommandAvailable(command: string): Promise<boolean> {
  * Gets the version of a CLI command
  */
 async function getCommandVersion(command: string): Promise<string | undefined> {
+  // Validate command to prevent command injection
+  if (!isValidCommandName(command)) {
+    return undefined;
+  }
+
   try {
     const { stdout } = await execAsync(`${command} --version`, {
       timeout: COMMAND_CHECK_TIMEOUT,
@@ -86,6 +111,14 @@ async function getCommandVersion(command: string): Promise<string | undefined> {
  */
 async function detectProvider(providerId: ProviderId): Promise<ProviderDetectionResult> {
   const defaults = PROVIDER_DEFAULTS[providerId];
+  if (defaults === undefined) {
+    return {
+      providerId,
+      detected: false,
+      command: providerId, // Use providerId as fallback command name
+      error: `Unknown provider: ${providerId}`,
+    };
+  }
   const command = defaults.command;
 
   // Check if command is available
@@ -119,41 +152,61 @@ async function detectAllProviders(
   const providersToDetect = options?.providers ?? [...KNOWN_PROVIDERS];
   const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
 
+  // Track partial results as they complete
+  const partialResults = new Map<ProviderId, ProviderDetectionResult>();
+
   // Create a timeout promise
+  let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise<ProviderDetectionResult[]>((_, reject) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       reject(new Error(`Detection timed out after ${timeout}ms`));
     }, timeout);
   });
 
-  // Detect all providers in parallel
+  // Detect all providers in parallel, tracking partial results
   const detectionPromise = Promise.all(
-    providersToDetect.map((providerId) =>
-      detectProvider(providerId).catch((error) => ({
-        providerId,
-        detected: false,
-        command: PROVIDER_DEFAULTS[providerId].command,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }))
-    )
+    providersToDetect.map(async (providerId) => {
+      try {
+        const result = await detectProvider(providerId);
+        partialResults.set(providerId, result);
+        return result;
+      } catch (error) {
+        const defaults = PROVIDER_DEFAULTS[providerId];
+        const result: ProviderDetectionResult = {
+          providerId,
+          detected: false,
+          command: defaults?.command ?? providerId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+        partialResults.set(providerId, result);
+        return result;
+      }
+    })
   );
 
   try {
     const results = await Promise.race([detectionPromise, timeoutPromise]);
+    clearTimeout(timeoutId!);
     return createDetectionSummary(results);
   } catch (error) {
-    // On timeout, return partial results
-    return {
-      timestamp: new Date().toISOString(),
-      totalProviders: providersToDetect.length,
-      detectedCount: 0,
-      results: providersToDetect.map((providerId) => ({
+    clearTimeout(timeoutId!);
+    // On timeout, return partial results collected so far
+    const results: ProviderDetectionResult[] = providersToDetect.map((providerId) => {
+      const partialResult = partialResults.get(providerId);
+      if (partialResult !== undefined) {
+        return partialResult;
+      }
+      // Provider detection was still in progress when timeout occurred
+      const defaults = PROVIDER_DEFAULTS[providerId];
+      return {
         providerId,
         detected: false,
-        command: PROVIDER_DEFAULTS[providerId].command,
+        command: defaults?.command ?? providerId,
         error: error instanceof Error ? error.message : 'Detection timed out',
-      })),
-    };
+      };
+    });
+
+    return createDetectionSummary(results);
   }
 }
 

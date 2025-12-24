@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   parseArgs,
   formatOutput,
@@ -9,9 +9,45 @@ import {
   helpCommand,
   versionCommand,
   CLI_VERSION,
+  resetStepExecutor,
 } from '@automatosx/cli';
+import type { CLIOptions } from '@automatosx/cli';
+
+/**
+ * Create default CLI options with overrides
+ */
+function createOptions(overrides: Partial<CLIOptions> = {}): CLIOptions {
+  return {
+    help: false,
+    version: false,
+    verbose: false,
+    format: 'text',
+    workflowDir: undefined,
+    workflowId: undefined,
+    traceId: undefined,
+    limit: undefined,
+    input: undefined,
+    iterate: false,
+    maxIterations: undefined,
+    maxTime: undefined,
+    noContext: false,
+    category: undefined,
+    tags: undefined,
+    agent: undefined,
+    task: undefined,
+    core: undefined,
+    maxTokens: undefined,
+    ...overrides,
+  };
+}
 
 describe('CLI', () => {
+  // Reset step executor before each test to use placeholder (not production executor)
+  // This prevents tests from making real LLM calls
+  beforeEach(() => {
+    resetStepExecutor();
+  });
+
   describe('Parser', () => {
     it('should parse simple command', () => {
       const result = parseArgs(['node', 'cli', 'run', 'my-workflow']);
@@ -86,21 +122,7 @@ describe('CLI', () => {
 
   describe('Run Command', () => {
     it('should require workflow ID', async () => {
-      const result = await runCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await runCommand([], createOptions());
 
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
@@ -108,21 +130,8 @@ describe('CLI', () => {
     });
 
     it('should execute workflow with ID from args', async () => {
-      const result = await runCommand(['test-workflow'], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      // Use a real workflow from examples/workflows/
+      const result = await runCommand(['analyst'], createOptions());
 
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
@@ -130,21 +139,8 @@ describe('CLI', () => {
     });
 
     it('should execute workflow with ID from options', async () => {
-      const result = await runCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: 'option-workflow',
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      // Use a real workflow from examples/workflows/
+      const result = await runCommand([], createOptions({ workflowId: 'analyst' }));
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -153,21 +149,7 @@ describe('CLI', () => {
 
   describe('List Command', () => {
     it('should list workflows', async () => {
-      const result = await listCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await listCommand([], createOptions());
 
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
@@ -176,21 +158,7 @@ describe('CLI', () => {
     });
 
     it('should respect limit option', async () => {
-      const result = await listCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'json',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: 2,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await listCommand([], createOptions({ format: 'json', limit: 2 }));
 
       expect(result.success).toBe(true);
       expect(Array.isArray(result.data)).toBe(true);
@@ -200,42 +168,14 @@ describe('CLI', () => {
 
   describe('Trace Command', () => {
     it('should list traces when no ID provided', async () => {
-      const result = await traceCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await traceCommand([], createOptions());
 
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
     });
 
     it('should get specific trace by ID', async () => {
-      const result = await traceCommand(['test-trace-id'], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'json',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await traceCommand(['test-trace-id'], createOptions({ format: 'json' }));
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -244,21 +184,7 @@ describe('CLI', () => {
 
   describe('Help Command', () => {
     it('should return help text', async () => {
-      const result = await helpCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await helpCommand([], createOptions());
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('AutomatosX');
@@ -268,21 +194,7 @@ describe('CLI', () => {
 
   describe('Version Command', () => {
     it('should return version info', async () => {
-      const result = await versionCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await versionCommand([], createOptions());
 
       expect(result.success).toBe(true);
       expect(result.message).toContain(CLI_VERSION);
@@ -291,21 +203,7 @@ describe('CLI', () => {
 
   describe('Doctor Command', () => {
     it('should run system health check', async () => {
-      const result = await doctorCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await doctorCommand([], createOptions());
 
       expect(result.success).toBeDefined();
       expect(result.exitCode).toBeDefined();
@@ -313,21 +211,7 @@ describe('CLI', () => {
     });
 
     it('should support JSON format output', async () => {
-      const result = await doctorCommand([], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'json',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await doctorCommand([], createOptions({ format: 'json' }));
 
       expect(result.success).toBeDefined();
       expect(result.data).toBeDefined();
@@ -335,42 +219,14 @@ describe('CLI', () => {
     });
 
     it('should check specific provider when argument provided', async () => {
-      const result = await doctorCommand(['claude'], {
-        help: false,
-        version: false,
-        verbose: false,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await doctorCommand(['claude'], createOptions());
 
       expect(result.success).toBeDefined();
       expect(result.exitCode).toBeDefined();
     });
 
     it('should support verbose mode', async () => {
-      const result = await doctorCommand([], {
-        help: false,
-        version: false,
-        verbose: true,
-        format: 'text',
-        workflowDir: undefined,
-        workflowId: undefined,
-        traceId: undefined,
-        limit: undefined,
-        input: undefined,
-        iterate: false,
-        maxIterations: undefined,
-        maxTime: undefined,
-        noContext: false,
-      });
+      const result = await doctorCommand([], createOptions({ verbose: true }));
 
       expect(result.success).toBeDefined();
       expect(result.message).toBeDefined();

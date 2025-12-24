@@ -98,5 +98,5 @@ export function prepareWorkflow(data: unknown): PreparedWorkflow {
  * This prevents subsequent steps from accidentally modifying previous results
  */
 export function deepFreezeStepResult(result: StepResult): Readonly<StepResult> {
-  return deepFreeze(structuredClone(result)) as Readonly<StepResult>;
+  return deepFreeze(structuredClone(result));
 }

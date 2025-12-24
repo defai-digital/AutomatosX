@@ -349,12 +349,12 @@ interface DesignRecord {
 export const handleDesignApi: ToolHandler = async (args) => {
   const name = args.name as string;
   const description = (args.description as string) ?? '';
-  const endpoints = args.endpoints as Array<{
+  const endpoints = args.endpoints as {
     path: string;
     method: string;
     summary: string;
     description?: string;
-  }>;
+  }[];
   const baseUrl = (args.baseUrl as string) ?? 'http://localhost:3000';
   const version = (args.version as string) ?? '1.0.0';
   const format = (args.format as string) ?? 'openapi';
@@ -371,7 +371,7 @@ export const handleDesignApi: ToolHandler = async (args) => {
         version,
       },
       servers: [{ url: baseUrl }],
-      paths: endpoints.reduce(
+      paths: endpoints.reduce<Record<string, Record<string, unknown>>>(
         (acc, endpoint) => {
           const path = endpoint.path;
           if (acc[path] === undefined) {
@@ -386,7 +386,7 @@ export const handleDesignApi: ToolHandler = async (args) => {
           };
           return acc;
         },
-        {} as Record<string, Record<string, unknown>>
+        {}
       ),
     };
 
@@ -447,8 +447,8 @@ export const handleDesignComponent: ToolHandler = async (args) => {
   const name = args.name as string;
   const type = args.type as string;
   const description = args.description as string;
-  const inputs = (args.inputs as Array<{ name: string; type: string; description?: string; required?: boolean }>) ?? [];
-  const outputs = (args.outputs as Array<{ name: string; type: string; description?: string }>) ?? [];
+  const inputs = (args.inputs as { name: string; type: string; description?: string; required?: boolean }[]) ?? [];
+  const outputs = (args.outputs as { name: string; type: string; description?: string }[]) ?? [];
   const language = (args.language as string) ?? 'typescript';
 
   try {
@@ -552,14 +552,14 @@ export class ${name} implements I${name} {
 export const handleDesignSchema: ToolHandler = async (args) => {
   const name = args.name as string;
   const description = (args.description as string) ?? '';
-  const fields = args.fields as Array<{
+  const fields = args.fields as {
     name: string;
     type: string;
     description?: string;
     required?: boolean;
     nullable?: boolean;
     enumValues?: string[];
-  }>;
+  }[];
   const format = (args.format as string) ?? 'zod';
 
   try {
@@ -669,13 +669,13 @@ export const handleDesignArchitecture: ToolHandler = async (args) => {
   const name = args.name as string;
   const description = args.description as string;
   const pattern = args.pattern as string;
-  const components = args.components as Array<{
+  const components = args.components as {
     id: string;
     name: string;
     type: string;
     description?: string;
     dependencies?: string[];
-  }>;
+  }[];
   const format = (args.format as string) ?? 'mermaid';
 
   try {

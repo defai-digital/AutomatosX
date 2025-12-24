@@ -21,18 +21,18 @@ import {
   ProviderMessageSchema,
   ModelInfoSchema,
   CircuitStateSchema,
-  CircuitBreakerConfigSchema,
-  CircuitBreakerStateSchema,
-  RateLimitConfigSchema,
+  ProviderCircuitBreakerConfigSchema as CircuitBreakerConfigSchema,
+  ProviderCircuitBreakerStateSchema as CircuitBreakerStateSchema,
+  ProviderRateLimitConfigSchema as RateLimitConfigSchema,
   HealthCheckConfigSchema,
   HealthStatusSchema,
   validateProviderRequest,
   safeValidateProviderRequest,
   createProviderSuccessResponse,
   createProviderErrorResponse,
-  createDefaultCircuitBreakerConfig,
+  createDefaultProviderCircuitBreakerConfig as createDefaultCircuitBreakerConfig,
   createDefaultHealthCheckConfig,
-  createInitialCircuitBreakerState,
+  createInitialProviderCircuitBreakerState as createInitialCircuitBreakerState,
   createInitialHealthStatus,
   type ProviderPort,
   type ProviderRegistryPort,
@@ -564,7 +564,7 @@ describe('INV-PROV-HEALTH: Health Check Invariants', () => {
       const availableProviders = providers.filter((p) => p.available);
 
       expect(availableProviders).toHaveLength(1);
-      expect(availableProviders[0].providerId).toBe('claude');
+      expect(availableProviders[0]!.providerId).toBe('claude');
     });
 
     it('should support health levels for gradual degradation', () => {

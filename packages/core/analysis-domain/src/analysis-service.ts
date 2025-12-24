@@ -101,8 +101,13 @@ export function createAnalysisService(deps: AnalysisServiceDeps): AnalysisServic
         provider = createMockProvider();
       }
 
-      // 4. Execute analysis with timeout
+      // 4. Execute analysis with timeout (using cancellable timeout to prevent timer leaks)
       let response: string;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => { reject(AnalysisError.timeout()); }, request.timeoutMs);
+      });
+
       try {
         const result = await Promise.race([
           provider.complete({
@@ -110,8 +115,13 @@ export function createAnalysisService(deps: AnalysisServiceDeps): AnalysisServic
             maxTokens: 4000,
             temperature: 0.1,
           }),
-          createTimeout(request.timeoutMs),
+          timeoutPromise,
         ]);
+
+        // Clean up timeout
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
 
         if (!result) {
           throw AnalysisError.timeout();
@@ -119,6 +129,10 @@ export function createAnalysisService(deps: AnalysisServiceDeps): AnalysisServic
 
         response = result.content;
       } catch (error) {
+        // Clean up timeout on error too
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
         if (error instanceof AnalysisError) throw error;
         throw AnalysisError.providerError(
           error instanceof Error ? error.message : 'Unknown error'
@@ -153,15 +167,6 @@ export function createAnalysisService(deps: AnalysisServiceDeps): AnalysisServic
       };
     },
   };
-}
-
-/**
- * Create a timeout promise
- */
-function createTimeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(AnalysisError.timeout()), ms);
-  });
 }
 
 /**

@@ -1,0 +1,239 @@
+workflowId: technology-research
+name: Technology Research & Evaluation Workflow
+description: Systematic technology evaluation for informed decision-making
+version: "1.0.0"
+category: research
+tags:
+  - research
+  - evaluation
+  - technology
+  - analysis
+
+metadata:
+  requiredAbilities:
+    - research
+    - technology-evaluation
+    - analysis
+  estimatedDuration: 480
+  complexity: medium
+
+steps:
+  - stepId: define-scope
+    name: Define Research Scope
+    type: prompt
+    timeout: 60000
+    config:
+      agent: researcher
+      task: |
+        Define the research scope and objectives.
+
+        ## Research Scope
+
+        1. **Research Question**:
+           - Primary question to answer
+           - Secondary questions
+
+        2. **Context**:
+           - Why this research is needed
+           - Business driver
+           - Timeline for decision
+
+        3. **Scope Boundaries**:
+           - What's in scope
+           - What's out of scope
+           - Constraints
+
+        4. **Evaluation Criteria**:
+           - Must-have requirements
+           - Nice-to-have requirements
+           - Deal-breakers
+
+        5. **Deliverables**:
+           - Expected outputs
+           - Format
+           - Audience
+
+  - stepId: market-research
+    name: Conduct Market Research
+    type: prompt
+    timeout: 180000
+    config:
+      agent: researcher
+      task: |
+        Research the market landscape.
+
+        ## Market Research
+
+        1. **Technology Landscape**:
+           - Major players
+           - Emerging solutions
+           - Open source options
+
+        2. **Market Trends**:
+           - Growth trends
+           - Adoption patterns
+           - Future predictions
+
+        3. **Case Studies**:
+           - Similar company implementations
+           - Success stories
+           - Failure cases
+
+        4. **Analyst Reports**:
+           - Gartner/Forrester positioning
+           - Industry analyst opinions
+
+  - stepId: technical-evaluation
+    name: Technical Deep Dive
+    type: prompt
+    timeout: 240000
+    config:
+      agent: researcher
+      task: |
+        Conduct technical evaluation of top candidates.
+
+        ## Technical Evaluation
+
+        For each candidate technology:
+
+        1. **Architecture**:
+           - How it works
+           - Components
+           - Integration points
+
+        2. **Performance**:
+           - Benchmarks
+           - Scalability
+           - Resource requirements
+
+        3. **Security**:
+           - Security model
+           - Compliance certifications
+           - Known vulnerabilities
+
+        4. **Developer Experience**:
+           - Documentation quality
+           - Learning curve
+           - Community support
+
+        5. **Operational Aspects**:
+           - Deployment complexity
+           - Monitoring/observability
+           - Maintenance burden
+
+  - stepId: cost-analysis
+    name: Cost Analysis
+    type: prompt
+    timeout: 120000
+    config:
+      agent: researcher
+      task: |
+        Analyze total cost of ownership.
+
+        ## Cost Analysis
+
+        For each candidate:
+
+        1. **Direct Costs**:
+           - Licensing/subscription
+           - Infrastructure
+           - Support contracts
+
+        2. **Indirect Costs**:
+           - Training and onboarding
+           - Integration effort
+           - Migration costs
+
+        3. **Ongoing Costs**:
+           - Maintenance
+           - Scaling costs
+           - Operational overhead
+
+        4. **3-Year TCO**:
+           | Cost Category | Year 1 | Year 2 | Year 3 | Total |
+           |---------------|--------|--------|--------|-------|
+
+  - stepId: poc-design
+    name: Design Proof of Concept
+    type: prompt
+    timeout: 120000
+    config:
+      agent: architecture
+      task: |
+        Design proof of concept for top candidates.
+
+        ## POC Design
+
+        1. **Objectives**:
+           - What are we trying to prove?
+           - Success criteria
+
+        2. **Scope**:
+           - Features to implement
+           - Integrations to test
+
+        3. **Timeline**:
+           - Duration
+           - Milestones
+
+        4. **Resources**:
+           - Team needed
+           - Infrastructure needed
+
+        5. **Evaluation Framework**:
+           - Metrics to collect
+           - Comparison methodology
+
+  - stepId: recommendation
+    name: Generate Recommendation
+    type: prompt
+    timeout: 120000
+    config:
+      agent: researcher
+      task: |
+        Generate final recommendation.
+
+        ## Recommendation Report
+
+        1. **Executive Summary**:
+           - Recommendation
+           - Key rationale
+           - Confidence level
+
+        2. **Comparison Matrix**:
+           | Criteria | Weight | Option A | Option B | Option C |
+           |----------|--------|----------|----------|----------|
+
+        3. **Recommendation**:
+           - Recommended option
+           - Rationale
+           - Trade-offs accepted
+
+        4. **Implementation Roadmap**:
+           - Adoption phases
+           - Resource requirements
+           - Risk mitigation
+
+        5. **Alternatives Considered**:
+           - Why not chosen
+           - When to reconsider
+
+  - stepId: store-research
+    name: Store Research Report
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: technology-research
+      key: "{{research_id}}"
+      ttl: 31536000
+      value:
+        research_id: "{{research_id}}"
+        topic: "{{topic}}"
+        recommendation: "{{recommendation}}"
+        comparison_matrix: "{{comparison_matrix}}"
+        cost_analysis: "{{cost_analysis}}"
+        poc_design: "{{poc_design}}"
+        full_report: "{{full_report}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"

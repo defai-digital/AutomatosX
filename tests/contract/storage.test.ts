@@ -517,7 +517,7 @@ describe('INV-ST-007: FTS Search Ranking', () => {
 
     // Verify descending order (implementation should maintain this)
     const isSorted = results.every(
-      (r, i) => i === 0 || results[i - 1].score >= r.score
+      (r, i) => i === 0 || results[i - 1]!.score >= r.score
     );
     expect(isSorted).toBe(true);
   });

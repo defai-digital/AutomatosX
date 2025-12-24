@@ -521,7 +521,7 @@ describe('Cross-Cutting Concerns', () => {
       policy.archiveBeforeDelete = true;
       // Not setting archivePath
 
-      expect(() => manager.addPolicy(policy)).toThrow(RetentionError);
+      expect(() => { manager.addPolicy(policy); }).toThrow(RetentionError);
     });
 
     it('should run all enabled policies', async () => {

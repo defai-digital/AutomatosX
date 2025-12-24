@@ -2,19 +2,22 @@
  * Session Domain Types
  */
 
-import type {
-  Session,
-  SessionTask,
-  SessionStatus,
-  SessionEvent,
-  CreateSessionInput,
-  JoinSessionInput,
-  StartTaskInput,
-  CompleteTaskInput,
-  FailTaskInput,
+import {
+  type Session,
+  type SessionTask,
+  type SessionStatus,
+  type SessionEvent,
+  type CreateSessionInput,
+  type JoinSessionInput,
+  type StartTaskInput,
+  type CompleteTaskInput,
+  type FailTaskInput,
   // Run history types from CLI contracts
-  RunRecord,
-  HistoryQuery,
+  type RunRecord,
+  type HistoryQuery,
+  // Constants
+  TIMEOUT_SESSION,
+  LIMIT_EVENT_BUFFER,
 } from '@automatosx/contracts';
 
 /**
@@ -194,8 +197,8 @@ export interface SessionDomainConfig {
 export const DEFAULT_SESSION_DOMAIN_CONFIG: SessionDomainConfig = {
   maxParticipants: 10,
   maxTasksPerParticipant: 50,
-  sessionTimeout: 3600000, // 1 hour
-  eventBufferSize: 1000,
+  sessionTimeout: TIMEOUT_SESSION,
+  eventBufferSize: LIMIT_EVENT_BUFFER,
 };
 
 // ============================================================================

@@ -4,6 +4,7 @@ import {
   successResponse,
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
+import { LIMIT_TRACES } from '@automatosx/contracts';
 
 /**
  * Trace list tool definition
@@ -18,7 +19,7 @@ export const traceListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of traces to return',
-        default: 10,
+        default: LIMIT_TRACES,
       },
       status: {
         type: 'string',

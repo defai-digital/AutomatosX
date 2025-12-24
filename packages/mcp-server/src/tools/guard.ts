@@ -10,6 +10,7 @@ import {
   createSessionStore,
   type SessionStore,
 } from '@automatosx/session-domain';
+import { LIMIT_GUARD_POLICIES } from '@automatosx/contracts';
 
 // Lazy-initialized session store for guard operations
 let sessionStore: SessionStore | null = null;
@@ -94,7 +95,7 @@ export const guardListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of policies to return',
-        default: 20,
+        default: LIMIT_GUARD_POLICIES,
       },
     },
   },

@@ -28,9 +28,16 @@ Commands:
   call <provider>       Call an AI provider directly
   agent <subcommand>    Manage agents (list, get, register, run, remove)
   session <subcommand>  Manage sessions (list, get, create, join, complete)
-  bugfix <subcommand>   Bug detection and fixing (scan, run, list)
-  refactor <subcommand> Code refactoring (scan, apply, list)
+  review <subcommand>   AI-powered code review (analyze, list)
+  scaffold <subcommand> Scaffold contract-first components
+  discuss <topic>       Multi-model discussion and consensus
+  ability <subcommand>  Manage abilities (list, inject)
   mcp <subcommand>      MCP server for AI coding assistants
+  status                Show current session status
+  resume                Resume a previous session
+  history               View execution history
+  cleanup               Clean up old sessions and data
+  iterate               Iterative development loop
   help                  Show this help message
   version               Show version information
 
@@ -57,15 +64,44 @@ Session Subcommands:
   session complete <id> Complete a session
   session fail <id>     Fail a session
 
-Bugfix Subcommands:
-  bugfix scan <paths>   Scan code for potential bugs
-  bugfix run --bug-id   Attempt to fix a detected bug
-  bugfix list           List detected bugs from previous scans
+Review Subcommands:
+  review analyze <paths>  AI-powered code review with focus modes
+  review list             List past code reviews
 
-Refactor Subcommands:
-  refactor scan <paths> Scan code for refactoring opportunities
-  refactor apply --id   Apply a detected refactoring
-  refactor list         List detected opportunities
+  Focus modes: --focus security|architecture|performance|maintainability|correctness|all
+
+Scaffold Subcommands:
+  scaffold project <name>   Generate new project from template
+  scaffold contract <name>  Generate Zod schema and invariants
+  scaffold domain <name>    Generate complete domain package
+  scaffold guard <id>       Generate guard policy
+
+  Scaffold Options:
+    -t, --template <type>     Template: monorepo or standalone (default: standalone)
+    -m, --domain <name>       Primary domain name (required for project)
+    -d, --description <desc>  Domain description
+    -o, --output <path>       Output directory
+    -s, --scope <scope>       Package scope (default: @myorg)
+    -r, --radius <n>          Change radius limit (default: 3)
+    --no-tests                Skip test scaffolds
+    --no-guard                Skip guard policy
+    --dry-run                 Preview without writing files
+
+Discuss Options:
+  discuss <topic>           Start multi-model discussion
+  discuss quick <topic>     Quick 2-3 model synthesis
+
+  Discuss Flags:
+    --providers <list>      Comma-separated providers (default: claude,glm,qwen,gemini)
+    --pattern <type>        Pattern: synthesis, voting, debate, critique, round-robin
+    --rounds <n>            Number of discussion rounds (default: 2)
+    --consensus <method>    Method: synthesis, voting, moderator, unanimous, majority
+    --context <text>        Additional context for discussion
+    --verbose, -v           Show detailed progress
+
+Ability Subcommands:
+  ability list              List available abilities
+  ability inject            Inject abilities into context
 
 MCP Subcommands:
   mcp server            Start MCP server (stdio transport)
@@ -104,10 +140,19 @@ Examples:
   ax agent run code-reviewer --input '{"query": "Review this code"}'
   ax session create --input '{"initiator": "agent-1", "task": "Review code"}'
   ax session get <session-id>
-  ax bugfix scan src/ --min-severity medium
-  ax bugfix run --bug-id bug-123 --apply
-  ax refactor scan src/ --type extract-function
-  ax refactor apply --opportunity-id opp-456 --apply --run-tests
+  ax review analyze src/ --focus security
+  ax review analyze src/ --focus maintainability
+  ax review list --limit 10
+  ax scaffold project my-app -m order -t standalone
+  ax scaffold project ecommerce -m order -t monorepo -s @myorg
+  ax scaffold contract payment -d "Payment processing domain"
+  ax scaffold domain payment --no-tests
+  ax scaffold guard payment-dev -r 3
+  ax scaffold project my-app -m order --dry-run
+  ax discuss "What is the best approach for microservices?"
+  ax discuss --pattern debate "Monolith vs microservices for startups"
+  ax discuss quick "Best testing strategy for APIs"
+  ax ability list
 `.trim();
 
 /**

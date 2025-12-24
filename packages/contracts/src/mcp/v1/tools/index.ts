@@ -24,5 +24,5 @@ export * from './trace.js';
 // Workflow tools
 export * from './workflow.js';
 
-// Tool list/filter schemas (bugfix, refactor, design, orchestration, telemetry, ability)
+// Tool list/filter schemas (design, orchestration, telemetry, ability)
 export * from './tool-list-schemas.js';

@@ -17,8 +17,7 @@ export const MCPRequestLimitsSchema = z.object({
   toolArrayLimits: z
     .record(z.string(), z.number().int().positive())
     .default({
-      bugfix_scan: 100,
-      refactor_scan: 100,
+      review_analyze: 100,
       memory_bulk_delete: 1000,
       ability_inject: 20,
     }),
@@ -78,8 +77,7 @@ export const DEFAULT_REQUEST_LIMITS: MCPRequestLimits = {
   maxObjectDepth: 10,
   maxRequestBytes: 10_485_760, // 10MB
   toolArrayLimits: {
-    bugfix_scan: 100,
-    refactor_scan: 100,
+    review_analyze: 100,
     memory_bulk_delete: 1000,
     ability_inject: 20,
   },
@@ -93,8 +91,7 @@ export const DEFAULT_REQUEST_LIMITS: MCPRequestLimits = {
  * Maps tool names to array field paths that need size validation
  */
 export const TOOL_ARRAY_FIELDS: Record<string, string[]> = {
-  bugfix_scan: ['paths', 'categories', 'excludePatterns'],
-  refactor_scan: ['paths', 'types', 'excludePatterns'],
+  review_analyze: ['paths', 'excludePatterns'],
   memory_bulk_delete: ['keys'],
   ability_inject: ['coreAbilities', 'tags'],
   guard_check: ['changedPaths'],

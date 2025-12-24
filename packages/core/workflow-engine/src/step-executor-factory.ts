@@ -61,6 +61,102 @@ export interface ToolExecutorLike {
 }
 
 /**
+ * Discussion executor interface (minimal for workflow-engine)
+ * Matches the interface from discussion-domain but doesn't require importing it
+ */
+export interface DiscussionExecutorLike {
+  execute(
+    config: DiscussStepConfigLike,
+    options?: {
+      abortSignal?: AbortSignal;
+      onProgress?: (event: DiscussionProgressEventLike) => void;
+    }
+  ): Promise<DiscussionResultLike>;
+}
+
+/**
+ * Minimal DiscussStepConfig for workflow-engine (avoids importing full schema)
+ */
+export interface DiscussStepConfigLike {
+  pattern: string;
+  rounds: number;
+  providers: string[];
+  prompt: string;
+  providerPrompts?: Record<string, string> | undefined;
+  roles?: Record<string, string> | undefined;
+  consensus: {
+    method: string;
+    threshold?: number | undefined;
+    synthesizer?: string | undefined;
+    includeDissent?: boolean | undefined;
+  };
+  providerTimeout: number;
+  continueOnProviderFailure: boolean;
+  minProviders: number;
+  temperature: number;
+  context?: string | undefined;
+  verbose: boolean;
+}
+
+/**
+ * Discussion progress event
+ */
+export interface DiscussionProgressEventLike {
+  type: string;
+  round?: number | undefined;
+  provider?: string | undefined;
+  message?: string | undefined;
+  timestamp: string;
+}
+
+/**
+ * Discussion result
+ */
+export interface DiscussionResultLike {
+  success: boolean;
+  pattern: string;
+  topic: string;
+  participatingProviders: string[];
+  failedProviders: string[];
+  rounds: {
+    roundNumber: number;
+    responses: {
+      provider: string;
+      content: string;
+      round: number;
+      role?: string | undefined;
+      confidence?: number | undefined;
+      vote?: string | undefined;
+      timestamp: string;
+      durationMs: number;
+      tokenCount?: number | undefined;
+      truncated?: boolean | undefined;
+      error?: string | undefined;
+    }[];
+    durationMs: number;
+  }[];
+  synthesis: string;
+  consensus: {
+    method: string;
+    winner?: string | undefined;
+    votes?: Record<string, number> | undefined;
+    confidence?: number | undefined;
+    dissent?: string[] | undefined;
+  };
+  totalDurationMs: number;
+  metadata: {
+    startedAt: string;
+    completedAt: string;
+    traceId?: string | undefined;
+    sessionId?: string | undefined;
+  };
+  error?: {
+    code: string;
+    message: string;
+  } | undefined;
+}
+
+/**
  * Configuration for creating a real step executor
  */
 export interface RealStepExecutorConfig {
@@ -73,6 +169,11 @@ export interface RealStepExecutorConfig {
    * Tool executor for tool calls (optional)
    */
   toolExecutor?: ToolExecutorLike;
+
+  /**
+   * Discussion executor for multi-model discussions (optional)
+   */
+  discussionExecutor?: DiscussionExecutorLike;
 
   /**
    * Default provider for prompts
@@ -132,7 +233,7 @@ interface LoopStepConfig {
  * @returns A step executor function
  */
 export function createRealStepExecutor(config: RealStepExecutorConfig): StepExecutor {
-  const { promptExecutor, toolExecutor, defaultProvider, defaultModel } = config;
+  const { promptExecutor, toolExecutor, discussionExecutor, defaultProvider, defaultModel } = config;
 
   return async (step: WorkflowStep, context: StepContext): Promise<StepResult> => {
     const startTime = Date.now();
@@ -153,6 +254,23 @@ export function createRealStepExecutor(config: RealStepExecutorConfig): StepExec
 
         case 'parallel':
           return executeParallelStep(step, context, startTime);
+
+        case 'discuss':
+          return executeDiscussStep(step, context, discussionExecutor, startTime);
+
+        case 'delegate':
+          // Delegate steps require agent-domain executor
+          return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+              code: 'DELEGATE_NOT_IMPLEMENTED',
+              message: 'Delegate steps require an agent-domain executor (not yet implemented)',
+              retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+          };
 
         default:
           return {
@@ -444,7 +562,7 @@ function evaluateCondition(condition: string, context: StepContext): boolean {
   if (condition === 'false') return false;
 
   // Check for variable reference ${...}
-  const varMatch = condition.match(/^\$\{(.+)\}$/);
+  const varMatch = /^\$\{(.+)\}$/.exec(condition);
   if (varMatch) {
     const path = varMatch[1];
     const value = getNestedValue(context, path ?? '');
@@ -469,4 +587,165 @@ function getNestedValue(context: StepContext, path: string): unknown {
   }
 
   return current;
+}
+
+/**
+ * Execute a discuss step using the discussion executor
+ *
+ * Supports multi-model discussions with various patterns (synthesis, debate, critique, voting)
+ * and consensus mechanisms.
+ */
+async function executeDiscussStep(
+  step: WorkflowStep,
+  context: StepContext,
+  discussionExecutor: DiscussionExecutorLike | undefined,
+  startTime: number
+): Promise<StepResult> {
+  // Check if discussion executor is available
+  if (discussionExecutor === undefined) {
+    return {
+      stepId: step.stepId,
+      success: false,
+      error: {
+        code: 'DISCUSSION_EXECUTOR_NOT_CONFIGURED',
+        message: 'Discussion steps require a DiscussionExecutor. Configure it in RealStepExecutorConfig.',
+        retryable: false,
+      },
+      durationMs: Date.now() - startTime,
+      retryCount: 0,
+    };
+  }
+
+  // Extract and validate config
+  const rawConfig = step.config;
+
+  if (!rawConfig) {
+    return {
+      stepId: step.stepId,
+      success: false,
+      error: {
+        code: 'DISCUSS_CONFIG_MISSING',
+        message: `Discuss step "${step.stepId}" requires configuration`,
+        retryable: false,
+      },
+      durationMs: Date.now() - startTime,
+      retryCount: 0,
+    };
+  }
+
+  // Check required fields
+  if (!rawConfig.prompt || typeof rawConfig.prompt !== 'string') {
+    return {
+      stepId: step.stepId,
+      success: false,
+      error: {
+        code: 'DISCUSS_PROMPT_MISSING',
+        message: `Discuss step "${step.stepId}" requires a prompt`,
+        retryable: false,
+      },
+      durationMs: Date.now() - startTime,
+      retryCount: 0,
+    };
+  }
+
+  if (!rawConfig.providers || !Array.isArray(rawConfig.providers) || rawConfig.providers.length < 2) {
+    return {
+      stepId: step.stepId,
+      success: false,
+      error: {
+        code: 'DISCUSS_PROVIDERS_INVALID',
+        message: `Discuss step "${step.stepId}" requires at least 2 providers`,
+        retryable: false,
+      },
+      durationMs: Date.now() - startTime,
+      retryCount: 0,
+    };
+  }
+
+  // Build the discussion config with defaults
+  const discussConfig: DiscussStepConfigLike = {
+    pattern: (rawConfig.pattern as string) ?? 'synthesis',
+    rounds: (rawConfig.rounds as number) ?? 2,
+    providers: rawConfig.providers as string[],
+    prompt: rawConfig.prompt,
+    providerPrompts: rawConfig.providerPrompts as Record<string, string> | undefined,
+    roles: rawConfig.roles as Record<string, string> | undefined,
+    consensus: (rawConfig.consensus as DiscussStepConfigLike['consensus']) ?? {
+      method: 'synthesis',
+      synthesizer: 'claude',
+    },
+    providerTimeout: (rawConfig.providerTimeout as number) ?? 120000,
+    continueOnProviderFailure: (rawConfig.continueOnProviderFailure as boolean) ?? true,
+    minProviders: (rawConfig.minProviders as number) ?? 2,
+    temperature: (rawConfig.temperature as number) ?? 0.7,
+    context: rawConfig.context as string | undefined,
+    verbose: (rawConfig.verbose as boolean) ?? false,
+  };
+
+  // Interpolate context from previous step output if needed
+  if (context.input && typeof context.input === 'object') {
+    const inputObj = context.input as Record<string, unknown>;
+    if (inputObj.content && typeof inputObj.content === 'string') {
+      // Append previous step content as context
+      discussConfig.context = discussConfig.context
+        ? `${discussConfig.context}\n\nPrevious step output:\n${inputObj.content}`
+        : `Previous step output:\n${inputObj.content}`;
+    }
+  }
+
+  try {
+    // Execute the discussion
+    const result = await discussionExecutor.execute(discussConfig);
+
+    if (result.success) {
+      return {
+        stepId: step.stepId,
+        success: true,
+        output: {
+          type: 'discuss',
+          pattern: result.pattern,
+          synthesis: result.synthesis,
+          participatingProviders: result.participatingProviders,
+          failedProviders: result.failedProviders,
+          rounds: result.rounds,
+          consensus: result.consensus,
+          totalDurationMs: result.totalDurationMs,
+          metadata: result.metadata,
+        },
+        durationMs: Date.now() - startTime,
+        retryCount: 0,
+      };
+    } else {
+      return {
+        stepId: step.stepId,
+        success: false,
+        output: {
+          type: 'discuss',
+          pattern: result.pattern,
+          participatingProviders: result.participatingProviders,
+          failedProviders: result.failedProviders,
+          rounds: result.rounds,
+        },
+        error: {
+          code: result.error?.code ?? 'DISCUSSION_FAILED',
+          message: result.error?.message ?? 'Discussion execution failed',
+          retryable: true,
+        },
+        durationMs: Date.now() - startTime,
+        retryCount: 0,
+      };
+    }
+  } catch (error) {
+    return {
+      stepId: step.stepId,
+      success: false,
+      error: {
+        code: 'DISCUSSION_EXECUTION_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown discussion error',
+        retryable: true,
+      },
+      durationMs: Date.now() - startTime,
+      retryCount: 0,
+    };
+  }
 }

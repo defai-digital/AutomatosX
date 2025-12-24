@@ -2,7 +2,31 @@
   "name": "@automatosx/cli",
   "version": "13.0.0",
   "type": "module",
-  "description": "Command-line interface for AutomatosX workflow automation",
+  "description": "Command-line interface for AutomatosX - Contract-first AI orchestration platform with multi-provider routing",
+  "license": "Apache-2.0",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "llm",
+    "orchestration",
+    "claude",
+    "gemini",
+    "codex",
+    "mcp",
+    "model-context-protocol",
+    "automation",
+    "workflow"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -15,28 +39,39 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/workflow-engine": "workspace:*",
-    "@automatosx/routing-engine": "workspace:*",
-    "@automatosx/memory-domain": "workspace:*",
-    "@automatosx/trace-domain": "workspace:*",
-    "@automatosx/agent-domain": "workspace:*",
     "@automatosx/ability-domain": "workspace:*",
-    "@automatosx/session-domain": "workspace:*",
-    "@automatosx/config-domain": "workspace:*",
-    "@automatosx/context-domain": "workspace:*",
-    "@automatosx/iterate-domain": "workspace:*",
-    "@automatosx/guard": "workspace:*",
-    "@automatosx/provider-adapters": "workspace:*",
+    "@automatosx/agent-domain": "workspace:*",
     "@automatosx/agent-execution": "workspace:*",
     "@automatosx/analysis-domain": "workspace:*",
+    "@automatosx/config-domain": "workspace:*",
+    "@automatosx/context-domain": "workspace:*",
+    "@automatosx/contracts": "workspace:*",
     "@automatosx/cross-cutting": "workspace:*",
+    "@automatosx/discussion-domain": "workspace:*",
+    "@automatosx/guard": "workspace:*",
+    "@automatosx/iterate-domain": "workspace:*",
+    "@automatosx/mcp-server": "workspace:*",
+    "@automatosx/memory-domain": "workspace:*",
+    "@automatosx/provider-adapters": "workspace:*",
+    "@automatosx/review-domain": "workspace:*",
+    "@automatosx/routing-engine": "workspace:*",
+    "@automatosx/session-domain": "workspace:*",
     "@automatosx/sqlite-adapter": "workspace:*",
-    "@automatosx/mcp-server": "workspace:*"
+    "@automatosx/trace-domain": "workspace:*",
+    "@automatosx/workflow-engine": "workspace:*"
   }
 }

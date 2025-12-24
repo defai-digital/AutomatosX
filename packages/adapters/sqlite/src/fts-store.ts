@@ -379,7 +379,7 @@ export class SQLiteFTSStore {
     // Escape: - at start, special chars
 
     // If query looks like natural language, wrap in quotes for phrase search
-    if (!query.includes('"') && !query.includes('*') && !query.match(/\b(AND|OR|NOT)\b/i)) {
+    if (!query.includes('"') && !query.includes('*') && !(/\b(AND|OR|NOT)\b/i.exec(query))) {
       // Simple query - treat as phrase
       return `"${query.replace(/"/g, '""')}"`;
     }

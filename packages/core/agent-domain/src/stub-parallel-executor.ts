@@ -12,6 +12,7 @@ import {
   type ParallelExecutionConfig,
   createDefaultParallelExecutionConfig,
   type AgentWorkflowStep,
+  TIMEOUT_ORCHESTRATION_EXECUTION,
 } from '@automatosx/contracts';
 import type {
   ParallelExecutorPort,
@@ -89,15 +90,23 @@ function createStubParallelExecutor(
           }
 
           const stepStart = Date.now();
+          // Create cancellable timeout to prevent timer leaks
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const stepTimeoutMs = cfg.groupTimeoutMs ?? TIMEOUT_ORCHESTRATION_EXECUTION;
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => { reject(new Error('Step timed out')); }, stepTimeoutMs);
+          });
+
           try {
-            // Use group timeout or default 5 minutes for step timeout
-            const stepTimeoutMs = cfg.groupTimeoutMs ?? 300000;
             const output = await Promise.race([
               executor(step, outputs),
-              new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Step timed out')), stepTimeoutMs)
-              ),
+              timeoutPromise,
             ]);
+
+            // Clean up timeout
+            if (timeoutId !== undefined) {
+              clearTimeout(timeoutId);
+            }
 
             outputs[step.stepId] = output;
             stepResults.push({
@@ -107,6 +116,10 @@ function createStubParallelExecutor(
               durationMs: Date.now() - stepStart,
             });
           } catch (error) {
+            // Clean up timeout on error too
+            if (timeoutId !== undefined) {
+              clearTimeout(timeoutId);
+            }
             const result: ParallelStepResult = {
               stepId: step.stepId,
               success: false,
@@ -139,7 +152,12 @@ function createStubParallelExecutor(
       const completed = new Set<string>();
       const remaining = [...steps];
 
-      while (remaining.length > 0) {
+      // Guard against infinite loops with max iteration limit
+      const maxIterations = steps.length + 1;
+      let iterations = 0;
+
+      while (remaining.length > 0 && iterations < maxIterations) {
+        iterations++;
         // Find steps with all dependencies satisfied
         const ready: AgentWorkflowStep[] = [];
         const stillWaiting: AgentWorkflowStep[] = [];
@@ -155,6 +173,11 @@ function createStubParallelExecutor(
 
         if (ready.length === 0 && stillWaiting.length > 0) {
           // Circular dependency or missing dependency - execute remaining steps
+          const unresolvableSteps = stillWaiting.map((s) => s.stepId).join(', ');
+          console.warn(
+            `[buildExecutionLayers] Circular or unresolvable dependencies detected. ` +
+            `Unresolvable steps: ${unresolvableSteps}`
+          );
           layers.push(stillWaiting);
           break;
         }
@@ -168,6 +191,13 @@ function createStubParallelExecutor(
 
         remaining.length = 0;
         remaining.push(...stillWaiting);
+      }
+
+      if (iterations >= maxIterations) {
+        console.error(
+          `[buildExecutionLayers] Max iterations (${maxIterations}) reached. ` +
+          `This indicates a bug in the algorithm or malformed input.`
+        );
       }
 
       return layers;

@@ -23,7 +23,7 @@ export class StubPromptExecutor implements PromptExecutor {
   private readonly defaultProvider: string;
   private hasWarnedOnce = false;
 
-  constructor(defaultProvider: string = 'claude') {
+  constructor(defaultProvider = 'claude') {
     this.defaultProvider = defaultProvider;
   }
 
@@ -106,7 +106,7 @@ export interface ProviderLike {
   complete(request: {
     requestId: string;
     model: string;
-    messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    messages: { role: 'user' | 'assistant' | 'system'; content: string }[];
     systemPrompt?: string;
     maxTokens?: number;
     temperature?: number;
@@ -189,7 +189,7 @@ export class ProviderPromptExecutor implements PromptExecutor {
       const completionRequest: {
         requestId: string;
         model: string;
-        messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+        messages: { role: 'user' | 'assistant' | 'system'; content: string }[];
         systemPrompt?: string;
         maxTokens?: number;
         temperature?: number;
@@ -282,7 +282,7 @@ export class ProviderPromptExecutor implements PromptExecutor {
  * Creates a stub prompt executor for testing
  */
 export function createStubPromptExecutor(
-  defaultProvider: string = 'claude'
+  defaultProvider = 'claude'
 ): PromptExecutor {
   return new StubPromptExecutor(defaultProvider);
 }

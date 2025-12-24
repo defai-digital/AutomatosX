@@ -24,6 +24,13 @@ export {
   handleMemoryStore,
   handleMemoryRetrieve,
   handleMemorySearch,
+  // Discuss tools
+  discussTool,
+  discussQuickTool,
+  handleDiscuss,
+  handleDiscussQuick,
+  DISCUSS_TOOLS,
+  DISCUSS_HANDLERS,
 } from './tools/index.js';
 
 // Resource exports

@@ -6,6 +6,7 @@ import {
   type Session,
   type SessionFilter,
 } from '@automatosx/session-domain';
+import { LIMIT_SESSIONS } from '@automatosx/contracts';
 
 // Create shared store and manager instances
 const store = createSessionStore();
@@ -158,7 +159,7 @@ export const sessionListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of sessions to return',
-        default: 20,
+        default: LIMIT_SESSIONS,
       },
     },
   },

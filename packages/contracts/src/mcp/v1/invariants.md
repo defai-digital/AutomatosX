@@ -69,6 +69,44 @@ Each invariant must have corresponding tests:
 4. `INV-MCP-004`: Test idempotency behavior matches declaration (Phase 2+)
 5. `INV-MCP-005`: Test that inputs are not mutated (Phase 2+)
 
+### INV-MCP-006: Rate Limiting
+
+**Statement:** Tools MUST be subject to configurable rate limits to prevent resource exhaustion.
+
+**Rationale:** Runaway agent loops or excessive tool calls can exhaust system resources. Rate limiting provides a safety mechanism.
+
+**Enforcement:**
+- Each tool is assigned a category (execution, mutation, read)
+- Execution tools have strictest limits (30 rpm, burst 5)
+- Mutation tools have moderate limits (100 rpm, burst 20)
+- Read tools have highest limits (200 rpm, burst 50)
+- Exceeded limits return RATE_LIMITED error with retryAfter
+- Limits are configurable via config_set
+
+### INV-MCP-007: Rate Limit Transparency
+
+**Statement:** Rate limit status MUST be transparent to callers.
+
+**Rationale:** Callers need to know when they are being rate limited and how long to wait.
+
+**Enforcement:**
+- RATE_LIMITED errors include retryAfter in seconds
+- Response headers or error details include remaining quota
+- Limits are discoverable via configuration
+
+## Testing Requirements
+
+Each invariant must have corresponding tests:
+
+1. `INV-MCP-001`: Test schema validation for inputs and outputs
+2. `INV-MCP-002`: Test that tools only perform declared operations (Phase 2+)
+3. `INV-MCP-003`: Test that all errors use standard or declared codes
+4. `INV-MCP-004`: Test idempotency behavior matches declaration (Phase 2+)
+5. `INV-MCP-005`: Test that inputs are not mutated (Phase 2+)
+6. `INV-MCP-006`: Test rate limits are enforced per tool category
+7. `INV-MCP-007`: Test RATE_LIMITED errors include retryAfter
+
 ## Version History
 
 - V1 (2024-12-14): Initial contract definition
+- V1.1 (2024-12-17): Added rate limiting invariants (INV-MCP-006, INV-MCP-007)

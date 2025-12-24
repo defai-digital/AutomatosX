@@ -1,4 +1,5 @@
 import type { MCPTool, ToolHandler } from '../types.js';
+import { LIMIT_DEFAULT, LIMIT_MEMORY } from '@automatosx/contracts';
 
 /**
  * Memory store tool definition
@@ -74,7 +75,7 @@ export const memorySearchTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of results',
-        default: 10,
+        default: LIMIT_DEFAULT,
       },
     },
     required: ['query'],
@@ -99,7 +100,7 @@ export const memoryListTool: MCPTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of keys to return',
-        default: 100,
+        default: LIMIT_MEMORY,
       },
       prefix: {
         type: 'string',
@@ -530,12 +531,12 @@ export const handleMemoryExport: ToolHandler = (args) => {
   const prefix = args.prefix as string | undefined;
   const includeMetadata = (args.includeMetadata as boolean) ?? true;
 
-  const exports: Array<{
+  const exports: {
     key: string;
     value: unknown;
     namespace: string;
     storedAt?: string;
-  }> = [];
+  }[] = [];
 
   for (const [fullKey, stored] of memoryStore.entries()) {
     const storedData = stored as { value: unknown; storedAt: string; namespace: string };
@@ -586,7 +587,7 @@ export const handleMemoryExport: ToolHandler = (args) => {
  * Handler for memory_import tool
  */
 export const handleMemoryImport: ToolHandler = (args) => {
-  const data = args.data as Array<{ key: string; value: unknown; namespace?: string }>;
+  const data = args.data as { key: string; value: unknown; namespace?: string }[];
   const overwrite = (args.overwrite as boolean) ?? false;
   const defaultNamespace = (args.namespace as string) ?? 'default';
 
@@ -750,7 +751,7 @@ export const handleMemoryClear: ToolHandler = (args) => {
   const namespace = args.namespace as string;
   const confirm = args.confirm as boolean;
 
-  if (confirm !== true) {
+  if (!confirm) {
     return Promise.resolve({
       content: [
         {

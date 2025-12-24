@@ -58,23 +58,35 @@ export function setSingletons(singletons: {
 
 /**
  * Ensure initialization is complete
+ * Uses double-check locking pattern to prevent race conditions
  */
 async function ensureInitialized(): Promise<void> {
+  // Fast path: already initialized
   if (_initialized) return;
 
-  if (_initPromise) {
+  // Check if initialization is already in progress
+  if (_initPromise !== null) {
     await _initPromise;
     return;
   }
 
-  if (!_initializeFn) {
+  if (_initializeFn === null) {
     throw new Error(
       'Registry not configured. Import shared-registry.ts to configure initialization.'
     );
   }
 
+  // Create promise before awaiting to prevent race condition
+  // Any concurrent calls will see _initPromise and wait on it
   _initPromise = _initializeFn();
-  await _initPromise;
+
+  try {
+    await _initPromise;
+  } catch (error) {
+    // Reset promise on failure so retry is possible
+    _initPromise = null;
+    throw error;
+  }
 }
 
 /**

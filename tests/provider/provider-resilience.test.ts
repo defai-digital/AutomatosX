@@ -9,8 +9,8 @@ import {
   type HealthMonitor,
 } from '@automatosx/provider-domain';
 import {
-  createDefaultCircuitBreakerConfig,
-  createDefaultRateLimitConfig,
+  createDefaultProviderCircuitBreakerConfig as createDefaultCircuitBreakerConfig,
+  createDefaultProviderRateLimitConfig as createDefaultRateLimitConfig,
   createDefaultHealthCheckConfig,
 } from '@automatosx/contracts';
 

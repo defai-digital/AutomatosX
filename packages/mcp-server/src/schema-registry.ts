@@ -42,6 +42,10 @@ import {
   AgentRegisterOutputSchema,
   AgentRemoveInputSchema,
   AgentRemoveOutputSchema,
+  AgentRecommendRequestSchema,
+  AgentRecommendResultSchema,
+  AgentCapabilitiesRequestSchema,
+  AgentCapabilitiesResultSchema,
   // Session tool schemas
   SessionCreateInputSchema,
   SessionCreateOutputSchema,
@@ -85,16 +89,6 @@ import {
   WorkflowListOutputSchema,
   WorkflowDescribeInputSchema,
   WorkflowDescribeOutputSchema,
-  // Bugfix domain schemas
-  BugScanRequestSchema,
-  BugScanResultSchema,
-  BugFixRequestSchema,
-  BugFixResultSchema,
-  // Refactor domain schemas
-  RefactorScanRequestSchema,
-  RefactorScanResultSchema,
-  RefactorApplyRequestSchema,
-  RefactorApplyResultSchema,
   // Design domain schemas
   ApiDesignRequestSchema,
   ApiDesignResultSchema,
@@ -122,8 +116,6 @@ import {
   TelemetrySummaryRequestSchema,
   TelemetrySummaryResultSchema,
   // MCP tool list/filter schemas (INV-MCP-VAL-002: defined in contracts)
-  BugfixListInputSchema,
-  RefactorListInputSchema,
   DesignListInputSchema,
   TaskStatusInputSchema,
   QueueListInputSchema,
@@ -140,6 +132,26 @@ import {
   AbilityRegisterOutputSchema,
   AbilityRemoveInputSchema,
   AbilityRemoveOutputSchema,
+  // File System tool schemas
+  FileWriteInputSchema,
+  FileWriteOutputSchema,
+  DirectoryCreateInputSchema,
+  DirectoryCreateOutputSchema,
+  FileExistsInputSchema,
+  FileExistsOutputSchema,
+  // Scaffold tool schemas
+  ScaffoldContractInputSchema,
+  ScaffoldContractOutputSchema,
+  ScaffoldDomainInputSchema,
+  ScaffoldDomainOutputSchema,
+  ScaffoldGuardInputSchema,
+  ScaffoldGuardOutputSchema,
+  // Review tool schemas
+  ReviewRequestSchema,
+  ReviewResultSchema,
+  // Discussion tool schemas
+  DiscussionRequestSchema,
+  DiscussionResultSchema,
 } from '@automatosx/contracts';
 
 import type { InputSchemaRegistry, OutputSchemaRegistry } from './validation.js';
@@ -161,12 +173,14 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   memory_bulk_delete: MemoryBulkDeleteInputSchema,
   memory_clear: MemoryClearInputSchema,
 
-  // Agent tools (5)
+  // Agent tools (7)
   agent_list: AgentListInputSchema,
   agent_run: AgentRunInputSchema,
   agent_get: AgentGetInputSchema,
   agent_register: AgentRegisterInputSchema,
   agent_remove: AgentRemoveInputSchema,
+  agent_recommend: AgentRecommendRequestSchema,
+  agent_capabilities: AgentCapabilitiesRequestSchema,
 
   // Session tools (7)
   session_create: SessionCreateInputSchema,
@@ -196,16 +210,6 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   workflow_run: WorkflowRunInputSchema,
   workflow_list: WorkflowListInputSchema,
   workflow_describe: WorkflowDescribeInputSchema,
-
-  // Bugfix tools (3)
-  bugfix_scan: BugScanRequestSchema,
-  bugfix_run: BugFixRequestSchema,
-  bugfix_list: BugfixListInputSchema,
-
-  // Refactor tools (3)
-  refactor_scan: RefactorScanRequestSchema,
-  refactor_apply: RefactorApplyRequestSchema,
-  refactor_list: RefactorListInputSchema,
 
   // Design tools (5)
   design_api: ApiDesignRequestSchema,
@@ -238,11 +242,30 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   ability_inject: AbilityInjectInputSchema,
   ability_register: AbilityRegisterInputSchema,
   ability_remove: AbilityRemoveInputSchema,
+
+  // File System tools (3)
+  file_write: FileWriteInputSchema,
+  directory_create: DirectoryCreateInputSchema,
+  file_exists: FileExistsInputSchema,
+
+  // Scaffold tools (3)
+  scaffold_contract: ScaffoldContractInputSchema,
+  scaffold_domain: ScaffoldDomainInputSchema,
+  scaffold_guard: ScaffoldGuardInputSchema,
+
+  // Review tools (2)
+  review_analyze: ReviewRequestSchema,
+  review_list: ReviewRequestSchema, // Uses same schema with empty paths
+
+  // Discussion tools (2)
+  discuss: DiscussionRequestSchema,
+  discuss_quick: DiscussionRequestSchema, // Uses same schema with defaults
 };
 
 /**
- * Output schema registry for all MCP tools (64 tools total)
+ * Output schema registry for all MCP tools (54 tools with output schemas)
  * INV-MCP-VAL-001: Output validation (logs but doesn't fail)
+ * Note: Not all tools have dedicated output schemas - some use inline formats
  */
 export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   // Memory tools (10)
@@ -257,12 +280,14 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   memory_bulk_delete: MemoryBulkDeleteOutputSchema,
   memory_clear: MemoryClearOutputSchema,
 
-  // Agent tools (5)
+  // Agent tools (7)
   agent_list: AgentListOutputSchema,
   agent_run: AgentRunOutputSchema,
   agent_get: AgentGetOutputSchema,
   agent_register: AgentRegisterOutputSchema,
   agent_remove: AgentRemoveOutputSchema,
+  agent_recommend: AgentRecommendResultSchema,
+  agent_capabilities: AgentCapabilitiesResultSchema,
 
   // Session tools (7)
   session_create: SessionCreateOutputSchema,
@@ -293,16 +318,6 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   workflow_list: WorkflowListOutputSchema,
   workflow_describe: WorkflowDescribeOutputSchema,
 
-  // Bugfix tools (3)
-  bugfix_scan: BugScanResultSchema,
-  bugfix_run: BugFixResultSchema,
-  // bugfix_list: No dedicated output schema (uses inline format)
-
-  // Refactor tools (3)
-  refactor_scan: RefactorScanResultSchema,
-  refactor_apply: RefactorApplyResultSchema,
-  // refactor_list: No dedicated output schema (uses inline format)
-
   // Design tools (5)
   design_api: ApiDesignResultSchema,
   design_component: ComponentDesignResultSchema,
@@ -332,4 +347,22 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   ability_inject: AbilityInjectOutputSchema,
   ability_register: AbilityRegisterOutputSchema,
   ability_remove: AbilityRemoveOutputSchema,
+
+  // File System tools (3)
+  file_write: FileWriteOutputSchema,
+  directory_create: DirectoryCreateOutputSchema,
+  file_exists: FileExistsOutputSchema,
+
+  // Scaffold tools (3)
+  scaffold_contract: ScaffoldContractOutputSchema,
+  scaffold_domain: ScaffoldDomainOutputSchema,
+  scaffold_guard: ScaffoldGuardOutputSchema,
+
+  // Review tools (2)
+  review_analyze: ReviewResultSchema,
+  review_list: ReviewResultSchema,
+
+  // Discussion tools (2)
+  discuss: DiscussionResultSchema,
+  discuss_quick: DiscussionResultSchema,
 };

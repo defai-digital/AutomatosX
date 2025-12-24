@@ -48,11 +48,8 @@ jobs:
           VERSION=${{ steps.version.outputs.VERSION }}
           echo "Setting version to $VERSION across all packages"
 
-          # Update root package.json
-          pnpm pkg set version="$VERSION"
-
-          # Update all workspace packages to the same version
-          pnpm -r exec pnpm pkg set version="$VERSION"
+          # Update all packages using our sync script (avoids npm warnings)
+          node scripts/sync-versions.js "$VERSION"
 
       - name: Publish all packages to npm
         run: |

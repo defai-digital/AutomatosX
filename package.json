@@ -23,7 +23,7 @@
     "validate": "pnpm typecheck && pnpm lint && pnpm deps:check && pnpm contracts:check && pnpm test",
     "prepublish": "node scripts/prepare-publish.js",
     "publish:all": "pnpm -r publish --access public --no-git-checks",
-    "version:sync": "pnpm -r exec pnpm pkg set version"
+    "version:sync": "node scripts/sync-versions.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",

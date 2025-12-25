@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/workflow-engine",
-  "version": "13.1.6",
+  "version": "13.1.12",
   "type": "module",
   "description": "Workflow execution engine - executes workflows following contract invariants",
   "license": "Apache-2.0",

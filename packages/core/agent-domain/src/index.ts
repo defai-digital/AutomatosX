@@ -20,6 +20,7 @@ export type {
   StepExecutorFn,
   StepExecutionContext,
   StepExecutionResult,
+  StepAgentProfile,
   AgentDomainConfig,
   // Prompt executor types
   PromptExecutor,

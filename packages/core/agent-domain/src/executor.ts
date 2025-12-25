@@ -32,6 +32,54 @@ import type {
 import { createStubPromptExecutor } from './prompt-executor.js';
 import { stubDelegationTrackerFactory } from './stub-delegation-tracker.js';
 
+// ============================================================================
+// Template Parsing Constants
+// ============================================================================
+
+/** String literals for template value parsing */
+const TEMPLATE_LITERALS = {
+  NULL: 'null',
+  TRUE: 'true',
+  FALSE: 'false',
+} as const;
+
+/** JSON boundary characters for detection */
+const JSON_MARKERS = {
+  ARRAY_START: '[',
+  ARRAY_END: ']',
+  OBJECT_START: '{',
+  OBJECT_END: '}',
+} as const;
+
+/** Quote characters for fallback value parsing */
+const QUOTE_CHARS = {
+  SINGLE: "'",
+  DOUBLE: '"',
+} as const;
+
+/** Template context variable prefixes */
+const TEMPLATE_CONTEXT = {
+  INPUT: 'input',
+  PREVIOUS_OUTPUTS: 'previousOutputs',
+  AGENT: 'agent',
+} as const;
+
+/** Step type identifiers */
+const STEP_TYPES = {
+  PROMPT: 'prompt',
+  TOOL: 'tool',
+  CONDITIONAL: 'conditional',
+  LOOP: 'loop',
+  PARALLEL: 'parallel',
+  DELEGATE: 'delegate',
+} as const;
+
+/** Default values for missing data */
+const DEFAULTS = {
+  UNKNOWN_TOOL: 'unknown',
+  INITIAL_RETRY_COUNT: 0,
+} as const;
+
 /**
  * Default agent executor implementation
  *
@@ -705,51 +753,56 @@ export class DefaultAgentExecutor implements AgentExecutor {
         path = fallbackMatch[1]!.trim();
         fallbackValue = fallbackMatch[2]!.trim();
         // Remove quotes from fallback value if present
-        if ((fallbackValue.startsWith("'") && fallbackValue.endsWith("'")) ||
-            (fallbackValue.startsWith('"') && fallbackValue.endsWith('"'))) {
+        const hasSingleQuotes = fallbackValue.startsWith(QUOTE_CHARS.SINGLE) &&
+                                fallbackValue.endsWith(QUOTE_CHARS.SINGLE);
+        const hasDoubleQuotes = fallbackValue.startsWith(QUOTE_CHARS.DOUBLE) &&
+                                fallbackValue.endsWith(QUOTE_CHARS.DOUBLE);
+        if (hasSingleQuotes || hasDoubleQuotes) {
           fallbackValue = fallbackValue.slice(1, -1);
         }
       } else {
         path = expr.trim();
       }
 
-      const parts = path.split('.');
-      let value: unknown;
+      const pathParts = path.split('.');
+      const contextKey = pathParts[0];
+      const nestedPath = pathParts.slice(1);
+      let resolvedValue: unknown;
 
-      switch (parts[0]) {
-        case 'input':
-          if (parts.length === 1) {
-            value = typeof context.input === 'string'
+      switch (contextKey) {
+        case TEMPLATE_CONTEXT.INPUT:
+          if (nestedPath.length === 0) {
+            resolvedValue = typeof context.input === 'string'
               ? context.input
               : JSON.stringify(context.input, null, 2);
           } else {
-            value = this.getNestedValue(context.input, parts.slice(1));
+            resolvedValue = this.getNestedValue(context.input, nestedPath);
           }
           break;
-        case 'previousOutputs':
-          if (parts.length > 1) {
-            value = this.getNestedValue(context.previousOutputs, parts.slice(1));
+        case TEMPLATE_CONTEXT.PREVIOUS_OUTPUTS:
+          if (nestedPath.length > 0) {
+            resolvedValue = this.getNestedValue(context.previousOutputs, nestedPath);
           }
           break;
-        case 'agent':
-          if (parts.length > 1) {
-            value = this.getNestedValue(agentProfile, parts.slice(1));
+        case TEMPLATE_CONTEXT.AGENT:
+          if (nestedPath.length > 0) {
+            resolvedValue = this.getNestedValue(agentProfile, nestedPath);
           }
           break;
         default:
           // Try to get from input directly
-          value = this.getNestedValue(context.input, parts);
+          resolvedValue = this.getNestedValue(context.input, pathParts);
       }
 
-      // Use fallback if value is undefined/null
-      if (value === undefined || value === null) {
+      // Use fallback if resolved value is undefined/null
+      if (resolvedValue === undefined || resolvedValue === null) {
         if (fallbackValue !== undefined) {
           return fallbackValue;
         }
         return match; // Keep original if not found and no fallback
       }
 
-      return typeof value === 'string' ? value : JSON.stringify(value);
+      return typeof resolvedValue === 'string' ? resolvedValue : JSON.stringify(resolvedValue);
     });
   }
 
@@ -782,40 +835,44 @@ export class DefaultAgentExecutor implements AgentExecutor {
    * Handles: JSON arrays/objects, null, booleans, numbers (strict parsing), strings
    * Strict number parsing avoids edge cases like hex (0x10), whitespace, Infinity
    */
-  private parseTemplateValue(substituted: string, originalTemplate: string): unknown {
+  private parseTemplateValue(substitutedValue: string, originalTemplate: string): unknown {
     // Template wasn't substituted (variable not found) - return undefined to skip
-    if (substituted === originalTemplate) {
+    if (substitutedValue === originalTemplate) {
       return undefined;
     }
 
     // Handle JSON arrays and objects
-    if ((substituted.startsWith('[') && substituted.endsWith(']')) ||
-        (substituted.startsWith('{') && substituted.endsWith('}'))) {
+    const isJsonArray = substitutedValue.startsWith(JSON_MARKERS.ARRAY_START) &&
+                        substitutedValue.endsWith(JSON_MARKERS.ARRAY_END);
+    const isJsonObject = substitutedValue.startsWith(JSON_MARKERS.OBJECT_START) &&
+                         substitutedValue.endsWith(JSON_MARKERS.OBJECT_END);
+
+    if (isJsonArray || isJsonObject) {
       try {
-        return JSON.parse(substituted);
+        return JSON.parse(substitutedValue);
       } catch {
         // Not valid JSON, fall through to string
-        return substituted;
+        return substitutedValue;
       }
     }
 
     // Handle special literals
-    if (substituted === 'null') return null;
-    if (substituted === 'true') return true;
-    if (substituted === 'false') return false;
+    if (substitutedValue === TEMPLATE_LITERALS.NULL) return null;
+    if (substitutedValue === TEMPLATE_LITERALS.TRUE) return true;
+    if (substitutedValue === TEMPLATE_LITERALS.FALSE) return false;
 
     // Strict number parsing: only match valid decimal numbers
     // Avoids: hex (0x10), whitespace ('  '), Infinity, NaN, scientific notation edge cases
-    if (DefaultAgentExecutor.NUMERIC_REGEX.test(substituted)) {
-      const num = Number(substituted);
+    if (DefaultAgentExecutor.NUMERIC_REGEX.test(substitutedValue)) {
+      const parsedNumber = Number(substitutedValue);
       // Double-check: avoid edge cases where Number() produces unexpected results
-      if (Number.isFinite(num)) {
-        return num;
+      if (Number.isFinite(parsedNumber)) {
+        return parsedNumber;
       }
     }
 
     // Default to string
-    return substituted;
+    return substitutedValue;
   }
 
   /**
@@ -824,7 +881,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
   private registerDefaultExecutors(): void {
     // Prompt step executor - executes real LLM calls via promptExecutor
     // INV-AGT-ABL-001: Abilities injected before prompt execution
-    this.stepExecutors.set('prompt', async (step, context) => {
+    this.stepExecutors.set(STEP_TYPES.PROMPT, async (step, context) => {
       const startTime = Date.now();
       const config = (step.config ?? {}) as PromptStepConfig;
 
@@ -938,7 +995,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
     });
 
     // Tool step executor (INV-TOOL-001, INV-TOOL-002, INV-TOOL-003)
-    this.stepExecutors.set('tool', async (step, context) => {
+    this.stepExecutors.set(STEP_TYPES.TOOL, async (step, context) => {
       const startTime = Date.now();
       const config = step.config as {
         toolName?: string;
@@ -956,28 +1013,33 @@ export class DefaultAgentExecutor implements AgentExecutor {
       };
 
       // Process tool input: inputMapping with template substitution, or direct toolInput, or context.input
-      let toolInput: Record<string, unknown>;
-      if (config?.inputMapping !== undefined && typeof config.inputMapping === 'object' && !Array.isArray(config.inputMapping)) {
+      let resolvedToolInput: Record<string, unknown>;
+      const inputMapping = config?.inputMapping;
+      const hasValidInputMapping = inputMapping !== undefined &&
+                                   typeof inputMapping === 'object' &&
+                                   !Array.isArray(inputMapping);
+
+      if (hasValidInputMapping && inputMapping) {
         // Process inputMapping with template variable substitution
-        toolInput = {};
-        for (const [key, template] of Object.entries(config.inputMapping)) {
+        resolvedToolInput = {};
+        for (const [paramKey, templateString] of Object.entries(inputMapping)) {
           // Validate that template is a string
-          if (typeof template !== 'string') {
-            toolInput[key] = template; // Use non-string values directly
+          if (typeof templateString !== 'string') {
+            resolvedToolInput[paramKey] = templateString; // Use non-string values directly
             continue;
           }
 
-          const substituted = this.substituteVariables(template, context, agentProfile);
+          const substitutedValue = this.substituteVariables(templateString, context, agentProfile);
 
           // Parse the substituted value to the appropriate type
-          toolInput[key] = this.parseTemplateValue(substituted, template);
-          // If parseTemplateValue returns undefined, don't add the key (allows optional fields)
-          if (toolInput[key] === undefined) {
-            delete toolInput[key];
+          const parsedValue = this.parseTemplateValue(substitutedValue, templateString);
+          // Only add the key if parsing returned a defined value (allows optional fields)
+          if (parsedValue !== undefined) {
+            resolvedToolInput[paramKey] = parsedValue;
           }
         }
       } else {
-        toolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
+        resolvedToolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
       }
 
       // If no tool executor is configured, return placeholder result
@@ -986,14 +1048,14 @@ export class DefaultAgentExecutor implements AgentExecutor {
           success: true,
           output: {
             step: step.stepId,
-            type: 'tool',
-            toolName: toolName ?? 'unknown',
+            type: STEP_TYPES.TOOL,
+            toolName: toolName ?? DEFAULTS.UNKNOWN_TOOL,
             status: 'no_executor',
             message: 'Tool execution requires a ToolExecutor. Configure AgentDomainConfig.toolExecutor.',
           },
           error: undefined,
           durationMs: Date.now() - startTime,
-          retryCount: 0,
+          retryCount: DEFAULTS.INITIAL_RETRY_COUNT,
         };
       }
 
@@ -1029,23 +1091,23 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
       // Execute the tool
       try {
-        const result = await this.toolExecutor.execute(toolName, toolInput);
+        const executionResult = await this.toolExecutor.execute(toolName, resolvedToolInput);
         return {
-          success: result.success,
+          success: executionResult.success,
           output: {
             step: step.stepId,
-            type: 'tool',
+            type: STEP_TYPES.TOOL,
             toolName,
-            toolOutput: result.output,
+            toolOutput: executionResult.output,
           },
-          error: result.success ? undefined : {
-            code: result.errorCode ?? 'TOOL_EXECUTION_ERROR',
-            message: result.error ?? 'Tool execution failed',
+          error: executionResult.success ? undefined : {
+            code: executionResult.errorCode ?? 'TOOL_EXECUTION_ERROR',
+            message: executionResult.error ?? 'Tool execution failed',
             stepId: step.stepId,
-            retryable: result.retryable ?? false,
+            retryable: executionResult.retryable ?? false,
           },
           durationMs: Date.now() - startTime,
-          retryCount: 0,
+          retryCount: DEFAULTS.INITIAL_RETRY_COUNT,
         };
       } catch (error) {
         return {
@@ -1064,11 +1126,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
     });
 
     // Conditional step executor
-    this.stepExecutors.set('conditional', async (step, _context) => {
+    this.stepExecutors.set(STEP_TYPES.CONDITIONAL, async (step, _context) => {
       const startTime = Date.now();
       return {
         success: true,
-        output: { step: step.stepId, type: 'conditional' },
+        output: { step: step.stepId, type: STEP_TYPES.CONDITIONAL },
         error: undefined,
         durationMs: Date.now() - startTime,
         retryCount: 0,
@@ -1076,11 +1138,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
     });
 
     // Loop step executor
-    this.stepExecutors.set('loop', async (step, _context) => {
+    this.stepExecutors.set(STEP_TYPES.LOOP, async (step, _context) => {
       const startTime = Date.now();
       return {
         success: true,
-        output: { step: step.stepId, type: 'loop' },
+        output: { step: step.stepId, type: STEP_TYPES.LOOP },
         error: undefined,
         durationMs: Date.now() - startTime,
         retryCount: 0,
@@ -1088,11 +1150,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
     });
 
     // Parallel step executor
-    this.stepExecutors.set('parallel', async (step, _context) => {
+    this.stepExecutors.set(STEP_TYPES.PARALLEL, async (step, _context) => {
       const startTime = Date.now();
       return {
         success: true,
-        output: { step: step.stepId, type: 'parallel' },
+        output: { step: step.stepId, type: STEP_TYPES.PARALLEL },
         error: undefined,
         durationMs: Date.now() - startTime,
         retryCount: 0,
@@ -1102,7 +1164,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
     // Delegate step executor - integrates with DelegationTracker
     // INV-DT-001: Depth never exceeds maxDepth
     // INV-DT-002: No circular delegations
-    this.stepExecutors.set('delegate', async (step, context) => {
+    this.stepExecutors.set(STEP_TYPES.DELEGATE, async (step, context) => {
       const startTime = Date.now();
       const config = step.config as {
         targetAgentId?: string;
@@ -1197,7 +1259,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
           success: delegateResult.success,
           output: {
             step: step.stepId,
-            type: 'delegate',
+            type: STEP_TYPES.DELEGATE,
             delegatedTo: config.targetAgentId,
             result: delegateResult.output,
             delegationDepth: childContext.currentDepth,

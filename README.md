@@ -2,11 +2,22 @@
 
 **AI orchestration for teams who need governed, multi-provider automation**
 
+[![Version](https://img.shields.io/badge/version-13.1.12-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
+
+---
+
+## What's New in v13.1.12
+
+- **Agent InputMapping Support** - Tool step executor now processes `inputMapping` with template variable substitution (`${input.field}`, `${input.focus || 'default'}`)
+- **Performance: Cached Agent Profiles** - Eliminates N database queries for N workflow steps by caching agent profile at execution start
+- **Strict Number Parsing** - Avoids edge cases in template value parsing (hex, whitespace, Infinity)
+- **Code Quality** - Extracted hard-coded values to constants, unified variable naming conventions
+- **Precompiled Regex Patterns** - Improved performance with static regex compilation
 
 ---
 

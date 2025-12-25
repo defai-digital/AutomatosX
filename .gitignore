@@ -37,3 +37,15 @@ ax.index.json
 ax.summary.json
 checkpoints/
 tmp/
+
+# Provider configurations (may contain API keys)
+.ax-glm/
+.ax-grok/
+.gemini/
+.qwen/
+.claude/
+
+# Provider instruction files (may contain private context)
+claude.md
+gemini.md
+CLAUDE.local.md

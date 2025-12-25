@@ -18,7 +18,12 @@ import {
 } from '@defai.digital/discussion-domain';
 import {
   DEFAULT_PROVIDERS,
-  TIMEOUT_PROVIDER_DEFAULT,
+  DEFAULT_PROVIDER_TIMEOUT,
+  DEFAULT_TOTAL_BUDGET_MS,
+  DEFAULT_ROUNDS,
+  DEFAULT_DISCUSSION_DEPTH,
+  DEFAULT_MAX_TOTAL_CALLS,
+  DEFAULT_CONFIDENCE_THRESHOLD,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
@@ -51,7 +56,7 @@ function createRealProviderBridge(): DiscussionProviderExecutor {
   } as unknown as ProviderRegistryLike;
 
   return createProviderBridge(registryAdapter, {
-    defaultTimeoutMs: TIMEOUT_PROVIDER_DEFAULT,
+    defaultTimeoutMs: DEFAULT_PROVIDER_TIMEOUT,
     performHealthChecks: true,
     healthCheckCacheMs: 60000,
   });
@@ -200,11 +205,11 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     topic,
     pattern = 'synthesis',
     providers = [...DEFAULT_PROVIDERS],
-    rounds = 2,
+    rounds = DEFAULT_ROUNDS,
     consensus = 'synthesis',
     synthesizer = 'claude',
     context,
-    timeout = 180000,
+    timeout = DEFAULT_PROVIDER_TIMEOUT,
     participants,
     agentWeightMultiplier = 1.5,
   } = args as {
@@ -369,7 +374,7 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
     const providerBridge = getProviderBridge();
     const executor = new DiscussionExecutor({
       providerExecutor: providerBridge,
-      defaultTimeoutMs: 180000,
+      defaultTimeoutMs: DEFAULT_PROVIDER_TIMEOUT,
       checkProviderHealth: true,
     });
 
@@ -578,18 +583,18 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     topic,
     pattern = 'synthesis',
     providers = [...DEFAULT_PROVIDERS],
-    rounds = 2,
+    rounds = DEFAULT_ROUNDS,
     consensus = 'synthesis',
     synthesizer = 'claude',
     context,
-    timeout = 180000,
+    timeout = DEFAULT_PROVIDER_TIMEOUT,
     // Recursive options
-    maxDepth = 2,
+    maxDepth = DEFAULT_DISCUSSION_DEPTH,
     timeoutStrategy = 'cascade',
-    totalBudget = 600000,
-    maxCalls = 20,
+    totalBudget = DEFAULT_TOTAL_BUDGET_MS,
+    maxCalls = DEFAULT_MAX_TOTAL_CALLS,
     earlyExit = true,
-    confidenceThreshold = 0.9,
+    confidenceThreshold = DEFAULT_CONFIDENCE_THRESHOLD,
     // Participant options
     participants,
     agentWeightMultiplier = 1.5,

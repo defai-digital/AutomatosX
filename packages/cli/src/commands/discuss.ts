@@ -34,6 +34,12 @@ import {
 // Contract types
 import {
   DEFAULT_PROVIDERS,
+  DEFAULT_PROVIDER_TIMEOUT,
+  DEFAULT_TOTAL_BUDGET_MS,
+  DEFAULT_ROUNDS,
+  DEFAULT_DISCUSSION_DEPTH,
+  DEFAULT_MAX_TOTAL_CALLS,
+  DEFAULT_CONFIDENCE_THRESHOLD,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
@@ -236,22 +242,22 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   let topic: string | undefined;
   let providers: string[] = [];
   let pattern: DiscussionPattern = 'synthesis';
-  let rounds = 2;
+  let rounds = DEFAULT_ROUNDS;
   let consensus: ConsensusMethod = 'synthesis';
   let synthesizer: string | undefined;
   let context: string | undefined;
-  let timeout = 180000;
+  let timeout = DEFAULT_PROVIDER_TIMEOUT;
   // Participant options
   let participants: DiscussionParticipant[] | undefined;
   let agentWeight = 1.5; // Default agent weight multiplier (INV-DISC-642)
   // Recursive options
   let recursive = false;
-  let maxDepth = 2;
+  let maxDepth = DEFAULT_DISCUSSION_DEPTH;
   let timeoutStrategy: TimeoutStrategy = 'cascade';
-  let totalBudget = 600000; // 10 minutes default
-  let maxCalls = 20;
+  let totalBudget = DEFAULT_TOTAL_BUDGET_MS;
+  let maxCalls = DEFAULT_MAX_TOTAL_CALLS;
   let earlyExit = true;
-  let confidenceThreshold = 0.9;
+  let confidenceThreshold = DEFAULT_CONFIDENCE_THRESHOLD;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];

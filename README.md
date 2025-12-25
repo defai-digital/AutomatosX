@@ -10,44 +10,33 @@
 
 ---
 
-## Overview
+## Why AutomatosX
 
-AutomatosX is a contract-first AI orchestration platform that unifies multiple LLM providers through CLI adapters. It provides deterministic model routing, event-sourced memory management, comprehensive execution tracing, and post-check governance for AI coding sessions.
+AutomatosX is an AI orchestration layer built for teams who want reliable, governed output from multiple LLM providers without locking credentials into any one product.
 
-**Core Principle**: AutomatosX is a pure orchestrator. All authentication and credentials are delegated to external CLI tools.
+- **Multi-provider by default**: Route across Claude, Gemini, Codex, Qwen, GLM, Grok with deterministic selection rules.
+- **Governed automation**: Policy-driven guardrails and audit-ready traces for every action an agent takes.
+- **Contract-first**: Zod schemas keep workflows, agents, and provider calls type-safe end to end.
+- **Memory you can trust**: Event-sourced state with replayable timelines for debugging and compliance.
+- **MCP-native**: Ships with an MCP server so IDE assistants can call your workflows directly.
 
-### Key Features
-
-- **Multi-Provider Support**: Claude, Gemini, Codex, Qwen, GLM, Grok
-- **Deterministic Routing**: Risk-level and capability-based model selection
-- **Event-Sourced Memory**: Temporal consistency with full replay capability
-- **Execution Tracing**: Complete audit trail for all AI decisions
-- **Guard System**: Policy-driven governance for AI-generated code
-- **MCP Server**: Model Context Protocol integration for AI assistants
+**Core principle**: AutomatosX is a pure orchestrator. Authentication stays in your provider CLIs; AutomatosX never handles your secrets.
 
 ---
 
-## Installation
-
-### Supported Platforms
-
-| Platform | Minimum Version |
-|----------|-----------------|
-| macOS | 26+ |
-| Windows | 11+ |
-| Ubuntu | 24.04+ |
+## Install
 
 ### Prerequisites
 
 - Node.js >= 20.0.0
 - At least one provider CLI installed (claude, gemini, codex, etc.)
 
-### Install from npm (Recommended)
+### Install from npm (recommended)
 
 ```bash
 # Install globally (choose one)
-npm install -g @defai.digital/automatosx    # Full package name
-npm install -g @defai.digital/cli           # CLI package
+npm install -g @defai.digital/automatosx    # Wrapper package
+npm install -g @defai.digital/cli           # Direct CLI package
 
 # Initialize configuration and detect providers
 ax setup
@@ -56,7 +45,7 @@ ax setup
 ax doctor
 ```
 
-### Install from Source
+### Install from source
 
 ```bash
 # Clone the repository
@@ -85,13 +74,11 @@ ax doctor claude
 
 ---
 
-## Quick Start
+## Quick Start (5 minutes)
 
-### 1. Configure Providers
+1) **Install provider CLIs you already use** (AutomatosX never stores secrets):
 
-AutomatosX uses external CLI tools for provider access. Install the CLIs you need:
-
-| Provider | CLI Command | Installation |
+| Provider | CLI Command | Install Link |
 |----------|-------------|--------------|
 | Claude | `claude` | [Claude Code](https://github.com/anthropics/claude-code) |
 | Gemini | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
@@ -100,39 +87,24 @@ AutomatosX uses external CLI tools for provider access. Install the CLIs you nee
 | GLM | `ax-glm` | [AX GLM CLI](https://github.com/defai-digital/ax-cli) |
 | Grok | `ax-grok` | [AX GROK CLI](https://github.com/defai-digital/ax-cli) |
 
-### 2. Direct Provider Calls
+2) **Initialize AutomatosX** and detect providers:
 
 ```bash
-# Call Claude directly
-ax call claude "Explain this code"
+ax setup
+ax doctor
+```
 
-# Call with file context
+3) **Use it immediately**:
+
+```bash
+# Ask a provider with file context
 ax call claude --file ./src/index.ts "Review this implementation"
 
-# Call Gemini
-ax call gemini "Summarize the key points"
-```
+# Run a governed workflow
+ax run code-reviewer --input '{"files":["src/index.ts"]}'
 
-### 3. Execute Workflows
-
-```bash
-# List available workflows
-ax list
-
-# Run a workflow
-ax run code-reviewer
-
-# Run with input
-ax run code-reviewer --input '{"files": ["src/index.ts"]}'
-```
-
-### 4. View Traces
-
-```bash
-# List recent traces
+# Inspect the audit trail
 ax trace
-
-# View specific trace
 ax trace <trace-id> --verbose
 ```
 

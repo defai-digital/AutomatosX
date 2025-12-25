@@ -2,11 +2,10 @@
 
 **AI-powered workflow automation with multi-provider orchestration**
 
-[![npm version](https://img.shields.io/npm/v/@defai.digital/cli.svg)](https://www.npmjs.com/package/@defai.digital/cli)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
 ---

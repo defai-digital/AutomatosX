@@ -374,6 +374,7 @@ export class RecursiveDiscussionExecutor {
       rounds: patternResult.rounds,
       participatingProviders: patternResult.participatingProviders,
       config: config.consensus,
+      agentWeightMultiplier: config.agentWeightMultiplier,
       providerExecutor: this.providerExecutor,
       abortSignal,
       onProgress,
@@ -452,6 +453,9 @@ export class RecursiveDiscussionExecutor {
 
   /**
    * Quick recursive synthesis discussion
+   *
+   * Creates a temporary child executor with recursion enabled to avoid
+   * mutating the parent config (which could cause race conditions).
    */
   async quickRecursiveSynthesis(
     topic: string,
@@ -462,27 +466,33 @@ export class RecursiveDiscussionExecutor {
       onProgress?: (event: DiscussionProgressEvent) => void;
     }
   ): Promise<RecursiveDiscussionResult> {
-    // Temporarily enable recursion for this call
-    const originalEnabled = this.recursiveConfig.enabled;
-    this.recursiveConfig.enabled = true;
+    // Create a new executor with recursion enabled instead of mutating this instance
+    const recursiveExecutor = new RecursiveDiscussionExecutor({
+      providerExecutor: this.providerExecutor,
+      defaultTimeoutMs: this.defaultTimeoutMs,
+      checkProviderHealth: this.checkProviderHealth,
+      traceId: this.traceId,
+      recursive: {
+        ...this.recursiveConfig,
+        enabled: true,
+        maxDepth: options?.maxDepth ?? this.recursiveConfig.maxDepth,
+      },
+      timeout: this.timeoutConfig,
+      cost: this.costConfig,
+      parentContext: this.parentContext,
+      onSubDiscussionSpawn: this.onSubDiscussionSpawn,
+      onSubDiscussionComplete: this.onSubDiscussionComplete,
+    });
 
-    if (options?.maxDepth) {
-      this.recursiveConfig.maxDepth = options.maxDepth;
-    }
-
-    try {
-      return await this.executeRequest(
-        {
-          topic,
-          pattern: 'synthesis',
-          providers: options?.providers,
-          rounds: 2,
-        },
-        options
-      );
-    } finally {
-      this.recursiveConfig.enabled = originalEnabled;
-    }
+    return recursiveExecutor.executeRequest(
+      {
+        topic,
+        pattern: 'synthesis',
+        providers: options?.providers,
+        rounds: 2,
+      },
+      options
+    );
   }
 }
 

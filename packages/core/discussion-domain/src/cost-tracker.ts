@@ -264,7 +264,7 @@ export function createCostTracker(
         byProvider,
         byDepth,
         budgetExceeded: budgetUsd !== undefined && totalCostUsd > budgetUsd,
-        callLimitExceeded: totalCalls > maxTotalCalls,
+        callLimitExceeded: totalCalls >= maxTotalCalls,
         remainingBudgetUsd: budgetUsd !== undefined ? Math.max(0, budgetUsd - totalCostUsd) : undefined,
         remainingCalls: Math.max(0, maxTotalCalls - totalCalls),
       };
@@ -329,7 +329,8 @@ function estimateCallCost(
  */
 export function formatCost(costUsd: number): string {
   if (costUsd < 0.01) {
-    return `$${(costUsd * 100).toFixed(2)}¢`;
+    // Display in cents without dollar sign
+    return `${(costUsd * 100).toFixed(2)}¢`;
   }
   return `$${costUsd.toFixed(4)}`;
 }

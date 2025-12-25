@@ -62,11 +62,27 @@ type CompletionResponseLike =
 
 /**
  * Minimal HealthCheckResult interface
+ * Note: Supports both `healthy: boolean` and `status: 'healthy'|'unhealthy'` formats
  */
 interface HealthCheckResultLike {
-  healthy: boolean;
+  healthy?: boolean | undefined;
+  status?: 'healthy' | 'degraded' | 'unhealthy' | undefined;
   message?: string | undefined;
   latencyMs: number;
+}
+
+/**
+ * Helper to check if a health result indicates healthy status
+ */
+function isHealthy(result: HealthCheckResultLike): boolean {
+  // Support both formats: `healthy: boolean` and `status: 'healthy'`
+  if (result.healthy !== undefined) {
+    return result.healthy;
+  }
+  if (result.status !== undefined) {
+    return result.status === 'healthy';
+  }
+  return false;
 }
 
 /**
@@ -218,11 +234,12 @@ export function createProviderBridge(
       if (performHealthChecks) {
         try {
           const health = await provider.checkHealth();
+          const healthy = isHealthy(health);
           healthCache.set(providerId, {
-            healthy: health.healthy,
+            healthy,
             timestamp: Date.now(),
           });
-          return health.healthy;
+          return healthy;
         } catch {
           healthCache.set(providerId, {
             healthy: false,
@@ -262,8 +279,9 @@ export function createProviderBridge(
         toCheck.map(async (provider) => {
           try {
             const health = await provider.checkHealth();
-            healthCache.set(provider.providerId, { healthy: health.healthy, timestamp: Date.now() });
-            return health.healthy ? provider.providerId : null;
+            const healthy = isHealthy(health);
+            healthCache.set(provider.providerId, { healthy, timestamp: Date.now() });
+            return healthy ? provider.providerId : null;
           } catch {
             healthCache.set(provider.providerId, { healthy: false, timestamp: Date.now() });
             return null;

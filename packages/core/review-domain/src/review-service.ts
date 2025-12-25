@@ -17,6 +17,8 @@ import {
   sortCommentsBySeverity,
   ReviewErrorCode,
   TIMEOUT_PROVIDER_DEFAULT,
+  CODE_EXTENSIONS,
+  IGNORE_DIRECTORIES,
 } from '@defai.digital/contracts';
 import { buildReviewPrompt } from './focus-modes.js';
 import { parseReviewResponse, filterCommentsByConfidence } from './comment-builder.js';
@@ -106,7 +108,7 @@ export class ReviewService {
 
     const result: ReviewResult = {
       resultId,
-      requestId: request.requestId,
+      requestId: request.requestId ?? uuidv4(),
       comments: sortedComments,
       summary,
       filesReviewed: files.map((f) => f.path),
@@ -205,9 +207,6 @@ export class ReviewService {
     maxFiles: number,
     maxLinesPerFile: number
   ): Promise<void> {
-    const CODE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs', '.java', '.kt', '.swift', '.rb', '.php', '.cs', '.cpp', '.c', '.h'];
-    const IGNORE_DIRS = ['node_modules', 'dist', 'build', '.git', '__pycache__', 'vendor', 'target'];
-
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -217,12 +216,12 @@ export class ReviewService {
         const fullPath = path.join(dir, entry.name);
 
         if (entry.isDirectory()) {
-          if (!IGNORE_DIRS.includes(entry.name)) {
+          if (!IGNORE_DIRECTORIES.includes(entry.name as typeof IGNORE_DIRECTORIES[number])) {
             await this.collectFromDirectory(fullPath, files, seen, maxFiles, maxLinesPerFile);
           }
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name);
-          if (CODE_EXTENSIONS.includes(ext) && !seen.has(fullPath)) {
+          if (CODE_EXTENSIONS.includes(ext as typeof CODE_EXTENSIONS[number]) && !seen.has(fullPath)) {
             const file = this.readFile(fullPath, maxLinesPerFile);
             if (file) {
               files.push(file);
@@ -315,7 +314,7 @@ export class ReviewService {
   ): ReviewResult {
     return {
       resultId,
-      requestId: request.requestId,
+      requestId: request.requestId ?? uuidv4(),
       comments: [],
       summary: {
         bySeverity: { critical: 0, warning: 0, suggestion: 0, note: 0 },

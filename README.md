@@ -356,10 +356,16 @@ ax discuss "Best testing strategy" --format json
 - **critique**: One proposes, others critique, revision cycle
 - **debate**: Structured debate with proponent, opponent, judge roles
 
-**Agent Participation** (v13.1.0):
+**Agent Participation** (v13.1.1):
 - Mix providers and agents as discussion participants using `--participants`
 - Agents use their `providerAffinity` for provider selection
 - Agent weight multiplier for consensus voting (default 1.5x, range 0.5-3.0)
+
+**v13.1.1 Improvements**:
+- Security fixes: SQL injection prevention, regex injection protection
+- Bug fixes: formatCost display, checkpoint ordering, agent workflow config
+- Refactoring: Centralized constants for file patterns, added `getErrorMessage` utility
+- All tests passing (2244 tests, 0 skipped)
 
 ---
 

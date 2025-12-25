@@ -232,12 +232,16 @@ export class SQLiteFTSStore {
       // Escape special FTS5 characters in query
       const escapedQuery = this.escapeQuery(query);
 
+      // Escape SQL string literals to prevent SQL injection
+      const escapedHighlightPrefix = highlightPrefix.replace(/'/g, "''");
+      const escapedHighlightSuffix = highlightSuffix.replace(/'/g, "''");
+
       let sql = `
         SELECT
           m.key,
           m.namespace,
           m.value,
-          ${highlight ? `highlight(${this.ftsTableName}, 2, '${highlightPrefix}', '${highlightSuffix}')` : 'm.value'} as snippet,
+          ${highlight ? `highlight(${this.ftsTableName}, 2, '${escapedHighlightPrefix}', '${escapedHighlightSuffix}')` : 'm.value'} as snippet,
           bm25(${this.ftsTableName}) as rank,
           m.created_at
         FROM ${this.ftsTableName} fts

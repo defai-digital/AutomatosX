@@ -485,6 +485,7 @@ export const handleAgentGet: ToolHandler = async (args) => {
                 stepId: s.stepId,
                 name: s.name,
                 type: s.type,
+                config: s.config,
               })),
               orchestration: agent.orchestration
                 ? {

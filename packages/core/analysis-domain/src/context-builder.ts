@@ -11,30 +11,14 @@ import {
   type AnalysisFile,
   getLanguageFromPath,
   LIMIT_LINES_PER_FILE,
+  IGNORE_PATTERNS,
 } from '@defai.digital/contracts';
 import type { CodeContextBuilder, GatherOptions } from './types.js';
 
 /**
- * Default exclude patterns
+ * Default exclude patterns - imported from contracts for consistency
  */
-const DEFAULT_EXCLUDE_PATTERNS = [
-  'node_modules',
-  'dist',
-  'build',
-  '.git',
-  '.next',
-  '__pycache__',
-  'venv',
-  '.venv',
-  'coverage',
-  '.nyc_output',
-  '*.min.js',
-  '*.bundle.js',
-  '*.map',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-];
+const DEFAULT_EXCLUDE_PATTERNS = [...IGNORE_PATTERNS];
 
 /**
  * Analysis context builder error

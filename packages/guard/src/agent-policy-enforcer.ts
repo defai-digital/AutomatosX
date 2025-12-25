@@ -71,15 +71,24 @@ export function createAgentPolicyEnforcer(
   }
 
   /**
+   * Escape special regex characters except wildcards we want to handle
+   */
+  function escapeRegexChars(str: string): string {
+    // Escape all regex special chars except * and ? which we handle separately
+    return str.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Match pattern with wildcards
    */
   function matchPattern(pattern: string, value: string): boolean {
     if (pattern === '*') return true;
     if (pattern === value) return true;
 
-    // Simple wildcard matching
+    // Escape regex special characters, then convert wildcards
+    const escaped = escapeRegexChars(pattern);
     const regex = new RegExp(
-      '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
+      '^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
     );
     return regex.test(value);
   }
@@ -88,15 +97,13 @@ export function createAgentPolicyEnforcer(
    * Match glob patterns for paths
    */
   function matchGlob(pattern: string, path: string): boolean {
-    const regex = new RegExp(
-      '^' +
-        pattern
-          .replace(/\*\*/g, '<<DOUBLESTAR>>')
-          .replace(/\*/g, '[^/]*')
-          .replace(/<<DOUBLESTAR>>/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    );
+    // Escape regex special characters first, then convert glob wildcards
+    const escaped = escapeRegexChars(pattern)
+      .replace(/\*\*/g, '<<DOUBLESTAR>>')
+      .replace(/\*/g, '[^/]*')
+      .replace(/<<DOUBLESTAR>>/g, '.*')
+      .replace(/\?/g, '.');
+    const regex = new RegExp('^' + escaped + '$');
     return regex.test(path);
   }
 

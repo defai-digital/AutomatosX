@@ -109,7 +109,12 @@ class ProductionCheckpointManager implements CheckpointManagerPort {
     // Enforce max checkpoints
     if (this.checkpointCount > this.config.maxCheckpoints) {
       const allCheckpoints = await this.storage.list(this.agentId, this.sessionId);
-      const toDelete = allCheckpoints.slice(this.config.maxCheckpoints);
+      // Sort by creation date (oldest first) to keep newest checkpoints
+      const sorted = [...allCheckpoints].sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      // Delete oldest checkpoints (those before the maxCheckpoints cutoff)
+      const toDelete = sorted.slice(0, sorted.length - this.config.maxCheckpoints);
       for (const cp of toDelete) {
         await this.storage.delete(cp.checkpointId);
       }

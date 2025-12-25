@@ -154,17 +154,19 @@ describe('Discuss Command', () => {
       expect(result.message).toContain('invalid1');
     });
 
-    it.skip('should accept valid provider names', async () => {
-      // SKIPPED: This test actually spawns provider processes which timeout in CI
-      // This will still fail because providers are not available,
-      // but validates the provider name parsing works
+    it('should accept valid provider names', async () => {
+      // Test valid provider validation indirectly:
+      // If we pass valid providers but only ONE, we should get "at least 2 providers required"
+      // NOT "Unknown provider(s)" - proving the provider name was accepted
       const result = await discussCommand(
-        ['--providers', 'claude,glm', 'Test topic'],
+        ['--providers', 'claude', 'Test topic'],
         defaultOptions
       );
 
-      // Either succeeds in getting past validation or fails on availability
-      expect(result.exitCode).toBeDefined();
+      expect(result.success).toBe(false);
+      // Should fail on minimum count, NOT on unknown provider
+      expect(result.message).toContain('At least 2 providers are required');
+      expect(result.message).not.toContain('Unknown provider(s)');
     });
 
     it('should parse --pattern flag with invalid providers', async () => {

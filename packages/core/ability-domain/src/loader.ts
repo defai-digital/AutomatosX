@@ -151,8 +151,8 @@ export class FileSystemAbilityLoader implements AbilityLoader {
       return { metadata: {}, body: content };
     }
 
-    const frontmatter = match[1]!;
-    const body = match[2]!;
+    const frontmatter = match[1] ?? '';
+    const body = match[2] ?? '';
 
     // Simple YAML parser for frontmatter
     const metadata: Record<string, unknown> = {};

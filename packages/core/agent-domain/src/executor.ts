@@ -867,10 +867,12 @@ export class DefaultAgentExecutor implements AgentExecutor {
       const startTime = Date.now();
       const config = step.config as {
         toolName?: string;
+        tool?: string; // Alias for toolName (backwards compatibility)
         toolInput?: Record<string, unknown>;
       } | undefined;
 
-      const toolName = config?.toolName;
+      // Support both 'toolName' and 'tool' for backwards compatibility
+      const toolName = config?.toolName ?? config?.tool;
       const toolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
 
       // If no tool executor is configured, return placeholder result

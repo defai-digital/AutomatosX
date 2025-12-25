@@ -43,8 +43,8 @@ export type ReviewFocus = z.infer<typeof ReviewFocusSchema>;
  * Review request schema
  */
 export const ReviewRequestSchema = z.object({
-  /** Unique request ID */
-  requestId: z.string().uuid(),
+  /** Unique request ID (auto-generated if not provided) */
+  requestId: z.string().uuid().optional(),
 
   /** Paths to review (files or directories) */
   paths: z.array(z.string()).min(1).max(50),

@@ -12,7 +12,7 @@
 // =============================================================================
 
 /** Current AutomatosX version */
-export const AUTOMATOSX_VERSION = '13.0.0';
+export const AUTOMATOSX_VERSION = '13.1.1';
 
 /** Default schema/config version for new resources */
 export const DEFAULT_SCHEMA_VERSION = '1.0.0';
@@ -380,6 +380,51 @@ export const STRING_LENGTH_LONG = 1000;
 export const STRING_LENGTH_CONTENT = 10000;
 
 // =============================================================================
+// FILE PATTERNS CONSTANTS
+// =============================================================================
+
+/** Directories to ignore during file scanning */
+export const IGNORE_DIRECTORIES = [
+  'node_modules',
+  'dist',
+  'build',
+  '.git',
+  '__pycache__',
+  'vendor',
+  'target',
+  '.next',
+  '.nuxt',
+  'coverage',
+  'venv',
+  '.venv',
+  '.nyc_output',
+] as const;
+
+/** File patterns to ignore during analysis */
+export const IGNORE_PATTERNS = [
+  ...IGNORE_DIRECTORIES,
+  '*.min.js',
+  '*.bundle.js',
+  '*.map',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+] as const;
+
+/** Code file extensions for analysis */
+export const CODE_EXTENSIONS = [
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.py', '.go', '.rs', '.java', '.kt', '.swift',
+  '.rb', '.php', '.cs', '.cpp', '.c', '.h', '.hpp',
+] as const;
+
+/** Markdown and documentation extensions */
+export const DOC_EXTENSIONS = ['.md', '.mdx', '.txt', '.rst'] as const;
+
+/** Configuration file extensions */
+export const CONFIG_EXTENSIONS = ['.json', '.yaml', '.yml', '.toml'] as const;
+
+// =============================================================================
 // FILE SCAN CONSTANTS
 // =============================================================================
 
@@ -515,4 +560,22 @@ export function getDefaultDatabasePath(homeDir: string): string {
  */
 export function getProjectDataDir(projectDir: string): string {
   return `${projectDir}/${DATA_DIR_NAME}`;
+}
+
+/**
+ * Extract error message from unknown error
+ * Eliminates the repeated pattern: error instanceof Error ? error.message : 'Unknown error'
+ *
+ * @param error - Unknown error value
+ * @param fallback - Fallback message if error is not an Error instance
+ * @returns Error message string
+ */
+export function getErrorMessage(error: unknown, fallback = 'Unknown error'): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return fallback;
 }

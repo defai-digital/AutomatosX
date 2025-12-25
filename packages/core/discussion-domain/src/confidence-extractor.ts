@@ -301,7 +301,7 @@ export function calculateAgreementScore(
 
   // Count words that appear in multiple responses
   let sharedCount = 0;
-  let totalUniqueWords = keywords.size;
+  const totalUniqueWords = keywords.size;
 
   for (const count of keywords.values()) {
     if (count > 1) {

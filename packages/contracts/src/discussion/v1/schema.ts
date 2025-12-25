@@ -25,11 +25,11 @@ export const MAX_ROUNDS = 10;
 /** Default discussion rounds */
 export const DEFAULT_ROUNDS = 2;
 
-/** Default provider timeout in ms */
-export const DEFAULT_PROVIDER_TIMEOUT = 60000;
+/** Default provider timeout in ms (3 minutes - gives headroom for complex responses) */
+export const DEFAULT_PROVIDER_TIMEOUT = 180000;
 
-/** Maximum provider timeout in ms */
-export const MAX_PROVIDER_TIMEOUT = 300000;
+/** Maximum provider timeout in ms (30 minutes - for very complex discussions) */
+export const MAX_PROVIDER_TIMEOUT = 1800000;
 
 /** Default providers for discussions */
 export const DEFAULT_PROVIDERS = ['claude', 'glm', 'qwen', 'gemini'] as const;
@@ -47,8 +47,8 @@ export const DEFAULT_DISCUSSION_DEPTH = 2;
 /** Minimum time reserved for synthesis at each level (ms) */
 export const MIN_SYNTHESIS_TIME_MS = 10000;
 
-/** Default total budget for recursive discussions (ms) */
-export const DEFAULT_TOTAL_BUDGET_MS = 180000;
+/** Default total budget for recursive discussions (ms) - 10 minutes */
+export const DEFAULT_TOTAL_BUDGET_MS = 600000;
 
 /** Default maximum total provider calls across nested discussions */
 export const DEFAULT_MAX_TOTAL_CALLS = 20;
@@ -736,8 +736,8 @@ export const TimeoutConfigSchema = z.object({
   /** Timeout strategy */
   strategy: TimeoutStrategySchema.default('cascade'),
 
-  /** Total budget in milliseconds */
-  totalBudgetMs: z.number().int().min(30000).max(600000).default(DEFAULT_TOTAL_BUDGET_MS),
+  /** Total budget in milliseconds (max 30 minutes) */
+  totalBudgetMs: z.number().int().min(30000).max(1800000).default(DEFAULT_TOTAL_BUDGET_MS),
 
   /** Minimum time reserved for synthesis at each level */
   minSynthesisMs: z.number().int().min(5000).max(60000).default(MIN_SYNTHESIS_TIME_MS),

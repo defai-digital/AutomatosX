@@ -135,9 +135,9 @@ export const discussTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Per-provider timeout in ms (default: 60000)',
+        description: 'Per-provider timeout in ms (default: 180000, max: 30 minutes)',
         minimum: 5000,
-        maximum: 300000,
+        maximum: 1800000,
       },
       participants: {
         type: 'array',
@@ -204,7 +204,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     consensus = 'synthesis',
     synthesizer = 'claude',
     context,
-    timeout = 60000,
+    timeout = 180000,
     participants,
     agentWeightMultiplier = 1.5,
   } = args as {
@@ -369,7 +369,7 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
     const providerBridge = getProviderBridge();
     const executor = new DiscussionExecutor({
       providerExecutor: providerBridge,
-      defaultTimeoutMs: 60000,
+      defaultTimeoutMs: 180000,
       checkProviderHealth: true,
     });
 
@@ -455,9 +455,9 @@ export const discussRecursiveTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Per-provider timeout in ms (default: 60000)',
+        description: 'Per-provider timeout in ms (default: 180000, max: 30 minutes)',
         minimum: 5000,
-        maximum: 300000,
+        maximum: 1800000,
       },
       // Recursive-specific options
       maxDepth: {
@@ -473,9 +473,9 @@ export const discussRecursiveTool: MCPTool = {
       },
       totalBudget: {
         type: 'number',
-        description: 'Total timeout budget in ms (default: 180000)',
+        description: 'Total timeout budget in ms (default: 600000, max: 30 minutes)',
         minimum: 30000,
-        maximum: 600000,
+        maximum: 1800000,
       },
       maxCalls: {
         type: 'number',
@@ -582,11 +582,11 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     consensus = 'synthesis',
     synthesizer = 'claude',
     context,
-    timeout = 60000,
+    timeout = 180000,
     // Recursive options
     maxDepth = 2,
     timeoutStrategy = 'cascade',
-    totalBudget = 180000,
+    totalBudget = 600000,
     maxCalls = 20,
     earlyExit = true,
     confidenceThreshold = 0.9,

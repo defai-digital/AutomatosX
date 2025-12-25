@@ -240,7 +240,7 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   let consensus: ConsensusMethod = 'synthesis';
   let synthesizer: string | undefined;
   let context: string | undefined;
-  let timeout = 60000;
+  let timeout = 180000;
   // Participant options
   let participants: DiscussionParticipant[] | undefined;
   let agentWeight = 1.5; // Default agent weight multiplier (INV-DISC-642)
@@ -248,7 +248,7 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   let recursive = false;
   let maxDepth = 2;
   let timeoutStrategy: TimeoutStrategy = 'cascade';
-  let totalBudget = 180000; // 3 minutes default
+  let totalBudget = 600000; // 10 minutes default
   let maxCalls = 20;
   let earlyExit = true;
   let confidenceThreshold = 0.9;
@@ -530,7 +530,7 @@ ${COLORS.bold}Basic Options:${COLORS.reset}
   --consensus       Consensus method: ${consensusMethods}
   --synthesizer     Provider for synthesis (default: claude)
   --context         Additional context for the discussion
-  --timeout         Per-provider timeout in ms (default: 60000)
+  --timeout         Per-provider timeout in ms (default: 180000, max: 30 min)
   --verbose, -v     Show detailed progress
   --format          Output format: text (default) or json
 

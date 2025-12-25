@@ -24,6 +24,7 @@ import {
   MAX_PROVIDERS,
   MAX_ROUNDS,
   DEFAULT_ROUNDS,
+  DEFAULT_PROVIDER_TIMEOUT,
 
   // Validation functions
   validateDiscussStepConfig,
@@ -175,7 +176,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
       if (result.success) {
         expect(result.data.pattern).toBe('synthesis');
         expect(result.data.rounds).toBe(DEFAULT_ROUNDS);
-        expect(result.data.providerTimeout).toBe(60000);
+        expect(result.data.providerTimeout).toBe(DEFAULT_PROVIDER_TIMEOUT);
       }
     });
 

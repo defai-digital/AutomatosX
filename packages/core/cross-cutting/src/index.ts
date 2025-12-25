@@ -49,6 +49,21 @@ export {
   type DataArchiver,
 } from './retention-manager.js';
 
+// Rate Limiter Registry
+export {
+  createRateLimiterRegistry,
+  RateLimiterRegistryError,
+  RateLimiterRegistryErrorCodes,
+  DEFAULT_PROVIDER_RATE_LIMITS,
+  type RateLimiterRegistry,
+  type RateLimitAcquireResult,
+  type RateLimiterStats,
+  type ProviderRateLimitConfig,
+  type SessionQuotaConfig,
+  type RateLimiterRegistryConfig,
+  type BackoffStrategy,
+} from './rate-limiter-registry.js';
+
 // Re-export key types from contracts for convenience
 export type {
   IdempotencyCheckResult,

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/contracts",
-  "version": "13.1.12",
+  "version": "13.1.13",
   "type": "module",
   "description": "Contract schemas and behavioral invariants for AutomatosX - Single Source of Truth",
   "license": "Apache-2.0",

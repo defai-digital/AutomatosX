@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/cli",
-  "version": "13.1.12",
+  "version": "13.1.13",
   "type": "module",
   "description": "Command-line interface for AutomatosX - Contract-first AI orchestration platform with multi-provider routing",
   "license": "Apache-2.0",

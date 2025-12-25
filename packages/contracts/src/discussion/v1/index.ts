@@ -118,3 +118,40 @@ export {
   calculateBudgetTimeout,
   getTimeoutForLevel,
 } from './schema.js';
+
+// Re-export temperature configuration from temperatures.ts
+export {
+  // Constants
+  TEMPERATURE_RANGES,
+  DEFAULT_PATTERN_TEMPERATURES,
+  DEFAULT_CONSENSUS_TEMPERATURES,
+  DEFAULT_USECASE_TEMPERATURES,
+  DEFAULT_TEMPERATURE_CONFIG,
+
+  // Schemas
+  TemperatureValueSchema,
+  PatternTemperaturesSchema,
+  ConsensusTemperaturesSchema,
+  UseCaseTemperaturesSchema,
+  TemperatureConfigSchema,
+
+  // Types
+  type PatternTemperatures,
+  type ConsensusTemperatures,
+  type UseCaseTemperatures,
+  type TemperatureConfig,
+
+  // Helper functions
+  getPatternTemperature,
+  getConsensusTemperature,
+  getUseCaseTemperature,
+  getTemperatureForProvider,
+  resolveTemperature,
+
+  // Validation
+  validateTemperatureConfig,
+  safeValidateTemperatureConfig,
+
+  // Error codes
+  TemperatureErrorCodes,
+} from './temperatures.js';

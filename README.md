@@ -2,7 +2,7 @@
 
 **AI orchestration for teams who need governed, multi-provider automation**
 
-[![Version](https://img.shields.io/badge/version-13.1.12-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.1.13-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
@@ -11,12 +11,18 @@
 
 ---
 
-## What's New in v13.1.12
+## What's New in v13.1.13
 
-- **Agent InputMapping Support** - Tool step executor now processes `inputMapping` with template variable substitution (`${input.field}`, `${input.focus || 'default'}`)
-- **Performance: Cached Agent Profiles** - Eliminates N database queries for N workflow steps by caching agent profile at execution start
-- **Strict Number Parsing** - Avoids edge cases in template value parsing (hex, whitespace, Infinity)
-- **Code Quality** - Extracted hard-coded values to constants, unified variable naming conventions
+- **Temperature Configuration** - Centralized temperature defaults by pattern (`synthesis: 0.7`, `voting: 0.5`, `codeReview: 0.3`) with provider-specific overrides
+- **Per-Provider Rate Limiting** - Rate limiters now scoped per provider (Claude: 60 RPM, Gemini: 300 RPM) with burst support and session-level quotas
+- **Platform Improvement PRDs** - Comprehensive documentation for debugging confidence, code quality, and parallelization improvements
+- **Trace Event Schemas** - New contract schemas for template resolution and ability injection tracing (P0 preparation)
+- **Code Quality** - Reduced hardcoded values by extracting temperature and rate limit constants to contracts
+
+### Previous: v13.1.12
+
+- **Agent InputMapping Support** - Tool step executor processes `inputMapping` with template variable substitution
+- **Performance: Cached Agent Profiles** - Eliminates N database queries by caching agent profile at execution start
 - **Precompiled Regex Patterns** - Improved performance with static regex compilation
 
 ---

@@ -1206,8 +1206,9 @@ export function getTimeoutForLevel(
 ): number {
   // Check for explicit level override
   const levelKey = String(depth);
-  if (config.levelTimeouts?.[levelKey]) {
-    return config.levelTimeouts[levelKey];
+  const levelOverride = config.levelTimeouts?.[levelKey];
+  if (levelOverride !== undefined) {
+    return levelOverride;
   }
 
   switch (config.strategy) {

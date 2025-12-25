@@ -391,6 +391,17 @@ export type StepExecutorFn = (
 ) => Promise<StepExecutionResult>;
 
 /**
+ * Minimal agent profile for step execution (avoids re-fetching from registry)
+ * Uses AbilitySelection type from contracts for compatibility
+ */
+export interface StepAgentProfile {
+  agentId: string;
+  description?: string | undefined;
+  systemPrompt?: string | undefined;
+  abilities?: import('@defai.digital/contracts').AbilitySelection | undefined;
+}
+
+/**
  * Step execution context
  */
 export interface StepExecutionContext {
@@ -408,6 +419,11 @@ export interface StepExecutionContext {
    * INV-DT-002: Used to prevent circular delegations
    */
   delegationContext: import('@defai.digital/contracts').DelegationContext | undefined;
+  /**
+   * Agent profile cached at execution start to avoid repeated registry lookups
+   * Performance optimization: avoids N database queries for N workflow steps
+   */
+  agentProfile?: StepAgentProfile | undefined;
 }
 
 /**

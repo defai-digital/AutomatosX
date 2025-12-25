@@ -27,6 +27,7 @@ import type {
   AbilityManagerLike,
   ToolExecutor,
   DelegationTrackerFactory,
+  StepAgentProfile,
 } from './types.js';
 import { createStubPromptExecutor } from './prompt-executor.js';
 import { stubDelegationTrackerFactory } from './stub-delegation-tracker.js';
@@ -120,6 +121,14 @@ export class DefaultAgentExecutor implements AgentExecutor {
         `Agent "${agentId}" is disabled`
       );
     }
+
+    // Cache agent profile for step execution (avoids N registry lookups for N steps)
+    const cachedAgentProfile: StepAgentProfile = {
+      agentId: agent.agentId,
+      description: agent.description,
+      systemPrompt: agent.systemPrompt,
+      abilities: agent.abilities,
+    };
 
     // Initialize execution state
     const state: ExecutionState = {
@@ -221,6 +230,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
             provider: validatedOptions?.provider,
             model: validatedOptions?.model,
             delegationContext: validatedOptions?.delegationContext,
+            agentProfile: cachedAgentProfile,
           },
           step.retryPolicy?.maxAttempts ?? 1
         );
@@ -676,13 +686,33 @@ export class DefaultAgentExecutor implements AgentExecutor {
   /**
    * Substitute template variables in a string
    * Supports: ${input}, ${input.field}, ${previousOutputs.stepId}, ${agent.field}
+   * Also supports fallback syntax: ${input.field || 'default'}
    */
   private substituteVariables(
     template: string,
     context: StepExecutionContext,
-    agentProfile: { description?: string; systemPrompt?: string; agentId: string }
+    agentProfile: StepAgentProfile
   ): string {
-    return template.replace(/\$\{([^}]+)\}/g, (match, path) => {
+    // Use precompiled regex (reset lastIndex since it's global)
+    const regex = new RegExp(DefaultAgentExecutor.TEMPLATE_VAR_REGEX.source, 'g');
+    return template.replace(regex, (match, expr) => {
+      // Check for fallback syntax: expression || defaultValue
+      const fallbackMatch = DefaultAgentExecutor.FALLBACK_REGEX.exec(expr.trim());
+      let path: string;
+      let fallbackValue: string | undefined;
+
+      if (fallbackMatch) {
+        path = fallbackMatch[1]!.trim();
+        fallbackValue = fallbackMatch[2]!.trim();
+        // Remove quotes from fallback value if present
+        if ((fallbackValue.startsWith("'") && fallbackValue.endsWith("'")) ||
+            (fallbackValue.startsWith('"') && fallbackValue.endsWith('"'))) {
+          fallbackValue = fallbackValue.slice(1, -1);
+        }
+      } else {
+        path = expr.trim();
+      }
+
       const parts = path.split('.');
       let value: unknown;
 
@@ -711,8 +741,12 @@ export class DefaultAgentExecutor implements AgentExecutor {
           value = this.getNestedValue(context.input, parts);
       }
 
-      if (value === undefined) {
-        return match; // Keep original if not found
+      // Use fallback if value is undefined/null
+      if (value === undefined || value === null) {
+        if (fallbackValue !== undefined) {
+          return fallbackValue;
+        }
+        return match; // Keep original if not found and no fallback
       }
 
       return typeof value === 'string' ? value : JSON.stringify(value);
@@ -736,6 +770,54 @@ export class DefaultAgentExecutor implements AgentExecutor {
     return current;
   }
 
+  // Precompiled regex patterns (avoid repeated compilation)
+  private static readonly NUMERIC_REGEX = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
+  private static readonly TEMPLATE_VAR_REGEX = /\$\{([^}]+)\}/g;
+  private static readonly FALLBACK_REGEX = /^(.+?)\s*\|\|\s*(.+)$/;
+
+  /**
+   * Parse a template-substituted value to the appropriate type.
+   * Returns undefined if the template wasn't substituted (allows optional fields).
+   *
+   * Handles: JSON arrays/objects, null, booleans, numbers (strict parsing), strings
+   * Strict number parsing avoids edge cases like hex (0x10), whitespace, Infinity
+   */
+  private parseTemplateValue(substituted: string, originalTemplate: string): unknown {
+    // Template wasn't substituted (variable not found) - return undefined to skip
+    if (substituted === originalTemplate) {
+      return undefined;
+    }
+
+    // Handle JSON arrays and objects
+    if ((substituted.startsWith('[') && substituted.endsWith(']')) ||
+        (substituted.startsWith('{') && substituted.endsWith('}'))) {
+      try {
+        return JSON.parse(substituted);
+      } catch {
+        // Not valid JSON, fall through to string
+        return substituted;
+      }
+    }
+
+    // Handle special literals
+    if (substituted === 'null') return null;
+    if (substituted === 'true') return true;
+    if (substituted === 'false') return false;
+
+    // Strict number parsing: only match valid decimal numbers
+    // Avoids: hex (0x10), whitespace ('  '), Infinity, NaN, scientific notation edge cases
+    if (DefaultAgentExecutor.NUMERIC_REGEX.test(substituted)) {
+      const num = Number(substituted);
+      // Double-check: avoid edge cases where Number() produces unexpected results
+      if (Number.isFinite(num)) {
+        return num;
+      }
+    }
+
+    // Default to string
+    return substituted;
+  }
+
   /**
    * Register default step executors
    */
@@ -746,17 +828,10 @@ export class DefaultAgentExecutor implements AgentExecutor {
       const startTime = Date.now();
       const config = (step.config ?? {}) as PromptStepConfig;
 
-      // Get agent profile for system prompt and variable substitution
-      const agent = await this.registry.get(context.agentId);
-      const agentProfile: { description?: string; systemPrompt?: string; agentId: string } = {
+      // Use cached agent profile from context (avoids registry lookup per step)
+      const agentProfile = context.agentProfile ?? {
         agentId: context.agentId,
       };
-      if (agent?.description !== undefined) {
-        agentProfile.description = agent.description;
-      }
-      if (agent?.systemPrompt !== undefined) {
-        agentProfile.systemPrompt = agent.systemPrompt;
-      }
 
       // INV-AGT-ABL-001: Inject abilities if ability manager is available
       // INV-AGT-ABL-002: Core abilities from agent profile are always included
@@ -765,7 +840,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
       if (this.enableAbilityInjection && this.abilityManager !== undefined) {
         try {
           // Get core abilities from agent profile
-          const coreAbilities = agent?.abilities?.core ?? [];
+          const coreAbilities = agentProfile.abilities?.core ?? [];
 
           // Determine task from input for relevance matching
           const task = typeof context.input === 'string'
@@ -774,7 +849,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
               ? String((context.input as { task: unknown }).task)
               : typeof context.input === 'object' && context.input !== null && 'prompt' in context.input
                 ? String((context.input as { prompt: unknown }).prompt)
-                : agent?.description ?? '';
+                : agentProfile.description ?? '';
 
           // Inject abilities
           const injectionResult = await this.abilityManager.injectAbilities(
@@ -818,7 +893,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
       }
 
       // Determine system prompt with injected abilities
-      const baseSystemPrompt = config.systemPrompt ?? agent?.systemPrompt ?? '';
+      const baseSystemPrompt = config.systemPrompt ?? agentProfile.systemPrompt ?? '';
       const systemPrompt = abilityContent
         ? `${baseSystemPrompt}${abilityContent}`
         : baseSystemPrompt || undefined;
@@ -869,11 +944,41 @@ export class DefaultAgentExecutor implements AgentExecutor {
         toolName?: string;
         tool?: string; // Alias for toolName (backwards compatibility)
         toolInput?: Record<string, unknown>;
+        inputMapping?: Record<string, string>; // Template-based input mapping
       } | undefined;
 
       // Support both 'toolName' and 'tool' for backwards compatibility
       const toolName = config?.toolName ?? config?.tool;
-      const toolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
+
+      // Use cached agent profile from context (avoids registry lookup per step)
+      const agentProfile = context.agentProfile ?? {
+        agentId: context.agentId,
+      };
+
+      // Process tool input: inputMapping with template substitution, or direct toolInput, or context.input
+      let toolInput: Record<string, unknown>;
+      if (config?.inputMapping !== undefined && typeof config.inputMapping === 'object' && !Array.isArray(config.inputMapping)) {
+        // Process inputMapping with template variable substitution
+        toolInput = {};
+        for (const [key, template] of Object.entries(config.inputMapping)) {
+          // Validate that template is a string
+          if (typeof template !== 'string') {
+            toolInput[key] = template; // Use non-string values directly
+            continue;
+          }
+
+          const substituted = this.substituteVariables(template, context, agentProfile);
+
+          // Parse the substituted value to the appropriate type
+          toolInput[key] = this.parseTemplateValue(substituted, template);
+          // If parseTemplateValue returns undefined, don't add the key (allows optional fields)
+          if (toolInput[key] === undefined) {
+            delete toolInput[key];
+          }
+        }
+      } else {
+        toolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
+      }
 
       // If no tool executor is configured, return placeholder result
       if (this.toolExecutor === undefined) {

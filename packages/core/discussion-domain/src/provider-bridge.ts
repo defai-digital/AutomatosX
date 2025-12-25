@@ -8,6 +8,7 @@
  * from the concrete provider implementation details.
  */
 
+import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
 import type {
   DiscussionProviderExecutor,
   ProviderExecuteRequest,
@@ -131,10 +132,10 @@ export function createProviderBridge(
   options: ProviderBridgeOptions = {}
 ): DiscussionProviderExecutor {
   const {
-    defaultTimeoutMs = 120000,
+    defaultTimeoutMs = TIMEOUT_PROVIDER_DEFAULT,
     defaultMaxTokens = 4000,
     performHealthChecks = true,
-    healthCheckCacheMs = 60000,
+    healthCheckCacheMs = 60000, // 1 minute cache for health check results
   } = options;
 
   // Cache for health check results

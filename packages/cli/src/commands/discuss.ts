@@ -40,6 +40,7 @@ import {
   DEFAULT_DISCUSSION_DEPTH,
   DEFAULT_MAX_TOTAL_CALLS,
   DEFAULT_CONFIDENCE_THRESHOLD,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
@@ -249,7 +250,7 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   let timeout = DEFAULT_PROVIDER_TIMEOUT;
   // Participant options
   let participants: DiscussionParticipant[] | undefined;
-  let agentWeight = 1.5; // Default agent weight multiplier (INV-DISC-642)
+  let agentWeight = DEFAULT_AGENT_WEIGHT_MULTIPLIER; // (INV-DISC-642)
   // Recursive options
   let recursive = false;
   let maxDepth = DEFAULT_DISCUSSION_DEPTH;
@@ -286,8 +287,8 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
       const participantStr = args[++i] ?? '';
       participants = parseParticipantList(participantStr);
     } else if (arg === '--agent-weight' && i + 1 < args.length) {
-      // Agent weight multiplier (0.5 - 3.0, default 1.5)
-      const parsed = parseFloat(args[++i] ?? '1.5');
+      // Agent weight multiplier (0.5 - 3.0)
+      const parsed = parseFloat(args[++i] ?? String(DEFAULT_AGENT_WEIGHT_MULTIPLIER));
       if (!isNaN(parsed)) agentWeight = Math.max(0.5, Math.min(3.0, parsed));
     }
     // Recursive discussion options

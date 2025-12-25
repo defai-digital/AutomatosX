@@ -27,6 +27,7 @@ import {
   DEFAULT_TOTAL_BUDGET_MS,
   DEFAULT_MAX_TOTAL_CALLS,
   MIN_SYNTHESIS_TIME_MS,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
 } from '@defai.digital/contracts';
 
 import type {
@@ -139,7 +140,7 @@ export class RecursiveDiscussionExecutor {
       continueOnProviderFailure: true,
       minProviders: 2,
       temperature: 0.7,
-      agentWeightMultiplier: 1.5,
+      agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
     };
 
     return this.execute(config, options);
@@ -286,7 +287,7 @@ export class RecursiveDiscussionExecutor {
           minProviders: 2,
           temperature: 0.7,
           verbose: false,
-          agentWeightMultiplier: 1.5,
+          agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
         },
         abortSignal ? { abortSignal } : {}
       );

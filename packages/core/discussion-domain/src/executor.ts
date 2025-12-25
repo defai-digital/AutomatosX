@@ -15,6 +15,7 @@ import {
   DEFAULT_PROVIDERS,
   DiscussionErrorCodes,
   createFailedDiscussionResult,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   type DiscussStepConfig,
   type DiscussionResult,
   type DiscussionRequest,
@@ -75,7 +76,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: true,
       minProviders: 2,
       temperature: 0.7,
-      agentWeightMultiplier: 1.5,
+      agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
     };
 
     return this.execute(config, options);
@@ -291,7 +292,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: false, // Debates require all participants
       minProviders: 3,
       temperature: 0.7,
-      agentWeightMultiplier: 1.5,
+      agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
     };
 
     return this.execute(config, options);
@@ -326,7 +327,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: true,
       minProviders: 2,
       temperature: 0.5, // Lower temperature for more consistent voting
-      agentWeightMultiplier: 1.5,
+      agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
     };
 
     return this.execute(config, options);

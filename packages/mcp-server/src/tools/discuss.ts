@@ -24,6 +24,7 @@ import {
   DEFAULT_DISCUSSION_DEPTH,
   DEFAULT_MAX_TOTAL_CALLS,
   DEFAULT_CONFIDENCE_THRESHOLD,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
@@ -211,7 +212,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     context,
     timeout = DEFAULT_PROVIDER_TIMEOUT,
     participants,
-    agentWeightMultiplier = 1.5,
+    agentWeightMultiplier = DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   } = args as {
     topic: string;
     pattern?: DiscussionPattern;
@@ -597,7 +598,7 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     confidenceThreshold = DEFAULT_CONFIDENCE_THRESHOLD,
     // Participant options
     participants,
-    agentWeightMultiplier = 1.5,
+    agentWeightMultiplier = DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   } = args as {
     topic: string;
     pattern?: DiscussionPattern;

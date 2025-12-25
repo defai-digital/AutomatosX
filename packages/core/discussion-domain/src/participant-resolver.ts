@@ -10,7 +10,11 @@
  * - INV-DISC-642: Agent weight multiplier between 0.5-3.0 (default 1.5)
  */
 
-import type { DiscussionParticipant } from '@defai.digital/contracts';
+import {
+  LIMIT_ABILITY_TOKENS_AGENT,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+  type DiscussionParticipant,
+} from '@defai.digital/contracts';
 
 /**
  * Resolved participant ready for discussion execution
@@ -104,13 +108,15 @@ const DEFAULT_PROVIDER = 'claude';
 
 /**
  * Default agent weight multiplier (INV-DISC-642)
+ * Uses constant from contracts for single source of truth
  */
-const DEFAULT_AGENT_WEIGHT = 1.5;
+const DEFAULT_AGENT_WEIGHT = DEFAULT_AGENT_WEIGHT_MULTIPLIER;
 
 /**
  * Maximum tokens for ability injection (INV-DISC-641)
+ * Uses LIMIT_ABILITY_TOKENS_AGENT from contracts
  */
-const DEFAULT_MAX_ABILITY_TOKENS = 10000;
+const DEFAULT_MAX_ABILITY_TOKENS = LIMIT_ABILITY_TOKENS_AGENT;
 
 /**
  * Resolve a single participant to execution config

@@ -8,7 +8,7 @@
  * - INV-DISC-642: Agent responses weighted by agentWeightMultiplier (default 1.5x)
  */
 
-import type { VotingResults, VoteRecord } from '@defai.digital/contracts';
+import { DEFAULT_AGENT_WEIGHT_MULTIPLIER, type VotingResults, type VoteRecord } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   VOTING_TALLY,
@@ -19,8 +19,9 @@ import {
 
 /**
  * Default agent weight multiplier (INV-DISC-642)
+ * Uses constant from contracts for single source of truth
  */
-const DEFAULT_AGENT_WEIGHT = 1.5;
+const DEFAULT_AGENT_WEIGHT = DEFAULT_AGENT_WEIGHT_MULTIPLIER;
 
 export class VotingConsensus implements ConsensusExecutor {
   readonly method = 'voting' as const;

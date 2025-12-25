@@ -28,6 +28,7 @@ export {
   DEFAULT_TOTAL_BUDGET_MS,
   DEFAULT_MAX_TOTAL_CALLS,
   DEFAULT_CONFIDENCE_THRESHOLD,
+  DEFAULT_AGENT_WEIGHT_MULTIPLIER,
 
   // Schemas - Patterns & Configuration
   DiscussionPatternSchema,

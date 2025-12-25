@@ -56,6 +56,9 @@ export const DEFAULT_MAX_TOTAL_CALLS = 20;
 /** Default cascading confidence threshold for early exit */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.9;
 
+/** Default agent weight multiplier for consensus (INV-DISC-642) */
+export const DEFAULT_AGENT_WEIGHT_MULTIPLIER = 1.5;
+
 // ============================================================================
 // Discussion Pattern Schema
 // ============================================================================
@@ -289,7 +292,7 @@ export const DiscussStepConfigSchema = z
     participants: z.array(DiscussionParticipantSchema).optional(),
 
     /** Weight multiplier for agent responses in consensus (default: 1.5x) */
-    agentWeightMultiplier: z.number().min(0.5).max(3.0).optional().default(1.5),
+    agentWeightMultiplier: z.number().min(0.5).max(3.0).optional().default(DEFAULT_AGENT_WEIGHT_MULTIPLIER),
   })
   .refine(
     (data) => {

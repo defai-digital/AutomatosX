@@ -353,7 +353,7 @@ describe('Provider Config Contract', () => {
     });
 
     it('should return undefined for unknown providers', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const result = getProviderDefault('unknown-provider' as any);
       expect(result).toBeUndefined();
     });
@@ -969,7 +969,7 @@ describe('INV-CFG-ADP: Config Adapter Invariants', () => {
 
     it('should only detect known providers', () => {
       // Unknown providers should not have defaults
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const unknownDefault = getProviderDefault('unknown-provider' as any);
       expect(unknownDefault).toBeUndefined();
     });

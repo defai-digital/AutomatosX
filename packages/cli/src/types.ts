@@ -98,6 +98,7 @@ export const CLI_COMMANDS = {
   STATUS: 'status',
   CLEANUP: 'cleanup',
   ITERATE: 'iterate',
+  UPDATE: 'update',
 } as const;
 
 export type CLICommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];

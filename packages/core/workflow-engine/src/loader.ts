@@ -266,7 +266,7 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
    */
   private inferStatus(workflow: Workflow): 'active' | 'inactive' | 'draft' {
     // Check metadata for explicit status
-    const metadata = workflow.metadata as Record<string, unknown> | undefined;
+    const metadata = workflow.metadata;
     if (metadata?.status === 'inactive') return 'inactive';
     if (metadata?.status === 'draft') return 'draft';
 

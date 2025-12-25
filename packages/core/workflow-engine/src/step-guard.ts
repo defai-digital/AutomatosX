@@ -420,8 +420,8 @@ export class StepGuardEngine {
 
         case 'tool':
           // Check if the tool is available
-          const toolName = (context.stepConfig as Record<string, unknown> | undefined)?.toolName ??
-                          (context.stepConfig as Record<string, unknown> | undefined)?.tool;
+          const toolName = (context.stepConfig)?.toolName ??
+                          (context.stepConfig)?.tool;
           if (toolName && typeof toolName === 'string') {
             // Could check tool registry here
             // For now, warn if it's an unknown tool type
@@ -434,8 +434,8 @@ export class StepGuardEngine {
 
         case 'delegate':
           // Delegation requires agent registry
-          const targetAgent = (context.stepConfig as Record<string, unknown> | undefined)?.agentId ??
-                             (context.stepConfig as Record<string, unknown> | undefined)?.targetAgent;
+          const targetAgent = (context.stepConfig)?.agentId ??
+                             (context.stepConfig)?.targetAgent;
           if (!targetAgent) {
             warnings.push('Delegate step has no target agent specified');
           }

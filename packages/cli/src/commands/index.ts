@@ -23,3 +23,6 @@ export { iterateCommand } from './iterate.js';
 
 // MCP server
 export { mcpCommand } from './mcp.js';
+
+// Update
+export { updateCommand } from './update.js';

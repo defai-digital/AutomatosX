@@ -186,7 +186,7 @@ export class ReviewService {
             }
           }
         }
-      } catch (error) {
+      } catch {
         // Skip inaccessible files/directories
         continue;
       }
@@ -231,7 +231,7 @@ export class ReviewService {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // Skip inaccessible directories
     }
   }

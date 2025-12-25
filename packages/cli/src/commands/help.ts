@@ -38,6 +38,7 @@ Commands:
   history               View execution history
   cleanup               Clean up old sessions and data
   iterate               Iterative development loop
+  update                Check for updates and upgrade CLI
   help                  Show this help message
   version               Show version information
 
@@ -153,6 +154,9 @@ Examples:
   ax discuss --pattern debate "Monolith vs microservices for startups"
   ax discuss quick "Best testing strategy for APIs"
   ax ability list
+  ax update
+  ax update --check
+  ax update --yes
 `.trim();
 
 /**

@@ -229,7 +229,7 @@ export const handleConfigEventsResource: ResourceHandler = async (
         },
       }, null, 2),
     };
-  } catch (error) {
+  } catch {
     // If repository not initialized, return empty events
     return {
       uri,

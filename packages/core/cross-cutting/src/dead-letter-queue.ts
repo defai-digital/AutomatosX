@@ -316,7 +316,7 @@ export async function processRetry(
     await retryFn(entry);
     await dlq.markResolved(entryId, 'Retry successful');
     return true;
-  } catch (error) {
+  } catch {
     // Re-fetch to get updated retry count
     const updated = await dlq.getEntry(entryId);
     if (updated) {

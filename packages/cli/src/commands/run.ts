@@ -86,10 +86,10 @@ export async function runCommand(
     const runner = createWorkflowRunner({
       stepExecutor: createLoggingStepExecutor(options.verbose ?? false),
       onStepStart: options.verbose
-        ? (step) => console.log(`  → Starting step: ${step.stepId} (${step.type})`)
+        ? (step) => { console.log(`  → Starting step: ${step.stepId} (${step.type})`); }
         : undefined,
       onStepComplete: options.verbose
-        ? (step, result) => console.log(`  ${result.success ? '✓' : '✗'} Completed: ${step.stepId} (${result.durationMs}ms)`)
+        ? (step, result) => { console.log(`  ${result.success ? '✓' : '✗'} Completed: ${step.stepId} (${result.durationMs}ms)`); }
         : undefined,
     });
 

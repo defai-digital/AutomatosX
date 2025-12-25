@@ -24,6 +24,8 @@ import {
   iterateCommand,
   // MCP server
   mcpCommand,
+  // Update
+  updateCommand,
 } from './commands/index.js';
 import type { CommandHandler } from './types.js';
 
@@ -55,6 +57,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   iterate: iterateCommand,
   // MCP server
   mcp: mcpCommand,
+  // Update
+  update: updateCommand,
 };
 
 /**

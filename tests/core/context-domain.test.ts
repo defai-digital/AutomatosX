@@ -57,8 +57,11 @@ describe('Context Domain', () => {
     describe('getContextPath', () => {
       it('should return correct context path', () => {
         const loader = new ContextLoader();
-        const result = loader.getContextPath('/project');
-        expect(result).toBe(`/project/.automatosx/${CONTEXT_DIRECTORY}`);
+        const projectPath = '/project';
+        const result = loader.getContextPath(projectPath);
+        // Use path.join for cross-platform compatibility
+        const expected = path.join(projectPath, '.automatosx', CONTEXT_DIRECTORY);
+        expect(result).toBe(expected);
       });
     });
 

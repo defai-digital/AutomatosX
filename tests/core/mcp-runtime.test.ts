@@ -454,7 +454,8 @@ describe('MCP Runtime Domain', () => {
           50
         );
 
-        expect(result.durationMs).toBeGreaterThanOrEqual(50);
+        // Allow 5ms tolerance for timer precision across different platforms
+        expect(result.durationMs).toBeGreaterThanOrEqual(45);
         expect(result.durationMs).toBeLessThan(100); // Should timeout around 50ms
       });
     });

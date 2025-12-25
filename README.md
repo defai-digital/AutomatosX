@@ -12,13 +12,115 @@
 
 ## Why AutomatosX
 
-- **Multi-provider routing** - Claude, Gemini, Codex, Qwen, GLM, Grok with deterministic selection
-- **Governed automation** - Policy-driven guardrails and audit-ready traces
-- **Contract-first** - Zod schemas keep workflows and agents type-safe
-- **Event-sourced memory** - Replayable timelines for debugging and compliance
-- **MCP-native** - Ships with MCP server for IDE assistant integration
+AutomatosX solves the core problem of AI coding: **quality and governance**. While LLMs can generate code fast, ensuring that code is correct, safe, and maintainable requires structure.
+
+- **Contracts** - Zod schemas as single source of truth for all inputs/outputs
+- **Domains** - Isolated business logic with clear boundaries
+- **Workflows** - Step-by-step execution with validation at each stage
+- **Invariants** - Behavioral guarantees that must always hold
+- **Guard** - Post-check governance gates before changes are accepted
 
 **Core principle**: AutomatosX never handles your secrets. Authentication stays in your provider CLIs.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CLI / MCP Server                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │
+│  │  Workflow   │  │   Agent     │  │   Review    │  │ Discussion │ │
+│  │  Engine     │  │   Domain    │  │   Domain    │  │   Domain   │ │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │
+│                                                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │
+│  │   Guard     │  │   Memory    │  │   Trace     │  │  Routing   │ │
+│  │   System    │  │   Domain    │  │   Domain    │  │  Engine    │ │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                    Contracts (Zod Schemas)                          │
+│              Single Source of Truth + Invariants                    │
+└─────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Provider Adapters                              │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │
+│  │ Claude │ │ Gemini │ │ Codex  │ │  Qwen  │ │  GLM   │ │  Grok  │ │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Quality Features for AI Coding
+
+### Contracts
+
+Every input and output is validated against Zod schemas. No magic strings, no undefined behavior.
+
+```typescript
+// All workflows, agents, and tools use typed contracts
+import { WorkflowSchema, AgentSchema } from '@defai.digital/contracts';
+```
+
+### Domains
+
+Business logic is isolated in domain packages with clear boundaries. Each domain owns its data and behavior.
+
+```
+packages/core/
+├── workflow-engine/    # Step execution, retries, validation
+├── agent-domain/       # Agent lifecycle, delegation
+├── memory-domain/      # Event-sourced state
+├── trace-domain/       # Execution audit trail
+└── guard/              # Policy enforcement
+```
+
+### Workflows
+
+Multi-step execution with validation, retries, and rollback. Each step is traced and auditable.
+
+```bash
+ax run code-reviewer --input '{"files":["src/index.ts"]}'
+ax trace <id> --verbose   # See every decision
+```
+
+### Invariants
+
+Behavioral guarantees documented and enforced. Examples:
+
+| Domain | Invariant | Guarantee |
+|--------|-----------|-----------|
+| Workflow | INV-WF-001 | Steps execute in definition order |
+| Routing | INV-RT-002 | High risk never selects experimental models |
+| Memory | INV-MEM-001 | Events never modified after storage |
+| Trace | INV-TR-001 | Every trace has start and end events |
+| Guard | INV-GD-001 | Policy violations block execution |
+
+### Guard System
+
+Post-check governance for AI-generated code. Verify before accepting changes.
+
+```bash
+ax guard check --policy bugfix --target ./src
+ax guard list   # See available policies
+```
+
+**Built-in policies:**
+- `bugfix` - Limit change radius for bug fixes (3 packages)
+- `provider-refactor` - Strict boundaries for adapter changes (2 packages)
+- `rebuild` - Larger scope for refactoring (10 packages)
+
+**Gates:**
+- Path validation (allowed/forbidden paths)
+- Change radius (limit packages modified)
+- Dependency boundaries (import rules)
+- Contract tests (schema validation)
 
 ---
 
@@ -53,11 +155,14 @@ ax call claude --file ./src/index.ts "Review this"
 # Run a workflow
 ax run code-reviewer --input '{"files":["src/index.ts"]}'
 
-# Review code
+# Review code with focus
 ax review analyze src/ --focus security
 
 # Multi-model discussion
 ax discuss "Compare REST vs GraphQL" --providers claude,gemini
+
+# Check governance
+ax guard check --policy bugfix --target ./src
 
 # View execution traces
 ax trace
@@ -67,57 +172,35 @@ ax trace
 
 ## CLI Reference
 
-### System
 ```bash
+# System
 ax setup                    # Initialize configuration
 ax doctor                   # Check provider health
-ax config show              # Show configuration
-```
 
-### Providers
-```bash
+# Providers
 ax call <provider> "prompt" # Direct provider call
-ax call claude --file ./f   # With file context
-```
 
-### Workflows
-```bash
+# Workflows
+ax run <id> --input '{}'    # Execute workflow
 ax list                     # List workflows
-ax run <id>                 # Execute workflow
-ax run <id> --input '{}'    # With JSON input
-```
 
-### Agents
-```bash
-ax agent list               # List agents
+# Agents
 ax agent run <id>           # Execute agent
-ax agent get <id>           # Get agent details
-```
+ax agent list               # List agents
 
-### Review
-```bash
-ax review analyze <path>    # Analyze code
+# Review
+ax review analyze <path>    # Code review
 ax review analyze src/ --focus security
-ax review analyze src/ --focus architecture
-```
 
-### Discussion
-```bash
-ax discuss "<topic>"                    # Multi-model synthesis
-ax discuss "<topic>" --pattern voting   # Voting consensus
-ax discuss "<topic>" --pattern debate   # Structured debate
-ax discuss quick "<topic>"              # Quick 2-3 provider discussion
-```
+# Discussion
+ax discuss "<topic>"        # Multi-model synthesis
+ax discuss quick "<topic>"  # Quick consensus
 
-### Guard
-```bash
+# Guard
+ax guard check --policy <p> # Check governance
 ax guard list               # List policies
-ax guard check --policy <p> # Check against policy
-```
 
-### Scaffold
-```bash
-ax scaffold project <name>  # Create project
+# Scaffold
 ax scaffold contract <name> # Generate Zod schemas
 ax scaffold domain <name>   # Generate domain package
 ```
@@ -144,54 +227,18 @@ ax mcp server
 }
 ```
 
-**Available tools**: `ax_agent_run`, `ax_agent_list`, `ax_review_analyze`, `ax_discuss`, `ax_guard_check`, `ax_workflow_run`, `ax_trace_list`, `ax_memory_store`, `ax_memory_retrieve`, `ax_session_create`
-
----
-
-## Configuration
-
-Config location: `~/.config/automatosx/config.json`
-
-```bash
-ax config show              # View config
-ax config get <key>         # Get value
-ax config set <key> <value> # Set value
-ax config path              # Show paths
-```
+**Tools**: `ax_agent_run`, `ax_review_analyze`, `ax_discuss`, `ax_guard_check`, `ax_workflow_run`, `ax_trace_list`, `ax_memory_store`
 
 ---
 
 ## Development
 
 ```bash
-# Clone and build
 git clone https://github.com/defai-digital/automatosx.git
 cd automatosx
 pnpm install && pnpm build
-
-# Development commands
-pnpm test                   # Run tests
-pnpm typecheck              # Type check
-pnpm lint                   # Lint code
-pnpm validate               # Full validation
-```
-
-### Project Structure
-
-```
-packages/
-├── contracts/              # Zod schemas (source of truth)
-├── core/                   # Domain logic
-│   ├── workflow-engine/    # Workflow execution
-│   ├── routing-engine/     # Model selection
-│   ├── memory-domain/      # Event-sourced state
-│   └── trace-domain/       # Execution tracing
-├── adapters/               # External integrations
-│   ├── providers/          # LLM provider adapters
-│   └── sqlite/             # Persistence
-├── guard/                  # Governance system
-├── cli/                    # CLI interface
-└── mcp-server/             # MCP protocol server
+pnpm test
+pnpm validate   # typecheck + lint + deps + tests
 ```
 
 ---

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/ability-domain",
-  "version": "13.1.5",
+  "version": "13.1.6",
   "type": "module",
   "description": "Ability management for AutomatosX agents",
   "license": "Apache-2.0",

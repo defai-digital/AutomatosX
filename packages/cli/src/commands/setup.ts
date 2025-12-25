@@ -128,6 +128,7 @@ const HEALTH_STATUS = {
 const CLI_FLAGS = {
   force: ['--force', '-f'],
   nonInteractive: ['--non-interactive', '-y'],
+  silent: ['--silent', '-s'],
   local: ['--local', '-l'],
   global: ['--global', '-g'],
   skipProject: ['--skip-project', '--no-project'],
@@ -674,6 +675,7 @@ async function fileExists(path: string): Promise<boolean> {
 interface SetupOptions {
   force: boolean;
   nonInteractive: boolean;
+  silent: boolean;
   scope: ConfigScope;
   skipProjectStructure: boolean;
 }
@@ -761,6 +763,7 @@ function matchesFlag(arg: string, flags: readonly string[]): boolean {
 function parseSetupArgs(args: string[]): SetupOptions {
   let force = false;
   let nonInteractive = false;
+  let silent = false;
   let scope: ConfigScope = CONFIG_SCOPE.GLOBAL;
   let skipProjectStructure = false;
 
@@ -769,6 +772,10 @@ function parseSetupArgs(args: string[]): SetupOptions {
       force = true;
     } else if (matchesFlag(arg, CLI_FLAGS.nonInteractive)) {
       nonInteractive = true;
+    } else if (matchesFlag(arg, CLI_FLAGS.silent)) {
+      silent = true;
+      nonInteractive = true; // Silent implies non-interactive
+      force = true; // Silent implies force (use defaults, overwrite if exists)
     } else if (matchesFlag(arg, CLI_FLAGS.local)) {
       scope = CONFIG_SCOPE.LOCAL;
     } else if (matchesFlag(arg, CLI_FLAGS.global)) {
@@ -778,7 +785,7 @@ function parseSetupArgs(args: string[]): SetupOptions {
     }
   }
 
-  return { force, nonInteractive, scope, skipProjectStructure };
+  return { force, nonInteractive, silent, scope, skipProjectStructure };
 }
 
 /**
@@ -801,31 +808,33 @@ export async function setupCommand(
 ): Promise<CommandResult> {
   const setupOptions = parseSetupArgs(args);
   const isJsonFormat = options.format === 'json';
+  const isSilent = setupOptions.silent;
+  const showOutput = !isJsonFormat && !isSilent;
   const outputLines: string[] = [];
 
   try {
     // Header
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push('');
       outputLines.push(`${COLORS.bold}AutomatosX Setup${COLORS.reset}`);
       outputLines.push('');
     }
 
     // Step 1: Check prerequisites
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push(`${COLORS.bold}Step 1: System Check${COLORS.reset}`);
       outputLines.push(`  ${ICONS.check} Node.js: ${process.version}`);
       outputLines.push('');
     }
 
     // Step 2: Detect providers
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push(`${COLORS.bold}Step 2: Provider Detection${COLORS.reset}`);
     }
 
     const detectedProviders = await detectAllProviders();
 
-    if (!isJsonFormat) {
+    if (showOutput) {
       for (const provider of detectedProviders) {
         outputLines.push(formatProviderResult(provider));
       }
@@ -833,13 +842,13 @@ export async function setupCommand(
     }
 
     // Step 3: Create configuration
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push(`${COLORS.bold}Step 3: Creating Configuration${COLORS.reset}`);
     }
 
     const setupResult = await runSetup(setupOptions);
 
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push(`  ${ICONS.check} Configuration saved to: ${setupResult.configPath}`);
       outputLines.push('');
     }
@@ -848,13 +857,13 @@ export async function setupCommand(
     let projectStructure: { created: string[]; skipped: string[] } | undefined;
 
     if (!setupOptions.skipProjectStructure) {
-      if (!isJsonFormat) {
+      if (showOutput) {
         outputLines.push(`${COLORS.bold}Step 4: Project Structure${COLORS.reset}`);
       }
 
       projectStructure = await createProjectStructure(process.cwd(), setupOptions.force);
 
-      if (!isJsonFormat) {
+      if (showOutput) {
         for (const filePath of projectStructure.created) {
           outputLines.push(`  ${ICONS.check} Created ${filePath}`);
         }
@@ -866,14 +875,14 @@ export async function setupCommand(
     }
 
     // Step 5: Configure MCP for all detected providers
-    if (!isJsonFormat) {
+    if (showOutput) {
       outputLines.push(`${COLORS.bold}Step 5: MCP Configuration${COLORS.reset}`);
       outputLines.push(`  ${COLORS.dim}Using 'ax doctor' check to verify installed CLIs...${COLORS.reset}`);
     }
 
     const mcpResult = await configureMCPForAllProviders();
 
-    if (!isJsonFormat) {
+    if (showOutput) {
       for (const providerId of mcpResult.configured) {
         outputLines.push(`  ${ICONS.check} ${providerId}: AutomatosX MCP configured`);
       }
@@ -889,7 +898,7 @@ export async function setupCommand(
       outputLines.push('');
     }
 
-    if (!isJsonFormat) {
+    if (showOutput) {
       // Summary
       const detectedCount = detectedProviders.filter((provider) => provider.detected).length;
       const enabledCount = Object.keys(setupResult.config.providers).length;

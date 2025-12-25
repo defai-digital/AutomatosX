@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/config-domain",
-  "version": "13.1.5",
+  "version": "13.1.6",
   "type": "module",
   "description": "Configuration domain - config management following contract invariants",
   "license": "Apache-2.0",

@@ -9,7 +9,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, writeFile, access } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
@@ -229,7 +229,7 @@ function buildMCPAddCommand(providerId: ProviderId): string | null {
 
     case 'ax-wrapper': {
       const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : CLI_FALLBACK_COMMAND;
-      const commandArgs = isAbsolutePath(binaryPath) ? `"${binaryPath}" ${MCP_COMMANDS.serverArgs}` : MCP_COMMANDS.serverArgs;
+      const commandArgs = isAbsolutePath(binaryPath) ? `${binaryPath} ${MCP_COMMANDS.serverArgs}` : MCP_COMMANDS.serverArgs;
       return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.command} ${command} ${MCP_FLAGS.args} ${commandArgs}`;
     }
 
@@ -257,6 +257,91 @@ interface MCPConfigResult {
 }
 
 /**
+ * ax-wrapper MCP config file structure
+ */
+interface AxWrapperMCPConfig {
+  mcpServers: {
+    [name: string]: {
+      name: string;
+      transport: {
+        type: 'stdio';
+        command: string;
+        args: string[];
+        env: Record<string, string>;
+        framing: 'ndjson';
+      };
+    };
+  };
+}
+
+/**
+ * Get the settings file path for ax-wrapper providers.
+ * ax-glm and ax-grok store configs in .ax-glm/ and .ax-grok/ directories.
+ */
+function getAxWrapperSettingsPath(cliName: string): string {
+  // For project-local config, use current working directory
+  return join(process.cwd(), `.${cliName}`, 'settings.json');
+}
+
+/**
+ * Configure MCP for ax-wrapper providers by writing config file directly.
+ * This is needed because ax-wrapper CLIs default to 'content-length' framing,
+ * but automatosx MCP server uses 'ndjson' framing (MCP SDK default).
+ */
+async function configureAxWrapperMCP(cliName: string): Promise<MCPConfigResult> {
+  const binaryPath = getCLIBinaryPath();
+  const settingsPath = getAxWrapperSettingsPath(cliName);
+  const settingsDir = join(process.cwd(), `.${cliName}`);
+
+  try {
+    // Ensure settings directory exists
+    await mkdir(settingsDir, { recursive: true });
+
+    // Read existing config or create new one
+    let existingConfig: AxWrapperMCPConfig = { mcpServers: {} };
+    try {
+      const content = await readFile(settingsPath, 'utf-8');
+      existingConfig = JSON.parse(content) as AxWrapperMCPConfig;
+      if (!existingConfig.mcpServers) {
+        existingConfig.mcpServers = {};
+      }
+    } catch {
+      // File doesn't exist or is invalid - use empty config
+    }
+
+    // Build args based on binary path
+    const args = isAbsolutePath(binaryPath)
+      ? [binaryPath, 'mcp', 'server']
+      : ['mcp', 'server'];
+
+    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
+
+    // Add automatosx MCP server config with ndjson framing
+    existingConfig.mcpServers[MCP_SERVER_NAME] = {
+      name: MCP_SERVER_NAME,
+      transport: {
+        type: 'stdio',
+        command,
+        args,
+        env: {},
+        framing: 'ndjson',
+      },
+    };
+
+    // Write updated config
+    await writeFile(settingsPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
+
+    return { success: true, skipped: false };
+  } catch (err) {
+    return {
+      success: false,
+      skipped: false,
+      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
+    };
+  }
+}
+
+/**
  * Check if command output indicates successful MCP server addition.
  * Some providers output success message even when validation times out.
  */
@@ -275,16 +360,27 @@ function extractErrorMessage(rawError: string): string {
 }
 
 /**
- * Configure MCP for a detected provider using CLI commands.
+ * Configure MCP for a detected provider.
  *
- * Strategy (always remove-then-add for clean state):
- * 1. Remove any existing automatosx MCP config (ignore errors if not exists)
- * 2. Add automatosx MCP server using provider's native CLI
+ * For ax-wrapper providers (ax-glm, ax-grok):
+ * - Write config file directly with ndjson framing (required for MCP SDK compatibility)
  *
- * Note: Some providers (ax-glm, ax-grok) validate connection after adding,
- * which may timeout. We detect success by checking output for "Added MCP server".
+ * For other providers:
+ * - Use native CLI commands (remove-then-add for clean state)
  */
 async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfigResult> {
+  const mcpConfig = PROVIDER_MCP_CONFIGS[providerId];
+  if (!mcpConfig) {
+    return { success: true, skipped: true };
+  }
+
+  // For ax-wrapper providers, write config file directly with ndjson framing
+  // This is needed because ax-wrapper CLIs default to 'content-length' framing,
+  // but automatosx MCP server uses 'ndjson' framing (MCP SDK default)
+  if (mcpConfig.format === 'ax-wrapper') {
+    return configureAxWrapperMCP(mcpConfig.cliName);
+  }
+
   const addCommand = buildMCPAddCommand(providerId);
   const removeCommand = buildMCPRemoveCommand(providerId);
 

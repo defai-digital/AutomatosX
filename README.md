@@ -324,7 +324,7 @@ ax review list                    # List recent reviews
 
 ### Discussion Commands
 
-The Multi-Model Discussion System enables multiple AI providers to collaborate on complex topics through structured dialogue patterns.
+The Multi-Model Discussion System enables multiple AI providers and agents to collaborate on complex topics through structured dialogue patterns.
 
 ```bash
 # Quick discussion (2-3 providers, single round synthesis)
@@ -339,6 +339,10 @@ ax discuss "Review this security approach" --pattern critique --rounds 3
 # Debate pattern (proponent, opponent, judge)
 ax discuss "Monolith vs microservices for startups" --pattern debate --rounds 2
 
+# Mixed participants (providers + agents)
+ax discuss "API design review" --participants claude,reviewer:agent,security:agent
+ax discuss "Architecture decision" --participants gemini,architect:agent --agent-weight 2.0
+
 # With context
 ax discuss "Optimize this code" --pattern critique --context "$(cat ./src/api.ts)"
 
@@ -351,6 +355,11 @@ ax discuss "Best testing strategy" --format json
 - **voting**: Providers vote on options, consensus by threshold
 - **critique**: One proposes, others critique, revision cycle
 - **debate**: Structured debate with proponent, opponent, judge roles
+
+**Agent Participation** (v13.1.0):
+- Mix providers and agents as discussion participants using `--participants`
+- Agents use their `providerAffinity` for provider selection
+- Agent weight multiplier for consensus voting (default 1.5x, range 0.5-3.0)
 
 ---
 

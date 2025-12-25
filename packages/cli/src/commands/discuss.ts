@@ -22,10 +22,13 @@ import {
 // Discussion domain imports
 import {
   DiscussionExecutor,
+  RecursiveDiscussionExecutor,
+  parseParticipantList,
   type DiscussionProviderExecutor,
   type ProviderExecuteRequest,
   type ProviderExecuteResult,
   type DiscussionProgressEvent,
+  type RecursiveDiscussionResult,
 } from '@defai.digital/discussion-domain';
 
 // Contract types
@@ -34,6 +37,8 @@ import {
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
+  type TimeoutStrategy,
+  type DiscussionParticipant,
 } from '@defai.digital/contracts';
 
 // ============================================================================
@@ -94,6 +99,17 @@ interface ParsedDiscussArgs {
   synthesizer: string | undefined;
   context: string | undefined;
   timeout: number;
+  // Participant options (agents and providers)
+  participants: DiscussionParticipant[] | undefined;
+  agentWeight: number;
+  // Recursive discussion options
+  recursive: boolean;
+  maxDepth: number;
+  timeoutStrategy: TimeoutStrategy;
+  totalBudget: number;
+  maxCalls: number;
+  earlyExit: boolean;
+  confidenceThreshold: number;
 }
 
 // ============================================================================
@@ -225,6 +241,17 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   let synthesizer: string | undefined;
   let context: string | undefined;
   let timeout = 60000;
+  // Participant options
+  let participants: DiscussionParticipant[] | undefined;
+  let agentWeight = 1.5; // Default agent weight multiplier (INV-DISC-642)
+  // Recursive options
+  let recursive = false;
+  let maxDepth = 2;
+  let timeoutStrategy: TimeoutStrategy = 'cascade';
+  let totalBudget = 180000; // 3 minutes default
+  let maxCalls = 20;
+  let earlyExit = true;
+  let confidenceThreshold = 0.9;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -244,6 +271,42 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
       context = args[++i];
     } else if (arg === '--timeout' && i + 1 < args.length) {
       timeout = parseInt(args[++i] ?? '60000', 10);
+    }
+    // Participant options (agents and providers)
+    else if (arg === '--participants' && i + 1 < args.length) {
+      // Parse participant list: "claude,glm,reviewer:agent,security:agent"
+      const participantStr = args[++i] ?? '';
+      participants = parseParticipantList(participantStr);
+    } else if (arg === '--agent-weight' && i + 1 < args.length) {
+      // Agent weight multiplier (0.5 - 3.0, default 1.5)
+      agentWeight = Math.max(0.5, Math.min(3.0, parseFloat(args[++i] ?? '1.5')));
+    }
+    // Recursive discussion options
+    else if (arg === '--recursive' || arg === '-r') {
+      recursive = true;
+    } else if (arg === '--max-depth' && i + 1 < args.length) {
+      maxDepth = parseInt(args[++i] ?? '2', 10);
+      recursive = true; // Implies recursive
+    } else if (arg === '--timeout-strategy' && i + 1 < args.length) {
+      timeoutStrategy = args[++i] as TimeoutStrategy;
+    } else if (arg === '--budget' && i + 1 < args.length) {
+      // Parse budget like "180s" or "180000"
+      const budgetStr = args[++i] ?? '180000';
+      if (budgetStr.endsWith('s')) {
+        totalBudget = parseInt(budgetStr.slice(0, -1), 10) * 1000;
+      } else if (budgetStr.endsWith('m')) {
+        totalBudget = parseInt(budgetStr.slice(0, -1), 10) * 60000;
+      } else {
+        totalBudget = parseInt(budgetStr, 10);
+      }
+    } else if (arg === '--max-calls' && i + 1 < args.length) {
+      maxCalls = parseInt(args[++i] ?? '20', 10);
+    } else if (arg === '--early-exit') {
+      earlyExit = true;
+    } else if (arg === '--no-early-exit') {
+      earlyExit = false;
+    } else if (arg === '--confidence-threshold' && i + 1 < args.length) {
+      confidenceThreshold = parseFloat(args[++i] ?? '0.9');
     } else if (arg !== undefined && !arg.startsWith('-')) {
       // Positional argument is the topic
       if (topic === undefined) {
@@ -274,6 +337,15 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     synthesizer,
     context,
     timeout,
+    participants,
+    agentWeight,
+    recursive,
+    maxDepth,
+    timeoutStrategy,
+    totalBudget,
+    maxCalls,
+    earlyExit,
+    confidenceThreshold,
   };
 }
 
@@ -322,7 +394,7 @@ function createProgressHandler(verbose: boolean): (event: DiscussionProgressEven
  * Formats the discussion result for text output
  */
 function formatDiscussionResult(
-  result: Awaited<ReturnType<DiscussionExecutor['execute']>>,
+  result: Awaited<ReturnType<DiscussionExecutor['execute']>> | RecursiveDiscussionResult,
   verbose: boolean
 ): string {
   const lines: string[] = [];
@@ -347,6 +419,18 @@ function formatDiscussionResult(
   const durationSec = (result.totalDurationMs / 1000).toFixed(1);
   lines.push(`Duration: ${durationSec}s`);
 
+  // Recursive discussion info
+  const recursiveResult = result as RecursiveDiscussionResult;
+  if (recursiveResult.totalProviderCalls !== undefined) {
+    lines.push(`Total Calls: ${recursiveResult.totalProviderCalls}`);
+  }
+  if (recursiveResult.maxDepthReached !== undefined && recursiveResult.maxDepthReached > 0) {
+    lines.push(`Max Depth: ${recursiveResult.maxDepthReached}`);
+  }
+  if (recursiveResult.subDiscussions && recursiveResult.subDiscussions.length > 0) {
+    lines.push(`Sub-discussions: ${recursiveResult.subDiscussions.length}`);
+  }
+
   // Consensus result
   if (result.consensus !== undefined) {
     lines.push('');
@@ -370,6 +454,17 @@ function formatDiscussionResult(
     lines.push(`  Margin: ${marginPercent}%`);
     if (result.votingResults.unanimous) {
       lines.push(`  ${ICONS.check} Unanimous`);
+    }
+  }
+
+  // Sub-discussions (for recursive mode)
+  if (verbose && recursiveResult.subDiscussions && recursiveResult.subDiscussions.length > 0) {
+    lines.push('');
+    lines.push(`${COLORS.bold}Sub-discussions${COLORS.reset}`);
+    for (const sub of recursiveResult.subDiscussions) {
+      lines.push(`  ${COLORS.cyan}Depth ${sub.depth}${COLORS.reset}: ${sub.topic.substring(0, 50)}...`);
+      lines.push(`    Providers: ${sub.participatingProviders.join(', ')}`);
+      lines.push(`    Duration: ${(sub.durationMs / 1000).toFixed(1)}s`);
     }
   }
 
@@ -415,11 +510,12 @@ ${COLORS.bold}Usage:${COLORS.reset}
   ax discuss <topic>
   ax discuss --providers <providers> <topic>
   ax discuss --pattern <pattern> <topic>
+  ax discuss --recursive <topic>
 
 ${COLORS.bold}Arguments:${COLORS.reset}
   <topic>           The topic or question for discussion
 
-${COLORS.bold}Options:${COLORS.reset}
+${COLORS.bold}Basic Options:${COLORS.reset}
   --providers       Comma-separated list of providers (default: claude,glm,qwen,gemini)
   --pattern         Discussion pattern: ${patterns}
   --rounds          Number of discussion rounds (default: 2)
@@ -429,6 +525,16 @@ ${COLORS.bold}Options:${COLORS.reset}
   --timeout         Per-provider timeout in ms (default: 60000)
   --verbose, -v     Show detailed progress
   --format          Output format: text (default) or json
+
+${COLORS.bold}Recursive Discussion Options:${COLORS.reset}
+  --recursive, -r       Enable recursive sub-discussions
+  --max-depth           Maximum discussion depth (default: 2, max: 4)
+  --timeout-strategy    Timeout strategy: fixed, cascade, budget (default: cascade)
+  --budget              Total timeout budget (e.g., 180s, 3m, 180000)
+  --max-calls           Maximum total provider calls (default: 20)
+  --early-exit          Enable early exit on high confidence (default: true)
+  --no-early-exit       Disable early exit
+  --confidence-threshold  Confidence threshold for early exit (default: 0.9)
 
 ${COLORS.bold}Available Providers:${COLORS.reset}
   ${availableProviders}
@@ -440,12 +546,22 @@ ${COLORS.bold}Discussion Patterns:${COLORS.reset}
   voting       Models vote on options with confidence levels
   round-robin  Sequential turns with each building on previous
 
+${COLORS.bold}Timeout Strategies:${COLORS.reset}
+  fixed      Each level gets equal timeout
+  cascade    Each level gets half of parent (recommended)
+  budget     Total budget divided across levels
+
 ${COLORS.bold}Examples:${COLORS.reset}
   ax discuss "What is the best approach for microservices?"
   ax discuss --providers claude,glm,qwen "Design a REST API"
   ax discuss --pattern debate "Is functional programming better than OOP?"
   ax discuss --pattern voting "Which framework: React, Vue, or Angular?"
   ax discuss --verbose --rounds 3 "Optimize database queries"
+
+  ${COLORS.cyan}# Recursive discussions${COLORS.reset}
+  ax discuss --recursive "Complex architectural decision"
+  ax discuss --recursive --max-depth 3 "Design a distributed system"
+  ax discuss --recursive --budget 5m --max-calls 30 "Research topic"
 `.trim();
 
   return {
@@ -564,13 +680,6 @@ export async function discussCommand(
     };
   }
 
-  // Create discussion executor
-  const discussionExecutor = new DiscussionExecutor({
-    providerExecutor: providerBridge,
-    defaultTimeoutMs: parsed.timeout,
-    checkProviderHealth: false, // Already checked above
-  });
-
   // Build discussion config
   const config: DiscussStepConfig = {
     pattern: parsed.pattern,
@@ -589,6 +698,9 @@ export async function discussCommand(
     continueOnProviderFailure: true,
     minProviders: 2,
     temperature: 0.7,
+    agentWeightMultiplier: parsed.agentWeight,
+    // Include participants if specified via --participants option
+    ...(parsed.participants !== undefined && { participants: parsed.participants }),
   };
 
   // Show discussion start
@@ -599,16 +711,70 @@ export async function discussCommand(
     console.log(`  Pattern: ${PATTERN_NAMES[parsed.pattern] ?? parsed.pattern}`);
     console.log(`  Providers: ${availableProviders.join(', ')}`);
     console.log(`  Rounds: ${parsed.rounds}`);
+    if (parsed.participants !== undefined && parsed.participants.length > 0) {
+      const agentCount = parsed.participants.filter(p => p.type === 'agent').length;
+      const providerCount = parsed.participants.filter(p => p.type === 'provider').length;
+      console.log(`  Participants: ${providerCount} providers, ${agentCount} agents`);
+      console.log(`  Agent Weight: ${parsed.agentWeight}x`);
+    }
+    if (parsed.recursive) {
+      console.log(`  ${COLORS.cyan}Recursive: enabled${COLORS.reset}`);
+      console.log(`  Max Depth: ${parsed.maxDepth}`);
+      console.log(`  Timeout Strategy: ${parsed.timeoutStrategy}`);
+      console.log(`  Budget: ${(parsed.totalBudget / 1000).toFixed(0)}s`);
+      console.log(`  Max Calls: ${parsed.maxCalls}`);
+    }
   } else {
     // Simple progress indicator for non-verbose mode
-    process.stdout.write(`${ICONS.discuss} Discussing with ${availableProviders.length} providers... `);
+    const recursiveLabel = parsed.recursive ? ' (recursive)' : '';
+    process.stdout.write(`${ICONS.discuss} Discussing with ${availableProviders.length} providers${recursiveLabel}... `);
   }
 
   try {
-    // Execute discussion
-    const result = await discussionExecutor.execute(config, {
-      onProgress: createProgressHandler(options.verbose),
-    });
+    // Choose executor based on recursive flag
+    let result: Awaited<ReturnType<DiscussionExecutor['execute']>> | RecursiveDiscussionResult;
+
+    if (parsed.recursive) {
+      // Use recursive executor
+      const recursiveExecutor = new RecursiveDiscussionExecutor({
+        providerExecutor: providerBridge,
+        defaultTimeoutMs: parsed.timeout,
+        checkProviderHealth: false, // Already checked above
+        recursive: {
+          enabled: true,
+          maxDepth: parsed.maxDepth,
+          allowSubDiscussions: true,
+        },
+        timeout: {
+          strategy: parsed.timeoutStrategy,
+          totalBudgetMs: parsed.totalBudget,
+          minSynthesisMs: 10000,
+        },
+        cost: {
+          maxTotalCalls: parsed.maxCalls,
+          cascadingConfidence: {
+            enabled: parsed.earlyExit,
+            threshold: parsed.confidenceThreshold,
+            minProviders: 2,
+          },
+        },
+      });
+
+      result = await recursiveExecutor.execute(config, {
+        onProgress: createProgressHandler(options.verbose),
+      });
+    } else {
+      // Use standard executor
+      const discussionExecutor = new DiscussionExecutor({
+        providerExecutor: providerBridge,
+        defaultTimeoutMs: parsed.timeout,
+        checkProviderHealth: false, // Already checked above
+      });
+
+      result = await discussionExecutor.execute(config, {
+        onProgress: createProgressHandler(options.verbose),
+      });
+    }
 
     // Clear simple progress indicator if not verbose
     if (!options.verbose) {

@@ -101,6 +101,20 @@ export interface ProviderExecuteResult {
 // ============================================================================
 
 /**
+ * Cascading confidence configuration for early exit
+ */
+export interface CascadingConfidenceOptions {
+  /** Whether cascading confidence is enabled */
+  enabled: boolean;
+
+  /** Confidence threshold for early exit (0-1) */
+  threshold: number;
+
+  /** Minimum providers before early exit allowed */
+  minProviders: number;
+}
+
+/**
  * Context passed to pattern executors
  */
 export interface PatternExecutionContext {
@@ -121,6 +135,9 @@ export interface PatternExecutionContext {
 
   /** Callback for progress updates */
   onProgress?: ((event: DiscussionProgressEvent) => void) | undefined;
+
+  /** Cascading confidence configuration for early exit */
+  cascadingConfidence?: CascadingConfidenceOptions | undefined;
 }
 
 /**
@@ -132,6 +149,23 @@ export interface DiscussionProgressEvent {
   provider?: string | undefined;
   message?: string | undefined;
   timestamp: string;
+}
+
+/**
+ * Early exit information
+ */
+export interface EarlyExitInfo {
+  /** Whether early exit was triggered */
+  triggered: boolean;
+
+  /** Reason for early exit decision */
+  reason?: string | undefined;
+
+  /** Number of providers at exit point */
+  atProviderCount?: number | undefined;
+
+  /** Confidence score that triggered exit */
+  confidenceScore?: number | undefined;
 }
 
 /**
@@ -155,6 +189,9 @@ export interface PatternExecutionResult {
 
   /** Error if execution failed */
   error?: string | undefined;
+
+  /** Early exit information */
+  earlyExit?: EarlyExitInfo | undefined;
 }
 
 /**
@@ -189,6 +226,9 @@ export interface ConsensusExecutionContext {
 
   /** Consensus configuration */
   config: DiscussStepConfig['consensus'];
+
+  /** Agent weight multiplier for consensus (INV-DISC-642) */
+  agentWeightMultiplier?: number | undefined;
 
   /** Provider executor for synthesis calls */
   providerExecutor: DiscussionProviderExecutor;
@@ -255,6 +295,86 @@ export interface DiscussionExecutorOptions {
 
   /** Trace ID for debugging */
   traceId?: string | undefined;
+}
+
+// ============================================================================
+// Recursive Discussion Types
+// ============================================================================
+
+import type {
+  DiscussionContext,
+  TimeoutConfig,
+  RecursiveConfig,
+  CostControlConfig,
+  SubDiscussionResult,
+} from '@defai.digital/contracts';
+
+/**
+ * Extended options for recursive discussion executor
+ */
+export interface RecursiveDiscussionExecutorOptions extends DiscussionExecutorOptions {
+  /** Recursive discussion configuration */
+  recursive?: RecursiveConfig | undefined;
+
+  /** Timeout configuration */
+  timeout?: TimeoutConfig | undefined;
+
+  /** Cost control configuration */
+  cost?: CostControlConfig | undefined;
+
+  /** Parent context for nested discussions */
+  parentContext?: DiscussionContext | undefined;
+
+  /** Callback when sub-discussion is spawned */
+  onSubDiscussionSpawn?: ((context: DiscussionContext, topic: string) => void) | undefined;
+
+  /** Callback when sub-discussion completes */
+  onSubDiscussionComplete?: ((result: SubDiscussionResult) => void) | undefined;
+}
+
+/**
+ * Extended pattern execution context for recursive discussions
+ */
+export interface RecursivePatternExecutionContext extends PatternExecutionContext {
+  /** Discussion context for recursion tracking */
+  discussionContext?: DiscussionContext | undefined;
+
+  /** Whether sub-discussions are allowed */
+  allowSubDiscussions?: boolean | undefined;
+
+  /** Function to spawn a sub-discussion */
+  spawnSubDiscussion?: ((topic: string, providers?: string[]) => Promise<SubDiscussionResult | null>) | undefined;
+}
+
+/**
+ * Extended pattern execution result with sub-discussion info
+ */
+export interface RecursivePatternExecutionResult extends PatternExecutionResult {
+  /** Sub-discussions spawned during execution */
+  subDiscussions?: SubDiscussionResult[] | undefined;
+
+  /** Total calls including sub-discussions */
+  totalProviderCalls?: number | undefined;
+}
+
+/**
+ * Sub-discussion request
+ */
+export interface SubDiscussionRequest {
+  /** Topic for sub-discussion */
+  topic: string;
+
+  /** Providers to use (optional, uses parent's allowed providers) */
+  providers?: string[] | undefined;
+
+  /** Pattern to use (defaults to synthesis) */
+  pattern?: DiscussionPattern | undefined;
+
+  /** Maximum rounds (defaults to 1 for sub-discussions) */
+  rounds?: number | undefined;
+
+  /** Requesting provider ID */
+  requestedBy: string;
 }
 
 // ============================================================================

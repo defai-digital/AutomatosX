@@ -20,6 +20,7 @@
     { "path": "../core/ability-domain" },
     { "path": "../core/analysis-domain" },
     { "path": "../core/review-domain" },
+    { "path": "../core/discussion-domain" },
     { "path": "../guard" },
     { "path": "../adapters/providers" },
     { "path": "../adapters/sqlite" },

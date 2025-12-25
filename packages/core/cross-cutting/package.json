@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/cross-cutting",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "type": "module",
   "description": "Cross-cutting concerns for AutomatosX - DLQ, Saga, Retention, Idempotency",
   "license": "Apache-2.0",

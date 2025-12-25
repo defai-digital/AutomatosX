@@ -368,6 +368,7 @@ describe('Pattern Executors', () => {
         minProviders: 2,
         temperature: 0.7,
         verbose: false,
+        agentWeightMultiplier: 1.5,
         // Missing roles
       };
 

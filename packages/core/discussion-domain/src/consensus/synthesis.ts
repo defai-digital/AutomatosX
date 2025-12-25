@@ -124,6 +124,8 @@ export class SynthesisConsensus implements ConsensusExecutor {
         provider: r.provider,
         content: r.content,
         role: r.role,
+        // Indicate if this is an agent with domain expertise (INV-DISC-642)
+        isAgent: r.isAgent,
       }))
     );
   }

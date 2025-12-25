@@ -335,12 +335,14 @@ export function interpolate(template: string, variables: Record<string, string>)
  * Format previous responses for inclusion in prompts
  */
 export function formatPreviousResponses(
-  responses: { provider: string; content: string; role?: DebateRole | undefined }[]
+  responses: { provider: string; content: string; role?: DebateRole | undefined; isAgent?: boolean | undefined }[]
 ): string {
   return responses
     .map(r => {
       const roleLabel = r.role ? ` (${r.role})` : '';
-      return `### ${r.provider}${roleLabel}\n${r.content}`;
+      // INV-DISC-642: Indicate agent responses for synthesis weighting
+      const agentLabel = r.isAgent ? ' [Agent - Domain Expert]' : '';
+      return `### ${r.provider}${roleLabel}${agentLabel}\n${r.content}`;
     })
     .join('\n\n');
 }

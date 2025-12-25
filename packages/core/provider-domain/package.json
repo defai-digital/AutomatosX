@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/provider-domain",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "type": "module",
   "description": "Provider resilience domain for AutomatosX - circuit breaker, rate limiting, health monitoring",
   "license": "Apache-2.0",

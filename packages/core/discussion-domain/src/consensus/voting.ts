@@ -3,6 +3,9 @@
  *
  * Tallies votes from all providers and determines winner based on
  * raw counts or confidence-weighted scores.
+ *
+ * Invariants:
+ * - INV-DISC-642: Agent responses weighted by agentWeightMultiplier (default 1.5x)
  */
 
 import type { VotingResults, VoteRecord } from '@defai.digital/contracts';
@@ -13,6 +16,11 @@ import {
   formatVotes,
   getProviderSystemPrompt,
 } from '../prompts/templates.js';
+
+/**
+ * Default agent weight multiplier (INV-DISC-642)
+ */
+const DEFAULT_AGENT_WEIGHT = 1.5;
 
 export class VotingConsensus implements ConsensusExecutor {
   readonly method = 'voting' as const;
@@ -36,8 +44,8 @@ export class VotingConsensus implements ConsensusExecutor {
       };
     }
 
-    // Tally votes
-    const votingResults = this.tallyVotes(votes, config.threshold);
+    // Tally votes with agent weight multiplier (INV-DISC-642)
+    const votingResults = this.tallyVotes(votes, context.agentWeightMultiplier);
 
     // Generate synthesis summary
     const synthesizerId = config.synthesizer ||
@@ -73,8 +81,8 @@ export class VotingConsensus implements ConsensusExecutor {
     };
   }
 
-  private extractVotes(rounds: ConsensusExecutionContext['rounds']): VoteRecord[] {
-    const votes: VoteRecord[] = [];
+  private extractVotes(rounds: ConsensusExecutionContext['rounds']): Array<VoteRecord & { isAgent: boolean }> {
+    const votes: Array<VoteRecord & { isAgent: boolean }> = [];
 
     for (const round of rounds) {
       for (const response of round.responses) {
@@ -84,6 +92,7 @@ export class VotingConsensus implements ConsensusExecutor {
             choice: response.vote,
             confidence: response.confidence,
             reasoning: this.extractReasoning(response.content),
+            isAgent: response.isAgent ?? false,
           });
         }
       }
@@ -97,14 +106,21 @@ export class VotingConsensus implements ConsensusExecutor {
     return reasoningMatch?.[1] ? reasoningMatch[1].trim() : '';
   }
 
-  private tallyVotes(votes: VoteRecord[], _threshold: number): VotingResults {
+  private tallyVotes(
+    votes: Array<VoteRecord & { isAgent: boolean }>,
+    agentWeightMultiplier: number = DEFAULT_AGENT_WEIGHT
+  ): VotingResults {
     // Count raw votes
     const rawVotes: Record<string, number> = {};
     const weightedVotes: Record<string, number> = {};
 
     for (const vote of votes) {
+      // Apply agent weight multiplier (INV-DISC-642)
+      const weight = vote.isAgent ? agentWeightMultiplier : 1.0;
+      const weightedConfidence = vote.confidence * weight;
+
       rawVotes[vote.choice] = (rawVotes[vote.choice] || 0) + 1;
-      weightedVotes[vote.choice] = (weightedVotes[vote.choice] || 0) + vote.confidence;
+      weightedVotes[vote.choice] = (weightedVotes[vote.choice] || 0) + weightedConfidence;
     }
 
     // Determine winner (by weighted votes)

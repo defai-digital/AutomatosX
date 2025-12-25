@@ -194,3 +194,202 @@ When no consensus method is specified, `synthesis` with Claude as synthesizer.
 ### Default Rounds
 
 When rounds not specified, default is 2 (initial perspectives + cross-discussion).
+
+---
+
+## Recursive Discussion Invariants
+
+### Overview
+
+Recursive discussions allow providers to spawn sub-discussions during their response.
+This enables hierarchical multi-agent collaboration with depth and budget controls.
+
+### Depth Control Invariants (600-603)
+
+#### INV-DISC-600: Maximum Depth Enforcement
+
+Discussion depth MUST NOT exceed `maxDepth` configuration.
+
+- **Enforcement**: `createChildDiscussionContext()` throws if depth >= maxDepth
+- **Default**: maxDepth = 2
+- **Maximum**: maxDepth = 4
+
+#### INV-DISC-601: Circular Discussion Prevention
+
+No discussion ID may appear twice in the discussion chain.
+
+- **Enforcement**: `createChildDiscussionContext()` checks chain before adding
+- **Error**: `DISCUSSION_CIRCULAR_DISCUSSION`
+
+#### INV-DISC-602: Root Discussion Depth
+
+Root discussions always have depth = 0.
+
+- **Enforcement**: `createRootDiscussionContext()` sets depth to 0
+
+#### INV-DISC-603: Child Depth Increment
+
+Child discussions have depth = parent.depth + 1.
+
+- **Enforcement**: `createChildDiscussionContext()` increments depth
+
+### Timeout Budget Invariants (610-613)
+
+#### INV-DISC-610: Child Timeout Budget
+
+Child discussion timeout MUST NOT exceed parent's remaining budget.
+
+- **Enforcement**: `createChildDiscussionContext()` calculates remaining budget
+- **Formula**: child.remainingBudgetMs = parent.remainingBudgetMs - elapsedMs
+
+#### INV-DISC-611: Synthesis Time Reserve
+
+Minimum 10 seconds (configurable) MUST be reserved for synthesis at each level.
+
+- **Enforcement**: `getTimeoutForLevel()` subtracts `minSynthesisMs`
+- **Default**: 10000ms
+
+#### INV-DISC-612: Total Timeout Tracking
+
+Total timeout includes all nested discussion time.
+
+- **Enforcement**: Context tracks `startedAt` from root discussion
+- **Calculation**: elapsedMs = now - context.startedAt
+
+#### INV-DISC-613: Timeout Strategy Consistency
+
+Timeout strategy (fixed/cascade/budget) MUST be applied consistently across levels.
+
+- **Enforcement**: `getTimeoutForLevel()` applies strategy uniformly
+
+### Cost Control Invariants (620-623)
+
+#### INV-DISC-620: Maximum Total Calls
+
+Total provider calls across all nested discussions MUST NOT exceed `maxTotalCalls`.
+
+- **Enforcement**: `canSpawnSubDiscussion()` checks totalCalls
+- **Default**: 20 calls
+
+#### INV-DISC-621: Cost Budget Abort
+
+If optional `budgetUsd` is set, discussion MUST abort when exceeded.
+
+- **Enforcement**: Executor checks cost after each provider response
+- **Error**: `DISCUSSION_COST_BUDGET_EXCEEDED`
+
+#### INV-DISC-622: Confidence Threshold Configuration
+
+Early exit confidence threshold MUST be configurable (default 0.9).
+
+- **Enforcement**: `CascadingConfidenceConfigSchema` validates threshold
+- **Range**: 0.0 to 1.0
+
+#### INV-DISC-623: Minimum Provider Guarantee
+
+At least `minProviders` MUST be called regardless of early exit.
+
+- **Enforcement**: Executor respects minProviders before early exit
+- **Default**: 2 providers
+
+### Memory Invariants (630-632)
+
+#### INV-DISC-630: Discussion Memory Immutability
+
+Past discussion records stored in memory MUST NOT be modified.
+
+- **Enforcement**: Memory domain event sourcing
+- **Storage**: Key = `discussion:{topic_hash}`
+
+#### INV-DISC-631: Relevance Ranking
+
+Past discussion queries MUST return most relevant results first.
+
+- **Enforcement**: Memory search with similarity ranking
+
+#### INV-DISC-632: Retention Policy
+
+Discussions MUST be retained according to configured policy.
+
+- **Enforcement**: Background cleanup job
+- **Default**: 30 days
+
+### Agent Participation Invariants (640-644)
+
+#### INV-DISC-640: Agent Provider Resolution
+
+Agent participants MUST use their configured `providerAffinity.preferred[0]` for provider selection.
+
+- **Enforcement**: Participant resolution in executor
+- **Fallback**: `claude` if no preference set
+- **Schema**: `AgentProfile.providerAffinity`
+
+#### INV-DISC-641: Agent Ability Injection
+
+Agent participants MUST have abilities injected with max 10K tokens.
+
+- **Enforcement**: AbilityManager.injectAbilities() call before discussion
+- **Limit**: `LIMIT_ABILITY_TOKENS_AGENT = 10000`
+- **Location**: Prepended to agent systemPrompt
+
+#### INV-DISC-642: Agent Weight Multiplier
+
+Agent responses MUST be weighted according to `agentWeightMultiplier` (default 1.5x).
+
+- **Enforcement**: Schema validation + consensus weighting
+- **Range**: 0.5 to 3.0
+- **Default**: 1.5
+
+#### INV-DISC-643: Early Exit After Minimum Providers
+
+Early exit MUST only occur after `minProviders` have responded.
+
+- **Enforcement**: `evaluateEarlyExit()` checks provider count
+- **Default**: minProviders = 2
+- **Schema**: `CascadingConfidenceConfig.minProviders`
+
+#### INV-DISC-644: Cost Summary Inclusion
+
+Cost summary MUST be included in discussion metadata when tracking is enabled.
+
+- **Enforcement**: Executor populates `metadata.costSummary`
+- **Schema**: `CostSummarySchema`
+- **Fields**: totalCalls, totalTokens, estimatedCostUsd, byProvider
+
+---
+
+## Timeout Strategy Details
+
+### Fixed Strategy
+
+Each level gets equal timeout: `totalBudget / (maxDepth + 1)`
+
+```
+Level 0: 60s
+Level 1: 60s
+Level 2: 60s
+Total possible: 180s
+```
+
+### Cascade Strategy (Recommended)
+
+Each level gets half of parent: `totalBudget / 2^depth`
+
+```
+Level 0: 90s (180s / 2^0 / 2)
+Level 1: 45s (180s / 2^1 / 2)
+Level 2: 22.5s (180s / 2^2 / 2)
+Total possible: 157.5s
+```
+
+### Budget Strategy
+
+Weighted distribution favoring earlier levels:
+
+```
+Weights: [1.0, 0.6, 0.36] (60% decay)
+Level 0: ~92s
+Level 1: ~55s
+Level 2: ~33s
+Total possible: 180s
+```

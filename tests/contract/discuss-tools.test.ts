@@ -318,7 +318,7 @@ describe('Discuss MCP Tools - Registration', () => {
   it('should export DISCUSS_TOOLS array', async () => {
     const { DISCUSS_TOOLS } = await import('@defai.digital/mcp-server');
     expect(Array.isArray(DISCUSS_TOOLS)).toBe(true);
-    expect(DISCUSS_TOOLS.length).toBe(2);
+    expect(DISCUSS_TOOLS.length).toBe(3); // discuss, discuss_quick, discuss_recursive
   });
 
   it('should export DISCUSS_HANDLERS record', async () => {
@@ -326,6 +326,7 @@ describe('Discuss MCP Tools - Registration', () => {
     expect(typeof DISCUSS_HANDLERS).toBe('object');
     expect(DISCUSS_HANDLERS.discuss).toBeDefined();
     expect(DISCUSS_HANDLERS.discuss_quick).toBeDefined();
+    expect(DISCUSS_HANDLERS.discuss_recursive).toBeDefined();
   });
 
   it('should have matching tool names in handlers', async () => {

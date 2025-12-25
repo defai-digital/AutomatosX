@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/context-domain",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "type": "module",
   "description": "Project context loading for AutomatosX - inject project-specific conventions into agent prompts",
   "license": "Apache-2.0",

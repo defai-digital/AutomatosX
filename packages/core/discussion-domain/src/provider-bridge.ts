@@ -238,43 +238,46 @@ export function createProviderBridge(
 
     async getAvailableProviders(): Promise<string[]> {
       const allProviders = registry.getAll();
-      const available: string[] = [];
+      const now = Date.now();
 
-      // Check each provider's availability
+      // Separate cached vs uncached providers
+      const cached: string[] = [];
+      const toCheck: LLMProviderLike[] = [];
+
       for (const provider of allProviders) {
-        // Check cache first
-        const cached = healthCache.get(provider.providerId);
-        if (cached && Date.now() - cached.timestamp < healthCheckCacheMs) {
-          if (cached.healthy) {
-            available.push(provider.providerId);
-          }
-          continue;
-        }
-
-        // Perform health check if enabled
-        if (performHealthChecks) {
-          try {
-            const health = await provider.checkHealth();
-            healthCache.set(provider.providerId, {
-              healthy: health.healthy,
-              timestamp: Date.now(),
-            });
-            if (health.healthy) {
-              available.push(provider.providerId);
-            }
-          } catch {
-            healthCache.set(provider.providerId, {
-              healthy: false,
-              timestamp: Date.now(),
-            });
-          }
+        const entry = healthCache.get(provider.providerId);
+        if (entry && now - entry.timestamp < healthCheckCacheMs) {
+          if (entry.healthy) cached.push(provider.providerId);
+        } else if (performHealthChecks) {
+          toCheck.push(provider);
         } else {
-          // If health checks disabled, assume available
-          available.push(provider.providerId);
+          cached.push(provider.providerId); // No health check, assume available
         }
       }
 
-      return available;
+      // Check uncached providers in parallel
+      if (toCheck.length === 0) return cached;
+
+      const results = await Promise.allSettled(
+        toCheck.map(async (provider) => {
+          try {
+            const health = await provider.checkHealth();
+            healthCache.set(provider.providerId, { healthy: health.healthy, timestamp: Date.now() });
+            return health.healthy ? provider.providerId : null;
+          } catch {
+            healthCache.set(provider.providerId, { healthy: false, timestamp: Date.now() });
+            return null;
+          }
+        })
+      );
+
+      // Collect successful health checks
+      const checked = results
+        .filter((r): r is PromiseFulfilledResult<string | null> => r.status === 'fulfilled')
+        .map((r) => r.value)
+        .filter((id): id is string => id !== null);
+
+      return [...cached, ...checked];
     },
   };
 }

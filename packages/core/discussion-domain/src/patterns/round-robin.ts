@@ -3,6 +3,9 @@
  *
  * Models respond sequentially, each building on previous responses.
  * Good for: brainstorming, iterative refinement, building consensus.
+ *
+ * Invariants:
+ * - INV-DISC-643: Early exit only after minProviders responded
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
@@ -10,7 +13,9 @@ import type {
   PatternExecutor,
   PatternExecutionContext,
   PatternExecutionResult,
+  EarlyExitInfo,
 } from '../types.js';
+import { extractConfidence, evaluateEarlyExit } from '../confidence-extractor.js';
 
 // Local type for discussion ProviderResponse (avoids conflict with provider/v1 ProviderResponse)
 interface DiscussionProviderResponse {
@@ -39,12 +44,13 @@ export class RoundRobinPattern implements PatternExecutor {
 
   async execute(context: PatternExecutionContext): Promise<PatternExecutionResult> {
     const startTime = Date.now();
-    const { config, providerExecutor, availableProviders, abortSignal, onProgress } = context;
+    const { config, providerExecutor, availableProviders, abortSignal, onProgress, cascadingConfidence } = context;
 
     const rounds: DiscussionRound[] = [];
     const participatingProviders = new Set<string>();
     const failedProviders = new Set<string>();
     const allResponses: DiscussionProviderResponse[] = [];
+    let earlyExit: EarlyExitInfo | undefined;
 
     // Filter to available providers
     const providers = config.providers.filter(p => availableProviders.includes(p));
@@ -110,15 +116,20 @@ export class RoundRobinPattern implements PatternExecutor {
             abortSignal,
           });
 
+          // Extract confidence from response content
+          const content = result.success ? result.content || '' : '';
+          const confidenceResult = result.success ? extractConfidence(content) : null;
+
           const response: DiscussionProviderResponse = {
             provider: providerId,
-            content: result.success ? result.content || '' : '',
+            content,
             round: roundNum,
             timestamp: new Date().toISOString(),
             durationMs: result.durationMs,
             tokenCount: result.tokenCount,
             truncated: result.truncated,
             error: result.success ? undefined : result.error,
+            confidence: confidenceResult?.score ?? undefined,
           };
 
           roundResponses.push(response);
@@ -184,6 +195,40 @@ export class RoundRobinPattern implements PatternExecutor {
           error: `Only ${participatingProviders.size} providers succeeded, need ${config.minProviders}`,
         };
       }
+
+      // Check for early exit after each round (INV-DISC-643)
+      if (cascadingConfidence?.enabled && roundNum < config.rounds) {
+        const responsesWithConfidence = roundResponses
+          .filter(r => !r.error)
+          .map(r => ({
+            provider: r.provider,
+            content: r.content,
+            confidence: r.confidence,
+          }));
+
+        const exitDecision = evaluateEarlyExit(responsesWithConfidence, {
+          enabled: cascadingConfidence.enabled,
+          threshold: cascadingConfidence.threshold,
+          minProviders: cascadingConfidence.minProviders,
+        });
+
+        if (exitDecision.shouldExit) {
+          earlyExit = {
+            triggered: true,
+            reason: exitDecision.reason,
+            atProviderCount: exitDecision.providerCount,
+            confidenceScore: exitDecision.confidence,
+          };
+
+          onProgress?.({
+            type: 'round_complete',
+            message: `Early exit after round ${roundNum}: ${exitDecision.reason}`,
+            timestamp: new Date().toISOString(),
+          });
+
+          break; // Exit the rounds loop
+        }
+      }
     }
 
     return {
@@ -192,6 +237,7 @@ export class RoundRobinPattern implements PatternExecutor {
       failedProviders: Array.from(failedProviders),
       totalDurationMs: Date.now() - startTime,
       success: participatingProviders.size >= config.minProviders,
+      earlyExit: earlyExit ?? { triggered: false },
     };
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/agent-domain",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "type": "module",
   "description": "Agent profiles and orchestration for AutomatosX",
   "license": "Apache-2.0",

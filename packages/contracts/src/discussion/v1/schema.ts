@@ -35,6 +35,28 @@ export const MAX_PROVIDER_TIMEOUT = 300000;
 export const DEFAULT_PROVIDERS = ['claude', 'glm', 'qwen', 'gemini'] as const;
 
 // ============================================================================
+// Recursive Discussion Constants
+// ============================================================================
+
+/** Maximum discussion depth for recursive discussions */
+export const MAX_DISCUSSION_DEPTH = 4;
+
+/** Default discussion depth */
+export const DEFAULT_DISCUSSION_DEPTH = 2;
+
+/** Minimum time reserved for synthesis at each level (ms) */
+export const MIN_SYNTHESIS_TIME_MS = 10000;
+
+/** Default total budget for recursive discussions (ms) */
+export const DEFAULT_TOTAL_BUDGET_MS = 180000;
+
+/** Default maximum total provider calls across nested discussions */
+export const DEFAULT_MAX_TOTAL_CALLS = 20;
+
+/** Default cascading confidence threshold for early exit */
+export const DEFAULT_CONFIDENCE_THRESHOLD = 0.9;
+
+// ============================================================================
 // Discussion Pattern Schema
 // ============================================================================
 
@@ -181,6 +203,30 @@ export const PROVIDER_STRENGTHS: Record<string, ProviderCapability[]> = {
 };
 
 // ============================================================================
+// Discussion Participant
+// ============================================================================
+
+/**
+ * Participant in a discussion (provider or agent)
+ *
+ * Invariants:
+ * - INV-DISC-640: Agent participants use providerAffinity.preferred[0]
+ * - INV-DISC-641: Agent abilities injected with max 10K tokens
+ */
+export const DiscussionParticipantSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('provider'),
+    id: z.string().max(50),
+  }),
+  z.object({
+    type: z.literal('agent'),
+    id: z.string().max(50),
+  }),
+]);
+
+export type DiscussionParticipant = z.infer<typeof DiscussionParticipantSchema>;
+
+// ============================================================================
 // Discussion Step Configuration
 // ============================================================================
 
@@ -238,6 +284,12 @@ export const DiscussStepConfigSchema = z
 
     /** Additional context for all providers */
     context: z.string().max(10000).optional(),
+
+    /** Mix of providers and agents as participants (alternative to providers array) */
+    participants: z.array(DiscussionParticipantSchema).optional(),
+
+    /** Weight multiplier for agent responses in consensus (default: 1.5x) */
+    agentWeightMultiplier: z.number().min(0.5).max(3.0).optional().default(1.5),
   })
   .refine(
     (data) => {
@@ -296,6 +348,12 @@ export const DiscussionProviderResponseSchema = z.object({
 
   /** Error if response failed */
   error: z.string().optional(),
+
+  /** Whether response is from an agent (vs raw provider) */
+  isAgent: z.boolean().optional(),
+
+  /** Agent ID if response is from an agent */
+  agentId: z.string().max(50).optional(),
 });
 
 export type DiscussionProviderResponse = z.infer<typeof DiscussionProviderResponseSchema>;
@@ -433,6 +491,59 @@ export const DiscussionErrorSchema = z.object({
 export type DiscussionError = z.infer<typeof DiscussionErrorSchema>;
 
 /**
+ * Cost summary for discussion tracking
+ *
+ * Invariants:
+ * - INV-DISC-620: Total calls ≤ maxTotalCalls
+ * - INV-DISC-621: Abort if cost budget exceeded
+ * - INV-DISC-644: Cost summary included when tracking enabled
+ */
+export const CostSummarySchema = z.object({
+  /** Total provider calls made */
+  totalCalls: z.number().int().min(0),
+
+  /** Total tokens used */
+  totalTokens: z.number().int().min(0),
+
+  /** Estimated cost in USD */
+  estimatedCostUsd: z.number().min(0),
+
+  /** Breakdown by provider */
+  byProvider: z.record(
+    z.object({
+      calls: z.number().int().min(0),
+      tokens: z.number().int().min(0),
+      cost: z.number().min(0),
+    })
+  ),
+});
+
+export type CostSummary = z.infer<typeof CostSummarySchema>;
+
+/**
+ * Early exit decision info
+ *
+ * Invariants:
+ * - INV-DISC-622: Confidence threshold configurable (default 0.9)
+ * - INV-DISC-643: Early exit only after minProviders responded
+ */
+export const EarlyExitInfoSchema = z.object({
+  /** Whether early exit was triggered */
+  triggered: z.boolean(),
+
+  /** Reason for early exit decision */
+  reason: z.string().optional(),
+
+  /** Number of providers that had responded when decision was made */
+  atProviderCount: z.number().int().min(0).optional(),
+
+  /** Confidence score that triggered the exit */
+  confidenceScore: z.number().min(0).max(1).optional(),
+});
+
+export type EarlyExitInfo = z.infer<typeof EarlyExitInfoSchema>;
+
+/**
  * Discussion metadata
  */
 export const DiscussionMetadataSchema = z.object({
@@ -453,6 +564,12 @@ export const DiscussionMetadataSchema = z.object({
 
   /** Trace ID for debugging */
   traceId: z.string().uuid().optional(),
+
+  /** Cost tracking summary */
+  costSummary: CostSummarySchema.optional(),
+
+  /** Early exit information */
+  earlyExit: EarlyExitInfoSchema.optional(),
 });
 
 export type DiscussionMetadata = z.infer<typeof DiscussionMetadataSchema>;
@@ -573,10 +690,190 @@ export const DiscussionErrorCodes = {
 
   /** Provider not found */
   PROVIDER_NOT_FOUND: 'DISCUSSION_PROVIDER_NOT_FOUND',
+
+  /** Maximum discussion depth exceeded */
+  MAX_DEPTH_EXCEEDED: 'DISCUSSION_MAX_DEPTH_EXCEEDED',
+
+  /** Circular discussion chain detected */
+  CIRCULAR_DISCUSSION: 'DISCUSSION_CIRCULAR_DISCUSSION',
+
+  /** Timeout budget exhausted */
+  BUDGET_EXHAUSTED: 'DISCUSSION_BUDGET_EXHAUSTED',
+
+  /** Maximum total calls exceeded */
+  MAX_CALLS_EXCEEDED: 'DISCUSSION_MAX_CALLS_EXCEEDED',
+
+  /** Cost budget exceeded */
+  COST_BUDGET_EXCEEDED: 'DISCUSSION_COST_BUDGET_EXCEEDED',
 } as const;
 
 export type DiscussionErrorCode =
   (typeof DiscussionErrorCodes)[keyof typeof DiscussionErrorCodes];
+
+// ============================================================================
+// Recursive Discussion Schemas
+// ============================================================================
+
+/**
+ * Timeout strategy for recursive discussions
+ *
+ * - fixed: Each level gets the same timeout
+ * - cascade: Each level gets reduced timeout (parent × 0.5)
+ * - budget: Total budget divided across levels
+ */
+export const TimeoutStrategySchema = z.enum(['fixed', 'cascade', 'budget']);
+export type TimeoutStrategy = z.infer<typeof TimeoutStrategySchema>;
+
+/**
+ * Timeout configuration for recursive discussions
+ *
+ * Invariants:
+ * - INV-DISC-610: Child timeout ≤ parent remaining budget
+ * - INV-DISC-611: Minimum time reserved for synthesis
+ * - INV-DISC-612: Total timeout includes all nested calls
+ */
+export const TimeoutConfigSchema = z.object({
+  /** Timeout strategy */
+  strategy: TimeoutStrategySchema.default('cascade'),
+
+  /** Total budget in milliseconds */
+  totalBudgetMs: z.number().int().min(30000).max(600000).default(DEFAULT_TOTAL_BUDGET_MS),
+
+  /** Minimum time reserved for synthesis at each level */
+  minSynthesisMs: z.number().int().min(5000).max(60000).default(MIN_SYNTHESIS_TIME_MS),
+
+  /** Override timeouts per level (optional) */
+  levelTimeouts: z.record(z.string(), z.number().int().min(10000)).optional(),
+});
+
+export type TimeoutConfig = z.infer<typeof TimeoutConfigSchema>;
+
+/**
+ * Cascading confidence configuration for early exit
+ *
+ * Invariants:
+ * - INV-DISC-622: Threshold configurable (default 0.9)
+ * - INV-DISC-623: Minimum 2 providers for quality
+ */
+export const CascadingConfidenceConfigSchema = z.object({
+  /** Enable early exit when first provider is highly confident */
+  enabled: z.boolean().default(true),
+
+  /** Confidence threshold for early exit (0-1) */
+  threshold: z.number().min(0).max(1).default(DEFAULT_CONFIDENCE_THRESHOLD),
+
+  /** Minimum providers to call regardless of confidence */
+  minProviders: z.number().int().min(1).max(6).default(2),
+});
+
+export type CascadingConfidenceConfig = z.infer<typeof CascadingConfidenceConfigSchema>;
+
+/**
+ * Cost control configuration for recursive discussions
+ *
+ * Invariants:
+ * - INV-DISC-620: Total calls ≤ maxTotalCalls
+ * - INV-DISC-621: Abort if cost budget exceeded
+ */
+export const CostControlConfigSchema = z.object({
+  /** Maximum total provider calls across all nested discussions */
+  maxTotalCalls: z.number().int().min(2).max(100).default(DEFAULT_MAX_TOTAL_CALLS),
+
+  /** Optional hard cost limit in USD */
+  budgetUsd: z.number().min(0).optional(),
+
+  /** Cascading confidence configuration */
+  cascadingConfidence: CascadingConfidenceConfigSchema.default({}),
+});
+
+export type CostControlConfig = z.infer<typeof CostControlConfigSchema>;
+
+/**
+ * Recursive discussion configuration
+ *
+ * Invariants:
+ * - INV-DISC-600: Depth MUST NOT exceed maxDepth
+ * - INV-DISC-601: No circular provider chains
+ * - INV-DISC-602: Root discussion is always depth 0
+ */
+export const RecursiveConfigSchema = z.object({
+  /** Enable recursive sub-discussions */
+  enabled: z.boolean().default(false),
+
+  /** Maximum discussion depth (1-4) */
+  maxDepth: z.number().int().min(1).max(MAX_DISCUSSION_DEPTH).default(DEFAULT_DISCUSSION_DEPTH),
+
+  /** Providers allowed in sub-discussions (defaults to all) */
+  allowedProviders: z.array(z.string().max(50)).optional(),
+
+  /** Whether providers can spawn sub-discussions */
+  allowSubDiscussions: z.boolean().default(true),
+});
+
+export type RecursiveConfig = z.infer<typeof RecursiveConfigSchema>;
+
+/**
+ * Discussion context for tracking recursion state
+ *
+ * Invariants:
+ * - INV-DISC-600: depth < maxDepth for sub-discussions
+ * - INV-DISC-601: discussionChain has no duplicates
+ */
+export const DiscussionContextSchema = z.object({
+  /** Current discussion depth (0 = root) */
+  depth: z.number().int().min(0).default(0),
+
+  /** Maximum allowed depth */
+  maxDepth: z.number().int().min(1).max(MAX_DISCUSSION_DEPTH).default(DEFAULT_DISCUSSION_DEPTH),
+
+  /** Chain of discussion IDs (for circular detection) */
+  discussionChain: z.array(z.string()).default([]),
+
+  /** Parent discussion ID (undefined for root) */
+  parentDiscussionId: z.string().uuid().optional(),
+
+  /** Root discussion ID */
+  rootDiscussionId: z.string().uuid(),
+
+  /** Remaining timeout budget in milliseconds */
+  remainingBudgetMs: z.number().int().min(0),
+
+  /** Total provider calls made so far */
+  totalCalls: z.number().int().min(0).default(0),
+
+  /** Maximum total calls allowed */
+  maxTotalCalls: z.number().int().min(1).default(DEFAULT_MAX_TOTAL_CALLS),
+
+  /** When the root discussion started */
+  startedAt: z.string().datetime(),
+});
+
+export type DiscussionContext = z.infer<typeof DiscussionContextSchema>;
+
+/**
+ * Sub-discussion result embedded in provider response
+ */
+export const SubDiscussionResultSchema = z.object({
+  /** Sub-discussion ID */
+  discussionId: z.string().uuid(),
+
+  /** Topic of sub-discussion */
+  topic: z.string(),
+
+  /** Providers that participated */
+  participatingProviders: z.array(z.string()),
+
+  /** Synthesized result */
+  synthesis: z.string(),
+
+  /** Duration in milliseconds */
+  durationMs: z.number().int().min(0),
+
+  /** Depth at which this occurred */
+  depth: z.number().int().min(1),
+});
+
+export type SubDiscussionResult = z.infer<typeof SubDiscussionResultSchema>;
 
 // ============================================================================
 // Validation Functions
@@ -759,4 +1056,173 @@ export function createFailedDiscussionResult(
       message: errorMessage,
     },
   };
+}
+
+// ============================================================================
+// Recursive Discussion Factory Functions
+// ============================================================================
+
+/**
+ * Creates a root discussion context
+ */
+export function createRootDiscussionContext(
+  discussionId: string,
+  config?: {
+    maxDepth?: number;
+    totalBudgetMs?: number;
+    maxTotalCalls?: number;
+  }
+): DiscussionContext {
+  const now = new Date().toISOString();
+  return {
+    depth: 0,
+    maxDepth: config?.maxDepth ?? DEFAULT_DISCUSSION_DEPTH,
+    discussionChain: [discussionId],
+    rootDiscussionId: discussionId,
+    remainingBudgetMs: config?.totalBudgetMs ?? DEFAULT_TOTAL_BUDGET_MS,
+    totalCalls: 0,
+    maxTotalCalls: config?.maxTotalCalls ?? DEFAULT_MAX_TOTAL_CALLS,
+    startedAt: now,
+  };
+}
+
+/**
+ * Creates a child discussion context from a parent context
+ *
+ * @throws Error if max depth exceeded or circular discussion detected
+ */
+export function createChildDiscussionContext(
+  parentContext: DiscussionContext,
+  childDiscussionId: string,
+  elapsedMs: number,
+  callsMade: number
+): DiscussionContext {
+  // INV-DISC-600: Check depth limit
+  if (parentContext.depth >= parentContext.maxDepth) {
+    throw new Error(
+      `INV-DISC-600: Maximum discussion depth ${parentContext.maxDepth} exceeded`
+    );
+  }
+
+  // INV-DISC-601: Check for circular discussion
+  if (parentContext.discussionChain.includes(childDiscussionId)) {
+    throw new Error(
+      `INV-DISC-601: Circular discussion detected: ${childDiscussionId} already in chain`
+    );
+  }
+
+  return {
+    depth: parentContext.depth + 1,
+    maxDepth: parentContext.maxDepth,
+    discussionChain: [...parentContext.discussionChain, childDiscussionId],
+    parentDiscussionId: parentContext.discussionChain[parentContext.discussionChain.length - 1],
+    rootDiscussionId: parentContext.rootDiscussionId,
+    remainingBudgetMs: Math.max(0, parentContext.remainingBudgetMs - elapsedMs),
+    totalCalls: parentContext.totalCalls + callsMade,
+    maxTotalCalls: parentContext.maxTotalCalls,
+    startedAt: parentContext.startedAt,
+  };
+}
+
+/**
+ * Check if sub-discussion is allowed given current context
+ */
+export function canSpawnSubDiscussion(
+  context: DiscussionContext,
+  minBudgetMs = MIN_SYNTHESIS_TIME_MS * 2
+): { allowed: boolean; reason?: string } {
+  // INV-DISC-600: Check depth
+  if (context.depth >= context.maxDepth) {
+    return {
+      allowed: false,
+      reason: `Maximum depth ${context.maxDepth} reached`,
+    };
+  }
+
+  // INV-DISC-610: Check budget
+  if (context.remainingBudgetMs < minBudgetMs) {
+    return {
+      allowed: false,
+      reason: `Insufficient budget: ${context.remainingBudgetMs}ms remaining, need ${minBudgetMs}ms`,
+    };
+  }
+
+  // INV-DISC-620: Check call limit
+  if (context.totalCalls >= context.maxTotalCalls) {
+    return {
+      allowed: false,
+      reason: `Maximum calls ${context.maxTotalCalls} reached`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Calculate timeout for a given depth using cascade strategy
+ */
+export function calculateCascadeTimeout(
+  totalBudgetMs: number,
+  depth: number,
+  minSynthesisMs = MIN_SYNTHESIS_TIME_MS
+): number {
+  // Each level gets half of parent's budget
+  const levelBudget = totalBudgetMs / Math.pow(2, depth);
+
+  // Reserve minimum for synthesis
+  return Math.max(minSynthesisMs, levelBudget - minSynthesisMs);
+}
+
+/**
+ * Calculate timeout for a given depth using budget strategy
+ */
+export function calculateBudgetTimeout(
+  totalBudgetMs: number,
+  maxDepth: number,
+  depth: number,
+  minSynthesisMs = MIN_SYNTHESIS_TIME_MS
+): number {
+  // Divide budget across all potential levels, weighted towards earlier levels
+  const weights = Array.from({ length: maxDepth + 1 }, (_, i) => Math.pow(0.6, i));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const levelWeight = weights[depth] ?? weights[weights.length - 1] ?? 0.1;
+
+  const levelBudget = (totalBudgetMs * levelWeight) / totalWeight;
+
+  // Reserve minimum for synthesis
+  return Math.max(minSynthesisMs, levelBudget - minSynthesisMs);
+}
+
+/**
+ * Get timeout for a level based on strategy
+ */
+export function getTimeoutForLevel(
+  config: TimeoutConfig,
+  depth: number,
+  maxDepth: number
+): number {
+  // Check for explicit level override
+  const levelKey = String(depth);
+  if (config.levelTimeouts?.[levelKey]) {
+    return config.levelTimeouts[levelKey];
+  }
+
+  switch (config.strategy) {
+    case 'fixed':
+      return config.totalBudgetMs / (maxDepth + 1);
+
+    case 'cascade':
+      return calculateCascadeTimeout(config.totalBudgetMs, depth, config.minSynthesisMs);
+
+    case 'budget':
+      return calculateBudgetTimeout(
+        config.totalBudgetMs,
+        maxDepth,
+        depth,
+        config.minSynthesisMs
+      );
+
+    default:
+      return config.totalBudgetMs / (maxDepth + 1);
+  }
 }

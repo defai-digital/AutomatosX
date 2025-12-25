@@ -21,6 +21,14 @@ export {
   PROVIDER_STRENGTHS,
   DiscussionErrorCodes,
 
+  // Recursive Discussion Constants
+  MAX_DISCUSSION_DEPTH,
+  DEFAULT_DISCUSSION_DEPTH,
+  MIN_SYNTHESIS_TIME_MS,
+  DEFAULT_TOTAL_BUDGET_MS,
+  DEFAULT_MAX_TOTAL_CALLS,
+  DEFAULT_CONFIDENCE_THRESHOLD,
+
   // Schemas - Patterns & Configuration
   DiscussionPatternSchema,
   ConsensusMethodSchema,
@@ -38,9 +46,21 @@ export {
   DissentRecordSchema,
   ConsensusResultSchema,
   DiscussionErrorSchema,
+  CostSummarySchema,
+  EarlyExitInfoSchema,
   DiscussionMetadataSchema,
   DiscussionResultSchema,
   DiscussionRequestSchema,
+
+  // Schemas - Recursive Discussion
+  TimeoutStrategySchema,
+  TimeoutConfigSchema,
+  CascadingConfidenceConfigSchema,
+  CostControlConfigSchema,
+  RecursiveConfigSchema,
+  DiscussionContextSchema,
+  DiscussionParticipantSchema,
+  SubDiscussionResultSchema,
 
   // Types
   type DiscussionPattern,
@@ -57,10 +77,22 @@ export {
   type DissentRecord,
   type ConsensusResult,
   type DiscussionError,
+  type CostSummary,
+  type EarlyExitInfo,
   type DiscussionMetadata,
   type DiscussionResult,
   type DiscussionRequest,
   type DiscussionErrorCode,
+
+  // Types - Recursive Discussion
+  type TimeoutStrategy,
+  type TimeoutConfig,
+  type CascadingConfidenceConfig,
+  type CostControlConfig,
+  type RecursiveConfig,
+  type DiscussionContext,
+  type DiscussionParticipant,
+  type SubDiscussionResult,
 
   // Validation Functions
   validateDiscussStepConfig,
@@ -76,4 +108,12 @@ export {
   createVotingConfig,
   createEmptyDiscussionResult,
   createFailedDiscussionResult,
+
+  // Factory Functions - Recursive Discussion
+  createRootDiscussionContext,
+  createChildDiscussionContext,
+  canSpawnSubDiscussion,
+  calculateCascadeTimeout,
+  calculateBudgetTimeout,
+  getTimeoutForLevel,
 } from './schema.js';

@@ -9,6 +9,9 @@
  * 2. Round 2: Each provider responds to others' perspectives
  * 3. (Optional) Additional cross-discussion rounds
  * 4. Final synthesis by designated synthesizer (default: claude)
+ *
+ * Invariants:
+ * - INV-DISC-643: Early exit only after minProviders responded
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
@@ -16,6 +19,7 @@ import type {
   PatternExecutor,
   PatternExecutionContext,
   PatternExecutionResult,
+  EarlyExitInfo,
 } from '../types.js';
 import {
   SYNTHESIS_INITIAL,
@@ -24,6 +28,7 @@ import {
   formatPreviousResponses,
   getProviderSystemPrompt,
 } from '../prompts/templates.js';
+import { extractConfidence, evaluateEarlyExit } from '../confidence-extractor.js';
 
 // Local type for discussion DiscussionProviderResponse (avoids conflict with provider/v1 DiscussionProviderResponse)
 interface DiscussionProviderResponse {
@@ -45,11 +50,12 @@ export class SynthesisPattern implements PatternExecutor {
 
   async execute(context: PatternExecutionContext): Promise<PatternExecutionResult> {
     const startTime = Date.now();
-    const { config, providerExecutor, availableProviders, abortSignal, onProgress } = context;
+    const { config, providerExecutor, availableProviders, abortSignal, onProgress, cascadingConfidence } = context;
 
     const rounds: DiscussionRound[] = [];
     const participatingProviders = new Set<string>();
     const failedProviders = new Set<string>();
+    let earlyExit: EarlyExitInfo | undefined;
 
     // Filter to available providers
     const providers = config.providers.filter(p => availableProviders.includes(p));
@@ -106,6 +112,43 @@ export class SynthesisPattern implements PatternExecutor {
       };
     }
 
+    // Check for early exit after round 1 (INV-DISC-643)
+    if (cascadingConfidence?.enabled) {
+      const responsesWithConfidence = initialRound.round.responses.map(r => ({
+        provider: r.provider,
+        content: r.content,
+        confidence: r.confidence,
+      }));
+
+      const exitDecision = evaluateEarlyExit(responsesWithConfidence, {
+        enabled: cascadingConfidence.enabled,
+        threshold: cascadingConfidence.threshold,
+        minProviders: cascadingConfidence.minProviders,
+      });
+
+      if (exitDecision.shouldExit) {
+        onProgress?.({
+          type: 'round_complete',
+          message: `Early exit triggered: ${exitDecision.reason}`,
+          timestamp: new Date().toISOString(),
+        });
+
+        return {
+          rounds,
+          participatingProviders: Array.from(participatingProviders),
+          failedProviders: Array.from(failedProviders),
+          totalDurationMs: Date.now() - startTime,
+          success: true,
+          earlyExit: {
+            triggered: true,
+            reason: exitDecision.reason,
+            atProviderCount: exitDecision.providerCount,
+            confidenceScore: exitDecision.confidence,
+          },
+        };
+      }
+    }
+
     // Additional rounds: Cross-discussion
     for (let roundNum = 2; roundNum <= config.rounds; roundNum++) {
       if (abortSignal?.aborted) {
@@ -138,6 +181,38 @@ export class SynthesisPattern implements PatternExecutor {
         message: `Cross-discussion round ${roundNum} complete`,
         timestamp: new Date().toISOString(),
       });
+
+      // Check for early exit after each round
+      if (cascadingConfidence?.enabled && roundNum < config.rounds) {
+        const allResponses = crossRound.round.responses.map(r => ({
+          provider: r.provider,
+          content: r.content,
+          confidence: r.confidence,
+        }));
+
+        const exitDecision = evaluateEarlyExit(allResponses, {
+          enabled: cascadingConfidence.enabled,
+          threshold: cascadingConfidence.threshold,
+          minProviders: cascadingConfidence.minProviders,
+        });
+
+        if (exitDecision.shouldExit) {
+          earlyExit = {
+            triggered: true,
+            reason: exitDecision.reason,
+            atProviderCount: exitDecision.providerCount,
+            confidenceScore: exitDecision.confidence,
+          };
+
+          onProgress?.({
+            type: 'round_complete',
+            message: `Early exit after round ${roundNum}: ${exitDecision.reason}`,
+            timestamp: new Date().toISOString(),
+          });
+
+          break; // Exit the rounds loop
+        }
+      }
     }
 
     return {
@@ -146,6 +221,7 @@ export class SynthesisPattern implements PatternExecutor {
       failedProviders: Array.from(failedProviders),
       totalDurationMs: Date.now() - startTime,
       success: participatingProviders.size >= config.minProviders,
+      earlyExit: earlyExit ?? { triggered: false },
     };
   }
 
@@ -193,15 +269,20 @@ export class SynthesisPattern implements PatternExecutor {
           abortSignal,
         });
 
+        // Extract confidence from response content
+        const content = result.success ? result.content || '' : '';
+        const confidenceResult = result.success ? extractConfidence(content) : null;
+
         const response: DiscussionProviderResponse = {
           provider: providerId,
-          content: result.success ? result.content || '' : '',
+          content,
           round: roundNum,
           timestamp: new Date().toISOString(),
           durationMs: result.durationMs,
           tokenCount: result.tokenCount,
           truncated: result.truncated,
           error: result.success ? undefined : result.error,
+          confidence: confidenceResult?.score ?? undefined,
         };
 
         if (result.success) {
@@ -300,14 +381,19 @@ export class SynthesisPattern implements PatternExecutor {
           abortSignal,
         });
 
+        // Extract confidence from response content
+        const content = result.success ? result.content || '' : '';
+        const confidenceResult = result.success ? extractConfidence(content) : null;
+
         const response: DiscussionProviderResponse = {
           provider: providerId,
-          content: result.success ? result.content || '' : '',
+          content,
           round: roundNum,
           timestamp: new Date().toISOString(),
           durationMs: result.durationMs,
           tokenCount: result.tokenCount,
           error: result.success ? undefined : result.error,
+          confidence: confidenceResult?.score ?? undefined,
         };
 
         if (!result.success) {

@@ -10,7 +10,8 @@
           "mcp",
           "server"
         ],
-        "env": {}
+        "env": {},
+        "framing": "ndjson"
       }
     }
   }

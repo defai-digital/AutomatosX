@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/mcp-runtime",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "type": "module",
   "description": "MCP runtime domain - cache, timeout, response helpers, and request validation",
   "license": "Apache-2.0",

@@ -75,6 +75,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: true,
       minProviders: 2,
       temperature: 0.7,
+      agentWeightMultiplier: 1.5,
     };
 
     return this.execute(config, options);
@@ -141,6 +142,7 @@ export class DiscussionExecutor {
       abortSignal,
       traceId: this.traceId,
       onProgress,
+      // No cascading confidence for base executor (recursive executor handles this)
     };
 
     // Execute pattern
@@ -164,6 +166,7 @@ export class DiscussionExecutor {
       rounds: patternResult.rounds,
       participatingProviders: patternResult.participatingProviders,
       config: config.consensus,
+      agentWeightMultiplier: config.agentWeightMultiplier,
       providerExecutor: this.providerExecutor,
       abortSignal,
       onProgress,
@@ -195,6 +198,10 @@ export class DiscussionExecutor {
         startedAt,
         completedAt: new Date().toISOString(),
         traceId: this.traceId,
+        // Include early exit info if pattern triggered it
+        ...(patternResult.earlyExit?.triggered ? {
+          earlyExit: patternResult.earlyExit,
+        } : {}),
       },
     };
 
@@ -284,6 +291,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: false, // Debates require all participants
       minProviders: 3,
       temperature: 0.7,
+      agentWeightMultiplier: 1.5,
     };
 
     return this.execute(config, options);
@@ -318,6 +326,7 @@ export class DiscussionExecutor {
       continueOnProviderFailure: true,
       minProviders: 2,
       temperature: 0.5, // Lower temperature for more consistent voting
+      agentWeightMultiplier: 1.5,
     };
 
     return this.execute(config, options);

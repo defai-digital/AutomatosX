@@ -45,8 +45,9 @@ AutomatosX is a contract-first AI orchestration platform that unifies multiple L
 ### Install from npm (Recommended)
 
 ```bash
-# Install globally
-npm install -g @defai.digital/cli
+# Install globally (choose one)
+npm install -g @defai.digital/automatosx    # Full package name
+npm install -g @defai.digital/cli           # CLI package
 
 # Initialize configuration and detect providers
 ax setup
@@ -361,16 +362,16 @@ ax discuss "Best testing strategy" --format json
 - **critique**: One proposes, others critique, revision cycle
 - **debate**: Structured debate with proponent, opponent, judge roles
 
-**Agent Participation** (v13.1.1):
+**Agent Participation**:
 - Mix providers and agents as discussion participants using `--participants`
 - Agents use their `providerAffinity` for provider selection
 - Agent weight multiplier for consensus voting (default 1.5x, range 0.5-3.0)
 
-**v13.1.1 Improvements**:
+**v13.1.2 Release**:
+- Added `@defai.digital/automatosx` wrapper package for backwards compatibility
 - Security fixes: SQL injection prevention, regex injection protection
 - Bug fixes: formatCost display, checkpoint ordering, agent workflow config
 - Refactoring: Centralized constants for file patterns, added `getErrorMessage` utility
-- All tests passing (2244 tests, 0 skipped)
 
 ---
 

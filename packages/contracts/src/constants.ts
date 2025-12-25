@@ -12,7 +12,7 @@
 // =============================================================================
 
 /** Current AutomatosX version */
-export const AUTOMATOSX_VERSION = '13.1.1';
+export const AUTOMATOSX_VERSION = '13.1.2';
 
 /** Default schema/config version for new resources */
 export const DEFAULT_SCHEMA_VERSION = '1.0.0';

@@ -102,6 +102,12 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/automatosx:
+    dependencies:
+      '@defai.digital/cli':
+        specifier: workspace:*
+        version: link:../cli
+
   packages/cli:
     dependencies:
       '@defai.digital/ability-domain':

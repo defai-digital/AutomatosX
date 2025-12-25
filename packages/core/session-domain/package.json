@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/session-domain",
-  "version": "13.1.1",
+  "version": "13.1.2",
   "type": "module",
   "description": "Session lifecycle management for AutomatosX",
   "license": "Apache-2.0",

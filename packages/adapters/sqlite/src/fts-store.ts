@@ -416,6 +416,19 @@ interface SearchRow {
 }
 
 /**
+ * Safely parses JSON metadata with error handling
+ * Returns undefined if parsing fails (corrupted data)
+ */
+function safeParseMetadata(json: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    // Log corrupted metadata but don't crash - return undefined
+    return undefined;
+  }
+}
+
+/**
  * Converts a database row to an FTSItem
  */
 function rowToItem(row: ItemRow): FTSItem {
@@ -430,7 +443,10 @@ function rowToItem(row: ItemRow): FTSItem {
   }
 
   if (row.metadata !== null) {
-    item.metadata = JSON.parse(row.metadata) as Record<string, unknown>;
+    const parsed = safeParseMetadata(row.metadata);
+    if (parsed !== undefined) {
+      item.metadata = parsed;
+    }
   }
 
   return item;

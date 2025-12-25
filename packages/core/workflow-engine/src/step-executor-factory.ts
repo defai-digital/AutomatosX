@@ -10,7 +10,7 @@
  * - INV-TOOL-002: Tool results are immutable
  */
 
-import type { WorkflowStep } from '@automatosx/contracts';
+import type { WorkflowStep } from '@defai.digital/contracts';
 import type { StepExecutor, StepResult, StepContext } from './types.js';
 
 /**

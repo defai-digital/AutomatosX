@@ -15,8 +15,8 @@ import {
   DefaultAbilityManager,
   createAbilityManager,
   DEFAULT_ABILITY_DOMAIN_CONFIG,
-} from '@automatosx/ability-domain';
-import type { Ability } from '@automatosx/contracts';
+} from '@defai.digital/ability-domain';
+import type { Ability } from '@defai.digital/contracts';
 
 describe('Ability Domain', () => {
   describe('InMemoryAbilityRegistry', () => {

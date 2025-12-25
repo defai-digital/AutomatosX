@@ -18,7 +18,7 @@ import {
   DATA_DIR_NAME,
   AGENTS_FILENAME,
   DEFAULT_SCHEMA_VERSION,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { InMemoryAgentRegistry } from './registry.js';
 import type { AgentRegistry, AgentFilter } from './types.js';
 

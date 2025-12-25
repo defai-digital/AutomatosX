@@ -15,7 +15,7 @@ import {
   validateFileWriteRequest,
   validateDirectoryCreateRequest,
   isPathSafe,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Tool Definitions

@@ -27,7 +27,7 @@ import {
   AgentMatchSchema,
   AgentCapabilitiesRequestSchema,
   AgentCapabilitiesResultSchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Agent Contract', () => {
   describe('AgentProfileSchema', () => {

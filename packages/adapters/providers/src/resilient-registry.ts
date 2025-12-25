@@ -23,11 +23,11 @@ import {
   type CircuitBreaker,
   type RateLimiter,
   type MetricsCollector,
-} from '@automatosx/resilience-domain';
+} from '@defai.digital/resilience-domain';
 import {
   type CircuitBreakerConfig,
   type RateLimiterConfig,
-} from '@automatosx/contracts/resilience/v1';
+} from '@defai.digital/contracts/resilience/v1';
 import {
   CIRCUIT_FAILURE_THRESHOLD,
   CIRCUIT_RESET_TIMEOUT,
@@ -35,7 +35,7 @@ import {
   CIRCUIT_QUEUE_TIMEOUT,
   RATE_LIMIT_RPM_DEFAULT,
   RETRY_DELAY_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Configuration for resilient provider registry

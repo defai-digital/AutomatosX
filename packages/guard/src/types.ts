@@ -5,7 +5,7 @@
  */
 
 // Import and re-export Policy and GateType from contracts to avoid duplication
-import type { Policy, GateType } from '@automatosx/contracts';
+import type { Policy, GateType } from '@defai.digital/contracts';
 export type { Policy, GateType };
 
 /**
@@ -23,7 +23,7 @@ export interface GateResult {
   details?: Record<string, unknown>;
 }
 
-// Policy interface is imported from @automatosx/contracts above
+// Policy interface is imported from @defai.digital/contracts above
 
 /**
  * Variables for policy path resolution

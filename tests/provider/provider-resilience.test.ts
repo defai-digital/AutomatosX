@@ -7,12 +7,12 @@ import {
   type CircuitBreaker,
   type RateLimiter,
   type HealthMonitor,
-} from '@automatosx/provider-domain';
+} from '@defai.digital/provider-domain';
 import {
   createDefaultProviderCircuitBreakerConfig as createDefaultCircuitBreakerConfig,
   createDefaultProviderRateLimitConfig as createDefaultRateLimitConfig,
   createDefaultHealthCheckConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Provider Resilience', () => {
   // ============================================================================

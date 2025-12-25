@@ -46,7 +46,7 @@ import {
   type DiscussStepConfig,
   type DiscussionResult,
   type DiscussionRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Discussion Pattern Schema Tests

@@ -17,7 +17,7 @@ import {
   validateIterateBudget,
   validateIterateState,
   validateIterateStartRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Iterate Contract', () => {
   describe('IterateIntentSchema', () => {

@@ -5,7 +5,7 @@
  * Good for: brainstorming, iterative refinement, building consensus.
  */
 
-import type { DiscussionRound, DebateRole } from '@automatosx/contracts';
+import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,

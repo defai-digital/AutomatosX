@@ -20,7 +20,7 @@ import {
   safeValidateResumeOptions,
   createDefaultResumeOptions,
   createDefaultHistoryOptions,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 // Simple UUID generation for tests
 const uuid = () => crypto.randomUUID();
 

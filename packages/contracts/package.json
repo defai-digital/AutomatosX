@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/contracts",
+  "name": "@defai.digital/contracts",
   "version": "13.0.0",
   "type": "module",
   "description": "Contract schemas and behavioral invariants for AutomatosX - Single Source of Truth",

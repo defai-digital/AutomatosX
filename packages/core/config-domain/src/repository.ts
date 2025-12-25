@@ -7,7 +7,7 @@
  * - INV-CFG-GOV-001: All changes emit events (audit trail)
  */
 
-import type { ConfigEvent } from '@automatosx/contracts';
+import type { ConfigEvent } from '@defai.digital/contracts';
 import { ConfigAggregate, createConfigAggregate, createAggregateFromConfig } from './aggregate.js';
 import { createConfigStore, type ConfigStore } from './store.js';
 

@@ -32,7 +32,7 @@ import {
   createRequestMetric,
   createErrorMetric,
   createEmptyMetricsSnapshot,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Rate Limiter Contracts', () => {
   it('should validate default config', () => {

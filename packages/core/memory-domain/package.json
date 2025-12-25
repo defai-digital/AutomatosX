@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/memory-domain",
+  "name": "@defai.digital/memory-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Memory domain - event sourcing following contract invariants",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

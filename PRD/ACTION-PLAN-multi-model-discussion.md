@@ -516,11 +516,11 @@ providers: [glm, claude, codex]
 - Provider CLIs installed (claude, glm, qwen, gemini, etc.)
 
 ### Internal Dependencies
-- `@automatosx/contracts` (Phase 1)
-- `@automatosx/workflow-engine` (Phase 3)
-- `@automatosx/providers` (Phase 3)
-- `@automatosx/cli` (Phase 4)
-- `@automatosx/mcp-server` (Phase 4)
+- `@defai.digital/contracts` (Phase 1)
+- `@defai.digital/workflow-engine` (Phase 3)
+- `@defai.digital/providers` (Phase 3)
+- `@defai.digital/cli` (Phase 4)
+- `@defai.digital/mcp-server` (Phase 4)
 
 ---
 

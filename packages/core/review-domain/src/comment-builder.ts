@@ -12,7 +12,7 @@ import {
   type ReviewFocus,
   ReviewCommentSchema,
   ReviewCommentSeveritySchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { isCategoryValidForFocus } from './focus-modes.js';
 import type { ParsedReviewResponse } from './types.js';
 

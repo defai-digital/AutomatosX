@@ -21,7 +21,7 @@ The Setup Module provides first-time initialization and ongoing configuration ma
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Contract-Driven** | All config schemas in `@automatosx/contracts/config/v1` |
+| **Contract-Driven** | All config schemas in `@defai.digital/contracts/config/v1` |
 | **Domain-Driven** | `ConfigAggregate` as aggregate root with event sourcing |
 | **Behavior-Driven** | State machine for config lifecycle, explicit invariants |
 | **Governance-Driven** | Audit trail via events, config change policies |
@@ -510,7 +510,7 @@ export type ConfigResetInput = z.infer<typeof ConfigResetInputSchema>;
 ```typescript
 // packages/core/config-domain/src/store.ts
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 
 /**
  * Configuration file paths
@@ -566,7 +566,7 @@ export function createConfigStore(): ConfigStore;
 ```typescript
 // packages/core/config-domain/src/operations.ts
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 
 /**
  * Gets a config value by path
@@ -616,7 +616,7 @@ export function validateConfigWithErrors(
 ```typescript
 // packages/core/config-domain/src/defaults.ts
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 
 /**
  * Default configuration for new installations
@@ -705,7 +705,7 @@ export const PROVIDER_DEFAULTS: Record<string, {
 ```typescript
 // packages/core/config-domain/src/migrator.ts
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 
 /**
  * Migration function signature
@@ -745,7 +745,7 @@ import type {
   ConfigEvent,
   ConfigStatus,
   ConfigErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Config aggregate state
@@ -918,7 +918,7 @@ import type {
   ProviderId,
   ProviderDetectionResult,
   ProviderDetectionSummary,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Provider detection port (interface for adapters)
@@ -934,7 +934,7 @@ export interface ProviderDetectionPort {
 ```typescript
 // packages/adapters/provider-detection/src/detector.ts
 
-import type { ProviderDetectionPort } from '@automatosx/config-domain';
+import type { ProviderDetectionPort } from '@defai.digital/config-domain';
 
 /**
  * CLI-based provider detection adapter
@@ -960,7 +960,7 @@ import type {
   ProviderId,
   ProviderDetectionResult,
   ProviderDetectionSummary,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Detects if a CLI command is available
@@ -1556,7 +1556,7 @@ export const configChangePolicy: Policy = {
 ```typescript
 // packages/guard/src/gates/config.ts
 
-import type { Gate, GateResult } from '@automatosx/contracts';
+import type { Gate, GateResult } from '@defai.digital/contracts';
 
 /**
  * Config validation gate

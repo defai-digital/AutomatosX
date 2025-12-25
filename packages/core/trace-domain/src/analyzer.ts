@@ -4,7 +4,7 @@ import {
   type TraceEvent,
   type Trace,
   type TraceStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { TraceReader } from './types.js';
 
 /**

@@ -1,5 +1,5 @@
-import type { MemoryEvent, MemoryEventType } from '@automatosx/contracts';
-import type { EventStore } from '@automatosx/memory-domain';
+import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
+import type { EventStore } from '@defai.digital/memory-domain';
 import type Database from 'better-sqlite3';
 
 /**

@@ -1,5 +1,5 @@
 import type { CommandResult, CLIOptions } from '../types.js';
-import { createWorkflowLoader, findWorkflowDir } from '@automatosx/workflow-engine';
+import { createWorkflowLoader, findWorkflowDir } from '@defai.digital/workflow-engine';
 import * as path from 'node:path';
 
 /**

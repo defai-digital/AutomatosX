@@ -19,7 +19,7 @@ import {
   createDefaultProviderRateLimitConfig as createDefaultRateLimitConfig,
   createInitialProviderRateLimitState as createInitialRateLimitState,
   ProviderRateLimitErrorCodes as RateLimitErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Rate limiter instance for a single provider

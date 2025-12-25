@@ -86,7 +86,7 @@ ax scaffold domain <name> [options]
 ```
 
 **Options:**
-- `-s, --scope <scope>` - Package scope (default: `@automatosx`)
+- `-s, --scope <scope>` - Package scope (default: `@defai.digital`)
 - `-o, --output <path>` - Output directory
 - `--no-tests` - Skip test file generation
 - `--no-guard` - Skip guard policy generation

@@ -4,7 +4,7 @@
  * Builds task-specific prompts for LLM analysis.
  */
 
-import type { AnalysisTask, CodeContext } from '@automatosx/contracts';
+import type { AnalysisTask, CodeContext } from '@defai.digital/contracts';
 import type { AnalysisPromptBuilder } from './types.js';
 
 /**

@@ -20,7 +20,7 @@ import type {
   AgentCapabilitiesRequest,
   AgentCapabilitiesResult,
   AgentCategory,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { AgentRegistry } from './types.js';
 
 // ============================================================================

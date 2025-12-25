@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { discussCommand } from '@automatosx/cli';
-import type { CLIOptions } from '@automatosx/cli';
+import { discussCommand } from '@defai.digital/cli';
+import type { CLIOptions } from '@defai.digital/cli';
 
 // Default CLI options for testing
 const defaultOptions: CLIOptions = {

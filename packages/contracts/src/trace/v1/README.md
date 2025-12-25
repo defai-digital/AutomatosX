@@ -27,7 +27,7 @@ import {
   TraceEventSchema,
   validateTraceEvent,
   type TraceEvent,
-} from '@automatosx/contracts/trace/v1';
+} from '@defai.digital/contracts/trace/v1';
 
 // Record a trace event
 const event: TraceEvent = validateTraceEvent({

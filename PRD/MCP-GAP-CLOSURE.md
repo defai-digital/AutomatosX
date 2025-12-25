@@ -10,7 +10,7 @@
 
 This PRD addresses identified gaps between the current AutomatosX MCP implementation and full feature parity. All implementations must follow AutomatosX architectural principles:
 
-- **Contract-Driven**: Schemas in `@automatosx/contracts`
+- **Contract-Driven**: Schemas in `@defai.digital/contracts`
 - **Domain-Driven**: Clear domain-tool mapping
 - **Behavior-Driven**: Testable invariants (INV-MCP-*)
 - **Governance-Driven**: Guard integration where applicable

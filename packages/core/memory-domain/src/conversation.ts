@@ -1,4 +1,4 @@
-import { createMemoryEvent } from '@automatosx/contracts';
+import { createMemoryEvent } from '@defai.digital/contracts';
 import type {
   EventStore,
   ConversationState,

@@ -17,7 +17,7 @@ import {
   validateMetricDefinition,
   validateRecordMetricRequest,
   safeValidateRecordMetricRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Telemetry Contract', () => {
   describe('MetricTypeSchema', () => {

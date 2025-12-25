@@ -9,7 +9,7 @@
  */
 
 import type { ToolHandler, MCPToolResult } from './types.js';
-import { createToolTraceEvent, type ToolTraceEvent } from '@automatosx/contracts';
+import { createToolTraceEvent, type ToolTraceEvent } from '@defai.digital/contracts';
 
 // ============================================================================
 // Trace Event Collector

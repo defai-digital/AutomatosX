@@ -24,7 +24,7 @@ import {
   buildPromptFromMessages,
   type CLIProviderConfig,
   type SpawnResult,
-} from '@automatosx/provider-adapters';
+} from '@defai.digital/provider-adapters';
 
 describe('CLI Adapter', () => {
   describe('createCLIAdapter', () => {

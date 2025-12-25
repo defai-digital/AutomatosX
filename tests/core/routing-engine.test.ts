@@ -8,8 +8,8 @@ import {
   DEFAULT_MODELS,
   RoutingErrorCodes,
   type ModelDefinition,
-} from '@automatosx/routing-engine';
-import type { RoutingInput } from '@automatosx/contracts';
+} from '@defai.digital/routing-engine';
+import type { RoutingInput } from '@defai.digital/contracts';
 
 describe('Routing Engine', () => {
   describe('INV-RT-001: Determinism', () => {

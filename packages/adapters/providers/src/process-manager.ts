@@ -9,7 +9,7 @@
 
 import { spawn, exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { TIMEOUT_GRACEFUL_SHUTDOWN } from '@automatosx/contracts';
+import { TIMEOUT_GRACEFUL_SHUTDOWN } from '@defai.digital/contracts';
 import type { SpawnOptions, SpawnResult } from './types.js';
 
 const execAsync = promisify(exec);

@@ -11,7 +11,7 @@ import {
   discussTool,
   discussQuickTool,
   type MCPToolResult,
-} from '@automatosx/mcp-server';
+} from '@defai.digital/mcp-server';
 
 // Helper to extract text content from MCP result
 function getTextContent(result: MCPToolResult): string {
@@ -316,20 +316,20 @@ describe('Discuss MCP Tools - Error Handling', () => {
 
 describe('Discuss MCP Tools - Registration', () => {
   it('should export DISCUSS_TOOLS array', async () => {
-    const { DISCUSS_TOOLS } = await import('@automatosx/mcp-server');
+    const { DISCUSS_TOOLS } = await import('@defai.digital/mcp-server');
     expect(Array.isArray(DISCUSS_TOOLS)).toBe(true);
     expect(DISCUSS_TOOLS.length).toBe(2);
   });
 
   it('should export DISCUSS_HANDLERS record', async () => {
-    const { DISCUSS_HANDLERS } = await import('@automatosx/mcp-server');
+    const { DISCUSS_HANDLERS } = await import('@defai.digital/mcp-server');
     expect(typeof DISCUSS_HANDLERS).toBe('object');
     expect(DISCUSS_HANDLERS.discuss).toBeDefined();
     expect(DISCUSS_HANDLERS.discuss_quick).toBeDefined();
   });
 
   it('should have matching tool names in handlers', async () => {
-    const { DISCUSS_TOOLS, DISCUSS_HANDLERS } = await import('@automatosx/mcp-server');
+    const { DISCUSS_TOOLS, DISCUSS_HANDLERS } = await import('@defai.digital/mcp-server');
     for (const tool of DISCUSS_TOOLS) {
       expect(DISCUSS_HANDLERS[tool.name]).toBeDefined();
     }

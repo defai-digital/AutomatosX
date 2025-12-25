@@ -17,7 +17,7 @@ import {
   SessionErrorCode,
   isValidSessionTransition,
   isValidTaskTransition,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   SessionManager,
   SessionStore,
@@ -30,7 +30,7 @@ import type {
   RunRecord,
   RunStatus,
   HistoryQuery,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Default session manager implementation

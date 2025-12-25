@@ -4,13 +4,13 @@ import type {
   MCPResponseMetadata,
   MCPResponseLimits,
   MCPPagination,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   DEFAULT_RESPONSE_LIMITS,
   isRetryableError,
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_ORCHESTRATION_GRACEFUL,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // MCP Tool Result Type (compatible with MCP SDK)

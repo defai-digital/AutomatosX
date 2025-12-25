@@ -12,7 +12,7 @@ import {
   isEventType,
   type MemoryEvent,
   type MemoryEventType,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Memory Event Contract V1', () => {
   describe('Schema Validation', () => {

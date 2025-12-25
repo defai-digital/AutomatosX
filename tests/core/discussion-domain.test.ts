@@ -31,14 +31,14 @@ import {
   type DiscussionProviderExecutor,
   type PatternExecutionContext,
   type ConsensusExecutionContext,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 import {
   createDefaultDiscussStepConfig,
   createDebateConfig,
   createVotingConfig,
   DEFAULT_PROVIDERS,
   type DiscussStepConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Stub Provider Executor Tests

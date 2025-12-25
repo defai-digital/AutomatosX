@@ -2,8 +2,8 @@ import type {
   MCPTimeoutConfig,
   TimeoutResult,
   ToolCategory,
-} from '@automatosx/contracts';
-import { TOOL_CATEGORIES, getToolTimeout } from '@automatosx/contracts';
+} from '@defai.digital/contracts';
+import { TOOL_CATEGORIES, getToolTimeout } from '@defai.digital/contracts';
 
 /**
  * Default timeout configuration.

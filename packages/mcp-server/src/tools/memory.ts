@@ -1,5 +1,5 @@
 import type { MCPTool, ToolHandler } from '../types.js';
-import { LIMIT_DEFAULT, LIMIT_MEMORY } from '@automatosx/contracts';
+import { LIMIT_DEFAULT, LIMIT_MEMORY } from '@defai.digital/contracts';
 
 /**
  * Memory store tool definition

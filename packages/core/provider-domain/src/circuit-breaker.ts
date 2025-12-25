@@ -19,7 +19,7 @@ import {
   createDefaultProviderCircuitBreakerConfig as createDefaultCircuitBreakerConfig,
   createInitialProviderCircuitBreakerState as createInitialCircuitBreakerState,
   ProviderCircuitBreakerErrorCodes as CircuitBreakerErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Circuit breaker instance for a single provider

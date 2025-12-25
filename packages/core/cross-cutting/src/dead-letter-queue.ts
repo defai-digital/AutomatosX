@@ -18,7 +18,7 @@ import {
   type DLQStats,
   createDefaultDLQConfig,
   DLQErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * DLQ storage interface

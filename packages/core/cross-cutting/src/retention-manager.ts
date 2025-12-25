@@ -19,7 +19,7 @@ import {
   type ArchiveEntry,
   calculateRetentionCutoff,
   RetentionErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Retention store interface for data access

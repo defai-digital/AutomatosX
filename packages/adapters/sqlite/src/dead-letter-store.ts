@@ -9,8 +9,8 @@
  * - INV-DLQ-003: Exhausted entries marked appropriately
  */
 
-import type { DeadLetterEntry, DeadLetterStatus } from '@automatosx/contracts';
-import type { DeadLetterStorage } from '@automatosx/cross-cutting';
+import type { DeadLetterEntry, DeadLetterStatus } from '@defai.digital/contracts';
+import type { DeadLetterStorage } from '@defai.digital/cross-cutting';
 import type Database from 'better-sqlite3';
 
 /**

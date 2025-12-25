@@ -8,7 +8,7 @@
  * @see https://github.com/google-gemini/gemini-cli
  */
 
-import { TIMEOUT_PROVIDER_DEFAULT } from '@automatosx/contracts';
+import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**

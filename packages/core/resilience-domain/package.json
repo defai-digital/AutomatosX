@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/resilience-domain",
+  "name": "@defai.digital/resilience-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Resilience patterns: circuit breaker, rate limiter, loop guard, resource limits, metrics",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

@@ -9,7 +9,7 @@
  */
 
 import type { MCPResource, MCPResourceContent, ResourceHandler } from '../types.js';
-import { getPolicy, listPolicies } from '@automatosx/guard';
+import { getPolicy, listPolicies } from '@defai.digital/guard';
 
 // ============================================================================
 // Resource Definitions

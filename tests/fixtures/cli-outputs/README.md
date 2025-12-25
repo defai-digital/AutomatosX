@@ -12,7 +12,7 @@ These fixtures capture real or realistic CLI outputs from each provider, enablin
 ## Fixture Schema
 
 Each fixture is a JSON file following the `CLIOutputFixtureSchema` from
-`@automatosx/contracts/cli/v1`. See `fixtures.schema.json` for the JSON Schema.
+`@defai.digital/contracts/cli/v1`. See `fixtures.schema.json` for the JSON Schema.
 
 ## Structure
 

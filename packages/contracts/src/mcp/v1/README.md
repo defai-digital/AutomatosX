@@ -40,7 +40,7 @@ import {
   StandardErrorCodes,
   type McpTool,
   type ToolResult,
-} from '@automatosx/contracts/mcp/v1';
+} from '@defai.digital/contracts/mcp/v1';
 
 // Define a tool
 const myTool: McpTool = McpToolSchema.parse({

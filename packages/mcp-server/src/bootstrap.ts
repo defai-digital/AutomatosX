@@ -11,7 +11,7 @@
 // Adapter Imports - ONLY allowed in this file
 // ============================================================================
 
-import { createProviderRegistry as createRegistry } from '@automatosx/provider-adapters';
+import { createProviderRegistry as createRegistry } from '@defai.digital/provider-adapters';
 
 // Step executor imports (for workflow execution)
 import {
@@ -19,20 +19,20 @@ import {
   type StepExecutor,
   type PromptExecutorLike,
   type DiscussionExecutorLike,
-} from '@automatosx/workflow-engine';
+} from '@defai.digital/workflow-engine';
 import {
   createProviderPromptExecutor,
   type ProviderPromptExecutorConfig,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 import {
   createProviderBridge,
   createDiscussionExecutor,
   type ProviderRegistryLike as DiscussionProviderRegistryLike,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 import {
   TIMEOUT_PROVIDER_DEFAULT,
   PROVIDER_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Types - re-exported for use in MCP Server code

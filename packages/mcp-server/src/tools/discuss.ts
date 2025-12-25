@@ -14,14 +14,14 @@ import {
   createProviderBridge,
   type DiscussionProviderExecutor,
   type ProviderRegistryLike,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 import {
   DEFAULT_PROVIDERS,
   TIMEOUT_PROVIDER_DEFAULT,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { getProviderRegistry } from '../bootstrap.js';
 
 // Check if we're in test environment

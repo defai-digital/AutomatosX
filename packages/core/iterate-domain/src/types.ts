@@ -15,7 +15,7 @@ import type {
   SafetyCheckResult,
   IterateStartRequest,
   IterateHandleResponse,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Re-export contract types for convenience
 export type {

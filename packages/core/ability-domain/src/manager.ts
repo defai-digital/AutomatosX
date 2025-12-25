@@ -4,7 +4,7 @@
  * Coordinates ability loading and injection into agent contexts.
  */
 
-import type { Ability, AbilityInjectionResult } from '@automatosx/contracts';
+import type { Ability, AbilityInjectionResult } from '@defai.digital/contracts';
 import type {
   AbilityRegistry,
   AbilityManager,

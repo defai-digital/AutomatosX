@@ -2,7 +2,7 @@
  * AutomatosX Constants
  *
  * Single source of truth for all magic numbers, paths, and configuration defaults.
- * Import from '@automatosx/contracts' to use these values.
+ * Import from '@defai.digital/contracts' to use these values.
  *
  * Following the principle: "No magic numbers in code"
  */

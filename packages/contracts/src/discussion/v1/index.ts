@@ -4,7 +4,7 @@
  * Zod schemas and types for multi-model discussions enabling Claude, GLM, Qwen,
  * Gemini, Codex, and Grok to collaborate on complex problems.
  *
- * @module @automatosx/contracts/discussion/v1
+ * @module @defai.digital/contracts/discussion/v1
  */
 
 // Re-export all schemas and types from schema.ts

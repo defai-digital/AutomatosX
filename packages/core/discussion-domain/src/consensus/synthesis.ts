@@ -5,7 +5,7 @@
  * This is the default consensus method.
  */
 
-import type { DissentRecord, DiscussionRound } from '@automatosx/contracts';
+import type { DissentRecord, DiscussionRound } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   SYNTHESIS_FINAL,

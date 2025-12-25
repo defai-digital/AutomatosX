@@ -261,7 +261,7 @@ backward compatibility for one major version.
 **Location:** `packages/core/practices-domain/src/defaults.ts`
 
 ```typescript
-import type { FolderConvention, Practice } from '@automatosx/contracts/practices/v1';
+import type { FolderConvention, Practice } from '@defai.digital/contracts/practices/v1';
 
 export const DEFAULT_FOLDER_CONVENTIONS: FolderConvention[] = [
   // PRD Folder
@@ -634,9 +634,9 @@ Follow Conventional Commits specification:
 **Location:** `packages/guard/src/gates/folder-placement.ts`
 
 ```typescript
-import type { GateResult, GovernanceContext } from '@automatosx/contracts/guard/v1';
-import type { FolderConvention, Practice } from '@automatosx/contracts/practices/v1';
-import { DEFAULT_FOLDER_CONVENTIONS, DEFAULT_PRACTICES } from '@automatosx/core/practices-domain';
+import type { GateResult, GovernanceContext } from '@defai.digital/contracts/guard/v1';
+import type { FolderConvention, Practice } from '@defai.digital/contracts/practices/v1';
+import { DEFAULT_FOLDER_CONVENTIONS, DEFAULT_PRACTICES } from '@defai.digital/core/practices-domain';
 import { minimatch } from 'minimatch';
 
 export interface FolderPlacementGateConfig {
@@ -936,7 +936,7 @@ output:
 
 ```typescript
 import { z } from 'zod';
-import { PracticesConfigSchema, PracticeViolationSchema } from '@automatosx/contracts/practices/v1';
+import { PracticesConfigSchema, PracticeViolationSchema } from '@defai.digital/contracts/practices/v1';
 
 export const practiceCheckInputSchema = z.object({
   files: z.array(z.string()).describe('Files to check'),

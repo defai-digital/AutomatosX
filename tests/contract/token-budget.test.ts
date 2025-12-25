@@ -21,7 +21,7 @@ import {
   getPriorityValue,
   getTypePriorityValue,
   TokenBudgetErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Token Budget Contract', () => {
   describe('TokenBudgetConfigSchema', () => {

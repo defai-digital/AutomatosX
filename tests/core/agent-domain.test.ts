@@ -11,8 +11,8 @@ import {
   InMemoryAgentRegistry,
   AgentRegistryError,
   DEFAULT_AGENT_DOMAIN_CONFIG,
-} from '@automatosx/agent-domain';
-import type { AgentProfile } from '@automatosx/contracts';
+} from '@defai.digital/agent-domain';
+import type { AgentProfile } from '@defai.digital/contracts';
 
 describe('Agent Domain', () => {
   describe('InMemoryAgentRegistry', () => {

@@ -1,5 +1,5 @@
 /**
- * @automatosx/config-domain
+ * @defai.digital/config-domain
  *
  * Configuration domain - config management following contract invariants.
  */

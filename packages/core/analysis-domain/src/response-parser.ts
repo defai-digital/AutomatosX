@@ -9,7 +9,7 @@ import {
   type AnalysisTask,
   type FindingSeverity,
   safeValidateAnalysisFinding,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { AnalysisResponseParser } from './types.js';
 
 /**

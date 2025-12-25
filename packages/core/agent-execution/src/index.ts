@@ -1,5 +1,5 @@
 /**
- * @automatosx/agent-execution
+ * @defai.digital/agent-execution
  *
  * Agent Execution Domain
  *

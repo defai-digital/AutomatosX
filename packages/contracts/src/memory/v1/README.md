@@ -27,7 +27,7 @@ import {
   MemoryEventSchema,
   validateMemoryEvent,
   type MemoryEvent,
-} from '@automatosx/contracts/memory/v1';
+} from '@defai.digital/contracts/memory/v1';
 
 // Create a memory event
 const event: MemoryEvent = validateMemoryEvent({

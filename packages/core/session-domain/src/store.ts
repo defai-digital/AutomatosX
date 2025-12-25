@@ -7,7 +7,7 @@
 import type {
   Session,
   CreateSessionInput,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { SessionStore, SessionFilter } from './types.js';
 
 /**

@@ -4,7 +4,7 @@
  * Defines schemas for file and directory operations with security invariants.
  * Used by scaffold tools to write generated code to disk.
  *
- * @module @automatosx/contracts/file-system/v1
+ * @module @defai.digital/contracts/file-system/v1
  */
 
 import { z } from 'zod';

@@ -11,7 +11,7 @@ import type {
   AnalysisFile,
   FindingSeverity,
   AnalysisSeverityFilter,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Options for gathering code context

@@ -43,7 +43,7 @@ import {
 
 ### Contract Layer
 - No contract changes required
-- `CheckpointStorage` interface already defined in `@automatosx/contracts`
+- `CheckpointStorage` interface already defined in `@defai.digital/contracts`
 
 ### Domain Layer
 - No domain changes required
@@ -51,7 +51,7 @@ import {
 
 ### Adapter Layer
 - No adapter changes required
-- SQLite checkpoint storage already implemented in `@automatosx/sqlite-adapter`
+- SQLite checkpoint storage already implemented in `@defai.digital/sqlite-adapter`
 
 ### Application Layer (CLI)
 - **Change Required**: Update `resume.ts` to use shared storage instances
@@ -68,14 +68,14 @@ import {
   createCheckpointManager,
   createInMemoryCheckpointStorage,
   type CheckpointStorage,
-} from '@automatosx/agent-execution';
+} from '@defai.digital/agent-execution';
 ```
 
 **After:**
 ```typescript
 import {
   createCheckpointManager,
-} from '@automatosx/agent-execution';
+} from '@defai.digital/agent-execution';
 import {
   getCheckpointStorage,
   initializeStorageAsync,

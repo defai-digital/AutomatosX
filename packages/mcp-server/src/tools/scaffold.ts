@@ -66,8 +66,8 @@ export const scaffoldDomainTool: MCPTool = {
       },
       scope: {
         type: 'string',
-        description: 'Package scope (default: @automatosx)',
-        default: '@automatosx',
+        description: 'Package scope (default: @defai.digital)',
+        default: '@defai.digital',
       },
       includeTests: {
         type: 'boolean',
@@ -150,7 +150,7 @@ function generateSchemaTemplate(name: string, description: string): string {
  *
  * ${description}
  *
- * @module @automatosx/contracts/${name}/v1
+ * @module @defai.digital/contracts/${name}/v1
  */
 
 import { z } from 'zod';
@@ -378,7 +378,7 @@ export const handleScaffoldContract: ToolHandler = async (args) => {
 export const handleScaffoldDomain: ToolHandler = async (args) => {
   const name = args.name as string;
   const output = (args.output as string) || `packages/core/${name}-domain`;
-  const scope = (args.scope as string) || '@automatosx';
+  const scope = (args.scope as string) || '@defai.digital';
   const includeGuard = args.includeGuard !== false;
   const dryRun = (args.dryRun as boolean) || false;
 
@@ -405,7 +405,7 @@ export const handleScaffoldDomain: ToolHandler = async (args) => {
     },
     {
       path: `${output}/src/types.ts`,
-      content: `import type { ${pascalName} } from '@automatosx/contracts';
+      content: `import type { ${pascalName} } from '@defai.digital/contracts';
 
 export interface ${pascalName}Repository {
   findById(id: string): Promise<${pascalName} | undefined>;
@@ -415,7 +415,7 @@ export interface ${pascalName}Repository {
     },
     {
       path: `${output}/src/service.ts`,
-      content: `import type { ${pascalName} } from '@automatosx/contracts';
+      content: `import type { ${pascalName} } from '@defai.digital/contracts';
 import type { ${pascalName}Repository } from './types.js';
 
 export class ${pascalName}Service {

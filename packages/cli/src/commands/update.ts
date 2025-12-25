@@ -8,7 +8,7 @@
  *   ax update --check   Only check for updates (don't install)
  *   ax update --yes     Skip confirmation and install immediately
  *
- * @module @automatosx/cli/commands/update
+ * @module @defai.digital/cli/commands/update
  * @license Apache-2.0
  * @copyright 2024 DEFAI Private Limited
  */
@@ -24,7 +24,7 @@ const execAsync = promisify(exec);
 /**
  * Package name for npm operations
  */
-export const PACKAGE_NAME = '@automatosx/cli';
+export const PACKAGE_NAME = '@defai.digital/cli';
 
 /**
  * Read CLI version from package.json

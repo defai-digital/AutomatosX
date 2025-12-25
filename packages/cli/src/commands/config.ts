@@ -14,11 +14,11 @@ import {
   createConfigStore,
   getValue,
   setValue,
-} from '@automatosx/config-domain';
+} from '@defai.digital/config-domain';
 import {
   type AutomatosXConfig,
   safeValidateConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Constants

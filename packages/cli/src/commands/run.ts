@@ -4,9 +4,9 @@ import {
   createWorkflowLoader,
   findWorkflowDir,
   defaultStepExecutor,
-} from '@automatosx/workflow-engine';
-import type { StepContext, StepResult, StepExecutor } from '@automatosx/workflow-engine';
-import type { WorkflowStep } from '@automatosx/contracts';
+} from '@defai.digital/workflow-engine';
+import type { StepContext, StepResult, StepExecutor } from '@defai.digital/workflow-engine';
+import type { WorkflowStep } from '@defai.digital/contracts';
 import { getStepExecutor } from '../bootstrap.js';
 
 // Check if we're in test environment

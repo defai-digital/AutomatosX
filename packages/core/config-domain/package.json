@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/config-domain",
+  "name": "@defai.digital/config-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Configuration domain - config management following contract invariants",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

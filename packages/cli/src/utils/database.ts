@@ -18,7 +18,7 @@ import {
   ENV_STORAGE_MODE,
   STORAGE_MODE_SQLITE,
   STORAGE_MODE_MEMORY,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Database configuration

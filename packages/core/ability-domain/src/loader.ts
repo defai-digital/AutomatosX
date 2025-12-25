@@ -7,8 +7,8 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Ability } from '@automatosx/contracts';
-import { validateAbility } from '@automatosx/contracts';
+import type { Ability } from '@defai.digital/contracts';
+import { validateAbility } from '@defai.digital/contracts';
 import type { AbilityLoader, AbilityLoaderConfig } from './types.js';
 
 // ============================================================================

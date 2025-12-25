@@ -10,7 +10,7 @@
 
 This PRD addresses remaining infrastructure gaps for full MCP feature parity. All implementations follow AutomatosX architectural principles:
 
-- **Contract-Driven**: Schemas in `@automatosx/contracts`
+- **Contract-Driven**: Schemas in `@defai.digital/contracts`
 - **Domain-Driven**: Clear domain mapping
 - **Behavior-Driven**: Testable invariants (INV-MCP-*)
 - **Governance-Driven**: Guard integration where applicable
@@ -72,7 +72,7 @@ export type ToolTraceEvent = z.infer<typeof ToolTraceEventSchema>;
 
 ```typescript
 import type { ToolHandler, MCPToolResult } from './types.js';
-import type { TraceRecorder } from '@automatosx/trace-domain';
+import type { TraceRecorder } from '@defai.digital/trace-domain';
 
 /**
  * Wraps a tool handler with tracing

@@ -27,7 +27,7 @@ import {
   type StepGuardContext,
   type StageProgressEvent,
   type GoalAnchorConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Step Guard Contract', () => {
   describe('GuardPositionSchema', () => {

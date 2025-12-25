@@ -12,7 +12,7 @@
  * - Use 'multi-step' for agents with sequential processing
  */
 
-import type { AgentWorkflowStep } from '@automatosx/contracts';
+import type { AgentWorkflowStep } from '@defai.digital/contracts';
 
 /**
  * Available workflow template names

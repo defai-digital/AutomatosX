@@ -18,13 +18,13 @@ import {
   type HistoryOptions,
   type RunRecord,
   type RunStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createSessionManager,
   createSessionStore,
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type SessionManager,
-} from '@automatosx/session-domain';
+} from '@defai.digital/session-domain';
 
 // Lazy-initialized session manager (shared across commands)
 let sessionManager: SessionManager | undefined;

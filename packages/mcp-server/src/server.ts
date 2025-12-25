@@ -6,7 +6,7 @@ import type {
   MCPTool,
 } from './types.js';
 import { MCPErrorCodes } from './types.js';
-import { MCP_SERVER_NAME, MCP_PROTOCOL_VERSION, DEFAULT_SCHEMA_VERSION } from '@automatosx/contracts';
+import { MCP_SERVER_NAME, MCP_PROTOCOL_VERSION, DEFAULT_SCHEMA_VERSION } from '@defai.digital/contracts';
 import { ALL_TOOLS, TOOL_HANDLERS } from './tools/index.js';
 import { ALL_RESOURCES, readResource } from './resources/index.js';
 import { ALL_PROMPTS, executePrompt, getPrompt } from './prompts/index.js';

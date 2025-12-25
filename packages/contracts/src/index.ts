@@ -1,5 +1,5 @@
 /**
- * @automatosx/contracts
+ * @defai.digital/contracts
  *
  * Contract schemas and behavioral invariants - Single Source of Truth
  * All external behavior must be defined by these explicit contracts.

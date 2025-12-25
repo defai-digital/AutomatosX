@@ -6,7 +6,7 @@ import {
   validateWorkflow,
   safeValidateWorkflow,
   type Workflow,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Workflow Contract V1', () => {
   describe('Schema Validation', () => {

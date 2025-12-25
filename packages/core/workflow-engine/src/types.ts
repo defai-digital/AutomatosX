@@ -2,7 +2,7 @@ import type {
   Workflow,
   WorkflowStep,
   RetryPolicy,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Result of a step execution

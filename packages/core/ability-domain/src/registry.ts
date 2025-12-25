@@ -4,7 +4,7 @@
  * In-memory storage for abilities with filtering support.
  */
 
-import type { Ability } from '@automatosx/contracts';
+import type { Ability } from '@defai.digital/contracts';
 import type { AbilityRegistry, AbilityFilter } from './types.js';
 
 /**

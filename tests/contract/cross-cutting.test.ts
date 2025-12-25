@@ -20,13 +20,13 @@ import {
   type IdempotencyManager,
   type RetentionManager,
   type RetentionEntry,
-} from '@automatosx/cross-cutting';
+} from '@defai.digital/cross-cutting';
 import {
   type DeadLetterEntry,
   type SagaStep,
   type CompensationAction,
   createDefaultRetentionPolicy,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Cross-Cutting Concerns', () => {
   // ============================================================================

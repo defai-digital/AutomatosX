@@ -16,7 +16,7 @@ import {
   type DelegationCheckResult,
   createRootDelegationContext,
   DelegationErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Delegation tracker for managing delegation chains

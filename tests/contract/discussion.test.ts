@@ -56,7 +56,7 @@ import {
   createVotingConfig,
   createEmptyDiscussionResult,
   createFailedDiscussionResult,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Discussion Contract', () => {
   describe('Constants', () => {

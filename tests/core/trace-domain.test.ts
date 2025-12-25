@@ -8,7 +8,7 @@ import {
   TraceAnalyzer,
   createTraceAnalyzer,
   TraceErrorCodes,
-} from '@automatosx/trace-domain';
+} from '@defai.digital/trace-domain';
 
 describe('Trace Domain', () => {
   describe('Trace Store (INV-TR-002, INV-TR-004)', () => {

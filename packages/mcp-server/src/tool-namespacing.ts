@@ -1,5 +1,5 @@
 import type { MCPTool } from './types.js';
-import { MCP_TOOL_PREFIX_DEFAULT, ENV_MCP_TOOL_PREFIX } from '@automatosx/contracts';
+import { MCP_TOOL_PREFIX_DEFAULT, ENV_MCP_TOOL_PREFIX } from '@defai.digital/contracts';
 
 /**
  * Reads and sanitizes the tool prefix from environment or provided override.

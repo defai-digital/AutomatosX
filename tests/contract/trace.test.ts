@@ -17,7 +17,7 @@ import {
   type TraceEvent,
   type TraceEventType,
   type Trace,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Trace Event Contract V1', () => {
   describe('Schema Validation', () => {

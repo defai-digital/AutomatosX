@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/provider-domain",
+  "name": "@defai.digital/provider-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Provider resilience domain for AutomatosX - circuit breaker, rate limiting, health monitoring",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

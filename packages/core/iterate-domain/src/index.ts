@@ -1,5 +1,5 @@
 /**
- * @automatosx/iterate-domain
+ * @defai.digital/iterate-domain
  *
  * Iterate mode for AutomatosX - autonomous execution with
  * structured intent classification and safety controls.
@@ -51,4 +51,4 @@ export {
   validateIterateBudget,
   validateIterateState,
   IterateErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

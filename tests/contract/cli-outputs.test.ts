@@ -20,14 +20,14 @@ import {
   CLIOutputFixtureSchema,
   type CLIOutputFixture,
   type CLIOutputFormat,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 import {
   parseOutput,
   classifyError,
   type ParsedOutput,
   type ClassifiedError,
-} from '@automatosx/provider-adapters';
+} from '@defai.digital/provider-adapters';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(__dirname, '../fixtures/cli-outputs');

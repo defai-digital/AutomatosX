@@ -9,7 +9,7 @@
 
 import type { CommandResult, CLIOptions } from '../types.js';
 import { callCommand } from './call.js';
-import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_TIME_MS } from '@automatosx/iterate-domain';
+import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_TIME_MS } from '@defai.digital/iterate-domain';
 
 /**
  * Shows iterate command help

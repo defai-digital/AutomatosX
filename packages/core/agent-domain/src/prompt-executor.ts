@@ -90,7 +90,7 @@ export interface ProviderPromptExecutorConfig {
 }
 
 /**
- * Interface that matches the provider registry from @automatosx/providers
+ * Interface that matches the provider registry from @defai.digital/providers
  * This allows loose coupling without direct dependency
  */
 export interface ProviderRegistryLike {
@@ -99,7 +99,7 @@ export interface ProviderRegistryLike {
 }
 
 /**
- * Interface that matches a provider from @automatosx/providers
+ * Interface that matches a provider from @defai.digital/providers
  */
 export interface ProviderLike {
   providerId: string;
@@ -292,8 +292,8 @@ export function createStubPromptExecutor(
  *
  * @example
  * ```typescript
- * import { createProviderRegistry } from '@automatosx/providers';
- * import { createProviderPromptExecutor } from '@automatosx/agent-domain';
+ * import { createProviderRegistry } from '@defai.digital/providers';
+ * import { createProviderPromptExecutor } from '@defai.digital/agent-domain';
  *
  * const registry = createProviderRegistry();
  * const executor = createProviderPromptExecutor(registry, {

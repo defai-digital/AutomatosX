@@ -1,5 +1,5 @@
 /**
- * @automatosx/context-domain
+ * @defai.digital/context-domain
  *
  * Project context loading for AutomatosX.
  * Loads project-specific conventions, architecture, and patterns
@@ -30,4 +30,4 @@ export {
   MAX_CONTEXT_TOTAL_SIZE,
   CONTEXT_DIRECTORY,
   ContextErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

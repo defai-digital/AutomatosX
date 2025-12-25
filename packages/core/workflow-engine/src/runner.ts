@@ -1,4 +1,4 @@
-import { type WorkflowStep, type RetryPolicy, DEFAULT_RETRY_POLICY } from '@automatosx/contracts';
+import { type WorkflowStep, type RetryPolicy, DEFAULT_RETRY_POLICY } from '@defai.digital/contracts';
 import type {
   WorkflowResult,
   WorkflowRunnerConfig,
@@ -241,18 +241,12 @@ export class WorkflowRunner {
         timeoutPromise,
       ]);
 
-      // Clean up timeout
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-
       return result;
-    } catch (error) {
-      // Clean up timeout on error too
+    } finally {
+      // Always clean up timeout to prevent timer leaks
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
       }
-      throw error;
     }
   }
 

@@ -24,13 +24,13 @@ import {
 import {
   ContextLoader,
   hasProjectContext,
-} from '@automatosx/context-domain';
+} from '@defai.digital/context-domain';
 import {
   IterateController,
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_MAX_TIME_MS,
-} from '@automatosx/iterate-domain';
-import type { IterateIntent, IterateState } from '@automatosx/contracts';
+} from '@defai.digital/iterate-domain';
+import type { IterateIntent, IterateState } from '@defai.digital/contracts';
 
 // ============================================================================
 // Constants

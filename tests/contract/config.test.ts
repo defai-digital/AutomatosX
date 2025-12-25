@@ -68,7 +68,7 @@ import {
   getRecoveryHint,
   isConfigError,
   configNotFoundError,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Config Contract V1', () => {
   describe('Schema Validation', () => {

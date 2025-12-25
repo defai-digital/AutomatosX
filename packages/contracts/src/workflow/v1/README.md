@@ -28,7 +28,7 @@ import {
   validateWorkflow,
   type Workflow,
   type WorkflowStep,
-} from '@automatosx/contracts/workflow/v1';
+} from '@defai.digital/contracts/workflow/v1';
 
 // Define a workflow
 const workflow: Workflow = validateWorkflow({

@@ -1,4 +1,4 @@
-import type { Provider, TaskType, ModelCapability } from '@automatosx/contracts';
+import type { Provider, TaskType, ModelCapability } from '@defai.digital/contracts';
 
 /**
  * Model definition for routing

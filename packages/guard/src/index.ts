@@ -1,5 +1,5 @@
 /**
- * @automatosx/guard
+ * @defai.digital/guard
  *
  * Post-check AI Coding Governance Engine
  *

@@ -1,5 +1,5 @@
 /**
- * @automatosx/analysis-domain
+ * @defai.digital/analysis-domain
  *
  * Analysis Domain - LLM-delegated code analysis
  *

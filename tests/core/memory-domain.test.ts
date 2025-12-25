@@ -9,8 +9,8 @@ import {
   createConversationAggregate,
   MemoryErrorCodes,
   type EventStore,
-} from '@automatosx/memory-domain';
-import { createMemoryEvent, type MemoryEvent } from '@automatosx/contracts';
+} from '@defai.digital/memory-domain';
+import { createMemoryEvent, type MemoryEvent } from '@defai.digital/contracts';
 
 describe('Memory Domain', () => {
   describe('Event Store (INV-MEM-001, INV-MEM-004)', () => {

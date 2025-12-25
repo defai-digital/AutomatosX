@@ -2,7 +2,7 @@ import {
   type RetryPolicy,
   DEFAULT_RETRY_POLICY,
   DEFAULT_BACKOFF_CAP_MS,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { StepError } from './types.js';
 
 // Re-export for backwards compatibility

@@ -6,14 +6,14 @@
  */
 
 import type { MCPTool, ToolHandler } from '../types.js';
-import type { Ability, AbilityInjectionResult } from '@automatosx/contracts';
+import type { Ability, AbilityInjectionResult } from '@defai.digital/contracts';
 import {
   LIMIT_AGENTS,
   LIMIT_ABILITIES_INJECT,
   LIMIT_ABILITY_TOKENS,
   PRIORITY_DEFAULT,
-} from '@automatosx/contracts';
-import type { AbilityFilter } from '@automatosx/ability-domain';
+} from '@defai.digital/contracts';
+import type { AbilityFilter } from '@defai.digital/ability-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
   getSharedAbilityRegistry,

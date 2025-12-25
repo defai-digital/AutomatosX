@@ -33,14 +33,14 @@ import {
   ReviewService,
   ReviewError,
   createReviewService,
-} from '@automatosx/review-domain';
+} from '@defai.digital/review-domain';
 import type {
   ReviewResult,
   ReviewComment,
   ReviewFocus,
   FileContent,
   ReviewPromptExecutor,
-} from '@automatosx/review-domain';
+} from '@defai.digital/review-domain';
 
 // ============================================================================
 // Focus Modes Tests

@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```typescript
- * import { createProductionFactories } from '@automatosx/agent-domain';
+ * import { createProductionFactories } from '@defai.digital/agent-domain';
  *
  * const factories = createProductionFactories({
  *   checkpointStorage: sqliteCheckpointStorage,
@@ -20,8 +20,8 @@
  * ```
  */
 
-import type { CheckpointConfig, ParallelExecutionConfig } from '@automatosx/contracts';
-import { createDefaultParallelExecutionConfig } from '@automatosx/contracts';
+import type { CheckpointConfig, ParallelExecutionConfig } from '@defai.digital/contracts';
+import { createDefaultParallelExecutionConfig } from '@defai.digital/contracts';
 import type {
   CheckpointStoragePort,
   CheckpointManagerPort,
@@ -38,7 +38,7 @@ import type {
   DelegationCheckResult,
   DelegationResult,
   DelegationRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Production Checkpoint Manager
@@ -283,7 +283,7 @@ class ProductionDelegationTracker implements DelegationTrackerPort {
 // Production Parallel Executor
 // ============================================================================
 
-import type { AgentWorkflowStep } from '@automatosx/contracts';
+import type { AgentWorkflowStep } from '@defai.digital/contracts';
 import type { ParallelStepExecutor, ParallelGroupResult, ParallelStepResult } from './types.js';
 
 /**

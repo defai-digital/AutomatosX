@@ -26,7 +26,7 @@ import {
   validateAbility,
   safeValidateAbility,
   AbilityErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Ability Contract', () => {
   describe('AbilitySchema', () => {

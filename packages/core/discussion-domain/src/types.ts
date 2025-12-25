@@ -11,7 +11,7 @@ import type {
   ConsensusResult,
   ConsensusMethod,
   VotingResults,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Provider Executor Interface

@@ -13,7 +13,7 @@ import {
   type IterateBudget,
   type BudgetConsumed,
   type IterateBudgetStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { IBudgetTracker } from './types.js';
 
 // ============================================================================

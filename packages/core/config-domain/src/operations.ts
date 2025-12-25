@@ -4,7 +4,7 @@
  * Pure functions for config manipulation (immutable operations).
  */
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 
 // ============================================================================
 // Path Operations

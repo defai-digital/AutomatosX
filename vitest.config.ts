@@ -6,111 +6,111 @@ export default defineConfig({
   plugins: [tsconfigPaths({ root: __dirname })],
   resolve: {
     alias: {
-      '@automatosx/contracts': resolve(
+      '@defai.digital/contracts': resolve(
         __dirname,
         'packages/contracts/src/index.ts'
       ),
-      '@automatosx/workflow-engine': resolve(
+      '@defai.digital/workflow-engine': resolve(
         __dirname,
         'packages/core/workflow-engine/src/index.ts'
       ),
-      '@automatosx/routing-engine': resolve(
+      '@defai.digital/routing-engine': resolve(
         __dirname,
         'packages/core/routing-engine/src/index.ts'
       ),
-      '@automatosx/memory-domain': resolve(
+      '@defai.digital/memory-domain': resolve(
         __dirname,
         'packages/core/memory-domain/src/index.ts'
       ),
-      '@automatosx/trace-domain': resolve(
+      '@defai.digital/trace-domain': resolve(
         __dirname,
         'packages/core/trace-domain/src/index.ts'
       ),
-      '@automatosx/agent-domain': resolve(
+      '@defai.digital/agent-domain': resolve(
         __dirname,
         'packages/core/agent-domain/src/index.ts'
       ),
-      '@automatosx/session-domain': resolve(
+      '@defai.digital/session-domain': resolve(
         __dirname,
         'packages/core/session-domain/src/index.ts'
       ),
-      '@automatosx/token-budget': resolve(
+      '@defai.digital/token-budget': resolve(
         __dirname,
         'packages/core/token-budget/src/index.ts'
       ),
-      '@automatosx/config-domain': resolve(
+      '@defai.digital/config-domain': resolve(
         __dirname,
         'packages/core/config-domain/src/index.ts'
       ),
-      '@automatosx/sqlite-adapter': resolve(
+      '@defai.digital/sqlite-adapter': resolve(
         __dirname,
         'packages/adapters/sqlite/src/index.ts'
       ),
-      '@automatosx/provider-adapters': resolve(
+      '@defai.digital/provider-adapters': resolve(
         __dirname,
         'packages/adapters/providers/src/index.ts'
       ),
-      '@automatosx/provider-detection': resolve(
+      '@defai.digital/provider-detection': resolve(
         __dirname,
         'packages/adapters/provider-detection/src/index.ts'
       ),
-      '@automatosx/cli': resolve(
+      '@defai.digital/cli': resolve(
         __dirname,
         'packages/cli/src/index.ts'
       ),
-      '@automatosx/mcp-server': resolve(
+      '@defai.digital/mcp-server': resolve(
         __dirname,
         'packages/mcp-server/src/index.ts'
       ),
-      '@automatosx/cross-cutting': resolve(
+      '@defai.digital/cross-cutting': resolve(
         __dirname,
         'packages/core/cross-cutting/src/index.ts'
       ),
-      '@automatosx/provider-domain': resolve(
+      '@defai.digital/provider-domain': resolve(
         __dirname,
         'packages/core/provider-domain/src/index.ts'
       ),
-      '@automatosx/guard': resolve(
+      '@defai.digital/guard': resolve(
         __dirname,
         'packages/guard/src/index.ts'
       ),
-      '@automatosx/agent-execution': resolve(
+      '@defai.digital/agent-execution': resolve(
         __dirname,
         'packages/core/agent-execution/src/index.ts'
       ),
-      '@automatosx/context-domain': resolve(
+      '@defai.digital/context-domain': resolve(
         __dirname,
         'packages/core/context-domain/src/index.ts'
       ),
-      '@automatosx/iterate-domain': resolve(
+      '@defai.digital/iterate-domain': resolve(
         __dirname,
         'packages/core/iterate-domain/src/index.ts'
       ),
-      '@automatosx/ability-domain': resolve(
+      '@defai.digital/ability-domain': resolve(
         __dirname,
         'packages/core/ability-domain/src/index.ts'
       ),
-      '@automatosx/analysis-domain': resolve(
+      '@defai.digital/analysis-domain': resolve(
         __dirname,
         'packages/core/analysis-domain/src/index.ts'
       ),
-      '@automatosx/review-domain': resolve(
+      '@defai.digital/review-domain': resolve(
         __dirname,
         'packages/core/review-domain/src/index.ts'
       ),
-      '@automatosx/resilience-domain': resolve(
+      '@defai.digital/resilience-domain': resolve(
         __dirname,
         'packages/core/resilience-domain/src/index.ts'
       ),
-      '@automatosx/mcp-runtime': resolve(
+      '@defai.digital/mcp-runtime': resolve(
         __dirname,
         'packages/core/mcp-runtime/src/index.ts'
       ),
-      '@automatosx/contracts/resilience/v1': resolve(
+      '@defai.digital/contracts/resilience/v1': resolve(
         __dirname,
         'packages/contracts/src/resilience/v1/index.ts'
       ),
-      '@automatosx/contracts/resilience/v1/index.js': resolve(
+      '@defai.digital/contracts/resilience/v1/index.js': resolve(
         __dirname,
         'packages/contracts/src/resilience/v1/index.ts'
       ),

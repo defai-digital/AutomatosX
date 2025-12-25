@@ -18,7 +18,7 @@ import {
   // Constants
   TIMEOUT_SESSION,
   LIMIT_EVENT_BUFFER,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Session store interface
@@ -203,12 +203,12 @@ export const DEFAULT_SESSION_DOMAIN_CONFIG: SessionDomainConfig = {
 
 // ============================================================================
 // Run History Types - Re-exported from contracts for convenience
-// The authoritative definitions are in @automatosx/contracts (cli/v1)
+// The authoritative definitions are in @defai.digital/contracts (cli/v1)
 // ============================================================================
 
 // Re-export contract types to maintain backwards compatibility
 // and provide a convenient import path for session-domain consumers
-export type { RunRecord, RunStatus, HistoryQuery } from '@automatosx/contracts';
+export type { RunRecord, RunStatus, HistoryQuery } from '@defai.digital/contracts';
 
 // Backwards compatibility alias
 export type RunHistoryOptions = HistoryQuery;

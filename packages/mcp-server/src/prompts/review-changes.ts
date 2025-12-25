@@ -5,7 +5,7 @@
  */
 
 import type { MCPPrompt, MCPPromptMessage, PromptHandler } from '../types.js';
-import { getPolicy, listPolicies } from '@automatosx/guard';
+import { getPolicy, listPolicies } from '@defai.digital/guard';
 
 // ============================================================================
 // Prompt Definition

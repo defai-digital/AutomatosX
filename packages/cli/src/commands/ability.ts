@@ -10,8 +10,8 @@ import {
   createAbilityLoader,
   createAbilityManager,
   DEFAULT_ABILITY_DOMAIN_CONFIG,
-} from '@automatosx/ability-domain';
-import { LIMIT_ABILITY_TOKENS_AGENT } from '@automatosx/contracts';
+} from '@defai.digital/ability-domain';
+import { LIMIT_ABILITY_TOKENS_AGENT } from '@defai.digital/contracts';
 
 // Singleton registry for demo purposes
 const registry = createAbilityRegistry();

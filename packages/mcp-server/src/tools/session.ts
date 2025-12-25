@@ -5,8 +5,8 @@ import {
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type Session,
   type SessionFilter,
-} from '@automatosx/session-domain';
-import { LIMIT_SESSIONS } from '@automatosx/contracts';
+} from '@defai.digital/session-domain';
+import { LIMIT_SESSIONS } from '@defai.digital/contracts';
 
 // Create shared store and manager instances
 const store = createSessionStore();

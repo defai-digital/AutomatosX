@@ -8,7 +8,7 @@
  * For production use, provide real implementations via config.
  */
 
-import type { CheckpointConfig } from '@automatosx/contracts';
+import type { CheckpointConfig } from '@defai.digital/contracts';
 import type {
   CheckpointStoragePort,
   CheckpointManagerPort,

@@ -10,8 +10,8 @@ import {
   versionCommand,
   CLI_VERSION,
   resetStepExecutor,
-} from '@automatosx/cli';
-import type { CLIOptions } from '@automatosx/cli';
+} from '@defai.digital/cli';
+import type { CLIOptions } from '@defai.digital/cli';
 
 /**
  * Create default CLI options with overrides

@@ -87,19 +87,19 @@ AutomatosX is an AI-powered agentic workflow automation platform that orchestrat
 
 | Package | Purpose | Dependencies |
 |---------|---------|--------------|
-| `@automatosx/contracts` | Zod schemas - Single Source of Truth | zod |
-| `@automatosx/workflow-domain` | Workflow execution engine | contracts |
-| `@automatosx/agent-domain` | Agent profiles and orchestration | contracts, workflow-domain |
-| `@automatosx/session-domain` | Session lifecycle management | contracts |
-| `@automatosx/routing-domain` | Deterministic model selection | contracts |
-| `@automatosx/memory-domain` | Event-sourced conversation state | contracts |
-| `@automatosx/trace-domain` | Execution tracing and replay | contracts |
-| `@automatosx/token-budget` | Context window management | contracts |
-| `@automatosx/provider-domain` | CLI-based LLM integration | contracts, routing-domain |
-| `@automatosx/guard-domain` | Governance gates | contracts, trace-domain |
-| `@automatosx/sqlite` | SQLite persistence adapters | contracts |
-| `@automatosx/mcp-server` | Model Context Protocol server | all domains |
-| `@automatosx/cli` | Command-line interface | all packages |
+| `@defai.digital/contracts` | Zod schemas - Single Source of Truth | zod |
+| `@defai.digital/workflow-domain` | Workflow execution engine | contracts |
+| `@defai.digital/agent-domain` | Agent profiles and orchestration | contracts, workflow-domain |
+| `@defai.digital/session-domain` | Session lifecycle management | contracts |
+| `@defai.digital/routing-domain` | Deterministic model selection | contracts |
+| `@defai.digital/memory-domain` | Event-sourced conversation state | contracts |
+| `@defai.digital/trace-domain` | Execution tracing and replay | contracts |
+| `@defai.digital/token-budget` | Context window management | contracts |
+| `@defai.digital/provider-domain` | CLI-based LLM integration | contracts, routing-domain |
+| `@defai.digital/guard-domain` | Governance gates | contracts, trace-domain |
+| `@defai.digital/sqlite` | SQLite persistence adapters | contracts |
+| `@defai.digital/mcp-server` | Model Context Protocol server | all domains |
+| `@defai.digital/cli` | Command-line interface | all packages |
 
 ---
 

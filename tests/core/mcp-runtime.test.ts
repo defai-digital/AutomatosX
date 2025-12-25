@@ -27,7 +27,7 @@ import {
   RuntimeGuard,
   createRuntimeGuard,
   quickGuardCheck,
-} from '@automatosx/mcp-runtime';
+} from '@defai.digital/mcp-runtime';
 
 describe('MCP Runtime Domain', () => {
   // ==========================================================================

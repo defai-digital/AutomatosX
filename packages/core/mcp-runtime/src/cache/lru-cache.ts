@@ -6,7 +6,7 @@ import type {
   CacheSetOptions,
   EvictionResult,
   MemoryPressureLevel,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * LRU Cache with size-based eviction.

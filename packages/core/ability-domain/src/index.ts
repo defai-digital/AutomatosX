@@ -1,5 +1,5 @@
 /**
- * @automatosx/ability-domain
+ * @defai.digital/ability-domain
  *
  * Ability management for AutomatosX agents.
  * Abilities are reusable knowledge modules that can be loaded
@@ -35,7 +35,7 @@ export type {
   AbilityLoadResult,
   AbilityInjectionRequest,
   AbilityInjectionResult,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export {
   AbilitySchema,
@@ -47,4 +47,4 @@ export {
   validateAbility,
   safeValidateAbility,
   validateAbilityInjectionRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

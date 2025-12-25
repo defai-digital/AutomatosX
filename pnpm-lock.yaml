@@ -41,13 +41,13 @@ importers:
 
   packages/adapters/provider-detection:
     dependencies:
-      '@automatosx/config-domain':
+      '@defai.digital/config-domain':
         specifier: workspace:*
         version: link:../../core/config-domain
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
-      '@automatosx/provider-adapters':
+      '@defai.digital/provider-adapters':
         specifier: workspace:*
         version: link:../providers
     devDependencies:
@@ -57,13 +57,13 @@ importers:
 
   packages/adapters/providers:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
-      '@automatosx/resilience-domain':
+      '@defai.digital/resilience-domain':
         specifier: workspace:*
         version: link:../../core/resilience-domain
-      '@automatosx/routing-engine':
+      '@defai.digital/routing-engine':
         specifier: workspace:*
         version: link:../../core/routing-engine
     devDependencies:
@@ -73,19 +73,19 @@ importers:
 
   packages/adapters/sqlite:
     dependencies:
-      '@automatosx/agent-execution':
+      '@defai.digital/agent-execution':
         specifier: workspace:*
         version: link:../../core/agent-execution
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
-      '@automatosx/cross-cutting':
+      '@defai.digital/cross-cutting':
         specifier: workspace:*
         version: link:../../core/cross-cutting
-      '@automatosx/memory-domain':
+      '@defai.digital/memory-domain':
         specifier: workspace:*
         version: link:../../core/memory-domain
-      '@automatosx/trace-domain':
+      '@defai.digital/trace-domain':
         specifier: workspace:*
         version: link:../../core/trace-domain
       better-sqlite3:
@@ -101,64 +101,64 @@ importers:
 
   packages/cli:
     dependencies:
-      '@automatosx/ability-domain':
+      '@defai.digital/ability-domain':
         specifier: workspace:*
         version: link:../core/ability-domain
-      '@automatosx/agent-domain':
+      '@defai.digital/agent-domain':
         specifier: workspace:*
         version: link:../core/agent-domain
-      '@automatosx/agent-execution':
+      '@defai.digital/agent-execution':
         specifier: workspace:*
         version: link:../core/agent-execution
-      '@automatosx/analysis-domain':
+      '@defai.digital/analysis-domain':
         specifier: workspace:*
         version: link:../core/analysis-domain
-      '@automatosx/config-domain':
+      '@defai.digital/config-domain':
         specifier: workspace:*
         version: link:../core/config-domain
-      '@automatosx/context-domain':
+      '@defai.digital/context-domain':
         specifier: workspace:*
         version: link:../core/context-domain
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@automatosx/cross-cutting':
+      '@defai.digital/cross-cutting':
         specifier: workspace:*
         version: link:../core/cross-cutting
-      '@automatosx/discussion-domain':
+      '@defai.digital/discussion-domain':
         specifier: workspace:*
         version: link:../core/discussion-domain
-      '@automatosx/guard':
+      '@defai.digital/guard':
         specifier: workspace:*
         version: link:../guard
-      '@automatosx/iterate-domain':
+      '@defai.digital/iterate-domain':
         specifier: workspace:*
         version: link:../core/iterate-domain
-      '@automatosx/mcp-server':
+      '@defai.digital/mcp-server':
         specifier: workspace:*
         version: link:../mcp-server
-      '@automatosx/memory-domain':
+      '@defai.digital/memory-domain':
         specifier: workspace:*
         version: link:../core/memory-domain
-      '@automatosx/provider-adapters':
+      '@defai.digital/provider-adapters':
         specifier: workspace:*
         version: link:../adapters/providers
-      '@automatosx/review-domain':
+      '@defai.digital/review-domain':
         specifier: workspace:*
         version: link:../core/review-domain
-      '@automatosx/routing-engine':
+      '@defai.digital/routing-engine':
         specifier: workspace:*
         version: link:../core/routing-engine
-      '@automatosx/session-domain':
+      '@defai.digital/session-domain':
         specifier: workspace:*
         version: link:../core/session-domain
-      '@automatosx/sqlite-adapter':
+      '@defai.digital/sqlite-adapter':
         specifier: workspace:*
         version: link:../adapters/sqlite
-      '@automatosx/trace-domain':
+      '@defai.digital/trace-domain':
         specifier: workspace:*
         version: link:../core/trace-domain
-      '@automatosx/workflow-engine':
+      '@defai.digital/workflow-engine':
         specifier: workspace:*
         version: link:../core/workflow-engine
 
@@ -170,7 +170,7 @@ importers:
 
   packages/core/ability-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -180,13 +180,13 @@ importers:
 
   packages/core/agent-domain:
     dependencies:
-      '@automatosx/ability-domain':
+      '@defai.digital/ability-domain':
         specifier: workspace:*
         version: link:../ability-domain
-      '@automatosx/agent-execution':
+      '@defai.digital/agent-execution':
         specifier: workspace:*
         version: link:../agent-execution
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
       yaml:
@@ -199,25 +199,25 @@ importers:
 
   packages/core/agent-execution:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/analysis-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/config-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/context-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -227,13 +227,13 @@ importers:
 
   packages/core/cross-cutting:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/discussion-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -243,7 +243,7 @@ importers:
 
   packages/core/iterate-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -253,34 +253,34 @@ importers:
 
   packages/core/mcp-runtime:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/memory-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/provider-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/resilience-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/review-domain:
     dependencies:
-      '@automatosx/analysis-domain':
+      '@defai.digital/analysis-domain':
         specifier: workspace:*
         version: link:../analysis-domain
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
       uuid:
@@ -293,13 +293,13 @@ importers:
 
   packages/core/routing-engine:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/session-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -309,7 +309,7 @@ importers:
 
   packages/core/token-budget:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
@@ -319,13 +319,13 @@ importers:
 
   packages/core/trace-domain:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
 
   packages/core/workflow-engine:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
       yaml:
@@ -334,52 +334,52 @@ importers:
 
   packages/guard:
     dependencies:
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@automatosx/trace-domain':
+      '@defai.digital/trace-domain':
         specifier: workspace:*
         version: link:../core/trace-domain
 
   packages/mcp-server:
     dependencies:
-      '@automatosx/ability-domain':
+      '@defai.digital/ability-domain':
         specifier: workspace:*
         version: link:../core/ability-domain
-      '@automatosx/agent-domain':
+      '@defai.digital/agent-domain':
         specifier: workspace:*
         version: link:../core/agent-domain
-      '@automatosx/config-domain':
+      '@defai.digital/config-domain':
         specifier: workspace:*
         version: link:../core/config-domain
-      '@automatosx/contracts':
+      '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@automatosx/discussion-domain':
+      '@defai.digital/discussion-domain':
         specifier: workspace:*
         version: link:../core/discussion-domain
-      '@automatosx/guard':
+      '@defai.digital/guard':
         specifier: workspace:*
         version: link:../guard
-      '@automatosx/memory-domain':
+      '@defai.digital/memory-domain':
         specifier: workspace:*
         version: link:../core/memory-domain
-      '@automatosx/provider-adapters':
+      '@defai.digital/provider-adapters':
         specifier: workspace:*
         version: link:../adapters/providers
-      '@automatosx/review-domain':
+      '@defai.digital/review-domain':
         specifier: workspace:*
         version: link:../core/review-domain
-      '@automatosx/routing-engine':
+      '@defai.digital/routing-engine':
         specifier: workspace:*
         version: link:../core/routing-engine
-      '@automatosx/session-domain':
+      '@defai.digital/session-domain':
         specifier: workspace:*
         version: link:../core/session-domain
-      '@automatosx/trace-domain':
+      '@defai.digital/trace-domain':
         specifier: workspace:*
         version: link:../core/trace-domain
-      '@automatosx/workflow-engine':
+      '@defai.digital/workflow-engine':
         specifier: workspace:*
         version: link:../core/workflow-engine
       '@modelcontextprotocol/sdk':

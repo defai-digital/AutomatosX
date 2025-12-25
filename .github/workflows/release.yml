@@ -65,7 +65,7 @@ jobs:
             ## Installation
 
             ```bash
-            npm install -g @automatosx/cli
+            npm install -g @defai.digital/cli
             ```
 
             ## Quick Start
@@ -84,9 +84,9 @@ jobs:
             ## What's Included
 
             This release publishes the following packages:
-            - `@automatosx/cli` - Main CLI tool
-            - `@automatosx/contracts` - Type definitions and schemas
-            - `@automatosx/mcp-server` - MCP server for AI tool integration
+            - `@defai.digital/cli` - Main CLI tool
+            - `@defai.digital/contracts` - Type definitions and schemas
+            - `@defai.digital/mcp-server` - MCP server for AI tool integration
             - Plus all internal domain packages
 
             ## Version

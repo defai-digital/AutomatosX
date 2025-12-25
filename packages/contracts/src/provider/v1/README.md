@@ -42,7 +42,7 @@ interface ProviderRegistryPort {
 ## Usage Example
 
 ```typescript
-import type { ProviderPort, ProviderRequest } from '@automatosx/contracts/provider/v1';
+import type { ProviderPort, ProviderRequest } from '@defai.digital/contracts/provider/v1';
 
 async function callProvider(provider: ProviderPort, prompt: string) {
   const request: ProviderRequest = {

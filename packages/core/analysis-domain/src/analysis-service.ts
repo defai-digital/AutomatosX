@@ -12,7 +12,7 @@ import {
   type AnalysisTask,
   filterFindingsBySeverity,
   AnalysisErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   AnalysisService,
   AnalysisServiceDeps,

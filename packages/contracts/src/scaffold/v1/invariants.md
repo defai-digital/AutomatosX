@@ -44,7 +44,7 @@ Domain packages MUST contain package.json, src/index.ts, and type exports.
 - **Required Files**: `package.json`, `src/index.ts`, `src/types.ts`, `src/service.ts`
 
 ### INV-SCF-202: Contract Dependency
-Domain packages MUST declare dependency on @automatosx/contracts (or equivalent).
+Domain packages MUST declare dependency on @defai.digital/contracts (or equivalent).
 - **Enforcement**: template
 - **Verification**: package.json contains contracts dependency
 

@@ -20,11 +20,11 @@ import type {
   GuardCheckStatus,
   StageProgressEvent,
   StageProgressStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createStepGuardResult,
   createProgressEvent,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Gate Interface

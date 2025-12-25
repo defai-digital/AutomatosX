@@ -22,7 +22,7 @@ import {
   type EnhancedAgentDomainConfig,
   type ToolExecutor,
   DEFAULT_AGENT_DOMAIN_CONFIG,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 import {
   type ToolExecutionResult,
   createToolExecutionSuccess,
@@ -33,14 +33,14 @@ import {
   TIMEOUT_PROVIDER_DEFAULT,
   LIMIT_ABILITY_TOKENS_AGENT,
   PROVIDER_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createAbilityRegistry,
   createAbilityLoader,
   createAbilityManager,
   DEFAULT_ABILITY_DOMAIN_CONFIG,
   type AbilityRegistry,
-} from '@automatosx/ability-domain';
+} from '@defai.digital/ability-domain';
 // Provider registry from bootstrap (composition root)
 import { createProviderRegistry, type ProviderRegistry } from './bootstrap.js';
 import { TOOL_HANDLERS } from './tools/index.js';

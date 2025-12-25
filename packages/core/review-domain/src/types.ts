@@ -11,7 +11,7 @@ import type {
   ReviewFocus,
   ReviewSummary,
   SarifOutput,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Re-export contract types for convenience
 export type {

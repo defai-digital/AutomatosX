@@ -13,7 +13,7 @@ import type {
   ProviderId,
   ProviderDetectionResult,
   ProviderDetectionSummary,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Detection Port Interface

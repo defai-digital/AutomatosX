@@ -14,8 +14,8 @@ import {
   checkDangerousOp,
   isDangerousOp,
   listDangerousOperations,
-} from '@automatosx/cli';
-import type { CLIOptions } from '@automatosx/cli';
+} from '@defai.digital/cli';
+import type { CLIOptions } from '@defai.digital/cli';
 import {
   DANGEROUS_OPERATIONS,
   getDangerousOperation,
@@ -28,7 +28,7 @@ import {
   createDefaultHistoryOptions,
   createDefaultCleanupOptions,
   createDefaultStatusOptions,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Default CLI options for testing
 const defaultOptions: CLIOptions = {

@@ -25,9 +25,9 @@ This PRD addresses architectural violations found in the AutomatosX codebase:
 
 | Package | Current Location | Correct Location |
 |---------|-----------------|------------------|
-| `@automatosx/agent-execution` | `packages/agent-execution/` | `packages/core/agent-execution/` |
-| `@automatosx/cross-cutting` | `packages/cross-cutting/` | `packages/core/cross-cutting/` |
-| `@automatosx/provider-domain` | `packages/provider-domain/` | `packages/core/provider-domain/` |
+| `@defai.digital/agent-execution` | `packages/agent-execution/` | `packages/core/agent-execution/` |
+| `@defai.digital/cross-cutting` | `packages/cross-cutting/` | `packages/core/cross-cutting/` |
+| `@defai.digital/provider-domain` | `packages/provider-domain/` | `packages/core/provider-domain/` |
 
 **Note:** `packages/guard/` is intentionally kept as a special governance layer between core and application.
 
@@ -83,11 +83,11 @@ This PRD addresses architectural violations found in the AutomatosX codebase:
 
 | Layer | Violation | Files Affected |
 |-------|-----------|----------------|
-| MCP Server | Imports `@automatosx/provider-adapters` | `shared-registry.ts` |
+| MCP Server | Imports `@defai.digital/provider-adapters` | `shared-registry.ts` |
 | MCP Server | Circular imports | `agent.ts ↔ shared-registry.ts ↔ tools/index.ts` |
-| Core | agent-domain imports `@automatosx/agent-execution` | `executor.ts`, `enhanced-executor.ts` |
-| CLI | Imports `@automatosx/sqlite-adapter` | `storage-instances.ts` |
-| CLI | Imports `@automatosx/provider-adapters` | `provider-factory.ts`, `call.ts` |
+| Core | agent-domain imports `@defai.digital/agent-execution` | `executor.ts`, `enhanced-executor.ts` |
+| CLI | Imports `@defai.digital/sqlite-adapter` | `storage-instances.ts` |
+| CLI | Imports `@defai.digital/provider-adapters` | `provider-factory.ts`, `call.ts` |
 
 ---
 
@@ -116,8 +116,8 @@ shared-registry.ts → tools/index.ts → ability.ts → shared-registry.ts
 /**
  * Registry Types - Shared interfaces to break circular dependencies
  */
-import type { AgentRegistry, AgentExecutor } from '@automatosx/agent-domain';
-import type { AbilityRegistry, AbilityManager } from '@automatosx/ability-domain';
+import type { AgentRegistry, AgentExecutor } from '@defai.digital/agent-domain';
+import type { AbilityRegistry, AbilityManager } from '@defai.digital/ability-domain';
 
 export interface SharedRegistryState {
   agentRegistry: AgentRegistry | null;
@@ -256,12 +256,12 @@ export interface TraceStoragePort {
 
 **Before (`storage-instances.ts`):**
 ```typescript
-import { createSqliteCheckpointStorage } from '@automatosx/sqlite-adapter'; // VIOLATION
+import { createSqliteCheckpointStorage } from '@defai.digital/sqlite-adapter'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { CheckpointStoragePort } from '@automatosx/contracts';
+import type { CheckpointStoragePort } from '@defai.digital/contracts';
 
 // Composition root wires the actual implementation
 let _checkpointStorage: CheckpointStoragePort | null = null;
@@ -280,7 +280,7 @@ export function getCheckpointStorage(): CheckpointStoragePort {
 
 **Composition Root (`packages/cli/src/main.ts`):**
 ```typescript
-import { createSqliteCheckpointStorage } from '@automatosx/sqlite-adapter';
+import { createSqliteCheckpointStorage } from '@defai.digital/sqlite-adapter';
 import { setCheckpointStorage } from './utils/storage-instances.js';
 
 // Wire up dependencies at application entry point
@@ -298,12 +298,12 @@ async function bootstrap() {
 
 **Before (`shared-registry.ts`):**
 ```typescript
-import { createProviderRegistry } from '@automatosx/provider-adapters'; // VIOLATION
+import { createProviderRegistry } from '@defai.digital/provider-adapters'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { ProviderRegistryPort } from '@automatosx/contracts';
+import type { ProviderRegistryPort } from '@defai.digital/contracts';
 
 let _providerRegistry: ProviderRegistryPort | null = null;
 
@@ -314,7 +314,7 @@ export function setProviderRegistry(registry: ProviderRegistryPort): void {
 
 **Composition Root (`packages/mcp-server/src/main.ts`):**
 ```typescript
-import { createProviderRegistry } from '@automatosx/provider-adapters';
+import { createProviderRegistry } from '@defai.digital/provider-adapters';
 import { setProviderRegistry } from './shared-registry.js';
 
 // Wire dependencies
@@ -323,7 +323,7 @@ setProviderRegistry(createProviderRegistry());
 
 #### 2.5 Refactor agent-domain
 
-**Problem:** `agent-domain/executor.ts` imports from `@automatosx/agent-execution`
+**Problem:** `agent-domain/executor.ts` imports from `@defai.digital/agent-execution`
 
 **Solution:** Move `DelegationTracker` interface to contracts, implementation to agent-execution.
 
@@ -339,7 +339,7 @@ export interface DelegationTrackerPort {
 
 **agent-domain uses the port:**
 ```typescript
-import type { DelegationTrackerPort } from '@automatosx/contracts';
+import type { DelegationTrackerPort } from '@defai.digital/contracts';
 
 constructor(config: AgentDomainConfig) {
   this.delegationTracker = config.delegationTracker; // Injected, not imported

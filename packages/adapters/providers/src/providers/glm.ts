@@ -8,7 +8,7 @@
  * @see https://github.com/anthropics/ax-cli
  */
 
-import { TIMEOUT_PROVIDER_SHORT } from '@automatosx/contracts';
+import { TIMEOUT_PROVIDER_SHORT } from '@defai.digital/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**

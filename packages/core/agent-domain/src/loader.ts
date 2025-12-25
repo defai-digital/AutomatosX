@@ -12,7 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { validateAgentProfile, type AgentProfile } from '@automatosx/contracts';
+import { validateAgentProfile, type AgentProfile } from '@defai.digital/contracts';
 import type { AgentLoader, AgentLoaderConfig } from './types.js';
 
 // ============================================================================

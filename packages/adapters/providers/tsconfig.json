@@ -5,9 +5,9 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@automatosx/contracts": ["../../contracts/src/index.ts"],
-      "@automatosx/contracts/resilience/v1": ["../../contracts/src/resilience/v1/index.ts"],
-      "@automatosx/resilience-domain": ["../../core/resilience-domain/src/index.ts"]
+      "@defai.digital/contracts": ["../../contracts/src/index.ts"],
+      "@defai.digital/contracts/resilience/v1": ["../../contracts/src/resilience/v1/index.ts"],
+      "@defai.digital/resilience-domain": ["../../core/resilience-domain/src/index.ts"]
     }
   },
   "include": ["src/**/*"],

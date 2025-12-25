@@ -11,7 +11,7 @@ import {
   type AnalysisFile,
   getLanguageFromPath,
   LIMIT_LINES_PER_FILE,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { CodeContextBuilder, GatherOptions } from './types.js';
 
 /**

@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/sqlite-adapter",
+  "name": "@defai.digital/sqlite-adapter",
   "version": "13.0.0",
   "type": "module",
   "license": "Apache-2.0",
@@ -33,11 +33,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/agent-execution": "workspace:*",
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/cross-cutting": "workspace:*",
-    "@automatosx/memory-domain": "workspace:*",
-    "@automatosx/trace-domain": "workspace:*",
+    "@defai.digital/agent-execution": "workspace:*",
+    "@defai.digital/contracts": "workspace:*",
+    "@defai.digital/cross-cutting": "workspace:*",
+    "@defai.digital/memory-domain": "workspace:*",
+    "@defai.digital/trace-domain": "workspace:*",
     "better-sqlite3": "^11.6.0"
   },
   "devDependencies": {

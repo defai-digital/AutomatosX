@@ -3,13 +3,13 @@ import {
   createAgentPolicyEnforcer,
   AgentPolicyError,
   type IAgentPolicyEnforcer,
-} from '@automatosx/guard';
+} from '@defai.digital/guard';
 import {
   type AgentPolicy,
   createDefaultAgentPolicy,
   createRestrictiveAgentPolicy,
   AgentPolicyErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Agent Governance', () => {
   // ============================================================================

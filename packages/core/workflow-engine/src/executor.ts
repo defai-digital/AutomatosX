@@ -1,4 +1,4 @@
-import type { WorkflowStep } from '@automatosx/contracts';
+import type { WorkflowStep } from '@defai.digital/contracts';
 import type {
   StepResult,
   StepContext,

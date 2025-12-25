@@ -9,7 +9,7 @@
  * 3. Results are tallied (raw and confidence-weighted)
  */
 
-import type { DiscussionRound, DebateRole } from '@automatosx/contracts';
+import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,

@@ -4,7 +4,7 @@ import {
   type RoutingInput,
   type RoutingDecision,
   type RoutingRecord,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   RoutingEngineConfig,
   RoutingContext,
@@ -89,13 +89,8 @@ export class RoutingEngine {
       );
     }
 
-    const selected = eligible[0];
-    if (selected === undefined) {
-      throw new RoutingError(
-        RoutingErrorCodes.NO_SUITABLE_MODEL,
-        'No suitable model found'
-      );
-    }
+    // Safe to use non-null assertion: we've verified eligible.length > 0 above
+    const selected = eligible[0]!;
 
     // Build fallback list (INV-RT-004: same constraints apply)
     const fallbacks = eligible

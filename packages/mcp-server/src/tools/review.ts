@@ -18,12 +18,12 @@ import {
   ReviewFocusSchema,
   TIMEOUT_PROVIDER_DEFAULT,
   PROVIDER_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createReviewService,
   type ReviewPromptExecutor,
   type ReviewFocus,
-} from '@automatosx/review-domain';
+} from '@defai.digital/review-domain';
 import { getProviderRegistry } from '../bootstrap.js';
 
 // Check if we're in test environment

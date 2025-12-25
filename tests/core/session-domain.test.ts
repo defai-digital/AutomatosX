@@ -13,8 +13,8 @@ import {
   SessionError,
   createSessionManager,
   DEFAULT_SESSION_DOMAIN_CONFIG,
-} from '@automatosx/session-domain';
-import { SessionErrorCode } from '@automatosx/contracts';
+} from '@defai.digital/session-domain';
+import { SessionErrorCode } from '@defai.digital/contracts';
 
 describe('Session Domain', () => {
   describe('InMemorySessionStore', () => {

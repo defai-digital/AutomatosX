@@ -18,7 +18,7 @@ import type {
   AnalysisProvider,
   ProviderRequest,
   ProviderResponse,
-} from '@automatosx/analysis-domain';
+} from '@defai.digital/analysis-domain';
 
 /**
  * Gets the shared provider registry from bootstrap

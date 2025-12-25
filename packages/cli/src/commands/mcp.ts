@@ -47,7 +47,7 @@ export async function mcpCommand(
 async function startMCPServer(): Promise<CommandResult> {
   try {
     // Dynamically import the MCP server to avoid circular dependencies
-    const { runStdioServer } = await import('@automatosx/mcp-server');
+    const { runStdioServer } = await import('@defai.digital/mcp-server');
 
     // Run the server (this will block until stdin closes)
     await runStdioServer();

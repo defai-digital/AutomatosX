@@ -11,7 +11,7 @@ import {
   DEFAULT_MAX_CONSECUTIVE_ERRORS,
   type IterateSafetyConfig,
   type SafetyCheckResult,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { ISafetyGuard } from './types.js';
 
 // ============================================================================

@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/discussion-domain",
+  "name": "@defai.digital/discussion-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Multi-model discussion orchestration for AutomatosX",
@@ -37,7 +37,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/provider-detection",
+  "name": "@defai.digital/provider-detection",
   "version": "13.0.0",
   "type": "module",
   "description": "Provider CLI detection adapter for AutomatosX",
@@ -34,9 +34,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/config-domain": "workspace:*",
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/provider-adapters": "workspace:*"
+    "@defai.digital/config-domain": "workspace:*",
+    "@defai.digital/contracts": "workspace:*",
+    "@defai.digital/provider-adapters": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

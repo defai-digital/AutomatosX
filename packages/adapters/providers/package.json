@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/provider-adapters",
+  "name": "@defai.digital/provider-adapters",
   "version": "13.0.0",
   "type": "module",
   "license": "Apache-2.0",
@@ -33,9 +33,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/resilience-domain": "workspace:*",
-    "@automatosx/routing-engine": "workspace:*"
+    "@defai.digital/contracts": "workspace:*",
+    "@defai.digital/resilience-domain": "workspace:*",
+    "@defai.digital/routing-engine": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

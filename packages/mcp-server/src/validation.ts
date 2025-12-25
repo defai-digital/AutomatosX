@@ -19,7 +19,7 @@ import type { ToolHandler, MCPToolResult } from './types.js';
 
 /**
  * Standard error codes per INV-MCP-003
- * Must match StandardErrorCodes from @automatosx/contracts
+ * Must match StandardErrorCodes from @defai.digital/contracts
  */
 export const ToolErrorCodes = {
   INVALID_INPUT: 'INVALID_INPUT',

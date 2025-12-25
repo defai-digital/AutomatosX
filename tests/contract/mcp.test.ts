@@ -10,7 +10,7 @@ import {
   createErrorResult,
   StandardErrorCodes,
   type McpTool,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('MCP Tool Contract V1', () => {
   describe('Schema Validation', () => {

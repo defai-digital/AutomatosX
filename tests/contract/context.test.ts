@@ -15,7 +15,7 @@ import {
   validateContextFile,
   safeValidateContextFile,
   validateProjectContext,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Context Contract', () => {
   describe('ContextFileSchema', () => {

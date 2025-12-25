@@ -22,7 +22,7 @@ import {
   createDefaultHealthCheckConfig,
   calculatePercentile,
   HealthErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Health monitor instance for a single provider

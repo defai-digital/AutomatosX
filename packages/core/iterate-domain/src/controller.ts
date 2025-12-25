@@ -17,7 +17,7 @@ import {
   type IterateHandleResponse,
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_MAX_TIME_MS,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { IIterateController } from './types.js';
 import { BudgetTracker } from './budget.js';
 import { SafetyGuard } from './safety.js';

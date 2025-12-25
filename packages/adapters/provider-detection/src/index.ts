@@ -1,5 +1,5 @@
 /**
- * @automatosx/provider-detection
+ * @defai.digital/provider-detection
  *
  * Provider CLI detection adapter for AutomatosX.
  *
@@ -21,4 +21,4 @@ export {
 export type {
   ProviderDetectionPort,
   DetectionOptions,
-} from '@automatosx/config-domain';
+} from '@defai.digital/config-domain';

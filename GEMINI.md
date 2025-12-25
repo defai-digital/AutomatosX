@@ -6,7 +6,7 @@
 
 **Key Principles:**
 - **Pure Orchestrator:** Does not manage API keys directly; relies on external CLIs.
-- **Contract-First:** All data flows are validated against Zod schemas in `@automatosx/contracts`.
+- **Contract-First:** All data flows are validated against Zod schemas in `@defai.digital/contracts`.
 - **Deterministic Routing:** Model selection is based on risk levels and capabilities.
 - **Event-Sourced Memory:** Full conversation history replay and auditability.
 
@@ -20,7 +20,7 @@ This is a **TypeScript Monorepo** managed by `pnpm`.
 /
 ├── packages/
 │   ├── contracts/          # Zod schemas (Single Source of Truth) - START HERE for data changes
-│   ├── cli/                # CLI Entry points (@automatosx/cli)
+│   ├── cli/                # CLI Entry points (@defai.digital/cli)
 │   ├── core/               # Domain Logic
 │   │   ├── workflow-engine/# Step execution logic
 │   │   ├── routing-engine/ # Model selection logic
@@ -41,9 +41,9 @@ This is a **TypeScript Monorepo** managed by `pnpm`.
 ```
 
 ### Key Packages
-- **`@automatosx/contracts`**: Defines the data shapes and invariants. Any change to data structures must happen here first.
-- **`@automatosx/cli`**: The main interface (`ax` command).
-- **`@automatosx/mcp-server`**: Allows AutomatosX to serve as a backend for MCP-compatible tools (like Claude Code).
+- **`@defai.digital/contracts`**: Defines the data shapes and invariants. Any change to data structures must happen here first.
+- **`@defai.digital/cli`**: The main interface (`ax` command).
+- **`@defai.digital/mcp-server`**: Allows AutomatosX to serve as a backend for MCP-compatible tools (like Claude Code).
 
 ## Development Workflow
 
@@ -86,7 +86,7 @@ This runs:
     - Unused arguments must be prefixed with `_`.
 
 2.  **Architecture Invariants:**
-    - **Contract-First:** Modify `@automatosx/contracts` before implementing logic changes.
+    - **Contract-First:** Modify `@defai.digital/contracts` before implementing logic changes.
     - **No Side Effects:** Core domain logic (like routing or memory) should be pure where possible; side effects belong in adapters or the workflow engine.
     - **Immutable Events:** Memory events are never modified after storage.
 

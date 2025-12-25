@@ -10,16 +10,16 @@ import {
   type DiscussionExecutorLike,
   type DiscussStepConfigLike,
   type DiscussionResultLike,
-} from '@automatosx/workflow-engine';
-import { WorkflowRunner } from '@automatosx/workflow-engine';
-import type { Workflow, WorkflowStep } from '@automatosx/contracts';
+} from '@defai.digital/workflow-engine';
+import { WorkflowRunner } from '@defai.digital/workflow-engine';
+import type { Workflow, WorkflowStep } from '@defai.digital/contracts';
 import {
   DiscussionExecutor,
   StubProviderExecutor,
   createProviderBridge,
   createSimpleProviderBridge,
   type DiscussionProgressEvent,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 
 // ============================================================================
 // Test Helpers

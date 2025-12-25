@@ -16,7 +16,7 @@ import {
   type MemorySnapshotItem,
   createDefaultCheckpointConfig,
   CheckpointErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Checkpoint storage interface - allows different storage backends

@@ -39,7 +39,7 @@ import {
   validatePolicy,
   type Policy,
   type GateType,
-} from '@automatosx/contracts/guard/v1';
+} from '@defai.digital/contracts/guard/v1';
 
 // Define a policy
 const policy: Policy = validatePolicy({

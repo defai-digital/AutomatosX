@@ -9,7 +9,7 @@ import {
   createSessionStore,
   createSessionManager,
   DEFAULT_SESSION_DOMAIN_CONFIG,
-} from '@automatosx/session-domain';
+} from '@defai.digital/session-domain';
 
 // Singleton store and manager for demo purposes
 const store = createSessionStore();
@@ -203,8 +203,34 @@ async function createSession(options: CLIOptions): Promise<CommandResult> {
       };
     }
 
-    const input = JSON.parse(options.input);
-    const session = await manager.createSession(input);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(options.input);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid JSON input. Please provide a valid JSON string.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Validate required fields
+    if (typeof parsed.task !== 'string' || typeof parsed.initiator !== 'string') {
+      return {
+        success: false,
+        message: 'Input must include "task" and "initiator" fields.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    const session = await manager.createSession({
+      task: parsed.task,
+      initiator: parsed.initiator,
+      metadata: parsed.metadata as Record<string, unknown> | undefined,
+      workspace: parsed.workspace as string | undefined,
+    });
 
     if (options.format === 'json') {
       return {
@@ -256,11 +282,37 @@ async function joinSession(args: string[], options: CLIOptions): Promise<Command
       };
     }
 
-    const input = JSON.parse(options.input);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(options.input);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid JSON input. Please provide a valid JSON string.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Validate required agentId
+    if (typeof parsed.agentId !== 'string') {
+      return {
+        success: false,
+        message: 'Input must include "agentId" field.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Determine role (defaults to 'collaborator')
+    const role = parsed.role === 'collaborator' || parsed.role === 'delegate' || parsed.role === 'initiator'
+      ? parsed.role
+      : 'collaborator';
+
     const session = await manager.joinSession({
       sessionId,
-      agentId: input.agentId,
-      role: input.role,
+      agentId: parsed.agentId,
+      role,
     });
 
     if (options.format === 'json') {
@@ -313,8 +365,29 @@ async function leaveSession(args: string[], options: CLIOptions): Promise<Comman
       };
     }
 
-    const input = JSON.parse(options.input);
-    const session = await manager.leaveSession(sessionId, input.agentId);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(options.input);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid JSON input. Please provide a valid JSON string.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Validate required agentId
+    if (typeof parsed.agentId !== 'string') {
+      return {
+        success: false,
+        message: 'Input must include "agentId" field.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    const session = await manager.leaveSession(sessionId, parsed.agentId);
 
     if (options.format === 'json') {
       return {
@@ -357,8 +430,20 @@ async function completeSession(args: string[], options: CLIOptions): Promise<Com
   }
 
   try {
-    const input = options.input !== undefined ? JSON.parse(options.input) : {};
-    const session = await manager.completeSession(sessionId, input.summary);
+    let input: Record<string, unknown> = {};
+    if (options.input !== undefined) {
+      try {
+        input = JSON.parse(options.input);
+      } catch {
+        return {
+          success: false,
+          message: 'Invalid JSON input. Please provide a valid JSON string.',
+          data: undefined,
+          exitCode: 1,
+        };
+      }
+    }
+    const session = await manager.completeSession(sessionId, input.summary as string | undefined);
 
     if (options.format === 'json') {
       return {
@@ -410,13 +495,41 @@ async function failSession(args: string[], options: CLIOptions): Promise<Command
       };
     }
 
-    const input = JSON.parse(options.input);
-    const session = await manager.failSession(sessionId, {
-      code: input.code,
-      message: input.message,
-      taskId: input.taskId,
-      details: input.details,
-    });
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(options.input);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid JSON input. Please provide a valid JSON string.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Validate required fields
+    if (typeof parsed.code !== 'string' || typeof parsed.message !== 'string') {
+      return {
+        success: false,
+        message: 'Input must include "code" and "message" fields.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    // Build failure object with only defined optional properties
+    const failure: { code: string; message: string; taskId?: string; details?: Record<string, unknown> } = {
+      code: parsed.code,
+      message: parsed.message,
+    };
+    if (typeof parsed.taskId === 'string') {
+      failure.taskId = parsed.taskId;
+    }
+    if (parsed.details !== undefined && typeof parsed.details === 'object') {
+      failure.details = parsed.details as Record<string, unknown>;
+    }
+
+    const session = await manager.failSession(sessionId, failure);
 
     if (options.format === 'json') {
       return {

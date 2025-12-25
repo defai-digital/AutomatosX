@@ -2,7 +2,7 @@ import type {
   TraceEvent,
   TraceStatus,
   TraceContext,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Trace writer interface for persistence

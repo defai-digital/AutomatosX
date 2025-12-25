@@ -14,7 +14,7 @@ The AutomatosX MCP (Model Context Protocol) Server provides a standardized inter
 ### Design Principles
 
 1. **Protocol Compliance**: Strict adherence to MCP specification (2025-06-18)
-2. **Contract-Driven**: All tool inputs/outputs defined in `@automatosx/contracts` package with Zod schemas
+2. **Contract-Driven**: All tool inputs/outputs defined in `@defai.digital/contracts` package with Zod schemas
 3. **Domain-Driven**: Each tool category maps to a specific domain package (workflow → workflow-engine, memory → memory-domain, etc.)
 4. **Behavior-Driven**: Explicit invariants (INV-MCP-*) with testable guarantees
 5. **Governance-Driven**: Integration with Guard domain for policy enforcement
@@ -100,15 +100,15 @@ MCP has been adopted by major AI providers:
 ### 1.2 Package Dependencies
 
 ```typescript
-// @automatosx/mcp-server dependencies
+// @defai.digital/mcp-server dependencies
 {
-  "@automatosx/contracts": "workspace:*",      // Zod schemas (source of truth)
-  "@automatosx/workflow-engine": "workspace:*", // Workflow execution
-  "@automatosx/trace-domain": "workspace:*",    // Event tracing
-  "@automatosx/memory-domain": "workspace:*",   // Memory management
-  "@automatosx/agent-domain": "workspace:*",    // Agent orchestration
-  "@automatosx/session-domain": "workspace:*",  // Session lifecycle
-  "@automatosx/guard": "workspace:*"            // Governance gates
+  "@defai.digital/contracts": "workspace:*",      // Zod schemas (source of truth)
+  "@defai.digital/workflow-engine": "workspace:*", // Workflow execution
+  "@defai.digital/trace-domain": "workspace:*",    // Event tracing
+  "@defai.digital/memory-domain": "workspace:*",   // Memory management
+  "@defai.digital/agent-domain": "workspace:*",    // Agent orchestration
+  "@defai.digital/session-domain": "workspace:*",  // Session lifecycle
+  "@defai.digital/guard": "workspace:*"            // Governance gates
 }
 ```
 
@@ -1771,7 +1771,7 @@ interface MCPToolCallEvent extends BaseEvent {
 
 ### INV-MCP-008: Contract Schema Reference
 
-**Description**: All tool schemas MUST be defined in `@automatosx/contracts` package.
+**Description**: All tool schemas MUST be defined in `@defai.digital/contracts` package.
 
 **Enforcement**:
 - No inline schema definitions in server implementation
@@ -1829,7 +1829,7 @@ Claude Code has native MCP support as a client.
 
 **Connection Example**:
 ```bash
-claude mcp add automatosx -- npx @automatosx/mcp-server
+claude mcp add automatosx -- npx @defai.digital/mcp-server
 ```
 
 ### 17.2 Gemini CLI (Google)
@@ -1847,7 +1847,7 @@ Gemini CLI supports MCP servers with FastMCP integration.
 
 **Connection Example**:
 ```bash
-gemini mcp add automatosx -- npx @automatosx/mcp-server
+gemini mcp add automatosx -- npx @defai.digital/mcp-server
 ```
 
 ### 17.3 Codex CLI (OpenAI)
@@ -1866,7 +1866,7 @@ Codex CLI supports MCP servers and can also run as an MCP server itself.
 
 **Connection Example**:
 ```bash
-codex mcp add automatosx -- npx @automatosx/mcp-server
+codex mcp add automatosx -- npx @defai.digital/mcp-server
 ```
 
 ### 17.4 Common Patterns

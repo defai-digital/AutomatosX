@@ -13,7 +13,7 @@ import {
   createDefaultParallelExecutionConfig,
   type AgentWorkflowStep,
   TIMEOUT_ORCHESTRATION_EXECUTION,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   ParallelExecutorPort,
   ParallelStepExecutor,

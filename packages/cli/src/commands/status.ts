@@ -16,13 +16,13 @@ import {
   type SystemStatus,
   type ProviderStatus,
   type SystemHealthLevel,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createSessionManager,
   createSessionStore,
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type SessionManager,
-} from '@automatosx/session-domain';
+} from '@defai.digital/session-domain';
 import { getProviderRegistry } from '../utils/provider-factory.js';
 import { getCheckpointStorage } from '../utils/storage-instances.js';
 

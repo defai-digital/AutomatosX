@@ -107,7 +107,7 @@ import {
   type MemoryStoreOutput,
   type MemoryRetrieveInput,
   type MemoryRetrieveOutput,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Guard Tool Contract Tests

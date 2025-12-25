@@ -4,7 +4,7 @@
  * This file provides a stable import path for resilience contracts
  * that works in both build and test environments.
  *
- * It imports from the main @automatosx/contracts and re-exports with
+ * It imports from the main @defai.digital/contracts and re-exports with
  * the canonical names for internal use.
  */
 
@@ -85,4 +85,4 @@ export {
   type ErrorMetric,
   type LatencyStats,
   type MetricsSnapshot,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

@@ -24,7 +24,7 @@ import {
   type CheckpointConfig,
   type ParallelExecutionConfig,
   LIMIT_ABILITY_TOKENS_AGENT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   AgentExecutor,
   AgentRegistry,

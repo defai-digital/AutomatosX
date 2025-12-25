@@ -5,7 +5,7 @@
  * Eliminates the mock provider by connecting to real provider registry.
  */
 
-import { TIMEOUT_PROVIDER_DEFAULT, PROVIDER_DEFAULT } from '@automatosx/contracts';
+import { TIMEOUT_PROVIDER_DEFAULT, PROVIDER_DEFAULT } from '@defai.digital/contracts';
 import type {
   AnalysisProvider,
   ProviderRouter,

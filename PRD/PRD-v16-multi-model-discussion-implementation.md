@@ -588,7 +588,7 @@ import type {
   DiscussStepConfig,
   DiscussionResult,
   ProviderResponse,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Provider executor interface for discussion domain
@@ -644,8 +644,8 @@ import type {
   DiscussStepConfig,
   DiscussionResult,
   DiscussionPattern,
-} from '@automatosx/contracts';
-import { DiscussionErrorCodes } from '@automatosx/contracts';
+} from '@defai.digital/contracts';
+import { DiscussionErrorCodes } from '@defai.digital/contracts';
 import type { DiscussionProviderExecutor, PatternExecutor } from './types.js';
 import { RoundRobinExecutor } from './patterns/round-robin.js';
 import { DebateExecutor } from './patterns/debate.js';
@@ -773,7 +773,7 @@ import {
   validateDiscussionRequest,
   type DiscussionPattern,
   type ConsensusMethod,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export interface DiscussOptions {
   providers?: string[];
@@ -950,7 +950,7 @@ import {
   DiscussionRequestSchema,
   DiscussionPatternSchema,
   ConsensusMethodSchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export const discussTools: McpToolHandler[] = [
   {
@@ -1048,8 +1048,8 @@ import type { WorkflowStep, StepContext, StepResult } from '../types.js';
 import {
   validateDiscussStepConfig,
   type DiscussStepConfig,
-} from '@automatosx/contracts';
-import { DiscussionExecutor } from '@automatosx/discussion-domain';
+} from '@defai.digital/contracts';
+import { DiscussionExecutor } from '@defai.digital/discussion-domain';
 
 export class DiscussStepHandler {
   constructor(private discussionExecutor: DiscussionExecutor) {}

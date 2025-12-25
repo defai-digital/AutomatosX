@@ -5,7 +5,7 @@
  * INV-REV-001: Each focus mode MUST only report issues relevant to that focus.
  */
 
-import type { ReviewFocus } from '@automatosx/contracts';
+import type { ReviewFocus } from '@defai.digital/contracts';
 
 /**
  * Focus-specific system prompts

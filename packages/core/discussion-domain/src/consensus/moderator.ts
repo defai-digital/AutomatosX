@@ -5,7 +5,7 @@
  * Used primarily in debate pattern where the judge renders a verdict.
  */
 
-import type { DissentRecord } from '@automatosx/contracts';
+import type { DissentRecord } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   DEBATE_JUDGE,

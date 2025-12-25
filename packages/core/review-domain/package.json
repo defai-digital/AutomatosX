@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/review-domain",
+  "name": "@defai.digital/review-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Review domain for AutomatosX - AI-powered code review with focused analysis modes",
@@ -36,8 +36,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/analysis-domain": "workspace:*",
-    "@automatosx/contracts": "workspace:*",
+    "@defai.digital/analysis-domain": "workspace:*",
+    "@defai.digital/contracts": "workspace:*",
     "uuid": "^11.0.5"
   },
   "devDependencies": {

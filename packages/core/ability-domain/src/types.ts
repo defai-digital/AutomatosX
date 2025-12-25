@@ -7,7 +7,7 @@ import {
   type AbilityInjectionResult,
   LIMIT_ABILITY_TOKENS,
   LIMIT_ABILITIES_INJECT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Ability registry interface

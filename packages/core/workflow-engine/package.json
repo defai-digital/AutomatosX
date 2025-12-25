@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/workflow-engine",
+  "name": "@defai.digital/workflow-engine",
   "version": "13.0.0",
   "type": "module",
   "description": "Workflow execution engine - executes workflows following contract invariants",
@@ -36,7 +36,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
+    "@defai.digital/contracts": "workspace:*",
     "yaml": "^2.7.0"
   }
 }

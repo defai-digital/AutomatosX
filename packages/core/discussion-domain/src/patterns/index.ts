@@ -4,7 +4,7 @@
  * Exports all pattern implementations and a factory for getting the right executor.
  */
 
-import type { DiscussionPattern } from '@automatosx/contracts';
+import type { DiscussionPattern } from '@defai.digital/contracts';
 import type { PatternExecutor } from '../types.js';
 import { RoundRobinPattern } from './round-robin.js';
 import { SynthesisPattern } from './synthesis.js';

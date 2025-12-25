@@ -18,7 +18,7 @@ import {
   calculateExpiration,
   isEntryExpired,
   IdempotencyErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Idempotency storage interface

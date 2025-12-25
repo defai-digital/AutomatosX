@@ -12,7 +12,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { TIMEOUT_GATE_DEPENDENCY } from '@automatosx/contracts';
+import { TIMEOUT_GATE_DEPENDENCY } from '@defai.digital/contracts';
 import type { GovernanceContext, GateResult } from '../types.js';
 
 const execAsync = promisify(exec);

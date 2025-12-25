@@ -1,5 +1,5 @@
 /**
- * @automatosx/token-budget
+ * @defai.digital/token-budget
  *
  * Token budget management for AutomatosX context windows.
  * Manages token allocation for embedded instructions to prevent
@@ -31,7 +31,7 @@ export type {
   TokenEstimationResult,
   AllocationInput,
   TokenBudgetError as TokenBudgetErrorType,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export {
   InstructionTypeSchema,
@@ -53,4 +53,4 @@ export {
   validateAllocationInput,
   getPriorityValue,
   getTypePriorityValue,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

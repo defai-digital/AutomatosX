@@ -18,7 +18,7 @@ import {
   type LimitCheckResult,
   AgentPolicyErrorCodes,
   createDefaultAgentPolicy,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Effective policy after merging

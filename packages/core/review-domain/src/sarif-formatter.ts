@@ -11,7 +11,7 @@ import {
   type SarifRule,
   type SarifResult,
   sortCommentsBySeverity,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * SARIF schema URL

@@ -4,7 +4,7 @@
  * Multi-model discussion orchestration for AutomatosX.
  * Enables Claude, GLM, Qwen, Gemini, Codex, and Grok to collaborate on complex problems.
  *
- * @module @automatosx/discussion-domain
+ * @module @defai.digital/discussion-domain
  */
 
 // Main executor

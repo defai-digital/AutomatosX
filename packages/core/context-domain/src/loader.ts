@@ -21,7 +21,7 @@ import {
   type ProjectContext,
   type ContextLoaderConfig,
   type ContextLoadResult,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { IContextLoader, FileInfo } from './types.js';
 
 // ============================================================================

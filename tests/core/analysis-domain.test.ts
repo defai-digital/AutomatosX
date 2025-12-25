@@ -12,8 +12,8 @@ import {
   AnalysisError,
   deduplicateFindings,
   getTaskDescription,
-} from '@automatosx/analysis-domain';
-import type { AnalysisFinding } from '@automatosx/contracts';
+} from '@defai.digital/analysis-domain';
+import type { AnalysisFinding } from '@defai.digital/contracts';
 
 describe('Analysis Domain', () => {
   describe('PromptBuilder', () => {

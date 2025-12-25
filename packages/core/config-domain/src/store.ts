@@ -20,7 +20,7 @@ import {
   ConfigError,
   DATA_DIR_NAME,
   CONFIG_FILENAME,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Constants

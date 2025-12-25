@@ -1,5 +1,5 @@
 /**
- * @automatosx/provider-domain
+ * @defai.digital/provider-domain
  *
  * Provider Resilience Domain
  *

@@ -573,7 +573,7 @@ export type ValidationResult = z.infer<typeof ValidationResultSchema>;
 ## Guard Policy: `packages/guard/src/policies/mcp-runtime-policy.ts`
 
 ```typescript
-import type { GuardPolicy } from '@automatosx/contracts';
+import type { GuardPolicy } from '@defai.digital/contracts';
 
 export const mcpRuntimePolicy: GuardPolicy = {
   id: 'mcp-runtime-policy',

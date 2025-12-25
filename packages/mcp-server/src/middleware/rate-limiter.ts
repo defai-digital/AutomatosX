@@ -18,12 +18,12 @@ import type {
   RateLimitResult,
   RateLimitError,
   McpRateLimitToolCategory as ToolCategory,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   getToolCategory,
   getDefaultRateLimit,
   createRateLimitError,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Internal state for tracking rate limits per tool

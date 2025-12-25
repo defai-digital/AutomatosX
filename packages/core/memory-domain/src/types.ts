@@ -1,4 +1,4 @@
-import type { MemoryEvent, MemoryEventType } from '@automatosx/contracts';
+import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
 
 /**
  * Event store interface for persistence

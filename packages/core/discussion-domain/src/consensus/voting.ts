@@ -5,7 +5,7 @@
  * raw counts or confidence-weighted scores.
  */
 
-import type { VotingResults, VoteRecord } from '@automatosx/contracts';
+import type { VotingResults, VoteRecord } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   VOTING_TALLY,

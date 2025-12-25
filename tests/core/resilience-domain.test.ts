@@ -18,7 +18,7 @@ import {
   RateLimiterError,
   LoopGuardError,
   ResourceEnforcerError,
-} from '@automatosx/resilience-domain';
+} from '@defai.digital/resilience-domain';
 
 describe('Circuit Breaker', () => {
   it('should start in closed state', () => {

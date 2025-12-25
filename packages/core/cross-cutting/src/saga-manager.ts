@@ -20,7 +20,7 @@ import {
   createInitialSagaState,
   isValidSagaTransition,
   SagaErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Saga step executor function

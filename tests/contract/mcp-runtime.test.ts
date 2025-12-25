@@ -29,7 +29,7 @@ import {
   ValidationResultSchema,
   TOOL_ARRAY_FIELDS,
   getArrayLimit,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('MCP Runtime Contracts', () => {
   // ==========================================================================

@@ -1,4 +1,4 @@
-import type { TraceEvent } from '@automatosx/contracts';
+import type { TraceEvent } from '@defai.digital/contracts';
 import type { TraceSummary, TraceStore } from './types.js';
 
 /**

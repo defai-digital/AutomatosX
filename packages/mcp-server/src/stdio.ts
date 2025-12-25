@@ -8,7 +8,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { MCP_SERVER_NAME, DEFAULT_SCHEMA_VERSION } from '@automatosx/contracts';
+import { MCP_SERVER_NAME, DEFAULT_SCHEMA_VERSION } from '@defai.digital/contracts';
 
 import { ALL_TOOLS, TOOL_HANDLERS } from './tools/index.js';
 import { ALL_RESOURCES, readResource } from './resources/index.js';
@@ -157,15 +157,29 @@ export async function runStdioServer(): Promise<void> {
   // Keep the server running until stdin closes
   // This is necessary when running through CLI wrappers
   await new Promise<void>((resolve) => {
-    process.stdin.on('end', () => {
-      resolve();
-    });
-    process.stdin.on('close', () => {
-      resolve();
-    });
     // Handle case where stdin is already closed
     if (process.stdin.readableEnded) {
       resolve();
+      return;
     }
+
+    // Create handlers that clean up after resolution
+    const cleanup = (): void => {
+      process.stdin.removeListener('end', onEnd);
+      process.stdin.removeListener('close', onClose);
+    };
+
+    const onEnd = (): void => {
+      cleanup();
+      resolve();
+    };
+
+    const onClose = (): void => {
+      cleanup();
+      resolve();
+    };
+
+    process.stdin.on('end', onEnd);
+    process.stdin.on('close', onClose);
   });
 }

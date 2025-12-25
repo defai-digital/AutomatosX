@@ -9,7 +9,7 @@
  */
 
 import type { MCPResource, MCPResourceContent, ResourceHandler } from '../types.js';
-import type { Session } from '@automatosx/session-domain';
+import type { Session } from '@defai.digital/session-domain';
 import { getSharedSessionManager } from '../session-accessor.js';
 
 // ============================================================================

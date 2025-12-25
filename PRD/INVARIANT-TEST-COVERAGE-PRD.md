@@ -75,7 +75,7 @@ These domains have comprehensive test coverage and require no additional work:
 // tests/contract/provider.test.ts
 
 import { describe, it, expect, vi } from 'vitest';
-import { ProviderRequestSchema, ProviderResponseSchema } from '@automatosx/contracts';
+import { ProviderRequestSchema, ProviderResponseSchema } from '@defai.digital/contracts';
 
 describe('Provider Contract Invariants', () => {
   describe('INV-PROV-PORT-001: Request Validation', () => {
@@ -179,7 +179,7 @@ describe('Provider Contract Invariants', () => {
 // tests/contract/config.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { AutomatosXConfigSchema } from '@automatosx/contracts';
+import { AutomatosXConfigSchema } from '@defai.digital/contracts';
 
 describe('Config Contract Invariants', () => {
   describe('INV-CFG-001: Schema Validation', () => {
@@ -298,7 +298,7 @@ describe('Config Contract Invariants', () => {
 // tests/contract/storage.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { StorageModeSchema } from '@automatosx/contracts';
+import { StorageModeSchema } from '@defai.digital/contracts';
 
 describe('Storage Contract Invariants', () => {
   describe('INV-ST-001: Storage Mode Configuration', () => {
@@ -406,7 +406,7 @@ describe('Storage Contract Invariants', () => {
 // tests/contract/ability.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { AbilitySchema } from '@automatosx/contracts';
+import { AbilitySchema } from '@defai.digital/contracts';
 
 describe('Ability Contract Invariants', () => {
   describe('INV-ABL-001: ID Uniqueness', () => {

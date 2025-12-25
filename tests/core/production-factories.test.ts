@@ -16,12 +16,12 @@ import {
   type DelegationTrackerPort,
   type ParallelExecutorPort,
   type Checkpoint,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 import {
   createDefaultCheckpointConfig,
   createDefaultParallelExecutionConfig,
-} from '@automatosx/contracts';
-import type { AgentWorkflowStep, DelegationContext } from '@automatosx/contracts';
+} from '@defai.digital/contracts';
+import type { AgentWorkflowStep, DelegationContext } from '@defai.digital/contracts';
 
 // Mock storage for testing
 function createMockStorage(): CheckpointStoragePort & { checkpoints: Map<string, Checkpoint> } {
@@ -641,7 +641,8 @@ describe('ParallelExecutorFactory', () => {
 
       const result = await executor.executeGroup(steps, executorFn);
 
-      expect(result.totalDurationMs).toBeGreaterThanOrEqual(10);
+      // Allow 2ms tolerance for timing precision across different platforms
+      expect(result.totalDurationMs).toBeGreaterThanOrEqual(8);
     });
 
     it('tracks per-step duration', async () => {

@@ -15,7 +15,7 @@ import {
   DEFAULT_TOKEN_BUDGET,
   getPriorityValue,
   getTypePriorityValue,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Token budget allocator interface

@@ -113,7 +113,7 @@ executeParallelStep()    // Returns mock { results: [] }
 
 **Modify `packages/core/agent-domain/src/executor.ts`:**
 
-1. Import `AbilityManager` from `@automatosx/ability-domain`
+1. Import `AbilityManager` from `@defai.digital/ability-domain`
 2. Before executing prompt steps, call `abilityManager.injectAbilities()`
 3. Inject ability content into the prompt context
 4. Respect `coreAbilities` from agent profile
@@ -157,7 +157,7 @@ async function executePromptStep(step: WorkflowStep, context: StepContext): Prom
 }
 ```
 
-**Integration:** Use `@automatosx/providers` for LLM calls
+**Integration:** Use `@defai.digital/providers` for LLM calls
 
 **Acceptance criteria:**
 - [ ] Executes prompts via provider registry
@@ -285,10 +285,10 @@ async function executeParallelStep(step: WorkflowStep, context: StepContext): Pr
 
 | Package | New Dependency | Purpose |
 |---------|----------------|---------|
-| `@automatosx/agent-domain` | `@automatosx/ability-domain` | Inject abilities |
-| `@automatosx/workflow-engine` | `@automatosx/providers` | Execute prompts |
-| `@automatosx/mcp-server` | `@automatosx/ability-domain` | Ability tools |
-| `@automatosx/cli` | `@automatosx/ability-domain` | Ability commands |
+| `@defai.digital/agent-domain` | `@defai.digital/ability-domain` | Inject abilities |
+| `@defai.digital/workflow-engine` | `@defai.digital/providers` | Execute prompts |
+| `@defai.digital/mcp-server` | `@defai.digital/ability-domain` | Ability tools |
+| `@defai.digital/cli` | `@defai.digital/ability-domain` | Ability commands |
 
 ### File Changes Summary
 

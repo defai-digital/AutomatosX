@@ -9,7 +9,7 @@
  */
 
 import type { MCPResource, MCPResourceContent, ResourceHandler } from '../types.js';
-import type { AgentProfile } from '@automatosx/contracts';
+import type { AgentProfile } from '@defai.digital/contracts';
 import { getSharedRegistry } from '../shared-registry.js';
 
 // ============================================================================

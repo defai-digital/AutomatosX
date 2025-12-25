@@ -12,7 +12,7 @@ import type {
   ProviderRateLimitConfig as RateLimitConfig,
   HealthCheckConfig,
   HealthStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 import {
   createCircuitBreaker,

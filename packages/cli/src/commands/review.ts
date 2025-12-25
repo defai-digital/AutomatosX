@@ -12,7 +12,7 @@ import {
   type ReviewPromptExecutor,
   type ReviewResult,
   type ReviewComment,
-} from '@automatosx/review-domain';
+} from '@defai.digital/review-domain';
 import {
   type ReviewFocus,
   ReviewFocusSchema,
@@ -20,7 +20,7 @@ import {
   TIMEOUT_PROVIDER_DEFAULT,
   CONFIDENCE_DEFAULT_MIN,
   ANALYSIS_MAX_FILES_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { createAnalysisProviderRouter } from '../utils/provider-factory.js';
 
 /**

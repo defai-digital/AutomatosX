@@ -29,7 +29,7 @@ import {
   validateRoutingInput,
   type RoutingInput,
   type RoutingDecision,
-} from '@automatosx/contracts/routing/v1';
+} from '@defai.digital/contracts/routing/v1';
 
 // Validate routing input
 const input: RoutingInput = validateRoutingInput({

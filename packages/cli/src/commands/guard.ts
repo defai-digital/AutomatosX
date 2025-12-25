@@ -9,8 +9,8 @@ import {
   guardCheck,
   listPolicies,
   validatePolicyId,
-} from '@automatosx/guard';
-import type { GuardResult } from '@automatosx/guard';
+} from '@defai.digital/guard';
+import type { GuardResult } from '@defai.digital/guard';
 import type { CommandResult, CLIOptions } from '../types.js';
 
 /**

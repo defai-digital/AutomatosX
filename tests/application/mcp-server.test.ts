@@ -5,8 +5,8 @@ import {
   ALL_TOOLS,
   TOOL_HANDLERS,
   MCPErrorCodes,
-} from '@automatosx/mcp-server';
-import type { MCPRequest } from '@automatosx/mcp-server';
+} from '@defai.digital/mcp-server';
+import type { MCPRequest } from '@defai.digital/mcp-server';
 
 describe('MCP Server', () => {
   let server: MCPServer;

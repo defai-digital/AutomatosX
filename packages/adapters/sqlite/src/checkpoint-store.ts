@@ -8,8 +8,8 @@
  * - INV-CP-002: Resumed execution starts from step after checkpoint
  */
 
-import type { Checkpoint } from '@automatosx/contracts';
-import type { CheckpointStorage } from '@automatosx/agent-execution';
+import type { Checkpoint } from '@defai.digital/contracts';
+import type { CheckpointStorage } from '@defai.digital/agent-execution';
 import type Database from 'better-sqlite3';
 
 /**

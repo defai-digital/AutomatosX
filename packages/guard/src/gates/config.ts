@@ -14,7 +14,7 @@
  */
 
 import type { GateResult, GateExecutor, GovernanceContext } from '../types.js';
-import { safeValidateConfig, CONFIG_FILENAME, DATA_DIR_NAME } from '@automatosx/contracts';
+import { safeValidateConfig, CONFIG_FILENAME, DATA_DIR_NAME } from '@defai.digital/contracts';
 
 /**
  * Sensitive config paths that require extra scrutiny

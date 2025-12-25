@@ -152,7 +152,7 @@ import {
   // Discussion tool schemas
   DiscussionRequestSchema,
   DiscussionResultSchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 import type { InputSchemaRegistry, OutputSchemaRegistry } from './validation.js';
 

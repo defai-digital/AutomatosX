@@ -16,7 +16,7 @@ import {
   DEFAULT_CONFIG,
   ConfigErrorCode,
   ConfigError,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Types

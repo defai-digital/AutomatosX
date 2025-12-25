@@ -2,7 +2,7 @@
  * Resume Command
  *
  * Resume agent execution from a checkpoint.
- * Leverages the existing checkpoint-manager from @automatosx/agent-execution.
+ * Leverages the existing checkpoint-manager from @defai.digital/agent-execution.
  *
  * Usage:
  *   ax resume                          # Resume latest checkpoint (requires --agent)
@@ -12,12 +12,12 @@
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
-import { createCheckpointManager } from '@automatosx/agent-execution';
+import { createCheckpointManager } from '@defai.digital/agent-execution';
 import {
   safeValidateResumeOptions,
   type ResumeOptions,
   type Checkpoint,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   getCheckpointStorage,
   initializeStorageAsync,

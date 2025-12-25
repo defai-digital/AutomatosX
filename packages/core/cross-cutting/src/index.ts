@@ -1,5 +1,5 @@
 /**
- * @automatosx/cross-cutting
+ * @defai.digital/cross-cutting
  *
  * Cross-Cutting Concerns Domain
  *
@@ -57,4 +57,4 @@ export type {
   RetentionPolicy,
   RetentionRunResult,
   RetentionSummary,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

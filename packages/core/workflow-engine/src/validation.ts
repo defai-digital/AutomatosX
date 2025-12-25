@@ -1,7 +1,7 @@
 import {
   WorkflowSchema,
   type Workflow,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { PreparedWorkflow, StepResult } from './types.js';
 import { WorkflowErrorCodes } from './types.js';
 

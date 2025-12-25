@@ -29,7 +29,7 @@ import {
   validateAgentProfile,
   type AgentProfile,
   type AgentResult,
-} from '@automatosx/contracts/agent/v1';
+} from '@defai.digital/contracts/agent/v1';
 
 // Define an agent
 const profile: AgentProfile = validateAgentProfile({

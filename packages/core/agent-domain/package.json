@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/agent-domain",
+  "name": "@defai.digital/agent-domain",
   "version": "13.0.0",
   "type": "module",
   "description": "Agent profiles and orchestration for AutomatosX",
@@ -37,9 +37,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@automatosx/ability-domain": "workspace:*",
-    "@automatosx/agent-execution": "workspace:*",
-    "@automatosx/contracts": "workspace:*",
+    "@defai.digital/ability-domain": "workspace:*",
+    "@defai.digital/agent-execution": "workspace:*",
+    "@defai.digital/contracts": "workspace:*",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

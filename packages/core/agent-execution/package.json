@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/agent-execution",
+  "name": "@defai.digital/agent-execution",
   "version": "13.0.0",
   "type": "module",
   "description": "Agent execution domain for AutomatosX - checkpoints, delegation, parallel execution",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

@@ -11,7 +11,7 @@
  * 4. Final synthesis by designated synthesizer (default: claude)
  */
 
-import type { DiscussionRound, DebateRole } from '@automatosx/contracts';
+import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,

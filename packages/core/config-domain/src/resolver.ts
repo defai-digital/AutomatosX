@@ -17,7 +17,7 @@
  * - INV-CFG-RES-003: Undefined values do not override
  */
 
-import type { AutomatosXConfig } from '@automatosx/contracts';
+import type { AutomatosXConfig } from '@defai.digital/contracts';
 import { createConfigStore, CONFIG_PATHS, DATA_PATHS } from './store.js';
 
 // ============================================================================

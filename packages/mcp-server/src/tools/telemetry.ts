@@ -1,6 +1,6 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import { randomUUID } from 'crypto';
-import { LIMIT_EVENT_BUFFER } from '@automatosx/contracts';
+import { LIMIT_EVENT_BUFFER } from '@defai.digital/contracts';
 
 /**
  * Metrics record tool definition

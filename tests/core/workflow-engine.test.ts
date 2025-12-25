@@ -12,8 +12,8 @@ import {
   DEFAULT_RETRY_POLICY,
   type StepExecutor,
   type StepResult,
-} from '@automatosx/workflow-engine';
-import type { Workflow } from '@automatosx/contracts';
+} from '@defai.digital/workflow-engine';
+import type { Workflow } from '@defai.digital/contracts';
 
 describe('Workflow Engine', () => {
   describe('Validation (INV-WF-003, INV-WF-004)', () => {

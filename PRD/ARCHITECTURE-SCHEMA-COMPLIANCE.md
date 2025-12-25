@@ -54,7 +54,7 @@ This file will contain:
 ### Phase 2: Update MCP Server Imports
 
 Modify `packages/mcp-server/src/schema-registry.ts` to:
-1. Import all schemas from `@automatosx/contracts`
+1. Import all schemas from `@defai.digital/contracts`
 2. Remove local schema definitions
 3. Keep only the registry mappings
 
@@ -117,7 +117,7 @@ rmdir packages/guard/policies
 ## Invariants
 
 ### INV-MCP-VAL-002: All schemas defined in contracts package
-- **Enforcement**: All Zod schemas used for MCP tool validation MUST be defined in `@automatosx/contracts`
+- **Enforcement**: All Zod schemas used for MCP tool validation MUST be defined in `@defai.digital/contracts`
 - **Exception**: None. Local schema extensions should use `.extend()` on contract schemas.
 
 ## Testing Requirements
@@ -130,7 +130,7 @@ rmdir packages/guard/policies
 ## Success Criteria
 
 1. Zero Zod schema definitions in `packages/mcp-server/src/schema-registry.ts`
-2. All MCP tool schemas importable from `@automatosx/contracts`
+2. All MCP tool schemas importable from `@defai.digital/contracts`
 3. No empty directories in `packages/guard/`
 4. All existing functionality preserved
 

@@ -2,7 +2,7 @@ import {
   createTraceEvent,
   createTrace,
   type TraceEventType,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type {
   TraceWriter,
   ActiveTrace,

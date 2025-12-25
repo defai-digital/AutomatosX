@@ -238,7 +238,7 @@ Brief description of what this domain handles.
 
 ## Usage Example
 \```typescript
-import { FooSchema, validateFoo } from '@automatosx/contracts/foo/v1';
+import { FooSchema, validateFoo } from '@defai.digital/contracts/foo/v1';
 
 const result = validateFoo({ ... });
 \```

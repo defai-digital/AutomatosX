@@ -4,7 +4,7 @@ import {
   successResponse,
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
-import { LIMIT_TRACES } from '@automatosx/contracts';
+import { LIMIT_TRACES } from '@defai.digital/contracts';
 
 /**
  * Trace list tool definition

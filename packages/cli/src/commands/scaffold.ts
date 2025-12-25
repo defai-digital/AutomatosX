@@ -93,7 +93,7 @@ function generateSchemaTemplate(name: string, description: string): string {
  *
  * ${description}
  *
- * @module @automatosx/contracts/${name}/v1
+ * @module @defai.digital/contracts/${name}/v1
  */
 
 import { z } from 'zod';
@@ -362,7 +362,7 @@ function generateIndexTemplate(name: string): string {
   return `/**
  * ${toPascalCase(name)} Contracts v1
  *
- * @module @automatosx/contracts/${name}/v1
+ * @module @defai.digital/contracts/${name}/v1
  */
 
 export * from './schema.js';
@@ -393,7 +393,7 @@ function generatePackageJsonTemplate(name: string, scope: string): string {
         typecheck: 'tsc --noEmit',
       },
       dependencies: {
-        '@automatosx/contracts': 'workspace:*',
+        '@defai.digital/contracts': 'workspace:*',
       },
       devDependencies: {
         typescript: '^5.3.0',
@@ -412,7 +412,7 @@ function generateDomainIndexTemplate(name: string): string {
   return `/**
  * ${pascalName} Domain
  *
- * @module @automatosx/${name}-domain
+ * @module @defai.digital/${name}-domain
  */
 
 export * from './types.js';
@@ -429,7 +429,7 @@ function generateDomainTypesTemplate(name: string): string {
  * ${pascalName} Domain Types
  */
 
-import type { ${pascalName}, ${pascalName}Event } from '@automatosx/contracts';
+import type { ${pascalName}, ${pascalName}Event } from '@defai.digital/contracts';
 
 /**
  * ${pascalName} repository interface
@@ -467,7 +467,7 @@ function generateDomainServiceTemplate(name: string): string {
  * ${pascalName} Domain Service
  */
 
-import type { ${pascalName} } from '@automatosx/contracts';
+import type { ${pascalName} } from '@defai.digital/contracts';
 import type { ${pascalName}ServiceDeps } from './types.js';
 
 /**
@@ -515,7 +515,7 @@ import {
   ${pascalName}EventSchema,
   validate${pascalName},
   ${pascalName}ErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('${pascalName} Contract', () => {
   describe('Schema Validation', () => {
@@ -717,7 +717,7 @@ async function handleScaffoldDomain(
   const {
     name,
     output,
-    scope = '@automatosx',
+    scope = '@defai.digital',
     noTests = false,
     noGuard = false,
     dryRun = false,

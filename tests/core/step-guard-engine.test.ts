@@ -14,12 +14,12 @@ import {
   DEFAULT_STEP_GUARD_ENGINE_CONFIG,
   type GateCheckFn,
   type GateRegistry,
-} from '@automatosx/workflow-engine';
+} from '@defai.digital/workflow-engine';
 import type {
   StepGuardContext,
   StepGuardPolicy,
   StageProgressEvent,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('StepGuardEngine', () => {
   let engine: StepGuardEngine;

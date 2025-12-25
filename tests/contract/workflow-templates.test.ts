@@ -31,7 +31,7 @@ import {
   safeValidateWorkflowTemplate,
   createWorkflowTemplate,
   WorkflowTemplateErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Workflow Templates Contract', () => {
   describe('WorkflowCategorySchema', () => {

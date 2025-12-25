@@ -1,2 +1,0 @@
-export { type GuardStatus, type GuardCheckResult, type RuntimeGuardResult, type RuntimeGuardConfig, type RuntimeGuardContext, DEFAULT_GUARD_CONFIG, RuntimeGuard, createRuntimeGuard, quickGuardCheck, } from './runtime-guard.js';
-//# sourceMappingURL=index.d.ts.map

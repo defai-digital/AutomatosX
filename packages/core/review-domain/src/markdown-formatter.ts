@@ -9,7 +9,7 @@ import {
   type ReviewResult,
   type ReviewComment,
   sortCommentsBySeverity,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Format review result as markdown

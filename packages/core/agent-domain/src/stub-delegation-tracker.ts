@@ -17,11 +17,11 @@ import type {
   DelegationCheckResult,
   DelegationResult,
   DelegationRequest as ContractDelegationRequest,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createRootDelegationContext,
   DelegationErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { DelegationTrackerPort, DelegationTrackerFactory } from './types.js';
 
 let _warnedOnce = false;

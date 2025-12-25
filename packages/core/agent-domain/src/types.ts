@@ -18,7 +18,7 @@ import {
   LIMIT_EVENT_BUFFER,
   PROVIDER_DEFAULT,
   LIMIT_DELEGATION_DEPTH,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Agent registry interface
@@ -228,7 +228,7 @@ export interface Checkpoint {
  */
 export interface CheckpointManagerPort {
   /** Get configuration */
-  getConfig(): import('@automatosx/contracts').CheckpointConfig;
+  getConfig(): import('@defai.digital/contracts').CheckpointConfig;
 
   /** Check if should create checkpoint at step index */
   shouldCheckpoint(stepIndex: number): boolean;
@@ -266,7 +266,7 @@ export type CheckpointManagerFactory = (
   agentId: string,
   sessionId: string | undefined,
   storage: CheckpointStoragePort,
-  config: import('@automatosx/contracts').CheckpointConfig
+  config: import('@defai.digital/contracts').CheckpointConfig
 ) => CheckpointManagerPort;
 
 // ============================================================================
@@ -314,7 +314,7 @@ export interface ParallelGroupResult {
  */
 export interface ParallelExecutorPort {
   /** Get configuration */
-  getConfig(): import('@automatosx/contracts').ParallelExecutionConfig;
+  getConfig(): import('@defai.digital/contracts').ParallelExecutionConfig;
 
   /** Execute a group of steps in parallel */
   executeGroup(
@@ -334,7 +334,7 @@ export interface ParallelExecutorPort {
  * Factory for creating parallel executors
  */
 export type ParallelExecutorFactory = (
-  config: Partial<import('@automatosx/contracts').ParallelExecutionConfig>
+  config: Partial<import('@defai.digital/contracts').ParallelExecutionConfig>
 ) => ParallelExecutorPort;
 
 /**
@@ -407,7 +407,7 @@ export interface StepExecutionContext {
    * INV-DT-001: Used to enforce max delegation depth
    * INV-DT-002: Used to prevent circular delegations
    */
-  delegationContext: import('@automatosx/contracts').DelegationContext | undefined;
+  delegationContext: import('@defai.digital/contracts').DelegationContext | undefined;
 }
 
 /**

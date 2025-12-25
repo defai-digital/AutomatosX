@@ -25,12 +25,12 @@ import {
   qwenConfig,
   glmConfig,
   grokConfig,
-} from '@automatosx/provider-adapters';
+} from '@defai.digital/provider-adapters';
 import type {
   ProviderRegistry,
   LLMProvider,
   CLIProviderConfig,
-} from '@automatosx/provider-adapters';
+} from '@defai.digital/provider-adapters';
 
 // Storage adapter imports (dynamic to avoid hard dependency)
 // SQLite adapters imported dynamically in initializeStorage()
@@ -39,16 +39,16 @@ import type {
 import {
   createInMemoryCheckpointStorage,
   type CheckpointStorage,
-} from '@automatosx/agent-execution';
+} from '@defai.digital/agent-execution';
 import {
   createInMemoryTraceStore,
   type TraceStore,
-} from '@automatosx/trace-domain';
+} from '@defai.digital/trace-domain';
 import {
   createDeadLetterQueue,
   createInMemoryDeadLetterStorage,
   type DeadLetterQueue,
-} from '@automatosx/cross-cutting';
+} from '@defai.digital/cross-cutting';
 
 // Step executor imports (for workflow execution)
 import {
@@ -56,16 +56,16 @@ import {
   type StepExecutor,
   type PromptExecutorLike,
   type DiscussionExecutorLike,
-} from '@automatosx/workflow-engine';
+} from '@defai.digital/workflow-engine';
 import {
   createProviderPromptExecutor,
   type ProviderPromptExecutorConfig,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 import {
   createProviderBridge,
   createDiscussionExecutor,
   type ProviderRegistryLike as DiscussionProviderRegistryLike,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 
 // Database utilities
 import { getDatabase, getDatabaseConfig } from './utils/database.js';
@@ -74,10 +74,10 @@ import { getDatabase, getDatabaseConfig } from './utils/database.js';
 // Port Interface Re-exports (for type safety)
 // ============================================================================
 
-export type { CheckpointStorage } from '@automatosx/agent-execution';
-export type { TraceStore } from '@automatosx/trace-domain';
-export type { DeadLetterQueue } from '@automatosx/cross-cutting';
-export type { StepExecutor } from '@automatosx/workflow-engine';
+export type { CheckpointStorage } from '@defai.digital/agent-execution';
+export type { TraceStore } from '@defai.digital/trace-domain';
+export type { DeadLetterQueue } from '@defai.digital/cross-cutting';
+export type { StepExecutor } from '@defai.digital/workflow-engine';
 // Provider types re-exported directly for use by CLI modules
 export type {
   ProviderRegistry,
@@ -85,7 +85,7 @@ export type {
   CLIProviderConfig,
   CompletionRequest,
   CompletionResponse,
-} from '@automatosx/provider-adapters';
+} from '@defai.digital/provider-adapters';
 
 // ============================================================================
 // Provider Configurations
@@ -202,7 +202,7 @@ async function initializeStorage(): Promise<StorageResult> {
   if (db && config.storageMode === 'sqlite') {
     try {
       // Dynamic import of SQLite stores
-      const sqliteModule = await import('@automatosx/sqlite-adapter');
+      const sqliteModule = await import('@defai.digital/sqlite-adapter');
 
       // Create SQLite-backed stores
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

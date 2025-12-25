@@ -8,7 +8,7 @@ import {
   type AgentProfile,
   validateAgentProfile,
   AgentErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import type { AgentRegistry, AgentFilter } from './types.js';
 
 /**

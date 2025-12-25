@@ -48,7 +48,7 @@ When an agent execution fails mid-workflow (provider error, timeout, user cancel
 
 ### Solution
 
-Add `ax resume` command that leverages the existing `@automatosx/agent-execution` checkpoint-manager.
+Add `ax resume` command that leverages the existing `@defai.digital/agent-execution` checkpoint-manager.
 
 ### User Stories
 
@@ -107,11 +107,11 @@ import {
   createCheckpointManager,
   createInMemoryCheckpointStorage,
   type CheckpointStorage,
-} from '@automatosx/agent-execution';
+} from '@defai.digital/agent-execution';
 import {
   type ResumeOptions,
   ResumeOptionsSchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Resume command handler
@@ -389,8 +389,8 @@ export type HistoryOptions = z.infer<typeof HistoryOptionsSchema>;
 // packages/cli/src/commands/history.ts
 
 import type { CommandHandler, CommandResult } from '../types.js';
-import { createSessionManager } from '@automatosx/session-domain';
-import { type HistoryOptions, HistoryOptionsSchema } from '@automatosx/contracts';
+import { createSessionManager } from '@defai.digital/session-domain';
+import { type HistoryOptions, HistoryOptionsSchema } from '@defai.digital/contracts';
 
 /**
  * History command handler
@@ -720,7 +720,7 @@ export type CleanupResult = z.infer<typeof CleanupResultSchema>;
 // packages/cli/src/commands/cleanup.ts
 
 import type { CommandHandler, CommandResult } from '../types.js';
-import { createRetentionManager } from '@automatosx/cross-cutting';
+import { createRetentionManager } from '@defai.digital/cross-cutting';
 
 /**
  * Cleanup command handler
@@ -889,7 +889,7 @@ export const DANGEROUS_OPERATIONS: Record<string, DangerousOperation> = {
 ```typescript
 // packages/cli/src/utils/dangerous-op-guard.ts
 
-import { DANGEROUS_OPERATIONS, type DangerousOperation } from '@automatosx/contracts';
+import { DANGEROUS_OPERATIONS, type DangerousOperation } from '@defai.digital/contracts';
 import * as readline from 'readline';
 
 export interface DangerousOpResult {

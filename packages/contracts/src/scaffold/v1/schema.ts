@@ -3,7 +3,7 @@
  *
  * Schemas for contract-first scaffolding operations.
  *
- * @module @automatosx/contracts/scaffold/v1
+ * @module @defai.digital/contracts/scaffold/v1
  */
 
 import { z } from 'zod';
@@ -26,7 +26,7 @@ export const DomainNameSchema = z
  */
 export const PackageScopeSchema = z
   .string()
-  .regex(/^@[a-z][a-z0-9-]*$/, 'Scope must start with @ followed by lowercase alphanumeric');
+  .regex(/^@[a-z][a-z0-9.-]*$/, 'Scope must start with @ followed by lowercase alphanumeric, dots, or hyphens');
 
 /**
  * Output path
@@ -109,8 +109,8 @@ export const ScaffoldDomainInputSchema = z.object({
   /** Output directory path */
   output: OutputPathSchema.optional(),
 
-  /** Package scope (e.g., @automatosx) */
-  scope: PackageScopeSchema.optional().default('@automatosx'),
+  /** Package scope (e.g., @defai.digital) */
+  scope: PackageScopeSchema.optional().default('@defai.digital'),
 
   /** Skip test generation */
   noTests: z.boolean().default(false),

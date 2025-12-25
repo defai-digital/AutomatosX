@@ -26,7 +26,7 @@ import {
   type ProviderExecuteRequest,
   type ProviderExecuteResult,
   type DiscussionProgressEvent,
-} from '@automatosx/discussion-domain';
+} from '@defai.digital/discussion-domain';
 
 // Contract types
 import {
@@ -34,7 +34,7 @@ import {
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // ============================================================================
 // Constants

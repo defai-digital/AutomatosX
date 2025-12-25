@@ -28,7 +28,7 @@ import {
   createEmptyReviewSummary,
   createReviewSummary,
   type ReviewComment,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Review Contract', () => {
   // ============================================================================

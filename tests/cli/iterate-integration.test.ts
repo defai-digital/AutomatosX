@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { parseArgs, parseTime } from '@automatosx/cli';
+import { parseArgs, parseTime } from '@defai.digital/cli';
 
 describe('Iterate CLI Integration', () => {
   describe('Parser: Iterate Flags', () => {
@@ -120,13 +120,13 @@ describe('Context Loading Integration', () => {
   });
 
   it('should detect context directory exists', async () => {
-    const { hasProjectContext } = await import('@automatosx/context-domain');
+    const { hasProjectContext } = await import('@defai.digital/context-domain');
     const result = await hasProjectContext(testDir);
     expect(result).toBe(true);
   });
 
   it('should load context files', async () => {
-    const { ContextLoader } = await import('@automatosx/context-domain');
+    const { ContextLoader } = await import('@defai.digital/context-domain');
 
     // Create a test context file
     await fs.writeFile(
@@ -143,7 +143,7 @@ describe('Context Loading Integration', () => {
   });
 
   it('should return empty context when directory does not exist', async () => {
-    const { ContextLoader } = await import('@automatosx/context-domain');
+    const { ContextLoader } = await import('@defai.digital/context-domain');
 
     const loader = new ContextLoader();
     const result = await loader.load('/non-existent-path');
@@ -155,7 +155,7 @@ describe('Context Loading Integration', () => {
 
 describe('Iterate Controller Integration', () => {
   it('should create controller with budget', async () => {
-    const { IterateController } = await import('@automatosx/iterate-domain');
+    const { IterateController } = await import('@defai.digital/iterate-domain');
 
     const controller = new IterateController();
 
@@ -170,7 +170,7 @@ describe('Iterate Controller Integration', () => {
   });
 
   it('should map intents to actions', async () => {
-    const { IterateController } = await import('@automatosx/iterate-domain');
+    const { IterateController } = await import('@defai.digital/iterate-domain');
 
     const controller = new IterateController();
     const state = controller.start({ task: 'Test' });
@@ -189,7 +189,7 @@ describe('Iterate Controller Integration', () => {
   });
 
   it('should enforce budget limits', async () => {
-    const { IterateController } = await import('@automatosx/iterate-domain');
+    const { IterateController } = await import('@defai.digital/iterate-domain');
 
     const controller = new IterateController();
 
@@ -212,7 +212,7 @@ describe('Iterate Controller Integration', () => {
 
 describe('CLI Command Registry', () => {
   it('should have iterate command registered', async () => {
-    const { createCLI } = await import('@automatosx/cli');
+    const { createCLI } = await import('@defai.digital/cli');
     const cli = createCLI();
 
     // Parse iterate command
@@ -221,7 +221,7 @@ describe('CLI Command Registry', () => {
   });
 
   it('should have call command with iterate support', async () => {
-    const { createCLI } = await import('@automatosx/cli');
+    const { createCLI } = await import('@defai.digital/cli');
     const cli = createCLI();
 
     // Parse call with iterate

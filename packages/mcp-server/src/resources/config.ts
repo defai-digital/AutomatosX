@@ -18,7 +18,7 @@ import type { MCPResource, MCPResourceContent, ResourceHandler } from '../types.
 import {
   createConfigStore,
   getConfigRepository,
-} from '@automatosx/config-domain';
+} from '@defai.digital/config-domain';
 
 // ============================================================================
 // Resource Definitions

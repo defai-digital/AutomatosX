@@ -12,12 +12,12 @@ import type {
   AgentRegistry,
   AgentExecutor,
   ToolExecutor,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 import type {
   AbilityRegistry,
   AbilityManager,
-} from '@automatosx/ability-domain';
-import type { AgentProfile } from '@automatosx/contracts';
+} from '@defai.digital/ability-domain';
+import type { AgentProfile } from '@defai.digital/contracts';
 
 // Singleton state - set by shared-registry.ts during initialization
 let _registry: AgentRegistry | null = null;

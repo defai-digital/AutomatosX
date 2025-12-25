@@ -5,8 +5,8 @@
  * Uses {{variable}} syntax for interpolation.
  */
 
-import type { DebateRole } from '@automatosx/contracts';
-import { PROVIDER_STRENGTHS } from '@automatosx/contracts';
+import type { DebateRole } from '@defai.digital/contracts';
+import { PROVIDER_STRENGTHS } from '@defai.digital/contracts';
 
 // ============================================================================
 // Provider System Prompts

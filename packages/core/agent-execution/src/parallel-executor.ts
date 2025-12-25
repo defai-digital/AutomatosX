@@ -18,7 +18,7 @@ import {
   type AgentWorkflowStep,
   createDefaultParallelExecutionConfig,
   ParallelExecutionErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Step executor function type

@@ -1,5 +1,5 @@
-import type { TraceEvent, TraceStatus } from '@automatosx/contracts';
-import type { TraceStore, TraceSummary } from '@automatosx/trace-domain';
+import type { TraceEvent, TraceStatus } from '@defai.digital/contracts';
+import type { TraceStore, TraceSummary } from '@defai.digital/trace-domain';
 import type Database from 'better-sqlite3';
 
 /**

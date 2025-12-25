@@ -10,7 +10,7 @@ import {
   createConfigStore,
   getValue,
   setValue,
-} from '@automatosx/config-domain';
+} from '@defai.digital/config-domain';
 
 // ============================================================================
 // Tool Definitions

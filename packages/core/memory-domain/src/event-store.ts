@@ -1,4 +1,4 @@
-import type { MemoryEvent, MemoryEventType } from '@automatosx/contracts';
+import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
 import type { EventStore } from './types.js';
 import { MemoryErrorCodes } from './types.js';
 

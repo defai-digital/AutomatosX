@@ -1,13 +1,13 @@
 import type { MCPTool, ToolHandler } from '../types.js';
-import type { AgentProfile, AgentResult, AgentCategory } from '@automatosx/contracts';
-import { LIMIT_AGENTS } from '@automatosx/contracts';
-import type { AgentFilter } from '@automatosx/agent-domain';
+import type { AgentProfile, AgentResult, AgentCategory } from '@defai.digital/contracts';
+import { LIMIT_AGENTS } from '@defai.digital/contracts';
+import type { AgentFilter } from '@defai.digital/agent-domain';
 import {
   getAvailableTemplates,
   createWorkflowFromTemplate,
   isValidTemplateName,
   createAgentSelectionService,
-} from '@automatosx/agent-domain';
+} from '@defai.digital/agent-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
   getSharedRegistry,

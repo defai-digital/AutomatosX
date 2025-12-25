@@ -15,7 +15,7 @@ import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createConfigStore,
   initConfigDirectory,
-} from '@automatosx/config-domain';
+} from '@defai.digital/config-domain';
 import {
   DEFAULT_CONFIG,
   KNOWN_PROVIDERS,
@@ -32,8 +32,8 @@ import {
   type AutomatosXConfig,
   type ProviderId,
   type ProviderDetectionResult,
-} from '@automatosx/contracts';
-import { CONTEXT_DIRECTORY } from '@automatosx/context-domain';
+} from '@defai.digital/contracts';
+import { CONTEXT_DIRECTORY } from '@defai.digital/context-domain';
 import {
   PROVIDER_CHECKS,
   checkProviderCLI,

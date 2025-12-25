@@ -56,8 +56,8 @@ import {
   resetDetectionAdapter,
   nullDetectionAdapter,
   type ProviderDetectionPort,
-} from '@automatosx/config-domain';
-import { DEFAULT_CONFIG, ConfigErrorCode, ConfigError } from '@automatosx/contracts';
+} from '@defai.digital/config-domain';
+import { DEFAULT_CONFIG, ConfigErrorCode, ConfigError } from '@defai.digital/contracts';
 
 describe('Config Domain', () => {
   describe('Config Operations', () => {

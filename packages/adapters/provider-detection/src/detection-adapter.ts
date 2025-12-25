@@ -13,7 +13,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { ProviderDetectionPort, DetectionOptions } from '@automatosx/config-domain';
+import type { ProviderDetectionPort, DetectionOptions } from '@defai.digital/config-domain';
 import {
   type ProviderId,
   type ProviderDetectionResult,
@@ -23,7 +23,7 @@ import {
   createDetectionSummary,
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_FORCE_KILL,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 const execAsync = promisify(exec);
 

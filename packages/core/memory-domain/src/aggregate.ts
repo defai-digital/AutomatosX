@@ -1,4 +1,4 @@
-import type { MemoryEvent } from '@automatosx/contracts';
+import type { MemoryEvent } from '@defai.digital/contracts';
 import type {
   EventStore,
   AggregateState,

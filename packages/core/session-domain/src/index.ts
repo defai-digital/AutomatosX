@@ -1,5 +1,5 @@
 /**
- * @automatosx/session-domain
+ * @defai.digital/session-domain
  *
  * Session lifecycle management for AutomatosX.
  * Tracks multi-agent collaboration, task progress, and shared state.
@@ -52,7 +52,7 @@ export type {
   StartTaskInput,
   CompleteTaskInput,
   FailTaskInput,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export {
   SessionSchema,
@@ -72,4 +72,4 @@ export {
   validateCreateSessionInput,
   validateJoinSessionInput,
   validateStartTaskInput,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

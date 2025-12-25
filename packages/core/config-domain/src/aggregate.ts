@@ -23,7 +23,7 @@ import {
   ConfigErrorCode,
   ConfigError,
   safeValidateConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { getValue, setValue } from './operations.js';
 
 // ============================================================================

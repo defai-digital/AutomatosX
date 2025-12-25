@@ -174,9 +174,9 @@ This provides a cleaner UX for the common iterate use case.
 
 ```typescript
 // New imports in call.ts
-import { ConfigResolver } from '@automatosx/config-domain';
-import { ContextLoader } from '@automatosx/context-domain';
-import { IterateController } from '@automatosx/iterate-domain';
+import { ConfigResolver } from '@defai.digital/config-domain';
+import { ContextLoader } from '@defai.digital/context-domain';
+import { IterateController } from '@defai.digital/iterate-domain';
 ```
 
 #### 6.3 Time Parsing Utility

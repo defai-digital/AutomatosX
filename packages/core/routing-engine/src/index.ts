@@ -23,11 +23,11 @@ export type {
   RoutingConstraints,
   RoutingDecision,
   RoutingRecord,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Re-export validation functions
 export {
   validateRoutingInput,
   validateRoutingDecision,
   validateRoutingRecord,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

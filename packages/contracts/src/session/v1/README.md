@@ -28,7 +28,7 @@ import {
   validateSession,
   type Session,
   type SessionStatus,
-} from '@automatosx/contracts/session/v1';
+} from '@defai.digital/contracts/session/v1';
 
 // Create a session
 const session: Session = validateSession({

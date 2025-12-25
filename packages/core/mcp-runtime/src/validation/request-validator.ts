@@ -2,12 +2,12 @@ import type {
   MCPRequestLimits,
   ValidationResult,
   ValidationError,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   DEFAULT_REQUEST_LIMITS,
   TOOL_ARRAY_FIELDS,
   getArrayLimit,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 /**
  * Validate request against limits.

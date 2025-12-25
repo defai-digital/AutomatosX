@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
-import { createMemoryEvent } from '@automatosx/contracts';
-import { createTraceEvent, createTrace } from '@automatosx/contracts';
+import { createMemoryEvent } from '@defai.digital/contracts';
+import { createTraceEvent, createTrace } from '@defai.digital/contracts';
 import {
   SqliteEventStore,
   createSqliteEventStore,
@@ -9,8 +9,8 @@ import {
   SqliteEventStoreErrorCodes,
   SqliteTraceStore,
   createSqliteTraceStore,
-} from '@automatosx/sqlite-adapter';
-import { MemoryErrorCodes } from '@automatosx/memory-domain';
+} from '@defai.digital/sqlite-adapter';
+import { MemoryErrorCodes } from '@defai.digital/memory-domain';
 
 describe('SQLite Adapter', () => {
   let db: Database.Database;

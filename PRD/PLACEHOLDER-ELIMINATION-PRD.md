@@ -139,7 +139,7 @@ A comprehensive audit revealed multiple placeholder, stub, and non-functional co
 **Changes:**
 ```typescript
 // shared-registry.ts - Add ability manager
-import { createAbilityRegistry, createAbilityManager } from '@automatosx/ability-domain';
+import { createAbilityRegistry, createAbilityManager } from '@defai.digital/ability-domain';
 
 const abilityRegistry = createAbilityRegistry();
 const abilityManager = createAbilityManager(abilityRegistry);

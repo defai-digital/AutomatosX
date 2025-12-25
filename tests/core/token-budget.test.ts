@@ -10,12 +10,12 @@ import {
   TokenBudgetError,
   createTokenBudgetAllocator,
   createInstruction,
-} from '@automatosx/token-budget';
+} from '@defai.digital/token-budget';
 import {
   DEFAULT_TOKEN_BUDGET,
   type EmbeddedInstruction,
   type TokenBudgetConfig,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Token Budget', () => {
   describe('DefaultTokenBudgetAllocator', () => {

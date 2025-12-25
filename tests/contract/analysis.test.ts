@@ -22,7 +22,7 @@ import {
   groupFindingsByCategory,
   getLanguageFromPath,
   AnalysisErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Analysis Contract', () => {
   describe('AnalysisTaskSchema', () => {

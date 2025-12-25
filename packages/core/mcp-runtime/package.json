@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/mcp-runtime",
+  "name": "@defai.digital/mcp-runtime",
   "version": "13.0.0",
   "type": "module",
   "description": "MCP runtime domain - cache, timeout, response helpers, and request validation",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

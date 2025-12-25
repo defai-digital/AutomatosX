@@ -29,7 +29,7 @@ import {
   SESSION_TRANSITIONS,
   TASK_TRANSITIONS,
   SessionErrorCode,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Session Contract', () => {
   describe('SessionSchema', () => {

@@ -65,7 +65,7 @@ import {
   createMonitoringAlert,
   // Error codes
   MLLifecycleErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('ML Lifecycle Contract', () => {
   describe('ExperimentStatusSchema', () => {

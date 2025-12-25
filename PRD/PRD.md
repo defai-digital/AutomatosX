@@ -83,16 +83,16 @@ AutomatosX provides:
 
 | Package | Purpose | Dependencies |
 |---------|---------|--------------|
-| `@automatosx/contracts` | Zod schemas - Single Source of Truth | zod |
-| `@automatosx/workflow-engine` | Step-by-step workflow execution | contracts |
-| `@automatosx/routing-engine` | Deterministic model selection | contracts |
-| `@automatosx/memory-domain` | Event-sourced conversation state | contracts |
-| `@automatosx/trace-domain` | Execution tracing and replay | contracts |
-| `@automatosx/provider-adapters` | CLI-based LLM integration | contracts, routing-engine |
-| `@automatosx/sqlite` | SQLite persistence adapters | contracts |
-| `@automatosx/guard` | Post-check governance gates | contracts, trace-domain |
-| `@automatosx/mcp-server` | Model Context Protocol server | all core domains |
-| `@automatosx/cli` | Command-line interface | all packages |
+| `@defai.digital/contracts` | Zod schemas - Single Source of Truth | zod |
+| `@defai.digital/workflow-engine` | Step-by-step workflow execution | contracts |
+| `@defai.digital/routing-engine` | Deterministic model selection | contracts |
+| `@defai.digital/memory-domain` | Event-sourced conversation state | contracts |
+| `@defai.digital/trace-domain` | Execution tracing and replay | contracts |
+| `@defai.digital/provider-adapters` | CLI-based LLM integration | contracts, routing-engine |
+| `@defai.digital/sqlite` | SQLite persistence adapters | contracts |
+| `@defai.digital/guard` | Post-check governance gates | contracts, trace-domain |
+| `@defai.digital/mcp-server` | Model Context Protocol server | all core domains |
+| `@defai.digital/cli` | Command-line interface | all packages |
 
 ---
 

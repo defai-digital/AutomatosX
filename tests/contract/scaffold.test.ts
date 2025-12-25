@@ -36,7 +36,7 @@ import {
   ScaffoldProjectOutputSchema,
   ScaffoldErrorCode,
   CONTRACT_VERSIONS,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Scaffold Contract', () => {
   describe('CONTRACT_VERSIONS', () => {
@@ -137,7 +137,7 @@ describe('Scaffold Contract', () => {
   // ============================================================================
   describe('PackageScopeSchema (INV-SCF-003)', () => {
     it('should accept valid scopes', () => {
-      const validScopes = ['@myorg', '@automatosx', '@company123', '@a'];
+      const validScopes = ['@myorg', '@defai.digital', '@company123', '@a'];
 
       for (const scope of validScopes) {
         const result = PackageScopeSchema.safeParse(scope);
@@ -348,7 +348,7 @@ describe('Scaffold Contract', () => {
     it('should apply default scope', () => {
       const input = { name: 'order' };
       const result = ScaffoldDomainInputSchema.parse(input);
-      expect(result.scope).toBe('@automatosx');
+      expect(result.scope).toBe('@defai.digital');
     });
 
     it('should apply default flags', () => {

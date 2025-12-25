@@ -36,7 +36,7 @@ import {
   createInitialHealthStatus,
   type ProviderPort,
   type ProviderRegistryPort,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 // Simple UUID generation for tests
 const uuid = () => crypto.randomUUID();
 

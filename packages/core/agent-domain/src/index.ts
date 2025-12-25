@@ -1,5 +1,5 @@
 /**
- * @automatosx/agent-domain
+ * @defai.digital/agent-domain
  *
  * Agent profiles and orchestration for AutomatosX.
  * Manages specialized AI agents with defined workflows, personalities,
@@ -156,7 +156,7 @@ export type {
   OrchestrationConfig,
   SelectionMetadata,
   RedirectRule,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export {
   AgentProfileSchema,
@@ -169,4 +169,4 @@ export {
   validateAgentProfile,
   safeValidateAgentProfile,
   validateAgentRunOptions,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

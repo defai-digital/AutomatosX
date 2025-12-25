@@ -12,7 +12,7 @@ import {
   type RoutingInput,
   type RoutingDecision,
   type RoutingRecord,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 describe('Routing Decision Contract V1', () => {
   describe('Schema Validation', () => {

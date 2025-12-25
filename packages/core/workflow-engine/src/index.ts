@@ -49,14 +49,14 @@ export type {
   RetryPolicy,
   SchemaReference,
   StepType,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Re-export validation schemas
 export {
   WorkflowSchema,
   WorkflowStepSchema,
   RetryPolicySchema,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Workflow Loader exports
 export {
@@ -93,4 +93,4 @@ export type {
   GuardCheckStatus,
   StageProgressEvent,
   StageProgressStatus,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';

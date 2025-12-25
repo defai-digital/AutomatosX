@@ -6,8 +6,8 @@ import {
   defaultStepExecutor,
   type WorkflowInfo,
   type StepExecutor,
-} from '@automatosx/workflow-engine';
-import { LIMIT_WORKFLOWS } from '@automatosx/contracts';
+} from '@defai.digital/workflow-engine';
+import { LIMIT_WORKFLOWS } from '@defai.digital/contracts';
 import { getStepExecutor } from '../bootstrap.js';
 
 // Check if we're in test environment

@@ -34,7 +34,7 @@ import {
   ConfigSchema,
   validateConfig,
   type Config,
-} from '@automatosx/contracts/config/v1';
+} from '@defai.digital/contracts/config/v1';
 
 // Validate configuration
 const config: Config = validateConfig({

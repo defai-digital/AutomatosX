@@ -1,5 +1,5 @@
 import type { CommandResult, CLIOptions } from '../types.js';
-import type { TraceEvent } from '@automatosx/contracts';
+import type { TraceEvent } from '@defai.digital/contracts';
 
 /**
  * Trace summary for display

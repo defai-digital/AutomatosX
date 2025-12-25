@@ -13,7 +13,7 @@
  * - INV-AGT-SEL-006: notForTasks reduce confidence when matched
  */
 
-import type { AgentProfile } from '@automatosx/contracts';
+import type { AgentProfile } from '@defai.digital/contracts';
 import type {
   AgentRegistry,
   AgentSelector,

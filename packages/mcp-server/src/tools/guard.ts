@@ -5,12 +5,12 @@ import {
   resolvePolicy,
   executeGates,
   type GuardResult,
-} from '@automatosx/guard';
+} from '@defai.digital/guard';
 import {
   createSessionStore,
   type SessionStore,
-} from '@automatosx/session-domain';
-import { LIMIT_GUARD_POLICIES } from '@automatosx/contracts';
+} from '@defai.digital/session-domain';
+import { LIMIT_GUARD_POLICIES } from '@defai.digital/contracts';
 
 // Lazy-initialized session store for guard operations
 let sessionStore: SessionStore | null = null;

@@ -17,7 +17,7 @@ import {
   sortCommentsBySeverity,
   ReviewErrorCode,
   TIMEOUT_PROVIDER_DEFAULT,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { buildReviewPrompt } from './focus-modes.js';
 import { parseReviewResponse, filterCommentsByConfidence } from './comment-builder.js';
 import { formatReviewAsMarkdown, formatCompactSummary } from './markdown-formatter.js';

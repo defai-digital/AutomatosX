@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/guard",
+  "name": "@defai.digital/guard",
   "version": "13.0.0",
   "type": "module",
   "description": "Post-check AI coding governance engine for AutomatosX",
@@ -36,7 +36,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*",
-    "@automatosx/trace-domain": "workspace:*"
+    "@defai.digital/contracts": "workspace:*",
+    "@defai.digital/trace-domain": "workspace:*"
   }
 }

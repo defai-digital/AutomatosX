@@ -21,7 +21,7 @@ import {
   MAX_CONTEXT_FILE_SIZE,
   MAX_CONTEXT_TOTAL_SIZE,
   CONTEXT_DIRECTORY,
-} from '@automatosx/context-domain';
+} from '@defai.digital/context-domain';
 
 describe('Context Domain', () => {
   let testDir: string;

@@ -6,9 +6,9 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@automatosx/contracts": ["../../contracts/src/index.ts"],
-      "@automatosx/contracts/resilience/v1": ["../../contracts/src/resilience/v1/index.ts"],
-      "@automatosx/contracts/resilience/v1/index.js": ["../../contracts/src/resilience/v1/index.ts"]
+      "@defai.digital/contracts": ["../../contracts/src/index.ts"],
+      "@defai.digital/contracts/resilience/v1": ["../../contracts/src/resilience/v1/index.ts"],
+      "@defai.digital/contracts/resilience/v1/index.js": ["../../contracts/src/resilience/v1/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],

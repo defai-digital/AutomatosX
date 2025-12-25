@@ -96,8 +96,8 @@ import {
   createCheckpointManager,
   createInMemoryCheckpointStorage,
   type CheckpointStorage,
-} from '@automatosx/agent-execution';
-import { type ResumeOptions, ResumeOptionsSchema } from '@automatosx/contracts';
+} from '@defai.digital/agent-execution';
+import { type ResumeOptions, ResumeOptionsSchema } from '@defai.digital/contracts';
 
 export const resumeCommand: CommandHandler = async (
   args: string[],
@@ -271,7 +271,7 @@ const COMMANDS: Record<string, CommandHandler> = {
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { resumeCommand } from '@automatosx/cli';
+import { resumeCommand } from '@defai.digital/cli';
 
 describe('Resume Command', () => {
   it('should require agent or checkpoint option', async () => {
@@ -351,7 +351,7 @@ export * from './history.js';
 
 ```typescript
 import type { CommandHandler, CommandResult } from '../types.js';
-import { type HistoryOptions, HistoryOptionsSchema } from '@automatosx/contracts';
+import { type HistoryOptions, HistoryOptionsSchema } from '@defai.digital/contracts';
 
 export const historyCommand: CommandHandler = async (
   _args: string[],
@@ -555,7 +555,7 @@ export type CleanupResult = z.infer<typeof CleanupResultSchema>;
 
 ```typescript
 import type { CommandHandler, CommandResult } from '../types.js';
-import { createInMemoryCheckpointStorage } from '@automatosx/agent-execution';
+import { createInMemoryCheckpointStorage } from '@defai.digital/agent-execution';
 
 export const cleanupCommand: CommandHandler = async (
   _args: string[],
@@ -663,7 +663,7 @@ export const DANGEROUS_OPERATIONS: Record<string, DangerousOperation> = {
 **File**: `packages/cli/src/utils/dangerous-op-guard.ts`
 
 ```typescript
-import { DANGEROUS_OPERATIONS } from '@automatosx/contracts';
+import { DANGEROUS_OPERATIONS } from '@defai.digital/contracts';
 import * as readline from 'readline';
 
 export interface DangerousOpResult {

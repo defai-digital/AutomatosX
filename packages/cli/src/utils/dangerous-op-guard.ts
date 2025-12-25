@@ -12,7 +12,7 @@ import {
   type DangerousOpCheckResult,
   type DangerousOperation,
   CLIErrorCodes,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 export interface DangerousOpOptions {
   /** Skip confirmation (--force flag) */

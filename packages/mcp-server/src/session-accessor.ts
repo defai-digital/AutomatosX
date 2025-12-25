@@ -14,7 +14,7 @@ import {
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type SessionStore,
   type SessionManager,
-} from '@automatosx/session-domain';
+} from '@defai.digital/session-domain';
 
 // Lazy-initialized singleton instances
 let _store: SessionStore | null = null;

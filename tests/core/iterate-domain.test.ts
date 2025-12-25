@@ -21,8 +21,8 @@ import {
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_MAX_TIME_MS,
   DEFAULT_MAX_CONSECUTIVE_ERRORS,
-} from '@automatosx/iterate-domain';
-import type { IterateIntent, IterateState } from '@automatosx/contracts';
+} from '@defai.digital/iterate-domain';
+import type { IterateIntent, IterateState } from '@defai.digital/contracts';
 
 describe('Iterate Domain', () => {
   describe('BudgetTracker', () => {

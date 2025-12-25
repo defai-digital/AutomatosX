@@ -13,9 +13,9 @@ import {
   createAgentLoader,
   DEFAULT_AGENT_DOMAIN_CONFIG,
   type AgentRegistry,
-} from '@automatosx/agent-domain';
-import type { AgentProfile } from '@automatosx/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME } from '@automatosx/contracts';
+} from '@defai.digital/agent-domain';
+import type { AgentProfile } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME } from '@defai.digital/contracts';
 
 // Storage path for persistent agents (matches MCP server)
 const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
@@ -263,7 +263,17 @@ async function registerAgent(options: CLIOptions): Promise<CommandResult> {
       };
     }
 
-    const profile: AgentProfile = JSON.parse(options.input);
+    let profile: AgentProfile;
+    try {
+      profile = JSON.parse(options.input);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid JSON input. Please provide a valid JSON string.',
+        data: undefined,
+        exitCode: 1,
+      };
+    }
 
     const registry = await getRegistry();
     await registry.register(profile);
@@ -302,7 +312,20 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
   try {
     const registry = await getRegistry();
     const executor = createAgentExecutor(registry, DEFAULT_AGENT_DOMAIN_CONFIG);
-    const input = options.input !== undefined ? JSON.parse(options.input) : {};
+
+    let input: Record<string, unknown> = {};
+    if (options.input !== undefined) {
+      try {
+        input = JSON.parse(options.input);
+      } catch {
+        return {
+          success: false,
+          message: 'Invalid JSON input. Please provide a valid JSON string.',
+          data: undefined,
+          exitCode: 1,
+        };
+      }
+    }
 
     const result = await executor.execute(agentId, input);
 

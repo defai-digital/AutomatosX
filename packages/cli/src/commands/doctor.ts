@@ -15,7 +15,7 @@ import { constants } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
-import { DATA_DIR_NAME } from '@automatosx/contracts';
+import { DATA_DIR_NAME } from '@defai.digital/contracts';
 
 const execAsync = promisify(exec);
 

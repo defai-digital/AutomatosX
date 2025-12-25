@@ -84,10 +84,10 @@ automatosx/
 
 | Package | Description | Key Exports |
 |---------|-------------|-------------|
-| `@automatosx/workflow-engine` | Workflow execution | `createWorkflowRunner`, `WorkflowRunner` |
-| `@automatosx/routing-engine` | Model routing decisions | `createRoutingEngine`, `RoutingEngine` |
-| `@automatosx/memory-domain` | Event store interface | `createMemoryDomain`, `MemoryDomain` |
-| `@automatosx/trace-domain` | Trace collection | `createTraceDomain`, `TraceDomain` |
+| `@defai.digital/workflow-engine` | Workflow execution | `createWorkflowRunner`, `WorkflowRunner` |
+| `@defai.digital/routing-engine` | Model routing decisions | `createRoutingEngine`, `RoutingEngine` |
+| `@defai.digital/memory-domain` | Event store interface | `createMemoryDomain`, `MemoryDomain` |
+| `@defai.digital/trace-domain` | Trace collection | `createTraceDomain`, `TraceDomain` |
 
 **Key Features:**
 - Step execution with retry policies
@@ -102,7 +102,7 @@ automatosx/
 
 ### Phase 3: Adapters
 
-**Package:** `@automatosx/sqlite-adapter`
+**Package:** `@defai.digital/sqlite-adapter`
 
 **Stores:**
 - `WorkflowStore` - Workflow CRUD operations
@@ -121,7 +121,7 @@ automatosx/
 
 ### Phase 4: Application Layer
 
-**CLI (`@automatosx/cli`):**
+**CLI (`@defai.digital/cli`):**
 
 | Command | Description |
 |---------|-------------|
@@ -131,7 +131,7 @@ automatosx/
 | `help` | Show help |
 | `version` | Show version |
 
-**MCP Server (`@automatosx/mcp-server`):**
+**MCP Server (`@defai.digital/mcp-server`):**
 
 | Tool | Description |
 |------|-------------|

@@ -2,7 +2,7 @@ import type {
   MCPCacheStats,
   MCPRequestLimits,
   ValidationError,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import { validateRequest } from '../validation/request-validator.js';
 
 // ============================================================================

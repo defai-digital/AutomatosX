@@ -1,5 +1,5 @@
 {
-  "name": "@automatosx/cross-cutting",
+  "name": "@defai.digital/cross-cutting",
   "version": "13.0.0",
   "type": "module",
   "description": "Cross-cutting concerns for AutomatosX - DLQ, Saga, Retention, Idempotency",
@@ -36,6 +36,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@automatosx/contracts": "workspace:*"
+    "@defai.digital/contracts": "workspace:*"
   }
 }

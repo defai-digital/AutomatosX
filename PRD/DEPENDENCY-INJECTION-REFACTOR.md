@@ -15,16 +15,16 @@ This PRD details the refactoring required to eliminate the remaining 14 dependen
 
 ```
 mcp-server-no-adapters (3 violations):
-  - shared-registry.ts → @automatosx/provider-adapters
+  - shared-registry.ts → @defai.digital/provider-adapters
 
 core-only-contracts (4 violations):
-  - agent-domain/executor.ts → @automatosx/agent-execution
-  - agent-domain/enhanced-executor.ts → @automatosx/agent-execution
+  - agent-domain/executor.ts → @defai.digital/agent-execution
+  - agent-domain/enhanced-executor.ts → @defai.digital/agent-execution
 
 cli-no-adapters (7 violations):
-  - utils/storage-instances.ts → @automatosx/sqlite-adapter
-  - utils/provider-factory.ts → @automatosx/provider-adapters
-  - commands/call.ts → @automatosx/provider-adapters
+  - utils/storage-instances.ts → @defai.digital/sqlite-adapter
+  - utils/provider-factory.ts → @defai.digital/provider-adapters
+  - commands/call.ts → @defai.digital/provider-adapters
 ```
 
 ### Root Cause
@@ -113,16 +113,16 @@ import type {
   CheckpointStoragePort,
   ProviderRegistryPort,
   ProviderPort,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Adapter imports - ONLY allowed in composition root
-import { createProviderRegistry } from '@automatosx/provider-adapters';
+import { createProviderRegistry } from '@defai.digital/provider-adapters';
 import {
   createSqliteCheckpointStorage,
   createSqliteTraceStore,
   createSqliteDeadLetterStorage,
-} from '@automatosx/sqlite-adapter';
-import { createInMemoryCheckpointStorage } from '@automatosx/agent-execution';
+} from '@defai.digital/sqlite-adapter';
+import { createInMemoryCheckpointStorage } from '@defai.digital/agent-execution';
 
 import { getDatabase, initializeDatabase } from './utils/database.js';
 
@@ -244,12 +244,12 @@ async function main() {
 
 **Before:**
 ```typescript
-import { createSqliteCheckpointStorage } from '@automatosx/sqlite-adapter'; // VIOLATION
+import { createSqliteCheckpointStorage } from '@defai.digital/sqlite-adapter'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { CheckpointStoragePort } from '@automatosx/contracts';
+import type { CheckpointStoragePort } from '@defai.digital/contracts';
 import { getCheckpointStorage } from '../bootstrap.js';
 
 // No adapter imports - uses bootstrap-provided instance
@@ -262,12 +262,12 @@ export function getCheckpointStorage(): CheckpointStoragePort {
 
 **Before:**
 ```typescript
-import { createProviderRegistry } from '@automatosx/provider-adapters'; // VIOLATION
+import { createProviderRegistry } from '@defai.digital/provider-adapters'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { ProviderRegistryPort, ProviderPort } from '@automatosx/contracts';
+import type { ProviderRegistryPort, ProviderPort } from '@defai.digital/contracts';
 import { getProviderRegistry } from '../bootstrap.js';
 
 export function getProviderRegistry(): ProviderRegistryPort {
@@ -283,7 +283,7 @@ export function getProvider(providerId: string): ProviderPort | undefined {
 
 **Before:**
 ```typescript
-import { createProviderRegistry } from '@automatosx/provider-adapters'; // VIOLATION
+import { createProviderRegistry } from '@defai.digital/provider-adapters'; // VIOLATION
 ```
 
 **After:**
@@ -314,10 +314,10 @@ const provider = registry.getProvider(providerId);
 import type {
   ProviderRegistryPort,
   CheckpointStoragePort,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 
 // Adapter imports - ONLY allowed in composition root
-import { createProviderRegistry } from '@automatosx/provider-adapters';
+import { createProviderRegistry } from '@defai.digital/provider-adapters';
 
 // ============================================================================
 // Dependency Container
@@ -364,12 +364,12 @@ export function getProviderRegistry(): ProviderRegistryPort {
 
 **Before:**
 ```typescript
-import { createProviderRegistry } from '@automatosx/provider-adapters'; // VIOLATION
+import { createProviderRegistry } from '@defai.digital/provider-adapters'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { ProviderRegistryPort } from '@automatosx/contracts';
+import type { ProviderRegistryPort } from '@defai.digital/contracts';
 import { getProviderRegistry } from './bootstrap.js';
 
 // Use bootstrap-provided registry
@@ -411,7 +411,7 @@ The agent-domain imports from agent-execution for `DelegationTracker`:
 
 ```typescript
 // Current (VIOLATION)
-import { createDelegationTracker } from '@automatosx/agent-execution';
+import { createDelegationTracker } from '@defai.digital/agent-execution';
 ```
 
 #### 3.2 Solution: Move Interface to Contracts, Keep Implementation in agent-execution
@@ -422,12 +422,12 @@ import { createDelegationTracker } from '@automatosx/agent-execution';
 
 **Before:**
 ```typescript
-import { createDelegationTracker } from '@automatosx/agent-execution'; // VIOLATION
+import { createDelegationTracker } from '@defai.digital/agent-execution'; // VIOLATION
 ```
 
 **After:**
 ```typescript
-import type { DelegationTrackerPort } from '@automatosx/contracts';
+import type { DelegationTrackerPort } from '@defai.digital/contracts';
 
 export class DefaultAgentExecutor implements AgentExecutor {
   private readonly delegationTracker: DelegationTrackerPort;
@@ -451,7 +451,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
 **Modify:** `packages/core/agent-domain/src/types.ts`
 
 ```typescript
-import type { DelegationTrackerPort } from '@automatosx/contracts';
+import type { DelegationTrackerPort } from '@defai.digital/contracts';
 
 export interface AgentDomainConfig {
   // ... existing fields
@@ -470,7 +470,7 @@ Applications (CLI, MCP Server) provide the delegation tracker:
 
 ```typescript
 // In CLI or MCP Server bootstrap
-import { createDelegationTracker } from '@automatosx/agent-execution';
+import { createDelegationTracker } from '@defai.digital/agent-execution';
 
 const config: AgentDomainConfig = {
   delegationTracker: createDelegationTracker({ maxDepth: 5 }),
@@ -619,7 +619,7 @@ After refactoring, update `.dependency-cruiser.cjs` to allow bootstrap modules t
 
 ## Appendix: Port Interface Reference
 
-### From `@automatosx/contracts`
+### From `@defai.digital/contracts`
 
 ```typescript
 // Provider Ports

@@ -4,7 +4,7 @@
  * Exports all consensus implementations and a factory for getting the right executor.
  */
 
-import type { ConsensusMethod } from '@automatosx/contracts';
+import type { ConsensusMethod } from '@defai.digital/contracts';
 import type { ConsensusExecutor } from '../types.js';
 import { SynthesisConsensus } from './synthesis.js';
 import { VotingConsensus } from './voting.js';

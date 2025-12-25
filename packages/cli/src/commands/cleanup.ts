@@ -18,14 +18,14 @@ import {
   type CleanupResult,
   type CleanupTypeResult,
   type CleanupDataType,
-} from '@automatosx/contracts';
+} from '@defai.digital/contracts';
 import {
   createSessionManager,
   createSessionStore,
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type SessionManager,
   type SessionStore,
-} from '@automatosx/session-domain';
+} from '@defai.digital/session-domain';
 import {
   getCheckpointStorage,
   getTraceStore,

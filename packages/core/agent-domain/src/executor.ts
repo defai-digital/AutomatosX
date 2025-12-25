@@ -639,10 +639,10 @@ export class DefaultAgentExecutor implements AgentExecutor {
   } {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    const promise = new Promise<StepExecutionResult>((_, reject) => {
+    const promise = new Promise<StepExecutionResult>((resolve) => {
       timeoutId = setTimeout(
         () =>
-          { reject({
+          { resolve({
             success: false,
             error: {
               code: AgentErrorCode.AGENT_STAGE_FAILED,

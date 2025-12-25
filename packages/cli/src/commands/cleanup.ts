@@ -40,11 +40,11 @@ let sessionManager: SessionManager | undefined;
  * Get or create shared session instances
  */
 function getSessionInstances(): { store: SessionStore; manager: SessionManager } {
-  if (sessionStore === undefined) {
+  if (sessionStore === undefined || sessionManager === undefined) {
     sessionStore = createSessionStore();
     sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
   }
-  return { store: sessionStore, manager: sessionManager! };
+  return { store: sessionStore, manager: sessionManager };
 }
 
 /**

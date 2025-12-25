@@ -258,7 +258,7 @@ export async function updateCommand(
 
       // 4. Show changelog
       const changelog = await showChangelog(latestVersion);
-      console.log('\nWhats new:');
+      console.log('\nWhat\'s new:');
       console.log(changelog);
 
       // 5. If only checking, exit here

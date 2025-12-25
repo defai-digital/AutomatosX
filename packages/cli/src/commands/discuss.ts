@@ -262,7 +262,8 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     } else if (arg === '--pattern' && i + 1 < args.length) {
       pattern = args[++i] as DiscussionPattern;
     } else if (arg === '--rounds' && i + 1 < args.length) {
-      rounds = parseInt(args[++i] ?? '2', 10);
+      const parsed = parseInt(args[++i] ?? '2', 10);
+      if (!isNaN(parsed)) rounds = parsed;
     } else if (arg === '--consensus' && i + 1 < args.length) {
       consensus = args[++i] as ConsensusMethod;
     } else if (arg === '--synthesizer' && i + 1 < args.length) {
@@ -270,7 +271,8 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     } else if (arg === '--context' && i + 1 < args.length) {
       context = args[++i];
     } else if (arg === '--timeout' && i + 1 < args.length) {
-      timeout = parseInt(args[++i] ?? '60000', 10);
+      const parsed = parseInt(args[++i] ?? '60000', 10);
+      if (!isNaN(parsed)) timeout = parsed;
     }
     // Participant options (agents and providers)
     else if (arg === '--participants' && i + 1 < args.length) {
@@ -279,34 +281,40 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
       participants = parseParticipantList(participantStr);
     } else if (arg === '--agent-weight' && i + 1 < args.length) {
       // Agent weight multiplier (0.5 - 3.0, default 1.5)
-      agentWeight = Math.max(0.5, Math.min(3.0, parseFloat(args[++i] ?? '1.5')));
+      const parsed = parseFloat(args[++i] ?? '1.5');
+      if (!isNaN(parsed)) agentWeight = Math.max(0.5, Math.min(3.0, parsed));
     }
     // Recursive discussion options
     else if (arg === '--recursive' || arg === '-r') {
       recursive = true;
     } else if (arg === '--max-depth' && i + 1 < args.length) {
-      maxDepth = parseInt(args[++i] ?? '2', 10);
+      const parsed = parseInt(args[++i] ?? '2', 10);
+      if (!isNaN(parsed)) maxDepth = parsed;
       recursive = true; // Implies recursive
     } else if (arg === '--timeout-strategy' && i + 1 < args.length) {
       timeoutStrategy = args[++i] as TimeoutStrategy;
     } else if (arg === '--budget' && i + 1 < args.length) {
       // Parse budget like "180s" or "180000"
       const budgetStr = args[++i] ?? '180000';
+      let parsed: number;
       if (budgetStr.endsWith('s')) {
-        totalBudget = parseInt(budgetStr.slice(0, -1), 10) * 1000;
+        parsed = parseInt(budgetStr.slice(0, -1), 10) * 1000;
       } else if (budgetStr.endsWith('m')) {
-        totalBudget = parseInt(budgetStr.slice(0, -1), 10) * 60000;
+        parsed = parseInt(budgetStr.slice(0, -1), 10) * 60000;
       } else {
-        totalBudget = parseInt(budgetStr, 10);
+        parsed = parseInt(budgetStr, 10);
       }
+      if (!isNaN(parsed)) totalBudget = parsed;
     } else if (arg === '--max-calls' && i + 1 < args.length) {
-      maxCalls = parseInt(args[++i] ?? '20', 10);
+      const parsed = parseInt(args[++i] ?? '20', 10);
+      if (!isNaN(parsed)) maxCalls = parsed;
     } else if (arg === '--early-exit') {
       earlyExit = true;
     } else if (arg === '--no-early-exit') {
       earlyExit = false;
     } else if (arg === '--confidence-threshold' && i + 1 < args.length) {
-      confidenceThreshold = parseFloat(args[++i] ?? '0.9');
+      const parsed = parseFloat(args[++i] ?? '0.9');
+      if (!isNaN(parsed)) confidenceThreshold = parsed;
     } else if (arg !== undefined && !arg.startsWith('-')) {
       // Positional argument is the topic
       if (topic === undefined) {

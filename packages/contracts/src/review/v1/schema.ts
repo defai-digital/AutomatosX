@@ -79,6 +79,22 @@ export const ReviewRequestSchema = z.object({
 export type ReviewRequest = z.infer<typeof ReviewRequestSchema>;
 
 // ============================================================================
+// Review List Request (for listing past reviews)
+// ============================================================================
+
+/**
+ * Review list request schema - for listing past review results
+ */
+export const ReviewListInputSchema = z.object({
+  /** Filter by focus mode */
+  focus: ReviewFocusSchema.optional(),
+
+  /** Maximum number of results */
+  limit: z.number().int().min(1).max(50).default(10),
+});
+export type ReviewListInput = z.infer<typeof ReviewListInputSchema>;
+
+// ============================================================================
 // Review Comment (Individual Finding)
 // ============================================================================
 

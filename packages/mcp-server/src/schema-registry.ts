@@ -148,6 +148,7 @@ import {
   ScaffoldGuardOutputSchema,
   // Review tool schemas
   ReviewRequestSchema,
+  ReviewListInputSchema,
   ReviewResultSchema,
   // Discussion tool schemas
   DiscussionRequestSchema,
@@ -255,7 +256,7 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
 
   // Review tools (2)
   review_analyze: ReviewRequestSchema,
-  review_list: ReviewRequestSchema, // Uses same schema with empty paths
+  review_list: ReviewListInputSchema,
 
   // Discussion tools (2)
   discuss: DiscussionRequestSchema,

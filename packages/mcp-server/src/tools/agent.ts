@@ -407,6 +407,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
                 stepId: s.stepId,
                 success: s.success,
                 durationMs: s.durationMs,
+                error: s.error,
               })),
               totalDurationMs: result.totalDurationMs,
               error: result.error,

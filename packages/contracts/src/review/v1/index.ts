@@ -10,6 +10,8 @@ export {
   type ReviewFocus,
   // Request/Response
   ReviewRequestSchema,
+  ReviewListInputSchema,
+  type ReviewListInput,
   ReviewCommentSeveritySchema,
   ReviewCommentSchema,
   ReviewSummarySchema,

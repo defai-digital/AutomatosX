@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/iterate-domain",
-  "version": "13.1.3",
+  "version": "13.1.4",
   "type": "module",
   "description": "Iterate mode for AutomatosX - autonomous execution with structured intent and safety controls",
   "license": "Apache-2.0",

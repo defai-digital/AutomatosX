@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/agent-execution",
-  "version": "13.1.3",
+  "version": "13.1.4",
   "type": "module",
   "description": "Agent execution domain for AutomatosX - checkpoints, delegation, parallel execution",
   "license": "Apache-2.0",

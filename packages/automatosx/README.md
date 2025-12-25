@@ -1,6 +1,6 @@
 # AutomatosX
 
-**AI-powered workflow automation with multi-provider orchestration**
+**AI orchestration for teams who need governed, multi-provider automation**
 
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
@@ -9,76 +9,54 @@
 
 ---
 
-## Installation
+## Install
 
 ```bash
 npm install -g @defai.digital/automatosx
+ax setup
+ax doctor
 ```
+
+## Why AutomatosX
+
+- **Multi-provider routing** - Claude, Gemini, Codex, Qwen, GLM, Grok
+- **Governed automation** - Policy-driven guardrails and audit-ready traces
+- **Contract-first** - Zod schemas keep workflows and agents type-safe
+- **MCP-native** - Ships with MCP server for IDE assistant integration
 
 ## Quick Start
 
 ```bash
-# Initialize configuration and detect providers
-ax setup
+# Call a provider
+ax call claude "Explain this code"
 
-# Verify installation
-ax doctor
+# Run a workflow
+ax run code-reviewer --input '{"files":["src/index.ts"]}'
 
-# Make a provider call
-ax call claude "Hello, world!"
+# Review code
+ax review analyze src/ --focus security
+
+# Multi-model discussion
+ax discuss "Compare REST vs GraphQL" --providers claude,gemini
 ```
-
-## Features
-
-- **Multi-Provider Support**: Claude, Gemini, Codex, Qwen, GLM, Grok
-- **Deterministic Routing**: Risk-level and capability-based model selection
-- **Event-Sourced Memory**: Temporal consistency with full replay capability
-- **Execution Tracing**: Complete audit trail for all AI decisions
-- **Guard System**: Policy-driven governance for AI-generated code
-- **MCP Server**: Model Context Protocol integration for AI assistants
 
 ## CLI Commands
 
 ```bash
-# System setup and health
-ax setup                          # Initialize configuration
-ax doctor                         # Check all providers
-
-# Provider calls
-ax call claude "Your prompt"      # Direct provider call
-ax call gemini "Your prompt"
-
-# Workflow execution
-ax run <workflow-id>              # Execute workflow
-ax list                           # List workflows
-
-# Agent management
-ax agent list                     # List agents
-ax agent run <id>                 # Execute an agent
-
-# Code review
-ax review analyze src/            # Analyze code
-ax review analyze src/ --focus security
-
-# Multi-model discussion
-ax discuss "Your topic" --pattern synthesis
-ax discuss quick "Quick question"
-```
-
-## MCP Server
-
-Start the MCP server for AI assistant integration:
-
-```bash
-automatosx mcp server
+ax setup                    # Initialize configuration
+ax doctor                   # Check provider health
+ax call <provider> "prompt" # Direct provider call
+ax run <workflow>           # Execute workflow
+ax agent run <id>           # Execute agent
+ax review analyze <path>    # Analyze code
+ax discuss "<topic>"        # Multi-model discussion
+ax mcp server               # Start MCP server
 ```
 
 ## Documentation
 
-Full documentation available at: https://github.com/defai-digital/automatosx
+Full documentation: https://github.com/defai-digital/automatosx
 
 ## License
 
-Apache-2.0 - See [LICENSE](https://github.com/defai-digital/automatosx/blob/main/LICENSE) for details.
-
-**© 2024-2025 DEFAI Private Limited. All rights reserved.**
+Apache-2.0

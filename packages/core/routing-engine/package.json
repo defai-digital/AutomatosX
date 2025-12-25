@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/routing-engine",
-  "version": "13.1.3",
+  "version": "13.1.4",
   "type": "module",
   "description": "Routing engine - deterministic model selection following contract invariants",
   "license": "Apache-2.0",

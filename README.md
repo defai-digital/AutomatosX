@@ -3,11 +3,9 @@
 **AI-powered workflow automation with multi-provider orchestration**
 
 [![npm version](https://img.shields.io/npm/v/@defai.digital/cli.svg)](https://www.npmjs.com/package/@defai.digital/cli)
-[![downloads](https://img.shields.io/npm/dm/@defai.digital/cli.svg)](https://npm-stat.com/charts.html?package=%40automatosx%2Fcli&from=2025-04-01)
-[![CI](https://github.com/defai-digital/automatosx/actions/workflows/ci.yml/badge.svg)](https://github.com/defai-digital/automatosx/actions/workflows/ci.yml)
-[![macOS](https://img.shields.io/badge/macOS-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
-[![Windows](https://img.shields.io/badge/Windows-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-supported-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![macOS](https://img.shields.io/badge/macOS-26%2B-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![Windows](https://img.shields.io/badge/Windows-11%2B-brightgreen.svg)](https://github.com/defai-digital/automatosx)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-brightgreen.svg)](https://github.com/defai-digital/automatosx)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
@@ -31,6 +29,14 @@ AutomatosX is a contract-first AI orchestration platform that unifies multiple L
 ---
 
 ## Installation
+
+### Supported Platforms
+
+| Platform | Minimum Version |
+|----------|-----------------|
+| macOS | 26+ |
+| Windows | 11+ |
+| Ubuntu | 24.04+ |
 
 ### Prerequisites
 

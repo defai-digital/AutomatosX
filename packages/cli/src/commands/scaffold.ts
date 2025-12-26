@@ -617,7 +617,7 @@ function processTemplate(template: string, variables: Record<string, string>): s
   const helpers: Record<string, (...args: string[]) => string> = {
     pascalCase: (s) => toPascalCase(s),
     upperCase: (s) => toUpperCase(s),
-    substring: (s, start, end) => substring(s, parseInt(start), parseInt(end)),
+    substring: (s, start, end) => substring(s, parseInt(start, 10), parseInt(end, 10)),
   };
 
   // Process nested helpers like {{upperCase (substring domainName 0 3)}}

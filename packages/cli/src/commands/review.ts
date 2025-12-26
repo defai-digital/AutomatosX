@@ -92,7 +92,10 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
         focus = parsed.data;
       }
     } else if (arg === '--min-confidence' && i + 1 < args.length) {
-      minConfidence = parseFloat(args[++i]!);
+      const parsed = parseFloat(args[++i]!);
+      if (Number.isFinite(parsed)) {
+        minConfidence = parsed;
+      }
     } else if (arg === '--max-files' && i + 1 < args.length) {
       maxFiles = parseInt(args[++i]!, 10);
     } else if (arg === '--max-lines' && i + 1 < args.length) {

@@ -137,6 +137,10 @@ export function extractConfidence(content: string): ExtractedConfidence {
       // Numeric confidence
       if (match[1]) {
         let score = parseFloat(match[1]);
+        // Guard against NaN from invalid input
+        if (!Number.isFinite(score)) {
+          continue;
+        }
         // Normalize percentage to 0-1
         if (score > 1) {
           score = score / 100;

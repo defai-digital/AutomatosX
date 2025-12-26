@@ -451,7 +451,7 @@ async function executeIterateMode(
 
     // Display based on action
     switch (result.action.type) {
-      case 'CONTINUE':
+      case 'CONTINUE': {
         // Show truncated response
         const preview = response.content.length > 100
           ? response.content.substring(0, 100) + '...'
@@ -463,6 +463,7 @@ async function executeIterateMode(
           messages.push({ role: 'user', content: result.autoResponse });
         }
         break;
+      }
 
       case 'PAUSE':
         console.log(formatIterationStatus(state, `${COLORS.yellow}PAUSE: ${result.action.reason}${COLORS.reset}`));

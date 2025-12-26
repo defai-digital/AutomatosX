@@ -25,14 +25,14 @@ export const MAX_ROUNDS = 10;
 /** Default discussion rounds */
 export const DEFAULT_ROUNDS = 2;
 
-/** Default provider timeout in ms (3 minutes - gives headroom for complex responses) */
-export const DEFAULT_PROVIDER_TIMEOUT = 180000;
+/** Default provider timeout in ms (10 minutes - gives headroom for slower providers like GLM) */
+export const DEFAULT_PROVIDER_TIMEOUT = 600000;
 
 /** Maximum provider timeout in ms (30 minutes - for very complex discussions) */
 export const MAX_PROVIDER_TIMEOUT = 1800000;
 
-/** Default providers for discussions */
-export const DEFAULT_PROVIDERS = ['claude', 'glm', 'qwen', 'gemini'] as const;
+/** Default providers for discussions (ordered by reasoning strength) */
+export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini', 'glm', 'qwen'] as const;
 
 // ============================================================================
 // Recursive Discussion Constants
@@ -195,14 +195,15 @@ export type ProviderCapability = z.infer<typeof ProviderCapabilitySchema>;
 
 /**
  * Provider strength mapping (for routing decisions)
+ * Grok has strong reasoning/thinking abilities comparable to Claude
  */
 export const PROVIDER_STRENGTHS: Record<string, ProviderCapability[]> = {
   claude: ['reasoning', 'writing', 'coding', 'agentic', 'tool-use'],
+  grok: ['reasoning', 'realtime', 'research', 'coding', 'tool-use'],
+  gemini: ['research', 'long-context', 'multilingual', 'realtime'],
   glm: ['coding', 'agentic', 'tool-use', 'multilingual', 'math'],
   qwen: ['ocr', 'translation', 'multilingual', 'math', 'coding'],
-  gemini: ['research', 'long-context', 'multilingual', 'realtime'],
   codex: ['coding', 'reasoning'],
-  grok: ['realtime', 'research'],
 };
 
 // ============================================================================

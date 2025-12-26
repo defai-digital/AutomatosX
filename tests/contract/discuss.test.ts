@@ -943,9 +943,10 @@ describe('Discussion Contract - Constants', () => {
 
   it('should have correct default providers', () => {
     expect(DEFAULT_PROVIDERS).toContain('claude');
+    expect(DEFAULT_PROVIDERS).toContain('grok');
+    expect(DEFAULT_PROVIDERS).toContain('gemini');
     expect(DEFAULT_PROVIDERS).toContain('glm');
     expect(DEFAULT_PROVIDERS).toContain('qwen');
-    expect(DEFAULT_PROVIDERS).toContain('gemini');
-    expect(DEFAULT_PROVIDERS.length).toBe(4);
+    expect(DEFAULT_PROVIDERS.length).toBe(5);
   });
 });

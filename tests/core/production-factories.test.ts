@@ -51,14 +51,18 @@ function createMockStorage(): CheckpointStoragePort & { checkpoints: Map<string,
     },
     async deleteExpired(): Promise<number> {
       const now = Date.now();
-      let deleted = 0;
+      const expiredIds: string[] = [];
+      // Collect expired IDs first to avoid deleting while iterating
       for (const [id, cp] of checkpoints) {
         if (cp.expiresAt && new Date(cp.expiresAt).getTime() < now) {
-          checkpoints.delete(id);
-          deleted++;
+          expiredIds.push(id);
         }
       }
-      return deleted;
+      // Delete after iteration completes
+      for (const id of expiredIds) {
+        checkpoints.delete(id);
+      }
+      return expiredIds.length;
     },
   };
 }

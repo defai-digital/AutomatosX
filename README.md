@@ -2,7 +2,7 @@
 
 **AI orchestration for teams who need governed, multi-provider automation**
 
-[![Version](https://img.shields.io/badge/version-13.1.13-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.1.14-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
@@ -11,19 +11,19 @@
 
 ---
 
-## What's New in v13.1.13
+## What's New in v13.1.14
+
+- **Grok Added to Default Providers** - Grok now included in default discussion providers with enhanced reasoning capabilities
+- **Provider Priority Reordering** - Default providers ordered by reasoning strength: `claude → grok → gemini → glm → qwen`
+- **Extended Provider Timeout** - Increased default timeout from 3min to 10min (600000ms) for slower providers like GLM
+- **Debate Pattern Fix** - Fixed bug where debate pattern failed with "requires role assignments" - now auto-assigns roles
+- **Grok Capabilities Enhanced** - Updated `PROVIDER_STRENGTHS` to reflect Grok's strong reasoning and tool-use abilities
+
+### Previous: v13.1.13
 
 - **Temperature Configuration** - Centralized temperature defaults by pattern (`synthesis: 0.7`, `voting: 0.5`, `codeReview: 0.3`) with provider-specific overrides
 - **Per-Provider Rate Limiting** - Rate limiters now scoped per provider (Claude: 60 RPM, Gemini: 300 RPM) with burst support and session-level quotas
 - **Platform Improvement PRDs** - Comprehensive documentation for debugging confidence, code quality, and parallelization improvements
-- **Trace Event Schemas** - New contract schemas for template resolution and ability injection tracing (P0 preparation)
-- **Code Quality** - Reduced hardcoded values by extracting temperature and rate limit constants to contracts
-
-### Previous: v13.1.12
-
-- **Agent InputMapping Support** - Tool step executor processes `inputMapping` with template variable substitution
-- **Performance: Cached Agent Profiles** - Eliminates N database queries by caching agent profile at execution start
-- **Precompiled Regex Patterns** - Improved performance with static regex compilation
 
 ---
 

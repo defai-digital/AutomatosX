@@ -619,9 +619,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
     if (value === 'true') return true;
     if (value === 'false') return false;
 
-    // Number
-    const num = Number(value);
-    if (!isNaN(num)) return num;
+    // Number - use strict parsing to avoid edge cases (hex, whitespace, Infinity)
+    if (DefaultAgentExecutor.NUMERIC_REGEX.test(value)) {
+      const num = Number(value);
+      if (Number.isFinite(num)) return num;
+    }
 
     // Default to string
     return value;

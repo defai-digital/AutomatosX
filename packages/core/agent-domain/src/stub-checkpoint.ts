@@ -72,16 +72,21 @@ function createInMemoryCheckpointStorage(): CheckpointStoragePort {
 
     async deleteExpired(): Promise<number> {
       const now = Date.now();
-      let count = 0;
+      const expiredIds: string[] = [];
 
+      // Collect expired IDs first to avoid deleting while iterating
       for (const [id, cp] of checkpoints.entries()) {
         if (cp.expiresAt && new Date(cp.expiresAt).getTime() < now) {
-          checkpoints.delete(id);
-          count++;
+          expiredIds.push(id);
         }
       }
 
-      return count;
+      // Delete after iteration completes
+      for (const id of expiredIds) {
+        checkpoints.delete(id);
+      }
+
+      return expiredIds.length;
     },
   };
 }

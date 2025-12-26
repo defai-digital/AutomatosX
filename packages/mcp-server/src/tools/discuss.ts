@@ -116,7 +116,7 @@ export const discussTool: MCPTool = {
       providers: {
         type: 'array',
         items: { type: 'string' },
-        description: 'List of providers to use (default: claude, glm, qwen, gemini)',
+        description: 'List of providers to use (default: claude, grok, gemini, glm, qwen)',
         minItems: 2,
         maxItems: 6,
       },
@@ -141,7 +141,7 @@ export const discussTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Per-provider timeout in ms (default: 180000, max: 30 minutes)',
+        description: 'Per-provider timeout in ms (default: 600000 / 10 min, max: 30 minutes)',
         minimum: 5000,
         maximum: 1800000,
       },
@@ -249,6 +249,14 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     };
   }
 
+  // Validate debate pattern has enough providers
+  if (pattern === 'debate' && providers.length < 2) {
+    return {
+      content: [{ type: 'text', text: 'Error: debate pattern requires at least 2 providers (proponent and opponent)' }],
+      isError: true,
+    };
+  }
+
   try {
     // Create discussion executor
     const providerBridge = getProviderBridge();
@@ -257,6 +265,16 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       defaultTimeoutMs: timeout,
       checkProviderHealth: true,
     });
+
+    // Auto-assign roles for debate pattern (INV-DISC-008)
+    // First provider = proponent, second = opponent, third = judge (if available)
+    let roles: Record<string, 'proponent' | 'opponent' | 'judge'> | undefined;
+    if (pattern === 'debate') {
+      roles = {};
+      if (providers[0]) roles[providers[0]] = 'proponent';
+      if (providers[1]) roles[providers[1]] = 'opponent';
+      if (providers[2]) roles[providers[2]] = 'judge';
+    }
 
     // Build config
     const config: DiscussStepConfig = {
@@ -267,8 +285,8 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       context,
       verbose: false,
       consensus: {
-        method: consensus,
-        synthesizer,
+        method: pattern === 'debate' && providers[2] ? 'moderator' : consensus,
+        synthesizer: pattern === 'debate' && providers[2] ? providers[2] : synthesizer,
         threshold: 0.5,
         includeDissent: true,
       },
@@ -279,6 +297,8 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       agentWeightMultiplier,
       // Include participants if specified
       ...(participants !== undefined && { participants }),
+      // Include roles for debate pattern (INV-DISC-008)
+      ...(roles !== undefined && { roles }),
     };
 
     // Execute discussion
@@ -323,7 +343,7 @@ export const discussQuickTool: MCPTool = {
       providers: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional: specific providers to use (default: claude, glm, qwen)',
+        description: 'Optional: specific providers to use (default: claude, grok, gemini)',
         minItems: 2,
         maxItems: 4,
       },
@@ -350,7 +370,8 @@ export const discussQuickTool: MCPTool = {
  * Handler for discuss_quick tool
  */
 export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResult> => {
-  const { topic, providers = ['claude', 'glm', 'qwen'] } = args as {
+  // Use top 3 reasoning providers by default: Claude, Grok, Gemini
+  const { topic, providers = ['claude', 'grok', 'gemini'] } = args as {
     topic: string;
     providers?: string[];
   };
@@ -436,7 +457,7 @@ export const discussRecursiveTool: MCPTool = {
       providers: {
         type: 'array',
         items: { type: 'string' },
-        description: 'List of providers to use (default: claude, glm, qwen, gemini)',
+        description: 'List of providers to use (default: claude, grok, gemini, glm, qwen)',
         minItems: 2,
         maxItems: 6,
       },
@@ -461,7 +482,7 @@ export const discussRecursiveTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Per-provider timeout in ms (default: 180000, max: 30 minutes)',
+        description: 'Per-provider timeout in ms (default: 600000 / 10 min, max: 30 minutes)',
         minimum: 5000,
         maximum: 1800000,
       },
@@ -641,6 +662,14 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     };
   }
 
+  // Validate debate pattern has enough providers
+  if (pattern === 'debate' && providers.length < 2) {
+    return {
+      content: [{ type: 'text', text: 'Error: debate pattern requires at least 2 providers (proponent and opponent)' }],
+      isError: true,
+    };
+  }
+
   // Validate maxDepth
   if (maxDepth < 1 || maxDepth > 4) {
     return {
@@ -677,6 +706,16 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       },
     });
 
+    // Auto-assign roles for debate pattern (INV-DISC-008)
+    // First provider = proponent, second = opponent, third = judge (if available)
+    let roles: Record<string, 'proponent' | 'opponent' | 'judge'> | undefined;
+    if (pattern === 'debate') {
+      roles = {};
+      if (providers[0]) roles[providers[0]] = 'proponent';
+      if (providers[1]) roles[providers[1]] = 'opponent';
+      if (providers[2]) roles[providers[2]] = 'judge';
+    }
+
     // Build config
     const config: DiscussStepConfig = {
       pattern,
@@ -686,8 +725,8 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       context,
       verbose: false,
       consensus: {
-        method: consensus,
-        synthesizer,
+        method: pattern === 'debate' && providers[2] ? 'moderator' : consensus,
+        synthesizer: pattern === 'debate' && providers[2] ? providers[2] : synthesizer,
         threshold: 0.5,
         includeDissent: true,
       },
@@ -698,6 +737,8 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       agentWeightMultiplier,
       // Include participants if specified
       ...(participants !== undefined && { participants }),
+      // Include roles for debate pattern (INV-DISC-008)
+      ...(roles !== undefined && { roles }),
     };
 
     // Execute recursive discussion

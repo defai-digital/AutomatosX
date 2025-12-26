@@ -92,16 +92,21 @@ export function createInMemoryIdempotencyStorage(): IdempotencyStorage {
     },
 
     async deleteExpired(): Promise<number> {
-      let deleted = 0;
+      const expiredKeys: string[] = [];
 
+      // Collect expired keys first to avoid deleting while iterating
       for (const [key, entry] of entries) {
         if (isEntryExpired(entry)) {
-          entries.delete(key);
-          deleted++;
+          expiredKeys.push(key);
         }
       }
 
-      return deleted;
+      // Delete after iteration completes
+      for (const key of expiredKeys) {
+        entries.delete(key);
+      }
+
+      return expiredKeys.length;
     },
   };
 }

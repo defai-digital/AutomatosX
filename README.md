@@ -2,7 +2,7 @@
 
 **AI orchestration for teams who need governed, multi-provider automation**
 
-[![Version](https://img.shields.io/badge/version-13.1.14-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.1.15-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
@@ -11,7 +11,12 @@
 
 ---
 
-## What's New in v13.1.14
+## What's New in v13.1.15
+
+- **CLI Alias Fix** - Verified and confirmed `ax` command alias works correctly alongside `automatosx`
+- **Version Sync** - All 28 packages synchronized to v13.1.15
+
+### Previous: v13.1.14
 
 - **Grok Added to Default Providers** - Grok now included in default discussion providers with enhanced reasoning capabilities
 - **Provider Priority Reordering** - Default providers ordered by reasoning strength: `claude → grok → gemini → glm → qwen`

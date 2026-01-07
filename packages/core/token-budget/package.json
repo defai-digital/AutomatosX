@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/token-budget",
-  "version": "13.1.14",
+  "version": "13.1.15",
   "type": "module",
   "description": "Token budget management for AutomatosX context windows",
   "license": "Apache-2.0",

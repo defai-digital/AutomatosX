@@ -82,8 +82,13 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
       // Check if this is a global option
       if (!GLOBAL_OPTIONS.has(key)) {
-        // Pass unknown flags through to command
+        // Pass unknown flags through to command WITH their values
         commandArgs.push(arg);
+        // If next arg exists and doesn't look like a flag, include it as the value
+        if (nextArg !== undefined && !nextArg.startsWith('-')) {
+          commandArgs.push(nextArg);
+          i++; // Skip the value in next iteration
+        }
         i++;
         continue;
       }

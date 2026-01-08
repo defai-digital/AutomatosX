@@ -1,16 +1,17 @@
 /**
- * Setup command - Interactive setup wizard for AutomatosX
+ * Setup command - Global setup wizard for AutomatosX
+ *
+ * Creates global configuration with detected providers.
+ * For per-project initialization (MCP registration), use `ax init`.
  *
  * Features:
  * - Provider detection
- * - Configuration creation
+ * - Global configuration creation
  * - Non-interactive mode for CI
  */
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
-import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createConfigStore,
@@ -20,71 +21,18 @@ import {
   DEFAULT_CONFIG,
   KNOWN_PROVIDERS,
   PROVIDER_DEFAULTS,
-  DATA_DIR_NAME,
-  CONFIG_FILENAME,
-  TIMEOUT_SETUP_ADD,
-  TIMEOUT_SETUP_REMOVE,
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_WORKFLOW_STEP,
-  DEFAULT_SCHEMA_VERSION,
-  ITERATE_MAX_DEFAULT,
-  ITERATE_TIMEOUT_DEFAULT,
   type AutomatosXConfig,
   type ProviderId,
   type ProviderDetectionResult,
 } from '@defai.digital/contracts';
-import { CONTEXT_DIRECTORY } from '@defai.digital/context-domain';
-import {
-  PROVIDER_CHECKS,
-  checkProviderCLI,
-  type CheckResult,
-} from './doctor.js';
 
 const execAsync = promisify(exec);
 
 // ============================================================================
 // Constants
 // ============================================================================
-
-// ============================================================================
-// MCP Constants
-// ============================================================================
-
-/** MCP server name registered with provider CLIs */
-const MCP_SERVER_NAME = 'automatosx';
-
-/** MCP subcommands */
-const MCP_COMMANDS = {
-  add: 'mcp add',
-  remove: 'mcp remove',
-  serverArgs: 'mcp server',
-} as const;
-
-/** MCP command flags for different formats */
-const MCP_FLAGS = {
-  /** Claude uses -s local for user-scope config */
-  claudeScope: '-s local',
-  /** ax-wrapper uses -c for command */
-  command: '-c',
-  /** ax-wrapper uses -a for arguments */
-  args: '-a',
-} as const;
-
-/** Pattern to detect successful MCP server addition in output */
-const MCP_SUCCESS_PATTERN = /Added MCP server|server.*added|successfully added/i;
-
-// ============================================================================
-// CLI Constants
-// ============================================================================
-
-/** Fallback CLI command when binary path cannot be determined */
-const CLI_FALLBACK_COMMAND = 'ax';
-
-/** Node.js executable for running scripts */
-const NODE_EXECUTABLE = 'node';
-
-/** Conventions file name in context directory */
-const CONVENTIONS_FILENAME = 'conventions.md';
 
 /** Provider name display width for aligned output */
 const PROVIDER_DISPLAY_WIDTH = 10;
@@ -101,9 +49,6 @@ const SEMVER_PATTERN = /(\d+\.\d+\.\d+)/;
 /** Platform-specific command to find executables */
 const WHICH_COMMAND = process.platform === 'win32' ? 'where' : 'which';
 
-/** JSON formatting indentation */
-const JSON_INDENT = 2;
-
 /** Exit codes for CLI commands */
 const EXIT_CODE = {
   SUCCESS: 0,
@@ -116,13 +61,7 @@ const CONFIG_SCOPE = {
   LOCAL: 'local',
 } as const;
 
-type ConfigScope = typeof CONFIG_SCOPE[keyof typeof CONFIG_SCOPE];
-
-/** Health check status values */
-const HEALTH_STATUS = {
-  PASS: 'pass',
-  FAIL: 'fail',
-} as const;
+type ConfigScope = (typeof CONFIG_SCOPE)[keyof typeof CONFIG_SCOPE];
 
 /** CLI argument flags */
 const CLI_FLAGS = {
@@ -131,7 +70,6 @@ const CLI_FLAGS = {
   silent: ['--silent', '-s'],
   local: ['--local', '-l'],
   global: ['--global', '-g'],
-  skipProject: ['--skip-project', '--no-project'],
 } as const;
 
 /** Terminal color codes */
@@ -152,343 +90,6 @@ const ICONS = {
   warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
   arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
 } as const;
-
-// ============================================================================
-// MCP Configuration for Providers
-// ============================================================================
-
-/**
- * MCP command format types:
- * - 'standard': <cli> mcp add <name> <command> [args...]
- * - 'claude': <cli> mcp add <name> -s local <command> [args...]
- * - 'ax-wrapper': <cli> mcp add <name> --command <cmd> --args <args...>
- */
-type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper';
-
-/** Provider MCP CLI configuration */
-interface ProviderMCPConfig {
-  cliName: string;
-  format: MCPCommandFormat;
-}
-
-/** MCP configuration for each provider (null = provider doesn't support MCP) */
-const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
-  claude: { cliName: 'claude', format: 'claude' },
-  gemini: { cliName: 'gemini', format: 'standard' },
-  codex: { cliName: 'codex', format: 'standard' },
-  qwen: { cliName: 'qwen', format: 'standard' },
-  glm: { cliName: 'ax-glm', format: 'ax-wrapper' },
-  grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
-  'ax-cli': null, // ax-cli doesn't support MCP yet
-};
-
-/**
- * Get the absolute path to the CLI binary.
- * Uses process.argv[1] which works for both global and local installations.
- */
-function getCLIBinaryPath(): string {
-  const binaryPath = process.argv[1];
-  return binaryPath || CLI_FALLBACK_COMMAND;
-}
-
-/**
- * Check if a path is absolute (Unix or Windows style)
- */
-function isAbsolutePath(filePath: string): boolean {
-  return filePath.startsWith('/') || filePath.includes('\\');
-}
-
-/**
- * Build the MCP server command parts based on binary path.
- * Returns { executable, arguments } for use in MCP add commands.
- */
-function buildMCPServerCommand(binaryPath: string): { executable: string; arguments: string } {
-  if (isAbsolutePath(binaryPath)) {
-    return { executable: NODE_EXECUTABLE, arguments: `"${binaryPath}" ${MCP_COMMANDS.serverArgs}` };
-  }
-  return { executable: binaryPath, arguments: MCP_COMMANDS.serverArgs };
-}
-
-/**
- * Get the CLI command to add AutomatosX MCP server for a provider.
- * Uses provider's native CLI to ensure proper formatting and validation.
- */
-function buildMCPAddCommand(providerId: ProviderId): string | null {
-  const mcpConfig = PROVIDER_MCP_CONFIGS[providerId];
-  if (!mcpConfig) return null;
-
-  const binaryPath = getCLIBinaryPath();
-  const { executable, arguments: execArgs } = buildMCPServerCommand(binaryPath);
-  const { cliName, format } = mcpConfig;
-
-  switch (format) {
-    case 'standard':
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${executable} ${execArgs}`;
-
-    case 'claude':
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.claudeScope} ${executable} ${execArgs}`;
-
-    case 'ax-wrapper': {
-      const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : CLI_FALLBACK_COMMAND;
-      const commandArgs = isAbsolutePath(binaryPath) ? `${binaryPath} ${MCP_COMMANDS.serverArgs}` : MCP_COMMANDS.serverArgs;
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.command} ${command} ${MCP_FLAGS.args} ${commandArgs}`;
-    }
-
-    default:
-      return null;
-  }
-}
-
-/**
- * Get the CLI command to remove MCP server for a provider.
- */
-function buildMCPRemoveCommand(providerId: ProviderId): string | null {
-  const mcpConfig = PROVIDER_MCP_CONFIGS[providerId];
-  if (!mcpConfig) return null;
-
-  const scopeFlag = mcpConfig.format === 'claude' ? ` ${MCP_FLAGS.claudeScope}` : '';
-  return `${mcpConfig.cliName} ${MCP_COMMANDS.remove} ${MCP_SERVER_NAME}${scopeFlag}`;
-}
-
-/** Result of MCP configuration for a provider */
-interface MCPConfigResult {
-  success: boolean;
-  skipped: boolean;
-  error?: string;
-}
-
-/**
- * ax-wrapper MCP config file structure
- */
-interface AxWrapperMCPConfig {
-  mcpServers: {
-    [name: string]: {
-      name: string;
-      transport: {
-        type: 'stdio';
-        command: string;
-        args: string[];
-        env: Record<string, string>;
-        framing: 'ndjson';
-      };
-    };
-  };
-}
-
-/**
- * Get the settings file path for ax-wrapper providers.
- * ax-glm and ax-grok store configs in .ax-glm/ and .ax-grok/ directories.
- */
-function getAxWrapperSettingsPath(cliName: string): string {
-  // For project-local config, use current working directory
-  return join(process.cwd(), `.${cliName}`, 'settings.json');
-}
-
-/**
- * Configure MCP for ax-wrapper providers by writing config file directly.
- * This is needed because ax-wrapper CLIs default to 'content-length' framing,
- * but automatosx MCP server uses 'ndjson' framing (MCP SDK default).
- */
-async function configureAxWrapperMCP(cliName: string): Promise<MCPConfigResult> {
-  const binaryPath = getCLIBinaryPath();
-  const settingsPath = getAxWrapperSettingsPath(cliName);
-  const settingsDir = join(process.cwd(), `.${cliName}`);
-
-  try {
-    // Ensure settings directory exists
-    await mkdir(settingsDir, { recursive: true });
-
-    // Read existing config or create new one
-    let existingConfig: AxWrapperMCPConfig = { mcpServers: {} };
-    try {
-      const content = await readFile(settingsPath, 'utf-8');
-      existingConfig = JSON.parse(content) as AxWrapperMCPConfig;
-      if (!existingConfig.mcpServers) {
-        existingConfig.mcpServers = {};
-      }
-    } catch {
-      // File doesn't exist or is invalid - use empty config
-    }
-
-    // Build args based on binary path
-    const args = isAbsolutePath(binaryPath)
-      ? [binaryPath, 'mcp', 'server']
-      : ['mcp', 'server'];
-
-    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
-
-    // Add automatosx MCP server config with ndjson framing
-    existingConfig.mcpServers[MCP_SERVER_NAME] = {
-      name: MCP_SERVER_NAME,
-      transport: {
-        type: 'stdio',
-        command,
-        args,
-        env: {},
-        framing: 'ndjson',
-      },
-    };
-
-    // Write updated config
-    await writeFile(settingsPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
-
-    return { success: true, skipped: false };
-  } catch (err) {
-    return {
-      success: false,
-      skipped: false,
-      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
-    };
-  }
-}
-
-/**
- * Check if command output indicates successful MCP server addition.
- * Some providers output success message even when validation times out.
- */
-function isMCPAdditionSuccessful(commandOutput: string): boolean {
-  return MCP_SUCCESS_PATTERN.test(commandOutput);
-}
-
-/**
- * Extract clean error message from exec error.
- */
-function extractErrorMessage(rawError: string): string {
-  if (rawError.includes('Command failed')) {
-    return rawError.split('\n').pop() || rawError;
-  }
-  return rawError;
-}
-
-/**
- * Configure MCP for a detected provider.
- *
- * For ax-wrapper providers (ax-glm, ax-grok):
- * - Write config file directly with ndjson framing (required for MCP SDK compatibility)
- *
- * For other providers:
- * - Use native CLI commands (remove-then-add for clean state)
- */
-async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfigResult> {
-  const mcpConfig = PROVIDER_MCP_CONFIGS[providerId];
-  if (!mcpConfig) {
-    return { success: true, skipped: true };
-  }
-
-  // For ax-wrapper providers, write config file directly with ndjson framing
-  // This is needed because ax-wrapper CLIs default to 'content-length' framing,
-  // but automatosx MCP server uses 'ndjson' framing (MCP SDK default)
-  if (mcpConfig.format === 'ax-wrapper') {
-    return configureAxWrapperMCP(mcpConfig.cliName);
-  }
-
-  const addCommand = buildMCPAddCommand(providerId);
-  const removeCommand = buildMCPRemoveCommand(providerId);
-
-  if (!addCommand) {
-    return { success: true, skipped: true };
-  }
-
-  try {
-    // Step 1: Remove existing config for clean state (ignore if not exists)
-    if (removeCommand) {
-      try {
-        await execAsync(`${removeCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_REMOVE });
-      } catch {
-        // Server might not exist - that's expected
-      }
-    }
-
-    // Step 2: Add MCP server using provider's native CLI
-    const { stdout, stderr } = await execAsync(`${addCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_ADD });
-    const commandOutput = `${stdout}${stderr}`;
-
-    if (isMCPAdditionSuccessful(commandOutput)) {
-      return { success: true, skipped: false };
-    }
-
-    return { success: true, skipped: false };
-  } catch (err) {
-    // Node's exec error includes stdout/stderr as properties
-    const execResult = err as { message?: string; stdout?: string; stderr?: string };
-    const errorMsg = execResult.message || FALLBACK_ERROR_MESSAGE;
-    const fullOutput = `${execResult.stdout || ''}${execResult.stderr || ''}${errorMsg}`;
-
-    // Check if server was added despite command failure (validation timeout)
-    if (isMCPAdditionSuccessful(fullOutput)) {
-      return { success: true, skipped: false };
-    }
-
-    return {
-      success: false,
-      skipped: false,
-      error: extractErrorMessage(errorMsg),
-    };
-  }
-}
-
-/**
- * Use ax doctor logic to check which provider CLIs are installed
- * This ensures consistent detection between 'ax doctor' and 'ax setup'
- */
-async function getInstalledProviderCLIs(): Promise<Map<string, CheckResult>> {
-  const results = new Map<string, CheckResult>();
-
-  // Run doctor-style checks for all providers
-  for (const provider of PROVIDER_CHECKS) {
-    const checkResult = await checkProviderCLI(provider);
-    results.set(provider.id, checkResult);
-  }
-
-  return results;
-}
-
-/** Result of configuring MCP for all providers */
-interface MCPBatchConfigResult {
-  configured: string[];
-  skipped: string[];
-  notInstalled: string[];
-  failed: Array<{ providerId: string; error: string }>;
-}
-
-/**
- * Configure MCP for all detected providers using their native CLI commands.
- *
- * Uses 'ax doctor' check logic to determine which CLIs are installed.
- * Only configures MCP for providers that pass the doctor check.
- */
-async function configureMCPForAllProviders(): Promise<MCPBatchConfigResult> {
-  const result: MCPBatchConfigResult = {
-    configured: [],
-    skipped: [],
-    notInstalled: [],
-    failed: [],
-  };
-
-  const installedProviders = await getInstalledProviderCLIs();
-
-  for (const [providerId, healthCheck] of installedProviders) {
-    if (healthCheck.status === HEALTH_STATUS.FAIL) {
-      result.notInstalled.push(providerId);
-      continue;
-    }
-
-    const configResult = await configureMCPForProvider(providerId as ProviderId);
-
-    if (configResult.skipped) {
-      result.skipped.push(providerId);
-    } else if (configResult.success) {
-      result.configured.push(providerId);
-    } else {
-      result.failed.push({
-        providerId,
-        error: configResult.error || FALLBACK_ERROR_MESSAGE,
-      });
-    }
-  }
-
-  return result;
-}
 
 // ============================================================================
 // Provider Detection
@@ -554,118 +155,8 @@ async function detectProvider(providerId: ProviderId): Promise<ProviderDetection
  * Detects all providers in parallel
  */
 async function detectAllProviders(): Promise<ProviderDetectionResult[]> {
-  const results = await Promise.all(
-    KNOWN_PROVIDERS.map((id) => detectProvider(id))
-  );
+  const results = await Promise.all(KNOWN_PROVIDERS.map((id) => detectProvider(id)));
   return results;
-}
-
-// ============================================================================
-// Project Structure Creation
-// ============================================================================
-
-/**
- * Template for project conventions file
- */
-const CONVENTIONS_TEMPLATE = `# Project Conventions
-
-## Code Style
-<!-- Describe your coding standards -->
-- Example: Use TypeScript strict mode
-- Example: Prefer functional components over class components
-- Example: Use named exports over default exports
-
-## Architecture
-<!-- Describe your project structure -->
-- Example: Domain-driven design with packages/core/*/
-- Example: Contract-first: all types in packages/contracts/
-- Example: No circular dependencies between packages
-
-## Testing
-<!-- Describe testing practices -->
-- Example: Use vitest for unit tests
-- Example: Co-locate tests with source: *.test.ts
-- Example: Mock external dependencies, not internal modules
-
-## Naming Conventions
-<!-- Describe naming conventions -->
-- Example: Use camelCase for variables and functions
-- Example: Use PascalCase for types and classes
-- Example: Prefix interfaces with I (e.g., IUserService)
-`;
-
-/**
- * Template for project config.json
- */
-const PROJECT_CONFIG_TEMPLATE = {
-  version: DEFAULT_SCHEMA_VERSION,
-  iterate: {
-    maxIterations: ITERATE_MAX_DEFAULT,
-    maxTimeMs: ITERATE_TIMEOUT_DEFAULT,
-    autoConfirm: false,
-  },
-};
-
-/**
- * Creates the .automatosx/ project structure
- */
-async function createProjectStructure(
-  projectDir: string,
-  force: boolean
-): Promise<{ created: string[]; skipped: string[] }> {
-  const created: string[] = [];
-  const skipped: string[] = [];
-
-  const automatosxDir = join(projectDir, DATA_DIR_NAME);
-  const contextDir = join(automatosxDir, CONTEXT_DIRECTORY);
-  const configPath = join(automatosxDir, CONFIG_FILENAME);
-  const conventionsPath = join(contextDir, CONVENTIONS_FILENAME);
-
-  // Create data directory
-  try {
-    await mkdir(automatosxDir, { recursive: true });
-  } catch {
-    // Directory may already exist
-  }
-
-  // Create context directory
-  try {
-    await mkdir(contextDir, { recursive: true });
-  } catch {
-    // Directory may already exist
-  }
-
-  // Create project config.json
-  const configExists = await fileExists(configPath);
-  if (!configExists || force) {
-    await writeFile(configPath, JSON.stringify(PROJECT_CONFIG_TEMPLATE, null, JSON_INDENT) + '\n');
-    created.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME}`);
-  } else {
-    skipped.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME} (already exists)`);
-  }
-
-  // Create conventions template
-  const conventionsExists = await fileExists(conventionsPath);
-  if (!conventionsExists || force) {
-    await writeFile(conventionsPath, CONVENTIONS_TEMPLATE);
-    created.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}`);
-  } else {
-    skipped.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME} (already exists)`);
-  }
-
-  return { created, skipped };
-}
-
-/**
- * Check if a file exists
- */
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ============================================================================
@@ -677,7 +168,6 @@ interface SetupOptions {
   nonInteractive: boolean;
   silent: boolean;
   scope: ConfigScope;
-  skipProjectStructure: boolean;
 }
 
 /** Result of the setup process */
@@ -686,6 +176,9 @@ interface SetupResult {
   config: AutomatosXConfig;
   providers: ProviderDetectionResult[];
   configPath: string;
+  alreadyUpToDate?: boolean;
+  newProvidersDetected?: string[];
+  removedProviders?: string[];
 }
 
 /**
@@ -695,23 +188,58 @@ async function runSetup(options: SetupOptions): Promise<SetupResult> {
   const configStore = createConfigStore();
   const configFilePath = configStore.getPath(options.scope);
 
+  // Detect providers first (needed for comparison)
+  const allProviders = await detectAllProviders();
+  const availableProviders = allProviders.filter((provider) => provider.detected);
+  const detectedProviderIds = new Set(availableProviders.map((p) => p.providerId as string));
+
   // Check if config already exists
   const configExists = await configStore.exists(options.scope);
+
   if (configExists && !options.force) {
-    throw new Error(
-      `Configuration already exists at ${configFilePath}. Use --force to overwrite.`
+    // Read existing config and compare
+    const existingConfig = await configStore.read(options.scope);
+    const existingProviderIds = new Set(
+      Object.keys(existingConfig?.providers ?? {}).filter(
+        (id) => existingConfig?.providers[id]?.enabled
+      )
     );
+
+    // Find differences
+    const newProviders = [...detectedProviderIds].filter((id) => !existingProviderIds.has(id));
+    const removedProviders = [...existingProviderIds].filter((id) => !detectedProviderIds.has(id));
+
+    // If no changes, return "up to date"
+    if (newProviders.length === 0 && removedProviders.length === 0) {
+      return {
+        success: true,
+        config: existingConfig as AutomatosXConfig,
+        providers: allProviders,
+        configPath: configFilePath,
+        alreadyUpToDate: true,
+      };
+    }
+
+    // Changes detected but no --force flag
+    return {
+      success: true,
+      config: existingConfig as AutomatosXConfig,
+      providers: allProviders,
+      configPath: configFilePath,
+      alreadyUpToDate: false,
+      newProvidersDetected: newProviders,
+      removedProviders: removedProviders,
+    };
   }
 
   // Initialize directory
   await initConfigDirectory(options.scope);
 
-  // Detect providers
-  const allProviders = await detectAllProviders();
-  const availableProviders = allProviders.filter((provider) => provider.detected);
-
   // Build providers config record
-  const providersConfig: Record<string, { enabled: boolean; priority: number; timeout: number; command?: string }> = {};
+  const providersConfig: Record<
+    string,
+    { enabled: boolean; priority: number; timeout: number; command?: string }
+  > = {};
   for (const provider of availableProviders) {
     const providerDefaults = PROVIDER_DEFAULTS[provider.providerId];
     providersConfig[provider.providerId] = {
@@ -765,7 +293,6 @@ function parseSetupArgs(args: string[]): SetupOptions {
   let nonInteractive = false;
   let silent = false;
   let scope: ConfigScope = CONFIG_SCOPE.GLOBAL;
-  let skipProjectStructure = false;
 
   for (const arg of args) {
     if (matchesFlag(arg, CLI_FLAGS.force)) {
@@ -774,18 +301,16 @@ function parseSetupArgs(args: string[]): SetupOptions {
       nonInteractive = true;
     } else if (matchesFlag(arg, CLI_FLAGS.silent)) {
       silent = true;
-      nonInteractive = true; // Silent implies non-interactive
-      force = true; // Silent implies force (use defaults, overwrite if exists)
+      nonInteractive = true;
+      force = true;
     } else if (matchesFlag(arg, CLI_FLAGS.local)) {
       scope = CONFIG_SCOPE.LOCAL;
     } else if (matchesFlag(arg, CLI_FLAGS.global)) {
       scope = CONFIG_SCOPE.GLOBAL;
-    } else if (matchesFlag(arg, CLI_FLAGS.skipProject)) {
-      skipProjectStructure = true;
     }
   }
 
-  return { force, nonInteractive, silent, scope, skipProjectStructure };
+  return { force, nonInteractive, silent, scope };
 }
 
 /**
@@ -801,6 +326,12 @@ function formatProviderResult(detection: ProviderDetectionResult): string {
 
 /**
  * Setup command handler
+ *
+ * Global setup for AutomatosX:
+ * 1. Detects installed provider CLIs
+ * 2. Creates global configuration
+ *
+ * For per-project initialization (MCP registration), use `ax init`.
  */
 export async function setupCommand(
   args: string[],
@@ -827,12 +358,13 @@ export async function setupCommand(
       outputLines.push('');
     }
 
-    // Step 2: Detect providers
+    // Step 2 & 3: Detect providers and create/check configuration
     if (showOutput) {
-      outputLines.push(`${COLORS.bold}Step 2: Provider Detection${COLORS.reset}`);
+      outputLines.push(`${COLORS.bold}Step 2: Provider Detection & Configuration${COLORS.reset}`);
     }
 
-    const detectedProviders = await detectAllProviders();
+    const setupResult = await runSetup(setupOptions);
+    const detectedProviders = setupResult.providers;
 
     if (showOutput) {
       for (const provider of detectedProviders) {
@@ -841,60 +373,110 @@ export async function setupCommand(
       outputLines.push('');
     }
 
-    // Step 3: Create configuration
-    if (showOutput) {
-      outputLines.push(`${COLORS.bold}Step 3: Creating Configuration${COLORS.reset}`);
-    }
-
-    const setupResult = await runSetup(setupOptions);
-
-    if (showOutput) {
-      outputLines.push(`  ${ICONS.check} Configuration saved to: ${setupResult.configPath}`);
-      outputLines.push('');
-    }
-
-    // Step 4: Create project structure (unless skipped)
-    let projectStructure: { created: string[]; skipped: string[] } | undefined;
-
-    if (!setupOptions.skipProjectStructure) {
+    // Handle idempotent cases
+    if (setupResult.alreadyUpToDate) {
       if (showOutput) {
-        outputLines.push(`${COLORS.bold}Step 4: Project Structure${COLORS.reset}`);
-      }
-
-      projectStructure = await createProjectStructure(process.cwd(), setupOptions.force);
-
-      if (showOutput) {
-        for (const filePath of projectStructure.created) {
-          outputLines.push(`  ${ICONS.check} Created ${filePath}`);
-        }
-        for (const filePath of projectStructure.skipped) {
-          outputLines.push(`  ${ICONS.warn} Skipped ${filePath}`);
-        }
+        outputLines.push(`${ICONS.check} Configuration is up to date at: ${setupResult.configPath}`);
+        outputLines.push('');
+        outputLines.push(`${COLORS.bold}Summary${COLORS.reset}`);
+        outputLines.push(`  No changes needed - providers match existing configuration`);
+        outputLines.push('');
+        outputLines.push(`${COLORS.bold}Next Steps${COLORS.reset}`);
+        outputLines.push(`  1. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify providers are working`);
+        outputLines.push(
+          `  2. Run ${COLORS.cyan}ax init${COLORS.reset} in your project directory to register MCP`
+        );
         outputLines.push('');
       }
+
+      if (isJsonFormat) {
+        return {
+          success: true,
+          message: undefined,
+          data: {
+            success: true,
+            configPath: setupResult.configPath,
+            alreadyUpToDate: true,
+            providers: {
+              detected: detectedProviders
+                .filter((provider) => provider.detected)
+                .map((provider) => provider.providerId),
+              enabled: Object.keys(setupResult.config.providers).filter(
+                (id) => setupResult.config.providers[id]?.enabled
+              ),
+            },
+            defaultProvider: setupResult.config.defaultProvider,
+            version: setupResult.config.version,
+          },
+          exitCode: EXIT_CODE.SUCCESS,
+        };
+      }
+
+      return {
+        success: true,
+        message: outputLines.join('\n'),
+        data: undefined,
+        exitCode: EXIT_CODE.SUCCESS,
+      };
     }
 
-    // Step 5: Configure MCP for all detected providers
-    if (showOutput) {
-      outputLines.push(`${COLORS.bold}Step 5: MCP Configuration${COLORS.reset}`);
-      outputLines.push(`  ${COLORS.dim}Using 'ax doctor' check to verify installed CLIs...${COLORS.reset}`);
+    // Changes detected but no --force
+    if (setupResult.newProvidersDetected || setupResult.removedProviders) {
+      if (showOutput) {
+        outputLines.push(`${ICONS.warn} Configuration exists but providers have changed:`);
+        if (setupResult.newProvidersDetected && setupResult.newProvidersDetected.length > 0) {
+          outputLines.push(
+            `  ${COLORS.green}+ New:${COLORS.reset} ${setupResult.newProvidersDetected.join(', ')}`
+          );
+        }
+        if (setupResult.removedProviders && setupResult.removedProviders.length > 0) {
+          outputLines.push(
+            `  ${COLORS.red}- Removed:${COLORS.reset} ${setupResult.removedProviders.join(', ')}`
+          );
+        }
+        outputLines.push('');
+        outputLines.push(
+          `Run ${COLORS.cyan}ax setup --force${COLORS.reset} to update configuration.`
+        );
+        outputLines.push('');
+      }
+
+      if (isJsonFormat) {
+        return {
+          success: true,
+          message: undefined,
+          data: {
+            success: true,
+            configPath: setupResult.configPath,
+            alreadyUpToDate: false,
+            changesDetected: {
+              newProviders: setupResult.newProvidersDetected,
+              removedProviders: setupResult.removedProviders,
+            },
+            providers: {
+              detected: detectedProviders
+                .filter((provider) => provider.detected)
+                .map((provider) => provider.providerId),
+              enabled: Object.keys(setupResult.config.providers).filter(
+                (id) => setupResult.config.providers[id]?.enabled
+              ),
+            },
+          },
+          exitCode: EXIT_CODE.SUCCESS,
+        };
+      }
+
+      return {
+        success: true,
+        message: outputLines.join('\n'),
+        data: undefined,
+        exitCode: EXIT_CODE.SUCCESS,
+      };
     }
 
-    const mcpResult = await configureMCPForAllProviders();
-
+    // Normal setup (new configuration created)
     if (showOutput) {
-      for (const providerId of mcpResult.configured) {
-        outputLines.push(`  ${ICONS.check} ${providerId}: AutomatosX MCP configured`);
-      }
-      for (const providerId of mcpResult.notInstalled) {
-        outputLines.push(`  ${COLORS.dim}  - ${providerId}: CLI not installed, skipped${COLORS.reset}`);
-      }
-      for (const { providerId, error } of mcpResult.failed) {
-        outputLines.push(`  ${ICONS.warn} ${providerId}: ${error}`);
-      }
-      if (mcpResult.configured.length === 0 && mcpResult.failed.length === 0 && mcpResult.notInstalled.length === 0) {
-        outputLines.push(`  ${ICONS.warn} No providers detected for MCP configuration`);
-      }
+      outputLines.push(`${ICONS.check} Configuration saved to: ${setupResult.configPath}`);
       outputLines.push('');
     }
 
@@ -911,17 +493,12 @@ export async function setupCommand(
         outputLines.push(`  Default provider: ${setupResult.config.defaultProvider}`);
       }
 
-      if (projectStructure !== undefined) {
-        outputLines.push(`  Project files created: ${projectStructure.created.length}`);
-      }
-
-      outputLines.push(`  MCP configured: ${mcpResult.configured.length} provider(s)`);
-
       outputLines.push('');
       outputLines.push(`${COLORS.bold}Next Steps${COLORS.reset}`);
-      outputLines.push(`  1. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify installation`);
-      outputLines.push(`  2. Edit ${COLORS.cyan}${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}${COLORS.reset} to add your project conventions`);
-      outputLines.push(`  3. Run ${COLORS.cyan}ax call --iterate <provider> "task"${COLORS.reset} to use iterate mode`);
+      outputLines.push(`  1. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify providers are working`);
+      outputLines.push(
+        `  2. Run ${COLORS.cyan}ax init${COLORS.reset} in your project directory to register MCP`
+      );
       outputLines.push('');
     }
 
@@ -933,23 +510,15 @@ export async function setupCommand(
           success: true,
           configPath: setupResult.configPath,
           providers: {
-            detected: detectedProviders.filter((provider) => provider.detected).map((provider) => provider.providerId),
-            enabled: Object.keys(setupResult.config.providers).filter(id => setupResult.config.providers[id]?.enabled),
+            detected: detectedProviders
+              .filter((provider) => provider.detected)
+              .map((provider) => provider.providerId),
+            enabled: Object.keys(setupResult.config.providers).filter(
+              (id) => setupResult.config.providers[id]?.enabled
+            ),
           },
           defaultProvider: setupResult.config.defaultProvider,
           version: setupResult.config.version,
-          projectStructure: projectStructure !== undefined
-            ? {
-                created: projectStructure.created,
-                skipped: projectStructure.skipped,
-              }
-            : undefined,
-          mcpConfiguration: {
-            configured: mcpResult.configured,
-            skipped: mcpResult.skipped,
-            notInstalled: mcpResult.notInstalled,
-            failed: mcpResult.failed,
-          },
         },
         exitCode: EXIT_CODE.SUCCESS,
       };

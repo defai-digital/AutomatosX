@@ -36,6 +36,8 @@ pnpm validate
 # Run CLI (after build)
 pnpm ax <command>
 # Examples:
+pnpm ax setup                               # Global setup (one-time)
+pnpm ax init                                # Per-project init (MCP registration)
 pnpm ax doctor                              # Check provider health
 pnpm ax call claude "..."                   # Direct provider call
 pnpm ax agent list                          # List agents
@@ -44,9 +46,16 @@ pnpm ax scaffold contract billing           # Scaffold contract
 pnpm ax scaffold domain billing             # Scaffold domain
 ```
 
+## Setup vs Init
+
+- **`ax setup`**: Global, one-time setup. Detects provider CLIs and creates global config at `~/.automatosx/`.
+- **`ax init`**: Per-project initialization. Creates `.automatosx/` in current directory and registers MCP with provider CLIs. Run this in each project directory.
+
 ## Architecture Overview
 
 AutomatosX is a **contract-first AI orchestration platform** that unifies multiple LLM providers through CLI adapters. Core principle: AutomatosX is a pure orchestrator - all authentication is delegated to external CLI tools.
+
+**Monorepo structure**: Uses pnpm workspaces. All packages use `@defai.digital/` scope and are published to npm. Package aliases are configured in `vitest.config.ts` for testing.
 
 ### Package Dependency Layers (Strictly Enforced)
 
@@ -91,6 +100,7 @@ AutomatosX is a **contract-first AI orchestration platform** that unifies multip
 | `tests/integration/` | Integration tests |
 | `tests/application/` | E2E tests |
 | `tests/cli/` | CLI command tests |
+| `packages/guard/src/` | Governance gate implementations |
 
 ### Contract-First Design
 
@@ -141,6 +151,25 @@ Use Vitest with the `--run` flag for single runs. The config in `vitest.config.t
 - **CLI-only providers**: Simplifies credential management, leverages existing auth flows
 - **Dependency injection for executors**: Core domains provide stub implementations with runtime warnings; production code injects real executors via config
 - **Hexagonal Architecture**: CLI/MCP Server depend on port interfaces; only `bootstrap.ts` knows about concrete adapter implementations
+
+## Multi-Model Discussions
+
+The `ax discuss` command enables multi-model collaboration where multiple AI providers discuss a topic and reach consensus:
+
+```bash
+# Quick synthesis (default: 2 rounds, claude/grok/gemini)
+pnpm ax discuss "Best approach for caching?"
+
+# Structured patterns
+pnpm ax discuss --pattern debate "REST vs GraphQL"   # Pros/cons debate
+pnpm ax discuss --pattern voting "React vs Vue"      # Voting on options
+pnpm ax discuss --pattern critique "Review this API" # Critique mode
+```
+
+Key files:
+- `packages/core/discussion-domain/src/` - Discussion orchestration
+- `packages/contracts/src/discussion/v1/schema.ts` - Discussion contracts
+- `packages/cli/src/commands/discuss.ts` - CLI command
 
 ## Environment Variables
 
@@ -230,3 +259,33 @@ Invariants follow the pattern `INV-XXX-NNN`:
   - `100-199` - Runtime invariants
   - `200-299` - Business invariants
   - `300-399` - Cross-aggregate invariants
+
+## Adding New Components
+
+### Adding a New Provider
+
+1. Add config in `packages/adapters/providers/src/configs/` (follow existing pattern)
+2. Export from `packages/adapters/providers/src/index.ts`
+3. Register in `packages/cli/src/bootstrap.ts` `PROVIDER_CONFIGS`
+4. Add to README provider table
+
+### Adding a New Contract Domain
+
+1. Create `packages/contracts/src/<domain>/v1/` directory
+2. Add `schema.ts` with Zod schemas
+3. Add `invariants.md` documenting behavioral guarantees
+4. Export from `packages/contracts/src/index.ts`
+5. Run `pnpm contracts:check` to validate
+
+Or use scaffolding: `pnpm ax scaffold contract <domain-name>`
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Cannot find module" after adding package | Run `pnpm build` to compile TypeScript |
+| Dependency cruiser failing | Check import in `bootstrap.ts` not elsewhere |
+| Provider not found | Run `pnpm ax doctor` to check provider health |
+| SQLite errors | Set `AX_STORAGE=memory` to use in-memory storage |
+| Tests failing with alias errors | Add package alias to `vitest.config.ts` |
+| Type errors after contract changes | Run `pnpm typecheck` to see all affected files |

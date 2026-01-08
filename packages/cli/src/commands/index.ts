@@ -8,6 +8,7 @@ export { agentCommand } from './agent.js';
 export { abilityCommand } from './ability.js';
 export { sessionCommand } from './session.js';
 export { setupCommand } from './setup.js';
+export { initCommand } from './init.js';
 export { configCommand } from './config.js';
 export { reviewCommand } from './review.js';
 export { scaffoldCommand } from './scaffold.js';

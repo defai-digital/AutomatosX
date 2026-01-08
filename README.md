@@ -2,7 +2,7 @@
 
 **The AI orchestration platform with built-in governance**
 
-[![Version](https://img.shields.io/badge/version-13.1.16-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.1.17-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
@@ -63,12 +63,21 @@ ax trace --verbose
 # Install
 npm install -g @defai.digital/automatosx
 
-# Setup (detects your installed AI providers)
+# Global setup (one-time, detects providers)
 ax setup
+
+# Per-project initialization (run in each project)
+ax init
 
 # Verify
 ax doctor
 ```
+
+**Setup vs Init**:
+- `ax setup` — Global, one-time. Detects installed AI providers and creates `~/.automatosx/` config.
+- `ax init` — Per-project. Creates `.automatosx/` in your project and registers MCP with providers.
+
+When switching projects, just run `ax init` in the new project directory.
 
 **Prerequisites**: Node.js 20+, at least one AI provider installed:
 

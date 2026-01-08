@@ -18,7 +18,8 @@ Usage:
   ax <command> [options]
 
 Commands:
-  setup                 Initialize AutomatosX configuration
+  setup                 Global setup (detect providers, create config)
+  init                  Per-project init (create .automatosx/, register MCP)
   config <subcommand>   Manage configuration (show, get, set, reset, path)
   run <workflow-id>     Execute a workflow
   list                  List available workflows
@@ -122,6 +123,8 @@ Options:
 Examples:
   ax setup
   ax setup --force
+  ax init
+  ax init --force
   ax config show
   ax config get logLevel
   ax config set logLevel debug

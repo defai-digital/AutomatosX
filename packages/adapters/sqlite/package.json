@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/sqlite-adapter",
-  "version": "13.1.16",
+  "version": "13.1.17",
   "type": "module",
   "license": "Apache-2.0",
   "author": "DEFAI Private Limited",

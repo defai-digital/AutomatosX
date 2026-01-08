@@ -65,6 +65,7 @@ interface ParsedReviewArgs {
   timeoutMs: number;
   outputFormat: 'markdown' | 'json' | 'sarif';
   dryRun: boolean;
+  limit: number;
 }
 
 /**
@@ -82,6 +83,7 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
   let timeoutMs = TIMEOUT_PROVIDER_DEFAULT;
   let outputFormat: 'markdown' | 'json' | 'sarif' = 'markdown';
   let dryRun = false;
+  let limit = 10;
 
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
@@ -113,6 +115,8 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
       }
     } else if (arg === '--dry-run') {
       dryRun = true;
+    } else if (arg === '--limit' && i + 1 < args.length) {
+      limit = parseInt(args[++i]!, 10);
     } else if (arg !== undefined && !arg.startsWith('-')) {
       // Positional arg is a path
       paths.push(arg);
@@ -131,6 +135,7 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
     timeoutMs,
     outputFormat,
     dryRun,
+    limit,
   };
 }
 
@@ -142,10 +147,15 @@ function showReviewHelp(): CommandResult {
 ${COLORS.bold}AX Review - AI-Powered Code Review${COLORS.reset}
 
 Usage:
-  ax review <paths...> [options]
+  ax review analyze <paths...> [options]
+  ax review list [options]
   ax review help
 
-Options:
+Subcommands:
+  analyze <paths...>     Analyze code at specified paths
+  list                   List past review results
+
+Analyze Options:
   --focus <mode>           Focus mode: security, architecture, performance,
                           maintainability, correctness, all (default: all)
   --min-confidence <n>     Minimum confidence threshold 0-1 (default: 0.7)
@@ -156,6 +166,10 @@ Options:
   --timeout <seconds>      Review timeout (default: 120)
   --format <fmt>           Output format: markdown, json, sarif (default: markdown)
   --dry-run                Only show what would be analyzed
+
+List Options:
+  --focus <mode>           Filter by focus mode
+  --limit <n>              Maximum number of results (default: 10)
 
 Focus Modes:
   ${COLORS.red}security${COLORS.reset}        OWASP Top 10, injection, auth issues
@@ -177,12 +191,14 @@ Output Formats:
   sarif     SARIF 2.1.0 for CI integration
 
 Examples:
-  ax review src/                              # Review all code in src/
-  ax review src/ --focus security             # Security-focused review
-  ax review src/api/ --focus performance      # Performance review of API
-  ax review src/ --dry-run                    # Preview what would be analyzed
-  ax review src/ --format sarif > report.sarif  # SARIF output for CI
-  ax review src/ --min-confidence 0.9         # Only high-confidence findings
+  ax review analyze src/                      # Review all code in src/
+  ax review analyze src/ --focus security     # Security-focused review
+  ax review analyze src/api/ --focus performance  # Performance review of API
+  ax review analyze src/ --dry-run            # Preview what would be analyzed
+  ax review analyze src/ --format sarif       # SARIF output for CI
+  ax review list                              # List past reviews
+  ax review list --limit 5                    # Show last 5 reviews
+  ax review list --focus security             # Filter by focus mode
 `.trim();
 
   return {
@@ -514,6 +530,124 @@ ${dryRunResult.files.map((f: string) => `  ${ICONS.file} ${f}`).join('\n')}
   }
 }
 
+// In-memory storage for review results (mirrors MCP server behavior)
+const reviewStore = new Map<string, StoredReviewResult>();
+
+interface StoredReviewResult {
+  resultId: string;
+  requestId: string;
+  focus: string;
+  filesReviewed: string[];
+  summary: {
+    bySeverity: {
+      critical: number;
+      warning: number;
+      suggestion: number;
+      note: number;
+    };
+    healthScore: number;
+    verdict: string;
+  };
+  commentCount: number;
+  completedAt: string;
+}
+
+/**
+ * Store a review result for later listing
+ */
+export function storeReviewResult(result: {
+  resultId: string;
+  requestId: string;
+  focus: string;
+  filesReviewed: string[];
+  summary: {
+    bySeverity: { critical: number; warning: number; suggestion: number; note: number };
+    healthScore: number;
+    verdict: string;
+  };
+  comments: unknown[];
+  completedAt: string;
+}): void {
+  reviewStore.set(result.resultId, {
+    resultId: result.resultId,
+    requestId: result.requestId,
+    focus: result.focus,
+    filesReviewed: result.filesReviewed,
+    summary: result.summary,
+    commentCount: result.comments.length,
+    completedAt: result.completedAt,
+  });
+}
+
+/**
+ * Lists past review results
+ */
+function listReviews(
+  options: CLIOptions,
+  args: ParsedReviewArgs
+): CommandResult {
+  let results = Array.from(reviewStore.values());
+
+  // Filter by focus if specified (not 'all')
+  if (args.focus !== 'all') {
+    results = results.filter((r) => r.focus === args.focus);
+  }
+
+  // Sort by completion time (newest first)
+  results.sort(
+    (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+  );
+
+  // Limit results
+  results = results.slice(0, args.limit);
+
+  if (options.format === 'json') {
+    return {
+      success: true,
+      message: undefined,
+      data: { reviews: results, count: results.length },
+      exitCode: 0,
+    };
+  }
+
+  if (results.length === 0) {
+    return {
+      success: true,
+      message: `${COLORS.dim}No review results found.${COLORS.reset}\n\nRun ${COLORS.cyan}ax review analyze <paths>${COLORS.reset} to perform a code review.`,
+      data: undefined,
+      exitCode: 0,
+    };
+  }
+
+  const lines: string[] = [];
+  lines.push('');
+  lines.push(`${COLORS.bold}Recent Code Reviews${COLORS.reset}`);
+  lines.push(`${COLORS.dim}────────────────────────────────────────────────────────────────────────────${COLORS.reset}`);
+  lines.push(
+    `${'ID'.padEnd(12)} | ${'Focus'.padEnd(15)} | ${'Files'.padEnd(6)} | ${'Score'.padEnd(6)} | ${'Issues'.padEnd(8)} | Completed`
+  );
+  lines.push(`${COLORS.dim}────────────────────────────────────────────────────────────────────────────${COLORS.reset}`);
+
+  for (const result of results) {
+    const id = result.resultId.slice(0, 8);
+    const focus = result.focus.padEnd(15);
+    const files = String(result.filesReviewed.length).padEnd(6);
+    const score = String(result.summary.healthScore).padEnd(6);
+    const issues = String(result.commentCount).padEnd(8);
+    const date = new Date(result.completedAt).toLocaleString();
+    lines.push(`${id} | ${focus} | ${files} | ${score} | ${issues} | ${date}`);
+  }
+
+  lines.push('');
+
+  return {
+    success: true,
+    message: lines.join('\n'),
+    data: { reviews: results, count: results.length },
+    exitCode: 0,
+  };
+}
+
 /**
  * Review command handler
  */
@@ -523,15 +657,26 @@ export async function reviewCommand(
 ): Promise<CommandResult> {
   const parsed = parseReviewArgs(args);
 
-  // If first arg is a path (not "help"), treat it as a review command
-  if (parsed.subcommand !== 'help' && !parsed.subcommand.startsWith('-')) {
-    // Subcommand is actually a path
-    if (parsed.subcommand !== 'help') {
-      parsed.paths.unshift(parsed.subcommand);
-    }
-    return runReview(parsed.paths, options, parsed);
-  }
+  // Handle explicit subcommands
+  switch (parsed.subcommand) {
+    case 'help':
+      return showReviewHelp();
 
-  // Help command
-  return showReviewHelp();
+    case 'list':
+      return listReviews(options, parsed);
+
+    case 'analyze':
+      // 'analyze' subcommand - paths are in parsed.paths
+      return runReview(parsed.paths, options, parsed);
+
+    default:
+      // If not a known subcommand and not starting with '-', treat as a path
+      if (!parsed.subcommand.startsWith('-')) {
+        // Subcommand is actually a path - add it to paths
+        parsed.paths.unshift(parsed.subcommand);
+        return runReview(parsed.paths, options, parsed);
+      }
+      // Otherwise show help
+      return showReviewHelp();
+  }
 }

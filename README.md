@@ -1,261 +1,229 @@
 # AutomatosX
 
-**AI orchestration for teams who need governed, multi-provider automation**
+**One CLI to rule all your AI providers**
 
 [![Version](https://img.shields.io/badge/version-13.1.16-green.svg)](https://github.com/defai-digital/automatosx/releases)
-[![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
-[![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
----
-
-## What's New in v13.1.16
-
-- **Review List Command** - Fixed `ax review list` to properly list past reviews instead of showing confusing error
-- **Trace Command Fix** - Connected trace command to real storage; now shows actual traces instead of mock data
-- **Better Error Handling** - `ax trace <id>` returns "Trace not found" for nonexistent traces
-
-### Previous: v13.1.15
-
-- **CLI Alias Fix** - Verified and confirmed `ax` command alias works correctly alongside `automatosx`
-- **Version Sync** - All 28 packages synchronized to v13.1.15
-
-### Previous: v13.1.14
-
-- **Grok Added to Default Providers** - Grok now included in default discussion providers with enhanced reasoning capabilities
-- **Provider Priority Reordering** - Default providers ordered by reasoning strength: `claude → grok → gemini → glm → qwen`
-- **Extended Provider Timeout** - Increased default timeout from 3min to 10min (600000ms) for slower providers like GLM
-- **Debate Pattern Fix** - Fixed bug where debate pattern failed with "requires role assignments" - now auto-assigns roles
-- **Grok Capabilities Enhanced** - Updated `PROVIDER_STRENGTHS` to reflect Grok's strong reasoning and tool-use abilities
-
-### Previous: v13.1.13
-
-- **Temperature Configuration** - Centralized temperature defaults by pattern (`synthesis: 0.7`, `voting: 0.5`, `codeReview: 0.3`) with provider-specific overrides
-- **Per-Provider Rate Limiting** - Rate limiters now scoped per provider (Claude: 60 RPM, Gemini: 300 RPM) with burst support and session-level quotas
-- **Platform Improvement PRDs** - Comprehensive documentation for debugging confidence, code quality, and parallelization improvements
+AutomatosX lets you use Claude, Gemini, Codex, Qwen, GLM, and Grok from a single command line. Ask questions, review code, run multi-model discussions, and more.
 
 ---
 
-## Why AutomatosX
+## Quick Start (3 Steps)
 
-AutomatosX solves the core problem of AI coding: **quality and governance**. While LLMs can generate code fast, ensuring that code is correct, safe, and maintainable requires structure.
-
-- **Contracts** - Zod schemas as single source of truth for all inputs/outputs
-- **Domains** - Isolated business logic with clear boundaries
-- **Workflows** - Step-by-step execution with validation at each stage
-- **Invariants** - Behavioral guarantees that must always hold
-- **Guard** - Post-check governance gates before changes are accepted
-
-**Core principle**: AutomatosX never handles your secrets. Authentication stays in your provider CLIs.
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        CLI / MCP Server                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │
-│  │  Workflow   │  │   Agent     │  │   Review    │  │ Discussion │ │
-│  │  Engine     │  │   Domain    │  │   Domain    │  │   Domain   │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │
-│                                                                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │
-│  │   Guard     │  │   Memory    │  │   Trace     │  │  Routing   │ │
-│  │   System    │  │   Domain    │  │   Domain    │  │  Engine    │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │
-│                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                    Contracts (Zod Schemas)                          │
-│              Single Source of Truth + Invariants                    │
-└─────────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Provider Adapters                              │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │
-│  │ Claude │ │ Gemini │ │ Codex  │ │  Qwen  │ │  GLM   │ │  Grok  │ │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Quality Features for AI Coding
-
-### Contracts
-
-Every input and output is validated against Zod schemas. No magic strings, no undefined behavior.
-
-```typescript
-// All workflows, agents, and tools use typed contracts
-import { WorkflowSchema, AgentSchema } from '@defai.digital/contracts';
-```
-
-### Domains
-
-Business logic is isolated in domain packages with clear boundaries. Each domain owns its data and behavior.
-
-```
-packages/core/
-├── workflow-engine/    # Step execution, retries, validation
-├── agent-domain/       # Agent lifecycle, delegation
-├── memory-domain/      # Event-sourced state
-├── trace-domain/       # Execution audit trail
-└── guard/              # Policy enforcement
-```
-
-### Workflows
-
-Multi-step execution with validation, retries, and rollback. Each step is traced and auditable.
-
-```bash
-ax run code-reviewer --input '{"files":["src/index.ts"]}'
-ax trace <id> --verbose   # See every decision
-```
-
-### Invariants
-
-Behavioral guarantees documented and enforced. Examples:
-
-| Domain | Invariant | Guarantee |
-|--------|-----------|-----------|
-| Workflow | INV-WF-001 | Steps execute in definition order |
-| Routing | INV-RT-002 | High risk never selects experimental models |
-| Memory | INV-MEM-001 | Events never modified after storage |
-| Trace | INV-TR-001 | Every trace has start and end events |
-| Guard | INV-GD-001 | Policy violations block execution |
-
-### Guard System
-
-Post-check governance for AI-generated code. Verify before accepting changes.
-
-```bash
-ax guard check --policy bugfix --target ./src
-ax guard list   # See available policies
-```
-
-**Built-in policies:**
-- `bugfix` - Limit change radius for bug fixes (3 packages)
-- `provider-refactor` - Strict boundaries for adapter changes (2 packages)
-- `rebuild` - Larger scope for refactoring (10 packages)
-
-**Gates:**
-- Path validation (allowed/forbidden paths)
-- Change radius (limit packages modified)
-- Dependency boundaries (import rules)
-- Contract tests (schema validation)
-
----
-
-## Install
+### 1. Install
 
 ```bash
 npm install -g @defai.digital/automatosx
+```
+
+### 2. Setup
+
+```bash
 ax setup
+```
+
+This detects your installed AI providers and configures AutomatosX.
+
+### 3. Verify
+
+```bash
 ax doctor
 ```
 
-**Prerequisites**: Node.js >= 20.0.0, at least one provider CLI installed
-
-| Provider | CLI | Install |
-|----------|-----|---------|
-| Claude | `claude` | [claude-code](https://github.com/anthropics/claude-code) |
-| Gemini | `gemini` | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
-| Codex | `codex` | [codex](https://github.com/openai/codex) |
-| Qwen | `qwen` | [qwen-code](https://github.com/QwenLM/qwen-code) |
-| GLM | `ax-glm` | [ax-cli](https://github.com/defai-digital/ax-cli) |
-| Grok | `ax-grok` | [ax-cli](https://github.com/defai-digital/ax-cli) |
+You should see green checkmarks for your installed providers.
 
 ---
 
-## Quick Start
+## Your First Commands
+
+### Ask a question
 
 ```bash
-# Call a provider directly
-ax call claude "Explain this code"
-ax call claude --file ./src/index.ts "Review this"
+ax call claude "What is the capital of France?"
+ax call gemini "Explain quantum computing in simple terms"
+```
 
-# Run a workflow
-ax run code-reviewer --input '{"files":["src/index.ts"]}'
+### Review code
 
-# Review code with focus
+```bash
+ax review analyze src/ --focus security
+ax review analyze src/ --focus performance
+```
+
+### Multi-model discussion
+
+```bash
+ax discuss "What's the best database for a startup?"
+```
+
+### Iterate on a task
+
+```bash
+ax call claude --iterate "Build a REST API for user management"
+```
+
+---
+
+## Supported Providers
+
+| Provider | Command | Install Guide |
+|----------|---------|---------------|
+| Claude | `ax call claude` | [claude-code](https://github.com/anthropics/claude-code) |
+| Gemini | `ax call gemini` | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
+| Codex | `ax call codex` | [codex](https://github.com/openai/codex) |
+| Qwen | `ax call qwen` | [qwen-code](https://github.com/QwenLM/qwen-code) |
+| GLM | `ax call glm` | [ax-cli](https://github.com/defai-digital/ax-cli) |
+| Grok | `ax call grok` | [ax-cli](https://github.com/defai-digital/ax-cli) |
+
+**Note**: Install at least one provider CLI before using AutomatosX.
+
+---
+
+## Common Use Cases
+
+### Code Review
+
+```bash
+# Security-focused review
 ax review analyze src/ --focus security
 
-# Multi-model discussion
-ax discuss "Compare REST vs GraphQL" --providers claude,gemini
+# Performance review
+ax review analyze src/ --focus performance
 
-# Check governance
-ax guard check --policy bugfix --target ./src
+# Full review
+ax review analyze src/ --focus all
+```
 
-# View execution traces
-ax trace
+### Multi-Model Discussions
+
+Get perspectives from multiple AI models:
+
+```bash
+# Quick consensus from 3 models
+ax discuss quick "Should we use microservices or monolith?"
+
+# Detailed debate
+ax discuss --pattern debate "React vs Vue for enterprise apps"
+
+# Custom providers
+ax discuss --providers claude,gemini,grok "Best practices for API design"
+```
+
+### Autonomous Tasks
+
+Let the AI work through complex tasks step by step:
+
+```bash
+ax call claude --iterate "Implement user authentication with JWT"
+ax call gemini --iterate "Add unit tests for the payment module"
+```
+
+### Agents
+
+Run pre-built agents for common tasks:
+
+```bash
+# List available agents
+ax agent list
+
+# Run an agent
+ax agent run code-reviewer
+ax agent run security
 ```
 
 ---
 
-## CLI Reference
+## CLI Commands
 
-```bash
-# System
-ax setup                    # Initialize configuration
-ax doctor                   # Check provider health
-
-# Providers
-ax call <provider> "prompt" # Direct provider call
-
-# Workflows
-ax run <id> --input '{}'    # Execute workflow
-ax list                     # List workflows
-
-# Agents
-ax agent run <id>           # Execute agent
-ax agent list               # List agents
-
-# Review
-ax review analyze <path>    # Code review
-ax review analyze src/ --focus security
-
-# Discussion
-ax discuss "<topic>"        # Multi-model synthesis
-ax discuss quick "<topic>"  # Quick consensus
-
-# Guard
-ax guard check --policy <p> # Check governance
-ax guard list               # List policies
-
-# Scaffold
-ax scaffold contract <name> # Generate Zod schemas
-ax scaffold domain <name>   # Generate domain package
-```
+| Command | Description |
+|---------|-------------|
+| `ax setup` | Initialize configuration |
+| `ax doctor` | Check provider health |
+| `ax call <provider> "prompt"` | Call an AI provider |
+| `ax review analyze <path>` | AI code review |
+| `ax discuss "topic"` | Multi-model discussion |
+| `ax agent list` | List available agents |
+| `ax agent run <id>` | Run an agent |
+| `ax guard check --policy <p>` | Check code governance |
+| `ax --help` | Show all commands |
 
 ---
 
-## MCP Server
+## MCP Server Integration
 
-AutomatosX includes an MCP server for AI assistant integration.
+Use AutomatosX as an MCP server with Claude Code or other AI assistants:
 
 ```bash
-ax mcp server
+# Add to your AI assistant
+claude mcp add automatosx -- ax mcp server
 ```
 
-**Configuration** (add to MCP settings):
+Or add manually to your MCP settings:
+
 ```json
 {
   "mcpServers": {
     "automatosx": {
-      "command": "automatosx",
+      "command": "ax",
       "args": ["mcp", "server"]
     }
   }
 }
 ```
 
-**Tools**: `ax_agent_run`, `ax_review_analyze`, `ax_discuss`, `ax_guard_check`, `ax_workflow_run`, `ax_trace_list`, `ax_memory_store`
+---
+
+## Configuration
+
+AutomatosX stores configuration in `~/.automatosx/`:
+
+```bash
+# Show current config
+ax config show
+
+# Change default provider
+ax config set defaultProvider gemini
+
+# Adjust timeout
+ax config set execution.timeout 180000
+```
+
+---
+
+## Troubleshooting
+
+### "Provider not found"
+
+Make sure you have at least one provider CLI installed:
+
+```bash
+# Check what's installed
+ax doctor
+
+# Install Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# Re-run setup
+ax setup
+```
+
+### "Command not found: ax"
+
+The CLI wasn't installed globally:
+
+```bash
+npm install -g @defai.digital/automatosx
+```
+
+### Provider timing out
+
+Increase the timeout:
+
+```bash
+ax call claude --timeout 300 "Complex task here"
+```
 
 ---
 
@@ -266,8 +234,26 @@ git clone https://github.com/defai-digital/automatosx.git
 cd automatosx
 pnpm install && pnpm build
 pnpm test
-pnpm validate   # typecheck + lint + deps + tests
 ```
+
+---
+
+## What's New
+
+### v13.1.16
+- Fixed `ax review list` command
+- Connected trace command to real storage
+- Improved error handling
+
+### v13.1.15
+- Verified `ax` command alias
+
+### v13.1.14
+- Added Grok to default providers
+- Extended provider timeout to 10 minutes
+- Fixed debate pattern
+
+[Full Changelog](https://github.com/defai-digital/automatosx/releases)
 
 ---
 
@@ -275,8 +261,6 @@ pnpm validate   # typecheck + lint + deps + tests
 
 Apache License 2.0 - see [LICENSE](LICENSE)
 
-Commercial editions available. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
-
 ---
 
-[Documentation](docs/) | [Examples](examples/) | [GitHub](https://github.com/defai-digital/automatosx)
+[Documentation](docs/) | [Examples](examples/) | [GitHub](https://github.com/defai-digital/automatosx) | [Issues](https://github.com/defai-digital/automatosx/issues)

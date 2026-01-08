@@ -1,6 +1,6 @@
 # AutomatosX
 
-**One CLI to rule all your AI providers**
+**Stop asking one AI. Start asking all of them.**
 
 [![Version](https://img.shields.io/badge/version-13.1.16-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
@@ -8,281 +8,244 @@
 
 ---
 
-## What is AutomatosX?
+## The Problem
 
-AutomatosX is a unified command-line tool that lets you work with multiple AI providers (Claude, Gemini, Codex, Qwen, GLM, Grok) through a single interface. Instead of switching between different tools, you use one command: `ax`.
+You're building software and using AI to help. But here's what happens:
+
+- You ask **Claude** about your architecture. It says "use microservices."
+- You ask **Gemini** the same question. It says "start with a monolith."
+- You ask **GPT**. It gives a third opinion.
+
+**Which one is right?** You don't know. Each AI has blind spots and biases.
+
+Now imagine you could ask all of them at once, let them discuss, debate, and reach consensus. That's AutomatosX.
+
+---
+
+## What AutomatosX Does
+
+### 1. Multi-Model Discussions
+
+Ask a question to multiple AI models and get a synthesized answer:
 
 ```bash
-ax call claude "Review this code for security issues"
-ax call gemini "Write unit tests for this function"
-ax discuss "What's the best architecture for our system?"
+ax discuss "Should we use microservices or monolith for a 3-person startup?"
 ```
 
+AutomatosX will:
+- Send your question to Claude, Gemini, GLM, and more
+- Let them see each other's responses
+- Synthesize a final answer that considers all perspectives
+
+**Result**: Better decisions because you're not limited to one AI's opinion.
+
+### 2. AI Code Review
+
+Get your code reviewed by AI with specific focus areas:
+
+```bash
+ax review analyze src/ --focus security
+```
+
+Focus options:
+- `security` - Find vulnerabilities, injection risks, auth issues
+- `performance` - Spot N+1 queries, memory leaks, slow algorithms
+- `architecture` - Check coupling, SOLID principles, design patterns
+- `all` - Comprehensive review
+
+**Result**: Catch bugs before they reach production.
+
+### 3. One CLI for All Providers
+
+Stop switching between `claude`, `gemini`, `codex`, and other tools:
+
+```bash
+ax call claude "Explain this error"
+ax call gemini "Write a test for this function"
+ax call grok "Review this PR"
+```
+
+Same syntax, any provider. Your muscle memory works everywhere.
+
+**Result**: Less context switching, more flow state.
+
 ---
 
-## Why AutomatosX?
+## Real-World Scenarios
 
-| Problem | AutomatosX Solution |
-|---------|---------------------|
-| **Too many AI tools** | One CLI (`ax`) for all providers |
-| **Context switching** | Same commands work across all providers |
-| **Single model bias** | Multi-model discussions get diverse perspectives |
-| **Manual code review** | AI-powered review with security, performance, architecture focus |
-| **Complex automation** | Pre-built agents for common tasks |
-| **No audit trail** | Built-in tracing for all AI interactions |
+### Scenario 1: Making Architecture Decisions
 
-**Key Benefits:**
+**Before AutomatosX:**
+1. Ask Claude about database choice
+2. Copy response somewhere
+3. Open Gemini, ask the same question
+4. Compare manually
+5. Still not sure which is right
 
-- **Unified Interface** - Learn one tool, use any AI provider
-- **Multi-Model Discussions** - Get consensus from Claude, Gemini, and others on tough decisions
-- **Code Review** - Automated security, performance, and architecture analysis
-- **Governance** - Guard system ensures AI changes follow your policies
-- **No Vendor Lock-in** - Switch providers anytime, your workflows stay the same
+**With AutomatosX:**
+```bash
+ax discuss --pattern debate "PostgreSQL vs MongoDB for an e-commerce platform with complex product relationships"
+```
+
+Get a structured debate with pros, cons, and a synthesized recommendation in one command.
+
+### Scenario 2: Security Review Before Deployment
+
+**Before AutomatosX:**
+- Hope you remember to check for SQL injection
+- Maybe run a linter
+- Cross fingers
+
+**With AutomatosX:**
+```bash
+ax review analyze src/api/ --focus security
+```
+
+AI scans your code for OWASP Top 10 vulnerabilities, auth issues, and data exposure risks.
+
+### Scenario 3: Getting Unstuck
+
+**Before AutomatosX:**
+- Paste code into Claude, get an answer
+- Not helpful? Try Gemini
+- Still stuck? Try GPT
+- Waste 30 minutes copying and pasting
+
+**With AutomatosX:**
+```bash
+ax discuss "Why is this React component re-rendering infinitely?" --context "$(cat src/components/Dashboard.tsx)"
+```
+
+Multiple AIs analyze your code simultaneously and collaborate on the solution.
 
 ---
 
-## Quick Start (3 Steps)
+## Quick Start
 
-### 1. Install
+### Step 1: Install
 
 ```bash
 npm install -g @defai.digital/automatosx
 ```
 
-### 2. Setup
+### Step 2: Setup
 
 ```bash
 ax setup
 ```
 
-This detects your installed AI providers and configures AutomatosX.
+This detects which AI CLIs you have installed (Claude, Gemini, etc.).
 
-### 3. Verify
+### Step 3: Try It
 
 ```bash
+# Check your setup
 ax doctor
-```
 
-You should see green checkmarks for your installed providers.
+# Ask a question
+ax call claude "What's the best way to handle errors in TypeScript?"
 
----
-
-## Your First Commands
-
-### Ask a question
-
-```bash
-ax call claude "What is the capital of France?"
-ax call gemini "Explain quantum computing in simple terms"
-```
-
-### Review code
-
-```bash
-ax review analyze src/ --focus security
-ax review analyze src/ --focus performance
-```
-
-### Multi-model discussion
-
-```bash
-ax discuss "What's the best database for a startup?"
-```
-
-### Iterate on a task
-
-```bash
-ax call claude --iterate "Build a REST API for user management"
+# Get multiple perspectives
+ax discuss "Tabs vs spaces?"
 ```
 
 ---
 
-## Supported Providers
+## Prerequisites
 
-| Provider | Command | Install Guide |
-|----------|---------|---------------|
-| Claude | `ax call claude` | [claude-code](https://github.com/anthropics/claude-code) |
-| Gemini | `ax call gemini` | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
-| Codex | `ax call codex` | [codex](https://github.com/openai/codex) |
-| Qwen | `ax call qwen` | [qwen-code](https://github.com/QwenLM/qwen-code) |
-| GLM | `ax call glm` | [ax-cli](https://github.com/defai-digital/ax-cli) |
-| Grok | `ax call grok` | [ax-cli](https://github.com/defai-digital/ax-cli) |
+You need at least one AI provider CLI installed:
 
-**Note**: Install at least one provider CLI before using AutomatosX.
+| Provider | Install |
+|----------|---------|
+| Claude | `npm install -g @anthropic-ai/claude-code` |
+| Gemini | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
+| Codex | [codex](https://github.com/openai/codex) |
+| Qwen | [qwen-code](https://github.com/QwenLM/qwen-code) |
+| GLM | [ax-cli](https://github.com/defai-digital/ax-cli) |
+| Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
+
+Run `ax doctor` to see which providers are available.
 
 ---
 
-## Common Use Cases
+## Command Reference
+
+### Basic Commands
+
+```bash
+ax call <provider> "prompt"     # Ask a single AI
+ax discuss "topic"              # Multi-model discussion
+ax review analyze <path>        # AI code review
+ax agent list                   # Show available agents
+ax agent run <name>             # Run a pre-built agent
+```
+
+### Discussion Patterns
+
+```bash
+ax discuss "question"                              # Quick synthesis
+ax discuss --pattern debate "topic"                # Structured debate
+ax discuss --pattern voting "option A vs B vs C"   # Voting with confidence
+ax discuss --providers claude,gemini "question"    # Specific providers
+```
 
 ### Code Review
 
 ```bash
-# Security-focused review
-ax review analyze src/ --focus security
-
-# Performance review
+ax review analyze src/                    # Full review
+ax review analyze src/ --focus security   # Security focus
 ax review analyze src/ --focus performance
-
-# Full review
-ax review analyze src/ --focus all
+ax review analyze src/ --focus architecture
 ```
 
-### Multi-Model Discussions
-
-Get perspectives from multiple AI models:
+### System
 
 ```bash
-# Quick consensus from 3 models
-ax discuss quick "Should we use microservices or monolith?"
-
-# Detailed debate
-ax discuss --pattern debate "React vs Vue for enterprise apps"
-
-# Custom providers
-ax discuss --providers claude,gemini,grok "Best practices for API design"
-```
-
-### Autonomous Tasks
-
-Let the AI work through complex tasks step by step:
-
-```bash
-ax call claude --iterate "Implement user authentication with JWT"
-ax call gemini --iterate "Add unit tests for the payment module"
-```
-
-### Agents
-
-Run pre-built agents for common tasks:
-
-```bash
-# List available agents
-ax agent list
-
-# Run an agent
-ax agent run code-reviewer
-ax agent run security
+ax setup      # Configure AutomatosX
+ax doctor     # Check provider health
+ax config show # View configuration
+ax --help     # All commands
 ```
 
 ---
 
-## CLI Commands
+## MCP Server
 
-| Command | Description |
-|---------|-------------|
-| `ax setup` | Initialize configuration |
-| `ax doctor` | Check provider health |
-| `ax call <provider> "prompt"` | Call an AI provider |
-| `ax review analyze <path>` | AI code review |
-| `ax discuss "topic"` | Multi-model discussion |
-| `ax agent list` | List available agents |
-| `ax agent run <id>` | Run an agent |
-| `ax guard check --policy <p>` | Check code governance |
-| `ax --help` | Show all commands |
-
----
-
-## MCP Server Integration
-
-Use AutomatosX as an MCP server with Claude Code or other AI assistants:
+Use AutomatosX tools from Claude Code or other AI assistants:
 
 ```bash
-# Add to your AI assistant
 claude mcp add automatosx -- ax mcp server
 ```
 
-Or add manually to your MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "automatosx": {
-      "command": "ax",
-      "args": ["mcp", "server"]
-    }
-  }
-}
-```
+Now you can use AutomatosX tools directly in your AI assistant conversations.
 
 ---
 
-## Configuration
+## FAQ
 
-AutomatosX stores configuration in `~/.automatosx/`:
+### Why not just use Claude/Gemini directly?
 
-```bash
-# Show current config
-ax config show
+You can! AutomatosX adds value when you:
+- Want multiple AI perspectives on a decision
+- Need structured code review with focus areas
+- Want consistent commands across different AI providers
+- Care about tracking what AI tools are doing in your codebase
 
-# Change default provider
-ax config set defaultProvider gemini
+### Is this just a wrapper?
 
-# Adjust timeout
-ax config set execution.timeout 180000
-```
+It's an orchestrator. The key feature isn't calling one AI—it's coordinating multiple AIs to discuss, debate, and reach better conclusions than any single model.
 
----
+### Do I need all providers installed?
 
-## Troubleshooting
-
-### "Provider not found"
-
-Make sure you have at least one provider CLI installed:
-
-```bash
-# Check what's installed
-ax doctor
-
-# Install Claude Code
-npm install -g @anthropic-ai/claude-code
-
-# Re-run setup
-ax setup
-```
-
-### "Command not found: ax"
-
-The CLI wasn't installed globally:
-
-```bash
-npm install -g @defai.digital/automatosx
-```
-
-### Provider timing out
-
-Increase the timeout:
-
-```bash
-ax call claude --timeout 300 "Complex task here"
-```
-
----
-
-## Development
-
-```bash
-git clone https://github.com/defai-digital/automatosx.git
-cd automatosx
-pnpm install && pnpm build
-pnpm test
-```
+No. AutomatosX works with whatever you have. Even with just Claude installed, you get the code review and agent features. Multi-model discussions require 2+ providers.
 
 ---
 
 ## What's New
 
-### v13.1.16
-- Fixed `ax review list` command
-- Connected trace command to real storage
-- Improved error handling
-
-### v13.1.15
-- Verified `ax` command alias
-
-### v13.1.14
-- Added Grok to default providers
-- Extended provider timeout to 10 minutes
-- Fixed debate pattern
+**v13.1.16** - Bug fixes for review and trace commands
+**v13.1.15** - CLI alias verification
+**v13.1.14** - Added Grok, extended timeouts, fixed debate pattern
 
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 
@@ -294,4 +257,4 @@ Apache License 2.0 - see [LICENSE](LICENSE)
 
 ---
 
-[Documentation](docs/) | [Examples](examples/) | [GitHub](https://github.com/defai-digital/automatosx) | [Issues](https://github.com/defai-digital/automatosx/issues)
+[GitHub](https://github.com/defai-digital/automatosx) | [Issues](https://github.com/defai-digital/automatosx/issues) | [Documentation](docs/)

@@ -2,7 +2,7 @@
 
 **AI orchestration for teams who need governed, multi-provider automation**
 
-[![Version](https://img.shields.io/badge/version-13.1.15-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.1.16-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Windows](https://img.shields.io/badge/Windows-11%2B-blue.svg)](https://github.com/defai-digital/automatosx)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%2B-blue.svg)](https://github.com/defai-digital/automatosx)
@@ -11,7 +11,13 @@
 
 ---
 
-## What's New in v13.1.15
+## What's New in v13.1.16
+
+- **Review List Command** - Fixed `ax review list` to properly list past reviews instead of showing confusing error
+- **Trace Command Fix** - Connected trace command to real storage; now shows actual traces instead of mock data
+- **Better Error Handling** - `ax trace <id>` returns "Trace not found" for nonexistent traces
+
+### Previous: v13.1.15
 
 - **CLI Alias Fix** - Verified and confirmed `ax` command alias works correctly alongside `automatosx`
 - **Version Sync** - All 28 packages synchronized to v13.1.15

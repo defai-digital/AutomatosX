@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/trace-domain",
-  "version": "13.1.15",
+  "version": "13.1.16",
   "type": "module",
   "description": "Trace domain - execution tracing following contract invariants",
   "license": "Apache-2.0",

@@ -6,7 +6,38 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
-AutomatosX lets you use Claude, Gemini, Codex, Qwen, GLM, and Grok from a single command line. Ask questions, review code, run multi-model discussions, and more.
+---
+
+## What is AutomatosX?
+
+AutomatosX is a unified command-line tool that lets you work with multiple AI providers (Claude, Gemini, Codex, Qwen, GLM, Grok) through a single interface. Instead of switching between different tools, you use one command: `ax`.
+
+```bash
+ax call claude "Review this code for security issues"
+ax call gemini "Write unit tests for this function"
+ax discuss "What's the best architecture for our system?"
+```
+
+---
+
+## Why AutomatosX?
+
+| Problem | AutomatosX Solution |
+|---------|---------------------|
+| **Too many AI tools** | One CLI (`ax`) for all providers |
+| **Context switching** | Same commands work across all providers |
+| **Single model bias** | Multi-model discussions get diverse perspectives |
+| **Manual code review** | AI-powered review with security, performance, architecture focus |
+| **Complex automation** | Pre-built agents for common tasks |
+| **No audit trail** | Built-in tracing for all AI interactions |
+
+**Key Benefits:**
+
+- **Unified Interface** - Learn one tool, use any AI provider
+- **Multi-Model Discussions** - Get consensus from Claude, Gemini, and others on tough decisions
+- **Code Review** - Automated security, performance, and architecture analysis
+- **Governance** - Guard system ensures AI changes follow your policies
+- **No Vendor Lock-in** - Switch providers anytime, your workflows stay the same
 
 ---
 

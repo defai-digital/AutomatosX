@@ -10,6 +10,7 @@ import {
   versionCommand,
   CLI_VERSION,
   resetStepExecutor,
+  getTraceStore,
 } from '@defai.digital/cli';
 import type { CLIOptions } from '@defai.digital/cli';
 
@@ -175,10 +176,31 @@ describe('CLI', () => {
     });
 
     it('should get specific trace by ID', async () => {
-      const result = await traceCommand(['test-trace-id'], createOptions({ format: 'json' }));
+      // First, write a trace event so there's something to query
+      const traceStore = getTraceStore();
+      const testTraceId = 'test-trace-id';
+      await traceStore.write({
+        eventId: crypto.randomUUID(),
+        traceId: testTraceId,
+        type: 'run.start',
+        timestamp: new Date().toISOString(),
+        sequence: 0,
+        payload: { workflowId: 'test-workflow' },
+        status: 'running',
+      });
+
+      const result = await traceCommand([testTraceId], createOptions({ format: 'json' }));
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
+    });
+
+    it('should return error for nonexistent trace', async () => {
+      const result = await traceCommand(['nonexistent-trace-id'], createOptions());
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.message).toContain('Trace not found');
     });
   });
 

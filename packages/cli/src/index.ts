@@ -29,7 +29,7 @@ export {
 } from './utils/index.js';
 
 // Bootstrap exports (for testing)
-export { resetStepExecutor } from './bootstrap.js';
+export { resetStepExecutor, getTraceStore } from './bootstrap.js';
 
 // Type exports
 export type {

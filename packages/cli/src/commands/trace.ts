@@ -1,5 +1,6 @@
 import type { CommandResult, CLIOptions } from '../types.js';
 import type { TraceEvent } from '@defai.digital/contracts';
+import { getTraceStore } from '../bootstrap.js';
 
 /**
  * Trace summary for display
@@ -145,94 +146,27 @@ async function getTrace(
 }
 
 /**
- * Gets recent traces
- * In a real implementation, this would query the trace store
+ * Gets recent traces from the trace store
  */
-function getRecentTraces(_limit: number): Promise<TraceSummary[]> {
-  // Return sample traces for demonstration
-  const now = new Date();
-  return Promise.resolve([
-    {
-      traceId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      startTime: new Date(now.getTime() - 60000).toISOString(),
-      endTime: new Date(now.getTime() - 55000).toISOString(),
-      status: 'success',
-      eventCount: 8,
-      durationMs: 5000,
-    },
-    {
-      traceId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-      startTime: new Date(now.getTime() - 120000).toISOString(),
-      endTime: new Date(now.getTime() - 115000).toISOString(),
-      status: 'success',
-      eventCount: 6,
-      durationMs: 5000,
-    },
-    {
-      traceId: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-      startTime: new Date(now.getTime() - 180000).toISOString(),
-      endTime: new Date(now.getTime() - 178000).toISOString(),
-      status: 'failure',
-      eventCount: 4,
-      durationMs: 2000,
-    },
-  ]);
+async function getRecentTraces(limit: number): Promise<TraceSummary[]> {
+  const store = getTraceStore();
+  const summaries = await store.listTraces(limit);
+
+  // Map TraceSummary from trace-domain to our local TraceSummary type
+  return summaries.map((s) => ({
+    traceId: s.traceId,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    status: s.status,
+    eventCount: s.eventCount,
+    durationMs: s.durationMs,
+  }));
 }
 
 /**
- * Gets events for a specific trace
- * In a real implementation, this would query the trace store
+ * Gets events for a specific trace from the trace store
  */
-function getTraceEvents(traceId: string): Promise<TraceEvent[]> {
-  // Return sample events for demonstration
-  const now = new Date();
-  return Promise.resolve([
-    {
-      eventId: crypto.randomUUID(),
-      traceId,
-      type: 'run.start',
-      timestamp: new Date(now.getTime() - 5000).toISOString(),
-      sequence: 0,
-      payload: { workflowId: 'sample-workflow' },
-      status: 'running',
-    },
-    {
-      eventId: crypto.randomUUID(),
-      traceId,
-      type: 'decision.routing',
-      timestamp: new Date(now.getTime() - 4500).toISOString(),
-      sequence: 1,
-      payload: { model: 'claude-3-5-sonnet-20241022' },
-    },
-    {
-      eventId: crypto.randomUUID(),
-      traceId,
-      type: 'step.execute',
-      timestamp: new Date(now.getTime() - 4000).toISOString(),
-      sequence: 2,
-      payload: { stepId: 'step-1' },
-      status: 'success',
-      durationMs: 500,
-    },
-    {
-      eventId: crypto.randomUUID(),
-      traceId,
-      type: 'step.execute',
-      timestamp: new Date(now.getTime() - 3000).toISOString(),
-      sequence: 3,
-      payload: { stepId: 'step-2' },
-      status: 'success',
-      durationMs: 1000,
-    },
-    {
-      eventId: crypto.randomUUID(),
-      traceId,
-      type: 'run.end',
-      timestamp: now.toISOString(),
-      sequence: 4,
-      payload: { success: true },
-      status: 'success',
-      durationMs: 5000,
-    },
-  ]);
+async function getTraceEvents(traceId: string): Promise<TraceEvent[]> {
+  const store = getTraceStore();
+  return store.getTrace(traceId);
 }

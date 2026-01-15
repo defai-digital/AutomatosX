@@ -203,7 +203,7 @@ describe('Discuss MCP Tools - Handler Execution', () => {
     it('should include participating providers', async () => {
       const result = await handleDiscuss({
         topic: 'Test topic',
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
       });
 
       const data = JSON.parse(getTextContent(result));
@@ -270,7 +270,7 @@ describe('Discuss MCP Tools - Handler Execution', () => {
     it('should use custom providers when specified', async () => {
       const result = await handleDiscussQuick({
         topic: 'Test topic',
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
       });
 
       const data = JSON.parse(getTextContent(result));

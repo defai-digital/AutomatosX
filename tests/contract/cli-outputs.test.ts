@@ -33,7 +33,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(__dirname, '../fixtures/cli-outputs');
 
 // Provider IDs to test
-const PROVIDERS = ['claude', 'gemini', 'codex', 'qwen', 'glm', 'grok'] as const;
+const PROVIDERS = ['claude', 'gemini', 'codex', 'grok'] as const;
 
 /**
  * Loads all fixtures for a provider

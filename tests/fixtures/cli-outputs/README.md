@@ -30,10 +30,6 @@ cli-outputs/
 ├── codex/
 │   ├── success-item-completed.json
 │   └── error-timeout.json
-├── qwen/
-│   └── success-text.json
-├── glm/
-│   └── success-stream.json
 └── grok/
     └── success-stream.json
 ```

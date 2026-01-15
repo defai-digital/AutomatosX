@@ -93,7 +93,7 @@ ax call <provider> <prompt> [options]
 ```
 
 **Arguments:**
-- `<provider>` - AI provider: `claude`, `gemini`, `codex`, `qwen`, `glm`, `grok`
+- `<provider>` - AI provider: `claude`, `gemini`, `codex`, `grok`
 - `<prompt>` - The prompt to send
 
 **Options:**

@@ -2,7 +2,7 @@
  * Discussion Domain
  *
  * Multi-model discussion orchestration for AutomatosX.
- * Enables Claude, GLM, Qwen, Gemini, Codex, and Grok to collaborate on complex problems.
+ * Enables Claude, Gemini, Codex, and Grok to collaborate on complex problems.
  *
  * @module @defai.digital/discussion-domain
  */

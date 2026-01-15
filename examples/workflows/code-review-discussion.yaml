@@ -8,8 +8,7 @@
 #
 # Model Roles:
 #   - Claude: Security and correctness analysis
-#   - GLM: Performance and implementation patterns
-#   - Qwen: Edge cases and mathematical correctness
+#   - Grok: Edge cases and real-time analysis
 #
 # Focus Options: security, performance, maintainability, all
 
@@ -30,8 +29,7 @@ steps:
       pattern: critique
       providers:
         - claude
-        - glm
-        - qwen
+        - grok
       prompt: |
         Review this code for {{input.focus | default: "all"}} concerns:
 
@@ -70,8 +68,7 @@ steps:
       pattern: voting
       providers:
         - claude
-        - glm
-        - qwen
+        - grok
       prompt: |
         Based on the review synthesis:
 
@@ -105,7 +102,7 @@ steps:
       pattern: synthesis
       providers:
         - claude
-        - glm
+        - grok
       prompt: |
         Generate the improved code based on:
 
@@ -166,5 +163,4 @@ metadata:
   estimatedDuration: 300000
   providers:
     - claude
-    - glm
-    - qwen
+    - grok

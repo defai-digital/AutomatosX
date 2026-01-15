@@ -176,7 +176,7 @@ export type ExpectedParseResult = z.infer<typeof ExpectedParseResultSchema>;
  * output parser correctly extracts content and classifies errors.
  */
 export const CLIOutputFixtureSchema = z.object({
-  /** Provider ID (claude, gemini, codex, qwen, glm, grok) */
+  /** Provider ID (claude, gemini, codex, grok) */
   provider: z.string(),
 
   /** Scenario description */
@@ -231,18 +231,6 @@ export const PROVIDER_OUTPUT_FORMATS = {
     description: 'JSON Lines with item.completed events',
     contentExtraction: 'item.text or item.agent_message.text in item.completed events',
     examples: ['{"type":"item.completed","item":{"type":"agent_message","text":"Hello"}}'],
-  },
-  qwen: {
-    format: 'text' as const,
-    description: 'Plain text output',
-    contentExtraction: 'Raw stdout',
-    examples: ['Hello, how can I help you today?'],
-  },
-  glm: {
-    format: 'stream-json' as const,
-    description: 'JSON Lines with role:assistant messages',
-    contentExtraction: 'content field from assistant role messages',
-    examples: ['{"role":"assistant","content":"Hello"}'],
   },
   grok: {
     format: 'stream-json' as const,

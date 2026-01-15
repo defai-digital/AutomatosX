@@ -1,7 +1,7 @@
 /**
  * Discussion Domain Contracts v1
  *
- * Zod schemas and types for multi-model discussions enabling Claude, GLM, Qwen,
+ * Zod schemas and types for multi-model discussions enabling Claude,
  * Gemini, Codex, and Grok to collaborate on complex problems.
  *
  * @module @defai.digital/contracts/discussion/v1

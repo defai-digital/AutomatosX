@@ -263,7 +263,7 @@ export class DiscussionExecutor {
   async debate(
     topic: string,
     proponent = 'claude',
-    opponent = 'glm',
+    opponent = 'grok',
     judge = 'gemini',
     options?: {
       rounds?: number;

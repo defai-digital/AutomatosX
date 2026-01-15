@@ -127,8 +127,6 @@ Providers use external CLI tools - AutomatosX does NOT manage credentials:
 - `claude` - [Claude Code](https://github.com/anthropics/claude-code)
 - `gemini` - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 - `codex` - [Codex CLI](https://github.com/openai/codex)
-- `qwen` - [Qwen Code](https://github.com/QwenLM/qwen-code)
-- `ax-glm` - [ax-cli](https://github.com/defai-digital/ax-cli) GLM wrapper (ZAI_API_KEY)
 - `ax-grok` - [ax-cli](https://github.com/defai-digital/ax-cli) Grok wrapper (XAI_API_KEY)
 
 Provider configurations are centralized in `packages/cli/src/bootstrap.ts` (PROVIDER_CONFIGS).
@@ -289,3 +287,5 @@ Or use scaffolding: `pnpm ax scaffold contract <domain-name>`
 | SQLite errors | Set `AX_STORAGE=memory` to use in-memory storage |
 | Tests failing with alias errors | Add package alias to `vitest.config.ts` |
 | Type errors after contract changes | Run `pnpm typecheck` to see all affected files |
+| MCP not working in new project | Run `ax init` to register MCP with providers |
+| `ax setup` says "providers changed" | Run `ax setup --force` to update configuration |

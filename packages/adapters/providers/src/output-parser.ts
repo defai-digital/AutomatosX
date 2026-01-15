@@ -142,7 +142,7 @@ function extractContent(data: Record<string, unknown>): string {
     return '';
   }
 
-  // Handle ax-glm/ax-grok style: {"role":"assistant","content":"..."}
+  // Handle ax-grok style: {"role":"assistant","content":"..."}
   // Only extract assistant messages, skip user messages
   if (data.role === 'assistant' && typeof data.content === 'string') {
     return data.content;
@@ -151,7 +151,7 @@ function extractContent(data: Record<string, unknown>): string {
     return '';  // Skip user echo
   }
 
-  // Handle ax-glm/ax-grok --json output: {"messages":[{"role":"assistant","content":"..."}]}
+  // Handle ax-grok --json output: {"messages":[{"role":"assistant","content":"..."}]}
   if (Array.isArray(data.messages)) {
     const assistantMessages = data.messages
       .filter((msg): msg is { role: string; content: string } => {

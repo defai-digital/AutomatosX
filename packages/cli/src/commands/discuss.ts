@@ -2,7 +2,7 @@
  * Discuss Command - Multi-model discussion orchestration
  *
  * Usage: ax discuss <topic>
- *        ax discuss --providers claude,glm,qwen "Design a REST API"
+ *        ax discuss --providers claude,grok,gemini "Design a REST API"
  *        ax discuss --pattern debate "Is microservices better than monolith?"
  *
  * Enables multiple AI models to discuss a topic from their unique perspectives,
@@ -283,7 +283,7 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     }
     // Participant options (agents and providers)
     else if (arg === '--participants' && i + 1 < args.length) {
-      // Parse participant list: "claude,glm,reviewer:agent,security:agent"
+      // Parse participant list: "claude,grok,reviewer:agent,security:agent"
       const participantStr = args[++i] ?? '';
       participants = parseParticipantList(participantStr);
     } else if (arg === '--agent-weight' && i + 1 < args.length) {
@@ -531,7 +531,7 @@ ${COLORS.bold}Arguments:${COLORS.reset}
   <topic>           The topic or question for discussion
 
 ${COLORS.bold}Basic Options:${COLORS.reset}
-  --providers       Comma-separated list of providers (default: claude,glm,qwen,gemini)
+  --providers       Comma-separated list of providers (default: claude,grok,gemini)
   --pattern         Discussion pattern: ${patterns}
   --rounds          Number of discussion rounds (default: 2)
   --consensus       Consensus method: ${consensusMethods}
@@ -568,7 +568,7 @@ ${COLORS.bold}Timeout Strategies:${COLORS.reset}
 
 ${COLORS.bold}Examples:${COLORS.reset}
   ax discuss "What is the best approach for microservices?"
-  ax discuss --providers claude,glm,qwen "Design a REST API"
+  ax discuss --providers claude,grok,gemini "Design a REST API"
   ax discuss --pattern debate "Is functional programming better than OOP?"
   ax discuss --pattern voting "Which framework: React, Vue, or Angular?"
   ax discuss --verbose --rounds 3 "Optimize database queries"
@@ -620,7 +620,7 @@ export async function discussCommand(
     // For quick mode, use 3 providers and 2 rounds with synthesis
     return discussCommand(
       [
-        '--providers', 'claude,glm,qwen',
+        '--providers', 'claude,grok,gemini',
         '--pattern', 'synthesis',
         '--rounds', '2',
         topic,

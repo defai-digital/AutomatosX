@@ -4,8 +4,6 @@
  * DESIGN: AutomatosX does NOT manage credentials.
  * Each provider CLI handles its own authentication:
  * - claude, gemini, codex: Official CLIs with built-in auth
- * - qwen: Qwen CLI with DashScope auth
- * - ax-glm: GLM CLI wrapper (handles ZAI_API_KEY)
  * - ax-grok: Grok CLI wrapper (handles XAI_API_KEY)
  */
 
@@ -60,8 +58,6 @@ export {
   claudeConfig,
   geminiConfig,
   codexConfig,
-  qwenConfig,
-  glmConfig,
   grokConfig,
   ALL_PROVIDER_CONFIGS,
   getProviderConfig,

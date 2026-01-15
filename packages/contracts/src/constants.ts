@@ -490,8 +490,6 @@ export const PROVIDER_IDS = [
   'claude',
   'gemini',
   'codex',
-  'qwen',
-  'glm',
   'grok',
 ] as const;
 

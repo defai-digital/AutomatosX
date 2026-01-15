@@ -38,8 +38,7 @@ steps:
       pattern: synthesis
       providers:
         - claude
-        - glm
-        - qwen
+        - grok
       prompt: |
         Consider this question: {{input.question}}
 
@@ -68,8 +67,7 @@ steps:
       pattern: voting
       providers:
         - claude
-        - glm
-        - qwen
+        - grok
         - gemini
       prompt: |
         Based on the previous synthesis:
@@ -100,8 +98,7 @@ steps:
       pattern: critique
       providers:
         - claude
-        - glm
-        - qwen
+        - grok
       prompt: |
         The team voted for: {{steps.voting-discussion.output.consensus.winner}}
 
@@ -152,6 +149,5 @@ metadata:
   estimatedDuration: 480000
   providers:
     - claude
-    - glm
-    - qwen
+    - grok
     - gemini

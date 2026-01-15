@@ -167,7 +167,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
   describe('valid configurations', () => {
     it('should validate minimal config', () => {
       const config = {
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'What is the best approach?',
       };
 
@@ -184,7 +184,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
       const config = {
         pattern: 'synthesis',
         rounds: 3,
-        providers: ['claude', 'glm', 'qwen'],
+        providers: ['claude', 'grok', 'gemini'],
         prompt: 'Discuss the topic',
         consensus: { method: 'synthesis', synthesizer: 'claude' },
         providerTimeout: 30000,
@@ -224,7 +224,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should accept exactly MIN_PROVIDERS', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
       });
       expect(result.success).toBe(true);
@@ -244,7 +244,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
   describe('round validation (INV-DISC-007)', () => {
     it('should reject zero rounds', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         rounds: 0,
       });
@@ -253,7 +253,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should reject more than MAX_ROUNDS', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         rounds: MAX_ROUNDS + 1,
       });
@@ -262,7 +262,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should accept rounds at boundary', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         rounds: MAX_ROUNDS,
       });
@@ -275,7 +275,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
     it('should reject debate pattern without roles', () => {
       const result = DiscussStepConfigSchema.safeParse({
         pattern: 'debate',
-        providers: ['claude', 'glm', 'gemini'],
+        providers: ['claude', 'grok', 'gemini'],
         prompt: 'Debate topic',
       });
       expect(result.success).toBe(false);
@@ -287,11 +287,11 @@ describe('Discussion Contract - DiscussStepConfig', () => {
     it('should accept debate pattern with roles', () => {
       const result = DiscussStepConfigSchema.safeParse({
         pattern: 'debate',
-        providers: ['claude', 'glm', 'gemini'],
+        providers: ['claude', 'grok', 'gemini'],
         prompt: 'Debate topic',
         roles: {
           claude: 'proponent',
-          glm: 'opponent',
+          grok: 'opponent',
           gemini: 'judge',
         },
       });
@@ -302,7 +302,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
   describe('minProviders validation', () => {
     it('should reject minProviders exceeding providers count', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         minProviders: 3,
       });
@@ -311,7 +311,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should accept minProviders equal to providers count', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         minProviders: 2,
       });
@@ -322,7 +322,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
   describe('temperature validation', () => {
     it('should reject temperature below 0', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         temperature: -0.1,
       });
@@ -331,7 +331,7 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should reject temperature above 2', () => {
       const result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         temperature: 2.1,
       });
@@ -340,14 +340,14 @@ describe('Discussion Contract - DiscussStepConfig', () => {
 
     it('should accept temperature at boundaries', () => {
       let result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         temperature: 0,
       });
       expect(result.success).toBe(true);
 
       result = DiscussStepConfigSchema.safeParse({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
         temperature: 2,
       });
@@ -394,7 +394,7 @@ describe('Discussion Contract - Provider Response', () => {
 
   it('should validate error response', () => {
     const response = {
-      provider: 'glm',
+      provider: 'grok',
       content: '',
       round: 1,
       timestamp: new Date().toISOString(),
@@ -481,8 +481,8 @@ describe('Discussion Contract - Voting Results', () => {
       weightedVotes: { 'Option A': 2.5, 'Option B': 0.8 },
       voteRecords: [
         { provider: 'claude', choice: 'Option A', confidence: 0.9 },
-        { provider: 'glm', choice: 'Option A', confidence: 0.8 },
-        { provider: 'qwen', choice: 'Option A', confidence: 0.7 },
+        { provider: 'grok', choice: 'Option A', confidence: 0.8 },
+        { provider: 'grok', choice: 'Option A', confidence: 0.7 },
         { provider: 'gemini', choice: 'Option B', confidence: 0.6 },
       ],
       unanimous: false,
@@ -528,7 +528,7 @@ describe('Discussion Contract - Consensus Result', () => {
       agreements: ['Point 1', 'Point 2'],
       dissent: [
         {
-          provider: 'glm',
+          provider: 'grok',
           position: 'Disagrees on approach',
           keyPoints: ['Concern about scalability'],
         },
@@ -551,7 +551,7 @@ describe('Discussion Contract - Discussion Result', () => {
       success: true,
       pattern: 'synthesis',
       topic: 'Test topic',
-      participatingProviders: ['claude', 'glm'],
+      participatingProviders: ['claude', 'grok'],
       failedProviders: [],
       rounds: [
         {
@@ -588,7 +588,7 @@ describe('Discussion Contract - Discussion Result', () => {
       pattern: 'synthesis',
       topic: 'Test topic',
       participatingProviders: [],
-      failedProviders: ['claude', 'glm'],
+      failedProviders: ['claude', 'grok'],
       rounds: [],
       synthesis: '',
       consensus: { method: 'synthesis' },
@@ -614,7 +614,7 @@ describe('Discussion Contract - Discussion Result', () => {
       success: true,
       pattern: 'voting',
       topic: 'Vote on best option',
-      participatingProviders: ['claude', 'glm', 'qwen'],
+      participatingProviders: ['claude', 'grok', 'gemini'],
       failedProviders: [],
       rounds: [],
       synthesis: 'Option A was selected',
@@ -625,8 +625,8 @@ describe('Discussion Contract - Discussion Result', () => {
         weightedVotes: { 'Option A': 1.8, 'Option B': 0.9 },
         voteRecords: [
           { provider: 'claude', choice: 'Option A', confidence: 0.9 },
-          { provider: 'glm', choice: 'Option A', confidence: 0.8 },
-          { provider: 'qwen', choice: 'Option B', confidence: 0.85 },
+          { provider: 'grok', choice: 'Option A', confidence: 0.8 },
+          { provider: 'grok', choice: 'Option B', confidence: 0.85 },
         ],
         unanimous: false,
         margin: 0.33,
@@ -661,7 +661,7 @@ describe('Discussion Contract - Discussion Request', () => {
     const request: DiscussionRequest = {
       topic: 'What is the best approach?',
       pattern: 'voting',
-      providers: ['claude', 'glm', 'qwen'],
+      providers: ['claude', 'grok', 'gemini'],
       rounds: 2,
       consensusMethod: 'voting',
       votingOptions: ['Option A', 'Option B', 'Option C'],
@@ -723,7 +723,7 @@ describe('Discussion Contract - Validation Functions', () => {
   describe('validateDiscussStepConfig', () => {
     it('should return valid config', () => {
       const config = validateDiscussStepConfig({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test prompt',
       });
       expect(config.pattern).toBe('synthesis');
@@ -743,7 +743,7 @@ describe('Discussion Contract - Validation Functions', () => {
   describe('safeValidateDiscussStepConfig', () => {
     it('should return success for valid config', () => {
       const result = safeValidateDiscussStepConfig({
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test',
       });
       expect(result.success).toBe(true);
@@ -846,8 +846,8 @@ describe('Discussion Contract - Factory Functions', () => {
     });
 
     it('should accept custom providers', () => {
-      const config = createDefaultDiscussStepConfig('Test', ['claude', 'glm']);
-      expect(config.providers).toEqual(['claude', 'glm']);
+      const config = createDefaultDiscussStepConfig('Test', ['claude', 'grok']);
+      expect(config.providers).toEqual(['claude', 'grok']);
     });
   });
 
@@ -856,19 +856,19 @@ describe('Discussion Contract - Factory Functions', () => {
       const config = createDebateConfig('Debate topic');
       expect(config.pattern).toBe('debate');
       expect(config.providers).toContain('claude');
-      expect(config.providers).toContain('glm');
+      expect(config.providers).toContain('grok');
       expect(config.providers).toContain('gemini');
       expect(config.roles).toBeDefined();
       expect(config.roles?.claude).toBe('proponent');
-      expect(config.roles?.glm).toBe('opponent');
+      expect(config.roles?.grok).toBe('opponent');
       expect(config.roles?.gemini).toBe('judge');
     });
 
     it('should accept custom roles', () => {
-      const config = createDebateConfig('Topic', 'glm', 'qwen', 'claude');
-      expect(config.providers).toEqual(['glm', 'qwen', 'claude']);
-      expect(config.roles?.glm).toBe('proponent');
-      expect(config.roles?.qwen).toBe('opponent');
+      const config = createDebateConfig('Topic', 'grok', 'gemini', 'claude');
+      expect(config.providers).toEqual(['grok', 'gemini', 'claude']);
+      expect(config.roles?.grok).toBe('proponent');
+      expect(config.roles?.gemini).toBe('opponent');
       expect(config.roles?.claude).toBe('judge');
     });
   });
@@ -883,8 +883,8 @@ describe('Discussion Contract - Factory Functions', () => {
     });
 
     it('should accept custom providers', () => {
-      const config = createVotingConfig('Vote', ['X', 'Y'], ['claude', 'glm']);
-      expect(config.providers).toEqual(['claude', 'glm']);
+      const config = createVotingConfig('Vote', ['X', 'Y'], ['claude', 'grok']);
+      expect(config.providers).toEqual(['claude', 'grok']);
     });
   });
 
@@ -945,8 +945,6 @@ describe('Discussion Contract - Constants', () => {
     expect(DEFAULT_PROVIDERS).toContain('claude');
     expect(DEFAULT_PROVIDERS).toContain('grok');
     expect(DEFAULT_PROVIDERS).toContain('gemini');
-    expect(DEFAULT_PROVIDERS).toContain('glm');
-    expect(DEFAULT_PROVIDERS).toContain('qwen');
-    expect(DEFAULT_PROVIDERS.length).toBe(5);
+    expect(DEFAULT_PROVIDERS.length).toBe(3);
   });
 });

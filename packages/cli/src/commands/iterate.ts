@@ -23,7 +23,7 @@ Usage:
   ax iterate --max-iterations 50 <provider> <prompt>
 
 Arguments:
-  <provider>    AI provider to use (claude, gemini, codex, qwen, glm, grok)
+  <provider>    AI provider to use (claude, gemini, codex, grok)
   <prompt>      The task to complete autonomously
 
 Options:

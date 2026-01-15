@@ -108,7 +108,7 @@ This document defines the non-negotiable behavioral requirements for the command
 
 **Provider-Specific Extraction Rules:**
 - **Codex**: Extract `item.text` or `agent_message.text` from `item.completed` events
-- **ax-glm/ax-grok**: Extract `content` field from `role: "assistant"` messages
+- **ax-grok**: Extract `content` field from `role: "assistant"` messages
 - **Claude/Anthropic**: Concatenate `text` fields from `content` array blocks
 - **OpenAI/Gemini**: Extract `choices[0].message.content` or equivalent
 - **Unknown formats**: Fall back to raw text content

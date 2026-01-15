@@ -32,8 +32,6 @@ AutomatosX uses external CLI tools for AI providers. Install at least one:
 | Claude | `claude` | [Claude Code](https://github.com/anthropics/claude-code) |
 | Gemini | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 | Codex | `codex` | [Codex CLI](https://github.com/openai/codex) |
-| Qwen | `qwen` | [Qwen Code](https://github.com/QwenLM/qwen-code) |
-| GLM | `ax-glm` | [AX CLI](https://github.com/defai-digital/ax-cli) |
 | Grok | `ax-grok` | [AX CLI](https://github.com/defai-digital/ax-cli) |
 
 ```bash

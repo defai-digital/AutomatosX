@@ -3,7 +3,7 @@
  *
  * Checks:
  * - Node.js version
- * - Provider CLI availability (claude, gemini, codex, qwen, ax-glm, ax-grok, ax-cli)
+ * - Provider CLI availability (claude, gemini, codex, ax-grok, ax-cli)
  * - File system permissions
  * - Configuration validity
  */
@@ -61,18 +61,6 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
     name: 'Codex',
     command: 'codex',
     installHint: 'npm install -g @openai/codex',
-  },
-  {
-    id: 'qwen',
-    name: 'Qwen',
-    command: 'qwen',
-    installHint: 'pip install qwen-cli',
-  },
-  {
-    id: 'glm',
-    name: 'GLM',
-    command: 'ax-glm',
-    installHint: 'npm install -g ax-glm',
   },
   {
     id: 'grok',

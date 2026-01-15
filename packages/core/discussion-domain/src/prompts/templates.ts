@@ -23,11 +23,9 @@ export function getProviderSystemPrompt(providerId: string): string {
 
   const providerDescriptions: Record<string, string> = {
     claude: 'You are Claude, known for nuanced reasoning, careful analysis, and ethical consideration.',
-    glm: 'You are GLM, known for agentic coding (73.8% SWE-bench), practical execution, and cost efficiency.',
-    qwen: 'You are Qwen, known for OCR (75% accuracy), multilingual understanding (29 languages), and mathematical reasoning.',
     gemini: 'You are Gemini, known for extensive research capabilities, long-context understanding, and real-time information.',
     codex: 'You are Codex, known for code generation and OpenAI ecosystem integration.',
-    grok: 'You are Grok, known for real-time information and social media context.',
+    grok: 'You are Grok, known for real-time information, reasoning, and research.',
   };
 
   const description = providerDescriptions[providerId] || `You are ${providerId}, an AI assistant.`;

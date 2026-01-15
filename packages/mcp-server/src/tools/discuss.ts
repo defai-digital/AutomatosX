@@ -116,7 +116,7 @@ export const discussTool: MCPTool = {
       providers: {
         type: 'array',
         items: { type: 'string' },
-        description: 'List of providers to use (default: claude, grok, gemini, glm, qwen)',
+        description: 'List of providers to use (default: claude, grok, gemini)',
         minItems: 2,
         maxItems: 6,
       },
@@ -457,7 +457,7 @@ export const discussRecursiveTool: MCPTool = {
       providers: {
         type: 'array',
         items: { type: 'string' },
-        description: 'List of providers to use (default: claude, grok, gemini, glm, qwen)',
+        description: 'List of providers to use (default: claude, grok, gemini)',
         minItems: 2,
         maxItems: 6,
       },

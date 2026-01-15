@@ -88,7 +88,7 @@ describe('Discussion Workflow Integration', () => {
 
   beforeEach(() => {
     // Create a stub provider executor with available providers
-    stubProviderExecutor = new StubProviderExecutor(['claude', 'glm', 'qwen', 'gemini'], 10);
+    stubProviderExecutor = new StubProviderExecutor(['claude', 'grok', 'gemini'], 10);
 
     // Create the discussion executor with proper options object
     discussionExecutor = new DiscussionExecutor({ providerExecutor: stubProviderExecutor });
@@ -117,7 +117,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Discuss Architecture',
             config: {
               pattern: 'synthesis',
-              providers: ['claude', 'glm', 'qwen'],
+              providers: ['claude', 'grok', 'gemini'],
               prompt: 'What is the best architecture for a microservices application?',
               rounds: 2,
               consensus: { method: 'synthesis', synthesizer: 'claude' },
@@ -164,7 +164,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Discuss',
             config: {
               pattern: 'synthesis',
-              providers: ['claude', 'glm'],
+              providers: ['claude', 'grok'],
               prompt: 'Test discussion',
             },
           },
@@ -196,7 +196,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Invalid Discuss',
             config: {
               pattern: 'synthesis',
-              providers: ['claude', 'glm'],
+              providers: ['claude', 'grok'],
               // Missing prompt!
             },
           },
@@ -265,7 +265,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Vote on Framework',
             config: {
               pattern: 'voting',
-              providers: ['claude', 'glm', 'qwen'],
+              providers: ['claude', 'grok', 'gemini'],
               prompt: 'Which framework should we use?\n1. React\n2. Vue\n3. Angular',
               rounds: 1,
               consensus: { method: 'voting', threshold: 0.5 },
@@ -294,15 +294,15 @@ describe('Discussion Workflow Integration', () => {
             name: 'Debate Topic',
             config: {
               pattern: 'debate',
-              providers: ['claude', 'glm', 'qwen'],
+              providers: ['claude', 'grok', 'gemini'],
               prompt: 'Is microservices architecture better than monolith?',
               rounds: 2,
               roles: {
                 claude: 'proponent',
-                glm: 'opponent',
-                qwen: 'judge',
+                grok: 'opponent',
+                gemini: 'judge',
               },
-              consensus: { method: 'moderator', synthesizer: 'qwen' },
+              consensus: { method: 'moderator', synthesizer: 'grok' },
             },
           },
         ],
@@ -328,7 +328,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Critique Proposal',
             config: {
               pattern: 'critique',
-              providers: ['claude', 'glm', 'qwen'],
+              providers: ['claude', 'grok', 'gemini'],
               prompt: 'Propose a solution for handling rate limiting in distributed systems.',
               rounds: 3, // Needed for one critique-revision cycle
               consensus: { method: 'synthesis', synthesizer: 'claude' },
@@ -372,7 +372,7 @@ describe('Discussion Workflow Integration', () => {
             name: 'Discuss Design',
             config: {
               pattern: 'synthesis',
-              providers: ['claude', 'glm'],
+              providers: ['claude', 'grok'],
               prompt: 'Based on the requirements, what API design approach should we use?',
               context: 'Building a REST API for a e-commerce platform',
               rounds: 2,
@@ -460,7 +460,7 @@ describe('Provider Bridge', () => {
 
 describe('Example Workflows', () => {
   it('should execute a code review discussion workflow', async () => {
-    const stubExecutor = new StubProviderExecutor(['claude', 'glm', 'qwen', 'gemini'], 10);
+    const stubExecutor = new StubProviderExecutor(['claude', 'grok', 'gemini'], 10);
     const discussionExecutor = new DiscussionExecutor({ providerExecutor: stubExecutor });
     const adapter = createDiscussionExecutorAdapter(discussionExecutor);
 
@@ -481,7 +481,7 @@ describe('Example Workflows', () => {
           name: 'Multi-Model Code Review',
           config: {
             pattern: 'critique',
-            providers: ['claude', 'glm', 'qwen'],
+            providers: ['claude', 'grok', 'gemini'],
             prompt: `Review this code and suggest improvements:
 
 \`\`\`typescript

@@ -9,8 +9,8 @@
   "properties": {
     "provider": {
       "type": "string",
-      "description": "Provider ID (claude, gemini, codex, qwen, glm, grok)",
-      "enum": ["claude", "gemini", "codex", "qwen", "glm", "grok"]
+      "description": "Provider ID (claude, gemini, codex, grok)",
+      "enum": ["claude", "gemini", "codex", "grok"]
     },
     "scenario": {
       "type": "string",

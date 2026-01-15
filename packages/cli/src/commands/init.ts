@@ -125,8 +125,6 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   claude: { cliName: 'claude', format: 'claude' },
   gemini: { cliName: 'gemini', format: 'standard' },
   codex: { cliName: 'codex', format: 'standard' },
-  qwen: { cliName: 'qwen', format: 'standard' },
-  glm: { cliName: 'ax-glm', format: 'ax-wrapper' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
   'ax-cli': null,
 };

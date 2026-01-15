@@ -19,7 +19,7 @@ ax doctor
 
 ## Why AutomatosX
 
-- **Multi-provider routing** - Claude, Gemini, Codex, Qwen, GLM, Grok
+- **Multi-provider routing** - Claude, Gemini, Codex, Grok
 - **Governed automation** - Policy-driven guardrails and audit-ready traces
 - **Contract-first** - Zod schemas keep workflows and agents type-safe
 - **MCP-native** - Ships with MCP server for IDE assistant integration

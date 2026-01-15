@@ -20,7 +20,7 @@
 ax discuss "Should I use microservices or monolith for a 5-person startup?"
 ```
 
-AutomatosX sends your question to Claude, Gemini, GLM, and Grok simultaneously. They see each other's answers. One AI synthesizes a final recommendation that considers all perspectives.
+AutomatosX sends your question to Claude, Gemini, and Grok simultaneously. They see each other's answers. One AI synthesizes a final recommendation that considers all perspectives.
 
 **Result**: Better decisions because you're not limited to one model's opinion.
 
@@ -86,8 +86,7 @@ When switching projects, just run `ax init` in the new project directory.
 | Claude | `npm install -g @anthropic-ai/claude-code` |
 | Gemini | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
 | Codex | [codex](https://github.com/openai/codex) |
-| Qwen | [qwen-code](https://github.com/QwenLM/qwen-code) |
-| GLM/Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
+| Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
 
 ---
 
@@ -176,7 +175,7 @@ What makes AutomatosX different from other AI tools:
 │      29 domains • 500+ invariants • Full validation      │
 ├─────────────────────────────────────────────────────────┤
 │                  Provider Adapters                       │
-│     Claude • Gemini • Codex • Qwen • GLM • Grok         │
+│          Claude • Gemini • Codex • Grok                 │
 └─────────────────────────────────────────────────────────┘
 ```
 

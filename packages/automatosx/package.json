@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "automatosx": "./dist/bin.js"
+    "automatosx": "./dist/bin.js",
+    "ax": "./dist/bin.js"
   },
   "exports": {
     ".": {

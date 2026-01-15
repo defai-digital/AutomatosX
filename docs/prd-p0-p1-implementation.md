@@ -881,20 +881,6 @@ export const DEFAULT_PROVIDER_RATE_LIMITS: Record<string, ProviderRateLimitConfi
     maxConcurrent: 5,
     backoffStrategy: 'exponential',
   },
-  qwen: {
-    requestsPerMinute: 120,
-    tokensPerMinute: 200000,
-    burstMultiplier: 1.5,
-    maxConcurrent: 5,
-    backoffStrategy: 'exponential',
-  },
-  glm: {
-    requestsPerMinute: 60,
-    tokensPerMinute: 100000,
-    burstMultiplier: 1.5,
-    maxConcurrent: 3,
-    backoffStrategy: 'linear',
-  },
   grok: {
     requestsPerMinute: 60,
     tokensPerMinute: 100000,

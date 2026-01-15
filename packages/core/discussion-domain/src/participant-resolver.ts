@@ -247,7 +247,7 @@ export function parseParticipantString(input: string): DiscussionParticipant {
 
 /**
  * Parse participant list from CLI input
- * Format: "claude,glm,reviewer:agent,security:agent"
+ * Format: "claude,grok,reviewer:agent,security:agent"
  */
 export function parseParticipantList(input: string): DiscussionParticipant[] {
   return input

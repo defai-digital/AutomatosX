@@ -48,7 +48,7 @@ export interface DiscussionProviderExecutor {
  * Request to execute a prompt against a provider
  */
 export interface ProviderExecuteRequest {
-  /** Provider to use (e.g., 'claude', 'glm', 'qwen', 'gemini') */
+  /** Provider to use (e.g., 'claude', 'gemini', 'codex', 'grok') */
   providerId: string;
 
   /** The prompt to send */
@@ -390,7 +390,7 @@ export class StubProviderExecutor implements DiscussionProviderExecutor {
   private responseDelay: number;
 
   constructor(
-    providers: string[] = ['claude', 'glm', 'qwen', 'gemini'],
+    providers: string[] = ['claude', 'grok', 'gemini'],
     responseDelayMs = 100
   ) {
     this.availableProviders = new Set(providers);
@@ -435,7 +435,6 @@ export class StubProviderExecutor implements DiscussionProviderExecutor {
     const providerStyles: Record<string, string> = {
       claude: 'From a nuanced reasoning perspective',
       glm: 'From a practical implementation standpoint',
-      qwen: 'Considering multilingual and mathematical aspects',
       gemini: 'Based on extensive research and analysis',
       codex: 'From a code-centric viewpoint',
       grok: 'With real-time context in mind',

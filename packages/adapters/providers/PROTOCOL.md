@@ -16,8 +16,6 @@ AutomatosX providers use CLI adapters that wrap external CLI tools. This design:
 | `claude` | `claude` | `stream-json` | stdin | `~/.claude/` config |
 | `gemini` | `gemini` | `stream-json` | stdin | Google Cloud auth |
 | `codex` | `codex` | `stream-json` | stdin | OpenAI credentials |
-| `qwen` | `qwen` | `text` | stdin | DashScope credentials |
-| `glm` | `ax-glm` | `stream-json` | arg | `ZAI_API_KEY` env var |
 | `grok` | `ax-grok` | `stream-json` | arg | `XAI_API_KEY` env var |
 
 ## Output Formats
@@ -30,8 +28,6 @@ Plain text output. The entire stdout is treated as the response content.
 ```
 Hello! I'm an AI assistant. How can I help you today?
 ```
-
-**Used by:** `qwen`
 
 ### `json` Format
 
@@ -63,8 +59,8 @@ Multiple JSON objects, one per line. Content accumulated from relevant events.
 | `turn.completed` | Claude/Codex | Skip (metadata), save usage |
 | `thread.started` | Codex | Skip (metadata) |
 | `item.completed` | Codex | `item.text` or `item.agent_message.text` |
-| `role: "assistant"` | ax-glm/ax-grok | `content` field |
-| `role: "user"` | ax-glm/ax-grok | Skip (echo) |
+| `role: "assistant"` | ax-grok | `content` field |
+| `role: "user"` | ax-grok | Skip (echo) |
 
 **Claude Example:**
 ```json
@@ -83,7 +79,7 @@ Multiple JSON objects, one per line. Content accumulated from relevant events.
 ```
 **Extracted:** `Here's my response.`
 
-**ax-glm/ax-grok Example:**
+**ax-grok Example:**
 ```json
 {"role":"user","content":"Hello"}
 {"role":"assistant","content":"Hi there! How can I help?"}
@@ -100,17 +96,17 @@ Prompt is written to the CLI's stdin:
 echo "Your prompt here" | claude --print
 ```
 
-**Used by:** `claude`, `gemini`, `codex`, `qwen`
+**Used by:** `claude`, `gemini`, `codex`
 
 ### `arg` Style
 
 Prompt is passed as a command-line argument:
 
 ```bash
-ax-glm "Your prompt here"
+ax-grok "Your prompt here"
 ```
 
-**Used by:** `glm`, `grok` (via ax-cli wrappers)
+**Used by:** `grok` (via ax-cli wrapper)
 
 ## Error Classification
 

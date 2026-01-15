@@ -15,16 +15,12 @@ import type { CLIProviderConfig } from '../types.js';
 import { claudeConfig } from './claude.js';
 import { geminiConfig } from './gemini.js';
 import { codexConfig } from './codex.js';
-import { qwenConfig } from './qwen.js';
-import { glmConfig } from './glm.js';
 import { grokConfig } from './grok.js';
 
 // Re-export individual configs
 export { claudeConfig } from './claude.js';
 export { geminiConfig } from './gemini.js';
 export { codexConfig } from './codex.js';
-export { qwenConfig } from './qwen.js';
-export { glmConfig } from './glm.js';
 export { grokConfig } from './grok.js';
 
 /**
@@ -34,8 +30,6 @@ export const ALL_PROVIDER_CONFIGS: readonly CLIProviderConfig[] = [
   claudeConfig,
   geminiConfig,
   codexConfig,
-  qwenConfig,
-  glmConfig,
   grokConfig,
 ];
 

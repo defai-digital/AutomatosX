@@ -13,8 +13,6 @@ import {
   claudeConfig,
   geminiConfig,
   codexConfig,
-  qwenConfig,
-  glmConfig,
   grokConfig,
   ALL_PROVIDER_CONFIGS,
   parseOutput,
@@ -62,13 +60,11 @@ describe('CLI Adapter', () => {
 
   describe('Provider Configurations', () => {
     it('exports all provider configs', () => {
-      expect(ALL_PROVIDER_CONFIGS).toHaveLength(6);
+      expect(ALL_PROVIDER_CONFIGS).toHaveLength(4);
       expect(ALL_PROVIDER_CONFIGS.map((c) => c.providerId)).toEqual([
         'claude',
         'gemini',
         'codex',
-        'qwen',
-        'glm',
         'grok',
       ]);
     });
@@ -92,20 +88,6 @@ describe('CLI Adapter', () => {
       expect(codexConfig.providerId).toBe('codex');
       expect(codexConfig.command).toBe('codex');
       expect(codexConfig.outputFormat).toBe('stream-json');
-    });
-
-    it('qwen config has correct structure', () => {
-      expect(qwenConfig.providerId).toBe('qwen');
-      expect(qwenConfig.command).toBe('qwen');
-      expect(qwenConfig.outputFormat).toBe('text');
-    });
-
-    it('glm config has correct structure', () => {
-      expect(glmConfig.providerId).toBe('glm');
-      expect(glmConfig.command).toBe('ax-glm');
-      expect(glmConfig.outputFormat).toBe('stream-json');
-      expect(glmConfig.promptStyle).toBe('arg');
-      expect(glmConfig.models.length).toBeGreaterThan(0);
     });
 
     it('grok config has correct structure', () => {
@@ -135,13 +117,11 @@ describe('CLI Adapter', () => {
   describe('Provider Registry', () => {
     it('creates registry with all default providers', () => {
       const registry = createProviderRegistry();
-      expect(registry.size).toBe(6);
+      expect(registry.size).toBe(4);
       expect(registry.getProviderIds()).toEqual([
         'claude',
         'gemini',
         'codex',
-        'qwen',
-        'glm',
         'grok',
       ]);
     });
@@ -185,8 +165,8 @@ describe('CLI Adapter', () => {
     it('gets all models across providers', () => {
       const registry = createProviderRegistry();
       const models = registry.getAllModels();
-      // 6 providers, each with 1 'default' model
-      expect(models.length).toBe(6);
+      // 4 providers, each with 1 'default' model
+      expect(models.length).toBe(4);
       expect(models.some((m) => m.providerId === 'claude')).toBe(true);
       expect(models.some((m) => m.providerId === 'gemini')).toBe(true);
     });
@@ -379,26 +359,7 @@ describe('Process Manager', () => {
   });
 });
 
-describe('GLM and Grok CLI Adapters', () => {
-  describe('GLM adapter', () => {
-    it('creates adapter with correct providerId', () => {
-      const adapter = createCLIAdapter(glmConfig);
-      expect(adapter.providerId).toBe('glm');
-    });
-
-    it('uses ax-glm command', () => {
-      const adapter = createCLIAdapter(glmConfig);
-      expect(adapter.config.command).toBe('ax-glm');
-    });
-
-    it('supports GLM default model', () => {
-      const adapter = createCLIAdapter(glmConfig);
-      // GLM uses CLI's default model - we don't specify individual models
-      expect(adapter.supportsModel('default')).toBe(true);
-      expect(adapter.supportsModel('nonexistent-model')).toBe(false);
-    });
-  });
-
+describe('Grok CLI Adapter', () => {
   describe('Grok adapter', () => {
     it('creates adapter with correct providerId', () => {
       const adapter = createCLIAdapter(grokConfig);

@@ -20,8 +20,6 @@ export const PROVIDER_COSTS: Record<string, { input: number; output: number }> =
   claude: { input: 0.003, output: 0.015 },
   gemini: { input: 0.0005, output: 0.0015 },
   codex: { input: 0.003, output: 0.006 },
-  qwen: { input: 0.001, output: 0.002 },
-  glm: { input: 0.001, output: 0.002 },
   grok: { input: 0.002, output: 0.004 },
 };
 

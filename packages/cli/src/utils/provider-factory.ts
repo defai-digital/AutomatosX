@@ -93,7 +93,7 @@ export function createAnalysisProviderRouter(): ProviderRouter {
       // Default provider selection strategy:
       // 1. Try claude first (most capable for analysis)
       // 2. Fall back to any available provider
-      const preferredProviders = ['claude', 'gemini', 'codex', 'qwen'];
+      const preferredProviders = ['claude', 'gemini', 'codex', 'grok'];
 
       for (const providerId of preferredProviders) {
         const provider = registry.get(providerId);

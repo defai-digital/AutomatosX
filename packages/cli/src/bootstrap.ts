@@ -22,8 +22,6 @@ import {
   claudeConfig,
   geminiConfig,
   codexConfig,
-  qwenConfig,
-  glmConfig,
   grokConfig,
 } from '@defai.digital/provider-adapters';
 import type {
@@ -98,8 +96,6 @@ export const PROVIDER_CONFIGS: Record<string, CLIProviderConfig> = {
   claude: claudeConfig,
   gemini: geminiConfig,
   codex: codexConfig,
-  qwen: qwenConfig,
-  glm: glmConfig,
   grok: grokConfig,
 };
 

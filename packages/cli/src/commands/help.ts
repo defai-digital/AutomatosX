@@ -94,7 +94,7 @@ Discuss Options:
   discuss quick <topic>     Quick 2-3 model synthesis
 
   Discuss Flags:
-    --providers <list>      Comma-separated providers (default: claude,glm,qwen,gemini)
+    --providers <list>      Comma-separated providers (default: claude,grok,gemini)
     --pattern <type>        Pattern: synthesis, voting, debate, critique, round-robin
     --rounds <n>            Number of discussion rounds (default: 2)
     --consensus <method>    Method: synthesis, voting, moderator, unanimous, majority

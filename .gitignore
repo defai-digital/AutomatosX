@@ -39,10 +39,8 @@ checkpoints/
 tmp/
 
 # Provider configurations (may contain API keys)
-.ax-glm/
 .ax-grok/
 .gemini/
-.qwen/
 .claude/
 
 # Provider instruction files (may contain private context)

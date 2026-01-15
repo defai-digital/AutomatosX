@@ -66,7 +66,7 @@ describe('Discuss Command', () => {
 
       expect(result.message).toContain('Available Providers');
       expect(result.message).toContain('claude');
-      expect(result.message).toContain('glm');
+      expect(result.message).toContain('grok');
     });
 
     it('should list discussion patterns in help', async () => {

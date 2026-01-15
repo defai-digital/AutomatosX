@@ -74,7 +74,7 @@ Providers vote on options, consensus determined by threshold.
 ```bash
 ax discuss "Which framework should we use for the frontend?" \
   --pattern voting \
-  --providers claude,gemini,codex,qwen \
+  --providers claude,gemini,codex,grok \
   --rounds 1 \
   --threshold 0.5
 ```
@@ -331,7 +331,7 @@ ax discuss "Review this authentication flow for vulnerabilities" \
 ```bash
 ax discuss "PostgreSQL vs MongoDB for our e-commerce platform" \
   --pattern voting \
-  --providers claude,gemini,codex,qwen \
+  --providers claude,gemini,codex,grok \
   --context "Flexible product catalog, ACID for orders, 100k products"
 ```
 

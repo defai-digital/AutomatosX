@@ -167,17 +167,6 @@ export const DEFAULT_PROVIDER_RATE_LIMITS: Record<string, Partial<ProviderRateLi
     tokensPerMinute: 150000,
     maxConcurrent: 5,
   },
-  qwen: {
-    requestsPerMinute: 120,
-    tokensPerMinute: 200000,
-    maxConcurrent: 5,
-  },
-  glm: {
-    requestsPerMinute: 60,
-    tokensPerMinute: 100000,
-    maxConcurrent: 3,
-    backoffStrategy: 'linear',
-  },
   grok: {
     requestsPerMinute: 60,
     tokensPerMinute: 100000,

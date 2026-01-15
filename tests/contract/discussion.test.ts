@@ -71,7 +71,7 @@ describe('Discussion Contract', () => {
     });
 
     it('should have default providers ordered by reasoning strength', () => {
-      expect(DEFAULT_PROVIDERS).toEqual(['claude', 'grok', 'gemini', 'glm', 'qwen']);
+      expect(DEFAULT_PROVIDERS).toEqual(['claude', 'grok', 'gemini']);
     });
 
     it('should have pattern descriptions for all patterns', () => {
@@ -89,18 +89,11 @@ describe('Discussion Contract', () => {
       }
     });
 
-    it('should have GLM as cost-effective agentic coding provider', () => {
-      const glmStrengths = PROVIDER_STRENGTHS.glm;
-      expect(glmStrengths).toContain('coding');
-      expect(glmStrengths).toContain('agentic');
-      expect(glmStrengths).toContain('tool-use');
-    });
-
-    it('should have Qwen as OCR and translation provider', () => {
-      const qwenStrengths = PROVIDER_STRENGTHS.qwen;
-      expect(qwenStrengths).toContain('ocr');
-      expect(qwenStrengths).toContain('translation');
-      expect(qwenStrengths).toContain('multilingual');
+    it('should have Grok as reasoning and research provider', () => {
+      const grokStrengths = PROVIDER_STRENGTHS.grok;
+      expect(grokStrengths).toContain('reasoning');
+      expect(grokStrengths).toContain('realtime');
+      expect(grokStrengths).toContain('research');
     });
   });
 
@@ -179,7 +172,7 @@ describe('Discussion Contract', () => {
   describe('DiscussStepConfigSchema - INV-DISC-005 through INV-DISC-008', () => {
     const validConfig = {
       prompt: 'Discuss the best architecture for a chat app',
-      providers: ['claude', 'glm', 'qwen', 'gemini'],
+      providers: ['claude', 'grok', 'gemini'],
     };
 
     it('should require minimum 2 providers (INV-DISC-005)', () => {
@@ -194,7 +187,7 @@ describe('Discussion Contract', () => {
     it('should enforce maximum 6 providers (INV-DISC-006)', () => {
       const config = {
         ...validConfig,
-        providers: ['claude', 'glm', 'qwen', 'gemini', 'codex', 'grok', 'extra'], // 7 providers
+        providers: ['claude', 'grok', 'gemini', 'codex', 'a', 'b', 'extra'], // 7 providers
       };
       const result = DiscussStepConfigSchema.safeParse(config);
       expect(result.success).toBe(false);
@@ -213,7 +206,7 @@ describe('Discussion Contract', () => {
       const debateWithoutRoles = {
         ...validConfig,
         pattern: 'debate',
-        providers: ['claude', 'glm', 'gemini'],
+        providers: ['claude', 'grok', 'gemini'],
         // Missing roles
       };
       const result = DiscussStepConfigSchema.safeParse(debateWithoutRoles);
@@ -227,10 +220,10 @@ describe('Discussion Contract', () => {
       const debateWithRoles = {
         ...validConfig,
         pattern: 'debate',
-        providers: ['claude', 'glm', 'gemini'],
+        providers: ['claude', 'grok', 'gemini'],
         roles: {
           claude: 'proponent',
-          glm: 'opponent',
+          grok: 'opponent',
           gemini: 'judge',
         },
       };
@@ -241,7 +234,7 @@ describe('Discussion Contract', () => {
     it('should validate minProviders <= providers.length', () => {
       const config = {
         ...validConfig,
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         minProviders: 5, // More than providers array length
       };
       const result = DiscussStepConfigSchema.safeParse(config);
@@ -279,7 +272,7 @@ describe('Discussion Contract', () => {
 
     it('should validate response with voting data', () => {
       const response = {
-        provider: 'glm',
+        provider: 'grok',
         content: 'I vote for option A because...',
         round: 1,
         confidence: 0.85,
@@ -293,7 +286,7 @@ describe('Discussion Contract', () => {
 
     it('should enforce confidence range 0-1', () => {
       const response = {
-        provider: 'qwen',
+        provider: 'grok',
         content: 'Response content',
         round: 1,
         confidence: 1.5, // Invalid
@@ -310,7 +303,7 @@ describe('Discussion Contract', () => {
       success: true,
       pattern: 'synthesis',
       topic: 'Architecture discussion',
-      participatingProviders: ['claude', 'glm', 'qwen', 'gemini'],
+      participatingProviders: ['claude', 'grok', 'gemini'],
       failedProviders: [],
       rounds: [],
       synthesis: 'Final synthesized conclusion...',
@@ -363,7 +356,7 @@ describe('Discussion Contract', () => {
       const request = {
         topic: 'Evaluate microservices vs monolith architecture',
         pattern: 'debate',
-        providers: ['claude', 'glm', 'gemini'],
+        providers: ['claude', 'grok', 'gemini'],
         rounds: 3,
         consensusMethod: 'moderator',
         context: 'This is for a startup with 5 developers',
@@ -390,8 +383,8 @@ describe('Discussion Contract', () => {
         weightedVotes: { 'Option A': 2.5, 'Option B': 0.8 },
         voteRecords: [
           { provider: 'claude', choice: 'Option A', confidence: 0.9 },
-          { provider: 'glm', choice: 'Option A', confidence: 0.8 },
-          { provider: 'qwen', choice: 'Option A', confidence: 0.8 },
+          { provider: 'gemini', choice: 'Option A', confidence: 0.8 },
+          { provider: 'grok', choice: 'Option A', confidence: 0.8 },
           { provider: 'gemini', choice: 'Option B', confidence: 0.8 },
         ],
         unanimous: false,
@@ -418,7 +411,7 @@ describe('Discussion Contract', () => {
       expect(config.providers).toHaveLength(3);
       expect(config.roles).toBeDefined();
       expect(config.roles!.claude).toBe('proponent');
-      expect(config.roles!.glm).toBe('opponent');
+      expect(config.roles!.grok).toBe('opponent');
       expect(config.roles!.gemini).toBe('judge');
     });
 
@@ -477,7 +470,7 @@ describe('Discussion Contract', () => {
     it('safeValidateDiscussStepConfig should return data on valid', () => {
       const validConfig = {
         prompt: 'Test discussion',
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
       };
       const result = safeValidateDiscussStepConfig(validConfig);
       expect(result.success).toBe(true);

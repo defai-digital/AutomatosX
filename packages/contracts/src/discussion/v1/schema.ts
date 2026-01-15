@@ -1,7 +1,7 @@
 /**
  * Discussion Domain Contracts v1
  *
- * Zod schemas for multi-model discussions enabling Claude, GLM, Qwen,
+ * Zod schemas for multi-model discussions enabling Claude,
  * Gemini, Codex, and Grok to collaborate on complex problems.
  *
  * @module @defai.digital/contracts/discussion/v1
@@ -25,14 +25,14 @@ export const MAX_ROUNDS = 10;
 /** Default discussion rounds */
 export const DEFAULT_ROUNDS = 2;
 
-/** Default provider timeout in ms (10 minutes - gives headroom for slower providers like GLM) */
+/** Default provider timeout in ms (10 minutes - gives headroom for slower providers) */
 export const DEFAULT_PROVIDER_TIMEOUT = 600000;
 
 /** Maximum provider timeout in ms (30 minutes - for very complex discussions) */
 export const MAX_PROVIDER_TIMEOUT = 1800000;
 
 /** Default providers for discussions (ordered by reasoning strength) */
-export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini', 'glm', 'qwen'] as const;
+export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini'] as const;
 
 // ============================================================================
 // Recursive Discussion Constants
@@ -201,8 +201,6 @@ export const PROVIDER_STRENGTHS: Record<string, ProviderCapability[]> = {
   claude: ['reasoning', 'writing', 'coding', 'agentic', 'tool-use'],
   grok: ['reasoning', 'realtime', 'research', 'coding', 'tool-use'],
   gemini: ['research', 'long-context', 'multilingual', 'realtime'],
-  glm: ['coding', 'agentic', 'tool-use', 'multilingual', 'math'],
-  qwen: ['ocr', 'translation', 'multilingual', 'math', 'coding'],
   codex: ['coding', 'reasoning'],
 };
 
@@ -639,7 +637,7 @@ export const DiscussionRequestSchema = z.object({
   /** Discussion pattern */
   pattern: DiscussionPatternSchema.optional(),
 
-  /** Providers to use (defaults to claude, glm, qwen, gemini) */
+  /** Providers to use (defaults to claude, grok, gemini, glm) */
   providers: z.array(z.string()).min(MIN_PROVIDERS).max(MAX_PROVIDERS).optional(),
 
   /** Number of rounds */
@@ -972,7 +970,7 @@ export function createDefaultDiscussStepConfig(
 export function createDebateConfig(
   prompt: string,
   proponent = 'claude',
-  opponent = 'glm',
+  opponent = 'grok',
   judge = 'gemini'
 ): DiscussStepConfig {
   return DiscussStepConfigSchema.parse({

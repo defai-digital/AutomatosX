@@ -20,8 +20,6 @@ export const KNOWN_PROVIDERS = [
   'claude',
   'gemini',
   'codex',
-  'qwen',
-  'glm',
   'grok',
   'ax-cli',
 ] as const;
@@ -101,17 +99,9 @@ export const PROVIDER_DEFAULTS: Record<ProviderId, ProviderDefault> = {
     command: 'codex',
     priority: 70,
   },
-  qwen: {
-    command: 'qwen',
-    priority: 60,
-  },
-  glm: {
-    command: 'ax-glm',
-    priority: 50,
-  },
   grok: {
     command: 'ax-grok',
-    priority: 50,
+    priority: 60,
   },
   'ax-cli': {
     command: 'ax-cli',

@@ -46,7 +46,7 @@ import {
 
 describe('StubProviderExecutor', () => {
   it('should return mock responses for available providers', async () => {
-    const executor = new StubProviderExecutor(['claude', 'glm']);
+    const executor = new StubProviderExecutor(['claude', 'grok']);
 
     const result = await executor.execute({
       providerId: 'claude',
@@ -71,33 +71,33 @@ describe('StubProviderExecutor', () => {
   });
 
   it('should check provider availability', async () => {
-    const executor = new StubProviderExecutor(['claude', 'glm', 'qwen']);
+    const executor = new StubProviderExecutor(['claude', 'grok', 'gemini']);
 
     expect(await executor.isAvailable('claude')).toBe(true);
-    expect(await executor.isAvailable('glm')).toBe(true);
+    expect(await executor.isAvailable('grok')).toBe(true);
     expect(await executor.isAvailable('unknown')).toBe(false);
   });
 
   it('should return list of available providers', async () => {
-    const executor = new StubProviderExecutor(['claude', 'glm']);
+    const executor = new StubProviderExecutor(['claude', 'grok']);
 
     const providers = await executor.getAvailableProviders();
 
     expect(providers).toContain('claude');
-    expect(providers).toContain('glm');
+    expect(providers).toContain('grok');
     expect(providers.length).toBe(2);
   });
 
   it('should allow adding and removing providers', async () => {
     const executor = new StubProviderExecutor(['claude']);
 
-    expect(await executor.isAvailable('glm')).toBe(false);
+    expect(await executor.isAvailable('grok')).toBe(false);
 
-    executor.addProvider('glm');
-    expect(await executor.isAvailable('glm')).toBe(true);
+    executor.addProvider('grok');
+    expect(await executor.isAvailable('grok')).toBe(true);
 
-    executor.removeProvider('glm');
-    expect(await executor.isAvailable('glm')).toBe(false);
+    executor.removeProvider('grok');
+    expect(await executor.isAvailable('grok')).toBe(false);
   });
 });
 
@@ -194,21 +194,21 @@ describe('Prompt Templates', () => {
     it('should format responses with provider names', () => {
       const responses = [
         { provider: 'claude', content: 'Claude says hello' },
-        { provider: 'glm', content: 'GLM responds' },
+        { provider: 'grok', content: 'Grok responds' },
       ];
 
       const result = formatPreviousResponses(responses);
 
       expect(result).toContain('### claude');
       expect(result).toContain('Claude says hello');
-      expect(result).toContain('### glm');
-      expect(result).toContain('GLM responds');
+      expect(result).toContain('### grok');
+      expect(result).toContain('Grok responds');
     });
 
     it('should include role labels when provided', () => {
       const responses = [
         { provider: 'claude', content: 'For this position', role: 'proponent' as const },
-        { provider: 'glm', content: 'Against this position', role: 'opponent' as const },
+        { provider: 'grok', content: 'Against this position', role: 'opponent' as const },
       ];
 
       const result = formatPreviousResponses(responses);
@@ -231,13 +231,13 @@ describe('Prompt Templates', () => {
     it('should format votes with confidence', () => {
       const votes = [
         { provider: 'claude', choice: 'Option A', confidence: 0.9 },
-        { provider: 'glm', choice: 'Option B', confidence: 0.7 },
+        { provider: 'grok', choice: 'Option B', confidence: 0.7 },
       ];
 
       const result = formatVotes(votes);
 
       expect(result).toContain('**claude**: Option A (90% confidence)');
-      expect(result).toContain('**glm**: Option B (70% confidence)');
+      expect(result).toContain('**grok**: Option B (70% confidence)');
     });
 
     it('should include reasoning when provided', () => {
@@ -254,13 +254,13 @@ describe('Prompt Templates', () => {
   describe('getProviderSystemPrompt', () => {
     it('should return provider-specific prompts', () => {
       const claudePrompt = getProviderSystemPrompt('claude');
-      const glmPrompt = getProviderSystemPrompt('glm');
+      const grokPrompt = getProviderSystemPrompt('grok');
 
       expect(claudePrompt).toContain('Claude');
       expect(claudePrompt).toContain('nuanced reasoning');
 
-      expect(glmPrompt).toContain('GLM');
-      expect(glmPrompt).toContain('agentic');
+      expect(grokPrompt).toContain('Grok');
+      expect(grokPrompt).toContain('reasoning');
     });
 
     it('should return generic prompt for unknown providers', () => {
@@ -280,31 +280,31 @@ describe('Pattern Executors', () => {
   let stubExecutor: StubProviderExecutor;
 
   beforeEach(() => {
-    stubExecutor = new StubProviderExecutor(['claude', 'glm', 'qwen', 'gemini'], 10);
+    stubExecutor = new StubProviderExecutor(['claude', 'grok', 'gemini'], 10);
   });
 
   describe('RoundRobinPattern', () => {
     it('should execute sequential round-robin discussion', async () => {
       const pattern = new RoundRobinPattern();
-      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'glm']);
+      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'grok']);
 
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm'],
+        availableProviders: ['claude', 'grok'],
       };
 
       const result = await pattern.execute(context);
 
       expect(result.success).toBe(true);
       expect(result.participatingProviders).toContain('claude');
-      expect(result.participatingProviders).toContain('glm');
+      expect(result.participatingProviders).toContain('grok');
       expect(result.rounds.length).toBeGreaterThan(0);
     });
 
     it('should fail when minimum providers unavailable', async () => {
       const pattern = new RoundRobinPattern();
-      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'glm', 'qwen']);
+      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'grok', 'gemini']);
 
       const context: PatternExecutionContext = {
         config,
@@ -322,12 +322,12 @@ describe('Pattern Executors', () => {
   describe('SynthesisPattern', () => {
     it('should execute parallel synthesis discussion', async () => {
       const pattern = new SynthesisPattern();
-      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'glm']);
+      const config = createDefaultDiscussStepConfig('Test topic', ['claude', 'grok']);
 
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm'],
+        availableProviders: ['claude', 'grok'],
       };
 
       const result = await pattern.execute(context);
@@ -340,19 +340,19 @@ describe('Pattern Executors', () => {
   describe('DebatePattern', () => {
     it('should execute debate with roles', async () => {
       const pattern = new DebatePattern();
-      const config = createDebateConfig('Should we use TypeScript?', 'claude', 'glm', 'gemini');
+      const config = createDebateConfig('Should we use TypeScript?', 'claude', 'grok', 'gemini');
 
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm', 'gemini'],
+        availableProviders: ['claude', 'grok', 'gemini'],
       };
 
       const result = await pattern.execute(context);
 
       expect(result.success).toBe(true);
       expect(result.participatingProviders).toContain('claude');
-      expect(result.participatingProviders).toContain('glm');
+      expect(result.participatingProviders).toContain('grok');
     });
 
     it('should fail without role assignments', async () => {
@@ -360,7 +360,7 @@ describe('Pattern Executors', () => {
       const config: DiscussStepConfig = {
         pattern: 'debate',
         rounds: 2,
-        providers: ['claude', 'glm'],
+        providers: ['claude', 'grok'],
         prompt: 'Test debate',
         consensus: { method: 'synthesis', threshold: 0.5, includeDissent: true },
         providerTimeout: 60000,
@@ -375,7 +375,7 @@ describe('Pattern Executors', () => {
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm'],
+        availableProviders: ['claude', 'grok'],
       };
 
       const result = await pattern.execute(context);
@@ -391,7 +391,7 @@ describe('Pattern Executors', () => {
       // CritiquePattern needs at least 3 rounds for one critique-revision cycle
       // cycles = Math.floor((rounds - 1) / 2), so rounds=3 gives 1 cycle
       const config = {
-        ...createDefaultDiscussStepConfig('Propose a solution', ['claude', 'glm', 'qwen']),
+        ...createDefaultDiscussStepConfig('Propose a solution', ['claude', 'grok', 'gemini']),
         pattern: 'critique' as const,
         rounds: 3, // Must be 3+ for critique-revision cycle
       };
@@ -399,7 +399,7 @@ describe('Pattern Executors', () => {
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm', 'qwen'],
+        availableProviders: ['claude', 'grok', 'gemini'],
       };
 
       const result = await pattern.execute(context);
@@ -415,13 +415,13 @@ describe('Pattern Executors', () => {
       const config = createVotingConfig(
         'Which framework?',
         ['React', 'Vue', 'Angular'],
-        ['claude', 'glm']
+        ['claude', 'grok']
       );
 
       const context: PatternExecutionContext = {
         config,
         providerExecutor: stubExecutor,
-        availableProviders: ['claude', 'glm'],
+        availableProviders: ['claude', 'grok'],
       };
 
       const result = await pattern.execute(context);
@@ -439,7 +439,7 @@ describe('Consensus Executors', () => {
   let stubExecutor: StubProviderExecutor;
 
   beforeEach(() => {
-    stubExecutor = new StubProviderExecutor(['claude', 'glm', 'qwen'], 10);
+    stubExecutor = new StubProviderExecutor(['claude', 'grok', 'gemini'], 10);
   });
 
   const createMockRounds = () => [
@@ -454,8 +454,8 @@ describe('Consensus Executors', () => {
           durationMs: 100,
         },
         {
-          provider: 'glm',
-          content: 'GLM perspective on the topic',
+          provider: 'grok',
+          content: 'Grok perspective on the topic',
           round: 1,
           timestamp: new Date().toISOString(),
           durationMs: 100,
@@ -472,7 +472,7 @@ describe('Consensus Executors', () => {
       const context: ConsensusExecutionContext = {
         topic: 'Test topic',
         rounds: createMockRounds(),
-        participatingProviders: ['claude', 'glm'],
+        participatingProviders: ['claude', 'grok'],
         config: {
           method: 'synthesis',
           threshold: 0.5,
@@ -497,7 +497,7 @@ describe('Consensus Executors', () => {
       const context: ConsensusExecutionContext = {
         topic: 'Test topic',
         rounds: createMockRounds(),
-        participatingProviders: ['claude', 'glm'],
+        participatingProviders: ['claude', 'grok'],
         config: {
           method: 'moderator',
           threshold: 0.5,
@@ -519,7 +519,7 @@ describe('Consensus Executors', () => {
       const context: ConsensusExecutionContext = {
         topic: 'Test topic',
         rounds: createMockRounds(),
-        participatingProviders: ['claude', 'glm'],
+        participatingProviders: ['claude', 'grok'],
         config: {
           method: 'moderator',
           threshold: 0.5,
@@ -546,12 +546,12 @@ describe('DiscussionExecutor', () => {
   let executor: DiscussionExecutor;
 
   beforeEach(() => {
-    stubExecutor = new StubProviderExecutor(['claude', 'glm', 'qwen', 'gemini'], 10);
+    stubExecutor = new StubProviderExecutor(['claude', 'grok', 'gemini'], 10);
     executor = createDiscussionExecutor(stubExecutor, { checkProviderHealth: false });
   });
 
   it('should execute a complete discussion', async () => {
-    const config = createDefaultDiscussStepConfig('What is the best approach?', ['claude', 'glm']);
+    const config = createDefaultDiscussStepConfig('What is the best approach?', ['claude', 'grok']);
 
     const result = await executor.execute(config);
 
@@ -589,7 +589,7 @@ describe('DiscussionExecutor', () => {
     const controller = new AbortController();
     controller.abort();
 
-    const config = createDefaultDiscussStepConfig('Test', ['claude', 'glm']);
+    const config = createDefaultDiscussStepConfig('Test', ['claude', 'grok']);
     const result = await executor.execute(config, { abortSignal: controller.signal });
 
     expect(result.success).toBe(false);
@@ -600,7 +600,7 @@ describe('DiscussionExecutor', () => {
     const progressEvents: any[] = [];
     const onProgress = vi.fn((event) => progressEvents.push(event));
 
-    const config = createDefaultDiscussStepConfig('Test', ['claude', 'glm']);
+    const config = createDefaultDiscussStepConfig('Test', ['claude', 'grok']);
     await executor.execute(config, { onProgress });
 
     expect(onProgress).toHaveBeenCalled();

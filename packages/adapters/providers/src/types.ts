@@ -4,8 +4,6 @@
  * DESIGN: AutomatosX does NOT manage credentials.
  * Each provider CLI handles its own authentication:
  * - claude, gemini, codex: Official CLIs with built-in auth
- * - qwen: Qwen CLI with DashScope auth
- * - ax-glm: GLM CLI wrapper (handles ZAI_API_KEY)
  * - ax-grok: Grok CLI wrapper (handles XAI_API_KEY)
  *
  * INV-MEM-003: Adapters must not accept domain objects directly
@@ -203,7 +201,7 @@ export interface CLIProviderConfig {
   /**
    * How the prompt is passed to the CLI
    * - 'stdin': Write prompt to stdin (default for claude, gemini, codex)
-   * - 'arg': Pass prompt as command-line argument (for ax-glm, ax-grok)
+   * - 'arg': Pass prompt as command-line argument (for ax-grok)
    */
   promptStyle?: 'stdin' | 'arg' | undefined;
 }
@@ -213,7 +211,7 @@ export interface CLIProviderConfig {
  */
 export interface LLMProvider {
   /**
-   * Provider identifier (e.g., 'claude', 'gemini', 'ax-glm', 'ax-grok')
+   * Provider identifier (e.g., 'claude', 'gemini', 'ax-grok')
    */
   readonly providerId: string;
 

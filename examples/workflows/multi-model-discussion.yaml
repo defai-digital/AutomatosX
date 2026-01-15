@@ -7,15 +7,13 @@
 # Usage:
 #   ax run multi-model-discussion --input '{"topic": "Best architecture for real-time chat"}'
 #
-# Supported providers: claude, gemini, codex, qwen, glm, grok
+# Supported providers: claude, gemini, codex, grok
 #
 # Provider Strengths:
 #   - Claude: Nuanced reasoning, synthesis (used as synthesizer)
 #   - Gemini: Research, long context (1M+ tokens)
 #   - Codex: Code generation, OpenAI ecosystem
-#   - Qwen: OCR (75% = GPT-4o), 29 languages, translation, math
-#   - GLM: Agentic coding (73.8% SWE-bench), tool use, 1/7th cost of Claude
-#   - Grok: Real-time info, Twitter/X integration
+#   - Grok: Real-time info, reasoning, research
 
 workflowId: multi-model-discussion
 version: "1.0.0"
@@ -50,37 +48,20 @@ steps:
 
               Be thorough but concise.
 
-        - stepId: glm-perspective
+        - stepId: grok-perspective
           type: prompt
           config:
-            provider: glm
+            provider: grok
             prompt: |
-              You are GLM, known for agentic coding (73.8% SWE-bench) and practical execution.
+              You are Grok, known for real-time information, reasoning, and research.
 
               Topic for discussion: {{input.topic}}
 
               Provide your unique perspective on this topic. Focus on:
-              - Step-by-step execution approach
-              - Tool usage and automation opportunities
-              - Practical implementation with code examples
-              - Cost-effective solutions
-
-              Be thorough but concise.
-
-        - stepId: qwen-perspective
-          type: prompt
-          config:
-            provider: qwen
-            prompt: |
-              You are Qwen, known for multilingual understanding, OCR, and mathematical reasoning.
-
-              Topic for discussion: {{input.topic}}
-
-              Provide your unique perspective on this topic. Focus on:
-              - Mathematical and algorithmic analysis
-              - Multilingual and cross-cultural considerations
-              - Document and data processing approaches
-              - Precision and accuracy requirements
+              - Current trends and real-time information
+              - Practical reasoning and analysis
+              - Research-based evidence
+              - Critical evaluation of approaches
 
               Be thorough but concise.
 
@@ -117,11 +98,8 @@ steps:
             prompt: |
               Review these perspectives from other AI models:
 
-              ## GLM's Perspective (Agentic Coding Expert):
-              {{steps.glm-perspective.output}}
-
-              ## Qwen's Perspective (Multilingual & Math Expert):
-              {{steps.qwen-perspective.output}}
+              ## Grok's Perspective (Real-time Research Expert):
+              {{steps.grok-perspective.output}}
 
               ## Gemini's Perspective (Research Expert):
               {{steps.gemini-perspective.output}}
@@ -132,48 +110,23 @@ steps:
               3. What important points were missed?
               4. How can these perspectives be combined?
 
-        - stepId: glm-responds
+        - stepId: grok-responds
           type: prompt
           config:
-            provider: glm
+            provider: grok
             prompt: |
               Review these perspectives from other AI models:
 
               ## Claude's Perspective (Reasoning Expert):
               {{steps.claude-perspective.output}}
 
-              ## Qwen's Perspective (Multilingual & Math Expert):
-              {{steps.qwen-perspective.output}}
-
               ## Gemini's Perspective (Research Expert):
               {{steps.gemini-perspective.output}}
 
               Now respond:
               1. What do you agree with?
-              2. What do you respectfully disagree with? Why?
-              3. What practical implementation details were missed?
-              4. How can we execute on these ideas efficiently?
-
-        - stepId: qwen-responds
-          type: prompt
-          config:
-            provider: qwen
-            prompt: |
-              Review these perspectives from other AI models:
-
-              ## Claude's Perspective (Reasoning Expert):
-              {{steps.claude-perspective.output}}
-
-              ## GLM's Perspective (Agentic Coding Expert):
-              {{steps.glm-perspective.output}}
-
-              ## Gemini's Perspective (Research Expert):
-              {{steps.gemini-perspective.output}}
-
-              Now respond:
-              1. What do you agree with?
-              2. What mathematical or algorithmic considerations were missed?
-              3. What multilingual or cross-cultural aspects should be considered?
+              2. What current trends or real-time information was missed?
+              3. What research evidence supports or contradicts these views?
               4. How can these perspectives be synthesized?
 
         - stepId: gemini-responds
@@ -186,11 +139,8 @@ steps:
               ## Claude's Perspective (Reasoning Expert):
               {{steps.claude-perspective.output}}
 
-              ## GLM's Perspective (Agentic Coding Expert):
-              {{steps.glm-perspective.output}}
-
-              ## Qwen's Perspective (Multilingual & Math Expert):
-              {{steps.qwen-perspective.output}}
+              ## Grok's Perspective (Real-time Research Expert):
+              {{steps.grok-perspective.output}}
 
               Now respond:
               1. What do you agree with?
@@ -218,11 +168,8 @@ steps:
         ### Claude (Reasoning & Ethics Expert):
         {{steps.claude-perspective.output}}
 
-        ### GLM (Agentic Coding Expert - 73.8% SWE-bench):
-        {{steps.glm-perspective.output}}
-
-        ### Qwen (Multilingual & Math Expert - 75% OCR accuracy):
-        {{steps.qwen-perspective.output}}
+        ### Grok (Real-time Research Expert):
+        {{steps.grok-perspective.output}}
 
         ### Gemini (Research & Long-Context Expert):
         {{steps.gemini-perspective.output}}
@@ -232,11 +179,8 @@ steps:
         ### Claude's Response to Others:
         {{steps.claude-responds.output}}
 
-        ### GLM's Response to Others:
-        {{steps.glm-responds.output}}
-
-        ### Qwen's Response to Others:
-        {{steps.qwen-responds.output}}
+        ### Grok's Response to Others:
+        {{steps.grok-responds.output}}
 
         ### Gemini's Response to Others:
         {{steps.gemini-responds.output}}
@@ -249,8 +193,7 @@ steps:
         2. **Key Disagreements**: Where do perspectives differ? Why?
         3. **Unique Insights**: What did each model contribute uniquely?
            - Claude: (reasoning/ethics insights)
-           - GLM: (practical execution insights)
-           - Qwen: (mathematical/multilingual insights)
+           - Grok: (real-time research insights)
            - Gemini: (research/context insights)
         4. **Synthesis**: Combine the best insights into a unified recommendation
         5. **Conclusion**: Provide a clear, actionable answer to the original topic
@@ -273,17 +216,15 @@ steps:
           topic: "{{input.topic}}"
           perspectives:
             claude: "{{steps.claude-perspective.output}}"
-            glm: "{{steps.glm-perspective.output}}"
-            qwen: "{{steps.qwen-perspective.output}}"
+            grok: "{{steps.grok-perspective.output}}"
             gemini: "{{steps.gemini-perspective.output}}"
           responses:
             claude: "{{steps.claude-responds.output}}"
-            glm: "{{steps.glm-responds.output}}"
-            qwen: "{{steps.qwen-responds.output}}"
+            grok: "{{steps.grok-responds.output}}"
             gemini: "{{steps.gemini-responds.output}}"
           synthesis: "{{steps.synthesize.output}}"
           timestamp: "{{now}}"
-          providers: ["claude", "glm", "qwen", "gemini"]
+          providers: ["claude", "grok", "gemini"]
 
 metadata:
   category: collaboration
@@ -292,13 +233,11 @@ metadata:
     - discussion
     - consensus
     - ai-collaboration
-    - glm
-    - qwen
+    - grok
   requiredAbilities: []
-  estimatedDuration: 360000  # ~6 minutes (4 providers)
-  estimatedCost: medium  # GLM is 1/7th cost of Claude, Qwen is cost-effective
+  estimatedDuration: 300000  # ~5 minutes (3 providers)
+  estimatedCost: medium
   providers:
     - claude   # Synthesis & reasoning
-    - glm      # Agentic coding & execution
-    - qwen     # Multilingual & math
+    - grok     # Real-time research & reasoning
     - gemini   # Research & long context

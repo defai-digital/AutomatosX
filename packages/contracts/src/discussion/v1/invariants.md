@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Discussion domain enables multi-model discussions where multiple LLM providers (Claude, GLM, Qwen, Gemini, Codex, Grok) collaborate on complex problems. This document defines the behavioral invariants that MUST be enforced.
+The Discussion domain enables multi-model discussions where multiple LLM providers (Claude, Gemini, Codex, Grok) collaborate on complex problems. This document defines the behavioral invariants that MUST be enforced.
 
 ## Schema Invariants
 
@@ -176,11 +176,10 @@ All rounds and the overall discussion MUST track `durationMs` for performance mo
 
 ### Default Providers
 
-When no providers are specified, the system uses: `['claude', 'glm', 'qwen', 'gemini']`
+When no providers are specified, the system uses: `['claude', 'grok', 'gemini']`
 
 - **Claude**: Synthesis and nuanced reasoning
-- **GLM**: Agentic coding and cost efficiency (1/7th cost of Claude)
-- **Qwen**: OCR, translation, and multilingual (29 languages)
+- **Grok**: Real-time research and reasoning
 - **Gemini**: Research and long context
 
 ### Default Pattern

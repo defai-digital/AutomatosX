@@ -13,6 +13,8 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   createPersistentAgentRegistry,
   createEnhancedAgentExecutor,
@@ -67,14 +69,67 @@ export {
   executeAgent,
 } from './registry-accessor.js';
 
-// Storage path for persistent agents
-const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
+// Get the directory of this module (for finding bundled examples)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Path to example agents (relative to workspace root)
-const EXAMPLE_AGENTS_DIR = path.join(process.cwd(), 'examples', 'agents');
+// Storage path for persistent agents - use HOME directory for global storage
+// This ensures agents persist across projects and are accessible regardless of cwd
+const AGENT_STORAGE_PATH = path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
 
-// Path to example abilities (relative to workspace root)
-const EXAMPLE_ABILITIES_DIR = path.join(process.cwd(), DEFAULT_ABILITY_DOMAIN_CONFIG.abilitiesDir);
+// Path to example agents - check multiple locations:
+// 1. Package's examples directory (for development/source)
+// 2. Bundled with dist (for npm install)
+function getExampleAgentsDir(): string {
+  // Try development path first (when running from source repo)
+  const devPath = path.join(__dirname, '..', '..', '..', 'examples', 'agents');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  // Try monorepo root (for pnpm workspace)
+  const monorepoPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'agents');
+  if (fs.existsSync(monorepoPath)) {
+    return monorepoPath;
+  }
+
+  // Try relative to cwd as fallback (for backward compatibility)
+  const cwdPath = path.join(process.cwd(), 'examples', 'agents');
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // Return the most likely path even if it doesn't exist
+  return monorepoPath;
+}
+
+// Path to example abilities - similar logic
+function getExampleAbilitiesDir(): string {
+  const defaultDir = DEFAULT_ABILITY_DOMAIN_CONFIG.abilitiesDir;
+
+  // Try development path first
+  const devPath = path.join(__dirname, '..', '..', '..', defaultDir);
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  // Try monorepo root
+  const monorepoPath = path.join(__dirname, '..', '..', '..', '..', defaultDir);
+  if (fs.existsSync(monorepoPath)) {
+    return monorepoPath;
+  }
+
+  // Try relative to cwd as fallback
+  const cwdPath = path.join(process.cwd(), defaultDir);
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  return monorepoPath;
+}
+
+const EXAMPLE_AGENTS_DIR = getExampleAgentsDir();
+const EXAMPLE_ABILITIES_DIR = getExampleAbilitiesDir();
 
 // Local state for provider registry (not in accessor since it's provider-adapter specific)
 let _providerRegistry: ProviderRegistry | null = null;

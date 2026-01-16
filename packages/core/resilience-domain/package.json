@@ -3,7 +3,7 @@
   "version": "13.2.5",
   "type": "module",
   "description": "Resilience patterns: circuit breaker, rate limiter, loop guard, resource limits, metrics",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
   "repository": {
     "type": "git",

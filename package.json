@@ -1,10 +1,10 @@
 {
   "name": "automatosx",
-  "version": "13.2.6",
+  "version": "13.2.7",
   "private": true,
   "type": "module",
   "description": "Contract-first AI orchestration platform with multi-provider routing, event-sourced memory, and governance gates",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
   "repository": {
     "type": "git",

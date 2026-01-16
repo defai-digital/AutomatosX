@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "13.2.6",
+  "version": "13.2.7",
   "description": "AutomatosX CLI - AI-powered workflow automation (wrapper for @defai.digital/cli)",
   "type": "module",
   "main": "dist/index.js",
@@ -38,7 +38,7 @@
     "codex"
   ],
   "author": "DEFAI Private Limited",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/defai-digital/automatosx.git",

@@ -9,7 +9,7 @@
  *   ax update --yes     Skip confirmation and install immediately
  *
  * @module @defai.digital/cli/commands/update
- * @license Apache-2.0
+ * @license BUSL-1.1
  * @copyright 2024 DEFAI Private Limited
  */
 

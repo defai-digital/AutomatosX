@@ -59,4 +59,4 @@ Full documentation: https://github.com/defai-digital/automatosx
 
 ## License
 
-Apache-2.0
+BUSL-1.1

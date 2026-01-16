@@ -3,7 +3,7 @@
   "version": "13.2.5",
   "type": "module",
   "description": "Project context loading for AutomatosX - inject project-specific conventions into agent prompts",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
   "repository": {
     "type": "git",

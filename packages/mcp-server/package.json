@@ -1,9 +1,9 @@
 {
   "name": "@defai.digital/mcp-server",
-  "version": "13.2.6",
+  "version": "13.2.7",
   "type": "module",
   "description": "MCP (Model Context Protocol) server for AutomatosX - Exposes AI orchestration tools via MCP",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
   "repository": {
     "type": "git",

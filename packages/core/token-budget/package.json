@@ -3,7 +3,7 @@
   "version": "13.2.5",
   "type": "module",
   "description": "Token budget management for AutomatosX context windows",
-  "license": "Apache-2.0",
+  "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
   "repository": {
     "type": "git",

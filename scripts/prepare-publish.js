@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 
 const METADATA = {
-  license: 'Apache-2.0',
+  license: 'BUSL-1.1',
   author: 'DEFAI Private Limited',
   homepage: 'https://github.com/defai-digital/automatosx#readme',
   bugs: {

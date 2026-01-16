@@ -32,7 +32,7 @@ coverage/
 dependency-graph.svg
 
 # Local data
-.automatosx/memory/
+.automatosx/
 ax.index.json
 ax.summary.json
 checkpoints/
@@ -46,6 +46,9 @@ tmp/
 # Provider instruction files (may contain private context)
 claude.md
 gemini.md
+CLAUDE.md
+GEMINI.md
+AGENTS.md
 CLAUDE.local.md
 
 # Private documentation

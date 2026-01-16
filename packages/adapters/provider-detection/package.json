@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/provider-detection",
-  "version": "13.2.0",
+  "version": "13.2.2",
   "type": "module",
   "description": "Provider CLI detection adapter for AutomatosX",
   "license": "Apache-2.0",

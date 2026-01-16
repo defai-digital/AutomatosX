@@ -8,7 +8,7 @@
  * @see https://github.com/opencode-ai/opencode
  */
 
-import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
+import { TIMEOUT_PROVIDER_SHORT } from '@defai.digital/contracts';
 import type { CLIProviderConfig } from '../types.js';
 
 /**
@@ -16,12 +16,15 @@ import type { CLIProviderConfig } from '../types.js';
  *
  * Design: AutomatosX does NOT manage credentials or model selection.
  * The OpenCode CLI handles all authentication and uses its configured default model.
+ *
+ * PREREQUISITES: Run `opencode auth login` to configure credentials before use.
+ * Without credentials, the CLI will hang indefinitely.
  */
 export const opencodeConfig: CLIProviderConfig = {
   providerId: 'opencode',
   command: 'opencode',
-  args: ['run', '--format', 'json'],  // Use 'run' subcommand with JSON format
-  promptStyle: 'arg',  // Append prompt as argument after 'run --format json'
+  args: ['run', '--format', 'json'],  // Use 'run' with JSON format
+  promptStyle: 'stdin',  // Pass prompt via stdin - more reliable for long prompts
   env: {
     // Non-interactive mode flags
     TERM: 'dumb',
@@ -29,7 +32,7 @@ export const opencodeConfig: CLIProviderConfig = {
     CI: 'true',
   },
   outputFormat: 'stream-json',
-  timeout: TIMEOUT_PROVIDER_DEFAULT,
+  timeout: TIMEOUT_PROVIDER_SHORT,  // Shorter timeout - fails faster if no credentials
   models: [
     {
       modelId: 'default',

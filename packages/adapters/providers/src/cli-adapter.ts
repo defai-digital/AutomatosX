@@ -19,6 +19,60 @@ import { parseOutput, extractOrEstimateTokenUsage } from './output-parser.js';
 import { classifyError, classifySpawnResult } from './error-classifier.js';
 
 /**
+ * Extracts error message from JSON error response in stdout
+ * Handles formats like OpenCode: {"type":"error","error":{"data":{"message":"..."}}}
+ *
+ * @param stdout - Raw stdout from CLI process
+ * @returns Error message if found, null otherwise
+ */
+function extractJsonErrorFromStdout(stdout: string): string | null {
+  if (stdout.length === 0) {
+    return null;
+  }
+
+  try {
+    // Try to parse as JSON (may be one line or multiple lines)
+    const lines = stdout.trim().split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length === 0 || !trimmed.startsWith('{')) {
+        continue;
+      }
+
+      const data = JSON.parse(trimmed) as Record<string, unknown>;
+
+      // Check for type: "error" format (OpenCode style)
+      if (data.type === 'error') {
+        const error = data.error as Record<string, unknown> | undefined;
+        if (error !== undefined) {
+          // Try error.data.message first
+          const errorData = error.data as Record<string, unknown> | undefined;
+          if (errorData?.message !== undefined && typeof errorData.message === 'string') {
+            return errorData.message;
+          }
+          // Try error.message
+          if (typeof error.message === 'string') {
+            return error.message;
+          }
+        }
+      }
+
+      // Check for direct error field
+      if (typeof data.error === 'string') {
+        return data.error;
+      }
+      if (typeof data.message === 'string' && data.type === 'error') {
+        return data.message;
+      }
+    }
+  } catch {
+    // Not valid JSON, ignore
+  }
+
+  return null;
+}
+
+/**
  * Creates a CLI-based LLM provider adapter
  *
  * @param config - Provider configuration (command, args, models, etc.)
@@ -56,8 +110,29 @@ export function createCLIAdapter(config: CLIProviderConfig): LLMProvider {
 
         const latencyMs = Date.now() - startTime;
 
+        // Parse output first - we may have valid output even if process timed out
+        const parsed = parseOutput(result.stdout, config.outputFormat);
+
+        // Check for JSON error response in stdout (e.g., OpenCode returns errors as JSON)
+        // Format: {"type":"error","error":{"name":"...","data":{"message":"..."}}}
+        const stdoutErrorMessage = extractJsonErrorFromStdout(result.stdout);
+
         // Check for errors (non-zero exit code or timeout)
-        if (result.exitCode !== 0 || result.timedOut) {
+        // BUT: if we got valid output and the process timed out (common with CLIs that don't exit cleanly),
+        // treat it as success. The timeout killed the process after it produced output.
+        const hasValidOutput = parsed.content.length > 0;
+        const processTimedOutWithOutput = result.timedOut && hasValidOutput;
+
+        if ((result.exitCode !== 0 || result.timedOut) && !processTimedOutWithOutput) {
+          // If we have a JSON error from stdout, use that instead of stderr
+          if (stdoutErrorMessage !== null) {
+            return {
+              success: false,
+              requestId: request.requestId,
+              error: classifyError(stdoutErrorMessage),
+              latencyMs,
+            };
+          }
           const error = classifySpawnResult(result);
           return {
             success: false,
@@ -66,9 +141,6 @@ export function createCLIAdapter(config: CLIProviderConfig): LLMProvider {
             latencyMs,
           };
         }
-
-        // Parse output
-        const parsed = parseOutput(result.stdout, config.outputFormat);
 
         // Extract or estimate token usage
         const usage = extractOrEstimateTokenUsage(

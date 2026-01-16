@@ -24,6 +24,8 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /RESOURCE_EXHAUSTED/i,
     /credit.?limit/i,
     /usage.?limit/i,
+    /CreditsError/i,  // OpenCode: no credits/payment method
+    /No.?payment.?method/i,  // OpenCode: billing not configured
   ],
 
   // Rate limit - retry with backoff
@@ -104,6 +106,8 @@ const ERROR_PATTERNS: Record<ErrorCategory, readonly RegExp[]> = {
     /missing.?config/i,
     /invalid.?config/i,
     /cli.?not.?installed/i,
+    /0\s*credentials/i,  // OpenCode: "0 credentials" means no auth configured
+    /no.?credentials/i,
   ],
 
   // Unknown - default

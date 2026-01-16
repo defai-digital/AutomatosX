@@ -137,6 +137,24 @@ async function getCommandPath(command: string): Promise<string | undefined> {
 }
 
 /**
+ * Checks if opencode has credentials configured
+ * Returns number of credentials or -1 if check failed
+ */
+async function checkOpencodeCredentials(): Promise<number> {
+  try {
+    const { stdout } = await execAsync('opencode auth list 2>&1', { timeout: 5000 });
+    // Parse output like "0 credentials" or "2 credentials"
+    const match = /(\d+)\s*credentials?/i.exec(stdout);
+    if (match?.[1] !== undefined) {
+      return parseInt(match[1], 10);
+    }
+    return -1;
+  } catch {
+    return -1;
+  }
+}
+
+/**
  * Checks Node.js version
  */
 function checkNodeVersion(): CheckResult {
@@ -192,6 +210,16 @@ export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckRe
 
   if (cmdPath !== undefined) {
     result.details = cmdPath;
+  }
+
+  // Special check for opencode: verify credentials are configured
+  if (provider.id === 'opencode') {
+    const credentialCount = await checkOpencodeCredentials();
+    if (credentialCount === 0) {
+      result.status = 'warn';
+      result.message = version !== undefined ? `v${version} (no credentials)` : 'installed (no credentials)';
+      result.fix = 'Run: opencode auth login';
+    }
   }
 
   return result;

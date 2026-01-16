@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/resilience-domain",
-  "version": "13.1.17",
+  "version": "13.2.0",
   "type": "module",
   "description": "Resilience patterns: circuit breaker, rate limiter, loop guard, resource limits, metrics",
   "license": "Apache-2.0",

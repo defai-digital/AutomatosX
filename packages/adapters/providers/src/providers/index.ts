@@ -16,12 +16,16 @@ import { claudeConfig } from './claude.js';
 import { geminiConfig } from './gemini.js';
 import { codexConfig } from './codex.js';
 import { grokConfig } from './grok.js';
+import { antigravityConfig } from './antigravity.js';
+import { opencodeConfig } from './opencode.js';
 
 // Re-export individual configs
 export { claudeConfig } from './claude.js';
 export { geminiConfig } from './gemini.js';
 export { codexConfig } from './codex.js';
 export { grokConfig } from './grok.js';
+export { antigravityConfig } from './antigravity.js';
+export { opencodeConfig } from './opencode.js';
 
 /**
  * All registered provider configurations
@@ -31,6 +35,8 @@ export const ALL_PROVIDER_CONFIGS: readonly CLIProviderConfig[] = [
   geminiConfig,
   codexConfig,
   grokConfig,
+  antigravityConfig,
+  opencodeConfig,
 ];
 
 /**

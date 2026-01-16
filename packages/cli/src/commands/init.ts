@@ -126,6 +126,8 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   gemini: { cliName: 'gemini', format: 'standard' },
   codex: { cliName: 'codex', format: 'standard' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
+  antigravity: { cliName: 'antigravity', format: 'standard' },
+  opencode: { cliName: 'opencode', format: 'standard' },
   'ax-cli': null,
 };
 

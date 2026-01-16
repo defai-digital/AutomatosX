@@ -21,6 +21,8 @@ export const KNOWN_PROVIDERS = [
   'gemini',
   'codex',
   'grok',
+  'antigravity',
+  'opencode',
   'ax-cli',
 ] as const;
 
@@ -103,9 +105,17 @@ export const PROVIDER_DEFAULTS: Record<ProviderId, ProviderDefault> = {
     command: 'ax-grok',
     priority: 60,
   },
+  antigravity: {
+    command: 'antigravity',
+    priority: 55,
+  },
+  opencode: {
+    command: 'opencode',
+    priority: 50,
+  },
   'ax-cli': {
     command: 'ax-cli',
-    priority: 50,
+    priority: 40,
   },
 };
 

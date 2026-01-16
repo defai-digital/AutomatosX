@@ -87,6 +87,8 @@ When switching projects, just run `ax init` in the new project directory.
 | Gemini | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
 | Codex | [codex](https://github.com/openai/codex) |
 | Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
+| Antigravity | [Google Antigravity](https://developers.google.com/agentic-experience) |
+| OpenCode | [opencode](https://github.com/opencode-ai/opencode) |
 
 ---
 

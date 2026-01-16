@@ -128,6 +128,8 @@ Providers use external CLI tools - AutomatosX does NOT manage credentials:
 - `gemini` - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 - `codex` - [Codex CLI](https://github.com/openai/codex)
 - `ax-grok` - [ax-cli](https://github.com/defai-digital/ax-cli) Grok wrapper (XAI_API_KEY)
+- `antigravity` - [Google Antigravity](https://developers.google.com/agentic-experience)
+- `opencode` - [OpenCode](https://github.com/opencode-ai/opencode)
 
 Provider configurations are centralized in `packages/cli/src/bootstrap.ts` (PROVIDER_CONFIGS).
 

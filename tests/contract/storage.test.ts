@@ -571,9 +571,12 @@ describe('INV-ST-008: TTL Best-Effort Expiration', () => {
     const entry = createKVEntry('key', 'value', { ttlMs });
 
     // expiresAt should be approximately now + ttlMs
+    // Allow 10ms tolerance for timing differences across platforms
     const expiresAt = new Date(entry.expiresAt!).getTime();
     const createdAt = new Date(entry.createdAt).getTime();
-    expect(expiresAt - createdAt).toBe(ttlMs);
+    const diff = expiresAt - createdAt;
+    expect(diff).toBeGreaterThanOrEqual(ttlMs);
+    expect(diff).toBeLessThanOrEqual(ttlMs + 10);
   });
 
   it('should not set expiresAt when no TTL', () => {

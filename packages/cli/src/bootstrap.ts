@@ -23,6 +23,8 @@ import {
   geminiConfig,
   codexConfig,
   grokConfig,
+  antigravityConfig,
+  opencodeConfig,
 } from '@defai.digital/provider-adapters';
 import type {
   ProviderRegistry,
@@ -97,6 +99,8 @@ export const PROVIDER_CONFIGS: Record<string, CLIProviderConfig> = {
   gemini: geminiConfig,
   codex: codexConfig,
   grok: grokConfig,
+  antigravity: antigravityConfig,
+  opencode: opencodeConfig,
 };
 
 // ============================================================================

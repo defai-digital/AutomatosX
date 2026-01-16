@@ -69,6 +69,18 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
     installHint: 'npm install -g ax-grok',
   },
   {
+    id: 'antigravity',
+    name: 'Antigravity',
+    command: 'antigravity',
+    installHint: 'See https://developers.google.com/agentic-experience',
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    command: 'opencode',
+    installHint: 'npm install -g opencode',
+  },
+  {
     id: 'ax-cli',
     name: 'AX-CLI',
     command: 'ax-cli',

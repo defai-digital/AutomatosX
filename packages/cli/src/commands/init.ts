@@ -114,7 +114,7 @@ const ICONS = {
 // MCP Configuration for Providers
 // ============================================================================
 
-type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config';
+type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config' | 'antigravity-json';
 
 interface ProviderMCPConfig {
   cliName: string;
@@ -126,7 +126,7 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   gemini: { cliName: 'gemini', format: 'standard' },
   codex: { cliName: 'codex', format: 'standard' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
-  antigravity: { cliName: 'antigravity', format: 'standard' },
+  antigravity: { cliName: 'antigravity', format: 'antigravity-json' },
   opencode: { cliName: 'opencode', format: 'opencode-config' },
   'ax-cli': null,
 };
@@ -317,6 +317,54 @@ async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
   }
 }
 
+/**
+ * Configure Antigravity MCP using --add-mcp JSON format
+ * Antigravity uses: antigravity --add-mcp '{"name":"server-name","command":"cmd","args":["arg1"]}'
+ */
+async function configureAntigravityMCP(): Promise<MCPConfigResult> {
+  const binaryPath = getCLIBinaryPath();
+
+  try {
+    // Build command and args arrays for antigravity JSON format
+    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
+    const args = isAbsolutePath(binaryPath)
+      ? [binaryPath, 'mcp', 'server']
+      : ['mcp', 'server'];
+
+    const mcpConfig = {
+      name: MCP_SERVER_NAME,
+      command,
+      args,
+    };
+
+    const jsonConfig = JSON.stringify(mcpConfig);
+    const addCommand = `antigravity --add-mcp '${jsonConfig}'`;
+
+    const { stdout, stderr } = await execAsync(`${addCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_ADD });
+    const commandOutput = `${stdout}${stderr}`;
+
+    // Antigravity may not output success message, so we assume success if no error thrown
+    if (commandOutput.toLowerCase().includes('error')) {
+      return {
+        success: false,
+        skipped: false,
+        error: extractErrorMessage(commandOutput),
+      };
+    }
+
+    return { success: true, skipped: false };
+  } catch (err) {
+    const execResult = err as { message?: string; stdout?: string; stderr?: string };
+    const errorMsg = execResult.message || FALLBACK_ERROR_MESSAGE;
+
+    return {
+      success: false,
+      skipped: false,
+      error: extractErrorMessage(errorMsg),
+    };
+  }
+}
+
 function isMCPAdditionSuccessful(commandOutput: string): boolean {
   return MCP_SUCCESS_PATTERN.test(commandOutput);
 }
@@ -340,6 +388,10 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
 
   if (mcpConfig.format === 'opencode-config') {
     return configureOpenCodeMCP();
+  }
+
+  if (mcpConfig.format === 'antigravity-json') {
+    return configureAntigravityMCP();
   }
 
   const addCommand = buildMCPAddCommand(providerId);

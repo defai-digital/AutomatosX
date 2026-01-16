@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/discussion-domain",
-  "version": "13.2.2",
+  "version": "13.2.3",
   "type": "module",
   "description": "Multi-model discussion orchestration for AutomatosX",
   "license": "Apache-2.0",

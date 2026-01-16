@@ -275,9 +275,9 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 ## What's New
 
+**v13.2.3** - Fixed Antigravity MCP registration (now uses `--add-mcp` JSON format)
 **v13.2.2** - Fixed OpenCode MCP registration (now uses config file instead of interactive CLI)
 **v13.2.1** - Security fix for FTS5 query injection, resource leak fixes
-**v13.2.0** - Added Antigravity and OpenCode provider support
 
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 

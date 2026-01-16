@@ -63,6 +63,7 @@ export {
   FileSystemWorkflowLoader,
   createWorkflowLoader,
   findWorkflowDir,
+  clearWarnedFilesCache,
   DEFAULT_WORKFLOW_DIRS,
   type WorkflowLoader,
   type WorkflowLoaderConfig,

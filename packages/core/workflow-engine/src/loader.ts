@@ -37,6 +37,11 @@ export interface WorkflowLoaderConfig {
    * Watch for file changes (default: false)
    */
   watch?: boolean;
+
+  /**
+   * Suppress validation warnings (default: false)
+   */
+  silent?: boolean;
 }
 
 /**
@@ -88,6 +93,9 @@ export interface WorkflowInfo {
 
 const DEFAULT_EXTENSIONS = ['.yaml', '.yml', '.json'];
 
+// Track files that have already been warned about (module-level to persist across loader instances)
+const warnedFiles = new Set<string>();
+
 // ============================================================================
 // File System Workflow Loader
 // ============================================================================
@@ -96,7 +104,7 @@ const DEFAULT_EXTENSIONS = ['.yaml', '.yml', '.json'];
  * Loads workflow definitions from the file system
  */
 export class FileSystemWorkflowLoader implements WorkflowLoader {
-  private readonly config: Required<WorkflowLoaderConfig>;
+  private readonly config: Required<Omit<WorkflowLoaderConfig, 'silent'>> & { silent: boolean };
   private cache = new Map<string, Workflow>();
   private filePathMap = new Map<string, string>();
   private loaded = false;
@@ -106,6 +114,7 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
       workflowsDir: config.workflowsDir,
       extensions: config.extensions ?? DEFAULT_EXTENSIONS,
       watch: config.watch ?? false,
+      silent: config.silent ?? false,
     };
   }
 
@@ -162,9 +171,12 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
       if (workflow) {
         // INV-WF-LDR-003: Check for duplicate workflow IDs
         if (this.cache.has(workflow.workflowId)) {
-          console.warn(
-            `Duplicate workflow ID "${workflow.workflowId}" found in ${file}, skipping`
-          );
+          if (!this.config.silent && !warnedFiles.has(`dup:${filePath}`)) {
+            warnedFiles.add(`dup:${filePath}`);
+            console.warn(
+              `⚠️  Duplicate workflow ID "${workflow.workflowId}" found in ${file}, skipping`
+            );
+          }
           continue;
         }
 
@@ -254,15 +266,46 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
       const result = WorkflowSchema.safeParse(data);
 
       if (!result.success) {
-        const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-        console.warn(`Invalid workflow in ${filePath}: ${errors}`);
+        // Only warn if not silent and we haven't warned about this file before
+        if (!this.config.silent && !warnedFiles.has(filePath)) {
+          warnedFiles.add(filePath);
+
+          // Check if this looks like an agent definition file
+          const dataObj = data as Record<string, unknown> | null;
+          const looksLikeAgent = dataObj && (
+            typeof dataObj.agentId === 'string' ||
+            typeof dataObj.name === 'string' ||
+            typeof dataObj.description === 'string'
+          ) && !dataObj.workflowId && !dataObj.steps;
+
+          if (looksLikeAgent) {
+            console.warn(
+              `⚠️  File "${path.basename(filePath)}" appears to be an agent definition, not a workflow. ` +
+              `Move it to an agents directory or add workflowId, version, and steps fields.`
+            );
+          } else {
+            const missingFields = result.error.errors
+              .filter(e => e.message === 'Required')
+              .map(e => e.path.join('.'))
+              .join(', ');
+            if (missingFields) {
+              console.warn(`⚠️  Invalid workflow "${path.basename(filePath)}": missing required fields (${missingFields})`);
+            } else {
+              const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+              console.warn(`⚠️  Invalid workflow "${path.basename(filePath)}": ${errors}`);
+            }
+          }
+        }
         return undefined;
       }
 
       return result.data;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`Failed to load workflow from ${filePath}: ${message}`);
+      if (!this.config.silent && !warnedFiles.has(filePath)) {
+        warnedFiles.add(filePath);
+        console.warn(`⚠️  Failed to load workflow from ${path.basename(filePath)}: ${message}`);
+      }
       return undefined;
     }
   }
@@ -316,4 +359,11 @@ export function findWorkflowDir(basePath: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Clears the warned files cache (for testing)
+ */
+export function clearWarnedFilesCache(): void {
+  warnedFiles.clear();
 }

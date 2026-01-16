@@ -1,284 +1,441 @@
 # AutomatosX
 
-**The AI orchestration platform with built-in governance**
+**AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.2.4-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.2.5-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
-[![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
 ---
 
-## Two Reasons to Use AutomatosX
+## What is AutomatosX?
 
-### For Individual Developers: Better AI Decisions
+AutomatosX adds **44 specialized tools** to your AI coding assistant through MCP (Model Context Protocol). Instead of just chatting with Claude, Gemini, or Codex, you get:
 
-**The problem**: You ask Claude a question. You get an answer. But is it the best answer? Every AI model has blind spots. Claude might miss something Gemini catches. GPT might suggest something neither considered.
-
-**The solution**: Ask multiple AIs at once and let them reach consensus.
-
-```bash
-ax discuss "Should I use microservices or monolith for a 5-person startup?"
-```
-
-AutomatosX sends your question to Claude, Gemini, and Grok simultaneously. They see each other's answers. One AI synthesizes a final recommendation that considers all perspectives.
-
-**Result**: Better decisions because you're not limited to one model's opinion.
+- **22 specialized agents** (fullstack, security, devops, ml-engineer, etc.)
+- **Multi-model discussions** (ask Claude AND Gemini AND Grok the same question)
+- **Code review with focus areas** (security, performance, architecture)
+- **Persistent memory** across sessions
+- **Governance gates** to check AI-generated code
+- **Execution tracing** for full audit trails
 
 ---
 
-### For Teams & Enterprises: AI Governance
-
-**The problem**: Your team uses AI for coding. But how do you ensure:
-- AI doesn't introduce security vulnerabilities?
-- Changes don't break architectural boundaries?
-- There's an audit trail of what AI did?
-- Policies are enforced before code is merged?
-
-**The solution**: Contract-first AI orchestration.
-
-AutomatosX has **29 contract domains** with **500+ behavioral invariants** that guarantee:
-
-| Guarantee | What It Means |
-|-----------|---------------|
-| Every input/output is validated | No undefined behavior, no magic strings |
-| Every AI call is traced | Full audit trail for compliance |
-| Guard policies block violations | Changes checked before they land |
-| Invariants are tested | Behavioral guarantees are enforced |
+## Quick Start (3 Steps)
 
 ```bash
-# Run governance checks before merging AI-generated code
-ax guard check --policy bugfix --changed-files $(git diff --name-only)
-
-# See what AI did
-ax trace --verbose
-```
-
-**Result**: AI coding with enterprise-grade guardrails.
-
----
-
-## Quick Start
-
-```bash
-# Install
+# 1. Install AutomatosX
 npm install -g @defai.digital/automatosx
 
-# Global setup (one-time, detects providers)
+# 2. Global setup (one-time)
 ax setup
 
-# Per-project initialization (run in each project)
+# 3. Initialize your project (registers MCP with your AI CLI)
+cd your-project
 ax init
+```
 
-# Verify
+Now use your AI CLI - it has access to all AutomatosX tools.
+
+---
+
+## Using AutomatosX with Your AI CLI
+
+After running `ax init`, your AI assistant gains access to 44 new tools. Here's how to use them:
+
+### With Claude Code
+
+```bash
+# Start Claude Code in your project
+claude
+
+# Now you can use AutomatosX tools in conversation:
+```
+
+**Example conversations with Claude:**
+
+```
+You: Use ax_agent_recommend to find the best agent for "implement OAuth2 login"
+
+Claude: [Uses ax_agent_recommend tool]
+The recommended agent is "security" with 0.85 confidence because...
+
+You: Run that agent with ax_agent_run
+
+Claude: [Uses ax_agent_run tool with agentId: "security"]
+Here's the OAuth2 implementation plan...
+```
+
+```
+You: Use ax_discuss to get multiple AI perspectives on "REST vs GraphQL for mobile app"
+
+Claude: [Uses ax_discuss tool]
+After synthesizing perspectives from Claude, Gemini, and Grok:
+- REST is recommended for... [consensus summary]
+```
+
+```
+You: Run ax_review_analyze on src/api/ with focus on security
+
+Claude: [Uses ax_review_analyze tool]
+Found 3 security issues:
+1. SQL injection risk in users.ts:45...
+```
+
+---
+
+### With Gemini CLI
+
+```bash
+# Start Gemini CLI in your project
+gemini
+
+# Use AutomatosX tools in conversation:
+```
+
+**Example conversations with Gemini:**
+
+```
+You: I need to build a caching layer. Use ax_agent_run with the architecture agent.
+
+Gemini: [Uses ax_agent_run tool]
+Here's a recommended caching architecture...
+
+You: Now use ax_discuss_quick to validate this approach with other models
+
+Gemini: [Uses ax_discuss_quick tool]
+Multi-model consensus: The proposed approach is sound, with these refinements...
+```
+
+---
+
+### With Codex CLI
+
+```bash
+# Start Codex CLI in your project
+codex
+
+# Use AutomatosX tools:
+```
+
+**Example:**
+
+```
+You: Use ax_agent_list to show me available agents
+
+Codex: [Uses ax_agent_list tool]
+Available agents (22 total):
+- fullstack: Senior Fullstack Engineer
+- backend: Backend Engineer
+- security: Security Engineer
+...
+```
+
+---
+
+### With Grok (via ax-cli)
+
+```bash
+# Start Grok CLI in your project
+ax-grok
+
+# Use AutomatosX tools:
+```
+
+**Example:**
+
+```
+You: Use ax_guard_check with policy "bugfix" on the files I changed
+
+Grok: [Uses ax_guard_check tool]
+Guard check passed: All changes within policy boundaries.
+```
+
+---
+
+### With OpenCode
+
+```bash
+# Start OpenCode in your project
+opencode
+
+# Use AutomatosX tools:
+```
+
+---
+
+## Available MCP Tools (44 total)
+
+After `ax init`, your AI assistant can use these tools:
+
+### Agent Tools
+| Tool | Description |
+|------|-------------|
+| `ax_agent_list` | List all specialized agents |
+| `ax_agent_run` | Execute an agent with input |
+| `ax_agent_get` | Get agent details |
+| `ax_agent_recommend` | Find best agent for a task |
+| `ax_agent_register` | Create custom agent |
+| `ax_agent_remove` | Remove an agent |
+| `ax_agent_capabilities` | List all capabilities |
+
+### Discussion Tools
+| Tool | Description |
+|------|-------------|
+| `ax_discuss` | Multi-model discussion with synthesis |
+| `ax_discuss_quick` | Quick 2-round consensus |
+
+### Review Tools
+| Tool | Description |
+|------|-------------|
+| `ax_review_analyze` | Code review with focus (security, performance, architecture, etc.) |
+| `ax_review_list` | List recent reviews |
+
+### Guard Tools
+| Tool | Description |
+|------|-------------|
+| `ax_guard_check` | Check changes against policy |
+| `ax_guard_list` | List available policies |
+| `ax_guard_apply` | Apply policy to session |
+
+### Memory Tools
+| Tool | Description |
+|------|-------------|
+| `ax_memory_store` | Store key-value data |
+| `ax_memory_retrieve` | Retrieve stored data |
+| `ax_memory_search` | Search memory |
+| `ax_memory_list` | List all keys |
+| `ax_memory_delete` | Delete a key |
+
+### Session Tools
+| Tool | Description |
+|------|-------------|
+| `ax_session_create` | Create collaboration session |
+| `ax_session_join` | Join existing session |
+| `ax_session_complete` | Mark session complete |
+| `ax_session_status` | Check session status |
+| `ax_session_list` | List sessions |
+| `ax_session_leave` | Leave a session |
+| `ax_session_fail` | Mark session failed |
+
+### Workflow Tools
+| Tool | Description |
+|------|-------------|
+| `ax_workflow_run` | Execute a workflow |
+| `ax_workflow_list` | List workflows |
+| `ax_workflow_describe` | Get workflow details |
+
+### Trace Tools
+| Tool | Description |
+|------|-------------|
+| `ax_trace_list` | List execution traces |
+| `ax_trace_get` | Get trace details |
+| `ax_trace_analyze` | Analyze trace for issues |
+
+### Scaffold Tools
+| Tool | Description |
+|------|-------------|
+| `ax_scaffold_contract` | Generate Zod schema |
+| `ax_scaffold_domain` | Generate domain package |
+| `ax_scaffold_guard` | Generate guard policy |
+
+### Config Tools
+| Tool | Description |
+|------|-------------|
+| `ax_config_get` | Get config value |
+| `ax_config_set` | Set config value |
+| `ax_config_show` | Show full config |
+
+### File System Tools
+| Tool | Description |
+|------|-------------|
+| `ax_file_write` | Write file content |
+| `ax_file_exists` | Check if file exists |
+| `ax_directory_create` | Create directory |
+
+### Ability Tools
+| Tool | Description |
+|------|-------------|
+| `ax_ability_list` | List available abilities |
+| `ax_ability_inject` | Inject abilities into prompt |
+
+---
+
+## Example Workflows
+
+### 1. Get Multiple AI Perspectives
+
+```
+You: Use ax_discuss to analyze "Should we use microservices or monolith for a 5-person startup?"
+
+AI: [Calls ax_discuss with topic and default providers: claude, gemini, grok]
+
+Result: After 2 rounds of discussion, the consensus is:
+- Start with a modular monolith (recommended by all 3 models)
+- Claude emphasizes: Operational simplicity crucial for small teams
+- Gemini adds: Consider service boundaries for future extraction
+- Grok suggests: Use feature flags for gradual migration later
+```
+
+### 2. Security-Focused Code Review
+
+```
+You: Run ax_review_analyze on src/auth/ with focus "security"
+
+AI: [Calls ax_review_analyze with paths: ["src/auth/"], focus: "security"]
+
+Result: Found 2 issues:
+1. HIGH: Potential SQL injection in src/auth/login.ts:45
+   - User input concatenated directly in query
+   - Recommendation: Use parameterized queries
+
+2. MEDIUM: Missing rate limiting on src/auth/reset-password.ts
+   - Endpoint vulnerable to brute force
+   - Recommendation: Add rate limiting middleware
+```
+
+### 3. Find the Right Agent for Your Task
+
+```
+You: Use ax_agent_recommend for "set up Kubernetes deployment with auto-scaling"
+
+AI: [Calls ax_agent_recommend with task]
+
+Result:
+- Recommended: devops (confidence: 0.92)
+- Reason: Task involves K8s, deployment automation, infrastructure
+- Alternatives:
+  - backend (0.45) - can help with app configuration
+  - architecture (0.38) - can review scaling strategy
+```
+
+### 4. Execute a Specialized Agent
+
+```
+You: Run ax_agent_run with agentId "devops" and input {"query": "Create Kubernetes deployment for Node.js app with HPA"}
+
+AI: [Calls ax_agent_run]
+
+Result: Here's your Kubernetes configuration:
+[Agent generates deployment.yaml, service.yaml, hpa.yaml with explanations]
+```
+
+### 5. Check Changes Against Policy
+
+```
+You: Use ax_guard_check with policy "bugfix" and changedPaths from my git diff
+
+AI: [Calls ax_guard_check with policy: "bugfix", changedPaths: ["src/api/users.ts", "src/utils/validate.ts"]]
+
+Result:
+- Status: PASS
+- Changed packages: 2 (within limit of 3)
+- No forbidden paths modified
+- Dependency boundaries respected
+```
+
+---
+
+## Available Agents (22)
+
+| Agent | Expertise | Best For |
+|-------|-----------|----------|
+| `fullstack` | React, Node.js, TypeScript | End-to-end features |
+| `backend` | APIs, databases, microservices | Server-side development |
+| `frontend` | React, Vue, CSS, accessibility | UI components |
+| `architecture` | System design, patterns | Architecture decisions |
+| `security` | OWASP, audits, secure coding | Security reviews |
+| `devops` | Docker, K8s, CI/CD | Infrastructure |
+| `mobile` | React Native, Flutter | Mobile apps |
+| `blockchain-developer` | Solidity, DeFi, NFTs | Web3 development |
+| `data-scientist` | Python, ML, statistics | Data analysis |
+| `ml-engineer` | PyTorch, MLOps | Production ML |
+| `mlops-engineer` | ML pipelines, deployment | ML infrastructure |
+| `researcher` | Literature review, analysis | Technology research |
+| `cto` | Strategy, leadership | Technical direction |
+| `ceo` | Business strategy | Business decisions |
+| `product` | Requirements, roadmaps | Product planning |
+| `quantum-engineer` | Quantum algorithms | Quantum computing |
+| `aerospace-scientist` | Aerospace systems | Aerospace engineering |
+| `creative-marketer` | Marketing, content | Marketing campaigns |
+| `quality` | Testing, QA | Test planning |
+| `writer` | Documentation, API docs | Technical writing |
+| `reviewer` | Code review, patterns | Pull request reviews |
+| `standard` | General assistance | Simple tasks |
+
+---
+
+## CLI Commands (Optional)
+
+You can also use AutomatosX directly from the command line, though MCP integration provides a better experience:
+
+```bash
+# System
+ax setup                    # Global setup (one-time)
+ax init                     # Project initialization (per-project)
+ax doctor                   # Check provider health
+
+# Direct provider calls (command mode)
+ax call claude "Explain this code"
+ax call gemini --file ./src/api.ts "Review this"
+
+# Agents
+ax agent list               # List agents
+ax agent run security --input '{"query": "audit auth"}'
+
+# Review
+ax review analyze src/ --focus security
+
+# Discussion
+ax discuss "REST vs GraphQL"
+
+# Guard
+ax guard check --policy bugfix --changed-paths src/
+```
+
+---
+
+## Provider Installation
+
+Install at least one AI provider CLI:
+
+| Provider | CLI Command | Installation |
+|----------|-------------|--------------|
+| Claude | `claude` | [Claude Code](https://github.com/anthropics/claude-code) |
+| Gemini | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
+| Codex | `codex` | [Codex CLI](https://github.com/openai/codex) |
+| Grok | `ax-grok` | [ax-cli](https://github.com/defai-digital/ax-cli) (requires XAI_API_KEY) |
+| OpenCode | `opencode` | [OpenCode](https://github.com/opencode-ai/opencode) |
+
+Verify installation:
+
+```bash
 ax doctor
 ```
 
-**Setup vs Init**:
-- `ax setup` — Global, one-time. Detects installed AI providers and creates `~/.automatosx/` config.
-- `ax init` — Per-project. Creates `.automatosx/` in your project and registers MCP with providers.
-
-When switching projects, just run `ax init` in the new project directory.
-
-**Prerequisites**: Node.js 20+, at least one AI provider installed:
-
-| Provider | Install |
-|----------|---------|
-| Claude | `npm install -g @anthropic-ai/claude-code` |
-| Gemini | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
-| Codex | [codex](https://github.com/openai/codex) |
-| Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
-| OpenCode | [opencode](https://github.com/opencode-ai/opencode) |
-
 ---
 
-## Core Features
+## Setup vs Init
 
-### 1. Multi-Model Discussions
+- **`ax setup`** - Global, one-time setup
+  - Detects installed provider CLIs
+  - Creates global config at `~/.automatosx/`
+  - Run once after installing AutomatosX
 
-Get perspectives from multiple AIs on any question:
+- **`ax init`** - Per-project initialization
+  - Creates `.automatosx/` in current directory
+  - Registers MCP server with all detected provider CLIs
+  - Run in each project directory
 
-```bash
-# Quick consensus
-ax discuss "Best database for real-time analytics?"
-
-# Structured debate with pros/cons
-ax discuss --pattern debate "PostgreSQL vs MongoDB"
-
-# Voting on options
-ax discuss --pattern voting "React vs Vue vs Angular"
-```
-
-### 2. AI Code Review
-
-Automated code review with specific focus areas:
-
-```bash
-ax review analyze src/ --focus security      # OWASP, injection, auth
-ax review analyze src/ --focus performance   # N+1, memory leaks
-ax review analyze src/ --focus architecture  # SOLID, coupling
-```
-
-### 3. Unified CLI
-
-One command syntax for all AI providers:
-
-```bash
-ax call claude "Explain this error"
-ax call gemini "Write tests for this function"
-ax call grok "Review this PR"
-```
-
-### 4. Guard System (Governance)
-
-Policy-based checks for AI-generated code:
-
-```bash
-# Check changes against policy
-ax guard check --policy bugfix --target ./src
-
-# Available policies
-ax guard list
-```
-
-Built-in gates:
-- **Path validation** - Ensure changes only touch allowed files
-- **Change radius** - Limit how many packages can be modified
-- **Dependency boundaries** - Enforce architectural layers
-- **Secrets detection** - Block commits with API keys/passwords
-
-### 5. Execution Tracing
-
-Every AI interaction is logged:
-
-```bash
-ax trace                    # List recent traces
-ax trace <id> --verbose     # See full execution details
-```
-
----
-
-## The Contract-First Architecture
-
-What makes AutomatosX different from other AI tools:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    CLI / MCP Server                      │
-├─────────────────────────────────────────────────────────┤
-│                     Guard System                         │
-│         (Policy enforcement before changes land)         │
-├─────────────────────────────────────────────────────────┤
-│                    Core Domains                          │
-│   Workflow • Agent • Review • Discussion • Memory        │
-│   Trace • Session • Routing • Resilience                 │
-├─────────────────────────────────────────────────────────┤
-│              Contracts (Zod Schemas)                     │
-│      29 domains • 500+ invariants • Full validation      │
-├─────────────────────────────────────────────────────────┤
-│                  Provider Adapters                       │
-│          Claude • Gemini • Codex • Grok                 │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Key principle**: Every input is validated. Every output is traced. Every guarantee is tested.
-
-Example invariants:
-- `INV-WF-001`: Steps execute in definition order (no surprises)
-- `INV-RT-002`: High-risk tasks never use experimental models
-- `INV-MEM-001`: Events are immutable after storage
-- `INV-GD-001`: Forbidden paths always block (deny wins)
-
----
-
-## Use Cases
-
-### Individual Developer
-
-```bash
-# Get unstuck with multiple perspectives
-ax discuss "Why is my React component re-rendering infinitely?"
-
-# Quick code review before PR
-ax review analyze src/features/auth/ --focus security
-
-# Compare approaches
-ax discuss --pattern debate "REST vs GraphQL for mobile app"
-```
-
-### Team Lead / Architect
-
-```bash
-# Enforce architectural boundaries
-ax guard check --policy provider-refactor --changed-files adapters/
-
-# Review AI-generated code
-ax review analyze src/ --focus all --format sarif > report.sarif
-
-# Track what AI is doing across the team
-ax trace --limit 50
-```
-
-### Platform / DevOps
-
-```bash
-# Add to CI pipeline
-ax guard check --policy bugfix --changed-files $(git diff origin/main --name-only)
-
-# MCP server for AI assistants
-ax mcp server
-```
-
----
-
-## MCP Server
-
-Use AutomatosX tools from Claude Code or other AI assistants:
-
-```bash
-claude mcp add automatosx -- ax mcp server
-```
-
-Now you can use `ax_discuss`, `ax_review_analyze`, `ax_guard_check` directly in your AI assistant.
-
----
-
-## FAQ
-
-### Who is this for?
-
-- **Individual developers** who want better AI decisions through multi-model consensus
-- **Teams** who need governance over AI-generated code
-- **Enterprises** who require audit trails and policy enforcement
-
-### Why not just use Claude directly?
-
-You can! AutomatosX adds value when you want:
-- Multiple AI perspectives (not just one model's opinion)
-- Code review with specific focus areas
-- Governance and audit trails
-- Consistent commands across providers
-
-### Is this just a wrapper?
-
-No. It's an orchestration platform. The key features are:
-- **Multi-model collaboration** (AIs discuss with each other)
-- **Contract validation** (every input/output is checked)
-- **Guard policies** (changes blocked before they land)
-- **Execution tracing** (full audit trail)
-
-### Do I need all providers installed?
-
-No. Works with whatever you have. Multi-model discussions need 2+ providers.
+When switching projects, just run `ax init` in the new project.
 
 ---
 
 ## What's New
 
-**v13.2.5** - Provider fixes: Fixed OpenCode CLI args (`run --format json`), fixed Grok CLI args (`--json`), removed Antigravity (GUI-only app), improved parallelization in doctor/init commands
-**v13.2.4** - Security hardening: command injection fix in update command, SQL injection prevention in SQLite adapters, async I/O improvements
-**v13.2.3** - Fixed MCP registration for various providers
-**v13.2.2** - Fixed OpenCode MCP registration (now uses config file instead of interactive CLI)
-**v13.2.1** - Security fix for FTS5 query injection, resource leak fixes
+**v13.2.5** - Provider fixes: Fixed OpenCode CLI args, fixed Grok CLI args, removed Antigravity, improved parallelization
+
+**v13.2.4** - Security hardening: command injection fix, SQL injection prevention, async I/O improvements
 
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 
@@ -286,9 +443,16 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 ## License
 
-Apache License 2.0 - see [LICENSE](LICENSE)
+**Business Source License 1.1** - see [LICENSE](LICENSE)
 
-For commercial editions (Pro & Enterprise), see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+- **Free for non-production use**: Development, testing, personal projects
+- **Free for small production**: Organizations with < $2M annual revenue
+- **Commercial license required**: Production use by organizations with >= $2M annual revenue
+- **Converts to Apache 2.0**: On January 1, 2030 (or 4 years after each version's release)
+
+For commercial licensing inquiries, contact: licensing@defai.digital
+
+See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for full details
 
 ---
 

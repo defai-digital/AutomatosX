@@ -114,7 +114,7 @@ const ICONS = {
 // MCP Configuration for Providers
 // ============================================================================
 
-type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper';
+type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config';
 
 interface ProviderMCPConfig {
   cliName: string;
@@ -127,7 +127,7 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   codex: { cliName: 'codex', format: 'standard' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
   antigravity: { cliName: 'antigravity', format: 'standard' },
-  opencode: { cliName: 'opencode', format: 'standard' },
+  opencode: { cliName: 'opencode', format: 'opencode-config' },
   'ax-cli': null,
 };
 
@@ -254,6 +254,69 @@ async function configureAxWrapperMCP(cliName: string): Promise<MCPConfigResult> 
   }
 }
 
+/** OpenCode config file name */
+const OPENCODE_CONFIG_FILENAME = 'opencode.json';
+
+interface OpenCodeMCPServerConfig {
+  type: 'local';
+  command: string[];
+  enabled: boolean;
+  environment?: Record<string, string>;
+}
+
+interface OpenCodeConfig {
+  $schema?: string;
+  mcp?: Record<string, OpenCodeMCPServerConfig>;
+  [key: string]: unknown;
+}
+
+function getOpenCodeConfigPath(): string {
+  return join(process.cwd(), OPENCODE_CONFIG_FILENAME);
+}
+
+async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
+  const binaryPath = getCLIBinaryPath();
+  const configPath = getOpenCodeConfigPath();
+
+  try {
+    let existingConfig: OpenCodeConfig = {};
+    try {
+      const content = await readFile(configPath, 'utf-8');
+      existingConfig = JSON.parse(content) as OpenCodeConfig;
+    } catch {
+      // File doesn't exist or is invalid - start fresh
+      existingConfig = {
+        $schema: 'https://opencode.ai/config.json',
+      };
+    }
+
+    if (!existingConfig.mcp) {
+      existingConfig.mcp = {};
+    }
+
+    // Build command array for opencode
+    const command = isAbsolutePath(binaryPath)
+      ? [NODE_EXECUTABLE, binaryPath, 'mcp', 'server']
+      : [binaryPath, 'mcp', 'server'];
+
+    existingConfig.mcp[MCP_SERVER_NAME] = {
+      type: 'local',
+      command,
+      enabled: true,
+    };
+
+    await writeFile(configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
+
+    return { success: true, skipped: false };
+  } catch (err) {
+    return {
+      success: false,
+      skipped: false,
+      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
+    };
+  }
+}
+
 function isMCPAdditionSuccessful(commandOutput: string): boolean {
   return MCP_SUCCESS_PATTERN.test(commandOutput);
 }
@@ -273,6 +336,10 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
 
   if (mcpConfig.format === 'ax-wrapper') {
     return configureAxWrapperMCP(mcpConfig.cliName);
+  }
+
+  if (mcpConfig.format === 'opencode-config') {
+    return configureOpenCodeMCP();
   }
 
   const addCommand = buildMCPAddCommand(providerId);

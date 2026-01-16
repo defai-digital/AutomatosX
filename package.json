@@ -11,6 +11,7 @@
     "url": "https://github.com/defai-digital/automatosx.git"
   },
   "scripts": {
+    "ax": "node packages/cli/dist/bin.js",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",

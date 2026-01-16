@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Ability } from '@defai.digital/contracts';
 import { validateAbility } from '@defai.digital/contracts';
@@ -47,21 +48,29 @@ export class FileSystemAbilityLoader implements AbilityLoader {
     this.cache.clear();
 
     const dirPath = this.config.abilitiesDir;
-
-    if (!fs.existsSync(dirPath)) {
-      this.loaded = true;
-      return [];
-    }
-
-    const files = fs.readdirSync(dirPath);
     const abilities: Ability[] = [];
 
-    for (const file of files) {
-      const ext = path.extname(file).toLowerCase();
-      if (!this.config.extensions.includes(ext)) {
-        continue;
+    // Read directory with file types to filter out directories
+    // Handle missing/inaccessible directory gracefully
+    let entries: fs.Dirent[];
+    try {
+      entries = await fsPromises.readdir(dirPath, { withFileTypes: true });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'EACCES' || code === 'ENOTDIR') {
+        this.loaded = true;
+        return [];
       }
+      throw err;
+    }
 
+    // Filter to only files with matching extensions
+    const files = entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((name) => this.config.extensions.includes(path.extname(name).toLowerCase()));
+
+    for (const file of files) {
       const filePath = path.join(dirPath, file);
       const ability = await this.loadFile(filePath, file);
 
@@ -102,7 +111,7 @@ export class FileSystemAbilityLoader implements AbilityLoader {
     fileName: string
   ): Promise<Ability | undefined> {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const content = await fsPromises.readFile(filePath, 'utf-8');
       const { metadata, body } = this.parseMarkdown(content);
 
       // Generate ability ID from filename if not in metadata
@@ -144,11 +153,13 @@ export class FileSystemAbilityLoader implements AbilityLoader {
     metadata: Record<string, unknown>;
     body: string;
   } {
+    // Normalize Windows line endings to Unix for cross-platform compatibility
+    const normalizedContent = content.replace(/\r\n/g, '\n');
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
-    const match = frontmatterRegex.exec(content);
+    const match = frontmatterRegex.exec(normalizedContent);
 
     if (!match) {
-      return { metadata: {}, body: content };
+      return { metadata: {}, body: normalizedContent };
     }
 
     const frontmatter = match[1] ?? '';
@@ -158,16 +169,43 @@ export class FileSystemAbilityLoader implements AbilityLoader {
     const metadata: Record<string, unknown> = {};
     const lines = frontmatter.split('\n');
 
-    for (const line of lines) {
+    let currentKey: string | null = null;
+    let currentArray: string[] | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? '';
+
+      // Check if this is a YAML array item (starts with "  - " or "- ")
+      const arrayItemMatch = /^\s+-\s+(.*)$/.exec(line);
+      if (arrayItemMatch && currentKey !== null && currentArray !== null) {
+        const itemValue = arrayItemMatch[1]?.trim().replace(/^['"]|['"]$/g, '') ?? '';
+        currentArray.push(itemValue);
+        continue;
+      }
+
+      // If we were building an array and hit a non-array line, save it
+      if (currentKey !== null && currentArray !== null) {
+        metadata[currentKey] = currentArray;
+        currentKey = null;
+        currentArray = null;
+      }
+
       const colonIndex = line.indexOf(':');
       if (colonIndex === -1) continue;
 
       const key = line.substring(0, colonIndex).trim();
       let value: unknown = line.substring(colonIndex + 1).trim();
 
-      // Parse arrays
+      // Check if this starts a multi-line array
       if (value === '') {
-        // Check if next lines are array items
+        // Look ahead to see if next line is an array item
+        const nextLine = lines[i + 1];
+        if (nextLine !== undefined && /^\s+-\s+/.test(nextLine)) {
+          currentKey = key;
+          currentArray = [];
+          continue;
+        }
+        // Empty value, skip
         continue;
       }
 
@@ -185,6 +223,11 @@ export class FileSystemAbilityLoader implements AbilityLoader {
       }
 
       metadata[key] = value;
+    }
+
+    // Don't forget to save any trailing array
+    if (currentKey !== null && currentArray !== null) {
+      metadata[currentKey] = currentArray;
     }
 
     return { metadata, body };

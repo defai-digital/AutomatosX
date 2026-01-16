@@ -437,6 +437,12 @@ export interface RateLimiterRegistry {
    * Get the configuration for a provider
    */
   getProviderConfig(providerId: string): ProviderRateLimitConfig;
+
+  /**
+   * Dispose of the registry and clean up resources
+   * Clears the session cleanup interval to prevent memory leaks
+   */
+  dispose(): void;
 }
 
 /**
@@ -460,10 +466,9 @@ export function createRateLimiterRegistry(
   const sessions = new Map<string, SessionUsage>();
 
   // Cleanup interval for expired sessions
-  // Note: In a long-running process, this interval would need to be cleared
-  // when the registry is no longer needed to prevent memory leaks.
+  let cleanupIntervalId: ReturnType<typeof setInterval> | undefined;
   if (cfg.enableSessionTracking && cfg.sessionQuota) {
-    setInterval(() => {
+    cleanupIntervalId = setInterval(() => {
       const now = Date.now();
       const timeout = cfg.sessionQuota!.sessionTimeoutMs;
 
@@ -605,6 +610,20 @@ export function createRateLimiterRegistry(
     },
 
     getProviderConfig,
+
+    dispose(): void {
+      // Clear cleanup interval to prevent memory leaks
+      if (cleanupIntervalId !== undefined) {
+        clearInterval(cleanupIntervalId);
+        cleanupIntervalId = undefined;
+      }
+      // Reset all limiters and clear sessions
+      for (const [, limiter] of limiters) {
+        limiter.reset();
+      }
+      limiters.clear();
+      sessions.clear();
+    },
   };
 }
 

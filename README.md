@@ -2,7 +2,7 @@
 
 **The AI orchestration platform with built-in governance**
 
-[![Version](https://img.shields.io/badge/version-13.2.0-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.2.1-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
@@ -275,9 +275,9 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 ## What's New
 
+**v13.2.1** - Security fix for FTS5 query injection, resource leak fixes
+**v13.2.0** - Added Antigravity and OpenCode provider support
 **v13.1.16** - Bug fixes for review and trace commands
-**v13.1.15** - CLI alias verification
-**v13.1.14** - Added Grok, extended timeouts, fixed debate pattern
 
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 

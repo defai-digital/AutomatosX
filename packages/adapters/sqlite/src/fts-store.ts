@@ -376,19 +376,21 @@ export class SQLiteFTSStore {
 
   /**
    * Escapes special characters in FTS5 query
+   *
+   * Security: Always escapes user input to prevent FTS5 injection.
+   * FTS5 special characters that need escaping: " * - ^ : ( )
    */
   private escapeQuery(query: string): string {
-    // Handle common query patterns
-    // Allow: AND, OR, NOT, quotes for phrases, * for prefix
-    // Escape: - at start, special chars
-
-    // If query looks like natural language, wrap in quotes for phrase search
-    if (!query.includes('"') && !query.includes('*') && !(/\b(AND|OR|NOT)\b/i.exec(query))) {
-      // Simple query - treat as phrase
-      return `"${query.replace(/"/g, '""')}"`;
+    // Trim whitespace
+    const trimmed = query.trim();
+    if (trimmed.length === 0) {
+      return '""'; // Empty query - return empty phrase
     }
 
-    return query;
+    // Always escape double quotes and wrap in quotes for safe phrase search
+    // This prevents FTS5 injection by treating all input as literal text
+    const escaped = trimmed.replace(/"/g, '""');
+    return `"${escaped}"`;
   }
 }
 

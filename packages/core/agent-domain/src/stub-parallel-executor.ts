@@ -51,6 +51,8 @@ function createStubParallelExecutor(
       executor: ParallelStepExecutor,
       previousOutputs: Record<string, unknown> = {}
     ): Promise<ParallelGroupResult> {
+      // Reset cancelled flag for new execution (matches ProductionParallelExecutor)
+      cancelled = false;
       const startTime = Date.now();
       const stepResults: ParallelStepResult[] = [];
       const outputs = { ...previousOutputs };

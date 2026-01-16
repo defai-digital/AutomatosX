@@ -264,10 +264,13 @@ Invariants follow the pattern `INV-XXX-NNN`:
 
 ### Adding a New Provider
 
-1. Add config in `packages/adapters/providers/src/configs/` (follow existing pattern)
-2. Export from `packages/adapters/providers/src/index.ts`
-3. Register in `packages/cli/src/bootstrap.ts` `PROVIDER_CONFIGS`
-4. Add to README provider table
+1. Add config in `packages/adapters/providers/src/providers/` (follow existing pattern, e.g., `grok.ts`)
+2. Export from `packages/adapters/providers/src/providers/index.ts` and `packages/adapters/providers/src/index.ts`
+3. Add to `KNOWN_PROVIDERS` in `packages/contracts/src/config/v1/provider-config.ts`
+4. Add health check in `packages/cli/src/commands/doctor.ts` (`PROVIDER_CHECKS`)
+5. Add MCP config in `packages/cli/src/commands/init.ts` (`PROVIDER_MCP_CONFIGS`)
+6. Register in `packages/cli/src/bootstrap.ts` (`PROVIDER_CONFIGS`)
+7. Update README provider table and this file
 
 ### Adding a New Contract Domain
 

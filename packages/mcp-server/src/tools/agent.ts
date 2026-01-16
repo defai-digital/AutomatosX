@@ -87,6 +87,14 @@ export const agentRunTool: MCPTool = {
         type: 'string',
         description: 'Optional session ID to associate with the run',
       },
+      provider: {
+        type: 'string',
+        description: 'Optional provider to use for LLM calls (e.g., "claude", "gemini", "grok")',
+      },
+      model: {
+        type: 'string',
+        description: 'Optional model to use for LLM calls',
+      },
     },
     required: ['agentId'],
   },
@@ -359,6 +367,8 @@ export const handleAgentRun: ToolHandler = async (args) => {
   const agentId = args.agentId as string;
   const input = (args.input as Record<string, unknown>) ?? {};
   const sessionId = args.sessionId as string | undefined;
+  const provider = args.provider as string | undefined;
+  const model = args.model as string | undefined;
 
   const startTime = Date.now();
 
@@ -387,11 +397,19 @@ export const handleAgentRun: ToolHandler = async (args) => {
       };
     }
 
+    // Build execution options - only include defined values
+    const execOptions: {
+      sessionId?: string;
+      provider?: string;
+      model?: string;
+    } = {};
+    if (sessionId !== undefined) execOptions.sessionId = sessionId;
+    if (provider !== undefined) execOptions.provider = provider;
+    if (model !== undefined) execOptions.model = model;
+
     // Execute agent - note: execute takes (agentId, input, options)
     const executor = await getSharedExecutor();
-    const result: AgentResult = await executor.execute(agentId, input, {
-      sessionId,
-    });
+    const result: AgentResult = await executor.execute(agentId, input, execOptions);
 
     return {
       content: [

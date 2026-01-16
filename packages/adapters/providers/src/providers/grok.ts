@@ -5,7 +5,7 @@
  * Auth: Handled entirely by ax-grok CLI
  * Model: Uses CLI's default model (we don't specify)
  *
- * @see https://github.com/anthropics/ax-cli
+ * @see https://github.com/defai-digital/ax-cli
  */
 
 import { TIMEOUT_PROVIDER_SHORT } from '@defai.digital/contracts';

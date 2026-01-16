@@ -4,21 +4,21 @@
 
 AutomatosX uses an **open-core + commercial editions** business model:
 
-- **Open Source Edition**: Apache License 2.0 - Free forever
+- **Source-Available Edition (GitHub)**: Business Source License 1.1 (BSL 1.1) - Free for non-production and small production
 - **AutomatosX Pro Edition**: Commercial EULA - Paid software
 - **AutomatosX Enterprise Edition**: Enterprise Agreement - Paid software
 
-This document describes the commercial licensing for **Pro** and **Enterprise** editions only. The **Open Source Edition** is governed solely by the [Apache License 2.0](./LICENSE).
+This document describes the commercial licensing for **Pro** and **Enterprise** editions only. The **Source-Available Edition** is governed solely by the [Business Source License 1.1](./LICENSE), effective starting with v13.3.0.
 
 ---
 
-## Important: This License Does NOT Apply to Open Source Edition
+## Important: This License Does NOT Apply to Source-Available Edition
 
-**If you are using the open source version from GitHub**, you are covered by Apache License 2.0 **only**. This commercial license document:
+**If you are using the source-available version from GitHub**, you are covered by the Business Source License 1.1 (BSL 1.1) **only**. This commercial license document:
 
-- ❌ Does NOT restrict your use of the open source edition
-- ❌ Does NOT impose any fees or obligations on open source users
-- ❌ Does NOT change the terms of Apache License 2.0
+- ❌ Does NOT restrict your use of the source-available edition beyond BSL 1.1
+- ❌ Does NOT impose any fees or obligations beyond BSL 1.1
+- ❌ Does NOT change the terms of BSL 1.1
 
 **This document is** for users who:
 - ✅ Purchase AutomatosX Pro (paid software with additional features)
@@ -29,9 +29,9 @@ This document describes the commercial licensing for **Pro** and **Enterprise** 
 
 ## Three Editions Explained
 
-### 1. AutomatosX Open Source Edition
+### 1. AutomatosX Source-Available Edition
 
-**License**: Apache License 2.0 (see [LICENSE](./LICENSE))
+**License**: Business Source License 1.1 (BSL 1.1) (see [LICENSE](./LICENSE))
 
 **What's Included**:
 - ✅ Full source code on GitHub
@@ -43,10 +43,10 @@ This document describes the commercial licensing for **Pro** and **Enterprise** 
 - ✅ Community support (GitHub Issues)
 
 **Who Can Use**:
-- ✅ Anyone, for any purpose (personal, commercial, research)
-- ✅ Free forever, no revenue limits
+- ✅ Anyone for non-production use (personal, development, testing, research)
+- ✅ Production use for organizations with < $2M annual gross revenue
 - ✅ No registration or tracking required
-- ✅ Modify, fork, redistribute under Apache 2.0
+- ✅ Modify, fork, redistribute under BSL 1.1
 
 **What You Get**:
 - Source code: GitHub repository
@@ -62,7 +62,7 @@ This document describes the commercial licensing for **Pro** and **Enterprise** 
 
 **Price**: Contact sales@defai.digital for pricing
 
-**Additional Features** (beyond Open Source):
+**Additional Features** (beyond Source-Available):
 - ✅ **Advanced Workflow Engine**: Multi-stage pipelines with checkpointing
 - ✅ **Team Collaboration**: Shared agents, memory, and sessions
 - ✅ **Premium Agent Packs**: Industry-specific agents (finance, healthcare, legal)
@@ -196,9 +196,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 ## Edition Comparison Table
 
-| Feature | Open Source | Pro | Enterprise |
+| Feature | Source-Available | Pro | Enterprise |
 |---------|------------|-----|------------|
-| **License** | Apache 2.0 | Commercial EULA | Enterprise Agreement |
+| **License** | BSL 1.1 | Commercial EULA | Enterprise Agreement |
 | **Price** | Free | Contact Sales | Contact Sales |
 | **Core Orchestration** | ✅ | ✅ | ✅ |
 | **20+ AI Agents** | ✅ | ✅ | ✅ |
@@ -223,23 +223,24 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 ### Q: Do I need a commercial license to use AutomatosX?
 
-**A**: **No**, not if you're using the **Open Source Edition** from GitHub. That's free forever under Apache 2.0.
+**A**: **No**, not if you meet the BSL 1.1 terms for the **Source-Available Edition**, effective starting with v13.3.0.
 
 You only need a commercial license if you:
+- ✅ Are using the software in production and your organization has >= $2M annual revenue
 - ✅ Want additional features in Pro/Enterprise editions
 - ✅ Need priority support and guaranteed SLAs
 - ✅ Require LTS for production stability
 - ✅ Need compliance features (SSO, audit logs, SIEM)
 
-### Q: Can I use Open Source Edition in my commercial product?
+### Q: Can I use the Source-Available Edition in my commercial product?
 
-**A**: **Yes**, absolutely! Apache License 2.0 allows commercial use, modification, and redistribution. You don't owe us anything, and there are no revenue limits.
+**A**: **Yes**, as long as you comply with BSL 1.1. Production use is free for organizations with < $2M annual gross revenue. If your organization has >= $2M annual revenue, you need a commercial license for production use.
 
 ### Q: What's the difference between this and the old COMMERCIAL-LICENSE.md?
 
-**A**: The old version (v2.0) included confusing references to revenue thresholds ($2M+) and OpenRAIL-M model licensing. **We've simplified**:
+**A**: We've aligned the public edition with **BSL 1.1**, which adds a clear production-use threshold while preserving non-production use for everyone. Key changes:
 
-- ✅ **Open Source = Always Free** (no revenue limits, no thresholds)
+- ✅ **Source-Available = BSL 1.1** (free for non-production and < $2M revenue production)
 - ✅ **Pro/Enterprise = Paid Software** (clear feature differentiation)
 - ✅ **No OpenRAIL-M** (we don't distribute AI models, so it's not applicable)
 
@@ -255,19 +256,15 @@ You only need a commercial license if you:
 
 ### Q: What happened to the $2M revenue threshold?
 
-**A**: We removed it. The old licensing model said "if your company makes >$2M/year, you need a commercial license." This caused confusion:
+**A**: It's back as part of the BSL 1.1 Additional Use Grant. If your organization has >= $2M annual gross revenue and you want production use, you need a commercial license. This keeps the public edition free for non-production and small production users, while providing a clear commercial boundary.
 
-- Users thought they **couldn't** use open source at scale
-- Legal teams were uncertain about compliance
-- It misaligned with our **open-core** strategy
-
-**New model**:
-- **Open Source Edition**: Free forever, any revenue
+**Current model**:
+- **Source-Available Edition (BSL 1.1)**: Free for non-production and < $2M revenue production
 - **Pro/Enterprise Editions**: Paid software with extra features
 
-If you need Pro/Enterprise features, you buy them. If not, use Open Source for free.
+If you need Pro/Enterprise features or exceed the revenue threshold, you buy them. If not, use the Source-Available edition for free.
 
-### Q: Can I still get support as an Open Source user?
+### Q: Can I still get support as a Source-Available user?
 
 **A**: Yes, via **community support**:
 - GitHub Issues (bug reports, feature requests, questions)
@@ -277,12 +274,12 @@ This is **best-effort** support (no SLA). For guaranteed response times, upgrade
 
 ### Q: What if I want to build a competing product using AutomatosX?
 
-**A**: You can fork the Open Source Edition under Apache 2.0 and build whatever you want. We don't restrict competitive use.
+**A**: You can fork the Source-Available Edition under BSL 1.1 and build whatever you want, provided you comply with BSL 1.1 (including the production-use revenue threshold).
 
 **However**:
 - You can't use Pro/Enterprise editions to compete (those are proprietary software)
 - You can't use our trademarks without permission
-- You must comply with Apache 2.0 (attribution, license inclusion)
+- You must comply with BSL 1.1 (license inclusion and modification notices)
 
 ### Q: How do I purchase Pro or Enterprise?
 
@@ -328,7 +325,7 @@ For Pro Edition:
 **Technical Support** (paying customers only):
 - Email: support@defai.digital
 
-**Open Source Community**:
+**Community**:
 - GitHub Issues: https://github.com/defai-digital/automatosx/issues
 - Email: support@defai.digital
 
@@ -338,7 +335,7 @@ For Pro Edition:
 
 This document is **informational only**. It is NOT a legal contract.
 
-**For Open Source users**: Your rights and obligations are defined by the [Apache License 2.0](./LICENSE).
+**For Source-Available users**: Your rights and obligations are defined by the [Business Source License 1.1](./LICENSE).
 
 **For Pro/Enterprise users**: Your rights and obligations are defined by the **EULA** or **Enterprise Agreement** you sign upon purchase.
 
@@ -351,10 +348,10 @@ In case of conflict, signed agreements take precedence over this document.
 **Version**: 3.0 (Rewritten for Open-Core Model)
 
 **Changes from v2.0**:
-- ✅ Removed revenue/funding thresholds ($2M limit)
+- ✅ Reintroduced BSL 1.1 terms for the public edition
+- ✅ Clarified production-use revenue threshold (< $2M)
 - ✅ Removed OpenRAIL-M references (not applicable to software)
-- ✅ Clarified open-core model (Open Source vs. Pro vs. Enterprise)
-- ✅ Simplified structure (removed confusing use-case restrictions)
+- ✅ Clarified open-core model (Source-Available vs. Pro vs. Enterprise)
 - ✅ Added edition comparison table
 
 ---

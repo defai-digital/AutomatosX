@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.2.7-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.3.0-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -160,6 +160,30 @@ Guard check passed: All changes within policy boundaries.
 opencode
 
 # Use AutomatosX tools:
+```
+
+---
+
+### With Cursor IDE
+
+Cursor IDE automatically detects the `.cursor/mcp.json` config created by `ax init`.
+
+1. Run `ax init` in your project
+2. Open the project in Cursor
+3. Use AutomatosX tools in Cursor's AI chat
+
+**Example conversations in Cursor:**
+
+```
+You: Use ax_agent_recommend to find the best agent for implementing a REST API
+
+Cursor: [Uses ax_agent_recommend tool]
+The recommended agent is "backend" with 0.89 confidence...
+
+You: Run ax_review_analyze on my recent changes with focus on security
+
+Cursor: [Uses ax_review_analyze tool]
+Found 1 issue: Missing input validation in...
 ```
 
 ---
@@ -406,6 +430,7 @@ Install at least one AI provider CLI:
 | Codex | `codex` | [Codex CLI](https://github.com/openai/codex) |
 | Grok | `ax-grok` | [ax-cli](https://github.com/defai-digital/ax-cli) (requires XAI_API_KEY) |
 | OpenCode | `opencode` | [OpenCode](https://github.com/opencode-ai/opencode) |
+| Cursor | IDE | [Cursor IDE](https://cursor.com/) (auto-configured via `.cursor/mcp.json`) |
 
 Verify installation:
 
@@ -433,6 +458,8 @@ When switching projects, just run `ax init` in the new project.
 
 ## What's New
 
+**v13.3.0** - Cursor IDE support: `ax init` now creates `.cursor/mcp.json` for seamless Cursor integration. License update: BSL 1.1 terms apply starting with this release
+
 **v13.2.7** - MCP fix: Agents now load correctly regardless of working directory (was returning empty when called from Codex/other CLIs)
 
 **v13.2.6** - Provider reliability: Fixed ax-grok timeout handling, fixed opencode stdin/JSON error parsing, improved error messages for missing credentials
@@ -449,10 +476,11 @@ When switching projects, just run `ax init` in the new project.
 
 **Business Source License 1.1** - see [LICENSE](LICENSE)
 
+- **Effective starting v13.3.0**: Source-available under BSL 1.1
 - **Free for non-production use**: Development, testing, personal projects
 - **Free for small production**: Organizations with < $2M annual revenue
 - **Commercial license required**: Production use by organizations with >= $2M annual revenue
-- **Converts to Apache 2.0**: On January 1, 2030 (or 4 years after each version's release)
+- **Converts to Apache 2.0**: Four years after each version's release date
 
 For commercial licensing inquiries, contact: licensing@defai.digital
 

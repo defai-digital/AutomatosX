@@ -256,6 +256,74 @@ function getOpenCodeConfigPath(): string {
   return join(process.cwd(), OPENCODE_CONFIG_FILENAME);
 }
 
+// ============================================================================
+// Cursor IDE MCP Configuration
+// ============================================================================
+
+/** Cursor MCP config directory name */
+const CURSOR_CONFIG_DIR = '.cursor';
+
+/** Cursor MCP config file name */
+const CURSOR_MCP_FILENAME = 'mcp.json';
+
+interface CursorMCPServerConfig {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+interface CursorMCPConfig {
+  mcpServers: Record<string, CursorMCPServerConfig>;
+}
+
+function getCursorConfigPath(): string {
+  return join(process.cwd(), CURSOR_CONFIG_DIR, CURSOR_MCP_FILENAME);
+}
+
+async function configureCursorMCP(): Promise<MCPConfigResult> {
+  const binaryPath = getCLIBinaryPath();
+  const configPath = getCursorConfigPath();
+  const configDir = join(process.cwd(), CURSOR_CONFIG_DIR);
+
+  try {
+    // Create .cursor directory if needed
+    await mkdir(configDir, { recursive: true });
+
+    // Load existing config or create new
+    let existingConfig: CursorMCPConfig = { mcpServers: {} };
+    try {
+      const content = await readFile(configPath, 'utf-8');
+      existingConfig = JSON.parse(content) as CursorMCPConfig;
+      if (!existingConfig.mcpServers) {
+        existingConfig.mcpServers = {};
+      }
+    } catch {
+      // File doesn't exist or is invalid - start fresh
+    }
+
+    // Build command and args
+    const args = isAbsolutePath(binaryPath)
+      ? [binaryPath, 'mcp', 'server']
+      : ['mcp', 'server'];
+    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
+
+    existingConfig.mcpServers[MCP_SERVER_NAME] = {
+      command,
+      args,
+    };
+
+    await writeFile(configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
+
+    return { success: true, skipped: false };
+  } catch (err) {
+    return {
+      success: false,
+      skipped: false,
+      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
+    };
+  }
+}
+
 async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
   const binaryPath = getCLIBinaryPath();
   const configPath = getOpenCodeConfigPath();
@@ -441,6 +509,14 @@ async function configureMCPForAllProviders(): Promise<MCPBatchConfigResult> {
         error: configResult.error || FALLBACK_ERROR_MESSAGE,
       });
     }
+  }
+
+  // Also configure IDE clients (Cursor)
+  const cursorResult = await configureCursorMCP();
+  if (cursorResult.success && !cursorResult.skipped) {
+    result.configured.push('cursor');
+  } else if (!cursorResult.success) {
+    result.failed.push({ providerId: 'cursor', error: cursorResult.error || FALLBACK_ERROR_MESSAGE });
   }
 
   return result;

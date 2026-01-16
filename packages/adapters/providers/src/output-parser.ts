@@ -98,9 +98,19 @@ function parseStreamJSON(stdout: string): ParsedOutput {
         lastMetadata = data;
       }
     } catch {
-      // Non-JSON line - skip non-content lines
-      // Only add if it looks like actual content (not CLI progress messages)
-      if (!trimmedLine.includes('...') && trimmedLine.length > 10) {
+      // Non-JSON line - could be plain text content or CLI noise
+      // Skip:
+      // 1. Progress indicators and CLI noise
+      // 2. Lines that look like failed JSON (start with { or [)
+      // 3. Very short lines (< 2 chars) that are likely noise
+      const isProgressIndicator =
+        trimmedLine.match(/^\.{2,}$/) !== null ||           // Just dots: "...", "...."
+        trimmedLine.match(/^\[.*\]$/) !== null ||           // Progress: "[1/5]", "[loading]"
+        trimmedLine.match(/^(Loading|Connecting|Waiting)\.{0,3}$/i) !== null;
+      const isFailedJson = trimmedLine.startsWith('{') || trimmedLine.startsWith('[');
+      const isTooShort = trimmedLine.length < 2;
+
+      if (!isProgressIndicator && !isFailedJson && !isTooShort) {
         contentChunks.push(trimmedLine);
       }
     }

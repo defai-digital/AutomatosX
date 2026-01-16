@@ -103,7 +103,7 @@ describe('CLI Adapter', () => {
     it('opencode config has correct structure', () => {
       expect(opencodeConfig.providerId).toBe('opencode');
       expect(opencodeConfig.command).toBe('opencode');
-      expect(opencodeConfig.outputFormat).toBe('stream-json');
+      expect(opencodeConfig.outputFormat).toBe('json');  // OpenCode with --format json outputs single JSON
       expect(opencodeConfig.models.length).toBeGreaterThan(0);
     });
 

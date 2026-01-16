@@ -288,6 +288,8 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 Apache License 2.0 - see [LICENSE](LICENSE)
 
+For commercial editions (Pro & Enterprise), see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+
 ---
 
 [GitHub](https://github.com/defai-digital/automatosx) | [Documentation](docs/) | [Issues](https://github.com/defai-digital/automatosx/issues)

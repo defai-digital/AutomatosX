@@ -22,7 +22,16 @@ export class SqliteTraceStoreError extends Error {
 export const SqliteTraceStoreErrorCodes = {
   DATABASE_ERROR: 'SQLITE_TRACE_DATABASE_ERROR',
   INVALID_EVENT: 'SQLITE_TRACE_INVALID_EVENT',
+  INVALID_TABLE_NAME: 'SQLITE_TRACE_INVALID_TABLE_NAME',
 } as const;
+
+/**
+ * Validates a SQL table name to prevent SQL injection
+ * Only allows alphanumeric characters and underscores, must start with letter or underscore
+ */
+function isValidTableName(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
+}
 
 /**
  * SQLite implementation of TraceStore
@@ -39,6 +48,19 @@ export class SqliteTraceStore implements TraceStore {
     eventsTable = 'trace_events',
     summariesTable = 'trace_summaries'
   ) {
+    // Validate table names to prevent SQL injection
+    if (!isValidTableName(eventsTable)) {
+      throw new SqliteTraceStoreError(
+        SqliteTraceStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid events table name: ${eventsTable}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
+    if (!isValidTableName(summariesTable)) {
+      throw new SqliteTraceStoreError(
+        SqliteTraceStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid summaries table name: ${summariesTable}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
     this.db = db;
     this.eventsTable = eventsTable;
     this.summariesTable = summariesTable;

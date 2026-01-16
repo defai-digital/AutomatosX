@@ -27,6 +27,19 @@ const execAsync = promisify(exec);
 export const PACKAGE_NAME = '@defai.digital/cli';
 
 /**
+ * Strict semver regex to prevent command injection
+ * Matches: 1.0.0, 1.0.0-beta.1, 1.0.0-rc.1+build.123
+ */
+const SEMVER_REGEX = /^\d+\.\d+\.\d+(-[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?(\+[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?$/;
+
+/**
+ * Validate version string to prevent command injection
+ */
+function isValidSemver(version: string): boolean {
+  return SEMVER_REGEX.test(version) && version.length <= 50;
+}
+
+/**
  * Read CLI version from package.json
  */
 const require = createRequire(import.meta.url);
@@ -103,6 +116,11 @@ function isNewer(a: string, b: string): boolean {
  * Show changelog from GitHub releases
  */
 async function showChangelog(to: string): Promise<string> {
+  // Validate version to prevent command injection
+  if (!isValidSemver(to)) {
+    return `View changelog: https://github.com/defai-digital/automatosx/releases`;
+  }
+
   try {
     const { stdout } = await execAsync(
       `curl -s https://api.github.com/repos/defai-digital/automatosx/releases/tags/v${to}`,
@@ -132,6 +150,11 @@ async function showChangelog(to: string): Promise<string> {
  * Install update
  */
 async function installUpdate(version: string): Promise<void> {
+  // Validate version to prevent command injection
+  if (!isValidSemver(version)) {
+    throw new Error(`Invalid version format: ${version}`);
+  }
+
   const { stderr } = await execAsync(`npm install -g ${PACKAGE_NAME}@${version}`, {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 120000, // 2 minute timeout

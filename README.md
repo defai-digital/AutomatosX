@@ -2,7 +2,7 @@
 
 **The AI orchestration platform with built-in governance**
 
-[![Version](https://img.shields.io/badge/version-13.2.1-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.2.4-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-yellow.svg)](LICENSE)
 
@@ -275,6 +275,7 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 ## What's New
 
+**v13.2.4** - Security hardening: command injection fix in update command, SQL injection prevention in SQLite adapters, async I/O improvements
 **v13.2.3** - Fixed Antigravity MCP registration (now uses `--add-mcp` JSON format)
 **v13.2.2** - Fixed OpenCode MCP registration (now uses config file instead of interactive CLI)
 **v13.2.1** - Security fix for FTS5 query injection, resource leak fixes

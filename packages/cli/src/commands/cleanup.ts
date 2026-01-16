@@ -172,17 +172,26 @@ function extractCleanupOptions(options: CLIOptions): Record<string, unknown> {
 }
 
 /**
- * Parse types option
+ * Valid cleanup data types
+ */
+const VALID_CLEANUP_TYPES: CleanupDataType[] = ['checkpoints', 'sessions', 'traces', 'dlq'];
+
+/**
+ * Parse types option with validation
  */
 function parseTypes(value: unknown): CleanupDataType[] {
   if (!value) return [];
-  if (typeof value === 'string') {
-    return value.split(',') as CleanupDataType[];
-  }
-  if (Array.isArray(value)) {
-    return value as CleanupDataType[];
-  }
-  return [];
+
+  const rawTypes: string[] = typeof value === 'string'
+    ? value.split(',').map((t) => t.trim())
+    : Array.isArray(value)
+      ? value
+      : [];
+
+  // Filter to only valid types to prevent invalid data from passing through
+  return rawTypes.filter((t): t is CleanupDataType =>
+    VALID_CLEANUP_TYPES.includes(t as CleanupDataType)
+  );
 }
 
 /**
@@ -273,11 +282,11 @@ async function cleanSessions(
       return createdAt < cutoffDate;
     });
 
-    // If not dry run, actually delete
+    // If not dry run, actually delete (in parallel for performance)
     if (!dryRun) {
-      for (const session of toClean) {
-        await store.delete(session.sessionId);
-      }
+      await Promise.all(
+        toClean.map((session) => store.delete(session.sessionId))
+      );
     }
 
     return { type: 'sessions', count: toClean.length };
@@ -315,11 +324,11 @@ async function cleanTraces(
     // Find traces to delete (older than cutoff)
     const toDelete = summaries.filter((s) => new Date(s.startTime) < cutoffDate);
 
-    // If not dry run, actually delete
+    // If not dry run, actually delete (in parallel for performance)
     if (!dryRun) {
-      for (const trace of toDelete) {
-        await store.deleteTrace(trace.traceId);
-      }
+      await Promise.all(
+        toDelete.map((trace) => store.deleteTrace(trace.traceId))
+      );
     }
 
     return { type: 'traces', count: toDelete.length };

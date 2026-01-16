@@ -74,7 +74,16 @@ export const FTSStoreErrorCodes = {
   INDEX_ERROR: 'FTS_INDEX_ERROR',
   SEARCH_ERROR: 'FTS_SEARCH_ERROR',
   DATABASE_ERROR: 'FTS_DATABASE_ERROR',
+  INVALID_TABLE_NAME: 'FTS_INVALID_TABLE_NAME',
 } as const;
+
+/**
+ * Validates a SQL table name to prevent SQL injection
+ * Only allows alphanumeric characters and underscores, must start with letter or underscore
+ */
+function isValidTableName(name: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
+}
 
 /**
  * SQLite FTS5 Store implementation
@@ -85,6 +94,13 @@ export class SQLiteFTSStore {
   private readonly ftsTableName: string;
 
   constructor(db: Database.Database, tableName = 'memory_items') {
+    // Validate table name to prevent SQL injection
+    if (!isValidTableName(tableName)) {
+      throw new FTSStoreError(
+        FTSStoreErrorCodes.INVALID_TABLE_NAME,
+        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+      );
+    }
     this.db = db;
     this.tableName = tableName;
     this.ftsTableName = `${tableName}_fts`;

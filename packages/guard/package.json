@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/guard",
-  "version": "13.3.0",
+  "version": "13.3.1",
   "type": "module",
   "description": "Post-check AI coding governance engine for AutomatosX",
   "license": "BUSL-1.1",

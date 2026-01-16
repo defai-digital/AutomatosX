@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/contracts",
-  "version": "13.3.0",
+  "version": "13.3.1",
   "type": "module",
   "description": "Contract schemas and behavioral invariants for AutomatosX - Single Source of Truth",
   "license": "BUSL-1.1",

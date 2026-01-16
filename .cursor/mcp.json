@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "automatosx": {
+      "command": "node",
+      "args": [
+        "/Users/automatosx/.nvm/versions/node/v24.11.1/bin/ax",
+        "mcp",
+        "server"
+      ]
+    }
+  }
+}

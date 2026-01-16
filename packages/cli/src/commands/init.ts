@@ -13,6 +13,7 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   DATA_DIR_NAME,
@@ -26,7 +27,7 @@ import {
 } from '@defai.digital/contracts';
 import { CONTEXT_DIRECTORY } from '@defai.digital/context-domain';
 import { createConfigStore } from '@defai.digital/config-domain';
-import { PROVIDER_CHECKS, checkProviderCLI, type CheckResult } from './doctor.js';
+import { PROVIDER_CHECKS, IDE_CHECKS, checkProviderCLI, type CheckResult } from './doctor.js';
 import { COLORS, ICONS } from '../utils/terminal.js';
 
 const execAsync = promisify(exec);
@@ -73,6 +74,36 @@ const STDERR_REDIRECT = '2>&1';
 /** JSON formatting indentation */
 const JSON_INDENT = 2;
 
+/** File encoding for config files */
+const FILE_ENCODING = 'utf-8' as const;
+
+/** Config file names */
+const CONFIG_FILES = {
+  settings: 'settings.json',
+  opencode: 'opencode.json',
+  cursorMcp: 'mcp.json',
+  antigravityMcp: 'mcp_config.json',
+} as const;
+
+/** Config directory names */
+const CONFIG_DIRS = {
+  cursor: '.cursor',
+  gemini: '.gemini',
+  antigravity: 'antigravity',
+} as const;
+
+/** OpenCode schema URL */
+const OPENCODE_SCHEMA_URL = 'https://opencode.ai/config.json';
+
+/** MCP transport configuration */
+const MCP_TRANSPORT = {
+  type: 'stdio',
+  framing: 'ndjson',
+} as const;
+
+/** OpenCode MCP type */
+const OPENCODE_MCP_TYPE = 'local' as const;
+
 /** Exit codes for CLI commands */
 const EXIT_CODE = {
   SUCCESS: 0,
@@ -97,7 +128,7 @@ const CLI_FLAGS = {
 // MCP Configuration for Providers
 // ============================================================================
 
-type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config';
+type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config' | 'antigravity-config' | 'cursor-config';
 
 interface ProviderMCPConfig {
   cliName: string;
@@ -110,6 +141,8 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   codex: { cliName: 'codex', format: 'standard' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
   opencode: { cliName: 'opencode', format: 'opencode-config' },
+  antigravity: { cliName: 'antigravity', format: 'antigravity-config' },
+  cursor: { cliName: 'cursor', format: 'cursor-config' },
   'ax-cli': null,
 };
 
@@ -122,11 +155,18 @@ function isAbsolutePath(filePath: string): boolean {
   return filePath.startsWith('/') || filePath.includes('\\');
 }
 
-function buildMCPServerCommand(binaryPath: string): { executable: string; arguments: string } {
+/** Return type for CLI command string building */
+interface CLICommandParts {
+  command: string;
+  argsString: string;
+}
+
+/** Builds command parts for CLI-based MCP registration (string format) */
+function buildMCPServerCommandForCLI(binaryPath: string): CLICommandParts {
   if (isAbsolutePath(binaryPath)) {
-    return { executable: NODE_EXECUTABLE, arguments: `"${binaryPath}" ${MCP_COMMANDS.serverArgs}` };
+    return { command: NODE_EXECUTABLE, argsString: `"${binaryPath}" ${MCP_COMMANDS.serverArgs}` };
   }
-  return { executable: binaryPath, arguments: MCP_COMMANDS.serverArgs };
+  return { command: binaryPath, argsString: MCP_COMMANDS.serverArgs };
 }
 
 function buildMCPAddCommand(providerId: ProviderId): string | null {
@@ -134,20 +174,20 @@ function buildMCPAddCommand(providerId: ProviderId): string | null {
   if (!mcpConfig) return null;
 
   const binaryPath = getCLIBinaryPath();
-  const { executable, arguments: execArgs } = buildMCPServerCommand(binaryPath);
+  const { command, argsString } = buildMCPServerCommandForCLI(binaryPath);
   const { cliName, format } = mcpConfig;
 
   switch (format) {
     case 'standard':
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${executable} ${execArgs}`;
+      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${command} ${argsString}`;
 
     case 'claude':
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.claudeScope} ${executable} ${execArgs}`;
+      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.claudeScope} ${command} ${argsString}`;
 
     case 'ax-wrapper': {
-      const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : CLI_FALLBACK_COMMAND;
-      const commandArgs = isAbsolutePath(binaryPath) ? `${binaryPath} ${MCP_COMMANDS.serverArgs}` : MCP_COMMANDS.serverArgs;
-      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.command} ${command} ${MCP_FLAGS.args} ${commandArgs}`;
+      const wrapperCommand = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : CLI_FALLBACK_COMMAND;
+      const wrapperArgsString = isAbsolutePath(binaryPath) ? `${binaryPath} ${MCP_COMMANDS.serverArgs}` : MCP_COMMANDS.serverArgs;
+      return `${cliName} ${MCP_COMMANDS.add} ${MCP_SERVER_NAME} ${MCP_FLAGS.command} ${wrapperCommand} ${MCP_FLAGS.args} ${wrapperArgsString}`;
     }
 
     default:
@@ -169,63 +209,71 @@ interface MCPConfigResult {
   error?: string;
 }
 
-interface AxWrapperMCPConfig {
-  mcpServers: {
-    [name: string]: {
-      name: string;
-      transport: {
-        type: 'stdio';
-        command: string;
-        args: string[];
-        env: Record<string, string>;
-        framing: 'ndjson';
-      };
-    };
-  };
+// ============================================================================
+// MCP Command Building Utilities
+// ============================================================================
+
+/** Return type for JSON config-based MCP server command (array format) */
+interface MCPServerCommandConfig {
+  command: string;
+  args: string[];
 }
 
-function getAxWrapperSettingsPath(cliName: string): string {
-  return join(process.cwd(), `.${cliName}`, 'settings.json');
+/** Builds command parts for JSON config files (array format) */
+function buildMCPServerCommandForConfig(): MCPServerCommandConfig {
+  const binaryPath = getCLIBinaryPath();
+  if (isAbsolutePath(binaryPath)) {
+    return { command: NODE_EXECUTABLE, args: [binaryPath, 'mcp', 'server'] };
+  }
+  return { command: binaryPath, args: ['mcp', 'server'] };
+}
+
+// ============================================================================
+// Ax-Wrapper MCP Configuration (Grok)
+// ============================================================================
+
+interface AxWrapperMCPConfig {
+  mcpServers: Record<string, {
+    name: string;
+    transport: {
+      type: 'stdio';
+      command: string;
+      args: string[];
+      env: Record<string, string>;
+      framing: 'ndjson';
+    };
+  }>;
 }
 
 async function configureAxWrapperMCP(cliName: string): Promise<MCPConfigResult> {
-  const binaryPath = getCLIBinaryPath();
-  const settingsPath = getAxWrapperSettingsPath(cliName);
   const settingsDir = join(process.cwd(), `.${cliName}`);
+  const settingsPath = join(settingsDir, CONFIG_FILES.settings);
 
   try {
     await mkdir(settingsDir, { recursive: true });
 
     let existingConfig: AxWrapperMCPConfig = { mcpServers: {} };
     try {
-      const content = await readFile(settingsPath, 'utf-8');
+      const content = await readFile(settingsPath, FILE_ENCODING);
       existingConfig = JSON.parse(content) as AxWrapperMCPConfig;
-      if (!existingConfig.mcpServers) {
-        existingConfig.mcpServers = {};
-      }
+      existingConfig.mcpServers ??= {};
     } catch {
       // File doesn't exist or is invalid
     }
 
-    const args = isAbsolutePath(binaryPath)
-      ? [binaryPath, 'mcp', 'server']
-      : ['mcp', 'server'];
-
-    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
-
+    const { command, args } = buildMCPServerCommandForConfig();
     existingConfig.mcpServers[MCP_SERVER_NAME] = {
       name: MCP_SERVER_NAME,
       transport: {
-        type: 'stdio',
+        type: MCP_TRANSPORT.type,
         command,
         args,
         env: {},
-        framing: 'ndjson',
+        framing: MCP_TRANSPORT.framing,
       },
     };
 
     await writeFile(settingsPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
-
     return { success: true, skipped: false };
   } catch (err) {
     return {
@@ -236,83 +284,107 @@ async function configureAxWrapperMCP(cliName: string): Promise<MCPConfigResult> 
   }
 }
 
-/** OpenCode config file name */
-const OPENCODE_CONFIG_FILENAME = 'opencode.json';
-
-interface OpenCodeMCPServerConfig {
-  type: 'local';
-  command: string[];
-  enabled: boolean;
-  environment?: Record<string, string>;
-}
+// ============================================================================
+// OpenCode MCP Configuration
+// ============================================================================
 
 interface OpenCodeConfig {
   $schema?: string;
-  mcp?: Record<string, OpenCodeMCPServerConfig>;
+  mcp?: Record<string, { type: 'local'; command: string[]; enabled: boolean }>;
   [key: string]: unknown;
 }
 
-function getOpenCodeConfigPath(): string {
-  return join(process.cwd(), OPENCODE_CONFIG_FILENAME);
+async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
+  const configPath = join(process.cwd(), CONFIG_FILES.opencode);
+
+  try {
+    let existingConfig: OpenCodeConfig = {};
+    try {
+      const content = await readFile(configPath, FILE_ENCODING);
+      existingConfig = JSON.parse(content) as OpenCodeConfig;
+    } catch {
+      existingConfig = { $schema: OPENCODE_SCHEMA_URL };
+    }
+
+    existingConfig.mcp ??= {};
+    const { command, args } = buildMCPServerCommandForConfig();
+    existingConfig.mcp[MCP_SERVER_NAME] = {
+      type: OPENCODE_MCP_TYPE,
+      command: [command, ...args],
+      enabled: true,
+    };
+
+    await writeFile(configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
+    return { success: true, skipped: false };
+  } catch (err) {
+    return {
+      success: false,
+      skipped: false,
+      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
+    };
+  }
 }
 
 // ============================================================================
-// Cursor IDE MCP Configuration
+// JSON-based MCP Configuration (Cursor, Antigravity, etc.)
 // ============================================================================
 
-/** Cursor MCP config directory name */
-const CURSOR_CONFIG_DIR = '.cursor';
-
-/** Cursor MCP config file name */
-const CURSOR_MCP_FILENAME = 'mcp.json';
-
-interface CursorMCPServerConfig {
+/** Standard MCP server config format used by Cursor, Antigravity */
+interface StandardMCPServerConfig {
   command: string;
   args: string[];
   env?: Record<string, string>;
 }
 
-interface CursorMCPConfig {
-  mcpServers: Record<string, CursorMCPServerConfig>;
+interface StandardMCPConfig {
+  mcpServers: Record<string, StandardMCPServerConfig>;
 }
 
-function getCursorConfigPath(): string {
-  return join(process.cwd(), CURSOR_CONFIG_DIR, CURSOR_MCP_FILENAME);
+/** Configuration for JSON-based MCP config files */
+interface JSONMCPConfigTarget {
+  configPath: string;
+  configDir: string;
 }
 
-async function configureCursorMCP(): Promise<MCPConfigResult> {
-  const binaryPath = getCLIBinaryPath();
-  const configPath = getCursorConfigPath();
-  const configDir = join(process.cwd(), CURSOR_CONFIG_DIR);
+const MCP_CONFIG_TARGETS: Record<string, JSONMCPConfigTarget> = {
+  cursor: {
+    configPath: join(process.cwd(), CONFIG_DIRS.cursor, CONFIG_FILES.cursorMcp),
+    configDir: join(process.cwd(), CONFIG_DIRS.cursor),
+  },
+  antigravity: {
+    configPath: join(homedir(), CONFIG_DIRS.gemini, CONFIG_DIRS.antigravity, CONFIG_FILES.antigravityMcp),
+    configDir: join(homedir(), CONFIG_DIRS.gemini, CONFIG_DIRS.antigravity),
+  },
+};
+
+/**
+ * Configures MCP for apps using standard mcpServers JSON format (Cursor, Antigravity)
+ */
+async function configureStandardMCP(targetId: string): Promise<MCPConfigResult> {
+  const target = MCP_CONFIG_TARGETS[targetId];
+  if (!target) {
+    return { success: true, skipped: true };
+  }
 
   try {
-    // Create .cursor directory if needed
-    await mkdir(configDir, { recursive: true });
+    // Create config directory if needed
+    await mkdir(target.configDir, { recursive: true });
 
     // Load existing config or create new
-    let existingConfig: CursorMCPConfig = { mcpServers: {} };
+    let existingConfig: StandardMCPConfig = { mcpServers: {} };
     try {
-      const content = await readFile(configPath, 'utf-8');
-      existingConfig = JSON.parse(content) as CursorMCPConfig;
-      if (!existingConfig.mcpServers) {
-        existingConfig.mcpServers = {};
-      }
+      const content = await readFile(target.configPath, FILE_ENCODING);
+      existingConfig = JSON.parse(content) as StandardMCPConfig;
+      existingConfig.mcpServers ??= {};
     } catch {
       // File doesn't exist or is invalid - start fresh
     }
 
-    // Build command and args
-    const args = isAbsolutePath(binaryPath)
-      ? [binaryPath, 'mcp', 'server']
-      : ['mcp', 'server'];
-    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
+    // Build command and args using shared helper
+    const { command, args } = buildMCPServerCommandForConfig();
+    existingConfig.mcpServers[MCP_SERVER_NAME] = { command, args };
 
-    existingConfig.mcpServers[MCP_SERVER_NAME] = {
-      command,
-      args,
-    };
-
-    await writeFile(configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
+    await writeFile(target.configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
 
     return { success: true, skipped: false };
   } catch (err) {
@@ -324,48 +396,9 @@ async function configureCursorMCP(): Promise<MCPConfigResult> {
   }
 }
 
-async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
-  const binaryPath = getCLIBinaryPath();
-  const configPath = getOpenCodeConfigPath();
-
-  try {
-    let existingConfig: OpenCodeConfig = {};
-    try {
-      const content = await readFile(configPath, 'utf-8');
-      existingConfig = JSON.parse(content) as OpenCodeConfig;
-    } catch {
-      // File doesn't exist or is invalid - start fresh
-      existingConfig = {
-        $schema: 'https://opencode.ai/config.json',
-      };
-    }
-
-    if (!existingConfig.mcp) {
-      existingConfig.mcp = {};
-    }
-
-    // Build command array for opencode
-    const command = isAbsolutePath(binaryPath)
-      ? [NODE_EXECUTABLE, binaryPath, 'mcp', 'server']
-      : [binaryPath, 'mcp', 'server'];
-
-    existingConfig.mcp[MCP_SERVER_NAME] = {
-      type: 'local',
-      command,
-      enabled: true,
-    };
-
-    await writeFile(configPath, JSON.stringify(existingConfig, null, JSON_INDENT) + '\n');
-
-    return { success: true, skipped: false };
-  } catch (err) {
-    return {
-      success: false,
-      skipped: false,
-      error: err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE,
-    };
-  }
-}
+// ============================================================================
+// CLI-Based MCP Helpers
+// ============================================================================
 
 function isMCPAdditionSuccessful(commandOutput: string): boolean {
   return MCP_SUCCESS_PATTERN.test(commandOutput);
@@ -384,14 +417,18 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
     return { success: true, skipped: true };
   }
 
-  if (mcpConfig.format === 'ax-wrapper') {
-    return configureAxWrapperMCP(mcpConfig.cliName);
+  // Handle JSON config file formats
+  switch (mcpConfig.format) {
+    case 'ax-wrapper':
+      return configureAxWrapperMCP(mcpConfig.cliName);
+    case 'opencode-config':
+      return configureOpenCodeMCP();
+    case 'antigravity-config':
+    case 'cursor-config':
+      return configureStandardMCP(providerId);
   }
 
-  if (mcpConfig.format === 'opencode-config') {
-    return configureOpenCodeMCP();
-  }
-
+  // Handle CLI-based MCP registration (standard, claude formats)
   const addCommand = buildMCPAddCommand(providerId);
   const removeCommand = buildMCPRemoveCommand(providerId);
 
@@ -434,9 +471,12 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
 }
 
 async function getInstalledProviderCLIs(): Promise<Map<string, CheckResult>> {
-  // Run all provider checks in parallel for better performance
+  // Combine provider CLIs and IDE integrations
+  const allChecks = [...PROVIDER_CHECKS, ...IDE_CHECKS];
+
+  // Run all checks in parallel for better performance
   const checkResults = await Promise.all(
-    PROVIDER_CHECKS.map(async (provider) => {
+    allChecks.map(async (provider) => {
       const checkResult = await checkProviderCLI(provider);
       return { id: provider.id, checkResult };
     })
@@ -511,14 +551,6 @@ async function configureMCPForAllProviders(): Promise<MCPBatchConfigResult> {
     }
   }
 
-  // Also configure IDE clients (Cursor)
-  const cursorResult = await configureCursorMCP();
-  if (cursorResult.success && !cursorResult.skipped) {
-    result.configured.push('cursor');
-  } else if (!cursorResult.success) {
-    result.failed.push({ providerId: 'cursor', error: cursorResult.error || FALLBACK_ERROR_MESSAGE });
-  }
-
   return result;
 }
 
@@ -583,32 +615,40 @@ async function createProjectStructure(
   const configPath = join(automatosxDir, CONFIG_FILENAME);
   const conventionsPath = join(contextDir, CONVENTIONS_FILENAME);
 
-  try {
-    await mkdir(automatosxDir, { recursive: true });
-  } catch {
-    // Directory may already exist
-  }
+  // Create directories in parallel (both have recursive: true, so order doesn't matter)
+  await Promise.all([
+    mkdir(automatosxDir, { recursive: true }).catch(() => { /* Directory may already exist */ }),
+    mkdir(contextDir, { recursive: true }).catch(() => { /* Directory may already exist */ }),
+  ]);
 
-  try {
-    await mkdir(contextDir, { recursive: true });
-  } catch {
-    // Directory may already exist
-  }
+  // Check file existence in parallel
+  const [configExists, conventionsExists] = await Promise.all([
+    fileExists(configPath),
+    fileExists(conventionsPath),
+  ]);
 
-  const configExists = await fileExists(configPath);
+  // Prepare write operations based on existence checks
+  const writeOperations: Promise<void>[] = [];
+
   if (!configExists || force) {
-    await writeFile(configPath, JSON.stringify(PROJECT_CONFIG_TEMPLATE, null, JSON_INDENT) + '\n');
+    writeOperations.push(
+      writeFile(configPath, JSON.stringify(PROJECT_CONFIG_TEMPLATE, null, JSON_INDENT) + '\n')
+    );
     created.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME}`);
   } else {
     skipped.push(`${DATA_DIR_NAME}/${CONFIG_FILENAME} (already exists)`);
   }
 
-  const conventionsExists = await fileExists(conventionsPath);
   if (!conventionsExists || force) {
-    await writeFile(conventionsPath, CONVENTIONS_TEMPLATE);
+    writeOperations.push(writeFile(conventionsPath, CONVENTIONS_TEMPLATE));
     created.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}`);
   } else {
     skipped.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME} (already exists)`);
+  }
+
+  // Execute writes in parallel
+  if (writeOperations.length > 0) {
+    await Promise.all(writeOperations);
   }
 
   return { created, skipped };
@@ -670,14 +710,20 @@ export async function initCommand(
   const outputLines: string[] = [];
 
   try {
-    // Check if global config exists (warning only, don't block)
+    const projectDir = process.cwd();
+    const automatosxDir = join(projectDir, DATA_DIR_NAME);
+
+    // Run independent checks in parallel for faster startup
     const configStore = createConfigStore();
-    const globalConfigExists = await configStore.exists('global');
+    const [globalConfigExists, projectAlreadyInitialized] = await Promise.all([
+      configStore.exists('global'),
+      fileExists(join(automatosxDir, CONFIG_FILENAME)),
+    ]);
 
     if (showOutput) {
       outputLines.push('');
       outputLines.push(`${COLORS.bold}AutomatosX Project Init${COLORS.reset}`);
-      outputLines.push(`${COLORS.dim}Initializing project: ${process.cwd()}${COLORS.reset}`);
+      outputLines.push(`${COLORS.dim}Initializing project: ${projectDir}${COLORS.reset}`);
       outputLines.push('');
 
       if (!globalConfigExists) {
@@ -685,11 +731,6 @@ export async function initCommand(
         outputLines.push('');
       }
     }
-
-    // Check if project is already initialized
-    const projectDir = process.cwd();
-    const automatosxDir = join(projectDir, DATA_DIR_NAME);
-    const projectAlreadyInitialized = await fileExists(join(automatosxDir, CONFIG_FILENAME));
 
     // Step 1: Create project structure
     if (showOutput) {
@@ -700,7 +741,7 @@ export async function initCommand(
       }
     }
 
-    const projectStructure = await createProjectStructure(process.cwd(), initOptions.force);
+    const projectStructure = await createProjectStructure(projectDir, initOptions.force);
 
     if (showOutput) {
       if (projectStructure.created.length > 0) {
@@ -769,7 +810,7 @@ export async function initCommand(
         message: undefined,
         data: {
           success: true,
-          projectDir: process.cwd(),
+          projectDir,
           globalConfigExists,
           alreadyInitialized: projectAlreadyInitialized,
           projectStructure: {

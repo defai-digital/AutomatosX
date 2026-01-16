@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.3.0-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.3.1-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -160,6 +160,31 @@ Guard check passed: All changes within policy boundaries.
 opencode
 
 # Use AutomatosX tools:
+```
+
+---
+
+### With Antigravity
+
+[Google Antigravity](https://antigravity.google) is Google's AI-first IDE (VSCode fork). AutomatosX automatically configures MCP at `~/.gemini/antigravity/mcp_config.json`.
+
+1. Run `ax init` in any project (configures Antigravity globally)
+2. Open Antigravity
+3. Use AutomatosX tools via the `@` menu or in agent conversations
+
+**Example in Antigravity:**
+
+```
+You: @automatosx Use ax_agent_recommend for "implement real-time notifications"
+
+Antigravity: [Uses ax_agent_recommend tool]
+Recommended agent: fullstack (confidence: 0.87)
+Reason: Task involves frontend, backend, and WebSocket integration...
+
+You: Run ax_discuss_quick on "WebSockets vs Server-Sent Events for notifications"
+
+Antigravity: [Uses ax_discuss_quick tool]
+Multi-model consensus: SSE is recommended for this use case because...
 ```
 
 ---
@@ -423,14 +448,26 @@ ax guard check --policy bugfix --changed-paths src/
 
 Install at least one AI provider CLI:
 
-| Provider | CLI Command | Installation |
-|----------|-------------|--------------|
+| Provider | Command | Installation |
+|----------|---------|--------------|
 | Claude | `claude` | [Claude Code](https://github.com/anthropics/claude-code) |
 | Gemini | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 | Codex | `codex` | [Codex CLI](https://github.com/openai/codex) |
 | Grok | `ax-grok` | [ax-cli](https://github.com/defai-digital/ax-cli) (requires XAI_API_KEY) |
 | OpenCode | `opencode` | [OpenCode](https://github.com/opencode-ai/opencode) |
-| Cursor | IDE | [Cursor IDE](https://cursor.com/) (auto-configured via `.cursor/mcp.json`) |
+
+---
+
+## IDE Integration
+
+AutomatosX also integrates with AI-powered IDEs via MCP:
+
+| IDE | Installation | MCP Config Location |
+|-----|--------------|---------------------|
+| [Cursor](https://cursor.com/) | Desktop app | `.cursor/mcp.json` (per-project) |
+| [Antigravity](https://antigravity.google) | Desktop app | `~/.gemini/antigravity/mcp_config.json` (global) |
+
+`ax init` automatically configures MCP for all detected providers and IDEs.
 
 Verify installation:
 
@@ -458,13 +495,15 @@ When switching projects, just run `ax init` in the new project.
 
 ## What's New
 
+**v13.3.1** - Antigravity IDE support and performance improvements: `ax init` now configures MCP for [Google Antigravity](https://antigravity.google) at `~/.gemini/antigravity/mcp_config.json`. Improved GUI app detection for both Antigravity and Cursor. Major refactoring: parallel execution for provider/IDE checks, optimized file operations, single-pass summary computation in `ax doctor`.
+
 **v13.3.0** - Cursor IDE support: `ax init` now creates `.cursor/mcp.json` for seamless Cursor integration. License update: BSL 1.1 terms apply starting with this release
 
 **v13.2.7** - MCP fix: Agents now load correctly regardless of working directory (was returning empty when called from Codex/other CLIs)
 
 **v13.2.6** - Provider reliability: Fixed ax-grok timeout handling, fixed opencode stdin/JSON error parsing, improved error messages for missing credentials
 
-**v13.2.5** - Provider fixes: Fixed OpenCode CLI args, fixed Grok CLI args, removed Antigravity, improved parallelization
+**v13.2.5** - Provider fixes: Fixed OpenCode CLI args, fixed Grok CLI args, improved parallelization
 
 **v13.2.4** - Security hardening: command injection fix, SQL injection prevention, async I/O improvements
 

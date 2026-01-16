@@ -42,7 +42,7 @@ export interface ProviderCheck {
 }
 
 /**
- * All provider CLIs to check
+ * AI provider CLIs to check
  */
 export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
   {
@@ -84,9 +84,55 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
 ];
 
 /**
+ * IDE integrations to check (not providers, but MCP-enabled IDEs)
+ */
+export const IDE_CHECKS: readonly ProviderCheck[] = [
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    command: 'antigravity',
+    installHint: 'Install from https://antigravity.google',
+  },
+  {
+    id: 'cursor',
+    name: 'Cursor',
+    command: 'cursor',
+    installHint: 'Install from https://cursor.com',
+  },
+];
+
+/**
  * Minimum required Node.js version
  */
 const MIN_NODE_VERSION = 18;
+
+/**
+ * Status messages for provider/IDE checks
+ */
+const STATUS_MESSAGES = {
+  notDetected: 'not detected',
+  notInstalled: 'not installed',
+  installed: 'installed',
+  noCredentials: 'no credentials',
+} as const;
+
+/**
+ * Platform-specific command lookup utilities
+ */
+const PLATFORM_COMMANDS = {
+  which: 'which',
+  where: 'where',
+} as const;
+
+/**
+ * Version flag for CLI commands
+ */
+const VERSION_FLAG = '--version';
+
+/**
+ * Timeout for credential checks (ms)
+ */
+const CREDENTIAL_CHECK_TIMEOUT = 5000;
 
 /**
  * Doctor-specific status icons
@@ -98,12 +144,18 @@ const DOCTOR_ICONS = {
 };
 
 /**
+ * Gets the platform-specific command lookup utility
+ */
+function getWhichCommand(): string {
+  return process.platform === 'win32' ? PLATFORM_COMMANDS.where : PLATFORM_COMMANDS.which;
+}
+
+/**
  * Checks if a command is available on PATH
  */
 async function isCommandAvailable(command: string): Promise<boolean> {
   try {
-    const whichCommand = process.platform === 'win32' ? 'where' : 'which';
-    await execAsync(`${whichCommand} ${command}`);
+    await execAsync(`${getWhichCommand()} ${command}`);
     return true;
   } catch {
     return false;
@@ -115,7 +167,7 @@ async function isCommandAvailable(command: string): Promise<boolean> {
  */
 async function getCommandVersion(command: string): Promise<string | undefined> {
   try {
-    const { stdout } = await execAsync(`${command} --version 2>&1`);
+    const { stdout } = await execAsync(`${command} ${VERSION_FLAG} 2>&1`);
     const versionMatch = /(\d+\.\d+\.\d+)/.exec(stdout);
     return versionMatch?.[1];
   } catch {
@@ -128,8 +180,7 @@ async function getCommandVersion(command: string): Promise<string | undefined> {
  */
 async function getCommandPath(command: string): Promise<string | undefined> {
   try {
-    const whichCommand = process.platform === 'win32' ? 'where' : 'which';
-    const { stdout } = await execAsync(`${whichCommand} ${command}`);
+    const { stdout } = await execAsync(`${getWhichCommand()} ${command}`);
     return stdout.trim().split('\n')[0];
   } catch {
     return undefined;
@@ -142,7 +193,7 @@ async function getCommandPath(command: string): Promise<string | undefined> {
  */
 async function checkOpencodeCredentials(): Promise<number> {
   try {
-    const { stdout } = await execAsync('opencode auth list 2>&1', { timeout: 5000 });
+    const { stdout } = await execAsync('opencode auth list 2>&1', { timeout: CREDENTIAL_CHECK_TIMEOUT });
     // Parse output like "0 credentials" or "2 credentials"
     const match = /(\d+)\s*credentials?/i.exec(stdout);
     if (match?.[1] !== undefined) {
@@ -152,6 +203,120 @@ async function checkOpencodeCredentials(): Promise<number> {
   } catch {
     return -1;
   }
+}
+
+// ============================================================================
+// GUI App Detection
+// ============================================================================
+
+/** Common application directories by platform */
+const APP_DIRECTORIES = {
+  darwin: {
+    system: '/Applications',
+    user: join(homedir(), 'Applications'),
+  },
+  win32: {
+    programs: join(homedir(), 'AppData', 'Local', 'Programs'),
+  },
+  linux: {
+    system: '/usr/share',
+    user: join(homedir(), '.local', 'share'),
+  },
+} as const;
+
+/** Common config directories */
+const CONFIG_DIRECTORIES = {
+  gemini: join(homedir(), '.gemini'),
+} as const;
+
+interface GUIAppConfig {
+  appPaths: {
+    darwin: string[];
+    win32: string[];
+    linux: string[];
+  };
+  fallbackConfigDir?: string;
+}
+
+const GUI_APP_CONFIGS: Record<string, GUIAppConfig> = {
+  antigravity: {
+    appPaths: {
+      darwin: [
+        join(APP_DIRECTORIES.darwin.system, 'Antigravity.app'),
+        join(APP_DIRECTORIES.darwin.system, 'Google Antigravity.app'),
+        join(APP_DIRECTORIES.darwin.user, 'Antigravity.app'),
+        join(APP_DIRECTORIES.darwin.user, 'Google Antigravity.app'),
+      ],
+      win32: [
+        join(APP_DIRECTORIES.win32.programs, 'Antigravity', 'Antigravity.exe'),
+        join(APP_DIRECTORIES.win32.programs, 'Google Antigravity', 'Antigravity.exe'),
+      ],
+      linux: [
+        join(APP_DIRECTORIES.linux.system, 'antigravity'),
+        join(APP_DIRECTORIES.linux.user, 'antigravity'),
+      ],
+    },
+    fallbackConfigDir: join(CONFIG_DIRECTORIES.gemini, 'antigravity'),
+  },
+  cursor: {
+    appPaths: {
+      darwin: [
+        join(APP_DIRECTORIES.darwin.system, 'Cursor.app'),
+        join(APP_DIRECTORIES.darwin.user, 'Cursor.app'),
+      ],
+      win32: [
+        join(APP_DIRECTORIES.win32.programs, 'Cursor', 'Cursor.exe'),
+      ],
+      linux: [
+        join(APP_DIRECTORIES.linux.system, 'cursor'),
+        join(APP_DIRECTORIES.linux.user, 'cursor'),
+      ],
+    },
+  },
+};
+
+/**
+ * Checks a single path for existence, returns path if found
+ */
+async function checkPathExists(pathToCheck: string): Promise<string | null> {
+  try {
+    await stat(pathToCheck);
+    return pathToCheck;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Checks if a GUI app is installed by looking for app paths or config directory
+ * Uses parallel checking with early termination for better performance
+ */
+async function checkGUIAppInstalled(appId: string): Promise<{ installed: boolean; path?: string }> {
+  const config = GUI_APP_CONFIGS[appId];
+  if (!config) {
+    return { installed: false };
+  }
+
+  // Get paths for current platform
+  const platform = process.platform as 'darwin' | 'win32' | 'linux';
+  const appPaths = config.appPaths[platform] ?? config.appPaths.linux;
+
+  // Include fallback config directory in paths to check
+  const allPaths = config.fallbackConfigDir
+    ? [...appPaths, config.fallbackConfigDir]
+    : appPaths;
+
+  // Check all paths in parallel - first found wins
+  const results = await Promise.all(allPaths.map(checkPathExists));
+
+  // Find first successful result (maintains priority order)
+  const foundPath = results.find((result): result is string => result !== null);
+
+  if (foundPath) {
+    return { installed: true, path: foundPath };
+  }
+
+  return { installed: false };
 }
 
 /**
@@ -177,18 +342,70 @@ function checkNodeVersion(): CheckResult {
   };
 }
 
+/** IDs of GUI apps (derived from IDE_CHECKS) */
+const GUI_APP_IDS = new Set(IDE_CHECKS.map(ide => ide.id));
+
 /**
- * Checks a single provider CLI
+ * Checks a single provider CLI or GUI app
  * Exported for use by other commands like 'setup'
  */
 export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckResult> {
+  const isGUIApp = GUI_APP_IDS.has(provider.id);
+
+  // For GUI apps, first try CLI if available, then check app installation
+  if (isGUIApp) {
+    // Try CLI command first (some GUI apps like Cursor have CLI)
+    const cliAvailable = await isCommandAvailable(provider.command);
+    if (cliAvailable) {
+      // Parallelize version and path checks for GUI CLI
+      const [versionResult, pathResult] = await Promise.allSettled([
+        getCommandVersion(provider.command),
+        getCommandPath(provider.command),
+      ]);
+      const version = versionResult.status === 'fulfilled' ? versionResult.value : undefined;
+      const cmdPath = pathResult.status === 'fulfilled' ? pathResult.value : undefined;
+
+      const result: CheckResult = {
+        name: `${provider.name} (GUI)`,
+        status: 'pass',
+        message: version !== undefined ? `v${version}` : STATUS_MESSAGES.installed,
+      };
+      if (cmdPath !== undefined) {
+        result.details = cmdPath;
+      }
+      return result;
+    }
+
+    // Fall back to checking GUI app installation
+    const { installed, path: appPath } = await checkGUIAppInstalled(provider.id);
+    if (!installed) {
+      return {
+        name: `${provider.name} (GUI)`,
+        status: 'fail',
+        message: STATUS_MESSAGES.notDetected,
+        fix: provider.installHint,
+      };
+    }
+
+    const result: CheckResult = {
+      name: `${provider.name} (GUI)`,
+      status: 'pass',
+      message: STATUS_MESSAGES.installed,
+    };
+    if (appPath !== undefined) {
+      result.details = appPath;
+    }
+    return result;
+  }
+
+  // Standard CLI provider check
   const available = await isCommandAvailable(provider.command);
 
   if (!available) {
     return {
       name: `${provider.name} CLI (${provider.command})`,
       status: 'fail',
-      message: 'not installed',
+      message: STATUS_MESSAGES.notInstalled,
       fix: provider.installHint,
     };
   }
@@ -205,7 +422,7 @@ export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckRe
   const result: CheckResult = {
     name: `${provider.name} CLI (${provider.command})`,
     status: 'pass',
-    message: version !== undefined ? `v${version}` : 'installed',
+    message: version !== undefined ? `v${version}` : STATUS_MESSAGES.installed,
   };
 
   if (cmdPath !== undefined) {
@@ -217,7 +434,9 @@ export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckRe
     const credentialCount = await checkOpencodeCredentials();
     if (credentialCount === 0) {
       result.status = 'warn';
-      result.message = version !== undefined ? `v${version} (no credentials)` : 'installed (no credentials)';
+      result.message = version !== undefined
+        ? `v${version} (${STATUS_MESSAGES.noCredentials})`
+        : `${STATUS_MESSAGES.installed} (${STATUS_MESSAGES.noCredentials})`;
       result.fix = 'Run: opencode auth login';
     }
   }
@@ -238,6 +457,18 @@ export async function checkAllProviders(
 
   const results = await Promise.all(
     providers.map((provider) => checkProviderCLI(provider))
+  );
+
+  return results;
+}
+
+/**
+ * Checks all IDE integrations
+ * Exported for use by other commands like 'init'
+ */
+export async function checkAllIDEs(): Promise<CheckResult[]> {
+  const results = await Promise.all(
+    IDE_CHECKS.map((ide) => checkProviderCLI(ide))
   );
 
   return results;
@@ -314,14 +545,42 @@ function formatCheckResult(result: CheckResult, verbose: boolean): string {
 }
 
 /**
- * Formats fix suggestions
+ * Summary statistics for check results
  */
-function formatFixes(results: CheckResult[]): string[] {
-  const fixes = results
-    .filter((checkResult): checkResult is CheckResult & { fix: string } => checkResult.status === 'fail' && checkResult.fix !== undefined)
-    .map((checkResult) => `  ${COLORS.dim}\u2022${COLORS.reset} ${checkResult.name}: ${COLORS.cyan}${checkResult.fix}${COLORS.reset}`);
+interface CheckSummary {
+  passed: number;
+  failed: number;
+  warned: number;
+  fixes: string[];
+}
 
-  return fixes;
+/**
+ * Computes summary statistics and collects fixes in a single pass
+ * More efficient than multiple filter() calls
+ */
+function computeCheckSummary(results: CheckResult[]): CheckSummary {
+  const summary: CheckSummary = { passed: 0, failed: 0, warned: 0, fixes: [] };
+
+  for (const result of results) {
+    switch (result.status) {
+      case 'pass':
+        summary.passed++;
+        break;
+      case 'fail':
+        summary.failed++;
+        if (result.fix !== undefined) {
+          summary.fixes.push(
+            `  ${COLORS.dim}\u2022${COLORS.reset} ${result.name}: ${COLORS.cyan}${result.fix}${COLORS.reset}`
+          );
+        }
+        break;
+      case 'warn':
+        summary.warned++;
+        break;
+    }
+  }
+
+  return summary;
 }
 
 /**
@@ -356,13 +615,36 @@ export async function doctorCommand(
     output.push(formatCheckResult(nodeCheck, verbose));
   }
 
+  // Run all independent checks in parallel for better performance
+  const checkingSpecificProvider = specificProvider !== undefined;
+
+  // Build parallel check tasks
+  const parallelChecks: Promise<{ category: string; results: CheckResult[] }>[] = [
+    // Provider CLIs - always run
+    checkAllProviders(specificProvider).then(results => ({ category: 'providers', results })),
+  ];
+
+  // Add IDE and file system checks only when not checking specific provider
+  if (!checkingSpecificProvider) {
+    parallelChecks.push(
+      checkAllIDEs().then(results => ({ category: 'ides', results })),
+      Promise.all([checkAutomatosxDir(), checkWritePermissions()])
+        .then(results => ({ category: 'filesystem', results })),
+    );
+  }
+
+  // Execute all checks in parallel
+  const checkResults = await Promise.all(parallelChecks);
+
+  // Process results in order for consistent output
+  const resultsMap = new Map(checkResults.map(r => [r.category, r.results]));
+
   // Provider CLIs
+  const providerResults = resultsMap.get('providers') ?? [];
   if (!isJson) {
     output.push('');
     output.push(`${COLORS.bold}Provider CLIs${COLORS.reset}`);
   }
-
-  const providerResults = await checkAllProviders(specificProvider);
   allResults.push(...providerResults);
   if (!isJson) {
     for (const result of providerResults) {
@@ -370,46 +652,53 @@ export async function doctorCommand(
     }
   }
 
-  // File System (only if not checking specific provider)
-  if (specificProvider === undefined) {
+  // IDE Integrations
+  if (!checkingSpecificProvider) {
+    const ideResults = resultsMap.get('ides') ?? [];
+    if (!isJson) {
+      output.push('');
+      output.push(`${COLORS.bold}IDE Integrations${COLORS.reset}`);
+    }
+    allResults.push(...ideResults);
+    if (!isJson) {
+      for (const result of ideResults) {
+        output.push(formatCheckResult(result, verbose));
+      }
+    }
+  }
+
+  // File System
+  if (!checkingSpecificProvider) {
+    const fsResults = resultsMap.get('filesystem') ?? [];
     if (!isJson) {
       output.push('');
       output.push(`${COLORS.bold}File System${COLORS.reset}`);
     }
-
-    // Run file system checks in parallel
-    const [dirCheck, writeCheck] = await Promise.all([
-      checkAutomatosxDir(),
-      checkWritePermissions(),
-    ]);
-
-    allResults.push(dirCheck, writeCheck);
+    allResults.push(...fsResults);
     if (!isJson) {
-      output.push(formatCheckResult(dirCheck, verbose));
-      output.push(formatCheckResult(writeCheck, verbose));
+      for (const result of fsResults) {
+        output.push(formatCheckResult(result, verbose));
+      }
     }
   }
 
-  // Summary
-  const passed = allResults.filter((checkResult) => checkResult.status === 'pass').length;
-  const failed = allResults.filter((checkResult) => checkResult.status === 'fail').length;
-  const warned = allResults.filter((checkResult) => checkResult.status === 'warn').length;
+  // Compute summary in single pass (more efficient than multiple filter calls)
+  const { passed, failed, warned, fixes } = computeCheckSummary(allResults);
 
   if (!isJson) {
     output.push('');
     output.push('\u2500'.repeat(50));
 
-    let summary = `Summary: ${COLORS.green}${String(passed)} passed${COLORS.reset}`;
+    let summaryLine = `Summary: ${COLORS.green}${String(passed)} passed${COLORS.reset}`;
     if (failed > 0) {
-      summary += `, ${COLORS.red}${String(failed)} failed${COLORS.reset}`;
+      summaryLine += `, ${COLORS.red}${String(failed)} failed${COLORS.reset}`;
     }
     if (warned > 0) {
-      summary += `, ${COLORS.yellow}${String(warned)} warnings${COLORS.reset}`;
+      summaryLine += `, ${COLORS.yellow}${String(warned)} warnings${COLORS.reset}`;
     }
-    output.push(summary);
+    output.push(summaryLine);
 
-    // Fix suggestions
-    const fixes = formatFixes(allResults);
+    // Fix suggestions (already collected in summary computation)
     if (fixes.length > 0) {
       output.push('');
       output.push(`${COLORS.bold}Suggested Fixes:${COLORS.reset}`);

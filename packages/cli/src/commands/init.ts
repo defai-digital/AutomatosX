@@ -27,6 +27,7 @@ import {
 import { CONTEXT_DIRECTORY } from '@defai.digital/context-domain';
 import { createConfigStore } from '@defai.digital/config-domain';
 import { PROVIDER_CHECKS, checkProviderCLI, type CheckResult } from './doctor.js';
+import { COLORS, ICONS } from '../utils/terminal.js';
 
 const execAsync = promisify(exec);
 
@@ -91,30 +92,12 @@ const CLI_FLAGS = {
   skipMcp: ['--skip-mcp', '--no-mcp'],
 } as const;
 
-/** Terminal color codes */
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-} as const;
-
-/** Terminal output icons */
-const ICONS = {
-  check: `${COLORS.green}\u2713${COLORS.reset}`,
-  cross: `${COLORS.red}\u2717${COLORS.reset}`,
-  warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
-  arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
-} as const;
 
 // ============================================================================
 // MCP Configuration for Providers
 // ============================================================================
 
-type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config' | 'antigravity-json';
+type MCPCommandFormat = 'standard' | 'claude' | 'ax-wrapper' | 'opencode-config';
 
 interface ProviderMCPConfig {
   cliName: string;
@@ -126,7 +109,6 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   gemini: { cliName: 'gemini', format: 'standard' },
   codex: { cliName: 'codex', format: 'standard' },
   grok: { cliName: 'ax-grok', format: 'ax-wrapper' },
-  antigravity: { cliName: 'antigravity', format: 'antigravity-json' },
   opencode: { cliName: 'opencode', format: 'opencode-config' },
   'ax-cli': null,
 };
@@ -317,54 +299,6 @@ async function configureOpenCodeMCP(): Promise<MCPConfigResult> {
   }
 }
 
-/**
- * Configure Antigravity MCP using --add-mcp JSON format
- * Antigravity uses: antigravity --add-mcp '{"name":"server-name","command":"cmd","args":["arg1"]}'
- */
-async function configureAntigravityMCP(): Promise<MCPConfigResult> {
-  const binaryPath = getCLIBinaryPath();
-
-  try {
-    // Build command and args arrays for antigravity JSON format
-    const command = isAbsolutePath(binaryPath) ? NODE_EXECUTABLE : binaryPath;
-    const args = isAbsolutePath(binaryPath)
-      ? [binaryPath, 'mcp', 'server']
-      : ['mcp', 'server'];
-
-    const mcpConfig = {
-      name: MCP_SERVER_NAME,
-      command,
-      args,
-    };
-
-    const jsonConfig = JSON.stringify(mcpConfig);
-    const addCommand = `antigravity --add-mcp '${jsonConfig}'`;
-
-    const { stdout, stderr } = await execAsync(`${addCommand} ${STDERR_REDIRECT}`, { timeout: TIMEOUT_SETUP_ADD });
-    const commandOutput = `${stdout}${stderr}`;
-
-    // Antigravity may not output success message, so we assume success if no error thrown
-    if (commandOutput.toLowerCase().includes('error')) {
-      return {
-        success: false,
-        skipped: false,
-        error: extractErrorMessage(commandOutput),
-      };
-    }
-
-    return { success: true, skipped: false };
-  } catch (err) {
-    const execResult = err as { message?: string; stdout?: string; stderr?: string };
-    const errorMsg = execResult.message || FALLBACK_ERROR_MESSAGE;
-
-    return {
-      success: false,
-      skipped: false,
-      error: extractErrorMessage(errorMsg),
-    };
-  }
-}
-
 function isMCPAdditionSuccessful(commandOutput: string): boolean {
   return MCP_SUCCESS_PATTERN.test(commandOutput);
 }
@@ -388,10 +322,6 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
 
   if (mcpConfig.format === 'opencode-config') {
     return configureOpenCodeMCP();
-  }
-
-  if (mcpConfig.format === 'antigravity-json') {
-    return configureAntigravityMCP();
   }
 
   const addCommand = buildMCPAddCommand(providerId);
@@ -436,11 +366,18 @@ async function configureMCPForProvider(providerId: ProviderId): Promise<MCPConfi
 }
 
 async function getInstalledProviderCLIs(): Promise<Map<string, CheckResult>> {
-  const results = new Map<string, CheckResult>();
+  // Run all provider checks in parallel for better performance
+  const checkResults = await Promise.all(
+    PROVIDER_CHECKS.map(async (provider) => {
+      const checkResult = await checkProviderCLI(provider);
+      return { id: provider.id, checkResult };
+    })
+  );
 
-  for (const provider of PROVIDER_CHECKS) {
-    const checkResult = await checkProviderCLI(provider);
-    results.set(provider.id, checkResult);
+  // Convert results to Map
+  const results = new Map<string, CheckResult>();
+  for (const { id, checkResult } of checkResults) {
+    results.set(id, checkResult);
   }
 
   return results;
@@ -463,14 +400,37 @@ async function configureMCPForAllProviders(): Promise<MCPBatchConfigResult> {
 
   const installedProviders = await getInstalledProviderCLIs();
 
+  // Separate installed from not-installed providers
+  const toConfig: string[] = [];
+
   for (const [providerId, healthCheck] of installedProviders) {
     if (healthCheck.status === HEALTH_STATUS.FAIL) {
       result.notInstalled.push(providerId);
+    } else {
+      toConfig.push(providerId);
+    }
+  }
+
+  // Use Promise.allSettled for fault tolerance - reports partial successes
+  const configResults = await Promise.allSettled(
+    toConfig.map(async (providerId) => {
+      const configResult = await configureMCPForProvider(providerId as ProviderId);
+      return { providerId, configResult };
+    })
+  );
+
+  // Process results
+  for (const settledResult of configResults) {
+    if (settledResult.status === 'rejected') {
+      // Handle unexpected errors (not from configureMCPForProvider)
+      result.failed.push({
+        providerId: 'unknown',
+        error: settledResult.reason?.message || FALLBACK_ERROR_MESSAGE,
+      });
       continue;
     }
 
-    const configResult = await configureMCPForProvider(providerId as ProviderId);
-
+    const { providerId, configResult } = settledResult.value;
     if (configResult.skipped) {
       result.skipped.push(providerId);
     } else if (configResult.success) {

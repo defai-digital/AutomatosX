@@ -87,7 +87,6 @@ When switching projects, just run `ax init` in the new project directory.
 | Gemini | [gemini-cli](https://github.com/google-gemini/gemini-cli) |
 | Codex | [codex](https://github.com/openai/codex) |
 | Grok | [ax-cli](https://github.com/defai-digital/ax-cli) |
-| Antigravity | [Google Antigravity](https://developers.google.com/agentic-experience) |
 | OpenCode | [opencode](https://github.com/opencode-ai/opencode) |
 
 ---
@@ -275,8 +274,9 @@ No. Works with whatever you have. Multi-model discussions need 2+ providers.
 
 ## What's New
 
+**v13.2.5** - Provider fixes: Fixed OpenCode CLI args (`run --format json`), fixed Grok CLI args (`--json`), removed Antigravity (GUI-only app), improved parallelization in doctor/init commands
 **v13.2.4** - Security hardening: command injection fix in update command, SQL injection prevention in SQLite adapters, async I/O improvements
-**v13.2.3** - Fixed Antigravity MCP registration (now uses `--add-mcp` JSON format)
+**v13.2.3** - Fixed MCP registration for various providers
 **v13.2.2** - Fixed OpenCode MCP registration (now uses config file instead of interactive CLI)
 **v13.2.1** - Security fix for FTS5 query injection, resource leak fixes
 

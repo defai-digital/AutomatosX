@@ -18,8 +18,26 @@ import { promisify } from 'node:util';
 import { createInterface } from 'node:readline';
 import { createRequire } from 'node:module';
 import type { CommandResult, CLIOptions } from '../types.js';
+import {
+  TIMEOUT_HEALTH_CHECK,
+  TIMEOUT_PROVIDER_DEFAULT,
+  getErrorMessage,
+} from '@defai.digital/contracts';
 
 const execAsync = promisify(exec);
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Timeout for network operations (npm queries, API calls) */
+const TIMEOUT_NETWORK = TIMEOUT_HEALTH_CHECK * 2; // 10s
+
+/** Timeout for npm install operations */
+const TIMEOUT_INSTALL = TIMEOUT_PROVIDER_DEFAULT; // 120s
+
+/** Max buffer size for exec output (10MB) */
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 
 /**
  * Package name for npm operations
@@ -54,7 +72,7 @@ async function getCurrentVersion(): Promise<string> {
     // Try to get from npm global installation
     const { stdout } = await execAsync(
       `npm list -g ${PACKAGE_NAME} --depth=0 --json`,
-      { timeout: 10000 }
+      { timeout: TIMEOUT_NETWORK }
     );
 
     const parsed = JSON.parse(stdout) as {
@@ -74,7 +92,7 @@ async function getCurrentVersion(): Promise<string> {
 async function getLatestVersion(): Promise<string> {
   try {
     const { stdout } = await execAsync(`npm view ${PACKAGE_NAME} version`, {
-      timeout: 10000,
+      timeout: TIMEOUT_NETWORK,
     });
     return stdout.trim() || 'unknown';
   } catch {
@@ -124,7 +142,7 @@ async function showChangelog(to: string): Promise<string> {
   try {
     const { stdout } = await execAsync(
       `curl -s https://api.github.com/repos/defai-digital/automatosx/releases/tags/v${to}`,
-      { timeout: 10000 }
+      { timeout: TIMEOUT_NETWORK }
     );
 
     const release = JSON.parse(stdout) as { body?: string };
@@ -156,8 +174,8 @@ async function installUpdate(version: string): Promise<void> {
   }
 
   const { stderr } = await execAsync(`npm install -g ${PACKAGE_NAME}@${version}`, {
-    maxBuffer: 10 * 1024 * 1024,
-    timeout: 120000, // 2 minute timeout
+    maxBuffer: MAX_BUFFER_SIZE,
+    timeout: TIMEOUT_INSTALL,
   });
 
   if (stderr && !stderr.includes('npm warn')) {
@@ -172,7 +190,7 @@ function isAxCliInstalled(): boolean {
   try {
     const result = spawnSync('ax-cli', ['--version'], {
       encoding: 'utf-8',
-      timeout: 5000,
+      timeout: TIMEOUT_HEALTH_CHECK,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     return result.status === 0;
@@ -188,7 +206,7 @@ async function updateAxCli(): Promise<boolean> {
   try {
     execSync('ax-cli update -y', {
       stdio: 'inherit',
-      timeout: 120000,
+      timeout: TIMEOUT_INSTALL,
     });
     return true;
   } catch {
@@ -355,7 +373,7 @@ export async function updateCommand(
       };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       success: false,
       message: `Error checking for updates: ${message}`,

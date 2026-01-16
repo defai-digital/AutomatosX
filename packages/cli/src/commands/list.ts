@@ -1,4 +1,5 @@
 import type { CommandResult, CLIOptions } from '../types.js';
+import { getErrorMessage } from '@defai.digital/contracts';
 import { createWorkflowLoader, findWorkflowDir } from '@defai.digital/workflow-engine';
 import * as path from 'node:path';
 
@@ -52,8 +53,8 @@ export async function listCommand(
     // Format as text table
     const header = 'ID                           | Name                           | Version | Steps | Status';
     const separator = '-'.repeat(header.length);
-    const rows = limited.map((w) =>
-      `${w.id.padEnd(28)} | ${(w.name ?? w.id).substring(0, 30).padEnd(30)} | ${w.version.padEnd(7)} | ${String(w.stepCount).padEnd(5)} | ${w.status}`
+    const rows = limited.map((workflow) =>
+      `${workflow.id.padEnd(28)} | ${(workflow.name ?? workflow.id).substring(0, 30).padEnd(30)} | ${workflow.version.padEnd(7)} | ${String(workflow.stepCount).padEnd(5)} | ${workflow.status}`
     );
 
     const footer = `\n${workflows.length} workflow(s) found in ${path.basename(workflowDir)}/`;
@@ -67,7 +68,7 @@ export async function listCommand(
   } catch (error) {
     return {
       success: false,
-      message: `Failed to list workflows: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to list workflows: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };

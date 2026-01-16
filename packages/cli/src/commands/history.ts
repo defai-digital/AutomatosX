@@ -15,6 +15,9 @@
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   safeValidateHistoryOptions,
+  LIMIT_DEFAULT,
+  SECONDS_PER_MINUTE,
+  SECONDS_PER_HOUR,
   type HistoryOptions,
   type RunRecord,
   type RunStatus,
@@ -25,6 +28,7 @@ import {
   DEFAULT_SESSION_DOMAIN_CONFIG,
   type SessionManager,
 } from '@defai.digital/session-domain';
+import { formatAge, truncate } from '../utils/formatters.js';
 
 // Lazy-initialized session manager (shared across commands)
 let sessionManager: SessionManager | undefined;
@@ -67,7 +71,7 @@ export async function historyCommand(
   const runs = await getRunHistory(
     historyOpts.agent,
     historyOpts.status,
-    historyOpts.limit ?? 10
+    historyOpts.limit ?? LIMIT_DEFAULT
   );
 
   if (runs.length === 0) {
@@ -139,11 +143,11 @@ export async function historyCommand(
  * Extract history options from CLI options
  */
 function extractHistoryOptions(options: CLIOptions): Partial<HistoryOptions> {
-  const opts = options as unknown as Record<string, unknown>;
+  const rawOpts = options as unknown as Record<string, unknown>;
   return {
-    agent: opts.agent as string | undefined,
-    status: opts.status as RunStatus | undefined,
-    limit: (opts.limit as number) ?? 10,
+    agent: rawOpts.agent as string | undefined,
+    status: rawOpts.status as RunStatus | undefined,
+    limit: (rawOpts.limit as number) ?? LIMIT_DEFAULT,
     verbose: options.verbose,
     format: options.format,
   };
@@ -167,7 +171,7 @@ async function getRunHistory(
       status?: RunStatus;
       limit: number;
     } = {
-      limit: limit ?? 10, // Default to 10 if not provided
+      limit: limit ?? LIMIT_DEFAULT,
     };
 
     if (agentId !== undefined) {
@@ -206,36 +210,23 @@ function formatStatus(status: string): string {
   }
 }
 
+/** Milliseconds per second */
+const MS_PER_SECOND = 1000;
+
+/** Milliseconds per minute */
+const MS_PER_MINUTE = SECONDS_PER_MINUTE * MS_PER_SECOND;
+
+/** Milliseconds per hour */
+const MS_PER_HOUR = SECONDS_PER_HOUR * MS_PER_SECOND;
+
 /**
  * Format duration in milliseconds
  */
 function formatDuration(ms: number | undefined): string {
   if (ms === undefined) return '-';
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-  if (ms < 3600000) return `${Math.round(ms / 60000)}m`;
-  return `${Math.round(ms / 3600000)}h`;
+  if (ms < MS_PER_SECOND) return `${ms}ms`;
+  if (ms < MS_PER_MINUTE) return `${Math.round(ms / MS_PER_SECOND)}s`;
+  if (ms < MS_PER_HOUR) return `${Math.round(ms / MS_PER_MINUTE)}m`;
+  return `${Math.round(ms / MS_PER_HOUR)}h`;
 }
 
-/**
- * Format a datetime as human-readable age
- */
-function formatAge(isoDate: string): string {
-  const diff = Date.now() - new Date(isoDate).getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return 'just now';
-}
-
-/**
- * Truncate string with ellipsis
- */
-function truncate(str: string, maxLength: number): string {
-  if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength - 3) + '...';
-}

@@ -20,8 +20,8 @@ import type { CLIProviderConfig } from '../types.js';
 export const grokConfig: CLIProviderConfig = {
   providerId: 'grok',
   command: 'ax-grok',
-  args: ['--prompt'],  // Prompt text will be appended as next argument
-  promptStyle: 'arg',  // Pass prompt as command-line argument (not stdin)
+  args: ['--json', '--prompt'],  // --json for JSONL output, --prompt for headless mode
+  promptStyle: 'arg',  // Pass prompt as command-line argument after --prompt
   env: {
     // Non-interactive mode flags
     TERM: 'dumb',

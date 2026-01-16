@@ -68,15 +68,21 @@ export class FileSystemAgentLoader implements AgentLoader {
     const files = fs.readdirSync(dirPath);
     const profiles: AgentProfile[] = [];
 
-    for (const file of files) {
-      const ext = path.extname(file).toLowerCase();
-      if (!this.config.extensions.includes(ext)) {
-        continue;
-      }
+    // Filter files with valid extensions
+    const validFiles = files
+      .filter((file) => this.config.extensions.includes(path.extname(file).toLowerCase()))
+      .map((file) => ({ file, filePath: path.join(dirPath, file) }));
 
-      const filePath = path.join(dirPath, file);
-      const profile = await this.loadFile(filePath);
+    // Load all files in parallel for better performance
+    const loadResults = await Promise.all(
+      validFiles.map(async ({ file, filePath }) => {
+        const profile = await this.loadFile(filePath);
+        return { file, profile };
+      })
+    );
 
+    // Process results sequentially to handle duplicates consistently
+    for (const { file, profile } of loadResults) {
       if (profile) {
         // INV-AGT-LDR-003: Check for duplicate agent IDs
         if (this.cache.has(profile.agentId)) {

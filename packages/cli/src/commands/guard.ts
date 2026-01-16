@@ -12,24 +12,13 @@ import {
 } from '@defai.digital/guard';
 import type { GuardResult } from '@defai.digital/guard';
 import type { CommandResult, CLIOptions } from '../types.js';
+import { getErrorMessage } from '@defai.digital/contracts';
+import { COLORS } from '../utils/terminal.js';
 
 /**
- * ANSI color codes for terminal output
+ * Status icons for guard results
  */
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
-
-/**
- * Status icons
- */
-const ICONS = {
+const GUARD_ICONS = {
   PASS: `${COLORS.green}\u2713${COLORS.reset}`,
   FAIL: `${COLORS.red}\u2717${COLORS.reset}`,
   WARN: `${COLORS.yellow}\u26A0${COLORS.reset}`,
@@ -49,7 +38,7 @@ function formatGuardResult(result: GuardResult, verbose: boolean): string {
   lines.push('');
 
   // Status banner
-  const statusIcon = ICONS[result.status];
+  const statusIcon = GUARD_ICONS[result.status];
   const statusColor =
     result.status === 'PASS'
       ? COLORS.green
@@ -66,7 +55,7 @@ function formatGuardResult(result: GuardResult, verbose: boolean): string {
   if (result.gates.length > 0) {
     lines.push(`${COLORS.bold}Gate Results${COLORS.reset}`);
     for (const gate of result.gates) {
-      const gateIcon = ICONS[gate.status];
+      const gateIcon = GUARD_ICONS[gate.status];
       lines.push(`  ${gateIcon} ${gate.gate}: ${gate.message}`);
 
       if (verbose && gate.details !== undefined) {
@@ -224,7 +213,7 @@ async function runGuardCheck(
       exitCode: result.status === 'FAIL' ? 1 : 0,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       success: false,
       message: `Guard check failed: ${message}`,

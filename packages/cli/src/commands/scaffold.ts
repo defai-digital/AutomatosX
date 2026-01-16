@@ -11,6 +11,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CommandResult, CLIOptions } from '../types.js';
+import {
+  GUARD_RADIUS_DEFAULT,
+  GUARD_GATES_DEFAULT,
+  SCAFFOLD_SCOPE_DEFAULT,
+  SCAFFOLD_TEMPLATE_DEFAULT,
+} from '@defai.digital/contracts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -717,7 +723,7 @@ async function handleScaffoldDomain(
   const {
     name,
     output,
-    scope = '@defai.digital',
+    scope = SCAFFOLD_SCOPE_DEFAULT,
     noTests = false,
     noGuard = false,
     dryRun = false,
@@ -772,8 +778,8 @@ async function handleScaffoldDomain(
       generateGuardPolicyTemplate(
         `${name}-development`,
         name,
-        3,
-        ['path_violation', 'dependency', 'change_radius', 'contract_tests']
+        GUARD_RADIUS_DEFAULT,
+        [...GUARD_GATES_DEFAULT]
       ),
       dryRun,
       files
@@ -801,8 +807,8 @@ async function handleScaffoldGuard(
   const {
     policyId,
     domain = policyId.replace(/-development$/, ''),
-    radius = 3,
-    gates = 'path_violation,dependency,change_radius,contract_tests',
+    radius = GUARD_RADIUS_DEFAULT,
+    gates = GUARD_GATES_DEFAULT.join(','),
     dryRun = false,
   } = options;
 
@@ -838,7 +844,7 @@ async function handleScaffoldProject(
     projectName,
     template,
     domainName,
-    scope = '@myorg',
+    scope = SCAFFOLD_SCOPE_DEFAULT,
     description = 'A contract-first TypeScript project',
     output,
     dryRun = false,
@@ -1083,7 +1089,7 @@ export async function scaffoldCommand(
         };
       }
 
-      const templateStr = templateValue || 'standalone';
+      const templateStr = templateValue || SCAFFOLD_TEMPLATE_DEFAULT;
       if (templateStr !== 'monorepo' && templateStr !== 'standalone') {
         return {
           success: false,

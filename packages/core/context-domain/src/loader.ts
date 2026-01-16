@@ -89,57 +89,80 @@ export class ContextLoader implements IContextLoader {
     }
 
     try {
-      // List files in context directory
+      // PHASE 1: List files with stats (already parallelized in listContextFiles)
       const fileInfos = await this.listContextFiles(contextPath);
 
-      // Load files with size limits
       const loadedFiles: ContextFile[] = [];
       const skippedReasons: { filename: string; reason: string }[] = [];
-      let totalSize = 0;
 
+      // PHASE 2: Filter by budget BEFORE reading (two-phase pattern)
+      // First, filter out files that exceed individual size limit
+      const validFiles: FileInfo[] = [];
       for (const fileInfo of fileInfos) {
-        // Check individual file size
         if (fileInfo.size > this.config.maxFileSize) {
           skippedReasons.push({
             filename: fileInfo.name,
             reason: `File exceeds max size (${fileInfo.size} > ${this.config.maxFileSize})`,
           });
-          continue;
+        } else {
+          validFiles.push(fileInfo);
         }
+      }
 
-        // Check total size limit
-        if (totalSize + fileInfo.size > this.config.maxTotalSize) {
+      // Sort by size (smallest first) to maximize number of files within budget
+      const sortedBySize = [...validFiles].sort((a, b) => a.size - b.size);
+
+      // Select files that fit within total size budget
+      let budgetUsed = 0;
+      const selected: FileInfo[] = [];
+
+      for (const file of sortedBySize) {
+        if (budgetUsed + file.size <= this.config.maxTotalSize) {
+          selected.push(file);
+          budgetUsed += file.size;
+        } else {
           skippedReasons.push({
-            filename: fileInfo.name,
+            filename: file.name,
             reason: `Would exceed total size limit`,
-          });
-          continue;
-        }
-
-        // Load file content
-        try {
-          const content = await fs.readFile(fileInfo.path, 'utf-8');
-          const now = new Date().toISOString();
-
-          loadedFiles.push({
-            filename: fileInfo.name,
-            relativePath: path.relative(contextPath, fileInfo.path),
-            content,
-            size: fileInfo.size,
-            loadedAt: now,
-          });
-
-          totalSize += fileInfo.size;
-        } catch (error) {
-          skippedReasons.push({
-            filename: fileInfo.name,
-            reason: `Read error: ${error instanceof Error ? error.message : 'Unknown'}`,
           });
         }
       }
 
-      // Sort files
+      // PHASE 3: Parallel read of ONLY selected files
+      const loadResults = await Promise.allSettled(
+        selected.map(async (fileInfo) => {
+          const content = await fs.readFile(fileInfo.path, 'utf-8');
+          return { fileInfo, content };
+        })
+      );
+
+      // Process results
+      const now = new Date().toISOString();
+
+      for (const result of loadResults) {
+        if (result.status === 'rejected') {
+          skippedReasons.push({
+            filename: 'unknown',
+            reason: `Read error: ${result.reason?.message || 'Unknown'}`,
+          });
+          continue;
+        }
+
+        const { fileInfo, content } = result.value;
+        loadedFiles.push({
+          filename: fileInfo.name,
+          relativePath: path.relative(contextPath, fileInfo.path),
+          content,
+          size: fileInfo.size,
+          loadedAt: now,
+        });
+      }
+
+      // Sort files for consistent output
       this.sortFiles(loadedFiles);
+
+      // Calculate actual total size from loaded files (may differ from budget if reads failed)
+      const totalSize = loadedFiles.reduce((sum, file) => sum + file.size, 0);
 
       // Create combined content
       const combinedContent = this.createCombinedContent(loadedFiles);
@@ -175,31 +198,35 @@ export class ContextLoader implements IContextLoader {
    * List context files in directory
    */
   private async listContextFiles(contextPath: string): Promise<FileInfo[]> {
-    const files: FileInfo[] = [];
     const entries = await fs.readdir(contextPath, { withFileTypes: true });
 
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
+    // Filter valid entries first (sync operations)
+    const validEntries = entries.filter((entry) => {
+      if (!entry.isFile()) return false;
 
       // Check file extension
       const ext = path.extname(entry.name).toLowerCase();
-      if (!this.config.fileExtensions.includes(ext)) continue;
+      if (!this.config.fileExtensions.includes(ext)) return false;
 
       // Check exclude patterns
       const excluded = this.config.excludePatterns.some((pattern) =>
         entry.name.includes(pattern)
       );
-      if (excluded) continue;
+      return !excluded;
+    });
 
-      const filePath = path.join(contextPath, entry.name);
-      const stat = await fs.stat(filePath);
-
-      files.push({
-        path: filePath,
-        name: entry.name,
-        size: stat.size,
-      });
-    }
+    // Stat all valid files in parallel for better performance
+    const files = await Promise.all(
+      validEntries.map(async (entry) => {
+        const filePath = path.join(contextPath, entry.name);
+        const stat = await fs.stat(filePath);
+        return {
+          path: filePath,
+          name: entry.name,
+          size: stat.size,
+        };
+      })
+    );
 
     return files;
   }

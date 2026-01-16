@@ -11,6 +11,7 @@
 import type { Checkpoint } from '@defai.digital/contracts';
 import type { CheckpointStorage } from '@defai.digital/agent-execution';
 import type Database from 'better-sqlite3';
+import { isValidTableName, invalidTableNameMessage } from './validation.js';
 
 /**
  * Error thrown by SQLite checkpoint store operations
@@ -37,14 +38,6 @@ export const SqliteCheckpointStoreErrorCodes = {
 } as const;
 
 /**
- * Validates a SQL table name to prevent SQL injection
- * Only allows alphanumeric characters and underscores, must start with letter or underscore
- */
-function isValidTableName(name: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
-}
-
-/**
  * SQLite implementation of CheckpointStorage
  *
  * Invariants:
@@ -60,7 +53,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     if (!isValidTableName(tableName)) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.INVALID_TABLE_NAME,
-        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+        invalidTableNameMessage(tableName)
       );
     }
     this.db = db;

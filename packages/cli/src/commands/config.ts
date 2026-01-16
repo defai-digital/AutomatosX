@@ -18,28 +18,9 @@ import {
 import {
   type AutomatosXConfig,
   safeValidateConfig,
+  getErrorMessage,
 } from '@defai.digital/contracts';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
-
-const ICONS = {
-  check: `${COLORS.green}\u2713${COLORS.reset}`,
-  cross: `${COLORS.red}\u2717${COLORS.reset}`,
-  warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
-  arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
-};
+import { COLORS, ICONS } from '../utils/terminal.js';
 
 // ============================================================================
 // Helper Functions
@@ -207,7 +188,7 @@ async function handleShow(
       exitCode: 0,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     if (isJson) {
       return {
         success: false,
@@ -300,7 +281,7 @@ async function handleGet(
       exitCode: 0,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     if (isJson) {
       return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
     }
@@ -404,7 +385,7 @@ async function handleSet(
       exitCode: 0,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     if (isJson) {
       return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
     }
@@ -479,7 +460,7 @@ async function handleReset(
       exitCode: 0,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     if (isJson) {
       return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
     }

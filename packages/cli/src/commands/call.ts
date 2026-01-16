@@ -31,20 +31,21 @@ import {
   DEFAULT_MAX_TIME_MS,
 } from '@defai.digital/iterate-domain';
 import type { IterateIntent, IterateState } from '@defai.digital/contracts';
+import {
+  getErrorMessage,
+  SECONDS_PER_MINUTE,
+  SECONDS_PER_HOUR,
+} from '@defai.digital/contracts';
+import { COLORS } from '../utils/terminal.js';
 
-// ============================================================================
-// Constants
-// ============================================================================
+/** Milliseconds per second */
+const MS_PER_SECOND = 1000;
 
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
+/** Milliseconds per minute */
+const MS_PER_MINUTE = SECONDS_PER_MINUTE * MS_PER_SECOND;
+
+/** Milliseconds per hour */
+const MS_PER_HOUR = SECONDS_PER_HOUR * MS_PER_SECOND;
 
 /**
  * Provider configurations from bootstrap
@@ -517,13 +518,13 @@ async function executeIterateMode(
  * Formats milliseconds as human-readable duration
  */
 function formatDuration(ms: number): string {
-  if (ms < 60000) {
-    return `${Math.round(ms / 1000)}s`;
+  if (ms < MS_PER_MINUTE) {
+    return `${Math.round(ms / MS_PER_SECOND)}s`;
   }
-  if (ms < 3600000) {
-    return `${Math.round(ms / 60000)}m`;
+  if (ms < MS_PER_HOUR) {
+    return `${Math.round(ms / MS_PER_MINUTE)}m`;
   }
-  return `${Math.round(ms / 3600000)}h`;
+  return `${Math.round(ms / MS_PER_HOUR)}h`;
 }
 
 // ============================================================================
@@ -576,7 +577,7 @@ export async function callCommand(
         promptContent = `${prompt}\n\n---\n\n${promptContent}`;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = getErrorMessage(error);
       return {
         success: false,
         message: `Error reading file "${file}": ${message}`,

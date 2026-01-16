@@ -16,6 +16,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
 import { DATA_DIR_NAME } from '@defai.digital/contracts';
+import { COLORS } from '../utils/terminal.js';
 
 const execAsync = promisify(exec);
 
@@ -69,12 +70,6 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
     installHint: 'npm install -g ax-grok',
   },
   {
-    id: 'antigravity',
-    name: 'Antigravity',
-    command: 'antigravity',
-    installHint: 'See https://developers.google.com/agentic-experience',
-  },
-  {
     id: 'opencode',
     name: 'OpenCode',
     command: 'opencode',
@@ -94,22 +89,9 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
 const MIN_NODE_VERSION = 18;
 
 /**
- * ANSI color codes for terminal output
+ * Doctor-specific status icons
  */
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
-
-/**
- * Status icons
- */
-const ICONS = {
+const DOCTOR_ICONS = {
   pass: `${COLORS.green}\u2713${COLORS.reset}`,
   fail: `${COLORS.red}\u2717${COLORS.reset}`,
   warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
@@ -193,8 +175,14 @@ export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckRe
     };
   }
 
-  const version = await getCommandVersion(provider.command);
-  const path = await getCommandPath(provider.command);
+  // Parallelize version and path checks using Promise.allSettled for fault tolerance
+  const [versionResult, pathResult] = await Promise.allSettled([
+    getCommandVersion(provider.command),
+    getCommandPath(provider.command),
+  ]);
+
+  const version = versionResult.status === 'fulfilled' ? versionResult.value : undefined;
+  const cmdPath = pathResult.status === 'fulfilled' ? pathResult.value : undefined;
 
   const result: CheckResult = {
     name: `${provider.name} CLI (${provider.command})`,
@@ -202,8 +190,8 @@ export async function checkProviderCLI(provider: ProviderCheck): Promise<CheckRe
     message: version !== undefined ? `v${version}` : 'installed',
   };
 
-  if (path !== undefined) {
-    result.details = path;
+  if (cmdPath !== undefined) {
+    result.details = cmdPath;
   }
 
   return result;
@@ -217,7 +205,7 @@ export async function checkAllProviders(
   specificProvider?: string
 ): Promise<CheckResult[]> {
   const providers = specificProvider !== undefined
-    ? PROVIDER_CHECKS.filter((p) => p.id === specificProvider)
+    ? PROVIDER_CHECKS.filter((providerCheck) => providerCheck.id === specificProvider)
     : PROVIDER_CHECKS;
 
   const results = await Promise.all(
@@ -287,7 +275,7 @@ async function checkWritePermissions(): Promise<CheckResult> {
  * Formats a check result for display
  */
 function formatCheckResult(result: CheckResult, verbose: boolean): string {
-  const icon = ICONS[result.status];
+  const icon = DOCTOR_ICONS[result.status];
   let line = `  ${icon} ${result.name}: ${result.message}`;
 
   if (verbose && result.details !== undefined) {
@@ -302,8 +290,8 @@ function formatCheckResult(result: CheckResult, verbose: boolean): string {
  */
 function formatFixes(results: CheckResult[]): string[] {
   const fixes = results
-    .filter((r): r is CheckResult & { fix: string } => r.status === 'fail' && r.fix !== undefined)
-    .map((r) => `  ${COLORS.dim}\u2022${COLORS.reset} ${r.name}: ${COLORS.cyan}${r.fix}${COLORS.reset}`);
+    .filter((checkResult): checkResult is CheckResult & { fix: string } => checkResult.status === 'fail' && checkResult.fix !== undefined)
+    .map((checkResult) => `  ${COLORS.dim}\u2022${COLORS.reset} ${checkResult.name}: ${COLORS.cyan}${checkResult.fix}${COLORS.reset}`);
 
   return fixes;
 }
@@ -361,23 +349,23 @@ export async function doctorCommand(
       output.push(`${COLORS.bold}File System${COLORS.reset}`);
     }
 
-    const dirCheck = await checkAutomatosxDir();
-    allResults.push(dirCheck);
+    // Run file system checks in parallel
+    const [dirCheck, writeCheck] = await Promise.all([
+      checkAutomatosxDir(),
+      checkWritePermissions(),
+    ]);
+
+    allResults.push(dirCheck, writeCheck);
     if (!isJson) {
       output.push(formatCheckResult(dirCheck, verbose));
-    }
-
-    const writeCheck = await checkWritePermissions();
-    allResults.push(writeCheck);
-    if (!isJson) {
       output.push(formatCheckResult(writeCheck, verbose));
     }
   }
 
   // Summary
-  const passed = allResults.filter((r) => r.status === 'pass').length;
-  const failed = allResults.filter((r) => r.status === 'fail').length;
-  const warned = allResults.filter((r) => r.status === 'warn').length;
+  const passed = allResults.filter((checkResult) => checkResult.status === 'pass').length;
+  const failed = allResults.filter((checkResult) => checkResult.status === 'fail').length;
+  const warned = allResults.filter((checkResult) => checkResult.status === 'warn').length;
 
   if (!isJson) {
     output.push('');

@@ -5,6 +5,7 @@
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
+import { getErrorMessage } from '@defai.digital/contracts';
 import {
   createSessionStore,
   createSessionManager,
@@ -92,8 +93,8 @@ async function listSessions(options: CLIOptions): Promise<CommandResult> {
     // Format as text table
     const header = 'Session ID                           | Initiator            | Status    | Participants';
     const separator = '-'.repeat(header.length);
-    const rows = limited.map((s) =>
-      `${s.sessionId.padEnd(36)} | ${s.initiator.padEnd(20)} | ${s.status.padEnd(9)} | ${s.participants.length}`
+    const rows = limited.map((session) =>
+      `${session.sessionId.padEnd(36)} | ${session.initiator.padEnd(20)} | ${session.status.padEnd(9)} | ${session.participants.length}`
     );
 
     return {
@@ -105,7 +106,7 @@ async function listSessions(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to list sessions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to list sessions: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -162,13 +163,13 @@ async function getSession(args: string[], options: CLIOptions): Promise<CommandR
       'Participants:',
     ];
 
-    for (const p of session.participants) {
-      const status = p.leftAt !== undefined ? 'left' : 'active';
-      lines.push(`  - ${p.agentId} (${p.role}, ${status})`);
+    for (const participant of session.participants) {
+      const participantStatus = participant.leftAt !== undefined ? 'left' : 'active';
+      lines.push(`  - ${participant.agentId} (${participant.role}, ${participantStatus})`);
 
-      if (p.tasks.length > 0) {
-        for (const t of p.tasks) {
-          lines.push(`      Task: ${t.title} [${t.status}]`);
+      if (participant.tasks.length > 0) {
+        for (const task of participant.tasks) {
+          lines.push(`      Task: ${task.title} [${task.status}]`);
         }
       }
     }
@@ -182,7 +183,7 @@ async function getSession(args: string[], options: CLIOptions): Promise<CommandR
   } catch (error) {
     return {
       success: false,
-      message: `Failed to get session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to get session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -250,7 +251,7 @@ async function createSession(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to create session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -333,7 +334,7 @@ async function joinSession(args: string[], options: CLIOptions): Promise<Command
   } catch (error) {
     return {
       success: false,
-      message: `Failed to join session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to join session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -407,7 +408,7 @@ async function leaveSession(args: string[], options: CLIOptions): Promise<Comman
   } catch (error) {
     return {
       success: false,
-      message: `Failed to leave session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to leave session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -463,7 +464,7 @@ async function completeSession(args: string[], options: CLIOptions): Promise<Com
   } catch (error) {
     return {
       success: false,
-      message: `Failed to complete session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to complete session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -549,7 +550,7 @@ async function failSession(args: string[], options: CLIOptions): Promise<Command
   } catch (error) {
     return {
       success: false,
-      message: `Failed to fail session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to fail session: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };

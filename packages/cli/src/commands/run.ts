@@ -7,6 +7,7 @@ import {
 } from '@defai.digital/workflow-engine';
 import type { StepContext, StepResult, StepExecutor } from '@defai.digital/workflow-engine';
 import type { WorkflowStep } from '@defai.digital/contracts';
+import { TIMEOUT_PROVIDER_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 import { getStepExecutor } from '../bootstrap.js';
 
 // Check if we're in test environment
@@ -50,7 +51,7 @@ export async function runCommand(
     if (!workflow) {
       // Try to list available workflows for help
       const available = await loader.loadAll();
-      const ids = available.map(w => w.workflowId).slice(0, 5).join(', ');
+      const ids = available.map(wf => wf.workflowId).slice(0, 5).join(', ');
       return {
         success: false,
         message: `Workflow "${workflowId}" not found.\n\nAvailable workflows: ${ids}${available.length > 5 ? '...' : ''}\nRun 'ax list' to see all workflows.`,
@@ -102,7 +103,7 @@ export async function runCommand(
 
     // Format result message
     const duration = (result.totalDurationMs / 1000).toFixed(2);
-    const stepSummary = result.stepResults.map(s => `${s.stepId}: ${s.success ? '✓' : '✗'}`).join(', ');
+    const stepSummary = result.stepResults.map(stepResult => `${stepResult.stepId}: ${stepResult.success ? '✓' : '✗'}`).join(', ');
 
     if (result.success) {
       return {
@@ -113,10 +114,10 @@ export async function runCommand(
           success: true,
           durationMs: result.totalDurationMs,
           output: result.output,
-          steps: result.stepResults.map((s) => ({
-            stepId: s.stepId,
-            success: s.success,
-            durationMs: s.durationMs,
+          steps: result.stepResults.map((stepResult) => ({
+            stepId: stepResult.stepId,
+            success: stepResult.success,
+            durationMs: stepResult.durationMs,
           })),
         },
         exitCode: 0,
@@ -129,10 +130,10 @@ export async function runCommand(
           workflowId,
           success: false,
           error: result.error,
-          steps: result.stepResults.map((s) => ({
-            stepId: s.stepId,
-            success: s.success,
-            error: s.error?.message,
+          steps: result.stepResults.map((stepResult) => ({
+            stepId: stepResult.stepId,
+            success: stepResult.success,
+            error: stepResult.error?.message,
           })),
         },
         exitCode: 1,
@@ -141,7 +142,7 @@ export async function runCommand(
   } catch (error) {
     return {
       success: false,
-      message: `Failed to run workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to run workflow: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -159,7 +160,7 @@ function createLoggingStepExecutor(verbose: boolean): StepExecutor {
     ? defaultStepExecutor
     : getStepExecutor({
         defaultProvider: 'claude',
-        defaultTimeout: 120000,
+        defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
         checkProviderHealth: false,
       });
 

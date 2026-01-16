@@ -14,7 +14,6 @@ import {
   geminiConfig,
   codexConfig,
   grokConfig,
-  antigravityConfig,
   opencodeConfig,
   ALL_PROVIDER_CONFIGS,
   parseOutput,
@@ -62,13 +61,12 @@ describe('CLI Adapter', () => {
 
   describe('Provider Configurations', () => {
     it('exports all provider configs', () => {
-      expect(ALL_PROVIDER_CONFIGS).toHaveLength(6);
+      expect(ALL_PROVIDER_CONFIGS).toHaveLength(5);
       expect(ALL_PROVIDER_CONFIGS.map((c) => c.providerId)).toEqual([
         'claude',
         'gemini',
         'codex',
         'grok',
-        'antigravity',
         'opencode',
       ]);
     });
@@ -102,13 +100,6 @@ describe('CLI Adapter', () => {
       expect(grokConfig.models.length).toBeGreaterThan(0);
     });
 
-    it('antigravity config has correct structure', () => {
-      expect(antigravityConfig.providerId).toBe('antigravity');
-      expect(antigravityConfig.command).toBe('antigravity');
-      expect(antigravityConfig.outputFormat).toBe('stream-json');
-      expect(antigravityConfig.models.length).toBeGreaterThan(0);
-    });
-
     it('opencode config has correct structure', () => {
       expect(opencodeConfig.providerId).toBe('opencode');
       expect(opencodeConfig.command).toBe('opencode');
@@ -135,13 +126,12 @@ describe('CLI Adapter', () => {
   describe('Provider Registry', () => {
     it('creates registry with all default providers', () => {
       const registry = createProviderRegistry();
-      expect(registry.size).toBe(6);
+      expect(registry.size).toBe(5);
       expect(registry.getProviderIds()).toEqual([
         'claude',
         'gemini',
         'codex',
         'grok',
-        'antigravity',
         'opencode',
       ]);
     });
@@ -185,8 +175,8 @@ describe('CLI Adapter', () => {
     it('gets all models across providers', () => {
       const registry = createProviderRegistry();
       const models = registry.getAllModels();
-      // 6 providers, each with 1 'default' model
-      expect(models.length).toBe(6);
+      // 5 providers, each with 1 'default' model
+      expect(models.length).toBe(5);
       expect(models.some((m) => m.providerId === 'claude')).toBe(true);
       expect(models.some((m) => m.providerId === 'gemini')).toBe(true);
     });

@@ -237,6 +237,9 @@ export const CLEANUP_INTERVAL_SECONDS = 300;
 /** Default retention days for dead letter */
 export const RETENTION_DAYS_DEFAULT = 7;
 
+/** Default retention days for cleanup operations */
+export const RETENTION_DAYS_CLEANUP = 30;
+
 /** Default priority value */
 export const PRIORITY_DEFAULT = 50;
 
@@ -267,6 +270,44 @@ export const RETRY_DELAY_MAX = 30000;
 
 /** Maximum backoff cap (60 seconds) */
 export const RETRY_BACKOFF_CAP = 60000;
+
+// =============================================================================
+// TIME UNIT CONSTANTS (in seconds)
+// =============================================================================
+
+/** Seconds in one minute */
+export const SECONDS_PER_MINUTE = 60;
+
+/** Seconds in one hour */
+export const SECONDS_PER_HOUR = 3600;
+
+/** Seconds in one day */
+export const SECONDS_PER_DAY = 86400;
+
+// =============================================================================
+// GUARD CONSTANTS
+// =============================================================================
+
+/** Default change radius limit for guard policies */
+export const GUARD_RADIUS_DEFAULT = 3;
+
+/** Default gates for guard policies */
+export const GUARD_GATES_DEFAULT = [
+  'path_violation',
+  'dependency',
+  'change_radius',
+  'contract_tests',
+] as const;
+
+// =============================================================================
+// SCAFFOLD CONSTANTS
+// =============================================================================
+
+/** Default package scope for scaffolding */
+export const SCAFFOLD_SCOPE_DEFAULT = '@myorg';
+
+/** Default template for project scaffolding */
+export const SCAFFOLD_TEMPLATE_DEFAULT = 'standalone';
 
 // =============================================================================
 // ORCHESTRATION TIMEOUT CONSTANTS

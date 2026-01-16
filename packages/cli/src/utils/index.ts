@@ -10,6 +10,14 @@ export {
 } from './dangerous-op-guard.js';
 
 export {
+  formatDuration,
+  formatBytes,
+  formatAge,
+  truncate,
+  padEnd,
+} from './formatters.js';
+
+export {
   getCheckpointStorage,
   getTraceStore,
   getDLQ,
@@ -32,3 +40,7 @@ export {
   type DatabaseConfig,
   type DatabaseManager,
 } from './database.js';
+
+export { COLORS, ICONS } from './terminal.js';
+
+export { success, failure, failureWithCode } from './command-result.js';

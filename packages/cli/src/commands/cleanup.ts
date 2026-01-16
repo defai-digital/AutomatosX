@@ -15,6 +15,8 @@ import type { CommandResult, CLIOptions } from '../types.js';
 import { checkDangerousOp } from '../utils/dangerous-op-guard.js';
 import {
   safeValidateCleanupOptions,
+  LIMIT_MAX,
+  RETENTION_DAYS_CLEANUP,
   type CleanupResult,
   type CleanupTypeResult,
   type CleanupDataType,
@@ -31,6 +33,7 @@ import {
   getTraceStore,
   getDLQ,
 } from '../utils/storage-instances.js';
+import { formatBytes } from '../utils/formatters.js';
 
 // Lazy-initialized shared instances
 let sessionStore: SessionStore | undefined;
@@ -161,12 +164,12 @@ export async function cleanupCommand(
  * Extract cleanup options from CLI options
  */
 function extractCleanupOptions(options: CLIOptions): Record<string, unknown> {
-  const opts = options as unknown as Record<string, unknown>;
-  const types = parseTypes(opts.types);
+  const rawOpts = options as unknown as Record<string, unknown>;
+  const types = parseTypes(rawOpts.types);
   return {
-    force: opts.force === true,
+    force: rawOpts.force === true,
     types: types.length > 0 ? types : undefined,
-    olderThan: parseNumber(opts['older-than'] ?? opts.olderThan),
+    olderThan: parseNumber(rawOpts['older-than'] ?? rawOpts.olderThan),
     format: options.format,
   };
 }
@@ -300,7 +303,7 @@ async function cleanSessions(
  * Calculate cutoff date based on older-than days
  */
 function getCutoffDate(olderThanDays: number | undefined): Date {
-  const days = olderThanDays ?? 30; // Default 30 days
+  const days = olderThanDays ?? RETENTION_DAYS_CLEANUP;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   return cutoff;
@@ -318,11 +321,11 @@ async function cleanTraces(
     const store = getTraceStore();
     const cutoffDate = getCutoffDate(olderThanDays);
 
-    // List all trace summaries (up to 1000 for cleanup)
-    const summaries = await store.listTraces(1000);
+    // List all trace summaries (up to LIMIT_MAX for cleanup)
+    const summaries = await store.listTraces(LIMIT_MAX);
 
     // Find traces to delete (older than cutoff)
-    const toDelete = summaries.filter((s) => new Date(s.startTime) < cutoffDate);
+    const toDelete = summaries.filter((summary) => new Date(summary.startTime) < cutoffDate);
 
     // If not dry run, actually delete (in parallel for performance)
     if (!dryRun) {
@@ -363,12 +366,3 @@ async function cleanDLQ(
   }
 }
 
-/**
- * Format bytes to human-readable string
- */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`;
-}

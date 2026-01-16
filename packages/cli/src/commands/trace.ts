@@ -1,5 +1,6 @@
 import type { CommandResult, CLIOptions } from '../types.js';
 import type { TraceEvent } from '@defai.digital/contracts';
+import { LIMIT_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 import { getTraceStore } from '../bootstrap.js';
 
 /**
@@ -38,7 +39,7 @@ export async function traceCommand(
 async function listTraces(options: CLIOptions): Promise<CommandResult> {
   try {
     // Get traces (in real implementation, from trace store)
-    const traces = await getRecentTraces(options.limit ?? 10);
+    const traces = await getRecentTraces(options.limit ?? LIMIT_DEFAULT);
 
     if (traces.length === 0) {
       return {
@@ -61,9 +62,9 @@ async function listTraces(options: CLIOptions): Promise<CommandResult> {
     // Format as text table
     const header = 'Trace ID                             | Start Time          | Status  | Events | Duration';
     const separator = '-'.repeat(header.length);
-    const rows = traces.map((t) => {
-      const duration = t.durationMs !== undefined ? `${String(t.durationMs)}ms` : 'N/A';
-      return `${t.traceId} | ${t.startTime.slice(0, 19)} | ${t.status.padEnd(7)} | ${String(t.eventCount).padEnd(6)} | ${duration}`;
+    const rows = traces.map((trace) => {
+      const duration = trace.durationMs !== undefined ? `${String(trace.durationMs)}ms` : 'N/A';
+      return `${trace.traceId} | ${trace.startTime.slice(0, 19)} | ${trace.status.padEnd(7)} | ${String(trace.eventCount).padEnd(6)} | ${duration}`;
     });
 
     return {
@@ -75,7 +76,7 @@ async function listTraces(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to list traces: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to list traces: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -138,7 +139,7 @@ async function getTrace(
   } catch (error) {
     return {
       success: false,
-      message: `Failed to get trace: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to get trace: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -153,13 +154,13 @@ async function getRecentTraces(limit: number): Promise<TraceSummary[]> {
   const summaries = await store.listTraces(limit);
 
   // Map TraceSummary from trace-domain to our local TraceSummary type
-  return summaries.map((s) => ({
-    traceId: s.traceId,
-    startTime: s.startTime,
-    endTime: s.endTime,
-    status: s.status,
-    eventCount: s.eventCount,
-    durationMs: s.durationMs,
+  return summaries.map((summary) => ({
+    traceId: summary.traceId,
+    startTime: summary.startTime,
+    endTime: summary.endTime,
+    status: summary.status,
+    eventCount: summary.eventCount,
+    durationMs: summary.durationMs,
   }));
 }
 

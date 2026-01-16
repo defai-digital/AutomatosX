@@ -16,6 +16,9 @@ import {
   type SystemStatus,
   type ProviderStatus,
   type SystemHealthLevel,
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+  SECONDS_PER_MINUTE,
 } from '@defai.digital/contracts';
 import {
   createSessionManager,
@@ -112,9 +115,12 @@ export async function statusCommand(
  * Gather system status from all sources
  */
 async function gatherSystemStatus(): Promise<SystemStatus> {
-  const providers = await getProviderStatus();
-  const activeSessions = await getActiveSessionCount();
-  const pendingCheckpoints = await getPendingCheckpointCount();
+  // Run independent status checks in parallel
+  const [providers, activeSessions, pendingCheckpoints] = await Promise.all([
+    getProviderStatus(),
+    getActiveSessionCount(),
+    getPendingCheckpointCount(),
+  ]);
 
   // Determine overall health
   const allHealthy = providers.length === 0 || providers.every((p) => p.available);
@@ -238,17 +244,17 @@ function getStatusIcon(status: SystemHealthLevel): string {
 /**
  * Format uptime in seconds to human-readable string
  */
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+function formatUptime(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / SECONDS_PER_DAY);
+  const hours = Math.floor((totalSeconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+  const minutes = Math.floor((totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
+  const seconds = Math.floor(totalSeconds % SECONDS_PER_MINUTE);
 
   const parts: string[] = [];
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
-  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
 
   return parts.join(' ');
 }

@@ -59,7 +59,6 @@ export {
   geminiConfig,
   codexConfig,
   grokConfig,
-  antigravityConfig,
   opencodeConfig,
   ALL_PROVIDER_CONFIGS,
   getProviderConfig,

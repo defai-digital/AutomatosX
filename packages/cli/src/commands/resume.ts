@@ -22,6 +22,8 @@ import {
   getCheckpointStorage,
   initializeStorageAsync,
 } from '../utils/storage-instances.js';
+import { formatAge } from '../utils/formatters.js';
+import { success, failure } from '../utils/command-result.js';
 
 /**
  * Resume command handler
@@ -34,8 +36,8 @@ export async function resumeCommand(
   await initializeStorageAsync();
 
   // Handle list subcommand
-  const extendedOptions = options as unknown as Record<string, unknown>;
-  if (args[0] === 'list' || extendedOptions.list) {
+  const extOpts = options as unknown as Record<string, unknown>;
+  if (args[0] === 'list' || extOpts.list) {
     return listCheckpoints(options);
   }
 
@@ -44,12 +46,7 @@ export async function resumeCommand(
   const validation = safeValidateResumeOptions(opts);
 
   if (!validation.success) {
-    return {
-      success: false,
-      exitCode: 1,
-      message: `Invalid options: ${validation.error.errors.map((e) => e.message).join(', ')}`,
-      data: undefined,
-    };
+    return failure(`Invalid options: ${validation.error.errors.map((e) => e.message).join(', ')}`);
   }
 
   const resumeOpts = validation.data;
@@ -63,33 +60,19 @@ export async function resumeCommand(
   } else if (resumeOpts.agentId) {
     checkpoint = await storage.loadLatest(resumeOpts.agentId, resumeOpts.sessionId);
   } else {
-    return {
-      success: false,
-      exitCode: 1,
-      message: 'Please specify --agent or --checkpoint. Use "ax resume list --agent=<id>" to see available checkpoints.',
-      data: undefined,
-    };
+    return failure('Please specify --agent or --checkpoint. Use "ax resume list --agent=<id>" to see available checkpoints.');
   }
 
   if (!checkpoint) {
-    return {
-      success: false,
-      exitCode: 1,
-      message: resumeOpts.checkpointId
-        ? `Checkpoint not found: ${resumeOpts.checkpointId}`
-        : `No checkpoint found for agent: ${resumeOpts.agentId}`,
-      data: undefined,
-    };
+    const msg = resumeOpts.checkpointId
+      ? `Checkpoint not found: ${resumeOpts.checkpointId}`
+      : `No checkpoint found for agent: ${resumeOpts.agentId}`;
+    return failure(msg);
   }
 
   // Check if expired
   if (checkpoint.expiresAt && new Date(checkpoint.expiresAt) < new Date()) {
-    return {
-      success: false,
-      exitCode: 1,
-      message: `Checkpoint ${checkpoint.checkpointId} has expired (${formatAge(checkpoint.expiresAt)})`,
-      data: undefined,
-    };
+    return failure(`Checkpoint ${checkpoint.checkpointId} has expired (${formatAge(checkpoint.expiresAt)})`);
   }
 
   // Display checkpoint info
@@ -113,79 +96,57 @@ export async function resumeCommand(
 
   const resumeContext = await manager.getResumeContext(checkpoint.checkpointId);
   if (!resumeContext) {
-    return {
-      success: false,
-      exitCode: 1,
-      message: 'Failed to create resume context',
-      data: undefined,
-    };
+    return failure('Failed to create resume context');
   }
 
   // Return success with resume info
   // Note: Actual execution integration would happen here
-  return {
-    success: true,
-    exitCode: 0,
-    message: options.format === 'json'
-      ? undefined
-      : `Ready to resume from step ${resumeContext.startFromStep}`,
-    data: {
-      checkpointId: checkpoint.checkpointId,
-      agentId: checkpoint.agentId,
-      startFromStep: resumeContext.startFromStep,
-      previousStepsCompleted: checkpoint.stepIndex,
-      context: resumeContext.context,
-    },
+  const resumeData = {
+    checkpointId: checkpoint.checkpointId,
+    agentId: checkpoint.agentId,
+    startFromStep: resumeContext.startFromStep,
+    previousStepsCompleted: checkpoint.stepIndex,
+    context: resumeContext.context,
   };
+  const message = options.format === 'json'
+    ? undefined
+    : `Ready to resume from step ${resumeContext.startFromStep}`;
+  return success(resumeData, message);
 }
 
 /**
  * List available checkpoints for an agent
  */
 async function listCheckpoints(options: CLIOptions): Promise<CommandResult> {
-  const extendedOptions = options as unknown as Record<string, unknown>;
-  const agentId = extendedOptions.agent as string | undefined;
+  const extOpts = options as unknown as Record<string, unknown>;
+  const agentId = extOpts.agent as string | undefined;
 
   if (!agentId) {
-    return {
-      success: false,
-      exitCode: 1,
-      message: 'Please specify --agent to list checkpoints',
-      data: undefined,
-    };
+    return failure('Please specify --agent to list checkpoints');
   }
 
   const storage = getCheckpointStorage();
   const checkpoints = await storage.list(agentId);
 
   if (checkpoints.length === 0) {
-    return {
-      success: true,
-      exitCode: 0,
-      message: `No checkpoints found for agent: ${agentId}`,
-      data: { checkpoints: [] },
-    };
+    return success({ checkpoints: [] }, `No checkpoints found for agent: ${agentId}`);
   }
 
   // Format for JSON output
   if (options.format === 'json') {
-    return {
-      success: true,
-      exitCode: 0,
-      message: undefined,
-      data: {
-        checkpoints: checkpoints.map((cp: Checkpoint) => ({
-          checkpointId: cp.checkpointId,
-          agentId: cp.agentId,
-          sessionId: cp.sessionId,
-          stepIndex: cp.stepIndex,
-          completedStepId: cp.completedStepId,
-          createdAt: cp.createdAt,
-          expiresAt: cp.expiresAt,
-          age: formatAge(cp.createdAt),
-        })),
-      },
+    const jsonData = {
+      checkpoints: checkpoints.map((cp: Checkpoint) => ({
+        checkpointId: cp.checkpointId,
+        agentId: cp.agentId,
+        sessionId: cp.sessionId,
+        stepIndex: cp.stepIndex,
+        completedStepId: cp.completedStepId,
+        createdAt: cp.createdAt,
+        expiresAt: cp.expiresAt,
+        age: formatAge(cp.createdAt),
+      })),
     };
+    return success(jsonData);
   }
 
   // Format for text output
@@ -206,39 +167,20 @@ async function listCheckpoints(options: CLIOptions): Promise<CommandResult> {
 
   console.log('');
 
-  return {
-    success: true,
-    exitCode: 0,
-    message: undefined,
-    data: { checkpoints },
-  };
+  return success({ checkpoints });
 }
 
 /**
  * Extract resume options from CLI options
  */
 function extractResumeOptions(options: CLIOptions): Partial<ResumeOptions> {
-  const opts = options as unknown as Record<string, unknown>;
+  const rawOpts = options as unknown as Record<string, unknown>;
   return {
-    checkpointId: opts.checkpoint as string | undefined,
-    agentId: opts.agent as string | undefined,
-    sessionId: opts.session as string | undefined,
-    force: opts.force === true,
+    checkpointId: rawOpts.checkpoint as string | undefined,
+    agentId: rawOpts.agent as string | undefined,
+    sessionId: rawOpts.session as string | undefined,
+    force: rawOpts.force === true,
     format: options.format,
   };
 }
 
-/**
- * Format a datetime as human-readable age
- */
-function formatAge(isoDate: string): string {
-  const diff = Date.now() - new Date(isoDate).getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return 'just now';
-}

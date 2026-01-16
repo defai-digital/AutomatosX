@@ -20,28 +20,16 @@ import {
   TIMEOUT_PROVIDER_DEFAULT,
   CONFIDENCE_DEFAULT_MIN,
   ANALYSIS_MAX_FILES_DEFAULT,
+  LIMIT_DEFAULT,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import { createAnalysisProviderRouter } from '../utils/provider-factory.js';
+import { COLORS } from '../utils/terminal.js';
 
 /**
- * ANSI color codes for terminal output
+ * Review-specific status icons
  */
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
-
-/**
- * Status icons
- */
-const ICONS = {
+const REVIEW_ICONS = {
   critical: `${COLORS.red}✖${COLORS.reset}`,
   warning: `${COLORS.yellow}⚠${COLORS.reset}`,
   suggestion: `${COLORS.blue}◉${COLORS.reset}`,
@@ -83,7 +71,7 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
   let timeoutMs = TIMEOUT_PROVIDER_DEFAULT;
   let outputFormat: 'markdown' | 'json' | 'sarif' = 'markdown';
   let dryRun = false;
-  let limit = 10;
+  let limit = LIMIT_DEFAULT;
 
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
@@ -180,10 +168,10 @@ Focus Modes:
   ${COLORS.green}all${COLORS.reset}             Comprehensive review (default)
 
 Severity Levels:
-  ${ICONS.critical} critical    Must fix - security vulnerability, data loss risk
-  ${ICONS.warning} warning     Should fix - potential bug, bad practice
-  ${ICONS.suggestion} suggestion  Could improve - enhancement opportunity
-  ${ICONS.note} note        Informational - observation, documentation
+  ${REVIEW_ICONS.critical} critical    Must fix - security vulnerability, data loss risk
+  ${REVIEW_ICONS.warning} warning     Should fix - potential bug, bad practice
+  ${REVIEW_ICONS.suggestion} suggestion  Could improve - enhancement opportunity
+  ${REVIEW_ICONS.note} note        Informational - observation, documentation
 
 Output Formats:
   markdown  Human-readable report (default)
@@ -263,22 +251,22 @@ function formatReviewResultForCLI(result: ReviewResult, verbose: boolean): strin
   lines.push(`${COLORS.bold}Summary${COLORS.reset}`);
   const severityParts: string[] = [];
   if (summary.bySeverity.critical > 0) {
-    severityParts.push(`${ICONS.critical} ${summary.bySeverity.critical} critical`);
+    severityParts.push(`${REVIEW_ICONS.critical} ${summary.bySeverity.critical} critical`);
   }
   if (summary.bySeverity.warning > 0) {
-    severityParts.push(`${ICONS.warning} ${summary.bySeverity.warning} warning`);
+    severityParts.push(`${REVIEW_ICONS.warning} ${summary.bySeverity.warning} warning`);
   }
   if (summary.bySeverity.suggestion > 0) {
-    severityParts.push(`${ICONS.suggestion} ${summary.bySeverity.suggestion} suggestion`);
+    severityParts.push(`${REVIEW_ICONS.suggestion} ${summary.bySeverity.suggestion} suggestion`);
   }
   if (summary.bySeverity.note > 0) {
-    severityParts.push(`${ICONS.note} ${summary.bySeverity.note} note`);
+    severityParts.push(`${REVIEW_ICONS.note} ${summary.bySeverity.note} note`);
   }
 
   if (severityParts.length > 0) {
     lines.push(severityParts.join(' | '));
   } else {
-    lines.push(`${ICONS.check} No issues found`);
+    lines.push(`${REVIEW_ICONS.check} No issues found`);
   }
 
   // Health score
@@ -346,13 +334,13 @@ function formatCommentForCLI(
   severity: 'critical' | 'warning' | 'suggestion' | 'note'
 ): string[] {
   const lines: string[] = [];
-  const icon = ICONS[severity];
+  const icon = REVIEW_ICONS[severity];
   const location = comment.lineEnd
     ? `${comment.file}:${comment.line}-${comment.lineEnd}`
     : `${comment.file}:${comment.line}`;
 
   lines.push(`${icon} ${COLORS.bold}${comment.title}${COLORS.reset}`);
-  lines.push(`  ${ICONS.file} ${COLORS.cyan}${location}${COLORS.reset}`);
+  lines.push(`  ${REVIEW_ICONS.file} ${COLORS.cyan}${location}${COLORS.reset}`);
   lines.push(`  ${COLORS.dim}Category: ${comment.category} | Confidence: ${Math.round(comment.confidence * 100)}%${COLORS.reset}`);
 
   if (verbose) {
@@ -445,7 +433,7 @@ Lines: ${dryRunResult.totalLines.toLocaleString()}
 Estimated time: ${formatDuration(dryRunResult.estimatedDurationMs)}
 
 ${COLORS.bold}Files:${COLORS.reset}
-${dryRunResult.files.map((f: string) => `  ${ICONS.file} ${f}`).join('\n')}
+${dryRunResult.files.map((f: string) => `  ${REVIEW_ICONS.file} ${f}`).join('\n')}
 `.trim();
 
       return {
@@ -507,11 +495,11 @@ ${dryRunResult.files.map((f: string) => `  ${ICONS.file} ${f}`).join('\n')}
       exitCode: 0,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error during review';
+    const message = getErrorMessage(error, 'Unknown error during review');
     const errorCode =
       error instanceof Error && 'code' in error ? (error as { code: string }).code : 'UNKNOWN';
 
-    let userMessage = `${ICONS.critical} Review failed: ${message}`;
+    let userMessage = `${REVIEW_ICONS.critical} Review failed: ${message}`;
 
     if (errorCode === ReviewErrorCode.TIMEOUT) {
       userMessage += '\n\nTip: Try reducing --max-files or increasing --timeout';

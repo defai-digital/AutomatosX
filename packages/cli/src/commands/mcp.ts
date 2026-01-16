@@ -6,6 +6,7 @@
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
+import { getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * MCP subcommands
@@ -61,13 +62,13 @@ async function startMCPServer(): Promise<CommandResult> {
   } catch (error) {
     // Log to stderr to avoid polluting MCP protocol on stdout
     console.error(
-      `MCP server error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `MCP server error: ${getErrorMessage(error)}`
     );
 
     return {
       success: false,
       exitCode: 1,
-      message: `Failed to start MCP server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to start MCP server: ${getErrorMessage(error)}`,
       data: undefined,
     };
   }

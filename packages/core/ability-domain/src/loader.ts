@@ -70,10 +70,17 @@ export class FileSystemAbilityLoader implements AbilityLoader {
       .map((entry) => entry.name)
       .filter((name) => this.config.extensions.includes(path.extname(name).toLowerCase()));
 
-    for (const file of files) {
-      const filePath = path.join(dirPath, file);
-      const ability = await this.loadFile(filePath, file);
+    // Load all files in parallel for better performance
+    const loadResults = await Promise.all(
+      files.map(async (file) => {
+        const filePath = path.join(dirPath, file);
+        const ability = await this.loadFile(filePath, file);
+        return { file, ability };
+      })
+    );
 
+    // Process results sequentially to handle duplicates consistently
+    for (const { file, ability } of loadResults) {
       if (ability) {
         if (this.cache.has(ability.abilityId)) {
           console.warn(

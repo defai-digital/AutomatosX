@@ -15,7 +15,7 @@ import {
   type AgentRegistry,
 } from '@defai.digital/agent-domain';
 import type { AgentProfile } from '@defai.digital/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage } from '@defai.digital/contracts';
 
 // Storage path for persistent agents (matches MCP server)
 const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
@@ -79,7 +79,7 @@ async function initializeRegistry(): Promise<AgentRegistry> {
       }
     } catch (error) {
       // Log but don't fail - example agents are optional
-      console.warn('Failed to load example agents:', error instanceof Error ? error.message : error);
+      console.warn('Failed to load example agents:', getErrorMessage(error));
     }
   }
 
@@ -158,8 +158,8 @@ async function listAgents(options: CLIOptions): Promise<CommandResult> {
     // Format as text table
     const header = 'Agent ID             | Description                      | Team       | Enabled';
     const separator = '-'.repeat(header.length);
-    const rows = limited.map((a) =>
-      `${(a.agentId ?? '').padEnd(20)} | ${(a.description ?? '').slice(0, 32).padEnd(32)} | ${(a.team ?? '-').padEnd(10)} | ${a.enabled ? 'Yes' : 'No'}`
+    const rows = limited.map((agent) =>
+      `${(agent.agentId ?? '').padEnd(20)} | ${(agent.description ?? '').slice(0, 32).padEnd(32)} | ${(agent.team ?? '-').padEnd(10)} | ${agent.enabled ? 'Yes' : 'No'}`
     );
 
     return {
@@ -171,7 +171,7 @@ async function listAgents(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to list agents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to list agents: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -242,7 +242,7 @@ async function getAgent(args: string[], options: CLIOptions): Promise<CommandRes
   } catch (error) {
     return {
       success: false,
-      message: `Failed to get agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to get agent: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -287,7 +287,7 @@ async function registerAgent(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to register agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to register agent: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -365,7 +365,7 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
   } catch (error) {
     return {
       success: false,
-      message: `Failed to run agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to run agent: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -400,7 +400,7 @@ async function removeAgent(args: string[], _options: CLIOptions): Promise<Comman
   } catch (error) {
     return {
       success: false,
-      message: `Failed to remove agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to remove agent: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };

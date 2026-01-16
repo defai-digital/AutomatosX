@@ -1,4 +1,17 @@
 import type { ParsedCommand, CLIOptions } from './types.js';
+import {
+  SECONDS_PER_MINUTE,
+  SECONDS_PER_HOUR,
+} from '@defai.digital/contracts';
+
+/** Milliseconds per second */
+const MS_PER_SECOND = 1000;
+
+/** Milliseconds per minute */
+const MS_PER_MINUTE = SECONDS_PER_MINUTE * MS_PER_SECOND;
+
+/** Milliseconds per hour */
+const MS_PER_HOUR = SECONDS_PER_HOUR * MS_PER_SECOND;
 
 /**
  * Default CLI options
@@ -306,11 +319,11 @@ export function parseTime(timeStr: string): number {
 
   switch (unit) {
     case 's':
-      return value * 1000;
+      return value * MS_PER_SECOND;
     case 'm':
-      return value * 60 * 1000;
+      return value * MS_PER_MINUTE;
     case 'h':
-      return value * 60 * 60 * 1000;
+      return value * MS_PER_HOUR;
     default:
       throw new Error(`Unknown time unit: ${unit}`);
   }

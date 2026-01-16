@@ -137,22 +137,28 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
     const files = fs.readdirSync(dirPath);
     const workflows: Workflow[] = [];
 
-    for (const file of files) {
-      const ext = path.extname(file).toLowerCase();
-      if (!this.config.extensions.includes(ext)) {
-        continue;
-      }
+    // Filter valid files first (sync operations)
+    const validFiles = files
+      .filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        if (!this.config.extensions.includes(ext)) return false;
 
-      const filePath = path.join(dirPath, file);
+        const filePath = path.join(dirPath, file);
+        const stat = fs.statSync(filePath);
+        return !stat.isDirectory();
+      })
+      .map((file) => ({ file, filePath: path.join(dirPath, file) }));
 
-      // Skip directories
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        continue;
-      }
+    // Load all files in parallel for better performance
+    const loadResults = await Promise.all(
+      validFiles.map(async ({ file, filePath }) => {
+        const workflow = await this.loadFile(filePath);
+        return { file, filePath, workflow };
+      })
+    );
 
-      const workflow = await this.loadFile(filePath);
-
+    // Process results sequentially to handle duplicates consistently
+    for (const { file, filePath, workflow } of loadResults) {
       if (workflow) {
         // INV-WF-LDR-003: Check for duplicate workflow IDs
         if (this.cache.has(workflow.workflowId)) {

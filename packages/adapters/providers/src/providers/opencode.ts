@@ -20,7 +20,8 @@ import type { CLIProviderConfig } from '../types.js';
 export const opencodeConfig: CLIProviderConfig = {
   providerId: 'opencode',
   command: 'opencode',
-  args: ['--print', '--output-format', 'stream-json'],
+  args: ['run', '--format', 'json'],  // Use 'run' subcommand with JSON format
+  promptStyle: 'arg',  // Append prompt as argument after 'run --format json'
   env: {
     // Non-interactive mode flags
     TERM: 'dumb',

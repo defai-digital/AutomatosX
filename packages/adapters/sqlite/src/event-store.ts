@@ -1,6 +1,7 @@
 import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
 import type { EventStore } from '@defai.digital/memory-domain';
 import type Database from 'better-sqlite3';
+import { isValidTableName, invalidTableNameMessage } from './validation.js';
 
 /**
  * Error thrown by SQLite event store operations
@@ -27,14 +28,6 @@ export const SqliteEventStoreErrorCodes = {
 } as const;
 
 /**
- * Validates a SQL table name to prevent SQL injection
- * Only allows alphanumeric characters and underscores, must start with letter or underscore
- */
-function isValidTableName(name: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) && name.length <= 64;
-}
-
-/**
  * SQLite implementation of EventStore
  * INV-MEM-001: Events are immutable - stored as read-only rows
  * INV-MEM-003: Adapter does not accept domain objects directly (uses MemoryEvent contract)
@@ -49,7 +42,7 @@ export class SqliteEventStore implements EventStore {
     if (!isValidTableName(tableName)) {
       throw new SqliteEventStoreError(
         SqliteEventStoreErrorCodes.INVALID_TABLE_NAME,
-        `Invalid table name: ${tableName}. Must start with letter or underscore, contain only alphanumeric and underscores, max 64 chars.`
+        invalidTableNameMessage(tableName)
       );
     }
     this.db = db;

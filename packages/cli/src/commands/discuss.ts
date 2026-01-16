@@ -46,31 +46,9 @@ import {
   type DiscussStepConfig,
   type TimeoutStrategy,
   type DiscussionParticipant,
+  getErrorMessage,
 } from '@defai.digital/contracts';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-};
-
-const ICONS = {
-  check: `${COLORS.green}\u2713${COLORS.reset}`,
-  cross: `${COLORS.red}\u2717${COLORS.reset}`,
-  arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
-  bullet: `${COLORS.dim}\u2022${COLORS.reset}`,
-  discuss: `${COLORS.magenta}\u2630${COLORS.reset}`,
-};
+import { COLORS, ICONS } from '../utils/terminal.js';
 
 // Pattern display names
 const PATTERN_NAMES: Record<DiscussionPattern, string> = {
@@ -190,7 +168,7 @@ function createProviderBridge(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
           retryable: true,
           durationMs: Date.now() - startTime,
         };
@@ -821,7 +799,7 @@ export async function discussCommand(
       console.log(ICONS.cross);
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     return {
       success: false,
       message: `Error during discussion: ${errorMessage}`,

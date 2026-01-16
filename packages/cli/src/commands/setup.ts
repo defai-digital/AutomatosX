@@ -27,6 +27,7 @@ import {
   type ProviderId,
   type ProviderDetectionResult,
 } from '@defai.digital/contracts';
+import { COLORS, ICONS } from '../utils/terminal.js';
 
 const execAsync = promisify(exec);
 
@@ -72,24 +73,6 @@ const CLI_FLAGS = {
   global: ['--global', '-g'],
 } as const;
 
-/** Terminal color codes */
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-} as const;
-
-/** Terminal output icons */
-const ICONS = {
-  check: `${COLORS.green}\u2713${COLORS.reset}`,
-  cross: `${COLORS.red}\u2717${COLORS.reset}`,
-  warn: `${COLORS.yellow}\u26A0${COLORS.reset}`,
-  arrow: `${COLORS.cyan}\u2192${COLORS.reset}`,
-} as const;
 
 // ============================================================================
 // Provider Detection

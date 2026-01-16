@@ -11,7 +11,12 @@ import {
   createAbilityManager,
   DEFAULT_ABILITY_DOMAIN_CONFIG,
 } from '@defai.digital/ability-domain';
-import { LIMIT_ABILITY_TOKENS_AGENT } from '@defai.digital/contracts';
+import {
+  LIMIT_ABILITY_TOKENS_AGENT,
+  LIMIT_DEFAULT,
+  PRIORITY_DEFAULT,
+  getErrorMessage,
+} from '@defai.digital/contracts';
 
 // Singleton registry for demo purposes
 const registry = createAbilityRegistry();
@@ -123,8 +128,8 @@ async function listAbilities(options: CLIOptions): Promise<CommandResult> {
     // Format as text table
     const header = 'Ability ID           | Category       | Priority | Enabled | Tags';
     const separator = '-'.repeat(header.length);
-    const rows = limited.map((a) =>
-      `${(a.abilityId ?? '').padEnd(20)} | ${(a.category ?? '-').padEnd(14)} | ${String(a.priority ?? 50).padEnd(8)} | ${a.enabled ? 'Yes' : 'No '.padEnd(7)} | ${(a.tags?.slice(0, 3).join(', ') ?? '-')}`
+    const rows = limited.map((ability) =>
+      `${(ability.abilityId ?? '').padEnd(20)} | ${(ability.category ?? '-').padEnd(14)} | ${String(ability.priority ?? PRIORITY_DEFAULT).padEnd(8)} | ${ability.enabled ? 'Yes' : 'No '.padEnd(7)} | ${(ability.tags?.slice(0, 3).join(', ') ?? '-')}`
     );
 
     return {
@@ -136,7 +141,7 @@ async function listAbilities(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to list abilities: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to list abilities: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -184,7 +189,7 @@ async function getAbility(args: string[], options: CLIOptions): Promise<CommandR
       `Ability: ${ability.abilityId}`,
       `Display Name: ${ability.displayName ?? ability.abilityId}`,
       `Category: ${ability.category ?? 'N/A'}`,
-      `Priority: ${ability.priority ?? 50}`,
+      `Priority: ${ability.priority ?? PRIORITY_DEFAULT}`,
       `Enabled: ${ability.enabled ? 'Yes' : 'No'}`,
       `Tags: ${ability.tags?.join(', ') ?? 'N/A'}`,
       `Version: ${ability.version ?? 'N/A'}`,
@@ -206,7 +211,7 @@ async function getAbility(args: string[], options: CLIOptions): Promise<CommandR
   } catch (error) {
     return {
       success: false,
-      message: `Failed to get ability: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to get ability: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -221,9 +226,9 @@ async function injectAbilities(options: CLIOptions): Promise<CommandResult> {
     const agentId = options.agent ?? 'default-agent';
     const task = options.task ?? options.input ?? 'general task';
     const coreAbilities = options.core !== undefined
-      ? options.core.split(',').map((s) => s.trim())
+      ? options.core.split(',').map((abilityId) => abilityId.trim())
       : undefined;
-    const maxAbilities = options.limit ?? 10;
+    const maxAbilities = options.limit ?? LIMIT_DEFAULT;
     const maxTokens = options.maxTokens ?? LIMIT_ABILITY_TOKENS_AGENT;
 
     const result = await manager.injectAbilities(
@@ -275,7 +280,7 @@ async function injectAbilities(options: CLIOptions): Promise<CommandResult> {
   } catch (error) {
     return {
       success: false,
-      message: `Failed to inject abilities: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to inject abilities: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };
@@ -305,7 +310,7 @@ async function loadAbilities(args: string[], options: CLIOptions): Promise<Comma
         data: {
           directory,
           loaded: abilities.length,
-          abilities: abilities.map((a) => a.abilityId),
+          abilities: abilities.map((ability) => ability.abilityId),
         },
         exitCode: 0,
       };
@@ -320,7 +325,7 @@ async function loadAbilities(args: string[], options: CLIOptions): Promise<Comma
   } catch (error) {
     return {
       success: false,
-      message: `Failed to load abilities: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to load abilities: ${getErrorMessage(error)}`,
       data: undefined,
       exitCode: 1,
     };

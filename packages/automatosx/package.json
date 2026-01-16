@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "13.2.5",
+  "version": "13.2.6",
   "description": "AutomatosX CLI - AI-powered workflow automation (wrapper for @defai.digital/cli)",
   "type": "module",
   "main": "dist/index.js",

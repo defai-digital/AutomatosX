@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.2.5-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.2.6-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -432,6 +432,8 @@ When switching projects, just run `ax init` in the new project.
 ---
 
 ## What's New
+
+**v13.2.6** - Provider reliability: Fixed ax-grok timeout handling, fixed opencode stdin/JSON error parsing, improved error messages for missing credentials
 
 **v13.2.5** - Provider fixes: Fixed OpenCode CLI args, fixed Grok CLI args, removed Antigravity, improved parallelization
 

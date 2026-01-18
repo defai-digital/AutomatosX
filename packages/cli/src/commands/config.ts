@@ -1,12 +1,5 @@
 /**
  * Config command - Configuration management for AutomatosX
- *
- * Subcommands:
- * - show: Display current configuration
- * - get: Get a specific config value
- * - set: Set a config value
- * - reset: Reset configuration to defaults
- * - path: Show config file paths
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
@@ -15,22 +8,16 @@ import {
   getValue,
   setValue,
 } from '@defai.digital/config-domain';
-import {
-  type AutomatosXConfig,
-  safeValidateConfig,
-  getErrorMessage,
-} from '@defai.digital/contracts';
+import { safeValidateConfig } from '@defai.digital/contracts';
 import { COLORS, ICONS } from '../utils/terminal.js';
+import { success, successJson, failure, failureFromError } from '../utils/formatters.js';
+
+type ConfigScope = 'global' | 'local' | 'merged';
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-type ConfigScope = 'global' | 'local' | 'merged';
-
-/**
- * Parses scope from arguments
- */
 function parseScope(args: string[]): ConfigScope {
   for (const arg of args) {
     if (arg === '--global' || arg === '-g') return 'global';
@@ -40,370 +27,171 @@ function parseScope(args: string[]): ConfigScope {
   return 'merged';
 }
 
-/**
- * Formats a config value for display
- */
 function formatValue(value: unknown): string {
-  if (value === undefined) {
-    return `${COLORS.dim}(undefined)${COLORS.reset}`;
-  }
-  if (value === null) {
-    return `${COLORS.dim}null${COLORS.reset}`;
-  }
-  if (typeof value === 'boolean') {
-    return value ? `${COLORS.green}true${COLORS.reset}` : `${COLORS.red}false${COLORS.reset}`;
-  }
-  if (typeof value === 'number') {
-    return `${COLORS.cyan}${String(value)}${COLORS.reset}`;
-  }
-  if (typeof value === 'string') {
-    return `"${value}"`;
-  }
-  if (Array.isArray(value)) {
-    return JSON.stringify(value, null, 2);
-  }
-  if (typeof value === 'object') {
-    return JSON.stringify(value, null, 2);
-  }
-  return String(value);
+  if (value === undefined) return `${COLORS.dim}(undefined)${COLORS.reset}`;
+  if (value === null) return `${COLORS.dim}null${COLORS.reset}`;
+  if (typeof value === 'boolean') return value ? `${COLORS.green}true${COLORS.reset}` : `${COLORS.red}false${COLORS.reset}`;
+  if (typeof value === 'number') return `${COLORS.cyan}${value}${COLORS.reset}`;
+  if (typeof value === 'string') return `"${value}"`;
+  return JSON.stringify(value, null, 2);
 }
 
-/**
- * Parses a value from string input
- */
 function parseValue(input: string): unknown {
-  // Try to parse as JSON
   try {
     return JSON.parse(input);
   } catch {
-    // Return as string if not valid JSON
     return input;
   }
+}
+
+/** Returns result in appropriate format (JSON or text) */
+function result(isJson: boolean, text: string, data: unknown): CommandResult {
+  return isJson ? successJson(data) : success(text, data);
+}
+
+/** Returns error in appropriate format (JSON or text) */
+function errorResult(isJson: boolean, text: string, errorData?: unknown): CommandResult {
+  return isJson
+    ? { success: false, message: undefined, data: errorData ?? { error: text }, exitCode: 1 }
+    : failure(text);
 }
 
 // ============================================================================
 // Subcommand Handlers
 // ============================================================================
 
-/**
- * Shows full configuration
- */
-async function handleShow(
-  args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+async function handleShow(args: string[], options: CLIOptions): Promise<CommandResult> {
   const store = createConfigStore();
   const scope = parseScope(args);
   const isJson = options.format === 'json';
 
   try {
-    let config: AutomatosXConfig | undefined;
-
-    if (scope === 'merged') {
-      config = await store.readMerged();
-    } else {
-      config = await store.read(scope);
-    }
+    const config = scope === 'merged' ? await store.readMerged() : await store.read(scope);
 
     if (config === undefined) {
-      if (isJson) {
-        return {
-          success: false,
-          message: undefined,
-          data: { error: `No configuration found for scope: ${scope}` },
-          exitCode: 1,
-        };
-      }
-      return {
-        success: false,
-        message: `${ICONS.cross} No configuration found for scope: ${scope}`,
-        data: undefined,
-        exitCode: 1,
-      };
+      return errorResult(isJson, `${ICONS.cross} No configuration found for scope: ${scope}`);
     }
 
     if (isJson) {
-      return {
-        success: true,
-        message: undefined,
-        data: { scope, config },
-        exitCode: 0,
-      };
+      return successJson({ scope, config });
     }
 
-    // Text format
-    const output: string[] = [];
-    output.push('');
-    output.push(`${COLORS.bold}AutomatosX Configuration (${scope})${COLORS.reset}`);
-    output.push('\u2500'.repeat(50));
-    output.push('');
+    const providerLines = Object.entries(config.providers).map(([id, p], i) => {
+      const status = p.enabled ? `${COLORS.green}enabled${COLORS.reset}` : `${COLORS.red}disabled${COLORS.reset}`;
+      const def = config.defaultProvider === id ? ' [DEFAULT]' : '';
+      return `  ${i + 1}. ${id} (priority: ${p.priority}, ${status})${def}`;
+    });
 
-    // Version and metadata
-    output.push(`${COLORS.bold}Version:${COLORS.reset} ${config.version}`);
-    output.push(`${COLORS.bold}Log Level:${COLORS.reset} ${config.logLevel}`);
-    output.push(`${COLORS.bold}Telemetry:${COLORS.reset} ${config.telemetryEnabled ? 'enabled' : 'disabled'}`);
-    output.push('');
+    const output = [
+      '',
+      `${COLORS.bold}AutomatosX Configuration (${scope})${COLORS.reset}`,
+      '\u2500'.repeat(50),
+      '',
+      `${COLORS.bold}Version:${COLORS.reset} ${config.version}`,
+      `${COLORS.bold}Log Level:${COLORS.reset} ${config.logLevel}`,
+      `${COLORS.bold}Telemetry:${COLORS.reset} ${config.telemetryEnabled ? 'enabled' : 'disabled'}`,
+      '',
+      `${COLORS.bold}Providers:${COLORS.reset}`,
+      providerLines.length > 0 ? providerLines.join('\n') : '  (no providers configured)',
+      '',
+      `${COLORS.bold}Execution Policy:${COLORS.reset}`,
+      `  Timeout: ${config.executionPolicy.defaultTimeoutMs}ms`,
+      `  Max Retries: ${config.executionPolicy.maxRetries}`,
+      `  Parallel: ${config.executionPolicy.enableParallelExecution ? 'enabled' : 'disabled'}`,
+      '',
+      `${COLORS.bold}Features:${COLORS.reset}`,
+      `  Tracing: ${config.features.enableTracing ? 'enabled' : 'disabled'}`,
+      `  Memory: ${config.features.enableMemoryPersistence ? 'enabled' : 'disabled'}`,
+      `  Guard: ${config.features.enableGuard ? 'enabled' : 'disabled'}`,
+      `  Metrics: ${config.features.enableMetrics ? 'enabled' : 'disabled'}`,
+      '',
+      `${COLORS.bold}Workspace:${COLORS.reset}`,
+      `  Data Dir: ${config.workspace.dataDir}`,
+      '',
+    ];
 
-    // Providers (Record format keyed by provider name)
-    output.push(`${COLORS.bold}Providers:${COLORS.reset}`);
-    const providerEntries = Object.entries(config.providers);
-    if (providerEntries.length === 0) {
-      output.push('  (no providers configured)');
-    } else {
-      let i = 0;
-      for (const [providerId, p] of providerEntries) {
-        const isDefault = config.defaultProvider === providerId;
-        const status = p.enabled ? COLORS.green + 'enabled' + COLORS.reset : COLORS.red + 'disabled' + COLORS.reset;
-        const defaultMarker = isDefault ? ' [DEFAULT]' : '';
-        output.push(`  ${String(i + 1)}. ${providerId} (priority: ${String(p.priority)}, ${status})${defaultMarker}`);
-        i++;
-      }
-    }
-    output.push('');
-
-    // Execution Policy
-    output.push(`${COLORS.bold}Execution Policy:${COLORS.reset}`);
-    output.push(`  Timeout: ${String(config.executionPolicy.defaultTimeoutMs)}ms`);
-    output.push(`  Max Retries: ${String(config.executionPolicy.maxRetries)}`);
-    output.push(`  Parallel: ${config.executionPolicy.enableParallelExecution ? 'enabled' : 'disabled'}`);
-    output.push('');
-
-    // Features
-    output.push(`${COLORS.bold}Features:${COLORS.reset}`);
-    output.push(`  Tracing: ${config.features.enableTracing ? 'enabled' : 'disabled'}`);
-    output.push(`  Memory: ${config.features.enableMemoryPersistence ? 'enabled' : 'disabled'}`);
-    output.push(`  Guard: ${config.features.enableGuard ? 'enabled' : 'disabled'}`);
-    output.push(`  Metrics: ${config.features.enableMetrics ? 'enabled' : 'disabled'}`);
-    output.push('');
-
-    // Workspace
-    output.push(`${COLORS.bold}Workspace:${COLORS.reset}`);
-    output.push(`  Data Dir: ${config.workspace.dataDir}`);
-    output.push('');
-
-    return {
-      success: true,
-      message: output.join('\n'),
-      data: undefined,
-      exitCode: 0,
-    };
+    return success(output.join('\n'));
   } catch (error) {
-    const errorMessage = getErrorMessage(error);
-    if (isJson) {
-      return {
-        success: false,
-        message: undefined,
-        data: { error: errorMessage },
-        exitCode: 1,
-      };
-    }
-    return {
-      success: false,
-      message: `${ICONS.cross} Error: ${errorMessage}`,
-      data: undefined,
-      exitCode: 1,
-    };
+    return failureFromError('read config', error);
   }
 }
 
-/**
- * Gets a specific config value
- */
-async function handleGet(
-  args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+async function handleGet(args: string[], options: CLIOptions): Promise<CommandResult> {
   const store = createConfigStore();
   const scope = parseScope(args);
   const isJson = options.format === 'json';
-
-  // Find the path argument (first non-flag argument after 'get')
-  const path = args.find((arg) => !arg.startsWith('-') && arg !== 'get');
+  const path = args.find(arg => !arg.startsWith('-') && arg !== 'get');
 
   if (path === undefined) {
-    const message = 'Usage: ax config get <path> [--scope]';
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: message }, exitCode: 1 };
-    }
-    return { success: false, message, data: undefined, exitCode: 1 };
+    return errorResult(isJson, 'Usage: ax config get <path> [--scope]');
   }
 
   try {
-    let config: AutomatosXConfig | undefined;
-
-    if (scope === 'merged') {
-      config = await store.readMerged();
-    } else {
-      config = await store.read(scope);
-    }
+    const config = scope === 'merged' ? await store.readMerged() : await store.read(scope);
 
     if (config === undefined) {
-      if (isJson) {
-        return {
-          success: false,
-          message: undefined,
-          data: { error: 'No configuration found' },
-          exitCode: 1,
-        };
-      }
-      return {
-        success: false,
-        message: `${ICONS.cross} No configuration found`,
-        data: undefined,
-        exitCode: 1,
-      };
+      return errorResult(isJson, `${ICONS.cross} No configuration found`);
     }
 
     const value = getValue(config, path);
 
     if (isJson) {
-      return {
-        success: true,
-        message: undefined,
-        data: { path, value, scope, found: value !== undefined },
-        exitCode: 0,
-      };
+      return successJson({ path, value, scope, found: value !== undefined });
     }
 
-    if (value === undefined) {
-      return {
-        success: true,
-        message: `${path}: ${COLORS.dim}(not set)${COLORS.reset}`,
-        data: undefined,
-        exitCode: 0,
-      };
-    }
-
-    return {
-      success: true,
-      message: formatValue(value),
-      data: undefined,
-      exitCode: 0,
-    };
+    return success(value === undefined ? `${path}: ${COLORS.dim}(not set)${COLORS.reset}` : formatValue(value));
   } catch (error) {
-    const errorMessage = getErrorMessage(error);
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
-    }
-    return { success: false, message: `${ICONS.cross} Error: ${errorMessage}`, data: undefined, exitCode: 1 };
+    return failureFromError('get config value', error);
   }
 }
 
-/**
- * Sets a config value
- */
-async function handleSet(
-  args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+async function handleSet(args: string[], options: CLIOptions): Promise<CommandResult> {
   const store = createConfigStore();
   const isJson = options.format === 'json';
 
-  // Parse scope (default to global for set)
   let scope: 'global' | 'local' = 'global';
   for (const arg of args) {
     if (arg === '--local' || arg === '-l') scope = 'local';
     if (arg === '--global' || arg === '-g') scope = 'global';
   }
 
-  // Find path and value (non-flag arguments after 'set')
-  const nonFlagArgs = args.filter((arg) => !arg.startsWith('-') && arg !== 'set');
+  const nonFlagArgs = args.filter(arg => !arg.startsWith('-') && arg !== 'set');
   const path = nonFlagArgs[0];
   const valueStr = nonFlagArgs.slice(1).join(' ');
 
   if (path === undefined || valueStr === '') {
-    const message = 'Usage: ax config set <path> <value> [--scope]';
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: message }, exitCode: 1 };
-    }
-    return { success: false, message, data: undefined, exitCode: 1 };
+    return errorResult(isJson, 'Usage: ax config set <path> <value> [--scope]');
   }
 
   try {
-    // Read existing config
     let config = await store.read(scope);
 
     if (config === undefined) {
-      if (isJson) {
-        return {
-          success: false,
-          message: undefined,
-          data: { error: `No ${scope} configuration found. Run 'ax setup' first.` },
-          exitCode: 1,
-        };
-      }
-      return {
-        success: false,
-        message: `${ICONS.cross} No ${scope} configuration found. Run 'ax setup' first.`,
-        data: undefined,
-        exitCode: 1,
-      };
+      return errorResult(isJson, `${ICONS.cross} No ${scope} configuration found. Run 'ax setup' first.`);
     }
 
     const oldValue = getValue(config, path);
     const newValue = parseValue(valueStr);
-
-    // Update config
     config = setValue(config, path, newValue);
 
-    // Validate
     const validation = safeValidateConfig(config);
     if (!validation.success) {
-      const errors = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
-      if (isJson) {
-        return {
-          success: false,
-          message: undefined,
-          data: { error: 'Validation failed', errors },
-          exitCode: 1,
-        };
-      }
-      return {
-        success: false,
-        message: `${ICONS.cross} Invalid value: ${errors.join(', ')}`,
-        data: undefined,
-        exitCode: 1,
-      };
+      const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+      return errorResult(isJson, `${ICONS.cross} Invalid value: ${errors.join(', ')}`, { error: 'Validation failed', errors });
     }
 
-    // Save
     await store.write(config, scope);
 
-    if (isJson) {
-      return {
-        success: true,
-        message: undefined,
-        data: { path, oldValue, newValue, scope },
-        exitCode: 0,
-      };
-    }
-
-    return {
-      success: true,
-      message: `${ICONS.check} Set ${path} = ${formatValue(newValue)}`,
-      data: undefined,
-      exitCode: 0,
-    };
+    return result(isJson, `${ICONS.check} Set ${path} = ${formatValue(newValue)}`, { path, oldValue, newValue, scope });
   } catch (error) {
-    const errorMessage = getErrorMessage(error);
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
-    }
-    return { success: false, message: `${ICONS.cross} Error: ${errorMessage}`, data: undefined, exitCode: 1 };
+    return failureFromError('set config value', error);
   }
 }
 
-/**
- * Resets configuration to defaults
- */
-async function handleReset(
-  args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+async function handleReset(args: string[], options: CLIOptions): Promise<CommandResult> {
   const store = createConfigStore();
   const isJson = options.format === 'json';
 
-  // Parse scope
   let scope: 'global' | 'local' | 'all' = 'global';
   let confirmed = false;
 
@@ -415,66 +203,32 @@ async function handleReset(
   }
 
   if (!confirmed) {
-    const message = `This will delete ${scope} configuration. Use --confirm to proceed.`;
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: message }, exitCode: 1 };
-    }
-    return { success: false, message: `${ICONS.warn} ${message}`, data: undefined, exitCode: 1 };
+    return errorResult(isJson, `${ICONS.warn} This will delete ${scope} configuration. Use --confirm to proceed.`);
   }
 
   try {
     const deleted: string[] = [];
 
     if (scope === 'all' || scope === 'global') {
-      const globalDeleted = await store.delete('global');
-      if (globalDeleted) deleted.push('global');
+      if (await store.delete('global')) deleted.push('global');
     }
-
     if (scope === 'all' || scope === 'local') {
-      const localDeleted = await store.delete('local');
-      if (localDeleted) deleted.push('local');
+      if (await store.delete('local')) deleted.push('local');
     }
 
     if (isJson) {
-      return {
-        success: true,
-        message: undefined,
-        data: { scope, deleted },
-        exitCode: 0,
-      };
+      return successJson({ scope, deleted });
     }
 
-    if (deleted.length === 0) {
-      return {
-        success: true,
-        message: `${ICONS.warn} No configuration files found to delete`,
-        data: undefined,
-        exitCode: 0,
-      };
-    }
-
-    return {
-      success: true,
-      message: `${ICONS.check} Deleted configuration: ${deleted.join(', ')}`,
-      data: undefined,
-      exitCode: 0,
-    };
+    return success(deleted.length === 0
+      ? `${ICONS.warn} No configuration files found to delete`
+      : `${ICONS.check} Deleted configuration: ${deleted.join(', ')}`);
   } catch (error) {
-    const errorMessage = getErrorMessage(error);
-    if (isJson) {
-      return { success: false, message: undefined, data: { error: errorMessage }, exitCode: 1 };
-    }
-    return { success: false, message: `${ICONS.cross} Error: ${errorMessage}`, data: undefined, exitCode: 1 };
+    return failureFromError('reset config', error);
   }
 }
 
-/**
- * Shows config file paths
- */
-async function handlePath(
-  _args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+async function handlePath(_args: string[], options: CLIOptions): Promise<CommandResult> {
   const store = createConfigStore();
   const isJson = options.format === 'json';
 
@@ -484,44 +238,33 @@ async function handlePath(
   const localExists = await store.exists('local');
 
   if (isJson) {
-    return {
-      success: true,
-      message: undefined,
-      data: {
-        global: { path: globalPath, exists: globalExists },
-        local: { path: localPath, exists: localExists },
-      },
-      exitCode: 0,
-    };
+    return successJson({
+      global: { path: globalPath, exists: globalExists },
+      local: { path: localPath, exists: localExists },
+    });
   }
 
-  const output: string[] = [];
-  output.push('');
-  output.push(`${COLORS.bold}Configuration Paths${COLORS.reset}`);
-  output.push('');
-  output.push(`Global: ${globalPath} ${globalExists ? COLORS.green + '(exists)' + COLORS.reset : COLORS.dim + '(not found)' + COLORS.reset}`);
-  output.push(`Local:  ${localPath} ${localExists ? COLORS.green + '(exists)' + COLORS.reset : COLORS.dim + '(not found)' + COLORS.reset}`);
-  output.push('');
+  const status = (exists: boolean) => exists
+    ? `${COLORS.green}(exists)${COLORS.reset}`
+    : `${COLORS.dim}(not found)${COLORS.reset}`;
 
-  return {
-    success: true,
-    message: output.join('\n'),
-    data: undefined,
-    exitCode: 0,
-  };
+  const output = [
+    '',
+    `${COLORS.bold}Configuration Paths${COLORS.reset}`,
+    '',
+    `Global: ${globalPath} ${status(globalExists)}`,
+    `Local:  ${localPath} ${status(localExists)}`,
+    '',
+  ];
+
+  return success(output.join('\n'));
 }
 
 // ============================================================================
 // Main Command Handler
 // ============================================================================
 
-/**
- * Config command handler
- */
-export async function configCommand(
-  args: string[],
-  options: CLIOptions
-): Promise<CommandResult> {
+export async function configCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0];
 
   switch (subcommand) {
@@ -536,12 +279,11 @@ export async function configCommand(
     case 'path':
       return handlePath(args.slice(1), options);
     default:
-      // Default to 'show' if no subcommand
       if (subcommand === undefined || subcommand.startsWith('-')) {
         return handleShow(args, options);
       }
 
-      const message = `Unknown subcommand: ${subcommand}
+      return failure(`Unknown subcommand: ${subcommand}
 
 Usage: ax config <subcommand> [options]
 
@@ -556,13 +298,6 @@ Examples:
   ax config show
   ax config get logLevel
   ax config set logLevel debug
-  ax config reset --confirm`;
-
-      return {
-        success: false,
-        message,
-        data: undefined,
-        exitCode: 1,
-      };
+  ax config reset --confirm`);
   }
 }

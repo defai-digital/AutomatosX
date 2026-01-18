@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/iterate-domain",
-  "version": "13.4.0",
+  "version": "13.4.1",
   "type": "module",
   "description": "Iterate mode for AutomatosX - autonomous execution with structured intent and safety controls",
   "license": "BUSL-1.1",

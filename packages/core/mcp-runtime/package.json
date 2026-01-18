@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/mcp-runtime",
-  "version": "13.4.0",
+  "version": "13.4.1",
   "type": "module",
   "description": "MCP runtime domain - cache, timeout, response helpers, and request validation",
   "license": "BUSL-1.1",

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/research-domain",
-  "version": "13.4.0",
+  "version": "13.4.1",
   "description": "Deep research agent with live documentation fetching and knowledge synthesis",
   "type": "module",
   "main": "./dist/index.js",

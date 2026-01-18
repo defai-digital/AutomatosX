@@ -138,6 +138,10 @@ export default defineConfig({
         __dirname,
         'packages/core/feedback-domain/src/index.ts'
       ),
+      '@defai.digital/discussion-domain': resolve(
+        __dirname,
+        'packages/core/discussion-domain/src/index.ts'
+      ),
     },
   },
   test: {

@@ -39,6 +39,15 @@ import {
   type SessionManager,
 } from '@defai.digital/session-domain';
 
+// Semantic context imports
+import {
+  createSemanticManager,
+  createEmbeddingProvider,
+  InMemorySemanticStore,
+  type SemanticManager,
+  type SemanticStorePort,
+} from '@defai.digital/semantic-context';
+
 // Step executor imports (for workflow execution)
 import {
   createRealStepExecutor,
@@ -67,6 +76,7 @@ import {
 export type ProviderRegistry = ReturnType<typeof createRegistry>;
 export type { TraceStore } from '@defai.digital/trace-domain';
 export type { SessionStore, SessionManager } from '@defai.digital/session-domain';
+export type { SemanticManager } from '@defai.digital/semantic-context';
 
 // ============================================================================
 // Database Utilities (shared with CLI via same database file)
@@ -161,6 +171,7 @@ interface MCPDependencies {
   traceStore: TraceStore;
   sessionStore: SessionStore;
   sessionManager: SessionManager;
+  semanticManager: SemanticManager;
   usingSqlite: boolean;
 }
 
@@ -171,6 +182,41 @@ let _asyncInitialized = false;
 // ============================================================================
 // Bootstrap Functions
 // ============================================================================
+
+/**
+ * Create semantic manager with optional SQLite backend
+ */
+function createSemanticManagerWithStore(sqliteStore: SemanticStorePort | null): SemanticManager {
+  const embeddingProvider = createEmbeddingProvider({ dimension: 384 });
+  const store = sqliteStore ?? new InMemorySemanticStore(embeddingProvider);
+  return createSemanticManager({
+    embeddingPort: embeddingProvider,
+    storePort: store,
+    defaultNamespace: 'default',
+    autoEmbed: true,
+  });
+}
+
+/**
+ * Initialize SQLite semantic store
+ * Returns null if SQLite is unavailable
+ */
+async function initializeSqliteSemanticStore(): Promise<SemanticStorePort | null> {
+  if (_database === null) {
+    return null;
+  }
+
+  try {
+    const sqliteModule = await import('@defai.digital/sqlite-adapter');
+    return sqliteModule.createSqliteSemanticStore(
+      _database as Parameters<typeof sqliteModule.createSqliteSemanticStore>[0]
+    );
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[MCP] SQLite semantic store unavailable (${msg}), using in-memory storage`);
+    return null;
+  }
+}
 
 /**
  * Async initialization - call this at server startup to enable SQLite storage
@@ -195,6 +241,10 @@ export async function initializeAsync(): Promise<void> {
     console.error('[MCP] Using SQLite trace storage at ' + getDatabasePath());
   }
 
+  // Create semantic manager (with SQLite if available)
+  const sqliteSemanticStore = usingSqlite ? await initializeSqliteSemanticStore() : null;
+  const semanticManager = createSemanticManagerWithStore(sqliteSemanticStore);
+
   // Create shared session store and manager
   const sessionStore = createSessionStore();
   const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
@@ -205,6 +255,7 @@ export async function initializeAsync(): Promise<void> {
     traceStore,
     sessionStore,
     sessionManager,
+    semanticManager,
     usingSqlite,
   };
 
@@ -231,6 +282,9 @@ export function bootstrap(): MCPDependencies {
   // Create in-memory trace store (no SQLite in sync mode)
   const traceStore = createInMemoryTraceStore();
 
+  // Create in-memory semantic manager
+  const semanticManager = createSemanticManagerWithStore(null);
+
   // Create shared session store and manager
   const sessionStore = createSessionStore();
   const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
@@ -241,6 +295,7 @@ export function bootstrap(): MCPDependencies {
     traceStore,
     sessionStore,
     sessionManager,
+    semanticManager,
     usingSqlite: false,
   };
 
@@ -292,6 +347,13 @@ export function getSessionStore(): SessionStore {
  */
 export function getSessionManager(): SessionManager {
   return getDependencies().sessionManager;
+}
+
+/**
+ * Get semantic manager for semantic search operations
+ */
+export function getSemanticManager(): SemanticManager {
+  return getDependencies().semanticManager;
 }
 
 /**

@@ -249,21 +249,7 @@ export const semanticClearTool: MCPTool = {
 // In-Memory Implementation
 // ============================================================================
 
-import {
-  createSemanticManager,
-  createEmbeddingProvider,
-  InMemorySemanticStore,
-} from '@defai.digital/semantic-context';
-
-// Create in-memory semantic manager for MCP tools
-const embeddingProvider = createEmbeddingProvider({ dimension: 384 });
-const inMemoryStore = new InMemorySemanticStore(embeddingProvider);
-const semanticManager = createSemanticManager({
-  embeddingPort: embeddingProvider,
-  storePort: inMemoryStore,
-  defaultNamespace: 'default',
-  autoEmbed: true,
-});
+import { getSemanticManager } from '../bootstrap.js';
 
 /**
  * Handler for semantic_store tool
@@ -277,7 +263,8 @@ export const handleSemanticStore: ToolHandler = async (args) => {
   const forceRecompute = (args.forceRecompute as boolean) ?? false;
 
   try {
-    const storeRequest: Parameters<typeof semanticManager.store>[0] = {
+    const manager = getSemanticManager();
+    const storeRequest: Parameters<typeof manager.store>[0] = {
       key,
       content,
       namespace: namespace ?? 'default',
@@ -285,7 +272,7 @@ export const handleSemanticStore: ToolHandler = async (args) => {
     };
     if (tags) storeRequest.tags = tags;
     if (metadata) storeRequest.metadata = metadata;
-    const result = await semanticManager.store(storeRequest);
+    const result = await manager.store(storeRequest);
 
     return {
       content: [
@@ -327,7 +314,8 @@ export const handleSemanticSearch: ToolHandler = async (args) => {
   const includeEmbeddings = (args.includeEmbeddings as boolean) ?? false;
 
   try {
-    const searchRequest: Parameters<typeof semanticManager.search>[0] = {
+    const manager = getSemanticManager();
+    const searchRequest: Parameters<typeof manager.search>[0] = {
       query,
       topK,
       minSimilarity,
@@ -336,7 +324,7 @@ export const handleSemanticSearch: ToolHandler = async (args) => {
     };
     if (namespace) searchRequest.namespace = namespace;
     if (filterTags) searchRequest.filterTags = filterTags;
-    const result = await semanticManager.search(searchRequest);
+    const result = await manager.search(searchRequest);
 
     return {
       content: [
@@ -382,7 +370,8 @@ export const handleSemanticGet: ToolHandler = async (args) => {
   const includeEmbedding = (args.includeEmbedding as boolean) ?? false;
 
   try {
-    const item = await semanticManager.get(key, namespace);
+    const manager = getSemanticManager();
+    const item = await manager.get(key, namespace);
 
     if (!item) {
       return {
@@ -447,7 +436,8 @@ export const handleSemanticList: ToolHandler = async (args) => {
   const orderDir = (args.orderDir as 'asc' | 'desc') ?? 'desc';
 
   try {
-    const result = await semanticManager.list({
+    const manager = getSemanticManager();
+    const result = await manager.list({
       namespace,
       keyPrefix,
       filterTags,
@@ -498,7 +488,8 @@ export const handleSemanticDelete: ToolHandler = async (args) => {
   const namespace = (args.namespace as string) ?? 'default';
 
   try {
-    const result = await semanticManager.delete(key, namespace);
+    const manager = getSemanticManager();
+    const result = await manager.delete(key, namespace);
 
     return {
       content: [
@@ -535,7 +526,8 @@ export const handleSemanticStats: ToolHandler = async (args) => {
   const namespace = args.namespace as string | undefined;
 
   try {
-    const stats = await semanticManager.getStats(namespace);
+    const manager = getSemanticManager();
+    const stats = await manager.getStats(namespace);
 
     return {
       content: [
@@ -589,7 +581,8 @@ export const handleSemanticClear: ToolHandler = async (args) => {
   }
 
   try {
-    const cleared = await semanticManager.clear(namespace);
+    const manager = getSemanticManager();
+    const cleared = await manager.clear(namespace);
 
     return {
       content: [

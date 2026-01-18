@@ -61,6 +61,8 @@ import {
   SessionLeaveOutputSchema,
   SessionFailInputSchema,
   SessionFailOutputSchema,
+  SessionCloseStuckInputSchema,
+  SessionCloseStuckOutputSchema,
   // Guard tool schemas
   GuardCheckInputSchema,
   GuardCheckOutputSchema,
@@ -82,6 +84,12 @@ import {
   TraceGetOutputSchema,
   TraceAnalyzeInputSchema,
   TraceAnalyzeOutputSchema,
+  TraceTreeInputSchema,
+  TraceTreeOutputSchema,
+  TraceBySessionInputSchema,
+  TraceBySessionOutputSchema,
+  TraceCloseStuckInputSchema,
+  TraceCloseStuckOutputSchema,
   // Workflow tool schemas
   WorkflowRunInputSchema,
   WorkflowRunOutputSchema,
@@ -153,6 +161,53 @@ import {
   // Discussion tool schemas
   DiscussionRequestSchema,
   DiscussionResultSchema,
+  // Research tool schemas
+  ResearchRequestSchema,
+  ResearchResultSchema,
+  FetchRequestSchema,
+  FetchResponseSchema,
+  SynthesisRequestSchema,
+  // Feedback tool schemas
+  SubmitFeedbackInputSchema,
+  FeedbackRecordSchema,
+  AgentFeedbackStatsSchema,
+  FeedbackOverviewSchema,
+  FeedbackHistoryInputSchema,
+  FeedbackStatsInputSchema,
+  FeedbackOverviewInputSchema,
+  FeedbackAdjustmentsInputSchema,
+  // Semantic context tool schemas
+  SemanticStoreRequestSchema,
+  SemanticStoreResponseSchema,
+  SemanticSearchRequestSchema,
+  SemanticSearchResponseSchema,
+  SemanticGetRequestSchema,
+  SemanticGetResponseSchema,
+  SemanticListRequestSchema,
+  SemanticListResponseSchema,
+  SemanticDeleteRequestSchema,
+  SemanticDeleteResponseSchema,
+  SemanticStatsRequestSchema,
+  SemanticStatsResponseSchema,
+  SemanticClearRequestSchema,
+  SemanticClearResponseSchema,
+  // MCP Ecosystem tool schemas
+  MCPServerRegisterRequestSchema,
+  MCPServerRegisterResponseSchema,
+  MCPServerListRequestSchema,
+  MCPServerListResponseSchema,
+  MCPServerUnregisterRequestSchema,
+  MCPServerUnregisterResponseSchema,
+  MCPDiscoveryRequestSchema,
+  MCPDiscoveryResponseSchema,
+  MCPToolInvokeRequestSchema,
+  MCPToolInvokeResponseSchema,
+  MCPToolsListRequestSchema,
+  MCPToolsListResponseSchema,
+  // Parallel execution tool schemas
+  ParallelExecutionRequestSchema,
+  PreviewPlanRequestSchema,
+  AgentParallelGroupResultSchema,
 } from '@defai.digital/contracts';
 
 import type { InputSchemaRegistry, OutputSchemaRegistry } from './validation.js';
@@ -183,7 +238,7 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   agent_recommend: AgentRecommendRequestSchema,
   agent_capabilities: AgentCapabilitiesRequestSchema,
 
-  // Session tools (7)
+  // Session tools (8)
   session_create: SessionCreateInputSchema,
   session_status: SessionStatusInputSchema,
   session_complete: SessionCompleteInputSchema,
@@ -191,6 +246,7 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   session_join: SessionJoinInputSchema,
   session_leave: SessionLeaveInputSchema,
   session_fail: SessionFailInputSchema,
+  session_close_stuck: SessionCloseStuckInputSchema,
 
   // Guard tools (3)
   guard_check: GuardCheckInputSchema,
@@ -202,10 +258,13 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   config_set: ConfigSetInputSchema,
   config_show: ConfigShowInputSchema,
 
-  // Trace tools (3)
+  // Trace tools (6)
   trace_list: TraceListInputSchema,
   trace_get: TraceGetInputSchema,
   trace_analyze: TraceAnalyzeInputSchema,
+  trace_tree: TraceTreeInputSchema,
+  trace_by_session: TraceBySessionInputSchema,
+  trace_close_stuck: TraceCloseStuckInputSchema,
 
   // Workflow tools (3)
   workflow_run: WorkflowRunInputSchema,
@@ -258,9 +317,43 @@ export const INPUT_SCHEMAS: InputSchemaRegistry = {
   review_analyze: ReviewRequestSchema,
   review_list: ReviewListInputSchema,
 
-  // Discussion tools (2)
+  // Discussion tools (3)
   discuss: DiscussionRequestSchema,
   discuss_quick: DiscussionRequestSchema, // Uses same schema with defaults
+  discuss_recursive: DiscussionRequestSchema, // Uses base schema, recursive options validated in handler
+
+  // Research tools (3)
+  research_query: ResearchRequestSchema,
+  research_fetch: FetchRequestSchema,
+  research_synthesize: SynthesisRequestSchema,
+
+  // Feedback tools (5)
+  feedback_submit: SubmitFeedbackInputSchema,
+  feedback_history: FeedbackHistoryInputSchema,
+  feedback_stats: FeedbackStatsInputSchema,
+  feedback_overview: FeedbackOverviewInputSchema,
+  feedback_adjustments: FeedbackAdjustmentsInputSchema,
+
+  // Semantic context tools (7)
+  semantic_store: SemanticStoreRequestSchema,
+  semantic_search: SemanticSearchRequestSchema,
+  semantic_get: SemanticGetRequestSchema,
+  semantic_list: SemanticListRequestSchema,
+  semantic_delete: SemanticDeleteRequestSchema,
+  semantic_stats: SemanticStatsRequestSchema,
+  semantic_clear: SemanticClearRequestSchema,
+
+  // MCP Ecosystem tools (7)
+  mcp_server_register: MCPServerRegisterRequestSchema,
+  mcp_server_list: MCPServerListRequestSchema,
+  mcp_server_unregister: MCPServerUnregisterRequestSchema,
+  mcp_tools_discover: MCPDiscoveryRequestSchema,
+  mcp_tool_invoke: MCPToolInvokeRequestSchema,
+  mcp_tools_list: MCPToolsListRequestSchema,
+
+  // Parallel execution tools (2)
+  parallel_run: ParallelExecutionRequestSchema,
+  parallel_plan: PreviewPlanRequestSchema,
 };
 
 /**
@@ -290,7 +383,7 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   agent_recommend: AgentRecommendResultSchema,
   agent_capabilities: AgentCapabilitiesResultSchema,
 
-  // Session tools (7)
+  // Session tools (8)
   session_create: SessionCreateOutputSchema,
   session_status: SessionStatusOutputSchema,
   session_complete: SessionCompleteOutputSchema,
@@ -298,6 +391,7 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   session_join: SessionJoinOutputSchema,
   session_leave: SessionLeaveOutputSchema,
   session_fail: SessionFailOutputSchema,
+  session_close_stuck: SessionCloseStuckOutputSchema,
 
   // Guard tools (3)
   guard_check: GuardCheckOutputSchema,
@@ -309,10 +403,13 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   config_set: ConfigSetOutputSchema,
   config_show: ConfigShowOutputSchema,
 
-  // Trace tools (3)
+  // Trace tools (6)
   trace_list: TraceListOutputSchema,
   trace_get: TraceGetOutputSchema,
   trace_analyze: TraceAnalyzeOutputSchema,
+  trace_tree: TraceTreeOutputSchema,
+  trace_by_session: TraceBySessionOutputSchema,
+  trace_close_stuck: TraceCloseStuckOutputSchema,
 
   // Workflow tools (3)
   workflow_run: WorkflowRunOutputSchema,
@@ -366,4 +463,36 @@ export const OUTPUT_SCHEMAS: OutputSchemaRegistry = {
   // Discussion tools (2)
   discuss: DiscussionResultSchema,
   discuss_quick: DiscussionResultSchema,
+
+  // Research tools (3)
+  research_query: ResearchResultSchema,
+  research_fetch: FetchResponseSchema,
+  // research_synthesize: Output is inline string
+
+  // Feedback tools (5)
+  feedback_submit: FeedbackRecordSchema,
+  feedback_stats: AgentFeedbackStatsSchema,
+  feedback_overview: FeedbackOverviewSchema,
+  // feedback_history, feedback_adjustments: Output is inline format
+
+  // Semantic context tools (7)
+  semantic_store: SemanticStoreResponseSchema,
+  semantic_search: SemanticSearchResponseSchema,
+  semantic_get: SemanticGetResponseSchema,
+  semantic_list: SemanticListResponseSchema,
+  semantic_delete: SemanticDeleteResponseSchema,
+  semantic_stats: SemanticStatsResponseSchema,
+  semantic_clear: SemanticClearResponseSchema,
+
+  // MCP Ecosystem tools (7)
+  mcp_server_register: MCPServerRegisterResponseSchema,
+  mcp_server_list: MCPServerListResponseSchema,
+  mcp_server_unregister: MCPServerUnregisterResponseSchema,
+  mcp_tools_discover: MCPDiscoveryResponseSchema,
+  mcp_tool_invoke: MCPToolInvokeResponseSchema,
+  mcp_tools_list: MCPToolsListResponseSchema,
+
+  // Parallel execution tools (2)
+  parallel_run: AgentParallelGroupResultSchema,
+  // parallel_plan: Output is inline execution plan
 };

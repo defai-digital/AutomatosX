@@ -63,6 +63,14 @@ export interface SessionStore {
    * Get applied policies for a session
    */
   getAppliedPolicies(sessionId: string): Promise<string[]>;
+
+  /**
+   * Close stuck sessions that have been active longer than maxAgeMs
+   * Marks them as failed with an auto-close message
+   * @param maxAgeMs Maximum age in milliseconds (default: 24 hours)
+   * @returns number of sessions that were closed
+   */
+  closeStuckSessions(maxAgeMs?: number): Promise<number>;
 }
 
 /**

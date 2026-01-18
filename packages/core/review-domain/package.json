@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/review-domain",
-  "version": "13.2.5",
+  "version": "13.4.0",
   "type": "module",
   "description": "Review domain for AutomatosX - AI-powered code review with focused analysis modes",
   "license": "BUSL-1.1",
@@ -38,6 +38,8 @@
   "dependencies": {
     "@defai.digital/analysis-domain": "workspace:*",
     "@defai.digital/contracts": "workspace:*",
+    "ignore": "^6.0.2",
+    "p-limit": "^6.1.0",
     "uuid": "^11.0.5"
   },
   "devDependencies": {

@@ -13,6 +13,7 @@
 
 import {
   DEFAULT_PROVIDERS,
+  DEFAULT_PROVIDER_TIMEOUT,
   DiscussionErrorCodes,
   createFailedDiscussionResult,
   type DiscussStepConfig,
@@ -77,7 +78,7 @@ export class RecursiveDiscussionExecutor {
 
   constructor(options: RecursiveDiscussionExecutorOptions) {
     this.providerExecutor = options.providerExecutor;
-    this.defaultTimeoutMs = options.defaultTimeoutMs ?? 60000;
+    this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_PROVIDER_TIMEOUT;
     this.checkProviderHealth = options.checkProviderHealth ?? true;
     this.traceId = options.traceId;
     this.parentContext = options.parentContext;
@@ -141,6 +142,7 @@ export class RecursiveDiscussionExecutor {
       minProviders: 2,
       temperature: 0.7,
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+      fastMode: false,
     };
 
     return this.execute(config, options);
@@ -288,6 +290,7 @@ export class RecursiveDiscussionExecutor {
           temperature: 0.7,
           verbose: false,
           agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+          fastMode: true, // Sub-discussions use fast mode
         },
         abortSignal ? { abortSignal } : {}
       );

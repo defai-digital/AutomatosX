@@ -203,8 +203,12 @@ export async function resolveParticipant(
       if (injection.combinedContent) {
         resolved.abilityContent = injection.combinedContent;
       }
-    } catch {
-      // Ability injection failed, continue without abilities
+    } catch (error) {
+      // Log warning for diagnostics, but don't fail discussion
+      console.warn(
+        `[participant-resolver] Ability injection failed for agent ${agentId}:`,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -236,13 +240,23 @@ export function providersToParticipants(providers: string[]): DiscussionParticip
  * Parse participant string (e.g., "claude" or "reviewer:agent")
  */
 export function parseParticipantString(input: string): DiscussionParticipant {
-  const parts = input.split(':');
-
-  if (parts.length === 2 && parts[1] === 'agent') {
-    return { type: 'agent', id: parts[0]! };
+  const trimmed = input.trim();
+  if (!trimmed) {
+    throw new Error('Participant string cannot be empty');
   }
 
-  return { type: 'provider', id: parts[0]! };
+  const parts = trimmed.split(':');
+  const id = parts[0]!.trim();
+
+  if (!id) {
+    throw new Error('Participant ID cannot be empty');
+  }
+
+  if (parts.length === 2 && parts[1] === 'agent') {
+    return { type: 'agent', id };
+  }
+
+  return { type: 'provider', id };
 }
 
 /**

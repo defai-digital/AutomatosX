@@ -165,6 +165,30 @@ export type AgentGetOutput = z.infer<typeof AgentGetOutputSchema>;
 // ============================================================================
 
 /**
+ * Workflow step schema for agent registration
+ * (Simplified version of AgentWorkflowStepSchema from agent/v1)
+ */
+const WorkflowStepInputSchema = z.object({
+  stepId: z.string().min(1).max(100),
+  name: z.string().min(1).max(200),
+  type: z.enum(['prompt', 'tool', 'conditional', 'loop', 'parallel', 'delegate', 'discuss']),
+  config: z.record(z.string(), z.unknown()).optional(),
+  dependencies: z.array(z.string()).optional(),
+});
+
+/**
+ * Available workflow template names
+ */
+const WorkflowTemplateSchema = z.enum([
+  'prompt-response',
+  'research',
+  'code-review',
+  'multi-step',
+  'delegate-chain',
+  'agent-selection',
+]);
+
+/**
  * Input schema for agent_register tool
  */
 export const AgentRegisterInputSchema = z.object({
@@ -178,9 +202,12 @@ export const AgentRegisterInputSchema = z.object({
     ),
   description: z.string().min(1).max(1000),
   displayName: z.string().max(100).optional(),
+  systemPrompt: z.string().max(10000).optional(),
   team: z.string().max(100).optional(),
   capabilities: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
+  workflowTemplate: WorkflowTemplateSchema.optional(),
+  workflow: z.array(WorkflowStepInputSchema).max(100).optional(),
   enabled: z.boolean().optional().default(true),
 });
 

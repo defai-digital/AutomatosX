@@ -114,6 +114,30 @@ export default defineConfig({
         __dirname,
         'packages/contracts/src/resilience/v1/index.ts'
       ),
+      '@defai.digital/agent-parallel': resolve(
+        __dirname,
+        'packages/core/agent-parallel/src/index.ts'
+      ),
+      '@defai.digital/semantic-context': resolve(
+        __dirname,
+        'packages/core/semantic-context/src/index.ts'
+      ),
+      '@defai.digital/mcp-ecosystem': resolve(
+        __dirname,
+        'packages/core/mcp-ecosystem/src/index.ts'
+      ),
+      '@defai.digital/autonomous-loop': resolve(
+        __dirname,
+        'packages/core/autonomous-loop/src/index.ts'
+      ),
+      '@defai.digital/research-domain': resolve(
+        __dirname,
+        'packages/core/research-domain/src/index.ts'
+      ),
+      '@defai.digital/feedback-domain': resolve(
+        __dirname,
+        'packages/core/feedback-domain/src/index.ts'
+      ),
     },
   },
   test: {

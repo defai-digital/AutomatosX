@@ -31,7 +31,7 @@ export const opencodeConfig: CLIProviderConfig = {
     NO_COLOR: '1',
     CI: 'true',
   },
-  outputFormat: 'json',  // OpenCode with --format json outputs single JSON object
+  outputFormat: 'stream-json',  // OpenCode with --format json outputs NDJSON (one JSON per line)
   timeout: TIMEOUT_PROVIDER_SHORT,  // Shorter timeout - fails faster if no credentials
   models: [
     {

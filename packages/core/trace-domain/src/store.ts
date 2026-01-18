@@ -1,5 +1,5 @@
 import type { TraceEvent } from '@defai.digital/contracts';
-import type { TraceSummary, TraceStore } from './types.js';
+import type { TraceSummary, TraceStore, TraceTreeNode } from './types.js';
 
 /**
  * In-memory trace store implementation
@@ -90,16 +90,26 @@ export class InMemoryTraceStore implements TraceStore {
    * Updates trace summary
    */
   private updateSummary(traceId: string, event: TraceEvent): void {
-    let summary = this.summaries.get(traceId);
+    const context = event.context;
+    const existingSummary = this.summaries.get(traceId);
 
-    if (summary === undefined) {
-      summary = {
-        traceId,
-        startTime: event.timestamp,
-        status: 'pending',
-        eventCount: 0,
-        errorCount: 0,
-      };
+    // Create or update summary
+    const summary: TraceSummary = existingSummary ?? {
+      traceId,
+      startTime: event.timestamp,
+      status: 'pending',
+      eventCount: 0,
+      errorCount: 0,
+      // Initialize hierarchy fields from first event context (INV-TR-020 through INV-TR-024)
+      parentTraceId: context?.parentTraceId,
+      rootTraceId: context?.rootTraceId,
+      traceDepth: context?.traceDepth,
+      sessionId: context?.sessionId,
+      agentId: context?.agentId,
+    };
+
+    // Store if newly created
+    if (!existingSummary) {
       this.summaries.set(traceId, summary);
     }
 
@@ -112,6 +122,22 @@ export class InMemoryTraceStore implements TraceStore {
     if (event.type === 'run.start') {
       summary.startTime = event.timestamp;
       summary.status = 'running';
+      // Update hierarchy fields on run.start if not already set
+      if (context?.parentTraceId && !summary.parentTraceId) {
+        summary.parentTraceId = context.parentTraceId;
+      }
+      if (context?.rootTraceId && !summary.rootTraceId) {
+        summary.rootTraceId = context.rootTraceId;
+      }
+      if (context?.traceDepth !== undefined && summary.traceDepth === undefined) {
+        summary.traceDepth = context.traceDepth;
+      }
+      if (context?.sessionId && !summary.sessionId) {
+        summary.sessionId = context.sessionId;
+      }
+      if (context?.agentId && !summary.agentId) {
+        summary.agentId = context.agentId;
+      }
     }
 
     if (event.type === 'run.end') {
@@ -126,6 +152,101 @@ export class InMemoryTraceStore implements TraceStore {
     if (event.status !== undefined) {
       summary.status = event.status;
     }
+  }
+
+  /**
+   * Gets all traces that share the same root trace ID
+   * INV-TR-020: All traces in hierarchy share rootTraceId
+   */
+  getTracesByRoot(rootTraceId: string): Promise<TraceSummary[]> {
+    const result = [...this.summaries.values()]
+      .filter((summary) => {
+        // Include if rootTraceId matches OR if this is the root trace itself
+        return summary.rootTraceId === rootTraceId || summary.traceId === rootTraceId;
+      })
+      .sort((a, b) => {
+        // Sort by trace depth ascending (root first), then by start time
+        const depthDiff = (a.traceDepth ?? 0) - (b.traceDepth ?? 0);
+        if (depthDiff !== 0) return depthDiff;
+        return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      });
+    return Promise.resolve(result);
+  }
+
+  /**
+   * Gets direct children of a trace
+   * INV-TR-021: Child traces reference parentTraceId
+   */
+  getChildTraces(parentTraceId: string): Promise<TraceSummary[]> {
+    const result = [...this.summaries.values()]
+      .filter((summary) => summary.parentTraceId === parentTraceId)
+      .sort((a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+    return Promise.resolve(result);
+  }
+
+  /**
+   * Gets all traces in a session
+   * INV-TR-023: Session trace correlation
+   */
+  getTracesBySession(sessionId: string): Promise<TraceSummary[]> {
+    const result = [...this.summaries.values()]
+      .filter((summary) => summary.sessionId === sessionId)
+      .sort((a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+    return Promise.resolve(result);
+  }
+
+  /**
+   * Builds a hierarchical tree from a root trace
+   * Returns the complete tree structure for visualization
+   */
+  async getTraceTree(traceId: string): Promise<TraceTreeNode | undefined> {
+    const rootSummary = this.summaries.get(traceId);
+    if (!rootSummary) return undefined;
+
+    // Determine the effective root trace ID
+    const effectiveRootId = rootSummary.rootTraceId ?? traceId;
+
+    // Get all traces in this hierarchy
+    const allTraces = await this.getTracesByRoot(effectiveRootId);
+
+    // Create a map for quick lookup
+    const traceMap = new Map<string, TraceSummary>();
+    for (const trace of allTraces) {
+      traceMap.set(trace.traceId, trace);
+    }
+
+    // Build tree recursively
+    const buildNode = (summary: TraceSummary): TraceTreeNode => {
+      const children = allTraces
+        .filter((t) => t.parentTraceId === summary.traceId)
+        .map((childSummary) => buildNode(childSummary));
+
+      const childDuration = children.reduce(
+        (sum, child) => sum + (child.totalDurationMs ?? 0),
+        0
+      );
+      const childEventCount = children.reduce(
+        (sum, child) => sum + child.totalEventCount,
+        0
+      );
+
+      return {
+        trace: summary,
+        children,
+        totalDurationMs: (summary.durationMs ?? 0) + childDuration,
+        totalEventCount: summary.eventCount + childEventCount,
+      };
+    };
+
+    // Build tree starting from the requested trace
+    const targetSummary = traceMap.get(traceId);
+    if (!targetSummary) return undefined;
+
+    return buildNode(targetSummary);
   }
 
   /**
@@ -147,6 +268,52 @@ export class InMemoryTraceStore implements TraceStore {
   clear(): void {
     this.traces.clear();
     this.summaries.clear();
+  }
+
+  /**
+   * Closes stuck traces that have been running longer than maxAgeMs
+   * Writes a run.end event marking them as failed
+   * @param maxAgeMs Maximum age in milliseconds (default: 1 hour)
+   * @returns number of traces that were closed
+   */
+  async closeStuckTraces(maxAgeMs = 3600000): Promise<number> {
+    // Input validation
+    if (maxAgeMs <= 0) {
+      throw new Error('maxAgeMs must be a positive number');
+    }
+
+    const currentTime = Date.now();
+    const cutoff = currentTime - maxAgeMs;
+    let closedCount = 0;
+
+    for (const [traceId, summary] of this.summaries) {
+      // Only process traces that are stuck in running or pending status
+      if (summary.status !== 'running' && summary.status !== 'pending') continue;
+
+      const startTime = new Date(summary.startTime).getTime();
+      if (startTime < cutoff) {
+        // Write a run.end event to close the trace
+        // Use timestamp in eventId to prevent collisions on repeated cleanup calls
+        const endEvent: TraceEvent = {
+          eventId: `${traceId}-auto-close-${currentTime}`,
+          traceId,
+          type: 'run.end',
+          timestamp: new Date().toISOString(),
+          payload: {
+            success: false,
+            error: 'Trace closed automatically - exceeded maximum running time',
+            autoClose: true,
+          },
+          status: 'failure',
+          durationMs: currentTime - startTime,
+        };
+
+        await this.write(endEvent);
+        closedCount++;
+      }
+    }
+
+    return closedCount;
   }
 }
 

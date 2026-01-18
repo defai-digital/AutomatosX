@@ -7,11 +7,37 @@
  * Following Ports & Adapters (Hexagonal Architecture) pattern.
  */
 
+import { existsSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
 // ============================================================================
 // Adapter Imports - ONLY allowed in this file
 // ============================================================================
 
 import { createProviderRegistry as createRegistry } from '@defai.digital/provider-adapters';
+import {
+  DATA_DIR_NAME,
+  DATABASE_FILENAME,
+  ENV_DATA_DIR,
+  ENV_STORAGE_MODE,
+  STORAGE_MODE_MEMORY,
+} from '@defai.digital/contracts';
+
+// Trace store imports (for workflow tracing)
+import {
+  createInMemoryTraceStore,
+  type TraceStore,
+} from '@defai.digital/trace-domain';
+
+// Session store imports (for collaboration sessions)
+import {
+  createSessionStore,
+  createSessionManager,
+  DEFAULT_SESSION_DOMAIN_CONFIG,
+  type SessionStore,
+  type SessionManager,
+} from '@defai.digital/session-domain';
 
 // Step executor imports (for workflow execution)
 import {
@@ -39,6 +65,92 @@ import {
 // ============================================================================
 
 export type ProviderRegistry = ReturnType<typeof createRegistry>;
+export type { TraceStore } from '@defai.digital/trace-domain';
+export type { SessionStore, SessionManager } from '@defai.digital/session-domain';
+
+// ============================================================================
+// Database Utilities (shared with CLI via same database file)
+// ============================================================================
+
+/**
+ * Gets the data directory path (same as CLI)
+ */
+function getDataDirectory(): string {
+  const customDir = process.env[ENV_DATA_DIR];
+  if (customDir) {
+    return customDir;
+  }
+  return join(homedir(), DATA_DIR_NAME);
+}
+
+/**
+ * Gets the database file path
+ */
+function getDatabasePath(): string {
+  return join(getDataDirectory(), DATABASE_FILENAME);
+}
+
+/**
+ * Ensures the data directory exists
+ */
+function ensureDataDirectory(): void {
+  const dir = getDataDirectory();
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+}
+
+/**
+ * Gets the configured storage mode
+ */
+function getStorageMode(): 'sqlite' | 'memory' {
+  const mode = process.env[ENV_STORAGE_MODE]?.toLowerCase();
+  if (mode === STORAGE_MODE_MEMORY) {
+    return 'memory';
+  }
+  return 'sqlite'; // Default to sqlite
+}
+
+// Cached database instance
+let _database: unknown = null;
+
+/**
+ * Initialize SQLite trace store
+ * Returns null if SQLite is unavailable
+ */
+async function initializeSqliteTraceStore(): Promise<TraceStore | null> {
+  const storageMode = getStorageMode();
+  if (storageMode === 'memory') {
+    return null;
+  }
+
+  try {
+    // Ensure data directory exists
+    ensureDataDirectory();
+
+    // Dynamic import of better-sqlite3
+    const BetterSqlite3 = (await import('better-sqlite3')).default;
+    const dbPath = getDatabasePath();
+    _database = new BetterSqlite3(dbPath);
+
+    // Enable WAL mode for better concurrent access
+    // This allows multiple processes (e.g., ax monitor and ax mcp server) to
+    // access the database simultaneously without "readonly database" errors
+    const db = _database as { pragma: (sql: string) => unknown };
+    db.pragma('journal_mode = WAL');
+
+    // Dynamic import of SQLite adapter
+    const sqliteModule = await import('@defai.digital/sqlite-adapter');
+    const traceStore = sqliteModule.createSqliteTraceStore(_database as Parameters<typeof sqliteModule.createSqliteTraceStore>[0]);
+
+    return traceStore;
+  } catch (error) {
+    // SQLite not available, will fall back to in-memory
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[MCP] SQLite trace store unavailable (${msg}), using in-memory storage`);
+    return null;
+  }
+}
 
 // ============================================================================
 // Dependency Container
@@ -46,20 +158,67 @@ export type ProviderRegistry = ReturnType<typeof createRegistry>;
 
 interface MCPDependencies {
   providerRegistry: ProviderRegistry;
+  traceStore: TraceStore;
+  sessionStore: SessionStore;
+  sessionManager: SessionManager;
+  usingSqlite: boolean;
 }
 
 let _dependencies: MCPDependencies | null = null;
 let _initialized = false;
+let _asyncInitialized = false;
 
 // ============================================================================
-// Bootstrap Function
+// Bootstrap Functions
 // ============================================================================
 
 /**
- * Initialize all MCP Server dependencies
+ * Async initialization - call this at server startup to enable SQLite storage
+ *
+ * This initializes SQLite trace storage so traces persist across processes
+ * and can be viewed in the dashboard (ax monitor).
+ */
+export async function initializeAsync(): Promise<void> {
+  if (_asyncInitialized) {
+    return;
+  }
+
+  // Create provider registry
+  const providerRegistry = createRegistry();
+
+  // Try to create SQLite trace store
+  const sqliteTraceStore = await initializeSqliteTraceStore();
+  const traceStore = sqliteTraceStore ?? createInMemoryTraceStore();
+  const usingSqlite = sqliteTraceStore !== null;
+
+  if (usingSqlite) {
+    console.error('[MCP] Using SQLite trace storage at ' + getDatabasePath());
+  }
+
+  // Create shared session store and manager
+  const sessionStore = createSessionStore();
+  const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
+
+  // Build dependency container
+  _dependencies = {
+    providerRegistry,
+    traceStore,
+    sessionStore,
+    sessionManager,
+    usingSqlite,
+  };
+
+  _initialized = true;
+  _asyncInitialized = true;
+}
+
+/**
+ * Synchronous bootstrap - falls back to in-memory storage
  *
  * Called once at server startup. Wires adapters to ports.
  * This is the composition root - the only place that knows about concrete implementations.
+ *
+ * Prefer calling initializeAsync() first for persistent storage.
  */
 export function bootstrap(): MCPDependencies {
   if (_initialized && _dependencies) {
@@ -69,9 +228,20 @@ export function bootstrap(): MCPDependencies {
   // Create provider registry
   const providerRegistry = createRegistry();
 
+  // Create in-memory trace store (no SQLite in sync mode)
+  const traceStore = createInMemoryTraceStore();
+
+  // Create shared session store and manager
+  const sessionStore = createSessionStore();
+  const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
+
   // Build dependency container
   _dependencies = {
     providerRegistry,
+    traceStore,
+    sessionStore,
+    sessionManager,
+    usingSqlite: false,
   };
 
   _initialized = true;
@@ -104,6 +274,27 @@ export function getProviderRegistry(): ProviderRegistry {
 }
 
 /**
+ * Get trace store for workflow event tracking
+ */
+export function getTraceStore(): TraceStore {
+  return getDependencies().traceStore;
+}
+
+/**
+ * Get session store for collaboration sessions
+ */
+export function getSessionStore(): SessionStore {
+  return getDependencies().sessionStore;
+}
+
+/**
+ * Get session manager for session operations
+ */
+export function getSessionManager(): SessionManager {
+  return getDependencies().sessionManager;
+}
+
+/**
  * Create a new provider registry instance
  * Use this when you need a fresh registry (e.g., for testing)
  */
@@ -119,8 +310,21 @@ export function createProviderRegistry(): ProviderRegistry {
  * Reset all dependencies (for testing)
  */
 export function resetBootstrap(): void {
+  // Close database if open
+  if (_database !== null) {
+    try {
+      const db = _database as { close?: () => void };
+      if (typeof db.close === 'function') {
+        db.close();
+      }
+    } catch {
+      // Ignore close errors
+    }
+    _database = null;
+  }
   _dependencies = null;
   _initialized = false;
+  _asyncInitialized = false;
   _stepExecutor = null;
 }
 

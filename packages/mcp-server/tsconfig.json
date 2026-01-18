@@ -11,11 +11,15 @@
     { "path": "../core/workflow-engine" },
     { "path": "../core/routing-engine" },
     { "path": "../core/memory-domain" },
+    { "path": "../core/semantic-context" },
+    { "path": "../core/mcp-ecosystem" },
+    { "path": "../core/agent-parallel" },
     { "path": "../core/trace-domain" },
     { "path": "../core/config-domain" },
     { "path": "../guard" },
     { "path": "../core/agent-domain" },
     { "path": "../core/session-domain" },
-    { "path": "../adapters/providers" }
+    { "path": "../adapters/providers" },
+    { "path": "../adapters/sqlite" }
   ]
 }

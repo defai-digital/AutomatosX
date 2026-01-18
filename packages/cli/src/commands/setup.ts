@@ -28,6 +28,7 @@ import {
   type ProviderDetectionResult,
 } from '@defai.digital/contracts';
 import { COLORS, ICONS } from '../utils/terminal.js';
+import { getDatabase, getDatabasePath } from '../utils/database.js';
 
 const execAsync = promisify(exec);
 
@@ -73,6 +74,126 @@ const CLI_FLAGS = {
   global: ['--global', '-g'],
 } as const;
 
+
+// ============================================================================
+// Database Migration
+// ============================================================================
+
+/** Result of database migration */
+interface DatabaseMigrationResult {
+  success: boolean;
+  path: string;
+  created: boolean;
+  migrated: boolean;
+  migrationsApplied: string[];
+  error?: string;
+}
+
+/** Hierarchy columns that need to exist in trace_summaries */
+const HIERARCHY_COLUMNS = [
+  { name: 'parent_trace_id', type: 'TEXT' },
+  { name: 'root_trace_id', type: 'TEXT' },
+  { name: 'trace_depth', type: 'INTEGER' },
+  { name: 'session_id', type: 'TEXT' },
+  { name: 'agent_id', type: 'TEXT' },
+];
+
+/** Type for SQLite database operations used in migrations */
+interface SqliteDb {
+  prepare(sql: string): { get(): unknown; all(): unknown[] };
+  exec(sql: string): void;
+}
+
+/**
+ * Migrates the SQLite database to the latest schema
+ */
+async function migrateDatabase(): Promise<DatabaseMigrationResult> {
+  const dbPath = getDatabasePath();
+  const migrationsApplied: string[] = [];
+
+  try {
+    // Get the database instance (creates if doesn't exist)
+    const rawDb = await getDatabase();
+
+    if (!rawDb) {
+      return {
+        success: true,
+        path: dbPath,
+        created: false,
+        migrated: false,
+        migrationsApplied: [],
+        error: 'SQLite not available, using in-memory storage',
+      };
+    }
+
+    const db = rawDb as SqliteDb;
+
+    // Check if trace_summaries table exists
+    const tableExists = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='trace_summaries'"
+    ).get();
+
+    if (!tableExists) {
+      // Table will be created by SqliteTraceStore, mark as new
+      return {
+        success: true,
+        path: dbPath,
+        created: true,
+        migrated: false,
+        migrationsApplied: [],
+      };
+    }
+
+    // Check which columns need to be added
+    const existingColumns = db.prepare(
+      "PRAGMA table_info(trace_summaries)"
+    ).all() as { name: string }[];
+    const existingColumnNames = new Set(existingColumns.map(c => c.name));
+
+    for (const column of HIERARCHY_COLUMNS) {
+      if (!existingColumnNames.has(column.name)) {
+        try {
+          db.exec(`ALTER TABLE trace_summaries ADD COLUMN ${column.name} ${column.type}`);
+          migrationsApplied.push(column.name);
+        } catch {
+          // Column might already exist from partial migration
+        }
+      }
+    }
+
+    // Create indexes if they don't exist
+    const indexMigrations = [
+      { name: 'idx_trace_summaries_parent_trace_id', column: 'parent_trace_id' },
+      { name: 'idx_trace_summaries_root_trace_id', column: 'root_trace_id' },
+      { name: 'idx_trace_summaries_session_id', column: 'session_id' },
+    ];
+
+    for (const idx of indexMigrations) {
+      try {
+        db.exec(`CREATE INDEX IF NOT EXISTS ${idx.name} ON trace_summaries(${idx.column})`);
+      } catch {
+        // Index might already exist
+      }
+    }
+
+    return {
+      success: true,
+      path: dbPath,
+      created: false,
+      migrated: migrationsApplied.length > 0,
+      migrationsApplied,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      path: dbPath,
+      created: false,
+      migrated: false,
+      migrationsApplied,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
 
 // ============================================================================
 // Provider Detection
@@ -341,9 +462,26 @@ export async function setupCommand(
       outputLines.push('');
     }
 
-    // Step 2 & 3: Detect providers and create/check configuration
+    // Step 2: Database Migration
     if (showOutput) {
-      outputLines.push(`${COLORS.bold}Step 2: Provider Detection & Configuration${COLORS.reset}`);
+      outputLines.push(`${COLORS.bold}Step 2: Database Setup${COLORS.reset}`);
+    }
+
+    const dbResult = await migrateDatabase();
+    if (showOutput) {
+      if (dbResult.migrated) {
+        outputLines.push(`  ${ICONS.check} Database migrated: ${dbResult.migrationsApplied.join(', ')}`);
+      } else if (dbResult.created) {
+        outputLines.push(`  ${ICONS.check} Database created: ${dbResult.path}`);
+      } else {
+        outputLines.push(`  ${ICONS.check} Database up to date: ${dbResult.path}`);
+      }
+      outputLines.push('');
+    }
+
+    // Step 3: Detect providers and create/check configuration
+    if (showOutput) {
+      outputLines.push(`${COLORS.bold}Step 3: Provider Detection & Configuration${COLORS.reset}`);
     }
 
     const setupResult = await runSetup(setupOptions);

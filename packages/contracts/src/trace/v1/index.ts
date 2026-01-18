@@ -22,6 +22,10 @@ export {
   validateTrace,
   isTraceComplete,
   getOrderedEvents,
+  // Trace hierarchy functions (INV-TR-020 through INV-TR-024)
+  createRootTraceHierarchy,
+  createChildTraceHierarchy,
+  extractTraceHierarchy,
   type TraceEventType,
   type TraceStatus,
   type TraceContext,
@@ -38,4 +42,6 @@ export {
   type DiscussionEndPayload,
   type TraceEvent,
   type Trace,
+  // Trace hierarchy type
+  type TraceHierarchy,
 } from './schema.js';

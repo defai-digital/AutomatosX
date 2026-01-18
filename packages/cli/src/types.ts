@@ -52,6 +52,11 @@ export interface CLIOptions {
   task: string | undefined;
   core: string | undefined;
   maxTokens: number | undefined;
+  // Status display options
+  refresh: number | undefined;
+  compact: boolean;
+  // Agent filter options
+  team: string | undefined;
 }
 
 /**
@@ -99,6 +104,7 @@ export const CLI_COMMANDS = {
   CLEANUP: 'cleanup',
   ITERATE: 'iterate',
   UPDATE: 'update',
+  MONITOR: 'monitor',
 } as const;
 
 export type CLICommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];

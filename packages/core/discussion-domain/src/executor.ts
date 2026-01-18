@@ -13,6 +13,7 @@
 
 import {
   DEFAULT_PROVIDERS,
+  DEFAULT_PROVIDER_TIMEOUT,
   DiscussionErrorCodes,
   createFailedDiscussionResult,
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
@@ -26,9 +27,14 @@ import type {
   DiscussionExecutorOptions,
   PatternExecutionContext,
   DiscussionProgressEvent,
+  ResolvedParticipantLike,
 } from './types.js';
 import { getPatternExecutor } from './patterns/index.js';
 import { getConsensusExecutor } from './consensus/index.js';
+import {
+  resolveParticipants,
+  getProviderIds,
+} from './participant-resolver.js';
 
 /**
  * Main discussion executor class.
@@ -40,12 +46,16 @@ export class DiscussionExecutor {
   private readonly defaultTimeoutMs: number;
   private readonly checkProviderHealth: boolean;
   private readonly traceId: string | undefined;
+  private readonly participantResolverOptions: DiscussionExecutorOptions['participantResolverOptions'];
+  private readonly cascadingConfidence: DiscussionExecutorOptions['cascadingConfidence'];
 
   constructor(options: DiscussionExecutorOptions) {
     this.providerExecutor = options.providerExecutor;
-    this.defaultTimeoutMs = options.defaultTimeoutMs ?? 60000;
+    this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_PROVIDER_TIMEOUT;
     this.checkProviderHealth = options.checkProviderHealth ?? true;
     this.traceId = options.traceId;
+    this.participantResolverOptions = options.participantResolverOptions ?? {};
+    this.cascadingConfidence = options.cascadingConfidence;
   }
 
   /**
@@ -77,6 +87,7 @@ export class DiscussionExecutor {
       minProviders: 2,
       temperature: 0.7,
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+      fastMode: false,
     };
 
     return this.execute(config, options);
@@ -106,10 +117,39 @@ export class DiscussionExecutor {
       );
     }
 
+    // Resolve participants if provided (INV-DISC-640, INV-DISC-641)
+    let resolvedParticipants: ResolvedParticipantLike[] | undefined;
+    let providersToCheck: string[];
+
+    if (config.participants && config.participants.length > 0) {
+      // Resolve participants (agents + providers) to execution config
+      try {
+        resolvedParticipants = await resolveParticipants(config.participants, {
+          ...this.participantResolverOptions,
+          topic: config.prompt,
+          agentWeightMultiplier: config.agentWeightMultiplier,
+        });
+        // Extract unique provider IDs from resolved participants
+        providersToCheck = getProviderIds(resolvedParticipants);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return createFailedDiscussionResult(
+          config.pattern,
+          config.prompt,
+          DiscussionErrorCodes.INVALID_CONFIG,
+          `Failed to resolve participants: ${errorMessage}`,
+          startedAt
+        );
+      }
+    } else {
+      // Use legacy providers array
+      providersToCheck = config.providers;
+    }
+
     // INV-DISC-100: Check provider availability
     let availableProviders: string[];
     try {
-      availableProviders = await this.checkProviders(config.providers);
+      availableProviders = await this.checkProviders(providersToCheck);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return createFailedDiscussionResult(
@@ -143,7 +183,10 @@ export class DiscussionExecutor {
       abortSignal,
       traceId: this.traceId,
       onProgress,
-      // No cascading confidence for base executor (recursive executor handles this)
+      // Pass resolved participants for agent-aware execution
+      resolvedParticipants,
+      // Cascading confidence for early exit (INV-DISC-622, INV-DISC-623)
+      cascadingConfidence: this.cascadingConfidence,
     };
 
     // Execute pattern
@@ -293,6 +336,7 @@ export class DiscussionExecutor {
       minProviders: 3,
       temperature: 0.7,
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+      fastMode: false,
     };
 
     return this.execute(config, options);
@@ -328,6 +372,7 @@ export class DiscussionExecutor {
       minProviders: 2,
       temperature: 0.5, // Lower temperature for more consistent voting
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+      fastMode: false,
     };
 
     return this.execute(config, options);

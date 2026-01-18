@@ -11,6 +11,7 @@
  * - INV-AGT-SEL-004: Always returns at least one result (fallback to 'standard')
  * - INV-AGT-SEL-005: exampleTasks boost confidence when matched
  * - INV-AGT-SEL-006: notForTasks reduce confidence when matched
+ * - INV-AGT-SEL-007: Feedback-based adjustments applied when available
  */
 
 import type {
@@ -22,6 +23,27 @@ import type {
   AgentCategory,
 } from '@defai.digital/contracts';
 import type { AgentRegistry } from './types.js';
+
+// ============================================================================
+// Feedback Score Adjuster Port
+// ============================================================================
+
+/**
+ * Port interface for feedback-based score adjustment
+ * INV-AGT-SEL-007: Allows feedback learning to influence agent selection
+ *
+ * Invariants inherited from feedback-domain:
+ * - INV-FBK-002: Adjustments bounded (-0.5 to +0.5)
+ * - INV-FBK-003: Minimum sample count before adjustment applied
+ * - INV-FBK-004: Adjustments decay over time
+ */
+export interface FeedbackScoreAdjusterPort {
+  /**
+   * Get score adjustment for an agent on a given task
+   * Returns 0 if no adjustment or insufficient data
+   */
+  getAdjustment(agentId: string, taskDescription: string): Promise<number>;
+}
 
 // ============================================================================
 // Constants
@@ -91,6 +113,17 @@ export interface AgentSelectionServicePort {
   getCapabilities(request: AgentCapabilitiesRequest): Promise<AgentCapabilitiesResult>;
 }
 
+/**
+ * Options for agent selection service
+ */
+export interface AgentSelectionServiceOptions {
+  /**
+   * Optional feedback score adjuster for learning-based adjustments
+   * INV-AGT-SEL-007: When provided, adjustments are applied to scores
+   */
+  feedbackAdjuster?: FeedbackScoreAdjusterPort;
+}
+
 // ============================================================================
 // Agent Selection Service Implementation
 // ============================================================================
@@ -99,9 +132,17 @@ export interface AgentSelectionServicePort {
  * Agent Selection Service
  *
  * Implements deterministic agent selection based on task matching.
+ * Optionally integrates with feedback learning for score adjustments.
  */
 export class AgentSelectionService implements AgentSelectionServicePort {
-  constructor(private readonly registry: AgentRegistry) {}
+  private readonly feedbackAdjuster: FeedbackScoreAdjusterPort | undefined;
+
+  constructor(
+    private readonly registry: AgentRegistry,
+    options?: AgentSelectionServiceOptions
+  ) {
+    this.feedbackAdjuster = options?.feedbackAdjuster;
+  }
 
   /**
    * Recommend the best agent for a task
@@ -129,6 +170,23 @@ export class AgentSelectionService implements AgentSelectionServicePort {
     const scored = filteredAgents
       .map((agent) => this.scoreAgent(agent, request.task, request.requiredCapabilities))
       .filter((result) => result.confidence >= MIN_CONFIDENCE_THRESHOLD);
+
+    // INV-AGT-SEL-007: Apply feedback-based adjustments if available
+    if (this.feedbackAdjuster) {
+      const adjustmentPromises = scored.map(async (result) => {
+        const adjustment = await this.feedbackAdjuster!.getAdjustment(
+          result.agentId,
+          request.task
+        );
+        if (adjustment !== 0) {
+          // Apply adjustment and re-clamp to [0,1] (INV-AGT-SEL-002)
+          result.confidence = Math.max(0, Math.min(1, result.confidence + adjustment));
+          result.matchDetails.push(`feedback adjustment: ${adjustment > 0 ? '+' : ''}${adjustment.toFixed(2)}`);
+        }
+        return result;
+      });
+      await Promise.all(adjustmentPromises);
+    }
 
     // INV-AGT-SEL-003: Sort by confidence descending, then by agentId for tie-breaking
     scored.sort((a, b) => {
@@ -403,9 +461,13 @@ export class AgentSelectionService implements AgentSelectionServicePort {
 
 /**
  * Creates an agent selection service
+ *
+ * @param registry - Agent registry for listing agents
+ * @param options - Optional configuration including feedback adjuster
  */
 export function createAgentSelectionService(
-  registry: AgentRegistry
+  registry: AgentRegistry,
+  options?: AgentSelectionServiceOptions
 ): AgentSelectionServicePort {
-  return new AgentSelectionService(registry);
+  return new AgentSelectionService(registry, options);
 }

@@ -8,7 +8,7 @@
  * - INV-DISC-642: Agent responses weighted by agentWeightMultiplier (default 1.5x)
  */
 
-import { DEFAULT_AGENT_WEIGHT_MULTIPLIER, type VotingResults, type VoteRecord } from '@defai.digital/contracts';
+import { DEFAULT_AGENT_WEIGHT_MULTIPLIER, DEFAULT_VOTING_SUMMARY_TIMEOUT, type VotingResults, type VoteRecord } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   VOTING_TALLY,
@@ -69,6 +69,21 @@ export class VotingConsensus implements ConsensusExecutor {
       onProgress
     );
 
+    const consensusDurationMs = Date.now() - startTime;
+
+    // Emit consensus_complete event for Phase 2 tracing
+    onProgress?.({
+      type: 'consensus_complete',
+      message: `Voting consensus reached: ${votingResults.winner} won${votingResults.unanimous ? ' unanimously' : ''}`,
+      timestamp: new Date().toISOString(),
+      success: true,
+      consensusMethod: 'voting',
+      confidence: votingResults.unanimous ? 1.0 : votingResults.margin,
+      winner: votingResults.winner,
+      votes: votingResults.votes,
+      durationMs: consensusDurationMs,
+    });
+
     return {
       synthesis,
       consensus: {
@@ -77,7 +92,7 @@ export class VotingConsensus implements ConsensusExecutor {
         agreementScore: votingResults.unanimous ? 1.0 : votingResults.margin,
       },
       votingResults,
-      durationMs: Date.now() - startTime,
+      durationMs: consensusDurationMs,
       success: true,
     };
   }
@@ -185,7 +200,7 @@ export class VotingConsensus implements ConsensusExecutor {
         prompt,
         systemPrompt: getProviderSystemPrompt(synthesizerId),
         temperature: 0.5,
-        timeoutMs: 60000,
+        timeoutMs: DEFAULT_VOTING_SUMMARY_TIMEOUT, // Vote summary is simpler (90 sec default)
         abortSignal,
       });
 
@@ -193,6 +208,10 @@ export class VotingConsensus implements ConsensusExecutor {
         type: 'synthesis_complete',
         provider: synthesizerId,
         timestamp: new Date().toISOString(),
+        // Extended fields for Phase 2 tracing
+        success: result.success,
+        durationMs: result.durationMs,
+        tokenCount: result.tokenCount,
       });
 
       if (result.success && result.content) {

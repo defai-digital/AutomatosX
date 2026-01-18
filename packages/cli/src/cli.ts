@@ -27,6 +27,8 @@ import {
   mcpCommand,
   // Update
   updateCommand,
+  // Web Monitor Dashboard
+  monitorCommand,
 } from './commands/index.js';
 import type { CommandHandler } from './types.js';
 
@@ -61,6 +63,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   mcp: mcpCommand,
   // Update
   update: updateCommand,
+  // Web Monitor Dashboard
+  monitor: monitorCommand,
 };
 
 /**

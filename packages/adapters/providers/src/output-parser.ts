@@ -136,6 +136,51 @@ function parseText(stdout: string): ParsedOutput {
  * Tries common field names used by different providers
  */
 function extractContent(data: Record<string, unknown>): string {
+  // Handle Claude CLI stream-json format:
+  // {"type":"assistant","message":{"content":[{"type":"text","text":"..."}],...}}
+  if (data.type === 'assistant' && typeof data.message === 'object' && data.message !== null) {
+    const message = data.message as Record<string, unknown>;
+    // Extract from message.content array
+    if (Array.isArray(message.content)) {
+      const textBlocks = message.content
+        .filter((block): block is { type: string; text: string } => {
+          if (typeof block !== 'object' || block === null) return false;
+          const obj = block as Record<string, unknown>;
+          return obj.type === 'text' && typeof obj.text === 'string';
+        })
+        .map((block) => block.text);
+      if (textBlocks.length > 0) {
+        return textBlocks.join('');
+      }
+    }
+    // Also try direct message.content string
+    if (typeof message.content === 'string') {
+      return message.content;
+    }
+    return '';
+  }
+
+  // Note: Claude CLI result events (type=result) contain a summary in the
+  // "result" field, but this duplicates content already in assistant messages.
+  // We skip extracting from result events to avoid duplication in stream-json mode.
+  // The result event is handled as a non-content event below.
+
+  // Handle OpenCode format: {"type":"text","part":{"type":"text","text":"..."}}
+  if (data.type === 'text' && typeof data.part === 'object' && data.part !== null) {
+    const part = data.part as Record<string, unknown>;
+    if (typeof part.text === 'string') {
+      return part.text;
+    }
+  }
+
+  // Skip non-content events (system init, thread.started, step_start, step_finish, result, etc.)
+  // Note: result events are skipped because they duplicate content from assistant messages
+  if (data.type === 'system' || data.type === 'result' ||
+      data.type === 'thread.started' || data.type === 'turn.started' || data.type === 'turn.completed' ||
+      data.type === 'step_start' || data.type === 'step_finish') {
+    return '';
+  }
+
   // Handle Codex-style item.completed events
   // {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
   if (data.type === 'item.completed' && typeof data.item === 'object' && data.item !== null) {
@@ -144,11 +189,6 @@ function extractContent(data: Record<string, unknown>): string {
     if (item.type === 'agent_message' && typeof item.text === 'string') {
       return item.text;
     }
-    return '';
-  }
-
-  // Skip non-content events (thread.started, turn.started, turn.completed, etc.)
-  if (data.type === 'thread.started' || data.type === 'turn.started' || data.type === 'turn.completed') {
     return '';
   }
 

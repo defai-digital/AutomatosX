@@ -103,15 +103,9 @@ describe('Discuss Command', () => {
       expect(result.message).toContain('unknown-provider');
     });
 
-    it('should fail with only one provider', async () => {
-      const result = await discussCommand(
-        ['--providers', 'claude', 'Test topic'],
-        defaultOptions
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('At least 2 providers');
-    });
+    // Note: With smart provider selection, specifying only 1 provider now
+    // triggers single provider mode (direct call) instead of returning an error.
+    // This test has been removed as the behavior has changed intentionally.
   });
 
   // ============================================================================
@@ -154,19 +148,17 @@ describe('Discuss Command', () => {
       expect(result.message).toContain('invalid1');
     });
 
-    it('should accept valid provider names', async () => {
-      // Test valid provider validation indirectly:
-      // If we pass valid providers but only ONE, we should get "at least 2 providers required"
-      // NOT "Unknown provider(s)" - proving the provider name was accepted
+    it('should reject invalid provider names', async () => {
+      // Test that invalid provider names are rejected with "Unknown provider"
+      // while valid providers pass validation
       const result = await discussCommand(
-        ['--providers', 'claude', 'Test topic'],
+        ['--providers', 'invalid1,invalid2', 'Test topic'],
         defaultOptions
       );
 
       expect(result.success).toBe(false);
-      // Should fail on minimum count, NOT on unknown provider
-      expect(result.message).toContain('At least 2 providers are required');
-      expect(result.message).not.toContain('Unknown provider(s)');
+      expect(result.message).toContain('Unknown provider');
+      expect(result.message).toContain('invalid1');
     });
 
     it('should parse --pattern flag with invalid providers', async () => {

@@ -2,10 +2,12 @@
  * Agent Command
  *
  * CLI command for managing agents.
+ * Integrates with trace store for dashboard visibility.
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createPersistentAgentRegistry,
@@ -14,14 +16,40 @@ import {
   DEFAULT_AGENT_DOMAIN_CONFIG,
   type AgentRegistry,
 } from '@defai.digital/agent-domain';
-import type { AgentProfile } from '@defai.digital/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage } from '@defai.digital/contracts';
+import type { AgentProfile, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy } from '@defai.digital/contracts';
+import { bootstrap, getTraceStore } from '../bootstrap.js';
 
 // Storage path for persistent agents (matches MCP server)
 const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
 
 // Path to example agents (relative to workspace root)
 const EXAMPLE_AGENTS_DIR = path.join(process.cwd(), 'examples', 'agents');
+
+/**
+ * Compare semver versions to check if newVersion is newer than oldVersion
+ * Returns true if newVersion > oldVersion
+ */
+function isNewerVersion(newVersion: string | undefined, oldVersion: string | undefined): boolean {
+  if (!newVersion) return false;
+  if (!oldVersion) return true;
+
+  const parseVersion = (v: string): number[] => {
+    return v.split('.').map(part => parseInt(part, 10) || 0);
+  };
+
+  const newParts = parseVersion(newVersion);
+  const oldParts = parseVersion(oldVersion);
+
+  for (let i = 0; i < Math.max(newParts.length, oldParts.length); i++) {
+    const newPart = newParts[i] ?? 0;
+    const oldPart = oldParts[i] ?? 0;
+    if (newPart > oldPart) return true;
+    if (newPart < oldPart) return false;
+  }
+
+  return false; // Versions are equal
+}
 
 // Singleton registry - initialized lazily
 let _registry: AgentRegistry | null = null;
@@ -30,19 +58,22 @@ let _initPromise: Promise<AgentRegistry> | null = null;
 /**
  * Get or create the shared agent registry
  * Loads example agents on first access
+ * Uses atomic promise assignment to prevent race conditions
  */
 async function getRegistry(): Promise<AgentRegistry> {
   if (_registry !== null) {
     return _registry;
   }
 
-  if (_initPromise !== null) {
-    return _initPromise;
+  if (_initPromise === null) {
+    // Assign promise immediately before any async work to prevent race condition
+    _initPromise = initializeRegistry().then(registry => {
+      _registry = registry;
+      return registry;
+    });
   }
 
-  _initPromise = initializeRegistry();
-  _registry = await _initPromise;
-  return _registry;
+  return _initPromise;
 }
 
 /**
@@ -67,13 +98,20 @@ async function initializeRegistry(): Promise<AgentRegistry> {
       const exampleAgents = await loader.loadAll();
 
       for (const agent of exampleAgents) {
-        // Only load if not already registered
-        const exists = await registry.exists(agent.agentId);
-        if (!exists) {
+        const existing = await registry.get(agent.agentId);
+        if (!existing) {
+          // Agent doesn't exist - register it
           try {
             await registry.register(agent);
           } catch {
             // Ignore duplicate registration errors
+          }
+        } else if (isNewerVersion(agent.version, existing.version)) {
+          // Example agent has newer version - update the persisted agent
+          try {
+            await registry.update(agent.agentId, agent);
+          } catch {
+            // Ignore update errors
           }
         }
       }
@@ -130,12 +168,14 @@ export async function agentCommand(
 async function listAgents(options: CLIOptions): Promise<CommandResult> {
   try {
     const registry = await getRegistry();
-    const agents = await registry.list();
+    const filter = options.team ? { team: options.team } : undefined;
+    const agents = await registry.list(filter);
 
     if (agents.length === 0) {
+      const teamMsg = options.team ? ` in team "${options.team}"` : '';
       return {
         success: true,
-        message: 'No agents registered.',
+        message: `No agents registered${teamMsg}.`,
         data: [],
         exitCode: 0,
       };
@@ -295,7 +335,7 @@ async function registerAgent(options: CLIOptions): Promise<CommandResult> {
 }
 
 /**
- * Run an agent
+ * Run an agent with trace integration for dashboard visibility
  */
 async function runAgent(args: string[], options: CLIOptions): Promise<CommandResult> {
   const agentId = args[0];
@@ -303,37 +343,147 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
   if (agentId === undefined) {
     return {
       success: false,
-      message: 'Usage: ax agent run <agent-id> [--input <json>]',
+      message: 'Usage: ax agent run <agent-id> [--input <text|json>] [task...]',
       data: undefined,
       exitCode: 1,
     };
   }
 
+  // Initialize bootstrap to get trace store
+  await bootstrap();
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+
+  // Extract task from remaining args (if any)
+  const task = args.slice(1).join(' ') || undefined;
+
+  // Create trace hierarchy context for this root trace (INV-TR-020 through INV-TR-024)
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event with full details
+  // INV-TR-011: Agent executions MUST include agentId in context
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: agentId, // Use workflowId to store agent ID
+      agentId, // INV-TR-011: Enable agent drill-down
+      // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      agentId,
+      task, // The task/prompt if provided
+      command: `ax agent run ${agentId}`,
+      hasInput: options.input !== undefined,
+      inputPreview: options.input?.slice(0, 200),
+    },
+  };
+  await traceStore.write(startEvent);
+
   try {
     const registry = await getRegistry();
     const executor = createAgentExecutor(registry, DEFAULT_AGENT_DOMAIN_CONFIG);
 
-    let input: Record<string, unknown> = {};
+    // Parse input: supports JSON objects or plain strings
+    // Plain strings are wrapped as { prompt: string } for executor compatibility
+    let input: unknown = {};
     if (options.input !== undefined) {
-      try {
-        input = JSON.parse(options.input);
-      } catch {
-        return {
-          success: false,
-          message: 'Invalid JSON input. Please provide a valid JSON string.',
-          data: undefined,
-          exitCode: 1,
-        };
+      const trimmedInput = options.input.trim();
+      // Check if input looks like JSON (starts with { or [)
+      if (trimmedInput.startsWith('{') || trimmedInput.startsWith('[')) {
+        try {
+          input = JSON.parse(options.input);
+        } catch {
+          // JSON-like input that failed to parse - treat as plain string
+          input = options.input;
+        }
+      } else {
+        // Plain string input - pass directly to executor
+        input = options.input;
       }
+    } else if (task !== undefined && task.length > 0) {
+      // Use task from positional args if no --input provided
+      input = task;
     }
 
     const result = await executor.execute(agentId, input);
+
+    // Emit step events for each step result
+    // INV-TR-011: Agent executions MUST include agentId in context
+    if (result.stepResults) {
+      for (const step of result.stepResults) {
+        await traceStore.write({
+          eventId: randomUUID(),
+          traceId,
+          type: 'step.end',
+          timestamp: new Date().toISOString(),
+          durationMs: step.durationMs,
+          status: step.success ? 'success' : 'failure',
+          context: {
+            workflowId: agentId,
+            agentId, // INV-TR-011: Enable agent drill-down
+            stepId: step.stepId,
+            // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+            parentTraceId: traceHierarchy.parentTraceId,
+            rootTraceId: traceHierarchy.rootTraceId,
+            traceDepth: traceHierarchy.traceDepth,
+            sessionId: traceHierarchy.sessionId,
+          },
+          payload: {
+            stepId: step.stepId,
+            success: step.success,
+            output: step.output,
+            error: step.error,
+            agentId,
+          },
+        });
+      }
+    }
+
+    // Emit run.end trace event with full details
+    // INV-TR-011: Agent executions MUST include agentId in context
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.totalDurationMs,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        workflowId: agentId,
+        agentId, // INV-TR-011: Enable agent drill-down
+        // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: result.success,
+        output: result.output,
+        // Format result as string for dashboard display
+        result: typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2),
+        error: result.error?.message ?? result.error,
+        stepCount: result.stepResults?.length ?? 0,
+        successfulSteps: result.stepResults?.filter(s => s.success).length ?? 0,
+        agentId,
+        command: `ax agent run ${agentId}`,
+      },
+    };
+    await traceStore.write(endEvent);
 
     if (options.format === 'json') {
       return {
         success: result.success,
         message: undefined,
-        data: result,
+        data: { ...result, traceId },
         exitCode: result.success ? 0 : 1,
       };
     }
@@ -341,6 +491,7 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
     if (result.success) {
       const lines = [
         `Agent executed successfully: ${agentId}`,
+        `Trace ID: ${traceId.slice(0, 8)}`,
         `Duration: ${result.totalDurationMs}ms`,
       ];
 
@@ -351,21 +502,57 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
       return {
         success: true,
         message: lines.join('\n'),
-        data: result,
+        data: { ...result, traceId },
         exitCode: 0,
       };
     } else {
       return {
         success: false,
-        message: `Agent execution failed: ${result.error?.message ?? 'Unknown error'}`,
-        data: result,
+        message: `Agent execution failed: ${result.error?.message ?? 'Unknown error'}\nTrace ID: ${traceId.slice(0, 8)}`,
+        data: { ...result, traceId },
         exitCode: 1,
       };
     }
   } catch (error) {
+    // Emit error trace event
+    // INV-TR-011: Agent executions MUST include agentId in context
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'error',
+      timestamp: new Date().toISOString(),
+      status: 'failure',
+      context: {
+        workflowId: agentId,
+        agentId,
+        // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: { error: getErrorMessage(error), agentId },
+    });
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      status: 'failure',
+      context: {
+        workflowId: agentId,
+        agentId,
+        // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: { success: false, error: getErrorMessage(error), agentId },
+    });
     return {
       success: false,
-      message: `Failed to run agent: ${getErrorMessage(error)}`,
+      message: `Failed to run agent: ${getErrorMessage(error)}\nTrace ID: ${traceId.slice(0, 8)}`,
       data: undefined,
       exitCode: 1,
     };

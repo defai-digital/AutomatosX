@@ -366,6 +366,21 @@ export const AgentRunOptionsSchema = z.object({
     rootTaskId: z.string().uuid(),
     startedAt: z.string().datetime().optional(),
   })).optional(),
+
+  // Trace hierarchy context for hierarchical tracing
+  // INV-TR-020: All traces in hierarchy share rootTraceId
+  // INV-TR-021: Child traces reference parentTraceId
+  // INV-TR-022: Depth increases by 1 for each level
+  // INV-TR-023: Session correlation
+  traceHierarchy: z.object({
+    parentTraceId: z.string().uuid().optional(),
+    rootTraceId: z.string().uuid().optional(),
+    traceDepth: z.number().int().min(0),
+    sessionId: z.string().uuid().optional(),
+  }).optional(),
+
+  // Current trace ID (for child agents to reference)
+  traceId: z.string().uuid().optional(),
 });
 
 export type AgentRunOptions = z.infer<typeof AgentRunOptionsSchema>;
@@ -893,18 +908,8 @@ export const ParallelGroupResultSchema = z.object({
 
 export type ParallelGroupResult = z.infer<typeof ParallelGroupResultSchema>;
 
-/**
- * Parallel execution error codes
- */
-export const ParallelExecutionErrorCodes = {
-  GROUP_TIMEOUT: 'PARALLEL_GROUP_TIMEOUT',
-  STEP_FAILED: 'PARALLEL_STEP_FAILED',
-  CONCURRENCY_EXCEEDED: 'PARALLEL_CONCURRENCY_EXCEEDED',
-  CIRCULAR_DEPENDENCY: 'PARALLEL_CIRCULAR_DEPENDENCY',
-} as const;
-
-export type ParallelExecutionErrorCode =
-  (typeof ParallelExecutionErrorCodes)[keyof typeof ParallelExecutionErrorCodes];
+// NOTE: ParallelExecutionErrorCodes moved to parallel-execution/v1/schema.ts
+// Re-exported from there for backwards compatibility
 
 // ============================================================================
 // Validation Functions for New Contracts

@@ -424,6 +424,19 @@ export interface StepExecutionContext {
    * Performance optimization: avoids N database queries for N workflow steps
    */
   agentProfile?: StepAgentProfile | undefined;
+  /**
+   * Trace hierarchy for hierarchical tracing across delegations
+   * INV-TR-020: All traces in hierarchy share rootTraceId
+   * INV-TR-021: Child traces reference parentTraceId
+   * INV-TR-022: Depth increases by 1 for each level
+   * INV-TR-023: Session correlation
+   */
+  traceHierarchy?: import('@defai.digital/contracts').TraceHierarchy | undefined;
+  /**
+   * Current trace ID for this execution
+   * Used by child agents to set parentTraceId
+   */
+  traceId?: string | undefined;
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { TraceEvent, TraceStatus } from '@defai.digital/contracts';
-import type { TraceStore, TraceSummary } from '@defai.digital/trace-domain';
+import type { TraceStore, TraceSummary, TraceTreeNode } from '@defai.digital/trace-domain';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
 
@@ -98,6 +98,12 @@ export class SqliteTraceStore implements TraceStore {
         event_count INTEGER NOT NULL DEFAULT 0,
         error_count INTEGER NOT NULL DEFAULT 0,
         duration_ms INTEGER,
+        -- Hierarchical tracing fields (INV-TR-020 through INV-TR-024)
+        parent_trace_id TEXT,
+        root_trace_id TEXT,
+        trace_depth INTEGER,
+        session_id TEXT,
+        agent_id TEXT,
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
@@ -106,7 +112,35 @@ export class SqliteTraceStore implements TraceStore {
 
       CREATE INDEX IF NOT EXISTS idx_${this.summariesTable}_status
         ON ${this.summariesTable}(status);
+
+      -- Indexes for hierarchical tracing queries
+      CREATE INDEX IF NOT EXISTS idx_${this.summariesTable}_parent_trace_id
+        ON ${this.summariesTable}(parent_trace_id);
+
+      CREATE INDEX IF NOT EXISTS idx_${this.summariesTable}_root_trace_id
+        ON ${this.summariesTable}(root_trace_id);
+
+      CREATE INDEX IF NOT EXISTS idx_${this.summariesTable}_session_id
+        ON ${this.summariesTable}(session_id);
     `);
+
+    // Migrate existing tables to add hierarchy columns if they don't exist
+    this.migrateHierarchyColumns();
+  }
+
+  /**
+   * Adds hierarchy columns to existing tables (migration)
+   */
+  private migrateHierarchyColumns(): void {
+    // Check if columns exist and add them if not
+    const columns = ['parent_trace_id', 'root_trace_id', 'trace_depth', 'session_id', 'agent_id'];
+    for (const column of columns) {
+      try {
+        this.db.exec(`ALTER TABLE ${this.summariesTable} ADD COLUMN ${column} TEXT`);
+      } catch {
+        // Column already exists - ignore
+      }
+    }
   }
 
   /**
@@ -194,7 +228,8 @@ export class SqliteTraceStore implements TraceStore {
   listTraces(limit = 100): Promise<TraceSummary[]> {
     const stmt = this.db.prepare(`
       SELECT trace_id, start_time, end_time, status,
-             event_count, error_count, duration_ms
+             event_count, error_count, duration_ms,
+             parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
       ORDER BY id DESC
       LIMIT ?
@@ -208,6 +243,8 @@ export class SqliteTraceStore implements TraceStore {
    * Updates trace summary based on event
    */
   private updateSummary(event: TraceEvent): void {
+    const context = event.context;
+
     // Check if summary exists
     const checkStmt = this.db.prepare(`
       SELECT trace_id FROM ${this.summariesTable} WHERE trace_id = ?
@@ -215,17 +252,23 @@ export class SqliteTraceStore implements TraceStore {
     const existing = checkStmt.get(event.traceId);
 
     if (existing === undefined) {
-      // Insert new summary
+      // Insert new summary with hierarchy fields (INV-TR-020 through INV-TR-024)
       const insertStmt = this.db.prepare(`
         INSERT INTO ${this.summariesTable} (
-          trace_id, start_time, status, event_count, error_count
-        ) VALUES (?, ?, ?, 1, ?)
+          trace_id, start_time, status, event_count, error_count,
+          parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
+        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
       `);
       insertStmt.run(
         event.traceId,
         event.timestamp,
         event.status ?? 'pending',
-        event.type === 'error' ? 1 : 0
+        event.type === 'error' ? 1 : 0,
+        context?.parentTraceId ?? null,
+        context?.rootTraceId ?? null,
+        context?.traceDepth ?? null,
+        context?.sessionId ?? null,
+        context?.agentId ?? null
       );
     } else {
       // Update existing summary
@@ -244,6 +287,27 @@ export class SqliteTraceStore implements TraceStore {
       if (event.type === 'run.start') {
         updateSql += ', start_time = ?, status = ?';
         params.push(event.timestamp, 'running');
+        // Update hierarchy fields on run.start if provided
+        if (context?.parentTraceId) {
+          updateSql += ', parent_trace_id = COALESCE(parent_trace_id, ?)';
+          params.push(context.parentTraceId);
+        }
+        if (context?.rootTraceId) {
+          updateSql += ', root_trace_id = COALESCE(root_trace_id, ?)';
+          params.push(context.rootTraceId);
+        }
+        if (context?.traceDepth !== undefined) {
+          updateSql += ', trace_depth = COALESCE(trace_depth, ?)';
+          params.push(context.traceDepth);
+        }
+        if (context?.sessionId) {
+          updateSql += ', session_id = COALESCE(session_id, ?)';
+          params.push(context.sessionId);
+        }
+        if (context?.agentId) {
+          updateSql += ', agent_id = COALESCE(agent_id, ?)';
+          params.push(context.agentId);
+        }
       }
 
       if (event.type === 'run.end') {
@@ -269,11 +333,185 @@ export class SqliteTraceStore implements TraceStore {
   }
 
   /**
+   * Gets all traces that share the same root trace ID
+   * INV-TR-020: All traces in hierarchy share rootTraceId
+   */
+  getTracesByRoot(rootTraceId: string): Promise<TraceSummary[]> {
+    const stmt = this.db.prepare(`
+      SELECT trace_id, start_time, end_time, status,
+             event_count, error_count, duration_ms,
+             parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
+      FROM ${this.summariesTable}
+      WHERE root_trace_id = ? OR trace_id = ?
+      ORDER BY COALESCE(trace_depth, 0) ASC, start_time ASC
+    `);
+
+    const rows = stmt.all(rootTraceId, rootTraceId) as TraceSummaryRow[];
+    return Promise.resolve(rows.map(rowToTraceSummary));
+  }
+
+  /**
+   * Gets direct children of a trace
+   * INV-TR-021: Child traces reference parentTraceId
+   */
+  getChildTraces(parentTraceId: string): Promise<TraceSummary[]> {
+    const stmt = this.db.prepare(`
+      SELECT trace_id, start_time, end_time, status,
+             event_count, error_count, duration_ms,
+             parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
+      FROM ${this.summariesTable}
+      WHERE parent_trace_id = ?
+      ORDER BY start_time ASC
+    `);
+
+    const rows = stmt.all(parentTraceId) as TraceSummaryRow[];
+    return Promise.resolve(rows.map(rowToTraceSummary));
+  }
+
+  /**
+   * Gets all traces in a session
+   * INV-TR-023: Session trace correlation
+   */
+  getTracesBySession(sessionId: string): Promise<TraceSummary[]> {
+    const stmt = this.db.prepare(`
+      SELECT trace_id, start_time, end_time, status,
+             event_count, error_count, duration_ms,
+             parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
+      FROM ${this.summariesTable}
+      WHERE session_id = ?
+      ORDER BY start_time ASC
+    `);
+
+    const rows = stmt.all(sessionId) as TraceSummaryRow[];
+    return Promise.resolve(rows.map(rowToTraceSummary));
+  }
+
+  /**
+   * Builds a hierarchical tree from a root trace
+   * Returns the complete tree structure for visualization
+   */
+  async getTraceTree(traceId: string): Promise<TraceTreeNode | undefined> {
+    // Get the root summary
+    const rootStmt = this.db.prepare(`
+      SELECT trace_id, start_time, end_time, status,
+             event_count, error_count, duration_ms,
+             parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
+      FROM ${this.summariesTable}
+      WHERE trace_id = ?
+    `);
+    const rootRow = rootStmt.get(traceId) as TraceSummaryRow | undefined;
+    if (!rootRow) return undefined;
+
+    const rootSummary = rowToTraceSummary(rootRow);
+
+    // Determine the effective root trace ID
+    const effectiveRootId = rootSummary.rootTraceId ?? traceId;
+
+    // Get all traces in this hierarchy
+    const allTraces = await this.getTracesByRoot(effectiveRootId);
+
+    // Create a map for quick lookup
+    const traceMap = new Map<string, TraceSummary>();
+    for (const trace of allTraces) {
+      traceMap.set(trace.traceId, trace);
+    }
+
+    // Build tree recursively
+    const buildNode = (summary: TraceSummary): TraceTreeNode => {
+      const children = allTraces
+        .filter((t) => t.parentTraceId === summary.traceId)
+        .map((childSummary) => buildNode(childSummary));
+
+      const childDuration = children.reduce(
+        (sum, child) => sum + (child.totalDurationMs ?? 0),
+        0
+      );
+      const childEventCount = children.reduce(
+        (sum, child) => sum + child.totalEventCount,
+        0
+      );
+
+      return {
+        trace: summary,
+        children,
+        totalDurationMs: (summary.durationMs ?? 0) + childDuration,
+        totalEventCount: summary.eventCount + childEventCount,
+      };
+    };
+
+    // Build tree starting from the requested trace
+    const targetSummary = traceMap.get(traceId);
+    if (!targetSummary) return undefined;
+
+    return buildNode(targetSummary);
+  }
+
+  /**
    * Clears all traces (for testing only)
    */
   clear(): void {
     this.db.exec(`DELETE FROM ${this.eventsTable}`);
     this.db.exec(`DELETE FROM ${this.summariesTable}`);
+  }
+
+  /**
+   * Closes stuck traces that have been running longer than maxAgeMs
+   * Writes a run.end event marking them as failed
+   * @param maxAgeMs Maximum age in milliseconds (default: 1 hour)
+   * @returns number of traces that were closed
+   */
+  async closeStuckTraces(maxAgeMs = 3600000): Promise<number> {
+    // Input validation
+    if (maxAgeMs <= 0) {
+      throw new Error('maxAgeMs must be a positive number');
+    }
+
+    try {
+      const currentTime = Date.now();
+      const cutoffDate = new Date(currentTime - maxAgeMs).toISOString();
+
+      // Find all stuck traces (running or pending status and started before cutoff)
+      // Note: status may be 'pending' if summary update didn't set to 'running'
+      const stuckTracesStmt = this.db.prepare(`
+        SELECT trace_id, start_time
+        FROM ${this.summariesTable}
+        WHERE status IN ('running', 'pending') AND start_time < ?
+      `);
+      const stuckTraces = stuckTracesStmt.all(cutoffDate) as { trace_id: string; start_time: string }[];
+
+      let closedCount = 0;
+
+      for (const trace of stuckTraces) {
+        const startTime = new Date(trace.start_time).getTime();
+        const durationMs = currentTime - startTime;
+
+        // Write a run.end event to close the trace
+        // Use timestamp in eventId to prevent collisions on repeated cleanup calls
+        const endEvent: TraceEvent = {
+          eventId: `${trace.trace_id}-auto-close-${currentTime}`,
+          traceId: trace.trace_id,
+          type: 'run.end',
+          timestamp: new Date().toISOString(),
+          payload: {
+            success: false,
+            error: 'Trace closed automatically - exceeded maximum running time',
+            autoClose: true,
+          },
+          status: 'failure',
+          durationMs,
+        };
+
+        await this.write(endEvent);
+        closedCount++;
+      }
+
+      return closedCount;
+    } catch (error) {
+      throw new SqliteTraceStoreError(
+        SqliteTraceStoreErrorCodes.DATABASE_ERROR,
+        `Failed to close stuck traces: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**
@@ -332,6 +570,12 @@ interface TraceSummaryRow {
   event_count: number;
   error_count: number;
   duration_ms: number | null;
+  // Hierarchical tracing fields
+  parent_trace_id: string | null;
+  root_trace_id: string | null;
+  trace_depth: number | null;
+  session_id: string | null;
+  agent_id: string | null;
 }
 
 /**
@@ -392,6 +636,12 @@ function rowToTraceSummary(row: TraceSummaryRow): TraceSummary {
     status: row.status as TraceStatus,
     eventCount: row.event_count,
     errorCount: row.error_count,
+    // Hierarchical tracing fields (INV-TR-020 through INV-TR-024)
+    parentTraceId: row.parent_trace_id ?? undefined,
+    rootTraceId: row.root_trace_id ?? undefined,
+    traceDepth: row.trace_depth ?? undefined,
+    sessionId: row.session_id ?? undefined,
+    agentId: row.agent_id ?? undefined,
   };
 
   if (row.end_time !== null) {

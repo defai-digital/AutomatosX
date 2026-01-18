@@ -106,6 +106,7 @@ export function createCLIAdapter(config: CLIProviderConfig): LLMProvider {
           stdin: useArgStyle ? '' : prompt,  // Only use stdin if not using arg style
           env: config.env,
           timeout: request.timeout ?? config.timeout,
+          earlyTerminateOn: config.earlyTerminateOn,
         });
 
         const latencyMs = Date.now() - startTime;
@@ -118,12 +119,12 @@ export function createCLIAdapter(config: CLIProviderConfig): LLMProvider {
         const stdoutErrorMessage = extractJsonErrorFromStdout(result.stdout);
 
         // Check for errors (non-zero exit code or timeout)
-        // BUT: if we got valid output and the process timed out (common with CLIs that don't exit cleanly),
-        // treat it as success. The timeout killed the process after it produced output.
+        // BUT: if we got valid output and the process timed out OR was early-terminated
+        // (common with CLIs that don't exit cleanly), treat it as success.
         const hasValidOutput = parsed.content.length > 0;
-        const processTimedOutWithOutput = result.timedOut && hasValidOutput;
+        const processKilledWithOutput = (result.timedOut || result.earlyTerminated) && hasValidOutput;
 
-        if ((result.exitCode !== 0 || result.timedOut) && !processTimedOutWithOutput) {
+        if ((result.exitCode !== 0 || result.timedOut) && !processKilledWithOutput) {
           // If we have a JSON error from stdout, use that instead of stderr
           if (stdoutErrorMessage !== null) {
             return {

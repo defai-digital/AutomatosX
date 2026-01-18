@@ -7,17 +7,22 @@
  *
  * Enables multiple AI models to discuss a topic from their unique perspectives,
  * building consensus through various patterns and mechanisms.
+ * Traces are emitted to SQLite for dashboard visibility.
  */
 
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, CLIOptions } from '../types.js';
 
 // Bootstrap imports - composition root provides adapter access
 import {
+  bootstrap,
   createProvider,
+  getTraceStore,
   PROVIDER_CONFIGS,
   type CLIProviderConfig,
   type CompletionRequest,
 } from '../bootstrap.js';
+import type { TraceEvent } from '@defai.digital/contracts';
 
 // Discussion domain imports
 import {
@@ -33,11 +38,11 @@ import {
 
 // Contract types
 import {
-  DEFAULT_PROVIDERS,
   DEFAULT_PROVIDER_TIMEOUT,
   DEFAULT_TOTAL_BUDGET_MS,
   DEFAULT_ROUNDS,
   DEFAULT_DISCUSSION_DEPTH,
+  MAX_DISCUSSION_DEPTH,
   DEFAULT_MAX_TOTAL_CALLS,
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
@@ -78,6 +83,7 @@ const CONSENSUS_NAMES: Record<ConsensusMethod, string> = {
 interface ParsedDiscussArgs {
   topic: string | undefined;
   providers: string[];
+  providersExplicitlySpecified: boolean; // Track if user specified providers
   pattern: DiscussionPattern;
   rounds: number;
   consensus: ConsensusMethod;
@@ -87,6 +93,10 @@ interface ParsedDiscussArgs {
   // Participant options (agents and providers)
   participants: DiscussionParticipant[] | undefined;
   agentWeight: number;
+  // Performance optimization options
+  fastMode: boolean;
+  roundEarlyExit: boolean;
+  roundAgreementThreshold: number;
   // Recursive discussion options
   recursive: boolean;
   maxDepth: number;
@@ -95,6 +105,299 @@ interface ParsedDiscussArgs {
   maxCalls: number;
   earlyExit: boolean;
   confidenceThreshold: number;
+}
+
+// ============================================================================
+// Model Selection
+// ============================================================================
+
+/**
+ * Safely gets the default model for a provider
+ * Returns the provider's default model, or first available, or 'default' placeholder
+ */
+function getModelForProviderConfig(
+  config: CLIProviderConfig | undefined
+): string {
+  if (!config?.models || config.models.length === 0) {
+    return 'default';
+  }
+
+  const defaultModel = config.models.find(m => m.isDefault);
+  if (defaultModel !== undefined) {
+    return defaultModel.modelId;
+  }
+
+  return config.models[0]?.modelId ?? 'default';
+}
+
+// ============================================================================
+// Smart Provider Selection
+// ============================================================================
+
+/**
+ * Randomly selects N items from an array (Fisher-Yates shuffle)
+ */
+function randomSelect<T>(items: T[], count: number): T[] {
+  if (items.length <= count) return [...items];
+
+  // Fisher-Yates shuffle
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+  }
+
+  return shuffled.slice(0, count);
+}
+
+/**
+ * Result of smart provider selection
+ */
+interface SmartProviderSelectionResult {
+  providers: string[];
+  skipDiscussion: boolean;
+  singleProvider?: string;
+  error?: string;
+}
+
+/**
+ * Smart provider selection:
+ * - If providers specified: use them (checking availability)
+ * - If not specified and ≥3 available: randomly pick 3
+ * - If not specified and exactly 2 available: use both
+ * - If not specified and exactly 1 available: skip discussion, use single provider
+ * - If not specified and 0 available: error
+ */
+async function selectProvidersForCLI(
+  specifiedProviders: string[],
+  providersExplicitlySpecified: boolean,
+  providerBridge: DiscussionProviderExecutor,
+  verbose: boolean
+): Promise<SmartProviderSelectionResult> {
+  // If providers were explicitly specified, check their availability
+  if (providersExplicitlySpecified && specifiedProviders.length > 0) {
+    const availableProviders: string[] = [];
+    for (const providerId of specifiedProviders) {
+      const isAvailable = await providerBridge.isAvailable(providerId);
+      if (isAvailable) {
+        availableProviders.push(providerId);
+        if (verbose) {
+          console.log(`  ${ICONS.check} ${providerId}`);
+        }
+      } else if (verbose) {
+        console.log(`  ${ICONS.cross} ${providerId} ${COLORS.dim}(not available)${COLORS.reset}`);
+      }
+    }
+
+    if (availableProviders.length === 0) {
+      return {
+        providers: [],
+        skipDiscussion: false,
+        error: 'No specified providers are available. Run "ax doctor" to check provider status.',
+      };
+    }
+
+    if (availableProviders.length === 1) {
+      const singleProvider = availableProviders[0];
+      if (singleProvider === undefined) {
+        return {
+          providers: [],
+          skipDiscussion: false,
+          error: 'No specified providers are available.',
+        };
+      }
+      return {
+        providers: [],
+        skipDiscussion: true,
+        singleProvider,
+      };
+    }
+
+    return {
+      providers: availableProviders,
+      skipDiscussion: false,
+    };
+  }
+
+  // No providers specified - get all available and use smart selection
+  const allAvailable = await providerBridge.getAvailableProviders();
+
+  if (allAvailable.length === 0) {
+    return {
+      providers: [],
+      skipDiscussion: false,
+      error: 'No providers available. Run "ax doctor" to check provider status.',
+    };
+  }
+
+  if (allAvailable.length === 1) {
+    const singleProvider = allAvailable[0];
+    if (singleProvider === undefined) {
+      return {
+        providers: [],
+        skipDiscussion: false,
+        error: 'No providers available.',
+      };
+    }
+    if (verbose) {
+      console.log(`  ${ICONS.bullet} Only ${singleProvider} is available - using direct mode`);
+    }
+    return {
+      providers: [],
+      skipDiscussion: true,
+      singleProvider,
+    };
+  }
+
+  if (allAvailable.length === 2) {
+    if (verbose) {
+      console.log(`  ${ICONS.bullet} Using both available providers: ${allAvailable.join(', ')}`);
+    }
+    return {
+      providers: allAvailable,
+      skipDiscussion: false,
+    };
+  }
+
+  // 3 or more available - randomly pick 3
+  const selected = randomSelect(allAvailable, 3);
+  if (verbose) {
+    console.log(`  ${ICONS.bullet} Randomly selected from ${allAvailable.length} available: ${selected.join(', ')}`);
+  }
+  return {
+    providers: selected,
+    skipDiscussion: false,
+  };
+}
+
+/**
+ * Call a single provider directly (when only 1 provider available)
+ */
+async function callSingleProviderCLI(
+  topic: string,
+  providerId: string,
+  providerBridge: DiscussionProviderExecutor,
+  timeout: number,
+  options: CLIOptions,
+  traceStore: ReturnType<typeof getTraceStore>,
+  traceId: string,
+  _startTime: string // Kept for API consistency, used in caller for trace start event
+): Promise<CommandResult> {
+  const callStartTime = Date.now();
+
+  if (!options.verbose) {
+    process.stdout.write(`${ICONS.discuss} Asking ${providerId} directly... `);
+  }
+
+  try {
+    const result = await providerBridge.execute({
+      providerId,
+      prompt: topic,
+      timeoutMs: timeout,
+    });
+
+    if (!options.verbose) {
+      console.log(result.success ? ICONS.check : ICONS.cross);
+    }
+
+    const durationMs = Date.now() - callStartTime;
+
+    // Emit trace event
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'discussion.end',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      status: result.success ? 'success' : 'failure',
+      context: { providerId },
+      payload: {
+        success: result.success,
+        command: 'ax discuss',
+        pattern: 'direct',
+        providers: [providerId],
+        singleProviderMode: true,
+        durationMs,
+      },
+    });
+
+    if (!result.success) {
+      return {
+        success: false,
+        message: `Provider ${providerId} failed: ${result.error}`,
+        data: undefined,
+        exitCode: 1,
+      };
+    }
+
+    const lines: string[] = [];
+    lines.push('');
+    lines.push(`${COLORS.bold}${ICONS.discuss} Direct Response${COLORS.reset}`);
+    lines.push('─'.repeat(50));
+    lines.push(`Provider: ${COLORS.cyan}${providerId}${COLORS.reset}`);
+    lines.push(`Duration: ${(durationMs / 1000).toFixed(1)}s`);
+    lines.push(`${COLORS.dim}(Only 1 provider available - discussion skipped)${COLORS.reset}`);
+    lines.push('');
+    lines.push(`${COLORS.bold}Response${COLORS.reset}`);
+    lines.push('─'.repeat(50));
+    lines.push(result.content ?? '');
+
+    if (options.format === 'json') {
+      const response = {
+        success: true,
+        pattern: 'direct',
+        topic,
+        participatingProviders: [providerId],
+        failedProviders: [],
+        synthesis: result.content ?? '',
+        totalDurationMs: durationMs,
+        consensus: { method: 'direct', synthesizer: providerId, agreementScore: 1.0 },
+        metadata: { singleProviderMode: true },
+      };
+      return {
+        success: true,
+        message: undefined,
+        data: response,
+        exitCode: 0,
+      };
+    }
+
+    return {
+      success: true,
+      message: lines.join('\n'),
+      data: { success: true, synthesis: result.content, provider: providerId, durationMs },
+      exitCode: 0,
+    };
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    if (!options.verbose) {
+      console.log(ICONS.cross);
+    }
+
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'discussion.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - callStartTime,
+      status: 'failure',
+      context: { providerId },
+      payload: {
+        success: false,
+        command: 'ax discuss',
+        providers: [providerId],
+        singleProviderMode: true,
+        error: errorMessage,
+      },
+    });
+
+    return {
+      success: false,
+      message: `Error calling ${providerId}: ${errorMessage}`,
+      data: undefined,
+      exitCode: 1,
+    };
+  }
 }
 
 // ============================================================================
@@ -142,9 +445,9 @@ function createProviderBridge(
       try {
         const config = providerConfigs[request.providerId];
         const completionRequest: CompletionRequest = {
-          requestId: crypto.randomUUID(),
+          requestId: randomUUID(),
           messages: [{ role: 'user', content: request.prompt }],
-          model: config?.models.find(m => m.isDefault)?.modelId ?? config?.models[0]?.modelId ?? 'default',
+          model: getModelForProviderConfig(config),
           systemPrompt: request.systemPrompt,
         };
 
@@ -215,11 +518,38 @@ function createProviderBridge(
 // ============================================================================
 
 /**
+ * Helper to parse integer with warning on invalid input
+ */
+function parseIntWithWarning(value: string | undefined, defaultValue: number, argName: string): number {
+  if (value === undefined) return defaultValue;
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) {
+    console.warn(`Warning: Invalid value "${value}" for ${argName}, using default ${defaultValue}`);
+    return defaultValue;
+  }
+  return parsed;
+}
+
+/**
+ * Helper to parse float with warning on invalid input
+ */
+function parseFloatWithWarning(value: string | undefined, defaultValue: number, argName: string): number {
+  if (value === undefined) return defaultValue;
+  const parsed = parseFloat(value);
+  if (isNaN(parsed)) {
+    console.warn(`Warning: Invalid value "${value}" for ${argName}, using default ${defaultValue}`);
+    return defaultValue;
+  }
+  return parsed;
+}
+
+/**
  * Parses discuss command arguments
  */
 function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussArgs {
   let topic: string | undefined;
   let providers: string[] = [];
+  let providersExplicitlySpecified = false;
   let pattern: DiscussionPattern = 'synthesis';
   let rounds = DEFAULT_ROUNDS;
   let consensus: ConsensusMethod = 'synthesis';
@@ -229,6 +559,10 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
   // Participant options
   let participants: DiscussionParticipant[] | undefined;
   let agentWeight = DEFAULT_AGENT_WEIGHT_MULTIPLIER; // (INV-DISC-642)
+  // Performance optimization options
+  let fastMode = false;
+  let roundEarlyExit = true; // Enabled by default
+  let roundAgreementThreshold = 0.85;
   // Recursive options
   let recursive = false;
   let maxDepth = DEFAULT_DISCUSSION_DEPTH;
@@ -244,11 +578,12 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     if (arg === '--providers' && i + 1 < args.length) {
       const providerStr = args[++i];
       providers = providerStr?.split(',').map(p => p.trim()) ?? [];
+      providersExplicitlySpecified = true;
     } else if (arg === '--pattern' && i + 1 < args.length) {
       pattern = args[++i] as DiscussionPattern;
     } else if (arg === '--rounds' && i + 1 < args.length) {
-      const parsed = parseInt(args[++i] ?? '2', 10);
-      if (!isNaN(parsed)) rounds = parsed;
+      const rawValue = args[++i];
+      rounds = parseIntWithWarning(rawValue, DEFAULT_ROUNDS, '--rounds');
     } else if (arg === '--consensus' && i + 1 < args.length) {
       consensus = args[++i] as ConsensusMethod;
     } else if (arg === '--synthesizer' && i + 1 < args.length) {
@@ -256,8 +591,8 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     } else if (arg === '--context' && i + 1 < args.length) {
       context = args[++i];
     } else if (arg === '--timeout' && i + 1 < args.length) {
-      const parsed = parseInt(args[++i] ?? '60000', 10);
-      if (!isNaN(parsed)) timeout = parsed;
+      const rawValue = args[++i];
+      timeout = parseIntWithWarning(rawValue, DEFAULT_PROVIDER_TIMEOUT, '--timeout');
     }
     // Participant options (agents and providers)
     else if (arg === '--participants' && i + 1 < args.length) {
@@ -266,64 +601,97 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
       participants = parseParticipantList(participantStr);
     } else if (arg === '--agent-weight' && i + 1 < args.length) {
       // Agent weight multiplier (0.5 - 3.0)
-      const parsed = parseFloat(args[++i] ?? String(DEFAULT_AGENT_WEIGHT_MULTIPLIER));
-      if (!isNaN(parsed)) agentWeight = Math.max(0.5, Math.min(3.0, parsed));
+      const rawValue = args[++i];
+      const parsed = parseFloatWithWarning(rawValue, DEFAULT_AGENT_WEIGHT_MULTIPLIER, '--agent-weight');
+      agentWeight = Math.max(0.5, Math.min(3.0, parsed));
+    }
+    // Performance optimization options
+    else if (arg === '--fast' || arg === '-f') {
+      // Fast mode: single round, skip cross-discussion
+      fastMode = true;
+      rounds = 1; // Override to single round
+    } else if (arg === '--no-round-early-exit') {
+      // Disable round-level early exit
+      roundEarlyExit = false;
+    } else if (arg === '--round-threshold' && i + 1 < args.length) {
+      // Agreement threshold for round early exit (0.5-1.0)
+      const rawValue = args[++i];
+      const parsed = parseFloatWithWarning(rawValue, 0.85, '--round-threshold');
+      roundAgreementThreshold = Math.max(0.5, Math.min(1.0, parsed));
     }
     // Recursive discussion options
     else if (arg === '--recursive' || arg === '-r') {
       recursive = true;
     } else if (arg === '--max-depth' && i + 1 < args.length) {
-      const parsed = parseInt(args[++i] ?? '2', 10);
-      if (!isNaN(parsed)) maxDepth = parsed;
+      const rawValue = args[++i];
+      maxDepth = parseIntWithWarning(rawValue, DEFAULT_DISCUSSION_DEPTH, '--max-depth');
+      // Validate max-depth is within bounds (1-4)
+      if (maxDepth < 1 || maxDepth > MAX_DISCUSSION_DEPTH) {
+        console.warn(`Warning: --max-depth must be between 1 and ${MAX_DISCUSSION_DEPTH}. Clamping to valid range.`);
+        maxDepth = Math.max(1, Math.min(maxDepth, MAX_DISCUSSION_DEPTH));
+      }
       recursive = true; // Implies recursive
     } else if (arg === '--timeout-strategy' && i + 1 < args.length) {
       timeoutStrategy = args[++i] as TimeoutStrategy;
     } else if (arg === '--budget' && i + 1 < args.length) {
-      // Parse budget like "180s" or "180000"
-      const budgetStr = args[++i] ?? '180000';
+      // Parse budget like "180s", "3m", or "180000"
+      const budgetStr = args[++i] ?? '';
       let parsed: number;
       if (budgetStr.endsWith('s')) {
-        parsed = parseInt(budgetStr.slice(0, -1), 10) * 1000;
+        const numPart = budgetStr.slice(0, -1);
+        parsed = parseInt(numPart, 10) * 1000;
+        if (isNaN(parsed)) {
+          console.warn(`Warning: Invalid budget format "${budgetStr}", expected format like "180s", "3m", or "180000". Using default.`);
+          parsed = DEFAULT_TOTAL_BUDGET_MS;
+        }
       } else if (budgetStr.endsWith('m')) {
-        parsed = parseInt(budgetStr.slice(0, -1), 10) * 60000;
+        const numPart = budgetStr.slice(0, -1);
+        parsed = parseInt(numPart, 10) * 60000;
+        if (isNaN(parsed)) {
+          console.warn(`Warning: Invalid budget format "${budgetStr}", expected format like "180s", "3m", or "180000". Using default.`);
+          parsed = DEFAULT_TOTAL_BUDGET_MS;
+        }
       } else {
         parsed = parseInt(budgetStr, 10);
+        if (isNaN(parsed)) {
+          console.warn(`Warning: Invalid budget format "${budgetStr}", expected format like "180s", "3m", or "180000". Using default.`);
+          parsed = DEFAULT_TOTAL_BUDGET_MS;
+        }
       }
-      if (!isNaN(parsed)) totalBudget = parsed;
+      totalBudget = parsed;
     } else if (arg === '--max-calls' && i + 1 < args.length) {
-      const parsed = parseInt(args[++i] ?? '20', 10);
-      if (!isNaN(parsed)) maxCalls = parsed;
+      const rawValue = args[++i];
+      maxCalls = parseIntWithWarning(rawValue, DEFAULT_MAX_TOTAL_CALLS, '--max-calls');
     } else if (arg === '--early-exit') {
       earlyExit = true;
     } else if (arg === '--no-early-exit') {
       earlyExit = false;
     } else if (arg === '--confidence-threshold' && i + 1 < args.length) {
-      const parsed = parseFloat(args[++i] ?? '0.9');
-      if (!isNaN(parsed)) confidenceThreshold = parsed;
+      const rawValue = args[++i];
+      confidenceThreshold = parseFloatWithWarning(rawValue, DEFAULT_CONFIDENCE_THRESHOLD, '--confidence-threshold');
     } else if (arg !== undefined && !arg.startsWith('-')) {
       // Positional argument is the topic
       if (topic === undefined) {
-        // Collect remaining non-flag args as topic
+        // Collect consecutive non-flag args as topic, then continue parsing remaining flags
         const topicParts: string[] = [];
-        for (let j = i; j < args.length; j++) {
+        let j = i;
+        for (; j < args.length; j++) {
           const part = args[j];
           if (part?.startsWith('-')) break;
           topicParts.push(part ?? '');
         }
         topic = topicParts.join(' ');
-        break;
+        // Skip over the topic parts we just consumed (minus 1 because the for loop will increment i)
+        i = j - 1;
       }
     }
   }
 
-  // Default providers if none specified
-  if (providers.length === 0) {
-    providers = [...DEFAULT_PROVIDERS];
-  }
-
+  // Note: providers are NOT defaulted here - smart selection happens in the command handler
   return {
     topic,
     providers,
+    providersExplicitlySpecified,
     pattern,
     rounds,
     consensus,
@@ -332,6 +700,9 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
     timeout,
     participants,
     agentWeight,
+    fastMode,
+    roundEarlyExit,
+    roundAgreementThreshold,
     recursive,
     maxDepth,
     timeoutStrategy,
@@ -347,38 +718,131 @@ function parseDiscussArgs(args: string[], _options: CLIOptions): ParsedDiscussAr
 // ============================================================================
 
 /**
- * Creates a progress handler for verbose output
+ * Trace context for progress handler
  */
-function createProgressHandler(verbose: boolean): (event: DiscussionProgressEvent) => void {
-  if (!verbose) {
-    return () => {}; // No-op
-  }
+interface ProgressTraceContext {
+  traceStore: Awaited<ReturnType<typeof getTraceStore>>;
+  traceId: string;
+}
 
+/**
+ * Creates a progress handler for verbose output and trace event emission (Phase 2)
+ * Emits granular trace events: discussion.provider, discussion.round, discussion.consensus
+ */
+function createProgressHandler(
+  verbose: boolean,
+  traceContext?: ProgressTraceContext
+): (event: DiscussionProgressEvent) => void {
   return (event: DiscussionProgressEvent) => {
-    switch (event.type) {
-      case 'round_start':
-        console.log(`\n${COLORS.bold}Round ${event.round}${COLORS.reset}`);
-        break;
+    // Console output for verbose mode
+    if (verbose) {
+      switch (event.type) {
+        case 'round_start':
+          console.log(`\n${COLORS.bold}Round ${event.round}${COLORS.reset}`);
+          break;
 
-      case 'provider_start':
-        process.stdout.write(`  ${ICONS.bullet} ${event.provider}: `);
-        break;
+        case 'provider_start':
+          process.stdout.write(`  ${ICONS.bullet} ${event.provider}: `);
+          break;
 
-      case 'provider_complete':
-        console.log(`${ICONS.check} ${COLORS.dim}(${event.message ?? 'done'})${COLORS.reset}`);
-        break;
+        case 'provider_complete':
+          console.log(`${ICONS.check} ${COLORS.dim}(${event.message ?? 'done'})${COLORS.reset}`);
+          break;
 
-      case 'round_complete':
-        console.log(`  ${ICONS.arrow} Round ${event.round} complete`);
-        break;
+        case 'round_complete':
+          console.log(`  ${ICONS.arrow} Round ${event.round} complete`);
+          break;
 
-      case 'synthesis_start':
-        console.log(`\n${COLORS.bold}Synthesizing...${COLORS.reset}`);
-        break;
+        case 'synthesis_start':
+          console.log(`\n${COLORS.bold}Synthesizing...${COLORS.reset}`);
+          break;
 
-      case 'synthesis_complete':
-        console.log(`${ICONS.check} Synthesis complete`);
-        break;
+        case 'synthesis_complete':
+          console.log(`${ICONS.check} Synthesis complete`);
+          break;
+      }
+    }
+
+    // Emit trace events for dashboard visibility (Phase 2: Granular Events)
+    if (traceContext) {
+      const { traceStore, traceId } = traceContext;
+
+      switch (event.type) {
+        case 'provider_complete':
+          // Emit discussion.provider trace event
+          if (event.provider && event.round !== undefined) {
+            traceStore.write({
+              eventId: randomUUID(),
+              traceId,
+              type: 'discussion.provider',
+              timestamp: event.timestamp,
+              durationMs: event.durationMs,
+              status: event.success ? 'success' : 'failure',
+              context: {
+                providerId: event.provider,
+              },
+              payload: {
+                providerId: event.provider,
+                roundNumber: event.round,
+                success: event.success ?? false,
+                durationMs: event.durationMs ?? 0,
+                tokenCount: event.tokenCount,
+                role: event.role,
+                error: event.error,
+              },
+            }).catch((err) => {
+              // Fire-and-forget with error logging
+              console.error('[discuss] Failed to write provider trace event:', err);
+            });
+          }
+          break;
+
+        case 'round_complete':
+          // Emit discussion.round trace event
+          if (event.round !== undefined) {
+            traceStore.write({
+              eventId: randomUUID(),
+              traceId,
+              type: 'discussion.round',
+              timestamp: event.timestamp,
+              durationMs: event.durationMs,
+              context: {},
+              payload: {
+                roundNumber: event.round,
+                participatingProviders: event.participatingProviders ?? [],
+                failedProviders: event.failedProviders,
+                responseCount: event.responseCount ?? 0,
+                durationMs: event.durationMs ?? 0,
+              },
+            }).catch((err) => {
+              console.error('[discuss] Failed to write round trace event:', err);
+            });
+          }
+          break;
+
+        case 'consensus_complete':
+          // Emit discussion.consensus trace event
+          traceStore.write({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.consensus',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            status: event.success ? 'success' : 'failure',
+            context: {},
+            payload: {
+              method: event.consensusMethod ?? 'synthesis',
+              success: event.success ?? false,
+              winner: event.winner,
+              confidence: event.confidence,
+              votes: event.votes,
+              durationMs: event.durationMs ?? 0,
+            },
+          }).catch((err) => {
+            console.error('[discuss] Failed to write consensus trace event:', err);
+          });
+          break;
+      }
     }
   };
 }
@@ -515,9 +979,14 @@ ${COLORS.bold}Basic Options:${COLORS.reset}
   --consensus       Consensus method: ${consensusMethods}
   --synthesizer     Provider for synthesis (default: claude)
   --context         Additional context for the discussion
-  --timeout         Per-provider timeout in ms (default: 180000, max: 30 min)
+  --timeout         Per-provider timeout in ms (default: 600000/10min, max: 30 min)
   --verbose, -v     Show detailed progress
   --format          Output format: text (default) or json
+
+${COLORS.bold}Performance Options:${COLORS.reset}
+  --fast, -f            Fast mode: single round, skip cross-discussion (~50% faster)
+  --no-round-early-exit Disable round-level early exit on high agreement
+  --round-threshold     Agreement threshold for round early exit (default: 0.85)
 
 ${COLORS.bold}Recursive Discussion Options:${COLORS.reset}
   --recursive, -r       Enable recursive sub-discussions
@@ -551,6 +1020,10 @@ ${COLORS.bold}Examples:${COLORS.reset}
   ax discuss --pattern voting "Which framework: React, Vue, or Angular?"
   ax discuss --verbose --rounds 3 "Optimize database queries"
 
+  ${COLORS.cyan}# Fast mode (single round, ~50% faster)${COLORS.reset}
+  ax discuss --fast "What is TypeScript?"
+  ax discuss -f "Explain microservices"
+
   ${COLORS.cyan}# Recursive discussions${COLORS.reset}
   ax discuss --recursive "Complex architectural decision"
   ax discuss --recursive --max-depth 3 "Design a distributed system"
@@ -570,7 +1043,7 @@ ${COLORS.bold}Examples:${COLORS.reset}
 // ============================================================================
 
 /**
- * Discuss command handler
+ * Discuss command handler with trace integration
  */
 export async function discussCommand(
   args: string[],
@@ -580,6 +1053,9 @@ export async function discussCommand(
   if (args.length === 0 || args[0] === 'help' || options.help) {
     return showDiscussHelp();
   }
+
+  // Initialize bootstrap to get SQLite trace store
+  await bootstrap();
 
   // Handle 'quick' subcommand - use quick synthesis with 2-3 providers
   if (args[0] === 'quick') {
@@ -619,59 +1095,81 @@ export async function discussCommand(
     };
   }
 
-  // Validate providers
-  const invalidProviders = parsed.providers.filter(p => PROVIDER_CONFIGS[p] === undefined);
-  if (invalidProviders.length > 0) {
-    const available = Object.keys(PROVIDER_CONFIGS).join(', ');
-    return {
-      success: false,
-      message: `Error: Unknown provider(s): ${invalidProviders.join(', ')}\nAvailable: ${available}`,
-      data: undefined,
-      exitCode: 1,
-    };
-  }
-
-  // Validate minimum providers
-  if (parsed.providers.length < 2) {
-    return {
-      success: false,
-      message: 'Error: At least 2 providers are required for discussion.',
-      data: undefined,
-      exitCode: 1,
-    };
+  // Validate explicitly specified providers
+  if (parsed.providersExplicitlySpecified) {
+    const invalidProviders = parsed.providers.filter(p => PROVIDER_CONFIGS[p] === undefined);
+    if (invalidProviders.length > 0) {
+      const available = Object.keys(PROVIDER_CONFIGS).join(', ');
+      return {
+        success: false,
+        message: `Error: Unknown provider(s): ${invalidProviders.join(', ')}\nAvailable: ${available}`,
+        data: undefined,
+        exitCode: 1,
+      };
+    }
   }
 
   // Create provider bridge
   const providerBridge = createProviderBridge(PROVIDER_CONFIGS);
 
-  // Check provider availability
+  // Create trace for dashboard visibility
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+
+  // Smart provider selection
   if (options.verbose) {
-    console.log(`${COLORS.bold}Checking provider availability...${COLORS.reset}`);
+    console.log(`${COLORS.bold}Selecting providers...${COLORS.reset}`);
   }
 
-  const availableProviders: string[] = [];
-  for (const providerId of parsed.providers) {
-    const isAvailable = await providerBridge.isAvailable(providerId);
-    if (isAvailable) {
-      availableProviders.push(providerId);
-      if (options.verbose) {
-        console.log(`  ${ICONS.check} ${providerId}`);
-      }
-    } else {
-      if (options.verbose) {
-        console.log(`  ${ICONS.cross} ${providerId} ${COLORS.dim}(not available)${COLORS.reset}`);
-      }
-    }
-  }
+  const selection = await selectProvidersForCLI(
+    parsed.providers,
+    parsed.providersExplicitlySpecified,
+    providerBridge,
+    options.verbose
+  );
 
-  if (availableProviders.length < 2) {
+  // Handle selection errors
+  if (selection.error) {
     return {
       success: false,
-      message: `Error: Only ${availableProviders.length} providers available. Need at least 2.\nRun "ax doctor" to check provider status.`,
+      message: `Error: ${selection.error}`,
       data: undefined,
       exitCode: 1,
     };
   }
+
+  // If only 1 provider available, skip discussion and call directly
+  if (selection.skipDiscussion && selection.singleProvider) {
+    // Emit run.start trace event
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'discussion.start',
+      timestamp: startTime,
+      context: { providerId: selection.singleProvider },
+      payload: {
+        command: 'ax discuss',
+        topic: parsed.topic,
+        pattern: 'direct',
+        providers: [selection.singleProvider],
+        singleProviderMode: true,
+      },
+    });
+
+    return callSingleProviderCLI(
+      parsed.topic,
+      selection.singleProvider,
+      providerBridge,
+      parsed.timeout,
+      options,
+      traceStore,
+      traceId,
+      startTime
+    );
+  }
+
+  const availableProviders = selection.providers;
 
   // Build discussion config
   const config: DiscussStepConfig = {
@@ -692,6 +1190,13 @@ export async function discussCommand(
     minProviders: 2,
     temperature: 0.7,
     agentWeightMultiplier: parsed.agentWeight,
+    // Performance optimization options
+    fastMode: parsed.fastMode,
+    roundEarlyExit: {
+      enabled: parsed.roundEarlyExit,
+      agreementThreshold: parsed.roundAgreementThreshold,
+      minRounds: 1,
+    },
     // Include participants if specified via --participants option
     ...(parsed.participants !== undefined && { participants: parsed.participants }),
   };
@@ -704,6 +1209,9 @@ export async function discussCommand(
     console.log(`  Pattern: ${PATTERN_NAMES[parsed.pattern] ?? parsed.pattern}`);
     console.log(`  Providers: ${availableProviders.join(', ')}`);
     console.log(`  Rounds: ${parsed.rounds}`);
+    if (parsed.fastMode) {
+      console.log(`  ${COLORS.cyan}Fast Mode: enabled (single round)${COLORS.reset}`);
+    }
     if (parsed.participants !== undefined && parsed.participants.length > 0) {
       const agentCount = parsed.participants.filter(p => p.type === 'agent').length;
       const providerCount = parsed.participants.filter(p => p.type === 'provider').length;
@@ -719,9 +1227,39 @@ export async function discussCommand(
     }
   } else {
     // Simple progress indicator for non-verbose mode
+    const fastLabel = parsed.fastMode ? ' (fast)' : '';
     const recursiveLabel = parsed.recursive ? ' (recursive)' : '';
-    process.stdout.write(`${ICONS.discuss} Discussing with ${availableProviders.length} providers${recursiveLabel}... `);
+    process.stdout.write(`${ICONS.discuss} Discussing with ${availableProviders.length} providers${fastLabel}${recursiveLabel}... `);
   }
+
+  // Emit run.start trace event with full topic
+  // INV-TR-010: Include participating providers for drill-down
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'discussion.start',
+    timestamp: startTime,
+    context: {
+      // For discussions with multiple providers, store first provider as primary
+      // All providers are listed in payload.providers
+      providerId: availableProviders[0], // Primary provider for filtering
+    },
+    payload: {
+      command: 'ax discuss',
+      topic: parsed.topic, // Full topic for dashboard
+      topicLength: parsed.topic.length,
+      pattern: parsed.pattern,
+      consensus: parsed.consensus,
+      providers: availableProviders,
+      rounds: parsed.rounds,
+      recursive: parsed.recursive,
+      maxDepth: parsed.recursive ? parsed.maxDepth : undefined,
+      context: parsed.context,
+    },
+  };
+  await traceStore.write(startEvent);
+
+  const discussStartTime = Date.now();
 
   try {
     // Choose executor based on recursive flag
@@ -754,7 +1292,7 @@ export async function discussCommand(
       });
 
       result = await recursiveExecutor.execute(config, {
-        onProgress: createProgressHandler(options.verbose),
+        onProgress: createProgressHandler(options.verbose, { traceStore, traceId }),
       });
     } else {
       // Use standard executor
@@ -765,7 +1303,7 @@ export async function discussCommand(
       });
 
       result = await discussionExecutor.execute(config, {
-        onProgress: createProgressHandler(options.verbose),
+        onProgress: createProgressHandler(options.verbose, { traceStore, traceId }),
       });
     }
 
@@ -773,6 +1311,51 @@ export async function discussCommand(
     if (!options.verbose) {
       console.log(result.success ? ICONS.check : ICONS.cross);
     }
+
+    // Emit discussion.end trace event with full details
+    const durationMs = Date.now() - discussStartTime;
+
+    // Extract provider responses from rounds for dashboard
+    const providerResponses: Record<string, string[]> = {};
+    if (result.rounds) {
+      for (const round of result.rounds) {
+        for (const response of round.responses ?? []) {
+          const providerId = response.provider ?? 'unknown';
+          if (!providerResponses[providerId]) {
+            providerResponses[providerId] = [];
+          }
+          providerResponses[providerId].push(response.content ?? '');
+        }
+      }
+    }
+
+    // INV-TR-010: Include participating providers for drill-down
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'discussion.end',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        providerId: availableProviders[0], // Primary provider for filtering
+      },
+      payload: {
+        success: result.success,
+        command: 'ax discuss',
+        pattern: parsed.pattern,
+        providers: availableProviders,
+        roundCount: result.rounds?.length ?? parsed.rounds,
+        durationMs,
+        consensusReached: result.consensus !== undefined,
+        consensus: result.consensus, // Consensus metadata (method, agreementScore, etc.)
+        synthesis: result.synthesis, // Final synthesized text for dashboard
+        responses: providerResponses, // Provider responses by provider ID
+        // Summary for quick view
+        totalResponses: Object.values(providerResponses).flat().length,
+      },
+    };
+    await traceStore.write(endEvent);
 
     // Handle JSON output
     if (options.format === 'json') {
@@ -799,7 +1382,28 @@ export async function discussCommand(
       console.log(ICONS.cross);
     }
 
+    // Emit error trace event
+    // INV-TR-010: Include participating providers for drill-down
+    const durationMs = Date.now() - discussStartTime;
     const errorMessage = getErrorMessage(error);
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'discussion.end',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      status: 'failure',
+      context: {
+        providerId: availableProviders[0], // Primary provider for filtering
+      },
+      payload: {
+        success: false,
+        command: 'ax discuss',
+        providers: availableProviders,
+        error: errorMessage,
+      },
+    });
+
     return {
       success: false,
       message: `Error during discussion: ${errorMessage}`,

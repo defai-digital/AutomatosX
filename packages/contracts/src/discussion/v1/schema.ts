@@ -25,11 +25,23 @@ export const MAX_ROUNDS = 10;
 /** Default discussion rounds */
 export const DEFAULT_ROUNDS = 2;
 
+/** Default rounds for fast mode (single round) */
+export const DEFAULT_FAST_MODE_ROUNDS = 1;
+
+/** Agreement threshold for round-level early exit */
+export const DEFAULT_ROUND_AGREEMENT_THRESHOLD = 0.85;
+
 /** Default provider timeout in ms (10 minutes - gives headroom for slower providers) */
 export const DEFAULT_PROVIDER_TIMEOUT = 600000;
 
 /** Maximum provider timeout in ms (30 minutes - for very complex discussions) */
 export const MAX_PROVIDER_TIMEOUT = 1800000;
+
+/** Default consensus timeout in ms (3 minutes - synthesis/moderation needs more time than regular calls) */
+export const DEFAULT_CONSENSUS_TIMEOUT = 180000;
+
+/** Default voting summary timeout in ms (90 seconds - simpler task than full synthesis) */
+export const DEFAULT_VOTING_SUMMARY_TIMEOUT = 90000;
 
 /** Default providers for discussions (ordered by reasoning strength) */
 export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini'] as const;
@@ -292,6 +304,29 @@ export const DiscussStepConfigSchema = z
 
     /** Weight multiplier for agent responses in consensus (default: 1.5x) */
     agentWeightMultiplier: z.number().min(0.5).max(3.0).optional().default(DEFAULT_AGENT_WEIGHT_MULTIPLIER),
+
+    /**
+     * Fast mode - skip cross-discussion rounds for quicker results.
+     * When enabled, uses single round and goes directly to synthesis.
+     * Best for simple factual questions or time-sensitive discussions.
+     */
+    fastMode: z.boolean().optional().default(false),
+
+    /**
+     * Enable round-level early exit when providers show high agreement.
+     * If all providers agree after round 1, skip subsequent rounds.
+     * Uses agreement detection to save ~30-50s per skipped round.
+     */
+    roundEarlyExit: z
+      .object({
+        /** Enable round-level early exit */
+        enabled: z.boolean().default(true),
+        /** Agreement threshold to skip remaining rounds (0-1) */
+        agreementThreshold: z.number().min(0.5).max(1).default(0.85),
+        /** Minimum rounds to complete before allowing early exit */
+        minRounds: z.number().int().min(1).default(1),
+      })
+      .optional(),
   })
   .refine(
     (data) => {

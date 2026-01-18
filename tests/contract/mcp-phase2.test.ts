@@ -331,8 +331,8 @@ describe('MCP Tool Invariants - Cross-Validation', () => {
   it('should categorize all tools by domain', () => {
     const domains = [
       'ability', 'agent', 'config', 'design', 'directory', 'file',
-      'guard', 'memory', 'metrics', 'orchestration', 'queue',
-      'scaffold', 'session', 'task', 'telemetry', 'timer', 'trace',
+      'guard', 'mcp', 'memory', 'metrics', 'orchestration', 'parallel', 'queue',
+      'scaffold', 'semantic', 'session', 'task', 'telemetry', 'timer', 'trace',
       'workflow',
     ];
 

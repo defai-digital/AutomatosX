@@ -38,6 +38,11 @@ const DEFAULT_OPTIONS: CLIOptions = {
   task: undefined,
   core: undefined,
   maxTokens: undefined,
+  // Status display defaults
+  refresh: undefined,
+  compact: false,
+  // Agent filter defaults
+  team: undefined,
 };
 
 /**
@@ -65,6 +70,11 @@ const GLOBAL_OPTIONS = new Set([
   'task',
   'core',
   'max-tokens',
+  // Status display options
+  'compact',
+  'refresh',
+  // Agent filter options
+  'team',
 ]);
 
 const GLOBAL_SHORT_FLAGS = new Set(['h', 'v', 'V']);
@@ -213,6 +223,26 @@ export function parseArgs(argv: string[]): ParsedCommand {
             const num = parseInt(nextArg, 10);
             if (!isNaN(num)) {
               options.maxTokens = num;
+            }
+            i++;
+          }
+          break;
+        // Agent filter options
+        case 'team':
+          if (nextArg !== undefined && !nextArg.startsWith('-')) {
+            options.team = nextArg;
+            i++;
+          }
+          break;
+        // Status display options
+        case 'compact':
+          options.compact = true;
+          break;
+        case 'refresh':
+          if (nextArg !== undefined && !nextArg.startsWith('-')) {
+            const num = parseInt(nextArg, 10);
+            if (!isNaN(num)) {
+              options.refresh = num;
             }
             i++;
           }

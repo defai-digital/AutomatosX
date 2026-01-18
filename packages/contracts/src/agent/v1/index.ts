@@ -48,12 +48,11 @@ export {
   DelegationCheckResultSchema,
   DelegationErrorCodes,
 
-  // Parallel Execution Contracts
+  // Parallel Execution Contracts (schemas only - error codes in parallel-execution/v1)
   ParallelFailureStrategySchema,
   ParallelExecutionConfigSchema,
   ParallelStepResultSchema,
   ParallelGroupResultSchema,
-  ParallelExecutionErrorCodes,
 
   // Tool Executor Contracts
   ToolExecutionResultSchema,
@@ -124,7 +123,6 @@ export {
   type ParallelExecutionConfig,
   type ParallelStepResult,
   type ParallelGroupResult,
-  type ParallelExecutionErrorCode,
   type ToolExecutionResult,
   type ToolExecutionRequest,
   type ToolExecutorConfig,

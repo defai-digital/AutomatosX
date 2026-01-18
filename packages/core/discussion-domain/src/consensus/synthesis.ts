@@ -5,7 +5,7 @@
  * This is the default consensus method.
  */
 
-import type { DissentRecord, DiscussionRound } from '@defai.digital/contracts';
+import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord, type DiscussionRound } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   SYNTHESIS_FINAL,
@@ -51,15 +51,21 @@ export class SynthesisConsensus implements ConsensusExecutor {
         prompt,
         systemPrompt: getProviderSystemPrompt(synthesizerId),
         temperature: 0.7,
-        timeoutMs: 90000, // Synthesis may take longer
+        timeoutMs: DEFAULT_CONSENSUS_TIMEOUT, // Synthesis may take longer (3 min default)
         abortSignal,
       });
 
+      const synthesisEndTime = Date.now();
       onProgress?.({
         type: 'synthesis_complete',
         provider: synthesizerId,
         message: result.success ? 'Synthesis complete' : `Synthesis failed: ${result.error}`,
         timestamp: new Date().toISOString(),
+        // Extended fields for Phase 2 tracing
+        success: result.success,
+        durationMs: synthesisEndTime - startTime,
+        tokenCount: result.tokenCount,
+        error: result.success ? undefined : result.error,
       });
 
       if (!result.success) {
@@ -77,6 +83,18 @@ export class SynthesisConsensus implements ConsensusExecutor {
 
       // Extract agreement score and dissent from synthesis
       const analysisResult = this.analyzeSynthesis(result.content || '', participatingProviders);
+      const consensusDurationMs = Date.now() - startTime;
+
+      // Emit consensus_complete event for Phase 2 tracing
+      onProgress?.({
+        type: 'consensus_complete',
+        message: 'Consensus reached via synthesis',
+        timestamp: new Date().toISOString(),
+        success: true,
+        consensusMethod: 'synthesis',
+        confidence: analysisResult.agreementScore,
+        durationMs: consensusDurationMs,
+      });
 
       return {
         synthesis: result.content || '',
@@ -87,7 +105,7 @@ export class SynthesisConsensus implements ConsensusExecutor {
           agreements: analysisResult.agreements,
           dissent: config.includeDissent ? analysisResult.dissent : undefined,
         },
-        durationMs: Date.now() - startTime,
+        durationMs: consensusDurationMs,
         success: true,
       };
 

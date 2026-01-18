@@ -6,19 +6,24 @@
  *        ax call --provider <provider> --file <file>
  *
  * All adapter imports are centralized in bootstrap.ts (composition root).
+ * Traces are emitted to SQLite for dashboard visibility.
  */
 
 import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, CLIOptions } from '../types.js';
 import { parseTime } from '../parser.js';
 
 // Bootstrap imports - composition root provides adapter access
 import {
+  bootstrap,
   createProvider,
+  getTraceStore,
   PROVIDER_CONFIGS,
   type CLIProviderConfig,
   type CompletionRequest,
 } from '../bootstrap.js';
+import type { TraceEvent } from '@defai.digital/contracts';
 
 // Context and Iterate domain imports
 import {
@@ -276,6 +281,43 @@ Examples:
 }
 
 // ============================================================================
+// Model Selection
+// ============================================================================
+
+/**
+ * Safely gets the default model for a provider
+ * Returns the explicitly provided model, or the provider's default, or first available model
+ * Warns if falling back to 'default' placeholder
+ */
+function getModelForProvider(
+  providerConfig: CLIProviderConfig,
+  model: string | undefined,
+  verbose: boolean = false
+): string {
+  // User provided an explicit model
+  if (model !== undefined) {
+    return model;
+  }
+
+  // Check if provider has models configured
+  if (!providerConfig.models || providerConfig.models.length === 0) {
+    if (verbose) {
+      console.warn(`Warning: No models configured for ${providerConfig.providerId}, using 'default'`);
+    }
+    return 'default';
+  }
+
+  // Try to find the default model
+  const defaultModel = providerConfig.models.find(m => m.isDefault);
+  if (defaultModel !== undefined) {
+    return defaultModel.modelId;
+  }
+
+  // Fall back to first model
+  return providerConfig.models[0]?.modelId ?? 'default';
+}
+
+// ============================================================================
 // Single Call (Non-Iterate)
 // ============================================================================
 
@@ -303,10 +345,11 @@ async function executeSingleCall(
   }
 
   // Build request
+  const actualModel = getModelForProvider(providerConfig, model, options.verbose);
   const request: CompletionRequest = {
     requestId: crypto.randomUUID(),
     messages: [{ role: 'user', content: promptContent }],
-    model: model ?? providerConfig.models.find(m => m.isDefault)?.modelId ?? providerConfig.models[0]?.modelId ?? 'default',
+    model: actualModel,
     systemPrompt,
   };
 
@@ -363,14 +406,23 @@ function formatIterationStatus(
 }
 
 /**
- * Executes iterate mode
+ * Trace store type for iterate mode
+ */
+interface TraceStoreForIterate {
+  write(event: TraceEvent): Promise<void>;
+}
+
+/**
+ * Executes iterate mode with step-by-step tracing
  */
 async function executeIterateMode(
   providerConfig: CLIProviderConfig,
   initialPrompt: string,
   systemPrompt: string | undefined,
   model: string | undefined,
-  options: CLIOptions
+  options: CLIOptions,
+  traceId?: string,
+  traceStore?: TraceStoreForIterate
 ): Promise<CommandResult> {
   const adapter = createProvider(providerConfig);
 
@@ -393,6 +445,7 @@ async function executeIterateMode(
 
   // Create controller
   const controller = new IterateController();
+  const actualModel = getModelForProvider(providerConfig, model, options.verbose);
 
   // Start iterate session
   let state = controller.start({
@@ -414,11 +467,13 @@ async function executeIterateMode(
 
   // Main iterate loop
   while (state.status === 'running') {
+    const iterationStart = Date.now();
+
     // Build request with conversation history
     const request: CompletionRequest = {
       requestId: crypto.randomUUID(),
       messages: messages.map(m => ({ role: m.role, content: m.content })),
-      model: model ?? providerConfig.models.find(m => m.isDefault)?.modelId ?? providerConfig.models[0]?.modelId ?? 'default',
+      model: actualModel,
       systemPrompt,
     };
 
@@ -428,6 +483,30 @@ async function executeIterateMode(
     if (!response.success) {
       const errorMsg = response.error?.message ?? 'Unknown error';
       console.log(formatIterationStatus(state, `${COLORS.red}Error: ${errorMsg}${COLORS.reset}`));
+
+      // Emit error step event
+      // INV-TR-010: Provider calls MUST include providerId in context
+      if (traceId && traceStore) {
+        await traceStore.write({
+          eventId: randomUUID(),
+          traceId,
+          type: 'step.end',
+          timestamp: new Date().toISOString(),
+          durationMs: Date.now() - iterationStart,
+          status: 'failure',
+          context: {
+            provider: providerConfig.providerId,
+            providerId: providerConfig.providerId, // INV-TR-010
+            model: actualModel,
+            stepId: `iteration-${state.iteration}`,
+          },
+          payload: {
+            iteration: state.iteration,
+            error: errorMsg,
+            success: false,
+          },
+        });
+      }
 
       // Handle as error intent
       const result = controller.handleResponse(state, 'error', errorMsg);
@@ -449,6 +528,42 @@ async function executeIterateMode(
     // Handle response
     const result = controller.handleResponse(state, intent, response.content);
     state = result.newState;
+
+    // Emit step event for this iteration
+    // INV-TR-010: Provider calls MUST include providerId in context
+    // INV-TR-012: Include tokenUsage when available
+    if (traceId && traceStore) {
+      await traceStore.write({
+        eventId: randomUUID(),
+        traceId,
+        type: 'step.end',
+        timestamp: new Date().toISOString(),
+        durationMs: Date.now() - iterationStart,
+        status: 'success',
+        context: {
+          provider: providerConfig.providerId,
+          providerId: providerConfig.providerId, // INV-TR-010
+          model: actualModel,
+          stepId: `iteration-${state.iteration}`,
+          // INV-TR-012: Token usage for cost tracking
+          tokenUsage: response.usage ? {
+            input: response.usage.inputTokens,
+            output: response.usage.outputTokens,
+            total: response.usage.totalTokens,
+          } : undefined,
+        },
+        payload: {
+          iteration: state.iteration,
+          intent,
+          action: result.action.type,
+          prompt: messages[messages.length - 2]?.content, // The user message for this iteration
+          response: response.content, // Full response
+          responseLength: response.content.length,
+          latencyMs: response.latencyMs,
+          success: true,
+        },
+      });
+    }
 
     // Display based on action
     switch (result.action.type) {
@@ -532,7 +647,7 @@ function formatDuration(ms: number): string {
 // ============================================================================
 
 /**
- * Call command handler
+ * Call command handler with trace integration
  */
 export async function callCommand(
   args: string[],
@@ -542,6 +657,9 @@ export async function callCommand(
   if (args.length === 0 || args[0] === 'help' || options.help) {
     return showCallHelp();
   }
+
+  // Initialize bootstrap to get SQLite trace store
+  await bootstrap();
 
   const { provider, prompt, file, model, systemPrompt } = parseCallArgs(args, options);
 
@@ -618,22 +736,122 @@ export async function callCommand(
     }
   }
 
-  // Execute based on mode
-  if (options.iterate) {
-    return executeIterateMode(
-      providerConfig,
-      promptContent,
-      finalSystemPrompt,
-      model,
-      options
-    );
-  }
+  // Create trace for dashboard visibility
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const mode = options.iterate ? 'iterate' : 'call';
+  const actualModel = getModelForProvider(providerConfig, model, options.verbose);
 
-  return executeSingleCall(
-    providerConfig,
-    promptContent,
-    finalSystemPrompt,
-    model,
-    options
-  );
+  // Emit run.start trace event with full details
+  // INV-TR-010: Provider calls MUST include providerId in context
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      provider,
+      providerId: provider, // INV-TR-010: Enable provider drill-down
+      model: actualModel,
+    },
+    payload: {
+      command: `ax call ${provider}`,
+      mode,
+      prompt: promptContent, // Full prompt for dashboard
+      promptLength: promptContent.length,
+      hasSystemPrompt: finalSystemPrompt !== undefined,
+      systemPromptLength: finalSystemPrompt?.length,
+    },
+  };
+  await traceStore.write(startEvent);
+
+  const callStartTime = Date.now();
+
+  try {
+    // Execute based on mode
+    let result: CommandResult;
+    if (options.iterate) {
+      result = await executeIterateMode(
+        providerConfig,
+        promptContent,
+        finalSystemPrompt,
+        model,
+        options,
+        traceId,
+        traceStore
+      );
+    } else {
+      result = await executeSingleCall(
+        providerConfig,
+        promptContent,
+        finalSystemPrompt,
+        model,
+        options
+      );
+    }
+
+    // Emit run.end trace event with full response
+    // INV-TR-010: Provider calls MUST include providerId in context
+    // INV-TR-012: Include tokenUsage when available
+    const durationMs = Date.now() - callStartTime;
+    const usageData = (result.data as Record<string, unknown>)?.usage as Record<string, unknown> | undefined;
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        provider,
+        providerId: provider, // INV-TR-010: Enable provider drill-down
+        model: actualModel,
+        // INV-TR-012: Token usage for cost tracking
+        tokenUsage: usageData ? {
+          input: usageData.inputTokens as number | undefined,
+          output: usageData.outputTokens as number | undefined,
+          total: usageData.totalTokens as number | undefined,
+        } : undefined,
+      },
+      payload: {
+        success: result.success,
+        command: `ax call ${provider}`,
+        mode,
+        durationMs,
+        response: result.message, // Full response for dashboard
+        responseLength: result.message?.length,
+        // Include usage stats if available in JSON mode
+        usage: usageData,
+        latencyMs: (result.data as Record<string, unknown>)?.latencyMs,
+      },
+    };
+    await traceStore.write(endEvent);
+
+    return result;
+  } catch (error) {
+    // Emit error trace event
+    // INV-TR-010: Provider calls MUST include providerId in context
+    const durationMs = Date.now() - callStartTime;
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      status: 'failure',
+      context: {
+        provider,
+        providerId: provider, // INV-TR-010: Enable provider drill-down
+        model: actualModel,
+      },
+      payload: {
+        success: false,
+        command: `ax call ${provider}`,
+        mode,
+        error: getErrorMessage(error),
+      },
+    });
+    throw error;
+  }
 }

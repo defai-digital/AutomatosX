@@ -103,6 +103,73 @@ export const TraceAnalyzeOutputSchema = z.object({
 export type TraceAnalyzeOutput = z.infer<typeof TraceAnalyzeOutputSchema>;
 
 // ============================================================================
+// trace_tree Tool (INV-TR-020 through INV-TR-024)
+// ============================================================================
+
+export const TraceTreeInputSchema = z.object({
+  traceId: z.string().uuid(),
+});
+
+export type TraceTreeInput = z.infer<typeof TraceTreeInputSchema>;
+
+export const TraceTreeOutputSchema = z.object({
+  root: z.object({
+    traceId: z.string(),
+    agentId: z.string().optional(),
+    status: z.string(),
+    depth: z.number().int().min(0),
+    durationMs: z.number().optional(),
+    children: z.array(z.unknown()), // Recursive structure
+  }),
+  totalNodes: z.number().int().min(1),
+  maxDepth: z.number().int().min(0),
+});
+
+export type TraceTreeOutput = z.infer<typeof TraceTreeOutputSchema>;
+
+// ============================================================================
+// trace_by_session Tool (INV-TR-023)
+// ============================================================================
+
+export const TraceBySessionInputSchema = z.object({
+  sessionId: z.string().uuid(),
+});
+
+export type TraceBySessionInput = z.infer<typeof TraceBySessionInputSchema>;
+
+export const TraceBySessionOutputSchema = z.object({
+  sessionId: z.string(),
+  traces: z.array(z.object({
+    traceId: z.string(),
+    agentId: z.string().optional(),
+    status: z.string(),
+    startTime: z.string(),
+    durationMs: z.number().optional(),
+  })),
+  totalCount: z.number().int().min(0),
+});
+
+export type TraceBySessionOutput = z.infer<typeof TraceBySessionOutputSchema>;
+
+// ============================================================================
+// trace_close_stuck Tool
+// ============================================================================
+
+export const TraceCloseStuckInputSchema = z.object({
+  maxAgeMs: z.number().int().min(60000).max(86400000).optional().default(3600000),
+});
+
+export type TraceCloseStuckInput = z.infer<typeof TraceCloseStuckInputSchema>;
+
+export const TraceCloseStuckOutputSchema = z.object({
+  closedCount: z.number().int().min(0),
+  maxAgeMs: z.number(),
+  maxAgeHours: z.number(),
+});
+
+export type TraceCloseStuckOutput = z.infer<typeof TraceCloseStuckOutputSchema>;
+
+// ============================================================================
 // Validation Functions
 // ============================================================================
 
@@ -116,4 +183,16 @@ export function validateTraceGetInput(data: unknown): TraceGetInput {
 
 export function validateTraceAnalyzeInput(data: unknown): TraceAnalyzeInput {
   return TraceAnalyzeInputSchema.parse(data);
+}
+
+export function validateTraceTreeInput(data: unknown): TraceTreeInput {
+  return TraceTreeInputSchema.parse(data);
+}
+
+export function validateTraceBySessionInput(data: unknown): TraceBySessionInput {
+  return TraceBySessionInputSchema.parse(data);
+}
+
+export function validateTraceCloseStuckInput(data: unknown): TraceCloseStuckInput {
+  return TraceCloseStuckInputSchema.parse(data);
 }

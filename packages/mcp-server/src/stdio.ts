@@ -14,12 +14,17 @@ import { ALL_TOOLS, TOOL_HANDLERS } from './tools/index.js';
 import { ALL_RESOURCES, readResource } from './resources/index.js';
 import { ALL_PROMPTS, executePrompt, getPrompt } from './prompts/index.js';
 import { getToolPrefix, namespaceTools, resolveToolName } from './tool-namespacing.js';
+import { initializeAsync } from './bootstrap.js';
 
 /**
  * Runs the MCP server over stdio using the official MCP SDK
  * This is the main entry point for the MCP server binary
  */
 export async function runStdioServer(): Promise<void> {
+  // Initialize SQLite storage for trace persistence
+  // This allows traces to be shared with the dashboard (ax monitor)
+  await initializeAsync();
+
   const toolPrefix = getToolPrefix();
   const listableTools = namespaceTools(ALL_TOOLS, toolPrefix);
 

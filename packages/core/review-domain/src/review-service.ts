@@ -5,11 +5,20 @@
  * Implements:
  * - INV-REV-OPS-001: Timeout Handling
  * - INV-REV-OPS-002: Provider Fallback
+ *
+ * Performance optimizations (v13.4.0):
+ * - Async file I/O with fs.promises
+ * - Concurrent file reading with p-limit
+ * - .gitignore-aware filtering
+ * - Content-hash caching for LLM responses
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
+import { createRequire } from 'node:module';
+import pLimit from 'p-limit';
 import {
   type ReviewRequest,
   type ReviewResult,
@@ -31,6 +40,38 @@ import type {
   ReviewExecutionOptions,
   DryRunResult,
 } from './types.js';
+
+// Use createRequire for CJS package interop with the 'ignore' package
+const require = createRequire(import.meta.url);
+const ignore: () => IgnoreInstance = require('ignore');
+
+// Type definition for the ignore package
+interface IgnoreInstance {
+  add(patterns: string | readonly string[]): this;
+  ignores(pathname: string): boolean;
+  filter(pathnames: readonly string[]): string[];
+}
+
+/**
+ * Concurrency limit for file I/O operations
+ * Balances throughput with system resource usage
+ */
+const FILE_IO_CONCURRENCY = 15;
+
+/**
+ * Cache entry for LLM responses
+ */
+interface CacheEntry {
+  response: { content: string; providerId: string; modelId: string };
+  timestamp: number;
+}
+
+/**
+ * In-memory cache for LLM responses, keyed by content hash
+ * Cache entries expire after 1 hour
+ */
+const responseCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * Default configuration
@@ -158,34 +199,33 @@ export class ReviewService {
   }
 
   /**
-   * Collect files from paths
+   * Collect files from paths with async I/O and .gitignore filtering
+   * Performance: Uses p-limit for controlled concurrency
    */
   private async collectFiles(
     paths: string[],
     maxFiles: number,
     maxLinesPerFile: number
   ): Promise<FileContent[]> {
-    const files: FileContent[] = [];
     const seen = new Set<string>();
+    const filePaths: string[] = [];
 
+    // First pass: collect all file paths (fast, low I/O)
     for (const p of paths) {
-      if (files.length >= maxFiles) break;
-
       const resolved = path.resolve(p);
 
       try {
-        const stat = fs.statSync(resolved);
+        const stat = await fs.stat(resolved);
 
         if (stat.isDirectory()) {
-          // Recursively collect files from directory
-          await this.collectFromDirectory(resolved, files, seen, maxFiles, maxLinesPerFile);
+          // Load .gitignore filter for this directory
+          const ig = await this.loadGitignore(resolved);
+          // Recursively collect file paths from directory
+          await this.collectPathsFromDirectory(resolved, resolved, filePaths, seen, maxFiles, ig);
         } else if (stat.isFile()) {
-          if (!seen.has(resolved)) {
-            const file = this.readFile(resolved, maxLinesPerFile);
-            if (file) {
-              files.push(file);
-              seen.add(resolved);
-            }
+          if (!seen.has(resolved) && filePaths.length < maxFiles) {
+            filePaths.push(resolved);
+            seen.add(resolved);
           }
         }
       } catch {
@@ -194,39 +234,94 @@ export class ReviewService {
       }
     }
 
-    return files;
+    // Second pass: read files concurrently with p-limit
+    const limit = pLimit(FILE_IO_CONCURRENCY);
+    const readPromises = filePaths.slice(0, maxFiles).map((filePath) =>
+      limit(() => this.readFileAsync(filePath, maxLinesPerFile))
+    );
+
+    const results = await Promise.all(readPromises);
+    return results.filter((f): f is FileContent => f !== null);
   }
 
   /**
-   * Recursively collect files from directory
+   * Load .gitignore file from directory and its parents
+   * Returns an ignore instance with all applicable patterns
    */
-  private async collectFromDirectory(
+  private async loadGitignore(dir: string): Promise<IgnoreInstance> {
+    const ig = ignore();
+
+    // Always ignore common directories (built-in patterns)
+    ig.add(IGNORE_DIRECTORIES.map((d) => `${d}/`));
+
+    // Walk up directory tree to find .gitignore files
+    let currentDir = dir;
+    const gitignoreFiles: string[] = [];
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const gitignorePath = path.join(currentDir, '.gitignore');
+      try {
+        await fs.access(gitignorePath);
+        gitignoreFiles.unshift(gitignorePath); // Parent patterns first
+      } catch {
+        // No .gitignore in this directory
+      }
+
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) break; // Reached root
+      currentDir = parentDir;
+    }
+
+    // Load all .gitignore files (parent patterns applied first)
+    for (const gitignorePath of gitignoreFiles) {
+      try {
+        const content = await fs.readFile(gitignorePath, 'utf-8');
+        ig.add(content);
+      } catch {
+        // Skip unreadable .gitignore
+      }
+    }
+
+    return ig;
+  }
+
+  /**
+   * Recursively collect file paths from directory (no file reading yet)
+   * Uses .gitignore filtering to skip ignored paths early
+   */
+  private async collectPathsFromDirectory(
+    baseDir: string,
     dir: string,
-    files: FileContent[],
+    filePaths: string[],
     seen: Set<string>,
     maxFiles: number,
-    maxLinesPerFile: number
+    ig: IgnoreInstance
   ): Promise<void> {
+    if (filePaths.length >= maxFiles) return;
+
     try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
-        if (files.length >= maxFiles) return;
+        if (filePaths.length >= maxFiles) return;
 
         const fullPath = path.join(dir, entry.name);
+        const relativePath = path.relative(baseDir, fullPath);
+
+        // Check gitignore (use relative path for pattern matching)
+        if (ig.ignores(relativePath)) continue;
 
         if (entry.isDirectory()) {
+          // Skip hardcoded ignore directories as well (redundant but fast check)
           if (!IGNORE_DIRECTORIES.includes(entry.name as typeof IGNORE_DIRECTORIES[number])) {
-            await this.collectFromDirectory(fullPath, files, seen, maxFiles, maxLinesPerFile);
+            await this.collectPathsFromDirectory(baseDir, fullPath, filePaths, seen, maxFiles, ig);
           }
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name);
           if (CODE_EXTENSIONS.includes(ext as typeof CODE_EXTENSIONS[number]) && !seen.has(fullPath)) {
-            const file = this.readFile(fullPath, maxLinesPerFile);
-            if (file) {
-              files.push(file);
-              seen.add(fullPath);
-            }
+            filePaths.push(fullPath);
+            seen.add(fullPath);
           }
         }
       }
@@ -236,11 +331,11 @@ export class ReviewService {
   }
 
   /**
-   * Read a single file
+   * Read a single file asynchronously
    */
-  private readFile(filePath: string, maxLines: number): FileContent | null {
+  private async readFileAsync(filePath: string, maxLines: number): Promise<FileContent | null> {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, 'utf-8');
       const lines = content.split('\n');
       const lineCount = lines.length;
 
@@ -259,8 +354,9 @@ export class ReviewService {
   }
 
   /**
-   * Execute prompt with timeout
+   * Execute prompt with timeout and content-hash caching
    * INV-REV-OPS-001: Timeout Handling
+   * Performance: Caches responses by prompt hash to avoid repeated LLM calls
    */
   private async executeWithTimeout(
     prompt: string,
@@ -272,6 +368,15 @@ export class ReviewService {
         ReviewErrorCode.PROVIDER_UNAVAILABLE,
         'No prompt executor configured'
       );
+    }
+
+    // Generate cache key from prompt hash + provider
+    const cacheKey = this.generateCacheKey(prompt, providerId);
+
+    // Check cache first
+    const cached = this.getCachedResponse(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     // Create cancellable timeout to prevent timer leaks
@@ -293,6 +398,9 @@ export class ReviewService {
         clearTimeout(timeoutId);
       }
 
+      // Cache successful response
+      this.cacheResponse(cacheKey, result);
+
       return result;
     } catch (error) {
       // Clean up timeout on error too
@@ -300,6 +408,63 @@ export class ReviewService {
         clearTimeout(timeoutId);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Generate a cache key from prompt content and provider
+   * Uses SHA-256 hash for deterministic, collision-resistant keys
+   */
+  private generateCacheKey(prompt: string, providerId: string): string {
+    const hash = crypto.createHash('sha256');
+    hash.update(prompt);
+    hash.update(providerId);
+    return hash.digest('hex');
+  }
+
+  /**
+   * Get cached response if valid (not expired)
+   */
+  private getCachedResponse(cacheKey: string): { content: string; providerId: string; modelId: string } | undefined {
+    const entry = responseCache.get(cacheKey);
+    if (!entry) return undefined;
+
+    // Check if expired
+    const now = Date.now();
+    if (now - entry.timestamp > CACHE_TTL_MS) {
+      responseCache.delete(cacheKey);
+      return undefined;
+    }
+
+    return entry.response;
+  }
+
+  /**
+   * Cache a response with timestamp
+   * Also performs cleanup of old entries
+   */
+  private cacheResponse(cacheKey: string, response: { content: string; providerId: string; modelId: string }): void {
+    const now = Date.now();
+
+    // Clean up old entries periodically (every 100 cache writes)
+    if (responseCache.size > 0 && responseCache.size % 100 === 0) {
+      this.cleanupExpiredCache(now);
+    }
+
+    responseCache.set(cacheKey, {
+      response,
+      timestamp: now,
+    });
+  }
+
+  /**
+   * Remove expired cache entries
+   */
+  private cleanupExpiredCache(now: number): void {
+    for (const [key, entry] of responseCache) {
+      if (now - entry.timestamp > CACHE_TTL_MS) {
+        responseCache.delete(key);
+      }
     }
   }
 
@@ -354,4 +519,23 @@ export function createReviewService(
   promptExecutor?: ReviewPromptExecutor
 ): ReviewService {
   return new ReviewService(config, promptExecutor);
+}
+
+/**
+ * Clear the LLM response cache
+ * Useful for testing or when cache should be invalidated
+ */
+export function clearReviewCache(): void {
+  responseCache.clear();
+}
+
+/**
+ * Get cache statistics
+ * Returns the current cache size and hit/miss info
+ */
+export function getReviewCacheStats(): { size: number; ttlMs: number } {
+  return {
+    size: responseCache.size,
+    ttlMs: CACHE_TTL_MS,
+  };
 }

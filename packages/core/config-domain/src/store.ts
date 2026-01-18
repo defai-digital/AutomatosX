@@ -230,6 +230,45 @@ function deepMerge<T extends Record<string, unknown>>(
   return result;
 }
 
+/**
+ * Deep merge only specific keys from override into base
+ * Used to only merge keys that are explicitly set in the config file
+ */
+function deepMergeWithKeys<T extends Record<string, unknown>>(
+  base: T,
+  override: Partial<T>,
+  keysToMerge: string[]
+): T {
+  const result = { ...base };
+
+  for (const key of keysToMerge as (keyof T)[]) {
+    const overrideValue = override[key];
+    const baseValue = base[key];
+
+    if (overrideValue === undefined) {
+      continue;
+    }
+
+    if (
+      typeof overrideValue === 'object' &&
+      overrideValue !== null &&
+      !Array.isArray(overrideValue) &&
+      typeof baseValue === 'object' &&
+      baseValue !== null &&
+      !Array.isArray(baseValue)
+    ) {
+      result[key] = deepMerge(
+        baseValue as Record<string, unknown>,
+        overrideValue as Record<string, unknown>
+      ) as T[keyof T];
+    } else {
+      result[key] = overrideValue as T[keyof T];
+    }
+  }
+
+  return result;
+}
+
 // ============================================================================
 // Config Store Implementation
 // ============================================================================
@@ -294,20 +333,26 @@ export function createConfigStore(): ConfigStore {
     },
 
     async readMerged(): Promise<AutomatosXConfig> {
+      // Read raw JSON to know which keys are explicitly set
+      const globalPath = getConfigPath('global');
+      const localPath = getConfigPath('local');
+      const globalRaw = await readJsonFile<Record<string, unknown>>(globalPath);
+      const localRaw = await readJsonFile<Record<string, unknown>>(localPath);
+
       const globalConfig = await this.read('global');
       const localConfig = await this.read('local');
 
       // Start with defaults
       let merged = { ...DEFAULT_CONFIG };
 
-      // Merge global config
-      if (globalConfig !== undefined) {
-        merged = deepMerge(merged, globalConfig);
+      // Merge global config (only keys that are explicitly set in the file)
+      if (globalConfig !== undefined && globalRaw !== undefined) {
+        merged = deepMergeWithKeys(merged, globalConfig, Object.keys(globalRaw));
       }
 
-      // Merge local config (highest priority)
-      if (localConfig !== undefined) {
-        merged = deepMerge(merged, localConfig);
+      // Merge local config (highest priority, only keys that are explicitly set)
+      if (localConfig !== undefined && localRaw !== undefined) {
+        merged = deepMergeWithKeys(merged, localConfig, Object.keys(localRaw));
       }
 
       return merged;

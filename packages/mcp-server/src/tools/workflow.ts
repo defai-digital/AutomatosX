@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { MCPTool, ToolHandler, MCPToolResult } from '../types.js';
 import {
   createWorkflowRunner,
@@ -6,9 +10,14 @@ import {
   defaultStepExecutor,
   type WorkflowInfo,
   type StepExecutor,
+  type WorkflowResult,
 } from '@defai.digital/workflow-engine';
-import { LIMIT_WORKFLOWS } from '@defai.digital/contracts';
-import { getStepExecutor } from '../bootstrap.js';
+import { LIMIT_WORKFLOWS, type TraceEvent } from '@defai.digital/contracts';
+import { getStepExecutor, getTraceStore } from '../bootstrap.js';
+
+// Get the directory of this module (for finding bundled examples)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -17,11 +26,44 @@ const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'tes
 // Workflow Loader Singleton
 // ============================================================================
 
+/**
+ * Find the example workflows directory.
+ * Searches multiple locations to work correctly regardless of working directory:
+ * 1. Package's examples directory (for development/source)
+ * 2. Monorepo root (for pnpm workspace)
+ * 3. Relative to cwd as fallback (for backward compatibility)
+ *
+ * This is the same pattern used for agents (see shared-registry.ts)
+ */
+function getExampleWorkflowsDir(): string {
+  // Try development path first (when running from source repo)
+  // __dirname is packages/mcp-server/src/tools, so go up 4 levels to repo root
+  const devPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'workflows');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  // Try monorepo root (for pnpm workspace, when running from dist)
+  const monorepoPath = path.join(__dirname, '..', '..', '..', '..', '..', 'examples', 'workflows');
+  if (fs.existsSync(monorepoPath)) {
+    return monorepoPath;
+  }
+
+  // Try relative to cwd as fallback (for backward compatibility)
+  const cwdPath = findWorkflowDir(process.cwd());
+  if (cwdPath) {
+    return cwdPath;
+  }
+
+  // Return development path as default (most likely for dev workflow)
+  return devPath;
+}
+
 let _workflowLoader: ReturnType<typeof createWorkflowLoader> | null = null;
 
 function getWorkflowLoader(): ReturnType<typeof createWorkflowLoader> {
   if (_workflowLoader === null) {
-    const workflowDir = findWorkflowDir(process.cwd()) ?? 'examples/workflows';
+    const workflowDir = getExampleWorkflowsDir();
     _workflowLoader = createWorkflowLoader({ workflowsDir: workflowDir });
   }
   return _workflowLoader;
@@ -111,10 +153,16 @@ export const workflowDescribeTool: MCPTool = {
 
 /**
  * Handler for workflow_run tool
+ * INV-TR-013: Workflow executions MUST produce a complete event chain
  */
 export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResult> => {
   const workflowId = args.workflowId as string;
   const input = (args.input as Record<string, unknown> | undefined) ?? {};
+
+  // Get trace store for workflow event emission
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
 
   try {
     // Load workflow from file
@@ -139,14 +187,100 @@ export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResul
       };
     }
 
-    // Create workflow runner with production step executor
-    // Uses placeholder executor in test environment to avoid real LLM calls
+    // Emit workflow.start event (INV-TR-013)
+    const startEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'workflow.start',
+      timestamp: startTime,
+      context: {
+        workflowId: workflow.workflowId,
+      },
+      payload: {
+        workflowId: workflow.workflowId,
+        workflowName: workflow.name,
+        workflowVersion: workflow.version,
+        stepCount: workflow.steps.length,
+        input,
+      },
+    };
+    await traceStore.write(startEvent);
+
+    const runStartTime = Date.now();
+    let stepIndex = 0;
+
+    // Create workflow runner with production step executor and step callbacks
     const runner = createWorkflowRunner({
       stepExecutor: getWorkflowStepExecutor(),
+      onStepStart: (_step, context) => {
+        // Track step index for use in onStepComplete
+        stepIndex = context.stepIndex;
+      },
+      onStepComplete: (step, stepResult) => {
+        // Emit workflow.step event for this step (INV-TR-013)
+        const stepEvent: TraceEvent = {
+          eventId: randomUUID(),
+          traceId,
+          type: 'workflow.step',
+          timestamp: new Date().toISOString(),
+          durationMs: stepResult.durationMs,
+          status: stepResult.success ? 'success' : 'failure',
+          context: {
+            workflowId: workflow.workflowId,
+            stepId: step.stepId,
+          },
+          payload: {
+            stepId: step.stepId,
+            stepName: step.name,
+            stepType: step.type,
+            stepIndex,
+            success: stepResult.success,
+            durationMs: stepResult.durationMs,
+            output: stepResult.output as Record<string, unknown> | undefined,
+            error: stepResult.error ? {
+              code: stepResult.error.code,
+              message: stepResult.error.message,
+            } : undefined,
+            retryCount: stepResult.retryCount,
+          },
+        };
+        // Fire-and-forget write with error handling
+        traceStore.write(stepEvent).catch((err) => {
+          console.error('[workflow] Failed to write step trace event:', err);
+        });
+      },
     });
 
     // Execute workflow
-    const result = await runner.run(workflow, input);
+    const result: WorkflowResult = await runner.run(workflow, input);
+
+    // Emit workflow.end event (INV-TR-013)
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'workflow.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - runStartTime,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        workflowId: workflow.workflowId,
+      },
+      payload: {
+        workflowId: workflow.workflowId,
+        success: result.success,
+        totalSteps: workflow.steps.length,
+        completedSteps: result.stepResults.length,
+        failedSteps: result.stepResults.filter(s => !s.success).length,
+        totalDurationMs: result.totalDurationMs,
+        output: result.output as Record<string, unknown> | undefined,
+        error: result.error ? {
+          code: result.error.code,
+          message: result.error.message,
+          failedStepId: result.error.failedStepId,
+        } : undefined,
+      },
+    };
+    await traceStore.write(endEvent);
 
     return {
       content: [
@@ -157,6 +291,7 @@ export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResul
             workflowId: workflow.workflowId,
             name: workflow.name,
             version: workflow.version,
+            traceId, // Include traceId for dashboard linking
             stepsCompleted: result.stepResults.map((s) => ({
               stepId: s.stepId,
               success: s.success,
@@ -171,11 +306,36 @@ export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResul
       isError: !result.success,
     };
   } catch (error) {
+    // Emit workflow.end event with error (INV-TR-013)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'workflow.end',
+      timestamp: new Date().toISOString(),
+      status: 'failure',
+      context: {
+        workflowId,
+      },
+      payload: {
+        workflowId,
+        success: false,
+        totalSteps: 0,
+        completedSteps: 0,
+        failedSteps: 0,
+        totalDurationMs: Date.now() - new Date(startTime).getTime(),
+        error: {
+          code: 'WORKFLOW_EXECUTION_ERROR',
+          message: errorMessage,
+        },
+      },
+    });
+
     return {
       content: [
         {
           type: 'text',
-          text: `Error executing workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error executing workflow: ${errorMessage}`,
         },
       ],
       isError: true,

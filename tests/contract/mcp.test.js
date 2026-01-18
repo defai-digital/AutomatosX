@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { McpToolSchema, ToolResultSchema, ToolErrorSchema, ErrorCodeSchema, validateMcpTool, safeValidateMcpTool, createSuccessResult, createErrorResult, StandardErrorCodes, } from '@automatosx/contracts';
+import { McpToolSchema, ToolResultSchema, ToolErrorSchema, ErrorCodeSchema, validateMcpTool, safeValidateMcpTool, createSuccessResult, createErrorResult, StandardErrorCodes, } from '@defai.digital/contracts';
 describe('MCP Tool Contract V1', () => {
     describe('Schema Validation', () => {
         it('should validate a minimal valid tool', () => {

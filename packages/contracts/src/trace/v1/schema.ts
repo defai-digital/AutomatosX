@@ -21,6 +21,10 @@ export const TraceEventTypeSchema = z.enum([
   'discussion.provider',
   'discussion.consensus',
   'discussion.end',
+  // Workflow-specific events
+  'workflow.start',
+  'workflow.step',
+  'workflow.end',
 ]);
 
 export type TraceEventType = z.infer<typeof TraceEventTypeSchema>;
@@ -39,7 +43,21 @@ export const TraceStatusSchema = z.enum([
 export type TraceStatus = z.infer<typeof TraceStatusSchema>;
 
 /**
+ * Token usage tracking for cost analysis
+ * INV-TR-012: Provider completion events SHOULD include tokenUsage when available
+ */
+export const TokenUsageSchema = z.object({
+  input: z.number().int().min(0).optional(),
+  output: z.number().int().min(0).optional(),
+  total: z.number().int().min(0).optional(),
+});
+
+export type TokenUsage = z.infer<typeof TokenUsageSchema>;
+
+/**
  * Trace context for contextual information
+ * INV-TR-010: Provider calls MUST include providerId
+ * INV-TR-011: Agent executions MUST include agentId
  */
 export const TraceContextSchema = z.object({
   workflowId: z.string().optional(),
@@ -47,6 +65,34 @@ export const TraceContextSchema = z.object({
   model: z.string().optional(),
   provider: z.string().optional(),
   userId: z.string().optional(),
+  // NEW: Enable provider drill-down (INV-TR-010)
+  providerId: z.string().optional(),
+  // NEW: Enable agent drill-down (INV-TR-011)
+  agentId: z.string().optional(),
+  // NEW: Enable cost tracking (INV-TR-012)
+  tokenUsage: TokenUsageSchema.optional(),
+
+  // Hierarchical tracing fields (INV-TR-020 through INV-TR-024)
+  /**
+   * Parent trace that spawned this trace (INV-TR-021)
+   * Used to establish parent-child relationships between traces
+   */
+  parentTraceId: z.string().uuid().optional(),
+  /**
+   * Original user-initiated trace at the root of the hierarchy (INV-TR-020)
+   * All traces in a delegation chain share the same rootTraceId
+   */
+  rootTraceId: z.string().uuid().optional(),
+  /**
+   * Depth in the trace hierarchy (INV-TR-022)
+   * 0 = root trace (user-initiated), 1+ = child traces (delegations)
+   */
+  traceDepth: z.number().int().min(0).optional(),
+  /**
+   * Session correlation for grouping related traces (INV-TR-023)
+   * Traces in the same session can be viewed together
+   */
+  sessionId: z.string().uuid().optional(),
 });
 
 export type TraceContext = z.infer<typeof TraceContextSchema>;
@@ -189,6 +235,64 @@ export const DiscussionEndPayloadSchema = z.object({
 
 export type DiscussionEndPayload = z.infer<typeof DiscussionEndPayloadSchema>;
 
+// ============================================================================
+// Workflow Trace Event Payloads
+// ============================================================================
+
+/**
+ * Payload for workflow.start event
+ */
+export const WorkflowStartPayloadSchema = z.object({
+  workflowId: z.string(),
+  workflowName: z.string().optional(),
+  workflowVersion: z.string().optional(),
+  stepCount: z.number().int().min(0),
+  input: z.record(z.unknown()).optional(),
+});
+
+export type WorkflowStartPayload = z.infer<typeof WorkflowStartPayloadSchema>;
+
+/**
+ * Payload for workflow.step event
+ */
+export const WorkflowStepPayloadSchema = z.object({
+  stepId: z.string(),
+  stepName: z.string().optional(),
+  stepType: z.string(),
+  stepIndex: z.number().int().min(0),
+  success: z.boolean(),
+  durationMs: z.number().int().min(0),
+  input: z.record(z.unknown()).optional(),
+  output: z.record(z.unknown()).optional(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+  }).optional(),
+  retryCount: z.number().int().min(0).optional(),
+});
+
+export type WorkflowStepPayload = z.infer<typeof WorkflowStepPayloadSchema>;
+
+/**
+ * Payload for workflow.end event
+ */
+export const WorkflowEndPayloadSchema = z.object({
+  workflowId: z.string(),
+  success: z.boolean(),
+  totalSteps: z.number().int().min(0),
+  completedSteps: z.number().int().min(0),
+  failedSteps: z.number().int().min(0),
+  totalDurationMs: z.number().int().min(0),
+  output: z.record(z.unknown()).optional(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    failedStepId: z.string().optional(),
+  }).optional(),
+});
+
+export type WorkflowEndPayload = z.infer<typeof WorkflowEndPayloadSchema>;
+
 /**
  * Trace event schema
  */
@@ -257,6 +361,86 @@ export function createTrace(): { traceId: string; startTime: string } {
   return {
     traceId: crypto.randomUUID(),
     startTime: new Date().toISOString(),
+  };
+}
+
+/**
+ * Trace hierarchy context for propagating hierarchy information
+ * INV-TR-020: All traces in hierarchy share rootTraceId
+ * INV-TR-021: Child traces reference parentTraceId
+ * INV-TR-022: Depth increases by 1 for each level
+ */
+export interface TraceHierarchy {
+  parentTraceId: string | undefined;
+  rootTraceId: string | undefined;
+  traceDepth: number;
+  sessionId: string | undefined;
+}
+
+/**
+ * Creates hierarchy context for a root trace (user-initiated)
+ * INV-TR-020: Root trace becomes the rootTraceId for all descendants
+ * INV-TR-022: Root depth is 0
+ *
+ * @param traceId - The trace ID of the root trace
+ * @param sessionId - Optional session ID for correlation
+ * @returns Hierarchy context for the root trace
+ */
+export function createRootTraceHierarchy(
+  traceId: string,
+  sessionId?: string
+): TraceHierarchy {
+  return {
+    parentTraceId: undefined,
+    rootTraceId: traceId,
+    traceDepth: 0,
+    sessionId,
+  };
+}
+
+/**
+ * Creates hierarchy context for a child trace (delegation)
+ * INV-TR-020: Child inherits rootTraceId from parent
+ * INV-TR-021: Child references parent's traceId
+ * INV-TR-022: Child depth = parent depth + 1
+ * INV-TR-023: Child inherits sessionId from parent
+ *
+ * @param parentTraceId - The trace ID of the parent trace
+ * @param parentHierarchy - The hierarchy context of the parent trace
+ * @returns Hierarchy context for the child trace
+ */
+export function createChildTraceHierarchy(
+  parentTraceId: string,
+  parentHierarchy: TraceHierarchy
+): TraceHierarchy {
+  return {
+    parentTraceId,
+    rootTraceId: parentHierarchy.rootTraceId ?? parentTraceId,
+    traceDepth: parentHierarchy.traceDepth + 1,
+    sessionId: parentHierarchy.sessionId,
+  };
+}
+
+/**
+ * Extracts hierarchy information from trace context
+ * INV-TR-024: Missing fields indicate a root trace or legacy trace
+ *
+ * @param context - Trace context that may contain hierarchy fields
+ * @returns Hierarchy context, defaulting to root if fields missing
+ */
+export function extractTraceHierarchy(
+  context: TraceContext | undefined,
+  traceId: string
+): TraceHierarchy {
+  if (!context) {
+    return createRootTraceHierarchy(traceId);
+  }
+
+  return {
+    parentTraceId: context.parentTraceId,
+    rootTraceId: context.rootTraceId ?? traceId,
+    traceDepth: context.traceDepth ?? 0,
+    sessionId: context.sessionId,
   };
 }
 

@@ -1,0 +1,38 @@
+{
+  "name": "@defai.digital/mcp-ecosystem",
+  "version": "13.4.0",
+  "type": "module",
+  "license": "BUSL-1.1",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/core/mcp-ecosystem"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@defai.digital/contracts": "workspace:*"
+  }
+}

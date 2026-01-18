@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TraceEventSchema, TraceEventTypeSchema, TraceStatusSchema, TraceContextSchema, RunStartPayloadSchema, RunEndPayloadSchema, createTraceEvent, createTrace, validateTraceEvent, safeValidateTraceEvent, validateTrace, isTraceComplete, getOrderedEvents, } from '@automatosx/contracts';
+import { TraceEventSchema, TraceEventTypeSchema, TraceStatusSchema, TraceContextSchema, RunStartPayloadSchema, RunEndPayloadSchema, createTraceEvent, createTrace, validateTraceEvent, safeValidateTraceEvent, validateTrace, isTraceComplete, getOrderedEvents, } from '@defai.digital/contracts';
 describe('Trace Event Contract V1', () => {
     describe('Schema Validation', () => {
         it('should validate a minimal trace event', () => {

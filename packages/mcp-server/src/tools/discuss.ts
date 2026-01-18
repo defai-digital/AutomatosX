@@ -5,8 +5,10 @@
  *
  * INV-MCP-001: All inputs validated via Zod schemas
  * INV-MCP-002: Side effects documented in descriptions
+ * INV-TR-001: Complete event chain (run.start → run.end) for all discussions
  */
 
+import { randomUUID } from 'node:crypto';
 import type { MCPTool, ToolHandler, MCPToolResult } from '../types.js';
 import {
   DiscussionExecutor,
@@ -15,6 +17,7 @@ import {
   createProviderBridge,
   type DiscussionProviderExecutor,
   type ProviderRegistryLike,
+  type DiscussionProgressEvent,
 } from '@defai.digital/discussion-domain';
 import {
   DEFAULT_PROVIDERS,
@@ -25,16 +28,189 @@ import {
   DEFAULT_MAX_TOTAL_CALLS,
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+  createRootTraceHierarchy,
+  createChildTraceHierarchy,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
   type TimeoutStrategy,
   type DiscussionParticipant,
+  type TraceEvent,
+  type TraceHierarchy,
 } from '@defai.digital/contracts';
-import { getProviderRegistry } from '../bootstrap.js';
+import { getProviderRegistry, getTraceStore } from '../bootstrap.js';
 
 // Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+
+// ============================================================================
+// Smart Provider Selection
+// ============================================================================
+
+/**
+ * Result of smart provider selection
+ */
+interface SmartProviderSelectionResult {
+  /** Selected providers for discussion */
+  providers: string[];
+  /** Whether to skip discussion and call provider directly */
+  skipDiscussion: boolean;
+  /** Single provider to use when skipDiscussion is true */
+  singleProvider?: string;
+  /** Error message if selection failed */
+  error?: string;
+}
+
+/**
+ * Randomly selects N items from an array (Fisher-Yates shuffle)
+ */
+function randomSelect<T>(items: T[], count: number): T[] {
+  if (items.length <= count) return [...items];
+
+  // Fisher-Yates shuffle
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+  }
+
+  return shuffled.slice(0, count);
+}
+
+/**
+ * Smart provider selection logic:
+ * - If providers specified: use them
+ * - If not specified and ≥3 available: randomly pick 3
+ * - If not specified and exactly 2 available: use both
+ * - If not specified and exactly 1 available: skip discussion, use single provider
+ * - If not specified and 0 available: error
+ */
+async function selectProviders(
+  specifiedProviders: string[] | undefined,
+  providerBridge: DiscussionProviderExecutor
+): Promise<SmartProviderSelectionResult> {
+  // If providers explicitly specified, use them
+  if (specifiedProviders !== undefined && specifiedProviders.length > 0) {
+    if (specifiedProviders.length < 2) {
+      const singleProvider = specifiedProviders[0];
+      if (singleProvider === undefined) {
+        return {
+          providers: [],
+          skipDiscussion: false,
+          error: 'Invalid provider specified.',
+        };
+      }
+      return {
+        providers: [],
+        skipDiscussion: true,
+        singleProvider,
+      };
+    }
+    return {
+      providers: specifiedProviders,
+      skipDiscussion: false,
+    };
+  }
+
+  // Get all available providers
+  const availableProviders = await providerBridge.getAvailableProviders();
+
+  if (availableProviders.length === 0) {
+    return {
+      providers: [],
+      skipDiscussion: false,
+      error: 'No providers available. Run "ax doctor" to check provider status.',
+    };
+  }
+
+  if (availableProviders.length === 1) {
+    // Only 1 provider - skip discussion, call directly
+    const singleProvider = availableProviders[0];
+    if (singleProvider === undefined) {
+      return {
+        providers: [],
+        skipDiscussion: false,
+        error: 'No providers available.',
+      };
+    }
+    return {
+      providers: [],
+      skipDiscussion: true,
+      singleProvider,
+    };
+  }
+
+  if (availableProviders.length === 2) {
+    // Exactly 2 providers - use both
+    return {
+      providers: availableProviders,
+      skipDiscussion: false,
+    };
+  }
+
+  // 3 or more providers - randomly pick 3
+  const selectedProviders = randomSelect(availableProviders, 3);
+  return {
+    providers: selectedProviders,
+    skipDiscussion: false,
+  };
+}
+
+/**
+ * Call a single provider directly (when only 1 provider available)
+ */
+async function callSingleProvider(
+  topic: string,
+  providerId: string,
+  providerBridge: DiscussionProviderExecutor,
+  timeout: number
+): Promise<MCPToolResult> {
+  try {
+    const result = await providerBridge.execute({
+      providerId,
+      prompt: topic,
+      timeoutMs: timeout,
+    });
+
+    if (!result.success) {
+      return {
+        content: [{ type: 'text', text: `Provider ${providerId} failed: ${result.error}` }],
+        isError: true,
+      };
+    }
+
+    // Return result in discussion-like format for consistency
+    const response = {
+      success: true,
+      pattern: 'direct',
+      topic,
+      participatingProviders: [providerId],
+      failedProviders: [],
+      synthesis: result.content ?? '',
+      totalDurationMs: result.durationMs,
+      consensus: {
+        method: 'direct',
+        synthesizer: providerId,
+        agreementScore: 1.0,
+      },
+      metadata: {
+        singleProviderMode: true,
+        message: `Only ${providerId} was available, so the topic was answered directly without discussion.`,
+      },
+    };
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+      isError: false,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      content: [{ type: 'text', text: `Single provider call failed: ${message}` }],
+      isError: true,
+    };
+  }
+}
 
 // ============================================================================
 // Provider Bridge for MCP
@@ -163,6 +339,26 @@ export const discussTool: MCPTool = {
         minimum: 0.5,
         maximum: 3.0,
       },
+      fastMode: {
+        type: 'boolean',
+        description: 'Fast mode: single round, skip cross-discussion (~50% faster)',
+      },
+      roundEarlyExit: {
+        type: 'boolean',
+        description: 'Enable round-level early exit on high agreement (default: true)',
+      },
+      roundAgreementThreshold: {
+        type: 'number',
+        description: 'Agreement threshold for round early exit (default: 0.85)',
+        minimum: 0.5,
+        maximum: 1.0,
+      },
+      confidenceThreshold: {
+        type: 'number',
+        description: 'Confidence threshold for early exit on strong agreement (default: 0.9)',
+        minimum: 0.5,
+        maximum: 1.0,
+      },
     },
     required: ['topic'],
   },
@@ -200,12 +396,19 @@ export const discussTool: MCPTool = {
 
 /**
  * Handler for discuss tool
+ *
+ * Smart provider selection:
+ * - If providers specified: use them
+ * - If not specified and ≥3 available: randomly pick 3
+ * - If not specified and exactly 2 available: use both
+ * - If not specified and exactly 1 available: skip discussion, use single provider
+ * - If not specified and 0 available: error
  */
 export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> => {
   const {
     topic,
     pattern = 'synthesis',
-    providers = [...DEFAULT_PROVIDERS],
+    providers: specifiedProviders,
     rounds = DEFAULT_ROUNDS,
     consensus = 'synthesis',
     synthesizer = 'claude',
@@ -213,6 +416,15 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     timeout = DEFAULT_PROVIDER_TIMEOUT,
     participants,
     agentWeightMultiplier = DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+    fastMode = false,
+    roundEarlyExit = true,
+    roundAgreementThreshold = 0.85,
+    confidenceThreshold = 0.9, // High threshold for early exit on strong agreement
+    // Trace hierarchy support (optional)
+    sessionId,
+    parentTraceId,
+    rootTraceId: inputRootTraceId,
+    parentDepth,
   } = args as {
     topic: string;
     pattern?: DiscussionPattern;
@@ -224,6 +436,40 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     timeout?: number;
     participants?: DiscussionParticipant[];
     agentWeightMultiplier?: number;
+    fastMode?: boolean;
+    roundEarlyExit?: boolean;
+    roundAgreementThreshold?: number;
+    confidenceThreshold?: number;
+    sessionId?: string;
+    parentTraceId?: string;
+    rootTraceId?: string;
+    parentDepth?: number;
+  };
+
+  // Initialize tracing (INV-TR-001)
+  const traceId = randomUUID();
+  const traceStore = getTraceStore();
+  const startTime = Date.now();
+  const startTimestamp = new Date().toISOString();
+
+  // Create trace hierarchy context
+  let traceHierarchy: TraceHierarchy;
+  if (parentTraceId) {
+    traceHierarchy = createChildTraceHierarchy(parentTraceId, {
+      parentTraceId: undefined,
+      rootTraceId: inputRootTraceId ?? parentTraceId,
+      traceDepth: parentDepth ?? 0,
+      sessionId,
+    });
+  } else {
+    traceHierarchy = createRootTraceHierarchy(traceId, sessionId);
+  }
+
+  // Helper to emit trace events (fire-and-forget with error logging)
+  const emitTraceEvent = (event: TraceEvent): void => {
+    traceStore.write(event).catch((err) => {
+      console.error('[discuss] Failed to write trace event:', err);
+    });
   };
 
   // Validate topic
@@ -241,13 +487,26 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     };
   }
 
-  // Validate providers
-  if (providers.length < 2) {
+  // Get provider bridge for selection
+  const providerBridge = getProviderBridge();
+
+  // Smart provider selection (before emitting start event to include providers in payload)
+  const selection = await selectProviders(specifiedProviders, providerBridge);
+
+  // Handle selection errors (before tracing starts)
+  if (selection.error) {
     return {
-      content: [{ type: 'text', text: 'Error: at least 2 providers required' }],
+      content: [{ type: 'text', text: `Error: ${selection.error}` }],
       isError: true,
     };
   }
+
+  // If only 1 provider available, skip discussion and call directly (no trace for single provider)
+  if (selection.skipDiscussion && selection.singleProvider) {
+    return callSingleProvider(topic, selection.singleProvider, providerBridge, timeout);
+  }
+
+  const providers = selection.providers;
 
   // Validate debate pattern has enough providers
   if (pattern === 'debate' && providers.length < 2) {
@@ -257,13 +516,113 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     };
   }
 
+  // Emit run.start trace event (INV-TR-001)
+  emitTraceEvent({
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTimestamp,
+    context: {
+      ...traceHierarchy,
+    },
+    payload: {
+      command: 'discuss',
+      topic: topic.substring(0, 200), // Truncate for payload
+      pattern,
+      providers,
+      rounds: fastMode ? 1 : rounds,
+      consensus,
+      fastMode,
+    },
+  });
+
+  // Helper to convert progress events to trace events (Phase 2: Granular Events)
+  const onProgress = (event: DiscussionProgressEvent): void => {
+    switch (event.type) {
+      case 'provider_complete':
+        // Emit discussion.provider trace event
+        if (event.provider && event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.provider',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            status: event.success ? 'success' : 'failure',
+            context: {
+              ...traceHierarchy,
+              providerId: event.provider,
+            },
+            payload: {
+              providerId: event.provider,
+              roundNumber: event.round,
+              success: event.success ?? false,
+              durationMs: event.durationMs ?? 0,
+              tokenCount: event.tokenCount,
+              role: event.role,
+              error: event.error,
+            },
+          });
+        }
+        break;
+      case 'round_complete':
+        // Emit discussion.round trace event
+        if (event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.round',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            context: {
+              ...traceHierarchy,
+            },
+            payload: {
+              roundNumber: event.round,
+              participatingProviders: event.participatingProviders ?? [],
+              failedProviders: event.failedProviders,
+              responseCount: event.responseCount ?? 0,
+              durationMs: event.durationMs ?? 0,
+            },
+          });
+        }
+        break;
+      case 'consensus_complete':
+        // Emit discussion.consensus trace event
+        emitTraceEvent({
+          eventId: randomUUID(),
+          traceId,
+          type: 'discussion.consensus',
+          timestamp: event.timestamp,
+          durationMs: event.durationMs,
+          status: event.success ? 'success' : 'failure',
+          context: {
+            ...traceHierarchy,
+          },
+          payload: {
+            method: event.consensusMethod ?? 'synthesis',
+            success: event.success ?? false,
+            winner: event.winner,
+            confidence: event.confidence,
+            votes: event.votes,
+            durationMs: event.durationMs ?? 0,
+          },
+        });
+        break;
+    }
+  };
+
   try {
-    // Create discussion executor
-    const providerBridge = getProviderBridge();
+    // Create discussion executor with cascading confidence for early exit
     const executor = new DiscussionExecutor({
       providerExecutor: providerBridge,
       defaultTimeoutMs: timeout,
       checkProviderHealth: true,
+      cascadingConfidence: {
+        enabled: true,
+        threshold: confidenceThreshold,
+        minProviders: 2,
+      },
     });
 
     // Auto-assign roles for debate pattern (INV-DISC-008)
@@ -279,7 +638,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     // Build config
     const config: DiscussStepConfig = {
       pattern,
-      rounds,
+      rounds: fastMode ? 1 : rounds, // Fast mode uses single round
       providers,
       prompt: topic,
       context,
@@ -295,26 +654,78 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       minProviders: 2,
       temperature: 0.7,
       agentWeightMultiplier,
+      // Performance optimization options
+      fastMode,
+      roundEarlyExit: {
+        enabled: roundEarlyExit,
+        agreementThreshold: roundAgreementThreshold,
+        minRounds: 1,
+      },
       // Include participants if specified
       ...(participants !== undefined && { participants }),
       // Include roles for debate pattern (INV-DISC-008)
       ...(roles !== undefined && { roles }),
     };
 
-    // Execute discussion
-    const result = await executor.execute(config);
+    // Execute discussion with onProgress for granular tracing
+    const result = await executor.execute(config, { onProgress });
+
+    // Emit run.end trace event with success (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss',
+        success: result.success,
+        pattern,
+        providers,
+        rounds: result.rounds?.length ?? 0,
+        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        participatingProviders: result.participatingProviders,
+        totalDurationMs: Date.now() - startTime,
+      },
+    });
 
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify({ ...result, traceId }, null, 2),
         },
       ],
       isError: !result.success,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Emit run.end trace event with failure (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss',
+        success: false,
+        pattern,
+        providers,
+        error: { message },
+        totalDurationMs: Date.now() - startTime,
+      },
+    });
+
     return {
       content: [{ type: 'text', text: `Discussion failed: ${message}` }],
       isError: true,
@@ -368,12 +779,56 @@ export const discussQuickTool: MCPTool = {
 
 /**
  * Handler for discuss_quick tool
+ *
+ * Smart provider selection:
+ * - If providers specified: use them
+ * - If not specified and ≥3 available: randomly pick 3
+ * - If not specified and exactly 2 available: use both
+ * - If not specified and exactly 1 available: skip discussion, use single provider
+ * - If not specified and 0 available: error
  */
 export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResult> => {
-  // Use top 3 reasoning providers by default: Claude, Grok, Gemini
-  const { topic, providers = ['claude', 'grok', 'gemini'] } = args as {
+  const {
+    topic,
+    providers: specifiedProviders,
+    // Trace hierarchy support (optional)
+    sessionId,
+    parentTraceId,
+    rootTraceId: inputRootTraceId,
+    parentDepth,
+  } = args as {
     topic: string;
     providers?: string[];
+    sessionId?: string;
+    parentTraceId?: string;
+    rootTraceId?: string;
+    parentDepth?: number;
+  };
+
+  // Initialize tracing (INV-TR-001)
+  const traceId = randomUUID();
+  const traceStore = getTraceStore();
+  const startTime = Date.now();
+  const startTimestamp = new Date().toISOString();
+
+  // Create trace hierarchy context
+  let traceHierarchy: TraceHierarchy;
+  if (parentTraceId) {
+    traceHierarchy = createChildTraceHierarchy(parentTraceId, {
+      parentTraceId: undefined,
+      rootTraceId: inputRootTraceId ?? parentTraceId,
+      traceDepth: parentDepth ?? 0,
+      sessionId,
+    });
+  } else {
+    traceHierarchy = createRootTraceHierarchy(traceId, sessionId);
+  }
+
+  // Helper to emit trace events (fire-and-forget with error logging)
+  const emitTraceEvent = (event: TraceEvent): void => {
+    traceStore.write(event).catch((err) => {
+      console.error('[discuss_quick] Failed to write trace event:', err);
+    });
   };
 
   // Validate topic
@@ -391,24 +846,161 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
     };
   }
 
+  // Get provider bridge for selection
+  const providerBridge = getProviderBridge();
+
+  // Smart provider selection (before emitting start event)
+  const selection = await selectProviders(specifiedProviders, providerBridge);
+
+  // Handle selection errors (before tracing starts)
+  if (selection.error) {
+    return {
+      content: [{ type: 'text', text: `Error: ${selection.error}` }],
+      isError: true,
+    };
+  }
+
+  // If only 1 provider available, skip discussion and call directly (no trace for single provider)
+  if (selection.skipDiscussion && selection.singleProvider) {
+    return callSingleProvider(topic, selection.singleProvider, providerBridge, DEFAULT_PROVIDER_TIMEOUT);
+  }
+
+  const providers = selection.providers;
+
+  // Emit run.start trace event (INV-TR-001)
+  emitTraceEvent({
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTimestamp,
+    context: {
+      ...traceHierarchy,
+    },
+    payload: {
+      command: 'discuss_quick',
+      topic: topic.substring(0, 200), // Truncate for payload
+      providers,
+    },
+  });
+
+  // Helper to convert progress events to trace events (Phase 2: Granular Events)
+  const onProgressQuick = (event: DiscussionProgressEvent): void => {
+    switch (event.type) {
+      case 'provider_complete':
+        // Emit discussion.provider trace event
+        if (event.provider && event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.provider',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            status: event.success ? 'success' : 'failure',
+            context: {
+              ...traceHierarchy,
+              providerId: event.provider,
+            },
+            payload: {
+              providerId: event.provider,
+              roundNumber: event.round,
+              success: event.success ?? false,
+              durationMs: event.durationMs ?? 0,
+              tokenCount: event.tokenCount,
+              error: event.error,
+            },
+          });
+        }
+        break;
+      case 'round_complete':
+        // Emit discussion.round trace event
+        if (event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.round',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            context: {
+              ...traceHierarchy,
+            },
+            payload: {
+              roundNumber: event.round,
+              participatingProviders: event.participatingProviders ?? [],
+              failedProviders: event.failedProviders,
+              responseCount: event.responseCount ?? 0,
+              durationMs: event.durationMs ?? 0,
+            },
+          });
+        }
+        break;
+      case 'consensus_complete':
+        // Emit discussion.consensus trace event
+        emitTraceEvent({
+          eventId: randomUUID(),
+          traceId,
+          type: 'discussion.consensus',
+          timestamp: event.timestamp,
+          durationMs: event.durationMs,
+          status: event.success ? 'success' : 'failure',
+          context: {
+            ...traceHierarchy,
+          },
+          payload: {
+            method: event.consensusMethod ?? 'synthesis',
+            success: event.success ?? false,
+            confidence: event.confidence,
+            durationMs: event.durationMs ?? 0,
+          },
+        });
+        break;
+    }
+  };
+
   try {
     // Create discussion executor
-    const providerBridge = getProviderBridge();
     const executor = new DiscussionExecutor({
       providerExecutor: providerBridge,
       defaultTimeoutMs: DEFAULT_PROVIDER_TIMEOUT,
       checkProviderHealth: true,
+      // Enable cascading confidence for early exit with high threshold
+      cascadingConfidence: {
+        enabled: true,
+        threshold: 0.9,
+        minProviders: 2,
+      },
     });
 
-    // Quick synthesis with 2 rounds
-    const result = await executor.quickSynthesis(topic, { providers });
+    // Quick synthesis with 2 rounds (with onProgress for granular tracing)
+    const result = await executor.quickSynthesis(topic, { providers, onProgress: onProgressQuick });
 
-    // Return simplified result
+    // Emit run.end trace event with success (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss_quick',
+        success: result.success,
+        providers,
+        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        participatingProviders: result.participatingProviders,
+        totalDurationMs: result.totalDurationMs,
+      },
+    });
+
+    // Return simplified result with traceId
     const response = {
       success: result.success,
       synthesis: result.synthesis,
       participatingProviders: result.participatingProviders,
       totalDurationMs: result.totalDurationMs,
+      traceId,
     };
 
     return {
@@ -422,6 +1014,27 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Emit run.end trace event with failure (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss_quick',
+        success: false,
+        providers,
+        error: { message },
+        totalDurationMs: Date.now() - startTime,
+      },
+    });
+
     return {
       content: [{ type: 'text', text: `Quick discussion failed: ${message}` }],
       isError: true,
@@ -599,12 +1212,19 @@ export const discussRecursiveTool: MCPTool = {
 
 /**
  * Handler for discuss_recursive tool
+ *
+ * Smart provider selection:
+ * - If providers specified: use them
+ * - If not specified and ≥3 available: randomly pick 3
+ * - If not specified and exactly 2 available: use both
+ * - If not specified and exactly 1 available: skip discussion, use single provider
+ * - If not specified and 0 available: error
  */
 export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPToolResult> => {
   const {
     topic,
     pattern = 'synthesis',
-    providers = [...DEFAULT_PROVIDERS],
+    providers: specifiedProviders,
     rounds = DEFAULT_ROUNDS,
     consensus = 'synthesis',
     synthesizer = 'claude',
@@ -620,6 +1240,13 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     // Participant options
     participants,
     agentWeightMultiplier = DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+    // Performance options
+    fastMode = false,
+    // Trace hierarchy support (optional)
+    sessionId,
+    parentTraceId,
+    rootTraceId: inputRootTraceId,
+    parentDepth,
   } = args as {
     topic: string;
     pattern?: DiscussionPattern;
@@ -637,6 +1264,37 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     confidenceThreshold?: number;
     participants?: DiscussionParticipant[];
     agentWeightMultiplier?: number;
+    fastMode?: boolean;
+    sessionId?: string;
+    parentTraceId?: string;
+    rootTraceId?: string;
+    parentDepth?: number;
+  };
+
+  // Initialize tracing (INV-TR-001)
+  const traceId = randomUUID();
+  const traceStore = getTraceStore();
+  const startTime = Date.now();
+  const startTimestamp = new Date().toISOString();
+
+  // Create trace hierarchy context
+  let traceHierarchy: TraceHierarchy;
+  if (parentTraceId) {
+    traceHierarchy = createChildTraceHierarchy(parentTraceId, {
+      parentTraceId: undefined,
+      rootTraceId: inputRootTraceId ?? parentTraceId,
+      traceDepth: parentDepth ?? 0,
+      sessionId,
+    });
+  } else {
+    traceHierarchy = createRootTraceHierarchy(traceId, sessionId);
+  }
+
+  // Helper to emit trace events (fire-and-forget with error logging)
+  const emitTraceEvent = (event: TraceEvent): void => {
+    traceStore.write(event).catch((err) => {
+      console.error('[discuss_recursive] Failed to write trace event:', err);
+    });
   };
 
   // Validate topic
@@ -654,13 +1312,34 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     };
   }
 
-  // Validate providers
-  if (providers.length < 2) {
+  // Validate maxDepth
+  if (maxDepth < 1 || maxDepth > 4) {
     return {
-      content: [{ type: 'text', text: 'Error: at least 2 providers required' }],
+      content: [{ type: 'text', text: 'Error: maxDepth must be between 1 and 4' }],
       isError: true,
     };
   }
+
+  // Get provider bridge for selection
+  const providerBridge = getProviderBridge();
+
+  // Smart provider selection (before emitting start event)
+  const selection = await selectProviders(specifiedProviders, providerBridge);
+
+  // Handle selection errors (before tracing starts)
+  if (selection.error) {
+    return {
+      content: [{ type: 'text', text: `Error: ${selection.error}` }],
+      isError: true,
+    };
+  }
+
+  // If only 1 provider available, skip discussion and call directly (no trace for single provider)
+  if (selection.skipDiscussion && selection.singleProvider) {
+    return callSingleProvider(topic, selection.singleProvider, providerBridge, timeout);
+  }
+
+  const providers = selection.providers;
 
   // Validate debate pattern has enough providers
   if (pattern === 'debate' && providers.length < 2) {
@@ -670,17 +1349,103 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     };
   }
 
-  // Validate maxDepth
-  if (maxDepth < 1 || maxDepth > 4) {
-    return {
-      content: [{ type: 'text', text: 'Error: maxDepth must be between 1 and 4' }],
-      isError: true,
-    };
-  }
+  // Emit run.start trace event (INV-TR-001)
+  emitTraceEvent({
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTimestamp,
+    context: {
+      ...traceHierarchy,
+    },
+    payload: {
+      command: 'discuss_recursive',
+      topic: topic.substring(0, 200), // Truncate for payload
+      pattern,
+      providers,
+      rounds: fastMode ? 1 : rounds,
+      consensus,
+      maxDepth,
+      timeoutStrategy,
+      fastMode,
+    },
+  });
+
+  // Helper to convert progress events to trace events (Phase 2: Granular Events)
+  const onProgressRecursive = (event: DiscussionProgressEvent): void => {
+    switch (event.type) {
+      case 'provider_complete':
+        // Emit discussion.provider trace event
+        if (event.provider && event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.provider',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            status: event.success ? 'success' : 'failure',
+            context: {
+              ...traceHierarchy,
+              providerId: event.provider,
+            },
+            payload: {
+              providerId: event.provider,
+              roundNumber: event.round,
+              success: event.success ?? false,
+              durationMs: event.durationMs ?? 0,
+              tokenCount: event.tokenCount,
+              error: event.error,
+            },
+          });
+        }
+        break;
+      case 'round_complete':
+        // Emit discussion.round trace event
+        if (event.round !== undefined) {
+          emitTraceEvent({
+            eventId: randomUUID(),
+            traceId,
+            type: 'discussion.round',
+            timestamp: event.timestamp,
+            durationMs: event.durationMs,
+            context: {
+              ...traceHierarchy,
+            },
+            payload: {
+              roundNumber: event.round,
+              participatingProviders: event.participatingProviders ?? [],
+              failedProviders: event.failedProviders,
+              responseCount: event.responseCount ?? 0,
+              durationMs: event.durationMs ?? 0,
+            },
+          });
+        }
+        break;
+      case 'consensus_complete':
+        // Emit discussion.consensus trace event
+        emitTraceEvent({
+          eventId: randomUUID(),
+          traceId,
+          type: 'discussion.consensus',
+          timestamp: event.timestamp,
+          durationMs: event.durationMs,
+          status: event.success ? 'success' : 'failure',
+          context: {
+            ...traceHierarchy,
+          },
+          payload: {
+            method: event.consensusMethod ?? 'synthesis',
+            success: event.success ?? false,
+            confidence: event.confidence,
+            durationMs: event.durationMs ?? 0,
+          },
+        });
+        break;
+    }
+  };
 
   try {
     // Create recursive discussion executor
-    const providerBridge = getProviderBridge();
     const executor = new RecursiveDiscussionExecutor({
       providerExecutor: providerBridge,
       defaultTimeoutMs: timeout,
@@ -719,7 +1484,7 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     // Build config
     const config: DiscussStepConfig = {
       pattern,
-      rounds,
+      rounds: fastMode ? 1 : rounds, // Fast mode uses single round
       providers,
       prompt: topic,
       context,
@@ -735,26 +1500,74 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       minProviders: 2,
       temperature: 0.7,
       agentWeightMultiplier,
+      // Performance optimization
+      fastMode,
       // Include participants if specified
       ...(participants !== undefined && { participants }),
       // Include roles for debate pattern (INV-DISC-008)
       ...(roles !== undefined && { roles }),
     };
 
-    // Execute recursive discussion
-    const result = await executor.execute(config);
+    // Execute recursive discussion with onProgress for granular tracing
+    const result = await executor.execute(config, { onProgress: onProgressRecursive });
+
+    // Emit run.end trace event with success (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss_recursive',
+        success: result.success,
+        pattern,
+        providers,
+        rounds: result.rounds?.length ?? 0,
+        maxDepth,
+        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        participatingProviders: result.participatingProviders,
+        totalDurationMs: Date.now() - startTime,
+      },
+    });
 
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify({ ...result, traceId }, null, 2),
         },
       ],
       isError: !result.success,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Emit run.end trace event with failure (INV-TR-001)
+    emitTraceEvent({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: 'failure',
+      context: {
+        ...traceHierarchy,
+      },
+      payload: {
+        command: 'discuss_recursive',
+        success: false,
+        pattern,
+        providers,
+        error: { message },
+        totalDurationMs: Date.now() - startTime,
+      },
+    });
+
     return {
       content: [{ type: 'text', text: `Recursive discussion failed: ${message}` }],
       isError: true,

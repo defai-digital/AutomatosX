@@ -55,4 +55,10 @@ export {
 } from './sarif-formatter.js';
 
 // Review Service
-export { ReviewService, ReviewError, createReviewService } from './review-service.js';
+export {
+  ReviewService,
+  ReviewError,
+  createReviewService,
+  clearReviewCache,
+  getReviewCacheStats,
+} from './review-service.js';

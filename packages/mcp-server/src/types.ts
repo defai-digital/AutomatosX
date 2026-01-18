@@ -48,6 +48,7 @@ export interface MCPProperty {
   properties?: Record<string, MCPProperty> | undefined;
   required?: string[] | undefined;
   additionalProperties?: MCPProperty | boolean | undefined;
+  pattern?: string | undefined;
 }
 
 /**

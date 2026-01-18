@@ -27,8 +27,11 @@ export {
   // Discuss tools
   discussTool,
   discussQuickTool,
+  discussRecursiveTool,
   handleDiscuss,
   handleDiscussQuick,
+  handleDiscussRecursive,
+  resetProviderBridge,
   DISCUSS_TOOLS,
   DISCUSS_HANDLERS,
 } from './tools/index.js';

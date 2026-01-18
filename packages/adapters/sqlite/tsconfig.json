@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../contracts" },
     { "path": "../../core/memory-domain" },
+    { "path": "../../core/semantic-context" },
     { "path": "../../core/trace-domain" },
     { "path": "../../core/agent-execution" },
     { "path": "../../core/cross-cutting" }

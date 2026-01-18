@@ -1,8 +1,8 @@
 {
   "agentId": "reviewer",
   "displayName": "Rex",
-  "version": "1.0.0",
-  "description": "AI-powered code reviewer with focused analysis modes for security, architecture, performance, maintainability, and correctness",
+  "version": "1.1.0",
+  "description": "AI-powered code reviewer. REQUIRED INPUT: {paths: [\"path/to/review\"]}. Optional: focus (security|architecture|performance|maintainability|correctness|all), context, minConfidence",
   "role": "Code Reviewer",
   "team": "core",
   "enabled": true,
@@ -64,9 +64,14 @@
         "tool": "review_analyze",
         "inputMapping": {
           "paths": "${input.paths}",
-          "focus": "${input.focus || 'all'}",
+          "focus": "${input.focus}",
           "context": "${input.context}",
-          "minConfidence": "${input.minConfidence || 0.7}"
+          "minConfidence": "${input.minConfidence}"
+        },
+        "toolInput": {
+          "paths": ["packages"],
+          "focus": "all",
+          "minConfidence": 0.7
         }
       }
     }

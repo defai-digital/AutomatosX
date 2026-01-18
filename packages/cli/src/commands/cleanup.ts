@@ -9,6 +9,8 @@
  *   ax cleanup --force             # Actually perform cleanup
  *   ax cleanup --older-than=7      # Clean data older than 7 days
  *   ax cleanup --types=checkpoints # Clean only checkpoints
+ *   ax cleanup --stuck             # Close stuck running traces (>1 hour)
+ *   ax cleanup --stuck --max-age=30 # Close traces stuck for >30 minutes
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
@@ -32,6 +34,7 @@ import {
   getCheckpointStorage,
   getTraceStore,
   getDLQ,
+  initializeStorageAsync,
 } from '../utils/storage-instances.js';
 import { formatBytes } from '../utils/formatters.js';
 
@@ -54,12 +57,21 @@ function getSessionInstances(): { store: SessionStore; manager: SessionManager }
  * Cleanup command handler
  */
 export async function cleanupCommand(
-  _args: string[],
+  args: string[],
   options: CLIOptions
 ): Promise<CommandResult> {
+  // Initialize storage (required for trace store access)
+  await initializeStorageAsync();
+
+  // Handle --stuck option for closing stuck running traces
+  // Note: --stuck is passed through args, not options (since it's command-specific)
+  if (args.includes('--stuck')) {
+    return handleStuckTraces(args, options);
+  }
+
   // Parse and validate options
-  const rawOpts = extractCleanupOptions(options);
-  const validation = safeValidateCleanupOptions(rawOpts);
+  const extractedOpts = extractCleanupOptions(args, options);
+  const validation = safeValidateCleanupOptions(extractedOpts);
 
   if (!validation.success) {
     return {
@@ -115,7 +127,7 @@ export async function cleanupCommand(
     }
 
     if (options.format !== 'json') {
-      const action = dryRun ? 'would be' : '';
+      const action = dryRun ? 'would be' : 'were';
       console.log(`  ${type}: ${result.count} items ${action} cleaned`);
     }
   }
@@ -161,17 +173,41 @@ export async function cleanupCommand(
 }
 
 /**
- * Extract cleanup options from CLI options
+ * Extract cleanup options from CLI args and options
  */
-function extractCleanupOptions(options: CLIOptions): Record<string, unknown> {
-  const rawOpts = options as unknown as Record<string, unknown>;
-  const types = parseTypes(rawOpts.types);
+function extractCleanupOptions(args: string[], options: CLIOptions): Record<string, unknown> {
+  // Parse args for command-specific flags
+  const hasForce = args.includes('--force');
+  const typesArg = getArgValue(args, '--types');
+  const olderThanArg = getArgValue(args, '--older-than');
+
+  const types = parseTypes(typesArg);
   return {
-    force: rawOpts.force === true,
+    force: hasForce,
     types: types.length > 0 ? types : undefined,
-    olderThan: parseNumber(rawOpts['older-than'] ?? rawOpts.olderThan),
+    olderThan: parseNumber(olderThanArg),
     format: options.format,
   };
+}
+
+/**
+ * Get value for an argument from args array
+ */
+function getArgValue(args: string[], flag: string): string | undefined {
+  // Check for --flag=value format
+  const equalMatch = args.find((a) => a.startsWith(`${flag}=`));
+  if (equalMatch) {
+    return equalMatch.split('=')[1];
+  }
+  // Check for --flag value format
+  const flagIndex = args.indexOf(flag);
+  if (flagIndex !== -1 && flagIndex + 1 < args.length) {
+    const nextArg = args[flagIndex + 1];
+    if (nextArg && !nextArg.startsWith('-')) {
+      return nextArg;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -363,6 +399,95 @@ async function cleanDLQ(
     return { type: 'dlq', count: purgedCount };
   } catch {
     return { type: 'dlq', count: 0 };
+  }
+}
+
+/**
+ * Handle --stuck option: close traces stuck in running status
+ */
+async function handleStuckTraces(args: string[], options: CLIOptions): Promise<CommandResult> {
+  const dryRun = !args.includes('--force');
+  const maxAgeArg = getArgValue(args, '--max-age');
+  const maxAgeMinutes = parseNumber(maxAgeArg) ?? 60;
+  const maxAgeMs = maxAgeMinutes * 60 * 1000;
+
+  try {
+    const store = getTraceStore();
+
+    // Find stuck traces first (for reporting)
+    const summaries = await store.listTraces(LIMIT_MAX);
+    const currentTime = Date.now();
+    const cutoff = currentTime - maxAgeMs;
+
+    const stuckTraces = summaries.filter((summary) => {
+      if (summary.status !== 'running' && summary.status !== 'pending') return false;
+      const startTime = new Date(summary.startTime).getTime();
+      return startTime < cutoff;
+    });
+
+    if (options.format !== 'json') {
+      console.log('');
+      if (dryRun) {
+        console.log(`Found ${stuckTraces.length} stuck trace(s) running for more than ${maxAgeMinutes} minutes:`);
+      } else {
+        console.log(`Closing ${stuckTraces.length} stuck trace(s):`);
+      }
+      console.log('');
+
+      for (const trace of stuckTraces) {
+        const startTime = new Date(trace.startTime).getTime();
+        const runningMs = currentTime - startTime;
+        const runningMins = Math.round(runningMs / 60000);
+        const runningHours = Math.round(runningMs / 3600000 * 10) / 10;
+        const timeStr = runningMins >= 60 ? `${runningHours}h` : `${runningMins}m`;
+        console.log(`  ${trace.traceId.slice(0, 8)}... - running for ${timeStr} (status: ${trace.status})`);
+      }
+      console.log('');
+    }
+
+    if (stuckTraces.length === 0) {
+      return {
+        success: true,
+        exitCode: 0,
+        message: 'No stuck traces found',
+        data: { stuckCount: 0, closedCount: 0, dryRun },
+      };
+    }
+
+    if (dryRun) {
+      if (options.format !== 'json') {
+        console.log(`Run with --force to close these traces.`);
+        console.log('');
+      }
+      return {
+        success: true,
+        exitCode: 0,
+        message: undefined,
+        data: { stuckCount: stuckTraces.length, closedCount: 0, dryRun: true },
+      };
+    }
+
+    // Actually close stuck traces
+    const closedCount = await store.closeStuckTraces(maxAgeMs);
+
+    if (options.format !== 'json') {
+      console.log(`Closed ${closedCount} stuck trace(s).`);
+      console.log('');
+    }
+
+    return {
+      success: true,
+      exitCode: 0,
+      message: undefined,
+      data: { stuckCount: stuckTraces.length, closedCount, dryRun: false },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      exitCode: 1,
+      message: error instanceof Error ? error.message : 'Failed to close stuck traces',
+      data: undefined,
+    };
   }
 }
 

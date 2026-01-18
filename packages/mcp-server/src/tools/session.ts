@@ -1,16 +1,14 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import {
-  createSessionStore,
-  createSessionManager,
-  DEFAULT_SESSION_DOMAIN_CONFIG,
   type Session,
   type SessionFilter,
 } from '@defai.digital/session-domain';
 import { LIMIT_SESSIONS } from '@defai.digital/contracts';
+import { getSessionStore, getSessionManager } from '../bootstrap.js';
 
-// Create shared store and manager instances
-const store = createSessionStore();
-const manager = createSessionManager(store, DEFAULT_SESSION_DOMAIN_CONFIG);
+// Get shared store and manager from bootstrap (singleton instances)
+const getStore = () => getSessionStore();
+const getManager = () => getSessionManager();
 
 /**
  * Session create tool definition
@@ -315,7 +313,7 @@ export const handleSessionCreate: ToolHandler = async (args) => {
   const metadata = args.metadata as Record<string, unknown> | undefined;
 
   try {
-    const session = await manager.createSession({
+    const session = await getManager().createSession({
       initiator,
       task,
       workspace,
@@ -365,7 +363,7 @@ export const handleSessionStatus: ToolHandler = async (args) => {
   const sessionId = args.sessionId as string;
 
   try {
-    const session = await manager.getSession(sessionId);
+    const session = await getManager().getSession(sessionId);
 
     if (session === undefined) {
       return {
@@ -436,7 +434,7 @@ export const handleSessionComplete: ToolHandler = async (args) => {
   const summary = args.summary as string | undefined;
 
   try {
-    const session = await manager.completeSession(sessionId, summary);
+    const session = await getManager().completeSession(sessionId, summary);
 
     return {
       content: [
@@ -491,7 +489,7 @@ export const handleSessionList: ToolHandler = async (args) => {
       filter.initiator = initiator;
     }
 
-    const sessions = await manager.listSessions(
+    const sessions = await getManager().listSessions(
       Object.keys(filter).length > 0 ? filter : undefined
     );
 
@@ -548,7 +546,7 @@ export const handleSessionJoin: ToolHandler = async (args) => {
   const role = (args.role as 'collaborator' | 'delegate' | undefined) ?? 'collaborator';
 
   try {
-    const session = await manager.getSession(sessionId);
+    const session = await getManager().getSession(sessionId);
 
     if (session === undefined) {
       return {
@@ -603,7 +601,7 @@ export const handleSessionJoin: ToolHandler = async (args) => {
     }
 
     // Join the session (joinSession handles idempotency - INV-MCP-SES-002)
-    const updatedSession = await manager.joinSession({ sessionId, agentId, role });
+    const updatedSession = await getManager().joinSession({ sessionId, agentId, role });
 
     const participant = updatedSession.participants.find((p: { agentId: string }) => p.agentId === agentId);
 
@@ -653,7 +651,7 @@ export const handleSessionLeave: ToolHandler = async (args) => {
   const agentId = args.agentId as string;
 
   try {
-    const session = await manager.getSession(sessionId);
+    const session = await getManager().getSession(sessionId);
 
     if (session === undefined) {
       return {
@@ -704,7 +702,7 @@ export const handleSessionLeave: ToolHandler = async (args) => {
     }
 
     // Leave the session
-    const updatedSession = await manager.leaveSession(sessionId, agentId);
+    const updatedSession = await getManager().leaveSession(sessionId, agentId);
 
     return {
       content: [
@@ -754,7 +752,7 @@ export const handleSessionFail: ToolHandler = async (args) => {
   };
 
   try {
-    const session = await manager.getSession(sessionId);
+    const session = await getManager().getSession(sessionId);
 
     if (session === undefined) {
       return {
@@ -787,7 +785,7 @@ export const handleSessionFail: ToolHandler = async (args) => {
     }
 
     // Fail the session
-    const updatedSession = await manager.failSession(sessionId, error);
+    const updatedSession = await getManager().failSession(sessionId, error);
 
     return {
       content: [
@@ -818,6 +816,72 @@ export const handleSessionFail: ToolHandler = async (args) => {
           type: 'text',
           text: JSON.stringify({
             error: code,
+            message,
+          }),
+        },
+      ],
+      isError: true,
+    };
+  }
+};
+
+/**
+ * Session close stuck tool definition
+ * Close sessions that have been active longer than expected
+ */
+export const sessionCloseStuckTool: MCPTool = {
+  name: 'session_close_stuck',
+  description: 'Close stuck sessions that have been active longer than the specified time. Marks them as failed with an auto-close message.',
+  idempotent: false,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      maxAgeMs: {
+        type: 'number',
+        description: 'Maximum age in milliseconds before a session is considered stuck (default: 24 hours = 86400000ms)',
+        default: 86400000,
+      },
+    },
+  },
+};
+
+/**
+ * Handler for session_close_stuck tool
+ * Closes stuck sessions by marking them as failed
+ */
+export const handleSessionCloseStuck: ToolHandler = async (args) => {
+  const maxAgeMs = (args.maxAgeMs as number) ?? 86400000; // Default 24 hours
+
+  try {
+    const closedCount = await getStore().closeStuckSessions(maxAgeMs);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              closedCount,
+              maxAgeMs,
+              maxAgeHours: Math.round(maxAgeMs / 3600000 * 10) / 10,
+              message: closedCount > 0
+                ? `Closed ${closedCount} stuck session(s)`
+                : 'No stuck sessions found to close',
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            error: 'SESSION_CLOSE_STUCK_ERROR',
             message,
           }),
         },

@@ -15,6 +15,7 @@
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
+import { DEFAULT_ROUND_AGREEMENT_THRESHOLD } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,
@@ -28,7 +29,7 @@ import {
   formatPreviousResponses,
   getProviderSystemPrompt,
 } from '../prompts/templates.js';
-import { extractConfidence, evaluateEarlyExit } from '../confidence-extractor.js';
+import { extractConfidence, evaluateEarlyExit, calculateAgreementScore } from '../confidence-extractor.js';
 
 // Local type for discussion DiscussionProviderResponse (avoids conflict with provider/v1 DiscussionProviderResponse)
 interface DiscussionProviderResponse {
@@ -57,6 +58,9 @@ export class SynthesisPattern implements PatternExecutor {
     const failedProviders = new Set<string>();
     let earlyExit: EarlyExitInfo | undefined;
 
+    // Extract round early exit config
+    const roundEarlyExit = config.roundEarlyExit ?? { enabled: true, agreementThreshold: DEFAULT_ROUND_AGREEMENT_THRESHOLD, minRounds: 1 };
+
     // Filter to available providers
     const providers = config.providers.filter(p => availableProviders.includes(p));
 
@@ -75,7 +79,9 @@ export class SynthesisPattern implements PatternExecutor {
     onProgress?.({
       type: 'round_start',
       round: 1,
-      message: 'Gathering initial perspectives in parallel',
+      message: config.fastMode
+        ? 'Fast mode: Gathering perspectives (single round)'
+        : 'Gathering initial perspectives in parallel',
       timestamp: new Date().toISOString(),
     });
 
@@ -98,6 +104,11 @@ export class SynthesisPattern implements PatternExecutor {
       round: 1,
       message: `Initial perspectives gathered from ${initialRound.succeeded.length} providers`,
       timestamp: new Date().toISOString(),
+      // Extended fields for Phase 2 tracing
+      participatingProviders: initialRound.succeeded,
+      failedProviders: initialRound.failed,
+      responseCount: initialRound.round.responses.length,
+      durationMs: initialRound.round.durationMs,
     });
 
     // Check if enough providers participated
@@ -109,6 +120,28 @@ export class SynthesisPattern implements PatternExecutor {
         totalDurationMs: Date.now() - startTime,
         success: false,
         error: `Only ${participatingProviders.size} providers succeeded in round 1`,
+      };
+    }
+
+    // FAST MODE: Skip cross-discussion rounds entirely
+    if (config.fastMode) {
+      onProgress?.({
+        type: 'round_complete',
+        message: 'Fast mode: Skipping cross-discussion, proceeding to synthesis',
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        rounds,
+        participatingProviders: Array.from(participatingProviders),
+        failedProviders: Array.from(failedProviders),
+        totalDurationMs: Date.now() - startTime,
+        success: true,
+        earlyExit: {
+          triggered: true,
+          reason: 'Fast mode enabled - single round',
+          atProviderCount: participatingProviders.size,
+        },
       };
     }
 
@@ -149,6 +182,34 @@ export class SynthesisPattern implements PatternExecutor {
       }
     }
 
+    // ROUND-LEVEL EARLY EXIT: Check agreement after round 1
+    if (roundEarlyExit.enabled && rounds.length >= (roundEarlyExit.minRounds ?? 1)) {
+      const agreementScore = this.calculateRoundAgreement(initialRound.round.responses);
+      const threshold = roundEarlyExit.agreementThreshold ?? DEFAULT_ROUND_AGREEMENT_THRESHOLD;
+
+      if (agreementScore >= threshold) {
+        onProgress?.({
+          type: 'round_complete',
+          message: `Round early exit: High agreement detected (${(agreementScore * 100).toFixed(0)}% >= ${(threshold * 100).toFixed(0)}%)`,
+          timestamp: new Date().toISOString(),
+        });
+
+        return {
+          rounds,
+          participatingProviders: Array.from(participatingProviders),
+          failedProviders: Array.from(failedProviders),
+          totalDurationMs: Date.now() - startTime,
+          success: true,
+          earlyExit: {
+            triggered: true,
+            reason: `High agreement after round 1 (${(agreementScore * 100).toFixed(0)}%)`,
+            atProviderCount: participatingProviders.size,
+            confidenceScore: agreementScore,
+          },
+        };
+      }
+    }
+
     // Additional rounds: Cross-discussion
     for (let roundNum = 2; roundNum <= config.rounds; roundNum++) {
       if (abortSignal?.aborted) {
@@ -180,6 +241,11 @@ export class SynthesisPattern implements PatternExecutor {
         round: roundNum,
         message: `Cross-discussion round ${roundNum} complete`,
         timestamp: new Date().toISOString(),
+        // Extended fields for Phase 2 tracing
+        participatingProviders: providers.filter(p => !crossRound.failed.includes(p)),
+        failedProviders: crossRound.failed,
+        responseCount: crossRound.round.responses.length,
+        durationMs: crossRound.round.durationMs,
       });
 
       // Check for early exit after each round
@@ -297,6 +363,11 @@ export class SynthesisPattern implements PatternExecutor {
           provider: providerId,
           message: result.success ? 'completed' : `failed: ${result.error}`,
           timestamp: new Date().toISOString(),
+          // Extended fields for Phase 2 tracing
+          success: result.success,
+          durationMs: result.durationMs,
+          tokenCount: result.tokenCount,
+          error: result.success ? undefined : result.error,
         });
 
         return response;
@@ -405,6 +476,11 @@ export class SynthesisPattern implements PatternExecutor {
           round: roundNum,
           provider: providerId,
           timestamp: new Date().toISOString(),
+          // Extended fields for Phase 2 tracing
+          success: result.success,
+          durationMs: result.durationMs,
+          tokenCount: result.tokenCount,
+          error: result.success ? undefined : result.error,
         });
 
         return response;
@@ -435,5 +511,29 @@ export class SynthesisPattern implements PatternExecutor {
       },
       failed,
     };
+  }
+
+  /**
+   * Calculate agreement score for responses in a round.
+   * Uses semantic similarity and key phrase overlap to detect consensus.
+   */
+  private calculateRoundAgreement(responses: DiscussionProviderResponse[]): number {
+    if (responses.length < 2) {
+      return 1.0; // Single response = full agreement
+    }
+
+    const successfulResponses = responses.filter(r => !r.error && r.content.length > 0);
+    if (successfulResponses.length < 2) {
+      return 0.5; // Not enough responses to compare
+    }
+
+    // Use the calculateAgreementScore function from confidence-extractor
+    const responsesForScoring = successfulResponses.map(r => ({
+      provider: r.provider,
+      content: r.content,
+      confidence: r.confidence,
+    }));
+
+    return calculateAgreementScore(responsesForScoring);
   }
 }

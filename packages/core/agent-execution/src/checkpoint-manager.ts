@@ -155,7 +155,6 @@ export function createCheckpointManager(
   config: Partial<CheckpointConfig> = {}
 ): CheckpointManager {
   const cfg = { ...createDefaultCheckpointConfig(), ...config };
-  let checkpointCount = 0;
 
   return {
     getConfig(): CheckpointConfig {
@@ -189,16 +188,17 @@ export function createCheckpointManager(
       };
 
       await storage.save(checkpoint);
-      checkpointCount++;
 
-      // Enforce max checkpoints
-      if (checkpointCount > cfg.maxCheckpoints) {
-        const allCheckpoints = await storage.list(agentId, sessionId);
+      // Enforce max checkpoints by querying actual storage state
+      // (not relying on local counter which can get out of sync)
+      const allCheckpoints = await storage.list(agentId, sessionId);
+      if (allCheckpoints.length > cfg.maxCheckpoints) {
+        // list() returns checkpoints sorted newest-first, so slice from maxCheckpoints
+        // to get the oldest checkpoints that exceed the limit
         const toDelete = allCheckpoints.slice(cfg.maxCheckpoints);
         for (const cp of toDelete) {
           await storage.delete(cp.checkpointId);
         }
-        checkpointCount = cfg.maxCheckpoints;
       }
 
       return checkpoint;
@@ -238,9 +238,7 @@ export function createCheckpointManager(
     },
 
     async deleteCheckpoint(checkpointId: string): Promise<boolean> {
-      const result = await storage.delete(checkpointId);
-      if (result) checkpointCount--;
-      return result;
+      return storage.delete(checkpointId);
     },
 
     async cleanupExpired(): Promise<number> {

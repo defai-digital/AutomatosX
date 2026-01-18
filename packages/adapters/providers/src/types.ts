@@ -204,6 +204,13 @@ export interface CLIProviderConfig {
    * - 'arg': Pass prompt as command-line argument (for ax-grok)
    */
   promptStyle?: 'stdin' | 'arg' | undefined;
+
+  /**
+   * Optional callback to detect when output is complete and process can be terminated early.
+   * Called on each stdout data event. Return true to terminate the process immediately.
+   * Useful for CLIs that hang during shutdown after producing valid output (e.g., ax-grok).
+   */
+  earlyTerminateOn?: ((stdout: string) => boolean) | undefined;
 }
 
 /**
@@ -259,6 +266,11 @@ export interface SpawnResult {
   stderr: string;
   exitCode: number;
   timedOut: boolean;
+  /**
+   * True if the process was terminated early due to earlyTerminateOn callback returning true.
+   * This indicates we got the output we needed and intentionally killed the process.
+   */
+  earlyTerminated: boolean;
 }
 
 /**
@@ -271,6 +283,12 @@ export interface SpawnOptions {
   env: Readonly<Record<string, string | undefined>>;
   timeout: number;
   cwd?: string | undefined;
+  /**
+   * Optional callback to detect when output is complete and process can be terminated early.
+   * Called on each stdout data event. Return true to terminate the process immediately.
+   * Useful for CLIs that hang during shutdown after producing valid output (e.g., ax-grok).
+   */
+  earlyTerminateOn?: ((stdout: string) => boolean) | undefined;
 }
 
 /**

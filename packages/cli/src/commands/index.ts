@@ -27,3 +27,6 @@ export { mcpCommand } from './mcp.js';
 
 // Update
 export { updateCommand } from './update.js';
+
+// Web Monitor Dashboard
+export { monitorCommand } from './monitor.js';

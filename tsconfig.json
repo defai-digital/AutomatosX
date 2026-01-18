@@ -41,13 +41,18 @@
     { "path": "./packages/core/resilience-domain" },
     { "path": "./packages/core/mcp-runtime" },
     { "path": "./packages/core/review-domain" },
+    { "path": "./packages/core/agent-parallel" },
+    { "path": "./packages/core/semantic-context" },
+    { "path": "./packages/core/mcp-ecosystem" },
+    { "path": "./packages/core/autonomous-loop" },
+    { "path": "./packages/core/research-domain" },
+    { "path": "./packages/core/feedback-domain" },
     { "path": "./packages/adapters/sqlite" },
     { "path": "./packages/adapters/providers" },
     { "path": "./packages/adapters/provider-detection" },
     { "path": "./packages/guard" },
     { "path": "./packages/cli" },
-    { "path": "./packages/mcp-server" },
-    { "path": "./tests" }
+    { "path": "./packages/mcp-server" }
   ],
-  "exclude": ["node_modules", "dist", "coverage", "examples"]
+  "exclude": ["node_modules", "dist", "coverage", "examples", "tests"]
 }

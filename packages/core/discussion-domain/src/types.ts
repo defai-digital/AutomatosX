@@ -117,6 +117,27 @@ export interface CascadingConfidenceOptions {
 /**
  * Context passed to pattern executors
  */
+/**
+ * Resolved participant for pattern execution (subset of full type)
+ * Full type is in participant-resolver.ts
+ */
+export interface ResolvedParticipantLike {
+  /** Original participant identifier */
+  id: string;
+  /** Whether this is an agent (vs raw provider) */
+  isAgent: boolean;
+  /** Provider ID to use for LLM calls */
+  providerId: string;
+  /** Agent ID (if isAgent) */
+  agentId?: string | undefined;
+  /** System prompt override (from agent config) */
+  systemPromptOverride?: string | undefined;
+  /** Injected ability content */
+  abilityContent?: string | undefined;
+  /** Weight multiplier for consensus */
+  weightMultiplier: number;
+}
+
 export interface PatternExecutionContext {
   /** The discussion configuration */
   config: DiscussStepConfig;
@@ -138,17 +159,46 @@ export interface PatternExecutionContext {
 
   /** Cascading confidence configuration for early exit */
   cascadingConfidence?: CascadingConfidenceOptions | undefined;
+
+  /** Resolved participants including agents (when participants array is used) */
+  resolvedParticipants?: ResolvedParticipantLike[] | undefined;
 }
 
 /**
  * Progress event during discussion execution
+ * Extended with detailed data for Phase 2 trace event emission
  */
 export interface DiscussionProgressEvent {
-  type: 'round_start' | 'provider_start' | 'provider_complete' | 'round_complete' | 'synthesis_start' | 'synthesis_complete';
+  type: 'round_start' | 'provider_start' | 'provider_complete' | 'round_complete' | 'synthesis_start' | 'synthesis_complete' | 'consensus_complete';
   round?: number | undefined;
   provider?: string | undefined;
   message?: string | undefined;
   timestamp: string;
+  // Extended fields for granular tracing (Phase 2)
+  /** Provider response success status */
+  success?: boolean | undefined;
+  /** Duration in milliseconds */
+  durationMs?: number | undefined;
+  /** Token count for provider response */
+  tokenCount?: number | undefined;
+  /** Error message for failed responses */
+  error?: string | undefined;
+  /** Role in debate pattern */
+  role?: string | undefined;
+  /** Participating providers (for round_complete) */
+  participatingProviders?: string[] | undefined;
+  /** Failed providers (for round_complete) */
+  failedProviders?: string[] | undefined;
+  /** Response count (for round_complete) */
+  responseCount?: number | undefined;
+  /** Consensus method (for consensus_complete) */
+  consensusMethod?: string | undefined;
+  /** Agreement/confidence score (for consensus_complete) */
+  confidence?: number | undefined;
+  /** Vote counts (for voting consensus) */
+  votes?: Record<string, number> | undefined;
+  /** Winner (for voting consensus) */
+  winner?: string | undefined;
 }
 
 /**
@@ -283,6 +333,19 @@ export interface ConsensusExecutor {
 /**
  * Options for creating a discussion executor
  */
+/**
+ * Options for participant resolution (subset of full type)
+ * Full type is in participant-resolver.ts
+ */
+export interface ParticipantResolverOptionsLike {
+  /** Agent registry for looking up agents */
+  agentRegistry?: { get(agentId: string): Promise<{ agentId: string; systemPrompt?: string } | null> } | undefined;
+  /** Ability manager for injecting abilities */
+  abilityManager?: { injectAbilities(agentId: string, task: string, coreAbilities: string[], options: { maxAbilities: number; maxTokens: number }): Promise<{ combinedContent: string; injectedAbilities: string[] }> } | undefined;
+  /** Default provider to use when agent has no preference */
+  defaultProvider?: string | undefined;
+}
+
 export interface DiscussionExecutorOptions {
   /** Provider executor implementation */
   providerExecutor: DiscussionProviderExecutor;
@@ -295,6 +358,12 @@ export interface DiscussionExecutorOptions {
 
   /** Trace ID for debugging */
   traceId?: string | undefined;
+
+  /** Options for resolving agent participants (INV-DISC-640, INV-DISC-641) */
+  participantResolverOptions?: ParticipantResolverOptionsLike | undefined;
+
+  /** Cascading confidence config for early exit (INV-DISC-622, INV-DISC-623) */
+  cascadingConfidence?: CascadingConfidenceOptions | undefined;
 }
 
 // ============================================================================

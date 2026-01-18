@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.3.1-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.4.0-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -18,6 +18,7 @@ AutomatosX adds **44 specialized tools** to your AI coding assistant through MCP
 - **Persistent memory** across sessions
 - **Governance gates** to check AI-generated code
 - **Execution tracing** for full audit trails
+- **Real-time web dashboard** for monitoring (`ax monitor`)
 
 ---
 
@@ -423,6 +424,7 @@ You can also use AutomatosX directly from the command line, though MCP integrati
 ax setup                    # Global setup (one-time)
 ax init                     # Project initialization (per-project)
 ax doctor                   # Check provider health
+ax monitor                  # Launch web dashboard
 
 # Direct provider calls (command mode)
 ax call claude "Explain this code"
@@ -441,6 +443,115 @@ ax discuss "REST vs GraphQL"
 # Guard
 ax guard check --policy bugfix --changed-paths src/
 ```
+
+---
+
+## Web Dashboard
+
+AutomatosX includes a real-time web dashboard for monitoring AI operations, execution traces, and system health.
+
+### Quick Start
+
+```bash
+# Launch dashboard (auto-opens browser)
+ax monitor
+
+# Use specific port
+ax monitor --port 8080
+
+# Don't auto-open browser
+ax monitor --no-open
+```
+
+The dashboard runs at `http://localhost:<port>` and is **only accessible from localhost** for security.
+
+### Dashboard Features
+
+#### System Overview
+- **Provider Status** - Real-time health and availability of all AI providers (Claude, Gemini, Codex, Grok, etc.)
+- **System Metrics** - Memory usage, uptime, active sessions
+- **Provider Usage Histogram** - Visual breakdown of provider utilization
+
+#### Execution Stats (Last 200 Records)
+- **Total Runs** - Number of executions
+- **Success Rate** - Percentage with progress bar
+- **Average Duration** - Mean execution time
+- **Providers Used** - Count of distinct providers
+
+#### Execution Traces
+- **Trace List** - All recent executions with status indicators
+- **Command Types** - Visual icons for call (💬), agent (🤖), workflow (⚙), discuss (📞)
+- **Status Badges** - Success/failure/running states
+- **Provider Badges** - Which AI providers were used
+- **Duration & Events** - Timing and event count
+
+#### Trace Details
+- **Conversation View** - Chat-style display of prompts and responses
+- **Code Block Detection** - Automatic syntax highlighting for code in responses
+- **Copy Support** - One-click copy for content and code blocks
+- **Timeline View** - Full event timeline with payloads
+- **Input/Output** - Complete request/response data
+
+#### Navigation Views
+- **Providers** - Detailed provider status and history
+- **Agents** - List of specialized agents with execution stats
+- **Workflows** - Available workflows and DAG visualization
+- **Traces** - Searchable execution history
+
+### Configuration
+
+Configure via `ax config set`:
+
+```bash
+# Set port range for auto-selection
+ax config set monitor.portMin 3000
+ax config set monitor.portMax 3999
+
+# Disable auto-open browser
+ax config set monitor.autoOpen false
+```
+
+| Config Key | Default | Description |
+|------------|---------|-------------|
+| `monitor.portMin` | 3000 | Minimum port for auto-selection |
+| `monitor.portMax` | 3999 | Maximum port for auto-selection |
+| `monitor.autoOpen` | true | Auto-open browser on launch |
+
+### Security
+
+The dashboard implements multiple security layers:
+
+1. **Network Binding** - Server binds to `127.0.0.1` only, blocking external network access
+2. **Request Validation** - All requests verified to originate from localhost
+3. **CORS Restriction** - Cross-origin requests only allowed from localhost origins
+4. **No Authentication** - Since localhost-only, no password required
+
+> **Note**: The dashboard is designed for local development use. It does not support remote access or authentication.
+
+### API Endpoints
+
+The dashboard exposes a REST API at `/api/*`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/status` | Full system status with providers, agents, traces |
+| `GET /api/providers` | Provider health status |
+| `GET /api/agents` | List of agents with stats |
+| `GET /api/traces` | Recent execution traces (last 200) |
+| `GET /api/traces/:id` | Detailed trace with timeline |
+| `GET /api/traces/:id/tree` | Hierarchical trace tree |
+| `GET /api/traces/search?...` | Search traces by provider/agent/type |
+| `GET /api/workflows` | List available workflows |
+| `GET /api/workflows/:id` | Workflow definition with DAG |
+| `GET /api/sessions` | Active collaboration sessions |
+| `GET /api/metrics` | System metrics (memory, uptime) |
+| `GET /api/health` | Health check endpoint |
+| `GET /api/providers/:id/history` | Provider execution history |
+| `GET /api/agents/:id/history` | Agent execution history |
+
+### Auto-Refresh
+
+The dashboard auto-refreshes data every 5 seconds to show real-time updates. No manual refresh needed.
 
 ---
 
@@ -494,6 +605,8 @@ When switching projects, just run `ax init` in the new project.
 ---
 
 ## What's New
+
+**v13.4.0** - Provider & CLI fixes: Fixed ax-grok hang issue with early termination support (kills process immediately after receiving complete JSON output instead of waiting for timeout). Fixed duplicate synthesis output in `ax discuss`. Fixed stale example agents not updating via version comparison. Added `--team` filter support for `ax agent list`. Added `--max-depth` validation (1-4 range) for recursive discussions.
 
 **v13.3.1** - Antigravity IDE support and performance improvements: `ax init` now configures MCP for [Google Antigravity](https://antigravity.google) at `~/.gemini/antigravity/mcp_config.json`. Improved GUI app detection for both Antigravity and Cursor. Major refactoring: parallel execution for provider/IDE checks, optimized file operations, single-pass summary computation in `ax doctor`.
 

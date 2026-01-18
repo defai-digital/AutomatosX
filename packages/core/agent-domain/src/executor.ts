@@ -10,9 +10,11 @@ import {
   type AgentRunOptions,
   type AgentError,
   type AgentWorkflowStep,
+  type TraceHierarchy,
   AgentErrorCode,
   AgentRunOptionsSchema,
   LIMIT_ABILITY_TOKENS_AGENT,
+  createChildTraceHierarchy,
 } from '@defai.digital/contracts';
 import type {
   AgentExecutor,
@@ -279,6 +281,17 @@ export class DefaultAgentExecutor implements AgentExecutor {
             model: validatedOptions?.model,
             delegationContext: validatedOptions?.delegationContext,
             agentProfile: cachedAgentProfile,
+            // Trace hierarchy for hierarchical tracing (INV-TR-020 through INV-TR-024)
+            // Normalize optional Zod properties to match TraceHierarchy interface
+            traceHierarchy: validatedOptions?.traceHierarchy
+              ? {
+                  parentTraceId: validatedOptions.traceHierarchy.parentTraceId,
+                  rootTraceId: validatedOptions.traceHierarchy.rootTraceId,
+                  traceDepth: validatedOptions.traceHierarchy.traceDepth,
+                  sessionId: validatedOptions.traceHierarchy.sessionId,
+                }
+              : undefined,
+            traceId: validatedOptions?.traceId,
           },
           step.retryPolicy?.maxAttempts ?? 1
         );
@@ -631,6 +644,9 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
   /**
    * Compare two values using the specified operator
+   *
+   * For numeric comparisons (>, <, >=, <=), both values must be numbers.
+   * If either value is not a number, the comparison returns false.
    */
   private compareValues(actual: unknown, expected: unknown, op: string): boolean {
     switch (op) {
@@ -638,18 +654,36 @@ export class DefaultAgentExecutor implements AgentExecutor {
         return actual === expected;
       case '!==':
         return actual !== expected;
+      // Note: Using strict equality for '==' and '!=' to avoid type coercion bugs
+      // The loose equality semantics are rarely what users actually want
       case '==':
-        return actual == expected;
+        return actual === expected;
       case '!=':
-        return actual != expected;
+        return actual !== expected;
       case '>':
-        return (actual as number) > (expected as number);
       case '<':
-        return (actual as number) < (expected as number);
       case '>=':
-        return (actual as number) >= (expected as number);
-      case '<=':
-        return (actual as number) <= (expected as number);
+      case '<=': {
+        // Validate both values are numbers before comparing
+        if (typeof actual !== 'number' || typeof expected !== 'number') {
+          console.warn(
+            `[compareValues] Numeric comparison "${op}" requires number operands, ` +
+            `got actual=${typeof actual}, expected=${typeof expected}`
+          );
+          return false;
+        }
+        // Handle NaN cases (NaN comparisons always return false)
+        if (Number.isNaN(actual) || Number.isNaN(expected)) {
+          return false;
+        }
+        switch (op) {
+          case '>': return actual > expected;
+          case '<': return actual < expected;
+          case '>=': return actual >= expected;
+          case '<=': return actual <= expected;
+          default: return false;
+        }
+      }
       default:
         return false;
     }
@@ -1014,16 +1048,19 @@ export class DefaultAgentExecutor implements AgentExecutor {
         agentId: context.agentId,
       };
 
-      // Process tool input: inputMapping with template substitution, or direct toolInput, or context.input
+      // Process tool input: start with toolInput as defaults, then apply inputMapping overrides
       let resolvedToolInput: Record<string, unknown>;
       const inputMapping = config?.inputMapping;
       const hasValidInputMapping = inputMapping !== undefined &&
                                    typeof inputMapping === 'object' &&
                                    !Array.isArray(inputMapping);
 
+      // Start with toolInput as defaults (if provided)
+      const baseInput = (config?.toolInput ?? {});
+
       if (hasValidInputMapping && inputMapping) {
-        // Process inputMapping with template variable substitution
-        resolvedToolInput = {};
+        // Process inputMapping with template variable substitution, merging with defaults
+        resolvedToolInput = { ...baseInput };
         for (const [paramKey, templateString] of Object.entries(inputMapping)) {
           // Validate that template is a string
           if (typeof templateString !== 'string') {
@@ -1035,13 +1072,17 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
           // Parse the substituted value to the appropriate type
           const parsedValue = this.parseTemplateValue(substitutedValue, templateString);
-          // Only add the key if parsing returned a defined value (allows optional fields)
+          // Only override if parsing returned a defined value (keeps defaults for undefined)
           if (parsedValue !== undefined) {
             resolvedToolInput[paramKey] = parsedValue;
           }
         }
+      } else if (Object.keys(baseInput).length > 0) {
+        // Use toolInput defaults directly
+        resolvedToolInput = baseInput;
       } else {
-        resolvedToolInput = (config?.toolInput ?? context.input ?? {}) as Record<string, unknown>;
+        // Fall back to context.input
+        resolvedToolInput = (context.input ?? {}) as Record<string, unknown>;
       }
 
       // If no tool executor is configured, return placeholder result
@@ -1230,6 +1271,12 @@ export class DefaultAgentExecutor implements AgentExecutor {
       // Create child context for the delegated agent
       const childContext = delegationTracker.createChildContext(config.targetAgentId);
 
+      // Create child trace hierarchy for hierarchical tracing (INV-TR-020 through INV-TR-024)
+      let childTraceHierarchy: TraceHierarchy | undefined;
+      if (context.traceHierarchy && context.traceId) {
+        childTraceHierarchy = createChildTraceHierarchy(context.traceId, context.traceHierarchy);
+      }
+
       // Execute the delegated agent recursively
       try {
         const delegateResult = await this.execute(
@@ -1240,6 +1287,8 @@ export class DefaultAgentExecutor implements AgentExecutor {
             provider: context.provider,
             model: context.model,
             delegationContext: childContext,
+            // Pass child trace hierarchy for hierarchical tracing
+            traceHierarchy: childTraceHierarchy,
           }
         );
 

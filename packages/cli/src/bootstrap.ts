@@ -48,6 +48,13 @@ import {
   createInMemoryDeadLetterStorage,
   type DeadLetterQueue,
 } from '@defai.digital/cross-cutting';
+import {
+  createSessionStore,
+  createSessionManager,
+  DEFAULT_SESSION_DOMAIN_CONFIG,
+  type SessionStore,
+  type SessionManager,
+} from '@defai.digital/session-domain';
 
 // Step executor imports (for workflow execution)
 import {
@@ -77,6 +84,7 @@ export type { CheckpointStorage } from '@defai.digital/agent-execution';
 export type { TraceStore } from '@defai.digital/trace-domain';
 export type { DeadLetterQueue } from '@defai.digital/cross-cutting';
 export type { StepExecutor } from '@defai.digital/workflow-engine';
+export type { SessionStore, SessionManager } from '@defai.digital/session-domain';
 // Provider types re-exported directly for use by CLI modules
 export type {
   ProviderRegistry,
@@ -110,6 +118,8 @@ interface CLIDependencies {
   traceStore: TraceStore;
   dlq: DeadLetterQueue;
   providerRegistry: ProviderRegistry;
+  sessionStore: SessionStore;
+  sessionManager: SessionManager;
   usingSqlite: boolean;
 }
 
@@ -137,12 +147,18 @@ export async function bootstrap(): Promise<CLIDependencies> {
   // Create provider registry
   const providerRegistry = createProviderRegistry();
 
+  // Create shared session store and manager
+  const sessionStore = createSessionStore();
+  const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
+
   // Build dependency container
   _dependencies = {
     checkpointStorage: storage.checkpointStorage,
     traceStore: storage.traceStore,
     dlq: storage.dlq,
     providerRegistry,
+    sessionStore,
+    sessionManager,
     usingSqlite: storage.usingSqlite,
   };
 
@@ -167,11 +183,17 @@ export function bootstrapSync(): CLIDependencies {
   // Create provider registry
   const providerRegistry = createProviderRegistry();
 
+  // Create shared session store and manager
+  const sessionStore = createSessionStore();
+  const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
+
   _dependencies = {
     checkpointStorage,
     traceStore,
     dlq,
     providerRegistry,
+    sessionStore,
+    sessionManager,
     usingSqlite: false,
   };
 
@@ -283,6 +305,20 @@ export function getDLQ(): DeadLetterQueue {
  */
 export function getProviderRegistry(): ProviderRegistry {
   return getDependencies().providerRegistry;
+}
+
+/**
+ * Get session store for collaboration sessions
+ */
+export function getSessionStore(): SessionStore {
+  return getDependencies().sessionStore;
+}
+
+/**
+ * Get session manager for session operations
+ */
+export function getSessionManager(): SessionManager {
+  return getDependencies().sessionManager;
 }
 
 /**

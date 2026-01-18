@@ -1,0 +1,48 @@
+{
+  "name": "@defai.digital/semantic-context",
+  "version": "13.4.0",
+  "type": "module",
+  "description": "Vector-indexed semantic search for AutomatosX",
+  "license": "BUSL-1.1",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/core/semantic-context"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@defai.digital/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "zod": "^3.23.0"
+  }
+}

@@ -6,21 +6,8 @@ import {
   executeGates,
   type GuardResult,
 } from '@defai.digital/guard';
-import {
-  createSessionStore,
-  type SessionStore,
-} from '@defai.digital/session-domain';
 import { LIMIT_GUARD_POLICIES } from '@defai.digital/contracts';
-
-// Lazy-initialized session store for guard operations
-let sessionStore: SessionStore | null = null;
-
-function getSessionStore(): SessionStore {
-  if (sessionStore === null) {
-    sessionStore = createSessionStore();
-  }
-  return sessionStore;
-}
+import { getSessionStore } from '../bootstrap.js';
 
 /**
  * Guard check tool definition

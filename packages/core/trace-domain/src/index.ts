@@ -25,6 +25,7 @@ export {
   type TraceReader,
   type TraceStore,
   type TraceSummary,
+  type TraceTreeNode,
   type ActiveTrace,
   type TraceOptions,
   type EventOptions,

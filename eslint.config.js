@@ -15,6 +15,7 @@ export default [
       '.dependency-cruiser.cjs',
       'examples/scaffolds/**',
       'templates/**',
+      'tests/**',
     ],
   },
   eslint.configs.recommended,
@@ -53,17 +54,6 @@ export default [
       '@typescript-eslint/unbound-method': 'off',
       'no-case-declarations': 'off',
       'no-useless-escape': 'off',
-    },
-  },
-  {
-    files: ['tests/**/*.ts'],
-    rules: {
-      // Test files have different requirements - relax all strict rules
-      '@typescript-eslint/no-unused-vars': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off',
-      '@typescript-eslint/ban-ts-comment': 'off',
-      '@typescript-eslint/no-empty-function': 'off',
     },
   },
 ];

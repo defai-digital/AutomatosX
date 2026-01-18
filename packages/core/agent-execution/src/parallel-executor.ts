@@ -348,7 +348,7 @@ export class ParallelExecutionError extends Error {
 
   static stepFailed(stepId: string, error: string): ParallelExecutionError {
     return new ParallelExecutionError(
-      ParallelExecutionErrorCodes.STEP_FAILED,
+      ParallelExecutionErrorCodes.TASK_FAILED,
       `Step ${stepId} failed: ${error}`
     );
   }

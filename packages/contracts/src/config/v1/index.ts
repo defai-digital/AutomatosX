@@ -27,6 +27,7 @@ export {
   FeatureFlagsSchema,
   WorkspaceConfigSchema,
   UserPreferencesSchema,
+  MonitorConfigSchema,
   AutomatosXConfigSchema,
   // Types
   type LogLevel,
@@ -46,6 +47,7 @@ export {
   type FeatureFlags,
   type WorkspaceConfig,
   type UserPreferences,
+  type MonitorConfig,
   type AutomatosXConfig,
   // Functions
   validateConfig,

@@ -252,6 +252,24 @@ export * from './ml-lifecycle/v1/index.js';
 // Discussion Contract V1 (multi-model discussions)
 export * from './discussion/v1/index.js';
 
+// Parallel Execution Contract V1 (parallel agent execution)
+export * from './parallel-execution/v1/index.js';
+
+// Semantic Context Contract V1 (vector-indexed semantic search)
+export * from './semantic-context/v1/index.js';
+
+// MCP Ecosystem Contract V1 (external MCP server integration)
+export * from './mcp-ecosystem/v1/index.js';
+
+// Autonomous Loop Contract V1 (governed write-test-fix cycles)
+export * from './autonomous-loop/v1/index.js';
+
+// Research Contract V1 (deep research agent)
+export * from './research/v1/index.js';
+
+// Feedback Learning Contract V1 (agent feedback and learning)
+export * from './feedback/v1/index.js';
+
 // Constants - Single Source of Truth for magic numbers and paths
 export * from './constants.js';
 
@@ -284,4 +302,10 @@ export const CONTRACT_VERSIONS = {
   resilience: 'v1',
   storage: 'v1',
   discussion: 'v1',
+  parallelExecution: 'v1',
+  semanticContext: 'v1',
+  mcpEcosystem: 'v1',
+  autonomousLoop: 'v1',
+  research: 'v1',
+  feedback: 'v1',
 } as const;

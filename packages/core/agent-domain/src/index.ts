@@ -99,11 +99,13 @@ export { FileSystemAgentLoader, createAgentLoader } from './loader.js';
 // Selector
 export { KeywordAgentSelector, createAgentSelector } from './selector.js';
 
-// Selection Service (INV-AGT-SEL-001 to INV-AGT-SEL-006)
+// Selection Service (INV-AGT-SEL-001 to INV-AGT-SEL-007)
 export {
   AgentSelectionService,
   createAgentSelectionService,
   type AgentSelectionServicePort,
+  type FeedbackScoreAdjusterPort,
+  type AgentSelectionServiceOptions,
 } from './selection-service.js';
 
 // Workflow Templates

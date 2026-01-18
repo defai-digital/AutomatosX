@@ -55,6 +55,7 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     let stdout = '';
     let stderr = '';
     let timedOut = false;
+    let earlyTerminated = false;
     let killed = false;
     let killTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -77,6 +78,21 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     // Collect stdout
     child.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
+
+      // Check for early termination condition (e.g., complete JSON output received)
+      // This is useful for CLIs that hang during shutdown after producing valid output
+      if (
+        options.earlyTerminateOn !== undefined &&
+        !killed &&
+        options.earlyTerminateOn(stdout)
+      ) {
+        killed = true;
+        earlyTerminated = true;
+        clearTimeout(timeoutId);
+
+        // Kill immediately - no graceful shutdown needed since we got what we wanted
+        child.kill('SIGKILL');
+      }
     });
 
     // Collect stderr
@@ -111,6 +127,7 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
         stderr,
         exitCode: code ?? (killed ? 137 : 1),
         timedOut,
+        earlyTerminated,
       });
     });
 

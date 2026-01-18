@@ -214,6 +214,54 @@ export class InMemorySessionStore implements SessionStore {
   get size(): number {
     return this.sessions.size;
   }
+
+  /**
+   * Close stuck sessions that have been active longer than maxAgeMs
+   * Marks them as failed with an auto-close message
+   * @param maxAgeMs Maximum age in milliseconds (default: 24 hours)
+   * @returns number of sessions that were closed
+   */
+  async closeStuckSessions(maxAgeMs = 86400000): Promise<number> {
+    // Input validation
+    if (maxAgeMs <= 0) {
+      throw new Error('maxAgeMs must be a positive number');
+    }
+
+    const cutoffTime = Date.now();
+    const cutoff = cutoffTime - maxAgeMs;
+    let closedCount = 0;
+
+    for (const [sessionId, session] of this.sessions) {
+      // Only process active sessions
+      if (session.status !== 'active') continue;
+
+      const createdTime = new Date(session.createdAt).getTime();
+      if (createdTime < cutoff) {
+        // Update session to failed status
+        // Store error in metadata following the same pattern as failSession
+        const timestamp = new Date().toISOString();
+        const updatedSession: Session = {
+          ...session,
+          status: 'failed',
+          updatedAt: timestamp,
+          completedAt: timestamp,
+          version: session.version + 1,
+          metadata: {
+            ...session.metadata,
+            error: {
+              code: 'SESSION_AUTO_CLOSED',
+              message: 'Session closed automatically - exceeded maximum active time',
+            },
+          },
+        };
+
+        this.sessions.set(sessionId, updatedSession);
+        closedCount++;
+      }
+    }
+
+    return closedCount;
+  }
 }
 
 /**

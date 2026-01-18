@@ -18,8 +18,9 @@ import {
   DATA_DIR_NAME,
   AGENTS_FILENAME,
   DEFAULT_SCHEMA_VERSION,
+  AgentErrorCode,
 } from '@defai.digital/contracts';
-import { InMemoryAgentRegistry } from './registry.js';
+import { InMemoryAgentRegistry, AgentRegistryError } from './registry.js';
 import type { AgentRegistry, AgentFilter } from './types.js';
 
 /**
@@ -154,8 +155,17 @@ export class PersistentAgentRegistry implements AgentRegistry {
           // Use internal method to avoid triggering save
           await this.inMemory.register(profile);
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          console.warn(`Failed to load agent "${agentData.agentId}": ${message}`);
+          // Silently skip "already exists" errors - these occur during normal operation
+          // when the file has agents that were loaded through other means
+          // Use error code check instead of fragile string matching
+          const isAlreadyExists =
+            error instanceof AgentRegistryError &&
+            error.code === AgentErrorCode.AGENT_VALIDATION_ERROR &&
+            error.message.includes(agentData.agentId);
+          if (!isAlreadyExists) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.warn(`Failed to load agent "${agentData.agentId}": ${message}`);
+          }
         }
       }
     } catch (error) {
@@ -194,9 +204,23 @@ export class PersistentAgentRegistry implements AgentRegistry {
   }
 
   /**
-   * Get the number of registered agents
+   * Get the number of registered agents (synchronous).
+   *
+   * WARNING: This may return 0 if called before any async method
+   * (like get, list, register) has been called, because initialization
+   * is lazy and async. Use getSize() for accurate results.
+   *
+   * @deprecated Use getSize() instead for accurate count after initialization
    */
   get size(): number {
+    return this.inMemory.size;
+  }
+
+  /**
+   * Get the number of registered agents (async, ensures initialization)
+   */
+  async getSize(): Promise<number> {
+    await this.ensureInitialized();
     return this.inMemory.size;
   }
 

@@ -35,3 +35,10 @@ export {
   SqliteDeadLetterStoreErrorCodes,
   createSqliteDeadLetterStorage,
 } from './dead-letter-store.js';
+
+export {
+  SqliteSemanticStore,
+  SemanticStoreError,
+  SemanticStoreErrorCodes,
+  createSqliteSemanticStore,
+} from './semantic-store.js';

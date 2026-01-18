@@ -110,6 +110,13 @@ export async function getDatabase(): Promise<unknown | null> {
     // Dynamic import
     const BetterSqlite3 = (await import('better-sqlite3')).default;
     _database = new BetterSqlite3(config.path);
+
+    // Enable WAL mode for better concurrent access
+    // This allows multiple processes (e.g., ax monitor and ax mcp server) to
+    // access the database simultaneously without "readonly database" errors
+    const db = _database as { pragma: (sql: string) => unknown };
+    db.pragma('journal_mode = WAL');
+
     return _database;
   } catch (error) {
     console.warn(

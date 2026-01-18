@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/sqlite-adapter",
-  "version": "13.2.5",
+  "version": "13.4.0",
   "type": "module",
   "license": "BUSL-1.1",
   "author": "DEFAI Private Limited",
@@ -37,6 +37,7 @@
     "@defai.digital/contracts": "workspace:*",
     "@defai.digital/cross-cutting": "workspace:*",
     "@defai.digital/memory-domain": "workspace:*",
+    "@defai.digital/semantic-context": "workspace:*",
     "@defai.digital/trace-domain": "workspace:*",
     "better-sqlite3": "^11.6.0"
   },

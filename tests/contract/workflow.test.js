@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WorkflowSchema, WorkflowStepSchema, RetryPolicySchema, validateWorkflow, safeValidateWorkflow, } from '@automatosx/contracts';
+import { WorkflowSchema, WorkflowStepSchema, RetryPolicySchema, validateWorkflow, safeValidateWorkflow, } from '@defai.digital/contracts';
 describe('Workflow Contract V1', () => {
     describe('Schema Validation', () => {
         it('should validate a minimal valid workflow', () => {

@@ -238,6 +238,37 @@ export const SessionFailOutputSchema = z.object({
 export type SessionFailOutput = z.infer<typeof SessionFailOutputSchema>;
 
 // ============================================================================
+// session_close_stuck Tool
+// ============================================================================
+
+/**
+ * Input schema for session_close_stuck tool
+ * Closes sessions that have been active longer than maxAgeMs
+ */
+export const SessionCloseStuckInputSchema = z.object({
+  maxAgeMs: z
+    .number()
+    .int()
+    .min(60000) // Minimum 1 minute
+    .max(604800000) // Maximum 7 days
+    .optional()
+    .default(86400000), // Default 24 hours
+});
+
+export type SessionCloseStuckInput = z.infer<typeof SessionCloseStuckInputSchema>;
+
+/**
+ * Output schema for session_close_stuck tool
+ */
+export const SessionCloseStuckOutputSchema = z.object({
+  closedCount: z.number().int().min(0),
+  maxAgeMs: z.number().int(),
+  message: z.string(),
+});
+
+export type SessionCloseStuckOutput = z.infer<typeof SessionCloseStuckOutputSchema>;
+
+// ============================================================================
 // Error Codes
 // ============================================================================
 
@@ -394,6 +425,26 @@ export function safeValidateSessionFailInput(
   data: unknown
 ): { success: true; data: SessionFailInput } | { success: false; error: z.ZodError } {
   const result = SessionFailInputSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
+}
+
+/**
+ * Validates session_close_stuck input
+ */
+export function validateSessionCloseStuckInput(data: unknown): SessionCloseStuckInput {
+  return SessionCloseStuckInputSchema.parse(data);
+}
+
+/**
+ * Safely validates session_close_stuck input
+ */
+export function safeValidateSessionCloseStuckInput(
+  data: unknown
+): { success: true; data: SessionCloseStuckInput } | { success: false; error: z.ZodError } {
+  const result = SessionCloseStuckInputSchema.safeParse(data);
   if (result.success) {
     return { success: true, data: result.data };
   }

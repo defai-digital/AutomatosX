@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import type { MCPTool, ToolHandler } from '../types.js';
-import type { AgentProfile, AgentResult, AgentCategory } from '@defai.digital/contracts';
-import { LIMIT_AGENTS } from '@defai.digital/contracts';
+import type { AgentProfile, AgentResult, AgentCategory, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
+import { LIMIT_AGENTS, createRootTraceHierarchy, createChildTraceHierarchy } from '@defai.digital/contracts';
 import type { AgentFilter } from '@defai.digital/agent-domain';
 import {
   getAvailableTemplates,
@@ -13,6 +14,7 @@ import {
   getSharedRegistry,
   getSharedExecutor,
 } from '../registry-accessor.js';
+import { getTraceStore } from '../bootstrap.js';
 
 /**
  * Agent list tool definition
@@ -94,6 +96,27 @@ export const agentRunTool: MCPTool = {
       model: {
         type: 'string',
         description: 'Optional model to use for LLM calls',
+      },
+      timeout: {
+        type: 'number',
+        description: 'Execution timeout in milliseconds (default: 1200000 / 20 min, max: 3600000 / 60 min). Increase for complex agents.',
+        minimum: 1000,
+        maximum: 3600000,
+        default: 1200000,
+      },
+      // Hierarchical trace context (INV-TR-020 through INV-TR-024)
+      parentTraceId: {
+        type: 'string',
+        description: 'Parent trace ID for hierarchical tracing. If provided, this agent run will be linked as a child of the parent trace.',
+      },
+      rootTraceId: {
+        type: 'string',
+        description: 'Root trace ID for the hierarchy. All traces in a delegation chain share this ID.',
+      },
+      parentDepth: {
+        type: 'number',
+        description: 'Depth of the parent trace (default: 0 if parentTraceId not provided).',
+        minimum: 0,
       },
     },
     required: ['agentId'],
@@ -360,8 +383,15 @@ export const handleAgentList: ToolHandler = async (args) => {
   }
 };
 
+/** Default execution timeout in ms (20 minutes) */
+const DEFAULT_AGENT_TIMEOUT = 1200000;
+/** Maximum allowed timeout in ms (60 minutes) */
+const MAX_AGENT_TIMEOUT = 3600000;
+
 /**
  * Handler for agent_run tool
+ * Emits trace events for visibility in ax monitor
+ * Supports hierarchical tracing (INV-TR-020 through INV-TR-024)
  */
 export const handleAgentRun: ToolHandler = async (args) => {
   const agentId = args.agentId as string;
@@ -369,8 +399,62 @@ export const handleAgentRun: ToolHandler = async (args) => {
   const sessionId = args.sessionId as string | undefined;
   const provider = args.provider as string | undefined;
   const model = args.model as string | undefined;
+  const timeout = Math.min(
+    Math.max((args.timeout as number | undefined) ?? DEFAULT_AGENT_TIMEOUT, 1000),
+    MAX_AGENT_TIMEOUT
+  );
+
+  // Hierarchical trace context (INV-TR-020 through INV-TR-024)
+  const parentTraceId = args.parentTraceId as string | undefined;
+  const inputRootTraceId = args.rootTraceId as string | undefined;
+  const parentDepth = args.parentDepth as number | undefined;
 
   const startTime = Date.now();
+  const traceId = randomUUID();
+  const traceStore = getTraceStore();
+  const startTimestamp = new Date().toISOString();
+
+  // Create trace hierarchy context
+  let traceHierarchy: TraceHierarchy;
+  if (parentTraceId) {
+    // This is a child trace (delegation)
+    const parentHierarchy: TraceHierarchy = {
+      parentTraceId: undefined, // Parent's parent, not needed here
+      rootTraceId: inputRootTraceId ?? parentTraceId,
+      traceDepth: parentDepth ?? 0,
+      sessionId,
+    };
+    traceHierarchy = createChildTraceHierarchy(parentTraceId, parentHierarchy);
+  } else {
+    // This is a root trace (user-initiated)
+    traceHierarchy = createRootTraceHierarchy(traceId, sessionId);
+  }
+
+  // Emit run.start trace event with hierarchy context
+  // Include 'command: agent' for API to detect commandType correctly
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTimestamp,
+    context: {
+      agentId,
+      // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      command: 'agent',
+      agentId,
+      input,
+      sessionId,
+      provider,
+      model,
+    },
+  };
+  await traceStore.write(startEvent);
 
   try {
     // Check if agent exists
@@ -378,6 +462,35 @@ export const handleAgentRun: ToolHandler = async (args) => {
     const agent = await registry.get(agentId);
 
     if (agent === undefined) {
+      // Emit run.end with failure
+      const endEvent: TraceEvent = {
+        eventId: randomUUID(),
+        traceId,
+        type: 'run.end',
+        timestamp: new Date().toISOString(),
+        durationMs: Date.now() - startTime,
+        status: 'failure',
+        context: {
+          agentId,
+          // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+          parentTraceId: traceHierarchy.parentTraceId,
+          rootTraceId: traceHierarchy.rootTraceId,
+          traceDepth: traceHierarchy.traceDepth,
+          sessionId: traceHierarchy.sessionId,
+        },
+        payload: {
+          command: 'agent',
+          agentId,
+          success: false,
+          error: {
+            code: 'AGENT_NOT_FOUND',
+            message: `Agent "${agentId}" not found`,
+          },
+          totalDurationMs: Date.now() - startTime,
+        },
+      };
+      await traceStore.write(endEvent);
+
       return {
         content: [
           {
@@ -385,6 +498,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
             text: JSON.stringify({
               success: false,
               agentId,
+              traceId,
               error: {
                 code: 'AGENT_NOT_FOUND',
                 message: `Agent "${agentId}" not found`,
@@ -402,14 +516,72 @@ export const handleAgentRun: ToolHandler = async (args) => {
       sessionId?: string;
       provider?: string;
       model?: string;
+      traceHierarchy?: TraceHierarchy;
+      traceId?: string;
     } = {};
     if (sessionId !== undefined) execOptions.sessionId = sessionId;
     if (provider !== undefined) execOptions.provider = provider;
     if (model !== undefined) execOptions.model = model;
+    // Pass trace hierarchy for child agent delegation (INV-TR-020 through INV-TR-024)
+    execOptions.traceHierarchy = traceHierarchy;
+    execOptions.traceId = traceId;
 
-    // Execute agent - note: execute takes (agentId, input, options)
+    // Execute agent with timeout - note: execute takes (agentId, input, options)
     const executor = await getSharedExecutor();
-    const result: AgentResult = await executor.execute(agentId, input, execOptions);
+
+    // Create timeout promise with cleanup capability
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Agent execution timed out after ${timeout}ms. Consider increasing the timeout parameter.`));
+      }, timeout);
+    });
+
+    // Race execution against timeout
+    const result: AgentResult = await Promise.race([
+      executor.execute(agentId, input, execOptions),
+      timeoutPromise,
+    ]);
+
+    // Clear the timeout to prevent memory leak
+    clearTimeout(timeoutId!);
+
+    // Emit run.end trace event with success/failure
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.totalDurationMs,
+      status: result.success ? 'success' : 'failure',
+      context: {
+        agentId,
+        // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        command: 'agent',
+        agentId,
+        success: result.success,
+        output: result.output as Record<string, unknown> | undefined,
+        stepCount: result.stepResults?.length ?? 0,
+        result: result.output,
+        stepResults: result.stepResults?.map((s) => ({
+          stepId: s.stepId,
+          success: s.success,
+          durationMs: s.durationMs,
+        })),
+        totalDurationMs: result.totalDurationMs,
+        error: result.error ? {
+          code: result.error.code,
+          message: result.error.message,
+        } : undefined,
+      },
+    };
+    await traceStore.write(endEvent);
 
     return {
       content: [
@@ -419,6 +591,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
             {
               success: result.success,
               agentId: result.agentId,
+              traceId,
               sessionId,
               output: result.output,
               stepResults: result.stepResults?.map((s) => ({
@@ -439,6 +612,35 @@ export const handleAgentRun: ToolHandler = async (args) => {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Emit run.end with failure
+    const endEvent: TraceEvent = {
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - startTime,
+      status: 'failure',
+      context: {
+        agentId,
+        // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        agentId,
+        success: false,
+        error: {
+          code: 'AGENT_EXECUTION_FAILED',
+          message,
+        },
+        totalDurationMs: Date.now() - startTime,
+      },
+    };
+    await traceStore.write(endEvent);
+
     return {
       content: [
         {
@@ -446,6 +648,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
           text: JSON.stringify({
             success: false,
             agentId,
+            traceId,
             error: {
               code: 'AGENT_EXECUTION_FAILED',
               message,

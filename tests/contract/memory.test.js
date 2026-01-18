@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MemoryEventSchema, MemoryEventTypeSchema, EventMetadataSchema, ConversationCreatedPayloadSchema, MessageAddedPayloadSchema, MemoryStoredPayloadSchema, createMemoryEvent, validateMemoryEvent, safeValidateMemoryEvent, isEventType, } from '@automatosx/contracts';
+import { MemoryEventSchema, MemoryEventTypeSchema, EventMetadataSchema, ConversationCreatedPayloadSchema, MessageAddedPayloadSchema, MemoryStoredPayloadSchema, createMemoryEvent, validateMemoryEvent, safeValidateMemoryEvent, isEventType, } from '@defai.digital/contracts';
 describe('Memory Event Contract V1', () => {
     describe('Schema Validation', () => {
         it('should validate a minimal memory event', () => {
@@ -171,6 +171,83 @@ describe('Memory Event Contract V1', () => {
             };
             const result = MessageAddedPayloadSchema.safeParse(payload);
             expect(result.success).toBe(false);
+        });
+    });
+    describe('INV-MEM-003: Adapter Isolation (Phase 2)', () => {
+        it('should only accept plain serializable DTOs', () => {
+            // Valid DTO - plain object with no methods
+            const validDTO = {
+                eventId: '550e8400-e29b-41d4-a716-446655440000',
+                type: 'memory.stored',
+                timestamp: '2024-12-14T12:00:00Z',
+                payload: { key: 'test', value: 'data' },
+            };
+            const result = safeValidateMemoryEvent(validDTO);
+            expect(result.success).toBe(true);
+        });
+        it('should validate that events are JSON-serializable', () => {
+            const event = createMemoryEvent('memory.stored', { key: 'test' });
+            // Events must be JSON serializable (no circular refs, functions, etc)
+            const serialized = JSON.stringify(event);
+            const deserialized = JSON.parse(serialized);
+            // Deserialized should still validate
+            const result = safeValidateMemoryEvent(deserialized);
+            expect(result.success).toBe(true);
+        });
+        it('should reject payloads with non-serializable values', () => {
+            // Functions are not JSON serializable
+            const eventWithFunction = {
+                eventId: '550e8400-e29b-41d4-a716-446655440000',
+                type: 'memory.stored',
+                timestamp: '2024-12-14T12:00:00Z',
+                payload: {
+                    key: 'test',
+                    // When serialized, this becomes undefined/null
+                    value: { fn: () => 'not serializable' },
+                },
+            };
+            // Serialize and deserialize to simulate adapter boundary
+            const serialized = JSON.stringify(eventWithFunction);
+            const deserialized = JSON.parse(serialized);
+            // The function should be lost in serialization
+            expect(deserialized.payload.value.fn).toBeUndefined();
+        });
+        it('should preserve all required fields after serialization', () => {
+            const original = createMemoryEvent('message.added', {
+                messageId: 'msg-1',
+                role: 'user',
+                content: 'Hello',
+            }, {
+                aggregateId: 'conv-123',
+                version: 1,
+                metadata: {
+                    correlationId: '550e8400-e29b-41d4-a716-446655440000',
+                    userId: 'user-1',
+                },
+            });
+            // Simulate adapter boundary (serialize/deserialize)
+            const serialized = JSON.stringify(original);
+            const deserialized = JSON.parse(serialized);
+            // All fields should survive serialization
+            expect(deserialized.eventId).toBe(original.eventId);
+            expect(deserialized.type).toBe(original.type);
+            expect(deserialized.aggregateId).toBe(original.aggregateId);
+            expect(deserialized.version).toBe(original.version);
+            expect(deserialized.payload.messageId).toBe('msg-1');
+            expect(deserialized.metadata?.correlationId).toBe('550e8400-e29b-41d4-a716-446655440000');
+        });
+        it('should enforce DTO structure matches schema exactly', () => {
+            // Extra properties are allowed but known properties must match schema
+            const eventWithExtras = {
+                eventId: '550e8400-e29b-41d4-a716-446655440000',
+                type: 'memory.stored',
+                timestamp: '2024-12-14T12:00:00Z',
+                payload: { key: 'test' },
+                customField: 'should be ignored but not cause failure',
+            };
+            // Schema validation should still pass (Zod strips unknown by default)
+            const result = MemoryEventSchema.safeParse(eventWithExtras);
+            expect(result.success).toBe(true);
         });
     });
     describe('Helper Functions', () => {

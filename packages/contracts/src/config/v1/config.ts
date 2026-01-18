@@ -214,6 +214,20 @@ export const UserPreferencesSchema = z.object({
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 
 // ============================================================================
+// Monitor Configuration Schema
+// ============================================================================
+
+/**
+ * Monitor (web dashboard) configuration
+ */
+export const MonitorConfigSchema = z.object({
+  portMin: z.number().int().min(1024).max(65535).default(3000),
+  portMax: z.number().int().min(1024).max(65535).default(3999),
+  autoOpen: z.boolean().default(true),
+});
+export type MonitorConfig = z.infer<typeof MonitorConfigSchema>;
+
+// ============================================================================
 // Main Configuration Schema
 // ============================================================================
 
@@ -245,6 +259,9 @@ export const AutomatosXConfigSchema = z.object({
 
   // User preferences
   preferences: UserPreferencesSchema.default({}),
+
+  // Monitor (web dashboard) settings
+  monitor: MonitorConfigSchema.default({}),
 });
 
 export type AutomatosXConfig = z.infer<typeof AutomatosXConfigSchema>;
@@ -426,5 +443,11 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
     verboseErrors: false,
     confirmDestructive: true,
     defaultOutputFormat: 'text',
+  },
+
+  monitor: {
+    portMin: 3000,
+    portMax: 3999,
+    autoOpen: true,
   },
 };

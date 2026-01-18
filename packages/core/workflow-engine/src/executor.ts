@@ -213,18 +213,8 @@ function executeConditionalStep(
   const condition = config.condition ?? 'true';
 
   try {
-    // Substitute variables in condition
-    const substituted = substituteVariables(condition, context);
-
-    // Safely evaluate the condition
-    // Using Function constructor to evaluate (safer than direct eval, still sandboxed)
-    const evaluator = new Function(
-      'context',
-      'previousResults',
-      'input',
-      `return Boolean(${substituted})`
-    );
-    const result = evaluator(context, context.previousResults, context.input);
+    // Safely evaluate the condition without using eval/Function
+    const result = evaluateConditionSafely(condition, context);
 
     const thenValue = config.thenValue ?? { branch: 'then', result: true };
     const elseValue = config.elseValue ?? { branch: 'else', result: false };
@@ -376,17 +366,6 @@ async function executeParallelStep(
 // ============================================================================
 
 /**
- * Substitute ${variable} patterns in a string with values from context
- */
-function substituteVariables(template: string, context: StepContext): string {
-  return template.replace(/\$\{([^}]+)\}/g, (match, path) => {
-    const value = getValueFromPath(context, path);
-    if (value === undefined) return match;
-    return typeof value === 'string' ? value : JSON.stringify(value);
-  });
-}
-
-/**
  * Get a value from context using dot-notation path
  * e.g., "previousResults.step1.output" or "input.data"
  */
@@ -401,6 +380,166 @@ function getValueFromPath(context: StepContext, path: string): unknown {
   }
 
   return current;
+}
+
+// ============================================================================
+// Safe Condition Evaluation (no eval/Function - prevents code injection)
+// ============================================================================
+
+/**
+ * Safely evaluate a condition expression without using eval/Function
+ *
+ * Supports patterns:
+ * - ${variable} === value
+ * - ${variable} !== value
+ * - ${variable} > value (numeric)
+ * - ${variable} < value (numeric)
+ * - ${variable} >= value (numeric)
+ * - ${variable} <= value (numeric)
+ * - ${variable} (truthy check)
+ * - !${variable} (falsy check)
+ * - condition && condition
+ * - condition || condition
+ * - true / false literals
+ */
+function evaluateConditionSafely(condition: string, context: StepContext): boolean {
+  try {
+    // Handle logical OR (lower precedence)
+    const orParts = splitByLogicalOperator(condition, '||');
+    if (orParts.length > 1) {
+      return orParts.some((part) => evaluateConditionSafely(part.trim(), context));
+    }
+
+    // Handle logical AND (higher precedence)
+    const andParts = splitByLogicalOperator(condition, '&&');
+    if (andParts.length > 1) {
+      return andParts.every((part) => evaluateConditionSafely(part.trim(), context));
+    }
+
+    const trimmed = condition.trim();
+
+    // Handle negation
+    if (trimmed.startsWith('!')) {
+      return !evaluateConditionSafely(trimmed.slice(1).trim(), context);
+    }
+
+    // Handle parentheses
+    if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+      return evaluateConditionSafely(trimmed.slice(1, -1), context);
+    }
+
+    // Parse comparison: ${variable} op value
+    const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
+    if (comparisonMatch) {
+      const [, varPath, op, rawValue] = comparisonMatch;
+      const actualValue = getValueFromPath(context, varPath!);
+      const expectedValue = parseConditionValue(rawValue!.trim());
+      return compareConditionValues(actualValue, expectedValue, op!);
+    }
+
+    // Handle simple variable reference (truthy check): ${variable}
+    const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
+    if (varMatch) {
+      const value = getValueFromPath(context, varMatch[1]!);
+      return Boolean(value);
+    }
+
+    // Handle literal booleans
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+
+    // Unknown pattern - warn and fail safely
+    console.warn(`[workflow-engine] Unknown condition pattern: ${condition}`);
+    return false;
+  } catch (error) {
+    console.warn(`[workflow-engine] Error evaluating condition: ${condition}`, error);
+    return false;
+  }
+}
+
+/**
+ * Split condition by logical operator, respecting parentheses depth
+ */
+function splitByLogicalOperator(condition: string, operator: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+
+  for (let i = 0; i < condition.length; i++) {
+    const char = condition[i];
+
+    if (char === '(') {
+      depth++;
+      current += char;
+    } else if (char === ')') {
+      depth--;
+      current += char;
+    } else if (depth === 0 && condition.slice(i, i + operator.length) === operator) {
+      parts.push(current);
+      current = '';
+      i += operator.length - 1; // -1 because loop will increment
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
+/**
+ * Parse a value string from condition into its actual type
+ */
+function parseConditionValue(value: string): unknown {
+  // String literal (single or double quotes)
+  if ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+
+  // Null/undefined
+  if (value === 'null') return null;
+  if (value === 'undefined') return undefined;
+
+  // Booleans
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+
+  // Numbers
+  const num = Number(value);
+  if (!Number.isNaN(num)) return num;
+
+  // Return as string if nothing else matches
+  return value;
+}
+
+/**
+ * Compare two values with the given operator
+ */
+function compareConditionValues(actual: unknown, expected: unknown, op: string): boolean {
+  switch (op) {
+    case '===':
+      return actual === expected;
+    case '!==':
+      return actual !== expected;
+    case '==':
+      return actual == expected;
+    case '!=':
+      return actual != expected;
+    case '>':
+      return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
+    case '<':
+      return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
+    case '>=':
+      return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
+    case '<=':
+      return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
+    default:
+      return false;
+  }
 }
 
 /**

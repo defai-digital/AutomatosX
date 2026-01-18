@@ -5,7 +5,7 @@
  * Used primarily in debate pattern where the judge renders a verdict.
  */
 
-import type { DissentRecord } from '@defai.digital/contracts';
+import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   DEBATE_JUDGE,
@@ -53,7 +53,7 @@ export class ModeratorConsensus implements ConsensusExecutor {
         prompt,
         systemPrompt: getProviderSystemPrompt(moderatorId),
         temperature: 0.5, // Lower temperature for more consistent judgment
-        timeoutMs: 90000,
+        timeoutMs: DEFAULT_CONSENSUS_TIMEOUT, // Moderation needs time (3 min default)
         abortSignal,
       });
 
@@ -62,6 +62,11 @@ export class ModeratorConsensus implements ConsensusExecutor {
         provider: moderatorId,
         message: result.success ? 'Moderation complete' : `Moderation failed: ${result.error}`,
         timestamp: new Date().toISOString(),
+        // Extended fields for Phase 2 tracing
+        success: result.success,
+        durationMs: result.durationMs,
+        tokenCount: result.tokenCount,
+        error: result.success ? undefined : result.error,
       });
 
       if (!result.success) {
@@ -79,6 +84,18 @@ export class ModeratorConsensus implements ConsensusExecutor {
 
       // Analyze moderator decision
       const analysis = this.analyzeModeratorDecision(result.content || '', participatingProviders);
+      const consensusDurationMs = Date.now() - startTime;
+
+      // Emit consensus_complete event for Phase 2 tracing
+      onProgress?.({
+        type: 'consensus_complete',
+        message: 'Moderator consensus reached',
+        timestamp: new Date().toISOString(),
+        success: true,
+        consensusMethod: 'moderator',
+        confidence: analysis.agreementScore,
+        durationMs: consensusDurationMs,
+      });
 
       return {
         synthesis: result.content || '',
@@ -89,7 +106,7 @@ export class ModeratorConsensus implements ConsensusExecutor {
           agreements: analysis.agreements,
           dissent: config.includeDissent ? analysis.dissent : undefined,
         },
-        durationMs: Date.now() - startTime,
+        durationMs: consensusDurationMs,
         success: true,
       };
 

@@ -12,13 +12,16 @@ import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createPersistentAgentRegistry,
   createAgentExecutor,
+  createEnhancedAgentExecutor,
+  createProviderPromptExecutor,
   createAgentLoader,
   DEFAULT_AGENT_DOMAIN_CONFIG,
   type AgentRegistry,
+  type EnhancedAgentDomainConfig,
 } from '@defai.digital/agent-domain';
 import type { AgentProfile, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy } from '@defai.digital/contracts';
-import { bootstrap, getTraceStore } from '../bootstrap.js';
+import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy, TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
+import { bootstrap, getTraceStore, getProviderRegistry } from '../bootstrap.js';
 
 // Storage path for persistent agents (matches MCP server)
 const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
@@ -343,7 +346,7 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
   if (agentId === undefined) {
     return {
       success: false,
-      message: 'Usage: ax agent run <agent-id> [--input <text|json>] [task...]',
+      message: 'Usage: ax agent run <agent-id> [--input <text|json>] [--provider <provider>] [task...]',
       data: undefined,
       exitCode: 1,
     };
@@ -389,7 +392,27 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
 
   try {
     const registry = await getRegistry();
-    const executor = createAgentExecutor(registry, DEFAULT_AGENT_DOMAIN_CONFIG);
+
+    // Create executor - use enhanced executor with real provider when --provider is specified
+    let executor;
+    if (options.provider !== undefined) {
+      // Create prompt executor with specified provider
+      const providerRegistry = getProviderRegistry();
+      const promptExecutor = createProviderPromptExecutor(providerRegistry, {
+        defaultProvider: options.provider,
+        defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
+      });
+
+      const config: EnhancedAgentDomainConfig = {
+        ...DEFAULT_AGENT_DOMAIN_CONFIG,
+        promptExecutor,
+      };
+
+      executor = createEnhancedAgentExecutor(registry, config);
+    } else {
+      // Use default executor (stub) when no provider specified
+      executor = createAgentExecutor(registry, DEFAULT_AGENT_DOMAIN_CONFIG);
+    }
 
     // Parse input: supports JSON objects or plain strings
     // Plain strings are wrapped as { prompt: string } for executor compatibility
@@ -413,7 +436,9 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
       input = task;
     }
 
-    const result = await executor.execute(agentId, input);
+    // Execute agent with provider option
+    const execOptions = options.provider !== undefined ? { provider: options.provider } : undefined;
+    const result = await executor.execute(agentId, input, execOptions);
 
     // Emit step events for each step result
     // INV-TR-011: Agent executions MUST include agentId in context

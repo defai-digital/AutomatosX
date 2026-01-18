@@ -43,6 +43,8 @@ const DEFAULT_OPTIONS: CLIOptions = {
   compact: false,
   // Agent filter defaults
   team: undefined,
+  // Provider defaults
+  provider: undefined,
 };
 
 /**
@@ -75,6 +77,8 @@ const GLOBAL_OPTIONS = new Set([
   'refresh',
   // Agent filter options
   'team',
+  // Provider options
+  'provider',
 ]);
 
 const GLOBAL_SHORT_FLAGS = new Set(['h', 'v', 'V']);
@@ -231,6 +235,13 @@ export function parseArgs(argv: string[]): ParsedCommand {
         case 'team':
           if (nextArg !== undefined && !nextArg.startsWith('-')) {
             options.team = nextArg;
+            i++;
+          }
+          break;
+        // Provider options
+        case 'provider':
+          if (nextArg !== undefined && !nextArg.startsWith('-')) {
+            options.provider = nextArg;
             i++;
           }
           break;

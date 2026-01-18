@@ -57,6 +57,8 @@ export interface CLIOptions {
   compact: boolean;
   // Agent filter options
   team: string | undefined;
+  // Provider options
+  provider: string | undefined;
 }
 
 /**

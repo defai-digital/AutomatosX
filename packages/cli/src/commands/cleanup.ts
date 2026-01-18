@@ -24,34 +24,13 @@ import {
   type CleanupDataType,
 } from '@defai.digital/contracts';
 import {
-  createSessionManager,
-  createSessionStore,
-  DEFAULT_SESSION_DOMAIN_CONFIG,
-  type SessionManager,
-  type SessionStore,
-} from '@defai.digital/session-domain';
-import {
   getCheckpointStorage,
   getTraceStore,
   getDLQ,
   initializeStorageAsync,
 } from '../utils/storage-instances.js';
+import { getSessionStore } from '../bootstrap.js';
 import { formatBytes } from '../utils/formatters.js';
-
-// Lazy-initialized shared instances
-let sessionStore: SessionStore | undefined;
-let sessionManager: SessionManager | undefined;
-
-/**
- * Get or create shared session instances
- */
-function getSessionInstances(): { store: SessionStore; manager: SessionManager } {
-  if (sessionStore === undefined || sessionManager === undefined) {
-    sessionStore = createSessionStore();
-    sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
-  }
-  return { store: sessionStore, manager: sessionManager };
-}
 
 /**
  * Cleanup command handler
@@ -305,7 +284,7 @@ async function cleanSessions(
   dryRun: boolean
 ): Promise<CleanupTypeResult> {
   try {
-    const { store } = getSessionInstances();
+    const store = getSessionStore();
     const cutoffDate = getCutoffDate(olderThanDays);
 
     // Get all sessions

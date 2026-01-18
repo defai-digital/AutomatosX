@@ -5,11 +5,7 @@
  */
 
 import type { CommandResult, CLIOptions } from '../types.js';
-import {
-  createSessionStore,
-  createSessionManager,
-  DEFAULT_SESSION_DOMAIN_CONFIG,
-} from '@defai.digital/session-domain';
+import { getSessionManager } from '../bootstrap.js';
 import {
   success,
   successJson,
@@ -18,10 +14,6 @@ import {
   usageError,
   formatList,
 } from '../utils/formatters.js';
-
-// Singleton store and manager for demo purposes
-const store = createSessionStore();
-const manager = createSessionManager(store, DEFAULT_SESSION_DOMAIN_CONFIG);
 
 /**
  * Parses JSON input and returns parsed object or error result
@@ -92,7 +84,7 @@ export async function sessionCommand(
  */
 async function listSessions(options: CLIOptions): Promise<CommandResult> {
   try {
-    const sessions = await manager.listSessions();
+    const sessions = await getSessionManager().listSessions();
 
     if (sessions.length === 0) {
       return success('No sessions found.', []);
@@ -127,7 +119,7 @@ async function getSession(args: string[], options: CLIOptions): Promise<CommandR
   }
 
   try {
-    const session = await manager.getSession(sessionId);
+    const session = await getSessionManager().getSession(sessionId);
 
     if (session === undefined) {
       return failure(`Session not found: ${sessionId}`);
@@ -180,7 +172,7 @@ async function createSession(options: CLIOptions): Promise<CommandResult> {
   if (typeof initiator !== 'string') return initiator;
 
   try {
-    const session = await manager.createSession({
+    const session = await getSessionManager().createSession({
       task,
       initiator,
       metadata: parsed!.metadata as Record<string, unknown> | undefined,
@@ -218,7 +210,7 @@ async function joinSession(args: string[], options: CLIOptions): Promise<Command
     : 'collaborator';
 
   try {
-    const session = await manager.joinSession({ sessionId, agentId, role });
+    const session = await getSessionManager().joinSession({ sessionId, agentId, role });
 
     if (options.format === 'json') {
       return successJson(session);
@@ -247,7 +239,7 @@ async function leaveSession(args: string[], options: CLIOptions): Promise<Comman
   if (typeof agentId !== 'string') return agentId;
 
   try {
-    const session = await manager.leaveSession(sessionId, agentId);
+    const session = await getSessionManager().leaveSession(sessionId, agentId);
 
     if (options.format === 'json') {
       return successJson(session);
@@ -278,7 +270,7 @@ async function completeSession(args: string[], options: CLIOptions): Promise<Com
       }
     }
 
-    const session = await manager.completeSession(sessionId, summary);
+    const session = await getSessionManager().completeSession(sessionId, summary);
 
     if (options.format === 'json') {
       return successJson(session);
@@ -321,7 +313,7 @@ async function failSession(args: string[], options: CLIOptions): Promise<Command
       sessionFailure.details = parsed!.details as Record<string, unknown>;
     }
 
-    const session = await manager.failSession(sessionId, sessionFailure);
+    const session = await getSessionManager().failSession(sessionId, sessionFailure);
 
     if (options.format === 'json') {
       return successJson(session);

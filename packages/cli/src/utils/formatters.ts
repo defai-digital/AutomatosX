@@ -72,3 +72,60 @@ export function truncate(str: string, maxLength: number): string {
 export function padEnd(str: string, width: number): string {
   return str.padEnd(width);
 }
+
+// ============================================================================
+// CommandResult Builders - Reduce duplication across CLI commands
+// ============================================================================
+
+import type { CommandResult } from '../types.js';
+
+/**
+ * Creates a success CommandResult
+ */
+export function success(message: string, data?: unknown): CommandResult {
+  return { success: true, message, data, exitCode: 0 };
+}
+
+/**
+ * Creates a success CommandResult with JSON data (for --format json)
+ */
+export function successJson(data: unknown): CommandResult {
+  return { success: true, message: undefined, data, exitCode: 0 };
+}
+
+/**
+ * Creates a failure CommandResult
+ */
+export function failure(message: string, exitCode = 1): CommandResult {
+  return { success: false, message, data: undefined, exitCode };
+}
+
+/**
+ * Creates a failure CommandResult from an error
+ */
+export function failureFromError(action: string, error: unknown): CommandResult {
+  const msg = error instanceof Error ? error.message : String(error);
+  return failure(`Failed to ${action}: ${msg}`);
+}
+
+/**
+ * Creates a usage error CommandResult
+ */
+export function usageError(usage: string): CommandResult {
+  return failure(`Usage: ${usage}`);
+}
+
+/**
+ * Formats a list with header and separator for CLI display
+ */
+export function formatList<T>(
+  items: T[],
+  columns: { header: string; width: number; getValue: (item: T) => string }[]
+): string {
+  const header = columns.map(c => c.header.padEnd(c.width)).join(' | ');
+  const separator = '-'.repeat(header.length);
+  const rows = items.map(item =>
+    columns.map(c => truncate(c.getValue(item), c.width).padEnd(c.width)).join(' | ')
+  );
+  return [header, separator, ...rows].join('\n');
+}

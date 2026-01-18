@@ -7,10 +7,10 @@ import {
 } from '@defai.digital/workflow-engine';
 import type { StepContext, StepResult, StepExecutor } from '@defai.digital/workflow-engine';
 import type { WorkflowStep } from '@defai.digital/contracts';
-import { TIMEOUT_PROVIDER_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
+import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
 import { getStepExecutor } from '../bootstrap.js';
+import { success, failure, failureFromError, usageError } from '../utils/formatters.js';
 
-// Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 
 /**
@@ -23,55 +23,33 @@ export async function runCommand(
   const workflowId = args[0] ?? options.workflowId;
 
   if (workflowId === undefined) {
-    return {
-      success: false,
-      message: 'Workflow ID is required. Usage: ax run <workflow-id>',
-      data: undefined,
-      exitCode: 1,
-    };
+    return usageError('ax run <workflow-id>');
   }
 
   try {
-    // Find workflow directory
     const workflowDir = options.workflowDir ?? findWorkflowDir(process.cwd());
 
     if (!workflowDir) {
-      return {
-        success: false,
-        message: 'No workflow directory found. Create examples/workflows/ or use --workflow-dir.',
-        data: undefined,
-        exitCode: 1,
-      };
+      return failure('No workflow directory found. Create examples/workflows/ or use --workflow-dir.');
     }
 
-    // Load workflow from file
     const loader = createWorkflowLoader({ workflowsDir: workflowDir });
     const workflow = await loader.load(workflowId);
 
     if (!workflow) {
-      // Try to list available workflows for help
       const available = await loader.loadAll();
       const ids = available.map(wf => wf.workflowId).slice(0, 5).join(', ');
-      return {
-        success: false,
-        message: `Workflow "${workflowId}" not found.\n\nAvailable workflows: ${ids}${available.length > 5 ? '...' : ''}\nRun 'ax list' to see all workflows.`,
-        data: undefined,
-        exitCode: 1,
-      };
+      const more = available.length > 5 ? '...' : '';
+      return failure(`Workflow "${workflowId}" not found.\n\nAvailable workflows: ${ids}${more}\nRun 'ax list' to see all workflows.`);
     }
 
-    // Parse input JSON if provided
+    // Parse input JSON
     let input: Record<string, unknown> = {};
     if (options.input) {
       try {
         input = JSON.parse(options.input) as Record<string, unknown>;
       } catch {
-        return {
-          success: false,
-          message: 'Invalid JSON in --input parameter',
-          data: undefined,
-          exitCode: 1,
-        };
+        return failure('Invalid JSON in --input parameter');
       }
     }
 
@@ -79,18 +57,16 @@ export async function runCommand(
       console.log(`Loading workflow: ${workflow.workflowId}`);
       console.log(`  Name: ${workflow.name ?? workflowId}`);
       console.log(`  Version: ${workflow.version}`);
-      console.log(`  Steps: ${workflow.steps.length}`);
-      console.log('');
+      console.log(`  Steps: ${workflow.steps.length}\n`);
     }
 
-    // Create workflow runner with step execution logging
     const runner = createWorkflowRunner({
       stepExecutor: createLoggingStepExecutor(options.verbose ?? false),
       onStepStart: options.verbose
-        ? (step) => { console.log(`  → Starting step: ${step.stepId} (${step.type})`); }
+        ? (step) => console.log(`  → Starting step: ${step.stepId} (${step.type})`)
         : undefined,
       onStepComplete: options.verbose
-        ? (step, result) => { console.log(`  ${result.success ? '✓' : '✗'} Completed: ${step.stepId} (${result.durationMs}ms)`); }
+        ? (step, result) => console.log(`  ${result.success ? '✓' : '✗'} Completed: ${step.stepId} (${result.durationMs}ms)`)
         : undefined,
     });
 
@@ -98,64 +74,42 @@ export async function runCommand(
       console.log('Executing workflow...\n');
     }
 
-    // Execute workflow
     const result = await runner.run(workflow, input);
-
-    // Format result message
     const duration = (result.totalDurationMs / 1000).toFixed(2);
-    const stepSummary = result.stepResults.map(stepResult => `${stepResult.stepId}: ${stepResult.success ? '✓' : '✗'}`).join(', ');
+    const stepSummary = result.stepResults.map(s => `${s.stepId}: ${s.success ? '✓' : '✗'}`).join(', ');
+
+    const data = {
+      workflowId,
+      success: result.success,
+      durationMs: result.totalDurationMs,
+      output: result.output,
+      error: result.error,
+      steps: result.stepResults.map(s => ({
+        stepId: s.stepId,
+        success: s.success,
+        durationMs: s.durationMs,
+        error: s.error?.message,
+      })),
+    };
 
     if (result.success) {
-      return {
-        success: true,
-        message: `Workflow "${workflowId}" completed successfully in ${duration}s\n\nSteps: ${stepSummary}`,
-        data: {
-          workflowId,
-          success: true,
-          durationMs: result.totalDurationMs,
-          output: result.output,
-          steps: result.stepResults.map((stepResult) => ({
-            stepId: stepResult.stepId,
-            success: stepResult.success,
-            durationMs: stepResult.durationMs,
-          })),
-        },
-        exitCode: 0,
-      };
-    } else {
-      return {
-        success: false,
-        message: `Workflow "${workflowId}" failed: ${result.error?.message ?? 'Unknown error'}\n\nSteps: ${stepSummary}`,
-        data: {
-          workflowId,
-          success: false,
-          error: result.error,
-          steps: result.stepResults.map((stepResult) => ({
-            stepId: stepResult.stepId,
-            success: stepResult.success,
-            error: stepResult.error?.message,
-          })),
-        },
-        exitCode: 1,
-      };
+      return success(`Workflow "${workflowId}" completed successfully in ${duration}s\n\nSteps: ${stepSummary}`, data);
     }
-  } catch (error) {
     return {
       success: false,
-      message: `Failed to run workflow: ${getErrorMessage(error)}`,
-      data: undefined,
+      message: `Workflow "${workflowId}" failed: ${result.error?.message ?? 'Unknown error'}\n\nSteps: ${stepSummary}`,
+      data,
       exitCode: 1,
     };
+  } catch (error) {
+    return failureFromError('run workflow', error);
   }
 }
 
 /**
  * Creates a step executor that logs progress
- * Uses the production step executor for real LLM calls in production,
- * or the default placeholder executor in test environments.
  */
 function createLoggingStepExecutor(verbose: boolean): StepExecutor {
-  // Use placeholder executor in test environment to avoid real LLM calls
   const baseExecutor = isTestEnv
     ? defaultStepExecutor
     : getStepExecutor({
@@ -165,17 +119,12 @@ function createLoggingStepExecutor(verbose: boolean): StepExecutor {
       });
 
   return async (step: WorkflowStep, context: StepContext): Promise<StepResult> => {
-    // Execute step (real LLM in prod, placeholder in tests)
     const result = await baseExecutor(step, context);
 
-    // In verbose mode, show step details
     if (verbose && result.output) {
       const outputStr = JSON.stringify(result.output, null, 2);
-      if (outputStr.length < 500) {
-        console.log(`    Output: ${outputStr.replace(/\n/g, '\n    ')}`);
-      } else {
-        console.log(`    Output: (${outputStr.length} chars)`);
-      }
+      const display = outputStr.length < 500 ? outputStr.replace(/\n/g, '\n    ') : `(${outputStr.length} chars)`;
+      console.log(`    Output: ${display}`);
     }
 
     return result;

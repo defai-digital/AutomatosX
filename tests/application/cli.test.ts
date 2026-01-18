@@ -127,7 +127,7 @@ describe('CLI', () => {
 
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
-      expect(result.message).toContain('Workflow ID is required');
+      expect(result.message).toContain('ax run');
     });
 
     it('should execute workflow with ID from args', async () => {

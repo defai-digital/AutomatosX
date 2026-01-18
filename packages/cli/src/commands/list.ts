@@ -1,6 +1,6 @@
 import type { CommandResult, CLIOptions } from '../types.js';
-import { getErrorMessage } from '@defai.digital/contracts';
 import { createWorkflowLoader, findWorkflowDir } from '@defai.digital/workflow-engine';
+import { success, successJson, failureFromError, formatList } from '../utils/formatters.js';
 import * as path from 'node:path';
 
 /**
@@ -15,12 +15,7 @@ export async function listCommand(
     const workflowDir = options.workflowDir ?? findWorkflowDir(process.cwd());
 
     if (!workflowDir) {
-      return {
-        success: true,
-        message: 'No workflow directory found. Create examples/workflows/ or use --workflow-dir.',
-        data: [],
-        exitCode: 0,
-      };
+      return success('No workflow directory found. Create examples/workflows/ or use --workflow-dir.', []);
     }
 
     // Load workflows from directory
@@ -28,12 +23,7 @@ export async function listCommand(
     const workflows = await loader.listAll();
 
     if (workflows.length === 0) {
-      return {
-        success: true,
-        message: `No workflows found in ${workflowDir}`,
-        data: [],
-        exitCode: 0,
-      };
+      return success(`No workflows found in ${workflowDir}`, []);
     }
 
     // Apply limit if specified
@@ -42,35 +32,21 @@ export async function listCommand(
       : workflows;
 
     if (options.format === 'json') {
-      return {
-        success: true,
-        message: undefined,
-        data: limited,
-        exitCode: 0,
-      };
+      return successJson(limited);
     }
 
     // Format as text table
-    const header = 'ID                           | Name                           | Version | Steps | Status';
-    const separator = '-'.repeat(header.length);
-    const rows = limited.map((workflow) =>
-      `${workflow.id.padEnd(28)} | ${(workflow.name ?? workflow.id).substring(0, 30).padEnd(30)} | ${workflow.version.padEnd(7)} | ${String(workflow.stepCount).padEnd(5)} | ${workflow.status}`
-    );
+    const table = formatList(limited, [
+      { header: 'ID', width: 28, getValue: w => w.id },
+      { header: 'Name', width: 30, getValue: w => w.name ?? w.id },
+      { header: 'Version', width: 7, getValue: w => w.version },
+      { header: 'Steps', width: 5, getValue: w => String(w.stepCount) },
+      { header: 'Status', width: 10, getValue: w => w.status },
+    ]);
 
     const footer = `\n${workflows.length} workflow(s) found in ${path.basename(workflowDir)}/`;
-
-    return {
-      success: true,
-      message: [header, separator, ...rows, footer].join('\n'),
-      data: limited,
-      exitCode: 0,
-    };
+    return success(table + footer, limited);
   } catch (error) {
-    return {
-      success: false,
-      message: `Failed to list workflows: ${getErrorMessage(error)}`,
-      data: undefined,
-      exitCode: 1,
-    };
+    return failureFromError('list workflows', error);
   }
 }

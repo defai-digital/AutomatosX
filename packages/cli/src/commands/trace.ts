@@ -1,7 +1,14 @@
 import type { CommandResult, CLIOptions } from '../types.js';
 import type { TraceEvent } from '@defai.digital/contracts';
-import { LIMIT_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
+import { LIMIT_DEFAULT } from '@defai.digital/contracts';
 import { getTraceStore } from '../bootstrap.js';
+import {
+  success,
+  successJson,
+  failure,
+  failureFromError,
+  formatList,
+} from '../utils/formatters.js';
 
 /**
  * Trace summary for display
@@ -24,13 +31,9 @@ export async function traceCommand(
 ): Promise<CommandResult> {
   const traceId = args[0] ?? options.traceId;
 
-  // If no trace ID, list recent traces
-  if (traceId === undefined) {
-    return listTraces(options);
-  }
-
-  // Get specific trace
-  return getTrace(traceId, options);
+  return traceId === undefined
+    ? listTraces(options)
+    : getTrace(traceId, options);
 }
 
 /**
@@ -38,136 +41,84 @@ export async function traceCommand(
  */
 async function listTraces(options: CLIOptions): Promise<CommandResult> {
   try {
-    // Get traces (in real implementation, from trace store)
-    const traces = await getRecentTraces(options.limit ?? LIMIT_DEFAULT);
+    const store = getTraceStore();
+    const summaries = await store.listTraces(options.limit ?? LIMIT_DEFAULT);
+    const traces: TraceSummary[] = summaries.map(s => ({
+      traceId: s.traceId,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      status: s.status,
+      eventCount: s.eventCount,
+      durationMs: s.durationMs,
+    }));
 
     if (traces.length === 0) {
-      return {
-        success: true,
-        message: 'No traces found.',
-        data: [],
-        exitCode: 0,
-      };
+      return success('No traces found.', []);
     }
 
     if (options.format === 'json') {
-      return {
-        success: true,
-        message: undefined,
-        data: traces,
-        exitCode: 0,
-      };
+      return successJson(traces);
     }
 
-    // Format as text table
-    const header = 'Trace ID                             | Start Time          | Status  | Events | Duration';
-    const separator = '-'.repeat(header.length);
-    const rows = traces.map((trace) => {
-      const duration = trace.durationMs !== undefined ? `${String(trace.durationMs)}ms` : 'N/A';
-      return `${trace.traceId} | ${trace.startTime.slice(0, 19)} | ${trace.status.padEnd(7)} | ${String(trace.eventCount).padEnd(6)} | ${duration}`;
-    });
+    const table = formatList(traces, [
+      { header: 'Trace ID', width: 36, getValue: t => t.traceId },
+      { header: 'Start Time', width: 19, getValue: t => t.startTime.slice(0, 19) },
+      { header: 'Status', width: 7, getValue: t => t.status },
+      { header: 'Events', width: 6, getValue: t => String(t.eventCount) },
+      { header: 'Duration', width: 10, getValue: t => t.durationMs !== undefined ? `${t.durationMs}ms` : 'N/A' },
+    ]);
 
-    return {
-      success: true,
-      message: [header, separator, ...rows].join('\n'),
-      data: traces,
-      exitCode: 0,
-    };
+    return success(table, traces);
   } catch (error) {
-    return {
-      success: false,
-      message: `Failed to list traces: ${getErrorMessage(error)}`,
-      data: undefined,
-      exitCode: 1,
-    };
+    return failureFromError('list traces', error);
   }
 }
 
 /**
  * Gets a specific trace by ID
  */
-async function getTrace(
-  traceId: string,
-  options: CLIOptions
-): Promise<CommandResult> {
+async function getTrace(traceId: string, options: CLIOptions): Promise<CommandResult> {
   try {
-    const events = await getTraceEvents(traceId);
+    const store = getTraceStore();
+    const events = await store.getTrace(traceId);
 
     if (events.length === 0) {
-      return {
-        success: false,
-        message: `Trace not found: ${traceId}`,
-        data: undefined,
-        exitCode: 1,
-      };
+      return failure(`Trace not found: ${traceId}`);
     }
 
+    const data = { traceId, events };
+
     if (options.format === 'json') {
-      return {
-        success: true,
-        message: undefined,
-        data: { traceId, events },
-        exitCode: 0,
-      };
+      return successJson(data);
     }
 
     // Format as timeline
     const lines = [
       `Trace: ${traceId}`,
-      `Events: ${String(events.length)}`,
+      `Events: ${events.length}`,
       '',
       'Timeline:',
+      ...events.map(e => formatEventLine(e, options.verbose)),
     ];
 
-    for (const event of events) {
-      const seq = event.sequence !== undefined ? `[${String(event.sequence)}]` : '[-]';
-      const status = event.status !== undefined ? ` (${event.status})` : '';
-      const duration = event.durationMs !== undefined ? ` - ${String(event.durationMs)}ms` : '';
-      lines.push(`  ${seq} ${event.type}${status}${duration}`);
-
-      if (options.verbose && event.payload !== undefined) {
-        lines.push(`      Payload: ${JSON.stringify(event.payload)}`);
-      }
-    }
-
-    return {
-      success: true,
-      message: lines.join('\n'),
-      data: { traceId, events },
-      exitCode: 0,
-    };
+    return success(lines.join('\n'), data);
   } catch (error) {
-    return {
-      success: false,
-      message: `Failed to get trace: ${getErrorMessage(error)}`,
-      data: undefined,
-      exitCode: 1,
-    };
+    return failureFromError('get trace', error);
   }
 }
 
 /**
- * Gets recent traces from the trace store
+ * Formats a single trace event as a timeline line
  */
-async function getRecentTraces(limit: number): Promise<TraceSummary[]> {
-  const store = getTraceStore();
-  const summaries = await store.listTraces(limit);
+function formatEventLine(event: TraceEvent, verbose: boolean): string {
+  const seq = event.sequence !== undefined ? `[${event.sequence}]` : '[-]';
+  const status = event.status !== undefined ? ` (${event.status})` : '';
+  const duration = event.durationMs !== undefined ? ` - ${event.durationMs}ms` : '';
+  let line = `  ${seq} ${event.type}${status}${duration}`;
 
-  // Map TraceSummary from trace-domain to our local TraceSummary type
-  return summaries.map((summary) => ({
-    traceId: summary.traceId,
-    startTime: summary.startTime,
-    endTime: summary.endTime,
-    status: summary.status,
-    eventCount: summary.eventCount,
-    durationMs: summary.durationMs,
-  }));
-}
+  if (verbose && event.payload !== undefined) {
+    line += `\n      Payload: ${JSON.stringify(event.payload)}`;
+  }
 
-/**
- * Gets events for a specific trace from the trace store
- */
-async function getTraceEvents(traceId: string): Promise<TraceEvent[]> {
-  const store = getTraceStore();
-  return store.getTrace(traceId);
+  return line;
 }

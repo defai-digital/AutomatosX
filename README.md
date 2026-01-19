@@ -422,6 +422,37 @@ Result:
 
 ---
 
+## Standard Workflow Library
+
+AutomatosX includes a library of reusable workflow templates in `workflows/std/`:
+
+| Workflow | Purpose |
+|----------|---------|
+| `analysis.yaml` | Code analysis and exploration |
+| `code-review.yaml` | Structured code review |
+| `debugging.yaml` | Bug investigation and fixing |
+| `documentation.yaml` | Documentation generation |
+| `implementation.yaml` | Feature implementation |
+| `refactoring.yaml` | Code refactoring |
+| `testing.yaml` | Test writing and validation |
+
+Use via MCP tools:
+
+```
+You: Run ax_workflow_run with workflowId "workflows/std/code-review.yaml"
+
+AI: [Uses ax_workflow_run tool]
+Running code review workflow...
+```
+
+Or via CLI:
+
+```bash
+ax workflow run workflows/std/code-review.yaml
+```
+
+---
+
 ## CLI Commands (Optional)
 
 You can also use AutomatosX directly from the command line, though MCP integration provides a better experience:
@@ -614,6 +645,8 @@ When switching projects, just run `ax init` in the new project.
 ---
 
 ## What's New
+
+**v13.4.2** - Staged Capabilities & Standard Workflow Library: Added intelligent task classification and capability routing for agents. New standard workflow library (`workflows/std/`) with 7 reusable templates (analysis, code-review, debugging, documentation, implementation, refactoring, testing). Fixed trace name display - traces now show meaningful names like "ax agent run standard" instead of "Trace 74e746d0". Added capability mapping invariants (INV-CAP-001 to INV-CAP-005).
 
 **v13.4.0** - Provider & CLI fixes: Fixed ax-grok hang issue with early termination support (kills process immediately after receiving complete JSON output instead of waiting for timeout). Fixed duplicate synthesis output in `ax discuss`. Fixed stale example agents not updating via version comparison. Added `--team` filter support for `ax agent list`. Added `--max-depth` validation (1-4 range) for recursive discussions.
 

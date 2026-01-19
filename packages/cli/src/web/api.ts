@@ -75,6 +75,7 @@ import {
   type WorkflowLoader,
 } from '@defai.digital/workflow-engine';
 import { CLI_VERSION } from '../commands/help.js';
+import { getProviderStatus as checkProviderHealth } from '../commands/status.js';
 
 // Workflow loader singleton
 let workflowLoader: WorkflowLoader | undefined;
@@ -192,6 +193,18 @@ interface APIResponse {
 }
 
 /**
+ * Cached provider status (set at monitor startup)
+ */
+let cachedProviderStatus: DashboardProviderStatus[] | null = null;
+
+/**
+ * Set the cached provider status (called from monitor.ts at startup)
+ */
+export function setCachedProviderStatus(providers: DashboardProviderStatus[]): void {
+  cachedProviderStatus = providers;
+}
+
+/**
  * Create the API handler function
  */
 export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
@@ -260,6 +273,16 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
             break;
           case '/providers':
             response = await handleProviders();
+            break;
+          case '/providers/refresh':
+            // POST endpoint to refresh provider health status
+            if (req.method === 'POST') {
+              response = await handleProviderRefresh();
+            } else {
+              res.writeHead(405, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+              return;
+            }
             break;
           case '/sessions':
             response = await handleSessions();
@@ -343,6 +366,43 @@ async function handleStatus(): Promise<APIResponse> {
 async function handleProviders(): Promise<APIResponse> {
   const providers = await getProviderData();
   return { success: true, data: providers };
+}
+
+/**
+ * Refresh provider status by running actual health checks
+ * This triggers real LLM calls to test each provider
+ */
+async function handleProviderRefresh(): Promise<APIResponse> {
+  try {
+    // Run real health checks (sends "hello" to each provider)
+    const providerStatuses = await checkProviderHealth(false);
+
+    // Convert to dashboard format and update cache
+    const dashboardProviders: DashboardProviderStatus[] = providerStatuses.map(p => ({
+      providerId: p.providerId,
+      name: p.providerId,
+      available: p.available,
+      latencyMs: p.latencyMs,
+      circuitState: (p.circuitState === 'halfOpen' ? 'half-open' : p.circuitState ?? 'closed') as 'closed' | 'open' | 'half-open',
+      lastUsed: undefined,
+    }));
+
+    // Update the cached status
+    setCachedProviderStatus(dashboardProviders);
+
+    return {
+      success: true,
+      data: {
+        providers: dashboardProviders,
+        refreshedAt: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to refresh provider status'),
+    };
+  }
 }
 
 /**
@@ -589,6 +649,42 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
       };
     });
 
+    // Extract provider conversations from discussion.provider events
+    // This provides real-time visibility into running discussions
+    const discussionProviderEvents = events.filter(e => e.type === 'discussion.provider');
+    const providerConversations = discussionProviderEvents.map(event => {
+      const payload = event.payload as Record<string, unknown> | undefined;
+      const context = event.context as Record<string, unknown> | undefined;
+      const promptValue = payload?.prompt as string | undefined;
+      const contentValue = payload?.content as string | undefined;
+      const durationMsValue = event.durationMs ?? (payload?.durationMs as number | undefined);
+      const tokenCountValue = payload?.tokenCount as number | undefined;
+
+      const result: {
+        provider: string;
+        round: number;
+        prompt?: string;
+        content?: string;
+        success: boolean;
+        durationMs?: number;
+        tokenCount?: number;
+        timestamp: string;
+      } = {
+        provider: (context?.providerId ?? payload?.providerId ?? 'unknown') as string,
+        round: (payload?.roundNumber ?? 1) as number,
+        success: (payload?.success ?? event.status === 'success') as boolean,
+        timestamp: event.timestamp,
+      };
+
+      // Only add optional fields if they have values
+      if (promptValue !== undefined) result.prompt = promptValue;
+      if (contentValue !== undefined) result.content = contentValue;
+      if (durationMsValue !== undefined) result.durationMs = durationMsValue;
+      if (tokenCountValue !== undefined) result.tokenCount = tokenCountValue;
+
+      return result;
+    });
+
     // Determine status from events
     let status: 'pending' | 'running' | 'success' | 'failure' = 'pending';
     if (endEvent) {
@@ -624,6 +720,8 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
         output,
         // Workflow steps (for agent runs)
         workflowSteps: workflowSteps.length > 0 ? workflowSteps : undefined,
+        // Provider conversations from discussion.provider events (for discussions)
+        providerConversations: providerConversations.length > 0 ? providerConversations : undefined,
         // Summary
         summary: {
           eventCount: events.length,
@@ -1220,8 +1318,15 @@ async function handleWorkflowEvents(workflowId: string): Promise<APIResponse> {
 
 /**
  * Fetch provider data
+ * Uses cached status if available (set at monitor startup), otherwise checks CLI availability only
  */
 async function getProviderData(): Promise<DashboardProviderStatus[]> {
+  // Use cached status if available (set at monitor startup with real health check)
+  if (cachedProviderStatus !== null) {
+    return cachedProviderStatus;
+  }
+
+  // Fallback: quick CLI availability check (no actual LLM call)
   try {
     const registry = getProviderRegistry();
     const providerIds = registry.getProviderIds();

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/cli",
-  "version": "13.4.3",
+  "version": "13.4.4",
   "type": "module",
   "description": "Command-line interface for AutomatosX - Contract-first AI orchestration platform with multi-provider routing",
   "license": "BUSL-1.1",
@@ -40,7 +40,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "bundled"
   ],
   "engines": {
     "node": ">=20.0.0"

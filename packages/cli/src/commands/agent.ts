@@ -38,6 +38,13 @@ const AGENT_STORAGE_PATH = path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAM
  * Checks multiple locations to support both development and npm install scenarios.
  */
 function getExampleAgentsDir(): string {
+  // Try bundled agents first (when installed via npm)
+  // __dirname is 'dist/commands/', bundled is at '../../bundled/agents'
+  const bundledPath = path.join(__dirname, '..', '..', 'bundled', 'agents');
+  if (fs.existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
   // Try development path (when running from source repo)
   const devPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'agents');
   if (fs.existsSync(devPath)) {
@@ -50,8 +57,8 @@ function getExampleAgentsDir(): string {
     return cwdPath;
   }
 
-  // Return most likely path even if it doesn't exist (will be handled by caller)
-  return devPath;
+  // Return bundled path as default (most common case for npm install)
+  return bundledPath;
 }
 
 // Path to example agents

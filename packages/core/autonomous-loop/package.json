@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/autonomous-loop",
-  "version": "13.4.3",
+  "version": "13.4.4",
   "type": "module",
   "description": "Governed autonomous write-test-fix cycles for AutomatosX",
   "license": "BUSL-1.1",

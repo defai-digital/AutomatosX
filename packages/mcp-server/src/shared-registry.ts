@@ -78,10 +78,18 @@ const __dirname = path.dirname(__filename);
 const AGENT_STORAGE_PATH = path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
 
 // Path to example agents - check multiple locations:
-// 1. Package's examples directory (for development/source)
-// 2. Bundled with dist (for npm install)
+// 1. Bundled agents in npm package (for npm install)
+// 2. Package's examples directory (for development/source)
+// 3. Monorepo root (for pnpm workspace development)
 function getExampleAgentsDir(): string {
-  // Try development path first (when running from source repo)
+  // Try bundled agents first (when installed via npm)
+  // __dirname is 'dist/', bundled is at '../bundled/agents'
+  const bundledPath = path.join(__dirname, '..', 'bundled', 'agents');
+  if (fs.existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
+  // Try development path (when running from source repo)
   const devPath = path.join(__dirname, '..', '..', '..', 'examples', 'agents');
   if (fs.existsSync(devPath)) {
     return devPath;
@@ -99,8 +107,8 @@ function getExampleAgentsDir(): string {
     return cwdPath;
   }
 
-  // Return the most likely path even if it doesn't exist
-  return monorepoPath;
+  // Return bundled path as default (most common case for npm install)
+  return bundledPath;
 }
 
 // Path to example abilities - similar logic

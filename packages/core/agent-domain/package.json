@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/agent-domain",
-  "version": "13.4.3",
+  "version": "13.4.4",
   "type": "module",
   "description": "Agent profiles and orchestration for AutomatosX",
   "license": "BUSL-1.1",

@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.4.3-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.4.4-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 

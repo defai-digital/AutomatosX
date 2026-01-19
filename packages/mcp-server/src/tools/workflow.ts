@@ -29,14 +29,22 @@ const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'tes
 /**
  * Find the example workflows directory.
  * Searches multiple locations to work correctly regardless of working directory:
- * 1. Package's examples directory (for development/source)
- * 2. Monorepo root (for pnpm workspace)
- * 3. Relative to cwd as fallback (for backward compatibility)
+ * 1. Bundled workflows in npm package (for npm install)
+ * 2. Package's examples directory (for development/source)
+ * 3. Monorepo root (for pnpm workspace)
+ * 4. Relative to cwd as fallback (for backward compatibility)
  *
  * This is the same pattern used for agents (see shared-registry.ts)
  */
 function getExampleWorkflowsDir(): string {
-  // Try development path first (when running from source repo)
+  // Try bundled workflows first (when installed via npm)
+  // __dirname is 'dist/tools/', bundled is at '../../bundled/workflows'
+  const bundledPath = path.join(__dirname, '..', '..', 'bundled', 'workflows');
+  if (fs.existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
+  // Try development path (when running from source repo)
   // __dirname is packages/mcp-server/src/tools, so go up 4 levels to repo root
   const devPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'workflows');
   if (fs.existsSync(devPath)) {
@@ -55,8 +63,8 @@ function getExampleWorkflowsDir(): string {
     return cwdPath;
   }
 
-  // Return development path as default (most likely for dev workflow)
-  return devPath;
+  // Return bundled path as default (most common case for npm install)
+  return bundledPath;
 }
 
 let _workflowLoader: ReturnType<typeof createWorkflowLoader> | null = null;

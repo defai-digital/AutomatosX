@@ -1,0 +1,91 @@
+{
+  "name": "standalone",
+  "displayName": "Contract-First Standalone Project",
+  "description": "A single-package project with contract-first design",
+  "version": "1.0.0",
+  "variables": {
+    "projectName": {
+      "type": "string",
+      "required": true,
+      "description": "Name of the project"
+    },
+    "domainName": {
+      "type": "string",
+      "required": true,
+      "description": "Primary domain name (e.g., 'order', 'user')"
+    },
+    "description": {
+      "type": "string",
+      "default": "A contract-first TypeScript project",
+      "description": "Project description"
+    }
+  },
+  "structure": [
+    {
+      "path": "package.json",
+      "template": "package.json.hbs"
+    },
+    {
+      "path": "tsconfig.json",
+      "template": "tsconfig.json.hbs"
+    },
+    {
+      "path": ".gitignore",
+      "template": "gitignore.hbs"
+    },
+    {
+      "path": "src/contracts/{{domainName}}/schema.ts",
+      "template": "schema.ts.hbs"
+    },
+    {
+      "path": "src/contracts/{{domainName}}/invariants.md",
+      "template": "invariants.md.hbs"
+    },
+    {
+      "path": "src/contracts/{{domainName}}/index.ts",
+      "template": "contract-index.ts.hbs"
+    },
+    {
+      "path": "src/contracts/index.ts",
+      "template": "contracts-root-index.ts.hbs"
+    },
+    {
+      "path": "src/domain/{{domainName}}/service.ts",
+      "template": "domain-service.ts.hbs"
+    },
+    {
+      "path": "src/domain/{{domainName}}/repository.ts",
+      "template": "domain-repository.ts.hbs"
+    },
+    {
+      "path": "src/domain/{{domainName}}/index.ts",
+      "template": "domain-index.ts.hbs"
+    },
+    {
+      "path": "src/index.ts",
+      "template": "src-index.ts.hbs"
+    },
+    {
+      "path": "tests/contracts/{{domainName}}.test.ts",
+      "template": "contract-test.ts.hbs"
+    },
+    {
+      "path": "vitest.config.ts",
+      "template": "vitest.config.ts.hbs"
+    }
+  ],
+  "postCreate": [
+    {
+      "command": "pnpm install",
+      "description": "Install dependencies"
+    },
+    {
+      "command": "pnpm build",
+      "description": "Build the project"
+    },
+    {
+      "command": "pnpm test",
+      "description": "Run tests"
+    }
+  ]
+}

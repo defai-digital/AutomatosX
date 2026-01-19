@@ -1,0 +1,130 @@
+/**
+ * {{pascalCase domainName}} Contract Tests
+ *
+ * Tests schema validation and invariant enforcement.
+ */
+
+import { describe, it, expect } from 'vitest';
+import {
+  {{pascalCase domainName}}Schema,
+  {{pascalCase domainName}}IdSchema,
+  {{pascalCase domainName}}StatusSchema,
+  {{pascalCase domainName}}EventSchema,
+  validate{{pascalCase domainName}},
+} from '{{scope}}/contracts/{{domainName}}';
+
+describe('{{pascalCase domainName}} Contracts', () => {
+  // ==========================================================================
+  // INV-{{upperCase (substring domainName 0 3)}}-001: Valid ID Format
+  // ==========================================================================
+  describe('INV-{{upperCase (substring domainName 0 3)}}-001: Valid ID Format', () => {
+    it('accepts valid UUID v4', () => {
+      const validId = '550e8400-e29b-41d4-a716-446655440000';
+      expect({{pascalCase domainName}}IdSchema.safeParse(validId).success).toBe(true);
+    });
+
+    it('rejects invalid UUID', () => {
+      const invalidIds = ['', 'not-a-uuid', '12345', null, undefined];
+      for (const id of invalidIds) {
+        expect({{pascalCase domainName}}IdSchema.safeParse(id).success).toBe(false);
+      }
+    });
+  });
+
+  // ==========================================================================
+  // INV-{{upperCase (substring domainName 0 3)}}-002: Valid Status
+  // ==========================================================================
+  describe('INV-{{upperCase (substring domainName 0 3)}}-002: Valid Status', () => {
+    it('accepts valid status values', () => {
+      const validStatuses = ['draft', 'active', 'completed', 'cancelled'];
+      for (const status of validStatuses) {
+        expect({{pascalCase domainName}}StatusSchema.safeParse(status).success).toBe(true);
+      }
+    });
+
+    it('rejects invalid status', () => {
+      const invalidStatuses = ['', 'pending', 'done', 'ACTIVE', null];
+      for (const status of invalidStatuses) {
+        expect({{pascalCase domainName}}StatusSchema.safeParse(status).success).toBe(false);
+      }
+    });
+  });
+
+  // ==========================================================================
+  // Schema Validation
+  // ==========================================================================
+  describe('{{pascalCase domainName}}Schema', () => {
+    const validEntity = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      status: 'draft',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    };
+
+    it('accepts valid entity', () => {
+      expect({{pascalCase domainName}}Schema.safeParse(validEntity).success).toBe(true);
+    });
+
+    it('rejects entity with missing required fields', () => {
+      const { id, ...withoutId } = validEntity;
+      expect({{pascalCase domainName}}Schema.safeParse(withoutId).success).toBe(false);
+    });
+
+    it('rejects entity with invalid datetime', () => {
+      const invalidEntity = { ...validEntity, createdAt: 'not-a-date' };
+      expect({{pascalCase domainName}}Schema.safeParse(invalidEntity).success).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // Event Schema Validation
+  // ==========================================================================
+  describe('{{pascalCase domainName}}EventSchema', () => {
+    it('accepts created event', () => {
+      const event = {
+        type: '{{domainName}}.created',
+        {{domainName}}Id: '550e8400-e29b-41d4-a716-446655440000',
+        occurredAt: '2024-01-01T00:00:00.000Z',
+      };
+      expect({{pascalCase domainName}}EventSchema.safeParse(event).success).toBe(true);
+    });
+
+    it('accepts updated event', () => {
+      const event = {
+        type: '{{domainName}}.updated',
+        {{domainName}}Id: '550e8400-e29b-41d4-a716-446655440000',
+        occurredAt: '2024-01-01T00:00:00.000Z',
+      };
+      expect({{pascalCase domainName}}EventSchema.safeParse(event).success).toBe(true);
+    });
+
+    it('rejects unknown event type', () => {
+      const event = {
+        type: '{{domainName}}.deleted',
+        {{domainName}}Id: '550e8400-e29b-41d4-a716-446655440000',
+        occurredAt: '2024-01-01T00:00:00.000Z',
+      };
+      expect({{pascalCase domainName}}EventSchema.safeParse(event).success).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // Validate Function
+  // ==========================================================================
+  describe('validate{{pascalCase domainName}}', () => {
+    it('returns parsed entity for valid data', () => {
+      const data = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        status: 'active',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-02T00:00:00.000Z',
+      };
+      const result = validate{{pascalCase domainName}}(data);
+      expect(result).toEqual(data);
+    });
+
+    it('throws ZodError for invalid data', () => {
+      expect(() => validate{{pascalCase domainName}}({})).toThrow();
+    });
+  });
+});

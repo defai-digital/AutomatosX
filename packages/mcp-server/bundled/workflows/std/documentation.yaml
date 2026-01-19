@@ -1,0 +1,180 @@
+workflowId: std/documentation
+version: "1.0.0"
+name: Standard Documentation
+description: |
+  Documentation workflow for creating clear, useful documentation.
+  Covers technical docs, API docs, and user guides.
+
+metadata:
+  category: documentation
+  tags:
+    - documentation
+    - writing
+    - technical-writing
+  estimatedDuration: 90000
+
+steps:
+  - stepId: analyze
+    name: Analyze Documentation Needs
+    type: prompt
+    config:
+      prompt: |
+        You are creating documentation. First, understand what needs to be documented.
+
+        ## Subject
+        ${input.targetPath}
+
+        ## Audience
+        ${input.audience}
+
+        ## Documentation Type
+        ${input.docType}
+
+        ## Context
+        ${input.context}
+
+        Analyze:
+
+        1. **Subject Matter**
+           - What is being documented?
+           - Key concepts to explain
+           - Complexity level
+
+        2. **Audience Analysis**
+           - Who will read this?
+           - What do they already know?
+           - What do they need to accomplish?
+
+        3. **Documentation Scope**
+           - What to include
+           - What to exclude
+           - Related documentation to reference
+
+        4. **Existing Documentation**
+           - What already exists?
+           - What needs updating?
+           - Gaps to fill
+
+        5. **Format Requirements**
+           - Markdown/HTML/other
+           - Code examples needed
+           - Diagrams/visuals needed
+    timeoutMs: 45000
+
+  - stepId: outline
+    name: Create Outline
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your analysis:
+        ${previousOutputs.analyze}
+
+        Create a documentation outline:
+
+        ## Document Structure
+
+        ### Title
+        Clear, descriptive title for the documentation.
+
+        ### Overview
+        - Purpose (1-2 sentences)
+        - Who this is for
+        - Prerequisites
+
+        ### Main Sections
+        1. **[Section 1 Title]**
+           - Key points to cover
+           - Examples needed
+           - Estimated length
+
+        2. **[Section 2 Title]**
+           - Key points to cover
+           - Examples needed
+           - Estimated length
+
+        (Continue for all sections...)
+
+        ### Code Examples
+        List code examples to include:
+        - Example 1: [Description]
+        - Example 2: [Description]
+
+        ### Diagrams/Visuals
+        - Diagram 1: [What it shows]
+        - Screenshot: [What to capture]
+
+        ### Cross-References
+        - Related docs to link
+        - External resources
+
+        ### FAQ/Troubleshooting
+        Common questions or issues to address.
+    timeoutMs: 45000
+
+  - stepId: write
+    name: Write Documentation
+    type: prompt
+    dependencies:
+      - outline
+    config:
+      prompt: |
+        Based on your outline:
+        ${previousOutputs.outline}
+
+        Write the complete documentation:
+
+        Follow these guidelines:
+        - Use clear, concise language
+        - Include practical examples
+        - Use proper formatting (headings, lists, code blocks)
+        - Anticipate reader questions
+        - Provide context before details
+
+        Write the full documentation content following the outline structure.
+        Include all code examples, explanations, and cross-references.
+
+        Make sure to:
+        - Start with the most important information
+        - Use consistent terminology
+        - Include copy-paste ready code
+        - Explain the "why" not just the "what"
+    timeoutMs: 90000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - write
+    config:
+      prompt: |
+        Provide a summary of the documentation created:
+        ${previousOutputs.write}
+
+        ## Documentation Summary
+        - Document title
+        - Target audience
+        - Main topics covered
+
+        ## Sections Created
+        1. [Section name] - [brief description]
+        2. [Section name] - [brief description]
+
+        ## Code Examples Included
+        - Example 1: [description]
+        - Example 2: [description]
+
+        ## Suggested File Location
+        Where this documentation should be saved.
+
+        ## Related Documentation
+        - Links to add from other docs
+        - Links to add to other docs
+
+        ## Review Checklist
+        - [ ] Technical accuracy
+        - [ ] Code examples tested
+        - [ ] Links verified
+        - [ ] Spelling/grammar checked
+    timeoutMs: 30000

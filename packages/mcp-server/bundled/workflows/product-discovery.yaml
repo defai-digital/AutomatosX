@@ -1,0 +1,295 @@
+workflowId: product-discovery
+name: Product Discovery Workflow
+description: Validate product ideas through user research, market analysis, and requirements definition
+version: "1.0.0"
+category: product
+tags:
+  - product
+  - discovery
+  - research
+  - requirements
+
+metadata:
+  requiredAbilities:
+    - product-management
+    - user-research
+    - competitive-analysis
+  estimatedDuration: 480
+  complexity: high
+
+steps:
+  - stepId: problem-definition
+    name: Define Problem Space
+    type: prompt
+    timeout: 120000
+    config:
+      agent: product
+      task: |
+        Define the problem space we're exploring.
+
+        ## Problem Definition Framework
+
+        1. **Problem Statement**:
+           - What problem are we solving?
+           - Who experiences this problem?
+           - How painful is this problem (1-10)?
+           - How frequently does it occur?
+
+        2. **Current Solutions**:
+           - How do users solve this today?
+           - What are the limitations of current solutions?
+           - Why haven't existing solutions worked?
+
+        3. **Success Criteria**:
+           - How will we know we've solved the problem?
+           - What metrics define success?
+           - What's the minimum viable outcome?
+
+        4. **Constraints**:
+           - Technical constraints
+           - Business constraints
+           - Time constraints
+           - Resource constraints
+
+  - stepId: user-research
+    name: User Research Synthesis
+    type: prompt
+    timeout: 180000
+    config:
+      agent: product
+      task: |
+        Synthesize user research to validate the problem.
+
+        ## User Research Analysis
+
+        1. **User Segments**:
+           - Primary user persona
+           - Secondary user personas
+           - User jobs-to-be-done
+
+        2. **Pain Points**:
+           - Top 5 pain points identified
+           - Severity ranking
+           - Frequency of occurrence
+
+        3. **User Quotes**:
+           - Key verbatim quotes that illustrate the problem
+           - Emotional context
+
+        4. **Behavioral Insights**:
+           - Current user workflows
+           - Workarounds users employ
+           - Trigger events for seeking solutions
+
+        5. **Willingness to Pay**:
+           - Value of solving this problem
+           - Budget indicators
+           - Purchasing decision makers
+
+  - stepId: competitive-analysis
+    name: Competitive Analysis
+    type: prompt
+    timeout: 180000
+    config:
+      agent: researcher
+      task: |
+        Analyze competitive landscape.
+
+        ## Competitive Analysis
+
+        1. **Direct Competitors**:
+           | Competitor | Strengths | Weaknesses | Pricing | Market Position |
+           |------------|-----------|------------|---------|-----------------|
+
+        2. **Indirect Competitors**:
+           - Alternative solutions users employ
+           - Substitute products/services
+
+        3. **Competitive Advantages**:
+           - What can we do better?
+           - What's our unique angle?
+           - Defensibility of our approach
+
+        4. **Market Gaps**:
+           - Underserved segments
+           - Unmet needs
+           - Opportunity areas
+
+        5. **Risks**:
+           - Competitive responses
+           - Market timing risks
+           - Technology risks
+
+  - stepId: solution-ideation
+    name: Solution Ideation
+    type: prompt
+    timeout: 180000
+    config:
+      agent: product
+      task: |
+        Generate and evaluate solution concepts.
+
+        ## Solution Ideation
+
+        1. **Solution Concepts**:
+           For each concept:
+           - Description
+           - How it solves the problem
+           - Key features
+           - Technical feasibility (1-10)
+           - Business viability (1-10)
+           - User desirability (1-10)
+
+        2. **MVP Definition**:
+           - Minimum features for first version
+           - What we're explicitly NOT building
+           - Success metrics for MVP
+
+        3. **Validation Approach**:
+           - How will we test this solution?
+           - What experiments should we run?
+           - What would prove us wrong?
+
+        4. **Risk Assessment**:
+           - Technical risks
+           - Market risks
+           - Execution risks
+           - Mitigation strategies
+
+  - stepId: requirements-definition
+    name: Define Requirements
+    type: prompt
+    timeout: 180000
+    config:
+      agent: product
+      task: |
+        Create detailed requirements documentation.
+
+        ## Product Requirements Document
+
+        1. **Overview**:
+           - Product name
+           - One-line description
+           - Target release
+
+        2. **Goals & Success Metrics**:
+           | Goal | Metric | Target | Current Baseline |
+           |------|--------|--------|------------------|
+
+        3. **User Stories**:
+           Format: As a [user type], I want [action], so that [benefit]
+
+           **Must Have (P0)**:
+           - Story 1
+           - Story 2
+
+           **Should Have (P1)**:
+           - Story 3
+           - Story 4
+
+           **Nice to Have (P2)**:
+           - Story 5
+
+        4. **Functional Requirements**:
+           - Feature 1: Description, acceptance criteria
+           - Feature 2: Description, acceptance criteria
+
+        5. **Non-Functional Requirements**:
+           - Performance requirements
+           - Security requirements
+           - Scalability requirements
+           - Accessibility requirements
+
+        6. **Out of Scope**:
+           - Explicitly excluded features
+           - Future considerations
+
+  - stepId: technical-feasibility
+    name: Technical Feasibility Assessment
+    type: prompt
+    timeout: 120000
+    config:
+      agent: architecture
+      task: |
+        Assess technical feasibility of proposed solution.
+
+        ## Technical Feasibility Assessment
+
+        1. **Architecture Approach**:
+           - High-level system design
+           - Key components
+           - Integration points
+
+        2. **Technology Stack**:
+           - Recommended technologies
+           - Build vs buy decisions
+           - Third-party dependencies
+
+        3. **Effort Estimation**:
+           | Component | Complexity | Effort (days) | Risk |
+           |-----------|------------|---------------|------|
+
+        4. **Technical Risks**:
+           - Identified risks
+           - Mitigation strategies
+           - Unknowns to investigate
+
+        5. **Recommendation**:
+           - GO / NO-GO / NEEDS MORE RESEARCH
+           - Conditions for proceeding
+           - Recommended next steps
+
+  - stepId: create-roadmap
+    name: Create Roadmap
+    type: prompt
+    timeout: 120000
+    config:
+      agent: product
+      task: |
+        Create product roadmap based on discovery findings.
+
+        ## Product Roadmap
+
+        1. **Phase 1: MVP** (Target: X weeks)
+           - Features included
+           - Success criteria
+           - Go/no-go decision point
+
+        2. **Phase 2: Enhancement** (Target: X weeks)
+           - Features included
+           - Dependencies on Phase 1
+
+        3. **Phase 3: Scale** (Target: X weeks)
+           - Features included
+           - Market expansion
+
+        4. **Key Milestones**:
+           | Milestone | Date | Success Criteria |
+           |-----------|------|------------------|
+
+        5. **Resource Requirements**:
+           - Team composition
+           - Skills needed
+           - External dependencies
+
+  - stepId: store-discovery
+    name: Store Discovery Artifacts
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: product-discovery
+      key: "{{product_id}}/{{version}}"
+      ttl: 31536000
+      value:
+        product_id: "{{product_id}}"
+        version: "{{version}}"
+        problem_statement: "{{problem_statement}}"
+        user_research: "{{user_research}}"
+        competitive_analysis: "{{competitive_analysis}}"
+        solution_concept: "{{solution_concept}}"
+        requirements: "{{requirements}}"
+        feasibility: "{{feasibility}}"
+        roadmap: "{{roadmap}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"

@@ -1,0 +1,222 @@
+# Adversarial Debate Workflow
+#
+# Two AI models argue opposing positions on a topic, with a third
+# model serving as an impartial judge. This pattern helps uncover
+# the strongest arguments on both sides of a question.
+#
+# Usage:
+#   ax run adversarial-debate --input '{"proposition": "Microservices are better than monoliths"}'
+#
+# The workflow assigns:
+# - Claude: Argues FOR the proposition
+# - Gemini: Argues AGAINST the proposition
+# - Codex: Serves as impartial judge
+
+workflowId: adversarial-debate
+version: "1.0.0"
+name: Adversarial Debate
+description: >
+  Two AI models debate opposing positions with an impartial judge.
+  Reveals the strongest arguments on both sides of any question.
+
+steps:
+  # Round 1: Opening Statements
+  - stepId: opening-statements
+    type: parallel
+    name: Opening Statements
+    timeout: 90000
+    config:
+      steps:
+        - stepId: proponent-opening
+          type: prompt
+          config:
+            provider: claude
+            prompt: |
+              You are arguing FOR this proposition in a formal debate:
+
+              PROPOSITION: {{input.proposition}}
+
+              Present your opening statement:
+              1. State your thesis clearly
+              2. Present 3-4 strong arguments supporting the proposition
+              3. Provide evidence and examples
+              4. Anticipate and preemptively address potential counterarguments
+
+              Be persuasive, logical, and thorough.
+
+        - stepId: opponent-opening
+          type: prompt
+          config:
+            provider: gemini
+            prompt: |
+              You are arguing AGAINST this proposition in a formal debate:
+
+              PROPOSITION: {{input.proposition}}
+
+              Present your opening statement:
+              1. State your counter-thesis clearly
+              2. Present 3-4 strong arguments against the proposition
+              3. Provide evidence and examples
+              4. Anticipate and preemptively address potential counterarguments
+
+              Be persuasive, logical, and thorough.
+
+  # Round 2: Rebuttals
+  - stepId: rebuttals
+    type: parallel
+    name: Rebuttals
+    timeout: 90000
+    dependencies:
+      - opening-statements
+    config:
+      steps:
+        - stepId: proponent-rebuttal
+          type: prompt
+          config:
+            provider: claude
+            prompt: |
+              You are still arguing FOR:
+              PROPOSITION: {{input.proposition}}
+
+              Your opponent argued:
+              {{steps.opponent-opening.output}}
+
+              Present your rebuttal:
+              1. Address their strongest points directly
+              2. Expose weaknesses in their logic
+              3. Reinforce your key arguments
+              4. Introduce new supporting evidence
+
+        - stepId: opponent-rebuttal
+          type: prompt
+          config:
+            provider: gemini
+            prompt: |
+              You are still arguing AGAINST:
+              PROPOSITION: {{input.proposition}}
+
+              Your opponent argued:
+              {{steps.proponent-opening.output}}
+
+              Present your rebuttal:
+              1. Address their strongest points directly
+              2. Expose weaknesses in their logic
+              3. Reinforce your key arguments
+              4. Introduce new supporting evidence
+
+  # Round 3: Closing Statements
+  - stepId: closing-statements
+    type: parallel
+    name: Closing Statements
+    timeout: 60000
+    dependencies:
+      - rebuttals
+    config:
+      steps:
+        - stepId: proponent-closing
+          type: prompt
+          config:
+            provider: claude
+            prompt: |
+              Present your closing statement FOR:
+              PROPOSITION: {{input.proposition}}
+
+              Considering the full debate:
+              - Your opening: {{steps.proponent-opening.output}}
+              - Their rebuttal: {{steps.opponent-rebuttal.output}}
+              - Your rebuttal: {{steps.proponent-rebuttal.output}}
+
+              Deliver a compelling closing:
+              1. Summarize your strongest points
+              2. Address any remaining objections
+              3. End with a powerful conclusion
+
+        - stepId: opponent-closing
+          type: prompt
+          config:
+            provider: gemini
+            prompt: |
+              Present your closing statement AGAINST:
+              PROPOSITION: {{input.proposition}}
+
+              Considering the full debate:
+              - Your opening: {{steps.opponent-opening.output}}
+              - Their rebuttal: {{steps.proponent-rebuttal.output}}
+              - Your rebuttal: {{steps.opponent-rebuttal.output}}
+
+              Deliver a compelling closing:
+              1. Summarize your strongest points
+              2. Address any remaining objections
+              3. End with a powerful conclusion
+
+  # Final: Judge's Verdict
+  - stepId: judges-verdict
+    type: prompt
+    name: Judge's Verdict
+    timeout: 120000
+    dependencies:
+      - closing-statements
+    config:
+      provider: codex
+      prompt: |
+        You are an impartial judge evaluating this debate.
+
+        PROPOSITION: {{input.proposition}}
+
+        ## FOR THE PROPOSITION (Claude):
+
+        ### Opening Statement:
+        {{steps.proponent-opening.output}}
+
+        ### Rebuttal:
+        {{steps.proponent-rebuttal.output}}
+
+        ### Closing:
+        {{steps.proponent-closing.output}}
+
+        ## AGAINST THE PROPOSITION (Gemini):
+
+        ### Opening Statement:
+        {{steps.opponent-opening.output}}
+
+        ### Rebuttal:
+        {{steps.opponent-rebuttal.output}}
+
+        ### Closing:
+        {{steps.opponent-closing.output}}
+
+        ## YOUR VERDICT:
+
+        Provide a comprehensive judgment:
+
+        1. **Scoring** (1-10 for each):
+           - FOR - Argument Strength:
+           - FOR - Evidence Quality:
+           - FOR - Rebuttal Effectiveness:
+           - AGAINST - Argument Strength:
+           - AGAINST - Evidence Quality:
+           - AGAINST - Rebuttal Effectiveness:
+
+        2. **Best Arguments**:
+           - Strongest point FOR:
+           - Strongest point AGAINST:
+
+        3. **Logical Weaknesses**:
+           - Weakest point FOR:
+           - Weakest point AGAINST:
+
+        4. **Key Insights**: What did this debate reveal?
+
+        5. **Verdict**: Which side won and why?
+
+        6. **Nuanced Conclusion**: Beyond the debate, what is the balanced truth?
+
+metadata:
+  category: collaboration
+  tags:
+    - debate
+    - adversarial
+    - multi-model
+    - decision-making
+  estimatedDuration: 360000  # ~6 minutes
+  estimatedCost: high

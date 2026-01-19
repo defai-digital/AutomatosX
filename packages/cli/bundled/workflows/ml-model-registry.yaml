@@ -1,0 +1,232 @@
+workflowId: ml-model-registry
+name: Model Registry Management
+description: Version, store, and manage ML models through their lifecycle
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - model-registry
+  - versioning
+  - deployment
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+  estimatedDuration: 120
+  complexity: low
+
+steps:
+  - stepId: validate-model
+    name: Validate Model Artifact
+    type: prompt
+    timeout: 60000
+    config:
+      agent: ml-engineer
+      task: |
+        Validate the model artifact before registration.
+
+        ## Validation Checks
+        1. **Artifact Integrity**:
+           - Model file exists and is readable
+           - Checksum matches expected value
+
+        2. **Schema Validation**:
+           - Input schema is defined
+           - Output schema is defined
+           - Feature names match training data
+
+        3. **Metadata Completeness**:
+           - Training dataset version recorded
+           - Hyperparameters recorded
+           - Evaluation metrics recorded
+           - Experiment ID linked
+
+        4. **Dependency Check**:
+           - Required libraries documented
+           - Version compatibility verified
+
+        Return validation status: PASS or FAIL with details.
+
+  - stepId: register-model
+    name: Register Model Version
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-model-registry
+      key: "{{model_name}}/versions/{{version}}"
+      value:
+        model_name: "{{model_name}}"
+        version: "{{version}}"
+        description: "{{description}}"
+
+        # Lineage
+        experiment_id: "{{experiment_id}}"
+        training_dataset: "{{dataset_version}}"
+        parent_model: "{{parent_version}}"
+
+        # Artifact
+        artifact_path: "{{artifact_path}}"
+        artifact_checksum: "{{checksum}}"
+        artifact_size_bytes: "{{size}}"
+
+        # Schemas
+        input_schema: "{{input_schema}}"
+        output_schema: "{{output_schema}}"
+        feature_names: "{{feature_names}}"
+
+        # Performance
+        metrics: "{{metrics}}"
+        evaluation_id: "{{evaluation_id}}"
+
+        # Dependencies
+        framework: "{{framework}}"
+        framework_version: "{{framework_version}}"
+        dependencies: "{{dependencies}}"
+
+        # Lifecycle
+        status: "staged"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"
+
+        # Tags
+        tags: "{{tags}}"
+
+  - stepId: update-model-index
+    name: Update Model Index
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-model-registry
+      key: "{{model_name}}/index"
+      value:
+        model_name: "{{model_name}}"
+        latest_version: "{{version}}"
+        production_version: "{{production_version}}"
+        all_versions: "{{version_list}}"
+        updated_at: "{{timestamp}}"
+
+  - stepId: compare-versions
+    name: Compare Model Versions
+    type: prompt
+    timeout: 120000
+    config:
+      agent: data-scientist
+      task: |
+        Compare the new model version against the current production version.
+
+        ## Comparison Dimensions
+
+        1. **Performance Delta**:
+           - Metric-by-metric comparison
+           - Statistical significance of differences
+           - Confidence intervals
+
+        2. **Schema Compatibility**:
+           - Input schema changes (breaking/non-breaking)
+           - Output schema changes
+           - Feature additions/removals
+
+        3. **Resource Changes**:
+           - Model size difference
+           - Inference latency change
+           - Memory requirement change
+
+        4. **Risk Assessment**:
+           - Breaking changes identified
+           - Rollback complexity
+           - Required client updates
+
+        ## Recommendation
+        - **PROMOTE**: Ready for production rollout
+        - **CANARY**: Recommend gradual rollout with monitoring
+        - **HOLD**: Needs more evaluation
+        - **REJECT**: Does not meet requirements
+
+  - stepId: handle-promote
+    name: Promote to Production
+    type: conditional
+    config:
+      condition: "{{recommendation}} == 'PROMOTE'"
+      then:
+        - stepId: update-production-status
+          type: tool
+          tool: memory_store
+          config:
+            namespace: ml-model-registry
+            key: "{{model_name}}/versions/{{version}}"
+            merge: true
+            value:
+              status: "production"
+              promoted_at: "{{timestamp}}"
+              promoted_by: "{{user}}"
+
+  - stepId: handle-canary
+    name: Set Canary Status
+    type: conditional
+    config:
+      condition: "{{recommendation}} == 'CANARY'"
+      then:
+        - stepId: update-canary-status
+          type: tool
+          tool: memory_store
+          config:
+            namespace: ml-model-registry
+            key: "{{model_name}}/versions/{{version}}"
+            merge: true
+            value:
+              status: "canary"
+              canary_started_at: "{{timestamp}}"
+              canary_traffic_percent: 10
+
+  - stepId: notify-promotion
+    name: Generate Promotion Notification
+    type: prompt
+    timeout: 60000
+    config:
+      agent: writer
+      task: |
+        Create a model promotion notification for stakeholders.
+
+        ## Notification Content
+
+        **Subject**: Model Promotion: {{model_name}} v{{version}}
+
+        **Summary**:
+        - Previous production version: {{old_version}}
+        - New production version: {{version}}
+        - Promotion type: {{promotion_type}} (immediate/canary)
+
+        **Key Changes**:
+        - Performance improvement: {{performance_delta}}
+        - Notable changes: {{changes}}
+
+        **Rollback Plan**:
+        - Rollback command/procedure
+        - Rollback criteria
+        - On-call contact
+
+        **Timeline**:
+        - Promotion start: {{timestamp}}
+        - Full rollout (if canary): {{full_rollout_date}}
+        - Monitoring period: {{monitoring_period}}
+
+  - stepId: store-promotion-event
+    name: Log Promotion Event
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-model-events
+      key: "{{model_name}}/promotions/{{timestamp}}"
+      ttl: 31536000
+      value:
+        event_type: "promotion"
+        model_name: "{{model_name}}"
+        from_version: "{{old_production_version}}"
+        to_version: "{{version}}"
+        promotion_type: "{{promotion_type}}"
+        initiated_by: "{{user}}"
+        timestamp: "{{timestamp}}"
+        notification_sent: true

@@ -111,11 +111,20 @@ function getExampleAgentsDir(): string {
   return bundledPath;
 }
 
-// Path to example abilities - similar logic
+// Path to example abilities - check multiple locations:
+// 1. Bundled abilities in npm package (for npm install)
+// 2. Development paths (for source development)
 function getExampleAbilitiesDir(): string {
+  // Try bundled abilities first (when installed via npm)
+  // __dirname is 'dist/', bundled is at '../bundled/abilities'
+  const bundledPath = path.join(__dirname, '..', 'bundled', 'abilities');
+  if (fs.existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
   const defaultDir = DEFAULT_ABILITY_DOMAIN_CONFIG.abilitiesDir;
 
-  // Try development path first
+  // Try development path
   const devPath = path.join(__dirname, '..', '..', '..', defaultDir);
   if (fs.existsSync(devPath)) {
     return devPath;
@@ -133,7 +142,8 @@ function getExampleAbilitiesDir(): string {
     return cwdPath;
   }
 
-  return monorepoPath;
+  // Return bundled path as default (most common case for npm install)
+  return bundledPath;
 }
 
 const EXAMPLE_AGENTS_DIR = getExampleAgentsDir();

@@ -1,0 +1,44 @@
+/**
+ * {{pascalCase domainName}} Repository
+ */
+
+import type { {{pascalCase domainName}}, {{pascalCase domainName}}Id } from '../../contracts/{{domainName}}/index.js';
+
+// ============================================================================
+// Repository Interface
+// ============================================================================
+
+export interface {{pascalCase domainName}}Repository {
+  findById(id: {{pascalCase domainName}}Id): Promise<{{pascalCase domainName}} | null>;
+  findAll(): Promise<{{pascalCase domainName}}[]>;
+  save(entity: {{pascalCase domainName}}): Promise<void>;
+  delete(id: {{pascalCase domainName}}Id): Promise<boolean>;
+}
+
+// ============================================================================
+// In-Memory Implementation
+// ============================================================================
+
+export class InMemory{{pascalCase domainName}}Repository implements {{pascalCase domainName}}Repository {
+  private readonly store = new Map<{{pascalCase domainName}}Id, {{pascalCase domainName}}>();
+
+  async findById(id: {{pascalCase domainName}}Id): Promise<{{pascalCase domainName}} | null> {
+    return this.store.get(id) ?? null;
+  }
+
+  async findAll(): Promise<{{pascalCase domainName}}[]> {
+    return Array.from(this.store.values());
+  }
+
+  async save(entity: {{pascalCase domainName}}): Promise<void> {
+    this.store.set(entity.id, entity);
+  }
+
+  async delete(id: {{pascalCase domainName}}Id): Promise<boolean> {
+    return this.store.delete(id);
+  }
+
+  clear(): void {
+    this.store.clear();
+  }
+}

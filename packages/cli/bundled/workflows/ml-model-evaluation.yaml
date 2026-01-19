@@ -1,0 +1,234 @@
+workflowId: ml-model-evaluation
+name: Model Evaluation Pipeline
+description: Comprehensive model evaluation with performance, fairness, robustness, and production-readiness checks
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - evaluation
+  - fairness
+  - robustness
+  - production
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+    - statistical-analysis
+    - data-analysis
+  estimatedDuration: 600
+  complexity: high
+
+steps:
+  - stepId: performance-metrics
+    name: Calculate Performance Metrics
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Evaluate model performance on the test dataset.
+
+        ## Classification Metrics (if applicable)
+        - Accuracy
+        - Precision (macro, micro, weighted)
+        - Recall (macro, micro, weighted)
+        - F1 Score (macro, micro, weighted)
+        - AUC-ROC (one-vs-rest for multiclass)
+        - AUC-PR (Precision-Recall curve)
+        - Log Loss
+        - Confusion Matrix
+        - Per-class metrics breakdown
+
+        ## Regression Metrics (if applicable)
+        - Mean Squared Error (MSE)
+        - Root Mean Squared Error (RMSE)
+        - Mean Absolute Error (MAE)
+        - R-squared (Coefficient of Determination)
+        - Mean Absolute Percentage Error (MAPE)
+        - Residual analysis
+
+        ## Confidence Intervals
+        - Bootstrap 95% CI for primary metric
+        - Report standard deviation across folds
+
+        Provide structured output with all applicable metrics.
+
+  - stepId: fairness-audit
+    name: Fairness & Bias Audit
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Conduct a comprehensive fairness and bias audit.
+
+        ## Demographic Analysis
+        For each protected attribute (gender, age, race, etc.):
+
+        1. **Demographic Parity**:
+           - Selection rate across groups
+           - Disparate impact ratio (should be > 0.8)
+
+        2. **Equal Opportunity**:
+           - True positive rate across groups
+           - False negative rate disparity
+
+        3. **Equalized Odds**:
+           - TPR and FPR across groups
+           - Maximum disparity
+
+        4. **Calibration**:
+           - Predicted probability vs actual outcome by group
+
+        ## Bias Detection
+        - Identify any systematic prediction bias
+        - Check for proxy discrimination
+        - Analyze error distribution across groups
+
+        ## Mitigation Recommendations
+        If bias is detected:
+        - Recommend specific mitigation strategies
+        - Estimate impact of mitigation on overall performance
+
+        ## Compliance Check
+        - Flag any potential regulatory concerns (GDPR, CCPA, ECOA)
+
+  - stepId: robustness-testing
+    name: Robustness & Edge Case Testing
+    type: prompt
+    timeout: 180000
+    config:
+      agent: ml-engineer
+      task: |
+        Test model robustness and behavior on edge cases.
+
+        ## Input Perturbation Testing
+        1. **Noise Sensitivity**:
+           - Add Gaussian noise to numerical features
+           - Measure performance degradation curve
+
+        2. **Missing Values**:
+           - Simulate missing data patterns
+           - Test model behavior with incomplete inputs
+
+        3. **Out-of-Range Values**:
+           - Test with extreme values
+           - Check for catastrophic failures
+
+        ## Distribution Shift Testing
+        1. **Covariate Shift**:
+           - Test on data with shifted feature distributions
+           - Measure performance drop
+
+        2. **Label Shift**:
+           - Test with different class proportions
+           - Check calibration under shift
+
+        ## Edge Cases
+        1. Boundary conditions
+        2. Rare class handling
+        3. Adversarial-like examples (if applicable)
+
+        ## Out-of-Distribution Detection
+        - Can the model identify when inputs are OOD?
+        - Confidence calibration on OOD samples
+
+  - stepId: latency-profiling
+    name: Latency & Resource Profiling
+    type: prompt
+    timeout: 120000
+    config:
+      agent: ml-engineer
+      task: |
+        Profile model for production deployment.
+
+        ## Inference Latency
+        - Single sample latency (p50, p95, p99)
+        - Batch inference latency by batch size
+        - Cold start latency
+        - Warm cache latency
+
+        ## Resource Requirements
+        - Memory footprint (model size)
+        - Peak memory during inference
+        - CPU utilization pattern
+        - GPU utilization (if applicable)
+        - GPU memory requirements
+
+        ## Scalability Analysis
+        - Throughput (requests/second)
+        - Scaling behavior under load
+        - Recommended instance type
+        - Cost per 1M predictions
+
+        ## Optimization Opportunities
+        - Quantization potential
+        - Pruning opportunities
+        - Distillation candidates
+        - Caching strategies
+
+  - stepId: evaluation-report
+    name: Generate Evaluation Report
+    type: prompt
+    timeout: 120000
+    config:
+      agent: data-scientist
+      task: |
+        Create a comprehensive model evaluation report.
+
+        ## Executive Summary
+        - Model name and version
+        - One-paragraph assessment
+        - Go/No-Go recommendation with confidence level
+
+        ## Performance Summary
+        - Primary metric with confidence interval
+        - Comparison to baseline
+        - Key strengths and weaknesses
+
+        ## Fairness Summary
+        - Overall fairness assessment (Pass/Fail/Warning)
+        - Groups with highest disparity
+        - Required mitigations before deployment
+
+        ## Robustness Summary
+        - Robustness score (1-10)
+        - Critical failure modes identified
+        - Recommended guardrails
+
+        ## Production Readiness
+        - Latency requirements: Met/Not Met
+        - Resource requirements: Acceptable/High/Excessive
+        - Scaling assessment
+
+        ## Recommendations
+        1. **If Go**: Deployment checklist
+        2. **If No-Go**: Required improvements ranked by priority
+        3. **Monitoring requirements** for production
+
+        ## Appendix
+        - Full metrics tables
+        - Visualization references
+        - Test dataset description
+
+  - stepId: store-evaluation
+    name: Store Evaluation Results
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-evaluations
+      key: "{{model_name}}/{{model_version}}/evaluation"
+      ttl: 15552000
+      value:
+        model_name: "{{model_name}}"
+        model_version: "{{model_version}}"
+        evaluation_id: "{{evaluation_id}}"
+        recommendation: "{{go_no_go}}"
+        performance_metrics: "{{performance_metrics}}"
+        fairness_results: "{{fairness_results}}"
+        robustness_score: "{{robustness_score}}"
+        latency_profile: "{{latency_profile}}"
+        full_report: "{{evaluation_report}}"
+        evaluated_at: "{{timestamp}}"
+        evaluated_by: "{{user}}"

@@ -1,0 +1,113 @@
+workflowId: designer
+version: "1.0.0"
+name: System Design Workflow
+description: Technical system design and architecture planning
+
+steps:
+  - stepId: gather-requirements
+    type: prompt
+    name: Gather Requirements
+    timeout: 60000
+    config:
+      agentId: product
+      prompt: |
+        Gather system requirements:
+        1. Functional requirements
+        2. Non-functional requirements (scale, performance, security)
+        3. Constraints and limitations
+        4. Integration needs
+
+  - stepId: analyze-scope
+    type: prompt
+    name: Analyze Scope
+    timeout: 60000
+    config:
+      agentId: architecture
+      prompt: |
+        Analyze the system scope:
+        1. Identify major components
+        2. Define system boundaries
+        3. Map external dependencies
+        4. Estimate complexity
+
+  - stepId: design-architecture
+    type: tool
+    name: Design Architecture
+    timeout: 120000
+    config:
+      tool: design_architecture
+      args:
+        style: component-diagram
+        includeInteractions: true
+
+  - stepId: design-api
+    type: tool
+    name: Design API Contracts
+    timeout: 90000
+    config:
+      tool: design_api
+      args:
+        format: openapi
+        version: "3.0"
+
+  - stepId: design-data-model
+    type: tool
+    name: Design Data Model
+    timeout: 90000
+    config:
+      tool: design_schema
+      args:
+        type: database
+        normalize: true
+
+  - stepId: security-review
+    type: prompt
+    name: Security Review
+    timeout: 60000
+    config:
+      agentId: security
+      prompt: |
+        Review security aspects:
+        1. Authentication and authorization
+        2. Data protection
+        3. Network security
+        4. Compliance requirements
+
+  - stepId: scalability-review
+    type: prompt
+    name: Scalability Review
+    timeout: 60000
+    config:
+      agentId: architecture
+      prompt: |
+        Review scalability:
+        1. Identify bottlenecks
+        2. Plan horizontal scaling
+        3. Define caching strategy
+        4. Plan for growth
+
+  - stepId: create-documentation
+    type: prompt
+    name: Create Design Documentation
+    timeout: 120000
+    config:
+      agentId: writer
+      prompt: |
+        Create design documentation:
+        1. Architecture overview
+        2. Component descriptions
+        3. API documentation
+        4. Data model documentation
+        5. Deployment guide
+
+metadata:
+  category: architecture
+  tags:
+    - system-design
+    - architecture
+    - planning
+  requiredAbilities:
+    - system-design
+    - api-design
+    - db-modeling
+    - security

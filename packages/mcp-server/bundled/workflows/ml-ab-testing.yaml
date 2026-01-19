@@ -1,0 +1,311 @@
+workflowId: ml-ab-testing
+name: Model A/B Testing
+description: Statistical comparison of model variants in production
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - ab-testing
+  - experimentation
+  - statistics
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+    - statistical-analysis
+    - data-analysis
+  estimatedDuration: 300
+  complexity: high
+
+steps:
+  - stepId: experiment-design
+    name: Design A/B Experiment
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Design a statistically rigorous A/B test for model comparison.
+
+        ## Hypothesis Definition
+
+        1. **Null Hypothesis (H0)**:
+           - State: "There is no difference between model A and model B"
+
+        2. **Alternative Hypothesis (H1)**:
+           - State: "Model B performs better than model A"
+           - Test type: one-tailed or two-tailed
+
+        ## Sample Size Calculation
+
+        Given:
+        - Baseline conversion rate / metric: {{baseline_rate}}
+        - Minimum detectable effect (MDE): {{mde}}
+        - Significance level (alpha): 0.05
+        - Statistical power (1-beta): 0.80
+
+        Calculate:
+        - Required sample size per variant
+        - Estimated test duration based on traffic
+
+        ## Metric Definition
+
+        1. **Primary Metric**:
+           - Metric name
+           - Definition
+           - Success direction (higher/lower is better)
+
+        2. **Secondary Metrics**:
+           - List of supporting metrics
+
+        3. **Guardrail Metrics**:
+           - Metrics that must not degrade
+           - Degradation threshold
+
+        ## Randomization Strategy
+        - Randomization unit (user, session, request)
+        - Stratification variables (if any)
+        - Holdout percentage
+
+  - stepId: traffic-allocation
+    name: Define Traffic Allocation
+    type: prompt
+    timeout: 60000
+    config:
+      agent: ml-engineer
+      task: |
+        Plan the traffic allocation strategy.
+
+        ## Traffic Split
+
+        | Variant | Description | Traffic % |
+        |---------|-------------|-----------|
+        | Control | Current production model | {{control_pct}}% |
+        | Treatment | New model candidate | {{treatment_pct}}% |
+        | Holdout | No model (baseline) | {{holdout_pct}}% |
+
+        ## Ramping Strategy
+
+        - **Day 1-2**: 1% treatment (burn-in period)
+        - **Day 3-7**: 10% treatment (early signal)
+        - **Day 8-14**: 50% treatment (full test)
+
+        ## Safeguards
+
+        1. **Auto-Rollback Triggers**:
+           - Error rate > {{error_threshold}}%
+           - Latency P99 > {{latency_threshold}}ms
+           - Guardrail metric degradation > {{guardrail_threshold}}%
+
+        2. **Manual Review Triggers**:
+           - Unusual traffic patterns
+           - Unexpected metric movements
+
+  - stepId: store-experiment-config
+    name: Store Experiment Configuration
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-ab-experiments
+      key: "{{experiment_id}}/config"
+      value:
+        experiment_id: "{{experiment_id}}"
+        experiment_name: "{{experiment_name}}"
+        status: "configured"
+        hypothesis:
+          null_hypothesis: "{{h0}}"
+          alternative_hypothesis: "{{h1}}"
+        variants:
+          control:
+            model_name: "{{control_model}}"
+            model_version: "{{control_version}}"
+            traffic_percent: "{{control_pct}}"
+          treatment:
+            model_name: "{{treatment_model}}"
+            model_version: "{{treatment_version}}"
+            traffic_percent: "{{treatment_pct}}"
+        metrics:
+          primary: "{{primary_metric}}"
+          secondary: "{{secondary_metrics}}"
+          guardrails: "{{guardrail_metrics}}"
+        statistical_params:
+          significance_level: 0.05
+          power: 0.80
+          mde: "{{mde}}"
+          required_sample_size: "{{sample_size}}"
+        schedule:
+          start_date: "{{start_date}}"
+          estimated_end_date: "{{end_date}}"
+          ramping_schedule: "{{ramp_schedule}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"
+
+  - stepId: monitor-experiment
+    name: Monitor Running Experiment
+    type: prompt
+    timeout: 120000
+    config:
+      agent: data-scientist
+      task: |
+        Monitor the running A/B experiment for issues.
+
+        ## Health Checks
+
+        1. **Sample Ratio Mismatch (SRM)**:
+           - Expected ratio: {{expected_ratio}}
+           - Observed ratio: {{observed_ratio}}
+           - Chi-squared test for SRM
+           - ALERT if p-value < 0.001
+
+        2. **Traffic Distribution**:
+           - Verify randomization is working
+           - Check for selection bias
+
+        3. **Guardrail Metrics**:
+           - Current values vs baseline
+           - Flag any degradation
+
+        4. **Data Quality**:
+           - Missing data rate
+           - Logging issues
+
+        ## Early Stopping Check
+
+        - **Sequential testing**: Can we stop early?
+        - Current confidence level
+        - Projected final sample size
+
+        ## Issues Found
+        - List any anomalies
+        - Recommended actions
+
+  - stepId: analyze-results
+    name: Analyze Experiment Results
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Perform statistical analysis of A/B test results.
+
+        ## Primary Metric Analysis
+
+        1. **Descriptive Statistics**:
+           | Variant | N | Mean | Std | Median |
+           |---------|---|------|-----|--------|
+           | Control | | | | |
+           | Treatment | | | | |
+
+        2. **Effect Size**:
+           - Absolute difference: {{treatment_mean}} - {{control_mean}}
+           - Relative lift: (T - C) / C * 100%
+           - 95% Confidence Interval: [{{ci_lower}}, {{ci_upper}}]
+
+        3. **Statistical Significance**:
+           - Test used: t-test / Mann-Whitney / Chi-squared
+           - Test statistic: {{test_stat}}
+           - P-value: {{p_value}}
+           - Significant at alpha=0.05: Yes/No
+
+        4. **Practical Significance**:
+           - Is the effect size meaningful?
+           - Does it meet MDE threshold?
+
+        ## Secondary Metrics
+
+        | Metric | Control | Treatment | Lift | P-value | Significant |
+        |--------|---------|-----------|------|---------|-------------|
+
+        ## Guardrail Metrics
+
+        | Metric | Control | Treatment | Change | Status |
+        |--------|---------|-----------|--------|--------|
+
+        ## Segment Analysis
+
+        Analyze effect by key segments:
+        - New vs returning users
+        - Mobile vs desktop
+        - Geographic regions
+        - User cohorts
+
+        ## Novelty/Primacy Effects
+
+        - Plot metric over time
+        - Check for effect decay
+        - Estimate steady-state effect
+
+  - stepId: make-decision
+    name: Make Experiment Decision
+    type: prompt
+    timeout: 120000
+    config:
+      agent: ml-engineer
+      task: |
+        Based on analysis, make a decision about the experiment.
+
+        ## Decision Framework
+
+        | Significance | Practical Impact | Guardrails | Decision |
+        |--------------|------------------|------------|----------|
+        | Yes | Positive | Pass | SHIP |
+        | Yes | Negative | - | ROLLBACK |
+        | No | - | Pass | EXTEND or NO_SHIP |
+        | - | - | Fail | ROLLBACK |
+
+        ## Decision
+
+        **Recommendation**: {{decision}}
+
+        **Confidence**: HIGH / MEDIUM / LOW
+
+        **Reasoning**:
+        - Statistical evidence: {{stat_reasoning}}
+        - Business impact: {{business_reasoning}}
+        - Risk assessment: {{risk_reasoning}}
+
+        ## If SHIP
+        - Rollout plan (gradual vs immediate)
+        - Monitoring requirements
+        - Success criteria for full rollout
+
+        ## If ROLLBACK
+        - Root cause hypothesis
+        - Recommended investigation
+        - Next experiment suggestions
+
+        ## If EXTEND
+        - Additional sample size needed
+        - New end date
+        - Any design changes
+
+  - stepId: store-results
+    name: Store Experiment Results
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-ab-experiments
+      key: "{{experiment_id}}/results"
+      ttl: 31536000
+      value:
+        experiment_id: "{{experiment_id}}"
+        status: "completed"
+        results:
+          primary_metric:
+            control_mean: "{{control_mean}}"
+            treatment_mean: "{{treatment_mean}}"
+            relative_lift: "{{lift}}"
+            confidence_interval: "{{ci}}"
+            p_value: "{{p_value}}"
+            significant: "{{significant}}"
+          secondary_metrics: "{{secondary_results}}"
+          guardrail_metrics: "{{guardrail_results}}"
+          segment_analysis: "{{segment_results}}"
+        decision:
+          recommendation: "{{decision}}"
+          confidence: "{{confidence}}"
+          reasoning: "{{reasoning}}"
+        completed_at: "{{timestamp}}"
+        decided_by: "{{user}}"

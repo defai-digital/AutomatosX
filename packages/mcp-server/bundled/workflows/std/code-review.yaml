@@ -1,0 +1,117 @@
+workflowId: std/code-review
+version: "1.0.0"
+name: Standard Code Review
+description: |
+  Multi-step code review workflow with analysis and recommendations.
+  Analyzes code changes for quality, bugs, security, and performance.
+
+metadata:
+  category: review
+  tags:
+    - code-review
+    - quality
+    - security
+  estimatedDuration: 120000
+
+steps:
+  - stepId: analyze
+    name: Analyze Changes
+    type: prompt
+    config:
+      prompt: |
+        You are conducting a thorough code review. Analyze the code for:
+
+        1. **Code Quality**
+           - Adherence to best practices and coding standards
+           - Code organization and structure
+           - Naming conventions and readability
+           - DRY principles and code reuse
+
+        2. **Potential Bugs**
+           - Logic errors and edge cases
+           - Null/undefined handling
+           - Error handling completeness
+           - Race conditions or concurrency issues
+
+        3. **Security Considerations**
+           - Input validation
+           - Authentication/authorization
+           - Data sanitization
+           - Sensitive data exposure
+
+        4. **Performance**
+           - Algorithm efficiency
+           - Memory usage
+           - Database query optimization
+           - Caching opportunities
+
+        Context and code to review:
+        ${input.context}
+
+        Focus areas (if specified): ${input.scope}
+
+        Provide a detailed analysis organized by category.
+    timeoutMs: 120000
+
+  - stepId: findings
+    name: Generate Findings
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your code analysis:
+        ${previousOutputs.analyze}
+
+        Generate structured, actionable findings organized by priority:
+
+        ## Critical Issues (Must Fix)
+        Issues that would cause bugs, security vulnerabilities, or data loss.
+        Each issue should include:
+        - Description of the problem
+        - Location in code (if known)
+        - Recommended fix
+        - Why it's critical
+
+        ## Recommendations (Should Consider)
+        Issues that affect maintainability, performance, or code quality.
+        Each recommendation should include:
+        - Description
+        - Impact if not addressed
+        - Suggested improvement
+
+        ## Suggestions (Nice to Have)
+        Minor improvements or style suggestions.
+        Each suggestion should include:
+        - Description
+        - Benefit
+
+        Format each item as an actionable task the author can address.
+    timeoutMs: 60000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - findings
+    config:
+      prompt: |
+        Create a concise review summary based on your findings:
+        ${previousOutputs.findings}
+
+        Include:
+
+        ## Overall Assessment
+        Choose one: APPROVE / REQUEST_CHANGES / NEEDS_DISCUSSION
+        Brief justification for the assessment.
+
+        ## Key Points for the Author
+        - Most important items to address (max 3-5 bullet points)
+        - What was done well (if applicable)
+
+        ## Suggested Next Steps
+        - Prioritized list of actions
+        - Any follow-up discussions needed
+
+        Keep the summary concise but informative.
+    timeoutMs: 30000

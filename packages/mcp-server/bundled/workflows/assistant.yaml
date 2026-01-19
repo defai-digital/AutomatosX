@@ -1,0 +1,74 @@
+workflowId: assistant
+version: "1.0.0"
+name: General Assistant Workflow
+description: General-purpose assistance for various tasks
+
+steps:
+  - stepId: understand-request
+    type: prompt
+    name: Understand Request
+    timeout: 30000
+    config:
+      agentId: standard
+      prompt: |
+        Understand the user request:
+        1. Identify the type of task
+        2. Determine required expertise
+        3. Check for ambiguities
+        4. Plan the approach
+
+  - stepId: gather-context
+    type: tool
+    name: Gather Context
+    timeout: 30000
+    config:
+      tool: memory_search
+      args:
+        namespace: conversation
+        limit: 10
+
+  - stepId: execute-task
+    type: prompt
+    name: Execute Task
+    timeout: 300000
+    config:
+      agentId: standard
+      prompt: |
+        Execute the requested task:
+        1. Follow best practices
+        2. Provide clear explanations
+        3. Include examples where helpful
+        4. Anticipate follow-up questions
+
+  - stepId: verify-completeness
+    type: prompt
+    name: Verify Completeness
+    timeout: 30000
+    config:
+      agentId: standard
+      prompt: |
+        Verify the response:
+        1. Does it fully answer the question?
+        2. Is it accurate and up-to-date?
+        3. Is it clear and well-structured?
+        4. Are there any caveats to mention?
+
+  - stepId: store-interaction
+    type: tool
+    name: Store Interaction
+    timeout: 10000
+    config:
+      tool: memory_store
+      args:
+        namespace: conversation
+        ttl: 86400
+
+metadata:
+  category: general
+  tags:
+    - assistant
+    - general-purpose
+    - help
+  requiredAbilities:
+    - communication
+    - problem-solving

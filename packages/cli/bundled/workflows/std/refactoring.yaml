@@ -1,0 +1,180 @@
+workflowId: std/refactoring
+version: "1.0.0"
+name: Standard Refactoring
+description: |
+  Systematic refactoring workflow for improving code structure.
+  Focuses on maintainability, readability, and design improvements.
+
+metadata:
+  category: refactoring
+  tags:
+    - refactoring
+    - clean-code
+    - maintenance
+  estimatedDuration: 150000
+
+steps:
+  - stepId: assess
+    name: Assess Current State
+    type: prompt
+    config:
+      prompt: |
+        You are planning a refactoring effort. First, assess the current state of the code.
+
+        ## Target Code/Area
+        ${input.targetPath}
+
+        ## Refactoring Goals
+        ${input.goals}
+
+        ## Context
+        ${input.context}
+
+        Analyze and document:
+
+        1. **Current Code Structure**
+           - How is the code organized?
+           - What patterns/abstractions are used?
+           - What are the main components/modules?
+
+        2. **Code Smells Identified**
+           - Duplication
+           - Long methods/classes
+           - Poor naming
+           - Tight coupling
+           - Missing abstractions
+           - Other issues
+
+        3. **Dependencies**
+           - What does this code depend on?
+           - What depends on this code?
+           - External integrations
+
+        4. **Test Coverage**
+           - Are there existing tests?
+           - What's the coverage level?
+           - Are tests reliable?
+
+        5. **Risk Assessment**
+           - How critical is this code?
+           - What could break?
+           - How easy to rollback?
+    timeoutMs: 60000
+
+  - stepId: plan
+    name: Create Refactoring Plan
+    type: prompt
+    dependencies:
+      - assess
+    config:
+      prompt: |
+        Based on your assessment:
+        ${previousOutputs.assess}
+
+        Create a detailed refactoring plan:
+
+        ## Refactoring Strategy
+        Overall approach and guiding principles for this refactoring.
+
+        ## Changes in Priority Order
+        List each change as a discrete, safe step:
+
+        ### Step 1: [Name]
+        - What: Specific change to make
+        - Why: Benefit of this change
+        - How: Brief implementation approach
+        - Risk: Low/Medium/High
+        - Tests: Tests to add/update
+
+        ### Step 2: [Name]
+        (Continue for each step...)
+
+        ## Suggested Order
+        Why this order? (dependencies, risk mitigation, etc.)
+
+        ## What NOT to Change
+        Areas to leave alone and why.
+
+        ## Success Criteria
+        How do we know the refactoring is successful?
+        - Metrics to track
+        - Quality gates
+    timeoutMs: 90000
+
+  - stepId: implement
+    name: Implementation Guidance
+    type: prompt
+    dependencies:
+      - plan
+    config:
+      prompt: |
+        Based on your refactoring plan:
+        ${previousOutputs.plan}
+
+        Provide specific implementation guidance:
+
+        ## Code Changes
+
+        For each step in the plan, provide:
+
+        ### [Step Name]
+
+        **Before (Current Code Pattern):**
+        Show the problematic pattern to change.
+
+        **After (Refactored Pattern):**
+        Show the improved pattern to implement.
+
+        **Key Points:**
+        - Specific things to watch for
+        - Common mistakes to avoid
+        - Edge cases to handle
+
+        ## Testing Strategy
+        - Tests to write BEFORE refactoring (safety net)
+        - Tests to add AFTER refactoring
+        - How to verify behavior unchanged
+
+        ## Rollback Plan
+        If something goes wrong:
+        - How to detect problems
+        - How to revert safely
+        - Data migration considerations (if any)
+    timeoutMs: 60000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - implement
+    config:
+      prompt: |
+        Summarize the refactoring plan:
+        ${previousOutputs.implement}
+
+        ## Refactoring Summary
+        One paragraph describing what this refactoring achieves.
+
+        ## Scope
+        - Files to modify: [list]
+        - Estimated changes: [lines/functions/classes]
+
+        ## Key Improvements
+        1. [Improvement 1]
+        2. [Improvement 2]
+        3. [Improvement 3]
+
+        ## Prerequisites
+        - [ ] Existing tests pass
+        - [ ] Code reviewed
+        - [ ] Other prerequisites
+
+        ## Checklist
+        - [ ] Step 1: [name]
+        - [ ] Step 2: [name]
+        - [ ] All tests pass
+        - [ ] Code review complete
+
+        ## Estimated Effort
+        Simple/Medium/Complex and brief justification.
+    timeoutMs: 30000

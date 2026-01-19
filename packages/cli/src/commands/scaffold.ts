@@ -850,9 +850,12 @@ async function handleScaffoldProject(
     dryRun = false,
   } = options;
 
-  // Find templates directory (relative to CLI package)
-  // Path from packages/cli/dist/commands -> cli/dist -> cli -> packages -> automatosx (root)
-  const templatesDir = path.resolve(__dirname, '../../../../templates');
+  // Find templates directory - check bundled first, then development path
+  // Bundled: packages/cli/dist/commands -> cli/dist -> cli -> bundled/templates
+  // Development: packages/cli/dist/commands -> cli/dist -> cli -> packages -> automatosx/templates
+  const bundledTemplatesDir = path.resolve(__dirname, '../../bundled/templates');
+  const devTemplatesDir = path.resolve(__dirname, '../../../../templates');
+  const templatesDir = fs.existsSync(bundledTemplatesDir) ? bundledTemplatesDir : devTemplatesDir;
   const templateDir = path.join(templatesDir, template);
 
   // Check if template exists

@@ -1,0 +1,29 @@
+{
+  "name": "{{scope}}/contracts",
+  "version": "1.0.0",
+  "description": "Contract schemas for {{projectName}}",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./{{domainName}}": {
+      "import": "./dist/{{domainName}}/v1/index.js",
+      "types": "./dist/{{domainName}}/v1/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

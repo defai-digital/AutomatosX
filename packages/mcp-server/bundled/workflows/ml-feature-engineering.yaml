@@ -1,0 +1,242 @@
+workflowId: ml-feature-engineering
+name: Feature Engineering Pipeline
+description: Systematic feature creation, validation, and selection
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - features
+  - feature-engineering
+  - feature-selection
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+    - data-analysis
+    - feature-engineering
+  estimatedDuration: 600
+  complexity: high
+
+steps:
+  - stepId: feature-ideation
+    name: Feature Ideation
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Given the prediction target and available data, brainstorm candidate features.
+
+        ## Feature Categories to Consider
+
+        1. **Raw Features**:
+           - Direct columns from source data
+           - Basic transformations (log, sqrt, power)
+
+        2. **Domain Knowledge Features**:
+           - Business logic features
+           - Industry-specific indicators
+           - Expert-derived calculations
+
+        3. **Interaction Features**:
+           - Feature products (A * B)
+           - Feature ratios (A / B)
+           - Feature differences (A - B)
+
+        4. **Time-Based Features** (if temporal data):
+           - Lag features
+           - Rolling statistics (mean, std, min, max)
+           - Time since event
+           - Seasonal indicators
+           - Trend features
+
+        5. **Aggregation Features**:
+           - Group-by statistics
+           - Entity-level aggregations
+           - Window aggregations
+
+        6. **Text Features** (if text data):
+           - TF-IDF
+           - Word embeddings
+           - Sentiment scores
+           - Named entities
+
+        7. **Categorical Encodings**:
+           - One-hot encoding
+           - Target encoding
+           - Frequency encoding
+           - Embedding encoding
+
+        ## Output Format
+        For each candidate feature:
+        - Feature name
+        - Description
+        - Calculation logic
+        - Expected predictive value (hypothesis)
+        - Implementation complexity (low/medium/high)
+
+  - stepId: feature-implementation
+    name: Implement Features
+    type: prompt
+    timeout: 300000
+    config:
+      agent: data-scientist
+      task: |
+        Implement the candidate features with production-quality code.
+
+        ## For Each Feature
+
+        1. **Transformation Code**:
+           ```python
+           def compute_feature_name(df: pd.DataFrame) -> pd.Series:
+               '''
+               Description of what this feature represents.
+
+               Args:
+                   df: Input dataframe with required columns
+
+               Returns:
+                   pd.Series: Computed feature values
+               '''
+               # Implementation
+               pass
+           ```
+
+        2. **Missing Value Handling**:
+           - Strategy: drop / fill_mean / fill_median / fill_mode / fill_constant
+           - Justification for chosen strategy
+
+        3. **Edge Case Handling**:
+           - Division by zero
+           - Negative values for log transforms
+           - Null propagation
+
+        4. **Data Type**:
+           - Output dtype
+           - Value range
+
+        ## Feature Pipeline
+        Create a combined feature pipeline function that:
+        - Takes raw data
+        - Applies all transformations
+        - Returns feature matrix
+
+  - stepId: feature-validation
+    name: Validate Features
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Validate feature quality and check for common issues.
+
+        ## Data Leakage Check
+
+        1. **Target Leakage**:
+           - Does any feature contain information from the target?
+           - Is any feature computed using future data?
+           - Check correlation with target on train vs test
+
+        2. **Train-Test Leakage**:
+           - Are features computed using test data statistics?
+           - Is any global normalization applied before split?
+
+        ## Feature Quality Checks
+
+        1. **Missing Values**:
+           - Missing rate per feature
+           - Flag features with >50% missing
+
+        2. **Cardinality**:
+           - Unique value count
+           - Flag high-cardinality categoricals
+
+        3. **Distribution**:
+           - Check for extreme skewness
+           - Identify outliers
+           - Check for constant features
+
+        4. **Correlation Analysis**:
+           - Correlation with target
+           - Inter-feature correlation matrix
+           - Flag highly correlated pairs (>0.95)
+
+        ## Validation Report
+        For each feature:
+        - Leakage risk: SAFE / WARNING / DANGEROUS
+        - Quality score: 1-10
+        - Issues found
+        - Recommendations
+
+  - stepId: feature-selection
+    name: Select Final Features
+    type: prompt
+    timeout: 180000
+    config:
+      agent: ml-engineer
+      task: |
+        Select the final feature set for modeling.
+
+        ## Selection Methods
+
+        1. **Importance-Based Selection**:
+           - SHAP values from baseline model
+           - Permutation importance
+           - Random forest feature importance
+
+        2. **Statistical Selection**:
+           - Mutual information with target
+           - Chi-squared test (categorical)
+           - ANOVA F-value (continuous)
+
+        3. **Iterative Selection**:
+           - Forward selection results
+           - Backward elimination results
+           - Recursive feature elimination
+
+        ## Selection Criteria
+
+        - Remove features with:
+          - Near-zero variance
+          - High missing rate (>50%)
+          - High correlation with other features (>0.95)
+          - Low importance (bottom 10%)
+          - Data leakage risk
+
+        - Keep features with:
+          - High target correlation
+          - Domain importance
+          - Unique information
+
+        ## Final Feature Set
+
+        | Feature | Importance Rank | Rationale |
+        |---------|-----------------|-----------|
+        | feature_1 | 1 | ... |
+        | feature_2 | 2 | ... |
+
+        Total features selected: X out of Y candidates
+
+  - stepId: store-feature-definitions
+    name: Store Feature Definitions
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-feature-store
+      key: "{{feature_set_name}}/{{version}}"
+      value:
+        feature_set_name: "{{feature_set_name}}"
+        version: "{{version}}"
+        description: "{{description}}"
+        target_variable: "{{target}}"
+        features: "{{feature_definitions}}"
+        validation_results:
+          leakage_check: "{{leakage_status}}"
+          quality_scores: "{{quality_scores}}"
+        selection_summary:
+          total_candidates: "{{total_candidates}}"
+          selected_count: "{{selected_count}}"
+          selection_method: "{{selection_method}}"
+        created_at: "{{timestamp}}"
+        created_by: "{{user}}"

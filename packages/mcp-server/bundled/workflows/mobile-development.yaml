@@ -1,0 +1,312 @@
+workflowId: mobile-development
+name: Mobile Feature Development Workflow
+description: End-to-end mobile feature development from design to app store deployment
+version: "1.0.0"
+category: mobile
+tags:
+  - mobile
+  - ios
+  - android
+  - cross-platform
+
+metadata:
+  requiredAbilities:
+    - mobile-development
+    - cross-platform
+    - ui-design
+  estimatedDuration: 600
+  complexity: high
+
+steps:
+  - stepId: requirements-review
+    name: Review Feature Requirements
+    type: prompt
+    timeout: 120000
+    config:
+      agent: mobile
+      task: |
+        Review and clarify mobile feature requirements.
+
+        ## Requirements Analysis
+
+        1. **Feature Overview**:
+           - Feature name and description
+           - User story
+           - Acceptance criteria
+
+        2. **Platform Requirements**:
+           - iOS minimum version
+           - Android minimum version
+           - Cross-platform or native?
+
+        3. **UI/UX Requirements**:
+           - Screen designs available?
+           - Platform-specific adaptations needed?
+           - Accessibility requirements
+
+        4. **Technical Requirements**:
+           - API dependencies
+           - Local storage needs
+           - Offline capability
+           - Push notifications
+           - Deep linking
+
+        5. **Performance Requirements**:
+           - Launch time impact
+           - Memory constraints
+           - Battery impact
+
+        6. **Questions/Clarifications**:
+           - List any ambiguities
+           - Missing information
+
+  - stepId: architecture-design
+    name: Design Mobile Architecture
+    type: prompt
+    timeout: 180000
+    config:
+      agent: mobile
+      task: |
+        Design the mobile architecture for this feature.
+
+        ## Architecture Design
+
+        1. **Component Structure**:
+           - Screen/View components
+           - Business logic components
+           - Data layer components
+           - Shared utilities
+
+        2. **State Management**:
+           - State architecture (Redux, MobX, Provider, etc.)
+           - State shape
+           - Actions/mutations
+
+        3. **Navigation**:
+           - Navigation flow
+           - Deep link handling
+           - Back stack management
+
+        4. **Data Layer**:
+           - API client design
+           - Local storage schema
+           - Caching strategy
+           - Sync strategy (if offline-capable)
+
+        5. **Platform Considerations**:
+           - iOS-specific code
+           - Android-specific code
+           - Shared code percentage
+
+        6. **Dependencies**:
+           - New libraries needed
+           - Version compatibility
+           - License compliance
+
+  - stepId: implement-feature
+    name: Implement Feature
+    type: prompt
+    timeout: 300000
+    config:
+      agent: mobile
+      task: |
+        Implement the mobile feature.
+
+        ## Implementation
+
+        1. **UI Components**:
+           - Create screen components
+           - Implement UI interactions
+           - Handle different screen sizes
+           - Support dark/light mode
+
+        2. **Business Logic**:
+           - Implement feature logic
+           - Handle edge cases
+           - Error handling
+
+        3. **Data Integration**:
+           - API integration
+           - Local storage
+           - State updates
+
+        4. **Platform Specifics**:
+           - iOS adaptations
+           - Android adaptations
+           - Platform-specific APIs
+
+        5. **Accessibility**:
+           - VoiceOver/TalkBack support
+           - Dynamic type support
+           - Contrast requirements
+
+  - stepId: write-tests
+    name: Write Tests
+    type: prompt
+    timeout: 180000
+    config:
+      agent: quality
+      task: |
+        Create comprehensive test suite for mobile feature.
+
+        ## Test Suite
+
+        1. **Unit Tests**:
+           - Business logic tests
+           - State management tests
+           - Utility function tests
+
+        2. **Widget/Component Tests**:
+           - UI component rendering
+           - User interaction tests
+           - State change tests
+
+        3. **Integration Tests**:
+           - API integration tests
+           - Navigation tests
+           - Data flow tests
+
+        4. **Platform Tests**:
+           - iOS-specific tests
+           - Android-specific tests
+
+        5. **Accessibility Tests**:
+           - Screen reader compatibility
+           - Touch target sizes
+           - Color contrast
+
+        6. **Performance Tests**:
+           - Launch time impact
+           - Memory usage
+           - Frame rate
+
+  - stepId: code-review
+    name: Code Review
+    type: prompt
+    timeout: 120000
+    config:
+      agent: reviewer
+      task: |
+        Review mobile feature implementation.
+
+        ## Review Checklist
+
+        1. **Code Quality**:
+           - Clean architecture adherence
+           - Code organization
+           - Naming conventions
+           - Documentation
+
+        2. **Performance**:
+           - No unnecessary re-renders
+           - Efficient data structures
+           - Lazy loading where appropriate
+
+        3. **Security**:
+           - Secure data storage
+           - API security
+           - Input validation
+
+        4. **Platform Guidelines**:
+           - iOS Human Interface Guidelines
+           - Android Material Design
+           - Platform idioms
+
+        5. **Accessibility**:
+           - WCAG compliance
+           - Platform accessibility APIs
+
+  - stepId: qa-testing
+    name: QA Testing
+    type: prompt
+    timeout: 180000
+    config:
+      agent: quality
+      task: |
+        Perform QA testing on mobile feature.
+
+        ## QA Test Plan
+
+        1. **Functional Testing**:
+           - All acceptance criteria met
+           - Happy path works
+           - Edge cases handled
+
+        2. **Device Testing**:
+           - Test on minimum supported devices
+           - Test on latest devices
+           - Test on different screen sizes
+
+        3. **OS Version Testing**:
+           - Minimum supported versions
+           - Latest versions
+           - Beta versions (if applicable)
+
+        4. **Network Testing**:
+           - WiFi
+           - Cellular (4G/5G)
+           - Offline mode
+           - Poor connectivity
+
+        5. **Regression Testing**:
+           - Existing features still work
+           - No performance regression
+
+        6. **Bug Report**:
+           - Issues found
+           - Severity classification
+           - Reproduction steps
+
+  - stepId: app-store-preparation
+    name: App Store Preparation
+    type: prompt
+    timeout: 120000
+    config:
+      agent: mobile
+      task: |
+        Prepare for app store submission.
+
+        ## App Store Checklist
+
+        1. **App Store Connect / Play Console**:
+           - Version number updated
+           - Build number incremented
+           - Release notes written
+
+        2. **Screenshots**:
+           - All required sizes
+           - Feature highlighted
+           - Localized if needed
+
+        3. **Metadata**:
+           - Description updated
+           - Keywords optimized
+           - Category correct
+
+        4. **Compliance**:
+           - Privacy policy updated
+           - Data collection disclosed
+           - Age rating accurate
+
+        5. **Release Strategy**:
+           - Phased rollout percentage
+           - Geographic targeting
+           - Release timing
+
+  - stepId: store-feature-record
+    name: Store Feature Record
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: mobile-features
+      key: "{{feature_id}}/{{version}}"
+      value:
+        feature_id: "{{feature_id}}"
+        version: "{{version}}"
+        platforms: "{{platforms}}"
+        status: "{{status}}"
+        architecture: "{{architecture}}"
+        test_results: "{{test_results}}"
+        release_notes: "{{release_notes}}"
+        created_at: "{{timestamp}}"

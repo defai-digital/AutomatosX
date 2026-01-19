@@ -1,0 +1,82 @@
+/**
+ * {{pascalCase domainName}} Domain Contracts v1
+ *
+ * @module {{scope}}/contracts/{{domainName}}/v1
+ */
+
+import { z } from 'zod';
+
+// ============================================================================
+// Value Objects
+// ============================================================================
+
+export const {{pascalCase domainName}}IdSchema = z.string().uuid();
+export type {{pascalCase domainName}}Id = z.infer<typeof {{pascalCase domainName}}IdSchema>;
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+export const {{pascalCase domainName}}StatusSchema = z.enum([
+  'draft',
+  'active',
+  'completed',
+  'cancelled',
+]);
+export type {{pascalCase domainName}}Status = z.infer<typeof {{pascalCase domainName}}StatusSchema>;
+
+// ============================================================================
+// Entities
+// ============================================================================
+
+/**
+ * {{pascalCase domainName}} entity - Aggregate Root
+ *
+ * Invariants:
+ * - INV-{{upperCase (substring domainName 0 3)}}-001: ID must be valid UUID
+ * - INV-{{upperCase (substring domainName 0 3)}}-002: Status must be valid
+ */
+export const {{pascalCase domainName}}Schema = z.object({
+  id: {{pascalCase domainName}}IdSchema,
+  status: {{pascalCase domainName}}StatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type {{pascalCase domainName}} = z.infer<typeof {{pascalCase domainName}}Schema>;
+
+// ============================================================================
+// Domain Events
+// ============================================================================
+
+export const {{pascalCase domainName}}EventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('{{domainName}}.created'),
+    {{domainName}}Id: {{pascalCase domainName}}IdSchema,
+    occurredAt: z.string().datetime(),
+  }),
+  z.object({
+    type: z.literal('{{domainName}}.updated'),
+    {{domainName}}Id: {{pascalCase domainName}}IdSchema,
+    occurredAt: z.string().datetime(),
+  }),
+]);
+
+export type {{pascalCase domainName}}Event = z.infer<typeof {{pascalCase domainName}}EventSchema>;
+
+// ============================================================================
+// Validation
+// ============================================================================
+
+export function validate{{pascalCase domainName}}(data: unknown): {{pascalCase domainName}} {
+  return {{pascalCase domainName}}Schema.parse(data);
+}
+
+// ============================================================================
+// Error Codes
+// ============================================================================
+
+export const {{pascalCase domainName}}ErrorCode = {
+  NOT_FOUND: '{{upperCase (substring domainName 0 3)}}_NOT_FOUND',
+  INVALID_STATUS: '{{upperCase (substring domainName 0 3)}}_INVALID_STATUS',
+} as const;

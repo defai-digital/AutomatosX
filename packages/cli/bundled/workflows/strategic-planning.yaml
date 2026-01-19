@@ -1,0 +1,235 @@
+workflowId: strategic-planning
+name: Strategic Planning Workflow
+description: Quarterly and annual strategic planning for technology leadership
+version: "1.0.0"
+category: leadership
+tags:
+  - strategy
+  - planning
+  - leadership
+  - roadmap
+
+metadata:
+  requiredAbilities:
+    - strategic-planning
+    - technology-evaluation
+    - stakeholder-communication
+  estimatedDuration: 600
+  complexity: high
+
+steps:
+  - stepId: situation-analysis
+    name: Current Situation Analysis
+    type: prompt
+    timeout: 180000
+    config:
+      agent: cto
+      task: |
+        Analyze current technology situation.
+
+        ## Situation Analysis
+
+        1. **Technology Landscape**:
+           - Current tech stack assessment
+           - Technical debt inventory
+           - Infrastructure status
+           - Security posture
+
+        2. **Team Assessment**:
+           - Team capabilities
+           - Skill gaps
+           - Hiring needs
+           - Training requirements
+
+        3. **Business Alignment**:
+           - Business goals understanding
+           - Technology support for goals
+           - Gaps in alignment
+
+        4. **Competitive Analysis**:
+           - Technology advantages
+           - Areas of lag
+           - Industry trends
+
+        5. **Risk Assessment**:
+           - Technical risks
+           - Security risks
+           - Operational risks
+           - People risks
+
+  - stepId: vision-setting
+    name: Set Technology Vision
+    type: prompt
+    timeout: 180000
+    config:
+      agent: ceo
+      task: |
+        Define technology vision aligned with business strategy.
+
+        ## Vision Definition
+
+        1. **3-Year Vision**:
+           - Where do we want to be?
+           - Key technology capabilities
+           - Competitive differentiation
+
+        2. **Strategic Themes**:
+           - Theme 1: Description and rationale
+           - Theme 2: Description and rationale
+           - Theme 3: Description and rationale
+
+        3. **Success Metrics**:
+           - How will we measure success?
+           - Key milestones
+           - Leading indicators
+
+        4. **Investment Areas**:
+           - Where should we invest?
+           - Build vs buy decisions
+           - Partnership opportunities
+
+  - stepId: roadmap-creation
+    name: Create Technology Roadmap
+    type: prompt
+    timeout: 180000
+    config:
+      agent: cto
+      task: |
+        Create detailed technology roadmap.
+
+        ## Technology Roadmap
+
+        1. **Quarter 1**:
+           - Initiatives
+           - Deliverables
+           - Resources needed
+           - Dependencies
+
+        2. **Quarter 2**:
+           - Initiatives
+           - Deliverables
+           - Resources needed
+           - Dependencies
+
+        3. **Quarter 3**:
+           - Initiatives
+           - Deliverables
+           - Resources needed
+           - Dependencies
+
+        4. **Quarter 4**:
+           - Initiatives
+           - Deliverables
+           - Resources needed
+           - Dependencies
+
+        5. **Resource Plan**:
+           - Headcount plan
+           - Budget allocation
+           - External resources
+
+  - stepId: risk-mitigation
+    name: Risk Mitigation Planning
+    type: prompt
+    timeout: 120000
+    config:
+      agent: cto
+      task: |
+        Develop risk mitigation strategies.
+
+        ## Risk Mitigation Plan
+
+        For each identified risk:
+
+        | Risk | Likelihood | Impact | Mitigation Strategy | Owner |
+        |------|------------|--------|---------------------|-------|
+
+        1. **Technical Risks**:
+           - Mitigation approaches
+           - Contingency plans
+
+        2. **Resource Risks**:
+           - Backup plans
+           - Cross-training strategy
+
+        3. **External Risks**:
+           - Vendor dependencies
+           - Market changes
+
+  - stepId: okr-definition
+    name: Define OKRs
+    type: prompt
+    timeout: 120000
+    config:
+      agent: cto
+      task: |
+        Define Objectives and Key Results.
+
+        ## OKR Framework
+
+        **Objective 1**: [Strategic Objective]
+        - KR1: [Measurable Key Result]
+        - KR2: [Measurable Key Result]
+        - KR3: [Measurable Key Result]
+
+        **Objective 2**: [Strategic Objective]
+        - KR1: [Measurable Key Result]
+        - KR2: [Measurable Key Result]
+        - KR3: [Measurable Key Result]
+
+        **Objective 3**: [Strategic Objective]
+        - KR1: [Measurable Key Result]
+        - KR2: [Measurable Key Result]
+        - KR3: [Measurable Key Result]
+
+        ## Alignment
+        - How OKRs align with company goals
+        - Dependencies on other teams
+        - Success criteria
+
+  - stepId: communication-plan
+    name: Create Communication Plan
+    type: prompt
+    timeout: 120000
+    config:
+      agent: writer
+      task: |
+        Create strategic communication plan.
+
+        ## Communication Plan
+
+        1. **Executive Summary**:
+           - One-page strategy summary
+           - Key messages
+
+        2. **Stakeholder Communications**:
+           | Stakeholder | Message | Frequency | Channel |
+           |-------------|---------|-----------|---------|
+
+        3. **Team Communications**:
+           - All-hands presentation
+           - Team-specific briefings
+
+        4. **Progress Reporting**:
+           - Metrics dashboard
+           - Review cadence
+
+  - stepId: store-strategy
+    name: Store Strategic Plan
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: strategic-plans
+      key: "{{plan_year}}/{{plan_quarter}}"
+      ttl: 63072000
+      value:
+        year: "{{plan_year}}"
+        quarter: "{{plan_quarter}}"
+        vision: "{{vision}}"
+        roadmap: "{{roadmap}}"
+        okrs: "{{okrs}}"
+        risks: "{{risks}}"
+        communication_plan: "{{communication_plan}}"
+        created_at: "{{timestamp}}"
+        approved_by: "{{approver}}"

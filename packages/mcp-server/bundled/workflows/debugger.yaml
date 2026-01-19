@@ -1,0 +1,107 @@
+workflowId: debugger
+version: "1.0.0"
+name: Bug Investigation Workflow
+description: Systematic bug investigation and resolution
+
+steps:
+  - stepId: gather-context
+    type: prompt
+    name: Gather Bug Context
+    timeout: 60000
+    config:
+      agentId: researcher
+      prompt: |
+        Gather information about the bug:
+        1. Error messages and stack traces
+        2. Steps to reproduce
+        3. Environment details
+        4. Recent changes that might be related
+        5. Affected user count and severity
+
+  - stepId: analyze-logs
+    type: tool
+    name: Analyze Logs
+    timeout: 60000
+    config:
+      tool: trace_analyze
+      args:
+        timeRange: 24h
+        filters:
+          level: error
+
+  - stepId: identify-root-cause
+    type: prompt
+    name: Identify Root Cause
+    timeout: 120000
+    config:
+      agentId: backend
+      prompt: |
+        Based on the evidence:
+        1. Form hypotheses about root cause
+        2. Trace code execution path
+        3. Identify the exact failure point
+        4. Determine if it's a regression
+
+  - stepId: scan-related-bugs
+    type: tool
+    name: Scan for Related Issues
+    timeout: 60000
+    config:
+      tool: bugfix_scan
+      args:
+        categories:
+          - null-reference
+          - type-error
+          - logic-error
+          - resource-leak
+        maxFiles: 50
+
+  - stepId: develop-fix
+    type: prompt
+    name: Develop Fix
+    timeout: 180000
+    config:
+      agentId: backend
+      prompt: |
+        Develop the fix:
+        1. Write the minimal fix
+        2. Add defensive checks
+        3. Write regression test
+        4. Verify fix doesn't break other tests
+
+  - stepId: verify-fix
+    type: tool
+    name: Verify Fix
+    timeout: 120000
+    retryPolicy:
+      maxAttempts: 2
+      backoffMs: 3000
+    config:
+      tool: guard_check
+      args:
+        policyId: test-pass
+        runTests: true
+
+  - stepId: document-resolution
+    type: prompt
+    name: Document Resolution
+    timeout: 30000
+    config:
+      agentId: writer
+      prompt: |
+        Document the bug resolution:
+        1. Root cause summary
+        2. Fix description
+        3. Prevention recommendations
+        4. Post-mortem notes if severe
+
+metadata:
+  category: maintenance
+  tags:
+    - debugging
+    - bug-fix
+    - investigation
+  requiredAbilities:
+    - debugging
+    - error-handling
+    - testing-strategy

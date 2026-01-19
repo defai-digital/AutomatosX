@@ -1,0 +1,115 @@
+workflowId: analyst
+version: "1.0.0"
+name: Data Analysis Workflow
+description: Comprehensive data analysis and reporting workflow
+
+steps:
+  - stepId: define-questions
+    type: prompt
+    name: Define Analysis Questions
+    timeout: 60000
+    config:
+      agentId: data-scientist
+      prompt: |
+        Define the analysis scope:
+        1. What questions are we answering?
+        2. What metrics are relevant?
+        3. What data sources are needed?
+        4. What time period to analyze?
+
+  - stepId: gather-data
+    type: tool
+    name: Gather Data
+    timeout: 120000
+    config:
+      tool: memory_search
+      args:
+        namespace: analytics
+        includeMetadata: true
+
+  - stepId: clean-data
+    type: prompt
+    name: Data Cleaning
+    timeout: 60000
+    config:
+      agentId: data-scientist
+      prompt: |
+        Clean and prepare data:
+        1. Handle missing values
+        2. Remove outliers
+        3. Normalize formats
+        4. Validate data quality
+
+  - stepId: exploratory-analysis
+    type: prompt
+    name: Exploratory Analysis
+    timeout: 180000
+    config:
+      agentId: data-scientist
+      prompt: |
+        Perform exploratory analysis:
+        1. Calculate summary statistics
+        2. Identify trends and patterns
+        3. Find correlations
+        4. Detect anomalies
+
+  - stepId: statistical-tests
+    type: prompt
+    name: Statistical Testing
+    timeout: 120000
+    config:
+      agentId: data-scientist
+      prompt: |
+        Run statistical tests:
+        1. Choose appropriate tests
+        2. Check assumptions
+        3. Calculate significance
+        4. Interpret results
+
+  - stepId: generate-visualizations
+    type: prompt
+    name: Generate Visualizations
+    timeout: 60000
+    config:
+      agentId: data-scientist
+      prompt: |
+        Create visualizations:
+        1. Charts for key metrics
+        2. Trend visualizations
+        3. Comparison charts
+        4. Distribution plots
+
+  - stepId: write-report
+    type: prompt
+    name: Write Analysis Report
+    timeout: 120000
+    config:
+      agentId: writer
+      prompt: |
+        Write the analysis report:
+        1. Executive summary
+        2. Methodology
+        3. Key findings
+        4. Recommendations
+        5. Appendix with details
+
+  - stepId: store-results
+    type: tool
+    name: Store Results
+    timeout: 30000
+    config:
+      tool: memory_store
+      args:
+        namespace: analysis-reports
+        ttl: 2592000
+
+metadata:
+  category: analytics
+  tags:
+    - data-analysis
+    - reporting
+    - insights
+  requiredAbilities:
+    - data-analysis
+    - statistical-analysis
+    - documentation

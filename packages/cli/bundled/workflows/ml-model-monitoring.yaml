@@ -1,0 +1,227 @@
+workflowId: ml-model-monitoring
+name: Production Model Monitoring
+description: Detect drift, degradation, and anomalies in production models
+version: "1.0.0"
+category: machine-learning
+tags:
+  - ml
+  - monitoring
+  - drift
+  - production
+
+metadata:
+  requiredAbilities:
+    - machine-learning
+    - statistical-analysis
+    - data-analysis
+  estimatedDuration: 300
+  complexity: high
+  schedule: "0 */6 * * *"  # Every 6 hours
+
+steps:
+  - stepId: fetch-baseline
+    name: Fetch Baseline Statistics
+    type: tool
+    timeout: 10000
+    tool: memory_retrieve
+    config:
+      namespace: ml-model-registry
+      key: "{{model_name}}/versions/{{production_version}}/baseline_stats"
+
+  - stepId: fetch-production-data
+    name: Fetch Recent Production Data
+    type: tool
+    timeout: 30000
+    tool: memory_search
+    config:
+      namespace: ml-production-predictions
+      query: "model:{{model_name}} AND timestamp:[{{window_start}} TO {{window_end}}]"
+      limit: 10000
+
+  - stepId: data-drift-detection
+    name: Detect Data Drift
+    type: prompt
+    timeout: 180000
+    config:
+      agent: data-scientist
+      task: |
+        Analyze production data for drift compared to training data.
+
+        ## Feature Distribution Analysis
+        For each feature:
+
+        1. **Statistical Tests**:
+           - Kolmogorov-Smirnov test (continuous features)
+           - Chi-squared test (categorical features)
+           - Population Stability Index (PSI)
+
+        2. **Drift Severity**:
+           - No Drift: PSI < 0.1
+           - Moderate Drift: 0.1 <= PSI < 0.25
+           - Significant Drift: PSI >= 0.25
+
+        3. **Per-Feature Report**:
+           - Feature name
+           - Drift score
+           - Baseline mean/distribution
+           - Current mean/distribution
+           - Visual: distribution comparison
+
+        ## Overall Assessment
+        - Total features with significant drift
+        - Most drifted features (top 5)
+        - Drift trend (increasing/stable/decreasing)
+
+        ## Alert Level
+        - GREEN: No significant drift
+        - YELLOW: Moderate drift, monitor closely
+        - RED: Significant drift, action required
+
+  - stepId: prediction-drift
+    name: Detect Prediction Drift
+    type: prompt
+    timeout: 120000
+    config:
+      agent: data-scientist
+      task: |
+        Analyze prediction distribution for drift.
+
+        ## Prediction Distribution Analysis
+
+        1. **Output Distribution**:
+           - Compare current vs baseline prediction distribution
+           - For classification: class probability distributions
+           - For regression: prediction value distribution
+
+        2. **Confidence Scores**:
+           - Average confidence: baseline vs current
+           - Confidence distribution shift
+           - Low-confidence prediction rate
+
+        3. **Prediction Patterns**:
+           - Class balance (classification)
+           - Prediction range (regression)
+           - Unusual prediction clusters
+
+        ## Anomaly Detection
+        - Identify sudden prediction shifts
+        - Detect prediction patterns not seen in training
+        - Flag potential model failures
+
+  - stepId: performance-degradation
+    name: Check Performance Degradation
+    type: prompt
+    timeout: 120000
+    config:
+      agent: ml-engineer
+      task: |
+        Compare current model performance against baseline.
+
+        ## Metric Comparison (if ground truth available)
+
+        | Metric | Baseline | Current | Delta | Status |
+        |--------|----------|---------|-------|--------|
+        | Accuracy | X | Y | Z% | OK/WARN/ALERT |
+        | Precision | X | Y | Z% | OK/WARN/ALERT |
+        | Recall | X | Y | Z% | OK/WARN/ALERT |
+
+        ## Thresholds
+        - OK: Within 5% of baseline
+        - WARN: 5-10% degradation
+        - ALERT: >10% degradation
+
+        ## Latency Analysis
+        - P50 latency: baseline vs current
+        - P99 latency: baseline vs current
+        - Timeout rate
+
+        ## Error Analysis
+        - Error rate trend
+        - Error type distribution
+        - New error patterns
+
+  - stepId: retraining-decision
+    name: Retraining Recommendation
+    type: prompt
+    timeout: 60000
+    config:
+      agent: ml-engineer
+      task: |
+        Based on drift and degradation analysis, recommend action.
+
+        ## Decision Matrix
+
+        | Data Drift | Performance Drop | Recommendation |
+        |------------|------------------|----------------|
+        | None | None | NO_ACTION |
+        | Moderate | None | MONITOR |
+        | Significant | None | INVESTIGATE |
+        | None | Moderate | INVESTIGATE |
+        | Moderate | Moderate | RETRAIN |
+        | Significant | Any | RETRAIN_URGENT |
+        | Any | Significant | RETRAIN_URGENT |
+
+        ## Recommendation Output
+        - **Action**: NO_ACTION / MONITOR / INVESTIGATE / RETRAIN / RETRAIN_URGENT
+        - **Confidence**: HIGH / MEDIUM / LOW
+        - **Reasoning**: Explanation
+
+        ## If RETRAIN Recommended
+        - Suggested training data window
+        - Features to focus on
+        - Hyperparameter adjustments to consider
+
+        ## If INVESTIGATE Recommended
+        - Likely root causes to check
+        - Data quality checks to run
+        - External factors to consider
+
+  - stepId: generate-alerts
+    name: Generate Monitoring Alerts
+    type: conditional
+    config:
+      condition: "{{action}} != 'NO_ACTION'"
+      then:
+        - stepId: store-alert
+          type: tool
+          tool: memory_store
+          config:
+            namespace: ml-alerts
+            key: "{{model_name}}/{{timestamp}}"
+            value:
+              alert_id: "{{alert_id}}"
+              model_name: "{{model_name}}"
+              model_version: "{{production_version}}"
+              severity: "{{severity}}"
+              action_required: "{{action}}"
+              drift_summary:
+                data_drift_level: "{{data_drift_level}}"
+                prediction_drift_level: "{{prediction_drift_level}}"
+                top_drifted_features: "{{top_drifted_features}}"
+              performance_summary:
+                degradation_detected: "{{degradation_detected}}"
+                metrics_affected: "{{metrics_affected}}"
+              recommendation: "{{recommendation}}"
+              created_at: "{{timestamp}}"
+              acknowledged: false
+
+  - stepId: store-monitoring-report
+    name: Store Monitoring Report
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-monitoring-reports
+      key: "{{model_name}}/{{report_date}}"
+      ttl: 2592000
+      value:
+        model_name: "{{model_name}}"
+        model_version: "{{production_version}}"
+        report_period:
+          start: "{{window_start}}"
+          end: "{{window_end}}"
+        data_drift_report: "{{data_drift_report}}"
+        prediction_drift_report: "{{prediction_drift_report}}"
+        performance_report: "{{performance_report}}"
+        action_taken: "{{action}}"
+        generated_at: "{{timestamp}}"

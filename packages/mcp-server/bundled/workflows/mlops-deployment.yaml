@@ -1,0 +1,267 @@
+workflowId: mlops-deployment
+name: MLOps Deployment Pipeline
+description: Automate model deployment from registry to production with validation gates
+version: "1.0.0"
+category: mlops
+tags:
+  - mlops
+  - deployment
+  - automation
+  - production
+
+metadata:
+  requiredAbilities:
+    - mlops
+    - infrastructure
+    - deployment
+  estimatedDuration: 300
+  complexity: high
+
+steps:
+  - stepId: fetch-model
+    name: Fetch Model from Registry
+    type: tool
+    timeout: 30000
+    tool: memory_retrieve
+    config:
+      namespace: ml-model-registry
+      key: "{{model_name}}/versions/{{version}}"
+
+  - stepId: validate-deployment-readiness
+    name: Validate Deployment Readiness
+    type: prompt
+    timeout: 120000
+    config:
+      agent: mlops-engineer
+      task: |
+        Validate model is ready for deployment.
+
+        ## Pre-Deployment Checklist
+
+        1. **Model Artifact Validation**:
+           - [ ] Model file exists and is accessible
+           - [ ] Checksum matches registry
+           - [ ] Model loads successfully
+
+        2. **Evaluation Gate**:
+           - [ ] Model passed evaluation workflow
+           - [ ] Metrics meet production thresholds
+           - [ ] Fairness audit passed
+
+        3. **Schema Validation**:
+           - [ ] Input schema documented
+           - [ ] Output schema documented
+           - [ ] Feature list matches training
+
+        4. **Dependency Validation**:
+           - [ ] All dependencies available
+           - [ ] Version compatibility verified
+           - [ ] No security vulnerabilities in deps
+
+        5. **Configuration Validation**:
+           - [ ] Serving config defined
+           - [ ] Resource requirements specified
+           - [ ] Scaling parameters set
+
+        Return: READY / NOT_READY with blocking issues
+
+  - stepId: generate-infrastructure
+    name: Generate Infrastructure Code
+    type: prompt
+    timeout: 180000
+    config:
+      agent: mlops-engineer
+      task: |
+        Generate infrastructure-as-code for model deployment.
+
+        ## Infrastructure Requirements
+
+        Based on model requirements:
+        - Model size: {{model_size}}
+        - Expected QPS: {{expected_qps}}
+        - Latency SLA: {{latency_sla}}
+        - Availability SLA: {{availability_sla}}
+
+        ## Generate Artifacts
+
+        1. **Kubernetes Deployment**:
+           - Complete deployment spec with replicas, resources, probes
+
+        2. **Service Configuration**:
+           - ClusterIP or LoadBalancer service
+
+        3. **Horizontal Pod Autoscaler**:
+           - CPU and memory-based scaling
+
+        4. **Resource Quotas**:
+           - CPU requests/limits
+           - Memory requests/limits
+           - GPU allocation (if needed)
+
+        5. **Health Checks**:
+           - Liveness probe configuration
+           - Readiness probe configuration
+
+  - stepId: deploy-canary
+    name: Deploy Canary
+    type: prompt
+    timeout: 120000
+    config:
+      agent: mlops-engineer
+      task: |
+        Deploy model as canary with limited traffic.
+
+        ## Canary Deployment Plan
+
+        1. **Traffic Split**:
+           - Production (current): 95%
+           - Canary (new): 5%
+
+        2. **Canary Configuration**:
+           - Duration: 1 hour minimum
+           - Success criteria: error rate < 0.1%, latency p99 < {{latency_sla}}
+           - Auto-rollback triggers
+
+        3. **Monitoring Setup**:
+           - Metrics to watch
+           - Alerting thresholds
+           - Dashboard links
+
+        4. **Rollback Procedure**:
+           - Immediate rollback command
+           - Traffic drain time
+           - Verification steps
+
+  - stepId: monitor-canary
+    name: Monitor Canary Health
+    type: prompt
+    timeout: 60000
+    config:
+      agent: mlops-engineer
+      task: |
+        Analyze canary deployment health.
+
+        ## Canary Health Check
+
+        1. **Error Rate**:
+           - Canary: {{canary_error_rate}}
+           - Production: {{prod_error_rate}}
+           - Delta: {{error_delta}}
+           - Status: OK / WARNING / CRITICAL
+
+        2. **Latency**:
+           - Canary P50: {{canary_p50}}
+           - Canary P99: {{canary_p99}}
+           - Production P50: {{prod_p50}}
+           - Production P99: {{prod_p99}}
+           - Status: OK / WARNING / CRITICAL
+
+        3. **Model Metrics**:
+           - Prediction distribution comparison
+           - Confidence score distribution
+           - Feature value ranges
+
+        4. **Decision**:
+           - PROMOTE: Canary healthy, proceed to full rollout
+           - HOLD: Needs more observation
+           - ROLLBACK: Issues detected
+
+  - stepId: handle-promote
+    name: Handle Promotion Decision
+    type: conditional
+    config:
+      condition: "{{canary_decision}} == 'PROMOTE'"
+      then:
+        - stepId: full-rollout
+          type: prompt
+          config:
+            agent: mlops-engineer
+            task: |
+              Execute full rollout of new model version.
+
+              ## Rollout Plan
+              1. Gradual traffic shift: 5% -> 25% -> 50% -> 100%
+              2. Monitoring at each step
+              3. Final verification
+
+  - stepId: handle-rollback
+    name: Handle Rollback Decision
+    type: conditional
+    config:
+      condition: "{{canary_decision}} == 'ROLLBACK'"
+      then:
+        - stepId: execute-rollback
+          type: prompt
+          config:
+            agent: mlops-engineer
+            task: |
+              Execute rollback to previous version.
+
+              ## Rollback Steps
+              1. Shift traffic back to production
+              2. Scale down canary
+              3. Document incident
+              4. Create follow-up tasks
+
+  - stepId: update-registry
+    name: Update Model Registry
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-model-registry
+      key: "{{model_name}}/versions/{{version}}"
+      merge: true
+      value:
+        status: "{{final_status}}"
+        deployment_completed_at: "{{timestamp}}"
+        deployment_environment: "production"
+        serving_endpoint: "{{endpoint_url}}"
+
+  - stepId: notify-stakeholders
+    name: Notify Stakeholders
+    type: prompt
+    timeout: 60000
+    config:
+      agent: writer
+      task: |
+        Create deployment notification.
+
+        ## Deployment Notification
+
+        **Subject**: Model Deployment: {{model_name}} v{{version}}
+
+        **Status**: {{deployment_status}}
+
+        **Details**:
+        - Deployed at: {{timestamp}}
+        - Environment: Production
+        - Endpoint: {{endpoint_url}}
+        - Traffic: 100%
+
+        **Metrics**:
+        - Current error rate: {{error_rate}}
+        - P99 latency: {{latency}}
+
+        **Rollback Command**:
+        ax deploy rollback {{model_name}} --to-version {{previous_version}}
+
+  - stepId: store-deployment-event
+    name: Log Deployment Event
+    type: tool
+    timeout: 10000
+    tool: memory_store
+    config:
+      namespace: ml-deployment-events
+      key: "{{model_name}}/{{timestamp}}"
+      ttl: 31536000
+      value:
+        event_type: "deployment"
+        model_name: "{{model_name}}"
+        version: "{{version}}"
+        status: "{{deployment_status}}"
+        environment: "production"
+        canary_duration: "{{canary_duration}}"
+        rollback_occurred: "{{rollback_occurred}}"
+        deployed_by: "{{user}}"
+        timestamp: "{{timestamp}}"

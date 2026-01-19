@@ -1,0 +1,197 @@
+workflowId: std/implementation
+version: "1.0.0"
+name: Standard Implementation
+description: |
+  Structured workflow for implementing new features or functionality.
+  Covers requirements analysis, design, implementation, and testing.
+
+metadata:
+  category: implementation
+  tags:
+    - implementation
+    - feature
+    - development
+  estimatedDuration: 180000
+
+steps:
+  - stepId: analyze
+    name: Analyze Requirements
+    type: prompt
+    config:
+      prompt: |
+        You are implementing a new feature. First, analyze the requirements thoroughly.
+
+        ## Feature Specification
+        ${input.spec}
+
+        ## Acceptance Criteria
+        ${input.acceptanceCriteria}
+
+        ## Context
+        ${input.context}
+
+        Analyze and clarify:
+
+        1. **Functional Requirements**
+           - What must the feature do?
+           - User stories or use cases
+           - Input/output expectations
+
+        2. **Non-Functional Requirements**
+           - Performance expectations
+           - Security considerations
+           - Scalability needs
+           - Accessibility requirements
+
+        3. **Constraints**
+           - Technical constraints
+           - Time/resource constraints
+           - Dependencies on other features
+
+        4. **Open Questions**
+           - Ambiguities in requirements
+           - Decisions needed
+           - Assumptions being made
+
+        5. **Out of Scope**
+           - What this feature explicitly does NOT include
+           - Future enhancements to consider later
+    timeoutMs: 60000
+
+  - stepId: design
+    name: Design Solution
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your requirements analysis:
+        ${previousOutputs.analyze}
+
+        Design the implementation:
+
+        ## Architecture Overview
+        High-level description of how the feature fits into the system.
+
+        ## Component Design
+
+        ### New Components
+        For each new component/module:
+        - Name and purpose
+        - Responsibilities
+        - Public interface
+        - Dependencies
+
+        ### Modified Components
+        For each existing component to modify:
+        - What changes needed
+        - Why these changes
+        - Impact on existing functionality
+
+        ## Data Model
+        - New data structures/schemas
+        - Database changes (if any)
+        - Data flow description
+
+        ## API Design (if applicable)
+        - Endpoints/methods
+        - Request/response formats
+        - Error handling
+
+        ## Integration Points
+        - How this connects to existing code
+        - External service integrations
+        - Event/message flows
+
+        ## Design Decisions
+        Key decisions made and alternatives considered.
+    timeoutMs: 90000
+
+  - stepId: implement
+    name: Implementation Plan
+    type: prompt
+    dependencies:
+      - design
+    config:
+      prompt: |
+        Based on your design:
+        ${previousOutputs.design}
+
+        Create an implementation plan:
+
+        ## Implementation Steps
+        Break down into small, mergeable increments:
+
+        ### Phase 1: Foundation
+        - Step 1.1: [Description]
+        - Step 1.2: [Description]
+
+        ### Phase 2: Core Logic
+        - Step 2.1: [Description]
+        - Step 2.2: [Description]
+
+        ### Phase 3: Integration
+        - Step 3.1: [Description]
+        - Step 3.2: [Description]
+
+        ## Code Structure
+        - Files to create
+        - Files to modify
+        - Suggested directory structure
+
+        ## Testing Plan
+        - Unit tests to write
+        - Integration tests needed
+        - Manual testing scenarios
+
+        ## Dependencies
+        - External packages needed
+        - Internal dependencies
+        - Order of implementation
+
+        ## Risk Mitigation
+        - Potential issues and how to address them
+        - Feature flags if needed
+        - Rollback strategy
+    timeoutMs: 60000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - implement
+    config:
+      prompt: |
+        Summarize the implementation plan:
+        ${previousOutputs.implement}
+
+        ## Feature Summary
+        One paragraph describing the feature and approach.
+
+        ## Deliverables
+        - [ ] Component 1
+        - [ ] Component 2
+        - [ ] Tests
+        - [ ] Documentation
+
+        ## Files to Create/Modify
+        List of files with brief description of changes.
+
+        ## Dependencies
+        - External packages: [list]
+        - Internal modules: [list]
+
+        ## Testing Checklist
+        - [ ] Unit tests for [component]
+        - [ ] Integration test for [flow]
+        - [ ] Manual testing of [scenario]
+
+        ## Definition of Done
+        - [ ] All acceptance criteria met
+        - [ ] Tests passing
+        - [ ] Code reviewed
+        - [ ] Documentation updated
+
+        ## Estimated Effort
+        Simple/Medium/Complex and brief justification.
+    timeoutMs: 30000

@@ -1,0 +1,94 @@
+workflowId: code-reviewer
+version: "1.0.0"
+name: Code Review Workflow
+description: Automated code review with best practices checks, security analysis, and suggestions
+
+steps:
+  - stepId: analyze-changes
+    type: prompt
+    name: Analyze Code Changes
+    timeout: 60000
+    config:
+      agentId: quality
+      prompt: |
+        Analyze the provided code changes:
+        1. Identify files changed and their types
+        2. Summarize the nature of changes
+        3. List affected components/modules
+
+  - stepId: check-style
+    type: tool
+    name: Style and Lint Check
+    timeout: 30000
+    retryPolicy:
+      maxAttempts: 2
+      backoffMs: 1000
+    config:
+      tool: guard_check
+      args:
+        policyId: code-style
+        categories:
+          - formatting
+          - naming
+          - imports
+
+  - stepId: security-scan
+    type: tool
+    name: Security Analysis
+    timeout: 60000
+    config:
+      tool: bugfix_scan
+      args:
+        categories:
+          - security
+          - injection
+          - authentication
+        minSeverity: medium
+
+  - stepId: review-logic
+    type: prompt
+    name: Logic Review
+    timeout: 120000
+    config:
+      agentId: backend
+      prompt: |
+        Review the code for:
+        1. Logic errors and edge cases
+        2. Error handling completeness
+        3. Performance implications
+        4. Code duplication
+        Provide specific line references for issues.
+
+  - stepId: suggest-improvements
+    type: prompt
+    name: Improvement Suggestions
+    timeout: 60000
+    config:
+      agentId: architecture
+      prompt: |
+        Based on the analysis, suggest:
+        1. Refactoring opportunities
+        2. Design pattern applications
+        3. Test coverage improvements
+        4. Documentation needs
+
+  - stepId: generate-report
+    type: tool
+    name: Generate Review Report
+    timeout: 30000
+    config:
+      tool: memory_store
+      args:
+        namespace: code-reviews
+        format: markdown
+
+metadata:
+  category: quality
+  tags:
+    - code-review
+    - quality
+    - automated
+  requiredAbilities:
+    - code-review
+    - security
+    - clean-code

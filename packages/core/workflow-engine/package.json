@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/workflow-engine",
-  "version": "13.4.4",
+  "version": "13.4.5",
   "type": "module",
   "description": "Workflow execution engine - executes workflows following contract invariants",
   "license": "BUSL-1.1",

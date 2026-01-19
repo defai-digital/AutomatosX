@@ -903,14 +903,24 @@ export class EnhancedAgentExecutor implements AgentExecutor {
 
   /**
    * Substitute variables in template
+   * Supports both ${...} and {{...}} syntax:
+   * - ${input}, {{input}}, ${input.field}, {{input.field}}
+   * - ${previousOutputs.stepId}, {{previousOutputs.stepId}}
+   * - ${steps.stepId.output}, {{steps.stepId.output}} (alias for previousOutputs)
+   * - ${agent.field}, {{agent.field}}
    */
   private substituteVariables(
     template: string,
     context: StepExecutionContext,
     agentProfile: { description?: string; systemPrompt?: string; agentId: string }
   ): string {
-    return template.replace(/\$\{([^}]+)\}/g, (match, path) => {
-      const parts = path.split('.');
+    // Match both ${...} and {{...}} template syntax
+    return template.replace(/(?:\$\{([^}]+)\}|\{\{([^}]+)\}\})/g, (match, dollarExpr, mustacheExpr) => {
+      // Use whichever capture group matched
+      const pathStr = dollarExpr ?? mustacheExpr;
+      if (!pathStr) return match;
+
+      const parts = pathStr.trim().split('.');
       let value: unknown;
 
       switch (parts[0]) {
@@ -924,6 +934,12 @@ export class EnhancedAgentExecutor implements AgentExecutor {
           }
           break;
         case 'previousOutputs':
+          if (parts.length > 1) {
+            value = this.getNestedValue(context.previousOutputs, parts.slice(1));
+          }
+          break;
+        case 'steps':
+          // steps.stepId.output is an alias for previousOutputs.stepId.output
           if (parts.length > 1) {
             value = this.getNestedValue(context.previousOutputs, parts.slice(1));
           }

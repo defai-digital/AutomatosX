@@ -3824,7 +3824,7 @@ export function createDashboardHTML(): string {
                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🤖</div>
                         <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>No agents found</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                          {agentFilter === 'all'
+                          {filter === 'all'
                             ? 'Register agents using ax_agent_register or the CLI'
                             : 'Try changing the filter to see more results'}
                         </div>

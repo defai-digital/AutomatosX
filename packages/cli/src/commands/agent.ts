@@ -6,8 +6,10 @@
  */
 
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createPersistentAgentRegistry,
@@ -23,11 +25,37 @@ import type { AgentProfile, TraceEvent, TraceHierarchy } from '@defai.digital/co
 import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 import { bootstrap, getTraceStore, getProviderRegistry } from '../bootstrap.js';
 
-// Storage path for persistent agents (matches MCP server)
-const AGENT_STORAGE_PATH = path.join(process.cwd(), DATA_DIR_NAME, AGENTS_FILENAME);
+// Get the directory of this module for finding bundled examples
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Path to example agents (relative to workspace root)
-const EXAMPLE_AGENTS_DIR = path.join(process.cwd(), 'examples', 'agents');
+// Storage path for persistent agents (uses home directory - matches MCP server)
+// This ensures agents persist across projects and are accessible from any working directory
+const AGENT_STORAGE_PATH = path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
+
+/**
+ * Get path to example agents directory.
+ * Checks multiple locations to support both development and npm install scenarios.
+ */
+function getExampleAgentsDir(): string {
+  // Try development path (when running from source repo)
+  const devPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'agents');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  // Try relative to cwd (for legacy support)
+  const cwdPath = path.join(process.cwd(), 'examples', 'agents');
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  // Return most likely path even if it doesn't exist (will be handled by caller)
+  return devPath;
+}
+
+// Path to example agents
+const EXAMPLE_AGENTS_DIR = getExampleAgentsDir();
 
 /**
  * Compare semver versions to check if newVersion is newer than oldVersion

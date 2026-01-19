@@ -64,6 +64,7 @@ const QUOTE_CHARS = {
 const TEMPLATE_CONTEXT = {
   INPUT: 'input',
   PREVIOUS_OUTPUTS: 'previousOutputs',
+  STEPS: 'steps',
   AGENT: 'agent',
 } as const;
 
@@ -770,7 +771,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
   /**
    * Substitute template variables in a string
-   * Supports: ${input}, ${input.field}, ${previousOutputs.stepId}, ${agent.field}
+   * Supports both ${...} and {{...}} syntax:
+   * - ${input}, {{input}}, ${input.field}, {{input.field}}
+   * - ${previousOutputs.stepId}, {{previousOutputs.stepId}}
+   * - ${steps.stepId.output}, {{steps.stepId.output}} (alias for previousOutputs)
+   * - ${agent.field}, {{agent.field}}
    * Also supports fallback syntax: ${input.field || 'default'}
    */
   private substituteVariables(
@@ -780,7 +785,13 @@ export class DefaultAgentExecutor implements AgentExecutor {
   ): string {
     // Use precompiled regex (reset lastIndex since it's global)
     const regex = new RegExp(DefaultAgentExecutor.TEMPLATE_VAR_REGEX.source, 'g');
-    return template.replace(regex, (match, expr) => {
+    return template.replace(regex, (match, dollarExpr, mustacheExpr) => {
+      // Use whichever capture group matched (${...} or {{...}})
+      const expr = dollarExpr ?? mustacheExpr;
+      if (!expr) {
+        return match; // Should not happen, but handle gracefully
+      }
+
       // Check for fallback syntax: expression || defaultValue
       const fallbackMatch = DefaultAgentExecutor.FALLBACK_REGEX.exec(expr.trim());
       let path: string;
@@ -817,6 +828,12 @@ export class DefaultAgentExecutor implements AgentExecutor {
           }
           break;
         case TEMPLATE_CONTEXT.PREVIOUS_OUTPUTS:
+          if (nestedPath.length > 0) {
+            resolvedValue = this.getNestedValue(context.previousOutputs, nestedPath);
+          }
+          break;
+        case TEMPLATE_CONTEXT.STEPS:
+          // steps.stepId.output is an alias for previousOutputs.stepId.output
           if (nestedPath.length > 0) {
             resolvedValue = this.getNestedValue(context.previousOutputs, nestedPath);
           }
@@ -862,7 +879,8 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
   // Precompiled regex patterns (avoid repeated compilation)
   private static readonly NUMERIC_REGEX = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
-  private static readonly TEMPLATE_VAR_REGEX = /\$\{([^}]+)\}/g;
+  // Matches both ${...} and {{...}} template syntax
+  private static readonly TEMPLATE_VAR_REGEX = /(?:\$\{([^}]+)\}|\{\{([^}]+)\}\})/g;
   private static readonly FALLBACK_REGEX = /^(.+?)\s*\|\|\s*(.+)$/;
 
   /**

@@ -1505,6 +1505,17 @@ export function createDashboardHTML(): string {
       .conversation-message .metadata-badges {
         opacity: 1 !important;
       }
+
+      .conversation-message .message-bubble {
+        padding: 16px !important;
+      }
+    }
+
+    /* Remove border from last conversation message */
+    .conversation-message:last-child {
+      border-bottom: none !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
     }
 
     @media (max-width: 480px) {
@@ -3033,24 +3044,27 @@ export function createDashboardHTML(): string {
             onMouseEnter={() => setShowMeta(true)}
             onMouseLeave={() => setShowMeta(false)}
             style={{
-              marginBottom: '24px',
+              marginBottom: '32px',
+              paddingBottom: '24px',
+              borderBottom: '1px solid var(--border-color)',
             }}
           >
             <div className="message-container" style={{
               display: 'flex',
-              gap: '12px',
+              gap: '16px',
             }}>
               {/* Avatar - hidden on mobile via CSS class */}
               <div className="message-avatar" style={{
-                width: '36px',
-                height: '36px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '50%',
-                background: isAsk ? 'rgba(88, 166, 255, 0.15)' : 'rgba(63, 185, 80, 0.15)',
+                background: isAsk ? 'rgba(88, 166, 255, 0.2)' : 'rgba(63, 185, 80, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
+                fontSize: '20px',
                 flexShrink: 0,
+                border: isAsk ? '2px solid rgba(88, 166, 255, 0.3)' : '2px solid rgba(63, 185, 80, 0.3)',
               }}>
                 {isAsk ? '👤' : '🤖'}
               </div>
@@ -3061,16 +3075,18 @@ export function createDashboardHTML(): string {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px',
+                  gap: '12px',
+                  marginBottom: '12px',
                   flexWrap: 'wrap',
                 }}>
                   <span style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
+                    fontSize: '14px',
+                    fontWeight: 700,
                     color: isAsk ? 'var(--accent-blue)' : 'var(--accent-green)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
                   }}>
-                    {label}
+                    {isAsk ? '📤 ' : '📥 '}{label}
                   </span>
 
                   {/* Metadata badges - hidden by default, show on hover */}
@@ -3109,19 +3125,21 @@ export function createDashboardHTML(): string {
                 <div
                   className="message-bubble"
                   style={{
-                    background: isAsk ? 'rgba(88, 166, 255, 0.06)' : 'var(--bg-tertiary)',
-                    border: isAsk ? '1px solid rgba(88, 166, 255, 0.15)' : '1px solid var(--border-color)',
-                    borderLeft: \`4px solid \${isAsk ? 'var(--accent-blue)' : 'var(--accent-green)'}\`,
-                    padding: '16px',
+                    background: isAsk ? 'rgba(88, 166, 255, 0.08)' : 'rgba(63, 185, 80, 0.04)',
+                    border: isAsk ? '1px solid rgba(88, 166, 255, 0.2)' : '1px solid rgba(63, 185, 80, 0.15)',
+                    borderLeft: \`5px solid \${isAsk ? 'var(--accent-blue)' : 'var(--accent-green)'}\`,
+                    padding: '20px 24px',
                     borderRadius: '4px 12px 12px 4px',
-                    maxWidth: '75ch',
+                    maxWidth: '100%',
+                    boxShadow: isAsk ? '0 2px 8px rgba(88, 166, 255, 0.08)' : '0 2px 8px rgba(0, 0, 0, 0.1)',
                   }}
                 >
                   {/* Rendered content with code blocks */}
                   <div style={{
-                    fontSize: '14px',
-                    lineHeight: '1.7',
+                    fontSize: '15px',
+                    lineHeight: '1.8',
                     color: 'var(--text-primary)',
+                    letterSpacing: '0.01em',
                   }}>
                     {contentParts.map((part, idx) => {
                       if (part.type === 'code') {
@@ -3131,6 +3149,7 @@ export function createDashboardHTML(): string {
                         <div key={idx} style={{
                           whiteSpace: 'pre-wrap',
                           wordBreak: 'break-word',
+                          marginBottom: idx < contentParts.length - 1 ? '12px' : 0,
                         }}>
                           {part.content}
                         </div>
@@ -3257,19 +3276,24 @@ export function createDashboardHTML(): string {
 
           {/* Provider Sub-tabs for Conversations */}
           {providerKeys.length > 0 && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-                <span className="card-title">Conversations</span>
-                <span className="card-badge">{providerKeys.length} provider{providerKeys.length !== 1 ? 's' : ''}</span>
+            <div className="card" style={{ marginBottom: 16, border: '2px solid var(--accent-purple)', borderRadius: '12px' }}>
+              <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0, background: 'rgba(163, 113, 247, 0.08)' }}>
+                <span className="card-title" style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  💬 Conversations
+                </span>
+                <span className="card-badge" style={{ background: 'var(--accent-purple)', color: 'white' }}>
+                  {providerKeys.length} provider{providerKeys.length !== 1 ? 's' : ''}
+                </span>
               </div>
 
               {/* Provider tabs */}
               <div style={{
                 display: 'flex',
-                gap: 0,
-                borderBottom: '1px solid var(--border-color)',
-                padding: '0 16px',
-                overflowX: 'auto'
+                gap: '8px',
+                padding: '12px 16px',
+                overflowX: 'auto',
+                background: 'var(--bg-tertiary)',
+                borderBottom: '2px solid var(--border-color)',
               }}>
                 {providerKeys.map(providerKey => {
                   const group = providerGroups[providerKey];
@@ -3282,34 +3306,43 @@ export function createDashboardHTML(): string {
                       key={providerKey}
                       onClick={() => setActiveProviderTab(providerKey)}
                       style={{
-                        padding: '12px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: isActive ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                        padding: '10px 16px',
+                        background: isActive ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                        border: isActive ? '2px solid var(--accent-blue)' : '2px solid var(--border-color)',
+                        borderRadius: '8px',
+                        color: isActive ? 'white' : 'var(--text-secondary)',
                         cursor: 'pointer',
                         fontSize: 13,
-                        fontWeight: isActive ? 600 : 400,
+                        fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 8,
+                        gap: 10,
                         whiteSpace: 'nowrap',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.15s ease',
+                        boxShadow: isActive ? '0 2px 8px rgba(88, 166, 255, 0.3)' : 'none',
                       }}
                     >
                       <span style={{
-                        background: isActive ? 'var(--accent-purple)' : 'var(--bg-tertiary)',
-                        color: isActive ? 'white' : 'var(--text-secondary)',
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600
+                        background: isActive ? 'rgba(255, 255, 255, 0.2)' : 'var(--bg-tertiary)',
+                        color: isActive ? 'white' : 'var(--text-primary)',
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
                       }}>
                         {providerKey}
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span style={{
+                        fontSize: 12,
+                        color: isActive ? 'rgba(255, 255, 255, 0.9)' : 'var(--text-muted)',
+                        background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'var(--bg-tertiary)',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                      }}>
                         {askCount > 0 && \`\${askCount} ask\`}
-                        {askCount > 0 && replyCount > 0 && ' / '}
+                        {askCount > 0 && replyCount > 0 && ' · '}
                         {replyCount > 0 && \`\${replyCount} reply\`}
                       </span>
                     </button>
@@ -3322,7 +3355,13 @@ export function createDashboardHTML(): string {
                 <section
                   aria-label="Chat History"
                   role="log"
-                  style={{ padding: 16 }}
+                  style={{
+                    padding: '24px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '0 0 8px 8px',
+                    maxHeight: '80vh',
+                    overflowY: 'auto',
+                  }}
                 >
                   {providerGroups[effectiveActiveTab].model && (
                     <div style={{
@@ -3363,12 +3402,16 @@ export function createDashboardHTML(): string {
                     <div style={{
                       color: 'var(--text-muted)',
                       textAlign: 'center',
-                      padding: '48px 24px',
+                      padding: '64px 32px',
                       background: 'var(--bg-tertiary)',
-                      borderRadius: '8px',
+                      borderRadius: '12px',
+                      border: '2px dashed var(--border-color)',
                     }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.5 }}>💬</div>
-                      <div>No conversation data available</div>
+                      <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>💬</div>
+                      <div style={{ fontSize: '16px', fontWeight: 500 }}>No conversation data available</div>
+                      <div style={{ fontSize: '13px', marginTop: '8px', opacity: 0.7 }}>
+                        Conversation history will appear here when available
+                      </div>
                     </div>
                   )}
                 </section>

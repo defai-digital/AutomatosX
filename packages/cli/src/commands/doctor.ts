@@ -15,7 +15,7 @@ import { constants } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
-import { DATA_DIR_NAME } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, TIMEOUT_HEALTH_CHECK } from '@defai.digital/contracts';
 import { COLORS } from '../utils/terminal.js';
 
 const execAsync = promisify(exec);
@@ -129,10 +129,8 @@ const PLATFORM_COMMANDS = {
  */
 const VERSION_FLAG = '--version';
 
-/**
- * Timeout for credential checks (ms)
- */
-const CREDENTIAL_CHECK_TIMEOUT = 5000;
+/** Timeout for credential checks - use standard health check timeout */
+const CREDENTIAL_CHECK_TIMEOUT = TIMEOUT_HEALTH_CHECK;
 
 /**
  * Doctor-specific status icons

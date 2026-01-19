@@ -2,6 +2,7 @@
  * Research MCP Tools
  *
  * Tools for deep research with live documentation fetching and knowledge synthesis.
+ * Integrates with trace store for dashboard visibility.
  *
  * Invariants:
  * - INV-RSH-001: All sources cited in synthesis
@@ -9,18 +10,23 @@
  * - INV-RSH-003: Stale data (>24h) flagged with warning
  */
 
+import { randomUUID } from 'node:crypto';
 import type { MCPTool, ToolHandler } from '../types.js';
 import type {
   ResearchRequest,
   FetchRequest,
   SynthesisRequest,
   ResearchSource,
+  TraceEvent,
+  TraceHierarchy,
 } from '@defai.digital/contracts';
 import {
   ResearchRequestSchema,
   FetchRequestSchema,
   SynthesisRequestSchema,
   ResearchSourceSchema,
+  getErrorMessage,
+  createRootTraceHierarchy,
 } from '@defai.digital/contracts';
 import {
   createResearchAgent,
@@ -28,6 +34,7 @@ import {
   createStubSynthesizer,
   type ResearchAgent,
 } from '@defai.digital/research-domain';
+import { getTraceStore } from '../bootstrap.js';
 
 // ============================================================================
 // Lazy-loaded Research Agent Singleton
@@ -244,8 +251,38 @@ export const researchSynthesizeTool: MCPTool = {
 
 /**
  * Handler for research_query tool
+ * Records traces for dashboard visibility - this is a high-value LLM operation
  */
 export const handleResearchQuery: ToolHandler = async (args) => {
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'research-query',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'research_query',
+      query: (args.query as string).slice(0, 200),
+      sources: args.sources ?? ['web'],
+      maxSources: args.maxSources ?? 5,
+      synthesize: args.synthesize ?? true,
+    },
+  };
+  await traceStore.write(startEvent);
+
   try {
     // Validate and parse input
     const request: ResearchRequest = ResearchRequestSchema.parse({
@@ -261,6 +298,33 @@ export const handleResearchQuery: ToolHandler = async (args) => {
 
     const agent = getResearchAgent();
     const result = await agent.research(request);
+
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.durationMs,
+      status: 'success',
+      context: {
+        workflowId: 'research-query',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: true,
+        resultId: result.resultId,
+        sourceCount: result.sources.length,
+        synthesisLength: result.synthesis.length,
+        codeExampleCount: result.codeExamples.length,
+        confidence: result.confidence,
+        warningCount: result.warnings.length,
+        tool: 'research_query',
+      },
+    });
 
     return {
       content: [
@@ -292,7 +356,30 @@ export const handleResearchQuery: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'research-query',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        tool: 'research_query',
+      },
+    });
+
     return {
       content: [
         {
@@ -310,8 +397,36 @@ export const handleResearchQuery: ToolHandler = async (args) => {
 
 /**
  * Handler for research_fetch tool
+ * Records traces for dashboard visibility - URL fetching with code extraction
  */
 export const handleResearchFetch: ToolHandler = async (args) => {
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'research-fetch',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'research_fetch',
+      url: args.url,
+      extractCode: args.extractCode ?? true,
+    },
+  };
+  await traceStore.write(startEvent);
+
   try {
     // Validate and parse input
     const request: FetchRequest = FetchRequestSchema.parse({
@@ -323,6 +438,32 @@ export const handleResearchFetch: ToolHandler = async (args) => {
 
     const agent = getResearchAgent();
     const result = await agent.fetch(request);
+
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: result.success ? 'success' : 'failure',
+      context: {
+        workflowId: 'research-fetch',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: result.success,
+        url: result.url,
+        title: result.title,
+        contentLength: result.content?.length ?? 0,
+        codeBlockCount: result.codeBlocks?.length ?? 0,
+        reliability: result.reliability,
+        tool: 'research_fetch',
+      },
+    });
 
     return {
       content: [
@@ -346,7 +487,31 @@ export const handleResearchFetch: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'research-fetch',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        url: args.url,
+        tool: 'research_fetch',
+      },
+    });
+
     return {
       content: [
         {
@@ -364,8 +529,40 @@ export const handleResearchFetch: ToolHandler = async (args) => {
 
 /**
  * Handler for research_synthesize tool
+ * Records traces for dashboard visibility - LLM synthesis of multiple sources
  */
 export const handleResearchSynthesize: ToolHandler = async (args) => {
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  const sourceCount = (args.sources as unknown[])?.length ?? 0;
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'research-synthesize',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'research_synthesize',
+      query: (args.query as string).slice(0, 200),
+      sourceCount,
+      style: args.style ?? 'detailed',
+      includeCode: args.includeCode ?? true,
+    },
+  };
+  await traceStore.write(startEvent);
+
   try {
     // Parse and validate sources
     const sources: ResearchSource[] = (args.sources as unknown[]).map((s) =>
@@ -384,6 +581,30 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
     const agent = getResearchAgent();
     const synthesis = await agent.synthesize(request);
 
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'success',
+      context: {
+        workflowId: 'research-synthesize',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: true,
+        synthesisLength: synthesis.length,
+        sourcesUsed: sources.length,
+        style: args.style ?? 'detailed',
+        tool: 'research_synthesize',
+      },
+    });
+
     return {
       content: [
         {
@@ -400,7 +621,31 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'research-synthesize',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        sourceCount,
+        tool: 'research_synthesize',
+      },
+    });
+
     return {
       content: [
         {

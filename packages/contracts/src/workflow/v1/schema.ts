@@ -46,6 +46,7 @@ export type StepType = z.infer<typeof StepTypeSchema>;
 
 /**
  * Individual workflow step
+ * INV-WF-003: Schema strictness rejects unknown fields
  */
 export const WorkflowStepSchema = z.object({
   stepId: z
@@ -55,17 +56,23 @@ export const WorkflowStepSchema = z.object({
     .regex(/^[a-z][a-z0-9-]*$/),
   type: StepTypeSchema,
   name: z.string().max(128).optional(),
+  description: z.string().max(512).optional(),
   inputSchema: SchemaReferenceSchema.optional(),
   outputSchema: SchemaReferenceSchema.optional(),
   retryPolicy: RetryPolicySchema.optional(),
   timeout: z.number().int().min(RETRY_DELAY_DEFAULT).max(TIMEOUT_SESSION).optional(),
   config: z.record(z.unknown()).optional(),
-});
+  /** Step IDs this step depends on */
+  dependencies: z.array(z.string().max(64)).optional(),
+  /** Tool name for tool-type steps */
+  tool: z.string().max(128).optional(),
+}).strict();
 
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
 
 /**
  * Complete workflow definition
+ * INV-WF-003: Schema strictness rejects unknown fields
  */
 export const WorkflowSchema = z.object({
   workflowId: z
@@ -76,9 +83,11 @@ export const WorkflowSchema = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   name: z.string().max(128).optional(),
   description: z.string().max(512).optional(),
+  category: z.string().max(64).optional(),
+  tags: z.array(z.string().max(64)).optional(),
   steps: z.array(WorkflowStepSchema).min(1),
   metadata: z.record(z.unknown()).optional(),
-});
+}).strict();
 
 export type Workflow = z.infer<typeof WorkflowSchema>;
 

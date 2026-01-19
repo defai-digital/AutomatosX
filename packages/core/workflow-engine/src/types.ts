@@ -3,6 +3,7 @@ import type {
   WorkflowStep,
   RetryPolicy,
 } from '@defai.digital/contracts';
+import type { StepGuardEngine } from './step-guard.js';
 
 /**
  * Result of a step execution
@@ -89,6 +90,21 @@ export interface WorkflowRunnerConfig {
    * Called after each step completes
    */
   onStepComplete?: ((step: WorkflowStep, result: StepResult) => void) | undefined;
+
+  /**
+   * Step guard engine for pre/post step validation (INV-WF-GUARD-001, INV-WF-GUARD-002)
+   */
+  stepGuardEngine?: StepGuardEngine | undefined;
+
+  /**
+   * Execution ID for guard context tracking
+   */
+  executionId?: string | undefined;
+
+  /**
+   * Agent ID for guard context
+   */
+  agentId?: string | undefined;
 }
 
 /**

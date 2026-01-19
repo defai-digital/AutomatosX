@@ -116,8 +116,12 @@ function parseStreamJSON(stdout: string): ParsedOutput {
     }
   }
 
+  // Join all streaming chunks directly without adding extra separators
+  // Each chunk already contains its own whitespace/newlines as appropriate
+  const content = contentChunks.join('');
+
   return {
-    content: contentChunks.join(''),
+    content,
     metadata: lastMetadata,
   };
 }

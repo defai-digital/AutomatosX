@@ -14,7 +14,7 @@ import type {
   MCPToolInvokeResponse,
   MCPToolMetadata,
 } from '@defai.digital/contracts';
-import { MCPEcosystemErrorCodes, parseToolFullName } from '@defai.digital/contracts';
+import { MCPEcosystemErrorCodes, parseToolFullName, getErrorMessage } from '@defai.digital/contracts';
 import type { ServerRegistryService } from './server-registry.js';
 import type { ToolDiscoveryService } from './tool-discovery.js';
 
@@ -150,12 +150,21 @@ export function createToolRouterService(
 
         // Call the tool with timeout
         const timeout = timeoutMs ?? defaultRequestTimeoutMs;
-        const result = await Promise.race([
-          activeClient.callTool(tool.toolName, args),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout')), timeout)
-          ),
-        ]);
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        let result: Awaited<ReturnType<typeof activeClient.callTool>>;
+        try {
+          result = await Promise.race([
+            activeClient.callTool(tool.toolName, args),
+            new Promise<never>((_, reject) => {
+              timeoutId = setTimeout(() => reject(new Error('Request timeout')), timeout);
+            }),
+          ]);
+        } finally {
+          // Clear timeout to prevent memory leak
+          if (timeoutId !== undefined) {
+            clearTimeout(timeoutId);
+          }
+        }
 
         return {
           success: true,
@@ -166,7 +175,7 @@ export function createToolRouterService(
           durationMs: Date.now() - startTime,
         };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         const resolvedServerId = serverId ?? 'unknown';
 
         // INV-MCP-ECO-301: Propagate error details

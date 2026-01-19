@@ -13,6 +13,7 @@ import {
   createDefaultCircuitBreakerConfig,
   createCircuitBreakerStats,
 } from './_contracts.js';
+import { getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * Circuit breaker error
@@ -195,7 +196,7 @@ export function createCircuitBreaker(
 
         emit({
           type: 'call-failure',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
           timestamp: new Date().toISOString(),
         });
 

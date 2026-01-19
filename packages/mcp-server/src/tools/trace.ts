@@ -5,8 +5,9 @@ import {
   errorResponse,
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
-import { LIMIT_TRACES } from '@defai.digital/contracts';
+import { LIMIT_TRACES, getErrorMessage } from '@defai.digital/contracts';
 import { getTraceStore } from '../bootstrap.js';
+import type { TraceTreeNode } from '@defai.digital/trace-domain';
 
 /**
  * Trace list tool definition
@@ -90,7 +91,7 @@ export const handleTraceList: ToolHandler = async (args) => {
     // Map to response format
     const traces = filtered.map((t) => ({
       id: t.traceId,
-      label: t.traceId.slice(0, 8),
+      label: t.name ?? t.traceId.slice(0, 8),
       status: t.status,
       durationMs: t.durationMs,
       eventCount: t.eventCount,
@@ -107,7 +108,7 @@ export const handleTraceList: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_LIST_ERROR',
-      error instanceof Error ? error.message : 'Failed to list traces'
+      getErrorMessage(error)
     );
   }
 };
@@ -179,7 +180,7 @@ export const handleTraceGet: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_GET_ERROR',
-      error instanceof Error ? error.message : 'Failed to get trace'
+      getErrorMessage(error)
     );
   }
 };
@@ -265,7 +266,7 @@ export const handleTraceAnalyze: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_ANALYZE_ERROR',
-      error instanceof Error ? error.message : 'Failed to analyze trace'
+      getErrorMessage(error)
     );
   }
 };
@@ -317,10 +318,7 @@ export const traceBySessionTool: MCPTool = {
 /**
  * Format a trace tree node for display
  */
-function formatTreeNode(
-  node: { trace: { traceId: string; status: string; durationMs?: number; agentId: string | undefined; traceDepth: number | undefined }; children: unknown[]; totalDurationMs?: number; totalEventCount: number },
-  indent: string = ''
-): string {
+function formatTreeNode(node: TraceTreeNode, indent: string = ''): string {
   const statusIcon = node.trace.status === 'success' ? '[OK]' :
     node.trace.status === 'failure' ? '[FAIL]' :
     node.trace.status === 'running' ? '[...]' : '[?]';
@@ -330,7 +328,7 @@ function formatTreeNode(
 
   const line = `${indent}${statusIcon} ${node.trace.traceId.slice(0, 8)}${agentLabel}${durationLabel}`;
 
-  const childLines = (node.children as typeof node[]).map((child, i, arr) => {
+  const childLines = node.children.map((child, i, arr) => {
     const isLast = i === arr.length - 1;
     const childIndent = indent + (isLast ? ' └─ ' : ' ├─ ');
     const grandchildIndent = indent + (isLast ? '    ' : ' │  ');
@@ -362,8 +360,8 @@ export const handleTraceTree: ToolHandler = async (args) => {
     const treeDisplay = formatTreeNode(tree);
 
     // Count nodes in tree
-    const countNodes = (node: typeof tree): number => {
-      return 1 + (node.children).reduce((sum, child) => sum + countNodes(child), 0);
+    const countNodes = (node: TraceTreeNode): number => {
+      return 1 + node.children.reduce((sum, child) => sum + countNodes(child), 0);
     };
     const totalTraces = countNodes(tree);
 
@@ -398,7 +396,7 @@ export const handleTraceTree: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_TREE_ERROR',
-      error instanceof Error ? error.message : 'Failed to get trace tree'
+      getErrorMessage(error)
     );
   }
 };
@@ -447,7 +445,7 @@ export const handleTraceCloseStuck: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_CLOSE_STUCK_ERROR',
-      error instanceof Error ? error.message : 'Failed to close stuck traces'
+      getErrorMessage(error)
     );
   }
 };
@@ -505,7 +503,7 @@ export const handleTraceBySession: ToolHandler = async (args) => {
   } catch (error) {
     return errorResponse(
       'TRACE_BY_SESSION_ERROR',
-      error instanceof Error ? error.message : 'Failed to get traces by session'
+      getErrorMessage(error)
     );
   }
 };

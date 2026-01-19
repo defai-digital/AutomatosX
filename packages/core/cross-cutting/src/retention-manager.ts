@@ -19,6 +19,7 @@ import {
   type ArchiveEntry,
   calculateRetentionCutoff,
   RetentionErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 /**
@@ -276,10 +277,7 @@ export function createRetentionManager(
                 );
                 entriesArchived++;
               } catch (archiveError) {
-                const msg =
-                  archiveError instanceof Error
-                    ? archiveError.message
-                    : 'Unknown archive error';
+                const msg = getErrorMessage(archiveError, 'Unknown archive error');
                 errors.push(`Archive failed for ${entry.id}: ${msg}`);
                 // Skip deletion if archive fails
                 continue;
@@ -291,16 +289,12 @@ export function createRetentionManager(
             entriesDeleted++;
             storageReclaimedBytes += entrySize;
           } catch (entryError) {
-            const msg =
-              entryError instanceof Error
-                ? entryError.message
-                : 'Unknown error';
+            const msg = getErrorMessage(entryError);
             errors.push(`Failed to process ${entry.id}: ${msg}`);
           }
         }
       } catch (error) {
-        const msg =
-          error instanceof Error ? error.message : 'Unknown error';
+        const msg = getErrorMessage(error);
         errors.push(`Policy execution failed: ${msg}`);
       }
 
@@ -349,9 +343,7 @@ export function createRetentionManager(
             entriesDeleted: 0,
             entriesArchived: 0,
             entriesSkipped: 0,
-            errors: [
-              error instanceof Error ? error.message : 'Unknown error',
-            ],
+            errors: [getErrorMessage(error)],
             success: false,
           };
           results.push(result);

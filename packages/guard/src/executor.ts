@@ -216,14 +216,14 @@ export async function executeGates(
   context: GovernanceContext,
   changedFiles: string[]
 ): Promise<GuardResult> {
-  const gateResults: GateResult[] = [];
-
-  // Execute each enabled gate
-  for (const gateType of context.enabledGates) {
-    const gate = GATES[gateType];
-    const result = await gate(context, changedFiles);
-    gateResults.push(result);
-  }
+  // INV-GUARD-004: Order Independence - gates can be executed in parallel
+  // INV-GUARD-006: No Side Effects - parallel execution is safe
+  const gateResults = await Promise.all(
+    context.enabledGates.map((gateType) => {
+      const gate = GATES[gateType];
+      return gate(context, changedFiles);
+    })
+  );
 
   // Determine overall status
   const hasFail = gateResults.some((r) => r.status === 'FAIL');

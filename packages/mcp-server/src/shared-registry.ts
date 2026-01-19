@@ -32,7 +32,7 @@ import {
   ToolExecutorErrorCodes,
   DATA_DIR_NAME,
   AGENTS_FILENAME,
-  TIMEOUT_PROVIDER_DEFAULT,
+  TIMEOUT_AGENT_STEP_DEFAULT,
   LIMIT_ABILITY_TOKENS_AGENT,
   PROVIDER_DEFAULT,
 } from '@defai.digital/contracts';
@@ -230,7 +230,7 @@ async function initializeRegistry(): Promise<void> {
   // Create prompt executor
   const promptExecutor = createProviderPromptExecutor(_providerRegistry, {
     defaultProvider: PROVIDER_DEFAULT,
-    defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
+    defaultTimeout: TIMEOUT_AGENT_STEP_DEFAULT,
   });
 
   // Create tool executor bridge (INV-TOOL-001, INV-TOOL-002, INV-TOOL-003)
@@ -321,6 +321,11 @@ async function loadExampleAbilities(abilityRegistry: AbilityRegistry): Promise<v
 
 /**
  * Load example agents from examples/agents directory
+ *
+ * BUG FIX: Previously, if an agent existed in persistent storage (from an older version
+ * without workflow), the newer example version with workflow would never be loaded.
+ * Now we check if the stored agent is missing critical fields (workflow, systemPrompt)
+ * that the example version has, and update the stored version accordingly.
  */
 async function loadExampleAgents(registry: AgentRegistry): Promise<void> {
   if (!fs.existsSync(EXAMPLE_AGENTS_DIR)) {
@@ -336,16 +341,52 @@ async function loadExampleAgents(registry: AgentRegistry): Promise<void> {
     const exampleAgents = await loader.loadAll();
 
     for (const agent of exampleAgents) {
-      // Only load if not already registered
-      const exists = await registry.exists(agent.agentId);
-      if (!exists) {
+      const existingAgent = await registry.get(agent.agentId);
+
+      if (existingAgent === undefined) {
+        // Agent doesn't exist - register it
         try {
           await registry.register(agent);
         } catch (error) {
-          // Log duplicate registration but don't fail
           const isDuplicate = error instanceof Error && error.message.includes('already');
           if (!isDuplicate) {
             console.warn(`Failed to register agent ${agent.agentId}:`, error instanceof Error ? error.message : error);
+          }
+        }
+      } else {
+        // Agent exists - check if example has workflow/systemPrompt that stored version is missing
+        const needsUpdate =
+          (agent.workflow !== undefined && agent.workflow.length > 0 &&
+            (existingAgent.workflow === undefined || existingAgent.workflow.length === 0)) ||
+          (agent.systemPrompt !== undefined && agent.systemPrompt.length > 0 &&
+            (existingAgent.systemPrompt === undefined || existingAgent.systemPrompt.length === 0));
+
+        if (needsUpdate) {
+          try {
+            // Update with the missing fields from example
+            const updates: Partial<typeof agent> = {};
+            if (agent.workflow !== undefined && agent.workflow.length > 0 &&
+                (existingAgent.workflow === undefined || existingAgent.workflow.length === 0)) {
+              updates.workflow = agent.workflow;
+            }
+            if (agent.systemPrompt !== undefined && agent.systemPrompt.length > 0 &&
+                (existingAgent.systemPrompt === undefined || existingAgent.systemPrompt.length === 0)) {
+              updates.systemPrompt = agent.systemPrompt;
+            }
+            // Also update other potentially missing fields
+            if (agent.abilities !== undefined && existingAgent.abilities === undefined) {
+              updates.abilities = agent.abilities;
+            }
+            if (agent.personality !== undefined && existingAgent.personality === undefined) {
+              updates.personality = agent.personality;
+            }
+            if (agent.selectionMetadata !== undefined && existingAgent.selectionMetadata === undefined) {
+              updates.selectionMetadata = agent.selectionMetadata;
+            }
+
+            await registry.update(agent.agentId, updates);
+          } catch (error) {
+            console.warn(`Failed to update agent ${agent.agentId}:`, error instanceof Error ? error.message : error);
           }
         }
       }
@@ -363,7 +404,10 @@ export async function getSharedProviderRegistry(): Promise<ProviderRegistry> {
   // Ensure initialization is complete by calling any accessor
   const { getSharedRegistry } = await import('./registry-accessor.js');
   await getSharedRegistry();
-  return _providerRegistry!;
+  if (_providerRegistry === null) {
+    throw new Error('Provider registry not initialized - initialization may have failed');
+  }
+  return _providerRegistry;
 }
 
 /**

@@ -11,7 +11,7 @@
  */
 
 import type { MCPTool, ToolHandler } from '../types.js';
-import { LIMIT_DEFAULT } from '@defai.digital/contracts';
+import { LIMIT_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * MCP server register tool definition
@@ -280,7 +280,7 @@ export const handleMCPServerRegister: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error registering server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error registering server: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -331,7 +331,7 @@ export const handleMCPServerList: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error listing servers: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error listing servers: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -367,7 +367,7 @@ export const handleMCPServerUnregister: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error unregistering server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error unregistering server: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -422,7 +422,7 @@ export const handleMCPToolsDiscover: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error discovering tools: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error discovering tools: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -469,7 +469,7 @@ export const handleMCPToolInvoke: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error invoking tool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error invoking tool: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -516,7 +516,7 @@ export const handleMCPToolsList: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error listing tools: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error listing tools: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,

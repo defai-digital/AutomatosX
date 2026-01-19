@@ -30,6 +30,7 @@ import {
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
   createRootTraceHierarchy,
   createChildTraceHierarchy,
+  getErrorMessage,
   type DiscussionPattern,
   type ConsensusMethod,
   type DiscussStepConfig,
@@ -204,7 +205,7 @@ async function callSingleProvider(
       isError: false,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [{ type: 'text', text: `Single provider call failed: ${message}` }],
       isError: true,
@@ -703,7 +704,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       isError: !result.success,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
 
     // Emit run.end trace event with failure (INV-TR-001)
     emitTraceEvent({
@@ -1013,7 +1014,7 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
       isError: !result.success,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
 
     // Emit run.end trace event with failure (INV-TR-001)
     emitTraceEvent({
@@ -1545,7 +1546,7 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       isError: !result.success,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
 
     // Emit run.end trace event with failure (INV-TR-001)
     emitTraceEvent({

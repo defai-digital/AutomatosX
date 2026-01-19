@@ -2,10 +2,12 @@
  * Review Command
  *
  * AI-powered code review with focused analysis modes.
+ * Integrates with trace store for dashboard visibility.
  * Usage: ax review <paths...> [options]
  *        ax review help
  */
 
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
   createReviewService,
@@ -15,6 +17,8 @@ import {
 } from '@defai.digital/review-domain';
 import {
   type ReviewFocus,
+  type TraceEvent,
+  type TraceHierarchy,
   ReviewFocusSchema,
   ReviewErrorCode,
   TIMEOUT_PROVIDER_DEFAULT,
@@ -22,9 +26,11 @@ import {
   ANALYSIS_MAX_FILES_DEFAULT,
   LIMIT_DEFAULT,
   getErrorMessage,
+  createRootTraceHierarchy,
 } from '@defai.digital/contracts';
 import { createAnalysisProviderRouter } from '../utils/provider-factory.js';
 import { COLORS } from '../utils/terminal.js';
+import { bootstrap, getTraceStore } from '../bootstrap.js';
 
 /**
  * Review-specific status icons
@@ -54,6 +60,11 @@ interface ParsedReviewArgs {
   outputFormat: 'markdown' | 'json' | 'sarif';
   dryRun: boolean;
   limit: number;
+  // Tier 2 & 3 parameters
+  since: string | undefined;
+  smartBatching: boolean;
+  dependencyOrdering: boolean;
+  enableRecovery: boolean;
 }
 
 /**
@@ -72,6 +83,11 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
   let outputFormat: 'markdown' | 'json' | 'sarif' = 'markdown';
   let dryRun = false;
   let limit = LIMIT_DEFAULT;
+  // Tier 2 & 3 parameters with defaults
+  let since: string | undefined;
+  let smartBatching = true;
+  let dependencyOrdering = false;
+  let enableRecovery = true;
 
   for (let i = 1; i < args.length; i++) {
     const arg = args[i];
@@ -105,6 +121,15 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
       dryRun = true;
     } else if (arg === '--limit' && i + 1 < args.length) {
       limit = parseInt(args[++i]!, 10);
+    // Tier 2 & 3 parameters
+    } else if (arg === '--since' && i + 1 < args.length) {
+      since = args[++i];
+    } else if (arg === '--no-smart-batching') {
+      smartBatching = false;
+    } else if (arg === '--dependency-ordering') {
+      dependencyOrdering = true;
+    } else if (arg === '--no-recovery') {
+      enableRecovery = false;
     } else if (arg !== undefined && !arg.startsWith('-')) {
       // Positional arg is a path
       paths.push(arg);
@@ -124,6 +149,11 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
     outputFormat,
     dryRun,
     limit,
+    // Tier 2 & 3 parameters
+    since,
+    smartBatching,
+    dependencyOrdering,
+    enableRecovery,
   };
 }
 
@@ -154,6 +184,10 @@ Analyze Options:
   --timeout <seconds>      Review timeout (default: 120)
   --format <fmt>           Output format: markdown, json, sarif (default: markdown)
   --dry-run                Only show what would be analyzed
+  --since <commit>         Only review files changed since commit (Tier 2)
+  --no-smart-batching      Disable focus-mode smart batching (Tier 2)
+  --dependency-ordering    Order files by dependency graph (Tier 3)
+  --no-recovery            Disable partial result recovery (Tier 3)
 
 List Options:
   --focus <mode>           Filter by focus mode
@@ -184,6 +218,8 @@ Examples:
   ax review analyze src/api/ --focus performance  # Performance review of API
   ax review analyze src/ --dry-run            # Preview what would be analyzed
   ax review analyze src/ --format sarif       # SARIF output for CI
+  ax review analyze src/ --since main         # Only files changed since main
+  ax review analyze src/ --dependency-ordering  # Order by dependency graph
   ax review list                              # List past reviews
   ax review list --limit 5                    # Show last 5 reviews
   ax review list --focus security             # Filter by focus mode
@@ -382,7 +418,7 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * Runs code review
+ * Runs code review with trace recording for dashboard visibility
  */
 async function runReview(
   paths: string[],
@@ -397,6 +433,38 @@ async function runReview(
       exitCode: 1,
     };
   }
+
+  // Initialize bootstrap to get trace store
+  await bootstrap();
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+
+  // Create trace hierarchy context for this root trace
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'review-analyze',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      command: 'ax review analyze',
+      paths,
+      focus: args.focus,
+      providerId: args.providerId,
+      dryRun: args.dryRun,
+    },
+  };
+  await traceStore.write(startEvent);
 
   try {
     const promptExecutor = createPromptExecutor();
@@ -423,6 +491,11 @@ async function runReview(
         timeoutMs: args.timeoutMs,
         outputFormat: args.outputFormat,
         dryRun: true,
+        // Tier 2 & 3 parameters
+        since: args.since,
+        smartBatching: args.smartBatching,
+        dependencyOrdering: args.dependencyOrdering,
+        enableRecovery: args.enableRecovery,
       });
 
       const message = `
@@ -435,6 +508,30 @@ Estimated time: ${formatDuration(dryRunResult.estimatedDurationMs)}
 ${COLORS.bold}Files:${COLORS.reset}
 ${dryRunResult.files.map((f: string) => `  ${REVIEW_ICONS.file} ${f}`).join('\n')}
 `.trim();
+
+      // Emit run.end trace event for dry run
+      await traceStore.write({
+        eventId: randomUUID(),
+        traceId,
+        type: 'run.end',
+        timestamp: new Date().toISOString(),
+        durationMs: Date.now() - new Date(startTime).getTime(),
+        status: 'success',
+        context: {
+          workflowId: 'review-analyze',
+          parentTraceId: traceHierarchy.parentTraceId,
+          rootTraceId: traceHierarchy.rootTraceId,
+          traceDepth: traceHierarchy.traceDepth,
+          sessionId: traceHierarchy.sessionId,
+        },
+        payload: {
+          success: true,
+          dryRun: true,
+          fileCount: dryRunResult.files.length,
+          totalLines: dryRunResult.totalLines,
+          command: 'ax review analyze',
+        },
+      });
 
       return {
         success: true,
@@ -457,6 +554,38 @@ ${dryRunResult.files.map((f: string) => `  ${REVIEW_ICONS.file} ${f}`).join('\n'
       timeoutMs: args.timeoutMs,
       outputFormat: args.outputFormat,
       dryRun: false,
+      // Tier 2 & 3 parameters
+      since: args.since,
+      smartBatching: args.smartBatching,
+      dependencyOrdering: args.dependencyOrdering,
+      enableRecovery: args.enableRecovery,
+    });
+
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.durationMs,
+      status: 'success',
+      context: {
+        workflowId: 'review-analyze',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: true,
+        focus: args.focus,
+        filesReviewed: result.filesReviewed.length,
+        linesAnalyzed: result.linesAnalyzed,
+        commentCount: result.comments.length,
+        healthScore: result.summary.healthScore,
+        providerId: result.providerId,
+        command: 'ax review analyze',
+      },
     });
 
     // Format output based on requested format
@@ -498,6 +627,30 @@ ${dryRunResult.files.map((f: string) => `  ${REVIEW_ICONS.file} ${f}`).join('\n'
     const message = getErrorMessage(error, 'Unknown error during review');
     const errorCode =
       error instanceof Error && 'code' in error ? (error as { code: string }).code : 'UNKNOWN';
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'review-analyze',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        errorCode,
+        focus: args.focus,
+        command: 'ax review analyze',
+      },
+    });
 
     let userMessage = `${REVIEW_ICONS.critical} Review failed: ${message}`;
 

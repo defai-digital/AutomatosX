@@ -8,7 +8,7 @@
  * from the concrete provider implementation details.
  */
 
-import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
+import { TIMEOUT_PROVIDER_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 import type {
   DiscussionProviderExecutor,
   ProviderExecuteRequest,
@@ -207,7 +207,7 @@ export function createProviderBridge(
           };
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
 
         return {
           success: false,
@@ -350,7 +350,7 @@ export function createSimpleProviderBridge(
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
           retryable: true,
           durationMs: Date.now() - startTime,
         };

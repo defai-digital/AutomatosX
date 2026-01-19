@@ -6,6 +6,7 @@
  * for creating real executors with provider integration.
  */
 
+import { getErrorMessage } from '@defai.digital/contracts';
 import type {
   PromptExecutor,
   PromptExecutionRequest,
@@ -239,7 +240,7 @@ export class ProviderPromptExecutor implements PromptExecutor {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: getErrorMessage(error),
         errorCode: 'EXECUTION_ERROR',
         provider: providerId,
         model,

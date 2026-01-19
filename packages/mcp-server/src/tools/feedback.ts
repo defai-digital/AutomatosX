@@ -18,7 +18,7 @@ import type {
   FeedbackOverview,
   AgentScoreAdjustment,
 } from '@defai.digital/contracts';
-import { SubmitFeedbackInputSchema, LIMIT_DEFAULT } from '@defai.digital/contracts';
+import { SubmitFeedbackInputSchema, LIMIT_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 import {
   createFeedbackCollector,
   createInMemoryFeedbackStorage,
@@ -319,7 +319,7 @@ export const handleFeedbackSubmit: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -377,7 +377,7 @@ export const handleFeedbackHistory: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -425,7 +425,7 @@ export const handleFeedbackStats: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -470,7 +470,7 @@ export const handleFeedbackOverview: ToolHandler = async () => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -520,7 +520,7 @@ export const handleFeedbackAdjustments: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

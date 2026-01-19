@@ -11,7 +11,7 @@
  */
 
 import type { MCPTool, ToolHandler } from '../types.js';
-import { LIMIT_DEFAULT } from '@defai.digital/contracts';
+import { LIMIT_DEFAULT, getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * Semantic store tool definition
@@ -294,7 +294,7 @@ export const handleSemanticStore: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error storing content: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error storing content: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -353,7 +353,7 @@ export const handleSemanticSearch: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error searching: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error searching: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -415,7 +415,7 @@ export const handleSemanticGet: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error getting item: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error getting item: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -472,7 +472,7 @@ export const handleSemanticList: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error listing items: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error listing items: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -511,7 +511,7 @@ export const handleSemanticDelete: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error deleting item: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error deleting item: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -549,7 +549,7 @@ export const handleSemanticStats: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error getting stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error getting stats: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -601,7 +601,7 @@ export const handleSemanticClear: ToolHandler = async (args) => {
       content: [
         {
           type: 'text',
-          text: `Error clearing namespace: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error clearing namespace: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,

@@ -99,6 +99,21 @@ export { FileSystemAgentLoader, createAgentLoader } from './loader.js';
 // Selector
 export { KeywordAgentSelector, createAgentSelector } from './selector.js';
 
+// Task Classification & Capability Routing (INV-CAP-001 to INV-CAP-005)
+export {
+  classifyTask,
+  extractTaskDescription,
+  type TaskClassificationResult,
+} from './task-classifier.js';
+
+export {
+  routeToCapability,
+  getAbilitiesForCapability,
+  resolveWorkflowRef,
+  isStandardWorkflow,
+  type CapabilityRouteResult,
+} from './capability-router.js';
+
 // Selection Service (INV-AGT-SEL-001 to INV-AGT-SEL-007)
 export {
   AgentSelectionService,
@@ -159,6 +174,9 @@ export type {
   OrchestrationConfig,
   SelectionMetadata,
   RedirectRule,
+  // Capability mapping types
+  AgentTaskType,
+  CapabilityMapping,
 } from '@defai.digital/contracts';
 
 export {
@@ -172,4 +190,7 @@ export {
   validateAgentProfile,
   safeValidateAgentProfile,
   validateAgentRunOptions,
+  // Capability mapping schemas
+  AgentTaskTypeSchema,
+  CapabilityMappingSchema,
 } from '@defai.digital/contracts';

@@ -4,6 +4,7 @@
  * AI-powered code review tools for the MCP server.
  * Provides focused analysis modes: security, architecture, performance,
  * maintainability, correctness, and comprehensive reviews.
+ * Integrates with trace store for dashboard visibility.
  */
 
 import type { MCPTool, ToolHandler } from '../types.js';
@@ -15,16 +16,20 @@ import {
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
 import {
+  type TraceEvent,
+  type TraceHierarchy,
   ReviewFocusSchema,
   TIMEOUT_PROVIDER_DEFAULT,
   PROVIDER_DEFAULT,
+  getErrorMessage,
+  createRootTraceHierarchy,
 } from '@defai.digital/contracts';
 import {
   createReviewService,
   type ReviewPromptExecutor,
   type ReviewFocus,
 } from '@defai.digital/review-domain';
-import { getProviderRegistry } from '../bootstrap.js';
+import { getProviderRegistry, getTraceStore } from '../bootstrap.js';
 
 // Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -174,6 +179,25 @@ export const reviewAnalyzeTool: MCPTool = {
         description: 'Only show what would be analyzed without running the review',
         default: false,
       },
+      since: {
+        type: 'string',
+        description: 'Git commit SHA or reference to compare against for incremental reviews (Tier 2). Only review files changed since this commit.',
+      },
+      smartBatching: {
+        type: 'boolean',
+        description: 'Enable smart batching by focus mode (Tier 2). Groups files by relevance to focus mode for better analysis. Default: true',
+        default: true,
+      },
+      dependencyOrdering: {
+        type: 'boolean',
+        description: 'Enable dependency-aware file ordering (Tier 3). Reviews files with more dependents first for better context. Default: false',
+        default: false,
+      },
+      enableRecovery: {
+        type: 'boolean',
+        description: 'Enable partial result recovery on failure (Tier 3). Allows resuming failed reviews. Default: true',
+        default: true,
+      },
     },
     required: ['paths'],
   },
@@ -232,6 +256,7 @@ interface StoredReviewResult {
  *
  * Uses the ReviewService with real LLM providers for AI-powered code review.
  * In test environments, falls back to placeholder results.
+ * Records traces for dashboard visibility.
  */
 export const handleReviewAnalyze: ToolHandler = async (args) => {
   const paths = args.paths as string[];
@@ -243,11 +268,72 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
   const dryRun = (args.dryRun as boolean) ?? false;
   const outputFormat = (args.outputFormat as 'markdown' | 'json' | 'sarif') ?? 'markdown';
   const providerId = args.providerId as string | undefined;
+  // Tier 2 & 3 parameters
+  const since = args.since as string | undefined;
+  const smartBatching = (args.smartBatching as boolean) ?? true;
+  const dependencyOrdering = (args.dependencyOrdering as boolean) ?? false;
+  const enableRecovery = (args.enableRecovery as boolean) ?? true;
+
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'review-analyze',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'review_analyze',
+      paths,
+      focus,
+      dryRun,
+      providerId,
+      // Tier 2 & 3 parameters
+      since,
+      smartBatching,
+      dependencyOrdering,
+      enableRecovery,
+    },
+  };
+  await traceStore.write(startEvent);
 
   try {
     // Validate focus mode
     const focusValidation = ReviewFocusSchema.safeParse(focus);
     if (!focusValidation.success) {
+      // Emit run.end trace event for validation failure
+      await traceStore.write({
+        eventId: randomUUID(),
+        traceId,
+        type: 'run.end',
+        timestamp: new Date().toISOString(),
+        durationMs: Date.now() - new Date(startTime).getTime(),
+        status: 'failure',
+        context: {
+          workflowId: 'review-analyze',
+          parentTraceId: traceHierarchy.parentTraceId,
+          rootTraceId: traceHierarchy.rootTraceId,
+          traceDepth: traceHierarchy.traceDepth,
+          sessionId: traceHierarchy.sessionId,
+        },
+        payload: {
+          success: false,
+          error: `Invalid focus mode: ${focus}`,
+          tool: 'review_analyze',
+        },
+      });
+
       return errorResponse(
         'INVALID_FOCUS',
         `Invalid focus mode: ${focus}. Use: security, architecture, performance, maintainability, correctness, or all`,
@@ -281,6 +367,11 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
         providerId,
         timeoutMs: TIMEOUT_PROVIDER_DEFAULT,
         outputFormat,
+        // Tier 2 & 3 parameters
+        since,
+        smartBatching,
+        dependencyOrdering,
+        enableRecovery,
       },
       executionOptions
     );
@@ -300,6 +391,34 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
       completedAt: result.completedAt,
     };
     reviewStore.set(result.resultId, storedResult);
+
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.durationMs,
+      status: 'success',
+      context: {
+        workflowId: 'review-analyze',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: true,
+        resultId: result.resultId,
+        focus,
+        filesReviewed: result.filesReviewed.length,
+        linesAnalyzed: result.linesAnalyzed,
+        commentCount: result.comments.length,
+        healthScore: result.summary.healthScore,
+        providerId: result.providerId,
+        tool: 'review_analyze',
+      },
+    });
 
     // Format response based on output format
     const formattedOutput = reviewService.formatResult(result, outputFormat);
@@ -335,7 +454,31 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
       commentCount: result.comments.length,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'review-analyze',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        focus,
+        tool: 'review_analyze',
+      },
+    });
+
     return errorResponse('REVIEW_FAILED', message, { paths, focus });
   }
 };
@@ -380,7 +523,7 @@ export const handleReviewList: ToolHandler = async (args) => {
       limit: 10,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return errorResponse('LIST_FAILED', message);
   }
 };

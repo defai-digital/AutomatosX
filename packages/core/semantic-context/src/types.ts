@@ -15,6 +15,7 @@ import type {
   SemanticDeleteResponse,
   EmbeddingConfig,
 } from '@defai.digital/contracts';
+import { EMBEDDING_DIMENSION_DEFAULT } from '@defai.digital/contracts';
 
 // ============================================================================
 // Embedding Port
@@ -282,7 +283,7 @@ export class StubEmbeddingPort implements EmbeddingPort {
   private dimension: number;
   private model: string;
 
-  constructor(dimension = 384, model = 'stub') {
+  constructor(dimension = EMBEDDING_DIMENSION_DEFAULT, model = 'stub') {
     this.dimension = dimension;
     this.model = model;
   }
@@ -394,9 +395,12 @@ export class InMemorySemanticStore implements SemanticStorePort {
     const startTime = Date.now();
     const namespace = request.namespace;
 
-    // Get query embedding
-    const queryResult = await this.embeddingPort.embed({ text: request.query });
-    const queryEmbedding = queryResult.embedding;
+    // Use provided query embedding if available, otherwise compute it
+    let queryEmbedding = request.queryEmbedding;
+    if (!queryEmbedding || queryEmbedding.length === 0) {
+      const queryResult = await this.embeddingPort.embed({ text: request.query });
+      queryEmbedding = queryResult.embedding;
+    }
 
     // Filter items
     const candidates = Array.from(this.items.values()).filter((item) => {

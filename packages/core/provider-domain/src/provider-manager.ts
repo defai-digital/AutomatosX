@@ -7,11 +7,12 @@
  * This is the main entry point for provider resilience features.
  */
 
-import type {
-  ProviderCircuitBreakerConfig as CircuitBreakerConfig,
-  ProviderRateLimitConfig as RateLimitConfig,
-  HealthCheckConfig,
-  HealthStatus,
+import {
+  type ProviderCircuitBreakerConfig as CircuitBreakerConfig,
+  type ProviderRateLimitConfig as RateLimitConfig,
+  type HealthCheckConfig,
+  type HealthStatus,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 import {
@@ -177,8 +178,7 @@ export function createManagedProvider(config: ProviderConfig): ManagedProvider {
 
         return result;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
 
         // Check if it's a rate limit error from the API
         if (isRateLimitError(error)) {

@@ -1,4 +1,5 @@
-import type { TraceEvent, TraceStatus } from '@defai.digital/contracts';
+import type { TraceEvent, TraceStatus, TraceContext } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type { TraceStore, TraceSummary, TraceTreeNode } from '@defai.digital/trace-domain';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -92,6 +93,7 @@ export class SqliteTraceStore implements TraceStore {
       CREATE TABLE IF NOT EXISTS ${this.summariesTable} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         trace_id TEXT NOT NULL UNIQUE,
+        name TEXT,
         start_time TEXT NOT NULL,
         end_time TEXT,
         status TEXT NOT NULL,
@@ -133,12 +135,27 @@ export class SqliteTraceStore implements TraceStore {
    */
   private migrateHierarchyColumns(): void {
     // Check if columns exist and add them if not
-    const columns = ['parent_trace_id', 'root_trace_id', 'trace_depth', 'session_id', 'agent_id'];
+    // trace_depth is INTEGER to match schema, others are TEXT
+    const columns: Array<{ name: string; type: string }> = [
+      { name: 'name', type: 'TEXT' },
+      { name: 'parent_trace_id', type: 'TEXT' },
+      { name: 'root_trace_id', type: 'TEXT' },
+      { name: 'trace_depth', type: 'INTEGER' },
+      { name: 'session_id', type: 'TEXT' },
+      { name: 'agent_id', type: 'TEXT' },
+    ];
     for (const column of columns) {
       try {
-        this.db.exec(`ALTER TABLE ${this.summariesTable} ADD COLUMN ${column} TEXT`);
-      } catch {
-        // Column already exists - ignore
+        this.db.exec(`ALTER TABLE ${this.summariesTable} ADD COLUMN ${column.name} ${column.type}`);
+      } catch (error) {
+        // Only ignore "duplicate column" errors, re-throw others
+        const message = getErrorMessage(error);
+        if (!message.includes('duplicate column')) {
+          throw new SqliteTraceStoreError(
+            SqliteTraceStoreErrorCodes.DATABASE_ERROR,
+            `Failed to add column ${column.name}: ${message}`
+          );
+        }
       }
     }
   }
@@ -177,7 +194,7 @@ export class SqliteTraceStore implements TraceStore {
     } catch (error) {
       throw new SqliteTraceStoreError(
         SqliteTraceStoreErrorCodes.DATABASE_ERROR,
-        `Failed to write trace event: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to write trace event: ${getErrorMessage(error)}`
       );
     }
   }
@@ -227,7 +244,7 @@ export class SqliteTraceStore implements TraceStore {
    */
   listTraces(limit = 100): Promise<TraceSummary[]> {
     const stmt = this.db.prepare(`
-      SELECT trace_id, start_time, end_time, status,
+      SELECT trace_id, name, start_time, end_time, status,
              event_count, error_count, duration_ms,
              parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
@@ -244,23 +261,25 @@ export class SqliteTraceStore implements TraceStore {
    */
   private updateSummary(event: TraceEvent): void {
     const context = event.context;
+    const traceName = event.payload ? this.extractTraceName(event.payload, context) : null;
 
     // Check if summary exists
     const checkStmt = this.db.prepare(`
-      SELECT trace_id FROM ${this.summariesTable} WHERE trace_id = ?
+      SELECT trace_id, name FROM ${this.summariesTable} WHERE trace_id = ?
     `);
-    const existing = checkStmt.get(event.traceId);
+    const existing = checkStmt.get(event.traceId) as { trace_id: string; name: string | null } | undefined;
 
     if (existing === undefined) {
       // Insert new summary with hierarchy fields (INV-TR-020 through INV-TR-024)
       const insertStmt = this.db.prepare(`
         INSERT INTO ${this.summariesTable} (
-          trace_id, start_time, status, event_count, error_count,
+          trace_id, name, start_time, status, event_count, error_count,
           parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
-        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
       `);
       insertStmt.run(
         event.traceId,
+        traceName,
         event.timestamp,
         event.status ?? 'pending',
         event.type === 'error' ? 1 : 0,
@@ -279,6 +298,12 @@ export class SqliteTraceStore implements TraceStore {
       `;
 
       const params: (string | number | null)[] = [];
+
+      // Set name if not already set
+      if (traceName && !existing.name) {
+        updateSql += ', name = ?';
+        params.push(traceName);
+      }
 
       if (event.type === 'error') {
         updateSql += ', error_count = error_count + 1';
@@ -333,12 +358,73 @@ export class SqliteTraceStore implements TraceStore {
   }
 
   /**
+   * Extracts a human-readable name from event payload
+   */
+  private extractTraceName(
+    payload: Record<string, unknown>,
+    context?: TraceContext
+  ): string | null {
+    // Priority: agentId > topic > command + prompt > command > tool > workflowId
+
+    // Agent execution
+    if (payload.agentId) {
+      return `ax agent run ${payload.agentId}`;
+    }
+
+    if (context?.agentId) {
+      return `ax agent run ${context.agentId}`;
+    }
+
+    // Discussion
+    if (payload.topic) {
+      const topic = String(payload.topic);
+      const truncated = topic.length > 40 ? `${topic.slice(0, 40)}...` : topic;
+      return `ax discuss "${truncated}"`;
+    }
+
+    const command = payload.command ? String(payload.command) : undefined;
+
+    // Provider call with prompt
+    if (payload.prompt) {
+      const prompt = String(payload.prompt);
+      const truncated = prompt.length > 40 ? `${prompt.slice(0, 40)}...` : prompt;
+      return `${command ?? 'ax call'} "${truncated}"`;
+    }
+
+    // Explicit command
+    if (command) {
+      return command;
+    }
+
+    // MCP tool invocation (parallel_run, review_analyze, etc.)
+    if (payload.tool) {
+      const tool = String(payload.tool);
+      // Format tool name nicely: parallel_run -> parallel run
+      const formattedTool = tool.replace(/_/g, ' ');
+      return `ax ${formattedTool}`;
+    }
+
+    // Workflow execution
+    if (payload.workflowId) {
+      const workflowName = payload.workflowName ? String(payload.workflowName) : String(payload.workflowId);
+      return `workflow ${workflowName}`;
+    }
+
+    // Check context for workflowId
+    if (context?.workflowId) {
+      return `workflow ${context.workflowId}`;
+    }
+
+    return null;
+  }
+
+  /**
    * Gets all traces that share the same root trace ID
    * INV-TR-020: All traces in hierarchy share rootTraceId
    */
   getTracesByRoot(rootTraceId: string): Promise<TraceSummary[]> {
     const stmt = this.db.prepare(`
-      SELECT trace_id, start_time, end_time, status,
+      SELECT trace_id, name, start_time, end_time, status,
              event_count, error_count, duration_ms,
              parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
@@ -356,7 +442,7 @@ export class SqliteTraceStore implements TraceStore {
    */
   getChildTraces(parentTraceId: string): Promise<TraceSummary[]> {
     const stmt = this.db.prepare(`
-      SELECT trace_id, start_time, end_time, status,
+      SELECT trace_id, name, start_time, end_time, status,
              event_count, error_count, duration_ms,
              parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
@@ -374,7 +460,7 @@ export class SqliteTraceStore implements TraceStore {
    */
   getTracesBySession(sessionId: string): Promise<TraceSummary[]> {
     const stmt = this.db.prepare(`
-      SELECT trace_id, start_time, end_time, status,
+      SELECT trace_id, name, start_time, end_time, status,
              event_count, error_count, duration_ms,
              parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
@@ -393,7 +479,7 @@ export class SqliteTraceStore implements TraceStore {
   async getTraceTree(traceId: string): Promise<TraceTreeNode | undefined> {
     // Get the root summary
     const rootStmt = this.db.prepare(`
-      SELECT trace_id, start_time, end_time, status,
+      SELECT trace_id, name, start_time, end_time, status,
              event_count, error_count, duration_ms,
              parent_trace_id, root_trace_id, trace_depth, session_id, agent_id
       FROM ${this.summariesTable}
@@ -509,7 +595,7 @@ export class SqliteTraceStore implements TraceStore {
     } catch (error) {
       throw new SqliteTraceStoreError(
         SqliteTraceStoreErrorCodes.DATABASE_ERROR,
-        `Failed to close stuck traces: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to close stuck traces: ${getErrorMessage(error)}`
       );
     }
   }
@@ -537,7 +623,7 @@ export class SqliteTraceStore implements TraceStore {
     } catch (error) {
       throw new SqliteTraceStoreError(
         SqliteTraceStoreErrorCodes.DATABASE_ERROR,
-        `Failed to delete trace: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to delete trace: ${getErrorMessage(error)}`
       );
     }
   }
@@ -564,6 +650,7 @@ interface TraceEventRow {
  */
 interface TraceSummaryRow {
   trace_id: string;
+  name: string | null;
   start_time: string;
   end_time: string | null;
   status: string;
@@ -587,7 +674,7 @@ function safeJsonParse<T>(json: string, fieldName: string, eventId: string): T {
   } catch (error) {
     throw new SqliteTraceStoreError(
       SqliteTraceStoreErrorCodes.DATABASE_ERROR,
-      `Failed to parse ${fieldName} for event ${eventId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      `Failed to parse ${fieldName} for event ${eventId}: ${getErrorMessage(error, 'Invalid JSON')}`,
       { eventId, fieldName }
     );
   }
@@ -644,6 +731,9 @@ function rowToTraceSummary(row: TraceSummaryRow): TraceSummary {
     agentId: row.agent_id ?? undefined,
   };
 
+  if (row.name !== null) {
+    summary.name = row.name;
+  }
   if (row.end_time !== null) {
     summary.endTime = row.end_time;
   }

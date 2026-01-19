@@ -12,7 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { validateAgentProfile, type AgentProfile } from '@defai.digital/contracts';
+import { validateAgentProfile, getErrorMessage, type AgentProfile } from '@defai.digital/contracts';
 import type { AgentLoader, AgentLoaderConfig } from './types.js';
 
 // ============================================================================
@@ -97,8 +97,36 @@ export class FileSystemAgentLoader implements AgentLoader {
       }
     }
 
+    // Validate unique display names
+    this.validateUniqueDisplayNames(profiles);
+
     this.loaded = true;
     return profiles;
+  }
+
+  /**
+   * Validate that all agents have unique display names
+   * Warns on collision but does not reject the profile
+   */
+  private validateUniqueDisplayNames(agents: AgentProfile[]): void {
+    const names = new Map<string, string>();
+    for (const agent of agents) {
+      const name = agent.displayName ?? agent.agentId;
+      if (names.has(name)) {
+        console.warn(
+          `Display name collision: "${name}" used by both ` +
+            `"${names.get(name)}" and "${agent.agentId}"`
+        );
+      }
+      names.set(name, agent.agentId);
+
+      // Warn about missing agentCategory for routing precision
+      if (!agent.selectionMetadata?.agentCategory) {
+        console.warn(
+          `Agent "${agent.agentId}" is missing agentCategory in selectionMetadata`
+        );
+      }
+    }
   }
 
   /**
@@ -141,7 +169,7 @@ export class FileSystemAgentLoader implements AgentLoader {
       const profile = validateAgentProfile(transformed);
       return profile;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = getErrorMessage(error);
       console.warn(`Failed to load agent from ${filePath}: ${message}`);
       return undefined;
     }

@@ -22,6 +22,9 @@ import {
   ENV_DATA_DIR,
   ENV_STORAGE_MODE,
   STORAGE_MODE_MEMORY,
+  EMBEDDING_DIMENSION_DEFAULT,
+  SEMANTIC_NAMESPACE_DEFAULT,
+  CACHE_HEALTH_CHECK_MS,
 } from '@defai.digital/contracts';
 
 // Trace store imports (for workflow tracing)
@@ -65,7 +68,7 @@ import {
   type ProviderRegistryLike as DiscussionProviderRegistryLike,
 } from '@defai.digital/discussion-domain';
 import {
-  TIMEOUT_PROVIDER_DEFAULT,
+  TIMEOUT_AGENT_STEP_DEFAULT,
   PROVIDER_DEFAULT,
 } from '@defai.digital/contracts';
 
@@ -187,12 +190,12 @@ let _asyncInitialized = false;
  * Create semantic manager with optional SQLite backend
  */
 function createSemanticManagerWithStore(sqliteStore: SemanticStorePort | null): SemanticManager {
-  const embeddingProvider = createEmbeddingProvider({ dimension: 384 });
+  const embeddingProvider = createEmbeddingProvider({ dimension: EMBEDDING_DIMENSION_DEFAULT });
   const store = sqliteStore ?? new InMemorySemanticStore(embeddingProvider);
   return createSemanticManager({
     embeddingPort: embeddingProvider,
     storePort: store,
-    defaultNamespace: 'default',
+    defaultNamespace: SEMANTIC_NAMESPACE_DEFAULT,
     autoEmbed: true,
   });
 }
@@ -445,7 +448,7 @@ export function createProductionStepExecutor(
 
   const {
     defaultProvider = PROVIDER_DEFAULT,
-    defaultTimeout = TIMEOUT_PROVIDER_DEFAULT,
+    defaultTimeout = TIMEOUT_AGENT_STEP_DEFAULT,
     checkProviderHealth = false,
   } = options;
 
@@ -478,7 +481,7 @@ export function createProductionStepExecutor(
   const providerBridge = createProviderBridge(registryForBridge, {
     defaultTimeoutMs: defaultTimeout,
     performHealthChecks: checkProviderHealth,
-    healthCheckCacheMs: 60000,
+    healthCheckCacheMs: CACHE_HEALTH_CHECK_MS,
   });
 
   // Create discussion executor (for discuss steps)

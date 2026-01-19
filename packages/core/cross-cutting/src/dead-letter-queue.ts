@@ -275,19 +275,18 @@ export function createDeadLetterQueue(
     async purgeResolved(): Promise<number> {
       const resolved = await storage.list('resolved');
       const cutoff = Date.now() - cfg.retentionDays * 24 * 60 * 60 * 1000;
-      let purged = 0;
 
-      for (const entry of resolved) {
-        if (entry.resolvedAt) {
-          const resolvedTime = new Date(entry.resolvedAt).getTime();
-          if (resolvedTime < cutoff) {
-            await storage.delete(entry.entryId);
-            purged++;
-          }
-        }
-      }
+      // Filter entries eligible for purging
+      const toPurge = resolved.filter((entry) => {
+        if (!entry.resolvedAt) return false;
+        const resolvedTime = new Date(entry.resolvedAt).getTime();
+        return resolvedTime < cutoff;
+      });
 
-      return purged;
+      // Delete entries in parallel for better performance
+      await Promise.all(toPurge.map((entry) => storage.delete(entry.entryId)));
+
+      return toPurge.length;
     },
   };
 }

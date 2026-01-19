@@ -18,6 +18,7 @@ import {
   calculateExpiration,
   isEntryExpired,
   IdempotencyErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 /**
@@ -311,9 +312,7 @@ export async function withIdempotency<T>(
     await manager.completeProcessing(key, result);
     return result;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    await manager.failProcessing(key, errorMessage);
+    await manager.failProcessing(key, getErrorMessage(error));
     throw error;
   }
 }

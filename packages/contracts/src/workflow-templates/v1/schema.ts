@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { TIMEOUT_AGENT_STEP_DEFAULT, TIMEOUT_AGENT_STEP_MAX } from '../../constants.js';
 
 /**
  * Workflow template categories
@@ -44,7 +45,7 @@ export const WorkflowTemplateStepSchema = z.object({
     .max(64),
   name: z.string().max(128),
   type: z.enum(['prompt', 'tool', 'conditional', 'parallel']),
-  timeout: z.number().int().min(1000).max(3600000).default(120000),
+  timeout: z.number().int().min(1000).max(TIMEOUT_AGENT_STEP_MAX).default(TIMEOUT_AGENT_STEP_DEFAULT),
   config: TemplateStepConfigSchema,
   retryPolicy: z
     .object({

@@ -10,6 +10,7 @@
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,
@@ -197,7 +198,6 @@ export class VotingPattern implements PatternExecutor {
         return response;
 
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
         failed.push(providerId);
 
         return {
@@ -206,7 +206,7 @@ export class VotingPattern implements PatternExecutor {
           round: roundNum,
           timestamp: new Date().toISOString(),
           durationMs: Date.now() - responseStart,
-          error: errorMessage,
+          error: getErrorMessage(error),
         } as DiscussionProviderResponse;
       }
     });

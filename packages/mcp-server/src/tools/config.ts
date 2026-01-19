@@ -11,6 +11,7 @@ import {
   getValue,
   setValue,
 } from '@defai.digital/config-domain';
+import { getErrorMessage } from '@defai.digital/contracts';
 
 // ============================================================================
 // Tool Definitions
@@ -153,7 +154,7 @@ export const handleConfigGet: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `Error getting config: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error getting config: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -230,7 +231,7 @@ export const handleConfigSet: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `Error setting config: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error setting config: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -281,7 +282,7 @@ export const handleConfigShow: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `Error showing config: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error showing config: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,

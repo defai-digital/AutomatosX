@@ -20,6 +20,7 @@ import {
   createInitialSagaState,
   isValidSagaTransition,
   SagaErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 /**
@@ -117,8 +118,7 @@ export function createSagaManager(definition: SagaDefinition): SagaManager {
           success = true;
         } catch (error) {
           retries++;
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
+          const errorMessage = getErrorMessage(error);
 
           state.compensationErrors.push({
             stepId,
@@ -179,8 +179,7 @@ export function createSagaManager(definition: SagaDefinition): SagaManager {
             // Store output in context for subsequent steps
             context[step.stepId] = result;
           } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage = getErrorMessage(error);
 
             state.failedStep = step.stepId;
             state.failureReason = errorMessage;
@@ -220,8 +219,7 @@ export function createSagaManager(definition: SagaDefinition): SagaManager {
           finalStatus: state.status,
         };
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
 
         if (state) {
           if (state.status !== 'failed') {

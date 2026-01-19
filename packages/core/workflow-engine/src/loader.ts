@@ -13,7 +13,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { WorkflowSchema, type Workflow } from '@defai.digital/contracts';
+import { WorkflowSchema, getErrorMessage, type Workflow } from '@defai.digital/contracts';
 
 // ============================================================================
 // Types
@@ -301,7 +301,7 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
 
       return result.data;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = getErrorMessage(error);
       if (!this.config.silent && !warnedFiles.has(filePath)) {
         warnedFiles.add(filePath);
         console.warn(`⚠️  Failed to load workflow from ${path.basename(filePath)}: ${message}`);

@@ -14,6 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   validateAgentProfile,
+  getErrorMessage,
   type AgentProfile,
   DATA_DIR_NAME,
   AGENTS_FILENAME,
@@ -163,13 +164,13 @@ export class PersistentAgentRegistry implements AgentRegistry {
             error.code === AgentErrorCode.AGENT_VALIDATION_ERROR &&
             error.message.includes(agentData.agentId);
           if (!isAlreadyExists) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            const message = getErrorMessage(error);
             console.warn(`Failed to load agent "${agentData.agentId}": ${message}`);
           }
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = getErrorMessage(error);
       console.warn(`Failed to load agents from ${filePath}: ${message}`);
     }
   }

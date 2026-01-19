@@ -38,6 +38,7 @@ export default defineConfig({
             '@defai.digital/autonomous-loop': resolve(__dirname, 'packages/core/autonomous-loop/src/index.ts'),
             '@defai.digital/research-domain': resolve(__dirname, 'packages/core/research-domain/src/index.ts'),
             '@defai.digital/feedback-domain': resolve(__dirname, 'packages/core/feedback-domain/src/index.ts'),
+            '@defai.digital/discussion-domain': resolve(__dirname, 'packages/core/discussion-domain/src/index.ts'),
         },
     },
     test: {

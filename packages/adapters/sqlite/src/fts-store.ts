@@ -11,6 +11,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { getErrorMessage } from '@defai.digital/contracts';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
 
 /**
@@ -182,7 +183,7 @@ export class SQLiteFTSStore {
     } catch (error) {
       throw new FTSStoreError(
         FTSStoreErrorCodes.INDEX_ERROR,
-        `Failed to store item: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to store item: ${getErrorMessage(error)}`
       );
     }
   }
@@ -286,7 +287,7 @@ export class SQLiteFTSStore {
     } catch (error) {
       throw new FTSStoreError(
         FTSStoreErrorCodes.SEARCH_ERROR,
-        `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Search failed: ${getErrorMessage(error)}`,
         { query }
       );
     }
@@ -433,8 +434,9 @@ interface SearchRow {
 function safeParseMetadata(json: string): Record<string, unknown> | undefined {
   try {
     return JSON.parse(json) as Record<string, unknown>;
-  } catch {
+  } catch (error) {
     // Log corrupted metadata but don't crash - return undefined
+    console.warn('[FTSStore] Failed to parse metadata JSON:', getErrorMessage(error));
     return undefined;
   }
 }

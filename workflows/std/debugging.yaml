@@ -1,0 +1,155 @@
+workflowId: std/debugging
+version: "1.0.0"
+name: Standard Debugging
+description: |
+  Systematic debugging workflow for investigating and resolving issues.
+  Follows a structured approach: reproduce, analyze, hypothesize, fix, verify.
+
+metadata:
+  category: debugging
+  tags:
+    - debugging
+    - bug-fix
+    - troubleshooting
+  estimatedDuration: 180000
+
+steps:
+  - stepId: understand
+    name: Understand the Issue
+    type: prompt
+    config:
+      prompt: |
+        You are investigating a bug or issue. First, understand the problem thoroughly.
+
+        ## Issue Details
+        ${input.errorMessage}
+
+        ## Additional Context
+        ${input.context}
+
+        ## Stack Trace (if available)
+        ${input.stackTrace}
+
+        Analyze and answer:
+
+        1. **What is the expected behavior?**
+           - What should happen under normal circumstances?
+
+        2. **What is the actual behavior?**
+           - What is actually happening?
+           - Is the error consistent or intermittent?
+
+        3. **When does it occur?**
+           - Specific conditions or triggers
+           - User actions that lead to the issue
+
+        4. **What is the scope of impact?**
+           - Which features/users are affected?
+           - Is this blocking critical functionality?
+
+        5. **Initial observations**
+           - Any patterns in the error message/stack trace
+           - Similar issues you've seen before
+    timeoutMs: 60000
+
+  - stepId: investigate
+    name: Root Cause Analysis
+    type: prompt
+    dependencies:
+      - understand
+    config:
+      prompt: |
+        Based on your understanding of the issue:
+        ${previousOutputs.understand}
+
+        Conduct a root cause analysis:
+
+        ## Hypotheses
+        List 2-4 potential root causes, ranked by likelihood:
+        1. Most likely cause and reasoning
+        2. Second most likely cause
+        3. Other possibilities
+
+        ## Evidence Needed
+        For each hypothesis, what evidence would confirm or refute it?
+        - Code to examine
+        - Logs to check
+        - Tests to run
+        - Data to inspect
+
+        ## Investigation Plan
+        Step-by-step plan to identify the root cause:
+        1. First thing to check
+        2. What to do based on findings
+        3. How to narrow down if initial checks inconclusive
+
+        ## Related Code Areas
+        List files/functions that are likely involved based on the error.
+    timeoutMs: 90000
+
+  - stepId: solution
+    name: Propose Solution
+    type: prompt
+    dependencies:
+      - investigate
+    config:
+      prompt: |
+        Based on your investigation:
+        ${previousOutputs.investigate}
+
+        Propose a solution:
+
+        ## Recommended Fix
+        - Description of the fix
+        - Why this addresses the root cause
+        - Code changes needed (be specific)
+
+        ## Alternative Approaches
+        If applicable, list other ways to fix this with pros/cons.
+
+        ## Testing Strategy
+        How to verify the fix works:
+        - Manual testing steps
+        - Unit/integration tests to add
+        - Edge cases to cover
+
+        ## Potential Side Effects
+        - What else might this change affect?
+        - Any regressions to watch for?
+
+        ## Prevention
+        How can we prevent similar issues in the future?
+        - Code patterns to adopt
+        - Tests to add
+        - Monitoring/alerting
+    timeoutMs: 60000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - solution
+    config:
+      prompt: |
+        Create a debugging summary based on your analysis:
+        ${previousOutputs.solution}
+
+        ## Bug Summary
+        One-sentence description of the bug.
+
+        ## Root Cause
+        Brief explanation of what caused the issue.
+
+        ## Fix
+        Concise description of the solution.
+
+        ## Files to Modify
+        List of files that need changes.
+
+        ## Next Steps
+        1. Immediate action items
+        2. Follow-up tasks
+
+        ## Estimated Effort
+        Simple/Medium/Complex and brief justification.
+    timeoutMs: 30000

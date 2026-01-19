@@ -1,5 +1,6 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import { randomUUID } from 'crypto';
+import { getErrorMessage, LIMIT_ORCHESTRATION, LIMIT_POLICIES } from '@defai.digital/contracts';
 
 /**
  * Task submit tool definition
@@ -363,7 +364,7 @@ export const handleTaskSubmit: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -414,7 +415,7 @@ export const handleTaskStatus: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -440,7 +441,9 @@ export const handleTaskList: ToolHandler = async (args) => {
   const priorityFilter = args.priority as string[] | undefined;
   const agentId = args.agentId as string | undefined;
   const tagsFilter = args.tags as string[] | undefined;
-  const limit = (args.limit as number) ?? 50;
+  // Clamp limit to valid range [1, LIMIT_ORCHESTRATION]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_ORCHESTRATION;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_ORCHESTRATION));
 
   try {
     let tasks = Array.from(taskStore.values());
@@ -482,7 +485,7 @@ export const handleTaskList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -582,7 +585,7 @@ export const handleTaskCancel: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -665,7 +668,7 @@ export const handleTaskRetry: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -732,7 +735,7 @@ export const handleQueueCreate: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -753,7 +756,9 @@ export const handleQueueCreate: ToolHandler = async (args) => {
  * Handler for queue_list tool
  */
 export const handleQueueList: ToolHandler = async (args) => {
-  const limit = (args.limit as number) ?? 20;
+  // Clamp limit to valid range [1, LIMIT_POLICIES]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_POLICIES;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_POLICIES));
 
   try {
     const queues = Array.from(queueStore.values())
@@ -788,7 +793,7 @@ export const handleQueueList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

@@ -13,6 +13,7 @@ import {
   createDefaultParallelExecutionConfig,
   type AgentWorkflowStep,
   TIMEOUT_ORCHESTRATION_EXECUTION,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
   ParallelExecutorPort,
@@ -125,7 +126,7 @@ function createStubParallelExecutor(
             const result: ParallelStepResult = {
               stepId: step.stepId,
               success: false,
-              error: error instanceof Error ? error.message : 'Unknown error',
+              error: getErrorMessage(error),
               durationMs: Date.now() - stepStart,
             };
             stepResults.push(result);

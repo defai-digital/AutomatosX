@@ -17,6 +17,7 @@ import {
   DiscussionErrorCodes,
   createFailedDiscussionResult,
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+  getErrorMessage,
   type DiscussStepConfig,
   type DiscussionResult,
   type DiscussionRequest,
@@ -132,7 +133,7 @@ export class DiscussionExecutor {
         // Extract unique provider IDs from resolved participants
         providersToCheck = getProviderIds(resolvedParticipants);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         return createFailedDiscussionResult(
           config.pattern,
           config.prompt,
@@ -151,7 +152,7 @@ export class DiscussionExecutor {
     try {
       availableProviders = await this.checkProviders(providersToCheck);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       return createFailedDiscussionResult(
         config.pattern,
         config.prompt,

@@ -1,0 +1,200 @@
+workflowId: std/testing
+version: "1.0.0"
+name: Standard Testing
+description: |
+  Comprehensive testing workflow for creating and improving tests.
+  Covers test strategy, test case design, and implementation guidance.
+
+metadata:
+  category: testing
+  tags:
+    - testing
+    - quality
+    - coverage
+  estimatedDuration: 120000
+
+steps:
+  - stepId: analyze
+    name: Analyze Testing Needs
+    type: prompt
+    config:
+      prompt: |
+        You are creating or improving tests. First, analyze what needs to be tested.
+
+        ## Target Code
+        ${input.targetPath}
+
+        ## Test Type
+        ${input.testType}
+
+        ## Context
+        ${input.context}
+
+        Analyze:
+
+        1. **Code Under Test**
+           - What functionality needs testing?
+           - Public interfaces/APIs
+           - Key behaviors and invariants
+
+        2. **Current Test Coverage**
+           - What tests exist?
+           - What's missing?
+           - Coverage gaps
+
+        3. **Test Categories Needed**
+           - Unit tests (isolated logic)
+           - Integration tests (component interaction)
+           - E2E tests (full workflows)
+
+        4. **Edge Cases**
+           - Boundary conditions
+           - Error scenarios
+           - Unusual inputs
+           - Concurrency concerns
+
+        5. **Test Environment**
+           - Dependencies to mock
+           - Test data needed
+           - Setup/teardown requirements
+
+        6. **Priorities**
+           - Most critical paths
+           - Highest risk areas
+           - Quick wins
+    timeoutMs: 60000
+
+  - stepId: design
+    name: Design Test Cases
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your analysis:
+        ${previousOutputs.analyze}
+
+        Design specific test cases:
+
+        ## Unit Tests
+
+        ### [Function/Method Name]
+        | Test Case | Input | Expected Output | Priority |
+        |-----------|-------|-----------------|----------|
+        | Happy path | ... | ... | High |
+        | Edge case 1 | ... | ... | Medium |
+        | Error case | ... | ... | High |
+
+        (Repeat for each function/method)
+
+        ## Integration Tests
+
+        ### [Feature/Flow Name]
+        - **Scenario**: Description
+        - **Setup**: What needs to be configured
+        - **Steps**: 1, 2, 3...
+        - **Assertions**: What to verify
+        - **Cleanup**: Post-test cleanup
+
+        (Repeat for each integration scenario)
+
+        ## Test Data
+        - Mock data structures needed
+        - Fixtures to create
+        - Database seeds (if applicable)
+
+        ## Mocking Strategy
+        - What to mock and why
+        - Mock implementations needed
+        - Spy/stub usage
+    timeoutMs: 60000
+
+  - stepId: implement
+    name: Test Implementation Guide
+    type: prompt
+    dependencies:
+      - design
+    config:
+      prompt: |
+        Based on your test design:
+        ${previousOutputs.design}
+
+        Provide implementation guidance:
+
+        ## Test File Structure
+        Recommended organization of test files.
+
+        ## Example Test Code
+
+        ### Unit Test Example
+        ```typescript
+        describe('[Component Name]', () => {
+          describe('[method name]', () => {
+            it('should [expected behavior]', () => {
+              // Arrange
+              // Act
+              // Assert
+            });
+
+            it('should handle [edge case]', () => {
+              // Test implementation
+            });
+          });
+        });
+        ```
+
+        ### Integration Test Example
+        Provide a complete example for the most important integration test.
+
+        ## Test Utilities
+        - Helper functions to create
+        - Shared fixtures
+        - Custom matchers (if needed)
+
+        ## Common Patterns
+        - How to handle async operations
+        - Error testing patterns
+        - Mocking external services
+
+        ## Gotchas
+        - Common mistakes to avoid
+        - Framework-specific considerations
+        - Performance tips for tests
+    timeoutMs: 60000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - implement
+    config:
+      prompt: |
+        Summarize the testing plan:
+        ${previousOutputs.implement}
+
+        ## Testing Summary
+        Brief description of the testing approach.
+
+        ## Test Coverage Goals
+        - Unit test coverage: X%
+        - Critical paths covered: [list]
+        - Edge cases covered: [list]
+
+        ## Test Files to Create
+        - [ ] tests/unit/[file].test.ts
+        - [ ] tests/integration/[file].test.ts
+
+        ## Test Checklist
+        - [ ] Happy path tests
+        - [ ] Error handling tests
+        - [ ] Edge case tests
+        - [ ] Integration tests
+
+        ## Dependencies
+        - Test framework: [name]
+        - Mock libraries: [list]
+        - Test utilities: [list]
+
+        ## Estimated Effort
+        Simple/Medium/Complex and brief justification.
+    timeoutMs: 30000

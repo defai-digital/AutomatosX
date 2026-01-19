@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TIMEOUT_AGENT_STEP_DEFAULT } from '../../../constants.js';
 
 // ============================================================================
 // Tool Categories
@@ -30,7 +31,7 @@ export const MCPTimeoutConfigSchema = z.object({
       /** Scan/analysis operations */
       scan: z.number().int().positive().default(120_000), // 2 minutes
       /** Execution operations (agent/workflow) */
-      execution: z.number().int().positive().default(1_200_000), // 20 minutes
+      execution: z.number().int().positive().default(TIMEOUT_AGENT_STEP_DEFAULT), // 20 minutes
     })
     .default({}),
   /** Per-tool overrides */

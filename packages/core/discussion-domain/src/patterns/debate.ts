@@ -12,6 +12,7 @@
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,
@@ -316,8 +317,6 @@ export class DebatePattern implements PatternExecutor {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
       return {
         round: {
           roundNumber: roundNum,
@@ -328,7 +327,7 @@ export class DebatePattern implements PatternExecutor {
             role,
             timestamp: new Date().toISOString(),
             durationMs: Date.now() - roundStart,
-            error: errorMessage,
+            error: getErrorMessage(error),
           }],
           durationMs: Date.now() - roundStart,
         },

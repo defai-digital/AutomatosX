@@ -15,6 +15,7 @@ import type {
   EmbeddingResult,
 } from './types.js';
 import type { EmbeddingConfig } from '@defai.digital/contracts';
+import { EMBEDDING_DIMENSION_DEFAULT } from '@defai.digital/contracts';
 import { normalizeVector } from './similarity.js';
 
 // ============================================================================
@@ -147,7 +148,7 @@ export class LocalEmbeddingProvider implements EmbeddingPort {
     this.config = {
       provider: 'local',
       model: 'tfidf',
-      dimension: 384,
+      dimension: EMBEDDING_DIMENSION_DEFAULT,
       batchSize: 32,
       cacheEnabled: true,
       ...config,
@@ -244,13 +245,16 @@ export class CachedEmbeddingProvider implements EmbeddingPort {
     // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached) {
+      // LRU: Move to end by deleting and re-inserting
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, cached);
       return { ...cached, durationMs: 0 };
     }
 
     // Compute and cache
     const result = await this.delegate.embed(request);
 
-    // Evict old entries if cache is full
+    // Evict LRU entry (first key) if cache is full
     if (this.cache.size >= this.maxCacheSize) {
       const firstKey = this.cache.keys().next().value;
       if (firstKey) this.cache.delete(firstKey);
@@ -270,6 +274,9 @@ export class CachedEmbeddingProvider implements EmbeddingPort {
       const cacheKey = `${model}:${texts[i]}`;
       const cached = this.cache.get(cacheKey);
       if (cached) {
+        // LRU: Move to end by deleting and re-inserting
+        this.cache.delete(cacheKey);
+        this.cache.set(cacheKey, cached);
         results[i] = { ...cached, durationMs: 0 };
       } else {
         toCompute.push({ index: i, text: texts[i]! });

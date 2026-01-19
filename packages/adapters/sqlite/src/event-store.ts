@@ -1,4 +1,5 @@
 import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type { EventStore } from '@defai.digital/memory-domain';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -153,7 +154,7 @@ export class SqliteEventStore implements EventStore {
       }
       throw new SqliteEventStoreError(
         SqliteEventStoreErrorCodes.DATABASE_ERROR,
-        `Failed to append event: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to append event: ${getErrorMessage(error)}`
       );
     }
   }
@@ -254,7 +255,7 @@ function safeJsonParse<T>(json: string, fieldName: string, eventId: string): T {
   } catch (error) {
     throw new SqliteEventStoreError(
       SqliteEventStoreErrorCodes.DATABASE_ERROR,
-      `Failed to parse ${fieldName} for event ${eventId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      `Failed to parse ${fieldName} for event ${eventId}: ${getErrorMessage(error, 'Invalid JSON')}`,
       { eventId, fieldName }
     );
   }

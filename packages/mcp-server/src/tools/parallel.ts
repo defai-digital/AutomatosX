@@ -3,18 +3,24 @@
  *
  * Tools for executing multiple agents in parallel with DAG-based
  * dependency management and result aggregation.
+ * Integrates with trace store for dashboard visibility.
  *
  * INV-MCP-001: All inputs validated via Zod schemas
  * INV-MCP-002: Side effects documented in descriptions
  */
 
+import { randomUUID } from 'node:crypto';
 import type { MCPTool, ToolHandler, MCPToolResult } from '../types.js';
 import {
   type AgentParallelTask,
   type AgentParallelExecutionConfig,
   type ExecutionPlan,
+  type TraceEvent,
+  type TraceHierarchy,
   createAgentParallelTask,
   ParallelExecutionErrorCodes,
+  getErrorMessage,
+  createRootTraceHierarchy,
 } from '@defai.digital/contracts';
 import {
   createAgentParallelOrchestrator,
@@ -22,6 +28,7 @@ import {
   type AgentExecuteResult,
 } from '@defai.digital/agent-parallel';
 import { getSharedRegistry, getSharedExecutor } from '../registry-accessor.js';
+import { getTraceStore } from '../bootstrap.js';
 
 // ============================================================================
 // Agent Executor Adapter
@@ -71,7 +78,7 @@ async function createAgentExecutorPort(): Promise<AgentExecutorPort> {
         return {
           success: false,
           agentId: request.agentId,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
           durationMs: Date.now() - startTime,
         };
       }
@@ -91,15 +98,22 @@ let _orchestratorPromise: Promise<Awaited<ReturnType<typeof createAgentParallelO
  * Get or create the parallel orchestrator
  * Uses Promise caching to prevent race conditions when multiple concurrent
  * requests try to initialize the orchestrator simultaneously.
+ * Clears cache on failure so subsequent calls can retry initialization.
  */
 async function getOrchestrator() {
   if (_orchestratorPromise === null) {
     // Cache the Promise immediately to prevent race conditions
     _orchestratorPromise = (async () => {
-      const agentExecutor = await createAgentExecutorPort();
-      return createAgentParallelOrchestrator({
-        agentExecutor,
-      });
+      try {
+        const agentExecutor = await createAgentExecutorPort();
+        return createAgentParallelOrchestrator({
+          agentExecutor,
+        });
+      } catch (error) {
+        // Clear cache on failure so subsequent calls can retry
+        _orchestratorPromise = null;
+        throw error;
+      }
     })();
   }
   return _orchestratorPromise;
@@ -258,13 +272,14 @@ export const parallelRunTool: MCPTool = {
 
 /**
  * Handler for parallel_run tool
+ * Records traces for dashboard visibility - high-value multi-agent orchestration
  */
 export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResult> => {
   const {
     tasks: rawTasks,
     config,
     sharedContext,
-    sessionId: _sessionId,
+    sessionId,
   } = args as {
     tasks: Array<{
       agentId: string;
@@ -279,8 +294,62 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
     sessionId?: string;
   };
 
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, sessionId);
+
+  const taskCount = rawTasks?.length ?? 0;
+  const agentIds = rawTasks?.map(t => t.agentId) ?? [];
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'parallel-run',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'parallel_run',
+      taskCount,
+      agentIds: agentIds.slice(0, 10), // Limit to first 10 for payload size
+      failureStrategy: config?.failureStrategy ?? 'failSafe',
+      maxConcurrentAgents: config?.maxConcurrentAgents ?? 5,
+    },
+  };
+  await traceStore.write(startEvent);
+
   // Validate tasks
   if (!rawTasks || rawTasks.length === 0) {
+    // Emit run.end trace event for validation failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'parallel-run',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: 'at least one task is required',
+        tool: 'parallel_run',
+      },
+    });
+
     return {
       content: [{ type: 'text', text: 'Error: at least one task is required' }],
       isError: true,
@@ -288,6 +357,29 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
   }
 
   if (rawTasks.length > 100) {
+    // Emit run.end trace event for validation failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'parallel-run',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: 'maximum 100 tasks allowed',
+        taskCount: rawTasks.length,
+        tool: 'parallel_run',
+      },
+    });
+
     return {
       content: [{ type: 'text', text: 'Error: maximum 100 tasks allowed' }],
       isError: true,
@@ -298,7 +390,7 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
     // Create tasks with generated IDs
     const taskIdMap = new Map<number, string>();
     const tasks: AgentParallelTask[] = rawTasks.map((rawTask, index) => {
-      const taskId = crypto.randomUUID();
+      const taskId = randomUUID();
       taskIdMap.set(index, taskId);
       const taskOptions: Partial<Omit<AgentParallelTask, 'taskId' | 'agentId' | 'input'>> = {};
       if (rawTask.priority !== undefined) taskOptions.priority = rawTask.priority;
@@ -339,6 +431,33 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
     const orchestrator = await getOrchestrator();
     const result = await orchestrator.executeParallel(tasks, config, sharedContext);
 
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: result.totalDurationMs,
+      status: result.allSucceeded ? 'success' : 'failure',
+      context: {
+        workflowId: 'parallel-run',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: result.allSucceeded,
+        groupId: result.groupId,
+        tasksExecuted: result.tasksExecuted,
+        tasksSkipped: result.tasksSkipped,
+        failedTaskCount: result.failedTasks.length,
+        layerCount: result.layerCount,
+        peakConcurrency: result.peakConcurrency,
+        tool: 'parallel_run',
+      },
+    });
+
     // Build response
     const response = {
       groupId: result.groupId,
@@ -376,11 +495,35 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
       isError: !result.allSucceeded,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     const code =
       error instanceof Error && 'code' in error
         ? (error as { code: string }).code
         : ParallelExecutionErrorCodes.TASK_FAILED;
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'parallel-run',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        errorCode: code,
+        taskCount,
+        tool: 'parallel_run',
+      },
+    });
 
     return {
       content: [
@@ -480,6 +623,7 @@ export const parallelPlanTool: MCPTool = {
 
 /**
  * Handler for parallel_plan tool
+ * Records traces for dashboard visibility - DAG planning preview
  */
 export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResult> => {
   const { tasks: rawTasks } = args as {
@@ -490,8 +634,58 @@ export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResu
     }>;
   };
 
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  const taskCount = rawTasks?.length ?? 0;
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'parallel-plan',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'parallel_plan',
+      taskCount,
+    },
+  };
+  await traceStore.write(startEvent);
+
   // Validate tasks
   if (!rawTasks || rawTasks.length === 0) {
+    // Emit run.end trace event for validation failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'parallel-plan',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: 'at least one task is required',
+        tool: 'parallel_plan',
+      },
+    });
+
     return {
       content: [{ type: 'text', text: 'Error: at least one task is required' }],
       isError: true,
@@ -502,7 +696,7 @@ export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResu
     // Create tasks with generated IDs
     const taskIdMap = new Map<number, string>();
     const tasks: AgentParallelTask[] = rawTasks.map((rawTask, index) => {
-      const taskId = crypto.randomUUID();
+      const taskId = randomUUID();
       taskIdMap.set(index, taskId);
       const planOptions: Partial<Omit<AgentParallelTask, 'taskId' | 'agentId' | 'input'>> = {};
       if (rawTask.priority !== undefined) planOptions.priority = rawTask.priority;
@@ -540,6 +734,32 @@ export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResu
     const orchestrator = await getOrchestrator();
     const plan: ExecutionPlan = orchestrator.buildExecutionPlan(tasks);
 
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: plan.hasCycles ? 'failure' : 'success',
+      context: {
+        workflowId: 'parallel-plan',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: !plan.hasCycles,
+        planId: plan.planId,
+        totalTasks: plan.totalTasks,
+        totalLayers: plan.totalLayers,
+        maxParallelism: plan.maxParallelism,
+        hasCycles: plan.hasCycles,
+        tool: 'parallel_plan',
+      },
+    });
+
     // Build response with simplified layer view
     const response = {
       planId: plan.planId,
@@ -569,11 +789,35 @@ export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResu
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     const code =
       error instanceof Error && 'code' in error
         ? (error as { code: string }).code
         : ParallelExecutionErrorCodes.INVALID_PLAN;
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'parallel-plan',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        errorCode: code,
+        taskCount,
+        tool: 'parallel_plan',
+      },
+    });
 
     return {
       content: [

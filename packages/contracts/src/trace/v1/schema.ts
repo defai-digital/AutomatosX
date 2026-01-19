@@ -295,6 +295,7 @@ export type WorkflowEndPayload = z.infer<typeof WorkflowEndPayloadSchema>;
 
 /**
  * Trace event schema
+ * Schema strictness rejects unknown fields
  */
 export const TraceEventSchema = z.object({
   traceId: z.string().uuid(),
@@ -307,12 +308,13 @@ export const TraceEventSchema = z.object({
   payload: z.record(z.unknown()).optional(),
   context: TraceContextSchema.optional(),
   status: TraceStatusSchema.optional(),
-});
+}).strict();
 
 export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
 /**
  * Complete trace (collection of events)
+ * Schema strictness rejects unknown fields
  */
 export const TraceSchema = z.object({
   traceId: z.string().uuid(),
@@ -327,7 +329,7 @@ export const TraceSchema = z.object({
       errorCount: z.number().int().min(0),
     })
     .optional(),
-});
+}).strict();
 
 export type Trace = z.infer<typeof TraceSchema>;
 

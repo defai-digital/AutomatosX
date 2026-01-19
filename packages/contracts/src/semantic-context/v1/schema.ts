@@ -13,6 +13,9 @@ import {
   CONFIDENCE_MIN,
   CONFIDENCE_MAX,
   CONFIDENCE_DEFAULT_MIN,
+  EMBEDDING_DIMENSION_DEFAULT,
+  EMBEDDING_DIMENSION_MIN,
+  EMBEDDING_DIMENSION_MAX,
 } from '../../constants.js';
 
 // ============================================================================
@@ -98,6 +101,13 @@ export const SemanticSearchRequestSchema = z.object({
    * Query text to find similar content
    */
   query: z.string().min(1).max(10000),
+
+  /**
+   * Pre-computed query embedding (optional)
+   * If provided, store can use this directly for similarity search
+   * If not provided, store may need to compute it or return empty results
+   */
+  queryEmbedding: z.array(z.number()).optional(),
 
   /**
    * Namespace to search within
@@ -539,7 +549,7 @@ export const EmbeddingConfigSchema = z.object({
   /**
    * Embedding dimension
    */
-  dimension: z.number().int().min(1).max(4096).default(384),
+  dimension: z.number().int().min(EMBEDDING_DIMENSION_MIN).max(EMBEDDING_DIMENSION_MAX).default(EMBEDDING_DIMENSION_DEFAULT),
 
   /**
    * Batch size for bulk operations

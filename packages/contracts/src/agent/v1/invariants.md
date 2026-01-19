@@ -259,6 +259,95 @@ This document defines the non-negotiable behavioral requirements for the agent d
 - Can drive confidence to 0 (but not below)
 - Agent still selectable if other signals strong
 
+## Capability Mapping Invariants
+
+### INV-CAP-001: Valid Workflow Reference
+
+**Statement:** Capability `workflowRef` MUST reference a valid, loadable workflow file.
+
+**Rationale:** Invalid references cause runtime failures when routing to capabilities.
+
+**Enforcement:**
+- Workflow file existence verified at agent load time (warning) or execution time (error)
+- Standard workflows (std/*) resolved from `workflows/std/` directory
+- Custom workflows resolved relative to agent's directory
+
+### INV-CAP-002: Input Schema Validation
+
+**Statement:** When capability specifies `inputSchemaRef`, input MUST validate against schema before execution.
+
+**Rationale:** Per-capability schemas enable strict validation appropriate for each task type.
+
+**Enforcement:**
+- Schema loaded by reference if specified
+- Validation occurs after task classification, before workflow execution
+- Invalid input returns error with schema violations
+
+### INV-CAP-003: Standard Workflow Sharing
+
+**Statement:** Standard workflows (std/*) MUST NOT be copied into agent directories; always reference shared version.
+
+**Rationale:** Shared workflows ensure consistent behavior and single point of maintenance.
+
+**Enforcement:**
+- Code review guideline (not runtime enforced)
+- Standard workflows loaded from canonical location
+- Agents reference by `std/` prefix, not file copy
+
+### INV-CAP-004: Classification Determinism
+
+**Statement:** TaskType classification MUST be deterministic (same input description = same taskType).
+
+**Rationale:** Non-deterministic classification causes unpredictable routing.
+
+**Enforcement:**
+- Classification algorithm has no random components
+- Keyword matching is case-insensitive but deterministic
+- Tests verify same description produces same taskType
+
+### INV-CAP-005: Fallback Behavior
+
+**Statement:** If no capability matches classified task type, agent MUST fall back to default workflow (not fail).
+
+**Rationale:** Graceful degradation ensures agents remain functional for all tasks.
+
+**Enforcement:**
+- Routing returns `useDefaultWorkflow: true` when no match
+- Agent's `workflow` field used as fallback
+- Fallback logged for debugging
+
+## Agent Workflow Step Invariants
+
+### INV-AGT-WF-001: Prompt Step Validation
+
+**Statement:** Prompt-type workflow steps MUST have non-empty 'prompt' in config.
+
+**Rationale:** Prompt steps without prompts are nonsensical and cause errors.
+
+**Enforcement:**
+- Schema superRefine validates at definition time
+- Error includes step ID for debugging
+
+### INV-AGT-WF-002: Delegate Step Validation
+
+**Statement:** Delegate-type workflow steps MUST have 'targetAgent' in config.
+
+**Rationale:** Delegation requires knowing the target agent.
+
+**Enforcement:**
+- Schema superRefine validates at definition time
+- Error includes step ID for debugging
+
+### INV-AGT-WF-003: Dependency Validation
+
+**Statement:** Step dependencies MUST reference existing step IDs within the workflow.
+
+**Rationale:** Invalid dependencies cause runtime lookup failures.
+
+**Enforcement:**
+- Schema superRefine validates all dependencies exist
+- Error includes missing dependency name
+
 ## Testing Requirements
 
 Each invariant must have corresponding tests:
@@ -285,7 +374,16 @@ Each invariant must have corresponding tests:
 20. `INV-AGT-SEL-004`: Test fallback to standard agent
 21. `INV-AGT-SEL-005`: Test exampleTasks boost confidence
 22. `INV-AGT-SEL-006`: Test notForTasks reduce confidence
+23. `INV-CAP-001`: Test invalid workflowRef detected
+24. `INV-CAP-002`: Test inputSchema validation enforced
+25. `INV-CAP-003`: Test standard workflows loaded from shared location
+26. `INV-CAP-004`: Test classification determinism
+27. `INV-CAP-005`: Test fallback to default workflow
+28. `INV-AGT-WF-001`: Test prompt steps require prompt
+29. `INV-AGT-WF-002`: Test delegate steps require targetAgent
+30. `INV-AGT-WF-003`: Test dependencies reference existing steps
 
 ## Version History
 
 - V1 (2024-12-16): Initial contract definition
+- V1.1 (2026-01-19): Added capability mapping invariants (INV-CAP-001 to INV-CAP-005) and workflow step invariants (INV-AGT-WF-001 to INV-AGT-WF-003)

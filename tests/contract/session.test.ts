@@ -546,6 +546,7 @@ describe('Session Contract', () => {
       });
 
       it('should record summary when session completes', () => {
+        // Summary is stored in metadata, not as a top-level field
         const completedSession = {
           sessionId: '550e8400-e29b-41d4-a716-446655440000',
           initiator: 'code-agent',
@@ -554,8 +555,9 @@ describe('Session Contract', () => {
           status: 'completed',
           createdAt: new Date(Date.now() - 3600000).toISOString(),
           updatedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
           version: 2,
-          summary: 'Task completed successfully',
+          metadata: { summary: 'Task completed successfully' },
         };
 
         const result = SessionSchema.safeParse(completedSession);
@@ -577,6 +579,7 @@ describe('Session Contract', () => {
       });
 
       it('should record error details when session fails', () => {
+        // Error details are stored in metadata, not as a top-level field
         const failedSession = {
           sessionId: '550e8400-e29b-41d4-a716-446655440000',
           initiator: 'code-agent',
@@ -586,9 +589,11 @@ describe('Session Contract', () => {
           createdAt: new Date(Date.now() - 3600000).toISOString(),
           updatedAt: new Date().toISOString(),
           version: 2,
-          error: {
-            code: 'TASK_FAILED',
-            message: 'Critical error occurred',
+          metadata: {
+            error: {
+              code: 'TASK_FAILED',
+              message: 'Critical error occurred',
+            },
           },
         };
 
@@ -691,12 +696,13 @@ describe('Session Contract', () => {
         };
 
         // Failed session (same initiator)
+        // Error details stored in metadata, not as a top-level field
         const failedSession = {
           ...activeSession,
           status: 'failed',
           version: 2,
           updatedAt: new Date().toISOString(),
-          error: { code: 'ERROR', message: 'Failed' },
+          metadata: { error: { code: 'ERROR', message: 'Failed' } },
         };
 
         expect(SessionSchema.safeParse(activeSession).success).toBe(true);

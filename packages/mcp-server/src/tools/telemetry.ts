@@ -1,6 +1,6 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import { randomUUID } from 'crypto';
-import { LIMIT_EVENT_BUFFER } from '@defai.digital/contracts';
+import { LIMIT_EVENT_BUFFER, getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * Metrics record tool definition
@@ -279,7 +279,7 @@ export const handleMetricsRecord: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -334,7 +334,7 @@ export const handleMetricsIncrement: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -434,7 +434,7 @@ export const handleMetricsQuery: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -491,7 +491,7 @@ export const handleMetricsList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -562,7 +562,7 @@ export const handleTelemetrySummary: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -609,7 +609,7 @@ export const handleTimerStart: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -684,7 +684,7 @@ export const handleTimerStop: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

@@ -14,7 +14,7 @@ import {
   type DelegationCheckResult,
   type DelegationResult,
   type DelegationRequest as ContractDelegationRequest,
-  TIMEOUT_PROVIDER_DEFAULT,
+  TIMEOUT_AGENT_STEP_DEFAULT,
   LIMIT_EVENT_BUFFER,
   PROVIDER_DEFAULT,
   LIMIT_DELEGATION_DEPTH,
@@ -713,7 +713,7 @@ export interface AgentDomainConfig {
  */
 export const DEFAULT_AGENT_DOMAIN_CONFIG: AgentDomainConfig = {
   maxDelegationDepth: LIMIT_DELEGATION_DEPTH,
-  defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
+  defaultTimeout: TIMEOUT_AGENT_STEP_DEFAULT,
   enableCheckpoints: true,
   eventBufferSize: LIMIT_EVENT_BUFFER,
   defaultProvider: PROVIDER_DEFAULT,

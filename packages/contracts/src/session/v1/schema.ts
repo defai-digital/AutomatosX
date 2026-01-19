@@ -124,6 +124,7 @@ export type SessionParticipant = z.infer<typeof SessionParticipantSchema>;
 
 /**
  * Session schema - the aggregate root for sessions
+ * Schema strictness rejects unknown fields
  */
 export const SessionSchema = z.object({
   sessionId: z.string().uuid(),
@@ -138,7 +139,7 @@ export const SessionSchema = z.object({
   workspace: z.string().max(200).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   appliedPolicies: z.array(z.string()).default([]), // Applied governance policies
-});
+}).strict();
 
 export type Session = z.infer<typeof SessionSchema>;
 

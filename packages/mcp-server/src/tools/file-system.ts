@@ -15,6 +15,7 @@ import {
   validateFileWriteRequest,
   validateDirectoryCreateRequest,
   isPathSafe,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 // ============================================================================
@@ -320,7 +321,7 @@ export const handleFileWrite: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -438,7 +439,7 @@ export const handleDirectoryCreate: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -522,7 +523,7 @@ export const handleFileExists: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     return {
       content: [
         {

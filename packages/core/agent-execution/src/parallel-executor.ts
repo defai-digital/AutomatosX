@@ -18,6 +18,7 @@ import {
   type AgentWorkflowStep,
   createDefaultParallelExecutionConfig,
   ParallelExecutionErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 /**
@@ -177,7 +178,7 @@ export function createParallelExecutor(
       } catch (error) {
         const durationMs = Date.now() - startTime;
         const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+          getErrorMessage(error);
 
         hasFailure = true;
         results.push({

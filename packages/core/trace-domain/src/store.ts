@@ -1,4 +1,4 @@
-import type { TraceEvent } from '@defai.digital/contracts';
+import type { TraceEvent, TraceContext } from '@defai.digital/contracts';
 import type { TraceSummary, TraceStore, TraceTreeNode } from './types.js';
 
 /**
@@ -113,6 +113,14 @@ export class InMemoryTraceStore implements TraceStore {
       this.summaries.set(traceId, summary);
     }
 
+    // Extract name from first event's payload if not already set
+    if (!summary.name && event.payload) {
+      const extractedName = this.extractTraceName(event.payload, context);
+      if (extractedName) {
+        summary.name = extractedName;
+      }
+    }
+
     summary.eventCount++;
 
     if (event.type === 'error') {
@@ -152,6 +160,67 @@ export class InMemoryTraceStore implements TraceStore {
     if (event.status !== undefined) {
       summary.status = event.status;
     }
+  }
+
+  /**
+   * Extracts a human-readable name from event payload
+   */
+  private extractTraceName(
+    payload: Record<string, unknown>,
+    context?: TraceContext
+  ): string | undefined {
+    // Priority: agentId > topic > command + prompt > command > tool > workflowId
+
+    // Agent execution
+    if (payload.agentId) {
+      return `ax agent run ${payload.agentId}`;
+    }
+
+    if (context?.agentId) {
+      return `ax agent run ${context.agentId}`;
+    }
+
+    // Discussion
+    if (payload.topic) {
+      const topic = String(payload.topic);
+      const truncated = topic.length > 40 ? `${topic.slice(0, 40)}...` : topic;
+      return `ax discuss "${truncated}"`;
+    }
+
+    const command = payload.command ? String(payload.command) : undefined;
+
+    // Provider call with prompt
+    if (payload.prompt) {
+      const prompt = String(payload.prompt);
+      const truncated = prompt.length > 40 ? `${prompt.slice(0, 40)}...` : prompt;
+      return `${command ?? 'ax call'} "${truncated}"`;
+    }
+
+    // Explicit command
+    if (command) {
+      return command;
+    }
+
+    // MCP tool invocation (parallel_run, review_analyze, etc.)
+    if (payload.tool) {
+      const tool = String(payload.tool);
+      // Format tool name nicely: parallel_run -> parallel run
+      const formattedTool = tool.replace(/_/g, ' ');
+      return `ax ${formattedTool}`;
+    }
+
+    // Workflow execution
+    if (payload.workflowId) {
+      const workflowName = payload.workflowName ? String(payload.workflowName) : String(payload.workflowId);
+      return `workflow ${workflowName}`;
+    }
+
+    // Check context for workflowId
+    if (context?.workflowId) {
+      return `workflow ${context.workflowId}`;
+    }
+
+    return undefined;
   }
 
   /**

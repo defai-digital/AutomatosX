@@ -89,6 +89,8 @@ export interface TraceStore extends TraceWriter, TraceReader {
  */
 export interface TraceSummary {
   traceId: string;
+  /** Human-readable name for the trace (e.g., "ax agent run researcher") */
+  name?: string;
   startTime: string;
   endTime?: string;
   status: TraceStatus;

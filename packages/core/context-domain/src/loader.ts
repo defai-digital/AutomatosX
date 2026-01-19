@@ -17,6 +17,7 @@ import {
   MAX_CONTEXT_TOTAL_SIZE,
   CONTEXT_DIRECTORY,
   DATA_DIR_NAME,
+  getErrorMessage,
   type ContextFile,
   type ProjectContext,
   type ContextLoaderConfig,
@@ -187,7 +188,7 @@ export class ContextLoader implements IContextLoader {
     } catch (error) {
       return {
         success: false,
-        error: `Failed to load context: ${error instanceof Error ? error.message : 'Unknown'}`,
+        error: `Failed to load context: ${getErrorMessage(error, 'Unknown')}`,
         filesLoaded: 0,
         filesSkipped: 0,
       };

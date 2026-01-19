@@ -72,6 +72,7 @@ import {
   createDiscussionExecutor,
   type ProviderRegistryLike as DiscussionProviderRegistryLike,
 } from '@defai.digital/discussion-domain';
+import { CACHE_HEALTH_CHECK_MS, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 
 // Database utilities
 import { getDatabase, getDatabaseConfig } from './utils/database.js';
@@ -452,7 +453,7 @@ export function createProductionStepExecutor(
 
   const {
     defaultProvider = 'claude',
-    defaultTimeout = 120000,
+    defaultTimeout = TIMEOUT_AGENT_STEP_DEFAULT,
     checkProviderHealth = false,
   } = options;
 
@@ -485,7 +486,7 @@ export function createProductionStepExecutor(
   const providerBridge = createProviderBridge(registryForBridge, {
     defaultTimeoutMs: defaultTimeout,
     performHealthChecks: checkProviderHealth,
-    healthCheckCacheMs: 60000,
+    healthCheckCacheMs: CACHE_HEALTH_CHECK_MS,
   });
 
   // Create discussion executor (for discuss steps)

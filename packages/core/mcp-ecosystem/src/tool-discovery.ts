@@ -15,7 +15,7 @@ import type {
   MCPDiscoveryRequest,
   MCPDiscoveryResponse,
 } from '@defai.digital/contracts';
-import { createToolFullName, createResourceFullUri } from '@defai.digital/contracts';
+import { createToolFullName, createResourceFullUri, getErrorMessage } from '@defai.digital/contracts';
 import type {
   ToolRegistryPort,
   ResourceRegistryPort,
@@ -329,7 +329,7 @@ export function createToolDiscoveryService(
           durationMs: Date.now() - startTime,
         };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
 
         // Clear cached tools/resources on error
         await toolRegistry.clearTools(serverId);

@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { MCPTool, ToolHandler } from '../types.js';
 import type { AgentProfile, AgentResult, AgentCategory, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
-import { LIMIT_AGENTS, createRootTraceHierarchy, createChildTraceHierarchy } from '@defai.digital/contracts';
+import {
+  LIMIT_AGENTS,
+  TIMEOUT_AGENT_STEP_DEFAULT,
+  TIMEOUT_AGENT_STEP_MAX,
+  createRootTraceHierarchy,
+  createChildTraceHierarchy,
+  getErrorMessage,
+} from '@defai.digital/contracts';
 import type { AgentFilter } from '@defai.digital/agent-domain';
 import {
   getAvailableTemplates,
@@ -99,10 +106,10 @@ export const agentRunTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Execution timeout in milliseconds (default: 1200000 / 20 min, max: 3600000 / 60 min). Increase for complex agents.',
+        description: `Execution timeout in milliseconds (default: ${TIMEOUT_AGENT_STEP_DEFAULT} / 20 min, max: ${TIMEOUT_AGENT_STEP_MAX} / 60 min). Increase for complex agents.`,
         minimum: 1000,
-        maximum: 3600000,
-        default: 1200000,
+        maximum: TIMEOUT_AGENT_STEP_MAX,
+        default: TIMEOUT_AGENT_STEP_DEFAULT,
       },
       // Hierarchical trace context (INV-TR-020 through INV-TR-024)
       parentTraceId: {
@@ -325,7 +332,9 @@ export const agentRemoveTool: MCPTool = {
 export const handleAgentList: ToolHandler = async (args) => {
   const team = args.team as string | undefined;
   const enabled = args.enabled as boolean | undefined;
-  const limit = (args.limit as number | undefined) ?? 50;
+  // Clamp limit to valid range [1, LIMIT_AGENTS]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_AGENTS;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_AGENTS));
 
   try {
     // Build filter only with defined properties
@@ -367,7 +376,7 @@ export const handleAgentList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -383,10 +392,7 @@ export const handleAgentList: ToolHandler = async (args) => {
   }
 };
 
-/** Default execution timeout in ms (20 minutes) */
-const DEFAULT_AGENT_TIMEOUT = 1200000;
-/** Maximum allowed timeout in ms (60 minutes) */
-const MAX_AGENT_TIMEOUT = 3600000;
+// Use centralized timeout constants from contracts
 
 /**
  * Handler for agent_run tool
@@ -400,8 +406,8 @@ export const handleAgentRun: ToolHandler = async (args) => {
   const provider = args.provider as string | undefined;
   const model = args.model as string | undefined;
   const timeout = Math.min(
-    Math.max((args.timeout as number | undefined) ?? DEFAULT_AGENT_TIMEOUT, 1000),
-    MAX_AGENT_TIMEOUT
+    Math.max((args.timeout as number | undefined) ?? TIMEOUT_AGENT_STEP_DEFAULT, 1000),
+    TIMEOUT_AGENT_STEP_MAX
   );
 
   // Hierarchical trace context (INV-TR-020 through INV-TR-024)
@@ -530,7 +536,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
     const executor = await getSharedExecutor();
 
     // Create timeout promise with cleanup capability
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
         reject(new Error(`Agent execution timed out after ${timeout}ms. Consider increasing the timeout parameter.`));
@@ -538,13 +544,18 @@ export const handleAgentRun: ToolHandler = async (args) => {
     });
 
     // Race execution against timeout
-    const result: AgentResult = await Promise.race([
-      executor.execute(agentId, input, execOptions),
-      timeoutPromise,
-    ]);
-
-    // Clear the timeout to prevent memory leak
-    clearTimeout(timeoutId!);
+    let result: AgentResult;
+    try {
+      result = await Promise.race([
+        executor.execute(agentId, input, execOptions),
+        timeoutPromise,
+      ]);
+    } finally {
+      // Clear the timeout to prevent memory leak (always runs, even on error)
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
 
     // Emit run.end trace event with success/failure
     const endEvent: TraceEvent = {
@@ -611,7 +622,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
       isError: !result.success,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
 
     // Emit run.end with failure
     const endEvent: TraceEvent = {
@@ -630,6 +641,7 @@ export const handleAgentRun: ToolHandler = async (args) => {
         sessionId: traceHierarchy.sessionId,
       },
       payload: {
+        command: 'agent',
         agentId,
         success: false,
         error: {
@@ -724,7 +736,7 @@ export const handleAgentGet: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -884,7 +896,7 @@ export const handleAgentRegister: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -945,7 +957,7 @@ export const handleAgentRemove: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -1031,6 +1043,7 @@ export const agentRecommendTool: MCPTool = {
  * Handler for agent_recommend tool
  * Implements INV-AGT-SEL-001 through INV-AGT-SEL-006
  * Uses AgentSelectionService domain module for proper separation
+ * Records traces for dashboard visibility
  */
 export const handleAgentRecommend: ToolHandler = async (args) => {
   const task = args.task as string;
@@ -1038,6 +1051,34 @@ export const handleAgentRecommend: ToolHandler = async (args) => {
   const requiredCapabilities = args.requiredCapabilities as string[] | undefined;
   const excludeAgents = args.excludeAgents as string[] | undefined;
   const maxResults = (args.maxResults as number | undefined) ?? 3;
+
+  // Get trace store and create trace context
+  const traceStore = getTraceStore();
+  const traceId = randomUUID();
+  const startTime = new Date().toISOString();
+  const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
+
+  // Emit run.start trace event
+  const startEvent: TraceEvent = {
+    eventId: randomUUID(),
+    traceId,
+    type: 'run.start',
+    timestamp: startTime,
+    context: {
+      workflowId: 'agent-recommend',
+      parentTraceId: traceHierarchy.parentTraceId,
+      rootTraceId: traceHierarchy.rootTraceId,
+      traceDepth: traceHierarchy.traceDepth,
+      sessionId: traceHierarchy.sessionId,
+    },
+    payload: {
+      tool: 'agent_recommend',
+      task: task.slice(0, 200),
+      team,
+      maxResults,
+    },
+  };
+  await traceStore.write(startEvent);
 
   try {
     const registry = await getSharedRegistry();
@@ -1051,6 +1092,32 @@ export const handleAgentRecommend: ToolHandler = async (args) => {
       requiredCapabilities,
       excludeAgents,
       maxResults,
+    });
+
+    // Emit run.end trace event on success
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'success',
+      context: {
+        workflowId: 'agent-recommend',
+        agentId: result.recommended,
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: true,
+        recommended: result.recommended,
+        confidence: result.confidence,
+        reason: result.reason,
+        alternativeCount: result.alternatives.length,
+        tool: 'agent_recommend',
+      },
     });
 
     // INV-AGT-SEL-004: Always returns at least one result (service handles fallback)
@@ -1075,7 +1142,30 @@ export const handleAgentRecommend: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
+
+    // Emit run.end trace event on failure
+    await traceStore.write({
+      eventId: randomUUID(),
+      traceId,
+      type: 'run.end',
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - new Date(startTime).getTime(),
+      status: 'failure',
+      context: {
+        workflowId: 'agent-recommend',
+        parentTraceId: traceHierarchy.parentTraceId,
+        rootTraceId: traceHierarchy.rootTraceId,
+        traceDepth: traceHierarchy.traceDepth,
+        sessionId: traceHierarchy.sessionId,
+      },
+      payload: {
+        success: false,
+        error: message,
+        tool: 'agent_recommend',
+      },
+    });
+
     return {
       content: [
         {
@@ -1189,7 +1279,7 @@ export const handleAgentCapabilities: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

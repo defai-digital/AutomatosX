@@ -11,6 +11,7 @@
  */
 
 import type { DiscussionRound, DebateRole } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type {
   PatternExecutor,
   PatternExecutionContext,
@@ -258,7 +259,7 @@ export class CritiquePattern implements PatternExecutor {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
 
       return {
         round: {
@@ -344,7 +345,7 @@ export class CritiquePattern implements PatternExecutor {
         } as DiscussionProviderResponse;
 
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         failed.push(critiquerId);
 
         return {
@@ -442,7 +443,7 @@ export class CritiquePattern implements PatternExecutor {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
 
       return {
         round: {

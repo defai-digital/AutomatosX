@@ -5,7 +5,7 @@
  * Used primarily in debate pattern where the judge renders a verdict.
  */
 
-import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord } from '@defai.digital/contracts';
+import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord, getErrorMessage } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   DEBATE_JUDGE,
@@ -111,7 +111,7 @@ export class ModeratorConsensus implements ConsensusExecutor {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
 
       onProgress?.({
         type: 'synthesis_complete',

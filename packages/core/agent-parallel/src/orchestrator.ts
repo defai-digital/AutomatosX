@@ -21,6 +21,7 @@ import {
   type ExecutionLayer,
   createDefaultAgentParallelExecutionConfig,
   ParallelExecutionErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 import type {
@@ -262,7 +263,7 @@ export function createAgentParallelOrchestrator(
         taskId: task.taskId,
         agentId: task.agentId,
         layerIndex,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: getErrorMessage(error),
       });
 
       return {
@@ -270,7 +271,7 @@ export function createAgentParallelOrchestrator(
         agentId: task.agentId,
         status: isTimeout ? 'timeout' : 'failed',
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: getErrorMessage(error),
         errorCode: isTimeout
           ? ParallelExecutionErrorCodes.TASK_TIMEOUT
           : ParallelExecutionErrorCodes.TASK_FAILED,

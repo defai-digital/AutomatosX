@@ -16,6 +16,7 @@ import {
   DEFAULT_PROVIDER_TIMEOUT,
   DiscussionErrorCodes,
   createFailedDiscussionResult,
+  getErrorMessage,
   type DiscussStepConfig,
   type DiscussionResult,
   type DiscussionRequest,
@@ -195,7 +196,7 @@ export class RecursiveDiscussionExecutor {
     try {
       availableProviders = await this.checkProviders(config.providers);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       return createFailedDiscussionResult(
         config.pattern,
         config.prompt,

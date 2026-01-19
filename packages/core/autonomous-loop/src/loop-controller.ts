@@ -29,6 +29,7 @@ import {
   createLoopIteration,
   createDefaultAutonomousLoopConfig,
   AutonomousLoopErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
   LoopControllerOptions,
@@ -683,7 +684,7 @@ export function createLoopController(
         result = {
           success: false,
           nextPhase: currentState.phase,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
         };
       } finally {
         // Clean up timeout to prevent memory leak

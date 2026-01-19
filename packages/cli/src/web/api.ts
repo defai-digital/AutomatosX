@@ -10,7 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { DATA_DIR_NAME, AGENTS_FILENAME } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage } from '@defai.digital/contracts';
 
 // Get the directory of this module (for finding bundled examples)
 const __filename = fileURLToPath(import.meta.url);
@@ -237,7 +237,12 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
         if (pId) searchFilters.providerId = pId;
         if (aId) searchFilters.agentId = aId;
         if (pType) searchFilters.type = pType;
-        if (pLimit) searchFilters.limit = parseInt(pLimit, 10);
+        if (pLimit) {
+          const limit = parseInt(pLimit, 10);
+          if (!isNaN(limit) && limit > 0 && limit <= 200) {
+            searchFilters.limit = limit;
+          }
+        }
         response = await handleTraceSearch(searchFilters);
       } else {
         // Static routes
@@ -273,13 +278,18 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
         }
       }
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      let statusCode = 200;
+      if (!response.success) {
+        const errorMsg = (response as { error?: string }).error ?? '';
+        statusCode = errorMsg.toLowerCase().includes('not found') ? 404 : 400;
+      }
+      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(response));
     } catch (error) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: getErrorMessage(error, 'Internal server error'),
       }));
     }
   };
@@ -402,7 +412,7 @@ async function handleAgentDetail(agentId: string): Promise<APIResponse> {
         // Stats
         stats: {
           executionCount,
-          successRate: executionCount > 0 ? successCount / executionCount : 1.0,
+          successRate: executionCount > 0 ? successCount / executionCount : 0,
           avgDurationMs: executionCount > 0 ? Math.round(totalDurationMs / executionCount) : 0,
         },
       },
@@ -410,7 +420,7 @@ async function handleAgentDetail(agentId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch agent details',
+      error: getErrorMessage(error, 'Failed to fetch agent details'),
     };
   }
 }
@@ -619,7 +629,7 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch trace',
+      error: getErrorMessage(error, 'Failed to fetch trace'),
     };
   }
 }
@@ -672,7 +682,7 @@ async function handleWorkflowDetail(workflowId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch workflow',
+      error: getErrorMessage(error, 'Failed to fetch workflow'),
     };
   }
 }
@@ -765,7 +775,7 @@ async function handleProviderHistory(providerId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch provider history',
+      error: getErrorMessage(error, 'Failed to fetch provider history'),
     };
   }
 }
@@ -858,7 +868,7 @@ async function handleAgentHistory(agentId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch agent history',
+      error: getErrorMessage(error, 'Failed to fetch agent history'),
     };
   }
 }
@@ -936,7 +946,7 @@ async function handleTraceSearch(filters: {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to search traces',
+      error: getErrorMessage(error, 'Failed to search traces'),
     };
   }
 }
@@ -1032,7 +1042,7 @@ async function handleTraceTree(traceId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get trace tree',
+      error: getErrorMessage(error, 'Failed to get trace tree'),
     };
   }
 }
@@ -1195,7 +1205,7 @@ async function handleWorkflowEvents(workflowId: string): Promise<APIResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch workflow events',
+      error: getErrorMessage(error, 'Failed to fetch workflow events'),
     };
   }
 }
@@ -1294,46 +1304,65 @@ async function getTraceData(): Promise<DashboardTraceSummary[]> {
     const traceStore = getTraceStore();
     const traces = await traceStore.listTraces(200); // Increased for histogram
 
-    // Fetch first event of each trace to get command info
+    // Fetch first event of each trace to get command info (only if name not stored)
     const tracesWithNames = await Promise.all(
       traces.map(async (trace) => {
-        let name = `Trace ${trace.traceId.slice(0, 8)}`;
+        // Use stored name if available, otherwise fall back to default
+        let name = trace.name ?? `Trace ${trace.traceId.slice(0, 8)}`;
         let command: string | undefined;
         let providers: string[] | undefined;
 
-        try {
-          const events = await traceStore.getTrace(trace.traceId);
-          const firstEvent = events[0];
-          if (firstEvent) {
-            const payload = firstEvent.payload;
-            const context = firstEvent.context as Record<string, unknown> | undefined;
+        // Only fetch events if we need to derive providers or name isn't stored
+        if (!trace.name || !providers) {
+          try {
+            const events = await traceStore.getTrace(trace.traceId);
+            const firstEvent = events[0];
+            if (firstEvent) {
+              const payload = firstEvent.payload;
+              const context = firstEvent.context as Record<string, unknown> | undefined;
 
-            // Extract command from payload
-            if (payload?.command) {
-              command = String(payload.command);
-              name = command;
-            }
+              // Extract command from payload
+              if (payload?.command) {
+                command = String(payload.command);
+              }
 
-            // Extract providers from payload (for discussions) or context (for single calls)
-            if (payload?.providers && Array.isArray(payload.providers)) {
-              providers = payload.providers as string[];
-            } else if (context?.providerId) {
-              providers = [String(context.providerId)];
-            }
+              // Extract providers from payload (for discussions) or context (for single calls)
+              if (payload?.providers && Array.isArray(payload.providers)) {
+                providers = payload.providers as string[];
+              } else if (context?.providerId) {
+                providers = [String(context.providerId)];
+              }
 
-            // Add additional context for different command types
-            if (payload?.agentId) {
-              name = `ax agent run ${payload.agentId}`;
-            } else if (payload?.topic) {
-              const topic = String(payload.topic).slice(0, 40);
-              name = `ax discuss "${topic}${String(payload.topic).length > 40 ? '...' : ''}"`;
-            } else if (payload?.prompt) {
-              const prompt = String(payload.prompt).slice(0, 40);
-              name = `${command ?? 'ax call'} "${prompt}${String(payload.prompt).length > 40 ? '...' : ''}"`;
+              // Derive name from events only if not stored
+              if (!trace.name) {
+                if (payload?.agentId) {
+                  name = `ax agent run ${payload.agentId}`;
+                } else if (context?.agentId) {
+                  name = `ax agent run ${context.agentId}`;
+                } else if (payload?.topic) {
+                  const topic = String(payload.topic).slice(0, 40);
+                  name = `ax discuss "${topic}${String(payload.topic).length > 40 ? '...' : ''}"`;
+                } else if (payload?.prompt) {
+                  const prompt = String(payload.prompt).slice(0, 40);
+                  name = `${command ?? 'ax call'} "${prompt}${String(payload.prompt).length > 40 ? '...' : ''}"`;
+                } else if (command) {
+                  name = command;
+                } else if (payload?.tool) {
+                  // MCP tool invocation (parallel_run, review_analyze, etc.)
+                  const tool = String(payload.tool).replace(/_/g, ' ');
+                  name = `ax ${tool}`;
+                } else if (payload?.workflowId) {
+                  // Workflow execution
+                  const workflowName = payload.workflowName ? String(payload.workflowName) : String(payload.workflowId);
+                  name = `workflow ${workflowName}`;
+                } else if (context?.workflowId) {
+                  name = `workflow ${context.workflowId}`;
+                }
+              }
             }
+          } catch {
+            // Ignore errors fetching events
           }
-        } catch {
-          // Ignore errors fetching events
         }
 
         return {

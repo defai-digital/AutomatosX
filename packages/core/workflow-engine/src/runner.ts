@@ -1,4 +1,4 @@
-import { type WorkflowStep, type RetryPolicy, DEFAULT_RETRY_POLICY } from '@defai.digital/contracts';
+import { type WorkflowStep, type RetryPolicy, DEFAULT_RETRY_POLICY, type StepGuardContext, type StepGuardResult } from '@defai.digital/contracts';
 import type {
   WorkflowResult,
   WorkflowRunnerConfig,
@@ -16,6 +16,7 @@ import {
   calculateBackoff,
   sleep,
 } from './retry.js';
+import type { StepGuardEngine } from './step-guard.js';
 
 /**
  * Internal config with required properties
@@ -25,6 +26,9 @@ interface ResolvedConfig {
   defaultRetryPolicy: RetryPolicy;
   onStepStart?: ((step: WorkflowStep, context: StepContext) => void) | undefined;
   onStepComplete?: ((step: WorkflowStep, result: StepResult) => void) | undefined;
+  stepGuardEngine?: StepGuardEngine | undefined;
+  executionId?: string | undefined;
+  agentId?: string | undefined;
 }
 
 /**
@@ -51,6 +55,15 @@ export class WorkflowRunner {
     }
     if (config.onStepComplete !== undefined) {
       this.config.onStepComplete = config.onStepComplete;
+    }
+    if (config.stepGuardEngine !== undefined) {
+      this.config.stepGuardEngine = config.stepGuardEngine;
+    }
+    if (config.executionId !== undefined) {
+      this.config.executionId = config.executionId;
+    }
+    if (config.agentId !== undefined) {
+      this.config.agentId = config.agentId;
     }
   }
 
@@ -91,6 +104,15 @@ export class WorkflowRunner {
         input: i === 0 ? input : stepResults[i - 1]?.output,
       };
 
+      // INV-WF-GUARD-001: Run before guards
+      if (this.config.stepGuardEngine) {
+        const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+        const beforeResults = await this.config.stepGuardEngine.runBeforeGuards(guardContext);
+        if (this.config.stepGuardEngine.shouldBlock(beforeResults)) {
+          return this.createBlockedResult(prepared, stepResults, step, beforeResults, startTime);
+        }
+      }
+
       // Notify step start
       this.config.onStepStart?.(step, context);
 
@@ -103,6 +125,13 @@ export class WorkflowRunner {
 
       // Notify step complete (pass frozen result for consistency)
       this.config.onStepComplete?.(step, frozenResult);
+
+      // INV-WF-GUARD-002: Run after guards
+      if (this.config.stepGuardEngine) {
+        const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+        // After guards can warn but typically don't block
+        await this.config.stepGuardEngine.runAfterGuards(guardContext);
+      }
 
       // Stop on failure
       if (!frozenResult.success) {
@@ -271,6 +300,68 @@ export class WorkflowRunner {
       success: false,
       stepResults,
       error: workflowError,
+      totalDurationMs: Date.now() - startTime,
+    };
+  }
+
+  /**
+   * Builds guard context from current execution state
+   * INV-WF-GUARD-004: Guard results included in trace events
+   */
+  private buildGuardContext(
+    step: WorkflowStep,
+    stepIndex: number,
+    workflow: PreparedWorkflow,
+    stepResults: StepResult[]
+  ): StepGuardContext {
+    const previousOutputs: Record<string, unknown> = {};
+    for (const result of stepResults) {
+      if (result.output !== undefined) {
+        previousOutputs[result.stepId] = result.output;
+      }
+    }
+
+    return {
+      executionId: this.config.executionId ?? crypto.randomUUID(),
+      agentId: this.config.agentId ?? 'unknown',
+      workflowId: workflow.workflow.workflowId,
+      stepId: step.stepId,
+      stepType: step.type,
+      stepIndex,
+      totalSteps: workflow.workflow.steps.length,
+      stepConfig: step.config,
+      previousOutputs,
+    };
+  }
+
+  /**
+   * Creates a blocked result when guards prevent execution
+   * INV-WF-GUARD-003: Block failures prevent step execution
+   */
+  private createBlockedResult(
+    workflow: PreparedWorkflow,
+    stepResults: StepResult[],
+    step: WorkflowStep,
+    guardResults: StepGuardResult[],
+    startTime: number
+  ): WorkflowResult {
+    const blockingGuard = guardResults.find((r) => r.blocked);
+    const failedGates = blockingGuard?.gates.filter((g) => g.status === 'FAIL') ?? [];
+    const gateMessages = failedGates.map((g) => `${g.gateId}: ${g.message}`).join('; ');
+
+    return {
+      workflowId: workflow.workflow.workflowId,
+      success: false,
+      stepResults,
+      error: {
+        code: 'WORKFLOW_GUARD_BLOCKED',
+        message: `Step ${step.stepId} blocked by guard: ${gateMessages}`,
+        failedStepId: step.stepId,
+        details: {
+          guardId: blockingGuard?.guardId,
+          failedGates: failedGates.map((g) => g.gateId),
+        },
+      },
       totalDurationMs: Date.now() - startTime,
     };
   }

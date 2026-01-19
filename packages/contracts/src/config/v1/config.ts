@@ -18,7 +18,9 @@ import {
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_GRACEFUL_SHUTDOWN,
   TIMEOUT_FORCE_KILL,
-  TIMEOUT_PROVIDER_DEFAULT,
+  TIMEOUT_AGENT_STEP_DEFAULT,
+  TIMEOUT_AGENT_STEP_MIN,
+  TIMEOUT_AGENT_STEP_MAX,
   INTERVAL_HEALTH_CHECK,
   CIRCUIT_RECOVERY_TIMEOUT,
   RETRY_MAX_DEFAULT,
@@ -159,7 +161,7 @@ export type ProvidersConfig = z.infer<typeof ProvidersConfigSchema>;
  * Execution policy configuration
  */
 export const ExecutionPolicySchema = z.object({
-  defaultTimeoutMs: z.number().int().min(1000).max(600000).default(120000),
+  defaultTimeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).default(TIMEOUT_AGENT_STEP_DEFAULT),
   maxRetries: z.number().int().min(0).max(10).default(3),
   retryDelayMs: z.number().int().min(100).max(60000).default(1000),
   enableParallelExecution: z.boolean().default(false),
@@ -417,7 +419,7 @@ export const DEFAULT_CONFIG: AutomatosXConfig = {
   defaultProvider: 'claude-code',
 
   executionPolicy: {
-    defaultTimeoutMs: TIMEOUT_PROVIDER_DEFAULT,
+    defaultTimeoutMs: TIMEOUT_AGENT_STEP_DEFAULT,
     maxRetries: RETRY_MAX_DEFAULT,
     retryDelayMs: RETRY_DELAY_DEFAULT,
     enableParallelExecution: false,

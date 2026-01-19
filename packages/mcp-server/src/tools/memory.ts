@@ -1,5 +1,5 @@
 import type { MCPTool, ToolHandler } from '../types.js';
-import { LIMIT_DEFAULT, LIMIT_MEMORY } from '@defai.digital/contracts';
+import { LIMIT_DEFAULT, LIMIT_MEMORY, getErrorMessage } from '@defai.digital/contracts';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 // In-memory storage for demonstration
@@ -199,7 +199,7 @@ export const handleMemoryStore: ToolHandler = (args) => {
     memoryStore.set(getFullKey(namespace, key), { value, storedAt: new Date().toISOString(), namespace });
     return Promise.resolve(successResponse(`Stored key: ${key}`, { key, namespace }));
   } catch (error) {
-    return Promise.resolve(errorResponse('STORE_FAILED', error instanceof Error ? error.message : 'Unknown error'));
+    return Promise.resolve(errorResponse('STORE_FAILED', getErrorMessage(error)));
   }
 };
 
@@ -217,7 +217,9 @@ export const handleMemoryRetrieve: ToolHandler = (args) => {
 export const handleMemorySearch: ToolHandler = (args) => {
   const query = args.query as string;
   const namespace = args.namespace as string | undefined;
-  const limit = (args.limit as number | undefined) ?? 10;
+  // Clamp limit to valid range [1, LIMIT_DEFAULT]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_DEFAULT;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_DEFAULT));
 
   const results = filterEntries(namespace)
     .filter(e => e.keyPart.includes(query))
@@ -229,7 +231,9 @@ export const handleMemorySearch: ToolHandler = (args) => {
 
 export const handleMemoryList: ToolHandler = (args) => {
   const namespace = args.namespace as string | undefined;
-  const limit = (args.limit as number | undefined) ?? 100;
+  // Clamp limit to valid range [1, LIMIT_MEMORY]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_MEMORY;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_MEMORY));
   const prefix = args.prefix as string | undefined;
 
   const keys = filterEntries(namespace, prefix)
@@ -284,7 +288,7 @@ export const handleMemoryImport: ToolHandler = (args) => {
       memoryStore.set(fullKey, { value: entry.value, storedAt: new Date().toISOString(), namespace });
       imported++;
     } catch (error) {
-      errors.push(`${entry.key}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      errors.push(`${entry.key}: ${getErrorMessage(error)}`);
     }
   }
 

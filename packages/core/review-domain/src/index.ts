@@ -13,6 +13,10 @@ export type {
   ReviewPromptExecutor,
   ReviewExecutionOptions,
   DryRunResult,
+  FileBatch,
+  ProviderTimeoutConfig,
+  DependencyNode,
+  PartialReviewResult,
 } from './types.js';
 
 // Re-export contract types for convenience
@@ -61,4 +65,6 @@ export {
   createReviewService,
   clearReviewCache,
   getReviewCacheStats,
+  clearPartialResults,
+  getPartialResultsStats,
 } from './review-service.js';

@@ -12,6 +12,7 @@ import {
   LIMIT_ABILITIES_INJECT,
   LIMIT_ABILITY_TOKENS,
   PRIORITY_DEFAULT,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type { AbilityFilter } from '@defai.digital/ability-domain';
 // Import from registry-accessor to avoid circular dependencies
@@ -329,7 +330,7 @@ export const handleAbilityList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -399,7 +400,7 @@ export const handleAbilityGet: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -461,7 +462,7 @@ export const handleAbilityInject: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -544,7 +545,7 @@ export const handleAbilityRegister: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -604,7 +605,7 @@ export const handleAbilityRemove: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

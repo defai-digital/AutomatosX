@@ -5,6 +5,11 @@
  */
 
 import { z } from 'zod';
+import {
+  TIMEOUT_AGENT_STEP_DEFAULT,
+  TIMEOUT_AGENT_STEP_MIN,
+  TIMEOUT_AGENT_STEP_MAX,
+} from '../../constants.js';
 
 // ============================================================================
 // Supporting Schemas
@@ -62,6 +67,66 @@ export const AgentCategorySchema = z.enum([
 ]);
 
 export type AgentCategory = z.infer<typeof AgentCategorySchema>;
+
+/**
+ * Task type for agent capability routing
+ *
+ * Standard task types that agents can declare capabilities for.
+ * Used by the capability router to match incoming tasks to workflows.
+ *
+ * Note: This is distinct from routing/v1 TaskType which is for model routing.
+ * This schema is specifically for agent capability-to-workflow mapping.
+ */
+export const AgentTaskTypeSchema = z.enum([
+  'code-review',
+  'debugging',
+  'refactoring',
+  'api-design',
+  'implementation',
+  'testing',
+  'documentation',
+  'analysis',
+  'planning',
+  'general',
+]);
+
+export type AgentTaskType = z.infer<typeof AgentTaskTypeSchema>;
+
+/**
+ * Capability mapping - connects task types to workflows
+ *
+ * Enables agents to declare specialized workflows for different task types.
+ * When a task is classified, the agent executor routes to the appropriate
+ * workflow and injects relevant abilities.
+ *
+ * Invariants:
+ * - INV-CAP-001: workflowRef must reference valid workflow file
+ * - INV-CAP-002: inputSchemaRef, when specified, must be satisfied before execution
+ * - INV-CAP-003: Standard workflows (std/*) are shared, not copied per-agent
+ * - INV-CAP-004: TaskType classification is deterministic (same input = same taskType)
+ * - INV-CAP-005: If no capability matches, agent falls back to default workflow
+ */
+export const CapabilityMappingSchema = z.object({
+  /** Task type this capability handles */
+  taskType: AgentTaskTypeSchema,
+
+  /** Reference to workflow file (e.g., "std/code-review" or "custom/my-workflow") */
+  workflowRef: z.string().min(1).max(200),
+
+  /** Input schema name for strict validation (optional, defaults to general) */
+  inputSchemaRef: z.string().max(100).optional(),
+
+  /** Abilities to inject for this task type */
+  abilities: z.array(z.string().max(100)).max(20).optional(),
+
+  /** Priority when multiple capabilities match (higher = preferred) */
+  priority: z.number().int().min(0).max(100).default(50),
+
+  /** Description for this capability */
+  description: z.string().max(500).optional(),
+});
+
+export type CapabilityMapping = z.infer<typeof CapabilityMappingSchema>;
 
 /**
  * Selection metadata for agent routing
@@ -122,7 +187,7 @@ export const OrchestrationConfigSchema = z.object({
   maxDelegationDepth: z.number().int().min(0).max(10).optional(),
   canReadWorkspaces: z.array(z.string().max(100)).max(20).optional(),
   canWriteToShared: z.boolean().optional(),
-  delegationTimeout: z.number().int().min(1000).max(600000).optional(),
+  delegationTimeout: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).optional(),
 });
 
 export type OrchestrationConfig = z.infer<typeof OrchestrationConfigSchema>;
@@ -169,7 +234,7 @@ export const AgentWorkflowStepSchema = z.object({
   condition: z.string().max(500).optional(),
   parallel: z.boolean().optional(),
   retryPolicy: AgentRetryPolicySchema.optional(),
-  timeoutMs: z.number().int().min(1000).max(600000).optional(),
+  timeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).optional(),
   keyQuestions: z.array(z.string().max(500)).max(10).optional(),
   outputs: z.array(z.string().max(100)).max(20).optional(),
   streaming: z.boolean().optional(),
@@ -185,6 +250,7 @@ export type AgentWorkflowStep = z.infer<typeof AgentWorkflowStepSchema>;
 
 /**
  * Base agent profile schema (without workflow validation)
+ * Schema strictness rejects unknown fields
  */
 const AgentProfileBaseSchema = z.object({
   // Identity
@@ -253,7 +319,31 @@ const AgentProfileBaseSchema = z.object({
   // Timestamps (managed by system)
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
-});
+
+  /**
+   * Capability mappings for task-specific routing
+   *
+   * When present, agent executor:
+   * 1. Classifies incoming task to taskType
+   * 2. Finds matching capability mapping
+   * 3. Loads referenced workflow
+   * 4. Injects specified abilities
+   * 5. Executes with context
+   *
+   * Fallback: If no capability matches, uses agent's default workflow
+   *
+   * @example
+   * capabilityMappings: [
+   *   {
+   *     taskType: 'code-review',
+   *     workflowRef: 'std/code-review',
+   *     abilities: ['code-review-checklist', 'security-patterns'],
+   *     priority: 80
+   *   }
+   * ]
+   */
+  capabilityMappings: z.array(CapabilityMappingSchema).max(20).optional(),
+}).strict();
 
 /**
  * Agent profile schema - the aggregate root for agents
@@ -740,7 +830,7 @@ export const DelegationRequestSchema = z.object({
   context: DelegationContextSchema,
 
   /** Timeout for delegated task in ms */
-  timeout: z.number().int().min(1000).max(600000).optional(),
+  timeout: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).optional(),
 
   /** Input data for delegated agent */
   input: z.unknown().optional(),
@@ -838,7 +928,7 @@ export const ParallelExecutionConfigSchema = z.object({
   failureStrategy: ParallelFailureStrategySchema.default('failFast'),
 
   /** Timeout for entire parallel group in ms */
-  groupTimeoutMs: z.number().int().min(1000).max(600000).optional(),
+  groupTimeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).optional(),
 
   /** Enable step-level checkpointing in parallel groups */
   checkpointParallel: z.boolean().default(false),
@@ -1026,7 +1116,7 @@ export const ToolExecutionRequestSchema = z.object({
   args: z.record(z.string(), z.unknown()),
 
   /** Timeout in milliseconds */
-  timeoutMs: z.number().int().min(1000).max(600000).optional(),
+  timeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).optional(),
 
   /** Idempotency key for safe retries */
   idempotencyKey: z.string().uuid().optional(),
@@ -1046,8 +1136,8 @@ export type ToolExecutionRequest = z.infer<typeof ToolExecutionRequestSchema>;
  * - INV-TOOL-003: Unknown tools must return error, not throw
  */
 export const ToolExecutorConfigSchema = z.object({
-  /** Default timeout for tool execution in ms */
-  defaultTimeoutMs: z.number().int().min(1000).max(600000).default(60000),
+  /** Default timeout for tool execution in ms (20 minutes default) */
+  defaultTimeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).default(TIMEOUT_AGENT_STEP_DEFAULT),
 
   /** Whether to validate inputs against tool schemas */
   validateInputs: z.boolean().default(true),

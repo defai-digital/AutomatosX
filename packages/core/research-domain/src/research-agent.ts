@@ -139,9 +139,10 @@ async function fetchSources(
   const sources: ResearchSource[] = [];
 
   // INV-RSH-100: Enforce timeout
-  const timeoutPromise = new Promise<ResearchSource[]>((_, reject) =>
-    setTimeout(() => reject(new Error('Research timeout')), request.timeout ?? timeout)
-  );
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<ResearchSource[]>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Research timeout')), request.timeout ?? timeout);
+  });
 
   try {
     // Search for sources
@@ -154,6 +155,11 @@ async function fetchSources(
   } catch (error) {
     // Log but don't fail
     console.warn('[research-agent] Search failed:', error);
+  } finally {
+    // Clear timeout to prevent memory leak
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
   }
 
   return sources;

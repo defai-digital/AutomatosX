@@ -24,6 +24,7 @@ import {
   type CheckpointConfig,
   type ParallelExecutionConfig,
   LIMIT_ABILITY_TOKENS_AGENT,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
   AgentExecutor,
@@ -195,7 +196,7 @@ export class EnhancedAgentExecutor implements AgentExecutor {
           agentId,
           startTime,
           AgentErrorCode.AGENT_VALIDATION_ERROR,
-          `Invalid run options: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Invalid run options: ${getErrorMessage(error)}`
         );
       }
     }
@@ -347,7 +348,7 @@ export class EnhancedAgentExecutor implements AgentExecutor {
         agentId,
         startTime,
         AgentErrorCode.AGENT_STAGE_FAILED,
-        error instanceof Error ? error.message : 'Unknown error'
+        getErrorMessage(error)
       );
     }
   }
@@ -597,7 +598,7 @@ export class EnhancedAgentExecutor implements AgentExecutor {
         cancelTimeout(); // Clean up the timer on error too
         lastError = {
           code: AgentErrorCode.AGENT_STAGE_FAILED,
-          message: error instanceof Error ? error.message : 'Unknown error',
+          message: getErrorMessage(error),
           stepId: step.stepId,
         };
         retryCount++;
@@ -783,13 +784,13 @@ export class EnhancedAgentExecutor implements AgentExecutor {
       case '!=':
         return actual != expected;
       case '>':
-        return (actual as number) > (expected as number);
+        return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
       case '<':
-        return (actual as number) < (expected as number);
+        return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
       case '>=':
-        return (actual as number) >= (expected as number);
+        return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
       case '<=':
-        return (actual as number) <= (expected as number);
+        return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
       default:
         return false;
     }
@@ -877,18 +878,11 @@ export class EnhancedAgentExecutor implements AgentExecutor {
   } {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+    // Reject with an Error instance so getErrorMessage() can extract the message properly
     const promise = new Promise<StepExecutionResult>((_, reject) => {
-      timeoutId = setTimeout(() => { reject({
-        success: false,
-        error: {
-          code: AgentErrorCode.AGENT_STAGE_FAILED,
-          message: `Step "${stepId}" timed out after ${ms}ms`,
-          stepId,
-          retryable: true,
-        },
-        durationMs: ms,
-        retryCount: 0,
-      }); }, ms);
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Step "${stepId}" timed out after ${ms}ms`));
+      }, ms);
     });
 
     const cancel = (): void => {
@@ -1010,8 +1004,13 @@ export class EnhancedAgentExecutor implements AgentExecutor {
           if (injectionResult.combinedContent.length > 0) {
             abilityContent = `\n\n## Relevant Knowledge & Abilities\n\n${injectionResult.combinedContent}\n\n---\n\n`;
           }
-        } catch {
+        } catch (error) {
           // Ability injection failure should not block execution
+          // Log and continue without abilities
+          console.warn(
+            `[agent-executor] Ability injection failed for agent ${context.agentId}, continuing without abilities:`,
+            error instanceof Error ? error.message : error
+          );
         }
       }
 
@@ -1171,7 +1170,7 @@ export class EnhancedAgentExecutor implements AgentExecutor {
           output: undefined,
           error: {
             code: 'TOOL_EXECUTION_ERROR',
-            message: error instanceof Error ? error.message : 'Unknown tool execution error',
+            message: getErrorMessage(error, 'Unknown tool execution error'),
             stepId: step.stepId,
             retryable: true,
           },
@@ -1375,7 +1374,7 @@ export class EnhancedAgentExecutor implements AgentExecutor {
           success: false,
           error: {
             code: AgentErrorCode.AGENT_STAGE_FAILED,
-            message: error instanceof Error ? error.message : 'Delegation failed',
+            message: getErrorMessage(error, 'Delegation failed'),
             stepId: step.stepId,
           },
           durationMs: Date.now() - startTime,

@@ -10,6 +10,7 @@
  */
 
 import type { DeadLetterEntry, DeadLetterStatus } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type { DeadLetterStorage } from '@defai.digital/cross-cutting';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -146,7 +147,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to add DLQ entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to add DLQ entry: ${getErrorMessage(error)}`,
         { entryId: entry.entryId }
       );
     }
@@ -171,7 +172,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to get DLQ entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to get DLQ entry: ${getErrorMessage(error)}`,
         { entryId }
       );
     }
@@ -205,7 +206,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to list DLQ entries: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to list DLQ entries: ${getErrorMessage(error)}`,
         { status }
       );
     }
@@ -258,7 +259,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to update DLQ entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to update DLQ entry: ${getErrorMessage(error)}`,
         { entryId: entry.entryId }
       );
     }
@@ -278,7 +279,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to delete DLQ entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to delete DLQ entry: ${getErrorMessage(error)}`,
         { entryId }
       );
     }
@@ -316,7 +317,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
     } catch (error) {
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
-        `Failed to count DLQ entries by status: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to count DLQ entries by status: ${getErrorMessage(error)}`
       );
     }
   }
@@ -361,7 +362,7 @@ function safeJsonParse<T>(json: string, fieldName: string, entryId: string): T {
   } catch (error) {
     throw new SqliteDeadLetterStoreError(
       SqliteDeadLetterStoreErrorCodes.SERIALIZATION_ERROR,
-      `Failed to parse ${fieldName} for entry ${entryId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      `Failed to parse ${fieldName} for entry ${entryId}: ${getErrorMessage(error, 'Invalid JSON')}`,
       { entryId, fieldName }
     );
   }

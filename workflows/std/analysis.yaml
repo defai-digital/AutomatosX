@@ -1,0 +1,190 @@
+workflowId: std/analysis
+version: "1.0.0"
+name: Standard Analysis
+description: |
+  General analysis workflow for investigating code, systems, or problems.
+  Provides structured approach to understanding and documenting findings.
+
+metadata:
+  category: analysis
+  tags:
+    - analysis
+    - investigation
+    - research
+  estimatedDuration: 90000
+
+steps:
+  - stepId: gather
+    name: Gather Information
+    type: prompt
+    config:
+      prompt: |
+        You are conducting an analysis. First, gather and organize relevant information.
+
+        ## Analysis Subject
+        ${input.subject}
+
+        ## Analysis Goals
+        ${input.goals}
+
+        ## Context
+        ${input.context}
+
+        Gather information on:
+
+        1. **Subject Overview**
+           - What are we analyzing?
+           - Scope and boundaries
+           - Key components/aspects
+
+        2. **Current State**
+           - How does it work now?
+           - Key characteristics
+           - Known issues or concerns
+
+        3. **Historical Context**
+           - How did we get here?
+           - Previous decisions
+           - Evolution over time
+
+        4. **Stakeholders**
+           - Who is affected?
+           - Who cares about this?
+           - Different perspectives
+
+        5. **Constraints**
+           - Technical limitations
+           - Business constraints
+           - Resource limitations
+
+        6. **Success Criteria**
+           - What makes this analysis successful?
+           - Decisions to be made
+           - Actions to be taken
+    timeoutMs: 45000
+
+  - stepId: analyze
+    name: Deep Analysis
+    type: prompt
+    dependencies:
+      - gather
+    config:
+      prompt: |
+        Based on gathered information:
+        ${previousOutputs.gather}
+
+        Conduct deep analysis:
+
+        ## Findings
+
+        ### Strengths
+        What's working well?
+        - Strength 1: [Description and evidence]
+        - Strength 2: [Description and evidence]
+
+        ### Weaknesses
+        What's not working or could be better?
+        - Weakness 1: [Description, impact, evidence]
+        - Weakness 2: [Description, impact, evidence]
+
+        ### Opportunities
+        What could be improved or leveraged?
+        - Opportunity 1: [Description and potential value]
+        - Opportunity 2: [Description and potential value]
+
+        ### Risks/Threats
+        What could go wrong?
+        - Risk 1: [Description, likelihood, impact]
+        - Risk 2: [Description, likelihood, impact]
+
+        ## Patterns Observed
+        - Pattern 1: [Description]
+        - Pattern 2: [Description]
+
+        ## Comparisons
+        How does this compare to alternatives or best practices?
+
+        ## Root Causes
+        For identified issues, what are the underlying causes?
+    timeoutMs: 60000
+
+  - stepId: recommend
+    name: Recommendations
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your analysis:
+        ${previousOutputs.analyze}
+
+        Provide recommendations:
+
+        ## Key Insights
+        Most important takeaways from the analysis:
+        1. [Insight 1]
+        2. [Insight 2]
+        3. [Insight 3]
+
+        ## Recommendations
+
+        ### High Priority
+        Actions that should be taken soon:
+        - **Recommendation 1**
+          - What: [Action]
+          - Why: [Justification]
+          - How: [Approach]
+          - Effort: [Estimate]
+
+        ### Medium Priority
+        Actions to plan for:
+        - **Recommendation 2**
+          - What, Why, How, Effort
+
+        ### Low Priority / Future Consideration
+        Ideas for later:
+        - **Recommendation 3**
+          - What, Why, How, Effort
+
+        ## Trade-offs
+        Key trade-offs to consider in decision-making.
+
+        ## Next Steps
+        Immediate actions to take based on this analysis.
+    timeoutMs: 45000
+
+  - stepId: summary
+    name: Create Summary
+    type: prompt
+    dependencies:
+      - recommend
+    config:
+      prompt: |
+        Summarize the analysis:
+        ${previousOutputs.recommend}
+
+        ## Executive Summary
+        2-3 paragraph summary of the analysis and key findings.
+
+        ## Key Findings
+        1. [Finding 1]
+        2. [Finding 2]
+        3. [Finding 3]
+
+        ## Recommendations Summary
+        | Priority | Recommendation | Effort | Impact |
+        |----------|---------------|--------|--------|
+        | High | [Rec 1] | Low/Med/High | Low/Med/High |
+        | Medium | [Rec 2] | ... | ... |
+        | Low | [Rec 3] | ... | ... |
+
+        ## Decision Points
+        Decisions that need to be made based on this analysis.
+
+        ## Action Items
+        - [ ] [Action 1] - [Owner] - [Due]
+        - [ ] [Action 2] - [Owner] - [Due]
+
+        ## Follow-up
+        When/how to revisit this analysis.
+    timeoutMs: 30000

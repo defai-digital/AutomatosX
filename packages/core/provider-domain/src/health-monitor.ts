@@ -22,6 +22,7 @@ import {
   createDefaultHealthCheckConfig,
   calculatePercentile,
   HealthErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 /**
@@ -348,8 +349,7 @@ export function createHealthMonitor(
           clearTimeout(timeoutId);
         }
         const latencyMs = Date.now() - startTime;
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
 
         this.recordFailure(errorMessage, HealthErrorCodes.CHECK_TIMEOUT);
 

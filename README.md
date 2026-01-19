@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.4.1-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.4.2-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -241,6 +241,13 @@ After `ax init`, your AI assistant can use these tools:
 | `ax_review_analyze` | Code review with focus (security, performance, architecture, etc.) |
 | `ax_review_list` | List recent reviews |
 
+**Review Performance Features (v13.5.0):**
+- **Smart batching**: Groups files by relevance to focus mode (e.g., auth files first for security reviews)
+- **Incremental reviews**: Use `--since <commit>` to only review changed files
+- **Provider-aware timeouts**: Automatic timeout calculation based on provider and file count
+- **Dependency ordering**: Review files with more dependents first (`--dependency-ordering`)
+- **Partial recovery**: Resume failed reviews without losing progress (`enableRecovery`)
+
 ### Guard Tools
 | Tool | Description |
 |------|-------------|
@@ -436,6 +443,8 @@ ax agent run security --input '{"query": "audit auth"}'
 
 # Review
 ax review analyze src/ --focus security
+ax review analyze src/ --since main           # Only files changed since main
+ax review analyze src/ --dependency-ordering  # Order by dependency graph
 
 # Discussion
 ax discuss "REST vs GraphQL"

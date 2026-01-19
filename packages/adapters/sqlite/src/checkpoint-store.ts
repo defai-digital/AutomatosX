@@ -9,6 +9,7 @@
  */
 
 import type { Checkpoint } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type { CheckpointStorage } from '@defai.digital/agent-execution';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -127,7 +128,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to save checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to save checkpoint: ${getErrorMessage(error)}`,
         { checkpointId: checkpoint.checkpointId }
       );
     }
@@ -151,7 +152,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to load checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to load checkpoint: ${getErrorMessage(error)}`,
         { checkpointId }
       );
     }
@@ -189,7 +190,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to load latest checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to load latest checkpoint: ${getErrorMessage(error)}`,
         { agentId, sessionId }
       );
     }
@@ -223,7 +224,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to list checkpoints: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to list checkpoints: ${getErrorMessage(error)}`,
         { agentId, sessionId }
       );
     }
@@ -243,7 +244,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to delete checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to delete checkpoint: ${getErrorMessage(error)}`,
         { checkpointId }
       );
     }
@@ -265,7 +266,7 @@ export class SqliteCheckpointStorage implements CheckpointStorage {
     } catch (error) {
       throw new SqliteCheckpointStoreError(
         SqliteCheckpointStoreErrorCodes.DATABASE_ERROR,
-        `Failed to delete expired checkpoints: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to delete expired checkpoints: ${getErrorMessage(error)}`
       );
     }
   }
@@ -304,7 +305,7 @@ function safeJsonParse<T>(json: string, fieldName: string, checkpointId: string)
   } catch (error) {
     throw new SqliteCheckpointStoreError(
       SqliteCheckpointStoreErrorCodes.SERIALIZATION_ERROR,
-      `Failed to parse ${fieldName} for checkpoint ${checkpointId}: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
+      `Failed to parse ${fieldName} for checkpoint ${checkpointId}: ${getErrorMessage(error, 'Invalid JSON')}`,
       { checkpointId, fieldName }
     );
   }

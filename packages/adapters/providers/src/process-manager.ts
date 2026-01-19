@@ -20,6 +20,12 @@ const execAsync = promisify(exec);
 const SIGKILL_GRACE_PERIOD = TIMEOUT_GRACEFUL_SHUTDOWN;
 
 /**
+ * Maximum output size in bytes to prevent memory exhaustion
+ * 10MB should be more than enough for any LLM response
+ */
+const MAX_OUTPUT_SIZE = 10 * 1024 * 1024;
+
+/**
  * Validates a command name to prevent command injection
  * Only allows alphanumeric characters, hyphens, underscores, and dots
  *
@@ -75,9 +81,18 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       }, SIGKILL_GRACE_PERIOD);
     }, options.timeout);
 
-    // Collect stdout
+    // Collect stdout (with size limit to prevent memory exhaustion)
+    let stdoutTruncated = false;
     child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
+      if (!stdoutTruncated && stdout.length < MAX_OUTPUT_SIZE) {
+        const str = data.toString();
+        if (stdout.length + str.length > MAX_OUTPUT_SIZE) {
+          stdout += str.slice(0, MAX_OUTPUT_SIZE - stdout.length);
+          stdoutTruncated = true;
+        } else {
+          stdout += str;
+        }
+      }
 
       // Check for early termination condition (e.g., complete JSON output received)
       // This is useful for CLIs that hang during shutdown after producing valid output
@@ -95,9 +110,18 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       }
     });
 
-    // Collect stderr
+    // Collect stderr (with size limit to prevent memory exhaustion)
+    let stderrTruncated = false;
     child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+      if (!stderrTruncated && stderr.length < MAX_OUTPUT_SIZE) {
+        const str = data.toString();
+        if (stderr.length + str.length > MAX_OUTPUT_SIZE) {
+          stderr += str.slice(0, MAX_OUTPUT_SIZE - stderr.length);
+          stderrTruncated = true;
+        } else {
+          stderr += str;
+        }
+      }
     });
 
     // Handle stdin errors (e.g., EPIPE if process exits immediately)

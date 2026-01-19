@@ -16,6 +16,7 @@ import {
   DEFAULT_CONFIG,
   ConfigErrorCode,
   ConfigError,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 // ============================================================================
@@ -291,7 +292,7 @@ export function migrateConfig(config: unknown): AutomatosXConfig {
     } catch (error) {
       throw new ConfigError(
         ConfigErrorCode.CONFIG_MIGRATION_FAILED,
-        `Migration from ${migration.fromVersion} to ${migration.toVersion} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Migration from ${migration.fromVersion} to ${migration.toVersion} failed: ${getErrorMessage(error)}`,
         {
           fromVersion: migration.fromVersion,
           toVersion: migration.toVersion,
@@ -323,7 +324,7 @@ export function safeMigrateConfig(
       success: false,
       error: new ConfigError(
         ConfigErrorCode.CONFIG_MIGRATION_FAILED,
-        error instanceof Error ? error.message : 'Unknown migration error',
+        getErrorMessage(error, 'Unknown migration error'),
         { error: String(error) }
       ),
     };

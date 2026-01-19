@@ -34,6 +34,29 @@ describe('Memory Domain', () => {
       expect(Object.isFrozen(stored[0])).toBe(true);
     });
 
+    it('INV-MEM-001: should throw when attempting to mutate frozen event', async () => {
+      const event = createMemoryEvent(
+        'memory.stored',
+        { key: 'test', value: 'data' },
+        { aggregateId: 'agg-immutable', version: 1 }
+      );
+
+      await store.append(event);
+      const stored = await store.getEvents('agg-immutable');
+
+      expect(stored).toHaveLength(1);
+      const storedEvent = stored[0];
+
+      // In strict mode, attempting to modify a frozen object throws TypeError
+      // In non-strict mode, assignment silently fails
+      // Use a function wrapper to test mutation attempt
+      expect(() => {
+        'use strict';
+        // @ts-expect-error - intentionally testing mutation of frozen object
+        storedEvent.type = 'memory.deleted';
+      }).toThrow(TypeError);
+    });
+
     it('INV-MEM-004: should enforce version ordering', async () => {
       const event1 = createMemoryEvent(
         'memory.stored',
@@ -255,9 +278,11 @@ describe('Memory Domain', () => {
         { aggregateId: 'counter-1', version: 3 }
       );
 
+      await expect(repo.save('counter-1', staleEvent, 1)).rejects.toThrow(EventStoreError);
+
+      // Verify error code in a separate assertion
       try {
         await repo.save('counter-1', staleEvent, 1);
-        expect.fail('Should have thrown');
       } catch (err) {
         expect((err as EventStoreError).code).toBe(MemoryErrorCodes.VERSION_CONFLICT);
       }

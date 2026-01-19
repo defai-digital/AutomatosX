@@ -1,5 +1,6 @@
 import type { MCPTool, ToolHandler } from '../types.js';
 import { randomUUID } from 'crypto';
+import { getErrorMessage } from '@defai.digital/contracts';
 
 /**
  * API design tool definition
@@ -423,7 +424,7 @@ export const handleDesignApi: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -529,7 +530,7 @@ export class ${name} implements I${name} {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -645,7 +646,7 @@ export type ${name} = z.infer<typeof ${name}Schema>;`;
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -751,7 +752,7 @@ ${diagram}
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -811,7 +812,7 @@ export const handleDesignList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

@@ -12,6 +12,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type {
   SemanticItem,
   SemanticSearchRequest,
@@ -238,7 +239,7 @@ export class SqliteSemanticStore implements SemanticStorePort {
     } catch (error) {
       throw new SemanticStoreError(
         SemanticStoreErrorCodes.STORE_ERROR,
-        `Failed to store item: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to store item: ${getErrorMessage(error)}`
       );
     }
   }
@@ -274,14 +275,14 @@ export class SqliteSemanticStore implements SemanticStorePort {
       const stmt = this.db.prepare(sql);
       const rows = stmt.all(...params) as SemanticItemRow[];
 
-      // SQLite adapter doesn't compute embeddings, so semantic search requires
-      // external embedding computation. For now, we do a simple content-based filter.
-      // The request type doesn't include queryEmbedding - that would be computed
-      // by a higher-level manager using an embedding service.
-      // Return empty results indicating semantic search is not available in this adapter.
-      const supportsSemanticSearch = false; // Would need query embedding support
+      // Check if query embedding is provided (from semantic manager)
+      const queryEmbedding = request.queryEmbedding;
+      const minSimilarity = request.minSimilarity ?? 0.7;
+      const topK = request.topK ?? 10;
 
-      if (!supportsSemanticSearch) {
+      // If no query embedding is provided, return empty results
+      // The semantic manager should compute and pass the query embedding
+      if (!queryEmbedding || queryEmbedding.length === 0) {
         return {
           results: [],
           totalMatches: 0,
@@ -290,12 +291,6 @@ export class SqliteSemanticStore implements SemanticStorePort {
           durationMs: Date.now() - startTime,
         };
       }
-
-      // Below code is unreachable until semantic search is properly implemented
-      // with embedding service integration
-      const queryEmbedding: number[] = [];
-      const minSimilarity = request.minSimilarity;
-      const topK = request.topK ?? 10;
 
       const scored = rows
         .map((row) => {
@@ -331,7 +326,7 @@ export class SqliteSemanticStore implements SemanticStorePort {
     } catch (error) {
       throw new SemanticStoreError(
         SemanticStoreErrorCodes.SEARCH_ERROR,
-        `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Search failed: ${getErrorMessage(error)}`,
         { query: request.query }
       );
     }
@@ -548,8 +543,9 @@ export class SqliteSemanticStore implements SemanticStorePort {
     if (row.metadata) {
       try {
         item.metadata = JSON.parse(row.metadata) as Record<string, unknown>;
-      } catch {
-        // Ignore parsing errors
+      } catch (error) {
+        // Log corrupted metadata but don't crash
+        console.warn(`[SemanticStore] Failed to parse metadata for key '${row.key}':`, getErrorMessage(error));
       }
     }
 

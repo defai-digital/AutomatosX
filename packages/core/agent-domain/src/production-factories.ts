@@ -21,7 +21,7 @@
  */
 
 import type { CheckpointConfig, ParallelExecutionConfig } from '@defai.digital/contracts';
-import { createDefaultParallelExecutionConfig } from '@defai.digital/contracts';
+import { createDefaultParallelExecutionConfig, getErrorMessage } from '@defai.digital/contracts';
 import type {
   CheckpointStoragePort,
   CheckpointManagerPort,
@@ -493,7 +493,7 @@ class ProductionParallelExecutor implements ParallelExecutorPort {
       return {
         stepId: step.stepId,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: getErrorMessage(error),
         durationMs: Date.now() - startTime,
       };
     }

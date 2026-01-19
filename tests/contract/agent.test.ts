@@ -1097,6 +1097,578 @@ describe('INV-AGT-SEL: Agent Selection Invariants', () => {
   });
 });
 
+// ============================================================================
+// Capability Mapping Invariant Tests (INV-CAP-001 to INV-CAP-005)
+// ============================================================================
+
+describe('INV-CAP: Capability Mapping Invariants', () => {
+  describe('CapabilityMappingSchema Validation', () => {
+    it('should validate a minimal capability mapping', () => {
+      const mapping = {
+        taskType: 'code-review',
+        workflowRef: 'std/code-review',
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate a full capability mapping', () => {
+      const mapping = {
+        taskType: 'debugging',
+        workflowRef: 'std/debugging',
+        inputSchemaRef: 'debug-input',
+        abilities: ['debugging', 'logging', 'tracing'],
+        priority: 90,
+        description: 'Debug code issues',
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capabilityMappings?.[0]?.priority).toBe(90);
+      }
+    });
+
+    it('should validate all task types', () => {
+      const taskTypes = [
+        'code-review',
+        'debugging',
+        'refactoring',
+        'api-design',
+        'implementation',
+        'testing',
+        'documentation',
+        'analysis',
+        'planning',
+        'general',
+      ];
+
+      for (const taskType of taskTypes) {
+        const result = AgentProfileSchema.safeParse({
+          agentId: 'test-agent',
+          description: 'Test',
+          capabilityMappings: [{ taskType, workflowRef: `std/${taskType}` }],
+        });
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject invalid task type', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{ taskType: 'invalid-type', workflowRef: 'std/test' }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('INV-CAP-001: Valid Workflow Reference', () => {
+    it('should accept standard workflow references (std/*)', () => {
+      const mapping = {
+        taskType: 'code-review',
+        workflowRef: 'std/code-review',
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept custom workflow references', () => {
+      const mapping = {
+        taskType: 'implementation',
+        workflowRef: 'custom/my-workflow.yaml',
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject empty workflow reference', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{ taskType: 'code-review', workflowRef: '' }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should enforce max workflow reference length', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{
+          taskType: 'code-review',
+          workflowRef: 'a'.repeat(201), // Max is 200
+        }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('INV-CAP-002: Input Schema Validation', () => {
+    it('should accept optional inputSchemaRef', () => {
+      const mapping = {
+        taskType: 'code-review',
+        workflowRef: 'std/code-review',
+        inputSchemaRef: 'review-input-schema',
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capabilityMappings?.[0]?.inputSchemaRef).toBe('review-input-schema');
+      }
+    });
+
+    it('should enforce max inputSchemaRef length', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{
+          taskType: 'code-review',
+          workflowRef: 'std/code-review',
+          inputSchemaRef: 'a'.repeat(101), // Max is 100
+        }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('INV-CAP-003: Standard Workflow Sharing', () => {
+    it('should distinguish standard from custom workflow references', () => {
+      const standardRef = 'std/code-review';
+      const customRef = 'custom/my-workflow';
+
+      // Standard workflows start with 'std/'
+      expect(standardRef.startsWith('std/')).toBe(true);
+      expect(customRef.startsWith('std/')).toBe(false);
+    });
+
+    it('should validate multiple agents can reference same standard workflow', () => {
+      const agents = [
+        {
+          agentId: 'reviewer-1',
+          description: 'First reviewer',
+          capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review' }],
+        },
+        {
+          agentId: 'reviewer-2',
+          description: 'Second reviewer',
+          capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review' }],
+        },
+      ];
+
+      for (const agent of agents) {
+        const result = AgentProfileSchema.safeParse(agent);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.capabilityMappings?.[0]?.workflowRef).toBe('std/code-review');
+        }
+      }
+    });
+  });
+
+  describe('INV-CAP-004: Classification Determinism', () => {
+    it('should validate same capability mapping produces same parsed result', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [
+          { taskType: 'code-review', workflowRef: 'std/code-review', priority: 90 },
+          { taskType: 'debugging', workflowRef: 'std/debugging', priority: 80 },
+        ],
+      };
+
+      const parsed1 = AgentProfileSchema.parse(profile);
+      const parsed2 = AgentProfileSchema.parse(profile);
+      const parsed3 = AgentProfileSchema.parse(profile);
+
+      expect(parsed1.capabilityMappings).toEqual(parsed2.capabilityMappings);
+      expect(parsed2.capabilityMappings).toEqual(parsed3.capabilityMappings);
+    });
+  });
+
+  describe('INV-CAP-005: Fallback Behavior', () => {
+    it('should allow agent without capability mappings (uses default workflow)', () => {
+      const profile = {
+        agentId: 'simple-agent',
+        description: 'Agent without capability mappings',
+        workflow: [
+          { stepId: 'default', name: 'Default Step', type: 'prompt', config: { prompt: 'Process task' } },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capabilityMappings).toBeUndefined();
+        expect(result.data.workflow).toHaveLength(1);
+      }
+    });
+
+    it('should allow empty capability mappings array', () => {
+      const profile = {
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [],
+        workflow: [
+          { stepId: 'fallback', name: 'Fallback', type: 'prompt', config: { prompt: 'Handle any task' } },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Capability Abilities Validation', () => {
+    it('should validate abilities array in capability mapping', () => {
+      const mapping = {
+        taskType: 'code-review',
+        workflowRef: 'std/code-review',
+        abilities: ['code-review', 'static-analysis', 'best-practices'],
+      };
+
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [mapping],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capabilityMappings?.[0]?.abilities).toHaveLength(3);
+      }
+    });
+
+    it('should enforce max abilities per capability', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{
+          taskType: 'code-review',
+          workflowRef: 'std/code-review',
+          abilities: Array(21).fill('ability'), // Max is 20
+        }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Priority Validation', () => {
+    it('should default priority to 50', () => {
+      const result = AgentProfileSchema.parse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review' }],
+      });
+      expect(result.capabilityMappings?.[0]?.priority).toBe(50);
+    });
+
+    it('should accept priority range 0-100', () => {
+      const priorities = [0, 25, 50, 75, 100];
+
+      for (const priority of priorities) {
+        const result = AgentProfileSchema.safeParse({
+          agentId: 'test-agent',
+          description: 'Test',
+          capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review', priority }],
+        });
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject priority below 0', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review', priority: -1 }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject priority above 100', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: [{ taskType: 'code-review', workflowRef: 'std/code-review', priority: 101 }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Multiple Capability Mappings', () => {
+    it('should validate agent with multiple capability mappings', () => {
+      const profile = {
+        agentId: 'multi-capable-agent',
+        description: 'Agent with multiple capabilities',
+        capabilityMappings: [
+          { taskType: 'code-review', workflowRef: 'std/code-review', priority: 95 },
+          { taskType: 'debugging', workflowRef: 'std/debugging', priority: 90 },
+          { taskType: 'refactoring', workflowRef: 'std/refactoring', priority: 80 },
+          { taskType: 'testing', workflowRef: 'std/testing', priority: 70 },
+          { taskType: 'implementation', workflowRef: 'std/implementation', priority: 85 },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.capabilityMappings).toHaveLength(5);
+      }
+    });
+
+    it('should enforce max capability mappings (20)', () => {
+      const result = AgentProfileSchema.safeParse({
+        agentId: 'test-agent',
+        description: 'Test',
+        capabilityMappings: Array(21).fill({ taskType: 'code-review', workflowRef: 'std/test' }),
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+});
+
+// ============================================================================
+// Workflow Step Invariant Tests (INV-AGT-WF-001 to INV-AGT-WF-003)
+// ============================================================================
+
+describe('INV-AGT-WF: Workflow Step Invariants', () => {
+  describe('INV-AGT-WF-001: Prompt Step Validation', () => {
+    it('should accept prompt step with prompt in config', () => {
+      const step = {
+        stepId: 'analyze',
+        name: 'Analyze Code',
+        type: 'prompt',
+        config: { prompt: 'Analyze the following code for issues' },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept prompt step with non-empty prompt', () => {
+      const profile = {
+        agentId: 'prompt-agent',
+        description: 'Agent with prompt steps',
+        workflow: [
+          {
+            stepId: 'step-1',
+            name: 'First Prompt',
+            type: 'prompt',
+            config: { prompt: 'Execute the task' },
+          },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('INV-AGT-WF-002: Delegate Step Validation', () => {
+    it('should accept delegate step with targetAgent', () => {
+      const step = {
+        stepId: 'delegate-review',
+        name: 'Delegate to Reviewer',
+        type: 'delegate',
+        config: { targetAgent: 'code-reviewer' },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept delegate step in agent profile', () => {
+      const profile = {
+        agentId: 'orchestrator',
+        description: 'Orchestrator agent',
+        workflow: [
+          {
+            stepId: 'delegate-1',
+            name: 'Delegate Task',
+            type: 'delegate',
+            config: { targetAgent: 'backend-agent' },
+          },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('INV-AGT-WF-003: Dependency Validation', () => {
+    it('should accept step with dependencies', () => {
+      const step = {
+        stepId: 'summarize',
+        name: 'Summarize Results',
+        type: 'prompt',
+        config: { prompt: 'Summarize' },
+        dependencies: ['analyze', 'review'],
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dependencies).toContain('analyze');
+        expect(result.data.dependencies).toContain('review');
+      }
+    });
+
+    it('should accept workflow with chained dependencies', () => {
+      const profile = {
+        agentId: 'chain-agent',
+        description: 'Agent with chained steps',
+        workflow: [
+          { stepId: 'step-1', name: 'First', type: 'prompt', config: { prompt: 'First step' } },
+          { stepId: 'step-2', name: 'Second', type: 'prompt', config: { prompt: 'Second step' }, dependencies: ['step-1'] },
+          { stepId: 'step-3', name: 'Third', type: 'prompt', config: { prompt: 'Third step' }, dependencies: ['step-2'] },
+        ],
+      };
+
+      const result = AgentProfileSchema.safeParse(profile);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.workflow?.[2]?.dependencies).toContain('step-2');
+      }
+    });
+  });
+
+  describe('Workflow Step Type Validation', () => {
+    it('should validate all step types', () => {
+      const stepTypes = ['prompt', 'tool', 'conditional', 'loop', 'parallel', 'delegate', 'discuss'];
+
+      for (const type of stepTypes) {
+        const step = {
+          stepId: `${type}-step`,
+          name: `${type} Step`,
+          type,
+          config: {},
+        };
+        const result = AgentWorkflowStepSchema.safeParse(step);
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject invalid step type', () => {
+      const step = {
+        stepId: 'invalid',
+        name: 'Invalid Step',
+        type: 'invalid-type',
+        config: {},
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Tool Step Validation', () => {
+    it('should accept tool step with tool name', () => {
+      const step = {
+        stepId: 'call-api',
+        name: 'Call API',
+        type: 'tool',
+        config: { tool: 'review_analyze', inputMapping: { paths: '${input.paths}' } },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Parallel Step Validation', () => {
+    it('should accept parallel step', () => {
+      const step = {
+        stepId: 'parallel-tasks',
+        name: 'Parallel Tasks',
+        type: 'parallel',
+        config: { branches: ['analyze', 'review'] },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Conditional Step Validation', () => {
+    it('should accept conditional step', () => {
+      const step = {
+        stepId: 'check-condition',
+        name: 'Check Condition',
+        type: 'conditional',
+        config: { condition: '${input.needsReview}', then: 'review', else: 'skip' },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Step Timeout Validation', () => {
+    it('should accept step with timeout', () => {
+      const step = {
+        stepId: 'long-task',
+        name: 'Long Running Task',
+        type: 'tool',
+        config: {},
+        timeoutMs: 120000,
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.timeoutMs).toBe(120000);
+      }
+    });
+  });
+
+  describe('Step Retry Policy Validation', () => {
+    it('should accept step with retry policy', () => {
+      const step = {
+        stepId: 'retry-step',
+        name: 'Retry Step',
+        type: 'tool',
+        config: {},
+        retryPolicy: {
+          maxAttempts: 3,
+          backoffMs: 1000,
+          backoffMultiplier: 2,
+          retryOn: ['timeout', 'serverError'],
+        },
+      };
+
+      const result = AgentWorkflowStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.retryPolicy?.maxAttempts).toBe(3);
+      }
+    });
+  });
+});
+
 describe('Agent Orchestration Invariants', () => {
   describe('Delegation Depth', () => {
     it('should support maxDelegationDepth configuration', () => {

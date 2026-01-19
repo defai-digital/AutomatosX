@@ -3,7 +3,7 @@ import {
   type Session,
   type SessionFilter,
 } from '@defai.digital/session-domain';
-import { LIMIT_SESSIONS } from '@defai.digital/contracts';
+import { LIMIT_SESSIONS, getErrorMessage } from '@defai.digital/contracts';
 import { getSessionStore, getSessionManager } from '../bootstrap.js';
 
 // Get shared store and manager from bootstrap (singleton instances)
@@ -340,7 +340,7 @@ export const handleSessionCreate: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -380,12 +380,13 @@ export const handleSessionStatus: ToolHandler = async (args) => {
       };
     }
 
-    // Build participant summaries
-    const participants = session.participants.map((p) => ({
+    // Build participant summaries (defensive: handle undefined participants)
+    const sessionParticipants = session.participants ?? [];
+    const participants = sessionParticipants.map((p) => ({
       agentId: p.agentId,
       role: p.role,
       joinedAt: p.joinedAt,
-      taskCount: p.tasks.length,
+      taskCount: p.tasks?.length ?? 0,
     }));
 
     return {
@@ -410,7 +411,7 @@ export const handleSessionStatus: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -454,7 +455,7 @@ export const handleSessionComplete: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     const code = (error as { code?: string }).code ?? 'SESSION_COMPLETE_FAILED';
     return {
       content: [
@@ -518,7 +519,7 @@ export const handleSessionList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -579,11 +580,12 @@ export const handleSessionJoin: ToolHandler = async (args) => {
       };
     }
 
-    // INV-MCP-SES-003: Max participants check
+    // INV-MCP-SES-003: Max participants check (defensive: handle undefined)
     const MAX_PARTICIPANTS = 10;
-    if (session.participants.length >= MAX_PARTICIPANTS) {
+    const joinParticipants = session.participants ?? [];
+    if (joinParticipants.length >= MAX_PARTICIPANTS) {
       // Check if already a participant (INV-MCP-SES-002)
-      const existing = session.participants.find((p) => p.agentId === agentId);
+      const existing = joinParticipants.find((p) => p.agentId === agentId);
       if (existing === undefined) {
         return {
           content: [
@@ -624,7 +626,7 @@ export const handleSessionJoin: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     const code = (error as { code?: string }).code ?? 'SESSION_JOIN_FAILED';
     return {
       content: [
@@ -668,8 +670,9 @@ export const handleSessionLeave: ToolHandler = async (args) => {
       };
     }
 
-    // INV-MCP-SES-004: Cannot leave if not a participant
-    const isParticipant = session.participants.some((p) => p.agentId === agentId);
+    // INV-MCP-SES-004: Cannot leave if not a participant (defensive: handle undefined)
+    const leaveParticipants = session.participants ?? [];
+    const isParticipant = leaveParticipants.some((p) => p.agentId === agentId);
     if (!isParticipant) {
       return {
         content: [
@@ -722,7 +725,7 @@ export const handleSessionLeave: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     const code = (error as { code?: string }).code ?? 'SESSION_LEAVE_FAILED';
     return {
       content: [
@@ -808,7 +811,7 @@ export const handleSessionFail: ToolHandler = async (args) => {
       ],
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = getErrorMessage(err);
     const code = (err as { code?: string }).code ?? 'SESSION_FAIL_FAILED';
     return {
       content: [
@@ -875,7 +878,7 @@ export const handleSessionCloseStuck: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {

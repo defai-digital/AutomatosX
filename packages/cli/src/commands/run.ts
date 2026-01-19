@@ -7,7 +7,7 @@ import {
 } from '@defai.digital/workflow-engine';
 import type { StepContext, StepResult, StepExecutor } from '@defai.digital/workflow-engine';
 import type { WorkflowStep } from '@defai.digital/contracts';
-import { TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
+import { TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 import { getStepExecutor } from '../bootstrap.js';
 import { success, failure, failureFromError, usageError } from '../utils/formatters.js';
 
@@ -114,7 +114,7 @@ function createLoggingStepExecutor(verbose: boolean): StepExecutor {
     ? defaultStepExecutor
     : getStepExecutor({
         defaultProvider: 'claude',
-        defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
+        defaultTimeout: TIMEOUT_AGENT_STEP_DEFAULT,
         checkProviderHealth: false,
       });
 

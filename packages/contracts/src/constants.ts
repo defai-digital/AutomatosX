@@ -122,6 +122,15 @@ export const TIMEOUT_GATE_DEPENDENCY = 60000;
 /** Provider default timeout (2 minutes) - for cli provider calls */
 export const TIMEOUT_PROVIDER_DEFAULT = 120000;
 
+/** Agent step default timeout (20 minutes) */
+export const TIMEOUT_AGENT_STEP_DEFAULT = 1200000;
+
+/** Agent step minimum timeout (1 second) */
+export const TIMEOUT_AGENT_STEP_MIN = 1000;
+
+/** Agent step maximum timeout (60 minutes) */
+export const TIMEOUT_AGENT_STEP_MAX = 3600000;
+
 /** Provider short timeout (1 minute) - for providers with shutdown issues */
 export const TIMEOUT_PROVIDER_SHORT = 60000;
 
@@ -133,6 +142,9 @@ export const TIMEOUT_FORCE_KILL = 1000;
 
 /** Health check interval (5 minutes) */
 export const INTERVAL_HEALTH_CHECK = 300000;
+
+/** Health check cache duration (1 minute) */
+export const CACHE_HEALTH_CHECK_MS = 60000;
 
 /** Session timeout (1 hour) */
 export const TIMEOUT_SESSION = 3600000;
@@ -569,6 +581,28 @@ export const REFACTOR_IMPACTS = [
 
 /** Default maximum impact for refactoring */
 export const REFACTOR_IMPACT_DEFAULT_MAX = 'major';
+
+// =============================================================================
+// SEMANTIC & EMBEDDING CONSTANTS
+// =============================================================================
+
+/** Default embedding dimension (compatible with common embedding models) */
+export const EMBEDDING_DIMENSION_DEFAULT = 384;
+
+/** Minimum embedding dimension */
+export const EMBEDDING_DIMENSION_MIN = 1;
+
+/** Maximum embedding dimension */
+export const EMBEDDING_DIMENSION_MAX = 4096;
+
+/** Default embedding model name */
+export const EMBEDDING_MODEL_DEFAULT = 'tfidf-384';
+
+/** Default semantic namespace */
+export const SEMANTIC_NAMESPACE_DEFAULT = 'default';
+
+/** Default minimum similarity threshold for semantic search */
+export const SEMANTIC_SIMILARITY_MIN_DEFAULT = 0.7;
 
 // =============================================================================
 // HELPER FUNCTIONS

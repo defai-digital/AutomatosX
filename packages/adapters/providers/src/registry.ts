@@ -107,17 +107,14 @@ export class ProviderRegistry {
    * Gets all providers that are currently available
    */
   async getAvailableProviders(): Promise<LLMProvider[]> {
-    const available: LLMProvider[] = [];
-
-    const checks = [...this.providers.values()].map(async (provider) => {
-      const isAvailable = await provider.isAvailable();
-      if (isAvailable) {
-        available.push(provider);
-      }
-    });
-
-    await Promise.all(checks);
-    return available;
+    const providers = [...this.providers.values()];
+    const results = await Promise.all(
+      providers.map(async (provider) => {
+        const isAvailable = await provider.isAvailable();
+        return isAvailable ? provider : null;
+      })
+    );
+    return results.filter((p): p is LLMProvider => p !== null);
   }
 
   /**

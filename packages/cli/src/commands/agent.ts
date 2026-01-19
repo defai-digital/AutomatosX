@@ -20,7 +20,7 @@ import {
   type EnhancedAgentDomainConfig,
 } from '@defai.digital/agent-domain';
 import type { AgentProfile, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy, TIMEOUT_PROVIDER_DEFAULT } from '@defai.digital/contracts';
+import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 import { bootstrap, getTraceStore, getProviderRegistry } from '../bootstrap.js';
 
 // Storage path for persistent agents (matches MCP server)
@@ -167,12 +167,20 @@ export async function agentCommand(
 
 /**
  * List all registered agents
+ *
+ * Note: This is a read-only operation with no LLM involvement,
+ * so trace recording is intentionally omitted (PRD R3.1).
  */
 async function listAgents(options: CLIOptions): Promise<CommandResult> {
   try {
     const registry = await getRegistry();
     const filter = options.team ? { team: options.team } : undefined;
     const agents = await registry.list(filter);
+
+    // Apply limit if specified
+    const limited = options.limit !== undefined
+      ? agents.slice(0, options.limit)
+      : agents;
 
     if (agents.length === 0) {
       const teamMsg = options.team ? ` in team "${options.team}"` : '';
@@ -183,11 +191,6 @@ async function listAgents(options: CLIOptions): Promise<CommandResult> {
         exitCode: 0,
       };
     }
-
-    // Apply limit if specified
-    const limited = options.limit !== undefined
-      ? agents.slice(0, options.limit)
-      : agents;
 
     if (options.format === 'json') {
       return {
@@ -400,7 +403,7 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
       const providerRegistry = getProviderRegistry();
       const promptExecutor = createProviderPromptExecutor(providerRegistry, {
         defaultProvider: options.provider,
-        defaultTimeout: TIMEOUT_PROVIDER_DEFAULT,
+        defaultTimeout: TIMEOUT_AGENT_STEP_DEFAULT,
       });
 
       const config: EnhancedAgentDomainConfig = {
@@ -440,36 +443,38 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
     const execOptions = options.provider !== undefined ? { provider: options.provider } : undefined;
     const result = await executor.execute(agentId, input, execOptions);
 
-    // Emit step events for each step result
+    // Emit step events for each step result (in parallel for performance)
     // INV-TR-011: Agent executions MUST include agentId in context
     if (result.stepResults) {
-      for (const step of result.stepResults) {
-        await traceStore.write({
-          eventId: randomUUID(),
-          traceId,
-          type: 'step.end',
-          timestamp: new Date().toISOString(),
-          durationMs: step.durationMs,
-          status: step.success ? 'success' : 'failure',
-          context: {
-            workflowId: agentId,
-            agentId, // INV-TR-011: Enable agent drill-down
-            stepId: step.stepId,
-            // Include hierarchy in context (INV-TR-020 through INV-TR-024)
-            parentTraceId: traceHierarchy.parentTraceId,
-            rootTraceId: traceHierarchy.rootTraceId,
-            traceDepth: traceHierarchy.traceDepth,
-            sessionId: traceHierarchy.sessionId,
-          },
-          payload: {
-            stepId: step.stepId,
-            success: step.success,
-            output: step.output,
-            error: step.error,
-            agentId,
-          },
-        });
-      }
+      await Promise.all(
+        result.stepResults.map((step) =>
+          traceStore.write({
+            eventId: randomUUID(),
+            traceId,
+            type: 'step.end',
+            timestamp: new Date().toISOString(),
+            durationMs: step.durationMs,
+            status: step.success ? 'success' : 'failure',
+            context: {
+              workflowId: agentId,
+              agentId, // INV-TR-011: Enable agent drill-down
+              stepId: step.stepId,
+              // Include hierarchy in context (INV-TR-020 through INV-TR-024)
+              parentTraceId: traceHierarchy.parentTraceId,
+              rootTraceId: traceHierarchy.rootTraceId,
+              traceDepth: traceHierarchy.traceDepth,
+              sessionId: traceHierarchy.sessionId,
+            },
+            payload: {
+              stepId: step.stepId,
+              success: step.success,
+              output: step.output,
+              error: step.error,
+              agentId,
+            },
+          })
+        )
+      );
     }
 
     // Emit run.end trace event with full details

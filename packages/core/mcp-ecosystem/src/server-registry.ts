@@ -22,6 +22,7 @@ import {
   MCPEcosystemErrorCodes,
   createInitialServerState,
   LIMIT_DEFAULT,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type { ServerRegistryPort, MCPClientPort, MCPClientFactory } from './types.js';
 
@@ -169,6 +170,10 @@ export function createServerRegistryService(
   // Active clients by server ID
   const clients = new Map<string, MCPClientPort>();
 
+  // Pending connections to prevent TOCTOU race conditions
+  // When a connection is in progress, subsequent calls wait for the same promise
+  const pendingConnections = new Map<string, Promise<MCPClientPort>>();
+
   return {
     async register(request): Promise<MCPServerRegisterResponse> {
       const { connectNow, discoverNow: _discoverNow, ...config } = request;
@@ -213,7 +218,7 @@ export function createServerRegistryService(
               success: true,
               server: updatedState ?? serverState,
               created: true,
-              error: error instanceof Error ? error.message : 'Connection failed',
+              error: getErrorMessage(error, 'Connection failed'),
             };
           }
         }
@@ -227,7 +232,7 @@ export function createServerRegistryService(
         return {
           success: false,
           created: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
         };
       }
     },
@@ -300,41 +305,66 @@ export function createServerRegistryService(
         return existing;
       }
 
-      // Update status to connecting
-      await this.updateStatus(serverId, 'connecting');
-
-      // Create new client
-      const client = clientFactory.createClient();
-
-      try {
-        // Connect with timeout
-        const timeout = state.config.connectionTimeoutMs ?? defaultConnectionTimeoutMs;
-        await Promise.race([
-          client.connect(state.config),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Connection timeout')), timeout)
-          ),
-        ]);
-
-        // Store client and update status
-        clients.set(serverId, client);
-        await this.updateStatus(serverId, 'connected');
-
-        // Update lastConnectedAt
-        const updatedState = await storage.get(serverId);
-        if (updatedState) {
-          await storage.set(serverId, {
-            ...updatedState,
-            lastConnectedAt: new Date().toISOString(),
-          });
-        }
-
-        return client;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        await this.updateStatus(serverId, 'error', message);
-        throw ServerRegistryError.connectionFailed(serverId, message);
+      // Check if connection is already in progress (TOCTOU protection)
+      const pending = pendingConnections.get(serverId);
+      if (pending) {
+        return pending;
       }
+
+      // Create connection promise and store it immediately to prevent race conditions
+      const connectionPromise = (async (): Promise<MCPClientPort> => {
+        try {
+          // Update status to connecting
+          await this.updateStatus(serverId, 'connecting');
+
+          // Create new client
+          const client = clientFactory.createClient();
+
+          // Connect with timeout
+          const timeout = state.config.connectionTimeoutMs ?? defaultConnectionTimeoutMs;
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              client.connect(state.config),
+              new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error('Connection timeout')), timeout);
+              }),
+            ]);
+          } finally {
+            // Clear timeout to prevent memory leak
+            if (timeoutId !== undefined) {
+              clearTimeout(timeoutId);
+            }
+          }
+
+          // Store client and update status
+          clients.set(serverId, client);
+          await this.updateStatus(serverId, 'connected');
+
+          // Update lastConnectedAt
+          const updatedState = await storage.get(serverId);
+          if (updatedState) {
+            await storage.set(serverId, {
+              ...updatedState,
+              lastConnectedAt: new Date().toISOString(),
+            });
+          }
+
+          return client;
+        } catch (error) {
+          const message = getErrorMessage(error);
+          await this.updateStatus(serverId, 'error', message);
+          throw ServerRegistryError.connectionFailed(serverId, message);
+        } finally {
+          // Always clear pending connection when done (success or failure)
+          pendingConnections.delete(serverId);
+        }
+      })();
+
+      // Store the promise immediately to prevent concurrent connection attempts
+      pendingConnections.set(serverId, connectionPromise);
+
+      return connectionPromise;
     },
 
     async disconnect(serverId): Promise<void> {

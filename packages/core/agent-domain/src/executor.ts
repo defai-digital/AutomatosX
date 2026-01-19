@@ -15,6 +15,7 @@ import {
   AgentRunOptionsSchema,
   LIMIT_ABILITY_TOKENS_AGENT,
   createChildTraceHierarchy,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
   AgentExecutor,
@@ -146,7 +147,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
           agentId,
           startTime,
           AgentErrorCode.AGENT_VALIDATION_ERROR,
-          `Invalid run options: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Invalid run options: ${getErrorMessage(error)}`
         );
       }
     }
@@ -344,7 +345,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
         agentId,
         startTime,
         AgentErrorCode.AGENT_STAGE_FAILED,
-        error instanceof Error ? error.message : 'Unknown error'
+        getErrorMessage(error)
       );
     }
   }
@@ -456,7 +457,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
         cancelTimeout(); // Clean up the timer on error too
         lastError = {
           code: AgentErrorCode.AGENT_STAGE_FAILED,
-          message: error instanceof Error ? error.message : 'Unknown error',
+          message: getErrorMessage(error),
           stepId: step.stepId,
         };
         retryCount++;
@@ -958,9 +959,13 @@ export class DefaultAgentExecutor implements AgentExecutor {
           if (injectionResult.combinedContent.length > 0) {
             abilityContent = `\n\n## Relevant Knowledge & Abilities\n\n${injectionResult.combinedContent}\n\n---\n\n`;
           }
-        } catch {
+        } catch (error) {
           // Ability injection failure should not block execution
-          // Just log and continue without abilities
+          // Log and continue without abilities
+          console.warn(
+            `[agent-executor] Ability injection failed for agent ${context.agentId}, continuing without abilities:`,
+            error instanceof Error ? error.message : error
+          );
         }
       }
 
@@ -1158,7 +1163,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
           output: undefined,
           error: {
             code: 'TOOL_EXECUTION_ERROR',
-            message: error instanceof Error ? error.message : 'Unknown tool execution error',
+            message: getErrorMessage(error, 'Unknown tool execution error'),
             stepId: step.stepId,
             retryable: true,
           },
@@ -1324,7 +1329,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
           success: false,
           error: {
             code: AgentErrorCode.AGENT_STAGE_FAILED,
-            message: error instanceof Error ? error.message : 'Delegation failed',
+            message: getErrorMessage(error, 'Delegation failed'),
             stepId: step.stepId,
           },
           durationMs: Date.now() - startTime,

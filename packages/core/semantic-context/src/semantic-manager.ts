@@ -22,7 +22,7 @@ import type {
   SemanticDeleteResponse,
   EmbeddingConfig,
 } from '@defai.digital/contracts';
-import { SemanticContextErrorCodes, computeContentHash } from '@defai.digital/contracts';
+import { SemanticContextErrorCodes, computeContentHash, getErrorMessage } from '@defai.digital/contracts';
 import type {
   SemanticManager,
   SemanticManagerOptions,
@@ -159,7 +159,7 @@ export function createSemanticManager(options: SemanticManagerOptions): Semantic
       } catch (error) {
         if (error instanceof SemanticManagerError) throw error;
 
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = getErrorMessage(error);
         throw SemanticManagerError.embeddingFailed(message);
       }
     },
@@ -185,12 +185,15 @@ export function createSemanticManager(options: SemanticManagerOptions): Semantic
           }
         }
 
-        // Delegate search to store
-        return await storePort.search(request);
+        // Delegate search to store with the computed query embedding
+        return await storePort.search({
+          ...request,
+          queryEmbedding: queryResult.embedding,
+        });
       } catch (error) {
         if (error instanceof SemanticManagerError) throw error;
 
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = getErrorMessage(error);
         throw SemanticManagerError.searchFailed(message);
       }
     },

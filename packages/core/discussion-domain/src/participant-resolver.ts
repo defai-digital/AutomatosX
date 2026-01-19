@@ -13,6 +13,7 @@
 import {
   LIMIT_ABILITY_TOKENS_AGENT,
   DEFAULT_AGENT_WEIGHT_MULTIPLIER,
+  getErrorMessage,
   type DiscussionParticipant,
 } from '@defai.digital/contracts';
 
@@ -207,7 +208,7 @@ export async function resolveParticipant(
       // Log warning for diagnostics, but don't fail discussion
       console.warn(
         `[participant-resolver] Ability injection failed for agent ${agentId}:`,
-        error instanceof Error ? error.message : String(error)
+        getErrorMessage(error)
       );
     }
   }

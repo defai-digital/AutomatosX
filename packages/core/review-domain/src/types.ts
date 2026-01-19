@@ -111,3 +111,65 @@ export interface DryRunResult {
   /** Estimated duration (rough) */
   estimatedDurationMs: number;
 }
+
+/**
+ * File batch for smart batching by focus mode (Tier 2)
+ */
+export interface FileBatch {
+  /** Batch identifier */
+  batchId: string;
+  /** Files in this batch */
+  files: FileContent[];
+  /** Priority level (higher = more important for focus mode) */
+  priority: number;
+  /** File category for this batch */
+  category: 'security' | 'architecture' | 'performance' | 'data' | 'test' | 'general';
+}
+
+/**
+ * Provider timeout configuration (Tier 2)
+ */
+export interface ProviderTimeoutConfig {
+  /** Provider ID */
+  providerId: string;
+  /** Base timeout in milliseconds */
+  baseTimeoutMs: number;
+  /** Timeout per file in milliseconds */
+  perFileTimeoutMs: number;
+  /** Maximum total timeout */
+  maxTimeoutMs: number;
+}
+
+/**
+ * Dependency graph node (Tier 3)
+ */
+export interface DependencyNode {
+  /** File path */
+  path: string;
+  /** Files this file imports from */
+  imports: string[];
+  /** Files that import this file */
+  importedBy: string[];
+  /** Depth in dependency tree (0 = no dependencies) */
+  depth: number;
+}
+
+/**
+ * Partial review result for recovery (Tier 3)
+ */
+export interface PartialReviewResult {
+  /** Request ID */
+  requestId: string;
+  /** Completed batches */
+  completedBatches: string[];
+  /** Failed batches */
+  failedBatches: string[];
+  /** Partial comments collected so far */
+  partialComments: ReviewComment[];
+  /** Files reviewed so far */
+  filesReviewed: string[];
+  /** Timestamp of last successful batch */
+  lastSuccessAt: string;
+  /** Error message if failed */
+  error?: string;
+}

@@ -169,6 +169,121 @@ healthScore = 100 - (critical * 25 + warning * 10 + suggestion * 2)
 
 ---
 
+## Performance Invariants (Tier 2)
+
+### INV-REV-PERF-001: Smart Batching
+
+**Statement:** When smartBatching is enabled, files MUST be grouped by relevance to focus mode.
+
+**Rationale:** Improves LLM context quality by grouping related files.
+
+**Enforcement:**
+- Files matching focus-relevant patterns get higher priority
+- Security focus: auth, crypto, validation files prioritized
+- Architecture focus: index, module, interface files prioritized
+- Performance focus: loop, cache, query files prioritized
+- Batches processed in priority order (high to low)
+
+**Validation:**
+- High-priority batches MUST be processed before low-priority
+- Batch size MUST NOT exceed SMART_BATCH_SIZE (10 files)
+
+---
+
+### INV-REV-PERF-002: Incremental Reviews
+
+**Statement:** When `since` parameter provided, MUST only review files changed since that commit.
+
+**Rationale:** Enables fast incremental reviews on large codebases.
+
+**Enforcement:**
+- Uses `git diff --name-only <since>...HEAD` to get changed files
+- Falls back to full review if git command fails
+- Only code extensions included (no binary/config files)
+
+**Validation:**
+- Result `filesReviewed` MUST be subset of git-changed files
+- Git errors MUST NOT cause review failure (graceful fallback)
+
+---
+
+### INV-REV-PERF-003: Provider-Aware Timeouts
+
+**Statement:** Timeout MUST be calculated based on provider characteristics and file count.
+
+**Rationale:** Different providers have different performance profiles.
+
+**Formula:**
+```
+timeout = min(baseTimeout + (fileCount * perFileTimeout), maxTimeout)
+```
+
+**Provider Defaults:**
+- Claude: 60s base + 5s/file, max 300s
+- Gemini: 45s base + 4s/file, max 240s
+- Codex: 90s base + 6s/file, max 360s
+- Grok: 50s base + 4.5s/file, max 250s
+
+**Validation:**
+- Calculated timeout MUST NOT exceed provider's maxTimeout
+- Explicit timeoutMs in request overrides calculation
+
+---
+
+## Performance Invariants (Tier 3)
+
+### INV-REV-PERF-004: Dependency Ordering
+
+**Statement:** When dependencyOrdering enabled, files MUST be ordered by import graph.
+
+**Rationale:** Files with more dependents provide better context when reviewed first.
+
+**Enforcement:**
+- Parse imports from TypeScript/JavaScript/Python files
+- Build dependency graph tracking imports/importedBy
+- Sort by importedBy count (descending)
+
+**Validation:**
+- Files with more dependents MUST appear before files with fewer
+- Circular dependencies MUST NOT cause infinite loops
+
+---
+
+### INV-REV-PERF-005: Memory Management
+
+**Statement:** Memory usage MUST be bounded for large codebases.
+
+**Rationale:** Prevents OOM on repositories with thousands of files.
+
+**Enforcement:**
+- MAX_FILES_IN_MEMORY limit (50 files)
+- Files read with p-limit concurrency control
+- File content truncated at maxLinesPerFile
+
+**Validation:**
+- Active file contents in memory MUST NOT exceed limit
+- Large files MUST be truncated with marker
+
+---
+
+### INV-REV-PERF-006: Partial Result Recovery
+
+**Statement:** When enableRecovery is true, partial results MUST be preserved on failure.
+
+**Rationale:** Allows resuming failed reviews without losing progress.
+
+**Enforcement:**
+- Track completed/failed batches per request
+- Store partial comments on batch success
+- Expose getPartialResult() and resumeFromPartial() methods
+
+**Validation:**
+- Partial result MUST contain all completed batch IDs
+- Failed batches MUST be recorded separately
+- Recovery MUST not duplicate already-reviewed files
+
+---
+
 ## Test Requirements
 
 Each invariant MUST have corresponding tests in `tests/contract/review.test.ts`:
@@ -182,3 +297,9 @@ Each invariant MUST have corresponding tests in `tests/contract/review.test.ts`:
 7. **INV-REV-OUT-001**: Test comment ordering
 8. **INV-REV-OUT-002**: Test health score calculation
 9. **INV-REV-OUT-003**: Test SARIF output validation
+10. **INV-REV-PERF-001**: Test smart batching groups files by focus relevance
+11. **INV-REV-PERF-002**: Test incremental reviews with --since flag
+12. **INV-REV-PERF-003**: Test provider-aware timeout calculation
+13. **INV-REV-PERF-004**: Test dependency-based file ordering
+14. **INV-REV-PERF-005**: Test memory limits respected
+15. **INV-REV-PERF-006**: Test partial result recovery on failure

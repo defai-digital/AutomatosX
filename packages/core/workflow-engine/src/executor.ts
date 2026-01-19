@@ -1,4 +1,4 @@
-import type { WorkflowStep } from '@defai.digital/contracts';
+import { getErrorMessage, type WorkflowStep } from '@defai.digital/contracts';
 import type {
   StepResult,
   StepContext,
@@ -233,7 +233,7 @@ function executeConditionalStep(
       stepId: step.stepId,
       condition,
       evaluated: false,
-      error: error instanceof Error ? error.message : 'Evaluation failed',
+      error: getErrorMessage(error, 'Evaluation failed'),
       output: config.elseValue ?? { branch: 'else', result: false },
     });
   }
@@ -342,7 +342,7 @@ async function executeParallelStep(
         return {
           id: task.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: getErrorMessage(error),
         };
       }
     });

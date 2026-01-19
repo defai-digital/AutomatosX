@@ -3,7 +3,12 @@ import type {
   TimeoutResult,
   ToolCategory,
 } from '@defai.digital/contracts';
-import { TOOL_CATEGORIES, getToolTimeout } from '@defai.digital/contracts';
+import {
+  TOOL_CATEGORIES,
+  getToolTimeout,
+  getErrorMessage,
+  TIMEOUT_AGENT_STEP_DEFAULT,
+} from '@defai.digital/contracts';
 
 /**
  * Default timeout configuration.
@@ -14,7 +19,7 @@ export const DEFAULT_TIMEOUT_CONFIG: MCPTimeoutConfig = {
     query: 10_000, // 10 seconds
     mutation: 30_000, // 30 seconds
     scan: 120_000, // 2 minutes
-    execution: 1_200_000, // 20 minutes
+    execution: TIMEOUT_AGENT_STEP_DEFAULT, // 20 minutes
   },
   toolOverrides: {},
 };
@@ -87,7 +92,7 @@ export async function withTimeout<T>(
       status: 'error',
       error: {
         code: error instanceof Error ? error.name : 'UNKNOWN_ERROR',
-        message: error instanceof Error ? error.message : String(error),
+        message: getErrorMessage(error, String(error)),
         stack: error instanceof Error ? error.stack : undefined,
       },
       durationMs,

@@ -130,5 +130,123 @@ describe('Iterate Contract', () => {
       const result = IterateBudgetSchema.safeParse(budget);
       expect(result.success).toBe(false);
     });
+
+    it('should reject negative maxIterations', () => {
+      const budget = {
+        maxIterations: -5,
+      };
+      const result = IterateBudgetSchema.safeParse(budget);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject negative maxTimeMs', () => {
+      const budget = {
+        maxTimeMs: -1000,
+      };
+      const result = IterateBudgetSchema.safeParse(budget);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Schema Rejection Tests', () => {
+    it('should reject invalid intent', () => {
+      const result = IterateIntentSchema.safeParse('invalid-intent');
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject invalid action type', () => {
+      const result = IterateActionTypeSchema.safeParse('INVALID');
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject state without required sessionId', () => {
+      const state = {
+        budget: { maxIterations: 10 },
+        consumed: { iterations: 0, timeMs: 0 },
+        iteration: 0,
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        status: 'running',
+        consecutiveErrors: 0,
+      };
+      const result = IterateStateSchema.safeParse(state);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject start request without task', () => {
+      const request = {};
+      const result = IterateStartRequestSchema.safeParse(request);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject start request with empty task', () => {
+      const request = { task: '' };
+      const result = IterateStartRequestSchema.safeParse(request);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('State Transitions', () => {
+    it('should accept valid status values', () => {
+      const statuses = ['running', 'paused', 'completed', 'failed', 'budget_exceeded'];
+      for (const status of statuses) {
+        const state = {
+          sessionId: 'test-session',
+          budget: { maxIterations: 10, maxTimeMs: 300000 },
+          consumed: { iterations: 0, timeMs: 0 },
+          iteration: 0,
+          startedAt: new Date().toISOString(),
+          lastActivityAt: new Date().toISOString(),
+          status,
+          consecutiveErrors: 0,
+        };
+        const result = IterateStateSchema.safeParse(state);
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject invalid status', () => {
+      const state = {
+        sessionId: 'test-session',
+        budget: { maxIterations: 10, maxTimeMs: 300000 },
+        consumed: { iterations: 0, timeMs: 0 },
+        iteration: 0,
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        status: 'invalid-status',
+        consecutiveErrors: 0,
+      };
+      const result = IterateStateSchema.safeParse(state);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should validate state at budget limit', () => {
+      const state = {
+        sessionId: 'test-session',
+        budget: { maxIterations: 10, maxTimeMs: 300000 },
+        consumed: { iterations: 10, timeMs: 300000 },
+        iteration: 10,
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        status: 'completed',
+        consecutiveErrors: 0,
+      };
+      const result = validateIterateState(state);
+      expect(result.consumed.iterations).toBe(state.budget.maxIterations);
+    });
+
+    it('should validate safety config with all options', () => {
+      const config = {
+        maxConsecutiveErrors: 3,
+        enableDangerousPatternDetection: true,
+        dangerousPatterns: ['rm -rf', 'DROP TABLE'],
+        allowedPaths: ['/src', '/tests'],
+        blockedPaths: ['/etc', '/sys'],
+      };
+      const result = IterateSafetyConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
+    });
   });
 });

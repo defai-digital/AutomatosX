@@ -215,7 +215,7 @@ describe('Config Contract V1', () => {
       const result = ExecutionPolicySchema.safeParse({});
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.defaultTimeoutMs).toBe(120000);
+        expect(result.data.defaultTimeoutMs).toBe(1200000); // 20 minutes default
         expect(result.data.maxRetries).toBe(3);
         expect(result.data.retryDelayMs).toBe(1000);
         expect(result.data.enableParallelExecution).toBe(false);
@@ -223,11 +223,13 @@ describe('Config Contract V1', () => {
     });
 
     it('should reject invalid timeout values', () => {
+      // Minimum is 1000ms
       expect(
         ExecutionPolicySchema.safeParse({ defaultTimeoutMs: 500 }).success
       ).toBe(false);
+      // Maximum is 3600000ms (60 minutes)
       expect(
-        ExecutionPolicySchema.safeParse({ defaultTimeoutMs: 700000 }).success
+        ExecutionPolicySchema.safeParse({ defaultTimeoutMs: 4000000 }).success
       ).toBe(false);
     });
 
@@ -779,7 +781,7 @@ describe('INV-CFG-RES: Config Resolution Invariants', () => {
       });
 
       expect(nestedConfig.executionPolicy.maxRetries).toBe(5);
-      expect(nestedConfig.executionPolicy.defaultTimeoutMs).toBe(120000);
+      expect(nestedConfig.executionPolicy.defaultTimeoutMs).toBe(1200000); // 20 minutes default
     });
   });
 });

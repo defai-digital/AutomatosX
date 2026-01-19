@@ -10,6 +10,7 @@
  * - INV-TOOL-002: Tool results are immutable
  */
 
+import { getErrorMessage, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 import type { WorkflowStep } from '@defai.digital/contracts';
 import type { StepExecutor, StepResult, StepContext } from './types.js';
 
@@ -291,7 +292,7 @@ export function createRealStepExecutor(config: RealStepExecutorConfig): StepExec
         success: false,
         error: {
           code: 'STEP_EXECUTION_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          message: getErrorMessage(error),
           retryable: true,
         },
         durationMs: Date.now() - startTime,
@@ -674,7 +675,7 @@ async function executeDiscussStep(
       method: 'synthesis',
       synthesizer: 'claude',
     },
-    providerTimeout: (rawConfig.providerTimeout as number) ?? 120000,
+    providerTimeout: (rawConfig.providerTimeout as number) ?? TIMEOUT_AGENT_STEP_DEFAULT,
     continueOnProviderFailure: (rawConfig.continueOnProviderFailure as boolean) ?? true,
     minProviders: (rawConfig.minProviders as number) ?? 2,
     temperature: (rawConfig.temperature as number) ?? 0.7,
@@ -741,7 +742,7 @@ async function executeDiscussStep(
       success: false,
       error: {
         code: 'DISCUSSION_EXECUTION_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown discussion error',
+        message: getErrorMessage(error, 'Unknown discussion error'),
         retryable: true,
       },
       durationMs: Date.now() - startTime,

@@ -227,6 +227,20 @@ export {
   FEEDBACK_HANDLERS,
 } from './feedback.js';
 
+// Design tools
+export {
+  designApiTool,
+  designComponentTool,
+  designSchemaTool,
+  designArchitectureTool,
+  designListTool,
+  handleDesignApi,
+  handleDesignComponent,
+  handleDesignSchema,
+  handleDesignArchitecture,
+  handleDesignList,
+} from './design.js';
+
 // Re-export for convenience
 import {
   workflowRunTool,
@@ -421,11 +435,23 @@ import {
   handleFeedbackAdjustments,
 } from './feedback.js';
 
+import {
+  designApiTool,
+  designComponentTool,
+  designSchemaTool,
+  designArchitectureTool,
+  designListTool,
+  handleDesignApi,
+  handleDesignComponent,
+  handleDesignSchema,
+  handleDesignArchitecture,
+  handleDesignList,
+} from './design.js';
+
 /**
- * All available tools (76 total)
+ * All available tools (81 total)
  *
  * Removed tools:
- * - design_* (5): LLM generates OpenAPI/Zod/diagrams natively
  * - task_*, queue_* (7): Advanced orchestration, most users don't need
  * - metrics_*, timer_*, telemetry_* (7): Observability, not core function
  * - memory_export, memory_import, memory_stats, memory_bulk_delete, memory_clear (5): Rare admin ops
@@ -522,6 +548,12 @@ export const ALL_TOOLS: MCPTool[] = [
   feedbackStatsTool,
   feedbackOverviewTool,
   feedbackAdjustmentsTool,
+  // Design tools (5)
+  designApiTool,
+  designComponentTool,
+  designSchemaTool,
+  designArchitectureTool,
+  designListTool,
 ];
 
 /**
@@ -617,6 +649,12 @@ const RAW_HANDLERS: Record<string, ToolHandler> = {
   feedback_stats: handleFeedbackStats,
   feedback_overview: handleFeedbackOverview,
   feedback_adjustments: handleFeedbackAdjustments,
+  // Design handlers (5)
+  design_api: handleDesignApi,
+  design_component: handleDesignComponent,
+  design_schema: handleDesignSchema,
+  design_architecture: handleDesignArchitecture,
+  design_list: handleDesignList,
 };
 
 /**

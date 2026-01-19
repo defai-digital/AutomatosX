@@ -12,6 +12,7 @@ import {
   type AnalysisTask,
   filterFindingsBySeverity,
   AnalysisErrorCodes,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
   AnalysisService,
@@ -134,9 +135,7 @@ export function createAnalysisService(deps: AnalysisServiceDeps): AnalysisServic
           clearTimeout(timeoutId);
         }
         if (error instanceof AnalysisError) throw error;
-        throw AnalysisError.providerError(
-          error instanceof Error ? error.message : 'Unknown error'
-        );
+        throw AnalysisError.providerError(getErrorMessage(error));
       }
 
       // 5. Parse response

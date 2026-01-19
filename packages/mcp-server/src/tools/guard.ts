@@ -6,7 +6,7 @@ import {
   executeGates,
   type GuardResult,
 } from '@defai.digital/guard';
-import { LIMIT_GUARD_POLICIES } from '@defai.digital/contracts';
+import { LIMIT_GUARD_POLICIES, getErrorMessage } from '@defai.digital/contracts';
 import { getSessionStore } from '../bootstrap.js';
 
 /**
@@ -166,7 +166,7 @@ export const handleGuardCheck: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -187,7 +187,9 @@ export const handleGuardCheck: ToolHandler = async (args) => {
  * Handler for guard_list tool
  */
 export const handleGuardList: ToolHandler = async (args) => {
-  const limit = (args.limit as number | undefined) ?? 20;
+  // Clamp limit to valid range [1, LIMIT_GUARD_POLICIES]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_GUARD_POLICIES;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_GUARD_POLICIES));
 
   try {
     // listPolicies returns string[] of policy IDs
@@ -229,7 +231,7 @@ export const handleGuardList: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     return {
       content: [
         {
@@ -317,7 +319,7 @@ export const handleGuardApply: ToolHandler = async (args) => {
           type: 'text',
           text: JSON.stringify({
             error: 'POLICY_APPLY_FAILED',
-            message: error instanceof Error ? error.message : 'Unknown error',
+            message: getErrorMessage(error),
           }),
         },
       ],

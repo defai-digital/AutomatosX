@@ -75,6 +75,18 @@ export const ReviewRequestSchema = z.object({
 
   /** Dry run - only show what would be analyzed */
   dryRun: z.boolean().default(false),
+
+  /** Git commit SHA or reference to compare against for incremental reviews (Tier 2) */
+  since: z.string().optional(),
+
+  /** Enable smart batching by focus mode (Tier 2) */
+  smartBatching: z.boolean().default(true),
+
+  /** Enable dependency-aware file ordering (Tier 3) */
+  dependencyOrdering: z.boolean().default(false),
+
+  /** Enable partial result recovery on failure (Tier 3) */
+  enableRecovery: z.boolean().default(true),
 });
 export type ReviewRequest = z.infer<typeof ReviewRequestSchema>;
 

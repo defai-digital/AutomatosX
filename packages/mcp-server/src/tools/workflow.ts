@@ -12,7 +12,7 @@ import {
   type StepExecutor,
   type WorkflowResult,
 } from '@defai.digital/workflow-engine';
-import { LIMIT_WORKFLOWS, type TraceEvent } from '@defai.digital/contracts';
+import { LIMIT_WORKFLOWS, getErrorMessage, type TraceEvent } from '@defai.digital/contracts';
 import { getStepExecutor, getTraceStore } from '../bootstrap.js';
 
 // Get the directory of this module (for finding bundled examples)
@@ -307,7 +307,7 @@ export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResul
     };
   } catch (error) {
     // Emit workflow.end event with error (INV-TR-013)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = getErrorMessage(error);
     await traceStore.write({
       eventId: randomUUID(),
       traceId,
@@ -389,7 +389,7 @@ export const handleWorkflowList: ToolHandler = async (args): Promise<MCPToolResu
       content: [
         {
           type: 'text',
-          text: `Error listing workflows: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error listing workflows: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,
@@ -451,7 +451,7 @@ export const handleWorkflowDescribe: ToolHandler = async (args): Promise<MCPTool
       content: [
         {
           type: 'text',
-          text: `Error describing workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          text: `Error describing workflow: ${getErrorMessage(error)}`,
         },
       ],
       isError: true,

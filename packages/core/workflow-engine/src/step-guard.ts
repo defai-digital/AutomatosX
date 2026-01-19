@@ -24,6 +24,7 @@ import type {
 import {
   createStepGuardResult,
   createProgressEvent,
+  getErrorMessage,
 } from '@defai.digital/contracts';
 
 // ============================================================================
@@ -222,31 +223,30 @@ export class StepGuardEngine {
     context: StepGuardContext
   ): Promise<StepGuardResult> {
     const startTime = Date.now();
-    const gateResults: StepGateResult[] = [];
 
-    // INV-GATE-001: Gates execute independently
-    for (const gateId of guard.gates) {
-      const gateFn = this.gateRegistry.get(gateId);
-      if (!gateFn) {
-        gateResults.push({
-          gateId,
-          status: 'WARN',
-          message: `Gate "${gateId}" not found`,
-        });
-        continue;
-      }
+    // INV-GATE-001: Gates execute independently - run in parallel
+    const gateResults = await Promise.all(
+      guard.gates.map(async (gateId) => {
+        const gateFn = this.gateRegistry.get(gateId);
+        if (!gateFn) {
+          return {
+            gateId,
+            status: 'WARN' as const,
+            message: `Gate "${gateId}" not found`,
+          };
+        }
 
-      try {
-        const result = await gateFn(context);
-        gateResults.push(result);
-      } catch (error) {
-        gateResults.push({
-          gateId,
-          status: 'FAIL',
-          message: error instanceof Error ? error.message : 'Gate check failed',
-        });
-      }
-    }
+        try {
+          return await gateFn(context);
+        } catch (error) {
+          return {
+            gateId,
+            status: 'FAIL' as const,
+            message: getErrorMessage(error, 'Gate check failed'),
+          };
+        }
+      })
+    );
 
     // Determine if should block
     const hasFailure = gateResults.some((g) => g.status === 'FAIL');

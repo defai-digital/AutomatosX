@@ -122,7 +122,7 @@ describe('Workflow Templates Contract', () => {
       };
 
       const result = WorkflowTemplateStepSchema.parse(step);
-      expect(result.timeout).toBe(120000);
+      expect(result.timeout).toBe(1200000); // 20 minutes default
     });
 
     it('should enforce timeout bounds', () => {
@@ -596,7 +596,7 @@ describe('INV-WT: Workflow Template Invariants', () => {
       };
 
       const result = WorkflowTemplateStepSchema.parse(step);
-      expect(result.timeout).toBe(120000); // 2 minutes default
+      expect(result.timeout).toBe(1200000); // 20 minutes default
     });
 
     it('should enforce minimum timeout of 1 second', () => {

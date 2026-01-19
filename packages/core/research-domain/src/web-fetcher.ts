@@ -16,6 +16,7 @@ import type {
   CodeExample,
   SourceReliability,
 } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 import type { WebFetcherPort } from './types.js';
 
 /**
@@ -159,7 +160,7 @@ export function createWebFetcher(options: {
             reliability: 'unknown',
             fetchedAt: new Date().toISOString(),
             success: false,
-            error: error instanceof Error ? error.message : 'Fetch failed',
+            error: getErrorMessage(error, 'Fetch failed'),
           };
         }
       } finally {

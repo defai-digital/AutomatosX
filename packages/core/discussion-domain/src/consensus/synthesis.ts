@@ -5,7 +5,7 @@
  * This is the default consensus method.
  */
 
-import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord, type DiscussionRound } from '@defai.digital/contracts';
+import { DEFAULT_CONSENSUS_TIMEOUT, type DissentRecord, type DiscussionRound, getErrorMessage } from '@defai.digital/contracts';
 import type { ConsensusExecutor, ConsensusExecutionContext, ConsensusExecutionResult } from '../types.js';
 import {
   SYNTHESIS_FINAL,
@@ -110,7 +110,7 @@ export class SynthesisConsensus implements ConsensusExecutor {
       };
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
 
       onProgress?.({
         type: 'synthesis_complete',

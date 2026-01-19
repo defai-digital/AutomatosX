@@ -2,6 +2,10 @@ import type { MCPTool, ToolHandler } from '../types.js';
 import { LIMIT_DEFAULT, LIMIT_MEMORY, getErrorMessage } from '@defai.digital/contracts';
 import { successResponse, errorResponse } from '../utils/response.js';
 
+// Memory store limits to prevent DoS
+const MEMORY_STORE_MAX_ENTRIES = 10000;
+const MEMORY_STORE_MAX_VALUE_SIZE = 1024 * 1024; // 1MB per value
+
 // In-memory storage for demonstration
 const memoryStore = new Map<string, { value: unknown; storedAt: string; namespace: string }>();
 
@@ -194,9 +198,29 @@ export const handleMemoryStore: ToolHandler = (args) => {
   const key = args.key as string;
   const value = args.value as Record<string, unknown>;
   const namespace = (args.namespace as string | undefined) ?? 'default';
+  const fullKey = getFullKey(namespace, key);
 
   try {
-    memoryStore.set(getFullKey(namespace, key), { value, storedAt: new Date().toISOString(), namespace });
+    // Check store size limit (allow updating existing keys)
+    if (memoryStore.size >= MEMORY_STORE_MAX_ENTRIES && !memoryStore.has(fullKey)) {
+      return Promise.resolve(errorResponse(
+        'STORE_LIMIT_EXCEEDED',
+        `Memory store limit reached (${MEMORY_STORE_MAX_ENTRIES} entries)`,
+        { limit: MEMORY_STORE_MAX_ENTRIES, currentSize: memoryStore.size }
+      ));
+    }
+
+    // Check value size limit
+    const valueSize = JSON.stringify(value).length;
+    if (valueSize > MEMORY_STORE_MAX_VALUE_SIZE) {
+      return Promise.resolve(errorResponse(
+        'VALUE_TOO_LARGE',
+        `Value exceeds maximum size (${Math.round(MEMORY_STORE_MAX_VALUE_SIZE / 1024)}KB)`,
+        { maxSizeKB: Math.round(MEMORY_STORE_MAX_VALUE_SIZE / 1024), actualSizeKB: Math.round(valueSize / 1024) }
+      ));
+    }
+
+    memoryStore.set(fullKey, { value, storedAt: new Date().toISOString(), namespace });
     return Promise.resolve(successResponse(`Stored key: ${key}`, { key, namespace }));
   } catch (error) {
     return Promise.resolve(errorResponse('STORE_FAILED', getErrorMessage(error)));

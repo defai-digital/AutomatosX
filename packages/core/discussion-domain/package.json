@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/discussion-domain",
-  "version": "13.4.2",
+  "version": "13.4.3",
   "type": "module",
   "description": "Multi-model discussion orchestration for AutomatosX",
   "license": "BUSL-1.1",

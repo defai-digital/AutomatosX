@@ -98,12 +98,12 @@ export const handleTraceList: ToolHandler = async (args) => {
       startTime: t.startTime,
     }));
 
-    // Use createListResponse for automatic pagination (max 10 items)
+    // Use createListResponse for automatic pagination
     return createListResponse(traces, {
       domain: 'traces',
       idField: 'id',
       labelField: 'label',
-      limit: 10,
+      limit,
     });
   } catch (error) {
     return errorResponse(

@@ -412,6 +412,28 @@ export const handleParallelRun: ToolHandler = async (args): Promise<MCPToolResul
           } else if (tasks.some((t) => t.taskId === dep)) {
             resolvedDeps.push(dep);
           } else {
+            // INV-TR-013: Emit run.end trace event for validation failure
+            await traceStore.write({
+              eventId: randomUUID(),
+              traceId,
+              type: 'run.end',
+              timestamp: new Date().toISOString(),
+              durationMs: Date.now() - new Date(startTime).getTime(),
+              status: 'failure',
+              context: {
+                workflowId: 'parallel-run',
+                parentTraceId: traceHierarchy.parentTraceId,
+                rootTraceId: traceHierarchy.rootTraceId,
+                traceDepth: traceHierarchy.traceDepth,
+                sessionId: traceHierarchy.sessionId,
+              },
+              payload: {
+                success: false,
+                error: `invalid dependency "${dep}" for task ${i}`,
+                tool: 'parallel_run',
+              },
+            });
+
             return {
               content: [
                 {
@@ -715,6 +737,28 @@ export const handleParallelPlan: ToolHandler = async (args): Promise<MCPToolResu
           } else if (tasks.some((t) => t.taskId === dep)) {
             resolvedDeps.push(dep);
           } else {
+            // INV-TR-013: Emit run.end trace event for validation failure
+            await traceStore.write({
+              eventId: randomUUID(),
+              traceId,
+              type: 'run.end',
+              timestamp: new Date().toISOString(),
+              durationMs: Date.now() - new Date(startTime).getTime(),
+              status: 'failure',
+              context: {
+                workflowId: 'parallel-plan',
+                parentTraceId: traceHierarchy.parentTraceId,
+                rootTraceId: traceHierarchy.rootTraceId,
+                traceDepth: traceHierarchy.traceDepth,
+                sessionId: traceHierarchy.sessionId,
+              },
+              payload: {
+                success: false,
+                error: `invalid dependency "${dep}" for task ${i}`,
+                tool: 'parallel_plan',
+              },
+            });
+
             return {
               content: [
                 {

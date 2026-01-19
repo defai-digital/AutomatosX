@@ -369,6 +369,15 @@ async function handleProviders(): Promise<APIResponse> {
 }
 
 /**
+ * Helper to normalize circuit state for dashboard
+ */
+function normalizeCircuitState(state: string | undefined): 'closed' | 'open' | 'half-open' {
+  if (state === 'halfOpen') return 'half-open';
+  if (state === 'open') return 'open';
+  return 'closed';
+}
+
+/**
  * Refresh provider status by running actual health checks
  * This triggers real LLM calls to test each provider
  */
@@ -383,7 +392,7 @@ async function handleProviderRefresh(): Promise<APIResponse> {
       name: p.providerId,
       available: p.available,
       latencyMs: p.latencyMs,
-      circuitState: (p.circuitState === 'halfOpen' ? 'half-open' : p.circuitState ?? 'closed') as 'closed' | 'open' | 'half-open',
+      circuitState: normalizeCircuitState(p.circuitState),
       lastUsed: undefined,
     }));
 
@@ -653,7 +662,7 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
     // This provides real-time visibility into running discussions
     const discussionProviderEvents = events.filter(e => e.type === 'discussion.provider');
     const providerConversations = discussionProviderEvents.map(event => {
-      const payload = event.payload as Record<string, unknown> | undefined;
+      const payload = event.payload;
       const context = event.context as Record<string, unknown> | undefined;
       const promptValue = payload?.prompt as string | undefined;
       const contentValue = payload?.content as string | undefined;

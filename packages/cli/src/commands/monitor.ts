@@ -145,13 +145,20 @@ export async function monitorCommand(
 
   const providerStatuses = await getProviderStatus(showProgress);
 
+  // Helper to normalize circuit state for dashboard
+  const normalizeCircuitState = (state: string | undefined): 'closed' | 'open' | 'half-open' => {
+    if (state === 'halfOpen') return 'half-open';
+    if (state === 'open') return 'open';
+    return 'closed';
+  };
+
   // Convert to dashboard format and cache
   const dashboardProviders = providerStatuses.map(p => ({
     providerId: p.providerId,
     name: p.providerId,
     available: p.available,
     latencyMs: p.latencyMs,
-    circuitState: (p.circuitState === 'halfOpen' ? 'half-open' : p.circuitState ?? 'closed') as 'closed' | 'open' | 'half-open',
+    circuitState: normalizeCircuitState(p.circuitState),
     lastUsed: undefined,
   }));
   setCachedProviderStatus(dashboardProviders);

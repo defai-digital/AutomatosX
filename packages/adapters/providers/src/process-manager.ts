@@ -52,10 +52,15 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       return;
     }
 
+    // On Windows, spawn() doesn't search PATH without shell: true
+    // This is required for commands like 'claude', 'gemini' to resolve properly
+    const isWindows = process.platform === 'win32';
+
     const child = spawn(options.command, [...options.args], {
       env: { ...process.env, ...options.env } as NodeJS.ProcessEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: options.cwd,
+      shell: isWindows,
     });
 
     let stdout = '';

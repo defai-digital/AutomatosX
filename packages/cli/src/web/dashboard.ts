@@ -432,7 +432,6 @@ export function createDashboardHTML(): string {
     }
 
     .provider-latency.fast { color: var(--accent-green); }
-    .provider-latency.medium { color: var(--accent-yellow); }
     .provider-latency.slow { color: var(--accent-red); }
 
     /* Agent list */
@@ -552,6 +551,26 @@ export function createDashboardHTML(): string {
       color: var(--text-primary);
       font-size: 14px;
       cursor: pointer;
+    }
+
+    .refresh-button {
+      padding: 8px 16px;
+      background: var(--accent-blue);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .refresh-button:hover:not(:disabled) {
+      background: var(--accent-blue-hover, #2563eb);
+    }
+
+    .refresh-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .history-table {
@@ -2610,56 +2629,103 @@ export function createDashboardHTML(): string {
         }
         // For 'discuss' command: topic as input, responses grouped by provider with multi-round support
         else if (traceData.commandType === 'discuss') {
-          // Get the discussion topic and configured round count
+          // Get the discussion topic
           const topic = traceData.input?.topic;
-          const configuredRounds = traceData.input?.rounds || 1;
 
-          // Provider responses: {provider: [response1, response2, ...]} or {provider: "single response"}
-          const responses = traceData.output?.responses;
-          if (responses && typeof responses === 'object') {
-            Object.entries(responses).forEach(([provider, providerResponses]) => {
+          // Use providerConversations for real prompt/response content (preferred)
+          // Falls back to output.responses if providerConversations not available
+          if (traceData.providerConversations && traceData.providerConversations.length > 0) {
+            // Group by provider
+            const providerMap = {};
+            traceData.providerConversations.forEach(conv => {
+              if (!providerMap[conv.provider]) {
+                providerMap[conv.provider] = [];
+              }
+              providerMap[conv.provider].push(conv);
+            });
+
+            // Build exchanges for each provider
+            Object.entries(providerMap).forEach(([provider, conversations]) => {
               const exchanges = [];
+              // Sort by round then timestamp
+              const sorted = conversations.sort((a, b) => {
+                if (a.round !== b.round) return a.round - b.round;
+                return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+              });
 
-              // Handle both array (multi-round) and string (single response) formats
-              const responseArray = Array.isArray(providerResponses)
-                ? providerResponses
-                : [providerResponses];
-
-              responseArray.forEach((response, roundIndex) => {
-                const roundNum = roundIndex + 1;
-
-                // Add the prompt/ask for this round
-                if (roundNum === 1) {
-                  // Round 1: The original topic
+              sorted.forEach((conv, idx) => {
+                // Add the actual prompt
+                if (conv.prompt) {
                   exchanges.push({
-                    input: topic || 'Discussion topic',
+                    input: conv.prompt,
                     output: null,
-                    roundLabel: \`Ask \${roundNum}\`
-                  });
-                } else {
-                  // Rounds 2+: Cross-discussion prompt
-                  exchanges.push({
-                    input: \`Round \${roundNum}: Respond to other providers' perspectives from the previous round.\`,
-                    output: null,
-                    roundLabel: \`Ask \${roundNum}\`
+                    roundLabel: \`Ask \${conv.round}\`
                   });
                 }
-
-                // Add the response/reply for this round
-                if (response) {
+                // Add the response
+                if (conv.content) {
                   exchanges.push({
                     input: null,
-                    output: response,
-                    roundLabel: \`Reply \${roundNum}\`
+                    output: conv.content,
+                    latencyMs: conv.durationMs,
+                    roundLabel: \`Reply \${conv.round}\`
                   });
                 }
               });
 
-              groups.push({
-                provider: provider,
-                exchanges
-              });
+              if (exchanges.length > 0) {
+                groups.push({ provider, exchanges });
+              }
             });
+          }
+          // Fallback: use output.responses (legacy format)
+          else {
+            const responses = traceData.output?.responses;
+            if (responses && typeof responses === 'object') {
+              Object.entries(responses).forEach(([provider, providerResponses]) => {
+                const exchanges = [];
+
+                // Handle both array (multi-round) and string (single response) formats
+                const responseArray = Array.isArray(providerResponses)
+                  ? providerResponses
+                  : [providerResponses];
+
+                responseArray.forEach((response, roundIndex) => {
+                  const roundNum = roundIndex + 1;
+
+                  // Add the prompt/ask for this round
+                  if (roundNum === 1) {
+                    // Round 1: The original topic
+                    exchanges.push({
+                      input: topic || 'Discussion topic',
+                      output: null,
+                      roundLabel: \`Ask \${roundNum}\`
+                    });
+                  } else {
+                    // Rounds 2+: Cross-discussion prompt
+                    exchanges.push({
+                      input: \`Round \${roundNum}: Respond to other providers' perspectives from the previous round.\`,
+                      output: null,
+                      roundLabel: \`Ask \${roundNum}\`
+                    });
+                  }
+
+                  // Add the response/reply for this round
+                  if (response) {
+                    exchanges.push({
+                      input: null,
+                      output: response,
+                      roundLabel: \`Reply \${roundNum}\`
+                    });
+                  }
+                });
+
+                groups.push({
+                  provider: provider,
+                  exchanges
+                });
+              });
+            }
           }
 
           // Show synthesis/consensus if available
@@ -3458,6 +3524,23 @@ export function createDashboardHTML(): string {
       const [currentPage, setCurrentPage] = useState(0);
       const pageSize = 20;
 
+      // Provider colors matching the Provider Usage histogram
+      const providerColors = {
+        claude: { bg: 'rgba(255, 145, 77, 0.15)', color: 'var(--accent-orange)' },
+        grok: { bg: 'rgba(163, 113, 247, 0.15)', color: 'var(--accent-purple)' },
+        gemini: { bg: 'rgba(88, 166, 255, 0.15)', color: 'var(--accent-blue)' },
+        codex: { bg: 'rgba(63, 185, 80, 0.15)', color: 'var(--accent-green)' },
+        opencode: { bg: 'rgba(63, 185, 185, 0.15)', color: 'var(--accent-cyan)' },
+        antigravity: { bg: 'rgba(255, 200, 77, 0.15)', color: '#ffc84d' },
+        cursor: { bg: 'rgba(88, 166, 255, 0.15)', color: 'var(--accent-blue)' },
+        'local-llm': { bg: 'rgba(163, 163, 163, 0.15)', color: 'var(--text-secondary)' },
+      };
+
+      const getProviderStyle = (provider) => {
+        const lowerProvider = provider?.toLowerCase() || '';
+        return providerColors[lowerProvider] || { bg: 'var(--bg-secondary)', color: 'var(--text-secondary)' };
+      };
+
       const filteredTraces = traces.filter(trace => {
         if (filter !== 'all' && trace.status !== filter) return false;
         if (search && !trace.traceId.toLowerCase().includes(search.toLowerCase()) &&
@@ -3540,6 +3623,7 @@ export function createDashboardHTML(): string {
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th>Providers</th>
                   <th>Status</th>
                   <th>Events</th>
                   <th>Duration</th>
@@ -3549,12 +3633,12 @@ export function createDashboardHTML(): string {
               <tbody>
                 {paginatedTraces.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+                    <td colSpan="6" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
                       <div className="table-empty-state">
                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
                         <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>No traces found</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                          {statusFilter === 'all'
+                          {filter === 'all'
                             ? 'Run an agent or workflow to see execution traces here'
                             : 'Try changing the status filter to see more results'}
                         </div>
@@ -3565,6 +3649,43 @@ export function createDashboardHTML(): string {
                   paginatedTraces.map(trace => (
                     <tr key={trace.traceId} onClick={() => onSelectTrace(trace.traceId)}>
                       <td style={{ fontFamily: 'monospace' }} title={trace.traceId}>{trace.name || trace.traceId.slice(0, 12) + '...'}</td>
+                      <td>
+                        {trace.providers && trace.providers.length > 0 ? (
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {trace.providers.slice(0, 3).map(provider => {
+                              const style = getProviderStyle(provider);
+                              return (
+                                <span
+                                  key={provider}
+                                  style={{
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    background: style.bg,
+                                    color: style.color,
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    border: \`1px solid \${style.color}30\`,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {provider}
+                                </span>
+                              );
+                            })}
+                            {trace.providers.length > 3 && (
+                              <span style={{
+                                padding: '2px 6px',
+                                color: 'var(--text-muted)',
+                                fontSize: '10px',
+                              }}>
+                                +{trace.providers.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>-</span>
+                        )}
+                      </td>
                       <td>
                         <span className={\`history-status \${trace.status}\`}>
                           <StatusIcon status={trace.status} />
@@ -3643,9 +3764,28 @@ export function createDashboardHTML(): string {
     }
 
     // Full-page Providers view
-    function ProvidersView({ providers }) {
+    function ProvidersView({ providers: initialProviders }) {
       const [filter, setFilter] = useState('all');
       const [search, setSearch] = useState('');
+      const [refreshing, setRefreshing] = useState(false);
+      const [providers, setProviders] = useState(initialProviders);
+      const [lastRefresh, setLastRefresh] = useState(null);
+
+      const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+          const response = await fetch('/api/providers/refresh', { method: 'POST' });
+          const result = await response.json();
+          if (result.success && result.data?.providers) {
+            setProviders(result.data.providers);
+            setLastRefresh(new Date().toLocaleTimeString());
+          }
+        } catch (err) {
+          console.error('Failed to refresh providers:', err);
+        } finally {
+          setRefreshing(false);
+        }
+      };
 
       const filteredProviders = providers.filter(provider => {
         if (filter === 'available' && !provider.available) return false;
@@ -3675,6 +3815,19 @@ export function createDashboardHTML(): string {
               <option value="available">Available ({availableCount})</option>
               <option value="unavailable">Unavailable ({providers.length - availableCount})</option>
             </select>
+            <button
+              className="refresh-button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Check provider health (sends test prompt to each provider)"
+            >
+              {refreshing ? '⏳ Checking...' : '🔄 Refresh Status'}
+            </button>
+            {lastRefresh && (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+                Last refresh: {lastRefresh}
+              </span>
+            )}
           </div>
 
           <div className="card">
@@ -3683,14 +3836,13 @@ export function createDashboardHTML(): string {
                 <tr>
                   <th>Provider</th>
                   <th>Status</th>
-                  <th>Latency</th>
-                  <th>Last Check</th>
+                  <th>Response Time</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProviders.length === 0 ? (
                   <tr>
-                    <td colSpan="4" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+                    <td colSpan="3" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
                       <div className="table-empty-state">
                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔌</div>
                         <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>No providers found</div>
@@ -3718,14 +3870,10 @@ export function createDashboardHTML(): string {
                       <td style={{ fontFamily: 'monospace' }}>
                         <span className={\`provider-latency \${
                           !provider.latencyMs ? '' :
-                          provider.latencyMs < 100 ? 'fast' :
-                          provider.latencyMs < 300 ? 'medium' : 'slow'
+                          provider.latencyMs < 5000 ? 'fast' : 'slow'
                         }\`}>
                           {provider.latencyMs ? \`\${provider.latencyMs}ms\` : '-'}
                         </span>
-                      </td>
-                      <td style={{ color: 'var(--text-muted)' }}>
-                        {provider.lastCheck ? formatRelativeTime(provider.lastCheck) : '-'}
                       </td>
                     </tr>
                   ))
@@ -4152,8 +4300,7 @@ export function createDashboardHTML(): string {
                   </div>
                   <span className={\`provider-latency \${
                     !provider.latencyMs ? '' :
-                    provider.latencyMs < 100 ? 'fast' :
-                    provider.latencyMs < 300 ? 'medium' : 'slow'
+                    provider.latencyMs < 5000 ? 'fast' : 'slow'
                   }\`}>
                     {provider.latencyMs ? \`\${provider.latencyMs}ms\` : '-'}
                   </span>
@@ -4543,6 +4690,24 @@ export function createDashboardHTML(): string {
 
     // Traces card component (clickable)
     function TracesCard({ traces, onSelectTrace }) {
+      // Provider colors matching the Provider Usage histogram
+      const providerColors = {
+        claude: { bg: 'rgba(255, 145, 77, 0.15)', color: 'var(--accent-orange)' },
+        grok: { bg: 'rgba(163, 113, 247, 0.15)', color: 'var(--accent-purple)' },
+        gemini: { bg: 'rgba(88, 166, 255, 0.15)', color: 'var(--accent-blue)' },
+        codex: { bg: 'rgba(63, 185, 80, 0.15)', color: 'var(--accent-green)' },
+        opencode: { bg: 'rgba(63, 185, 185, 0.15)', color: 'var(--accent-cyan)' },
+        antigravity: { bg: 'rgba(255, 200, 77, 0.15)', color: '#ffc84d' },
+        cursor: { bg: 'rgba(88, 166, 255, 0.15)', color: 'var(--accent-blue)' },
+        'local-llm': { bg: 'rgba(163, 163, 163, 0.15)', color: 'var(--text-secondary)' },
+      };
+
+      const getProviderStyle = (provider) => {
+        const lowerProvider = provider?.toLowerCase() || '';
+        const colors = providerColors[lowerProvider] || { bg: 'var(--bg-secondary)', color: 'var(--text-secondary)' };
+        return colors;
+      };
+
       const formatDuration = (ms) => {
         if (!ms) return null;
         if (ms < 1000) return \`\${Math.round(ms)}ms\`;
@@ -4709,7 +4874,7 @@ export function createDashboardHTML(): string {
                       </span>
                     </div>
 
-                    {/* Providers row */}
+                    {/* Providers row - colored bubbles */}
                     {trace.providers && trace.providers.length > 0 && (
                       <div style={{
                         display: 'flex',
@@ -4717,21 +4882,25 @@ export function createDashboardHTML(): string {
                         marginTop: '6px',
                         flexWrap: 'wrap',
                       }}>
-                        {trace.providers.slice(0, 4).map(provider => (
-                          <span
-                            key={provider}
-                            style={{
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: 'var(--bg-secondary)',
-                              color: 'var(--text-secondary)',
-                              fontSize: '10px',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {provider}
-                          </span>
-                        ))}
+                        {trace.providers.slice(0, 4).map(provider => {
+                          const style = getProviderStyle(provider);
+                          return (
+                            <span
+                              key={provider}
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                background: style.bg,
+                                color: style.color,
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                border: \`1px solid \${style.color}30\`,
+                              }}
+                            >
+                              {provider}
+                            </span>
+                          );
+                        })}
                         {trace.providers.length > 4 && (
                           <span style={{
                             padding: '2px 6px',

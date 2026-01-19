@@ -298,6 +298,14 @@ export class DebatePattern implements PatternExecutor {
         provider: providerId,
         message: result.success ? 'completed' : `failed: ${result.error}`,
         timestamp: new Date().toISOString(),
+        // Extended fields for trace visibility
+        success: result.success,
+        durationMs: result.durationMs,
+        tokenCount: result.tokenCount,
+        error: result.success ? undefined : result.error,
+        role,
+        content: result.success ? result.content : undefined,
+        prompt,
       });
 
       onProgress?.({

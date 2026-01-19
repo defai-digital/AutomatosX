@@ -24,7 +24,7 @@ export const KNOWN_PROVIDERS = [
   'opencode',
   'antigravity',
   'cursor',
-  'ax-cli',
+  'local-llm',
 ] as const;
 
 export const ProviderIdSchema = z.enum(KNOWN_PROVIDERS);
@@ -118,7 +118,7 @@ export const PROVIDER_DEFAULTS: Record<ProviderId, ProviderDefault> = {
     command: 'cursor',
     priority: 44,
   },
-  'ax-cli': {
+  'local-llm': {
     command: 'ax-cli',
     priority: 40,
   },

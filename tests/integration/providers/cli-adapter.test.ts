@@ -61,13 +61,14 @@ describe('CLI Adapter', () => {
 
   describe('Provider Configurations', () => {
     it('exports all provider configs', () => {
-      expect(ALL_PROVIDER_CONFIGS).toHaveLength(5);
+      expect(ALL_PROVIDER_CONFIGS).toHaveLength(6);
       expect(ALL_PROVIDER_CONFIGS.map((c) => c.providerId)).toEqual([
         'claude',
         'gemini',
         'codex',
         'grok',
         'opencode',
+        'local-llm',
       ]);
     });
 
@@ -126,13 +127,14 @@ describe('CLI Adapter', () => {
   describe('Provider Registry', () => {
     it('creates registry with all default providers', () => {
       const registry = createProviderRegistry();
-      expect(registry.size).toBe(5);
+      expect(registry.size).toBe(6);
       expect(registry.getProviderIds()).toEqual([
         'claude',
         'gemini',
         'codex',
         'grok',
         'opencode',
+        'local-llm',
       ]);
     });
 
@@ -175,8 +177,8 @@ describe('CLI Adapter', () => {
     it('gets all models across providers', () => {
       const registry = createProviderRegistry();
       const models = registry.getAllModels();
-      // 5 providers, each with 1 'default' model
-      expect(models.length).toBe(5);
+      // 6 providers, each with 1 'default' model
+      expect(models.length).toBe(6);
       expect(models.some((m) => m.providerId === 'claude')).toBe(true);
       expect(models.some((m) => m.providerId === 'gemini')).toBe(true);
     });

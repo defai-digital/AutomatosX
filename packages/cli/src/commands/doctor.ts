@@ -3,7 +3,7 @@
  *
  * Checks:
  * - Node.js version
- * - Provider CLI availability (claude, gemini, codex, ax-grok, ax-cli)
+ * - Provider CLI availability (claude, gemini, codex, ax-grok, opencode, local-llm)
  * - File system permissions
  * - Configuration validity
  */
@@ -76,8 +76,8 @@ export const PROVIDER_CHECKS: readonly ProviderCheck[] = [
     installHint: 'npm install -g opencode',
   },
   {
-    id: 'ax-cli',
-    name: 'AX-CLI',
+    id: 'local-llm',
+    name: 'Local LLM',
     command: 'ax-cli',
     installHint: 'npm install -g @defai.digital/ax-cli',
   },

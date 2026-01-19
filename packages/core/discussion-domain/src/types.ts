@@ -199,6 +199,10 @@ export interface DiscussionProgressEvent {
   votes?: Record<string, number> | undefined;
   /** Winner (for voting consensus) */
   winner?: string | undefined;
+  /** The actual response content from the provider (for provider_complete) */
+  content?: string | undefined;
+  /** The prompt that was sent to the provider (for provider_complete) */
+  prompt?: string | undefined;
 }
 
 /**

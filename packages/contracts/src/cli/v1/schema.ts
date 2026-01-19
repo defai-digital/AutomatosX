@@ -166,6 +166,7 @@ export const ProviderStatusSchema = z.object({
   latencyMs: z.number().optional(),
   errorRate: z.number().min(0).max(1).optional(),
   circuitState: z.enum(['closed', 'open', 'halfOpen']).optional(),
+  error: z.string().optional(),
 });
 
 export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;

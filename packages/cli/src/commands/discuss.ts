@@ -769,7 +769,7 @@ function createProgressHandler(
 
       switch (event.type) {
         case 'provider_complete':
-          // Emit discussion.provider trace event
+          // Emit discussion.provider trace event with conversation content
           if (event.provider && event.round !== undefined) {
             traceStore.write({
               eventId: randomUUID(),
@@ -789,6 +789,9 @@ function createProgressHandler(
                 tokenCount: event.tokenCount,
                 role: event.role,
                 error: event.error,
+                // Conversation content for dashboard visibility
+                prompt: event.prompt,
+                content: event.content,
               },
             }).catch((err) => {
               // Fire-and-forget with error logging

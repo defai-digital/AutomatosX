@@ -62,11 +62,27 @@ export async function statusCommand(
   // Initialize bootstrap to get SQLite storage
   await bootstrap();
 
-  // Gather system status
-  const status = await gatherExtendedStatus();
+  const isJsonFormat = options.format === 'json';
+  const isCompact = options.compact;
+  const showProgress = !isJsonFormat && !isCompact && process.stdout.isTTY;
+
+  // Show progress message for interactive terminals
+  if (showProgress) {
+    const registry = getProviderRegistry();
+    const providerCount = registry.getProviderIds().length;
+    process.stdout.write(`\n${COLORS.cyan}Checking ${providerCount} providers (up to ${PROVIDER_HEALTH_CHECK_TIMEOUT / 1000}s each)...${COLORS.reset}`);
+  }
+
+  // Gather system status with progress updates
+  const status = await gatherExtendedStatus(showProgress);
+
+  // Clear the progress line
+  if (showProgress) {
+    process.stdout.write('\r\x1b[K'); // Clear line
+  }
 
   // Format for JSON output
-  if (options.format === 'json') {
+  if (isJsonFormat) {
     return {
       success: true,
       exitCode: status.status === 'unhealthy' ? 1 : 0,
@@ -76,7 +92,7 @@ export async function statusCommand(
   }
 
   // Compact mode - single line output
-  if (options.compact) {
+  if (isCompact) {
     const icon = getStatusEmoji(status.status);
     const providerSummary = status.providers.filter((p: ProviderStatus) => p.available).length + '/' + status.providers.length;
     console.log(`${icon} AutomatosX ${status.version} | Providers: ${providerSummary} | Sessions: ${status.activeSessions} | Agents: ${status.agents.enabled}`);
@@ -137,12 +153,12 @@ function renderVisualStatus(status: ExtendedStatus, verbose: boolean): void {
   ].join('  ');
   console.log(`  ${metricsLine}`);
 
-  // Memory usage bar
+  // Memory usage bar (process heap)
   const memPercent = status.memory.totalMb > 0
     ? (status.memory.usedMb / status.memory.totalMb)
     : 0;
   const memBar = renderProgressBar(memPercent, 20);
-  console.log(`  ${COLORS.cyan}Memory:${COLORS.reset}   ${memBar} ${status.memory.usedMb.toFixed(0)}MB`);
+  console.log(`  ${COLORS.cyan}Heap:${COLORS.reset}     ${memBar} ${status.memory.usedMb.toFixed(0)}/${status.memory.totalMb.toFixed(0)}MB`);
   console.log('');
 
   // Trace status if any running/failed
@@ -210,13 +226,13 @@ function renderProviderRow(provider: ProviderStatus): void {
 
   const name = provider.providerId.padEnd(12);
 
-  // Latency with color coding
-  let latencyStr = '    -   ';
+  // Latency with color coding (adjusted for LLM response times)
+  let latencyStr = '       -   ';
   if (provider.latencyMs !== undefined) {
-    const latencyColor = provider.latencyMs < 100 ? COLORS.green
-      : provider.latencyMs < 300 ? COLORS.yellow
+    const latencyColor = provider.latencyMs < 2000 ? COLORS.green
+      : provider.latencyMs < 5000 ? COLORS.yellow
       : COLORS.red;
-    latencyStr = `${latencyColor}${String(provider.latencyMs).padStart(4)}ms${COLORS.reset}`;
+    latencyStr = `${latencyColor}${String(provider.latencyMs).padStart(6)}ms${COLORS.reset}`;
   }
 
   // Circuit state indicator
@@ -227,12 +243,18 @@ function renderProviderRow(provider: ProviderStatus): void {
     circuitIndicator = ` ${COLORS.yellow}[HALF]${COLORS.reset}`;
   }
 
-  // Status dots (simulated health history)
-  const statusDots = provider.available
-    ? `${COLORS.green}\u25cf\u25cf\u25cf\u25cf\u25cf${COLORS.reset}`
-    : `${COLORS.red}\u25cb\u25cb\u25cb\u25cb\u25cb${COLORS.reset}`;
+  // Error message for unavailable providers
+  let errorStr = '';
+  if (!provider.available && provider.error) {
+    errorStr = ` ${COLORS.dim}(${provider.error})${COLORS.reset}`;
+  }
 
-  console.log(`  ${icon} ${name} ${latencyStr}  ${statusDots}${circuitIndicator}`);
+  // Status indicator
+  const statusIndicator = provider.available
+    ? `${COLORS.green}\u25cf${COLORS.reset}`
+    : `${COLORS.red}\u25cb${COLORS.reset}`;
+
+  console.log(`  ${icon} ${name} ${latencyStr}  ${statusIndicator}${circuitIndicator}${errorStr}`);
 }
 
 /**
@@ -291,14 +313,15 @@ function getStatusEmoji(status: SystemHealthLevel): string {
 
 /**
  * Gather extended system status from all sources
+ * @param showProgress - Whether to show real-time progress (for TTY)
  */
-async function gatherExtendedStatus(): Promise<ExtendedStatus> {
+async function gatherExtendedStatus(showProgress = false): Promise<ExtendedStatus> {
   // Get sync memory stats immediately
   const memoryStats = getMemoryStats();
 
   // Run async status checks in parallel
   const [providers, activeSessions, pendingCheckpoints, agentStats, traceStats] = await Promise.all([
-    getProviderStatus(),
+    getProviderStatus(showProgress),
     getActiveSessionCount(),
     getPendingCheckpointCount(),
     getAgentStats(),
@@ -332,48 +355,147 @@ async function gatherExtendedStatus(): Promise<ExtendedStatus> {
   };
 }
 
+/** Timeout for provider health check (30 seconds) */
+export const PROVIDER_HEALTH_CHECK_TIMEOUT = 30000;
+
+/** Test prompt for health check */
+const HEALTH_CHECK_PROMPT = 'hello';
+
+/** Check if running in test environment */
+const IS_TEST_ENV = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+
 /**
  * Get provider status from provider registry
- * Checks availability of each registered provider with latency measurement
+ * Tests each provider by sending a "hello" prompt with timeout
+ * In test environment, only checks CLI availability (no actual LLM calls)
+ * @param showProgress - Whether to show real-time progress
  */
-async function getProviderStatus(): Promise<ProviderStatus[]> {
+export async function getProviderStatus(showProgress = false): Promise<ProviderStatus[]> {
   try {
     const registry = getProviderRegistry();
     const providerIds = registry.getProviderIds();
 
-    // Check each provider's availability in parallel, returning results properly
-    const results = await Promise.all(
-      providerIds.map(async (providerId: string): Promise<ProviderStatus | null> => {
-        const provider = registry.get(providerId);
-        if (provider === undefined) return null;
+    // Always check in parallel for speed
+    if (showProgress && !IS_TEST_ENV) {
+      // Track completion progress
+      let completed = 0;
+      const total = providerIds.length;
 
-        const startTime = Date.now();
-        try {
-          const available = await provider.isAvailable();
-          const latencyMs = Date.now() - startTime;
-          return {
-            providerId,
-            available,
-            latencyMs: available ? latencyMs : undefined,
-            errorRate: undefined,
-            circuitState: 'closed',
-          };
-        } catch {
-          return {
-            providerId,
-            available: false,
-            latencyMs: undefined,
-            errorRate: undefined,
-            circuitState: 'closed',
-          };
-        }
-      })
-    );
+      // Show initial progress
+      process.stdout.write(`\r\x1b[K${COLORS.cyan}Checking ${total} providers in parallel...${COLORS.reset}`);
 
-    // Filter out null results (undefined providers)
-    return results.filter((r): r is ProviderStatus => r !== null);
+      // Start all checks in parallel, update progress as each completes
+      const results = await Promise.all(
+        providerIds.map(async (providerId) => {
+          const result = await checkSingleProvider(providerId, registry);
+          completed++;
+          // Update progress
+          process.stdout.write(`\r\x1b[K${COLORS.cyan}[${completed}/${total}] Provider checks completed...${COLORS.reset}`);
+          return result;
+        })
+      );
+
+      return results.filter((r): r is ProviderStatus => r !== null);
+    } else {
+      // Parallel check without progress display
+      const results = await Promise.all(
+        providerIds.map((providerId) => checkSingleProvider(providerId, registry))
+      );
+      return results.filter((r): r is ProviderStatus => r !== null);
+    }
   } catch {
     return [];
+  }
+}
+
+/**
+ * Check a single provider's health status
+ */
+async function checkSingleProvider(
+  providerId: string,
+  registry: ReturnType<typeof getProviderRegistry>
+): Promise<ProviderStatus | null> {
+  const provider = registry.get(providerId);
+  if (provider === undefined) return null;
+
+  // First check if CLI is available
+  const startTime = Date.now();
+  const cliAvailable = await provider.isAvailable();
+  const cliCheckLatency = Date.now() - startTime;
+
+  if (!cliAvailable) {
+    return {
+      providerId,
+      available: false,
+      latencyMs: undefined,
+      errorRate: undefined,
+      circuitState: 'closed',
+      error: 'CLI not installed',
+    };
+  }
+
+  // In test environment, just check CLI availability (no actual LLM calls)
+  if (IS_TEST_ENV) {
+    return {
+      providerId,
+      available: true,
+      latencyMs: cliCheckLatency,
+      errorRate: undefined,
+      circuitState: 'closed',
+    };
+  }
+
+  // Test with actual prompt
+  try {
+    // Create a promise that rejects after timeout
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), PROVIDER_HEALTH_CHECK_TIMEOUT);
+    });
+
+    // Race between completion and timeout
+    const response = await Promise.race([
+      provider.complete({
+        requestId: `health-check-${providerId}-${Date.now()}`,
+        model: 'default',
+        messages: [{ role: 'user', content: HEALTH_CHECK_PROMPT }],
+      }),
+      timeoutPromise,
+    ]);
+
+    const latencyMs = Date.now() - startTime;
+
+    if (response.success) {
+      return {
+        providerId,
+        available: true,
+        latencyMs,
+        errorRate: undefined,
+        circuitState: 'closed',
+      };
+    } else {
+      return {
+        providerId,
+        available: false,
+        latencyMs,
+        errorRate: undefined,
+        circuitState: 'closed',
+        error: response.error?.message ?? 'Unknown error',
+      };
+    }
+  } catch (err) {
+    const latencyMs = Date.now() - startTime;
+    const isTimeout = err instanceof Error && err.message === 'timeout';
+
+    return {
+      providerId,
+      available: false,
+      latencyMs: isTimeout ? undefined : latencyMs,
+      errorRate: undefined,
+      circuitState: 'closed',
+      error: isTimeout
+        ? `No response within ${PROVIDER_HEALTH_CHECK_TIMEOUT / 1000} seconds`
+        : (err instanceof Error ? err.message : 'Unknown error'),
+    };
   }
 }
 

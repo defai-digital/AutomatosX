@@ -240,6 +240,13 @@ export class CritiquePattern implements PatternExecutor {
         round: roundNum,
         provider: proposerId,
         timestamp: new Date().toISOString(),
+        // Extended fields for trace visibility
+        success: result.success,
+        durationMs: result.durationMs,
+        tokenCount: result.tokenCount,
+        error: result.success ? undefined : result.error,
+        content: result.success ? result.content : undefined,
+        prompt,
       });
 
       onProgress?.({
@@ -332,6 +339,13 @@ export class CritiquePattern implements PatternExecutor {
           round: roundNum,
           provider: critiquerId,
           timestamp: new Date().toISOString(),
+          // Extended fields for trace visibility
+          success: result.success,
+          durationMs: result.durationMs,
+          tokenCount: result.tokenCount,
+          error: result.success ? undefined : result.error,
+          content: result.success ? result.content : undefined,
+          prompt,
         });
 
         return {
@@ -430,6 +444,13 @@ export class CritiquePattern implements PatternExecutor {
         round: roundNum,
         provider: proposerId,
         timestamp: new Date().toISOString(),
+        // Extended fields for trace visibility
+        success: result.success,
+        durationMs: result.durationMs,
+        tokenCount: result.tokenCount,
+        error: result.success ? undefined : result.error,
+        content: result.success ? result.content : undefined,
+        prompt,
       });
 
       return {

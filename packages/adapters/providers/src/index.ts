@@ -60,6 +60,7 @@ export {
   codexConfig,
   grokConfig,
   opencodeConfig,
+  localLlmConfig,
   ALL_PROVIDER_CONFIGS,
   getProviderConfig,
   getAllProviderIds,

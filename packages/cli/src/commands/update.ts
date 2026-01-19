@@ -13,7 +13,7 @@
  * @copyright 2024 DEFAI Private Limited
  */
 
-import { exec, execSync, spawnSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createInterface } from 'node:readline';
 import { createRequire } from 'node:module';
@@ -184,37 +184,6 @@ async function installUpdate(version: string): Promise<void> {
 }
 
 /**
- * Check if ax-cli is installed
- */
-function isAxCliInstalled(): boolean {
-  try {
-    const result = spawnSync('ax-cli', ['--version'], {
-      encoding: 'utf-8',
-      timeout: TIMEOUT_HEALTH_CHECK,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Update ax-cli if installed
- */
-async function updateAxCli(): Promise<boolean> {
-  try {
-    execSync('ax-cli update -y', {
-      stdio: 'inherit',
-      timeout: TIMEOUT_INSTALL,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Prompt user for confirmation
  */
 async function promptConfirm(message: string): Promise<boolean> {
@@ -341,17 +310,6 @@ export async function updateCommand(
       console.log('\nAutomatosX updated successfully!');
       console.log(`New version: ${latestVersion}`);
       console.log('\nRun "ax --version" to verify.\n');
-
-      // 8. Update ax-cli if installed
-      if (isAxCliInstalled()) {
-        console.log('Updating ax-cli...\n');
-        const axUpdated = await updateAxCli();
-        if (axUpdated) {
-          console.log('ax-cli updated successfully!\n');
-        } else {
-          console.log('ax-cli update failed. You can try manually: ax-cli update -y\n');
-        }
-      }
 
       return {
         success: true,

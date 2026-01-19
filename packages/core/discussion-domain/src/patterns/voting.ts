@@ -193,6 +193,13 @@ export class VotingPattern implements PatternExecutor {
           provider: providerId,
           message: vote ? `Voted: ${vote.choice} (${Math.round(vote.confidence * 100)}%)` : 'failed',
           timestamp: new Date().toISOString(),
+          // Extended fields for trace visibility
+          success: result.success,
+          durationMs: result.durationMs,
+          tokenCount: result.tokenCount,
+          error: result.success ? undefined : result.error,
+          content: result.success ? result.content : undefined,
+          prompt,
         });
 
         return response;

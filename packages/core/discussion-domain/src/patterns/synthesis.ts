@@ -368,6 +368,9 @@ export class SynthesisPattern implements PatternExecutor {
           durationMs: result.durationMs,
           tokenCount: result.tokenCount,
           error: result.success ? undefined : result.error,
+          // Conversation content for trace visibility
+          content: result.success ? content : undefined,
+          prompt: config.providerPrompts?.[providerId] || prompt,
         });
 
         return response;
@@ -480,6 +483,9 @@ export class SynthesisPattern implements PatternExecutor {
           durationMs: result.durationMs,
           tokenCount: result.tokenCount,
           error: result.success ? undefined : result.error,
+          // Conversation content for trace visibility
+          content: result.success ? content : undefined,
+          prompt,
         });
 
         return response;

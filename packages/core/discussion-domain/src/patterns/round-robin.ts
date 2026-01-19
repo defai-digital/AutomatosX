@@ -151,6 +151,13 @@ export class RoundRobinPattern implements PatternExecutor {
             provider: providerId,
             message: result.success ? `${providerId} completed` : `${providerId} failed: ${result.error}`,
             timestamp: new Date().toISOString(),
+            // Extended fields for trace visibility
+            success: result.success,
+            durationMs: result.durationMs,
+            tokenCount: result.tokenCount,
+            error: result.success ? undefined : result.error,
+            content: result.success ? content : undefined,
+            prompt,
           });
 
         } catch (error) {

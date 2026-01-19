@@ -18,11 +18,12 @@
 import type { CommandResult, CLIOptions } from '../types.js';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createDashboardHTML } from '../web/dashboard.js';
-import { createAPIHandler } from '../web/api.js';
+import { createAPIHandler, setCachedProviderStatus } from '../web/api.js';
 import { COLORS } from '../utils/terminal.js';
 import { createConfigStore, getValue } from '@defai.digital/config-domain';
 import type { MonitorConfig } from '@defai.digital/contracts';
 import { bootstrap } from '../bootstrap.js';
+import { getProviderStatus, PROVIDER_HEALTH_CHECK_TIMEOUT } from './status.js';
 
 // Default port range (used if config not available)
 const DEFAULT_PORT_MIN = 3000;
@@ -135,6 +136,29 @@ export async function monitorCommand(
 ): Promise<CommandResult> {
   // Initialize bootstrap to get SQLite trace store (shared with other CLI commands)
   await bootstrap();
+
+  // Check provider health at startup (cached for monitor lifetime)
+  const showProgress = process.stdout.isTTY;
+  if (showProgress) {
+    process.stdout.write(`${COLORS.cyan}Checking provider health (up to ${PROVIDER_HEALTH_CHECK_TIMEOUT / 1000}s)...${COLORS.reset}`);
+  }
+
+  const providerStatuses = await getProviderStatus(showProgress);
+
+  // Convert to dashboard format and cache
+  const dashboardProviders = providerStatuses.map(p => ({
+    providerId: p.providerId,
+    name: p.providerId,
+    available: p.available,
+    latencyMs: p.latencyMs,
+    circuitState: (p.circuitState === 'halfOpen' ? 'half-open' : p.circuitState ?? 'closed') as 'closed' | 'open' | 'half-open',
+    lastUsed: undefined,
+  }));
+  setCachedProviderStatus(dashboardProviders);
+
+  if (showProgress) {
+    process.stdout.write('\r\x1b[K'); // Clear progress line
+  }
 
   // Parse explicit port from args (if provided)
   let explicitPort: number | undefined;

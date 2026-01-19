@@ -543,6 +543,23 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       case 'provider_complete':
         // Emit discussion.provider trace event
         if (event.provider && event.round !== undefined) {
+          // Build payload with optional content/prompt fields
+          const providerPayload: Record<string, unknown> = {
+            providerId: event.provider,
+            roundNumber: event.round,
+            success: event.success ?? false,
+            durationMs: event.durationMs ?? 0,
+            tokenCount: event.tokenCount,
+            role: event.role,
+            error: event.error,
+          };
+          // Add conversation content for dashboard visibility
+          if (event.prompt !== undefined) {
+            providerPayload.prompt = event.prompt;
+          }
+          if (event.content !== undefined) {
+            providerPayload.content = event.content;
+          }
           emitTraceEvent({
             eventId: randomUUID(),
             traceId,
@@ -554,15 +571,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
               ...traceHierarchy,
               providerId: event.provider,
             },
-            payload: {
-              providerId: event.provider,
-              roundNumber: event.round,
-              success: event.success ?? false,
-              durationMs: event.durationMs ?? 0,
-              tokenCount: event.tokenCount,
-              role: event.role,
-              error: event.error,
-            },
+            payload: providerPayload,
           });
         }
         break;
@@ -671,6 +680,22 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
     // Execute discussion with onProgress for granular tracing
     const result = await executor.execute(config, { onProgress });
 
+    // Extract provider responses from rounds for dashboard (like CLI does)
+    const providerResponses: Record<string, string[]> = {};
+    if (result.rounds) {
+      for (const round of result.rounds) {
+        for (const response of round.responses ?? []) {
+          const providerId = response.provider ?? 'unknown';
+          if (!providerResponses[providerId]) {
+            providerResponses[providerId] = [];
+          }
+          if (response.content) {
+            providerResponses[providerId].push(response.content);
+          }
+        }
+      }
+    }
+
     // Emit run.end trace event with success (INV-TR-001)
     emitTraceEvent({
       eventId: randomUUID(),
@@ -688,7 +713,9 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
         pattern,
         providers,
         rounds: result.rounds?.length ?? 0,
-        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        synthesis: result.synthesis, // Full synthesis for dashboard visibility
+        consensus: result.consensus, // Consensus metadata for dashboard
+        responses: providerResponses, // Provider responses by provider ID
         participatingProviders: result.participatingProviders,
         totalDurationMs: Date.now() - startTime,
       },
@@ -890,6 +917,22 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
       case 'provider_complete':
         // Emit discussion.provider trace event
         if (event.provider && event.round !== undefined) {
+          // Build payload with optional content/prompt fields
+          const providerPayload: Record<string, unknown> = {
+            providerId: event.provider,
+            roundNumber: event.round,
+            success: event.success ?? false,
+            durationMs: event.durationMs ?? 0,
+            tokenCount: event.tokenCount,
+            error: event.error,
+          };
+          // Add conversation content for dashboard visibility
+          if (event.prompt !== undefined) {
+            providerPayload.prompt = event.prompt;
+          }
+          if (event.content !== undefined) {
+            providerPayload.content = event.content;
+          }
           emitTraceEvent({
             eventId: randomUUID(),
             traceId,
@@ -901,14 +944,7 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
               ...traceHierarchy,
               providerId: event.provider,
             },
-            payload: {
-              providerId: event.provider,
-              roundNumber: event.round,
-              success: event.success ?? false,
-              durationMs: event.durationMs ?? 0,
-              tokenCount: event.tokenCount,
-              error: event.error,
-            },
+            payload: providerPayload,
           });
         }
         break;
@@ -974,6 +1010,22 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
     // Quick synthesis with 2 rounds (with onProgress for granular tracing)
     const result = await executor.quickSynthesis(topic, { providers, onProgress: onProgressQuick });
 
+    // Extract provider responses from rounds for dashboard (like CLI does)
+    const providerResponses: Record<string, string[]> = {};
+    if (result.rounds) {
+      for (const round of result.rounds) {
+        for (const response of round.responses ?? []) {
+          const providerId = response.provider ?? 'unknown';
+          if (!providerResponses[providerId]) {
+            providerResponses[providerId] = [];
+          }
+          if (response.content) {
+            providerResponses[providerId].push(response.content);
+          }
+        }
+      }
+    }
+
     // Emit run.end trace event with success (INV-TR-001)
     emitTraceEvent({
       eventId: randomUUID(),
@@ -989,7 +1041,9 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
         command: 'discuss_quick',
         success: result.success,
         providers,
-        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        synthesis: result.synthesis, // Full synthesis for dashboard visibility
+        consensus: result.consensus, // Consensus metadata for dashboard
+        responses: providerResponses, // Provider responses by provider ID
         participatingProviders: result.participatingProviders,
         totalDurationMs: result.totalDurationMs,
       },
@@ -1378,6 +1432,22 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       case 'provider_complete':
         // Emit discussion.provider trace event
         if (event.provider && event.round !== undefined) {
+          // Build payload with optional content/prompt fields
+          const providerPayload: Record<string, unknown> = {
+            providerId: event.provider,
+            roundNumber: event.round,
+            success: event.success ?? false,
+            durationMs: event.durationMs ?? 0,
+            tokenCount: event.tokenCount,
+            error: event.error,
+          };
+          // Add conversation content for dashboard visibility
+          if (event.prompt !== undefined) {
+            providerPayload.prompt = event.prompt;
+          }
+          if (event.content !== undefined) {
+            providerPayload.content = event.content;
+          }
           emitTraceEvent({
             eventId: randomUUID(),
             traceId,
@@ -1389,14 +1459,7 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
               ...traceHierarchy,
               providerId: event.provider,
             },
-            payload: {
-              providerId: event.provider,
-              roundNumber: event.round,
-              success: event.success ?? false,
-              durationMs: event.durationMs ?? 0,
-              tokenCount: event.tokenCount,
-              error: event.error,
-            },
+            payload: providerPayload,
           });
         }
         break;
@@ -1512,6 +1575,22 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
     // Execute recursive discussion with onProgress for granular tracing
     const result = await executor.execute(config, { onProgress: onProgressRecursive });
 
+    // Extract provider responses from rounds for dashboard (like CLI does)
+    const providerResponses: Record<string, string[]> = {};
+    if (result.rounds) {
+      for (const round of result.rounds) {
+        for (const response of round.responses ?? []) {
+          const providerId = response.provider ?? 'unknown';
+          if (!providerResponses[providerId]) {
+            providerResponses[providerId] = [];
+          }
+          if (response.content) {
+            providerResponses[providerId].push(response.content);
+          }
+        }
+      }
+    }
+
     // Emit run.end trace event with success (INV-TR-001)
     emitTraceEvent({
       eventId: randomUUID(),
@@ -1530,7 +1609,9 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
         providers,
         rounds: result.rounds?.length ?? 0,
         maxDepth,
-        synthesis: result.synthesis?.substring(0, 500), // Truncate for payload
+        synthesis: result.synthesis, // Full synthesis for dashboard visibility
+        consensus: result.consensus, // Consensus metadata for dashboard
+        responses: providerResponses, // Provider responses by provider ID
         participatingProviders: result.participatingProviders,
         totalDurationMs: Date.now() - startTime,
       },

@@ -23,12 +23,21 @@ import {
   PROVIDER_DEFAULTS,
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_WORKFLOW_STEP,
+  DATA_DIR_NAME,
+  AGENTS_FILENAME,
   type AutomatosXConfig,
   type ProviderId,
   type ProviderDetectionResult,
 } from '@defai.digital/contracts';
 import { COLORS, ICONS } from '../utils/terminal.js';
 import { getDatabase, getDatabasePath } from '../utils/database.js';
+import {
+  createPersistentAgentRegistry,
+  createAgentLoader,
+} from '@defai.digital/agent-domain';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
+import { homedir } from 'node:os';
 
 const execAsync = promisify(exec);
 
@@ -190,6 +199,118 @@ async function migrateDatabase(): Promise<DatabaseMigrationResult> {
       created: false,
       migrated: false,
       migrationsApplied,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+// ============================================================================
+// Agent Sync
+// ============================================================================
+
+/** Result of agent sync */
+interface AgentSyncResult {
+  success: boolean;
+  storagePath: string;
+  totalAgents: number;
+  updatedAgents: string[];
+  newAgents: string[];
+  error?: string;
+}
+
+/**
+ * Get the path to the bundled agents directory
+ * Works both in development and when installed as a package
+ */
+function getBundledAgentsPath(): string {
+  // Get the directory of this file
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+
+  // Go up from src/commands to the package root, then into bundled/agents
+  // Structure: packages/cli/src/commands/setup.ts -> packages/cli/bundled/agents
+  // In dist: packages/cli/dist/commands/setup.js -> packages/cli/bundled/agents
+  // Both cases: ../../bundled/agents works since bundled/ is at package root
+  return resolve(__dirname, '../../bundled/agents');
+}
+
+/**
+ * Get the global agents storage path
+ * Uses ~/.automatosx/agents.json
+ */
+function getGlobalAgentsPath(): string {
+  return join(homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
+}
+
+/**
+ * Syncs bundled agents to local storage
+ * Updates existing agents with latest bundled versions
+ */
+async function syncAgents(force: boolean): Promise<AgentSyncResult> {
+  const storagePath = getGlobalAgentsPath();
+  const updatedAgents: string[] = [];
+  const newAgents: string[] = [];
+
+  try {
+    // Get bundled agents directory path
+    const bundledAgentsDir = getBundledAgentsPath();
+
+    // Create loader for bundled agents
+    const loader = createAgentLoader({ agentsDir: bundledAgentsDir });
+
+    // Load all bundled agents
+    const bundledAgents = await loader.loadAll();
+
+    if (bundledAgents.length === 0) {
+      return {
+        success: true,
+        storagePath,
+        totalAgents: 0,
+        updatedAgents: [],
+        newAgents: [],
+      };
+    }
+
+    // Get the agent registry
+    const registry = createPersistentAgentRegistry({ storagePath });
+
+    // Get existing agents
+    const existingAgents = await registry.list();
+    const existingAgentIds = new Set(existingAgents.map(a => a.agentId));
+
+    // Sync each bundled agent
+    for (const bundledAgent of bundledAgents) {
+      const exists = existingAgentIds.has(bundledAgent.agentId);
+
+      if (exists) {
+        // Update existing agent with bundled version when force is true
+        if (force) {
+          // Remove existing agent first, then register the bundled version
+          await registry.remove(bundledAgent.agentId);
+          await registry.register(bundledAgent);
+          updatedAgents.push(bundledAgent.agentId);
+        }
+      } else {
+        // Register new agent
+        await registry.register(bundledAgent);
+        newAgents.push(bundledAgent.agentId);
+      }
+    }
+
+    return {
+      success: true,
+      storagePath,
+      totalAgents: bundledAgents.length,
+      updatedAgents,
+      newAgents,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      storagePath,
+      totalAgents: 0,
+      updatedAgents,
+      newAgents,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
@@ -479,9 +600,34 @@ export async function setupCommand(
       outputLines.push('');
     }
 
-    // Step 3: Detect providers and create/check configuration
+    // Step 3: Sync bundled agents
     if (showOutput) {
-      outputLines.push(`${COLORS.bold}Step 3: Provider Detection & Configuration${COLORS.reset}`);
+      outputLines.push(`${COLORS.bold}Step 3: Agent Sync${COLORS.reset}`);
+    }
+
+    const agentResult = await syncAgents(setupOptions.force);
+    if (showOutput) {
+      if (agentResult.error) {
+        outputLines.push(`  ${ICONS.warn} Agent sync failed: ${agentResult.error}`);
+      } else if (agentResult.newAgents.length > 0 || agentResult.updatedAgents.length > 0) {
+        if (agentResult.newAgents.length > 0) {
+          outputLines.push(`  ${ICONS.check} New agents added: ${agentResult.newAgents.length}`);
+        }
+        if (agentResult.updatedAgents.length > 0) {
+          outputLines.push(`  ${ICONS.check} Agents updated: ${agentResult.updatedAgents.length}`);
+        }
+      } else {
+        outputLines.push(`  ${ICONS.check} Agents up to date (${agentResult.totalAgents} bundled)`);
+        if (!setupOptions.force) {
+          outputLines.push(`  ${COLORS.dim}Use --force to update existing agents${COLORS.reset}`);
+        }
+      }
+      outputLines.push('');
+    }
+
+    // Step 4: Detect providers and create/check configuration
+    if (showOutput) {
+      outputLines.push(`${COLORS.bold}Step 4: Provider Detection & Configuration${COLORS.reset}`);
     }
 
     const setupResult = await runSetup(setupOptions);

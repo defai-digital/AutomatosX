@@ -17,6 +17,7 @@ import { geminiConfig } from './gemini.js';
 import { codexConfig } from './codex.js';
 import { grokConfig } from './grok.js';
 import { opencodeConfig } from './opencode.js';
+import { localLlmConfig } from './local-llm.js';
 
 // Re-export individual configs
 export { claudeConfig } from './claude.js';
@@ -24,6 +25,7 @@ export { geminiConfig } from './gemini.js';
 export { codexConfig } from './codex.js';
 export { grokConfig } from './grok.js';
 export { opencodeConfig } from './opencode.js';
+export { localLlmConfig } from './local-llm.js';
 
 /**
  * All registered provider configurations
@@ -34,6 +36,7 @@ export const ALL_PROVIDER_CONFIGS: readonly CLIProviderConfig[] = [
   codexConfig,
   grokConfig,
   opencodeConfig,
+  localLlmConfig,
 ];
 
 /**

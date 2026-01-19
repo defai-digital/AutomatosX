@@ -24,6 +24,7 @@ import {
   codexConfig,
   grokConfig,
   opencodeConfig,
+  localLlmConfig,
 } from '@defai.digital/provider-adapters';
 import type {
   ProviderRegistry,
@@ -108,6 +109,7 @@ export const PROVIDER_CONFIGS: Record<string, CLIProviderConfig> = {
   codex: codexConfig,
   grok: grokConfig,
   opencode: opencodeConfig,
+  'local-llm': localLlmConfig,
 };
 
 // ============================================================================

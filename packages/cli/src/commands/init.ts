@@ -143,7 +143,7 @@ const PROVIDER_MCP_CONFIGS: Record<ProviderId, ProviderMCPConfig | null> = {
   opencode: { cliName: 'opencode', format: 'opencode-config' },
   antigravity: { cliName: 'antigravity', format: 'antigravity-config' },
   cursor: { cliName: 'cursor', format: 'cursor-config' },
-  'ax-cli': null,
+  'local-llm': null,
 };
 
 function getCLIBinaryPath(): string {

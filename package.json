@@ -1,6 +1,6 @@
 {
   "name": "automatosx",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "private": true,
   "type": "module",
   "description": "Contract-first AI orchestration platform with multi-provider routing, event-sourced memory, and governance gates",
@@ -47,5 +47,8 @@
     "overrides": {
       "esbuild": ">=0.25.0"
     }
+  },
+  "dependencies": {
+    "p-limit": "^6.2.0"
   }
 }

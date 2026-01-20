@@ -7,12 +7,57 @@
  * - Command availability checking
  */
 
-import { spawn, exec } from 'node:child_process';
+import { spawn, exec, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { TIMEOUT_GRACEFUL_SHUTDOWN } from '@defai.digital/contracts';
 import type { SpawnOptions, SpawnResult } from './types.js';
 
 const execAsync = promisify(exec);
+
+/**
+ * INV-PROC-001: Process Cleanup on Parent Exit
+ * Tracks all active child processes to ensure cleanup on parent process exit.
+ * Prevents zombie processes if parent crashes between SIGTERM and SIGKILL.
+ */
+const activeProcesses = new Set<ChildProcess>();
+
+/**
+ * Cleanup handler registered once on module load.
+ * Kills all active child processes on parent exit.
+ */
+let cleanupRegistered = false;
+
+function registerCleanupHandler(): void {
+  if (cleanupRegistered) return;
+  cleanupRegistered = true;
+
+  // Handle normal exit
+  process.on('exit', () => {
+    for (const child of activeProcesses) {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // Process may already be dead
+      }
+    }
+  });
+
+  // Handle signals that could terminate the process
+  const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  for (const signal of signals) {
+    process.on(signal, () => {
+      for (const child of activeProcesses) {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // Process may already be dead
+        }
+      }
+      // Re-raise the signal after cleanup
+      process.exit(128 + (signal === 'SIGINT' ? 2 : signal === 'SIGTERM' ? 15 : 1));
+    });
+  }
+}
 
 /**
  * Default grace period before SIGKILL
@@ -45,6 +90,9 @@ function isValidCommandName(command: string): boolean {
  * @returns Promise resolving to spawn result with stdout, stderr, exitCode
  */
 export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
+  // INV-PROC-001: Register cleanup handler on first use
+  registerCleanupHandler();
+
   return new Promise((resolve, reject) => {
     // Validate command name to prevent injection
     if (!isValidCommandName(options.command)) {
@@ -62,6 +110,9 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
       cwd: options.cwd,
       shell: isWindows,
     });
+
+    // INV-PROC-001: Track active process for cleanup
+    activeProcesses.add(child);
 
     let stdout = '';
     let stderr = '';
@@ -146,6 +197,9 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
 
     // Handle process completion
     child.on('close', (code: number | null) => {
+      // INV-PROC-001: Remove from tracking on completion
+      activeProcesses.delete(child);
+
       clearTimeout(timeoutId);
       if (killTimeoutId !== undefined) {
         clearTimeout(killTimeoutId);
@@ -162,6 +216,9 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
 
     // Handle spawn errors (command not found, etc.)
     child.on('error', (error: Error) => {
+      // INV-PROC-001: Remove from tracking on error
+      activeProcesses.delete(child);
+
       clearTimeout(timeoutId);
       if (killTimeoutId !== undefined) {
         clearTimeout(killTimeoutId);

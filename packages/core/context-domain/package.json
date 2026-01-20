@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/context-domain",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "type": "module",
   "description": "Project context loading for AutomatosX - inject project-specific conventions into agent prompts",
   "license": "BUSL-1.1",

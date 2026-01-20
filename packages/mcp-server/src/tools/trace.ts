@@ -9,6 +9,25 @@ import { LIMIT_TRACES, TIMEOUT_SESSION, getErrorMessage } from '@defai.digital/c
 import { getTraceStore } from '../bootstrap.js';
 import type { TraceTreeNode } from '@defai.digital/trace-domain';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Threshold for slow workflow detection (ms) */
+const SLOW_WORKFLOW_THRESHOLD_MS = 10000;
+
+/** Threshold for slow step detection (ms) */
+const SLOW_STEP_THRESHOLD_MS = 5000;
+
+/** Threshold for storing events as artifact (reduces response size) */
+const TRACE_ARTIFACT_THRESHOLD = 5;
+
+/** Maximum traces to show in session summary */
+const SESSION_TRACE_SUMMARY_LIMIT = 10;
+
+/** Milliseconds per hour for time calculations */
+const MS_PER_HOUR = 3600000;
+
 /**
  * Trace list tool definition
  */
@@ -155,7 +174,7 @@ export const handleTraceGet: ToolHandler = async (args) => {
         undefined);
 
     // Store full events as artifact for large traces
-    const artifactRef = events.length > 5
+    const artifactRef = events.length > TRACE_ARTIFACT_THRESHOLD
       ? await storeArtifact(`trace:${traceId}`, { events })
       : undefined;
 
@@ -181,7 +200,7 @@ export const handleTraceGet: ToolHandler = async (args) => {
           status: endPayload?.success === true ? 'success' : 'failure',
         } : undefined,
         artifactRef,
-        hasMore: events.length > 5,
+        hasMore: events.length > TRACE_ARTIFACT_THRESHOLD,
       }
     );
   } catch (error) {
@@ -195,9 +214,15 @@ export const handleTraceGet: ToolHandler = async (args) => {
 /**
  * Handler for trace_analyze tool
  * INV-MCP-RESP-006: Response includes summary field with key metrics only
+ * INV-MCP-VAL-001: Validate input types before use
  */
 export const handleTraceAnalyze: ToolHandler = async (args) => {
-  const traceId = args.traceId as string;
+  // INV-MCP-VAL-001: Validate traceId is a non-empty string
+  const rawTraceId = args.traceId;
+  if (typeof rawTraceId !== 'string' || rawTraceId.length === 0) {
+    return errorResponse('INVALID_TRACE_ID', 'traceId must be a non-empty string');
+  }
+  const traceId = rawTraceId;
 
   try {
     const traceStore = getTraceStore();
@@ -238,13 +263,13 @@ export const handleTraceAnalyze: ToolHandler = async (args) => {
 
     // Generate recommendations based on analysis
     const recommendations: string[] = [];
-    if (totalDuration && totalDuration > 10000) {
+    if (totalDuration && totalDuration > SLOW_WORKFLOW_THRESHOLD_MS) {
       recommendations.push('Consider optimizing slow steps or adding caching');
     }
     if (errorEvents.length > 0) {
       recommendations.push(`Review ${errorEvents.length} error event(s) for root cause`);
     }
-    if (slowestStep && slowestStep.durationMs > 5000) {
+    if (slowestStep && slowestStep.durationMs > SLOW_STEP_THRESHOLD_MS) {
       recommendations.push(`Step "${slowestStep.name}" took ${slowestStep.durationMs}ms - consider optimization`);
     }
 
@@ -324,10 +349,11 @@ export const traceBySessionTool: MCPTool = {
 
 /**
  * Escape special regex characters in a string
- * INV-TR-022: Prevent regex injection when building dynamic patterns
+ * INV-TR-022: Prevents regex injection attacks
  */
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Escape all regex special characters: . * + ? ^ $ { } ( ) | [ ] \ / -
+  return str.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
 }
 
 /**
@@ -360,9 +386,15 @@ function formatTreeNode(node: TraceTreeNode, indent: string = ''): string {
  * Handler for trace_tree tool
  * INV-TR-020: Returns traces grouped by rootTraceId
  * INV-TR-021: Shows parent-child relationships
+ * INV-MCP-VAL-001: Validate input types before use
  */
 export const handleTraceTree: ToolHandler = async (args) => {
-  const traceId = args.traceId as string;
+  // INV-MCP-VAL-001: Validate traceId is a non-empty string
+  const rawTraceId = args.traceId;
+  if (typeof rawTraceId !== 'string' || rawTraceId.length === 0) {
+    return errorResponse('INVALID_TRACE_ID', 'traceId must be a non-empty string');
+  }
+  const traceId = rawTraceId;
 
   try {
     const traceStore = getTraceStore();
@@ -455,7 +487,7 @@ export const handleTraceCloseStuck: ToolHandler = async (args) => {
       {
         closedCount,
         maxAgeMs,
-        maxAgeHours: Math.round(maxAgeMs / 3600000 * 10) / 10,
+        maxAgeHours: Math.round(maxAgeMs / MS_PER_HOUR * 10) / 10,
       }
     );
   } catch (error) {
@@ -469,9 +501,15 @@ export const handleTraceCloseStuck: ToolHandler = async (args) => {
 /**
  * Handler for trace_by_session tool
  * INV-TR-023: Returns traces correlated by sessionId
+ * INV-MCP-VAL-001: Validate input types before use
  */
 export const handleTraceBySession: ToolHandler = async (args) => {
-  const sessionId = args.sessionId as string;
+  // INV-MCP-VAL-001: Validate sessionId is a non-empty string
+  const rawSessionId = args.sessionId;
+  if (typeof rawSessionId !== 'string' || rawSessionId.length === 0) {
+    return errorResponse('INVALID_SESSION_ID', 'sessionId must be a non-empty string');
+  }
+  const sessionId = rawSessionId;
 
   try {
     const traceStore = getTraceStore();
@@ -493,8 +531,8 @@ export const handleTraceBySession: ToolHandler = async (args) => {
     const failureCount = traces.filter(t => t.status === 'failure').length;
     const totalDuration = traces.reduce((sum, t) => sum + (t.durationMs ?? 0), 0);
 
-    // Map to response format (limit to 10 for summary)
-    const traceSummaries = traces.slice(0, 10).map(t => ({
+    // Map to response format (limit for summary)
+    const traceSummaries = traces.slice(0, SESSION_TRACE_SUMMARY_LIMIT).map(t => ({
       traceId: t.traceId,
       shortId: t.traceId.slice(0, 8),
       status: t.status,
@@ -513,7 +551,7 @@ export const handleTraceBySession: ToolHandler = async (args) => {
         failureCount,
         totalDurationMs: totalDuration,
         traces: traceSummaries,
-        hasMore: traces.length > 10,
+        hasMore: traces.length > SESSION_TRACE_SUMMARY_LIMIT,
       }
     );
   } catch (error) {

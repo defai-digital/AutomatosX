@@ -55,9 +55,31 @@ export const SemanticStoreErrorCodes = {
 } as const;
 
 /**
+ * Maximum embedding dimensions to prevent buffer overflow
+ * INV-SEM-005: Buffer size validation
+ */
+const MAX_EMBEDDING_DIMENSIONS = 16384; // 128KB max buffer size
+
+/**
+ * Escape LIKE wildcards to prevent SQL pattern injection
+ * INV-SEM-006: Safe LIKE clause filtering
+ */
+function escapeLikeWildcards(value: string): string {
+  return value.replace(/[%_\\]/g, '\\$&');
+}
+
+/**
  * Convert embedding array to buffer for storage
+ * INV-SEM-005: Validates embedding size to prevent buffer overflow
  */
 function embeddingToBuffer(embedding: number[]): Buffer {
+  if (embedding.length > MAX_EMBEDDING_DIMENSIONS) {
+    throw new SemanticStoreError(
+      SemanticStoreErrorCodes.DIMENSION_MISMATCH,
+      `Embedding dimension ${embedding.length} exceeds maximum ${MAX_EMBEDDING_DIMENSIONS}`,
+      { dimension: embedding.length, max: MAX_EMBEDDING_DIMENSIONS }
+    );
+  }
   const buffer = Buffer.alloc(embedding.length * 8);
   for (let i = 0; i < embedding.length; i++) {
     buffer.writeDoubleLE(embedding[i]!, i * 8);
@@ -79,6 +101,7 @@ function bufferToEmbedding(buffer: Buffer): number[] {
 /**
  * Compute cosine similarity between two embeddings
  * INV-SEM-003: Returns normalized score in [0, 1]
+ * INV-SEM-007: Uses epsilon comparison to handle floating-point edge cases
  */
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -95,10 +118,13 @@ function cosineSimilarity(a: number[], b: number[]): number {
   }
 
   const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  if (denom === 0) return 0;
+  // INV-SEM-007: Use epsilon comparison to avoid NaN/Infinity from underflow
+  if (denom < Number.EPSILON) return 0;
 
   // Normalize from [-1, 1] to [0, 1]
-  return (dot / denom + 1) / 2;
+  const similarity = (dot / denom + 1) / 2;
+  // Clamp to [0, 1] to handle floating-point imprecision
+  return Math.max(0, Math.min(1, similarity));
 }
 
 /**
@@ -265,10 +291,11 @@ export class SqliteSemanticStore implements SemanticStorePort {
       }
 
       // Tag filtering
+      // INV-SEM-006: Escape LIKE wildcards to prevent SQL pattern injection
       if (request.filterTags && request.filterTags.length > 0) {
         for (const tag of request.filterTags) {
-          sql += ` AND tags LIKE ?`;
-          params.push(`%${tag}%`);
+          sql += ` AND tags LIKE ? ESCAPE '\\'`;
+          params.push(`%${escapeLikeWildcards(tag)}%`);
         }
       }
 

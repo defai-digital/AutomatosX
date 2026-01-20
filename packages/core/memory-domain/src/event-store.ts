@@ -145,11 +145,12 @@ export class InMemoryEventStore implements EventStore {
     const evicted = this.allEvents.splice(0, count);
 
     // Remove from aggregate buckets and correlation index
+    // INV-MEM-007: Use eventId comparison instead of reference equality for robustness
     for (const event of evicted) {
       const aggregateId = event.aggregateId ?? 'global';
       const aggregateEvents = this.events.get(aggregateId);
       if (aggregateEvents) {
-        const index = aggregateEvents.indexOf(event);
+        const index = aggregateEvents.findIndex((e) => e.eventId === event.eventId);
         if (index !== -1) {
           aggregateEvents.splice(index, 1);
         }
@@ -162,7 +163,7 @@ export class InMemoryEventStore implements EventStore {
       if (event.metadata?.correlationId) {
         const correlatedEvents = this.correlationIndex.get(event.metadata.correlationId);
         if (correlatedEvents) {
-          const index = correlatedEvents.indexOf(event);
+          const index = correlatedEvents.findIndex((e) => e.eventId === event.eventId);
           if (index !== -1) {
             correlatedEvents.splice(index, 1);
           }

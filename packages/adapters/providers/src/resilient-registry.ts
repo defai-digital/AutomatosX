@@ -38,6 +38,15 @@ import {
 } from '@defai.digital/contracts';
 
 /**
+ * Logger interface for resilient registry
+ */
+export interface ResilientRegistryLogger {
+  warn?: (message: string) => void;
+  info?: (message: string) => void;
+  debug?: (message: string) => void;
+}
+
+/**
  * Configuration for resilient provider registry
  */
 export interface ResilientRegistryConfig {
@@ -49,9 +58,12 @@ export interface ResilientRegistryConfig {
 
   /** Enable metrics collection */
   enableMetrics?: boolean;
+
+  /** Optional logger for diagnostics */
+  logger?: ResilientRegistryLogger;
 }
 
-const DEFAULT_CONFIG: Required<ResilientRegistryConfig> = {
+const DEFAULT_CONFIG: Required<Omit<ResilientRegistryConfig, 'logger'>> & { logger: ResilientRegistryLogger | undefined } = {
   circuitBreaker: {
     failureThreshold: CIRCUIT_FAILURE_THRESHOLD,
     resetTimeoutMs: CIRCUIT_RESET_TIMEOUT,
@@ -65,6 +77,7 @@ const DEFAULT_CONFIG: Required<ResilientRegistryConfig> = {
     burstMultiplier: 1.5,
   },
   enableMetrics: true,
+  logger: undefined,
 };
 
 /**
@@ -83,7 +96,7 @@ export class ResilientProviderRegistry {
   private readonly resilientProviders = new Map<string, ResilientProvider>();
   private readonly rateLimiter: RateLimiter;
   private readonly metrics: MetricsCollector | null;
-  private readonly config: Required<ResilientRegistryConfig>;
+  private readonly config: Required<Omit<ResilientRegistryConfig, 'logger'>> & { logger: ResilientRegistryLogger | undefined };
 
   constructor(
     baseRegistry: ProviderRegistry,
@@ -101,6 +114,7 @@ export class ResilientProviderRegistry {
         ...config?.rateLimiter,
       },
       enableMetrics: config?.enableMetrics ?? DEFAULT_CONFIG.enableMetrics,
+      logger: config?.logger,
     };
 
     // Create global rate limiter
@@ -150,10 +164,19 @@ export class ResilientProviderRegistry {
       };
     }
 
-    const resilient = this.resilientProviders.get(provider.providerId);
+    let resilient = this.resilientProviders.get(provider.providerId);
     if (!resilient) {
-      // Fallback to direct call if no circuit breaker setup
-      return provider.complete(request);
+      // Lazy-initialize circuit breaker for providers registered after construction
+      // This addresses the race condition where providers added post-initialization
+      // would bypass resilience patterns
+      this.config.logger?.warn?.(
+        `[ResilientRegistry] Lazy-initializing circuit breaker for provider: ${provider.providerId}`
+      );
+      resilient = {
+        provider,
+        circuitBreaker: createCircuitBreaker(this.config.circuitBreaker),
+      };
+      this.resilientProviders.set(provider.providerId, resilient);
     }
 
     // Check rate limit

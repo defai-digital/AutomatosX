@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/token-budget",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "type": "module",
   "description": "Token budget management for AutomatosX context windows",
   "license": "BUSL-1.1",

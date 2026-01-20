@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.4.7-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.4.8-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -645,6 +645,8 @@ When switching projects, just run `ax init` in the new project.
 ---
 
 ## What's New
+
+**v13.4.8** - Security & Stability Fixes: Fixed critical SQL injection vulnerability via LIKE wildcards in semantic-store (INV-SEM-006). Added safe JSON parsing in session-store to prevent crashes from corrupted database data (INV-SESS-SQL-004). Fixed ReDoS vulnerability in glob pattern matching with validation limits on recursive wildcards (INV-GUARD-PATH-005). Fixed division by zero in cosine similarity calculations (INV-SEM-007). Added buffer size validation to prevent integer overflow in embedding operations (INV-SEM-005). Multiple XSS prevention fixes in web dashboard. Added input validation for trace IDs and other user-provided identifiers. Fixed event eviction using eventId comparison instead of reference equality. Fixed session timestamp consistency and list sorting order.
 
 **v13.4.7** - Provider Selection & Fallback System: Added intelligent provider selection with graceful fallback when preferred providers are unavailable. New `fallbackStrategy` option in agent `providerAffinity` config with three modes: `cascade` (try preferred then any available), `strict` (fail if preferred unavailable), `any-available` (use whatever works). Added Codex to default multi-model discussion providers. Added OpenCode to provider strength mappings. Updated all bundled agents with appropriate provider preferences. New `ProviderSelector` service with `NoProviderAvailableError` providing actionable error messages for users with limited provider installations.
 

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/agent-execution",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "type": "module",
   "description": "Agent execution domain for AutomatosX - checkpoints, delegation, parallel execution",
   "license": "BUSL-1.1",

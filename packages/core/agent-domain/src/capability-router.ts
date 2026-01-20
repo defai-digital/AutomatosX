@@ -18,6 +18,25 @@
 import type { AgentProfile, CapabilityMapping, AgentTaskType } from '@defai.digital/contracts';
 import { classifyTask, createTaskClassifier, extractTaskDescription } from './task-classifier.js';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Default capability priority for sorting */
+const DEFAULT_CAPABILITY_PRIORITY = 50;
+
+/** Standard workflow path prefix */
+const STD_WORKFLOW_PREFIX = 'std/';
+
+/** Base path for standard workflows */
+const WORKFLOWS_BASE_PATH = 'workflows/std';
+
+/** Supported workflow file extensions */
+const WORKFLOW_EXTENSIONS = ['.yaml', '.json'] as const;
+
+/** Default workflow extension when not specified */
+const DEFAULT_WORKFLOW_EXTENSION = '.yaml';
+
 /**
  * Result of capability routing
  */
@@ -110,7 +129,9 @@ export function routeToCapability(
 
   // Sort by priority (highest first), then by array order
   const capability = matchingCapabilities.length > 0
-    ? matchingCapabilities.sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50))[0]
+    ? matchingCapabilities.sort((a, b) =>
+        (b.priority ?? DEFAULT_CAPABILITY_PRIORITY) - (a.priority ?? DEFAULT_CAPABILITY_PRIORITY)
+      )[0]
     : undefined;
 
   if (capability) {
@@ -182,18 +203,18 @@ export function getAbilitiesForCapability(
  */
 export function resolveWorkflowRef(workflowRef: string): string {
   // Standard workflow reference (e.g., "std/code-review")
-  if (workflowRef.startsWith('std/')) {
-    const workflowName = workflowRef.slice(4); // Remove "std/" prefix
+  if (workflowRef.startsWith(STD_WORKFLOW_PREFIX)) {
+    const workflowName = workflowRef.slice(STD_WORKFLOW_PREFIX.length);
     // INV-CAP-006: Guard against empty workflow name (e.g., "std/" alone)
     if (!workflowName) {
       throw new Error(`Invalid workflow reference: "${workflowRef}" - workflow name is empty`);
     }
-    return `workflows/std/${workflowName}.yaml`;
+    return `${WORKFLOWS_BASE_PATH}/${workflowName}${DEFAULT_WORKFLOW_EXTENSION}`;
   }
 
-  // Custom workflow reference - append .yaml if needed
-  if (!workflowRef.endsWith('.yaml') && !workflowRef.endsWith('.json')) {
-    return `${workflowRef}.yaml`;
+  // Custom workflow reference - append extension if needed
+  if (!WORKFLOW_EXTENSIONS.some(ext => workflowRef.endsWith(ext))) {
+    return `${workflowRef}${DEFAULT_WORKFLOW_EXTENSION}`;
   }
 
   return workflowRef;
@@ -203,5 +224,5 @@ export function resolveWorkflowRef(workflowRef: string): string {
  * Check if a workflow reference is a standard workflow
  */
 export function isStandardWorkflow(workflowRef: string): boolean {
-  return workflowRef.startsWith('std/');
+  return workflowRef.startsWith(STD_WORKFLOW_PREFIX);
 }

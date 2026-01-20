@@ -9,8 +9,10 @@
  * - INV-DISC-101: Minimum participating providers enforced
  * - INV-DISC-102: Provider timeouts enforced
  * - INV-DISC-009: Result always contains synthesis
+ * - INV-DISC-RATE-001: Provider calls limited to configurable concurrency
  */
 
+import pLimit from 'p-limit';
 import {
   DEFAULT_PROVIDERS,
   DEFAULT_PROVIDER_TIMEOUT,
@@ -23,12 +25,47 @@ import {
   type DiscussionRequest,
 } from '@defai.digital/contracts';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Default number of discussion rounds */
+const DEFAULT_ROUNDS = 2;
+
+/** Default consensus threshold */
+const DEFAULT_CONSENSUS_THRESHOLD = 0.5;
+
+/** Default minimum providers required */
+const DEFAULT_MIN_PROVIDERS = 2;
+
+/** Default temperature for discussions */
+const DEFAULT_TEMPERATURE = 0.7;
+
+/** Default synthesizer provider */
+const DEFAULT_SYNTHESIZER = 'claude';
+
+/** Default debate rounds */
+const DEFAULT_DEBATE_ROUNDS = 4;
+
+/** Lower temperature for voting (more consistent) */
+const VOTING_TEMPERATURE = 0.5;
+
+/** Default debate role providers */
+const DEFAULT_DEBATE_PROPONENT = 'claude';
+const DEFAULT_DEBATE_OPPONENT = 'grok';
+const DEFAULT_DEBATE_JUDGE = 'gemini';
+
+/** Default max concurrent provider calls (INV-DISC-RATE-001) */
+const DEFAULT_MAX_CONCURRENT_PROVIDER_CALLS = 5;
+
 import type {
   DiscussionProviderExecutor,
   DiscussionExecutorOptions,
   PatternExecutionContext,
   DiscussionProgressEvent,
   ResolvedParticipantLike,
+  ProviderExecuteRequest,
+  ProviderExecuteResult,
 } from './types.js';
 import { getPatternExecutor } from './patterns/index.js';
 import { getConsensusExecutor } from './consensus/index.js';
@@ -44,11 +81,13 @@ import {
  */
 export class DiscussionExecutor {
   private readonly providerExecutor: DiscussionProviderExecutor;
+  private readonly rateLimitedProviderExecutor: DiscussionProviderExecutor;
   private readonly defaultTimeoutMs: number;
   private readonly checkProviderHealth: boolean;
   private readonly traceId: string | undefined;
   private readonly participantResolverOptions: DiscussionExecutorOptions['participantResolverOptions'];
   private readonly cascadingConfidence: DiscussionExecutorOptions['cascadingConfidence'];
+  private readonly providerConcurrencyLimit: ReturnType<typeof pLimit>;
 
   constructor(options: DiscussionExecutorOptions) {
     this.providerExecutor = options.providerExecutor;
@@ -57,6 +96,32 @@ export class DiscussionExecutor {
     this.traceId = options.traceId;
     this.participantResolverOptions = options.participantResolverOptions ?? {};
     this.cascadingConfidence = options.cascadingConfidence;
+
+    // INV-DISC-RATE-001: Create concurrency limiter for provider calls
+    this.providerConcurrencyLimit = pLimit(
+      options.maxConcurrentProviderCalls ?? DEFAULT_MAX_CONCURRENT_PROVIDER_CALLS
+    );
+
+    // Create rate-limited wrapper for provider executor
+    this.rateLimitedProviderExecutor = this.createRateLimitedExecutor(options.providerExecutor);
+  }
+
+  /**
+   * Create a rate-limited wrapper for the provider executor (INV-DISC-RATE-001)
+   */
+  private createRateLimitedExecutor(executor: DiscussionProviderExecutor): DiscussionProviderExecutor {
+    const limit = this.providerConcurrencyLimit;
+    return {
+      execute: (request: ProviderExecuteRequest): Promise<ProviderExecuteResult> => {
+        return limit(() => executor.execute(request));
+      },
+      isAvailable: (providerId: string): Promise<boolean> => {
+        return executor.isAvailable(providerId);
+      },
+      getAvailableProviders: (): Promise<string[]> => {
+        return executor.getAvailableProviders();
+      },
+    };
   }
 
   /**
@@ -72,21 +137,21 @@ export class DiscussionExecutor {
     // Convert request to step config
     const config: DiscussStepConfig = {
       pattern: request.pattern || 'synthesis',
-      rounds: request.rounds || 2,
+      rounds: request.rounds || DEFAULT_ROUNDS,
       providers: request.providers || [...DEFAULT_PROVIDERS],
       prompt: request.topic,
       consensus: {
         method: request.consensusMethod || 'synthesis',
-        threshold: 0.5,
-        synthesizer: 'claude', // Default synthesizer
+        threshold: DEFAULT_CONSENSUS_THRESHOLD,
+        synthesizer: DEFAULT_SYNTHESIZER,
         includeDissent: true,
       },
       context: request.context,
       verbose: request.verbose ?? false,
       providerTimeout: this.defaultTimeoutMs,
       continueOnProviderFailure: true,
-      minProviders: 2,
-      temperature: 0.7,
+      minProviders: DEFAULT_MIN_PROVIDERS,
+      temperature: DEFAULT_TEMPERATURE,
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
       fastMode: false,
     };
@@ -177,9 +242,10 @@ export class DiscussionExecutor {
     const patternExecutor = getPatternExecutor(config.pattern);
 
     // Build execution context
+    // INV-DISC-RATE-001: Use rate-limited provider executor
     const patternContext: PatternExecutionContext = {
       config,
-      providerExecutor: this.providerExecutor,
+      providerExecutor: this.rateLimitedProviderExecutor,
       availableProviders,
       abortSignal,
       traceId: this.traceId,
@@ -217,13 +283,14 @@ export class DiscussionExecutor {
     // Execute consensus mechanism
     const consensusExecutor = getConsensusExecutor(config.consensus.method);
 
+    // INV-DISC-RATE-001: Use rate-limited provider executor for consensus
     const consensusResult = await consensusExecutor.execute({
       topic: config.prompt,
       rounds: patternResult.rounds,
       participatingProviders: patternResult.participatingProviders,
       config: config.consensus,
       agentWeightMultiplier: config.agentWeightMultiplier,
-      providerExecutor: this.providerExecutor,
+      providerExecutor: this.rateLimitedProviderExecutor,
       abortSignal,
       onProgress,
     });
@@ -316,9 +383,9 @@ export class DiscussionExecutor {
    */
   async debate(
     topic: string,
-    proponent = 'claude',
-    opponent = 'grok',
-    judge = 'gemini',
+    proponent = DEFAULT_DEBATE_PROPONENT,
+    opponent = DEFAULT_DEBATE_OPPONENT,
+    judge = DEFAULT_DEBATE_JUDGE,
     options?: {
       rounds?: number;
       abortSignal?: AbortSignal;
@@ -327,7 +394,7 @@ export class DiscussionExecutor {
   ): Promise<DiscussionResult> {
     const config: DiscussStepConfig = {
       pattern: 'debate',
-      rounds: options?.rounds || 4,
+      rounds: options?.rounds || DEFAULT_DEBATE_ROUNDS,
       providers: [proponent, opponent, judge],
       prompt: topic,
       verbose: false,
@@ -338,14 +405,14 @@ export class DiscussionExecutor {
       },
       consensus: {
         method: 'moderator',
-        threshold: 0.5,
+        threshold: DEFAULT_CONSENSUS_THRESHOLD,
         synthesizer: judge,
         includeDissent: true,
       },
       providerTimeout: this.defaultTimeoutMs,
       continueOnProviderFailure: false, // Debates require all participants
       minProviders: 3,
-      temperature: 0.7,
+      temperature: DEFAULT_TEMPERATURE,
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
       fastMode: false,
     };
@@ -375,13 +442,13 @@ export class DiscussionExecutor {
       verbose: false,
       consensus: {
         method: 'voting',
-        threshold: 0.5,
+        threshold: DEFAULT_CONSENSUS_THRESHOLD,
         includeDissent: true,
       },
       providerTimeout: this.defaultTimeoutMs,
       continueOnProviderFailure: true,
-      minProviders: 2,
-      temperature: 0.5, // Lower temperature for more consistent voting
+      minProviders: DEFAULT_MIN_PROVIDERS,
+      temperature: VOTING_TEMPERATURE, // Lower temperature for more consistent voting
       agentWeightMultiplier: DEFAULT_AGENT_WEIGHT_MULTIPLIER,
       fastMode: false,
     };

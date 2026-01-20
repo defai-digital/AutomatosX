@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/feedback-domain",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "description": "Agent feedback collection and learning system",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/config-domain",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "type": "module",
   "description": "Configuration domain - config management following contract invariants",
   "license": "BUSL-1.1",

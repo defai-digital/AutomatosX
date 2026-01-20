@@ -15,6 +15,7 @@ import {
   createWorkflowFromTemplate,
   isValidTemplateName,
   createAgentSelectionService,
+  AgentRegistryError,
 } from '@defai.digital/agent-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
@@ -863,22 +864,10 @@ export const handleAgentRegister: ToolHandler = async (args) => {
 
   try {
     const registry = await getSharedRegistry();
-    // Check if agent already exists
-    const existing = await registry.get(agentId);
-    if (existing !== undefined) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              error: 'AGENT_ALREADY_EXISTS',
-              message: `Agent "${agentId}" already exists`,
-            }),
-          },
-        ],
-        isError: true,
-      };
-    }
+
+    // INV-AGT-REG-001: Removed redundant pre-check - rely on registry-level uniqueness enforcement
+    // The registry.register() throws AgentRegistryError if agent already exists
+    // This eliminates the TOCTOU race condition
 
     // Validate agentId format
     // INV-AGT-001: Agent IDs must be lowercase kebab-case to match organizational conventions
@@ -986,6 +975,23 @@ export const handleAgentRegister: ToolHandler = async (args) => {
       ],
     };
   } catch (error) {
+    // INV-AGT-REG-001: Handle duplicate agent error from registry
+    if (error instanceof AgentRegistryError && error.message.includes('already exists')) {
+      const agentId = args.agentId as string;
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: 'AGENT_ALREADY_EXISTS',
+              agentId,
+              message: error.message,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
     const message = getErrorMessage(error);
     return {
       content: [

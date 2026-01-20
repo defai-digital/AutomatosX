@@ -10,7 +10,7 @@
  */
 
 import type { DeadLetterEntry, DeadLetterStatus } from '@defai.digital/contracts';
-import { getErrorMessage } from '@defai.digital/contracts';
+import { getErrorMessage, DeadLetterStatusSchema } from '@defai.digital/contracts';
 import type { DeadLetterStorage } from '@defai.digital/cross-cutting';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -37,6 +37,7 @@ export const SqliteDeadLetterStoreErrorCodes = {
   INVALID_ENTRY: 'SQLITE_DLQ_INVALID_ENTRY',
   SERIALIZATION_ERROR: 'SQLITE_DLQ_SERIALIZATION_ERROR',
   INVALID_TABLE_NAME: 'SQLITE_DLQ_INVALID_TABLE_NAME',
+  ENTRY_NOT_FOUND: 'SQLITE_DLQ_ENTRY_NOT_FOUND',
 } as const;
 
 /**
@@ -238,7 +239,7 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
         WHERE entry_id = ?
       `);
 
-      stmt.run(
+      const result = stmt.run(
         entry.originalEventId,
         entry.eventType,
         entry.eventPayload !== undefined ? JSON.stringify(entry.eventPayload) : null,
@@ -256,7 +257,20 @@ export class SqliteDeadLetterStorage implements DeadLetterStorage {
         entry.resolvedAt ?? null,
         entry.entryId
       );
+
+      // Verify that the entry was actually updated
+      if (result.changes === 0) {
+        throw new SqliteDeadLetterStoreError(
+          SqliteDeadLetterStoreErrorCodes.ENTRY_NOT_FOUND,
+          `DLQ entry not found: ${entry.entryId}`,
+          { entryId: entry.entryId }
+        );
+      }
     } catch (error) {
+      // Re-throw our own errors without wrapping
+      if (error instanceof SqliteDeadLetterStoreError) {
+        throw error;
+      }
       throw new SqliteDeadLetterStoreError(
         SqliteDeadLetterStoreErrorCodes.DATABASE_ERROR,
         `Failed to update DLQ entry: ${getErrorMessage(error)}`,
@@ -368,6 +382,21 @@ function safeJsonParse<T>(json: string, fieldName: string, entryId: string): T {
   }
 }
 
+/**
+ * Validates status value from database
+ */
+function validateStatus(status: string, entryId: string): DeadLetterStatus {
+  const result = DeadLetterStatusSchema.safeParse(status);
+  if (!result.success) {
+    throw new SqliteDeadLetterStoreError(
+      SqliteDeadLetterStoreErrorCodes.INVALID_ENTRY,
+      `Invalid status value in database for entry ${entryId}: ${status}`,
+      { entryId, status, validValues: DeadLetterStatusSchema.options }
+    );
+  }
+  return result.data;
+}
+
 function rowToDeadLetterEntry(row: DeadLetterRow): DeadLetterEntry {
   const entry: DeadLetterEntry = {
     entryId: row.entry_id,
@@ -377,7 +406,7 @@ function rowToDeadLetterEntry(row: DeadLetterRow): DeadLetterEntry {
     error: safeJsonParse<{ code: string; message: string; stack?: string; originalError?: string }>(row.error, 'error', row.entry_id),
     retryCount: row.retry_count,
     maxRetries: row.max_retries,
-    status: row.status as DeadLetterStatus,
+    status: validateStatus(row.status, row.entry_id),
     createdAt: row.created_at,
     source: row.source,
   };

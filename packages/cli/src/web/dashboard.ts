@@ -19,10 +19,17 @@ export function createDashboardHTML(): string {
   <title>AutomatosX Monitor</title>
   <script>
     window.cdnLoadErrors = [];
+    // INV-DASH-SEC-001: XSS prevention helper - escape HTML entities
+    function escapeHtml(str) {
+      if (typeof str !== 'string') str = String(str || '');
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
     window.onerror = function(msg, url, line) {
+      // INV-DASH-SEC-001: Escape error message to prevent XSS
       document.getElementById('root').innerHTML =
         '<div style="padding:24px;color:#f85149;background:#161b22;min-height:100vh;">' +
-        '<h1>Script Error</h1><pre>' + msg + '\\nLine: ' + line + '</pre></div>';
+        '<h1>Script Error</h1><pre>' + escapeHtml(msg) + '\\nLine: ' + escapeHtml(line) + '</pre></div>';
     };
   </script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin
@@ -39,11 +46,12 @@ export function createDashboardHTML(): string {
         if (typeof React === 'undefined') errors += ' React not defined.';
         if (typeof ReactDOM === 'undefined') errors += ' ReactDOM not defined.';
         if (typeof Babel === 'undefined') errors += ' Babel not defined.';
+        // INV-DASH-SEC-001: Escape errors for defense-in-depth (though these are hardcoded strings)
         document.getElementById('root').innerHTML =
           '<div style="padding:24px;color:#f85149;background:#161b22;min-height:100vh;">' +
           '<h1>CDN Load Error</h1>' +
           '<p>Failed to load required scripts from unpkg.com CDN.</p>' +
-          '<p style="color:#8b949e;">' + errors + '</p>' +
+          '<p style="color:#8b949e;">' + escapeHtml(errors) + '</p>' +
           '<p style="margin-top:16px;color:#8b949e;">This may be due to:</p>' +
           '<ul style="color:#8b949e;margin-left:20px;">' +
           '<li>Network connectivity issues</li>' +
@@ -6598,8 +6606,9 @@ export function createDashboardHTML(): string {
       console.log('Dashboard rendered successfully');
     } catch (err) {
       console.error('Failed to render dashboard:', err);
+      // INV-DASH-SEC-001: Escape error message to prevent XSS
       document.getElementById('root').innerHTML =
-        '<div style="padding:24px;color:#f85149">Failed to render: ' + err.message + '</div>';
+        '<div style="padding:24px;color:#f85149">Failed to render: ' + escapeHtml(err.message) + '</div>';
     }
   </script>
 </body>

@@ -67,7 +67,32 @@ export const SqliteSessionStoreErrorCodes = {
   NOT_FOUND: 'SQLITE_SESSION_NOT_FOUND',
   VERSION_CONFLICT: 'SQLITE_SESSION_VERSION_CONFLICT',
   INVALID_TABLE_NAME: 'SQLITE_SESSION_INVALID_TABLE_NAME',
+  JSON_PARSE_ERROR: 'SQLITE_SESSION_JSON_PARSE_ERROR',
 } as const;
+
+/**
+ * Safely parse JSON with fallback for corrupted data
+ * INV-SESS-SQL-004: Safe JSON parsing prevents crashes from corrupted database data
+ */
+function safeJsonParse<T>(
+  json: string | null | undefined,
+  defaultValue: T,
+  fieldName: string,
+  sessionId?: string
+): T {
+  if (json === null || json === undefined) {
+    return defaultValue;
+  }
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    // Log the error for debugging but don't crash
+    console.warn(
+      `[SqliteSessionStore] Failed to parse ${fieldName}${sessionId ? ` for session ${sessionId}` : ''}: ${error instanceof Error ? error.message : 'Unknown error'}. Using default value.`
+    );
+    return defaultValue;
+  }
+}
 
 /**
  * SQLite implementation of SessionStore
@@ -463,6 +488,7 @@ export class SqliteSessionStore implements SessionStore {
 
   /**
    * Convert database row to Session object
+   * INV-SESS-SQL-004: Uses safe JSON parsing to handle corrupted data gracefully
    */
   private rowToSession(row: SessionRow): Session {
     return {
@@ -470,10 +496,10 @@ export class SqliteSessionStore implements SessionStore {
       initiator: row.initiator,
       task: row.task,
       status: row.status as SessionStatus,
-      participants: JSON.parse(row.participants),
+      participants: safeJsonParse(row.participants, [], 'participants', row.session_id),
       workspace: row.workspace ?? undefined,
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
-      appliedPolicies: row.applied_policies ? JSON.parse(row.applied_policies) : [],
+      metadata: safeJsonParse(row.metadata, undefined, 'metadata', row.session_id),
+      appliedPolicies: safeJsonParse(row.applied_policies, [], 'applied_policies', row.session_id),
       version: row.version,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

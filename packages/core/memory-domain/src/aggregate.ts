@@ -54,13 +54,21 @@ export class AggregateRepository<T> {
   /**
    * Saves an event to the aggregate
    * INV-MEM-004: Event ordering enforced via version
+   *
+   * CONCURRENCY NOTE (INV-MEM-008):
+   * The optimistic concurrency check and append are NOT atomic. In truly concurrent
+   * scenarios (e.g., distributed systems or multi-process), another operation could
+   * modify the aggregate between getVersion() and append(). This is acceptable for
+   * single-process Node.js where async operations interleave but don't truly run
+   * in parallel. For distributed scenarios, implement compare-and-swap at the
+   * storage layer or use a mutex/lock around the check-and-write operation.
    */
   async save(
     aggregateId: string,
     event: MemoryEvent,
     expectedVersion?: number
   ): Promise<void> {
-    // Optimistic concurrency check
+    // Optimistic concurrency check (see INV-MEM-008 for concurrency limitations)
     if (expectedVersion !== undefined) {
       const currentVersion = await this.eventStore.getVersion(aggregateId);
       if (currentVersion !== expectedVersion) {

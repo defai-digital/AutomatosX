@@ -69,9 +69,11 @@ export class InMemorySessionStore implements SessionStore {
       throw new SessionVersionConflictError(sessionId, existing.version, session.version);
     }
 
+    // INV-SESS-003: Use session's updatedAt if provided, otherwise generate new timestamp
+    // This preserves consistency between manager events and stored state
     this.sessions.set(sessionId, {
       ...session,
-      updatedAt: new Date().toISOString(),
+      updatedAt: session.updatedAt ?? new Date().toISOString(),
     });
   }
 
@@ -120,17 +122,19 @@ export class InMemorySessionStore implements SessionStore {
           (s) => new Date(s.createdAt).getTime() < before
         );
       }
-
-      if (filter.limit !== undefined) {
-        sessions = sessions.slice(0, filter.limit);
-      }
     }
 
+    // INV-SESS-004: Sort BEFORE applying limit to get the N most recent sessions
     // Sort by createdAt descending
     sessions.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+
+    // Apply limit AFTER sorting
+    if (filter?.limit !== undefined) {
+      sessions = sessions.slice(0, filter.limit);
+    }
 
     return sessions;
   }

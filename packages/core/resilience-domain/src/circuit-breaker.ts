@@ -2,6 +2,20 @@
  * Circuit Breaker Implementation
  *
  * Prevents cascade failures by stopping calls to unhealthy providers.
+ *
+ * Thread Safety Model (INV-CB-THREAD-001):
+ * This implementation is designed for Node.js's single-threaded event loop.
+ * State modifications (recordSuccess, recordFailure, transitionTo) are synchronous
+ * and atomic within a single tick. Concurrent async calls to execute() may overlap
+ * their await periods, but state changes happen sequentially.
+ *
+ * This means:
+ * - Multiple concurrent failures may each call recordFailure() but state transitions
+ *   are idempotent (transitionTo checks if already in target state)
+ * - Under high concurrency, the circuit may open slightly after the Nth failure
+ *   (N+k where k is concurrent calls in flight) - this is acceptable "eventual
+ *   consistency" for circuit breaker semantics
+ * - No mutex/lock is needed because JavaScript doesn't have true parallelism
  */
 
 import {

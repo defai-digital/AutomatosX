@@ -368,6 +368,13 @@ export interface DiscussionExecutorOptions {
 
   /** Cascading confidence config for early exit (INV-DISC-622, INV-DISC-623) */
   cascadingConfidence?: CascadingConfidenceOptions | undefined;
+
+  /**
+   * Maximum concurrent provider calls (INV-DISC-RATE-001)
+   * Limits concurrent API calls to prevent rate limit issues.
+   * Default: 5
+   */
+  maxConcurrentProviderCalls?: number | undefined;
 }
 
 // ============================================================================

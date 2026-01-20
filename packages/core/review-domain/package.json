@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/review-domain",
-  "version": "13.4.7",
+  "version": "13.4.8",
   "type": "module",
   "description": "Review domain for AutomatosX - AI-powered code review with focused analysis modes",
   "license": "BUSL-1.1",

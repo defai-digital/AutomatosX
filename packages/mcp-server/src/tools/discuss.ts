@@ -202,7 +202,7 @@ async function callSingleProvider(
     };
 
     return {
-      content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+      content: [{ type: 'text', text: JSON.stringify(response) }],
       isError: false,
     };
   } catch (error) {
@@ -726,7 +726,7 @@ export const handleDiscuss: ToolHandler = async (args): Promise<MCPToolResult> =
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ ...result, traceId }, null, 2),
+          text: JSON.stringify({ ...result, traceId }),
         },
       ],
       isError: !result.success,
@@ -1063,7 +1063,7 @@ export const handleDiscussQuick: ToolHandler = async (args): Promise<MCPToolResu
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response, null, 2),
+          text: JSON.stringify(response),
         },
       ],
       isError: !result.success,
@@ -1622,7 +1622,7 @@ export const handleDiscussRecursive: ToolHandler = async (args): Promise<MCPTool
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ ...result, traceId }, null, 2),
+          text: JSON.stringify({ ...result, traceId }),
         },
       ],
       isError: !result.success,

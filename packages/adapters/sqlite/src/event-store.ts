@@ -1,5 +1,5 @@
 import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
-import { getErrorMessage } from '@defai.digital/contracts';
+import { getErrorMessage, MemoryEventTypeSchema } from '@defai.digital/contracts';
 import type { EventStore } from '@defai.digital/memory-domain';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -262,12 +262,27 @@ function safeJsonParse<T>(json: string, fieldName: string, eventId: string): T {
 }
 
 /**
+ * Validates event type value from database
+ */
+function validateEventType(type: string, eventId: string): MemoryEventType {
+  const result = MemoryEventTypeSchema.safeParse(type);
+  if (!result.success) {
+    throw new SqliteEventStoreError(
+      SqliteEventStoreErrorCodes.INVALID_EVENT,
+      `Invalid event type in database for event ${eventId}: ${type}`,
+      { eventId, type, validValues: MemoryEventTypeSchema.options }
+    );
+  }
+  return result.data;
+}
+
+/**
  * Converts a database row to a MemoryEvent
  */
 function rowToEvent(row: EventRow): MemoryEvent {
   const event: MemoryEvent = {
     eventId: row.event_id,
-    type: row.type as MemoryEventType,
+    type: validateEventType(row.type, row.event_id),
     timestamp: row.timestamp,
     payload: safeJsonParse<Record<string, unknown>>(row.payload, 'payload', row.event_id),
   };

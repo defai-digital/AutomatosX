@@ -10,6 +10,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      p-limit:
+        specifier: ^6.2.0
+        version: 6.2.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.16.0
@@ -271,6 +275,9 @@ importers:
       '@defai.digital/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      p-limit:
+        specifier: ^6.2.0
+        version: 6.2.0
     devDependencies:
       typescript:
         specifier: ^5.7.2

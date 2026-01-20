@@ -8,16 +8,55 @@
  * - INV-GUARD-PATH-001: Exact Match - modified files checked against exact resolved paths
  * - INV-GUARD-PATH-002: Glob Semantics - ** for recursive, * for single level
  * - INV-GUARD-PATH-003: Forbidden Wins - if path matches both allowed and forbidden, treat as forbidden
+ * - INV-GUARD-PATH-005: ReDoS Protection - limit recursive wildcards and pattern length
  */
 
 import type { GovernanceContext, GateResult } from '../types.js';
 
 /**
+ * Maximum number of ** wildcards allowed in a pattern
+ * INV-GUARD-PATH-005: Prevents ReDoS from overlapping quantifiers
+ */
+const MAX_GLOBSTAR_COUNT = 3;
+
+/**
+ * Maximum pattern length to prevent abuse
+ * INV-GUARD-PATH-005: Prevents excessively long patterns
+ */
+const MAX_PATTERN_LENGTH = 500;
+
+/**
+ * Validates a glob pattern for ReDoS safety
+ * INV-GUARD-PATH-005: Rejects patterns that could cause catastrophic backtracking
+ * @throws Error if pattern is unsafe
+ */
+function validateGlobPattern(pattern: string): void {
+  // Check pattern length
+  if (pattern.length > MAX_PATTERN_LENGTH) {
+    throw new Error(
+      `Glob pattern exceeds maximum length of ${MAX_PATTERN_LENGTH} characters`
+    );
+  }
+
+  // Count ** occurrences to prevent overlapping quantifiers
+  const globstarCount = (pattern.match(/\*\*/g) ?? []).length;
+  if (globstarCount > MAX_GLOBSTAR_COUNT) {
+    throw new Error(
+      `Glob pattern contains ${globstarCount} recursive wildcards (**), maximum is ${MAX_GLOBSTAR_COUNT}`
+    );
+  }
+}
+
+/**
  * Converts a glob pattern to a regex
  * INV-GUARD-PATH-002: ** for recursive, * for single level
  * INV-GUARD-PATH-004: Escape all regex special chars including ?
+ * INV-GUARD-PATH-005: Validates pattern safety before conversion
  */
 function globToRegex(pattern: string): RegExp {
+  // Validate pattern for ReDoS safety
+  validateGlobPattern(pattern);
+
   const escaped = pattern
     .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars (including ?)
     .replace(/\*\*/g, '{{GLOBSTAR}}') // Temp placeholder for **

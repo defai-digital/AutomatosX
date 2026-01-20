@@ -217,7 +217,10 @@ export class DefaultProviderSelector implements ProviderSelector {
       }
     }
 
-    // Use first candidate if not in global priority
+    // INV-PROV-SEL-006: Final fallback - use first candidate if not in global priority
+    // Safety: candidates[0] is guaranteed to exist because we checked candidates.length === 0
+    // at line 143 and threw NoProviderAvailableError. All code paths after that point
+    // can safely assume candidates is non-empty.
     const selected = candidates[0]!;
     const fallbackChain = candidates.slice(1);
     return {

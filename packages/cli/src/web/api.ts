@@ -3,6 +3,16 @@
  *
  * Provides REST API endpoints for the web dashboard.
  * Wraps existing domain services to expose via HTTP.
+ *
+ * KNOWN PERFORMANCE ISSUE (INV-API-PERF-001):
+ * Several handlers use an N+1 query pattern where traces are fetched first,
+ * then events are fetched for each trace individually. This is acceptable for
+ * the local dashboard use case (typically < 200 traces), but would need
+ * refactoring for production scale. Consider batch fetching or pagination
+ * if performance becomes an issue.
+ *
+ * Affected handlers: handleStatus, handleProviderHistory, handleAgentHistory,
+ * handleTraces, handleWorkflowEvents, handleClassificationStats
  */
 
 import * as os from 'node:os';
@@ -11,6 +21,33 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage } from '@defai.digital/contracts';
+
+// ============================================================================
+// INV-API-VAL-001: Input Validation Constants
+// ============================================================================
+
+/** Maximum length for any ID parameter to prevent DoS via long strings */
+const MAX_ID_LENGTH = 128;
+
+/** UUID v4 format regex for trace IDs */
+const UUID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-[4][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+
+/**
+ * Validates a trace ID is a valid UUID and within length limits
+ * INV-API-VAL-001: Strict UUID validation for trace IDs
+ */
+function isValidTraceId(id: string | undefined): id is string {
+  if (!id || id.length > MAX_ID_LENGTH) return false;
+  return UUID_REGEX.test(id);
+}
+
+/**
+ * Validates a generic ID (workflow, agent, provider) is within length limits
+ * INV-API-VAL-001: Length validation for all IDs
+ */
+function isValidId(id: string | undefined): id is string {
+  return typeof id === 'string' && id.length > 0 && id.length <= MAX_ID_LENGTH;
+}
 
 // Get the directory of this module (for finding bundled examples)
 const __filename = fileURLToPath(import.meta.url);
@@ -231,29 +268,30 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
       const traceSearchMatch = apiPath.match(/^\/traces\/search\?(.*)$/i) || apiPath.match(/^\/traces\/search$/i);
 
       // INV-TR-020 through INV-TR-024: Hierarchical trace tree endpoint
-      if (traceTreeMatch && traceTreeMatch[1]) {
+      // INV-API-VAL-001: Validate all IDs before processing
+      if (traceTreeMatch && isValidTraceId(traceTreeMatch[1])) {
         const traceId = traceTreeMatch[1];
         response = await handleTraceTree(traceId);
-      } else if (traceClassificationMatch && traceClassificationMatch[1]) {
+      } else if (traceClassificationMatch && isValidTraceId(traceClassificationMatch[1])) {
         // PRD-2026-003: Classification observability endpoint
         const traceId = traceClassificationMatch[1];
         response = await handleTraceClassification(traceId);
-      } else if (traceDetailMatch && traceDetailMatch[1]) {
+      } else if (traceDetailMatch && isValidTraceId(traceDetailMatch[1])) {
         const traceId = traceDetailMatch[1];
         response = await handleTraceDetail(traceId);
-      } else if (workflowDetailMatch && workflowDetailMatch[1]) {
+      } else if (workflowDetailMatch && isValidId(workflowDetailMatch[1])) {
         const workflowId = workflowDetailMatch[1];
         response = await handleWorkflowDetail(workflowId);
-      } else if (providerHistoryMatch && providerHistoryMatch[1]) {
+      } else if (providerHistoryMatch && isValidId(providerHistoryMatch[1])) {
         const providerId = providerHistoryMatch[1];
         response = await handleProviderHistory(providerId);
-      } else if (agentHistoryMatch && agentHistoryMatch[1]) {
+      } else if (agentHistoryMatch && isValidId(agentHistoryMatch[1])) {
         const agentId = agentHistoryMatch[1];
         response = await handleAgentHistory(agentId);
-      } else if (agentDetailMatch && agentDetailMatch[1]) {
+      } else if (agentDetailMatch && isValidId(agentDetailMatch[1])) {
         const agentId = agentDetailMatch[1];
         response = await handleAgentDetail(agentId);
-      } else if (workflowEventsMatch && workflowEventsMatch[1]) {
+      } else if (workflowEventsMatch && isValidId(workflowEventsMatch[1])) {
         const workflowId = workflowEventsMatch[1];
         response = await handleWorkflowEvents(workflowId);
       } else if (traceSearchMatch) {

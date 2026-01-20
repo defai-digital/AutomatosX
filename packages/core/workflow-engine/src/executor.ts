@@ -7,6 +7,27 @@ import type {
 } from './types.js';
 import { WorkflowErrorCodes } from './types.js';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Log prefix for consistent logging */
+const LOG_PREFIX = '[workflow-engine]';
+
+/** Default maximum iterations for loop steps */
+const DEFAULT_LOOP_MAX_ITERATIONS = 100;
+
+/** Default concurrency for parallel steps */
+const DEFAULT_PARALLEL_CONCURRENCY = 5;
+
+/** Step executor error codes */
+const StepExecutorErrorCodes = {
+  DISCUSSION_EXECUTOR_NOT_CONFIGURED: 'DISCUSSION_EXECUTOR_NOT_CONFIGURED',
+  DELEGATE_EXECUTOR_NOT_CONFIGURED: 'DELEGATE_EXECUTOR_NOT_CONFIGURED',
+  STEP_EXECUTION_ERROR: 'STEP_EXECUTION_ERROR',
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+} as const;
+
 // Track if we've warned about using the default executor
 let hasWarnedDefaultExecutor = false;
 
@@ -24,7 +45,7 @@ export const defaultStepExecutor: StepExecutor = async (
   // Warn once on first use for prompt/tool steps
   if (!hasWarnedDefaultExecutor && (step.type === 'prompt' || step.type === 'tool')) {
     console.warn(
-      '[WARN] workflow-engine: Using default step executor which returns placeholder results. ' +
+      `${LOG_PREFIX} Using default step executor which returns placeholder results. ` +
       'For production, configure WorkflowRunnerConfig.stepExecutor with real implementations.'
     );
     hasWarnedDefaultExecutor = true;
@@ -76,7 +97,7 @@ async function executeStepByType(
       // INV-WF-010: Discussion steps require discussion-domain executor
       // Throw error to ensure step fails (caught by defaultStepExecutor wrapper)
       const discussError = createStepError(
-        'DISCUSSION_EXECUTOR_NOT_CONFIGURED',
+        StepExecutorErrorCodes.DISCUSSION_EXECUTOR_NOT_CONFIGURED,
         `Discussion step "${step.stepId}" requires a DiscussionExecutor. Configure it in RealStepExecutorConfig.`,
         false
       );
@@ -86,7 +107,7 @@ async function executeStepByType(
       // INV-WF-010: Delegate steps require agent-domain executor
       // Throw error to ensure step fails (caught by defaultStepExecutor wrapper)
       const delegateError = createStepError(
-        'DELEGATE_EXECUTOR_NOT_CONFIGURED',
+        StepExecutorErrorCodes.DELEGATE_EXECUTOR_NOT_CONFIGURED,
         `Delegate step "${step.stepId}" requires an AgentExecutor. Configure it in RealStepExecutorConfig.`,
         false
       );
@@ -136,12 +157,12 @@ interface ConditionalStepConfig {
 interface LoopStepConfig {
   items?: unknown[]; // Items to iterate over
   itemsPath?: string; // Path to get items from context (e.g., "previousResults.step1")
-  maxIterations?: number; // Maximum iterations (default: 100)
+  maxIterations?: number; // Maximum iterations (default: DEFAULT_LOOP_MAX_ITERATIONS)
 }
 
 interface ParallelStepConfig {
   tasks?: { id: string; value: unknown }[]; // Parallel tasks
-  concurrency?: number; // Max concurrent tasks (default: 5)
+  concurrency?: number; // Max concurrent tasks (default: DEFAULT_PARALLEL_CONCURRENCY)
   failFast?: boolean; // Stop on first failure (default: false)
 }
 
@@ -259,7 +280,7 @@ function executeLoopStep(
   context: StepContext
 ): Promise<unknown> {
   const config = (step.config ?? {}) as LoopStepConfig;
-  const maxIterations = config.maxIterations ?? 100;
+  const maxIterations = config.maxIterations ?? DEFAULT_LOOP_MAX_ITERATIONS;
 
   // Get items from config or context path
   let items: unknown[] = [];
@@ -311,7 +332,7 @@ async function executeParallelStep(
 ): Promise<unknown> {
   const config = (step.config ?? {}) as ParallelStepConfig;
   const tasks = config.tasks ?? [];
-  const concurrency = config.concurrency ?? 5;
+  const concurrency = config.concurrency ?? DEFAULT_PARALLEL_CONCURRENCY;
   const failFast = config.failFast ?? false;
 
   if (tasks.length === 0) {
@@ -489,10 +510,10 @@ function evaluateConditionSafely(condition: string, context: StepContext): boole
     if (trimmed === 'false') return false;
 
     // Unknown pattern - warn and fail safely
-    console.warn(`[workflow-engine] Unknown condition pattern: ${condition}`);
+    console.warn(`${LOG_PREFIX} Unknown condition pattern: ${condition}`);
     return false;
   } catch (error) {
-    console.warn(`[workflow-engine] Error evaluating condition: ${condition}`, error);
+    console.warn(`${LOG_PREFIX} Error evaluating condition: ${condition}`, error);
     return false;
   }
 }
@@ -558,6 +579,12 @@ function parseConditionValue(value: string): unknown {
 
 /**
  * Compare two values with the given operator
+ *
+ * INV-WF-COND-002: Supports both strict (===, !==) and loose (==, !=) equality
+ *
+ * Note: Loose equality (== and !=) is intentionally supported for workflow conditions
+ * where type coercion may be desired (e.g., comparing "1" == 1, null == undefined).
+ * Use strict equality (===, !==) when type-safe comparison is required.
  */
 function compareConditionValues(actual: unknown, expected: unknown, op: string): boolean {
   switch (op) {
@@ -565,8 +592,10 @@ function compareConditionValues(actual: unknown, expected: unknown, op: string):
       return actual === expected;
     case '!==':
       return actual !== expected;
+    // eslint-disable-next-line eqeqeq -- Intentional loose equality for workflow flexibility
     case '==':
       return actual == expected;
+    // eslint-disable-next-line eqeqeq -- Intentional loose equality for workflow flexibility
     case '!=':
       return actual != expected;
     case '>':
@@ -612,7 +641,7 @@ export function normalizeError(error: unknown): StepError {
 
   if (error instanceof Error) {
     return {
-      code: 'STEP_EXECUTION_ERROR',
+      code: StepExecutorErrorCodes.STEP_EXECUTION_ERROR,
       message: error.message,
       retryable: false,
       details: {
@@ -623,7 +652,7 @@ export function normalizeError(error: unknown): StepError {
   }
 
   return {
-    code: 'UNKNOWN_ERROR',
+    code: StepExecutorErrorCodes.UNKNOWN_ERROR,
     message: String(error),
     retryable: false,
   };

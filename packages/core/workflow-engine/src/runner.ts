@@ -8,6 +8,19 @@ import type {
   PreparedWorkflow,
 } from './types.js';
 import { WorkflowErrorCodes } from './types.js';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Log prefix for consistent logging */
+const LOG_PREFIX = '[workflow-runner]';
+
+/** Default agent ID when not specified */
+const UNKNOWN_AGENT_ID = 'unknown';
+
+/** Guard blocked error code */
+const WORKFLOW_GUARD_BLOCKED = 'WORKFLOW_GUARD_BLOCKED';
 import { prepareWorkflow, deepFreezeStepResult } from './validation.js';
 import { defaultStepExecutor, createStepError, normalizeError } from './executor.js';
 import {
@@ -142,7 +155,7 @@ export class WorkflowRunner {
           await this.config.stepGuardEngine.runAfterGuards(guardContext);
         } catch (guardError) {
           // Log but don't fail the workflow - after guards are advisory
-          console.warn(`[workflow-runner] After guard threw exception for step ${step.stepId}:`, guardError);
+          console.warn(`${LOG_PREFIX} After guard threw exception for step ${step.stepId}:`, guardError);
         }
       }
 
@@ -336,7 +349,7 @@ export class WorkflowRunner {
 
     return {
       executionId: this.config.executionId ?? crypto.randomUUID(),
-      agentId: this.config.agentId ?? 'unknown',
+      agentId: this.config.agentId ?? UNKNOWN_AGENT_ID,
       workflowId: workflow.workflow.workflowId,
       stepId: step.stepId,
       stepType: step.type,
@@ -367,7 +380,7 @@ export class WorkflowRunner {
       success: false,
       stepResults,
       error: {
-        code: 'WORKFLOW_GUARD_BLOCKED',
+        code: WORKFLOW_GUARD_BLOCKED,
         message: `Step ${step.stepId} blocked by guard: ${gateMessages}`,
         failedStepId: step.stepId,
         details: {

@@ -108,6 +108,8 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
   private cache = new Map<string, Workflow>();
   private filePathMap = new Map<string, string>();
   private loaded = false;
+  // INV-WF-LDR-004: Prevent concurrent loadAll() calls with a loading promise
+  private loadingPromise: Promise<Workflow[]> | null = null;
 
   constructor(config: WorkflowLoaderConfig) {
     this.config = {
@@ -130,8 +132,34 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
 
   /**
    * Load all workflows from the directory
+   * INV-WF-LDR-004: Uses loading promise to prevent concurrent loads
    */
   async loadAll(): Promise<Workflow[]> {
+    // If already loading, return the existing promise to prevent race conditions
+    if (this.loadingPromise) {
+      return this.loadingPromise;
+    }
+
+    // If already loaded, return cached workflows
+    if (this.loaded) {
+      return Array.from(this.cache.values());
+    }
+
+    // Start loading and track the promise
+    this.loadingPromise = this.performLoad();
+
+    try {
+      const result = await this.loadingPromise;
+      return result;
+    } finally {
+      this.loadingPromise = null;
+    }
+  }
+
+  /**
+   * Internal method that performs the actual loading
+   */
+  private async performLoad(): Promise<Workflow[]> {
     this.cache.clear();
     this.filePathMap.clear();
 

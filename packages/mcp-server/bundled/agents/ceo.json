@@ -87,7 +87,12 @@
     "maxDelegationDepth": 3,
     "canReadWorkspaces": ["all"],
     "canWriteToShared": true,
-    "delegationTimeout": 300000
+    "delegationTimeout": 1200000
+  },
+  "providerAffinity": {
+    "preferred": ["claude", "grok", "gemini"],
+    "fallbackStrategy": "cascade",
+    "defaultSynthesizer": "claude"
   },
   "selectionMetadata": {
     "agentCategory": "orchestrator",

@@ -945,6 +945,7 @@ describe('Discussion Contract - Constants', () => {
     expect(DEFAULT_PROVIDERS).toContain('claude');
     expect(DEFAULT_PROVIDERS).toContain('grok');
     expect(DEFAULT_PROVIDERS).toContain('gemini');
-    expect(DEFAULT_PROVIDERS.length).toBe(3);
+    expect(DEFAULT_PROVIDERS).toContain('codex');
+    expect(DEFAULT_PROVIDERS.length).toBe(4);
   });
 });

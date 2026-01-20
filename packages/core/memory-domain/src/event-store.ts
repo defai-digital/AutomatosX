@@ -17,14 +17,26 @@ export class EventStoreError extends Error {
 }
 
 /**
+ * Default maximum events to store before eviction
+ * INV-MEM-006: Memory growth is bounded
+ */
+const DEFAULT_MAX_EVENTS = 100000;
+
+/**
  * In-memory event store implementation
  * INV-MEM-001: Events are immutable - stored as frozen objects
  * INV-MEM-004: Events are ordered by version within aggregate
+ * INV-MEM-006: Memory growth is bounded with LRU eviction
  */
 export class InMemoryEventStore implements EventStore {
   private readonly events = new Map<string, MemoryEvent[]>();
   private readonly allEvents: MemoryEvent[] = [];
   private readonly correlationIndex = new Map<string, MemoryEvent[]>();
+  private readonly maxEvents: number;
+
+  constructor(maxEvents: number = DEFAULT_MAX_EVENTS) {
+    this.maxEvents = maxEvents;
+  }
 
   /**
    * Appends an event to the store
@@ -65,6 +77,11 @@ export class InMemoryEventStore implements EventStore {
     // Store in global list
     this.allEvents.push(frozenEvent);
 
+    // INV-MEM-006: Evict oldest events if over limit to prevent unbounded memory growth
+    if (this.allEvents.length > this.maxEvents) {
+      this.evictOldest(this.allEvents.length - this.maxEvents);
+    }
+
     // Index by correlation ID (INV-MEM-005)
     if (event.metadata?.correlationId !== undefined) {
       const correlatedEvents =
@@ -101,6 +118,7 @@ export class InMemoryEventStore implements EventStore {
 
   /**
    * Gets the current version for an aggregate
+   * INV-MEM-007: Version calculation handles edge cases correctly
    */
   getVersion(aggregateId: string): Promise<number> {
     const events = this.events.get(aggregateId) ?? [];
@@ -108,7 +126,52 @@ export class InMemoryEventStore implements EventStore {
       return Promise.resolve(0);
     }
     const lastEvent = events[events.length - 1];
-    return Promise.resolve(lastEvent?.version ?? events.length);
+    // INV-MEM-007: Explicit undefined check - version 0 is valid, undefined means use length
+    if (lastEvent === undefined) {
+      return Promise.resolve(0);
+    }
+    if (lastEvent.version === undefined) {
+      return Promise.resolve(events.length);
+    }
+    return Promise.resolve(lastEvent.version);
+  }
+
+  /**
+   * Evicts the oldest events to maintain memory bounds
+   * INV-MEM-006: LRU eviction when over maxEvents
+   */
+  private evictOldest(count: number): void {
+    // Remove from global list
+    const evicted = this.allEvents.splice(0, count);
+
+    // Remove from aggregate buckets and correlation index
+    for (const event of evicted) {
+      const aggregateId = event.aggregateId ?? 'global';
+      const aggregateEvents = this.events.get(aggregateId);
+      if (aggregateEvents) {
+        const index = aggregateEvents.indexOf(event);
+        if (index !== -1) {
+          aggregateEvents.splice(index, 1);
+        }
+        if (aggregateEvents.length === 0) {
+          this.events.delete(aggregateId);
+        }
+      }
+
+      // Remove from correlation index
+      if (event.metadata?.correlationId) {
+        const correlatedEvents = this.correlationIndex.get(event.metadata.correlationId);
+        if (correlatedEvents) {
+          const index = correlatedEvents.indexOf(event);
+          if (index !== -1) {
+            correlatedEvents.splice(index, 1);
+          }
+          if (correlatedEvents.length === 0) {
+            this.correlationIndex.delete(event.metadata.correlationId);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -123,7 +186,8 @@ export class InMemoryEventStore implements EventStore {
 
 /**
  * Creates an in-memory event store
+ * @param maxEvents Maximum events to store before eviction (default: 100000)
  */
-export function createInMemoryEventStore(): InMemoryEventStore {
-  return new InMemoryEventStore();
+export function createInMemoryEventStore(maxEvents?: number): InMemoryEventStore {
+  return new InMemoryEventStore(maxEvents);
 }

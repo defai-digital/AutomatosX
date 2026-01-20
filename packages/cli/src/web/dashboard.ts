@@ -3540,6 +3540,10 @@ export function createDashboardHTML(): string {
                   Providers: {trace.input.providers.join(', ')}
                 </span>
               )}
+              {/* PRD-2026-003: Show classification badge if available */}
+              {trace.classification && (
+                <ClassificationHealthBadge classification={trace.classification} showDetails={true} />
+              )}
             </div>
           </div>
 
@@ -4947,9 +4951,48 @@ export function createDashboardHTML(): string {
           <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h2 style={{ margin: 0, marginBottom: 8, color: 'var(--text-primary)' }}>
-                  {agent.displayName || agent.agentId}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>
+                    {agent.displayName || agent.agentId}
+                  </h2>
+                  {/* PRD-2026-004: Meta-agent badges */}
+                  {agent.metaAgent && (
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: 'rgba(163, 113, 247, 0.2)',
+                      color: 'var(--accent-purple)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}>
+                      🎯 Meta-Agent
+                    </span>
+                  )}
+                  {agent.archetype && (
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: 'rgba(88, 166, 255, 0.2)',
+                      color: 'var(--accent-blue)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}>
+                      🏗️ Archetype
+                    </span>
+                  )}
+                  {agent.category && (
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: 'rgba(139, 148, 158, 0.15)',
+                      color: 'var(--text-muted)',
+                      fontSize: 11,
+                      textTransform: 'capitalize',
+                    }}>
+                      {agent.category}
+                    </span>
+                  )}
+                </div>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', maxWidth: 600 }}>
                   {agent.description}
                 </p>
@@ -5048,6 +5091,239 @@ export function createDashboardHTML(): string {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* PRD-2026-004: Orchestration Relationships */}
+          {(agent.orchestrates?.length > 0 || agent.canDelegateToArchetypes?.length > 0 || agent.canDelegateToMetaAgents?.length > 0 || agent.replaces?.length > 0) && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: 0, marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
+                🔗 Orchestration
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {agent.orchestrates?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Orchestrates</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {agent.orchestrates.map((id, idx) => (
+                        <span key={idx} style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          background: 'rgba(163, 113, 247, 0.15)',
+                          color: 'var(--accent-purple)',
+                          fontSize: 12,
+                        }}>
+                          {id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {agent.canDelegateToArchetypes?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Can Delegate to Archetypes</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {agent.canDelegateToArchetypes.map((id, idx) => (
+                        <span key={idx} style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          background: 'rgba(88, 166, 255, 0.15)',
+                          color: 'var(--accent-blue)',
+                          fontSize: 12,
+                        }}>
+                          {id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {agent.canDelegateToMetaAgents?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Can Delegate to Meta-Agents</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {agent.canDelegateToMetaAgents.map((id, idx) => (
+                        <span key={idx} style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          background: 'rgba(163, 113, 247, 0.15)',
+                          color: 'var(--accent-purple)',
+                          fontSize: 12,
+                        }}>
+                          {id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {agent.replaces?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Replaces (Legacy Agents)</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {agent.replaces.map((id, idx) => (
+                        <span key={idx} style={{
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          background: 'rgba(139, 148, 158, 0.15)',
+                          color: 'var(--text-muted)',
+                          fontSize: 12,
+                          textDecoration: 'line-through',
+                        }}>
+                          {id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* PRD-2026-004: Task Classifier Config */}
+          {agent.taskClassifier && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
+                  🎯 Task Classifier
+                </h3>
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  background: agent.taskClassifier.enabled !== false ? 'rgba(63, 185, 80, 0.2)' : 'rgba(139, 148, 158, 0.2)',
+                  color: agent.taskClassifier.enabled !== false ? 'var(--accent-green)' : 'var(--text-muted)',
+                  fontSize: 11,
+                }}>
+                  {agent.taskClassifier.enabled !== false ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              {agent.taskClassifier.defaultWorkflow && (
+                <div style={{ marginBottom: 16, padding: 12, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Default Workflow</div>
+                  <code style={{ color: 'var(--accent-cyan)', fontSize: 13 }}>{agent.taskClassifier.defaultWorkflow}</code>
+                </div>
+              )}
+              {agent.taskClassifier.rules?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    Classification Rules ({agent.taskClassifier.rules.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {agent.taskClassifier.rules
+                      .sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50))
+                      .map((rule, idx) => {
+                        const priority = rule.priority ?? 50;
+                        return (
+                        <div key={idx} style={{
+                          padding: 12,
+                          background: 'var(--bg-tertiary)',
+                          borderRadius: 8,
+                          borderLeft: \`3px solid \${
+                            priority >= 80 ? 'var(--accent-red)' :
+                            priority >= 70 ? 'var(--accent-orange)' :
+                            'var(--accent-blue)'
+                          }\`,
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: 10,
+                              background: 'rgba(88, 166, 255, 0.15)',
+                              color: 'var(--accent-blue)',
+                              fontSize: 11,
+                              fontWeight: 500,
+                            }}>
+                              {rule.taskType}
+                            </span>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: 10,
+                              background: priority >= 80 ? 'rgba(248, 81, 73, 0.15)' :
+                                         priority >= 70 ? 'rgba(227, 179, 65, 0.15)' :
+                                         'rgba(139, 148, 158, 0.15)',
+                              color: priority >= 80 ? 'var(--accent-red)' :
+                                     priority >= 70 ? 'var(--accent-orange)' :
+                                     'var(--text-muted)',
+                              fontSize: 10,
+                            }}>
+                              Priority: {priority}
+                            </span>
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <code style={{ fontSize: 11, color: 'var(--accent-purple)', wordBreak: 'break-all' }}>
+                              /{rule.pattern}/i
+                            </code>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            → {rule.workflow}
+                          </div>
+                        </div>
+                      );})}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PRD-2026-004: Capability Mappings */}
+          {agent.capabilityMappings?.length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: 0, marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
+                📋 Capability Mappings ({agent.capabilityMappings.length})
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {agent.capabilityMappings.map((mapping, idx) => (
+                  <div key={idx} style={{
+                    padding: 12,
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 8,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: 'rgba(88, 166, 255, 0.15)',
+                        color: 'var(--accent-blue)',
+                        fontSize: 11,
+                        fontWeight: 500,
+                      }}>
+                        {mapping.taskType}
+                      </span>
+                      {mapping.priority !== undefined && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          Priority: {mapping.priority}
+                        </span>
+                      )}
+                    </div>
+                    {mapping.description && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                        {mapping.description}
+                      </div>
+                    )}
+                    {mapping.abilities?.length > 0 && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Abilities:</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {mapping.abilities.map((ability, i) => (
+                            <span key={i} style={{
+                              padding: '2px 6px',
+                              borderRadius: 8,
+                              background: 'rgba(63, 185, 80, 0.15)',
+                              color: 'var(--accent-green)',
+                              fontSize: 10,
+                            }}>
+                              {ability}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {mapping.workflowRef && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Workflow: <code style={{ color: 'var(--accent-cyan)' }}>{mapping.workflowRef}</code>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -5184,10 +5460,39 @@ export function createDashboardHTML(): string {
                   onClick={() => onSelectAgent(agent.agentId)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <span className="agent-name" title={agent.description}>
-                    {agent.displayName || agent.agentId}
-                  </span>
-                  <span style={{ color: agent.enabled ? 'var(--accent-green)' : 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                    <span className="agent-name" title={agent.description || ''} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {agent.displayName || agent.agentId}
+                    </span>
+                    {/* PRD-2026-004: Meta-agent badges */}
+                    {agent.metaAgent && (
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        background: 'rgba(163, 113, 247, 0.2)',
+                        color: 'var(--accent-purple)',
+                        fontSize: 9,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}>
+                        META
+                      </span>
+                    )}
+                    {agent.archetype && (
+                      <span style={{
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        background: 'rgba(88, 166, 255, 0.2)',
+                        color: 'var(--accent-blue)',
+                        fontSize: 9,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}>
+                        ARCH
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ color: agent.enabled ? 'var(--accent-green)' : 'var(--text-muted)', flexShrink: 0 }}>
                     {agent.enabled ? 'active' : 'disabled'}
                   </span>
                 </div>
@@ -5668,6 +5973,293 @@ export function createDashboardHTML(): string {
       );
     }
 
+    // PRD-2026-003: Classification Health Badge
+    // Compact badge showing classification confidence and guard status
+    function ClassificationHealthBadge({ classification, showDetails = false }) {
+      if (!classification) {
+        return null;
+      }
+
+      const { taskType, confidence, guardResults } = classification;
+      const guardPassRate = guardResults && guardResults.length > 0
+        ? guardResults.filter(g => g.passed).length / guardResults.length
+        : 1.0;
+
+      // Determine badge color based on confidence
+      const getConfidenceLevel = (conf) => {
+        if (conf >= 0.8) return { color: 'var(--accent-green)', label: 'high', bg: 'rgba(63, 185, 80, 0.15)' };
+        if (conf >= 0.6) return { color: 'var(--accent-yellow)', label: 'medium', bg: 'rgba(210, 153, 34, 0.15)' };
+        return { color: 'var(--accent-red)', label: 'low', bg: 'rgba(248, 81, 73, 0.15)' };
+      };
+
+      const confidenceLevel = getConfidenceLevel(confidence || 0);
+      const guardStatus = guardPassRate >= 0.95 ? 'pass' : guardPassRate >= 0.5 ? 'partial' : 'fail';
+
+      const badgeStyle = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '2px 8px',
+        borderRadius: '12px',
+        fontSize: '11px',
+        fontWeight: 500,
+        background: confidenceLevel.bg,
+        color: confidenceLevel.color,
+      };
+
+      if (!showDetails) {
+        // Compact mode - just show task type with confidence indicator
+        return (
+          <span style={badgeStyle} title={\`\${taskType} (confidence: \${((confidence || 0) * 100).toFixed(0)}%)\`}>
+            🎯 {taskType}
+          </span>
+        );
+      }
+
+      // Detailed mode - show confidence and guard status
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={badgeStyle}>
+            🎯 {taskType}
+          </span>
+          <span style={{
+            ...badgeStyle,
+            background: confidenceLevel.bg,
+            color: confidenceLevel.color,
+          }}>
+            {((confidence || 0) * 100).toFixed(0)}% conf
+          </span>
+          {guardResults && guardResults.length > 0 && (
+            <span style={{
+              ...badgeStyle,
+              background: guardStatus === 'pass' ? 'rgba(63, 185, 80, 0.15)' :
+                         guardStatus === 'partial' ? 'rgba(210, 153, 34, 0.15)' :
+                         'rgba(248, 81, 73, 0.15)',
+              color: guardStatus === 'pass' ? 'var(--accent-green)' :
+                     guardStatus === 'partial' ? 'var(--accent-yellow)' :
+                     'var(--accent-red)',
+            }}>
+              🛡️ {guardResults.filter(g => g.passed).length}/{guardResults.length}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // PRD-2026-003: Task Classification Card
+    function TaskClassificationCard({ classification }) {
+      if (!classification || classification.totalClassifications === 0) {
+        return null; // Don't show card if no classification data
+      }
+
+      const {
+        totalClassifications,
+        byTaskType,
+        guardPassRate,
+        averageConfidence,
+        fallbackRate,
+        sampleSize,
+      } = classification;
+
+      const taskTypes = Object.entries(byTaskType || {}).sort((a, b) => b[1] - a[1]);
+      const topTaskTypes = taskTypes.slice(0, 5);
+
+      const getConfidenceColor = (confidence) => {
+        if (confidence >= 0.8) return 'var(--accent-green)';
+        if (confidence >= 0.6) return 'var(--accent-yellow)';
+        return 'var(--accent-red)';
+      };
+
+      const getGuardColor = (rate) => {
+        if (rate >= 0.95) return 'var(--accent-green)';
+        if (rate >= 0.8) return 'var(--accent-yellow)';
+        return 'var(--accent-red)';
+      };
+
+      const statBoxStyle = {
+        background: 'var(--bg-tertiary)',
+        borderRadius: '8px',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+      };
+
+      const iconStyle = {
+        width: '32px',
+        height: '32px',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '16px',
+        marginBottom: '4px',
+      };
+
+      return (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Task Classification (PRD-2026-003)</span>
+            <span style={{
+              background: 'var(--accent-purple)',
+              color: 'white',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '11px',
+              fontWeight: 500,
+            }}>
+              {totalClassifications} classified
+            </span>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '12px',
+            marginTop: '12px'
+          }}>
+            {/* Total Classifications */}
+            <div style={statBoxStyle}>
+              <div style={{ ...iconStyle, background: 'rgba(163, 113, 247, 0.15)' }}>
+                <span style={{ color: 'var(--accent-purple)' }}>🎯</span>
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
+                {totalClassifications}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Classifications</div>
+            </div>
+
+            {/* Average Confidence */}
+            <div style={statBoxStyle}>
+              <div style={{ ...iconStyle, background: 'rgba(63, 185, 80, 0.15)' }}>
+                <span style={{ color: 'var(--accent-green)' }}>📊</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 700, color: getConfidenceColor(averageConfidence), lineHeight: 1 }}>
+                  {(averageConfidence * 100).toFixed(0)}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Avg Confidence</div>
+              <div style={{
+                height: '4px',
+                background: 'var(--bg-secondary)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                marginTop: '4px'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: \`\${averageConfidence * 100}%\`,
+                  background: getConfidenceColor(averageConfidence),
+                  borderRadius: '2px',
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+            </div>
+
+            {/* Guard Pass Rate */}
+            <div style={statBoxStyle}>
+              <div style={{ ...iconStyle, background: 'rgba(56, 211, 159, 0.15)' }}>
+                <span style={{ color: 'var(--accent-cyan)' }}>🛡️</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 700, color: getGuardColor(guardPassRate), lineHeight: 1 }}>
+                  {(guardPassRate * 100).toFixed(0)}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Guard Pass Rate</div>
+              <div style={{
+                height: '4px',
+                background: 'var(--bg-secondary)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                marginTop: '4px'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: \`\${guardPassRate * 100}%\`,
+                  background: getGuardColor(guardPassRate),
+                  borderRadius: '2px',
+                  transition: 'width 0.3s ease'
+                }}></div>
+              </div>
+            </div>
+
+            {/* Fallback Rate */}
+            <div style={statBoxStyle}>
+              <div style={{ ...iconStyle, background: 'rgba(248, 81, 73, 0.15)' }}>
+                <span style={{ color: 'var(--accent-red)' }}>⚠️</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 700, color: fallbackRate > 0.1 ? 'var(--accent-yellow)' : 'var(--accent-green)', lineHeight: 1 }}>
+                  {(fallbackRate * 100).toFixed(0)}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Fallback Rate</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                No mapping selected
+              </div>
+            </div>
+          </div>
+
+          {/* Task Type Distribution */}
+          {topTaskTypes.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 500 }}>
+                Task Type Distribution
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {topTaskTypes.map(([taskType, count]) => {
+                  const percentage = (count / totalClassifications) * 100;
+                  // PRD-2026-004: Task type colors including new types
+                  const taskTypeColors = {
+                    implementation: 'var(--accent-blue)',
+                    debugging: 'var(--accent-red)',
+                    refactoring: 'var(--accent-orange)',
+                    testing: 'var(--accent-green)',
+                    documentation: 'var(--accent-cyan)',
+                    analysis: 'var(--accent-purple)',
+                    review: 'var(--accent-yellow)',
+                    deployment: '#f85149',      // Red-orange for deploy actions
+                    research: '#a371f7',        // Purple for research
+                    unknown: 'var(--text-muted)',
+                  };
+                  const barColor = taskTypeColors[taskType] || 'var(--accent-purple)';
+                  return (
+                    <div key={taskType} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '100px', fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                        {taskType}
+                      </div>
+                      <div style={{ flex: 1, height: '8px', background: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          width: \`\${percentage}%\`,
+                          background: barColor,
+                          borderRadius: '4px',
+                          transition: 'width 0.3s ease'
+                        }}></div>
+                      </div>
+                      <div style={{ width: '60px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right' }}>
+                        {count} ({percentage.toFixed(0)}%)
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {taskTypes.length > 5 && (
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  +{taskTypes.length - 5} more task types
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // Main Dashboard component
     function Dashboard() {
       const [view, setView] = useState('dashboard');
@@ -5927,6 +6519,8 @@ export function createDashboardHTML(): string {
               <ProviderUsageHistogram traces={data.traces || []} />
 
               <ExecutionStatsCard traces={data.traces || []} />
+
+              <TaskClassificationCard classification={data.classification} />
 
               <TracesCard traces={data.traces || []} onSelectTrace={handleSelectTrace} />
             </section>

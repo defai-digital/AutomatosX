@@ -11,6 +11,7 @@
  */
 
 import { z } from 'zod';
+import { ITERATE_TIMEOUT_DEFAULT, ITERATE_MAX_DEFAULT } from '../../constants.js';
 
 // ============================================================================
 // Constants
@@ -18,9 +19,10 @@ import { z } from 'zod';
 
 /**
  * Default budget values
+ * Note: Uses constants from central constants.ts for consistency
  */
-export const DEFAULT_MAX_ITERATIONS = 20;
-export const DEFAULT_MAX_TIME_MS = 300000; // 5 minutes
+export const DEFAULT_MAX_ITERATIONS = ITERATE_MAX_DEFAULT;
+export const DEFAULT_MAX_TIME_MS = ITERATE_TIMEOUT_DEFAULT;
 export const DEFAULT_MAX_CONSECUTIVE_ERRORS = 3;
 
 // ============================================================================

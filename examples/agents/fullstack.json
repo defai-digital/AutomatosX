@@ -69,7 +69,7 @@
       "stepId": "analyze",
       "name": "Fullstack Analysis",
       "type": "prompt",
-      "timeoutMs": 300000,
+      "timeoutMs": 1200000,
       "config": {
         "prompt": "As a Senior Fullstack Engineer, analyze the following:\n\n${input}\n\nEvaluate:\n1. **Frontend Needs**: What UI/UX components are required?\n2. **Backend Needs**: What APIs and data models are needed?\n3. **Integration Points**: How do frontend and backend interact?\n4. **Data Flow**: How does data flow through the system?\n5. **Tech Stack**: What technologies are best suited?\n\nThe best code is the code that ships and scales."
       }
@@ -78,7 +78,7 @@
       "stepId": "design",
       "name": "System Design",
       "type": "prompt",
-      "timeoutMs": 300000,
+      "timeoutMs": 1200000,
       "config": {
         "prompt": "Based on your analysis:\n\n${previousOutputs.analyze.content}\n\nDesign the fullstack solution:\n1. **API Design**: Endpoints, request/response shapes\n2. **Data Model**: Database schema and relationships\n3. **Frontend Architecture**: Components, state, routing\n4. **Type Sharing**: Shared types between FE and BE\n5. **Authentication**: Auth flow and security\n\nDesign for type safety end-to-end."
       },

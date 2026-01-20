@@ -25,6 +25,7 @@ import {
   CIRCUIT_RECOVERY_TIMEOUT,
   RETRY_MAX_DEFAULT,
   RETRY_DELAY_DEFAULT,
+  PRIORITY_DEFAULT,
 } from '../../constants.js';
 
 // ============================================================================
@@ -74,8 +75,8 @@ export type ConfigReadScope = z.infer<typeof ConfigReadScopeSchema>;
  */
 export const ConfigHealthCheckSchema = z.object({
   enabled: z.boolean().default(true),
-  interval: z.number().int().min(1000).max(3600000).default(300000), // 5 minutes
-  timeout: z.number().int().min(100).max(60000).default(5000),
+  interval: z.number().int().min(1000).max(3600000).default(INTERVAL_HEALTH_CHECK),
+  timeout: z.number().int().min(100).max(60000).default(TIMEOUT_HEALTH_CHECK),
 });
 export type ConfigHealthCheck = z.infer<typeof ConfigHealthCheckSchema>;
 
@@ -85,7 +86,7 @@ export type ConfigHealthCheck = z.infer<typeof ConfigHealthCheckSchema>;
 export const ConfigCircuitBreakerSchema = z.object({
   enabled: z.boolean().default(true),
   failureThreshold: z.number().int().min(1).max(10).default(3),
-  recoveryTimeout: z.number().int().min(1000).max(600000).default(60000),
+  recoveryTimeout: z.number().int().min(1000).max(600000).default(CIRCUIT_RECOVERY_TIMEOUT),
 });
 export type ConfigCircuitBreaker = z.infer<typeof ConfigCircuitBreakerSchema>;
 
@@ -93,8 +94,8 @@ export type ConfigCircuitBreaker = z.infer<typeof ConfigCircuitBreakerSchema>;
  * Process management configuration
  */
 export const ConfigProcessManagementSchema = z.object({
-  gracefulShutdownTimeout: z.number().int().min(1000).max(60000).default(5000),
-  forceKillDelay: z.number().int().min(100).max(10000).default(1000),
+  gracefulShutdownTimeout: z.number().int().min(1000).max(60000).default(TIMEOUT_GRACEFUL_SHUTDOWN),
+  forceKillDelay: z.number().int().min(100).max(10000).default(TIMEOUT_FORCE_KILL),
 });
 export type ConfigProcessManagement = z.infer<typeof ConfigProcessManagementSchema>;
 
@@ -102,8 +103,8 @@ export type ConfigProcessManagement = z.infer<typeof ConfigProcessManagementSche
  * Version detection configuration
  */
 export const ConfigVersionDetectionSchema = z.object({
-  timeout: z.number().int().min(1000).max(30000).default(5000),
-  forceKillDelay: z.number().int().min(100).max(10000).default(1000),
+  timeout: z.number().int().min(1000).max(30000).default(TIMEOUT_HEALTH_CHECK),
+  forceKillDelay: z.number().int().min(100).max(10000).default(TIMEOUT_FORCE_KILL),
   cacheEnabled: z.boolean().default(true),
 });
 export type ConfigVersionDetection = z.infer<typeof ConfigVersionDetectionSchema>;
@@ -131,8 +132,8 @@ export type ConfigProviderType = z.infer<typeof ConfigProviderTypeSchema>;
  */
 export const ProviderConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  priority: z.number().int().min(1).max(100).default(50),
-  timeout: z.number().int().min(1000).max(7200000).default(2700000), // 45 minutes default
+  priority: z.number().int().min(1).max(100).default(PRIORITY_DEFAULT),
+  timeout: z.number().int().min(1000).max(7200000).default(TIMEOUT_WORKFLOW_STEP),
   type: ConfigProviderTypeSchema.optional(),
   command: z.string().min(1).optional(), // Optional for SDK providers
   description: z.string().optional(),
@@ -162,8 +163,8 @@ export type ProvidersConfig = z.infer<typeof ProvidersConfigSchema>;
  */
 export const ExecutionPolicySchema = z.object({
   defaultTimeoutMs: z.number().int().min(TIMEOUT_AGENT_STEP_MIN).max(TIMEOUT_AGENT_STEP_MAX).default(TIMEOUT_AGENT_STEP_DEFAULT),
-  maxRetries: z.number().int().min(0).max(10).default(3),
-  retryDelayMs: z.number().int().min(100).max(60000).default(1000),
+  maxRetries: z.number().int().min(0).max(10).default(RETRY_MAX_DEFAULT),
+  retryDelayMs: z.number().int().min(100).max(60000).default(RETRY_DELAY_DEFAULT),
   enableParallelExecution: z.boolean().default(false),
 });
 export type ExecutionPolicy = z.infer<typeof ExecutionPolicySchema>;

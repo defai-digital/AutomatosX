@@ -474,11 +474,14 @@ export const handleSessionComplete: ToolHandler = async (args) => {
 
 /**
  * Handler for session_list tool
+ * INV-MCP-SES-007: Clamp limit to valid range
  */
 export const handleSessionList: ToolHandler = async (args) => {
   const status = args.status as 'active' | 'completed' | 'failed' | undefined;
   const initiator = args.initiator as string | undefined;
-  const limit = (args.limit as number | undefined) ?? 20;
+  // INV-MCP-SES-007: Clamp limit to valid range [1, LIMIT_SESSIONS]
+  const rawLimit = (args.limit as number | undefined) ?? LIMIT_SESSIONS;
+  const limit = Math.max(1, Math.min(rawLimit, LIMIT_SESSIONS));
 
   try {
     // Build filter only with defined properties
@@ -744,15 +747,43 @@ export const handleSessionLeave: ToolHandler = async (args) => {
 
 /**
  * Handler for session_fail tool
+ * INV-MCP-SES-006: Validates error object has required properties
  */
 export const handleSessionFail: ToolHandler = async (args) => {
   const sessionId = args.sessionId as string;
-  const error = args.error as {
-    code: string;
-    message: string;
-    taskId?: string;
-    details?: Record<string, unknown>;
+  const rawError = args.error as Record<string, unknown> | undefined;
+
+  // INV-MCP-SES-006: Validate error object structure
+  if (rawError === undefined || rawError === null || typeof rawError !== 'object') {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            error: 'INVALID_ERROR_OBJECT',
+            message: 'Error parameter must be an object with code and message properties',
+          }),
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // Validate required error properties
+  const errorCode = typeof rawError.code === 'string' ? rawError.code : 'UNKNOWN_ERROR';
+  const errorMessage = typeof rawError.message === 'string' ? rawError.message : 'Unknown error';
+
+  // Build error object with only defined properties to satisfy exactOptionalPropertyTypes
+  const error: { code: string; message: string; taskId?: string; details?: Record<string, unknown> } = {
+    code: errorCode,
+    message: errorMessage,
   };
+  if (typeof rawError.taskId === 'string') {
+    error.taskId = rawError.taskId;
+  }
+  if (typeof rawError.details === 'object' && rawError.details !== null) {
+    error.details = rawError.details as Record<string, unknown>;
+  }
 
   try {
     const session = await getManager().getSession(sessionId);

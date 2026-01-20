@@ -5,7 +5,7 @@ import {
   errorResponse,
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
-import { LIMIT_TRACES, getErrorMessage } from '@defai.digital/contracts';
+import { LIMIT_TRACES, TIMEOUT_SESSION, getErrorMessage } from '@defai.digital/contracts';
 import { getTraceStore } from '../bootstrap.js';
 import type { TraceTreeNode } from '@defai.digital/trace-domain';
 
@@ -77,7 +77,8 @@ export const traceAnalyzeTool: MCPTool = {
  */
 export const handleTraceList: ToolHandler = async (args) => {
   const status = args.status as string | undefined;
-  const limit = Math.min((args.limit as number) ?? LIMIT_TRACES, LIMIT_TRACES);
+  // INV-TR-024: Ensure limit is at least 1 and at most LIMIT_TRACES
+  const limit = Math.max(1, Math.min((args.limit as number) ?? LIMIT_TRACES, LIMIT_TRACES));
 
   try {
     const traceStore = getTraceStore();
@@ -116,9 +117,15 @@ export const handleTraceList: ToolHandler = async (args) => {
 /**
  * Handler for trace_get tool
  * INV-MCP-RESP-001: Response < 10KB with summary, events stored as artifact
+ * INV-MCP-VAL-001: Validate input types before use
  */
 export const handleTraceGet: ToolHandler = async (args) => {
-  const traceId = args.traceId as string;
+  // INV-MCP-VAL-001: Validate traceId is a non-empty string
+  const rawTraceId = args.traceId;
+  if (typeof rawTraceId !== 'string' || rawTraceId.length === 0) {
+    return errorResponse('INVALID_TRACE_ID', 'traceId must be a non-empty string');
+  }
+  const traceId = rawTraceId;
 
   try {
     const traceStore = getTraceStore();
@@ -316,6 +323,14 @@ export const traceBySessionTool: MCPTool = {
 };
 
 /**
+ * Escape special regex characters in a string
+ * INV-TR-022: Prevent regex injection when building dynamic patterns
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Format a trace tree node for display
  */
 function formatTreeNode(node: TraceTreeNode, indent: string = ''): string {
@@ -332,7 +347,8 @@ function formatTreeNode(node: TraceTreeNode, indent: string = ''): string {
     const isLast = i === arr.length - 1;
     const childIndent = indent + (isLast ? ' └─ ' : ' ├─ ');
     const grandchildIndent = indent + (isLast ? '    ' : ' │  ');
-    return formatTreeNode(child, childIndent).replace(new RegExp(`^${childIndent}`, 'gm'), (m, offset) =>
+    // INV-TR-022: Escape regex special characters to prevent injection
+    return formatTreeNode(child, childIndent).replace(new RegExp(`^${escapeRegex(childIndent)}`, 'gm'), (m, offset) =>
       offset === 0 ? m : grandchildIndent
     );
   });
@@ -414,8 +430,8 @@ export const traceCloseStuckTool: MCPTool = {
     properties: {
       maxAgeMs: {
         type: 'number',
-        description: 'Maximum age in milliseconds before a trace is considered stuck (default: 1 hour = 3600000ms)',
-        default: 3600000,
+        description: `Maximum age in milliseconds before a trace is considered stuck (default: 1 hour = ${TIMEOUT_SESSION}ms)`,
+        default: TIMEOUT_SESSION,
       },
     },
   },
@@ -426,7 +442,7 @@ export const traceCloseStuckTool: MCPTool = {
  * Closes stuck traces by writing a run.end event
  */
 export const handleTraceCloseStuck: ToolHandler = async (args) => {
-  const maxAgeMs = (args.maxAgeMs as number) ?? 3600000; // Default 1 hour
+  const maxAgeMs = (args.maxAgeMs as number) ?? TIMEOUT_SESSION;
 
   try {
     const traceStore = getTraceStore();

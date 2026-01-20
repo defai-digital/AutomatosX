@@ -27,6 +27,7 @@ import {
   ResearchSourceSchema,
   getErrorMessage,
   createRootTraceHierarchy,
+  TIMEOUT_EXTENDED,
 } from '@defai.digital/contracts';
 import {
   createResearchAgent,
@@ -103,10 +104,10 @@ export const researchQueryTool: MCPTool = {
       },
       timeout: {
         type: 'number',
-        description: 'Timeout in ms (1000-300000, default: 60000)',
+        description: `Timeout in ms (1000-300000, default: ${TIMEOUT_EXTENDED})`,
         minimum: 1000,
         maximum: 300000,
-        default: 60000,
+        default: TIMEOUT_EXTENDED,
       },
     },
     required: ['query'],
@@ -275,7 +276,8 @@ export const handleResearchQuery: ToolHandler = async (args) => {
     },
     payload: {
       tool: 'research_query',
-      query: (args.query as string).slice(0, 200),
+      // INV-RSH-003: Safe access before validation (trace event fires before try-catch)
+      query: typeof args.query === 'string' ? args.query.slice(0, 200) : '',
       sources: args.sources ?? ['web'],
       maxSources: args.maxSources ?? 5,
       synthesize: args.synthesize ?? true,
@@ -580,7 +582,8 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
     },
     payload: {
       tool: 'research_synthesize',
-      query: (args.query as string).slice(0, 200),
+      // INV-RSH-003: Safe access before validation (trace event fires before try-catch)
+      query: typeof args.query === 'string' ? args.query.slice(0, 200) : '',
       sourceCount,
       style: args.style ?? 'detailed',
       includeCode: args.includeCode ?? true,
@@ -590,7 +593,12 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
 
   try {
     // Parse and validate sources
-    const sources: ResearchSource[] = (args.sources as unknown[]).map((s) =>
+    // INV-RSH-002: Handle undefined/null sources array
+    const rawSources = args.sources as unknown[] | undefined;
+    if (!Array.isArray(rawSources) || rawSources.length === 0) {
+      throw new Error('sources parameter is required and must be a non-empty array');
+    }
+    const sources: ResearchSource[] = rawSources.map((s) =>
       ResearchSourceSchema.parse(s)
     );
 

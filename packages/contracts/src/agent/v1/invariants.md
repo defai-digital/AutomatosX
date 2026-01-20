@@ -316,6 +316,65 @@ This document defines the non-negotiable behavioral requirements for the agent d
 - Agent's `workflow` field used as fallback
 - Fallback logged for debugging
 
+## Task Classifier Invariants
+
+These invariants govern the meta-agent task classification system used by Executor and similar orchestrating agents.
+
+### INV-TC-001: Case-Insensitive Pattern Matching
+
+**Statement:** Pattern matching against task descriptions MUST be case-insensitive.
+
+**Rationale:** Users express tasks in various casings. Case sensitivity would cause missed matches.
+
+**Enforcement:**
+- Regex patterns use `'i'` flag for case-insensitivity
+- Task descriptions lowercased before matching
+- Tests verify matching works regardless of input case
+
+### INV-TC-002: First-Match-Wins (Priority Ordered)
+
+**Statement:** Rules are evaluated by priority (highest first), then definition order. First matching rule wins.
+
+**Rationale:** Deterministic rule ordering enables predictable task routing.
+
+**Enforcement:**
+- Rules sorted by priority descending before evaluation
+- On same priority, definition order preserved
+- First match returned immediately (no further evaluation)
+
+### INV-TC-003: Default Workflow Fallback
+
+**Statement:** When no rules match, the `defaultWorkflow` MUST be used.
+
+**Rationale:** Every task must route somewhere. Fallback ensures no task is dropped.
+
+**Enforcement:**
+- Classification returns defaultWorkflow when no rules match
+- defaultWorkflow field is required in TaskClassifierConfig
+- Tests verify fallback behavior for non-matching inputs
+
+### INV-TC-004: Classification Determinism
+
+**Statement:** Task classification MUST be deterministic (same input description = same output).
+
+**Rationale:** Non-deterministic classification causes unpredictable routing and breaks testing.
+
+**Enforcement:**
+- Classification algorithm has no random components
+- Same rules + same input = same taskType and workflow
+- Tests verify determinism across multiple calls
+
+### INV-TC-005: Unknown Task Routing
+
+**Statement:** Unknown/unclassified tasks MUST route to `defaultWorkflow`, never fail.
+
+**Rationale:** Graceful degradation ensures system remains functional for all inputs.
+
+**Enforcement:**
+- No exceptions thrown for unrecognized task patterns
+- Confidence set to 0 or low value for default routing
+- Logging indicates fallback was used
+
 ## Agent Workflow Step Invariants
 
 ### INV-AGT-WF-001: Prompt Step Validation
@@ -382,8 +441,14 @@ Each invariant must have corresponding tests:
 28. `INV-AGT-WF-001`: Test prompt steps require prompt
 29. `INV-AGT-WF-002`: Test delegate steps require targetAgent
 30. `INV-AGT-WF-003`: Test dependencies reference existing steps
+31. `INV-TC-001`: Test pattern matching is case-insensitive
+32. `INV-TC-002`: Test first-match-wins with priority ordering
+33. `INV-TC-003`: Test default workflow fallback
+34. `INV-TC-004`: Test classification determinism
+35. `INV-TC-005`: Test unknown tasks route to default
 
 ## Version History
 
 - V1 (2024-12-16): Initial contract definition
 - V1.1 (2026-01-19): Added capability mapping invariants (INV-CAP-001 to INV-CAP-005) and workflow step invariants (INV-AGT-WF-001 to INV-AGT-WF-003)
+- V1.2 (2026-01-20): Added task classifier invariants (INV-TC-001 to INV-TC-005) for meta-agent architecture

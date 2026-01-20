@@ -10,15 +10,27 @@
  * - INV-GUARD-DEP-003: New Violations Only - only report violations in changed files
  */
 
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { TIMEOUT_GATE_DEPENDENCY } from '@defai.digital/contracts';
 import type { GovernanceContext, GateResult } from '../types.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/**
+ * Validates a file path to prevent command injection
+ * INV-GUARD-SEC-002: Sanitize file paths before shell execution
+ */
+function isValidFilePath(path: string): boolean {
+  // Reject paths containing shell metacharacters
+  // Valid paths: alphanumeric, /, ., -, _, @
+  const validPattern = /^[a-zA-Z0-9/.@_-]+$/;
+  return path.length > 0 && path.length <= 500 && validPattern.test(path);
+}
 
 /**
  * Runs dependency-cruiser and returns any violations
+ * INV-GUARD-SEC-002: Use execFile with argument array to prevent command injection
  */
 async function runDependencyCruiser(
   files: string[]
@@ -27,13 +39,30 @@ async function runDependencyCruiser(
     return { violations: [] };
   }
 
+  // Validate all file paths to prevent command injection
+  const invalidFiles = files.filter((f) => !isValidFilePath(f));
+  if (invalidFiles.length > 0) {
+    return {
+      violations: [],
+      error: `Invalid file paths detected: ${invalidFiles.slice(0, 3).join(', ')}`,
+    };
+  }
+
   try {
-    // Run dependency-cruiser on specific files
+    // Run dependency-cruiser on specific files using execFile for safety
     // Use --output-type err to get just violations
-    const { stdout, stderr } = await execAsync(
-      `npx dependency-cruiser ${files.join(' ')} --config .dependency-cruiser.cjs --output-type err 2>&1`,
-      { cwd: process.cwd(), timeout: TIMEOUT_GATE_DEPENDENCY }
-    );
+    const args = [
+      'dependency-cruiser',
+      ...files,
+      '--config',
+      '.dependency-cruiser.cjs',
+      '--output-type',
+      'err',
+    ];
+    const { stdout, stderr } = await execFileAsync('npx', args, {
+      cwd: process.cwd(),
+      timeout: TIMEOUT_GATE_DEPENDENCY,
+    });
 
     // If there's output, there are violations
     const output = (stdout + stderr).trim();

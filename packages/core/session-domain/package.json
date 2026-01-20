@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/session-domain",
-  "version": "13.4.5",
+  "version": "13.4.7",
   "type": "module",
   "description": "Session lifecycle management for AutomatosX",
   "license": "BUSL-1.1",

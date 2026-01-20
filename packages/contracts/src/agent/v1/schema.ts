@@ -64,9 +64,99 @@ export const AgentCategorySchema = z.enum([
   'reviewer',
   'specialist',
   'generalist',
+  'meta',
 ]);
 
 export type AgentCategory = z.infer<typeof AgentCategorySchema>;
+
+// ============================================================================
+// Task Classifier Schemas (for Meta-Agent Architecture)
+// ============================================================================
+
+/**
+ * Task classification rule for deterministic routing
+ *
+ * Invariants:
+ * - INV-TC-001: Pattern matching is case-insensitive
+ * - INV-TC-002: First matching rule wins (order matters)
+ * - INV-TC-003: Default workflow used if no rules match
+ */
+export const TaskClassifierRuleSchema = z.object({
+  /** Regex pattern to match against task description (validated for correctness) */
+  pattern: z.string().min(1).max(500).refine(
+    (val) => {
+      try {
+        new RegExp(val, 'i');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid regex pattern' }
+  ),
+
+  /** Task type to assign when pattern matches */
+  taskType: z.string().min(1).max(50),
+
+  /** Workflow to load for this task type */
+  workflow: z.string().min(1).max(200),
+
+  /** Optional priority (higher = checked first) */
+  priority: z.number().int().min(0).max(100).default(50),
+});
+
+export type TaskClassifierRule = z.infer<typeof TaskClassifierRuleSchema>;
+
+/**
+ * Task classifier configuration for meta-agents
+ *
+ * Enables thin agents to route tasks to workflows based on rules.
+ * Rules are evaluated in priority order (highest first), then definition order.
+ *
+ * Invariants:
+ * - INV-TC-004: Classification is deterministic (same input = same output)
+ * - INV-TC-005: Unknown tasks route to defaultWorkflow
+ */
+export const TaskClassifierConfigSchema = z.object({
+  /** Enable task classification */
+  enabled: z.boolean().default(true),
+
+  /** Classification rules (evaluated in priority order) */
+  rules: z.array(TaskClassifierRuleSchema).max(50),
+
+  /** Default workflow when no rules match */
+  defaultWorkflow: z.string().min(1).max(200),
+
+  /** Enable fuzzy matching for better task understanding */
+  fuzzyMatching: z.boolean().default(false),
+
+  /** Minimum confidence threshold for fuzzy matches (0-1) */
+  minConfidence: z.number().min(0).max(1).default(0.7),
+});
+
+export type TaskClassifierConfig = z.infer<typeof TaskClassifierConfigSchema>;
+
+/**
+ * Task classification result
+ */
+export const TaskClassificationResultSchema = z.object({
+  /** Classified task type */
+  taskType: z.string(),
+
+  /** Workflow to execute */
+  workflow: z.string(),
+
+  /** Confidence of classification (1.0 for rule match, lower for fuzzy) */
+  confidence: z.number().min(0).max(1),
+
+  /** Which rule matched (null if default) */
+  matchedRule: z.string().nullable(),
+
+  /** Original task description */
+  originalTask: z.string(),
+});
+
+export type TaskClassificationResult = z.infer<typeof TaskClassificationResultSchema>;
 
 /**
  * Task type for agent capability routing
@@ -87,6 +177,8 @@ export const AgentTaskTypeSchema = z.enum([
   'documentation',
   'analysis',
   'planning',
+  'deployment',
+  'research',
   'general',
 ]);
 
@@ -155,11 +247,25 @@ export const SelectionMetadataSchema = z.object({
 export type SelectionMetadata = z.infer<typeof SelectionMetadataSchema>;
 
 /**
+ * Fallback strategy for provider selection
+ *
+ * - cascade: Try preferred list in order, then any available non-excluded (default)
+ * - strict: Only use providers in preferred list, fail if none available
+ * - any-available: Use whatever provider is available, ignoring preferences
+ */
+export const FallbackStrategySchema = z.enum(['cascade', 'strict', 'any-available']);
+
+export type FallbackStrategy = z.infer<typeof FallbackStrategySchema>;
+
+/**
  * Provider affinity configuration for multi-model discussions
  *
  * Invariants:
  * - INV-AGT-AFF-001: Preferred providers are prioritized in discussions
  * - INV-AGT-AFF-002: Default synthesizer is used for consensus when not specified
+ * - INV-AGT-AFF-003: Fallback strategy determines behavior when preferred unavailable
+ * - INV-AGT-AFF-004: Cascade strategy tries preferred, then any available
+ * - INV-AGT-AFF-005: Strict strategy fails if no preferred provider available
  */
 export const ProviderAffinitySchema = z.object({
   /** Preferred providers for this agent's discussions (ordered by preference) */
@@ -176,6 +282,14 @@ export const ProviderAffinitySchema = z.object({
 
   /** Provider-specific temperature overrides */
   temperatureOverrides: z.record(z.string(), z.number().min(0).max(2)).optional(),
+
+  /**
+   * Fallback strategy when preferred providers are unavailable
+   * - cascade: Try preferred, then any available (default)
+   * - strict: Only use preferred, fail if unavailable
+   * - any-available: Use whatever is available
+   */
+  fallbackStrategy: FallbackStrategySchema.default('cascade'),
 });
 
 export type ProviderAffinity = z.infer<typeof ProviderAffinitySchema>;
@@ -315,6 +429,46 @@ const AgentProfileBaseSchema = z.object({
   priority: z.number().int().min(1).max(100).optional(),
   enabled: z.boolean().default(true),
   metadata: z.record(z.string(), z.unknown()).optional(),
+
+  // Meta-Agent Architecture Fields
+  /** Whether this is a meta-agent (Executor/Reviewer) */
+  metaAgent: z.boolean().optional(),
+
+  /** Whether this is an archetype agent */
+  archetype: z.boolean().optional(),
+
+  /** Agents this meta-agent can orchestrate */
+  orchestrates: z.array(z.string().max(50)).max(20).optional(),
+
+  /** Agents this archetype replaces (for backward compatibility) */
+  replaces: z.array(z.string().max(50)).max(20).optional(),
+
+  /** Agents this archetype can delegate to */
+  canDelegateToArchetypes: z.array(z.string().max(50)).max(10).optional(),
+
+  /** Meta-agents this archetype can delegate to */
+  canDelegateToMetaAgents: z.array(z.string().max(50)).max(5).optional(),
+
+  /** Task classifier configuration for meta-agents */
+  taskClassifier: TaskClassifierConfigSchema.optional(),
+
+  /** Dynamic capabilities configuration for archetype agents */
+  dynamicCapabilities: z.object({
+    /** How to detect which capabilities to load */
+    detection: z.enum(['auto', 'manual', 'hybrid']).default('auto'),
+    /** Sources for capability detection */
+    sources: z.array(z.string().max(100)).max(10).optional(),
+    /** Capability mappings based on detected context */
+    mappings: z.record(z.string(), z.array(z.string().max(100))).optional(),
+  }).optional(),
+
+  /** Review modes configuration for reviewer agents */
+  reviewModes: z.record(z.string(), z.object({
+    /** Focus areas for this review mode */
+    focus: z.array(z.string().max(100)).max(20),
+    /** Depth level for this review mode */
+    depth: z.enum(['surface', 'thorough', 'deep']),
+  })).optional(),
 
   // Timestamps (managed by system)
   createdAt: z.string().datetime().optional(),
@@ -1354,3 +1508,25 @@ export function validateAgentCapabilitiesRequest(data: unknown): AgentCapabiliti
 export function validateAgentCapabilitiesResult(data: unknown): AgentCapabilitiesResult {
   return AgentCapabilitiesResultSchema.parse(data);
 }
+
+// ============================================================================
+// Task Classifier Validation Functions
+// ============================================================================
+
+/**
+ * Validates task classifier configuration
+ */
+export function validateTaskClassifierConfig(data: unknown): TaskClassifierConfig {
+  return TaskClassifierConfigSchema.parse(data);
+}
+
+/**
+ * Validates a task classification result
+ */
+export function validateTaskClassificationResult(data: unknown): TaskClassificationResult {
+  return TaskClassificationResultSchema.parse(data);
+}
+
+// NOTE: classifyTask() logic has been moved to packages/core/agent-domain/src/task-classifier.ts
+// Contracts should define shapes (schemas), not implement business logic.
+// See PRD-2026-002-task-classifier-unification.md for details.

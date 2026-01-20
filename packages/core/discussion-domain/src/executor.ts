@@ -203,6 +203,17 @@ export class DiscussionExecutor {
       );
     }
 
+    // INV-DISC-104: Check abort signal between pattern and consensus execution
+    if (abortSignal?.aborted) {
+      return createFailedDiscussionResult(
+        config.pattern,
+        config.prompt,
+        DiscussionErrorCodes.INVALID_CONFIG,
+        'Discussion aborted after pattern execution',
+        startedAt
+      );
+    }
+
     // Execute consensus mechanism
     const consensusExecutor = getConsensusExecutor(config.consensus.method);
 
@@ -255,28 +266,27 @@ export class DiscussionExecutor {
 
   /**
    * Check provider availability (INV-DISC-100)
+   * INV-DISC-103: Use Promise.allSettled to avoid race condition on array mutation
    */
   private async checkProviders(providers: string[]): Promise<string[]> {
     if (!this.checkProviderHealth) {
       return providers;
     }
 
-    const available: string[] = [];
-
-    await Promise.all(
+    // INV-DISC-103: Use Promise.allSettled pattern instead of concurrent array push
+    // This avoids race condition where multiple async callbacks mutate the same array
+    const results = await Promise.allSettled(
       providers.map(async (providerId) => {
-        try {
-          const isAvailable = await this.providerExecutor.isAvailable(providerId);
-          if (isAvailable) {
-            available.push(providerId);
-          }
-        } catch {
-          // Provider check failed, don't include
-        }
+        const isAvailable = await this.providerExecutor.isAvailable(providerId);
+        return { providerId, isAvailable };
       })
     );
 
-    return available;
+    // Filter fulfilled results where provider is available
+    return results
+      .filter((result): result is PromiseFulfilledResult<{ providerId: string; isAvailable: boolean }> =>
+        result.status === 'fulfilled' && result.value.isAvailable)
+      .map(result => result.value.providerId);
   }
 
   /**

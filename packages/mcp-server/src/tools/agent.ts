@@ -616,7 +616,15 @@ export const handleAgentRun: ToolHandler = async (args) => {
     const finalUsage = finalOutput?.usage as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
 
     // Get input task description for dashboard context
-    const inputTask = (input.task as string) ?? (input.prompt as string) ?? (input.query as string) ?? JSON.stringify(input).slice(0, 500);
+    // INV-MCP-AGT-001: Handle cyclic objects in JSON.stringify
+    let inputTask = (input.task as string) ?? (input.prompt as string) ?? (input.query as string);
+    if (inputTask === undefined) {
+      try {
+        inputTask = JSON.stringify(input).slice(0, 500);
+      } catch {
+        inputTask = '[Unable to stringify input]';
+      }
+    }
 
     // Emit run.end trace event with success/failure and rich payload for dashboard
     const endEvent: TraceEvent = {
@@ -873,7 +881,8 @@ export const handleAgentRegister: ToolHandler = async (args) => {
     }
 
     // Validate agentId format
-    const agentIdPattern = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
+    // INV-AGT-001: Agent IDs must be lowercase kebab-case to match organizational conventions
+    const agentIdPattern = /^[a-z][a-z0-9-]*$/;
     if (!agentIdPattern.test(agentId)) {
       return {
         content: [
@@ -881,7 +890,7 @@ export const handleAgentRegister: ToolHandler = async (args) => {
             type: 'text',
             text: JSON.stringify({
               error: 'INVALID_AGENT_ID',
-              message: 'Agent ID must start with letter and contain only alphanumeric, dash, underscore',
+              message: 'Agent ID must be lowercase kebab-case (start with letter, contain only lowercase letters, numbers, and dashes)',
             }),
           },
         ],

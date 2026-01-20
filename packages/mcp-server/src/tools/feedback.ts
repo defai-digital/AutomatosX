@@ -60,13 +60,26 @@ function getFeedbackCollector(): FeedbackCollector {
 }
 
 /**
+ * Adjustment storage singleton
+ * INV-FBK-002: Adjustment storage is shared across score adjuster calls
+ */
+let _adjustmentStorage: ReturnType<typeof createInMemoryAdjustmentStorage> | null = null;
+
+function getAdjustmentStorage(): ReturnType<typeof createInMemoryAdjustmentStorage> {
+  if (!_adjustmentStorage) {
+    _adjustmentStorage = createInMemoryAdjustmentStorage();
+  }
+  return _adjustmentStorage;
+}
+
+/**
  * Get or create the score adjuster singleton
  */
 function getScoreAdjuster(): ScoreAdjuster {
   if (!_scoreAdjuster) {
     _scoreAdjuster = createScoreAdjuster({
       feedbackStorage: getFeedbackStorage(),
-      adjustmentStorage: createInMemoryAdjustmentStorage(),
+      adjustmentStorage: getAdjustmentStorage(),
       patternMatcher: createSimplePatternMatcher(),
     });
   }

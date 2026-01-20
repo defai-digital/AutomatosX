@@ -144,15 +144,14 @@ export async function bootstrap(): Promise<CLIDependencies> {
     return _dependencies;
   }
 
-  // Initialize storage
+  // Initialize storage (includes SQLite session store when available)
   const storage = await initializeStorage();
 
   // Create provider registry
   const providerRegistry = createProviderRegistry();
 
-  // Create shared session store and manager
-  const sessionStore = createSessionStore();
-  const sessionManager = createSessionManager(sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
+  // Create session manager using storage's session store (SQLite or in-memory)
+  const sessionManager = createSessionManager(storage.sessionStore, DEFAULT_SESSION_DOMAIN_CONFIG);
 
   // Build dependency container
   _dependencies = {
@@ -160,7 +159,7 @@ export async function bootstrap(): Promise<CLIDependencies> {
     traceStore: storage.traceStore,
     dlq: storage.dlq,
     providerRegistry,
-    sessionStore,
+    sessionStore: storage.sessionStore,
     sessionManager,
     usingSqlite: storage.usingSqlite,
   };
@@ -212,6 +211,7 @@ interface StorageResult {
   checkpointStorage: CheckpointStorage;
   traceStore: TraceStore;
   dlq: DeadLetterQueue;
+  sessionStore: SessionStore;
   usingSqlite: boolean;
 }
 
@@ -234,11 +234,14 @@ async function initializeStorage(): Promise<StorageResult> {
       const traceStore = sqliteModule.createSqliteTraceStore(sqliteDb);
       const dlqStorage = sqliteModule.createSqliteDeadLetterStorage(sqliteDb);
       const dlq = createDeadLetterQueue(dlqStorage);
+      // INV-SESS-SQL-001: Use SQLite session store for persistence
+      const sessionStore = sqliteModule.createSqliteSessionStore(sqliteDb);
 
       return {
         checkpointStorage,
         traceStore,
         dlq,
+        sessionStore,
         usingSqlite: true,
       };
     } catch (error) {
@@ -255,6 +258,7 @@ async function initializeStorage(): Promise<StorageResult> {
     checkpointStorage: createInMemoryCheckpointStorage(),
     traceStore: createInMemoryTraceStore(),
     dlq: createDeadLetterQueue(createInMemoryDeadLetterStorage()),
+    sessionStore: createSessionStore(), // In-memory fallback
     usingSqlite: false,
   };
 }

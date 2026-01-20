@@ -44,7 +44,7 @@ export const DEFAULT_CONSENSUS_TIMEOUT = 180000;
 export const DEFAULT_VOTING_SUMMARY_TIMEOUT = 90000;
 
 /** Default providers for discussions (ordered by reasoning strength) */
-export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini'] as const;
+export const DEFAULT_PROVIDERS = ['claude', 'grok', 'gemini', 'codex'] as const;
 
 // ============================================================================
 // Recursive Discussion Constants
@@ -214,6 +214,7 @@ export const PROVIDER_STRENGTHS: Record<string, ProviderCapability[]> = {
   grok: ['reasoning', 'realtime', 'research', 'coding', 'tool-use'],
   gemini: ['research', 'long-context', 'multilingual', 'realtime'],
   codex: ['coding', 'reasoning'],
+  opencode: ['coding', 'reasoning', 'tool-use'],
 };
 
 // ============================================================================
@@ -774,7 +775,7 @@ export const TimeoutConfigSchema = z.object({
   strategy: TimeoutStrategySchema.default('cascade'),
 
   /** Total budget in milliseconds (max 30 minutes) */
-  totalBudgetMs: z.number().int().min(30000).max(1800000).default(DEFAULT_TOTAL_BUDGET_MS),
+  totalBudgetMs: z.number().int().min(30000).max(MAX_PROVIDER_TIMEOUT).default(DEFAULT_TOTAL_BUDGET_MS),
 
   /** Minimum time reserved for synthesis at each level */
   minSynthesisMs: z.number().int().min(5000).max(60000).default(MIN_SYNTHESIS_TIME_MS),

@@ -99,10 +99,30 @@ export { FileSystemAgentLoader, createAgentLoader } from './loader.js';
 // Selector
 export { KeywordAgentSelector, createAgentSelector } from './selector.js';
 
-// Task Classification & Capability Routing (INV-CAP-001 to INV-CAP-005)
+// Provider Selector (INV-PROV-SEL-001 to INV-PROV-SEL-005)
 export {
+  DefaultProviderSelector,
+  createProviderSelector,
+  getRecommendedAffinity,
+  NoProviderAvailableError,
+  type ProviderSelector,
+  type ProviderSelectionResult,
+  type DefaultProviderSelectorConfig,
+} from './provider-selector.js';
+
+// Task Classification & Capability Routing (INV-CAP-001 to INV-CAP-005, INV-TC-001 to INV-TC-005)
+export {
+  // Config-driven classifier factory (preferred)
+  createTaskClassifier,
+  // Default rules and workflow
+  DEFAULT_CLASSIFICATION_RULES,
+  DEFAULT_WORKFLOW,
+  // Legacy function (backward compatibility)
   classifyTask,
   extractTaskDescription,
+  // Cache invalidation (INV-TC-008)
+  resetDefaultClassifier,
+  type TaskClassifier,
   type TaskClassificationResult,
 } from './task-classifier.js';
 

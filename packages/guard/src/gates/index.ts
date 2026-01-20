@@ -23,3 +23,6 @@ export {
   type AgentSelectionGateContext,
   type AgentSelectionGateConfig,
 } from './agent-selection.js';
+
+// Task classifier governance gate (INV-TC, INV-GUARD-TC)
+export { taskClassifierGate } from './task-classifier.js';

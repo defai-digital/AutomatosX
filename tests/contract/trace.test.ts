@@ -7,6 +7,11 @@ import {
   TraceContextSchema,
   RunStartPayloadSchema,
   RunEndPayloadSchema,
+  // PRD-2026-003: Classification schemas
+  TaskClassificationSnapshotSchema,
+  ClassificationGuardResultSchema,
+  ClassificationAlternativeSchema,
+  ClassificationMetricsSchema,
   createTraceEvent,
   createTrace,
   validateTraceEvent,
@@ -17,6 +22,7 @@ import {
   type TraceEvent,
   type TraceEventType,
   type Trace,
+  type TaskClassificationSnapshot,
 } from '@defai.digital/contracts';
 
 describe('Trace Event Contract V1', () => {
@@ -371,6 +377,251 @@ describe('Trace Event Contract V1', () => {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       expect(trace.traceId).toMatch(uuidRegex);
       expect(trace.startTime).toBeDefined();
+    });
+  });
+
+  // PRD-2026-003: Classification Observability Tests
+  describe('Classification Schemas (PRD-2026-003)', () => {
+    describe('ClassificationGuardResultSchema', () => {
+      it('should validate guard result with passed status', () => {
+        const result = ClassificationGuardResultSchema.safeParse({
+          gate: 'capability-check',
+          passed: true,
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('should validate guard result with failed status and reason', () => {
+        const result = ClassificationGuardResultSchema.safeParse({
+          gate: 'security-check',
+          passed: false,
+          reason: 'Missing required capability: admin',
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('should reject guard result without required fields', () => {
+        const result = ClassificationGuardResultSchema.safeParse({
+          gate: 'test',
+          // missing 'passed'
+        });
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('ClassificationAlternativeSchema', () => {
+      it('should validate alternative with valid score', () => {
+        const result = ClassificationAlternativeSchema.safeParse({
+          mappingId: 'impl-typescript',
+          score: 0.75,
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('should reject score above 1', () => {
+        const result = ClassificationAlternativeSchema.safeParse({
+          mappingId: 'test',
+          score: 1.5,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject score below 0', () => {
+        const result = ClassificationAlternativeSchema.safeParse({
+          mappingId: 'test',
+          score: -0.1,
+        });
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('TaskClassificationSnapshotSchema', () => {
+      it('should validate minimal classification snapshot', () => {
+        const snapshot: TaskClassificationSnapshot = {
+          taskType: 'implementation',
+          confidence: 0.85,
+          matchedPatterns: ['typescript', 'feature'],
+          selectedMapping: 'impl-typescript',
+          classificationTimeMs: 15,
+        };
+
+        const result = TaskClassificationSnapshotSchema.safeParse(snapshot);
+        expect(result.success).toBe(true);
+      });
+
+      it('should validate complete classification snapshot', () => {
+        const snapshot: TaskClassificationSnapshot = {
+          taskType: 'debugging',
+          confidence: 0.92,
+          matchedPatterns: ['error', 'fix', 'bug'],
+          selectedMapping: 'debug-standard',
+          alternatives: [
+            { mappingId: 'debug-advanced', score: 0.88 },
+            { mappingId: 'impl-fix', score: 0.72 },
+          ],
+          classificationTimeMs: 25,
+          guardResults: [
+            { gate: 'capability-check', passed: true },
+            { gate: 'complexity-check', passed: true },
+          ],
+          taskDescription: 'Fix authentication timeout bug',
+        };
+
+        const result = TaskClassificationSnapshotSchema.safeParse(snapshot);
+        expect(result.success).toBe(true);
+      });
+
+      it('should validate classification with null selectedMapping (fallback)', () => {
+        const snapshot = {
+          taskType: 'unknown',
+          confidence: 0.35,
+          matchedPatterns: [],
+          selectedMapping: null,
+          classificationTimeMs: 5,
+        };
+
+        const result = TaskClassificationSnapshotSchema.safeParse(snapshot);
+        expect(result.success).toBe(true);
+      });
+
+      it('should enforce confidence bounds (0-1)', () => {
+        const invalidHigh = {
+          taskType: 'test',
+          confidence: 1.1,
+          matchedPatterns: [],
+          selectedMapping: null,
+          classificationTimeMs: 5,
+        };
+        expect(TaskClassificationSnapshotSchema.safeParse(invalidHigh).success).toBe(false);
+
+        const invalidLow = {
+          taskType: 'test',
+          confidence: -0.1,
+          matchedPatterns: [],
+          selectedMapping: null,
+          classificationTimeMs: 5,
+        };
+        expect(TaskClassificationSnapshotSchema.safeParse(invalidLow).success).toBe(false);
+      });
+
+      it('should enforce alternatives max length (5)', () => {
+        const tooManyAlternatives = {
+          taskType: 'test',
+          confidence: 0.5,
+          matchedPatterns: [],
+          selectedMapping: null,
+          classificationTimeMs: 5,
+          alternatives: Array(6).fill({ mappingId: 'test', score: 0.5 }),
+        };
+
+        const result = TaskClassificationSnapshotSchema.safeParse(tooManyAlternatives);
+        expect(result.success).toBe(false);
+      });
+
+      it('should enforce taskDescription max length (500)', () => {
+        const longDescription = {
+          taskType: 'test',
+          confidence: 0.5,
+          matchedPatterns: [],
+          selectedMapping: null,
+          classificationTimeMs: 5,
+          taskDescription: 'a'.repeat(501),
+        };
+
+        const result = TaskClassificationSnapshotSchema.safeParse(longDescription);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('ClassificationMetricsSchema', () => {
+      it('should validate classification metrics', () => {
+        const metrics = {
+          totalClassifications: 150,
+          byTaskType: {
+            implementation: 45,
+            debugging: 30,
+            testing: 25,
+            documentation: 20,
+            analysis: 15,
+            refactoring: 10,
+            review: 5,
+          },
+          guardPassRate: 0.95,
+          averageConfidence: 0.82,
+          fallbackRate: 0.05,
+          sampleSize: 200,
+        };
+
+        const result = ClassificationMetricsSchema.safeParse(metrics);
+        expect(result.success).toBe(true);
+      });
+
+      it('should enforce rate bounds (0-1)', () => {
+        const invalidGuardRate = {
+          totalClassifications: 10,
+          byTaskType: {},
+          guardPassRate: 1.5,
+          averageConfidence: 0.5,
+          fallbackRate: 0.1,
+          sampleSize: 10,
+        };
+        expect(ClassificationMetricsSchema.safeParse(invalidGuardRate).success).toBe(false);
+
+        const invalidConfidence = {
+          totalClassifications: 10,
+          byTaskType: {},
+          guardPassRate: 0.9,
+          averageConfidence: -0.1,
+          fallbackRate: 0.1,
+          sampleSize: 10,
+        };
+        expect(ClassificationMetricsSchema.safeParse(invalidConfidence).success).toBe(false);
+      });
+    });
+
+    describe('INV-TR-030: Classification Snapshot Immutability', () => {
+      it('should allow classification in trace', () => {
+        const trace: Trace = {
+          traceId: '550e8400-e29b-41d4-a716-446655440000',
+          startTime: '2024-12-14T12:00:00Z',
+          endTime: '2024-12-14T12:00:05Z',
+          events: [
+            {
+              traceId: '550e8400-e29b-41d4-a716-446655440000',
+              eventId: '550e8400-e29b-41d4-a716-446655440001',
+              type: 'run.start',
+              timestamp: '2024-12-14T12:00:00Z',
+              sequence: 0,
+            },
+            {
+              traceId: '550e8400-e29b-41d4-a716-446655440000',
+              eventId: '550e8400-e29b-41d4-a716-446655440002',
+              type: 'run.end',
+              timestamp: '2024-12-14T12:00:05Z',
+              sequence: 1,
+            },
+          ],
+          status: 'success',
+          summary: {
+            totalDurationMs: 5000,
+            eventCount: 2,
+            errorCount: 0,
+          },
+          classification: {
+            taskType: 'implementation',
+            confidence: 0.9,
+            matchedPatterns: ['typescript'],
+            selectedMapping: 'impl-standard',
+            classificationTimeMs: 20,
+          },
+        };
+
+        const result = TraceSchema.safeParse(trace);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.classification?.taskType).toBe('implementation');
+        }
+      });
     });
   });
 });

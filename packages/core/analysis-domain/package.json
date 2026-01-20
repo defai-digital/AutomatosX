@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/analysis-domain",
-  "version": "13.4.5",
+  "version": "13.4.7",
   "type": "module",
   "description": "Analysis domain for AutomatosX - LLM-delegated code analysis",
   "license": "BUSL-1.1",

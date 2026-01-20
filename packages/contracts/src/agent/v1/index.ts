@@ -13,11 +13,18 @@ export {
   AgentTaskTypeSchema,
   CapabilityMappingSchema,
   SelectionMetadataSchema,
+  FallbackStrategySchema,
   ProviderAffinitySchema,
   OrchestrationConfigSchema,
   AgentRetryPolicySchema,
   AgentStepTypeSchema,
   AgentWorkflowStepSchema,
+
+  // Task Classifier Schemas (INV-TC-001 to INV-TC-005)
+  TaskClassifierRuleSchema,
+  TaskClassifierConfigSchema,
+  TaskClassificationResultSchema,
+  validateTaskClassifierConfig,
 
   // Agent Profile
   AgentProfileSchema,
@@ -101,11 +108,17 @@ export {
   type AgentTaskType,
   type CapabilityMapping,
   type SelectionMetadata,
+  type FallbackStrategy,
   type ProviderAffinity,
   type OrchestrationConfig,
   type AgentRetryPolicy,
   type AgentStepType,
   type AgentWorkflowStep,
+
+  // Task Classifier Types (INV-TC-001 to INV-TC-005)
+  type TaskClassifierRule,
+  type TaskClassifierConfig,
+  type TaskClassificationResult,
   type AgentProfile,
   type AgentRunOptions,
   type AgentEventType,

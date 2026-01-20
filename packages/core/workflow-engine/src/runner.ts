@@ -97,11 +97,18 @@ export class WorkflowRunner {
         continue;
       }
 
+      // INV-WF-011: Step input is never undefined (fallback to empty object)
+      // Chain output from previous step, or use original input, or empty object
+      const previousOutput = i > 0 ? stepResults[i - 1]?.output : undefined;
+      const stepInput = i === 0
+        ? (input ?? {})
+        : (previousOutput ?? input ?? {});
+
       const context: StepContext = {
         workflowId: workflow.workflowId,
         stepIndex: i,
         previousResults: [...stepResults],
-        input: i === 0 ? input : stepResults[i - 1]?.output,
+        input: stepInput,
       };
 
       // INV-WF-GUARD-001: Run before guards
@@ -127,10 +134,16 @@ export class WorkflowRunner {
       this.config.onStepComplete?.(step, frozenResult);
 
       // INV-WF-GUARD-002: Run after guards
+      // INV-WF-GUARD-003: After guards should not fail the workflow on exception
       if (this.config.stepGuardEngine) {
         const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
-        // After guards can warn but typically don't block
-        await this.config.stepGuardEngine.runAfterGuards(guardContext);
+        try {
+          // After guards can warn but typically don't block
+          await this.config.stepGuardEngine.runAfterGuards(guardContext);
+        } catch (guardError) {
+          // Log but don't fail the workflow - after guards are advisory
+          console.warn(`[workflow-runner] After guard threw exception for step ${step.stepId}:`, guardError);
+        }
       }
 
       // Stop on failure

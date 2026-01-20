@@ -72,33 +72,39 @@ async function executeStepByType(
       return executeLoopStep(step, context);
     case 'parallel':
       return executeParallelStep(step, context);
-    case 'discuss':
-      // Discussion steps are handled by the discussion-domain executor
-      // For now, return a placeholder indicating this needs the discussion executor
-      return {
-        stepId: step.stepId,
-        success: false,
-        error: 'Discussion steps require the discussion-domain executor',
-        durationMs: 0,
-      };
-    case 'delegate':
-      // Delegate steps are handled by the agent-domain executor
-      // For now, return a placeholder indicating this needs the agent executor
-      return {
-        stepId: step.stepId,
-        success: false,
-        error: 'Delegate steps require the agent-domain executor',
-        durationMs: 0,
-      };
-    default: {
-      // TypeScript exhaustiveness check
-      const _exhaustive: never = step.type;
-      const stepError = createStepError(
-        WorkflowErrorCodes.UNKNOWN_STEP_TYPE,
-        `Unknown step type: ${String(_exhaustive)}`,
+    case 'discuss': {
+      // INV-WF-010: Discussion steps require discussion-domain executor
+      // Throw error to ensure step fails (caught by defaultStepExecutor wrapper)
+      const discussError = createStepError(
+        'DISCUSSION_EXECUTOR_NOT_CONFIGURED',
+        `Discussion step "${step.stepId}" requires a DiscussionExecutor. Configure it in RealStepExecutorConfig.`,
         false
       );
-      throw new Error(stepError.message);
+      throw new Error(discussError.message);
+    }
+    case 'delegate': {
+      // INV-WF-010: Delegate steps require agent-domain executor
+      // Throw error to ensure step fails (caught by defaultStepExecutor wrapper)
+      const delegateError = createStepError(
+        'DELEGATE_EXECUTOR_NOT_CONFIGURED',
+        `Delegate step "${step.stepId}" requires an AgentExecutor. Configure it in RealStepExecutorConfig.`,
+        false
+      );
+      throw new Error(delegateError.message);
+    }
+    default: {
+      // TypeScript exhaustiveness check - return error instead of throwing
+      // INV-WF-010: All step types return consistent structure
+      const _exhaustive: never = step.type;
+      return Promise.resolve({
+        type: 'unknown',
+        stepId: step.stepId,
+        status: 'error',
+        error: {
+          code: WorkflowErrorCodes.UNKNOWN_STEP_TYPE,
+          message: `Unknown step type: ${String(_exhaustive)}`,
+        },
+      });
     }
   }
 }
@@ -368,14 +374,26 @@ async function executeParallelStep(
 /**
  * Get a value from context using dot-notation path
  * e.g., "previousResults.step1.output" or "input.data"
+ * INV-WF-SEC-001: Block prototype chain access to prevent prototype pollution
  */
 function getValueFromPath(context: StepContext, path: string): unknown {
   const parts = path.split('.');
   let current: unknown = context;
 
+  // INV-WF-SEC-001: Dangerous properties that could lead to prototype pollution
+  const DANGEROUS_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
+
   for (const part of parts) {
     if (current === null || current === undefined) return undefined;
     if (typeof current !== 'object') return undefined;
+    // INV-WF-SEC-001: Block prototype chain traversal
+    if (DANGEROUS_PROPS.has(part)) {
+      return undefined;
+    }
+    // Only access own properties to prevent prototype chain pollution
+    if (!Object.prototype.hasOwnProperty.call(current, part)) {
+      return undefined;
+    }
     current = (current as Record<string, unknown>)[part];
   }
 
@@ -423,25 +441,47 @@ function evaluateConditionSafely(condition: string, context: StepContext): boole
       return !evaluateConditionSafely(trimmed.slice(1).trim(), context);
     }
 
-    // Handle parentheses
+    // Handle parentheses - only strip if the closing paren matches the opening one
+    // INV-WF-COND-001: Check that first '(' matches last ')' by tracking depth
     if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
-      return evaluateConditionSafely(trimmed.slice(1, -1), context);
+      // Verify the closing paren matches the opening one
+      let depth = 0;
+      let firstOpenMatchesLastClose = true;
+      for (let i = 0; i < trimmed.length - 1; i++) {
+        if (trimmed[i] === '(') depth++;
+        else if (trimmed[i] === ')') depth--;
+        // If depth reaches 0 before the last character, the first '(' doesn't match the last ')'
+        if (depth === 0) {
+          firstOpenMatchesLastClose = false;
+          break;
+        }
+      }
+      if (firstOpenMatchesLastClose) {
+        return evaluateConditionSafely(trimmed.slice(1, -1), context);
+      }
     }
 
     // Parse comparison: ${variable} op value
     const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
     if (comparisonMatch) {
       const [, varPath, op, rawValue] = comparisonMatch;
-      const actualValue = getValueFromPath(context, varPath!);
-      const expectedValue = parseConditionValue(rawValue!.trim());
-      return compareConditionValues(actualValue, expectedValue, op!);
+      // INV-WF-012: Explicit null checks for regex capture groups
+      if (varPath && op && rawValue) {
+        const actualValue = getValueFromPath(context, varPath);
+        const expectedValue = parseConditionValue(rawValue.trim());
+        return compareConditionValues(actualValue, expectedValue, op);
+      }
     }
 
     // Handle simple variable reference (truthy check): ${variable}
     const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
     if (varMatch) {
-      const value = getValueFromPath(context, varMatch[1]!);
-      return Boolean(value);
+      const varPath = varMatch[1];
+      // INV-WF-012: Explicit null check for regex capture group
+      if (varPath) {
+        const value = getValueFromPath(context, varPath);
+        return Boolean(value);
+      }
     }
 
     // Handle literal booleans

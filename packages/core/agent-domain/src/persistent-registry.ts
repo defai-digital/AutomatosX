@@ -19,9 +19,8 @@ import {
   DATA_DIR_NAME,
   AGENTS_FILENAME,
   DEFAULT_SCHEMA_VERSION,
-  AgentErrorCode,
 } from '@defai.digital/contracts';
-import { InMemoryAgentRegistry, AgentRegistryError } from './registry.js';
+import { InMemoryAgentRegistry } from './registry.js';
 import type { AgentRegistry, AgentFilter } from './types.js';
 
 /**
@@ -153,20 +152,15 @@ export class PersistentAgentRegistry implements AgentRegistry {
       for (const agentData of data.agents) {
         try {
           const profile = validateAgentProfile(agentData);
-          // Use internal method to avoid triggering save
-          await this.inMemory.register(profile);
-        } catch (error) {
-          // Silently skip "already exists" errors - these occur during normal operation
-          // when the file has agents that were loaded through other means
-          // Use error code check instead of fragile string matching
-          const isAlreadyExists =
-            error instanceof AgentRegistryError &&
-            error.code === AgentErrorCode.AGENT_VALIDATION_ERROR &&
-            error.message.includes(agentData.agentId);
-          if (!isAlreadyExists) {
-            const message = getErrorMessage(error);
-            console.warn(`Failed to load agent "${agentData.agentId}": ${message}`);
+          // INV-AGT-PERSIST-004: Check existence before registering to avoid fragile error matching
+          const alreadyExists = await this.inMemory.exists(profile.agentId);
+          if (!alreadyExists) {
+            await this.inMemory.register(profile);
           }
+          // Silently skip if already exists - common during normal operation
+        } catch (error) {
+          const message = getErrorMessage(error);
+          console.warn(`Failed to load agent "${agentData.agentId}": ${message}`);
         }
       }
     } catch (error) {

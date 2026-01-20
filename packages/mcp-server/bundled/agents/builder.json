@@ -73,8 +73,18 @@
   "orchestration": {
     "maxDelegationDepth": 1,
     "canDelegateToArchetypes": ["auditor"],
+    "canDelegateToMetaAgents": ["reviewer"],
     "canReadWorkspaces": ["all"],
     "canWriteToShared": true
+  },
+  "providerAffinity": {
+    "preferred": ["claude", "codex", "grok"],
+    "taskOverrides": {
+      "implementation": "claude",
+      "debugging": "claude",
+      "refactoring": "claude"
+    },
+    "fallbackStrategy": "cascade"
   },
   "selectionMetadata": {
     "agentCategory": "implementer",

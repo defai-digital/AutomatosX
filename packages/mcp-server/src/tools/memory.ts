@@ -17,8 +17,17 @@ function getFullKey(namespace: string | undefined, key: string): string {
   return `${namespace ?? 'default'}:${key}`;
 }
 
+/**
+ * Extract the key part from a full key (namespace:key)
+ * INV-MEM-KEY-001: Handles keys that contain colons correctly
+ * e.g., "default:my:key:with:colons" -> "my:key:with:colons"
+ */
 function getKeyPart(fullKey: string): string {
-  return fullKey.split(':')[1] ?? fullKey;
+  const colonIndex = fullKey.indexOf(':');
+  if (colonIndex === -1) {
+    return fullKey;
+  }
+  return fullKey.substring(colonIndex + 1);
 }
 
 function filterEntries(
@@ -296,6 +305,27 @@ export const handleMemoryImport: ToolHandler = (args) => {
   const overwrite = (args.overwrite as boolean) ?? false;
   const defaultNamespace = (args.namespace as string) ?? 'default';
 
+  // INV-MEM-SEC-001: Validate import size to prevent DoS via limit bypass
+  // Count how many new entries would be added (not counting overwrites of existing keys)
+  let newEntryCount = 0;
+  for (const entry of data) {
+    const namespace = entry.namespace ?? defaultNamespace;
+    const fullKey = getFullKey(namespace, entry.key);
+    if (!memoryStore.has(fullKey)) {
+      newEntryCount++;
+    }
+  }
+
+  // Check if import would exceed the limit
+  const projectedSize = memoryStore.size + newEntryCount;
+  if (projectedSize > MEMORY_STORE_MAX_ENTRIES) {
+    return Promise.resolve(errorResponse(
+      'IMPORT_LIMIT_EXCEEDED',
+      `Import would exceed memory store limit. Current: ${memoryStore.size}, importing: ${newEntryCount} new entries, limit: ${MEMORY_STORE_MAX_ENTRIES}`,
+      { currentSize: memoryStore.size, newEntries: newEntryCount, limit: MEMORY_STORE_MAX_ENTRIES }
+    ));
+  }
+
   let imported = 0, skipped = 0;
   const errors: string[] = [];
 
@@ -308,7 +338,14 @@ export const handleMemoryImport: ToolHandler = (args) => {
       continue;
     }
 
+    // INV-MEM-SEC-002: Validate value size during import
     try {
+      const valueSize = JSON.stringify(entry.value).length;
+      if (valueSize > MEMORY_STORE_MAX_VALUE_SIZE) {
+        errors.push(`${entry.key}: Value exceeds maximum size (${Math.round(valueSize / 1024)}KB > ${Math.round(MEMORY_STORE_MAX_VALUE_SIZE / 1024)}KB)`);
+        continue;
+      }
+
       memoryStore.set(fullKey, { value: entry.value, storedAt: new Date().toISOString(), namespace });
       imported++;
     } catch (error) {

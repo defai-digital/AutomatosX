@@ -1,0 +1,173 @@
+workflowId: std/research
+version: "1.0.0"
+name: Standard Research
+description: |
+  Structured workflow for research, investigation, and learning tasks.
+  Covers scope definition, source gathering, analysis, and synthesis.
+
+metadata:
+  category: research
+  tags:
+    - research
+    - investigation
+    - analysis
+    - learning
+  estimatedDuration: 300000
+
+steps:
+  - stepId: scope
+    name: Define Research Scope
+    type: prompt
+    config:
+      prompt: |
+        You are conducting research or investigation. First, define the scope.
+
+        ## Research Request
+        ${input}
+
+        Define the scope:
+
+        1. **Research Questions**
+           - Primary question to answer
+           - Supporting questions
+           - Success criteria (what would a good answer look like?)
+
+        2. **Search Strategy**
+           - Keywords and phrases to search
+           - Types of sources to prioritize (docs, code, papers, forums)
+           - Time constraints (recent only, historical)
+
+        3. **Evaluation Criteria**
+           - How to assess source quality
+           - How to compare options
+           - Decision framework if comparing alternatives
+
+        4. **Boundaries**
+           - What's explicitly out of scope
+           - Depth vs breadth tradeoff
+           - Time budget considerations
+
+        5. **Deliverables**
+           - Expected output format
+           - Level of detail needed
+           - Audience for the research
+    timeoutMs: 60000
+
+  - stepId: gather
+    name: Gather Information
+    type: prompt
+    dependencies:
+      - scope
+    config:
+      prompt: |
+        Based on your research scope:
+        ${previousOutputs.scope}
+
+        Gather information:
+
+        ## Source Collection
+        For each source found:
+
+        ### Source 1: [Title]
+        - **URL/Reference**: [link]
+        - **Type**: Official docs / Blog / Paper / Code / Forum
+        - **Credibility**: High / Medium / Low
+        - **Recency**: [date or "current"]
+        - **Key Points**:
+          - Point 1
+          - Point 2
+        - **Relevance to Questions**: How this helps answer research questions
+
+        ### Source 2: [Title]
+        [Same format...]
+
+        ## Coverage Assessment
+        - Questions well-covered by sources
+        - Gaps in available information
+        - Conflicting information found
+    timeoutMs: 120000
+
+  - stepId: analyze
+    name: Analyze Findings
+    type: prompt
+    dependencies:
+      - gather
+    config:
+      prompt: |
+        Based on gathered sources:
+        ${previousOutputs.gather}
+
+        Analyze the findings:
+
+        ## Key Findings
+        Answer each research question with evidence:
+
+        ### Question 1: [From scope]
+        **Answer**: [Clear answer]
+        **Evidence**: [Supporting sources]
+        **Confidence**: High/Medium/Low
+
+        ### Question 2: [From scope]
+        [Same format...]
+
+        ## Comparison (if applicable)
+        | Criterion | Option A | Option B | Winner |
+        |-----------|----------|----------|--------|
+        | [Criterion 1] | [Rating] | [Rating] | [A/B] |
+
+        ## Trade-offs
+        - [Trade-off 1 and implications]
+        - [Trade-off 2 and implications]
+
+        ## Gaps and Uncertainties
+        - What couldn't be determined
+        - Where confidence is low
+        - What requires further investigation
+
+        ## Trends
+        - Emerging patterns noticed
+        - Direction the technology/approach is heading
+    timeoutMs: 90000
+
+  - stepId: synthesize
+    name: Synthesize Recommendations
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your analysis:
+        ${previousOutputs.analyze}
+
+        Synthesize findings into recommendations:
+
+        ## Executive Summary
+        One paragraph answering the core research question.
+
+        ## Detailed Findings
+        Comprehensive but accessible presentation of results.
+
+        ## Recommendations
+        1. **Primary Recommendation**: [What to do]
+           - Rationale: [Why]
+           - Implementation: [How]
+
+        2. **Alternative Approach**: [If primary doesn't fit]
+           - When to use: [Conditions]
+
+        ## Source Citations
+        All sources used, properly attributed.
+
+        ## Confidence Assessment
+        Overall confidence in recommendations and why.
+
+        ## Next Steps
+        - Suggested follow-up research
+        - Validation actions
+        - Decision timeline
+
+        ## Limitations
+        - Scope limitations of this research
+        - Assumptions made
+        - When findings might not apply
+    timeoutMs: 60000

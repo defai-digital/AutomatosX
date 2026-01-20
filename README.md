@@ -2,7 +2,7 @@
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 
-[![Version](https://img.shields.io/badge/version-13.4.6-green.svg)](https://github.com/defai-digital/automatosx/releases)
+[![Version](https://img.shields.io/badge/version-13.4.7-green.svg)](https://github.com/defai-digital/automatosx/releases)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-blue.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-BSL--1.1-blue.svg)](LICENSE)
 
@@ -645,6 +645,8 @@ When switching projects, just run `ax init` in the new project.
 ---
 
 ## What's New
+
+**v13.4.7** - Provider Selection & Fallback System: Added intelligent provider selection with graceful fallback when preferred providers are unavailable. New `fallbackStrategy` option in agent `providerAffinity` config with three modes: `cascade` (try preferred then any available), `strict` (fail if preferred unavailable), `any-available` (use whatever works). Added Codex to default multi-model discussion providers. Added OpenCode to provider strength mappings. Updated all bundled agents with appropriate provider preferences. New `ProviderSelector` service with `NoProviderAvailableError` providing actionable error messages for users with limited provider installations.
 
 **v13.4.2** - Staged Capabilities & Standard Workflow Library: Added intelligent task classification and capability routing for agents. New standard workflow library (`workflows/std/`) with 7 reusable templates (analysis, code-review, debugging, documentation, implementation, refactoring, testing). Fixed trace name display - traces now show meaningful names like "ax agent run standard" instead of "Trace 74e746d0". Added capability mapping invariants (INV-CAP-001 to INV-CAP-005).
 

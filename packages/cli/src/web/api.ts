@@ -45,8 +45,12 @@ interface DashboardAgentSummary {
   displayName: string;
   description: string;
   enabled: boolean;
+  capabilities: string[];
   executionCount: number;
   lastExecuted: string | undefined;
+  // PRD-2026-004: Meta-agent fields for list display
+  metaAgent: boolean | undefined;
+  archetype: boolean | undefined;
 }
 
 interface DashboardTraceSummary {
@@ -217,6 +221,7 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
 
       // Check for parameterized routes first
       const traceTreeMatch = apiPath.match(/^\/traces\/([a-f0-9-]+)\/tree$/i);
+      const traceClassificationMatch = apiPath.match(/^\/traces\/([a-f0-9-]+)\/classification$/i);
       const traceDetailMatch = apiPath.match(/^\/traces\/([a-f0-9-]+)$/i);
       const workflowDetailMatch = apiPath.match(/^\/workflows\/([a-z0-9-]+)$/i);
       const providerHistoryMatch = apiPath.match(/^\/providers\/([a-z0-9-]+)\/history$/i);
@@ -229,6 +234,10 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
       if (traceTreeMatch && traceTreeMatch[1]) {
         const traceId = traceTreeMatch[1];
         response = await handleTraceTree(traceId);
+      } else if (traceClassificationMatch && traceClassificationMatch[1]) {
+        // PRD-2026-003: Classification observability endpoint
+        const traceId = traceClassificationMatch[1];
+        response = await handleTraceClassification(traceId);
       } else if (traceDetailMatch && traceDetailMatch[1]) {
         const traceId = traceDetailMatch[1];
         response = await handleTraceDetail(traceId);
@@ -330,12 +339,13 @@ export function createAPIHandler(): (req: IncomingMessage, res: ServerResponse) 
  * Get full system status
  */
 async function handleStatus(): Promise<APIResponse> {
-  const [providers, sessions, agents, traces, metrics] = await Promise.all([
+  const [providers, sessions, agents, traces, metrics, classificationMetrics] = await Promise.all([
     getProviderData(),
     getSessionData(),
     getAgentData(),
     getTraceData(),
     getMetricsData(),
+    getClassificationMetrics(),
   ]);
 
   // Determine health status
@@ -356,6 +366,8 @@ async function handleStatus(): Promise<APIResponse> {
       agents,
       traces,
       metrics,
+      // PRD-2026-003: Classification observability
+      classification: classificationMetrics,
     },
   };
 }
@@ -462,37 +474,85 @@ async function handleAgentDetail(agentId: string): Promise<APIResponse> {
       }
     }
 
+    // PRD-2026-004: Build response with all meta-agent fields
+    const responseData: Record<string, unknown> = {
+      agentId: agent.agentId,
+      displayName: agent.displayName ?? agent.agentId,
+      description: agent.description,
+      version: agent.version,
+      role: agent.role,
+      team: agent.team,
+      enabled: agent.enabled,
+      capabilities: agent.capabilities ?? [],
+      tags: agent.tags ?? [],
+      systemPrompt: agent.systemPrompt,
+      workflow: agent.workflow?.map(step => ({
+        stepId: step.stepId,
+        name: step.name,
+        type: step.type,
+        config: step.config,
+        dependencies: step.dependencies,
+        condition: step.condition,
+      })) ?? [],
+      orchestration: agent.orchestration,
+      personality: agent.personality,
+      expertise: agent.expertise,
+      // Stats
+      stats: {
+        executionCount,
+        successRate: executionCount > 0 ? successCount / executionCount : 0,
+        avgDurationMs: executionCount > 0 ? Math.round(totalDurationMs / executionCount) : 0,
+      },
+    };
+
+    // PRD-2026-004: Add meta-agent architecture fields
+    if (agent.metaAgent !== undefined) responseData.metaAgent = agent.metaAgent;
+    if (agent.archetype !== undefined) responseData.archetype = agent.archetype;
+    if (agent.orchestrates?.length) responseData.orchestrates = agent.orchestrates;
+    if (agent.replaces?.length) responseData.replaces = agent.replaces;
+    if (agent.canDelegateToArchetypes?.length) responseData.canDelegateToArchetypes = agent.canDelegateToArchetypes;
+    if (agent.canDelegateToMetaAgents?.length) responseData.canDelegateToMetaAgents = agent.canDelegateToMetaAgents;
+
+    // PRD-2026-004: Add task classifier config
+    if (agent.taskClassifier) {
+      responseData.taskClassifier = {
+        enabled: agent.taskClassifier.enabled ?? true,
+        rules: agent.taskClassifier.rules?.map(rule => ({
+          pattern: rule.pattern,
+          taskType: rule.taskType,
+          workflow: rule.workflow,
+          priority: rule.priority ?? 50,
+        })) ?? [],
+        defaultWorkflow: agent.taskClassifier.defaultWorkflow,
+        fuzzyMatching: agent.taskClassifier.fuzzyMatching,
+        minConfidence: agent.taskClassifier.minConfidence,
+      };
+    }
+
+    // PRD-2026-004: Add dynamic capabilities config
+    if (agent.dynamicCapabilities) {
+      responseData.dynamicCapabilities = agent.dynamicCapabilities;
+    }
+
+    // PRD-2026-004: Add review modes config
+    if (agent.reviewModes) {
+      responseData.reviewModes = agent.reviewModes;
+    }
+
+    // PRD-2026-004: Add capability mappings
+    if (agent.capabilityMappings?.length) {
+      responseData.capabilityMappings = agent.capabilityMappings.map(mapping => ({
+        taskType: mapping.taskType,
+        workflowRef: mapping.workflowRef,
+        abilities: mapping.abilities,
+        priority: mapping.priority,
+        description: mapping.description,
+      }));
+    }
+
     return {
       success: true,
-      data: {
-        agentId: agent.agentId,
-        displayName: agent.displayName ?? agent.agentId,
-        description: agent.description,
-        version: agent.version,
-        role: agent.role,
-        team: agent.team,
-        enabled: agent.enabled,
-        capabilities: agent.capabilities ?? [],
-        tags: agent.tags ?? [],
-        systemPrompt: agent.systemPrompt,
-        workflow: agent.workflow?.map(step => ({
-          stepId: step.stepId,
-          name: step.name,
-          type: step.type,
-          config: step.config,
-          dependencies: step.dependencies,
-          condition: step.condition,
-        })) ?? [],
-        orchestration: agent.orchestration,
-        personality: agent.personality,
-        expertise: agent.expertise,
-        // Stats
-        stats: {
-          executionCount,
-          successRate: executionCount > 0 ? successCount / executionCount : 0,
-          avgDurationMs: executionCount > 0 ? Math.round(totalDurationMs / executionCount) : 0,
-        },
-      },
+      data: responseData,
     };
   } catch (error) {
     return {
@@ -817,6 +877,18 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
         new Date(endEvent.timestamp).getTime() - new Date(startEvent.timestamp).getTime() :
         undefined);
 
+    // PRD-2026-003: Extract classification data from start event
+    const classificationData = startPayload?.classification as {
+      taskType?: string;
+      confidence?: number;
+      matchedPatterns?: string[];
+      selectedMapping?: string | null;
+      alternatives?: Array<{ mappingId: string; score: number }>;
+      classificationTimeMs?: number;
+      guardResults?: Array<{ gate: string; passed: boolean; reason?: string }>;
+      taskDescription?: string;
+    } | undefined;
+
     return {
       success: true,
       data: {
@@ -845,6 +917,8 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
           stepCount: stepEvents.length,
           errorCount: errorEvents.length,
         },
+        // PRD-2026-003: Classification data
+        classification: classificationData,
         // Full timeline for advanced view
         timeline,
       },
@@ -1312,6 +1386,89 @@ async function handleTraceTree(traceId: string): Promise<APIResponse> {
 }
 
 /**
+ * Get classification data for a trace
+ * PRD-2026-003: Classification observability endpoint
+ * INV-TR-030: Classification snapshot is immutable once recorded
+ */
+async function handleTraceClassification(traceId: string): Promise<APIResponse> {
+  try {
+    const traceStore = getTraceStore();
+    const events = await traceStore.getTrace(traceId);
+
+    if (!events || events.length === 0) {
+      return { success: false, error: `Trace not found: ${traceId}` };
+    }
+
+    // Find run.start event which contains classification data
+    const startEvent = events.find(e => e.type === 'run.start');
+    if (!startEvent) {
+      return {
+        success: true,
+        data: {
+          traceId,
+          hasClassification: false,
+          message: 'No classification data available for this trace',
+        },
+      };
+    }
+
+    const payload = startEvent.payload;
+    const classification = payload?.classification as {
+      taskType?: string;
+      confidence?: number;
+      matchedPatterns?: string[];
+      selectedMapping?: string | null;
+      alternatives?: Array<{ mappingId: string; score: number }>;
+      classificationTimeMs?: number;
+      guardResults?: Array<{ gate: string; passed: boolean; reason?: string }>;
+      taskDescription?: string;
+    } | undefined;
+
+    if (!classification) {
+      return {
+        success: true,
+        data: {
+          traceId,
+          hasClassification: false,
+          message: 'No classification data available for this trace',
+        },
+      };
+    }
+
+    // Calculate guard pass rate
+    const guardResults = classification.guardResults ?? [];
+    const guardPassRate = guardResults.length > 0
+      ? guardResults.filter(g => g.passed).length / guardResults.length
+      : 1.0;
+
+    return {
+      success: true,
+      data: {
+        traceId,
+        hasClassification: true,
+        classification: {
+          taskType: classification.taskType,
+          confidence: classification.confidence,
+          matchedPatterns: classification.matchedPatterns ?? [],
+          selectedMapping: classification.selectedMapping,
+          alternatives: classification.alternatives ?? [],
+          classificationTimeMs: classification.classificationTimeMs,
+          guardResults,
+          guardPassRate,
+          taskDescription: classification.taskDescription,
+        },
+        timestamp: startEvent.timestamp,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch classification data'),
+    };
+  }
+}
+
+/**
  * Get workflow execution events - timeline of a workflow execution
  * Uses workflow.start, workflow.step, workflow.end events (INV-TR-013)
  */
@@ -1561,6 +1718,9 @@ async function getAgentData(): Promise<DashboardAgentSummary[]> {
       capabilities: agent.capabilities ?? [],
       executionCount: 0,
       lastExecuted: undefined,
+      // PRD-2026-004: Meta-agent fields for list display
+      metaAgent: agent.metaAgent,
+      archetype: agent.archetype,
     }));
   } catch {
     return [];
@@ -1675,6 +1835,94 @@ async function getWorkflowData(): Promise<Array<{
     }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * Classification metrics type (PRD-2026-003)
+ */
+interface ClassificationMetrics {
+  totalClassifications: number;
+  byTaskType: Record<string, number>;
+  guardPassRate: number;
+  averageConfidence: number;
+  fallbackRate: number;
+  sampleSize: number;
+}
+
+/**
+ * Calculate classification metrics from recent traces
+ * PRD-2026-003: Classification observability
+ */
+async function getClassificationMetrics(): Promise<ClassificationMetrics> {
+  try {
+    const traceStore = getTraceStore();
+    const traces = await traceStore.listTraces(200);
+
+    let totalClassifications = 0;
+    const byTaskType: Record<string, number> = {};
+    let totalConfidence = 0;
+    let totalGuardChecks = 0;
+    let passedGuardChecks = 0;
+    let fallbackCount = 0;
+
+    for (const trace of traces) {
+      try {
+        const events = await traceStore.getTrace(trace.traceId);
+        const startEvent = events.find(e => e.type === 'run.start');
+
+        if (!startEvent) continue;
+
+        const payload = startEvent.payload;
+        const classification = payload?.classification as {
+          taskType?: string;
+          confidence?: number;
+          selectedMapping?: string | null;
+          guardResults?: Array<{ gate: string; passed: boolean }>;
+        } | undefined;
+
+        if (!classification || !classification.taskType) continue;
+
+        totalClassifications++;
+        const taskType = classification.taskType;
+        byTaskType[taskType] = (byTaskType[taskType] ?? 0) + 1;
+
+        if (classification.confidence !== undefined) {
+          totalConfidence += classification.confidence;
+        }
+
+        if (classification.selectedMapping === null) {
+          fallbackCount++;
+        }
+
+        if (classification.guardResults) {
+          for (const gate of classification.guardResults) {
+            totalGuardChecks++;
+            if (gate.passed) passedGuardChecks++;
+          }
+        }
+      } catch {
+        // Ignore individual trace errors
+      }
+    }
+
+    return {
+      totalClassifications,
+      byTaskType,
+      guardPassRate: totalGuardChecks > 0 ? passedGuardChecks / totalGuardChecks : 1.0,
+      averageConfidence: totalClassifications > 0 ? totalConfidence / totalClassifications : 0,
+      fallbackRate: totalClassifications > 0 ? fallbackCount / totalClassifications : 0,
+      sampleSize: traces.length,
+    };
+  } catch {
+    return {
+      totalClassifications: 0,
+      byTaskType: {},
+      guardPassRate: 1.0,
+      averageConfidence: 0,
+      fallbackRate: 0,
+      sampleSize: 0,
+    };
   }
 }
 

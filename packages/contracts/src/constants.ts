@@ -12,7 +12,7 @@
 // =============================================================================
 
 /** Current AutomatosX version */
-export const AUTOMATOSX_VERSION = '13.1.13';
+export const AUTOMATOSX_VERSION = '13.4.7';
 
 /** Default schema/config version for new resources */
 export const DEFAULT_SCHEMA_VERSION = '1.0.0';
@@ -130,6 +130,12 @@ export const TIMEOUT_AGENT_STEP_MIN = 1000;
 
 /** Agent step maximum timeout (60 minutes) */
 export const TIMEOUT_AGENT_STEP_MAX = 3600000;
+
+/** Agent workflow step short timeout (3 minutes) - for quick scoping/validation steps */
+export const TIMEOUT_WORKFLOW_STEP_SHORT = 180000;
+
+/** Agent workflow step long timeout (30 minutes) - for implementation steps */
+export const TIMEOUT_WORKFLOW_STEP_LONG = 1800000;
 
 /** Provider short timeout (1 minute) - for providers with shutdown issues */
 export const TIMEOUT_PROVIDER_SHORT = 60000;

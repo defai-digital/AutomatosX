@@ -301,12 +301,19 @@ export class StepGuardEngine {
 
   /**
    * Simple glob matching (* only)
+   * INV-WF-GUARD-004: Wrap in try-catch to handle invalid regex patterns
    */
   private globMatch(pattern: string, value: string): boolean {
-    const regex = new RegExp(
-      '^' + pattern.split('*').map(this.escapeRegex).join('.*') + '$'
-    );
-    return regex.test(value);
+    try {
+      const regex = new RegExp(
+        '^' + pattern.split('*').map(this.escapeRegex).join('.*') + '$'
+      );
+      return regex.test(value);
+    } catch {
+      // Invalid pattern - treat as no match
+      console.warn(`[step-guard] Invalid glob pattern: "${pattern}"`);
+      return false;
+    }
   }
 
   /**
@@ -322,13 +329,15 @@ export class StepGuardEngine {
   private registerDefaultGates(): void {
     // Validation gate - validates step configuration based on step type
     this.gateRegistry.register('validation', async (context) => {
+      // Extract stepConfig for cleaner access
       const config = context.stepConfig;
       const errors: string[] = [];
       const warnings: string[] = [];
 
       // Only validate step config if it's provided
-      // When stepConfig is undefined, the step is assumed to be configured elsewhere
-      if (config !== undefined && Object.keys(config).length > 0) {
+      // When stepConfig is undefined/null, the step is assumed to be configured elsewhere
+      // INV-SG-002: Guard against Object.keys(null) crash
+      if (config != null && Object.keys(config).length > 0) {
         // Validate based on step type
         switch (context.stepType) {
           case 'prompt':
@@ -357,6 +366,11 @@ export class StepGuardEngine {
             if (!config.items && !config.count && !config.until) {
               errors.push('Loop step requires "items", "count", or "until" in config');
             }
+            break;
+
+          case 'parallel':
+            // Parallel steps optionally have tasks or steps
+            // No required config - parallel can work with inline steps
             break;
 
           case 'discuss':
@@ -409,6 +423,8 @@ export class StepGuardEngine {
     // Capability gate - checks if infrastructure is available for step type
     this.gateRegistry.register('capability', async (context) => {
       const warnings: string[] = [];
+      // Extract stepConfig once for cleaner access
+      const config = context.stepConfig;
 
       // Check capabilities based on step type
       switch (context.stepType) {
@@ -418,10 +434,9 @@ export class StepGuardEngine {
           // In a full implementation, we'd check if providers are configured
           break;
 
-        case 'tool':
+        case 'tool': {
           // Check if the tool is available
-          const toolName = (context.stepConfig)?.toolName ??
-                          (context.stepConfig)?.tool;
+          const toolName = config?.toolName ?? config?.tool;
           if (toolName && typeof toolName === 'string') {
             // Could check tool registry here
             // For now, warn if it's an unknown tool type
@@ -431,15 +446,16 @@ export class StepGuardEngine {
             }
           }
           break;
+        }
 
-        case 'delegate':
+        case 'delegate': {
           // Delegation requires agent registry
-          const targetAgent = (context.stepConfig)?.agentId ??
-                             (context.stepConfig)?.targetAgent;
+          const targetAgent = config?.agentId ?? config?.targetAgent;
           if (!targetAgent) {
             warnings.push('Delegate step has no target agent specified');
           }
           break;
+        }
       }
 
       if (warnings.length > 0) {
@@ -483,14 +499,9 @@ export class StepGuardEngine {
         issues.push(`Workflow has ${context.totalSteps} steps (warning threshold: ${MAX_STEPS_WARNING})`);
       }
 
-      // Check if we're past the halfway point (useful for long workflows)
-      const progress = (context.stepIndex + 1) / context.totalSteps;
-      if (progress > 0.9 && context.totalSteps > 10) {
-        // Nearing completion - just informational
-      }
-
       // Check for potential infinite loops (same step appearing in outputs)
-      const outputKeys = Object.keys(context.previousOutputs);
+      // INV-SG-002: Guard against Object.keys(null/undefined) crash
+      const outputKeys = Object.keys(context.previousOutputs ?? {});
       const currentStepOutputCount = outputKeys.filter(k => k.startsWith(context.stepId)).length;
       if (currentStepOutputCount > 5) {
         issues.push(`Step "${context.stepId}" has run ${currentStepOutputCount} times - possible loop`);
@@ -522,8 +533,11 @@ export class StepGuardEngine {
     });
 
     // Progress gate - checks execution progress
+    // INV-SG-001: Guard against division by zero when totalSteps is 0
     this.gateRegistry.register('progress', async (context) => {
-      const progress = ((context.stepIndex + 1) / context.totalSteps) * 100;
+      const progress = context.totalSteps > 0
+        ? ((context.stepIndex + 1) / context.totalSteps) * 100
+        : 0;
       return {
         gateId: 'progress',
         status: 'PASS' as GuardCheckStatus,

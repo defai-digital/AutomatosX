@@ -253,14 +253,31 @@ import { getSemanticManager } from '../bootstrap.js';
 
 /**
  * Handler for semantic_store tool
+ * INV-SEM-001: Validates input types before use
  */
 export const handleSemanticStore: ToolHandler = async (args) => {
-  const key = args.key as string;
-  const content = args.content as string;
-  const namespace = args.namespace as string | undefined;
-  const tags = args.tags as string[] | undefined;
-  const metadata = args.metadata as Record<string, unknown> | undefined;
-  const forceRecompute = (args.forceRecompute as boolean) ?? false;
+  // INV-SEM-001: Validate required string inputs
+  if (typeof args.key !== 'string' || args.key.length === 0) {
+    return {
+      content: [{ type: 'text', text: 'Error: key must be a non-empty string' }],
+      isError: true,
+    };
+  }
+  if (typeof args.content !== 'string') {
+    return {
+      content: [{ type: 'text', text: 'Error: content must be a string' }],
+      isError: true,
+    };
+  }
+
+  const key = args.key;
+  const content = args.content;
+  const namespace = typeof args.namespace === 'string' ? args.namespace : undefined;
+  const tags = Array.isArray(args.tags) ? args.tags.filter((t): t is string => typeof t === 'string') : undefined;
+  const metadata = args.metadata !== null && typeof args.metadata === 'object' && !Array.isArray(args.metadata)
+    ? args.metadata as Record<string, unknown>
+    : undefined;
+  const forceRecompute = typeof args.forceRecompute === 'boolean' ? args.forceRecompute : false;
 
   try {
     const manager = getSemanticManager();

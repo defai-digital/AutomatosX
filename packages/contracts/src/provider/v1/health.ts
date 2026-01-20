@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import { CircuitStateSchema } from './circuit-breaker.js';
 import { RateLimitStateEnumSchema } from './rate-limit.js';
+import { TIMEOUT_HEALTH_CHECK } from '../../constants.js';
 
 /**
  * Health check configuration
@@ -22,7 +23,7 @@ export const HealthCheckConfigSchema = z.object({
   intervalMs: z.number().int().min(5000).max(300000).default(30000),
 
   /** Timeout for health check request in ms */
-  timeoutMs: z.number().int().min(1000).max(30000).default(5000),
+  timeoutMs: z.number().int().min(1000).max(30000).default(TIMEOUT_HEALTH_CHECK),
 
   /** Number of latency samples to retain (INV-HM-001) */
   latencySampleSize: z.number().int().min(1).max(100).default(10),

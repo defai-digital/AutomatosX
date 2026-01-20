@@ -27,6 +27,7 @@ import { dependencyGate } from './gates/dependency.js';
 import { contractTestGate } from './gates/contract-tests.js';
 import { configValidationGate, sensitiveChangeGate } from './gates/config.js';
 import { secretsDetectionGate } from './gates/secrets.js';
+import { taskClassifierGate } from './gates/task-classifier.js';
 
 const execAsync = promisify(exec);
 
@@ -60,13 +61,31 @@ const GATES: Record<GateType, GateExecutor> = {
   sensitive_change: sensitiveChangeGate,
   secrets_detection: secretsDetectionGate,
   agent_selection: agentSelectionGateWrapper,
+  task_classifier: taskClassifierGate,
 };
 
 /**
+ * Validates a git branch name to prevent command injection
+ * INV-GUARD-SEC-001: Sanitize git branch names before shell execution
+ */
+function isValidGitBranchName(branch: string): boolean {
+  // Git branch names cannot contain: space, ~, ^, :, ?, *, [, \, control chars
+  // Also reject shell metacharacters: ;, |, &, $, `, (, ), {, }, <, >, ', "
+  const invalidChars = /[\s~^:?*[\]\\;|&$`(){}><'"]/;
+  return branch.length > 0 && branch.length <= 255 && !invalidChars.test(branch);
+}
+
+/**
  * Gets list of changed files from git
+ * INV-GUARD-SEC-001: Branch names are validated before use in shell commands
  */
 export async function getChangedFiles(baseBranch: string): Promise<string[]> {
   try {
+    // Validate branch name to prevent command injection
+    if (!isValidGitBranchName(baseBranch)) {
+      throw new Error(`Invalid branch name: "${baseBranch}"`);
+    }
+
     const { stdout } = await execAsync(
       `git diff --name-only ${baseBranch}...HEAD`,
       { cwd: process.cwd() }
@@ -89,14 +108,21 @@ export async function getChangedFiles(baseBranch: string): Promise<string[]> {
         .filter((f) => f.length > 0);
     } catch {
       // If that also fails, check staged files
-      const { stdout } = await execAsync('git diff --name-only --cached', {
-        cwd: process.cwd(),
-      });
+      // INV-GUARD-SEC-002: Final fallback wrapped in try-catch
+      try {
+        const { stdout } = await execAsync('git diff --name-only --cached', {
+          cwd: process.cwd(),
+        });
 
-      return stdout
-        .trim()
-        .split('\n')
-        .filter((f) => f.length > 0);
+        return stdout
+          .trim()
+          .split('\n')
+          .filter((f) => f.length > 0);
+      } catch {
+        // Not in a git repository or git unavailable - return empty array
+        console.warn('[guard] Unable to get changed files from git - not in a git repository?');
+        return [];
+      }
     }
   }
 }
@@ -218,10 +244,33 @@ export async function executeGates(
 ): Promise<GuardResult> {
   // INV-GUARD-004: Order Independence - gates can be executed in parallel
   // INV-GUARD-006: No Side Effects - parallel execution is safe
+  // INV-GUARD-SEC-003: Validate gate types and handle errors gracefully
   const gateResults = await Promise.all(
-    context.enabledGates.map((gateType) => {
+    context.enabledGates.map(async (gateType) => {
       const gate = GATES[gateType];
-      return gate(context, changedFiles);
+      // Validate gate exists
+      if (!gate) {
+        console.warn(`[guard] Unknown gate type: "${gateType}", skipping`);
+        return {
+          gate: gateType,
+          status: 'WARN' as const,
+          message: `Unknown gate type: ${gateType}`,
+          details: { error: 'Gate not found in registry' },
+        };
+      }
+      // Catch errors from individual gates to prevent masking other results
+      try {
+        return await gate(context, changedFiles);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[guard] Gate "${gateType}" threw error: ${errorMessage}`);
+        return {
+          gate: gateType,
+          status: 'FAIL' as const,
+          message: `Gate execution failed: ${errorMessage}`,
+          details: { error: errorMessage },
+        };
+      }
     })
   );
 

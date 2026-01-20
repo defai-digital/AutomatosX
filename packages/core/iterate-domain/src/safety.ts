@@ -95,15 +95,27 @@ export class SafetyGuard implements ISafetyGuard {
   }
 
   /**
+   * Maximum content length to check (prevents ReDoS attacks)
+   * INV-SAFE-001: Content length is bounded to prevent catastrophic regex backtracking
+   */
+  private static readonly MAX_CONTENT_LENGTH = 100_000;
+
+  /**
    * Check content for dangerous patterns
+   * INV-SAFE-001: Truncates content to prevent ReDoS
    */
   checkContent(content: string): SafetyCheckResult {
     if (!this.config.enableDangerousPatternDetection) {
       return { safe: true };
     }
 
+    // INV-SAFE-001: Limit content length to prevent ReDoS attacks
+    const truncatedContent = content.length > SafetyGuard.MAX_CONTENT_LENGTH
+      ? content.slice(0, SafetyGuard.MAX_CONTENT_LENGTH)
+      : content;
+
     for (const pattern of this.compiledPatterns) {
-      if (pattern.test(content)) {
+      if (pattern.test(truncatedContent)) {
         // Determine severity based on pattern
         const severity = this.getSeverity(pattern.source);
 

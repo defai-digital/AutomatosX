@@ -21,6 +21,8 @@ import {
   ParallelExecutionErrorCodes,
   getErrorMessage,
   createRootTraceHierarchy,
+  TIMEOUT_AGENT_STEP_DEFAULT,
+  TIMEOUT_AGENT_STEP_MAX,
 } from '@defai.digital/contracts';
 import {
   createAgentParallelOrchestrator,
@@ -196,10 +198,10 @@ export const parallelRunTool: MCPTool = {
           },
           agentTimeout: {
             type: 'number',
-            description: 'Default timeout per agent in ms (default: 300000)',
+            description: `Default timeout per agent in ms (default: ${TIMEOUT_AGENT_STEP_DEFAULT} / 20 min, max: ${TIMEOUT_AGENT_STEP_MAX} / 60 min)`,
             minimum: 1000,
-            maximum: 7200000,
-            default: 300000,
+            maximum: TIMEOUT_AGENT_STEP_MAX,
+            default: TIMEOUT_AGENT_STEP_DEFAULT,
           },
           failureStrategy: {
             type: 'string',

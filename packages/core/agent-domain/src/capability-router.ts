@@ -2,22 +2,27 @@
  * Capability Router
  *
  * Routes task inputs to appropriate capability mappings based on task classification.
- * Supports fallback to default workflow when no capability matches.
+ * Supports both:
+ * 1. Agent's taskClassifier config (meta-agent pattern) - direct workflow routing
+ * 2. Capability mappings (archetype pattern) - capability-based routing
  *
  * Invariants:
  * - INV-CAP-001: workflowRef must reference valid workflow
  * - INV-CAP-004: Classification is deterministic
  * - INV-CAP-005: Falls back to default workflow if no match
+ * - INV-TC-001: Case-insensitive pattern matching
+ * - INV-TC-002: First-match-wins (priority ordered)
+ * - INV-TC-003: Default workflow fallback
  */
 
 import type { AgentProfile, CapabilityMapping, AgentTaskType } from '@defai.digital/contracts';
-import { classifyTask, extractTaskDescription } from './task-classifier.js';
+import { classifyTask, createTaskClassifier, extractTaskDescription } from './task-classifier.js';
 
 /**
  * Result of capability routing
  */
 export interface CapabilityRouteResult {
-  /** Matched capability (null if using default workflow) */
+  /** Matched capability (null if using default workflow or taskClassifier) */
   capability: CapabilityMapping | null;
   /** Classified task type */
   taskType: AgentTaskType;
@@ -27,43 +32,86 @@ export interface CapabilityRouteResult {
   useDefaultWorkflow: boolean;
   /** Keywords that matched during classification */
   matchedKeywords: string[];
+  /** Resolved workflow path (from taskClassifier or capability) - undefined means use agent's default */
+  workflow: string | undefined;
+  /** Whether taskClassifier was used for routing */
+  usedTaskClassifier: boolean;
+  /** INV-CAP-007: Whether classification was actually performed (false = default routing) */
+  classificationPerformed: boolean;
 }
 
 /**
  * Route input to appropriate capability
  *
- * @param agent - Agent profile with optional capabilityMappings
+ * Supports two routing patterns:
+ * 1. taskClassifier config (meta-agent pattern): Uses agent's taskClassifier rules
+ *    to directly determine the workflow based on regex patterns.
+ * 2. capabilityMappings (archetype pattern): Uses keyword-based classification
+ *    to find matching capability and its workflow.
+ *
+ * @param agent - Agent profile with optional taskClassifier or capabilityMappings
  * @param input - Task input (string or object with task/prompt field)
- * @returns Routing result with capability, taskType, and confidence
+ * @returns Routing result with capability, taskType, workflow, and confidence
  *
  * INV-CAP-004: Classification is deterministic
  * INV-CAP-005: Falls back to default workflow if no match
+ * INV-TC-001: Case-insensitive pattern matching
+ * INV-TC-002: First-match-wins (priority ordered)
+ * INV-TC-003: Default workflow fallback
  */
 export function routeToCapability(
   agent: AgentProfile,
   input: unknown
 ): CapabilityRouteResult {
-  // No capability mappings = always use default workflow
+  // Extract task description from input
+  const taskDescription = extractTaskDescription(input);
+
+  // Pattern 1: Use agent's taskClassifier config if provided (meta-agent pattern)
+  // This takes priority over capabilityMappings
+  if (agent.taskClassifier?.enabled !== false && agent.taskClassifier?.rules?.length) {
+    const classifier = createTaskClassifier(agent.taskClassifier);
+    const result = classifier.classifyTask(taskDescription);
+
+    return {
+      capability: null, // No capability mapping in this pattern
+      taskType: result.taskType,
+      confidence: result.confidence,
+      useDefaultWorkflow: !result.workflow,
+      matchedKeywords: result.matchedKeywords,
+      workflow: result.workflow,
+      usedTaskClassifier: true,
+      classificationPerformed: true,
+    };
+  }
+
+  // Pattern 2: Use capabilityMappings (archetype pattern)
+  // INV-CAP-007: No capability mappings = default routing with confidence 1
   if (!agent.capabilityMappings || agent.capabilityMappings.length === 0) {
     return {
       capability: null,
       taskType: 'general',
-      confidence: 0,
+      confidence: 1, // We're 100% confident this is the default path
       useDefaultWorkflow: true,
       matchedKeywords: [],
+      workflow: undefined,
+      usedTaskClassifier: false,
+      classificationPerformed: false, // No classification was performed
     };
   }
 
-  // Extract task description from input
-  const taskDescription = extractTaskDescription(input);
-
-  // Classify the task
+  // Classify the task using default keyword-based classifier
   const classification = classifyTask(taskDescription, agent.capabilityMappings);
 
-  // Find matching capability
-  const capability = agent.capabilityMappings.find(
+  // INV-CAP-006: Find best matching capability (highest priority)
+  // Filter all matching capabilities and select by priority
+  const matchingCapabilities = agent.capabilityMappings.filter(
     (c) => c.taskType === classification.taskType
   );
+
+  // Sort by priority (highest first), then by array order
+  const capability = matchingCapabilities.length > 0
+    ? matchingCapabilities.sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50))[0]
+    : undefined;
 
   if (capability) {
     return {
@@ -72,6 +120,9 @@ export function routeToCapability(
       confidence: classification.confidence,
       useDefaultWorkflow: false,
       matchedKeywords: classification.matchedKeywords,
+      workflow: capability.workflowRef ? resolveWorkflowRef(capability.workflowRef) : undefined,
+      usedTaskClassifier: false,
+      classificationPerformed: true,
     };
   }
 
@@ -82,6 +133,9 @@ export function routeToCapability(
     confidence: classification.confidence,
     useDefaultWorkflow: true,
     matchedKeywords: classification.matchedKeywords,
+    workflow: undefined,
+    usedTaskClassifier: false,
+    classificationPerformed: true,
   };
 }
 
@@ -130,6 +184,10 @@ export function resolveWorkflowRef(workflowRef: string): string {
   // Standard workflow reference (e.g., "std/code-review")
   if (workflowRef.startsWith('std/')) {
     const workflowName = workflowRef.slice(4); // Remove "std/" prefix
+    // INV-CAP-006: Guard against empty workflow name (e.g., "std/" alone)
+    if (!workflowName) {
+      throw new Error(`Invalid workflow reference: "${workflowRef}" - workflow name is empty`);
+    }
     return `workflows/std/${workflowName}.yaml`;
   }
 

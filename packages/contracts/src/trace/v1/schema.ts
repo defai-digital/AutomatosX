@@ -312,6 +312,71 @@ export const TraceEventSchema = z.object({
 
 export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
+// ============================================================================
+// Task Classification Snapshot (PRD-2026-003)
+// ============================================================================
+
+/**
+ * Guard gate result for classification
+ */
+export const ClassificationGuardResultSchema = z.object({
+  /** Gate identifier (e.g., 'TC-001') */
+  gate: z.string(),
+  /** Whether the gate passed */
+  passed: z.boolean(),
+  /** Reason for failure if not passed */
+  reason: z.string().optional(),
+});
+
+export type ClassificationGuardResult = z.infer<typeof ClassificationGuardResultSchema>;
+
+/**
+ * Alternative capability mapping considered during classification
+ */
+export const ClassificationAlternativeSchema = z.object({
+  /** Mapping ID */
+  mappingId: z.string(),
+  /** Match score (0-1) */
+  score: z.number().min(0).max(1),
+});
+
+export type ClassificationAlternative = z.infer<typeof ClassificationAlternativeSchema>;
+
+/**
+ * Task classification snapshot captured at trace creation
+ *
+ * Invariants:
+ * - INV-TR-030: Classification snapshot is immutable after trace creation
+ * - INV-TR-031: All fields required for decision reconstruction
+ */
+export const TaskClassificationSnapshotSchema = z.object({
+  /** Classified task type (e.g., 'debugging', 'implementation') */
+  taskType: z.string(),
+
+  /** Classification confidence 0-1 */
+  confidence: z.number().min(0).max(1),
+
+  /** Patterns that matched (from classifier rules) */
+  matchedPatterns: z.array(z.string()),
+
+  /** Selected capability mapping ID */
+  selectedMapping: z.string().nullable(),
+
+  /** Alternative mappings considered with scores (top 5) */
+  alternatives: z.array(ClassificationAlternativeSchema).max(5).optional(),
+
+  /** Time spent on classification in ms */
+  classificationTimeMs: z.number().int().min(0),
+
+  /** Guard gate results */
+  guardResults: z.array(ClassificationGuardResultSchema).optional(),
+
+  /** Original task description (truncated to 500 chars) */
+  taskDescription: z.string().max(500).optional(),
+});
+
+export type TaskClassificationSnapshot = z.infer<typeof TaskClassificationSnapshotSchema>;
+
 /**
  * Complete trace (collection of events)
  * Schema strictness rejects unknown fields
@@ -329,9 +394,43 @@ export const TraceSchema = z.object({
       errorCount: z.number().int().min(0),
     })
     .optional(),
+  /** Task classification snapshot (PRD-2026-003) */
+  classification: TaskClassificationSnapshotSchema.optional(),
 }).strict();
 
 export type Trace = z.infer<typeof TraceSchema>;
+
+// ============================================================================
+// Classification Metrics (PRD-2026-003)
+// ============================================================================
+
+/**
+ * Classification metrics for dashboard status endpoint
+ *
+ * Invariants:
+ * - INV-DASH-001: Classification health badge updates on every status poll
+ */
+export const ClassificationMetricsSchema = z.object({
+  /** Total classifications in time window */
+  totalClassifications: z.number().int().min(0),
+
+  /** Classifications by task type */
+  byTaskType: z.record(z.string(), z.number().int().min(0)),
+
+  /** Guard gate pass rate (0-1) */
+  guardPassRate: z.number().min(0).max(1),
+
+  /** Average confidence score */
+  averageConfidence: z.number().min(0).max(1),
+
+  /** Unclassified task rate - fell back to 'general' (0-1) */
+  fallbackRate: z.number().min(0).max(1),
+
+  /** Number of traces analyzed for these metrics */
+  sampleSize: z.number().int().min(0),
+});
+
+export type ClassificationMetrics = z.infer<typeof ClassificationMetricsSchema>;
 
 /**
  * Creates a new trace event

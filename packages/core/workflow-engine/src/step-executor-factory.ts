@@ -316,7 +316,28 @@ async function executePromptStep(
   const config = (step.config ?? {}) as PromptStepConfig;
 
   // Build prompt from config or input
-  const prompt = config.prompt ?? String(context.input ?? '');
+  // INV-WF-013: Handle non-string input (extract prompt field or stringify)
+  let prompt: string;
+  if (config.prompt) {
+    prompt = config.prompt;
+  } else if (typeof context.input === 'string') {
+    prompt = context.input;
+  } else if (context.input && typeof context.input === 'object') {
+    const inputObj = context.input as Record<string, unknown>;
+    // Try common prompt field names
+    if (typeof inputObj.prompt === 'string') {
+      prompt = inputObj.prompt;
+    } else if (typeof inputObj.content === 'string') {
+      prompt = inputObj.content;
+    } else if (typeof inputObj.message === 'string') {
+      prompt = inputObj.message;
+    } else {
+      // Fallback to JSON representation
+      prompt = JSON.stringify(context.input);
+    }
+  } else {
+    prompt = '';
+  }
 
   if (!prompt || prompt.trim() === '') {
     return {
@@ -399,18 +420,25 @@ async function executeToolStep(
 ): Promise<StepResult> {
   const config = (step.config ?? {}) as ToolStepConfig;
   const toolName = config.toolName;
-  const toolInput = (config.toolInput ?? context.input ?? {}) as Record<string, unknown>;
+  // INV-WF-014: Safely coerce tool input to Record<string, unknown>
+  let toolInput: Record<string, unknown>;
+  if (config.toolInput) {
+    toolInput = config.toolInput;
+  } else if (context.input && typeof context.input === 'object' && !Array.isArray(context.input)) {
+    toolInput = context.input as Record<string, unknown>;
+  } else {
+    toolInput = {};
+  }
 
-  // If no tool executor is configured
+  // INV-TOOL-003: Tool steps without executor return failure
   if (toolExecutor === undefined) {
     return {
       stepId: step.stepId,
-      success: true,
-      output: {
-        type: 'tool',
-        toolName: toolName ?? 'unknown',
-        status: 'no_executor',
-        message: 'Tool execution requires a ToolExecutor.',
+      success: false,
+      error: {
+        code: 'TOOL_EXECUTOR_NOT_CONFIGURED',
+        message: `Tool step "${step.stepId}" requires a ToolExecutor. Configure it in RealStepExecutorConfig.`,
+        retryable: false,
       },
       durationMs: Date.now() - startTime,
       retryCount: 0,
@@ -508,9 +536,12 @@ function executeLoopStep(
   const config = (step.config ?? {}) as LoopStepConfig;
 
   // Get items to iterate
+  // INV-WF-LOOP-001: Handle null from getNestedValue (nullish coalescing won't catch null)
   let items: unknown[] = config.items ?? [];
   if (config.itemsPath) {
-    items = getNestedValue(context, config.itemsPath) as unknown[] ?? [];
+    const resolved = getNestedValue(context, config.itemsPath);
+    // Check for both null and non-array values
+    items = Array.isArray(resolved) ? resolved : [];
   }
 
   // Apply max iterations
@@ -566,8 +597,11 @@ function evaluateCondition(condition: string, context: StepContext): boolean {
   const varMatch = /^\$\{(.+)\}$/.exec(condition);
   if (varMatch) {
     const path = varMatch[1];
-    const value = getNestedValue(context, path ?? '');
-    return Boolean(value);
+    // INV-WF-012: Explicit null check for regex capture group
+    if (path) {
+      const value = getNestedValue(context, path);
+      return Boolean(value);
+    }
   }
 
   // Default to truthy

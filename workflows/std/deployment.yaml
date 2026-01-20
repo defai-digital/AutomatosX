@@ -1,0 +1,165 @@
+workflowId: std/deployment
+version: "1.0.0"
+name: Standard Deployment
+description: |
+  Structured workflow for deployment, CI/CD, and infrastructure tasks.
+  Covers environment analysis, deployment planning, execution, and verification.
+
+metadata:
+  category: deployment
+  tags:
+    - deployment
+    - infrastructure
+    - ci-cd
+    - devops
+  estimatedDuration: 180000
+
+steps:
+  - stepId: analyze
+    name: Analyze Deployment Context
+    type: prompt
+    config:
+      prompt: |
+        You are working on a deployment or infrastructure task. First, analyze the context.
+
+        ## Task Description
+        ${input}
+
+        Analyze and clarify:
+
+        1. **Environment**
+           - Target environment (dev, staging, prod)?
+           - Cloud provider or on-prem?
+           - Container orchestration (Kubernetes, Docker Compose, etc.)?
+
+        2. **Current State**
+           - What infrastructure exists?
+           - What CI/CD pipelines are in place?
+           - What monitoring/observability is configured?
+
+        3. **Deployment Requirements**
+           - What needs to be deployed?
+           - Dependencies between components?
+           - Required configurations/secrets?
+
+        4. **Risk Assessment**
+           - What could go wrong?
+           - Rollback strategy?
+           - Impact on existing services?
+
+        5. **Constraints**
+           - Downtime tolerance
+           - Compliance requirements
+           - Resource limitations
+    timeoutMs: 60000
+
+  - stepId: plan
+    name: Create Deployment Plan
+    type: prompt
+    dependencies:
+      - analyze
+    config:
+      prompt: |
+        Based on your analysis:
+        ${previousOutputs.analyze}
+
+        Create a deployment plan:
+
+        ## Deployment Strategy
+        - Blue/green, canary, rolling, or recreate?
+        - Why this strategy?
+
+        ## Pre-Deployment Checklist
+        - [ ] Backup current state
+        - [ ] Verify dependencies
+        - [ ] Check resource availability
+        - [ ] Notify stakeholders
+
+        ## Deployment Steps
+        ### Step 1: Preparation
+        - Actions to take
+        - Commands to run
+        - Configs to update
+
+        ### Step 2: Deployment
+        - Deployment commands
+        - Expected duration
+        - What to monitor
+
+        ### Step 3: Verification
+        - Health checks
+        - Smoke tests
+        - Metrics to verify
+
+        ## Rollback Plan
+        - Trigger conditions
+        - Rollback steps
+        - Recovery time estimate
+
+        ## Monitoring
+        - Key metrics to watch
+        - Alert thresholds
+        - Dashboard links
+    timeoutMs: 90000
+
+  - stepId: execute
+    name: Execute Deployment
+    type: prompt
+    dependencies:
+      - plan
+    config:
+      prompt: |
+        Based on your deployment plan:
+        ${previousOutputs.plan}
+
+        Execute the deployment:
+
+        ## Configuration Files
+        Provide the actual configuration/manifests needed:
+        - Kubernetes manifests
+        - Docker Compose files
+        - Terraform/CloudFormation templates
+        - CI/CD pipeline configs
+        - Environment variables/secrets structure
+
+        ## Commands
+        List the exact commands to run in order.
+
+        ## Scripts
+        Any automation scripts needed.
+
+        ## Verification Steps
+        How to verify successful deployment.
+    timeoutMs: 120000
+
+  - stepId: summary
+    name: Deployment Summary
+    type: prompt
+    dependencies:
+      - execute
+    config:
+      prompt: |
+        Summarize the deployment:
+        ${previousOutputs.execute}
+
+        ## Deployment Summary
+        Brief description of what was deployed.
+
+        ## Changes Made
+        - Infrastructure changes
+        - Configuration changes
+        - Service deployments
+
+        ## Verification Results
+        - [ ] Health checks passed
+        - [ ] Smoke tests passed
+        - [ ] Metrics normal
+
+        ## Post-Deployment Tasks
+        - [ ] Update documentation
+        - [ ] Notify stakeholders
+        - [ ] Monitor for issues
+
+        ## Rollback Reference
+        Quick reference for rollback if needed.
+    timeoutMs: 30000

@@ -15,10 +15,11 @@ import type { GovernanceContext, GateResult } from '../types.js';
 /**
  * Converts a glob pattern to a regex
  * INV-GUARD-PATH-002: ** for recursive, * for single level
+ * INV-GUARD-PATH-004: Escape all regex special chars including ?
  */
 function globToRegex(pattern: string): RegExp {
   const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars (including ?)
     .replace(/\*\*/g, '{{GLOBSTAR}}') // Temp placeholder for **
     .replace(/\*/g, '[^/]*') // * matches anything except /
     .replace(/\{\{GLOBSTAR\}\}/g, '.*'); // ** matches anything including /

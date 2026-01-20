@@ -22,6 +22,7 @@ import {
 import {
   DEFAULT_PROVIDERS,
   DEFAULT_PROVIDER_TIMEOUT,
+  MAX_PROVIDER_TIMEOUT,
   DEFAULT_TOTAL_BUDGET_MS,
   DEFAULT_ROUNDS,
   DEFAULT_DISCUSSION_DEPTH,
@@ -320,7 +321,7 @@ export const discussTool: MCPTool = {
         type: 'number',
         description: 'Per-provider timeout in ms (default: 600000 / 10 min, max: 30 minutes)',
         minimum: 5000,
-        maximum: 1800000,
+        maximum: MAX_PROVIDER_TIMEOUT,
       },
       participants: {
         type: 'array',
@@ -1152,7 +1153,7 @@ export const discussRecursiveTool: MCPTool = {
         type: 'number',
         description: 'Per-provider timeout in ms (default: 600000 / 10 min, max: 30 minutes)',
         minimum: 5000,
-        maximum: 1800000,
+        maximum: MAX_PROVIDER_TIMEOUT,
       },
       // Recursive-specific options
       maxDepth: {
@@ -1170,7 +1171,7 @@ export const discussRecursiveTool: MCPTool = {
         type: 'number',
         description: 'Total timeout budget in ms (default: 600000, max: 30 minutes)',
         minimum: 30000,
-        maximum: 1800000,
+        maximum: MAX_PROVIDER_TIMEOUT,
       },
       maxCalls: {
         type: 'number',

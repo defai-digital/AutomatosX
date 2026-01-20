@@ -2,6 +2,7 @@ import type {
   TraceEvent,
   TraceStatus,
   TraceContext,
+  TaskClassificationSnapshot,
 } from '@defai.digital/contracts';
 
 /**
@@ -109,6 +110,10 @@ export interface TraceSummary {
   sessionId: string | undefined;
   /** Agent that was executed (if applicable) */
   agentId: string | undefined;
+
+  // PRD-2026-003: Classification observability (INV-TR-030, INV-TR-031)
+  /** Task classification snapshot if available */
+  classification?: TaskClassificationSnapshot | undefined;
 }
 
 /**

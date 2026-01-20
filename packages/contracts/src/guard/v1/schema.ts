@@ -27,6 +27,7 @@ export const GateTypeSchema = z.enum([
   'sensitive_change',
   'secrets_detection',
   'agent_selection',
+  'task_classifier',
 ]);
 
 export type GateType = z.infer<typeof GateTypeSchema>;

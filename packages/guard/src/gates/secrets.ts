@@ -87,12 +87,19 @@ function shouldIgnoreSecret(
     }
 
     // Pattern match (simple glob: * matches anything)
-    if (pattern.includes('*')) {
-      const regex = new RegExp(
-        '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
-      );
-      if (regex.test(secret.file)) {
-        return true;
+    // INV-GUARD-SEC-005: Escape regex special chars before converting glob to prevent ReDoS
+    if (pattern.includes('*') || pattern.includes('?')) {
+      // Escape special regex characters first, then convert glob wildcards
+      const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      const regexPattern = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+      try {
+        const regex = new RegExp('^' + regexPattern + '$');
+        if (regex.test(secret.file)) {
+          return true;
+        }
+      } catch {
+        // Invalid pattern - skip it
+        continue;
       }
     }
 
@@ -156,7 +163,17 @@ async function scanFileForSecrets(
         pattern.pattern.lastIndex = 0;
 
         let match: RegExpExecArray | null;
+        let lastIndex = -1;
         while ((match = pattern.pattern.exec(line)) !== null) {
+          // INV-GUARD-SEC-006: Prevent infinite loop on zero-width matches
+          // If lastIndex hasn't advanced, force it forward
+          if (pattern.pattern.lastIndex === lastIndex) {
+            pattern.pattern.lastIndex++;
+            if (pattern.pattern.lastIndex > line.length) break;
+            continue;
+          }
+          lastIndex = pattern.pattern.lastIndex;
+
           secrets.push({
             file: filePath,
             line: lineNum + 1, // 1-indexed

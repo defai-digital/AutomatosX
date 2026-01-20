@@ -127,17 +127,19 @@ export class IterateController implements IIterateController {
       }
     }
 
+    // INV-ITER-001: Calculate consecutive errors once at the top to avoid duplicate calculations
+    const newConsecutiveErrors = intent === 'error' ? state.consecutiveErrors + 1 : 0;
+
     // Check consecutive errors
     if (intent === 'error') {
-      const newErrorCount = state.consecutiveErrors + 1;
-      const errorResult = this.safetyGuard.checkErrors(newErrorCount);
+      const errorResult = this.safetyGuard.checkErrors(newConsecutiveErrors);
       if (!errorResult.safe) {
         return this.createResponse(state, intent, {
           type: 'PAUSE',
           reason: errorResult.reason ?? 'Too many consecutive errors',
           requiresInput: true,
           suggestedInput: 'Review the errors and decide how to proceed.',
-        }, 'paused', now, content, newErrorCount);
+        }, 'paused', now, content, newConsecutiveErrors);
       }
     }
 
@@ -154,10 +156,7 @@ export class IterateController implements IIterateController {
       newStatus = 'running';
     }
 
-    // Reset error count on non-error intent
-    const consecutiveErrors = intent === 'error' ? state.consecutiveErrors + 1 : 0;
-
-    return this.createResponse(state, intent, action, newStatus, now, content, consecutiveErrors);
+    return this.createResponse(state, intent, action, newStatus, now, content, newConsecutiveErrors);
   }
 
   /**

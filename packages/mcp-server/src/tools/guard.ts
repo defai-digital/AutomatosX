@@ -144,11 +144,30 @@ export const guardApplyTool: MCPTool = {
 
 /**
  * Handler for guard_check tool
+ * INV-MCP-VAL-002: Validate input types before use
  */
 export const handleGuardCheck: ToolHandler = async (args) => {
-  const policyId = args.policyId as string;
-  const changedPaths = args.changedPaths as string[];
-  const target = (args.target as string) ?? '';
+  // INV-MCP-VAL-002: Validate policyId is a non-empty string
+  const rawPolicyId = args.policyId;
+  if (typeof rawPolicyId !== 'string' || rawPolicyId.length === 0) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: 'INVALID_POLICY_ID', message: 'policyId must be a non-empty string' }) }],
+      isError: true,
+    };
+  }
+  const policyId = rawPolicyId;
+
+  // INV-MCP-VAL-002: Validate changedPaths is an array of strings
+  const rawChangedPaths = args.changedPaths;
+  if (!Array.isArray(rawChangedPaths)) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: 'INVALID_CHANGED_PATHS', message: 'changedPaths must be an array' }) }],
+      isError: true,
+    };
+  }
+  const changedPaths = rawChangedPaths.filter((p): p is string => typeof p === 'string');
+
+  const target = typeof args.target === 'string' ? args.target : '';
 
   try {
     // Resolve policy to governance context

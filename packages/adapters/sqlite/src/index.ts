@@ -42,3 +42,10 @@ export {
   SemanticStoreErrorCodes,
   createSqliteSemanticStore,
 } from './semantic-store.js';
+
+export {
+  SqliteSessionStore,
+  SqliteSessionStoreError,
+  SqliteSessionStoreErrorCodes,
+  createSqliteSessionStore,
+} from './session-store.js';

@@ -10,12 +10,12 @@
  * - INV-GUARD-TEST-003: Test Isolation - contract tests run in isolation from other tests
  */
 
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { TIMEOUT_GATE_CONTRACT_TEST } from '@defai.digital/contracts';
 import type { GovernanceContext, GateResult } from '../types.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Maps contract names to test file patterns
@@ -50,6 +50,7 @@ function checkTestFileModifications(
 
 /**
  * Runs vitest for specific contract tests
+ * INV-GUARD-SEC-002: Use execFile with argument array to prevent command injection
  */
 async function runContractTests(
   contracts: string[]
@@ -67,10 +68,12 @@ async function runContractTests(
   }
 
   try {
-    const { stdout } = await execAsync(
-      `npx vitest run ${testFiles.join(' ')} --reporter=line`,
-      { cwd: process.cwd(), timeout: TIMEOUT_GATE_CONTRACT_TEST }
-    );
+    // Use execFile with argument array to prevent command injection
+    const args = ['vitest', 'run', ...testFiles, '--reporter=line'];
+    const { stdout } = await execFileAsync('npx', args, {
+      cwd: process.cwd(),
+      timeout: TIMEOUT_GATE_CONTRACT_TEST,
+    });
 
     return { passed: true, output: stdout };
   } catch (error) {

@@ -71,7 +71,7 @@ describe('Discussion Contract', () => {
     });
 
     it('should have default providers ordered by reasoning strength', () => {
-      expect(DEFAULT_PROVIDERS).toEqual(['claude', 'grok', 'gemini']);
+      expect(DEFAULT_PROVIDERS).toEqual(['claude', 'grok', 'gemini', 'codex']);
     });
 
     it('should have pattern descriptions for all patterns', () => {

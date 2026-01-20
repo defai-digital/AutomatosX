@@ -5,6 +5,11 @@
  */
 
 import { z } from 'zod';
+import {
+  CIRCUIT_FAILURE_THRESHOLD,
+  CIRCUIT_RESET_TIMEOUT,
+  CIRCUIT_FAILURE_WINDOW,
+} from '../../constants.js';
 
 // ============================================================================
 // Circuit Breaker State
@@ -19,16 +24,16 @@ export type CircuitBreakerState = z.infer<typeof CircuitBreakerStateSchema>;
 
 export const CircuitBreakerConfigSchema = z.object({
   /** Number of failures before opening circuit */
-  failureThreshold: z.number().int().min(1).max(100).default(5),
+  failureThreshold: z.number().int().min(1).max(100).default(CIRCUIT_FAILURE_THRESHOLD),
 
   /** Time in ms before attempting recovery (half-open) */
-  resetTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
+  resetTimeoutMs: z.number().int().min(1000).max(300000).default(CIRCUIT_RESET_TIMEOUT),
 
   /** Number of test requests allowed in half-open state */
   halfOpenMaxAttempts: z.number().int().min(1).max(10).default(1),
 
   /** Time window for counting failures in ms */
-  failureWindowMs: z.number().int().min(1000).max(300000).default(60000),
+  failureWindowMs: z.number().int().min(1000).max(300000).default(CIRCUIT_FAILURE_WINDOW),
 });
 
 export type CircuitBreakerConfig = z.infer<typeof CircuitBreakerConfigSchema>;

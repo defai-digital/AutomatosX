@@ -1,5 +1,5 @@
 import type { TraceEvent, TraceStatus, TraceContext } from '@defai.digital/contracts';
-import { getErrorMessage } from '@defai.digital/contracts';
+import { getErrorMessage, TIMEOUT_SESSION } from '@defai.digital/contracts';
 import type { TraceStore, TraceSummary, TraceTreeNode } from '@defai.digital/trace-domain';
 import type Database from 'better-sqlite3';
 import { isValidTableName, invalidTableNameMessage } from './validation.js';
@@ -502,11 +502,27 @@ export class SqliteTraceStore implements TraceStore {
       traceMap.set(trace.traceId, trace);
     }
 
-    // Build tree recursively
-    const buildNode = (summary: TraceSummary): TraceTreeNode => {
+    // Build tree recursively with cycle detection
+    // INV-TR-023: Prevent infinite recursion from circular parent references
+    const buildNode = (summary: TraceSummary, visited: Set<string> = new Set()): TraceTreeNode => {
+      // Detect cycles - if we've already visited this trace, skip its children
+      if (visited.has(summary.traceId)) {
+        console.warn(`[trace-store] Circular reference detected for trace ${summary.traceId}, breaking cycle`);
+        return {
+          trace: summary,
+          children: [],
+          totalDurationMs: summary.durationMs ?? 0,
+          totalEventCount: summary.eventCount,
+        };
+      }
+
+      // Mark this trace as visited
+      const newVisited = new Set(visited);
+      newVisited.add(summary.traceId);
+
       const children = allTraces
         .filter((t) => t.parentTraceId === summary.traceId)
-        .map((childSummary) => buildNode(childSummary));
+        .map((childSummary) => buildNode(childSummary, newVisited));
 
       const childDuration = children.reduce(
         (sum, child) => sum + (child.totalDurationMs ?? 0),
@@ -546,7 +562,7 @@ export class SqliteTraceStore implements TraceStore {
    * @param maxAgeMs Maximum age in milliseconds (default: 1 hour)
    * @returns number of traces that were closed
    */
-  async closeStuckTraces(maxAgeMs = 3600000): Promise<number> {
+  async closeStuckTraces(maxAgeMs = TIMEOUT_SESSION): Promise<number> {
     // Input validation
     if (maxAgeMs <= 0) {
       throw new Error('maxAgeMs must be a positive number');
@@ -569,12 +585,19 @@ export class SqliteTraceStore implements TraceStore {
 
       for (const trace of stuckTraces) {
         const startTime = new Date(trace.start_time).getTime();
+        // INV-TR-026: Guard against invalid timestamps producing NaN duration
+        if (Number.isNaN(startTime)) {
+          console.warn(`[trace-store] Invalid start_time for trace ${trace.trace_id}, skipping auto-close`);
+          continue;
+        }
         const durationMs = currentTime - startTime;
 
         // Write a run.end event to close the trace
-        // Use timestamp in eventId to prevent collisions on repeated cleanup calls
+        // Use timestamp + random suffix in eventId to prevent collisions on repeated cleanup calls
+        // INV-TR-025: Prevent eventId collision in closeStuckTraces
+        const randomSuffix = Math.random().toString(36).slice(2, 8);
         const endEvent: TraceEvent = {
-          eventId: `${trace.trace_id}-auto-close-${currentTime}`,
+          eventId: `${trace.trace_id}-auto-close-${currentTime}-${randomSuffix}`,
           traceId: trace.trace_id,
           type: 'run.end',
           timestamp: new Date().toISOString(),

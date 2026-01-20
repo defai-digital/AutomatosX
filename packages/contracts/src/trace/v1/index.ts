@@ -15,6 +15,11 @@ export {
   DiscussionEndPayloadSchema,
   TraceEventSchema,
   TraceSchema,
+  // Classification schemas (PRD-2026-003)
+  ClassificationGuardResultSchema,
+  ClassificationAlternativeSchema,
+  TaskClassificationSnapshotSchema,
+  ClassificationMetricsSchema,
   createTraceEvent,
   createTrace,
   validateTraceEvent,
@@ -44,4 +49,9 @@ export {
   type Trace,
   // Trace hierarchy type
   type TraceHierarchy,
+  // Classification types (PRD-2026-003)
+  type ClassificationGuardResult,
+  type ClassificationAlternative,
+  type TaskClassificationSnapshot,
+  type ClassificationMetrics,
 } from './schema.js';

@@ -60,8 +60,17 @@
   "orchestration": {
     "maxDelegationDepth": 1,
     "canDelegateToArchetypes": ["builder"],
+    "canDelegateToMetaAgents": ["reviewer"],
     "canReadWorkspaces": ["all"],
     "canWriteToShared": false
+  },
+  "providerAffinity": {
+    "preferred": ["claude", "gemini"],
+    "taskOverrides": {
+      "code-review": "claude",
+      "review": "claude"
+    },
+    "fallbackStrategy": "cascade"
   },
   "selectionMetadata": {
     "agentCategory": "reviewer",

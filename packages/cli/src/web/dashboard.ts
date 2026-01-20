@@ -1652,6 +1652,10 @@ export function createDashboardHTML(): string {
         'discussion.provider': '\\u25C6',  // ◆ Provider response
         'discussion.consensus': '\\u2726', // ✦ Consensus reached
         'discussion.end': '\\u2713',
+        // Workflow/Agent step events
+        'workflow.start': '\\u25B6',
+        'workflow.step': '\\u2699',        // ⚙ Step execution
+        'workflow.end': '\\u25A0',
         'memory.write': '\\u270E',
         'memory.read': '\\u25B7',
         'error': '\\u26A0',
@@ -1979,9 +1983,10 @@ export function createDashboardHTML(): string {
       };
 
       // Render expanded details
-      const renderDetails = (startEvent, endEvent) => {
+      const renderDetails = (startEvent, endEvent, eventType) => {
         const payload = { ...(startEvent?.payload || {}), ...(endEvent?.payload || {}) };
         const context = { ...(startEvent?.context || {}), ...(endEvent?.context || {}) };
+        const type = eventType || startEvent?.type || endEvent?.type || '';
 
         const detailItems = [];
 
@@ -2018,6 +2023,69 @@ export function createDashboardHTML(): string {
         if (payload.votes && typeof payload.votes === 'object') {
           const voteStr = Object.entries(payload.votes).map(([k, v]) => \`\${k}: \${v}\`).join(', ');
           detailItems.push({ label: 'Votes', value: voteStr });
+        }
+
+        // workflow.step event details (Agent execution steps)
+        if (type === 'workflow.step') {
+          if (payload.stepId) detailItems.push({ label: 'Step', value: payload.stepId });
+          if (payload.stepIndex !== undefined) detailItems.push({ label: 'Index', value: \`#\${payload.stepIndex + 1}\` });
+          if (payload.provider) detailItems.push({ label: 'Provider', value: payload.provider });
+          if (context.tokenUsage) {
+            const usage = context.tokenUsage;
+            if (usage.total) detailItems.push({ label: 'Tokens', value: usage.total.toLocaleString() });
+            else if (usage.input || usage.output) {
+              detailItems.push({ label: 'Tokens', value: \`\${(usage.input || 0).toLocaleString()} in / \${(usage.output || 0).toLocaleString()} out\` });
+            }
+          }
+        }
+
+        // Agent-specific details (from enriched run.end payload)
+        if (payload.agentDisplayName) detailItems.push({ label: 'Agent', value: payload.agentDisplayName });
+        if (payload.inputTask && !payload.topic) {
+          const taskPreview = String(payload.inputTask).substring(0, 150);
+          detailItems.push({ label: 'Task', value: taskPreview + (payload.inputTask.length > 150 ? '...' : '') });
+        }
+        if (payload.tokenUsage && typeof payload.tokenUsage === 'object') {
+          const usage = payload.tokenUsage;
+          if (usage.total) detailItems.push({ label: 'Tokens', value: usage.total.toLocaleString() });
+          else if (usage.input || usage.output) {
+            detailItems.push({ label: 'Tokens', value: \`\${(usage.input || 0).toLocaleString()} in / \${(usage.output || 0).toLocaleString()} out\` });
+          }
+        }
+
+        // Research-specific details
+        if (payload.tool?.startsWith('research')) {
+          if (payload.query) {
+            const queryPreview = String(payload.query).substring(0, 150);
+            detailItems.push({ label: 'Query', value: queryPreview + (payload.query.length > 150 ? '...' : '') });
+          }
+          if (payload.sourceCount !== undefined) detailItems.push({ label: 'Sources', value: payload.sourceCount });
+          if (payload.confidence !== undefined) detailItems.push({ label: 'Confidence', value: \`\${(payload.confidence * 100).toFixed(0)}%\` });
+          if (payload.url) detailItems.push({ label: 'URL', value: payload.url });
+          if (payload.title) detailItems.push({ label: 'Title', value: payload.title });
+          if (payload.reliability) detailItems.push({ label: 'Reliability', value: payload.reliability });
+          if (payload.contentLength) detailItems.push({ label: 'Content', value: \`\${payload.contentLength.toLocaleString()} chars\` });
+        }
+
+        // Review-specific details
+        if (payload.tool?.startsWith('review')) {
+          if (payload.focus) detailItems.push({ label: 'Focus', value: payload.focus });
+          if (payload.summary?.verdict) detailItems.push({ label: 'Verdict', value: payload.summary.verdict });
+          if (payload.summary?.healthScore !== undefined) {
+            detailItems.push({ label: 'Health', value: \`\${(payload.summary.healthScore * 100).toFixed(0)}%\` });
+          }
+          if (payload.summary?.bySeverity) {
+            const sev = payload.summary.bySeverity;
+            const parts = [];
+            if (sev.critical) parts.push(\`\${sev.critical} critical\`);
+            if (sev.warning) parts.push(\`\${sev.warning} warning\`);
+            if (sev.suggestion) parts.push(\`\${sev.suggestion} suggestion\`);
+            if (sev.note) parts.push(\`\${sev.note} note\`);
+            if (parts.length > 0) detailItems.push({ label: 'Issues', value: parts.join(', ') });
+          }
+          if (payload.filesReviewedCount !== undefined) detailItems.push({ label: 'Files', value: payload.filesReviewedCount });
+          if (payload.linesAnalyzed !== undefined) detailItems.push({ label: 'Lines', value: payload.linesAnalyzed.toLocaleString() });
+          if (payload.providerId) detailItems.push({ label: 'Provider', value: payload.providerId });
         }
 
         if (payload.error) detailItems.push({ label: 'Error', value: typeof payload.error === 'object' ? payload.error.message : payload.error, isError: true });
@@ -2168,7 +2236,7 @@ export function createDashboardHTML(): string {
                     </div>
                   )}
 
-                  {isExpanded && renderDetails(event, endEvent)}
+                  {isExpanded && renderDetails(event, endEvent, baseType)}
                 </div>
               </div>
             );
@@ -2772,20 +2840,56 @@ export function createDashboardHTML(): string {
         }
         // For 'agent' command: task as initial input, then workflow steps
         else if (traceData.commandType === 'agent') {
-          // Initial task
+          // Get trace-level provider as fallback (from run.end finalProvider)
+          const traceProvider = traceData.provider || traceData.output?.finalProvider;
+
+          // Initial task - show agent name and provider
           const task = traceData.input?.task;
           if (task) {
             const taskContent = typeof task === 'object' ? task.task || JSON.stringify(task) : task;
+            const agentHeader = traceProvider
+              ? \`Agent: \${traceData.input?.agentId || 'unknown'} (via \${traceProvider})\`
+              : \`Agent: \${traceData.input?.agentId || 'unknown'}\`;
             groups.push({
-              provider: \`Agent: \${traceData.input?.agentId || 'unknown'}\`,
+              provider: agentHeader,
               exchanges: [{ input: taskContent, output: null }]
             });
           }
 
-          // Workflow steps with prompt/response
-          if (traceData.workflowSteps && traceData.workflowSteps.length > 0) {
+          // Use agentStepConversations for real LLM content (preferred, from workflow.step events)
+          if (traceData.agentStepConversations && traceData.agentStepConversations.length > 0) {
+            traceData.agentStepConversations.forEach((step, idx) => {
+              // Use step provider, fallback to trace-level provider, then 'unknown'
+              const stepProvider = step.provider || traceProvider || 'unknown';
+              const exchanges = [];
+
+              // Add response content if available
+              if (step.content) {
+                exchanges.push({
+                  input: null,
+                  output: step.content,
+                  latencyMs: step.durationMs,
+                  success: step.success,
+                  error: step.error,
+                  tokenCount: step.tokenCount,
+                  roundLabel: \`Step \${step.stepIndex + 1}\`
+                });
+              }
+
+              if (exchanges.length > 0) {
+                groups.push({
+                  provider: stepProvider,
+                  stepId: step.stepId || \`Step \${idx + 1}\`,
+                  exchanges
+                });
+              }
+            });
+          }
+          // Fallback: use workflowSteps (legacy format without LLM content)
+          else if (traceData.workflowSteps && traceData.workflowSteps.length > 0) {
             traceData.workflowSteps.forEach((step, idx) => {
-              const stepProvider = step.provider || 'claude';
+              // Use step provider, fallback to trace-level provider, then 'unknown'
+              const stepProvider = step.provider || traceProvider || 'unknown';
               const exchanges = [];
 
               // Add prompt if available
@@ -2819,15 +2923,155 @@ export function createDashboardHTML(): string {
             });
           }
 
-          // Final result
+          // Final result (or use finalContent from run.end payload)
           const result = traceData.output?.result;
-          if (result) {
-            const resultContent = typeof result === 'object'
-              ? (result.content || JSON.stringify(result, null, 2))
-              : result;
+          const finalContent = traceData.output?.finalContent;
+          const displayResult = result || finalContent;
+          if (displayResult) {
+            const resultContent = typeof displayResult === 'object'
+              ? (displayResult.content || JSON.stringify(displayResult, null, 2))
+              : displayResult;
             groups.push({
               provider: 'Final Result',
               exchanges: [{ input: null, output: resultContent }]
+            });
+          }
+        }
+        // For 'review' command: show review summary and findings
+        else if (traceData.commandType === 'review' || traceData.workflowId?.startsWith('review')) {
+          const output = traceData.output || {};
+          const input = traceData.input || {};
+          const summary = output.summary;
+          const comments = output.comments || [];
+          const filesReviewed = output.filesReviewed || [];
+          // Get provider from output or top-level trace data
+          const reviewProvider = output.providerId || traceData.provider;
+
+          // Review parameters
+          const paths = input.paths || [];
+          const focus = input.focus || 'all';
+          const pathsText = Array.isArray(paths) ? paths.join(', ') : paths;
+
+          // Show provider in the header if available
+          const headerLabel = reviewProvider
+            ? \`Code Review (\${focus}) via \${reviewProvider}\`
+            : \`Code Review (\${focus})\`;
+
+          groups.push({
+            provider: headerLabel,
+            exchanges: [{
+              input: \`Review \${pathsText}\`,
+              output: null
+            }]
+          });
+
+          // Summary section
+          if (summary) {
+            const severityLine = summary.bySeverity
+              ? \`Critical: \${summary.bySeverity.critical || 0}, Warning: \${summary.bySeverity.warning || 0}, Suggestion: \${summary.bySeverity.suggestion || 0}, Note: \${summary.bySeverity.note || 0}\`
+              : '';
+            const summaryText = [
+              \`**Verdict**: \${summary.verdict || 'N/A'}\`,
+              \`**Health Score**: \${summary.healthScore !== undefined ? (summary.healthScore * 100).toFixed(0) + '%' : 'N/A'}\`,
+              severityLine ? \`**Issues**: \${severityLine}\` : '',
+              \`**Files Reviewed**: \${output.filesReviewedCount || filesReviewed.length}\`,
+              \`**Lines Analyzed**: \${output.linesAnalyzed?.toLocaleString() || 'N/A'}\`,
+            ].filter(Boolean).join('\\n');
+
+            groups.push({
+              provider: 'Summary',
+              exchanges: [{ input: null, output: summaryText }]
+            });
+          }
+
+          // Issues found
+          if (comments.length > 0) {
+            const issuesText = comments.map((c, idx) => {
+              const severityIcon = c.severity === 'critical' ? '🔴' :
+                                   c.severity === 'warning' ? '🟠' :
+                                   c.severity === 'suggestion' ? '🟡' : '🔵';
+              const location = c.file ? \`\${c.file}\${c.line ? ':' + c.line : ''}\` : '';
+              return [
+                \`### \${severityIcon} \${c.title || 'Issue ' + (idx + 1)}\`,
+                location ? \`**Location**: \${location}\` : '',
+                c.category ? \`**Category**: \${c.category}\` : '',
+                c.body ? \`\\n\${c.body}\` : '',
+                c.suggestion ? \`\\n**Suggestion**: \${c.suggestion}\` : '',
+                c.confidence ? \`\\n*Confidence: \${(c.confidence * 100).toFixed(0)}%*\` : '',
+              ].filter(Boolean).join('\\n');
+            }).join('\\n\\n---\\n\\n');
+
+            groups.push({
+              provider: \`Issues Found (\${output.commentCount || comments.length})\`,
+              exchanges: [{ input: null, output: issuesText }]
+            });
+          } else if (output.commentCount === 0) {
+            groups.push({
+              provider: 'Result',
+              exchanges: [{ input: null, output: '✅ No issues found! Code looks good.' }]
+            });
+          }
+
+          // Files reviewed
+          if (filesReviewed.length > 0 && filesReviewed.length <= 20) {
+            const filesText = filesReviewed.map((f, idx) => \`\${idx + 1}. \${f}\`).join('\\n');
+            groups.push({
+              provider: 'Files Reviewed',
+              exchanges: [{ input: null, output: filesText }]
+            });
+          }
+        }
+        // For 'research' command: query as input, sources and synthesis as output
+        else if (traceData.commandType === 'research' || traceData.workflowId?.startsWith('research')) {
+          const output = traceData.output || {};
+          const query = output.query || traceData.input?.query;
+          const sources = output.sources || [];
+          const synthesis = output.synthesis;
+          const confidence = output.confidence;
+          const codeExamples = output.codeExamples || [];
+
+          // Research query
+          if (query) {
+            groups.push({
+              provider: 'Research Query',
+              exchanges: [{ input: query, output: null }]
+            });
+          }
+
+          // Sources found
+          if (sources.length > 0) {
+            const sourcesText = sources.map((s, idx) => {
+              const reliability = s.reliability ? \` [\${s.reliability}]\` : '';
+              const relevance = s.relevanceScore ? \` (relevance: \${(s.relevanceScore * 100).toFixed(0)}%)\` : '';
+              return \`\${idx + 1}. **\${s.title || 'Untitled'}**\${reliability}\${relevance}\\n   \${s.url || 'No URL'}\\n   \${s.snippet ? s.snippet.substring(0, 200) + (s.snippet.length > 200 ? '...' : '') : ''}\`;
+            }).join('\\n\\n');
+
+            groups.push({
+              provider: \`Sources (\${sources.length})\`,
+              exchanges: [{ input: null, output: sourcesText }]
+            });
+          }
+
+          // Code examples
+          if (codeExamples.length > 0) {
+            const codeText = codeExamples.map((code, idx) => {
+              const lang = code.language || 'code';
+              const content = typeof code === 'string' ? code : (code.content || code.code || JSON.stringify(code));
+              return \`**Example \${idx + 1}** (\${lang}):\\n\\\`\\\`\\\`\${lang}\\n\${content}\\n\\\`\\\`\\\`\`;
+            }).join('\\n\\n');
+
+            groups.push({
+              provider: \`Code Examples (\${codeExamples.length})\`,
+              exchanges: [{ input: null, output: codeText }]
+            });
+          }
+
+          // Synthesis result
+          if (synthesis) {
+            const confidenceText = confidence !== undefined ? \` (Confidence: \${(confidence * 100).toFixed(0)}%)\` : '';
+            groups.push({
+              provider: 'Synthesis' + confidenceText,
+              exchanges: [{ input: 'Synthesized answer from all sources', output: synthesis }]
             });
           }
         }
@@ -3271,6 +3515,31 @@ export function createDashboardHTML(): string {
               <span>Events: {trace.summary?.eventCount || trace.eventCount}</span>
               {trace.durationMs && <span>Duration: {trace.durationMs}ms</span>}
               {trace.commandType && <span>Type: {trace.commandType}</span>}
+              {/* Provider info - prominently displayed */}
+              {trace.provider && (
+                <span style={{
+                  background: 'var(--accent-blue)',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                }}>
+                  Provider: {trace.provider}
+                </span>
+              )}
+              {trace.model && <span>Model: {trace.model}</span>}
+              {/* For discuss: show providers list */}
+              {trace.commandType === 'discuss' && trace.input?.providers && Array.isArray(trace.input.providers) && (
+                <span style={{
+                  background: 'var(--accent-purple)',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                }}>
+                  Providers: {trace.input.providers.join(', ')}
+                </span>
+              )}
             </div>
           </div>
 
@@ -3534,6 +3803,40 @@ export function createDashboardHTML(): string {
         );
       }
 
+      const formatDuration = (ms) => {
+        if (!ms) return '-';
+        if (ms < 1000) return \`\${ms}ms\`;
+        if (ms < 60000) return \`\${(ms / 1000).toFixed(1)}s\`;
+        return \`\${(ms / 60000).toFixed(1)}m\`;
+      };
+
+      const formatTime = (isoString) => {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        return date.toLocaleString();
+      };
+
+      const getStepTypeIcon = (type) => {
+        switch (type) {
+          case 'prompt': return '💬';
+          case 'tool': return '🔧';
+          case 'conditional': return '🔀';
+          case 'loop': return '🔄';
+          case 'parallel': return '⚡';
+          case 'delegate': return '👥';
+          default: return '📋';
+        }
+      };
+
+      const getStatusColor = (status) => {
+        switch (status) {
+          case 'success': return 'var(--accent-green)';
+          case 'failure': return 'var(--accent-red)';
+          case 'running': return 'var(--accent-blue)';
+          default: return 'var(--text-muted)';
+        }
+      };
+
       return (
         <div>
           <button className="back-button" onClick={onBack}>
@@ -3545,11 +3848,219 @@ export function createDashboardHTML(): string {
               <span>ID: {workflow.workflowId}</span>
               <span>Version: {workflow.version}</span>
               <span>Steps: {(workflow.steps && workflow.steps.length) || 0}</span>
+              {workflow.executionCount > 0 && (
+                <span>Executions: {workflow.executionCount}</span>
+              )}
             </div>
             {workflow.description && (
               <p style={{ marginTop: 8, color: 'var(--text-secondary)' }}>{workflow.description}</p>
             )}
           </div>
+
+          {/* Metadata section */}
+          {workflow.metadata && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-header">
+                <span className="card-title">Metadata</span>
+              </div>
+              <div style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                {workflow.metadata.category && (
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Category</span>
+                    <div style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>{workflow.metadata.category}</div>
+                  </div>
+                )}
+                {workflow.metadata.tags && workflow.metadata.tags.length > 0 && (
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Tags</span>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+                      {workflow.metadata.tags.map((tag, i) => (
+                        <span key={i} style={{
+                          background: 'var(--bg-tertiary)',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          color: 'var(--text-secondary)'
+                        }}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {workflow.metadata.requiredAbilities && workflow.metadata.requiredAbilities.length > 0 && (
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Required Abilities</span>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+                      {workflow.metadata.requiredAbilities.map((ability, i) => (
+                        <span key={i} style={{
+                          background: 'rgba(163, 113, 247, 0.15)',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          color: 'var(--accent-purple)'
+                        }}>{ability}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Workflow Steps with details */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <span className="card-title">Workflow Steps ({workflow.steps?.length || 0})</span>
+            </div>
+            <div style={{ padding: '8px 0' }}>
+              {workflow.steps && workflow.steps.map((step, index) => (
+                <div key={step.stepId} style={{
+                  padding: '12px 16px',
+                  borderBottom: index < workflow.steps.length - 1 ? '1px solid var(--border-color)' : 'none'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: 'var(--bg-tertiary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 16,
+                      flexShrink: 0
+                    }}>
+                      {getStepTypeIcon(step.type)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 500 }}>{step.name}</span>
+                        <span style={{
+                          background: 'var(--bg-tertiary)',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: 'var(--text-muted)',
+                          textTransform: 'uppercase'
+                        }}>{step.type}</span>
+                        {step.timeout && (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            ⏱ {formatDuration(step.timeout)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
+                        {step.stepId}
+                      </div>
+                      {/* Step configuration details */}
+                      {step.config && (
+                        <div style={{
+                          marginTop: 8,
+                          padding: 10,
+                          background: 'var(--bg-primary)',
+                          borderRadius: 6,
+                          fontSize: 12
+                        }}>
+                          {step.config.agentId && (
+                            <div style={{ marginBottom: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Agent: </span>
+                              <span style={{ color: 'var(--accent-blue)' }}>{step.config.agentId}</span>
+                            </div>
+                          )}
+                          {step.config.tool && (
+                            <div style={{ marginBottom: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Tool: </span>
+                              <span style={{ color: 'var(--accent-green)' }}>{step.config.tool}</span>
+                            </div>
+                          )}
+                          {step.config.prompt && (
+                            <div>
+                              <span style={{ color: 'var(--text-muted)' }}>Prompt: </span>
+                              <pre style={{
+                                margin: '4px 0 0 0',
+                                padding: 8,
+                                background: 'var(--bg-secondary)',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: 'var(--text-secondary)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                maxHeight: 150,
+                                overflow: 'auto'
+                              }}>{step.config.prompt}</pre>
+                            </div>
+                          )}
+                          {step.config.args && Object.keys(step.config.args).length > 0 && (
+                            <div style={{ marginTop: 4 }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Args: </span>
+                              <code style={{
+                                fontSize: 11,
+                                color: 'var(--text-secondary)',
+                                background: 'var(--bg-secondary)',
+                                padding: '2px 4px',
+                                borderRadius: 2
+                              }}>{JSON.stringify(step.config.args)}</code>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Dependencies */}
+                      {step.dependencies && step.dependencies.length > 0 && (
+                        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                          Depends on: {step.dependencies.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Executions */}
+          {workflow.recentExecutions && workflow.recentExecutions.length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-header">
+                <span className="card-title">Recent Executions ({workflow.executionCount})</span>
+              </div>
+              <div style={{ padding: '8px 0' }}>
+                {workflow.recentExecutions.map((exec, index) => (
+                  <div key={exec.traceId} style={{
+                    padding: '10px 16px',
+                    borderBottom: index < workflow.recentExecutions.length - 1 ? '1px solid var(--border-color)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: getStatusColor(exec.status)
+                      }}></span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {exec.traceId.slice(0, 8)}
+                      </span>
+                      <span style={{
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: exec.status === 'success' ? 'rgba(63, 185, 80, 0.15)' :
+                                   exec.status === 'failure' ? 'rgba(248, 81, 73, 0.15)' : 'var(--bg-tertiary)',
+                        color: getStatusColor(exec.status)
+                      }}>{exec.status}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <span>{formatDuration(exec.durationMs)}</span>
+                      <span>{formatTime(exec.startTime)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Visual DAG */}
           <div className="card">
             <div className="card-header">
               <span className="card-title">Workflow DAG</span>

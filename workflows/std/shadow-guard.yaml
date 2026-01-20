@@ -1,0 +1,140 @@
+workflowId: std/shadow-guard
+version: "1.0.0"
+name: Shadow Guard
+description: |
+  Background policy enforcement workflow that monitors code changes and
+  proactively enforces security and quality policies. Designed to run
+  automatically when files change, providing real-time feedback.
+
+metadata:
+  category: governance
+  tags:
+    - security
+    - policy
+    - background
+    - guard
+  estimatedDuration: 30000
+  background: true
+
+# Trigger configuration (when integrated with file watcher)
+trigger:
+  type: file_change
+  patterns:
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.js"
+    - "**/*.jsx"
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/*.test.ts"
+    - "**/*.spec.ts"
+  debounceMs: 2000
+
+steps:
+  - stepId: quick-scan
+    name: Quick Security Scan
+    type: parallel
+    config:
+      tasks:
+        - stepId: security-review
+          type: tool
+          config:
+            tool: ax_review_analyze
+            input:
+              paths: "${input.changedFiles}"
+              focus: security
+              minConfidence: 0.8
+              maxFiles: 10
+              outputFormat: json
+        - stepId: policy-check
+          type: tool
+          config:
+            tool: ax_guard_check
+            input:
+              policyId: "${input.policyId || 'project-rules'}"
+              changedPaths: "${input.changedFiles}"
+    timeoutMs: 60000
+
+  - stepId: analyze-results
+    name: Analyze Results
+    type: prompt
+    dependencies:
+      - quick-scan
+    config:
+      prompt: |
+        Analyze the security and policy check results:
+
+        Security Review Results:
+        ${previousOutputs['quick-scan'].results['security-review']}
+
+        Policy Check Results:
+        ${previousOutputs['quick-scan'].results['policy-check']}
+
+        Summarize any violations found:
+        1. Critical security issues (immediate action required)
+        2. Policy violations (should be addressed before commit)
+        3. Warnings (consider addressing)
+
+        Format as a brief, actionable summary suitable for terminal notification.
+        If no issues found, indicate "All checks passed."
+    timeoutMs: 30000
+
+  - stepId: report
+    name: Generate Report
+    type: conditional
+    dependencies:
+      - analyze-results
+    config:
+      condition: "${previousOutputs['analyze-results'].hasViolations}"
+      then:
+        type: prompt
+        config:
+          prompt: |
+            Based on the analysis:
+            ${previousOutputs['analyze-results']}
+
+            Generate a concise terminal notification message:
+            - Use clear, actionable language
+            - Prioritize by severity
+            - Include file locations if known
+            - Keep under 500 characters for terminal readability
+
+            Format:
+            [SEVERITY] Brief summary
+            - Issue 1 (file:line if known)
+            - Issue 2
+            ...
+      else:
+        type: prompt
+        config:
+          prompt: |
+            All checks passed. Generate a brief success message.
+    timeoutMs: 15000
+
+# Output schema
+output:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [pass, warn, fail]
+    violationCount:
+      type: number
+    summary:
+      type: string
+    violations:
+      type: array
+      items:
+        type: object
+        properties:
+          severity:
+            type: string
+            enum: [critical, high, medium, low]
+          message:
+            type: string
+          file:
+            type: string
+          line:
+            type: number

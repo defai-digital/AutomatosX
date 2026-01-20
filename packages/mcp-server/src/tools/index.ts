@@ -241,6 +241,22 @@ export {
   handleDesignList,
 } from './design.js';
 
+// Git tools
+export {
+  gitStatusTool,
+  gitDiffTool,
+  commitPrepareTool,
+  prCreateTool,
+  prReviewTool,
+  handleGitStatus,
+  handleGitDiff,
+  handleCommitPrepare,
+  handlePrCreate,
+  handlePrReview,
+  GIT_TOOLS,
+  GIT_HANDLERS,
+} from './git.js';
+
 // Re-export for convenience
 import {
   workflowRunTool,
@@ -448,8 +464,21 @@ import {
   handleDesignList,
 } from './design.js';
 
+import {
+  gitStatusTool,
+  gitDiffTool,
+  commitPrepareTool,
+  prCreateTool,
+  prReviewTool,
+  handleGitStatus,
+  handleGitDiff,
+  handleCommitPrepare,
+  handlePrCreate,
+  handlePrReview,
+} from './git.js';
+
 /**
- * All available tools (81 total)
+ * All available tools (86 total)
  *
  * Removed tools:
  * - task_*, queue_* (7): Advanced orchestration, most users don't need
@@ -554,10 +583,16 @@ export const ALL_TOOLS: MCPTool[] = [
   designSchemaTool,
   designArchitectureTool,
   designListTool,
+  // Git tools (5)
+  gitStatusTool,
+  gitDiffTool,
+  commitPrepareTool,
+  prCreateTool,
+  prReviewTool,
 ];
 
 /**
- * Raw tool handlers by name (68 handlers)
+ * Raw tool handlers by name (73 handlers)
  * These are the unwrapped handlers - use TOOL_HANDLERS for production
  */
 const RAW_HANDLERS: Record<string, ToolHandler> = {
@@ -655,6 +690,12 @@ const RAW_HANDLERS: Record<string, ToolHandler> = {
   design_schema: handleDesignSchema,
   design_architecture: handleDesignArchitecture,
   design_list: handleDesignList,
+  // Git handlers (5)
+  git_status: handleGitStatus,
+  git_diff: handleGitDiff,
+  commit_prepare: handleCommitPrepare,
+  pr_create: handlePrCreate,
+  pr_review: handlePrReview,
 };
 
 /**

@@ -562,7 +562,9 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
 
     // Determine command type and extract relevant info
     const command = startPayload?.command as string | undefined;
-    // First try to detect from explicit command field
+    const tool = startPayload?.tool as string | undefined;
+    const workflowId = context?.workflowId as string | undefined;
+    // First try to detect from explicit command/tool field
     let commandType: string;
     if (command?.includes('discuss')) {
       commandType = 'discuss';
@@ -570,13 +572,19 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
       commandType = 'agent';
     } else if (command?.includes('call')) {
       commandType = 'call';
+    } else if (tool?.startsWith('research') || workflowId?.startsWith('research')) {
+      commandType = 'research';
+    } else if (tool?.startsWith('review') || workflowId?.startsWith('review')) {
+      commandType = 'review';
     } else {
       // Fallback: detect from context/payload fields when command is not set
       const hasAgentId = context?.agentId || startPayload?.agentId;
       const hasTopic = startPayload?.topic;
       const hasPrompt = startPayload?.prompt;
+      const hasQuery = startPayload?.query;
       commandType = hasAgentId ? 'agent' :
                    hasTopic ? 'discuss' :
+                   hasQuery ? 'research' :
                    hasPrompt ? 'call' : 'unknown';
     }
 
@@ -622,6 +630,8 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
       const agentId = startPayload?.agentId as string | undefined;
       // Support both 'task' (CLI) and 'input' (MCP) field names
       const taskOrInput = startPayload?.task ?? startPayload?.input;
+      // Extract provider from run.end payload (finalProvider)
+      provider = endPayload?.finalProvider as string | undefined;
       input = {
         agentId,
         task: taskOrInput,
@@ -630,6 +640,60 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
       output = {
         stepCount: endPayload?.stepCount,
         result: endPayload?.result ?? endPayload?.output,
+        // Include rich payload data for dashboard visibility
+        finalContent: endPayload?.finalContent,
+        agentDisplayName: endPayload?.agentDisplayName,
+        agentDescription: endPayload?.agentDescription,
+        inputTask: endPayload?.inputTask,
+        tokenUsage: endPayload?.tokenUsage,
+        stepResults: endPayload?.stepResults,
+        success: endPayload?.success,
+        error: endPayload?.error,
+      };
+    } else if (commandType === 'research') {
+      input = {
+        query: startPayload?.query,
+        tool: startPayload?.tool,
+        sources: startPayload?.sources,
+        maxSources: startPayload?.maxSources,
+        synthesize: startPayload?.synthesize,
+      };
+      output = {
+        // Full artifacts for dashboard visibility
+        query: endPayload?.query,
+        sources: endPayload?.sources,
+        synthesis: endPayload?.synthesis,
+        codeExamples: endPayload?.codeExamples,
+        confidence: endPayload?.confidence,
+        warnings: endPayload?.warnings,
+        // For fetch operations
+        url: endPayload?.url,
+        title: endPayload?.title,
+        contentPreview: endPayload?.contentPreview,
+        codeBlocks: endPayload?.codeBlocks,
+        reliability: endPayload?.reliability,
+        success: endPayload?.success,
+        error: endPayload?.error,
+      };
+    } else if (commandType === 'review') {
+      // Extract provider from run.end payload (providerId)
+      provider = endPayload?.providerId as string | undefined;
+      input = {
+        paths: startPayload?.paths,
+        focus: startPayload?.focus,
+        context: startPayload?.context,
+        tool: startPayload?.tool,
+        dryRun: startPayload?.dryRun,
+      };
+      output = {
+        // Full review results for dashboard visibility
+        summary: endPayload?.summary,
+        comments: endPayload?.comments,
+        filesReviewed: endPayload?.filesReviewed,
+        filesReviewedCount: endPayload?.filesReviewedCount,
+        linesAnalyzed: endPayload?.linesAnalyzed,
+        commentCount: endPayload?.commentCount,
+        providerId: endPayload?.providerId,
         success: endPayload?.success,
         error: endPayload?.error,
       };
@@ -694,6 +758,48 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
       return result;
     });
 
+    // Extract agent step conversations from workflow.step events
+    // This provides visibility into agent execution steps with LLM responses
+    const agentStepEvents = events.filter(e => e.type === 'workflow.step');
+    const agentStepConversations = agentStepEvents.map(event => {
+      const payload = event.payload;
+      const context = event.context as Record<string, unknown> | undefined;
+      const contentValue = payload?.content as string | undefined;
+      const durationMsValue = event.durationMs ?? (payload?.durationMs as number | undefined);
+      const tokenUsage = context?.tokenUsage as { input?: number; output?: number; total?: number } | undefined;
+
+      const result: {
+        stepId: string;
+        stepIndex: number;
+        provider?: string;
+        content?: string;
+        success: boolean;
+        durationMs?: number;
+        tokenCount?: number;
+        timestamp: string;
+        error?: { code: string; message: string };
+      } = {
+        stepId: (payload?.stepId ?? 'unknown') as string,
+        stepIndex: (payload?.stepIndex ?? 0) as number,
+        success: (payload?.success ?? event.status === 'success') as boolean,
+        timestamp: event.timestamp,
+      };
+
+      // Only add optional fields if they have values
+      const providerValue = (context?.providerId ?? payload?.provider) as string | undefined;
+      if (providerValue !== undefined) result.provider = providerValue;
+      if (contentValue !== undefined) result.content = contentValue;
+      if (durationMsValue !== undefined) result.durationMs = durationMsValue;
+      if (tokenUsage?.total !== undefined) result.tokenCount = tokenUsage.total;
+      else if (tokenUsage?.input !== undefined && tokenUsage?.output !== undefined) {
+        result.tokenCount = tokenUsage.input + tokenUsage.output;
+      }
+      const errorValue = payload?.error as { code: string; message: string } | undefined;
+      if (errorValue !== undefined) result.error = errorValue;
+
+      return result;
+    });
+
     // Determine status from events
     let status: 'pending' | 'running' | 'success' | 'failure' = 'pending';
     if (endEvent) {
@@ -731,6 +837,8 @@ async function handleTraceDetail(traceId: string): Promise<APIResponse> {
         workflowSteps: workflowSteps.length > 0 ? workflowSteps : undefined,
         // Provider conversations from discussion.provider events (for discussions)
         providerConversations: providerConversations.length > 0 ? providerConversations : undefined,
+        // Agent step conversations from workflow.step events (for agents)
+        agentStepConversations: agentStepConversations.length > 0 ? agentStepConversations : undefined,
         // Summary
         summary: {
           eventCount: events.length,
@@ -783,6 +891,33 @@ async function handleWorkflowDetail(workflowId: string): Promise<APIResponse> {
       }
     }
 
+    // Get recent executions of this workflow from trace store
+    const traceStore = getTraceStore();
+    const allTraces = await traceStore.listTraces(100);
+    const workflowExecutions: Array<{
+      traceId: string;
+      status: string;
+      startTime: string;
+      durationMs?: number;
+    }> = [];
+
+    for (const trace of allTraces) {
+      const events = await traceStore.getTrace(trace.traceId);
+      const startEvent = events.find(e => e.type === 'run.start');
+      const context = startEvent?.context as Record<string, unknown> | undefined;
+
+      // Check if this trace is for this workflow
+      if (context?.workflowId === workflowId ||
+          (startEvent?.payload as Record<string, unknown>)?.workflowId === workflowId) {
+        workflowExecutions.push({
+          traceId: trace.traceId,
+          status: trace.status,
+          startTime: trace.startTime,
+          ...(trace.durationMs !== undefined && { durationMs: trace.durationMs }),
+        });
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -790,8 +925,22 @@ async function handleWorkflowDetail(workflowId: string): Promise<APIResponse> {
         version: workflow.version,
         name: workflow.name,
         description: workflow.description,
-        steps: workflow.steps,
+        // Full step details with configs
+        steps: workflow.steps.map(step => ({
+          stepId: step.stepId,
+          name: step.name ?? step.stepId,
+          type: step.type,
+          timeout: step.timeout,
+          dependencies: step.dependencies,
+          config: step.config,
+        })),
+        // Metadata if available
+        metadata: workflow.metadata,
+        // DAG for visualization
         dag: { nodes, edges },
+        // Recent executions
+        recentExecutions: workflowExecutions.slice(0, 10),
+        executionCount: workflowExecutions.length,
       },
     };
   } catch (error) {

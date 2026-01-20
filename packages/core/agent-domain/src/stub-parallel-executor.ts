@@ -12,7 +12,7 @@ import {
   type ParallelExecutionConfig,
   createDefaultParallelExecutionConfig,
   type AgentWorkflowStep,
-  TIMEOUT_ORCHESTRATION_EXECUTION,
+  TIMEOUT_AGENT_STEP_DEFAULT,
   getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
@@ -95,7 +95,9 @@ function createStubParallelExecutor(
           const stepStart = Date.now();
           // Create cancellable timeout to prevent timer leaks
           let timeoutId: ReturnType<typeof setTimeout> | undefined;
-          const stepTimeoutMs = cfg.groupTimeoutMs ?? TIMEOUT_ORCHESTRATION_EXECUTION;
+          // Use groupTimeoutMs if provided, otherwise fall back to 20-minute default
+          // This should rarely be needed since EnhancedAgentExecutor now sets groupTimeoutMs
+          const stepTimeoutMs = cfg.groupTimeoutMs ?? TIMEOUT_AGENT_STEP_DEFAULT;
           const timeoutPromise = new Promise((_, reject) => {
             timeoutId = setTimeout(() => { reject(new Error('Step timed out')); }, stepTimeoutMs);
           });

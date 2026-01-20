@@ -4,6 +4,8 @@
  * Coordinates ability loading and injection into agent contexts.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import type { Ability, AbilityInjectionResult } from '@defai.digital/contracts';
 import type {
   AbilityRegistry,
@@ -12,6 +14,27 @@ import type {
   AbilityDomainConfig,
 } from './types.js';
 import { DEFAULT_ABILITY_DOMAIN_CONFIG } from './types.js';
+
+/**
+ * Load project rules from .automatosx/rules.md if it exists
+ */
+function loadProjectRules(workingDir?: string): string | undefined {
+  const baseDir = workingDir ?? process.cwd();
+  const rulesPath = path.join(baseDir, '.automatosx', 'rules.md');
+
+  try {
+    if (fs.existsSync(rulesPath)) {
+      const content = fs.readFileSync(rulesPath, 'utf-8').trim();
+      if (content.length > 0) {
+        return content;
+      }
+    }
+  } catch {
+    // Silently ignore errors reading rules file
+  }
+
+  return undefined;
+}
 
 /**
  * Default ability manager implementation
@@ -53,6 +76,7 @@ export class DefaultAbilityManager implements AbilityManager {
 
   /**
    * Inject abilities into agent context
+   * Also auto-injects .automatosx/rules.md if present in the project
    */
   async injectAbilities(
     agentId: string,
@@ -76,6 +100,20 @@ export class DefaultAbilityManager implements AbilityManager {
     const contentParts: string[] = [];
     let currentTokens = 0;
     let truncated = false;
+
+    // Auto-inject project rules if present (.automatosx/rules.md)
+    const projectRules = loadProjectRules();
+    if (projectRules) {
+      const rulesHeader = '## Project Rules\n\nThe following rules MUST be followed for all code in this project:\n\n';
+      const rulesContent = rulesHeader + projectRules;
+      const rulesTokens = this.estimateTokens(rulesContent);
+
+      if (rulesTokens <= maxTokens) {
+        contentParts.push(rulesContent);
+        injectedAbilities.push('_project-rules');
+        currentTokens += rulesTokens;
+      }
+    }
 
     for (const ability of abilities) {
       const abilityTokens = this.estimateTokens(ability.content);

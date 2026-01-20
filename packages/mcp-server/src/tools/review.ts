@@ -392,7 +392,25 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
     };
     reviewStore.set(result.resultId, storedResult);
 
-    // Emit run.end trace event on success
+    // Emit run.end trace event on success with full results for dashboard visibility
+    // Limit comments to avoid bloating trace storage (show top issues by severity)
+    const topComments = result.comments
+      .sort((a, b) => {
+        const severityOrder = { critical: 0, warning: 1, suggestion: 2, note: 3 };
+        return (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4);
+      })
+      .slice(0, 20) // Top 20 most severe issues
+      .map(c => ({
+        severity: c.severity,
+        title: c.title,
+        file: c.file,
+        line: c.line,
+        category: c.category,
+        body: c.body?.slice(0, 500), // Truncate long explanations
+        suggestion: c.suggestion?.slice(0, 300),
+        confidence: c.confidence,
+      }));
+
     await traceStore.write({
       eventId: randomUUID(),
       traceId,
@@ -409,14 +427,30 @@ export const handleReviewAnalyze: ToolHandler = async (args) => {
       },
       payload: {
         success: true,
-        resultId: result.resultId,
-        focus,
-        filesReviewed: result.filesReviewed.length,
-        linesAnalyzed: result.linesAnalyzed,
-        commentCount: result.comments.length,
-        healthScore: result.summary.healthScore,
-        providerId: result.providerId,
         tool: 'review_analyze',
+        resultId: result.resultId,
+        // Review parameters
+        focus,
+        paths,
+        context,
+        providerId: result.providerId,
+        // Full summary for dashboard display
+        summary: {
+          verdict: result.summary.verdict,
+          healthScore: result.summary.healthScore,
+          bySeverity: result.summary.bySeverity,
+        },
+        // Files reviewed (full list for small sets, truncated for large)
+        filesReviewed: result.filesReviewed.length <= 20
+          ? result.filesReviewed
+          : [...result.filesReviewed.slice(0, 20), `... and ${result.filesReviewed.length - 20} more`],
+        filesReviewedCount: result.filesReviewed.length,
+        linesAnalyzed: result.linesAnalyzed,
+        // Issues found (top 20 by severity for dashboard)
+        comments: topComments,
+        commentCount: result.comments.length,
+        // Timing
+        totalDurationMs: result.durationMs,
       },
     });
 

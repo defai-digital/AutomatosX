@@ -1,11 +1,13 @@
 {
   "agentId": "researcher",
-  "displayName": "Riley",
+  "displayName": "Researcher",
   "version": "2.0.0",
-  "description": "Expert in technical research with live web search, documentation fetching, and knowledge synthesis",
-  "role": "Technical Researcher",
-  "team": "research",
+  "description": "Research and analysis specialist that dynamically loads research, data science, and documentation capabilities based on task context. Combines researcher, data-scientist, writer, and domain expert expertise.",
+  "role": "Research & Analysis Specialist",
+  "team": "core",
   "enabled": true,
+  "archetype": true,
+  "replaces": ["data-scientist", "writer", "aerospace-scientist", "quantum-engineer", "creative-marketer"],
   "expertise": [
     "technical-research",
     "literature-review",
@@ -14,7 +16,9 @@
     "documentation",
     "comparative-analysis",
     "web-research",
-    "live-documentation"
+    "data-science",
+    "technical-writing",
+    "domain-expertise"
   ],
   "capabilities": [
     "research",
@@ -25,7 +29,9 @@
     "technology-evaluation",
     "report-writing",
     "web-search",
-    "live-fetch"
+    "live-fetch",
+    "data-analysis",
+    "technical-writing"
   ],
   "abilities": {
     "core": [
@@ -35,9 +41,22 @@
     ],
     "taskBased": {
       "research": ["technical-research", "literature-review", "web-research"],
-      "analyze": ["comparative-analysis", "trend-analysis"],
-      "document": ["documentation", "report-writing"],
-      "evaluate": ["technology-evaluation", "summarization"]
+      "analyze": ["comparative-analysis", "trend-analysis", "data-analysis"],
+      "document": ["documentation", "report-writing", "technical-writing"],
+      "evaluate": ["technology-evaluation", "summarization"],
+      "domain": ["domain-expertise", "specialized-knowledge"]
+    }
+  },
+  "dynamicCapabilities": {
+    "detection": "auto",
+    "sources": ["task-keywords", "domain-context"],
+    "mappings": {
+      "data-science": ["statistics", "ml-analysis", "data-visualization", "python-data"],
+      "documentation": ["markdown", "api-documentation", "user-guides", "technical-specs"],
+      "research": ["literature-review", "synthesis", "citations", "methodology"],
+      "aerospace": ["orbital-mechanics", "propulsion", "systems-engineering"],
+      "quantum": ["quantum-computing", "qubits", "quantum-algorithms"],
+      "marketing": ["content-strategy", "copywriting", "brand-voice"]
     }
   },
   "personality": {
@@ -46,7 +65,8 @@
     "communicationStyle": "Comprehensive yet accessible, with clear citations"
   },
   "orchestration": {
-    "maxDelegationDepth": 0,
+    "maxDelegationDepth": 1,
+    "canDelegateToArchetypes": ["builder"],
     "canReadWorkspaces": ["all"],
     "canWriteToShared": true
   },

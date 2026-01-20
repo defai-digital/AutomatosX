@@ -299,7 +299,7 @@ export const handleResearchQuery: ToolHandler = async (args) => {
     const agent = getResearchAgent();
     const result = await agent.research(request);
 
-    // Emit run.end trace event on success
+    // Emit run.end trace event on success with full artifacts for dashboard visibility
     await traceStore.write({
       eventId: randomUUID(),
       traceId,
@@ -317,12 +317,28 @@ export const handleResearchQuery: ToolHandler = async (args) => {
       payload: {
         success: true,
         resultId: result.resultId,
-        sourceCount: result.sources.length,
-        synthesisLength: result.synthesis.length,
-        codeExampleCount: result.codeExamples.length,
-        confidence: result.confidence,
-        warningCount: result.warnings.length,
         tool: 'research_query',
+        // Full query for dashboard display
+        query: result.query,
+        // Full sources array for dashboard (not just count)
+        sources: result.sources.map((s: ResearchSource) => ({
+          sourceId: s.sourceId,
+          type: s.type,
+          url: s.url,
+          title: s.title,
+          snippet: s.snippet,
+          reliability: s.reliability,
+          relevanceScore: s.relevanceScore,
+        })),
+        // Full synthesis text for dashboard visibility (like discuss stores synthesis)
+        synthesis: result.synthesis,
+        // Full code examples for dashboard
+        codeExamples: result.codeExamples,
+        // Metadata
+        confidence: result.confidence,
+        warnings: result.warnings,
+        sourceCount: result.sources.length,
+        totalDurationMs: result.durationMs,
       },
     });
 
@@ -439,13 +455,14 @@ export const handleResearchFetch: ToolHandler = async (args) => {
     const agent = getResearchAgent();
     const result = await agent.fetch(request);
 
-    // Emit run.end trace event on success
+    // Emit run.end trace event on success with full artifacts for dashboard visibility
+    const fetchDurationMs = Date.now() - new Date(startTime).getTime();
     await traceStore.write({
       eventId: randomUUID(),
       traceId,
       type: 'run.end',
       timestamp: new Date().toISOString(),
-      durationMs: Date.now() - new Date(startTime).getTime(),
+      durationMs: fetchDurationMs,
       status: result.success ? 'success' : 'failure',
       context: {
         workflowId: 'research-fetch',
@@ -456,12 +473,20 @@ export const handleResearchFetch: ToolHandler = async (args) => {
       },
       payload: {
         success: result.success,
+        tool: 'research_fetch',
+        // Full URL and title for dashboard display
         url: result.url,
         title: result.title,
+        // Content preview (truncated for storage efficiency, full content too large)
+        contentPreview: result.content?.slice(0, 1000) ?? '',
         contentLength: result.content?.length ?? 0,
-        codeBlockCount: result.codeBlocks?.length ?? 0,
+        // Full code blocks for dashboard (these are valuable)
+        codeBlocks: result.codeBlocks ?? [],
+        // Metadata
         reliability: result.reliability,
-        tool: 'research_fetch',
+        fetchedAt: result.fetchedAt,
+        totalDurationMs: fetchDurationMs,
+        error: result.error,
       },
     });
 
@@ -581,13 +606,14 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
     const agent = getResearchAgent();
     const synthesis = await agent.synthesize(request);
 
-    // Emit run.end trace event on success
+    // Emit run.end trace event on success with full artifacts for dashboard visibility
+    const synthesizeDurationMs = Date.now() - new Date(startTime).getTime();
     await traceStore.write({
       eventId: randomUUID(),
       traceId,
       type: 'run.end',
       timestamp: new Date().toISOString(),
-      durationMs: Date.now() - new Date(startTime).getTime(),
+      durationMs: synthesizeDurationMs,
       status: 'success',
       context: {
         workflowId: 'research-synthesize',
@@ -598,10 +624,22 @@ export const handleResearchSynthesize: ToolHandler = async (args) => {
       },
       payload: {
         success: true,
-        synthesisLength: synthesis.length,
-        sourcesUsed: sources.length,
-        style: args.style ?? 'detailed',
         tool: 'research_synthesize',
+        // Full query for context
+        query: args.query,
+        // Full synthesis text for dashboard visibility
+        synthesis,
+        // Source summaries for dashboard (titles and URLs)
+        sources: sources.map((s) => ({
+          sourceId: s.sourceId,
+          title: s.title,
+          url: s.url,
+          reliability: s.reliability,
+        })),
+        // Metadata
+        style: args.style ?? 'detailed',
+        sourcesUsed: sources.length,
+        totalDurationMs: synthesizeDurationMs,
       },
     });
 

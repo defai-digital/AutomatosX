@@ -24,6 +24,7 @@ import {
   type CheckpointConfig,
   type ParallelExecutionConfig,
   LIMIT_ABILITY_TOKENS_AGENT,
+  TIMEOUT_AGENT_STEP_DEFAULT,
   getErrorMessage,
 } from '@defai.digital/contracts';
 import type {
@@ -149,9 +150,15 @@ export class EnhancedAgentExecutor implements AgentExecutor {
     this.checkpointManagerFactory = config.checkpointManagerFactory ?? stubCheckpointManagerFactory;
 
     // Initialize parallel executor using injected factory (or stub)
+    // IMPORTANT: Pass defaultTimeout as groupTimeoutMs if not explicitly set
+    // This ensures the intended 20-minute timeout is used, not the 5-minute fallback
+    const defaultGroupTimeout = config.defaultTimeout ?? TIMEOUT_AGENT_STEP_DEFAULT;
     this.parallelConfig = {
       ...createDefaultParallelExecutionConfig(),
       ...config.parallelConfig,
+      // Set groupTimeoutMs AFTER spread - use explicit value from parallelConfig if set,
+      // otherwise fall back to defaultTimeout (20 min) instead of TIMEOUT_ORCHESTRATION_EXECUTION (5 min)
+      groupTimeoutMs: config.parallelConfig?.groupTimeoutMs ?? defaultGroupTimeout,
     };
     const parallelExecutorFactory = config.parallelExecutorFactory ?? stubParallelExecutorFactory;
     this.parallelExecutor = parallelExecutorFactory(this.parallelConfig);

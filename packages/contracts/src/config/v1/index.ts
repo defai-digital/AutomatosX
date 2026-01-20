@@ -28,6 +28,11 @@ export {
   WorkspaceConfigSchema,
   UserPreferencesSchema,
   MonitorConfigSchema,
+  // Shadow Guard configuration schemas
+  ShadowGuardTriggerSchema,
+  ShadowGuardNotificationsSchema,
+  ShadowGuardAutoFixSchema,
+  ShadowGuardConfigSchema,
   AutomatosXConfigSchema,
   // Types
   type LogLevel,
@@ -48,6 +53,11 @@ export {
   type WorkspaceConfig,
   type UserPreferences,
   type MonitorConfig,
+  // Shadow Guard types
+  type ShadowGuardTrigger,
+  type ShadowGuardNotifications,
+  type ShadowGuardAutoFix,
+  type ShadowGuardConfig,
   type AutomatosXConfig,
   // Functions
   validateConfig,

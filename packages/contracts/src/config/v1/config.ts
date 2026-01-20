@@ -230,6 +230,62 @@ export const MonitorConfigSchema = z.object({
 export type MonitorConfig = z.infer<typeof MonitorConfigSchema>;
 
 // ============================================================================
+// Shadow Guard Configuration Schema
+// ============================================================================
+
+/**
+ * Shadow Guard trigger pattern configuration
+ */
+export const ShadowGuardTriggerSchema = z.object({
+  pattern: z.string().min(1),
+  exclude: z.boolean().default(false),
+});
+export type ShadowGuardTrigger = z.infer<typeof ShadowGuardTriggerSchema>;
+
+/**
+ * Shadow Guard notifications configuration
+ */
+export const ShadowGuardNotificationsSchema = z.object({
+  terminal: z.boolean().default(true),
+  dashboard: z.boolean().default(true),
+  sound: z.boolean().default(false),
+});
+export type ShadowGuardNotifications = z.infer<typeof ShadowGuardNotificationsSchema>;
+
+/**
+ * Shadow Guard auto-fix configuration
+ */
+export const ShadowGuardAutoFixSchema = z.object({
+  enabled: z.boolean().default(false),
+  requireApproval: z.boolean().default(true),
+  maxAutoFixes: z.number().int().min(0).max(10).default(3),
+});
+export type ShadowGuardAutoFix = z.infer<typeof ShadowGuardAutoFixSchema>;
+
+/**
+ * Shadow Guard configuration for background policy enforcement
+ * Stored in .automatosx/shadow-guard.yaml
+ */
+export const ShadowGuardConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  triggers: z.array(ShadowGuardTriggerSchema).default([
+    { pattern: '**/*.ts' },
+    { pattern: '**/*.tsx' },
+    { pattern: '**/*.js' },
+    { pattern: '**/*.jsx' },
+    { pattern: '**/node_modules/**', exclude: true },
+    { pattern: '**/dist/**', exclude: true },
+  ]),
+  debounceMs: z.number().int().min(500).max(10000).default(2000),
+  policies: z.array(z.string()).default(['project-rules']),
+  focusAreas: z.array(z.enum(['security', 'architecture', 'performance', 'maintainability', 'correctness'])).default(['security']),
+  minConfidence: z.number().min(0).max(1).default(0.8),
+  notifications: ShadowGuardNotificationsSchema.default({}),
+  autoFix: ShadowGuardAutoFixSchema.default({}),
+});
+export type ShadowGuardConfig = z.infer<typeof ShadowGuardConfigSchema>;
+
+// ============================================================================
 // Main Configuration Schema
 // ============================================================================
 

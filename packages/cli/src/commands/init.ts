@@ -65,6 +65,9 @@ const NODE_EXECUTABLE = 'node';
 /** Conventions file name in context directory */
 const CONVENTIONS_FILENAME = 'conventions.md';
 
+/** Rules file name for agent behavior */
+const RULES_FILENAME = 'rules.md';
+
 /** Default error message when error type is unknown */
 const FALLBACK_ERROR_MESSAGE = 'Unknown error';
 
@@ -585,6 +588,55 @@ const CONVENTIONS_TEMPLATE = `# Project Conventions
 - Example: Prefix interfaces with I (e.g., IUserService)
 `;
 
+/**
+ * Rules template - defines rules that AI agents MUST follow
+ * This is automatically injected into all agent contexts
+ */
+const RULES_TEMPLATE = `# Project Rules
+
+This file defines rules that AutomatosX agents MUST follow when working on this codebase.
+Edit this file to customize AI agent behavior for your project.
+
+## Code Style
+
+- Follow the existing code style in the project
+- Use consistent naming conventions
+- Add comments for complex logic
+- Keep functions focused and small
+
+## Architecture
+
+- Follow the established project structure
+- Maintain separation of concerns
+- Use dependency injection where appropriate
+- Avoid circular dependencies
+
+## Testing
+
+- Write tests for new functionality
+- Maintain existing test coverage
+- Use descriptive test names
+
+## Security
+
+- Never commit secrets or credentials
+- Validate all user inputs
+- Use parameterized queries for databases
+- Follow the principle of least privilege
+
+## Dependencies
+
+- Prefer well-maintained packages
+- Minimize new dependencies when possible
+- Document why new dependencies are needed
+
+## Documentation
+
+- Update documentation when changing APIs
+- Add JSDoc/docstrings for public functions
+- Keep README up to date
+`;
+
 const PROJECT_CONFIG_TEMPLATE = {
   version: DEFAULT_SCHEMA_VERSION,
   iterate: {
@@ -614,6 +666,7 @@ async function createProjectStructure(
   const contextDir = join(automatosxDir, CONTEXT_DIRECTORY);
   const configPath = join(automatosxDir, CONFIG_FILENAME);
   const conventionsPath = join(contextDir, CONVENTIONS_FILENAME);
+  const rulesPath = join(automatosxDir, RULES_FILENAME);
 
   // Create directories in parallel (both have recursive: true, so order doesn't matter)
   await Promise.all([
@@ -622,9 +675,10 @@ async function createProjectStructure(
   ]);
 
   // Check file existence in parallel
-  const [configExists, conventionsExists] = await Promise.all([
+  const [configExists, conventionsExists, rulesExists] = await Promise.all([
     fileExists(configPath),
     fileExists(conventionsPath),
+    fileExists(rulesPath),
   ]);
 
   // Prepare write operations based on existence checks
@@ -644,6 +698,13 @@ async function createProjectStructure(
     created.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}`);
   } else {
     skipped.push(`${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME} (already exists)`);
+  }
+
+  if (!rulesExists || force) {
+    writeOperations.push(writeFile(rulesPath, RULES_TEMPLATE));
+    created.push(`${DATA_DIR_NAME}/${RULES_FILENAME}`);
+  } else {
+    skipped.push(`${DATA_DIR_NAME}/${RULES_FILENAME} (already exists)`);
   }
 
   // Execute writes in parallel
@@ -798,9 +859,10 @@ export async function initCommand(
       }
       outputLines.push('');
       outputLines.push(`${COLORS.bold}Next Steps${COLORS.reset}`);
-      outputLines.push(`  1. Edit ${COLORS.cyan}${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}${COLORS.reset} to add your project conventions`);
-      outputLines.push(`  2. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify providers`);
-      outputLines.push(`  3. Use ${COLORS.cyan}ax call claude "your task"${COLORS.reset} to start`);
+      outputLines.push(`  1. Edit ${COLORS.cyan}${DATA_DIR_NAME}/${RULES_FILENAME}${COLORS.reset} to customize AI agent rules`);
+      outputLines.push(`  2. Edit ${COLORS.cyan}${DATA_DIR_NAME}/${CONTEXT_DIRECTORY}/${CONVENTIONS_FILENAME}${COLORS.reset} to add your project conventions`);
+      outputLines.push(`  3. Run ${COLORS.cyan}ax doctor${COLORS.reset} to verify providers`);
+      outputLines.push(`  4. Use ${COLORS.cyan}ax call claude "your task"${COLORS.reset} to start`);
       outputLines.push('');
     }
 

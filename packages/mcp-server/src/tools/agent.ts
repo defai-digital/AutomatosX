@@ -557,7 +557,68 @@ export const handleAgentRun: ToolHandler = async (args) => {
       }
     }
 
-    // Emit run.end trace event with success/failure
+    // Emit workflow.step events for each step result (granular tracing)
+    // This provides visibility into individual step execution in the dashboard
+    if (result.stepResults && result.stepResults.length > 0) {
+      let stepIndex = 0;
+      for (const stepResult of result.stepResults) {
+        // Extract content from step output for display
+        const stepOutput = stepResult.output as Record<string, unknown> | undefined;
+        const content = stepOutput?.content as string | undefined;
+        const provider = stepOutput?.provider as string | undefined;
+        const usage = stepOutput?.usage as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
+
+        const stepEvent: TraceEvent = {
+          eventId: randomUUID(),
+          traceId,
+          type: 'workflow.step',
+          timestamp: new Date().toISOString(),
+          durationMs: stepResult.durationMs,
+          status: stepResult.success ? 'success' : 'failure',
+          context: {
+            agentId,
+            stepId: stepResult.stepId,
+            providerId: provider,
+            parentTraceId: traceHierarchy.parentTraceId,
+            rootTraceId: traceHierarchy.rootTraceId,
+            traceDepth: traceHierarchy.traceDepth,
+            sessionId: traceHierarchy.sessionId,
+            tokenUsage: usage ? {
+              input: usage.inputTokens,
+              output: usage.outputTokens,
+              total: usage.totalTokens,
+            } : undefined,
+          },
+          payload: {
+            stepId: stepResult.stepId,
+            stepIndex,
+            success: stepResult.success,
+            durationMs: stepResult.durationMs,
+            // Include content preview (truncated for large responses)
+            content: content ? (content.length > 2000 ? content.slice(0, 2000) + '...' : content) : undefined,
+            provider,
+            output: stepOutput,
+            error: stepResult.error ? {
+              code: stepResult.error.code,
+              message: stepResult.error.message,
+            } : undefined,
+          },
+        };
+        await traceStore.write(stepEvent);
+        stepIndex++;
+      }
+    }
+
+    // Extract final output content for dashboard display
+    const finalOutput = result.output as Record<string, unknown> | undefined;
+    const finalContent = finalOutput?.content as string | undefined;
+    const finalProvider = finalOutput?.provider as string | undefined;
+    const finalUsage = finalOutput?.usage as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
+
+    // Get input task description for dashboard context
+    const inputTask = (input.task as string) ?? (input.prompt as string) ?? (input.query as string) ?? JSON.stringify(input).slice(0, 500);
+
+    // Emit run.end trace event with success/failure and rich payload for dashboard
     const endEvent: TraceEvent = {
       eventId: randomUUID(),
       traceId,
@@ -576,15 +637,35 @@ export const handleAgentRun: ToolHandler = async (args) => {
       payload: {
         command: 'agent',
         agentId,
+        // Agent metadata for dashboard display
+        agentDisplayName: agent.displayName,
+        agentDescription: agent.description,
+        // Input for context
+        inputTask,
+        // Success/failure status
         success: result.success,
-        output: result.output as Record<string, unknown> | undefined,
+        // Final output content for dashboard visibility (like discuss stores synthesis)
+        finalContent: finalContent ? (finalContent.length > 5000 ? finalContent.slice(0, 5000) + '...' : finalContent) : undefined,
+        finalProvider,
+        // Token usage summary
+        tokenUsage: finalUsage ? {
+          input: finalUsage.inputTokens,
+          output: finalUsage.outputTokens,
+          total: finalUsage.totalTokens,
+        } : undefined,
+        // Step execution summary
         stepCount: result.stepResults?.length ?? 0,
-        result: result.output,
-        stepResults: result.stepResults?.map((s) => ({
-          stepId: s.stepId,
-          success: s.success,
-          durationMs: s.durationMs,
-        })),
+        stepResults: result.stepResults?.map((s) => {
+          const stepOutput = s.output as Record<string, unknown> | undefined;
+          const stepContent = stepOutput?.content as string | undefined;
+          return {
+            stepId: s.stepId,
+            success: s.success,
+            durationMs: s.durationMs,
+            // Include step content preview for dashboard drill-down
+            contentPreview: stepContent ? stepContent.slice(0, 500) : undefined,
+          };
+        }),
         totalDurationMs: result.totalDurationMs,
         error: result.error ? {
           code: result.error.code,

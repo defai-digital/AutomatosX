@@ -23,21 +23,16 @@ import {
   PROVIDER_DEFAULTS,
   TIMEOUT_HEALTH_CHECK,
   TIMEOUT_WORKFLOW_STEP,
-  DATA_DIR_NAME,
-  AGENTS_FILENAME,
   type AutomatosXConfig,
   type ProviderId,
   type ProviderDetectionResult,
 } from '@defai.digital/contracts';
 import { COLORS, ICONS } from '../utils/terminal.js';
 import { getDatabase, getDatabasePath } from '../utils/database.js';
-import {
-  createPersistentAgentRegistry,
-  createAgentLoader,
-} from '@defai.digital/agent-domain';
+import { createAgentLoader } from '@defai.digital/agent-domain';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve, join } from 'node:path';
-import { homedir } from 'node:os';
+import { dirname, resolve } from 'node:path';
+import { getCLIAgentRegistry, getGlobalAgentStoragePath } from '../shared-cli-registry.js';
 
 const execAsync = promisify(exec);
 
@@ -235,19 +230,11 @@ function getBundledAgentsPath(): string {
 }
 
 /**
- * Get the global agents storage path
- * Uses ~/.automatosx/agents.json
- */
-function getGlobalAgentsPath(): string {
-  return join(homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
-}
-
-/**
  * Syncs bundled agents to local storage
  * Updates existing agents with latest bundled versions
  */
 async function syncAgents(force: boolean): Promise<AgentSyncResult> {
-  const storagePath = getGlobalAgentsPath();
+  const storagePath = getGlobalAgentStoragePath();
   const updatedAgents: string[] = [];
   const newAgents: string[] = [];
 
@@ -271,8 +258,8 @@ async function syncAgents(force: boolean): Promise<AgentSyncResult> {
       };
     }
 
-    // Get the agent registry
-    const registry = createPersistentAgentRegistry({ storagePath });
+    // Get the shared agent registry
+    const registry = await getCLIAgentRegistry();
 
     // Get existing agents
     const existingAgents = await registry.list();

@@ -13,6 +13,27 @@ const MS_PER_MINUTE = SECONDS_PER_MINUTE * MS_PER_SECOND;
 /** Milliseconds per hour */
 const MS_PER_HOUR = SECONDS_PER_HOUR * MS_PER_SECOND;
 
+/** Valid format options */
+const VALID_FORMATS = ['json', 'text'] as const;
+
+/**
+ * Parse a positive integer from a string with strict validation.
+ * Returns undefined if the string is not a valid positive integer.
+ *
+ * @param value - The string value to parse
+ * @param optionName - The option name for warning messages
+ * @returns The parsed positive integer, or undefined if invalid
+ */
+function parsePositiveInt(value: string, optionName: string): number | undefined {
+  // Use Number() for strict parsing (unlike parseInt which accepts "10abc" as 10)
+  const num = Number(value);
+  if (Number.isInteger(num) && num > 0) {
+    return num;
+  }
+  console.warn(`Warning: Invalid value "${value}" for --${optionName}. Must be a positive integer.`);
+  return undefined;
+}
+
 /**
  * Default CLI options
  */
@@ -131,8 +152,12 @@ export function parseArgs(argv: string[]): ParsedCommand {
           options.verbose = true;
           break;
         case 'format':
-          if (nextArg === 'json' || nextArg === 'text') {
-            options.format = nextArg;
+          if (nextArg !== undefined && !nextArg.startsWith('-')) {
+            if (nextArg === 'json' || nextArg === 'text') {
+              options.format = nextArg;
+            } else {
+              console.warn(`Warning: Invalid format "${nextArg}". Valid formats: ${VALID_FORMATS.join(', ')}. Using default "text".`);
+            }
             i++;
           }
           break;
@@ -156,8 +181,8 @@ export function parseArgs(argv: string[]): ParsedCommand {
           break;
         case 'limit':
           if (nextArg !== undefined && !nextArg.startsWith('-')) {
-            const num = parseInt(nextArg, 10);
-            if (!isNaN(num)) {
+            const num = parsePositiveInt(nextArg, 'limit');
+            if (num !== undefined) {
               options.limit = num;
             }
             i++;
@@ -175,8 +200,8 @@ export function parseArgs(argv: string[]): ParsedCommand {
           break;
         case 'max-iterations':
           if (nextArg !== undefined && !nextArg.startsWith('-')) {
-            const num = parseInt(nextArg, 10);
-            if (!isNaN(num)) {
+            const num = parsePositiveInt(nextArg, 'max-iterations');
+            if (num !== undefined) {
               options.maxIterations = num;
             }
             i++;
@@ -224,8 +249,8 @@ export function parseArgs(argv: string[]): ParsedCommand {
           break;
         case 'max-tokens':
           if (nextArg !== undefined && !nextArg.startsWith('-')) {
-            const num = parseInt(nextArg, 10);
-            if (!isNaN(num)) {
+            const num = parsePositiveInt(nextArg, 'max-tokens');
+            if (num !== undefined) {
               options.maxTokens = num;
             }
             i++;
@@ -251,8 +276,8 @@ export function parseArgs(argv: string[]): ParsedCommand {
           break;
         case 'refresh':
           if (nextArg !== undefined && !nextArg.startsWith('-')) {
-            const num = parseInt(nextArg, 10);
-            if (!isNaN(num)) {
+            const num = parsePositiveInt(nextArg, 'refresh');
+            if (num !== undefined) {
               options.refresh = num;
             }
             i++;

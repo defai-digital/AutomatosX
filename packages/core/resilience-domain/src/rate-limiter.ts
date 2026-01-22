@@ -158,6 +158,7 @@ export function createRateLimiter(
       if (tokens >= request.tokens) {
         queue.shift();
         tokens -= request.tokens;
+        llmTokensUsed += request.tokens; // Track LLM tokens used
         requestsAllowed++;
         request.resolve({
           acquired: true,
@@ -192,6 +193,7 @@ export function createRateLimiter(
       // Try immediate acquisition
       if (tokens >= requestTokens && queue.length === 0) {
         tokens -= requestTokens;
+        llmTokensUsed += requestTokens; // Track LLM tokens used
         requestsAllowed++;
         return { acquired: true, waitedMs: 0 };
       }
@@ -224,6 +226,7 @@ export function createRateLimiter(
 
       if (tokens >= requestTokens && queue.length === 0) {
         tokens -= requestTokens;
+        llmTokensUsed += requestTokens; // Track LLM tokens used
         requestsAllowed++;
         return true;
       }

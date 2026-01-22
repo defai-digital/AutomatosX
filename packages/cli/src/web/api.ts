@@ -15,12 +15,11 @@
  * handleTraces, handleWorkflowEvents, handleClassificationStats
  */
 
-import * as os from 'node:os';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage } from '@defai.digital/contracts';
+import { getErrorMessage } from '@defai.digital/contracts';
 
 // ============================================================================
 // INV-API-VAL-001: Input Validation Constants
@@ -106,10 +105,7 @@ import {
   getSessionManager as getSharedSessionManager,
   type SessionManager,
 } from '../bootstrap.js';
-import {
-  createPersistentAgentRegistry,
-  type AgentRegistry,
-} from '@defai.digital/agent-domain';
+import { getCLIAgentRegistry } from '../shared-cli-registry.js';
 import {
   createWorkflowLoader,
   findWorkflowDir,
@@ -183,45 +179,12 @@ async function getWorkflowLoader(): Promise<WorkflowLoader> {
   return workflowLoaderPromise;
 }
 
-// Lazy singletons with Promise-based initialization to prevent race conditions
-let agentRegistry: AgentRegistry | undefined;
-let agentRegistryPromise: Promise<AgentRegistry> | undefined;
-
-/**
- * Get the global agent storage path (same as MCP server).
- * Uses home directory for consistency across all AutomatosX components.
- */
-function getGlobalAgentStoragePath(): string {
-  return path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
-}
-
 /**
  * Get the session manager from CLI bootstrap (shared instance)
  * This ensures the web dashboard sees the same sessions as other CLI components
  */
 function getSessionManager(): SessionManager {
   return getSharedSessionManager();
-}
-
-/**
- * Get or create the agent registry (thread-safe)
- * Uses atomic promise assignment pattern for safety
- */
-async function getAgentRegistry(): Promise<AgentRegistry> {
-  if (agentRegistry) return agentRegistry;
-
-  if (!agentRegistryPromise) {
-    // Assign promise immediately to prevent potential race conditions
-    agentRegistryPromise = Promise.resolve().then(() => {
-      const registry = createPersistentAgentRegistry({
-        storagePath: getGlobalAgentStoragePath(),
-      });
-      agentRegistry = registry;
-      return registry;
-    });
-  }
-
-  return agentRegistryPromise;
 }
 
 /**
@@ -485,7 +448,7 @@ async function handleAgents(): Promise<APIResponse> {
  */
 async function handleAgentDetail(agentId: string): Promise<APIResponse> {
   try {
-    const registry = await getAgentRegistry();
+    const registry = await getCLIAgentRegistry();
     const agent = await registry.get(agentId);
 
     if (!agent) {
@@ -1220,7 +1183,7 @@ async function handleAgentHistory(agentId: string): Promise<APIResponse> {
     }
 
     // Get agent info
-    const registry = await getAgentRegistry();
+    const registry = await getCLIAgentRegistry();
     const agent = await registry.get(agentId);
 
     return {
@@ -1746,7 +1709,7 @@ async function getSessionData(): Promise<DashboardSessionSummary[]> {
  */
 async function getAgentData(): Promise<DashboardAgentSummary[]> {
   try {
-    const registry = await getAgentRegistry();
+    const registry = await getCLIAgentRegistry();
     const agents = await registry.list();
     return agents.slice(0, 50).map(agent => ({
       agentId: agent.agentId,
@@ -1992,7 +1955,7 @@ async function getMetricsData(): Promise<{
   }
 
   try {
-    const registry = await getAgentRegistry();
+    const registry = await getCLIAgentRegistry();
     const agents = await registry.list();
     activeAgents = agents.filter(a => a.enabled !== false).length;
   } catch {

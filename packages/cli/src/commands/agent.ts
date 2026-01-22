@@ -5,162 +5,21 @@
  * Integrates with trace store for dashboard visibility.
  */
 
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import type { CommandResult, CLIOptions } from '../types.js';
 import {
-  createPersistentAgentRegistry,
   createAgentExecutor,
   createEnhancedAgentExecutor,
   createProviderPromptExecutor,
-  createAgentLoader,
   DEFAULT_AGENT_DOMAIN_CONFIG,
-  type AgentRegistry,
+  classifyTask,
+  extractTaskDescription,
   type EnhancedAgentDomainConfig,
 } from '@defai.digital/agent-domain';
 import type { AgentProfile, TraceEvent, TraceHierarchy } from '@defai.digital/contracts';
-import { DATA_DIR_NAME, AGENTS_FILENAME, getErrorMessage, createRootTraceHierarchy, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
+import { getErrorMessage, createRootTraceHierarchy, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 import { bootstrap, getTraceStore, getProviderRegistry } from '../bootstrap.js';
-
-// Get the directory of this module for finding bundled examples
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Storage path for persistent agents (uses home directory - matches MCP server)
-// This ensures agents persist across projects and are accessible from any working directory
-const AGENT_STORAGE_PATH = path.join(os.homedir(), DATA_DIR_NAME, AGENTS_FILENAME);
-
-/**
- * Get path to example agents directory.
- * Checks multiple locations to support both development and npm install scenarios.
- */
-function getExampleAgentsDir(): string {
-  // Try bundled agents first (when installed via npm)
-  // __dirname is 'dist/commands/', bundled is at '../../bundled/agents'
-  const bundledPath = path.join(__dirname, '..', '..', 'bundled', 'agents');
-  if (fs.existsSync(bundledPath)) {
-    return bundledPath;
-  }
-
-  // Try development path (when running from source repo)
-  const devPath = path.join(__dirname, '..', '..', '..', '..', 'examples', 'agents');
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-
-  // Try relative to cwd (for legacy support)
-  const cwdPath = path.join(process.cwd(), 'examples', 'agents');
-  if (fs.existsSync(cwdPath)) {
-    return cwdPath;
-  }
-
-  // Return bundled path as default (most common case for npm install)
-  return bundledPath;
-}
-
-// Path to example agents
-const EXAMPLE_AGENTS_DIR = getExampleAgentsDir();
-
-/**
- * Compare semver versions to check if newVersion is newer than oldVersion
- * Returns true if newVersion > oldVersion
- */
-function isNewerVersion(newVersion: string | undefined, oldVersion: string | undefined): boolean {
-  if (!newVersion) return false;
-  if (!oldVersion) return true;
-
-  const parseVersion = (v: string): number[] => {
-    return v.split('.').map(part => parseInt(part, 10) || 0);
-  };
-
-  const newParts = parseVersion(newVersion);
-  const oldParts = parseVersion(oldVersion);
-
-  for (let i = 0; i < Math.max(newParts.length, oldParts.length); i++) {
-    const newPart = newParts[i] ?? 0;
-    const oldPart = oldParts[i] ?? 0;
-    if (newPart > oldPart) return true;
-    if (newPart < oldPart) return false;
-  }
-
-  return false; // Versions are equal
-}
-
-// Singleton registry - initialized lazily
-let _registry: AgentRegistry | null = null;
-let _initPromise: Promise<AgentRegistry> | null = null;
-
-/**
- * Get or create the shared agent registry
- * Loads example agents on first access
- * Uses atomic promise assignment to prevent race conditions
- */
-async function getRegistry(): Promise<AgentRegistry> {
-  if (_registry !== null) {
-    return _registry;
-  }
-
-  if (_initPromise === null) {
-    // Assign promise immediately before any async work to prevent race condition
-    _initPromise = initializeRegistry().then(registry => {
-      _registry = registry;
-      return registry;
-    });
-  }
-
-  return _initPromise;
-}
-
-/**
- * Initialize registry and load example agents
- */
-async function initializeRegistry(): Promise<AgentRegistry> {
-  // Create persistent registry (same as MCP server)
-  const registry = createPersistentAgentRegistry({
-    storagePath: AGENT_STORAGE_PATH,
-    createDir: true,
-    loadOnInit: true,
-  });
-
-  // Load example agents if directory exists
-  if (fs.existsSync(EXAMPLE_AGENTS_DIR)) {
-    try {
-      const loader = createAgentLoader({
-        agentsDir: EXAMPLE_AGENTS_DIR,
-        extensions: ['.json', '.yaml', '.yml'],
-      });
-
-      const exampleAgents = await loader.loadAll();
-
-      for (const agent of exampleAgents) {
-        const existing = await registry.get(agent.agentId);
-        if (!existing) {
-          // Agent doesn't exist - register it
-          try {
-            await registry.register(agent);
-          } catch {
-            // Ignore duplicate registration errors
-          }
-        } else if (isNewerVersion(agent.version, existing.version)) {
-          // Example agent has newer version - update the persisted agent
-          try {
-            await registry.update(agent.agentId, agent);
-          } catch {
-            // Ignore update errors
-          }
-        }
-      }
-    } catch (error) {
-      // Log but don't fail - example agents are optional
-      console.warn('Failed to load example agents:', getErrorMessage(error));
-    }
-  }
-
-  return registry;
-}
+import { getCLIAgentRegistry } from '../shared-cli-registry.js';
 
 /**
  * Handles the 'agent' command - manage agents
@@ -208,7 +67,7 @@ export async function agentCommand(
  */
 async function listAgents(options: CLIOptions): Promise<CommandResult> {
   try {
-    const registry = await getRegistry();
+    const registry = await getCLIAgentRegistry();
     const filter = options.team ? { team: options.team } : undefined;
     const agents = await registry.list(filter);
 
@@ -275,7 +134,7 @@ async function getAgent(args: string[], options: CLIOptions): Promise<CommandRes
   }
 
   try {
-    const registry = await getRegistry();
+    const registry = await getCLIAgentRegistry();
     const agent = await registry.get(agentId);
 
     if (agent === undefined) {
@@ -356,7 +215,7 @@ async function registerAgent(options: CLIOptions): Promise<CommandResult> {
       };
     }
 
-    const registry = await getRegistry();
+    const registry = await getCLIAgentRegistry();
     await registry.register(profile);
 
     return {
@@ -402,6 +261,17 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
   // Create trace hierarchy context for this root trace (INV-TR-020 through INV-TR-024)
   const traceHierarchy: TraceHierarchy = createRootTraceHierarchy(traceId, undefined);
 
+  // PRD-2026-003: Classify task for dashboard observability
+  const taskDescription = task ?? extractTaskDescription(options.input);
+  const classificationResult = classifyTask(taskDescription);
+  const classification = {
+    taskType: classificationResult.taskType,
+    confidence: classificationResult.confidence,
+    matchedPatterns: classificationResult.matchedKeywords,
+    selectedMapping: classificationResult.workflow ?? null,
+    taskDescription: taskDescription.slice(0, 500), // Truncate to 500 chars per INV-TR-031
+  };
+
   // Emit run.start trace event with full details
   // INV-TR-011: Agent executions MUST include agentId in context
   const startEvent: TraceEvent = {
@@ -424,12 +294,14 @@ async function runAgent(args: string[], options: CLIOptions): Promise<CommandRes
       command: `ax agent run ${agentId}`,
       hasInput: options.input !== undefined,
       inputPreview: options.input?.slice(0, 200),
+      // PRD-2026-003: Include classification for dashboard observability
+      classification,
     },
   };
   await traceStore.write(startEvent);
 
   try {
-    const registry = await getRegistry();
+    const registry = await getCLIAgentRegistry();
 
     // Create executor - use enhanced executor with real provider when --provider is specified
     let executor;
@@ -640,7 +512,7 @@ async function removeAgent(args: string[], _options: CLIOptions): Promise<Comman
   }
 
   try {
-    const registry = await getRegistry();
+    const registry = await getCLIAgentRegistry();
     await registry.remove(agentId);
 
     return {

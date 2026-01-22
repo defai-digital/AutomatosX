@@ -35,6 +35,7 @@ import {
   DEFAULT_MAX_ITERATIONS,
   DEFAULT_MAX_TIME_MS,
 } from '@defai.digital/iterate-domain';
+import { classifyTask } from '@defai.digital/agent-domain';
 import type { IterateIntent, IterateState } from '@defai.digital/contracts';
 import {
   getErrorMessage,
@@ -743,6 +744,16 @@ export async function callCommand(
   const mode = options.iterate ? 'iterate' : 'call';
   const actualModel = getModelForProvider(providerConfig, model, options.verbose);
 
+  // PRD-2026-003: Classify task for dashboard observability
+  const classificationResult = classifyTask(promptContent);
+  const classification = {
+    taskType: classificationResult.taskType,
+    confidence: classificationResult.confidence,
+    matchedPatterns: classificationResult.matchedKeywords,
+    selectedMapping: classificationResult.workflow ?? null,
+    taskDescription: promptContent.slice(0, 500), // Truncate to 500 chars per INV-TR-031
+  };
+
   // Emit run.start trace event with full details
   // INV-TR-010: Provider calls MUST include providerId in context
   const startEvent: TraceEvent = {
@@ -762,6 +773,8 @@ export async function callCommand(
       promptLength: promptContent.length,
       hasSystemPrompt: finalSystemPrompt !== undefined,
       systemPromptLength: finalSystemPrompt?.length,
+      // PRD-2026-003: Include classification for dashboard observability
+      classification,
     },
   };
   await traceStore.write(startEvent);

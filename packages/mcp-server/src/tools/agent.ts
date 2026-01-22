@@ -16,6 +16,8 @@ import {
   isValidTemplateName,
   createAgentSelectionService,
   AgentRegistryError,
+  classifyTask,
+  extractTaskDescription,
 } from '@defai.digital/agent-domain';
 // Import from registry-accessor to avoid circular dependencies
 import {
@@ -437,6 +439,17 @@ export const handleAgentRun: ToolHandler = async (args) => {
     traceHierarchy = createRootTraceHierarchy(traceId, sessionId);
   }
 
+  // PRD-2026-003: Classify task for dashboard observability
+  const taskDescription = extractTaskDescription(input);
+  const classificationResult = classifyTask(taskDescription);
+  const classification = {
+    taskType: classificationResult.taskType,
+    confidence: classificationResult.confidence,
+    matchedPatterns: classificationResult.matchedKeywords,
+    selectedMapping: classificationResult.workflow ?? null,
+    taskDescription: taskDescription.slice(0, 500), // Truncate to 500 chars per INV-TR-031
+  };
+
   // Emit run.start trace event with hierarchy context
   // Include 'command: agent' for API to detect commandType correctly
   const startEvent: TraceEvent = {
@@ -459,6 +472,8 @@ export const handleAgentRun: ToolHandler = async (args) => {
       sessionId,
       provider,
       model,
+      // PRD-2026-003: Include classification for dashboard observability
+      classification,
     },
   };
   await traceStore.write(startEvent);
@@ -1016,42 +1031,46 @@ export const handleAgentRemove: ToolHandler = async (args) => {
 
   try {
     const registry = await getSharedRegistry();
-    // Check if agent exists
-    const existing = await registry.get(agentId);
-    if (existing === undefined) {
+
+    // Remove the agent directly - handles idempotent behavior by catching "not found"
+    // This avoids TOCTOU race condition where agent could be removed between check and delete
+    try {
+      await registry.remove(agentId);
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({
-              removed: false,
-              agentId,
-              message: `Agent "${agentId}" not found`,
-            }),
+            text: JSON.stringify(
+              {
+                removed: true,
+                agentId,
+                message: `Agent "${agentId}" removed successfully`,
+              },
+              null,
+              2
+            ),
           },
         ],
       };
-    }
-
-    // Remove the agent
-    await registry.remove(agentId);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
+    } catch (removeError) {
+      // Handle "not found" gracefully for idempotent behavior
+      const removeMessage = getErrorMessage(removeError);
+      if (removeMessage.toLowerCase().includes('not found')) {
+        return {
+          content: [
             {
-              removed: true,
-              agentId,
-              message: `Agent "${agentId}" removed successfully`,
+              type: 'text',
+              text: JSON.stringify({
+                removed: false,
+                agentId,
+                message: `Agent "${agentId}" not found`,
+              }),
             },
-            null,
-            2
-          ),
-        },
-      ],
-    };
+          ],
+        };
+      }
+      throw removeError; // Re-throw other errors
+    }
   } catch (error) {
     const message = getErrorMessage(error);
     return {

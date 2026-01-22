@@ -52,6 +52,23 @@ import type {
 
 const execAsync = promisify(exec);
 
+/**
+ * Regex pattern for valid git references
+ * INV-REV-SEC-001: Prevent command injection via git ref parameter
+ *
+ * Valid git refs can contain:
+ * - alphanumeric characters
+ * - dots, hyphens, underscores, slashes
+ * - caret (^) for parent references
+ * - tilde (~) for ancestor references
+ * - at sign (@) for reflog references (e.g., HEAD@{1})
+ * - curly braces for reflog specifiers
+ * - colon (:) for tree-ish refs
+ *
+ * Must NOT contain: backticks, $, |, &, ;, newlines, null bytes
+ */
+const VALID_GIT_REF_PATTERN = /^[a-zA-Z0-9_.\-/^~@{}:]+$/;
+
 // Use createRequire for CJS package interop with the 'ignore' package
 const require = createRequire(import.meta.url);
 const ignore: () => IgnoreInstance = require('ignore');
@@ -624,6 +641,7 @@ export class ReviewService {
 
   /**
    * Collect files changed since a specific git commit (Tier 2)
+   * INV-REV-SEC-001: Validates git ref to prevent command injection
    */
   private async collectChangedFilesSince(
     basePaths: string[],
@@ -631,12 +649,33 @@ export class ReviewService {
     maxLinesPerFile: number,
     since: string
   ): Promise<FileContent[]> {
+    // INV-REV-SEC-001: Validate git ref to prevent command injection
+    if (!VALID_GIT_REF_PATTERN.test(since)) {
+      throw new ReviewError(
+        ReviewErrorCode.INVALID_INPUT,
+        `Invalid git reference format: '${since}'. Git refs can only contain alphanumeric characters, dots, hyphens, underscores, slashes, ^, ~, @, {}, and :.`
+      );
+    }
+
+    // Additional safety: reject refs that look like they're trying to inject commands
+    if (since.includes('..') && since.includes('/')) {
+      // Path traversal attempt like ../../../etc
+      const pathTraversalPattern = /\.\.[/\\]/;
+      if (pathTraversalPattern.test(since)) {
+        throw new ReviewError(
+          ReviewErrorCode.INVALID_INPUT,
+          `Invalid git reference: path traversal not allowed`
+        );
+      }
+    }
+
     // Determine the working directory (use first path's directory or current)
     const firstPath = basePaths[0];
     const workDir = firstPath ? path.dirname(path.resolve(firstPath)) : process.cwd();
 
     try {
       // Get list of changed files since the commit
+      // Note: since has been validated above to prevent injection
       const { stdout } = await execAsync(`git diff --name-only ${since}...HEAD`, {
         cwd: workDir,
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large repos

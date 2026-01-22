@@ -19,26 +19,28 @@ import { parseOutput, extractOrEstimateTokenUsage } from './output-parser.js';
 import { classifyError, classifySpawnResult } from './error-classifier.js';
 
 /**
- * Extracts error message from JSON error response in stdout
+ * Extracts all error messages from JSON error responses in stdout
  * Handles formats like OpenCode: {"type":"error","error":{"data":{"message":"..."}}}
+ * INV-CLI-001: Collects ALL errors, not just the first, to provide complete diagnostics
  *
  * @param stdout - Raw stdout from CLI process
- * @returns Error message if found, null otherwise
+ * @returns Combined error message if found, null otherwise
  */
 function extractJsonErrorFromStdout(stdout: string): string | null {
   if (stdout.length === 0) {
     return null;
   }
 
-  try {
-    // Try to parse as JSON (may be one line or multiple lines)
-    const lines = stdout.trim().split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.length === 0 || !trimmed.startsWith('{')) {
-        continue;
-      }
+  const errors: string[] = [];
+  const lines = stdout.trim().split('\n');
 
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || !trimmed.startsWith('{')) {
+      continue;
+    }
+
+    try {
       const data = JSON.parse(trimmed) as Record<string, unknown>;
 
       // Check for type: "error" format (OpenCode style)
@@ -48,28 +50,38 @@ function extractJsonErrorFromStdout(stdout: string): string | null {
           // Try error.data.message first
           const errorData = error.data as Record<string, unknown> | undefined;
           if (errorData?.message !== undefined && typeof errorData.message === 'string') {
-            return errorData.message;
+            errors.push(errorData.message);
+            continue;
           }
           // Try error.message
           if (typeof error.message === 'string') {
-            return error.message;
+            errors.push(error.message);
+            continue;
           }
         }
       }
 
       // Check for direct error field
       if (typeof data.error === 'string') {
-        return data.error;
+        errors.push(data.error);
+        continue;
       }
       if (typeof data.message === 'string' && data.type === 'error') {
-        return data.message;
+        errors.push(data.message);
+        continue;
       }
+    } catch {
+      // Not valid JSON for this line, continue to next
     }
-  } catch {
-    // Not valid JSON, ignore
   }
 
-  return null;
+  // Return all collected errors, joined with separator
+  if (errors.length === 0) {
+    return null;
+  }
+  // Deduplicate errors while preserving order
+  const uniqueErrors = [...new Set(errors)];
+  return uniqueErrors.join('; ');
 }
 
 /**

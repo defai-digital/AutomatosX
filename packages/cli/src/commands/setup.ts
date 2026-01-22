@@ -100,7 +100,29 @@ const HIERARCHY_COLUMNS = [
   { name: 'trace_depth', type: 'INTEGER' },
   { name: 'session_id', type: 'TEXT' },
   { name: 'agent_id', type: 'TEXT' },
-];
+] as const;
+
+/** Pattern for valid SQL identifiers (INV-DB-SEC-001) */
+const SQL_IDENTIFIER_PATTERN = /^[a-z_][a-z0-9_]*$/i;
+
+/** Allowed SQL column types (INV-DB-SEC-001) */
+const ALLOWED_COLUMN_TYPES = new Set(['TEXT', 'INTEGER', 'REAL', 'BLOB', 'NUMERIC']);
+
+/**
+ * Validates a SQL identifier to prevent injection
+ * INV-DB-SEC-001: All dynamic SQL identifiers must be validated
+ */
+function isValidSqlIdentifier(identifier: string): boolean {
+  return SQL_IDENTIFIER_PATTERN.test(identifier) && identifier.length <= 64;
+}
+
+/**
+ * Validates a column type for SQL DDL
+ * INV-DB-SEC-001: Only allow known safe column types
+ */
+function isValidColumnType(type: string): boolean {
+  return ALLOWED_COLUMN_TYPES.has(type.toUpperCase());
+}
 
 /** Type for SQLite database operations used in migrations */
 interface SqliteDb {
@@ -156,6 +178,10 @@ async function migrateDatabase(): Promise<DatabaseMigrationResult> {
 
     for (const column of HIERARCHY_COLUMNS) {
       if (!existingColumnNames.has(column.name)) {
+        // INV-DB-SEC-001: Validate identifiers to prevent SQL injection
+        if (!isValidSqlIdentifier(column.name) || !isValidColumnType(column.type)) {
+          throw new Error(`Invalid column definition: ${column.name} ${column.type}`);
+        }
         try {
           db.exec(`ALTER TABLE trace_summaries ADD COLUMN ${column.name} ${column.type}`);
           migrationsApplied.push(column.name);
@@ -173,6 +199,10 @@ async function migrateDatabase(): Promise<DatabaseMigrationResult> {
     ];
 
     for (const idx of indexMigrations) {
+      // INV-DB-SEC-001: Validate identifiers to prevent SQL injection
+      if (!isValidSqlIdentifier(idx.name) || !isValidSqlIdentifier(idx.column)) {
+        throw new Error(`Invalid index definition: ${idx.name} on ${idx.column}`);
+      }
       try {
         db.exec(`CREATE INDEX IF NOT EXISTS ${idx.name} ON trace_summaries(${idx.column})`);
       } catch {

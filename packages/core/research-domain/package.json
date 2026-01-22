@@ -1,8 +1,19 @@
 {
   "name": "@defai.digital/research-domain",
   "version": "13.4.8",
-  "description": "Deep research agent with live documentation fetching and knowledge synthesis",
   "type": "module",
+  "description": "Deep research agent with live documentation fetching and knowledge synthesis",
+  "license": "BUSL-1.1",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/core/research-domain"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -10,6 +21,16 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc --build",
@@ -20,10 +41,5 @@
   },
   "devDependencies": {
     "typescript": "^5.6.3"
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "license": "MIT"
+  }
 }

@@ -77,6 +77,8 @@ export class DefaultAbilityManager implements AbilityManager {
   /**
    * Inject abilities into agent context
    * Also auto-injects .automatosx/rules.md if present in the project
+   *
+   * INV-ABL-001: Core abilities are injected first (before project rules)
    */
   async injectAbilities(
     agentId: string,
@@ -101,26 +103,17 @@ export class DefaultAbilityManager implements AbilityManager {
     let currentTokens = 0;
     let truncated = false;
 
-    // Auto-inject project rules if present (.automatosx/rules.md)
-    const projectRules = loadProjectRules();
-    if (projectRules) {
-      const rulesHeader = '## Project Rules\n\nThe following rules MUST be followed for all code in this project:\n\n';
-      const rulesContent = rulesHeader + projectRules;
-      const rulesTokens = this.estimateTokens(rulesContent);
+    // INV-ABL-001: Separate core abilities from others to inject them first
+    const coreAbilitySet = new Set(coreAbilities ?? []);
+    const coreAbilitiesList = abilities.filter(a => coreAbilitySet.has(a.abilityId));
+    const otherAbilities = abilities.filter(a => !coreAbilitySet.has(a.abilityId));
 
-      if (rulesTokens <= maxTokens) {
-        contentParts.push(rulesContent);
-        injectedAbilities.push('_project-rules');
-        currentTokens += rulesTokens;
-      }
-    }
-
-    for (const ability of abilities) {
+    // Helper function to inject an ability
+    const injectAbility = (ability: typeof abilities[0]): boolean => {
       const abilityTokens = this.estimateTokens(ability.content);
 
       if (currentTokens + abilityTokens > maxTokens) {
-        truncated = true;
-        break;
+        return false; // Would exceed token limit
       }
 
       const header = options?.includeMetadata
@@ -130,6 +123,41 @@ export class DefaultAbilityManager implements AbilityManager {
       contentParts.push(header + ability.content);
       injectedAbilities.push(ability.abilityId);
       currentTokens += abilityTokens;
+      return true;
+    };
+
+    // INV-ABL-001: First inject core abilities (in order of relevance score)
+    for (const ability of coreAbilitiesList) {
+      if (!injectAbility(ability)) {
+        truncated = true;
+        break;
+      }
+    }
+
+    // Then inject project rules if present (.automatosx/rules.md)
+    if (!truncated) {
+      const projectRules = loadProjectRules();
+      if (projectRules) {
+        const rulesHeader = '## Project Rules\n\nThe following rules MUST be followed for all code in this project:\n\n';
+        const rulesContent = rulesHeader + projectRules;
+        const rulesTokens = this.estimateTokens(rulesContent);
+
+        if (currentTokens + rulesTokens <= maxTokens) {
+          contentParts.push(rulesContent);
+          injectedAbilities.push('_project-rules');
+          currentTokens += rulesTokens;
+        }
+      }
+    }
+
+    // Finally inject remaining abilities
+    if (!truncated) {
+      for (const ability of otherAbilities) {
+        if (!injectAbility(ability)) {
+          truncated = true;
+          break;
+        }
+      }
     }
 
     return {

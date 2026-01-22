@@ -172,8 +172,44 @@ const BUILTIN_POLICIES: Record<string, Policy> = {
 };
 
 /**
+ * Pattern for detecting path traversal attempts
+ * INV-GUARD-PATH-001: Path traversal prevention
+ */
+const PATH_TRAVERSAL_PATTERN = /(?:^|[/\\])\.\.(?:[/\\]|$)/;
+
+/**
+ * Validates a variable value is safe for path substitution
+ * INV-GUARD-PATH-001: Prevent path traversal via variable injection
+ */
+function isSafePathValue(value: string): boolean {
+  // Reject empty values
+  if (value.length === 0) return false;
+
+  // Reject path traversal attempts
+  if (PATH_TRAVERSAL_PATTERN.test(value)) return false;
+
+  // Reject absolute paths
+  if (value.startsWith('/') || /^[A-Za-z]:/.test(value)) return false;
+
+  // Reject null bytes (could truncate paths)
+  if (value.includes('\0')) return false;
+
+  return true;
+}
+
+/**
+ * Escapes a string for use in a regular expression
+ * INV-GUARD-REGEX-001: Prevent regex injection via variable keys
+ */
+function escapeRegexChars(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Resolves variable placeholders in a path pattern
  * INV-GUARD-002: Variable Substitution
+ * INV-GUARD-PATH-001: Path traversal prevention
+ * INV-GUARD-REGEX-001: Regex key escaping
  */
 function resolvePathVariables(
   pattern: string,
@@ -181,7 +217,19 @@ function resolvePathVariables(
 ): string {
   let resolved = pattern;
   for (const [key, value] of Object.entries(variables)) {
-    resolved = resolved.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    const placeholder = `{{${key}}}`;
+    // Only validate values that will actually be substituted
+    if (pattern.includes(placeholder)) {
+      // INV-GUARD-PATH-001: Validate each variable value before substitution
+      if (!isSafePathValue(value)) {
+        throw new Error(
+          `Unsafe path value for variable '${key}': path traversal or absolute paths not allowed`
+        );
+      }
+    }
+    // INV-GUARD-REGEX-001: Escape key to prevent regex injection
+    const escapedKey = escapeRegexChars(key);
+    resolved = resolved.replace(new RegExp(`\\{\\{${escapedKey}\\}\\}`, 'g'), value);
   }
   return resolved;
 }

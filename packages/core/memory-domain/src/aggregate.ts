@@ -4,8 +4,6 @@ import type {
   AggregateState,
   EventHandler,
 } from './types.js';
-import { MemoryErrorCodes } from './types.js';
-import { EventStoreError } from './event-store.js';
 
 /**
  * Aggregate repository for event-sourced aggregates
@@ -54,33 +52,26 @@ export class AggregateRepository<T> {
   /**
    * Saves an event to the aggregate
    * INV-MEM-004: Event ordering enforced via version
+   * INV-MEM-009: Optimistic concurrency is atomic via event store's version check
    *
-   * CONCURRENCY NOTE (INV-MEM-008):
-   * The optimistic concurrency check and append are NOT atomic. In truly concurrent
-   * scenarios (e.g., distributed systems or multi-process), another operation could
-   * modify the aggregate between getVersion() and append(). This is acceptable for
-   * single-process Node.js where async operations interleave but don't truly run
-   * in parallel. For distributed scenarios, implement compare-and-swap at the
-   * storage layer or use a mutex/lock around the check-and-write operation.
+   * If expectedVersion is provided, the event's version is set to expectedVersion + 1.
+   * The event store's append() performs atomic version validation, ensuring no
+   * race condition between version check and write (TOCTOU prevention).
    */
   async save(
     aggregateId: string,
     event: MemoryEvent,
     expectedVersion?: number
   ): Promise<void> {
-    // Optimistic concurrency check (see INV-MEM-008 for concurrency limitations)
-    if (expectedVersion !== undefined) {
-      const currentVersion = await this.eventStore.getVersion(aggregateId);
-      if (currentVersion !== expectedVersion) {
-        throw new EventStoreError(
-          MemoryErrorCodes.VERSION_CONFLICT,
-          `Optimistic concurrency failure: expected version ${String(expectedVersion)}, current is ${String(currentVersion)}`,
-          { expected: expectedVersion, current: currentVersion }
-        );
-      }
-    }
-
-    await this.eventStore.append(event);
+    // INV-MEM-009: Set event version for atomic validation in event store
+    // This avoids TOCTOU by letting the event store do atomic compare-and-swap
+    // Ensure event has the correct aggregateId
+    const eventWithAggregate: MemoryEvent = {
+      ...event,
+      aggregateId: event.aggregateId ?? aggregateId,
+      ...(expectedVersion !== undefined ? { version: expectedVersion + 1 } : {}),
+    };
+    await this.eventStore.append(eventWithAggregate);
   }
 
   /**

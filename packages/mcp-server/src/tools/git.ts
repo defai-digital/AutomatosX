@@ -7,12 +7,9 @@
  * @module mcp-server/tools/git
  */
 
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import type { MCPTool, ToolHandler } from '../types.js';
 import { getErrorMessage } from '@defai.digital/contracts';
-
-const execAsync = promisify(exec);
 
 // ============================================================================
 // Constants
@@ -193,6 +190,7 @@ export const prReviewTool: MCPTool = {
 
 /**
  * Execute a git command with timeout and error handling
+ * INV-GIT-SEC-001: Uses spawn() with argument array to prevent command injection
  */
 async function execGit(
   args: string[],
@@ -201,28 +199,52 @@ async function execGit(
   const cwd = options?.cwd ?? process.cwd();
   const timeout = options?.timeout ?? GIT_TIMEOUT;
 
-  try {
-    const result = await execAsync(`git ${args.join(' ')}`, {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, {
       cwd,
       timeout,
-      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
-    return result;
-  } catch (error) {
-    const execError = error as { stdout?: string; stderr?: string; message?: string };
-    // If git command failed but has output, return it
-    if (execError.stdout || execError.stderr) {
-      return {
-        stdout: execError.stdout ?? '',
-        stderr: execError.stderr ?? '',
-      };
-    }
-    throw error;
-  }
+
+    const chunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+    let totalSize = 0;
+    const maxBuffer = 1024 * 1024 * 10; // 10MB buffer
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
+      if (totalSize <= maxBuffer) {
+        chunks.push(chunk);
+      }
+    });
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderrChunks.push(chunk);
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      const stdout = Buffer.concat(chunks).toString('utf-8');
+      const stderr = Buffer.concat(stderrChunks).toString('utf-8');
+
+      // If git command failed but has output, return it (git often writes to stderr for info)
+      if (code !== 0 && (stdout || stderr)) {
+        resolve({ stdout, stderr });
+      } else if (code !== 0) {
+        reject(new Error(`git command failed with exit code ${code}`));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
 }
 
 /**
  * Execute GitHub CLI command
+ * INV-GIT-SEC-001: Uses spawn() with argument array to prevent command injection
  */
 async function execGh(
   args: string[],
@@ -231,12 +253,44 @@ async function execGh(
   const cwd = options?.cwd ?? process.cwd();
   const timeout = options?.timeout ?? GIT_TIMEOUT;
 
-  const result = await execAsync(`gh ${args.join(' ')}`, {
-    cwd,
-    timeout,
-    maxBuffer: 1024 * 1024 * 10,
+  return new Promise((resolve, reject) => {
+    const child = spawn('gh', args, {
+      cwd,
+      timeout,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const chunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+    let totalSize = 0;
+    const maxBuffer = 1024 * 1024 * 10; // 10MB buffer
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
+      if (totalSize <= maxBuffer) {
+        chunks.push(chunk);
+      }
+    });
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderrChunks.push(chunk);
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      const stdout = Buffer.concat(chunks).toString('utf-8');
+      const stderr = Buffer.concat(stderrChunks).toString('utf-8');
+
+      if (code !== 0) {
+        reject(new Error(`gh command failed with exit code ${code}: ${stderr}`));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
   });
-  return result;
 }
 
 /**
@@ -543,7 +597,7 @@ export const handlePrCreate: ToolHandler = async (args) => {
 
     // Check if gh is available
     try {
-      await execAsync('gh --version');
+      await execGh(['--version']);
     } catch {
       return {
         content: [{
@@ -619,15 +673,30 @@ export const handlePrCreate: ToolHandler = async (args) => {
 
 /**
  * Handle pr_review tool
+ * INV-GIT-VAL-001: Validate prNumber is a positive integer
  */
 export const handlePrReview: ToolHandler = async (args) => {
   try {
-    const prNumber = args.prNumber as number;
+    // INV-GIT-VAL-001: Validate prNumber is a positive integer
+    const rawPrNumber = Number(args.prNumber);
+    if (!Number.isFinite(rawPrNumber) || rawPrNumber < 1 || !Number.isInteger(rawPrNumber)) {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            error: { code: 'INVALID_PR_NUMBER', message: 'PR number must be a positive integer' },
+          }),
+        }],
+        isError: true,
+      };
+    }
+    const prNumber = rawPrNumber;
     const focus = (args.focus as string) ?? 'all';
 
     // Check if gh is available
     try {
-      await execAsync('gh --version');
+      await execGh(['--version']);
     } catch {
       return {
         content: [{

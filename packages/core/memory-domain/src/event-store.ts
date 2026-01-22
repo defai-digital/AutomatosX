@@ -2,6 +2,20 @@ import type { MemoryEvent, MemoryEventType } from '@defai.digital/contracts';
 import type { EventStore } from './types.js';
 import { MemoryErrorCodes } from './types.js';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Default aggregate ID for events without explicit aggregate */
+const DEFAULT_AGGREGATE_ID = 'global';
+
+/** Default maximum events to store before eviction (INV-MEM-006) */
+const DEFAULT_MAX_EVENTS = 100_000;
+
+// ============================================================================
+// Error Class
+// ============================================================================
+
 /**
  * Error thrown by event store operations
  */
@@ -17,21 +31,18 @@ export class EventStoreError extends Error {
 }
 
 /**
- * Default maximum events to store before eviction
- * INV-MEM-006: Memory growth is bounded
- */
-const DEFAULT_MAX_EVENTS = 100000;
-
-/**
  * In-memory event store implementation
  * INV-MEM-001: Events are immutable - stored as frozen objects
  * INV-MEM-004: Events are ordered by version within aggregate
  * INV-MEM-006: Memory growth is bounded with LRU eviction
+ * INV-MEM-008: Eviction uses O(1) reverse index lookup
  */
 export class InMemoryEventStore implements EventStore {
   private readonly events = new Map<string, MemoryEvent[]>();
   private readonly allEvents: MemoryEvent[] = [];
   private readonly correlationIndex = new Map<string, MemoryEvent[]>();
+  // Reverse index: eventId -> aggregateId for O(1) eviction lookup
+  private readonly eventToAggregate = new Map<string, string>();
   private readonly maxEvents: number;
 
   constructor(maxEvents: number = DEFAULT_MAX_EVENTS) {
@@ -52,7 +63,7 @@ export class InMemoryEventStore implements EventStore {
       );
     }
 
-    const aggregateId = event.aggregateId ?? 'global';
+    const aggregateId = event.aggregateId ?? DEFAULT_AGGREGATE_ID;
 
     // Check version ordering (INV-MEM-004)
     if (event.version !== undefined) {
@@ -76,6 +87,9 @@ export class InMemoryEventStore implements EventStore {
 
     // Store in global list
     this.allEvents.push(frozenEvent);
+
+    // INV-MEM-008: Maintain reverse index for O(1) eviction
+    this.eventToAggregate.set(frozenEvent.eventId, aggregateId);
 
     // INV-MEM-006: Evict oldest events if over limit to prevent unbounded memory growth
     if (this.allEvents.length > this.maxEvents) {
@@ -139,20 +153,29 @@ export class InMemoryEventStore implements EventStore {
   /**
    * Evicts the oldest events to maintain memory bounds
    * INV-MEM-006: LRU eviction when over maxEvents
+   * INV-MEM-008: Uses reverse index for O(1) aggregate lookup
    */
   private evictOldest(count: number): void {
-    // Remove from global list
+    // Remove from global list (oldest events are at the front)
     const evicted = this.allEvents.splice(0, count);
 
-    // Remove from aggregate buckets and correlation index
-    // INV-MEM-007: Use eventId comparison instead of reference equality for robustness
     for (const event of evicted) {
-      const aggregateId = event.aggregateId ?? 'global';
+      // INV-MEM-008: O(1) lookup using reverse index
+      const aggregateId = this.eventToAggregate.get(event.eventId) ?? event.aggregateId ?? DEFAULT_AGGREGATE_ID;
+      this.eventToAggregate.delete(event.eventId);
+
+      // Remove from aggregate bucket - events are ordered, so oldest is at index 0
       const aggregateEvents = this.events.get(aggregateId);
-      if (aggregateEvents) {
-        const index = aggregateEvents.findIndex((e) => e.eventId === event.eventId);
-        if (index !== -1) {
-          aggregateEvents.splice(index, 1);
+      if (aggregateEvents !== undefined && aggregateEvents.length > 0) {
+        // Since we evict in order, the event should be at the front of the aggregate array
+        if (aggregateEvents[0]?.eventId === event.eventId) {
+          aggregateEvents.shift(); // O(n) but only on the aggregate, not all events
+        } else {
+          // Fallback: search for the event (should rarely happen)
+          const index = aggregateEvents.findIndex((e) => e.eventId === event.eventId);
+          if (index !== -1) {
+            aggregateEvents.splice(index, 1);
+          }
         }
         if (aggregateEvents.length === 0) {
           this.events.delete(aggregateId);
@@ -160,12 +183,17 @@ export class InMemoryEventStore implements EventStore {
       }
 
       // Remove from correlation index
-      if (event.metadata?.correlationId) {
+      if (event.metadata?.correlationId !== undefined) {
         const correlatedEvents = this.correlationIndex.get(event.metadata.correlationId);
-        if (correlatedEvents) {
-          const index = correlatedEvents.findIndex((e) => e.eventId === event.eventId);
-          if (index !== -1) {
-            correlatedEvents.splice(index, 1);
+        if (correlatedEvents !== undefined && correlatedEvents.length > 0) {
+          // Same optimization: check front first
+          if (correlatedEvents[0]?.eventId === event.eventId) {
+            correlatedEvents.shift();
+          } else {
+            const index = correlatedEvents.findIndex((e) => e.eventId === event.eventId);
+            if (index !== -1) {
+              correlatedEvents.splice(index, 1);
+            }
           }
           if (correlatedEvents.length === 0) {
             this.correlationIndex.delete(event.metadata.correlationId);
@@ -182,6 +210,7 @@ export class InMemoryEventStore implements EventStore {
     this.events.clear();
     this.allEvents.length = 0;
     this.correlationIndex.clear();
+    this.eventToAggregate.clear();
   }
 }
 

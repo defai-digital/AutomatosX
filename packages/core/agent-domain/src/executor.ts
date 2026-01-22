@@ -91,6 +91,7 @@ const DEFAULTS = {
  * INV-AGT-ABL-001: When abilityManager is provided, abilities are injected before prompt execution
  * INV-AGT-ABL-002: Core abilities from agent profile are always included
  * INV-AGT-ABL-003: Token limits are respected during injection
+ * INV-AGT-MEM-001: Execution state is cleaned up on completion/error/cancel to prevent memory leaks
  */
 export class DefaultAgentExecutor implements AgentExecutor {
   private readonly executions = new Map<string, ExecutionState>();
@@ -327,6 +328,9 @@ export class DefaultAgentExecutor implements AgentExecutor {
       state.completedAt = new Date().toISOString();
       state.stepResults = stepResults;
 
+      // INV-AGT-MEM-001: Clean up execution state to prevent memory leak
+      this.executions.delete(executionId);
+
       return {
         success: allSuccess,
         agentId,
@@ -342,6 +346,9 @@ export class DefaultAgentExecutor implements AgentExecutor {
       state.status = 'failed';
       state.completedAt = new Date().toISOString();
 
+      // INV-AGT-MEM-001: Clean up execution state even on error
+      this.executions.delete(executionId);
+
       return this.createErrorResult(
         agentId,
         startTime,
@@ -353,12 +360,15 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
   /**
    * Cancel a running agent execution
+   * INV-AGT-MEM-001: Cleans up execution state after cancellation
    */
   async cancel(executionId: string): Promise<void> {
     const state = this.executions.get(executionId);
     if (state?.status === 'running') {
       state.status = 'cancelled';
       state.completedAt = new Date().toISOString();
+      // Clean up after cancellation to prevent memory leak
+      this.executions.delete(executionId);
     }
   }
 

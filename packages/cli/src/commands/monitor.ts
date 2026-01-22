@@ -219,12 +219,21 @@ export async function monitorCommand(
     }
 
     // Enable CORS for local development (restricted to localhost origins)
-    // Reflect the request origin if it's from localhost, otherwise deny
+    // INV-MON-SEC-001: Strict origin validation to prevent CORS bypass attacks
+    // Using URL parsing instead of startsWith to prevent bypasses like http://localhost.attacker.com
     const origin = req.headers.origin ?? '';
-    const isLocalOrigin = origin.startsWith('http://localhost:') ||
-                          origin.startsWith('http://127.0.0.1:') ||
-                          origin === 'http://localhost' ||
-                          origin === 'http://127.0.0.1';
+    let isLocalOrigin = false;
+    if (origin.length > 0) {
+      try {
+        const originUrl = new URL(origin);
+        // Only allow exact localhost or 127.0.0.1 hostnames
+        isLocalOrigin = (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') &&
+                        originUrl.protocol === 'http:';
+      } catch {
+        // Invalid URL, not a local origin
+        isLocalOrigin = false;
+      }
+    }
     if (isLocalOrigin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     }

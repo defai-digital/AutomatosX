@@ -1,8 +1,30 @@
 {
   "name": "@defai.digital/automatosx",
   "version": "13.4.8",
-  "description": "AutomatosX CLI - AI-powered workflow automation (wrapper for @defai.digital/cli)",
   "type": "module",
+  "description": "AutomatosX CLI - AI-powered workflow automation (wrapper for @defai.digital/cli)",
+  "license": "BUSL-1.1",
+  "author": "DEFAI Private Limited",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defai-digital/automatosx.git",
+    "directory": "packages/automatosx"
+  },
+  "homepage": "https://github.com/defai-digital/automatosx#readme",
+  "bugs": {
+    "url": "https://github.com/defai-digital/automatosx/issues"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "cli",
+    "automation",
+    "workflow",
+    "mcp",
+    "claude",
+    "gemini",
+    "codex"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -19,39 +41,17 @@
     "dist",
     "LICENSE"
   ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@defai.digital/cli": "workspace:*"
-  },
-  "keywords": [
-    "ai",
-    "llm",
-    "cli",
-    "automation",
-    "workflow",
-    "mcp",
-    "claude",
-    "gemini",
-    "codex"
-  ],
-  "author": "DEFAI Private Limited",
-  "license": "BUSL-1.1",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/defai-digital/automatosx.git",
-    "directory": "packages/automatosx"
-  },
-  "homepage": "https://github.com/defai-digital/automatosx#readme",
-  "bugs": {
-    "url": "https://github.com/defai-digital/automatosx/issues"
-  },
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

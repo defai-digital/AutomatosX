@@ -84,6 +84,37 @@ function isValidCommandName(command: string): boolean {
 }
 
 /**
+ * Escapes a command-line argument for Windows cmd.exe
+ * INV-PROC-SEC-001: Prevent command injection via shell metacharacters
+ *
+ * Windows cmd.exe metacharacters: & | > < ^ % !
+ * These must be escaped with ^ when shell: true
+ *
+ * @param arg - The argument to escape
+ * @returns Escaped argument safe for Windows cmd.exe
+ */
+function escapeWindowsArg(arg: string): string {
+  // Escape cmd.exe metacharacters with ^
+  // Order matters: ^ must be escaped first
+  let escaped = arg
+    .replace(/\^/g, '^^')
+    .replace(/&/g, '^&')
+    .replace(/\|/g, '^|')
+    .replace(/>/g, '^>')
+    .replace(/</g, '^<')
+    .replace(/%/g, '^%')
+    .replace(/!/g, '^!');
+
+  // If the argument contains spaces or quotes, wrap in quotes
+  // and escape internal quotes
+  if (/[\s"]/.test(arg)) {
+    escaped = `"${escaped.replace(/"/g, '\\"')}"`;
+  }
+
+  return escaped;
+}
+
+/**
  * Spawns a CLI process and returns the result
  *
  * @param options - Spawn options including command, args, stdin, env, timeout
@@ -104,7 +135,13 @@ export async function spawnCLI(options: SpawnOptions): Promise<SpawnResult> {
     // This is required for commands like 'claude', 'gemini' to resolve properly
     const isWindows = process.platform === 'win32';
 
-    const child = spawn(options.command, [...options.args], {
+    // INV-PROC-SEC-001: Escape arguments when using shell on Windows
+    // This prevents command injection via shell metacharacters
+    const safeArgs = isWindows
+      ? options.args.map(escapeWindowsArg)
+      : options.args;
+
+    const child = spawn(options.command, [...safeArgs], {
       env: { ...process.env, ...options.env } as NodeJS.ProcessEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: options.cwd,

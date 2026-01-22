@@ -5,10 +5,12 @@
  * Coordinates pattern execution, consensus mechanisms, and result assembly.
  *
  * Invariants enforced:
+ * - INV-DISC-009: Result always contains synthesis
  * - INV-DISC-100: Provider availability check before starting
  * - INV-DISC-101: Minimum participating providers enforced
  * - INV-DISC-102: Provider timeouts enforced
- * - INV-DISC-009: Result always contains synthesis
+ * - INV-DISC-103: Promise.allSettled prevents race conditions on array mutation
+ * - INV-DISC-104: Health checks have timeout to prevent blocking
  * - INV-DISC-RATE-001: Provider calls limited to configurable concurrency
  */
 
@@ -57,6 +59,9 @@ const DEFAULT_DEBATE_JUDGE = 'gemini';
 
 /** Default max concurrent provider calls (INV-DISC-RATE-001) */
 const DEFAULT_MAX_CONCURRENT_PROVIDER_CALLS = 5;
+
+/** Default timeout for provider health checks in milliseconds */
+const DEFAULT_HEALTH_CHECK_TIMEOUT_MS = 5000;
 
 import type {
   DiscussionProviderExecutor,
@@ -334,6 +339,7 @@ export class DiscussionExecutor {
   /**
    * Check provider availability (INV-DISC-100)
    * INV-DISC-103: Use Promise.allSettled to avoid race condition on array mutation
+   * INV-DISC-104: Health checks have timeout to prevent hung providers blocking discussions
    */
   private async checkProviders(providers: string[]): Promise<string[]> {
     if (!this.checkProviderHealth) {
@@ -341,10 +347,16 @@ export class DiscussionExecutor {
     }
 
     // INV-DISC-103: Use Promise.allSettled pattern instead of concurrent array push
-    // This avoids race condition where multiple async callbacks mutate the same array
+    // INV-DISC-104: Wrap each health check with timeout to prevent hangs
     const results = await Promise.allSettled(
       providers.map(async (providerId) => {
-        const isAvailable = await this.providerExecutor.isAvailable(providerId);
+        // Race the health check against a timeout
+        const isAvailable = await Promise.race([
+          this.providerExecutor.isAvailable(providerId),
+          new Promise<boolean>((resolve) =>
+            setTimeout(() => resolve(false), DEFAULT_HEALTH_CHECK_TIMEOUT_MS)
+          ),
+        ]);
         return { providerId, isAvailable };
       })
     );

@@ -162,11 +162,12 @@ export class TraceRecorder {
       (event as { durationMs: number }).durationMs = options.durationMs;
     }
 
-    // Store in active trace
-    trace.events.push(event);
-
-    // Write to store
+    // INV-TR-006: Write to store BEFORE updating local state
+    // This ensures consistency - if write fails, local state remains unchanged
     await this.writer.write(event);
+
+    // Only update local state after successful write
+    trace.events.push(event);
 
     return event.eventId;
   }

@@ -8,6 +8,7 @@
  * - INV-PE-001: Independent steps execute concurrently
  * - INV-PE-002: Dependencies honored (DAG ordering)
  * - INV-PE-003: Concurrency limit respected
+ * - INV-PE-004: Failure state is atomic to prevent race conditions
  */
 
 import {
@@ -57,7 +58,8 @@ export function createParallelExecutor(
   config: Partial<ParallelExecutionConfig> = {}
 ): ParallelExecutor {
   const cfg = { ...createDefaultParallelExecutionConfig(), ...config };
-  let cancelled = false;
+  // INV-PE-006: Use single state object to prevent inconsistent state between checks
+  const executionState = { cancelled: false };
 
   /**
    * Build execution layers using topological sort (Kahn's algorithm)
@@ -117,10 +119,12 @@ export function createParallelExecutor(
     // Check for circular dependencies
     const processedCount = layers.reduce((sum, l) => sum + l.length, 0);
     if (processedCount !== steps.length) {
-      throw new ParallelExecutionError(
-        ParallelExecutionErrorCodes.CIRCULAR_DEPENDENCY,
-        'Circular dependency detected in workflow steps'
-      );
+      // Identify which steps are part of the cycle for debugging
+      const processedStepIds = new Set(layers.flat().map(s => s.stepId));
+      const unprocessedStepIds = steps
+        .filter(s => !processedStepIds.has(s.stepId))
+        .map(s => s.stepId);
+      throw ParallelExecutionError.circularDependency(unprocessedStepIds);
     }
 
     return layers;
@@ -129,6 +133,7 @@ export function createParallelExecutor(
   /**
    * Execute steps with concurrency limit
    * INV-PE-003: Concurrency limit respected
+   * INV-PE-004: Failure state is atomic to prevent race conditions
    */
   async function executeWithConcurrency(
     steps: AgentWorkflowStep[],
@@ -138,21 +143,10 @@ export function createParallelExecutor(
   ): Promise<ParallelStepResult[]> {
     const results: ParallelStepResult[] = [];
     const pending: Promise<void>[] = [];
-    let hasFailure = false;
 
     async function executeStep(step: AgentWorkflowStep): Promise<void> {
-      if (cancelled) {
-        results.push({
-          stepId: step.stepId,
-          success: false,
-          cancelled: true,
-          durationMs: 0,
-        });
-        return;
-      }
-
-      // Fail fast check
-      if (hasFailure && failureStrategy === 'failFast') {
+      // INV-PE-006: Single check for cancellation (covers both manual cancel and failFast)
+      if (executionState.cancelled) {
         results.push({
           stepId: step.stepId,
           success: false,
@@ -180,7 +174,6 @@ export function createParallelExecutor(
         const errorMessage =
           getErrorMessage(error);
 
-        hasFailure = true;
         results.push({
           stepId: step.stepId,
           success: false,
@@ -188,14 +181,17 @@ export function createParallelExecutor(
           durationMs,
         });
 
+        // INV-PE-006: Set cancelled atomically on failure in failFast mode
+        // This ensures no gap between detecting failure and signaling cancellation
         if (failureStrategy === 'failFast') {
-          cancelled = true;
+          executionState.cancelled = true;
         }
       }
     }
 
     // Execute with concurrency limit
     // INV-PE-001: Independent steps execute concurrently
+    // INV-PE-005: All promises handled to prevent unhandled rejections
     let index = 0;
 
     while (index < steps.length || pending.length > 0) {
@@ -203,16 +199,24 @@ export function createParallelExecutor(
       while (pending.length < cfg.maxConcurrency && index < steps.length) {
         const step = steps[index];
         if (step) {
-          const promise = executeStep(step).then(() => {
-            const idx = pending.indexOf(promise);
-            if (idx >= 0) pending.splice(idx, 1);
-          });
+          // INV-PE-005: Use finally for cleanup and catch for safety
+          const promise = executeStep(step)
+            .finally(() => {
+              // Remove from pending when done (resolve or reject)
+              const idx = pending.indexOf(promise);
+              if (idx >= 0) pending.splice(idx, 1);
+            })
+            .catch(() => {
+              // Errors are already captured in executeStep's try/catch
+              // This catch prevents unhandled rejection if something unexpected happens
+            });
           pending.push(promise);
         }
         index++;
       }
 
       // Wait for at least one to complete
+      // INV-PE-005: Promise.race is safe here because all promises have catch handlers
       if (pending.length > 0) {
         await Promise.race(pending);
       }
@@ -235,7 +239,7 @@ export function createParallelExecutor(
       executor: StepExecutor,
       previousOutputs: Record<string, unknown> = {}
     ): Promise<ParallelGroupResult> {
-      cancelled = false;
+      executionState.cancelled = false;
       const groupId = crypto.randomUUID();
       const startTime = Date.now();
       const outputs = { ...previousOutputs };
@@ -247,7 +251,7 @@ export function createParallelExecutor(
       const allResults: ParallelStepResult[] = [];
 
       for (const layer of layers) {
-        if (cancelled) break;
+        if (executionState.cancelled) break;
 
         const layerResults = await executeWithConcurrency(
           layer,
@@ -261,7 +265,7 @@ export function createParallelExecutor(
         if (cfg.failureStrategy === 'failFast') {
           const failed = layerResults.some((r) => !r.success && !r.cancelled);
           if (failed) {
-            cancelled = true;
+            executionState.cancelled = true;
             break;
           }
         }
@@ -289,7 +293,7 @@ export function createParallelExecutor(
     },
 
     cancel(): void {
-      cancelled = true;
+      executionState.cancelled = true;
     },
   };
 }

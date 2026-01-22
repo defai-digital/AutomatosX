@@ -724,11 +724,11 @@ When switching projects, just run `ax init` in the new project.
 
 ## What's New
 
-**v13.4.8** - Security & Stability Fixes: Fixed critical SQL injection vulnerability via LIKE wildcards in semantic-store (INV-SEM-006). Added safe JSON parsing in session-store to prevent crashes from corrupted database data (INV-SESS-SQL-004). Fixed ReDoS vulnerability in glob pattern matching with validation limits on recursive wildcards (INV-GUARD-PATH-005). Fixed division by zero in cosine similarity calculations (INV-SEM-007). Added buffer size validation to prevent integer overflow in embedding operations (INV-SEM-005). Multiple XSS prevention fixes in web dashboard. Added input validation for trace IDs and other user-provided identifiers. Fixed event eviction using eventId comparison instead of reference equality. Fixed session timestamp consistency and list sorting order.
+- **Web Dashboard** - Real-time monitoring dashboard for AI operations, execution traces, and system health. Launch with `ax monitor`.
 
-**v13.4.7** - Provider Selection & Fallback System: Added intelligent provider selection with graceful fallback when preferred providers are unavailable. New `fallbackStrategy` option in agent `providerAffinity` config with three modes: `cascade` (try preferred then any available), `strict` (fail if preferred unavailable), `any-available` (use whatever works). Added Codex to default multi-model discussion providers. Added OpenCode to provider strength mappings. Updated all bundled agents with appropriate provider preferences. New `ProviderSelector` service with `NoProviderAvailableError` providing actionable error messages for users with limited provider installations.
+- **IDE Integration** - Now supports [Google Antigravity](https://antigravity.google) and [Cursor](https://cursor.com/) IDEs. Run `ax init` to automatically configure MCP for your IDE.
 
-**v13.4.2** - Staged Capabilities & Standard Workflow Library: Added intelligent task classification and capability routing for agents. New standard workflow library (`workflows/std/`) with 7 reusable templates (analysis, code-review, debugging, documentation, implementation, refactoring, testing). Fixed trace name display - traces now show meaningful names like "ax agent run standard" instead of "Trace 74e746d0". Added capability mapping invariants (INV-CAP-001 to INV-CAP-005).
+- **OpenCode Provider** - Added support for [OpenCode](https://github.com/opencode-ai/opencode) as a new AI provider.
 
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 

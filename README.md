@@ -730,20 +730,6 @@ When switching projects, just run `ax init` in the new project.
 
 **v13.4.2** - Staged Capabilities & Standard Workflow Library: Added intelligent task classification and capability routing for agents. New standard workflow library (`workflows/std/`) with 7 reusable templates (analysis, code-review, debugging, documentation, implementation, refactoring, testing). Fixed trace name display - traces now show meaningful names like "ax agent run standard" instead of "Trace 74e746d0". Added capability mapping invariants (INV-CAP-001 to INV-CAP-005).
 
-**v13.4.0** - Provider & CLI fixes: Fixed ax-grok hang issue with early termination support (kills process immediately after receiving complete JSON output instead of waiting for timeout). Fixed duplicate synthesis output in `ax discuss`. Fixed stale example agents not updating via version comparison. Added `--team` filter support for `ax agent list`. Added `--max-depth` validation (1-4 range) for recursive discussions.
-
-**v13.3.1** - Antigravity IDE support and performance improvements: `ax init` now configures MCP for [Google Antigravity](https://antigravity.google) at `~/.gemini/antigravity/mcp_config.json`. Improved GUI app detection for both Antigravity and Cursor. Major refactoring: parallel execution for provider/IDE checks, optimized file operations, single-pass summary computation in `ax doctor`.
-
-**v13.3.0** - Cursor IDE support: `ax init` now creates `.cursor/mcp.json` for seamless Cursor integration. License update: BSL 1.1 terms apply starting with this release
-
-**v13.2.7** - MCP fix: Agents now load correctly regardless of working directory (was returning empty when called from Codex/other CLIs)
-
-**v13.2.6** - Provider reliability: Fixed ax-grok timeout handling, fixed opencode stdin/JSON error parsing, improved error messages for missing credentials
-
-**v13.2.5** - Provider fixes: Fixed OpenCode CLI args, fixed Grok CLI args, improved parallelization
-
-**v13.2.4** - Security hardening: command injection fix, SQL injection prevention, async I/O improvements
-
 [Full Changelog](https://github.com/defai-digital/automatosx/releases)
 
 ---

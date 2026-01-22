@@ -4,7 +4,7 @@ Complete reference for AutomatosX MCP (Model Context Protocol) tools.
 
 ## Overview
 
-AutomatosX provides 41 MCP tools for integration with AI assistants like Claude Code. These tools enable AI-powered development workflows, code review, agent orchestration, and more.
+AutomatosX provides 73+ MCP tools for integration with AI assistants like Claude Code. These tools enable AI-powered development workflows, code review, agent orchestration, multi-model discussions, semantic search, research synthesis, and more.
 
 ## Starting the MCP Server
 
@@ -39,15 +39,23 @@ Add to your Claude Code MCP settings:
 |----------|-------|-------------|
 | [Workflow](#workflow-tools) | 3 | Workflow execution and management |
 | [Agent](#agent-tools) | 7 | Agent management and execution |
-| [Session](#session-tools) | 7 | Collaboration session management |
+| [Session](#session-tools) | 8 | Collaboration session management |
 | [Memory](#memory-tools) | 5 | Key-value memory storage |
 | [Review](#review-tools) | 2 | AI-powered code review |
 | [Guard](#guard-tools) | 3 | Governance and policy enforcement |
-| [Trace](#trace-tools) | 3 | Execution tracing |
+| [Trace](#trace-tools) | 6 | Execution tracing |
 | [Scaffold](#scaffold-tools) | 3 | Contract-first scaffolding |
 | [File System](#file-system-tools) | 3 | File operations |
 | [Config](#config-tools) | 3 | Configuration management |
 | [Ability](#ability-tools) | 2 | Ability management |
+| [Discussion](#discussion-tools) | 3 | Multi-model AI discussions |
+| [Parallel](#parallel-execution-tools) | 2 | DAG-based parallel agent execution |
+| [Semantic](#semantic-search-tools) | 7 | Vector similarity search |
+| [Research](#research-tools) | 3 | Web research and synthesis |
+| [Design](#design-tools) | 5 | Design artifact generation |
+| [Git](#git-tools) | 5 | Git operations and PR management |
+| [Feedback](#feedback-tools) | 5 | Agent performance feedback |
+| [MCP Ecosystem](#mcp-ecosystem-tools) | 6 | External MCP server management |
 
 ---
 
@@ -384,6 +392,23 @@ Mark session as failed.
 
 ---
 
+### session_close_stuck
+
+Close stuck sessions.
+
+```json
+{
+  "maxAgeMs": 86400000
+}
+```
+
+**Parameters:**
+- `maxAgeMs` (optional): Max age before considered stuck (default: 24 hours)
+
+**Side Effects:** Marks stuck sessions as failed.
+
+---
+
 ## Memory Tools
 
 ### memory_store
@@ -619,6 +644,51 @@ Analyze a trace for issues.
 
 ---
 
+### trace_tree
+
+Get hierarchical tree view of a trace.
+
+```json
+{
+  "traceId": "trace-uuid"
+}
+```
+
+**Returns:** Complete trace tree structure with delegated child traces.
+
+---
+
+### trace_by_session
+
+Get traces for a session.
+
+```json
+{
+  "sessionId": "session-uuid"
+}
+```
+
+**Returns:** Traces associated with the session, sorted by start time.
+
+---
+
+### trace_close_stuck
+
+Close stuck traces.
+
+```json
+{
+  "maxAgeMs": 3600000
+}
+```
+
+**Parameters:**
+- `maxAgeMs` (optional): Max age before considered stuck (default: 1 hour)
+
+**Side Effects:** Marks stuck traces as failed.
+
+---
+
 ## Scaffold Tools
 
 ### scaffold_contract
@@ -848,6 +918,738 @@ Inject relevant abilities into agent context.
 - `includeMetadata` (optional): Include headers
 
 **Returns:** Combined ability content for agent context.
+
+---
+
+## Discussion Tools
+
+### discuss
+
+Multi-model discussion with synthesis.
+
+```json
+{
+  "topic": "Should we use microservices or monolith?",
+  "providers": ["claude", "gemini", "grok"],
+  "pattern": "synthesis",
+  "consensus": "synthesis",
+  "rounds": 2,
+  "context": "5-person startup building an e-commerce platform"
+}
+```
+
+**Parameters:**
+- `topic` (required): Discussion topic (max 2000 chars)
+- `providers` (optional): Providers to participate (default: claude, grok, gemini)
+- `participants` (optional): Mix of providers and agents
+- `pattern` (optional): `synthesis`, `voting`, `debate`, `critique`, `round-robin`
+- `consensus` (optional): `synthesis`, `voting`, `moderator`, `unanimous`, `majority`
+- `rounds` (optional): Discussion rounds 1-5 (default: 2)
+- `timeout` (optional): Per-provider timeout in ms
+- `context` (optional): Additional context
+- `fastMode` (optional): Single round, skip cross-discussion
+
+**Side Effects:** Makes LLM API calls to multiple providers.
+
+---
+
+### discuss_quick
+
+Quick 2-round synthesis discussion.
+
+```json
+{
+  "topic": "REST vs GraphQL for mobile app",
+  "providers": ["claude", "gemini", "grok"]
+}
+```
+
+**Parameters:**
+- `topic` (required): Topic for discussion
+- `providers` (optional): Providers to use
+
+---
+
+### discuss_recursive
+
+Recursive multi-model discussion with depth control.
+
+```json
+{
+  "topic": "Design a distributed caching system",
+  "maxDepth": 2,
+  "maxCalls": 20,
+  "timeoutStrategy": "cascade"
+}
+```
+
+**Parameters:**
+- `topic` (required): Topic for discussion
+- `maxDepth` (optional): Recursion depth 1-4 (default: 2)
+- `maxCalls` (optional): Max provider calls (default: 20)
+- `timeoutStrategy` (optional): `fixed`, `cascade`, `budget`
+- `totalBudget` (optional): Total timeout budget in ms
+
+**Side Effects:** Makes LLM API calls, may spawn nested discussions.
+
+---
+
+## Parallel Execution Tools
+
+### parallel_run
+
+Execute multiple agents in parallel with DAG-based dependency management.
+
+```json
+{
+  "tasks": [
+    {"agentId": "security", "input": {"query": "audit auth"}},
+    {"agentId": "quality", "input": {"query": "review tests"}, "dependencies": []},
+    {"agentId": "fullstack", "dependencies": ["security", "quality"]}
+  ],
+  "config": {
+    "maxConcurrentAgents": 5,
+    "failureStrategy": "failSafe",
+    "resultAggregation": "merge"
+  }
+}
+```
+
+**Parameters:**
+- `tasks` (required): Tasks to execute (max 100)
+- `config` (optional): Execution configuration
+  - `maxConcurrentAgents`: Max parallel agents (default: 5)
+  - `failureStrategy`: `failFast`, `failSafe`, `continueOnError`
+  - `resultAggregation`: `merge`, `list`, `firstSuccess`
+- `sharedContext` (optional): Shared context for all agents
+- `sessionId` (optional): Session for tracking
+
+**Side Effects:** Creates agent executions, may modify session state.
+
+---
+
+### parallel_plan
+
+Preview execution plan without running.
+
+```json
+{
+  "tasks": [
+    {"agentId": "security"},
+    {"agentId": "quality"},
+    {"agentId": "fullstack", "dependencies": ["security", "quality"]}
+  ]
+}
+```
+
+**Returns:** DAG structure, execution layers, parallelism analysis.
+
+---
+
+## Semantic Search Tools
+
+### semantic_store
+
+Store content with vector embeddings for similarity search.
+
+```json
+{
+  "key": "auth-implementation",
+  "content": "The authentication module uses JWT tokens with...",
+  "namespace": "code-docs",
+  "tags": ["auth", "security"],
+  "metadata": {"file": "src/auth/jwt.ts"}
+}
+```
+
+**Parameters:**
+- `key` (required): Unique storage key
+- `content` (required): Text content to store and index
+- `namespace` (optional): Namespace for organization
+- `tags` (optional): Tags for filtering
+- `metadata` (optional): Additional metadata
+- `forceRecompute` (optional): Recompute embedding
+
+**Side Effects:** Creates/updates entry with computed embedding.
+
+---
+
+### semantic_search
+
+Search for semantically similar content.
+
+```json
+{
+  "query": "How does authentication work?",
+  "namespace": "code-docs",
+  "topK": 10,
+  "minSimilarity": 0.7,
+  "filterTags": ["auth"]
+}
+```
+
+**Parameters:**
+- `query` (required): Search query text
+- `namespace` (optional): Namespace to search
+- `topK` (optional): Max results (default: 10)
+- `minSimilarity` (optional): Similarity threshold 0-1 (default: 0.7)
+- `filterTags` (optional): Filter by tags (all must match)
+
+**Returns:** Ranked results by similarity score.
+
+---
+
+### semantic_get
+
+Retrieve a specific item by key.
+
+```json
+{
+  "key": "auth-implementation",
+  "namespace": "code-docs"
+}
+```
+
+---
+
+### semantic_list
+
+List semantic items with filtering.
+
+```json
+{
+  "namespace": "code-docs",
+  "keyPrefix": "auth-",
+  "limit": 10
+}
+```
+
+---
+
+### semantic_delete
+
+Delete an item by key.
+
+```json
+{
+  "key": "auth-implementation",
+  "namespace": "code-docs"
+}
+```
+
+**Side Effects:** Removes item from store.
+
+---
+
+### semantic_stats
+
+Get storage statistics.
+
+```json
+{
+  "namespace": "code-docs"
+}
+```
+
+---
+
+### semantic_clear
+
+Clear all items in a namespace.
+
+```json
+{
+  "namespace": "code-docs",
+  "confirm": true
+}
+```
+
+**Side Effects:** Removes all items in namespace. Requires `confirm: true`.
+
+---
+
+## Research Tools
+
+### research_query
+
+Web search with AI synthesis.
+
+```json
+{
+  "query": "Best practices for TypeScript monorepo 2024",
+  "sources": ["web", "docs", "github"],
+  "maxSources": 5,
+  "synthesize": true,
+  "language": "typescript"
+}
+```
+
+**Parameters:**
+- `query` (required): Research query (max 5000 chars)
+- `sources` (optional): Source types - `web`, `docs`, `github`, `stackoverflow`, `arxiv`
+- `maxSources` (optional): Max sources 1-20 (default: 5)
+- `synthesize` (optional): Combine results (default: true)
+- `language` (optional): Programming language filter
+- `includeCode` (optional): Include code examples (default: true)
+
+**Returns:** Sources and synthesized answer with confidence.
+
+---
+
+### research_fetch
+
+Fetch and extract content from URL.
+
+```json
+{
+  "url": "https://example.com/docs/api",
+  "extractCode": true,
+  "maxLength": 10000
+}
+```
+
+**Parameters:**
+- `url` (required): URL to fetch
+- `extractCode` (optional): Extract code blocks (default: true)
+- `maxLength` (optional): Max content length (default: 10000)
+
+---
+
+### research_synthesize
+
+Combine multiple sources into a coherent answer.
+
+```json
+{
+  "query": "How to implement OAuth2 in Node.js",
+  "sources": [...],
+  "style": "detailed",
+  "includeCode": true
+}
+```
+
+**Parameters:**
+- `query` (required): Original query for context
+- `sources` (required): Sources to synthesize
+- `style` (optional): `concise`, `detailed`, `tutorial`
+- `includeCode` (optional): Include code examples
+
+**Returns:** Synthesized answer with source citations.
+
+---
+
+## Design Tools
+
+### design_api
+
+Generate OpenAPI/AsyncAPI specifications.
+
+```json
+{
+  "name": "Orders API",
+  "endpoints": [
+    {"path": "/orders", "method": "GET", "summary": "List orders"},
+    {"path": "/orders/{id}", "method": "GET", "summary": "Get order by ID"},
+    {"path": "/orders", "method": "POST", "summary": "Create order"}
+  ],
+  "format": "openapi",
+  "version": "1.0.0",
+  "baseUrl": "https://api.example.com"
+}
+```
+
+**Parameters:**
+- `name` (required): API name
+- `endpoints` (required): List of API endpoints
+- `format` (optional): `openapi`, `asyncapi`
+- `version` (optional): API version (default: 1.0.0)
+- `baseUrl` (optional): Base URL
+- `outputPath` (optional): File path to write
+
+---
+
+### design_component
+
+Generate component interface designs.
+
+```json
+{
+  "name": "UserService",
+  "type": "service",
+  "description": "Handles user management operations",
+  "inputs": [
+    {"name": "userId", "type": "string", "required": true}
+  ],
+  "outputs": [
+    {"name": "user", "type": "User"}
+  ],
+  "language": "typescript"
+}
+```
+
+**Parameters:**
+- `name` (required): Component name
+- `type` (required): `function`, `class`, `module`, `service`, `controller`, etc.
+- `description` (required): Component purpose
+- `inputs` (optional): Input parameters
+- `outputs` (optional): Output values
+- `language` (optional): Programming language
+- `patterns` (optional): Design patterns to apply
+
+---
+
+### design_schema
+
+Generate data schemas (Zod, JSON Schema, TypeScript).
+
+```json
+{
+  "name": "Order",
+  "fields": [
+    {"name": "id", "type": "uuid", "required": true},
+    {"name": "status", "type": "enum", "enumValues": ["pending", "completed", "cancelled"]},
+    {"name": "items", "type": "array", "required": true}
+  ],
+  "format": "zod"
+}
+```
+
+**Parameters:**
+- `name` (required): Schema name
+- `fields` (required): Schema fields with types
+- `format` (optional): `zod`, `json-schema`, `typescript`, `prisma`, `drizzle`
+- `outputPath` (optional): File path to write
+
+---
+
+### design_architecture
+
+Generate architecture diagrams (Mermaid, PlantUML, C4).
+
+```json
+{
+  "name": "E-Commerce Platform",
+  "description": "Microservices architecture for online store",
+  "pattern": "microservices",
+  "components": [
+    {"id": "api-gateway", "name": "API Gateway", "type": "service"},
+    {"id": "order-service", "name": "Order Service", "type": "domain", "dependencies": ["api-gateway"]},
+    {"id": "payment-service", "name": "Payment Service", "type": "external", "dependencies": ["order-service"]}
+  ],
+  "format": "mermaid"
+}
+```
+
+**Parameters:**
+- `name` (required): Architecture name
+- `description` (required): Architecture description
+- `pattern` (required): `hexagonal`, `clean`, `layered`, `microservices`, `event-driven`, etc.
+- `components` (required): Architecture components
+- `format` (optional): `mermaid`, `plantuml`, `markdown`, `c4`
+
+---
+
+### design_list
+
+List generated design artifacts.
+
+```json
+{
+  "type": "api",
+  "status": "approved",
+  "limit": 50
+}
+```
+
+---
+
+## Git Tools
+
+### git_status
+
+Get repository status.
+
+```json
+{
+  "path": "/path/to/repo",
+  "short": false
+}
+```
+
+**Returns:** Branch, staged/unstaged changes, untracked files.
+
+---
+
+### git_diff
+
+Get diff for files or commits.
+
+```json
+{
+  "staged": true,
+  "paths": ["src/api/users.ts"],
+  "commit": "HEAD~1",
+  "stat": false
+}
+```
+
+**Parameters:**
+- `staged` (optional): Show staged changes
+- `paths` (optional): Specific file paths
+- `commit` (optional): Compare with commit
+- `base` (optional): Base commit for comparison
+- `stat` (optional): Show diffstat summary
+
+---
+
+### commit_prepare
+
+Stage files and generate AI commit message.
+
+```json
+{
+  "paths": ["src/api/users.ts", "src/types/user.ts"],
+  "type": "feat",
+  "scope": "api",
+  "stageAll": false
+}
+```
+
+**Parameters:**
+- `paths` (required): Files to stage and commit
+- `type` (optional): Commit type - `feat`, `fix`, `refactor`, `docs`, `test`, etc.
+- `scope` (optional): Commit scope
+- `stageAll` (optional): Stage all modified files
+
+**Side Effects:** Stages files. Requires user confirmation to commit.
+
+---
+
+### pr_create
+
+Create GitHub pull request with AI description.
+
+```json
+{
+  "title": "Add user authentication",
+  "base": "main",
+  "draft": false,
+  "push": true
+}
+```
+
+**Parameters:**
+- `title` (required): PR title
+- `base` (optional): Base branch (default: main)
+- `body` (optional): PR body (AI generates if empty)
+- `draft` (optional): Create as draft
+- `push` (optional): Push branch first (default: true)
+
+**Side Effects:** Pushes branch and creates PR. Requires GitHub CLI.
+
+---
+
+### pr_review
+
+Get PR details for review.
+
+```json
+{
+  "prNumber": 123,
+  "focus": "security"
+}
+```
+
+**Parameters:**
+- `prNumber` (required): PR number
+- `focus` (optional): Review focus - `security`, `architecture`, `performance`, `all`
+
+**Returns:** PR diff, commits, files for analysis.
+
+---
+
+## Feedback Tools
+
+### feedback_submit
+
+Submit feedback for an agent task.
+
+```json
+{
+  "taskDescription": "Review authentication code",
+  "selectedAgent": "security",
+  "recommendedAgent": "reviewer",
+  "rating": 5,
+  "outcome": "success",
+  "userComment": "Excellent security analysis"
+}
+```
+
+**Parameters:**
+- `taskDescription` (required): Task description (max 5000 chars)
+- `selectedAgent` (required): Agent that was used
+- `recommendedAgent` (optional): Agent that was recommended
+- `rating` (optional): Rating 1-5
+- `outcome` (optional): `success`, `failure`, `partial`, `cancelled`
+- `feedbackType` (optional): `explicit`, `implicit`, `outcome`
+- `userComment` (optional): User comment
+
+**Side Effects:** Creates feedback record, may update score adjustments.
+
+---
+
+### feedback_history
+
+Get feedback history.
+
+```json
+{
+  "agentId": "security",
+  "since": "2024-01-01T00:00:00Z",
+  "limit": 20
+}
+```
+
+---
+
+### feedback_stats
+
+Get feedback statistics for an agent.
+
+```json
+{
+  "agentId": "security"
+}
+```
+
+---
+
+### feedback_overview
+
+Get system-wide feedback summary.
+
+```json
+{}
+```
+
+---
+
+### feedback_adjustments
+
+View score adjustments for an agent.
+
+```json
+{
+  "agentId": "security"
+}
+```
+
+**Returns:** Score adjustments based on feedback (bounded -0.5 to +0.5).
+
+---
+
+## MCP Ecosystem Tools
+
+### mcp_server_register
+
+Register an external MCP server.
+
+```json
+{
+  "serverId": "custom-tools",
+  "command": "npx",
+  "args": ["-y", "@example/mcp-server"],
+  "enabled": true,
+  "connectNow": true,
+  "discoverNow": true
+}
+```
+
+**Parameters:**
+- `serverId` (required): Unique server ID (lowercase alphanumeric with hyphens)
+- `command` (required): Command to start server
+- `name` (optional): Human-readable name
+- `args` (optional): Command arguments
+- `env` (optional): Environment variables
+- `enabled` (optional): Enable server (default: true)
+- `connectNow` (optional): Connect immediately (default: true)
+- `discoverNow` (optional): Discover tools (default: true)
+
+**Side Effects:** Creates/updates server registration.
+
+---
+
+### mcp_server_list
+
+List registered MCP servers.
+
+```json
+{
+  "status": "connected",
+  "enabled": true,
+  "limit": 10
+}
+```
+
+---
+
+### mcp_server_unregister
+
+Remove an MCP server.
+
+```json
+{
+  "serverId": "custom-tools"
+}
+```
+
+**Side Effects:** Removes server and clears its tools.
+
+---
+
+### mcp_tools_discover
+
+Discover tools from registered servers.
+
+```json
+{
+  "serverIds": ["custom-tools"],
+  "forceRefresh": false,
+  "includeDisabled": false
+}
+```
+
+---
+
+### mcp_tool_invoke
+
+Call a tool on an external MCP server.
+
+```json
+{
+  "toolName": "custom_tool",
+  "serverId": "custom-tools",
+  "arguments": {"param": "value"}
+}
+```
+
+**Parameters:**
+- `toolName` (required): Tool name (use `serverId.toolName` for disambiguation)
+- `serverId` (optional): Server ID (required if tool name is ambiguous)
+- `arguments` (optional): Tool arguments
+
+---
+
+### mcp_tools_list
+
+List discovered tools from MCP servers.
+
+```json
+{
+  "serverId": "custom-tools",
+  "category": "utility"
+}
+```
 
 ---
 

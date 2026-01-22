@@ -264,18 +264,26 @@ Add to your Claude Code MCP settings:
 
 ### Available MCP Tools
 
-Once connected, you have access to 40+ tools:
+Once connected, you have access to 73+ tools:
 
 | Category | Tools |
 |----------|-------|
-| **Agents** | `agent_list`, `agent_run`, `agent_get`, `agent_register`, `agent_recommend` |
+| **Agents** | `agent_list`, `agent_run`, `agent_get`, `agent_register`, `agent_recommend`, `agent_capabilities` |
 | **Workflows** | `workflow_run`, `workflow_list`, `workflow_describe` |
-| **Sessions** | `session_create`, `session_join`, `session_complete`, `session_list` |
-| **Memory** | `memory_store`, `memory_retrieve`, `memory_search`, `memory_list` |
+| **Sessions** | `session_create`, `session_join`, `session_complete`, `session_list`, `session_close_stuck` |
+| **Memory** | `memory_store`, `memory_retrieve`, `memory_search`, `memory_list`, `memory_delete` |
 | **Guard** | `guard_check`, `guard_list`, `guard_apply` |
 | **Scaffold** | `scaffold_contract`, `scaffold_domain`, `scaffold_guard` |
 | **Review** | `review_analyze`, `review_list` |
-| **Trace** | `trace_list`, `trace_get`, `trace_analyze` |
+| **Trace** | `trace_list`, `trace_get`, `trace_analyze`, `trace_tree`, `trace_by_session` |
+| **Discussion** | `discuss`, `discuss_quick`, `discuss_recursive` |
+| **Parallel** | `parallel_run`, `parallel_plan` |
+| **Semantic** | `semantic_store`, `semantic_search`, `semantic_get`, `semantic_list`, `semantic_delete` |
+| **Research** | `research_query`, `research_fetch`, `research_synthesize` |
+| **Design** | `design_api`, `design_component`, `design_schema`, `design_architecture` |
+| **Git** | `git_status`, `git_diff`, `commit_prepare`, `pr_create`, `pr_review` |
+| **Feedback** | `feedback_submit`, `feedback_history`, `feedback_stats` |
+| **MCP Ecosystem** | `mcp_server_register`, `mcp_tools_discover`, `mcp_tool_invoke` |
 
 See [MCP Tools Reference](./reference/mcp-tools.md) for complete documentation.
 

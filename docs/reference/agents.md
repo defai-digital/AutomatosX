@@ -23,11 +23,183 @@ ax agent run <agent-id> --input '{"query": "..."}'
 
 | Category | Agents | Description |
 |----------|--------|-------------|
+| [Meta-Agents](#meta-agents) | 7 | Dynamic capability-loading orchestrators |
 | [Engineering](#engineering-agents) | 8 | Software development specialists |
-| [Data & ML](#data--ml-agents) | 4 | Machine learning and data science |
+| [Data & ML](#data--ml-agents) | 3 | Machine learning and data science |
 | [Leadership](#leadership-agents) | 3 | Executive and strategic roles |
 | [Specialized](#specialized-agents) | 4 | Domain-specific expertise |
-| [Support](#support-agents) | 4 | Quality, writing, and research |
+| [Support](#support-agents) | 3 | Quality, writing, and bug hunting |
+
+**Total: 28 agents**
+
+---
+
+## Meta-Agents
+
+Meta-agents dynamically load specialized capabilities based on task context. They combine multiple specialist abilities and route tasks to appropriate workflows.
+
+### architect
+
+**Strategic Technology Leader**
+
+Dynamically loads system design, product, and executive capabilities based on task context.
+
+```bash
+ax agent run architect --input '{"query": "Design a scalable architecture for our platform"}'
+```
+
+**Expertise:** System architecture, technology selection, strategic planning, trade-off analysis
+
+**Capabilities:**
+- Architecture review and design
+- Technology selection and evaluation
+- Scalability planning
+- Integration design
+- Strategic roadmap creation
+
+**Best For:** High-level architecture decisions, technology strategy, system design
+
+---
+
+### auditor
+
+**Quality and Security Specialist**
+
+Dynamically loads security, testing, and compliance capabilities based on task context.
+
+```bash
+ax agent run auditor --input '{"query": "Audit the payment module for security issues"}'
+```
+
+**Expertise:** Security audits, vulnerability scanning, compliance checking, quality metrics
+
+**Capabilities:**
+- Security audit and review
+- Vulnerability scanning
+- Test coverage analysis
+- Quality metrics assessment
+- Compliance checking
+
+**Best For:** Security audits, quality reviews, compliance verification
+
+---
+
+### builder
+
+**Implementation Specialist**
+
+Dynamically loads language, framework, and domain capabilities based on task context.
+
+```bash
+ax agent run builder --input '{"query": "Implement the user registration feature"}'
+```
+
+**Expertise:** Fullstack development, backend, frontend, mobile, blockchain, ML
+
+**Capabilities:**
+- Code implementation
+- Bug fixing
+- Feature development
+- API development
+- Testing and refactoring
+
+**Best For:** Building features, implementing code, fixing bugs
+
+---
+
+### executor
+
+**Universal Task Executor**
+
+Dynamically loads appropriate workflows based on task classification.
+
+```bash
+ax agent run executor --input '{"query": "Complete this implementation task"}'
+```
+
+**Expertise:** Task routing, workflow execution, multi-step operations
+
+**Capabilities:**
+- Implementation tasks
+- Debugging
+- Refactoring
+- Testing
+- Documentation
+- Analysis
+
+**Best For:** Complex multi-step tasks, task orchestration
+
+---
+
+### operator
+
+**Infrastructure and Operations Specialist**
+
+Dynamically loads deployment, monitoring, and infrastructure capabilities.
+
+```bash
+ax agent run operator --input '{"query": "Deploy the service to production"}'
+```
+
+**Expertise:** DevOps, MLOps, deployment automation, infrastructure management
+
+**Capabilities:**
+- Deployment automation
+- Infrastructure as code
+- CI/CD pipelines
+- Monitoring setup
+- Container orchestration
+- Incident response
+
+**Best For:** Infrastructure operations, deployments, monitoring
+
+---
+
+### researcher
+
+**Research and Analysis Specialist**
+
+Dynamically loads research, data science, and documentation capabilities.
+
+```bash
+ax agent run researcher --input '{"query": "Research best practices for caching"}'
+```
+
+**Expertise:** Research, analysis, documentation, data science, technical writing
+
+**Capabilities:**
+- Technology research
+- Data analysis
+- Documentation creation
+- Trend identification
+- Report writing
+- Web search and synthesis
+
+**Best For:** Research tasks, analysis, documentation, technology evaluation
+
+---
+
+### reviewer
+
+**Universal Verification Agent**
+
+Reviews, audits, and validates work. Partner to Executor in the two-agent architecture.
+
+```bash
+ax agent run reviewer --input '{"query": "Review this pull request"}'
+```
+
+**Expertise:** Code review, security review, quality assurance, architecture review
+
+**Capabilities:**
+- Code review
+- Security review
+- Quality review
+- Architecture review
+- PR review
+- Documentation review
+
+**Best For:** Verification, validation, code reviews, audits
 
 ---
 
@@ -290,29 +462,6 @@ ax agent run mlops-engineer --input '{"query": "Set up model monitoring"}'
 
 ---
 
-### researcher
-
-**Research Scientist**
-
-Technical research and analysis specialist.
-
-```bash
-ax agent run researcher --input '{"query": "Survey vector database technologies"}'
-```
-
-**Expertise:** Literature review, technical writing, comparative analysis, benchmarking
-
-**Capabilities:**
-- Technology research
-- Comparative analysis
-- Benchmarking
-- Documentation
-- Recommendation synthesis
-
-**Best For:** Technology evaluation, research reports, comparative analysis
-
----
-
 ## Leadership Agents
 
 ### cto
@@ -521,25 +670,28 @@ ax agent run writer --input '{"query": "Document the API endpoints"}'
 
 ---
 
-### reviewer
+### bug-hunter
 
-**Code Reviewer**
+**Proactive Bug Detection Specialist**
 
-Code review and quality assessment specialist.
+Hunts for bugs, edge cases, potential failures, and code smells before they become problems.
 
 ```bash
-ax agent run reviewer --input '{"query": "Review this pull request"}'
+ax agent run bug-hunter --input '{"task": "Hunt for bugs in the auth module", "workspace": "/path/to/code"}'
 ```
 
-**Expertise:** Code review, best practices, design patterns, code quality
+**Expertise:** Bug detection, edge case identification, error handling analysis, race conditions
 
 **Capabilities:**
-- Code review
-- Pattern identification
-- Improvement suggestions
-- Quality assessment
+- Proactive bug hunting
+- Edge case identification
+- Error handling analysis
+- Race condition detection
+- Null safety analysis
+- Resource leak detection
+- Boundary condition testing
 
-**Best For:** Pull request reviews, code quality, best practices
+**Best For:** Finding bugs before they cause problems, edge case analysis, code health checks
 
 ---
 

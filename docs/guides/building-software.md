@@ -333,7 +333,7 @@ AutomatosX provides specialized agents for different development tasks.
 pnpm ax agent list
 ```
 
-AutomatosX provides 23+ specialized agents:
+AutomatosX provides 28 specialized agents (including 7 meta-agents):
 
 **Engineering Agents:**
 | Agent | Purpose |

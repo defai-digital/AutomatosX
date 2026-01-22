@@ -10,9 +10,9 @@
 
 ## What is AutomatosX?
 
-AutomatosX adds **44 specialized tools** to your AI coding assistant through MCP (Model Context Protocol). Instead of just chatting with Claude, Gemini, or Codex, you get:
+AutomatosX adds **73+ specialized tools** to your AI coding assistant through MCP (Model Context Protocol). Instead of just chatting with Claude, Gemini, or Codex, you get:
 
-- **22 specialized agents** (fullstack, security, devops, ml-engineer, etc.)
+- **28 specialized agents** (fullstack, security, devops, ml-engineer, meta-agents, etc.)
 - **Multi-model discussions** (ask Claude AND Gemini AND Grok the same question)
 - **Code review with focus areas** (security, performance, architecture)
 - **Persistent memory** across sessions
@@ -42,7 +42,7 @@ Now use your AI CLI - it has access to all AutomatosX tools.
 
 ## Using AutomatosX with Your AI CLI
 
-After running `ax init`, your AI assistant gains access to 44 new tools. Here's how to use them:
+After running `ax init`, your AI assistant gains access to 73+ new tools. Here's how to use them:
 
 ### With Claude Code
 
@@ -125,10 +125,11 @@ codex
 You: Use ax_agent_list to show me available agents
 
 Codex: [Uses ax_agent_list tool]
-Available agents (22 total):
+Available agents (28 total):
 - fullstack: Senior Fullstack Engineer
 - backend: Backend Engineer
 - security: Security Engineer
+- architect: Strategic Technology Leader (meta-agent)
 ...
 ```
 
@@ -214,7 +215,7 @@ Found 1 issue: Missing input validation in...
 
 ---
 
-## Available MCP Tools (44 total)
+## Available MCP Tools (73+ total)
 
 After `ax init`, your AI assistant can use these tools:
 
@@ -234,6 +235,7 @@ After `ax init`, your AI assistant can use these tools:
 |------|-------------|
 | `ax_discuss` | Multi-model discussion with synthesis |
 | `ax_discuss_quick` | Quick 2-round consensus |
+| `ax_discuss_recursive` | Multi-level recursive discussions with depth control |
 
 ### Review Tools
 | Tool | Description |
@@ -241,7 +243,7 @@ After `ax init`, your AI assistant can use these tools:
 | `ax_review_analyze` | Code review with focus (security, performance, architecture, etc.) |
 | `ax_review_list` | List recent reviews |
 
-**Review Performance Features (v13.5.0):**
+**Review Performance Features:**
 - **Smart batching**: Groups files by relevance to focus mode (e.g., auth files first for security reviews)
 - **Incremental reviews**: Use `--since <commit>` to only review changed files
 - **Provider-aware timeouts**: Automatic timeout calculation based on provider and file count
@@ -274,6 +276,7 @@ After `ax init`, your AI assistant can use these tools:
 | `ax_session_list` | List sessions |
 | `ax_session_leave` | Leave a session |
 | `ax_session_fail` | Mark session failed |
+| `ax_session_close_stuck` | Close stuck sessions |
 
 ### Workflow Tools
 | Tool | Description |
@@ -288,6 +291,9 @@ After `ax init`, your AI assistant can use these tools:
 | `ax_trace_list` | List execution traces |
 | `ax_trace_get` | Get trace details |
 | `ax_trace_analyze` | Analyze trace for issues |
+| `ax_trace_tree` | Get hierarchical trace tree |
+| `ax_trace_by_session` | Get traces for a session |
+| `ax_trace_close_stuck` | Close stuck traces |
 
 ### Scaffold Tools
 | Tool | Description |
@@ -315,6 +321,67 @@ After `ax init`, your AI assistant can use these tools:
 |------|-------------|
 | `ax_ability_list` | List available abilities |
 | `ax_ability_inject` | Inject abilities into prompt |
+
+### Parallel Execution Tools
+| Tool | Description |
+|------|-------------|
+| `ax_parallel_run` | Execute multiple agents in parallel with DAG dependencies |
+| `ax_parallel_plan` | Preview execution plan without running |
+
+### Semantic Search Tools
+| Tool | Description |
+|------|-------------|
+| `ax_semantic_store` | Store content with vector embeddings |
+| `ax_semantic_search` | Find similar content by meaning |
+| `ax_semantic_get` | Retrieve specific item by key |
+| `ax_semantic_list` | List stored items |
+| `ax_semantic_delete` | Remove item from store |
+| `ax_semantic_stats` | Storage statistics |
+| `ax_semantic_clear` | Clear namespace |
+
+### Research Tools
+| Tool | Description |
+|------|-------------|
+| `ax_research_query` | Web search with AI synthesis |
+| `ax_research_fetch` | Fetch and extract from URL |
+| `ax_research_synthesize` | Combine sources into answer |
+
+### Design Tools
+| Tool | Description |
+|------|-------------|
+| `ax_design_api` | Generate OpenAPI/AsyncAPI specs |
+| `ax_design_component` | Create component interface designs |
+| `ax_design_schema` | Generate Zod/JSON schemas |
+| `ax_design_architecture` | Create architecture diagrams (Mermaid, PlantUML, C4) |
+| `ax_design_list` | List design artifacts |
+
+### Git Tools
+| Tool | Description |
+|------|-------------|
+| `ax_git_status` | Repository status |
+| `ax_git_diff` | Show file changes |
+| `ax_commit_prepare` | Stage files and generate commit message |
+| `ax_pr_create` | Create GitHub pull request with AI description |
+| `ax_pr_review` | Get PR details for review |
+
+### Feedback Tools
+| Tool | Description |
+|------|-------------|
+| `ax_feedback_submit` | Submit task feedback |
+| `ax_feedback_history` | View feedback history |
+| `ax_feedback_stats` | Agent feedback statistics |
+| `ax_feedback_overview` | System-wide feedback summary |
+| `ax_feedback_adjustments` | View score adjustments |
+
+### MCP Ecosystem Tools
+| Tool | Description |
+|------|-------------|
+| `ax_mcp_server_register` | Register external MCP server |
+| `ax_mcp_server_list` | List registered servers |
+| `ax_mcp_server_unregister` | Remove server registration |
+| `ax_mcp_tools_discover` | Discover tools from servers |
+| `ax_mcp_tool_invoke` | Call tool on external server |
+| `ax_mcp_tools_list` | List discovered tools |
 
 ---
 
@@ -393,8 +460,20 @@ Result:
 
 ---
 
-## Available Agents (22)
+## Available Agents (28)
 
+### Meta-Agents (Dynamic Capability Loading)
+| Agent | Expertise | Best For |
+|-------|-----------|----------|
+| `architect` | System design, tech strategy, product | High-level architecture and planning |
+| `auditor` | Security, testing, compliance | Quality and security verification |
+| `builder` | Fullstack, backend, frontend, ML | Implementation orchestration |
+| `executor` | Task routing, workflow execution | Complex multi-step tasks |
+| `operator` | DevOps, MLOps, deployment | Infrastructure and operations |
+| `researcher` | Analysis, data science, writing | Research and documentation |
+| `reviewer` | Code review, security, quality | Verification and validation |
+
+### Specialist Agents
 | Agent | Expertise | Best For |
 |-------|-----------|----------|
 | `fullstack` | React, Node.js, TypeScript | End-to-end features |
@@ -408,7 +487,7 @@ Result:
 | `data-scientist` | Python, ML, statistics | Data analysis |
 | `ml-engineer` | PyTorch, MLOps | Production ML |
 | `mlops-engineer` | ML pipelines, deployment | ML infrastructure |
-| `researcher` | Literature review, analysis | Technology research |
+| `bug-hunter` | Bug detection, edge cases | Proactive bug hunting |
 | `cto` | Strategy, leadership | Technical direction |
 | `ceo` | Business strategy | Business decisions |
 | `product` | Requirements, roadmaps | Product planning |
@@ -417,7 +496,6 @@ Result:
 | `creative-marketer` | Marketing, content | Marketing campaigns |
 | `quality` | Testing, QA | Test planning |
 | `writer` | Documentation, API docs | Technical writing |
-| `reviewer` | Code review, patterns | Pull request reviews |
 | `standard` | General assistance | Simple tasks |
 
 ---

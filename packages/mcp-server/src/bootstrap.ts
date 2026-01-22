@@ -57,6 +57,7 @@ import {
   type StepExecutor,
   type PromptExecutorLike,
   type DiscussionExecutorLike,
+  type ToolExecutorLike,
 } from '@defai.digital/workflow-engine';
 import {
   createProviderPromptExecutor,
@@ -70,7 +71,15 @@ import {
 import {
   TIMEOUT_AGENT_STEP_DEFAULT,
   PROVIDER_DEFAULT,
+  ToolExecutorErrorCodes,
 } from '@defai.digital/contracts';
+
+// Import tool handlers for tool executor bridge
+// Note: This creates a module dependency cycle, but it's safe because:
+// - TOOL_HANDLERS is a static object created at module load time
+// - The tool files only call get* functions from this module at runtime
+import { TOOL_HANDLERS } from './tools/index.js';
+import type { ToolHandler, MCPToolResult } from './types.js';
 
 // ============================================================================
 // Types - re-exported for use in MCP Server code
@@ -394,6 +403,127 @@ export function resetBootstrap(): void {
 }
 
 // ============================================================================
+// Tool Executor Bridge (for workflow tool steps)
+// ============================================================================
+
+/**
+ * Parse MCPToolResult content into a usable value
+ */
+function parseToolResultContent(result: MCPToolResult): unknown {
+  if (!result.content || result.content.length === 0) {
+    return undefined;
+  }
+
+  // Get the first text content
+  const textContent = result.content.find((c) => c.type === 'text');
+  if (textContent?.text === undefined) {
+    return undefined;
+  }
+
+  // Try to parse as JSON
+  try {
+    return JSON.parse(textContent.text);
+  } catch {
+    // Return as string if not JSON
+    return textContent.text;
+  }
+}
+
+/**
+ * Result type matching ToolExecutorLike interface from workflow-engine
+ */
+interface ToolExecutorResult {
+  success: boolean;
+  output?: unknown;
+  error?: string;
+  errorCode?: string;
+  retryable?: boolean;
+  durationMs?: number;
+}
+
+/**
+ * Creates a tool executor bridge that connects workflow tool steps to MCP tool handlers
+ *
+ * INV-TOOL-001: Validates inputs via TOOL_HANDLERS (which use wrapHandlersWithInputValidation)
+ * INV-TOOL-002: Freezes outputs via createToolExecutionSuccess/Failure
+ * INV-TOOL-003: Returns errors gracefully for unknown tools
+ */
+function createToolExecutorBridge(handlers: Record<string, ToolHandler>): ToolExecutorLike {
+  const handlerMap = new Map(Object.entries(handlers));
+
+  return {
+    async execute(toolName: string, args: Record<string, unknown>): Promise<ToolExecutorResult> {
+      const startTime = Date.now();
+
+      const handler = handlerMap.get(toolName);
+      if (!handler) {
+        // INV-TOOL-003: Unknown tools return error, not throw
+        return {
+          success: false,
+          error: `Tool not found: ${toolName}`,
+          errorCode: ToolExecutorErrorCodes.TOOL_NOT_FOUND,
+          retryable: false,
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      try {
+        // Execute the handler (already validated by wrapHandlersWithInputValidation)
+        const result = await handler(args);
+
+        // Parse the MCPToolResult
+        const output = parseToolResultContent(result);
+
+        if (result.isError) {
+          return {
+            success: false,
+            error: typeof output === 'string' ? output : JSON.stringify(output),
+            errorCode: ToolExecutorErrorCodes.TOOL_EXECUTION_ERROR,
+            retryable: true, // Most tool errors are retryable
+            durationMs: Date.now() - startTime,
+          };
+        }
+
+        return {
+          success: true,
+          output,
+          durationMs: Date.now() - startTime,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown tool execution error',
+          errorCode: ToolExecutorErrorCodes.TOOL_EXECUTION_ERROR,
+          retryable: true,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    },
+
+    isToolAvailable(toolName: string): boolean {
+      return handlerMap.has(toolName);
+    },
+
+    getAvailableTools(): string[] {
+      return [...handlerMap.keys()];
+    },
+  };
+}
+
+// Cached tool executor instance
+let _toolExecutor: ToolExecutorLike | null = null;
+
+/**
+ * Get or create the tool executor bridge
+ */
+function getToolExecutorBridge(): ToolExecutorLike {
+  if (_toolExecutor === null) {
+    _toolExecutor = createToolExecutorBridge(TOOL_HANDLERS);
+  }
+  return _toolExecutor;
+}
+
+// ============================================================================
 // Step Executor Factory (for workflow execution)
 // ============================================================================
 
@@ -491,9 +621,13 @@ export function createProductionStepExecutor(
     checkProviderHealth,
   }) as unknown as DiscussionExecutorLike;
 
+  // Create tool executor bridge for workflow tool steps
+  const toolExecutor = getToolExecutorBridge();
+
   // Create real step executor with wired dependencies
   _stepExecutor = createRealStepExecutor({
     promptExecutor,
+    toolExecutor,
     discussionExecutor,
     defaultProvider,
   });
@@ -516,4 +650,5 @@ export function getStepExecutor(options?: StepExecutorOptions): StepExecutor {
  */
 export function resetStepExecutor(): void {
   _stepExecutor = null;
+  _toolExecutor = null;
 }

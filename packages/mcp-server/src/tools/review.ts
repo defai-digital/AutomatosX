@@ -29,7 +29,7 @@ import {
   type ReviewPromptExecutor,
   type ReviewFocus,
 } from '@defai.digital/review-domain';
-import { getProviderRegistry, getTraceStore } from '../bootstrap.js';
+import { getProviderRegistry, getTraceStore } from '../shared-dependencies.js';
 
 // Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -70,13 +70,13 @@ function createReviewPromptExecutor(): ReviewPromptExecutor {
 
       // Handle the discriminated union response
       if (!response.success) {
-        throw new Error(`Provider error: ${response.error.message}`);
+        throw new Error(`Provider error: ${response.error?.message ?? 'Unknown error'}`);
       }
 
       return {
-        content: response.content,
+        content: response.content ?? '',
         providerId,
-        modelId: response.model,
+        modelId: response.model ?? `${providerId}-default`,
       };
     },
   };

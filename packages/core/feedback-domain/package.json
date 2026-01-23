@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/feedback-domain",
-  "version": "13.4.8",
+  "version": "13.4.11",
   "type": "module",
   "description": "Agent feedback collection and learning system",
   "license": "BUSL-1.1",

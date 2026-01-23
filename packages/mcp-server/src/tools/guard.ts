@@ -7,7 +7,7 @@ import {
   type GuardResult,
 } from '@defai.digital/guard';
 import { LIMIT_GUARD_POLICIES, getErrorMessage } from '@defai.digital/contracts';
-import { getSessionStore } from '../bootstrap.js';
+import { getSessionStore } from '../shared-dependencies.js';
 
 /**
  * Guard check tool definition

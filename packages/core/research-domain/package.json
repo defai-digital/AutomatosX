@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/research-domain",
-  "version": "13.4.8",
+  "version": "13.4.11",
   "type": "module",
   "description": "Deep research agent with live documentation fetching and knowledge synthesis",
   "license": "BUSL-1.1",

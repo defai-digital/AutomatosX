@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/automatosx",
-  "version": "13.4.8",
+  "version": "13.4.11",
   "type": "module",
   "description": "AutomatosX CLI - AI-powered workflow automation (wrapper for @defai.digital/cli)",
   "license": "BUSL-1.1",

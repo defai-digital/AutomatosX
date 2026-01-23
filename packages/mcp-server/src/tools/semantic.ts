@@ -249,7 +249,7 @@ export const semanticClearTool: MCPTool = {
 // In-Memory Implementation
 // ============================================================================
 
-import { getSemanticManager } from '../bootstrap.js';
+import { getSemanticManager } from '../shared-dependencies.js';
 
 /**
  * Handler for semantic_store tool

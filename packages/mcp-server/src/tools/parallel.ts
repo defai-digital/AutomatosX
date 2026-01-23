@@ -30,7 +30,7 @@ import {
   type AgentExecuteResult,
 } from '@defai.digital/agent-parallel';
 import { getSharedRegistry, getSharedExecutor } from '../registry-accessor.js';
-import { getTraceStore } from '../bootstrap.js';
+import { getTraceStore } from '../shared-dependencies.js';
 
 // ============================================================================
 // Agent Executor Adapter

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/memory-domain",
-  "version": "13.4.8",
+  "version": "13.4.11",
   "type": "module",
   "description": "Memory domain - event sourcing following contract invariants",
   "license": "BUSL-1.1",

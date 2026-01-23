@@ -4,7 +4,7 @@ import {
   type SessionFilter,
 } from '@defai.digital/session-domain';
 import { LIMIT_SESSIONS, getErrorMessage } from '@defai.digital/contracts';
-import { getSessionStore, getSessionManager } from '../bootstrap.js';
+import { getSessionStore, getSessionManager } from '../shared-dependencies.js';
 
 // Get shared store and manager from bootstrap (singleton instances)
 const getStore = () => getSessionStore();

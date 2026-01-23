@@ -6,7 +6,7 @@ import {
 } from '../utils/response.js';
 import { storeArtifact } from '../utils/artifact-store.js';
 import { LIMIT_TRACES, TIMEOUT_SESSION, getErrorMessage } from '@defai.digital/contracts';
-import { getTraceStore } from '../bootstrap.js';
+import { getTraceStore } from '../shared-dependencies.js';
 import type { TraceTreeNode } from '@defai.digital/trace-domain';
 
 // ============================================================================

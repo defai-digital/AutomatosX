@@ -40,7 +40,7 @@ import {
   type TraceEvent,
   type TraceHierarchy,
 } from '@defai.digital/contracts';
-import { getProviderRegistry, getTraceStore } from '../bootstrap.js';
+import { getProviderRegistry, getTraceStore } from '../shared-dependencies.js';
 
 // Check if we're in test environment
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';

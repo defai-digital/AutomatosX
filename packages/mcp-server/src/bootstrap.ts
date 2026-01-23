@@ -74,12 +74,14 @@ import {
   ToolExecutorErrorCodes,
 } from '@defai.digital/contracts';
 
-// Import tool handlers for tool executor bridge
-// Note: This creates a module dependency cycle, but it's safe because:
-// - TOOL_HANDLERS is a static object created at module load time
-// - The tool files only call get* functions from this module at runtime
-import { TOOL_HANDLERS } from './tools/index.js';
+// Type imports only - no runtime imports from tools to avoid circular dependency
+// TOOL_HANDLERS is loaded lazily via dynamic import in getToolExecutorBridge()
 import type { ToolHandler, MCPToolResult } from './types.js';
+
+// Import dependency injection from shared-dependencies
+// This allows tools (which import from shared-dependencies) to access dependencies
+// without creating a circular dependency through bootstrap.ts
+import { setDependencies, setStepExecutorFactory, resetSharedDependencies } from './shared-dependencies.js';
 
 // ============================================================================
 // Types - re-exported for use in MCP Server code
@@ -273,6 +275,21 @@ export async function initializeAsync(): Promise<void> {
 
   _initialized = true;
   _asyncInitialized = true;
+
+  // Register dependencies with shared-dependencies module
+  // This allows tools (which import from shared-dependencies) to access these without circular deps
+  setDependencies({
+    providerRegistry,
+    traceStore,
+    sessionStore,
+    sessionManager,
+    semanticManager,
+    usingSqlite,
+  });
+
+  // Register step executor factory with shared-dependencies
+  // This allows workflow.ts (which imports from shared-dependencies) to access the step executor
+  setStepExecutorFactory(() => createProductionStepExecutor());
 }
 
 /**
@@ -312,6 +329,22 @@ export function bootstrap(): MCPDependencies {
   };
 
   _initialized = true;
+
+  // Register dependencies with shared-dependencies module
+  // This allows tools (which import from shared-dependencies) to access these without circular deps
+  setDependencies({
+    providerRegistry,
+    traceStore,
+    sessionStore,
+    sessionManager,
+    semanticManager,
+    usingSqlite: false,
+  });
+
+  // Register step executor factory with shared-dependencies
+  // This allows workflow.ts (which imports from shared-dependencies) to access the step executor
+  setStepExecutorFactory(() => createProductionStepExecutor());
+
   return _dependencies;
 }
 
@@ -400,6 +433,9 @@ export function resetBootstrap(): void {
   _initialized = false;
   _asyncInitialized = false;
   _stepExecutor = null;
+
+  // Reset shared-dependencies module as well
+  resetSharedDependencies();
 }
 
 // ============================================================================
@@ -512,13 +548,28 @@ function createToolExecutorBridge(handlers: Record<string, ToolHandler>): ToolEx
 
 // Cached tool executor instance
 let _toolExecutor: ToolExecutorLike | null = null;
+// Cached tool handlers (loaded lazily to avoid circular dependency)
+let _toolHandlers: Record<string, ToolHandler> | null = null;
 
 /**
- * Get or create the tool executor bridge
+ * Load tool handlers lazily via dynamic import
+ * This breaks the circular dependency: bootstrap.ts <- tools/*.ts <- tools/index.ts <- bootstrap.ts
  */
-function getToolExecutorBridge(): ToolExecutorLike {
+async function loadToolHandlers(): Promise<Record<string, ToolHandler>> {
+  if (_toolHandlers === null) {
+    const toolsModule = await import('./tools/index.js');
+    _toolHandlers = toolsModule.TOOL_HANDLERS;
+  }
+  return _toolHandlers;
+}
+
+/**
+ * Get or create the tool executor bridge (async to support lazy loading)
+ */
+async function getToolExecutorBridge(): Promise<ToolExecutorLike> {
   if (_toolExecutor === null) {
-    _toolExecutor = createToolExecutorBridge(TOOL_HANDLERS);
+    const handlers = await loadToolHandlers();
+    _toolExecutor = createToolExecutorBridge(handlers);
   }
   return _toolExecutor;
 }
@@ -556,6 +607,7 @@ let _stepExecutor: StepExecutor | null = null;
  * This wires together:
  * - ProviderPromptExecutor: For prompt steps (real LLM calls)
  * - DiscussionExecutor: For discuss steps (multi-model discussions)
+ * - ToolExecutorBridge: For tool steps (MCP tool invocation)
  *
  * Following hexagonal architecture, this is the only place that
  * connects the workflow engine to concrete provider implementations.
@@ -568,9 +620,9 @@ let _stepExecutor: StepExecutor | null = null;
  * @param options - Configuration options
  * @returns A StepExecutor that executes real LLM calls
  */
-export function createProductionStepExecutor(
+export async function createProductionStepExecutor(
   options: StepExecutorOptions = {}
-): StepExecutor {
+): Promise<StepExecutor> {
   // Return cached executor if available
   if (_stepExecutor !== null) {
     return _stepExecutor;
@@ -621,8 +673,8 @@ export function createProductionStepExecutor(
     checkProviderHealth,
   }) as unknown as DiscussionExecutorLike;
 
-  // Create tool executor bridge for workflow tool steps
-  const toolExecutor = getToolExecutorBridge();
+  // Create tool executor bridge for workflow tool steps (async to avoid circular deps)
+  const toolExecutor = await getToolExecutorBridge();
 
   // Create real step executor with wired dependencies
   _stepExecutor = createRealStepExecutor({
@@ -638,7 +690,7 @@ export function createProductionStepExecutor(
 /**
  * Get the cached step executor or create a new one
  */
-export function getStepExecutor(options?: StepExecutorOptions): StepExecutor {
+export async function getStepExecutor(options?: StepExecutorOptions): Promise<StepExecutor> {
   if (_stepExecutor === null) {
     return createProductionStepExecutor(options);
   }

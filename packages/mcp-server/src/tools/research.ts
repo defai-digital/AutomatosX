@@ -35,7 +35,7 @@ import {
   createStubSynthesizer,
   type ResearchAgent,
 } from '@defai.digital/research-domain';
-import { getTraceStore } from '../bootstrap.js';
+import { getTraceStore } from '../shared-dependencies.js';
 
 // ============================================================================
 // Lazy-loaded Research Agent Singleton

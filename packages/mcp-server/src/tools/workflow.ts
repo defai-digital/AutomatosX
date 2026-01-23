@@ -13,7 +13,7 @@ import {
   type WorkflowResult,
 } from '@defai.digital/workflow-engine';
 import { LIMIT_WORKFLOWS, getErrorMessage, type TraceEvent } from '@defai.digital/contracts';
-import { getStepExecutor, getTraceStore } from '../bootstrap.js';
+import { getTraceStore, getStepExecutor } from '../shared-dependencies.js';
 
 // Get the directory of this module (for finding bundled examples)
 const __filename = fileURLToPath(import.meta.url);
@@ -81,7 +81,7 @@ function getWorkflowLoader(): ReturnType<typeof createWorkflowLoader> {
  * Get the appropriate step executor based on environment
  * Uses placeholder in tests, production executor otherwise
  */
-function getWorkflowStepExecutor(): StepExecutor {
+async function getWorkflowStepExecutor(): Promise<StepExecutor> {
   if (isTestEnv) {
     return defaultStepExecutor;
   }
@@ -218,8 +218,9 @@ export const handleWorkflowRun: ToolHandler = async (args): Promise<MCPToolResul
     let stepIndex = 0;
 
     // Create workflow runner with production step executor and step callbacks
+    const stepExecutor = await getWorkflowStepExecutor();
     const runner = createWorkflowRunner({
-      stepExecutor: getWorkflowStepExecutor(),
+      stepExecutor,
       onStepStart: (_step, context) => {
         // Track step index for use in onStepComplete
         stepIndex = context.stepIndex;

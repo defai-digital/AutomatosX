@@ -24,7 +24,7 @@ import {
   getSharedRegistry,
   getSharedExecutor,
 } from '../registry-accessor.js';
-import { getTraceStore } from '../bootstrap.js';
+import { getTraceStore } from '../shared-dependencies.js';
 
 /**
  * Agent list tool definition

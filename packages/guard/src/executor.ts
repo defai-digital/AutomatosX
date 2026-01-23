@@ -12,7 +12,7 @@
  * - INV-GUARD-RES-003: Traceability - all results include timestamp
  */
 
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   GovernanceContext,
@@ -29,7 +29,7 @@ import { configValidationGate, sensitiveChangeGate } from './gates/config.js';
 import { secretsDetectionGate } from './gates/secrets.js';
 import { taskClassifierGate } from './gates/task-classifier.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Agent selection gate wrapper
@@ -86,8 +86,10 @@ export async function getChangedFiles(baseBranch: string): Promise<string[]> {
       throw new Error(`Invalid branch name: "${baseBranch}"`);
     }
 
-    const { stdout } = await execAsync(
-      `git diff --name-only ${baseBranch}...HEAD`,
+    // INV-GUARD-SEC-002: Use execFile with argument array to prevent command injection
+    const { stdout } = await execFileAsync(
+      'git',
+      ['diff', '--name-only', `${baseBranch}...HEAD`],
       { cwd: process.cwd() }
     );
 
@@ -98,7 +100,8 @@ export async function getChangedFiles(baseBranch: string): Promise<string[]> {
   } catch {
     // Fallback to comparing with HEAD~1 if branch comparison fails
     try {
-      const { stdout } = await execAsync('git diff --name-only HEAD~1', {
+      // INV-GUARD-SEC-002: Use execFile with argument array
+      const { stdout } = await execFileAsync('git', ['diff', '--name-only', 'HEAD~1'], {
         cwd: process.cwd(),
       });
 
@@ -110,7 +113,8 @@ export async function getChangedFiles(baseBranch: string): Promise<string[]> {
       // If that also fails, check staged files
       // INV-GUARD-SEC-002: Final fallback wrapped in try-catch
       try {
-        const { stdout } = await execAsync('git diff --name-only --cached', {
+        // INV-GUARD-SEC-002: Use execFile with argument array
+        const { stdout } = await execFileAsync('git', ['diff', '--name-only', '--cached'], {
           cwd: process.cwd(),
         });
 
@@ -222,6 +226,19 @@ function generateSuggestions(gateResults: GateResult[]): string[] {
         suggestions.push('Verify the selected agent is enabled and has required capabilities');
         suggestions.push('Check agent selection confidence threshold in policy');
         suggestions.push('Ensure agent is not in the excluded list');
+        break;
+      }
+      case 'task_classifier': {
+        // INV-GUARD-RES-002: Every FAIL must have actionable suggestion
+        suggestions.push('Review task description for clarity and specificity');
+        suggestions.push('Ensure task type matches the intended workflow');
+        suggestions.push('Add more context to help task classification');
+        suggestions.push('Check that task keywords align with expected classification');
+        break;
+      }
+      default: {
+        // Handle unknown gate types gracefully
+        suggestions.push(`Review ${result.gate} gate failure and consult documentation`);
         break;
       }
     }

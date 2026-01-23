@@ -20,24 +20,64 @@ import { getErrorMessage } from '@defai.digital/contracts';
 import type { WebFetcherPort } from './types.js';
 
 /**
+ * Default timeout for semaphore acquire in milliseconds
+ */
+const DEFAULT_SEMAPHORE_TIMEOUT_MS = 30000;
+
+/**
+ * Error thrown when semaphore acquire times out
+ * INV-RSH-103: Semaphore acquire has timeout to prevent deadlocks
+ */
+class SemaphoreTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Semaphore acquire timed out after ${timeoutMs}ms`);
+    this.name = 'SemaphoreTimeoutError';
+  }
+}
+
+/**
  * Simple semaphore for limiting concurrent operations
+ * INV-RSH-101: Concurrent fetches limited
+ * INV-RSH-103: Acquire has timeout to prevent deadlocks
  */
 class Semaphore {
   private permits: number;
-  private waiting: (() => void)[] = [];
+  private waiting: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
 
   constructor(permits: number) {
     this.permits = permits;
   }
 
-  async acquire(): Promise<void> {
+  /**
+   * Acquire a permit, with timeout to prevent deadlocks
+   * INV-RSH-103: Throws SemaphoreTimeoutError if timeout expires
+   */
+  async acquire(timeoutMs: number = DEFAULT_SEMAPHORE_TIMEOUT_MS): Promise<void> {
     if (this.permits > 0) {
       this.permits--;
       return;
     }
-    // Wait for a permit to become available
-    await new Promise<void>((resolve) => {
-      this.waiting.push(resolve);
+
+    // Wait for a permit to become available, with timeout
+    return new Promise<void>((resolve, reject) => {
+      const waiter = { resolve, reject };
+      this.waiting.push(waiter);
+
+      // Set up timeout to prevent deadlock
+      const timeoutId = setTimeout(() => {
+        const index = this.waiting.indexOf(waiter);
+        if (index !== -1) {
+          this.waiting.splice(index, 1);
+          reject(new SemaphoreTimeoutError(timeoutMs));
+        }
+      }, timeoutMs);
+
+      // Wrap resolve to clear timeout when permit is acquired
+      const originalResolve = waiter.resolve;
+      waiter.resolve = () => {
+        clearTimeout(timeoutId);
+        originalResolve();
+      };
     });
     // Permit was transferred directly by release(), no need to decrement
   }
@@ -47,13 +87,15 @@ class Semaphore {
     if (next) {
       // Transfer permit directly to waiting acquirer
       // Don't increment permits - the permit goes straight to the waiter
-      next();
+      next.resolve();
     } else {
       // No one waiting, return permit to pool
       this.permits++;
     }
   }
 }
+
+export { SemaphoreTimeoutError };
 
 /**
  * Create a stub web fetcher
@@ -180,6 +222,18 @@ export function createWebFetcher(options: {
 }
 
 /**
+ * Maximum HTML size to process for code extraction
+ * INV-RSH-103: Limit input size to prevent ReDoS attacks
+ */
+const MAX_HTML_SIZE_FOR_CODE_EXTRACTION = 1_000_000; // 1MB
+
+/**
+ * Maximum number of code blocks to extract
+ * INV-RSH-104: Limit code block count to prevent excessive processing
+ */
+const MAX_CODE_BLOCKS = 50;
+
+/**
  * Parse HTML content
  */
 function parseHtml(
@@ -190,14 +244,33 @@ function parseHtml(
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch?.[1]?.trim() ?? '';
 
-  // Extract code blocks
+  // Extract code blocks with protection against ReDoS
   const codeBlocks: CodeExample[] = [];
-  const codeRegex = /<(pre|code)[^>]*(?:class="[^"]*language-(\w+)[^"]*")?[^>]*>([\s\S]*?)<\/\1>/gi;
-  let match;
 
-  while ((match = codeRegex.exec(html)) !== null) {
-    const language = match[2] ?? 'text';
-    const code = stripHtml(match[3] ?? '').trim();
+  // INV-RSH-103: Limit HTML size before regex to prevent ReDoS
+  const safeHtml = html.length > MAX_HTML_SIZE_FOR_CODE_EXTRACTION
+    ? html.slice(0, MAX_HTML_SIZE_FOR_CODE_EXTRACTION)
+    : html;
+
+  // INV-RSH-103: Use safer regex pattern with bounded attribute matching
+  // Pattern limits attribute length and avoids nested quantifiers
+  const codeRegex = /<(pre|code)(?:\s+[^>]{0,500})?>([\s\S]{0,10000}?)<\/\1>/gi;
+  // Separate pattern for language detection (simpler, applied only to small matches)
+  const langRegex = /class="[^"]*\blanguage-(\w+)\b[^"]*"/i;
+
+  let match;
+  let matchCount = 0;
+
+  while ((match = codeRegex.exec(safeHtml)) !== null) {
+    // INV-RSH-104: Limit number of code blocks extracted
+    if (matchCount >= MAX_CODE_BLOCKS) break;
+    matchCount++;
+
+    const tagContent = match[0] ?? '';
+    const langMatch = langRegex.exec(tagContent);
+    const language = langMatch?.[1] ?? 'text';
+    const code = stripHtml(match[2] ?? '').trim();
+
     if (code.length > 10 && code.length < 5000) {
       codeBlocks.push({
         code,

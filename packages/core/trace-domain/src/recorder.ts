@@ -12,6 +12,18 @@ import type {
 import { TraceErrorCodes } from './types.js';
 
 /**
+ * Maximum number of active traces to track
+ * INV-TR-007: Active traces map is bounded to prevent memory leaks
+ */
+const MAX_ACTIVE_TRACES = 1000;
+
+/**
+ * Default trace TTL (1 hour)
+ * INV-TR-008: Stale traces are automatically cleaned up
+ */
+const TRACE_TTL_MS = 60 * 60 * 1000;
+
+/**
  * Error thrown by trace recorder
  */
 export class TraceRecorderError extends Error {
@@ -43,13 +55,73 @@ export class TraceRecorder {
   }
 
   /**
+   * Evict stale traces that have been running longer than TTL
+   * INV-TR-008: Automatic cleanup of stale traces
+   * INV-TR-009: Collect keys first to avoid modifying map during iteration
+   * INV-TR-010: Guard against NaN from malformed timestamps
+   */
+  private evictStaleTraces(): void {
+    const now = Date.now();
+    const staleThreshold = now - TRACE_TTL_MS;
+
+    // INV-TR-009: Collect keys first to avoid modifying map during iteration
+    const toEvict: string[] = [];
+
+    for (const [traceId, trace] of this.activeTraces.entries()) {
+      const startTime = new Date(trace.startTime).getTime();
+      // INV-TR-010: Guard against NaN from malformed timestamps
+      // NaN < staleThreshold is always false, so we also evict malformed traces
+      if (Number.isNaN(startTime) || startTime < staleThreshold) {
+        toEvict.push(traceId);
+      }
+    }
+
+    // Delete after iteration completes
+    for (const traceId of toEvict) {
+      this.activeTraces.delete(traceId);
+    }
+  }
+
+  /**
+   * Evict oldest traces when limit reached (LRU eviction)
+   * INV-TR-007: Bounded active traces map with LRU eviction
+   */
+  private evictOldestIfNeeded(): void {
+    if (this.activeTraces.size < MAX_ACTIVE_TRACES) return;
+
+    // First try to evict stale traces
+    this.evictStaleTraces();
+    if (this.activeTraces.size < MAX_ACTIVE_TRACES) return;
+
+    // Still at limit - evict oldest 10% by start time
+    const evictCount = Math.max(1, Math.floor(MAX_ACTIVE_TRACES * 0.1));
+    const traces = Array.from(this.activeTraces.entries())
+      .sort((a, b) => {
+        const aTime = new Date(a[1].startTime).getTime();
+        const bTime = new Date(b[1].startTime).getTime();
+        return aTime - bTime; // Oldest first
+      });
+
+    for (let i = 0; i < evictCount && i < traces.length; i++) {
+      const trace = traces[i];
+      if (trace) {
+        this.activeTraces.delete(trace[0]);
+      }
+    }
+  }
+
+  /**
    * Starts a new trace
    * INV-TR-001: Emits run.start as first event
+   * INV-TR-007: Evicts old traces before adding new one
    */
   async startTrace(
     workflowId: string,
     options?: TraceOptions
   ): Promise<string> {
+    // INV-TR-007: Evict old traces before adding new one
+    this.evictOldestIfNeeded();
+
     const { traceId, startTime } = createTrace();
 
     const activeTrace: ActiveTrace = {

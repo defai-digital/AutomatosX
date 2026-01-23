@@ -22,6 +22,12 @@ import {
 } from '@defai.digital/contracts';
 
 /**
+ * Maximum number of events to retain in memory
+ * INV-CB-004: Event buffer is bounded to prevent memory leaks
+ */
+const MAX_EVENTS = 1000;
+
+/**
  * Circuit breaker instance for a single provider
  */
 export interface CircuitBreaker {
@@ -68,19 +74,36 @@ export function createCircuitBreaker(
   const events: CircuitBreakerEvent[] = [];
   const listeners: CircuitEventListener[] = [];
 
+  /**
+   * Emit a circuit breaker event
+   * INV-CB-005: Events must have correct state values BEFORE being emitted to listeners
+   * @param previousStateOverride - Override for previousState (for state transitions)
+   * @param currentStateOverride - Override for currentState (for state transitions)
+   */
   function emitEvent(
     type: CircuitBreakerEventType,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
+    previousStateOverride?: CircuitState,
+    currentStateOverride?: CircuitState
   ): void {
     const event: CircuitBreakerEvent = {
       eventId: crypto.randomUUID(),
       type,
       providerId,
       timestamp: new Date().toISOString(),
-      previousState: state.state,
-      currentState: state.state,
+      // INV-CB-005: Set state values before emitting, not after
+      previousState: previousStateOverride ?? state.state,
+      currentState: currentStateOverride ?? state.state,
       details,
     };
+
+    // INV-CB-004: Evict oldest events when buffer is full to prevent memory leak
+    if (events.length >= MAX_EVENTS) {
+      // Remove oldest 10% of events to avoid frequent evictions
+      const evictCount = Math.max(1, Math.floor(MAX_EVENTS * 0.1));
+      events.splice(0, evictCount);
+    }
+
     events.push(event);
     listeners.forEach((listener) => { listener(event); });
   }
@@ -95,25 +118,21 @@ export function createCircuitBreaker(
       lastTransitionTime: now,
     };
 
+    // INV-CB-005: Pass correct state values to emitEvent so listeners receive correct values
     if (newState === 'open') {
       state.nextAttemptTime = new Date(Date.now() + cfg.resetTimeoutMs).toISOString();
-      emitEvent('circuit.opened', { failureCount: state.failureCount });
+      emitEvent('circuit.opened', { failureCount: state.failureCount }, previousState, newState);
     } else if (newState === 'halfOpen') {
       state.successCount = 0;
       state.nextAttemptTime = undefined;
-      emitEvent('circuit.halfOpen');
+      emitEvent('circuit.halfOpen', undefined, previousState, newState);
     } else if (newState === 'closed') {
       state.failureCount = 0;
       state.successCount = 0;
       state.nextAttemptTime = undefined;
-      emitEvent('circuit.closed');
+      emitEvent('circuit.closed', undefined, previousState, newState);
     }
-
-    const stateEvent = events[events.length - 1];
-    if (stateEvent) {
-      stateEvent.previousState = previousState;
-      stateEvent.currentState = newState;
-    }
+    // Note: Removed post-emit mutation - state values are now set correctly before emit
   }
 
   function shouldAttemptReset(): boolean {

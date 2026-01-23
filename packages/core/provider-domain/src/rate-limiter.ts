@@ -22,6 +22,12 @@ import {
 } from '@defai.digital/contracts';
 
 /**
+ * Maximum number of events to retain in memory
+ * INV-RL-004: Event buffer is bounded to prevent memory leaks
+ */
+const MAX_EVENTS = 1000;
+
+/**
  * Rate limiter instance for a single provider
  */
 export interface RateLimiter {
@@ -83,6 +89,14 @@ export function createRateLimiter(
       timestamp: new Date().toISOString(),
       details,
     };
+
+    // INV-RL-004: Evict oldest events when buffer is full to prevent memory leak
+    if (events.length >= MAX_EVENTS) {
+      // Remove oldest 10% of events to avoid frequent evictions
+      const evictCount = Math.max(1, Math.floor(MAX_EVENTS * 0.1));
+      events.splice(0, evictCount);
+    }
+
     events.push(event);
     listeners.forEach((listener) => { listener(event); });
   }
@@ -162,6 +176,34 @@ export function createRateLimiter(
     });
   }
 
+  // INV-RL-005: Local function to calculate wait time, avoiding 'this' binding issues
+  // This allows waitForTokens to work correctly when destructured or passed as callback
+  function calculateWaitTime(tokens = 1): number {
+    refillTokens();
+    updateState();
+
+    // Check if blocked
+    if (internalState.nextAllowedTime) {
+      const blockWait =
+        new Date(internalState.nextAllowedTime).getTime() - Date.now();
+      if (blockWait > 0) return blockWait;
+    }
+
+    // Calculate time to refill needed tokens
+    if (internalState.requestTokens >= 1 && internalState.outputTokens >= tokens) {
+      return 0;
+    }
+
+    const requestsNeeded = Math.max(0, 1 - internalState.requestTokens);
+    const tokensNeeded = Math.max(0, tokens - internalState.outputTokens);
+
+    const requestRefillTime =
+      (requestsNeeded / cfg.requestsPerMinute) * 60000;
+    const tokenRefillTime = (tokensNeeded / cfg.tokensPerMinute) * 60000;
+
+    return Math.max(requestRefillTime, tokenRefillTime);
+  }
+
   return {
     getState(): RateLimitState {
       refillTokens();
@@ -216,36 +258,16 @@ export function createRateLimiter(
     },
 
     async waitForTokens(tokens = 1): Promise<void> {
-      const waitTime = this.getWaitTime(tokens);
+      // INV-RL-005: Use local function call instead of 'this' to avoid
+      // binding issues when method is destructured or passed as callback
+      const waitTime = calculateWaitTime(tokens);
       if (waitTime > 0) {
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
     },
 
     getWaitTime(tokens = 1): number {
-      refillTokens();
-      updateState();
-
-      // Check if blocked
-      if (internalState.nextAllowedTime) {
-        const blockWait =
-          new Date(internalState.nextAllowedTime).getTime() - Date.now();
-        if (blockWait > 0) return blockWait;
-      }
-
-      // Calculate time to refill needed tokens
-      if (internalState.requestTokens >= 1 && internalState.outputTokens >= tokens) {
-        return 0;
-      }
-
-      const requestsNeeded = Math.max(0, 1 - internalState.requestTokens);
-      const tokensNeeded = Math.max(0, tokens - internalState.outputTokens);
-
-      const requestRefillTime =
-        (requestsNeeded / cfg.requestsPerMinute) * 60000;
-      const tokenRefillTime = (tokensNeeded / cfg.tokensPerMinute) * 60000;
-
-      return Math.max(requestRefillTime, tokenRefillTime);
+      return calculateWaitTime(tokens);
     },
 
     recordExternalLimit(retryAfterMs?: number): void {

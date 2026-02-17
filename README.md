@@ -1,4 +1,4 @@
-# AutomatosX
+# AutomatosX OSS
 
 **AI orchestration through MCP - Supercharge your AI coding assistant**
 

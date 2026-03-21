@@ -67,18 +67,22 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           echo "Publishing version $VERSION..."
 
-          # Publish each package, skipping already-published versions
+          # Collect all workspace package dirs via pnpm (handles any nesting depth)
+          # pnpm list -r --depth -1 outputs all workspace packages
           publish_failed=0
           publish_skipped=0
           publish_success=0
 
-          while IFS= read -r pkg_dir; do
-            pkg_name=$(node -p "require('$pkg_dir/package.json').name" 2>/dev/null || echo "")
-            if [ -z "$pkg_name" ]; then
+          while IFS= read -r pkg_json; do
+            pkg_dir=$(dirname "$pkg_json")
+            pkg_name=$(node -p "require('./$pkg_json').name" 2>/dev/null || echo "")
+            pkg_private=$(node -p "require('./$pkg_json').private ?? false" 2>/dev/null || echo "false")
+
+            if [ -z "$pkg_name" ] || [ "$pkg_private" = "true" ]; then
               continue
             fi
 
-            # Check if this version is already published
+            # Skip if this version is already published (idempotent)
             if npm view "${pkg_name}@${VERSION}" version 2>/dev/null | grep -q "^${VERSION}$"; then
               echo "::notice::Skipping $pkg_name@$VERSION (already published)"
               publish_skipped=$((publish_skipped + 1))
@@ -86,14 +90,14 @@ jobs:
             fi
 
             echo "Publishing $pkg_name@$VERSION..."
-            if pnpm publish --filter "$pkg_name" --access public --no-git-checks; then
+            if (cd "$pkg_dir" && pnpm publish --access public --no-git-checks); then
               echo "✓ Published $pkg_name@$VERSION"
               publish_success=$((publish_success + 1))
             else
               echo "::error::Failed to publish $pkg_name@$VERSION"
               publish_failed=$((publish_failed + 1))
             fi
-          done < <(find packages -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \; | sort)
+          done < <(find packages -name "package.json" -not -path "*/node_modules/*" -not -path "*/dist/*" | sort)
 
           echo ""
           echo "Publish summary:"

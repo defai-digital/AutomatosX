@@ -29,6 +29,7 @@ import { CONTEXT_DIRECTORY } from '@defai.digital/context-domain';
 import { createConfigStore } from '@defai.digital/config-domain';
 import { PROVIDER_CHECKS, IDE_CHECKS, checkProviderCLI, type CheckResult } from './doctor.js';
 import { COLORS, ICONS } from '../utils/terminal.js';
+import { ClaudeCodeIntegration } from '../integrations/claude-code/index.js';
 
 const execAsync = promisify(exec);
 
@@ -124,6 +125,7 @@ const CLI_FLAGS = {
   force: ['--force', '-f'],
   silent: ['--silent', '-s'],
   skipMcp: ['--skip-mcp', '--no-mcp'],
+  skipClaudeCode: ['--skip-claude-code', '--no-claude-code'],
 } as const;
 
 
@@ -723,6 +725,7 @@ interface InitOptions {
   force: boolean;
   silent: boolean;
   skipMcp: boolean;
+  skipClaudeCode: boolean;
 }
 
 function matchesFlag(arg: string, flags: readonly string[]): boolean {
@@ -733,6 +736,7 @@ function parseInitArgs(args: string[]): InitOptions {
   let force = false;
   let silent = false;
   let skipMcp = false;
+  let skipClaudeCode = false;
 
   for (const arg of args) {
     if (matchesFlag(arg, CLI_FLAGS.force)) {
@@ -741,10 +745,12 @@ function parseInitArgs(args: string[]): InitOptions {
       silent = true;
     } else if (matchesFlag(arg, CLI_FLAGS.skipMcp)) {
       skipMcp = true;
+    } else if (matchesFlag(arg, CLI_FLAGS.skipClaudeCode)) {
+      skipClaudeCode = true;
     }
   }
 
-  return { force, silent, skipMcp };
+  return { force, silent, skipMcp, skipClaudeCode };
 }
 
 /**
@@ -850,12 +856,55 @@ export async function initCommand(
       outputLines.push('');
     }
 
+    // Step 3: Claude Code 2026 integration (settings.json, hooks, .mcp.json, subagents)
+    let claudeCodeResult: Awaited<ReturnType<ClaudeCodeIntegration['setup']>> | undefined;
+
+    if (!initOptions.skipClaudeCode) {
+      if (showOutput) {
+        outputLines.push(`${COLORS.bold}Step 3: Claude Code Integration${COLORS.reset}`);
+        outputLines.push(`  ${COLORS.dim}Configuring .claude/ settings, hooks, and .mcp.json...${COLORS.reset}`);
+      }
+
+      try {
+        const integration = new ClaudeCodeIntegration(projectDir, initOptions.force);
+        claudeCodeResult = await integration.setup({ projectDir, agents: [] });
+
+        if (showOutput) {
+          if (claudeCodeResult.settingsConfigured) {
+            outputLines.push(`  ${ICONS.check} .claude/settings.json: MCP permissions configured`);
+          }
+          if (claudeCodeResult.mcpJsonGenerated) {
+            outputLines.push(`  ${ICONS.check} .mcp.json: team-shared MCP config generated`);
+          }
+          if (claudeCodeResult.hooksGenerated.length > 0) {
+            outputLines.push(`  ${ICONS.check} .claude/hooks/: ${claudeCodeResult.hooksGenerated.length} hook script(s) written`);
+          }
+          if (claudeCodeResult.hooksSkipped.length > 0) {
+            outputLines.push(`  ${COLORS.dim}  - hooks: ${claudeCodeResult.hooksSkipped.length} existing script(s) kept${COLORS.reset}`);
+          }
+          outputLines.push('');
+        }
+      } catch {
+        if (showOutput) {
+          outputLines.push(`  ${ICONS.warn} Claude Code integration skipped (non-fatal)`);
+          outputLines.push('');
+        }
+      }
+    } else if (showOutput) {
+      outputLines.push(`${COLORS.bold}Step 3: Claude Code Integration${COLORS.reset}`);
+      outputLines.push(`  ${COLORS.dim}Skipped (--skip-claude-code)${COLORS.reset}`);
+      outputLines.push('');
+    }
+
     // Summary
     if (showOutput) {
       outputLines.push(`${COLORS.bold}Done!${COLORS.reset}`);
       outputLines.push(`  Project files: ${projectStructure.created.length} created, ${projectStructure.skipped.length} skipped`);
       if (mcpResult) {
         outputLines.push(`  MCP registered: ${mcpResult.configured.length} provider(s)`);
+      }
+      if (claudeCodeResult) {
+        outputLines.push(`  Claude Code: settings + hooks + .mcp.json configured`);
       }
       outputLines.push('');
       outputLines.push(`${COLORS.bold}Next Steps${COLORS.reset}`);

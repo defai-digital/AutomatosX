@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/trace-domain",
-  "version": "13.5.1",
+  "version": "13.5.2",
   "type": "module",
   "description": "Trace domain - execution tracing following contract invariants",
   "license": "BUSL-1.1",

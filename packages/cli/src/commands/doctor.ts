@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
 import { DATA_DIR_NAME, TIMEOUT_HEALTH_CHECK } from '@defai.digital/contracts';
 import { COLORS } from '../utils/terminal.js';
+import { ClaudeCodeIntegration } from '../integrations/claude-code/index.js';
 
 const execAsync = promisify(exec);
 
@@ -582,6 +583,41 @@ function computeCheckSummary(results: CheckResult[]): CheckSummary {
 }
 
 /**
+ * Check Claude Code 2026 integration artifacts in the given project directory.
+ * Returns one CheckResult per artifact (settings, hooks, .mcp.json, subagents).
+ */
+async function checkClaudeCodeIntegration(projectDir: string): Promise<CheckResult[]> {
+  try {
+    const integration = new ClaudeCodeIntegration(projectDir);
+    const diag = await integration.diagnose();
+
+    const mkCheck = (
+      name: string,
+      ok: boolean,
+      passMsg: string,
+      failMsg: string
+    ): CheckResult =>
+      ok
+        ? { name, status: 'pass', message: passMsg }
+        : { name, status: 'warn', message: failMsg, fix: 'ax init' };
+
+    return [
+      mkCheck('.claude/settings.json (MCP permissions)', diag.settingsConfigured, 'configured', 'not configured'),
+      mkCheck('.mcp.json (team-shared MCP config)', diag.mcpProjectConfigGenerated, 'generated', 'not found'),
+      mkCheck('.claude/hooks/ (trace hooks)', diag.hooksGenerated, 'generated', 'not found'),
+      mkCheck('.claude/agents/ (subagent files)', diag.subagentFilesGenerated, 'generated', 'not found'),
+    ];
+  } catch {
+    return [{
+      name: 'Claude Code Integration',
+      status: 'warn',
+      message: 'Could not check integration status',
+      fix: 'ax init',
+    }];
+  }
+}
+
+/**
  * Doctor command handler
  */
 export async function doctorCommand(
@@ -622,12 +658,14 @@ export async function doctorCommand(
     checkAllProviders(specificProvider).then(results => ({ category: 'providers', results })),
   ];
 
-  // Add IDE and file system checks only when not checking specific provider
+  // Add IDE, file system, and Claude Code checks only when not checking specific provider
   if (!checkingSpecificProvider) {
     parallelChecks.push(
       checkAllIDEs().then(results => ({ category: 'ides', results })),
       Promise.all([checkAutomatosxDir(), checkWritePermissions()])
         .then(results => ({ category: 'filesystem', results })),
+      checkClaudeCodeIntegration(process.cwd())
+        .then(results => ({ category: 'claude-code', results })),
     );
   }
 
@@ -675,6 +713,21 @@ export async function doctorCommand(
     allResults.push(...fsResults);
     if (!isJson) {
       for (const result of fsResults) {
+        output.push(formatCheckResult(result, verbose));
+      }
+    }
+  }
+
+  // Claude Code Integration
+  if (!checkingSpecificProvider) {
+    const ccResults = resultsMap.get('claude-code') ?? [];
+    if (!isJson) {
+      output.push('');
+      output.push(`${COLORS.bold}Claude Code Integration${COLORS.reset}`);
+    }
+    allResults.push(...ccResults);
+    if (!isJson) {
+      for (const result of ccResults) {
         output.push(formatCheckResult(result, verbose));
       }
     }

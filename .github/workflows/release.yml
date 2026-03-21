@@ -49,11 +49,61 @@ jobs:
           # Update all packages using our sync script (avoids npm warnings)
           node scripts/sync-versions.js "$VERSION"
 
+      - name: Validate NPM_TOKEN is set
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN secret is not configured."
+            echo "::error::Go to: https://github.com/defai-digital/AutomatosX/settings/secrets/actions"
+            echo "::error::Add a secret named NPM_TOKEN with a valid npm access token."
+            echo "::error::The token needs publish access to the @defai.digital npm org."
+            exit 1
+          fi
+          echo "NPM_TOKEN is set (length: ${#NODE_AUTH_TOKEN})"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish all packages to npm
         run: |
-          # Publish all packages in dependency order
-          # pnpm handles workspace:* -> version conversion automatically
-          pnpm -r publish --access public --no-git-checks
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "Publishing version $VERSION..."
+
+          # Publish each package, skipping already-published versions
+          publish_failed=0
+          publish_skipped=0
+          publish_success=0
+
+          while IFS= read -r pkg_dir; do
+            pkg_name=$(node -p "require('$pkg_dir/package.json').name" 2>/dev/null || echo "")
+            if [ -z "$pkg_name" ]; then
+              continue
+            fi
+
+            # Check if this version is already published
+            if npm view "${pkg_name}@${VERSION}" version 2>/dev/null | grep -q "^${VERSION}$"; then
+              echo "::notice::Skipping $pkg_name@$VERSION (already published)"
+              publish_skipped=$((publish_skipped + 1))
+              continue
+            fi
+
+            echo "Publishing $pkg_name@$VERSION..."
+            if pnpm publish --filter "$pkg_name" --access public --no-git-checks; then
+              echo "✓ Published $pkg_name@$VERSION"
+              publish_success=$((publish_success + 1))
+            else
+              echo "::error::Failed to publish $pkg_name@$VERSION"
+              publish_failed=$((publish_failed + 1))
+            fi
+          done < <(find packages -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" -exec dirname {} \; | sort)
+
+          echo ""
+          echo "Publish summary:"
+          echo "  ✓ Published: $publish_success"
+          echo "  ↷ Skipped:   $publish_skipped"
+          echo "  ✗ Failed:    $publish_failed"
+
+          if [ "$publish_failed" -gt 0 ]; then
+            exit 1
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

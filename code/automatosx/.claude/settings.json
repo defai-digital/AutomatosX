@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__automatosx__run_agent",
+      "mcp__automatosx__list_agents",
+      "mcp__automatosx__search_memory",
+      "mcp__automatosx__save_memory",
+      "mcp__automatosx__session_create",
+      "mcp__automatosx__session_list",
+      "mcp__automatosx__session_status",
+      "mcp__automatosx__session_close",
+      "mcp__automatosx__get_context",
+      "mcp__automatosx__update_context",
+      "mcp__automatosx__list_workflows",
+      "mcp__automatosx__run_workflow",
+      "mcp__automatosx__get_trace",
+      "mcp__automatosx__list_traces",
+      "mcp__automatosx__get_provider_status",
+      "mcp__automatosx__health_check"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-tool-use.sh",
+            "timeout": 30
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-tool-use.sh",
+            "timeout": 30
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-end.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

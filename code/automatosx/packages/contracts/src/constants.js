@@ -1,0 +1,2 @@
+export const DEFAULT_BACKOFF_CAP_MS = 30_000;
+export const TIMEOUT_AGENT_STEP_DEFAULT = 1_200_000;

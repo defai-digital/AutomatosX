@@ -1,0 +1,20 @@
+{
+  "name": "@defai.digital/monitoring",
+  "version": "13.5.2",
+  "private": true,
+  "type": "module",
+  "description": "Dashboard visibility helpers for shared runtime traces",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@defai.digital/trace-store": "file:../trace-store"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

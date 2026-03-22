@@ -1,0 +1,12 @@
+{
+  "name": "@defai.digital/cli",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@defai.digital/mcp-server": "file:../mcp-server",
+    "@defai.digital/shared-runtime": "file:../shared-runtime"
+  },
+  "bin": {
+    "ax": "./src/main.js"
+  }
+}

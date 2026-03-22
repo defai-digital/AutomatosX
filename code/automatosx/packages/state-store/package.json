@@ -1,0 +1,17 @@
+{
+  "name": "@defai.digital/state-store",
+  "version": "13.5.2",
+  "private": true,
+  "type": "module",
+  "description": "Shared memory and policy store for CLI and MCP workflow execution",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

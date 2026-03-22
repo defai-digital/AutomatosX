@@ -1,0 +1,6 @@
+.automatosx/logs/
+.automatosx/runtime/
+.automatosx/workflows/
+.tmp/
+tmp/
+tsconfig.tsbuildinfo

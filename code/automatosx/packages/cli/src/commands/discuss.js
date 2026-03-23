@@ -1,5 +1,5 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { splitCommaList } from '../utils/validation.js';
 export async function discussCommand(args, options) {
     const parsed = parseDiscussArgs(args);
     if (parsed.error !== undefined) {
@@ -9,7 +9,7 @@ export async function discussCommand(args, options) {
         return usageError('ax discuss <topic>');
     }
     const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const providers = parsed.value.providers ?? (options.provider !== undefined ? [options.provider] : undefined);
     const variant = parsed.value.variant ?? 'run';
     const commonRequest = {
@@ -72,7 +72,7 @@ function parseDiscussArgs(args) {
         index += 1;
         switch (name) {
             case 'providers':
-                parsed.providers = value.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+                parsed.providers = splitCommaList(value);
                 break;
             case 'pattern':
                 parsed.pattern = value;
@@ -95,11 +95,10 @@ function parseDiscussArgs(args) {
                 parsed.topic = value;
                 break;
             case 'subtopics':
-                parsed.subtopics = value.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+                parsed.subtopics = splitCommaList(value);
                 break;
             default:
-                positionals.push(token, value);
-                break;
+                return { value: parsed, error: `Unknown discuss flag: --${name}.` };
         }
     }
     if (parsed.topic === undefined && positionals.length > 0) {

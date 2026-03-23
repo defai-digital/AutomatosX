@@ -1,6 +1,6 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseOptionalJsonInput, asOptionalString, asOptionalRecord, asStringArray } from '../utils/validation.js';
 
 interface AgentRegistrationInput {
   agentId: string;
@@ -11,8 +11,7 @@ interface AgentRegistrationInput {
 
 export async function agentCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'list';
-  const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
 
   switch (subcommand) {
     case 'list': {
@@ -88,7 +87,7 @@ export async function agentCommand(args: string[], options: CLIOptions): Promise
         return usageError('ax agent run <agent-id> --task <text> [--input <json-object>]');
       }
 
-      const parsed = parseOptionalJsonInput(options.input);
+      const parsed = parseOptionalJsonInput(options.input, 'Agent run');
       if (parsed.error !== undefined) {
         return failure(parsed.error);
       }
@@ -153,68 +152,29 @@ function parseRegistrationInput(input: string | undefined): { value: AgentRegist
     };
   }
 
-  try {
-    const parsed = JSON.parse(input) as Partial<AgentRegistrationInput>;
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        value: { agentId: '', name: '' },
-        error: 'Agent register input must be a JSON object.',
-      };
-    }
-
-    if (typeof parsed.agentId !== 'string' || parsed.agentId.length === 0) {
-      return {
-        value: { agentId: '', name: '' },
-        error: 'Agent register input requires "agentId".',
-      };
-    }
-
-    if (typeof parsed.name !== 'string' || parsed.name.length === 0) {
-      return {
-        value: { agentId: parsed.agentId, name: '' },
-        error: 'Agent register input requires "name".',
-      };
-    }
-
-    return {
-      value: {
-        agentId: parsed.agentId,
-        name: parsed.name,
-        capabilities: Array.isArray(parsed.capabilities)
-          ? parsed.capabilities.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
-          : undefined,
-        metadata: parsed.metadata !== null && typeof parsed.metadata === 'object' && !Array.isArray(parsed.metadata)
-          ? parsed.metadata
-          : undefined,
-      },
-    };
-  } catch {
-    return {
-      value: { agentId: '', name: '' },
-      error: 'Invalid JSON input. Please provide a valid JSON object.',
-    };
-  }
-}
-
-function parseOptionalJsonInput(input: string | undefined): { value?: Record<string, unknown>; error?: string } {
-  if (input === undefined) {
-    return {};
+  const parsed = parseOptionalJsonInput(input, 'Agent register');
+  if (parsed.error !== undefined) {
+    return { value: { agentId: '', name: '' }, error: parsed.error };
   }
 
-  try {
-    const parsed = JSON.parse(input) as unknown;
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        error: 'Agent run input must be a JSON object.',
-      };
-    }
+  const value = parsed.value ?? {};
+  const agentId = asOptionalString(value.agentId);
+  const name = asOptionalString(value.name);
 
-    return {
-      value: parsed as Record<string, unknown>,
-    };
-  } catch {
-    return {
-      error: 'Invalid JSON input. Please provide a valid JSON object.',
-    };
+  if (agentId === undefined) {
+    return { value: { agentId: '', name: '' }, error: 'Agent register input requires "agentId".' };
   }
+
+  if (name === undefined) {
+    return { value: { agentId, name: '' }, error: 'Agent register input requires "name".' };
+  }
+
+  return {
+    value: {
+      agentId,
+      name,
+      capabilities: asStringArray(value.capabilities),
+      metadata: asOptionalRecord(value.metadata),
+    },
+  };
 }

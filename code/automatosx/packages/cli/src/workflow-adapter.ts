@@ -332,58 +332,40 @@ export async function dispatch(
   const outputDir = resolveOutputDir(input, previewData.traceId);
   const artifactWriteResult = await writeWorkflowArtifacts(previewData, input, 'pending');
 
-  if (input.options.dryRun) {
-    const previewResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'preview');
-    return {
-      ...previewResult,
-      success: true,
-      traceId,
-    };
-  }
-
-  const runtimePayload: WorkflowInputPayload = {
-    ...buildWorkflowInput(input),
-    traceId,
-    options: {
-      provider: input.options.provider,
-      outputDir,
-      verbose: input.options.verbose,
-      quiet: input.options.quiet,
-    },
-    traceContext: input.traceContext,
-  };
-
-  const execute = options?.runtimeDispatcher ?? executeWorkflowWithCLI;
-
   try {
-    const execution = await execute(runtimePayload);
-    if (execution.success) {
-      const successResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'dispatched');
-      return {
-        ...successResult,
-        success: true,
-        traceId,
-      };
+    if (input.options.dryRun) {
+      const previewResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'preview');
+      return { ...previewResult, success: true, traceId };
     }
 
-    const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', execution.errorMessage);
-    return {
-      ...failResult,
-      success: false,
+    const runtimePayload: WorkflowInputPayload = {
+      ...buildWorkflowInput(input),
       traceId,
-      errorCode: execution.errorCode ?? 'workflow_dispatch_failed',
-      errorMessage: execution.errorMessage ?? 'Workflow dispatch failed',
+      options: {
+        provider: input.options.provider,
+        outputDir,
+        verbose: input.options.verbose,
+        quiet: input.options.quiet,
+      },
+      traceContext: input.traceContext,
     };
+
+    const execute = options?.runtimeDispatcher ?? executeWorkflowWithCLI;
+    const execution = await execute(runtimePayload);
+
+    if (!execution.success) {
+      const errorCode = execution.errorCode ?? 'workflow_dispatch_failed';
+      const errorMessage = execution.errorMessage ?? 'Workflow dispatch failed';
+      const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', errorMessage);
+      return { ...failResult, success: false, traceId, errorCode, errorMessage };
+    }
+
+    const successResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'dispatched');
+    return { ...successResult, success: true, traceId };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', message);
-    return {
-      ...failResult,
-      success: false,
-      traceId,
-      errorCode: 'workflow_dispatch_failed',
-      errorMessage: message,
-    };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', errorMessage);
+    return { ...failResult, success: false, traceId, errorCode: 'workflow_dispatch_failed', errorMessage };
   }
 }
 

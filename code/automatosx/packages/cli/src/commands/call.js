@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { splitCommaList } from '../utils/validation.js';
 export async function callCommand(args, options) {
     const parsed = parseCallArgs(args);
     if (parsed.error !== undefined) {
@@ -10,7 +10,7 @@ export async function callCommand(args, options) {
         return usageError('ax call <prompt>');
     }
     const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const prompt = await buildPrompt(parsed.prompt, parsed.files);
     if (parsed.autonomous || parsed.goal !== undefined || parsed.intent !== undefined) {
         return runAutonomousCall(runtime, {
@@ -77,7 +77,7 @@ function parseCallArgs(args) {
         index += 1;
         switch (name) {
             case 'files':
-                parsed.files = value.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+                parsed.files = splitCommaList(value);
                 break;
             case 'system':
                 parsed.systemPrompt = value;
@@ -116,8 +116,7 @@ function parseCallArgs(args) {
                 break;
             }
             default:
-                positionals.push(token, value);
-                break;
+                return { ...parsed, error: `Unknown call flag: --${name}.` };
         }
     }
     parsed.prompt = positionals.join(' ').trim();

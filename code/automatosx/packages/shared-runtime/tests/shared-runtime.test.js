@@ -41,6 +41,25 @@ describe('shared runtime service', () => {
         });
         expect(trace?.stepResults.length).toBeGreaterThan(0);
     });
+    it('scopes workflow discovery to the requested base path instead of process cwd', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const runtime = createSharedRuntimeService({ basePath: tempDir });
+        const workflows = await runtime.listWorkflows({ basePath: tempDir });
+        expect(workflows).toEqual([]);
+        const description = await runtime.describeWorkflow({
+            workflowId: 'architect',
+            basePath: tempDir,
+        });
+        expect(description).toBeUndefined();
+        const result = await runtime.runWorkflow({
+            workflowId: 'architect',
+            basePath: tempDir,
+            surface: 'cli',
+        });
+        expect(result.success).toBe(false);
+        expect(result.error?.code).toBe('WORKFLOW_NOT_FOUND');
+    });
     it('analyzes stored traces through the shared runtime', async () => {
         const tempDir = createTempDir();
         tempDirs.push(tempDir);
@@ -86,6 +105,69 @@ describe('shared runtime service', () => {
         expect(sessionTraces).toMatchObject([
             {
                 traceId: 'shared-session-trace-001',
+                workflowId: 'discuss',
+            },
+        ]);
+    });
+    it('does not drop older session traces when listTracesBySession is called with a limit', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const traces = [
+            {
+                traceId: 'newest-trace-001',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:05.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-002',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:04.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-003',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:03.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-004',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:02.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'target-session-trace-001',
+                workflowId: 'discuss',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:01.000Z',
+                stepResults: [],
+                metadata: {
+                    sessionId: 'session-older',
+                },
+            },
+        ];
+        const traceStore = {
+            upsertTrace: async (record) => record,
+            getTrace: async () => undefined,
+            listTraces: async (limit) => limit === undefined ? traces : traces.slice(0, limit),
+            closeStuckTraces: async () => [],
+        };
+        const runtime = createSharedRuntimeService({ basePath: tempDir, traceStore });
+        const sessionTraces = await runtime.listTracesBySession('session-older', 1);
+        expect(sessionTraces).toMatchObject([
+            {
+                traceId: 'target-session-trace-001',
                 workflowId: 'discuss',
             },
         ]);
@@ -136,7 +218,7 @@ describe('shared runtime service', () => {
         const trace = await runtime.getTrace('real-discussion-trace-001');
         expect(trace?.output?.metadata?.executionMode).toBe('subprocess');
     });
-    it('calls a provider directly through the shared runtime bridge', async () => {
+  it('calls a provider directly through the shared runtime bridge', async () => {
         const tempDir = createTempDir();
         tempDirs.push(tempDir);
         await configureMockProviders(tempDir, ['claude']);
@@ -150,11 +232,53 @@ describe('shared runtime service', () => {
         expect(result.success).toBe(true);
         expect(result.executionMode).toBe('subprocess');
         expect(result.content).toContain('REAL:claude:');
-        expect(await runtime.getTrace('direct-call-001')).toMatchObject({
-            workflowId: 'call',
-            status: 'completed',
-        });
+    expect(await runtime.getTrace('direct-call-001')).toMatchObject({
+      workflowId: 'call',
+      status: 'completed',
     });
+  });
+  it('resolves provider workspace config from the request base path', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const scriptPath = join(tempDir, 'workspace-provider.mjs');
+    await writeFile(scriptPath, [
+      "let input = '';",
+      "process.stdin.setEncoding('utf8');",
+      "process.stdin.on('data', (chunk) => { input += chunk; });",
+      "process.stdin.on('end', () => {",
+      "  const payload = JSON.parse(input || '{}');",
+      "  const provider = payload.provider || 'unknown';",
+      "  process.stdout.write(JSON.stringify({",
+      "    success: true,",
+      "    provider,",
+      "    model: `workspace-${provider}`,",
+      "    content: `WORKSPACE:${provider}:${payload.prompt || ''}`",
+      "  }));",
+      "});",
+    ].join('\n'), 'utf8');
+    mkdirSync(join(tempDir, '.automatosx'), { recursive: true });
+    await writeFile(join(tempDir, '.automatosx', 'config.json'), `${JSON.stringify({
+      providers: {
+        executors: {
+          claude: {
+            command: 'node',
+            args: [scriptPath],
+          },
+        },
+      },
+    }, null, 2)}\n`, 'utf8');
+    const runtime = createSharedRuntimeService({ basePath: join(process.cwd(), 'tmp', 'unrelated-runtime-root') });
+    const result = await runtime.callProvider({
+      prompt: 'workspace scoped prompt',
+      provider: 'claude',
+      traceId: 'workspace-call-001',
+      basePath: tempDir,
+      surface: 'cli',
+    });
+    expect(result.success).toBe(true);
+    expect(result.executionMode).toBe('subprocess');
+    expect(result.content).toContain('WORKSPACE:claude:workspace scoped prompt');
+  });
     it('uses native provider presets when a matching CLI is installed', async () => {
         const tempDir = createTempDir();
         tempDirs.push(tempDir);
@@ -323,12 +447,7 @@ describe('shared runtime service', () => {
     it('summarizes runtime status and git diff through the shared runtime', async () => {
         const tempDir = createTempDir();
         tempDirs.push(tempDir);
-        await execFileAsync('git', ['init'], { cwd: tempDir });
-        await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd: tempDir });
-        await execFileAsync('git', ['config', 'user.name', 'Test User'], { cwd: tempDir });
-        await writeFile(join(tempDir, 'tracked.txt'), 'baseline\n', 'utf8');
-        await execFileAsync('git', ['add', 'tracked.txt'], { cwd: tempDir });
-        await execFileAsync('git', ['commit', '-m', 'init'], { cwd: tempDir });
+        await initializeGitRepo(tempDir);
         await writeFile(join(tempDir, 'tracked.txt'), 'baseline\nchanged\n', 'utf8');
         const runtime = createSharedRuntimeService({ basePath: tempDir });
         await runtime.createSession({
@@ -350,6 +469,117 @@ describe('shared runtime service', () => {
         const diff = await runtime.gitDiff();
         expect(diff.command[0]).toBe('git');
         expect(diff.diff).toContain('tracked.txt');
+    });
+    it('builds trace trees, feedback stats, abilities, and local git/pr helpers', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        await initializeGitRepo(tempDir);
+        await execFileAsync('git', ['checkout', '-b', 'feature/runtime-wave'], { cwd: tempDir });
+        await writeFile(join(tempDir, 'tracked.txt'), 'baseline\nchanged\n', 'utf8');
+        await writeFile(join(tempDir, 'new-file.ts'), 'export const value = 1;\n', 'utf8');
+        const runtime = createSharedRuntimeService({ basePath: tempDir });
+        await runtime.getStores().traceStore.upsertTrace({
+            traceId: 'root-trace',
+            workflowId: 'parallel.run',
+            surface: 'cli',
+            status: 'completed',
+            startedAt: '2026-03-22T00:00:00.000Z',
+            stepResults: [],
+        });
+        await runtime.getStores().traceStore.upsertTrace({
+            traceId: 'child-trace',
+            workflowId: 'agent.run',
+            surface: 'cli',
+            status: 'completed',
+            startedAt: '2026-03-22T00:01:00.000Z',
+            stepResults: [],
+            metadata: {
+                parentTraceId: 'root-trace',
+                rootTraceId: 'root-trace',
+            },
+        });
+        const tree = await runtime.getTraceTree('child-trace');
+        expect(tree).toMatchObject({
+            traceId: 'root-trace',
+            children: [
+                {
+                    traceId: 'child-trace',
+                },
+            ],
+        });
+        await runtime.submitFeedback({
+            selectedAgent: 'architect',
+            rating: 5,
+            taskDescription: 'Review rollout plan',
+            outcome: 'accepted',
+            durationMs: 1200,
+        });
+        await runtime.submitFeedback({
+            selectedAgent: 'architect',
+            rating: 4,
+            taskDescription: 'Refine rollout plan',
+            outcome: 'approved-with-edits',
+            durationMs: 800,
+        });
+        const stats = await runtime.getFeedbackStats('architect');
+        expect(stats).toMatchObject({
+            agentId: 'architect',
+            totalFeedback: 2,
+            ratingsCount: 2,
+            averageRating: 4.5,
+        });
+        const overview = await runtime.getFeedbackOverview();
+        expect(overview.totalFeedback).toBe(2);
+        const adjustment = await runtime.getFeedbackAdjustments('architect');
+        expect(adjustment.adjustment).toBeGreaterThan(0);
+        const abilities = await runtime.listAbilities({ category: 'review' });
+        expect(abilities).toMatchObject([
+            expect.objectContaining({ abilityId: 'code-review' }),
+        ]);
+        const injection = await runtime.injectAbilities({
+            task: 'Review the diff for security and maintainability',
+            maxAbilities: 2,
+            includeMetadata: true,
+        });
+        expect(injection.abilities.length).toBeGreaterThan(0);
+        expect(injection.content).toContain('Category:');
+        const gitStatus = await runtime.gitStatus();
+        expect(gitStatus.untracked).toContain('new-file.ts');
+        expect(gitStatus.unstaged).toEqual(expect.arrayContaining([
+            expect.objectContaining({ path: 'tracked.txt' }),
+        ]));
+        const prepared = await runtime.commitPrepare({
+            paths: ['tracked.txt'],
+            type: 'fix',
+            scope: 'shared-runtime',
+        });
+        expect(prepared.message).toBe('fix(shared-runtime): update shared-runtime');
+        expect(prepared.stagedPaths).toContain('tracked.txt');
+        await execFileAsync('git', ['add', 'new-file.ts'], { cwd: tempDir });
+        await execFileAsync('git', ['commit', '-m', 'feature runtime change'], { cwd: tempDir });
+        const review = await runtime.reviewPullRequest({ base: 'main', head: 'HEAD' });
+        expect(review.changedFiles).toContain('tracked.txt');
+        const originalPath = process.env.PATH;
+        const ghPath = join(tempDir, process.platform === 'win32' ? 'gh.cmd' : 'gh');
+        await writeFile(ghPath, process.platform === 'win32'
+            ? '@echo off\r\necho https://example.test/pr/1\r\n'
+            : '#!/bin/sh\necho https://example.test/pr/1\n', 'utf8');
+        if (process.platform !== 'win32') {
+            await execFileAsync('chmod', ['+x', ghPath]);
+        }
+        process.env.PATH = `${tempDir}${process.platform === 'win32' ? ';' : ':'}${originalPath ?? ''}`;
+        try {
+            const pr = await runtime.createPullRequest({
+                title: 'Test PR',
+                body: 'Body',
+                base: 'main',
+                head: 'HEAD',
+            });
+            expect(pr.url).toBe('https://example.test/pr/1');
+        }
+        finally {
+            process.env.PATH = originalPath;
+        }
     });
     it('shares agent registration through one runtime service and rejects conflicting duplicates', async () => {
         const tempDir = createTempDir();
@@ -761,11 +991,100 @@ describe('shared runtime service', () => {
         expect(review.traceId).toBe('shared-review-001');
         expect(review.findings.length).toBeGreaterThan(0);
         const reviews = await runtime.listReviewTraces(5);
-        expect(reviews).toMatchObject([
+    expect(reviews).toMatchObject([
+      {
+        traceId: 'shared-review-001',
+        workflowId: 'review',
+        status: 'completed',
+      },
+    ]);
+  });
+  it('resolves review paths relative to the requested base path', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const sourceDir = join(tempDir, 'src');
+    mkdirSync(sourceDir, { recursive: true });
+    await writeFile(join(sourceDir, 'relative-review.ts'), [
+      'export function relativeReview(value: any) {',
+      '  console.log(value);',
+      '  return value;',
+      '}',
+      '',
+    ].join('\n'), 'utf8');
+    const runtime = createSharedRuntimeService({ basePath: join(process.cwd(), 'tmp', 'unrelated-runtime-root') });
+    const review = await runtime.analyzeReview({
+      paths: ['src'],
+      focus: 'all',
+      traceId: 'shared-review-relative-001',
+      basePath: tempDir,
+      surface: 'cli',
+    });
+    expect(review.success).toBe(true);
+    expect(review.filesScanned).toBe(1);
+    expect(review.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        file: 'src/relative-review.ts',
+        ruleId: 'maintainability.console-log',
+      }),
+    ]));
+  });
+    it('does not drop older review traces when listReviewTraces is called with a limit', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const traces = [
             {
-                traceId: 'shared-review-001',
-                workflowId: 'review',
+                traceId: 'newest-trace-001',
+                workflowId: 'ship',
+                surface: 'cli',
                 status: 'completed',
+                startedAt: '2026-03-23T00:00:05.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-002',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:04.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-003',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:03.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'newest-trace-004',
+                workflowId: 'ship',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:02.000Z',
+                stepResults: [],
+            },
+            {
+                traceId: 'older-review-trace-001',
+                workflowId: 'review',
+                surface: 'cli',
+                status: 'completed',
+                startedAt: '2026-03-23T00:00:01.000Z',
+                stepResults: [],
+            },
+        ];
+        const traceStore = {
+            upsertTrace: async (record) => record,
+            getTrace: async () => undefined,
+            listTraces: async (limit) => limit === undefined ? traces : traces.slice(0, limit),
+            closeStuckTraces: async () => [],
+        };
+        const runtime = createSharedRuntimeService({ basePath: tempDir, traceStore });
+        const reviewTraces = await runtime.listReviewTraces(1);
+        expect(reviewTraces).toMatchObject([
+            {
+                traceId: 'older-review-trace-001',
+                workflowId: 'review',
             },
         ]);
     });
@@ -813,6 +1132,14 @@ async function configureMockProviders(tempDir, providers) {
         process.env[`${prefix}_CMD`] = 'node';
         process.env[`${prefix}_ARGS`] = JSON.stringify([scriptPath]);
     }
+}
+async function initializeGitRepo(tempDir) {
+    await execFileAsync('git', ['init', '-b', 'main'], { cwd: tempDir });
+    await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd: tempDir });
+    await execFileAsync('git', ['config', 'user.name', 'Test User'], { cwd: tempDir });
+    await writeFile(join(tempDir, 'tracked.txt'), 'baseline\n', 'utf8');
+    await execFileAsync('git', ['add', 'tracked.txt'], { cwd: tempDir });
+    await execFileAsync('git', ['commit', '-m', 'init'], { cwd: tempDir });
 }
 function clearProviderExecutorEnv() {
     for (const key of Object.keys(process.env)) {

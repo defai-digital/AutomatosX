@@ -34,10 +34,10 @@ function mapErrorCodeToRetryType(code) {
     if (codeUpper.includes('TIMEOUT')) {
         return 'timeout';
     }
-    if (codeUpper.includes('RATE_LIMIT')) {
+    if (codeUpper.includes('RATE_LIMIT') || codeUpper.includes('RATE_LIMITED')) {
         return 'rate_limit';
     }
-    if (codeUpper.includes('SERVER_ERROR') || codeUpper.includes('INTERNAL_ERROR') || /^5\d{2}$/.test(codeUpper)) {
+    if (codeUpper.includes('SERVER_ERROR') || codeUpper.includes('INTERNAL_ERROR') || codeUpper.startsWith('5')) {
         return 'server_error';
     }
     if (codeUpper.includes('NETWORK') || codeUpper.includes('CONNECTION') || codeUpper.includes('ECONNREFUSED')) {

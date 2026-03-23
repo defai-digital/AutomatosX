@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
-
-type SessionInput = Record<string, unknown>;
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseJsonInput, asString, asOptionalString, asOptionalRecord, asStringValue } from '../utils/validation.js';
 
 export async function sessionCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'list';
-  const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
 
   switch (subcommand) {
     case 'list': {
@@ -62,12 +59,13 @@ export async function sessionCommand(args: string[], options: CLIOptions): Promi
         return failure(initiator.error);
       }
 
+      const sessionId = asOptionalString(parsed.value.sessionId);
       const session = await runtime.createSession({
-        sessionId: typeof parsed.value.sessionId === 'string' && parsed.value.sessionId.length > 0 ? parsed.value.sessionId : randomUUID(),
+        sessionId: sessionId !== undefined && sessionId.length > 0 ? sessionId : randomUUID(),
         task: task.value,
         initiator: initiator.value,
-        workspace: typeof parsed.value.workspace === 'string' ? parsed.value.workspace : undefined,
-        metadata: asRecord(parsed.value.metadata),
+        workspace: asStringValue(parsed.value.workspace),
+        metadata: asOptionalRecord(parsed.value.metadata),
       });
       return success(`Session created: ${session.sessionId}`, session);
     }
@@ -116,11 +114,11 @@ export async function sessionCommand(args: string[], options: CLIOptions): Promi
       if (sessionId === undefined) {
         return usageError('ax session complete <session-id> [--input <json-object>]');
       }
-      const parsed = parseJsonInput(options.input, true);
+      const parsed = parseJsonInput(options.input, { allowEmpty: true });
       if (parsed.error !== undefined) {
         return failure(parsed.error);
       }
-      const summary = typeof parsed.value.summary === 'string' ? parsed.value.summary : undefined;
+      const summary = asStringValue(parsed.value.summary);
       const session = await runtime.completeSession(sessionId, summary);
       return success(`Session completed: ${session.sessionId}`, session);
     }
@@ -143,35 +141,6 @@ export async function sessionCommand(args: string[], options: CLIOptions): Promi
     default:
       return usageError('ax session [list|get|create|join|leave|complete|fail]');
   }
-}
-
-function parseJsonInput(input: string | undefined, allowEmpty = false): { value: SessionInput; error?: string } {
-  if (input === undefined) {
-    return allowEmpty ? { value: {} } : { value: {}, error: 'Command requires --input <json-object>' };
-  }
-
-  try {
-    const parsed = JSON.parse(input);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { value: {}, error: 'Input must be a JSON object.' };
-    }
-    return { value: parsed as SessionInput };
-  } catch {
-    return { value: {}, error: 'Invalid JSON input. Please provide a valid JSON object.' };
-  }
-}
-
-function asString(value: unknown, field: string): { value: string; error?: string } {
-  if (typeof value !== 'string' || value.length === 0) {
-    return { value: '', error: `Input requires "${field}".` };
-  }
-  return { value };
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
 }
 
 function normalizeRole(value: unknown): 'initiator' | 'collaborator' | 'delegate' | undefined {

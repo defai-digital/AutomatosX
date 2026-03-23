@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/trace-store",
-  "version": "13.5.2",
+  "version": "14.0.0",
   "private": true,
   "type": "module",
   "description": "Shared trace persistence for CLI and MCP workflow execution",
@@ -8,7 +8,7 @@
     ".": "./src/index.js"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.5.0"
   },
   "scripts": {
     "build": "tsc --build",

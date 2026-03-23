@@ -4,7 +4,6 @@ import { WorkflowErrorCodes } from './types.js';
 import { prepareWorkflow, deepFreezeStepResult } from './validation.js';
 import { defaultStepExecutor, createStepError, normalizeError } from './executor.js';
 import { mergeRetryPolicy, shouldRetry, calculateBackoff, sleep, } from './retry.js';
-const LOG_PREFIX = '[workflow-runner]';
 const UNKNOWN_AGENT_ID = 'unknown';
 const WORKFLOW_GUARD_BLOCKED = 'WORKFLOW_GUARD_BLOCKED';
 export class WorkflowRunner {
@@ -32,6 +31,7 @@ export class WorkflowRunner {
     }
     async run(workflowData, input) {
         const startTime = Date.now();
+        const executionId = this.config.executionId ?? randomUUID();
         let prepared;
         try {
             prepared = prepareWorkflow(workflowData);
@@ -57,7 +57,7 @@ export class WorkflowRunner {
                 input: stepInput,
             };
             if (this.config.stepGuardEngine) {
-                const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+                const guardContext = this.buildGuardContext(executionId, step, i, prepared, stepResults);
                 const beforeResults = await this.config.stepGuardEngine.runBeforeGuards(guardContext);
                 if (this.config.stepGuardEngine.shouldBlock(beforeResults)) {
                     return this.createBlockedResult(prepared, stepResults, step, beforeResults, startTime);
@@ -69,24 +69,19 @@ export class WorkflowRunner {
             stepResults.push(frozenResult);
             this.config.onStepComplete?.(step, frozenResult);
             if (this.config.stepGuardEngine) {
-                const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+                const guardContext = this.buildGuardContext(executionId, step, i, prepared, stepResults);
                 try {
                     await this.config.stepGuardEngine.runAfterGuards(guardContext);
                 }
                 catch (guardError) {
-                    const guardMessage = guardError instanceof Error ? guardError.message : String(guardError);
-                    console.warn(`${LOG_PREFIX} After guard threw exception for step ${step.stepId}:`, guardError);
-                    return {
-                        workflowId: workflow.workflowId,
-                        success: false,
-                        stepResults,
-                        error: {
-                            code: WorkflowErrorCodes.AFTER_GUARD_ERROR,
-                            message: `After guard failed for step ${step.stepId}: ${guardMessage}`,
-                            failedStepId: step.stepId,
+                    return this.createErrorResult(prepared.workflow.workflowId, startTime, stepResults, {
+                        code: WorkflowErrorCodes.AFTER_GUARD_ERROR,
+                        message: `After guard check failed for step ${step.stepId}`,
+                        details: {
+                            stepId: step.stepId,
+                            error: guardError instanceof Error ? guardError.message : String(guardError),
                         },
-                        totalDurationMs: Date.now() - startTime,
-                    };
+                    });
                 }
             }
             if (!frozenResult.success) {
@@ -202,7 +197,7 @@ export class WorkflowRunner {
             totalDurationMs: Date.now() - startTime,
         };
     }
-    buildGuardContext(step, stepIndex, workflow, stepResults) {
+    buildGuardContext(executionId, step, stepIndex, workflow, stepResults) {
         const previousOutputs = {};
         for (const result of stepResults) {
             if (result.output !== undefined) {
@@ -210,7 +205,7 @@ export class WorkflowRunner {
             }
         }
         return {
-            executionId: this.config.executionId ?? randomUUID(),
+            executionId,
             agentId: this.config.agentId ?? UNKNOWN_AGENT_ID,
             workflowId: workflow.workflow.workflowId,
             stepId: step.stepId,

@@ -1,6 +1,8 @@
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { migrateJsonToSqlite } from '@defai.digital/state-store';
+import { migrateTraceJsonToSqlite } from '@defai.digital/trace-store';
 import { success } from '../utils/formatters.js';
 import { listProviderClientStatuses } from '../utils/provider-detection.js';
 const DEFAULT_AGENTS = [
@@ -97,16 +99,40 @@ export async function ensureWorkspaceSetup(basePath, provider) {
         detectedProviders,
     };
 }
-export async function setupCommand(_args, options) {
+export async function setupCommand(args, options) {
     const basePath = options.outputDir ?? process.cwd();
+    // --migrate-storage: import legacy JSON data into SQLite before setup continues
+    const migrateStorage = args.includes('--migrate-storage');
+    const migrationLines = [];
+    if (migrateStorage) {
+        const [stateResult, traceResult] = await Promise.all([
+            migrateJsonToSqlite({ basePath }),
+            migrateTraceJsonToSqlite({ basePath }),
+        ]);
+        if (stateResult.skipped) {
+            migrationLines.push(`State migration skipped: ${stateResult.reason}`);
+        }
+        else {
+            migrationLines.push(`State migrated to SQLite: ${stateResult.memory} memory, ${stateResult.agents} agents, ${stateResult.sessions} sessions, ${stateResult.feedback} feedback, ${stateResult.semantic} semantic entries.`);
+        }
+        if (traceResult.skipped) {
+            migrationLines.push(`Trace migration skipped: ${traceResult.reason}`);
+        }
+        else {
+            migrationLines.push(`Traces migrated to SQLite: ${traceResult.traces} records.`);
+        }
+    }
     const result = await ensureWorkspaceSetup(basePath, options.provider);
-    return success([
+    const lines = [
         `Workspace setup completed in ${result.automatosxDir}.`,
+        `Storage backend: SQLite (WAL mode).`,
         `Registered agents: ${result.registeredAgents.join(', ')}.`,
         `Registered policies: ${result.registeredPolicies.join(', ')}.`,
         `Detected provider clients: ${formatDetectedProviders(result.detectedProviders)}.`,
         `Wrote environment baseline: ${result.environmentPath}.`,
-    ].join('\n'), result);
+        ...migrationLines,
+    ];
+    return success(lines.join('\n'), result);
 }
 function formatDetectedProviders(providers) {
     const installed = providers.filter((provider) => provider.installed).map((provider) => provider.providerId);

@@ -1,11 +1,12 @@
 import packageJson from '../../../package.json' with { type: 'json' };
-import { agentCommand, architectCommand, auditCommand, callCommand, cleanupCommand, configCommand, doctorCommand, discussCommand, guardCommand, helpCommand, initCommand, listCommand, mcpCommand, qaCommand, releaseCommand, reviewCommand, resumeCommand, runCommand, sessionCommand, setupCommand, shipCommand, statusCommand, traceCommand, } from './commands/index.js';
+import { abilityCommand, agentCommand, architectCommand, auditCommand, callCommand, cleanupCommand, configCommand, doctorCommand, discussCommand, feedbackCommand, guardCommand, helpCommand, historyCommand, initCommand, iterateCommand, monitorCommand, listCommand, mcpCommand, qaCommand, releaseCommand, reviewCommand, resumeCommand, runCommand, scaffoldCommand, sessionCommand, setupCommand, shipCommand, statusCommand, traceCommand, updateCommand, } from './commands/index.js';
 import { failure, success } from './utils/formatters.js';
 export const CLI_VERSION = packageJson.version;
 export const CLI_COMMAND_NAMES = [
     'help',
     'version',
     'iterate',
+    'ability',
     'call',
     'run',
     'ship',
@@ -19,7 +20,11 @@ export const CLI_COMMAND_NAMES = [
     'status',
     'config',
     'cleanup',
+    'feedback',
+    'history',
     'list',
+    'monitor',
+    'scaffold',
     'trace',
     'discuss',
     'guard',
@@ -28,6 +33,7 @@ export const CLI_COMMAND_NAMES = [
     'mcp',
     'session',
     'review',
+    'update',
 ];
 const GLOBAL_BOOLEAN_FLAGS = new Map([
     ['--help', 'help'],
@@ -78,8 +84,14 @@ const COMMAND_REGISTRY = {
     status: statusCommand,
     config: configCommand,
     cleanup: cleanupCommand,
+    ability: abilityCommand,
+    feedback: feedbackCommand,
     call: callCommand,
+    history: historyCommand,
+    iterate: iterateCommand,
     list: listCommand,
+    monitor: monitorCommand,
+    scaffold: scaffoldCommand,
     trace: traceCommand,
     discuss: discussCommand,
     guard: guardCommand,
@@ -88,6 +100,7 @@ const COMMAND_REGISTRY = {
     session: sessionCommand,
     review: reviewCommand,
     resume: resumeCommand,
+    update: updateCommand,
 };
 const COMMAND_HELP = {
     help: {
@@ -186,6 +199,25 @@ const COMMAND_HELP = {
             'ax config set <path> --input <json-value>',
         ],
     },
+    ability: {
+        description: 'List built-in runtime abilities or inject matched ability context.',
+        usage: [
+            'ax ability list',
+            'ax ability list --category review --tags security',
+            'ax ability inject --task "<task>"',
+            'ax ability inject --task "<task>" --core workflow-first,git-hygiene',
+        ],
+    },
+    feedback: {
+        description: 'Capture feedback events and inspect aggregate agent feedback signals.',
+        usage: [
+            'ax feedback overview',
+            'ax feedback history [agent-id]',
+            'ax feedback stats <agent-id>',
+            'ax feedback adjustments <agent-id>',
+            'ax feedback submit --agent <agent-id> --task "<task>" --input <json-object>',
+        ],
+    },
     cleanup: {
         description: 'Auto-close stale sessions and traces in shared runtime storage.',
         usage: [
@@ -210,6 +242,7 @@ const COMMAND_HELP = {
             'ax trace',
             'ax trace <trace-id>',
             'ax trace analyze <trace-id>',
+            'ax trace tree <trace-id>',
             'ax trace by-session <session-id>',
         ],
     },
@@ -278,12 +311,48 @@ const COMMAND_HELP = {
             'ax --version',
         ],
     },
+    history: {
+        description: 'View past workflow run history from the trace store.',
+        usage: [
+            'ax history',
+            'ax history --limit 50',
+            'ax history --agent <workflow-id>',
+            'ax history --status failed',
+            'ax history --verbose',
+        ],
+    },
     iterate: {
         description: 'Repeat a runnable command until success, iteration budget, or time budget is exhausted.',
         usage: [
             'ax iterate <command> [args...]',
             'ax iterate run <workflow-id> --max-iterations 3',
+            'ax iterate run <workflow-id> --max-time 5m',
             'ax ship --iterate --max-iterations 3',
+        ],
+    },
+    monitor: {
+        description: 'Launch a local HTTP dashboard showing active sessions, traces, and agents.',
+        usage: [
+            'ax monitor',
+            'ax monitor --port 8080',
+            'ax monitor --no-open',
+        ],
+    },
+    scaffold: {
+        description: 'Generate contract-first components: Zod schemas, domain packages, guard policies.',
+        usage: [
+            'ax scaffold contract <name>',
+            'ax scaffold domain <name> --scope @myorg',
+            'ax scaffold guard <policy-id>',
+            'ax scaffold contract <name> --dry-run',
+        ],
+    },
+    update: {
+        description: 'Check for CLI updates and optionally install the latest version.',
+        usage: [
+            'ax update',
+            'ax update --check',
+            'ax update --yes',
         ],
     },
     resume: {

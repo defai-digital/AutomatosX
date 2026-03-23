@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { rm, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -110,8 +110,18 @@ describe('state store', () => {
                 namespace: 'qa',
             },
         ]);
-        expect(await store.deleteMemory('latest', 'release')).toBe(true);
-        expect(await store.getMemory('latest', 'release')).toBeUndefined();
+    expect(await store.deleteMemory('latest', 'release')).toBe(true);
+    expect(await store.getMemory('latest', 'release')).toBeUndefined();
+  });
+    it('uses custom storageFile for the default sqlite backend', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const customDbFile = join(tempDir, 'custom', 'state-custom.db');
+        const store = createStateStore({ basePath: tempDir, storageFile: customDbFile });
+        await store.storeMemory({ namespace: 'release', key: 'latest', value: { version: '14.0.0' } });
+        await expect(stat(customDbFile)).resolves.toMatchObject({
+            isFile: expect.any(Function),
+        });
     });
     it('stores, searches, lists, and clears semantic entries by namespace', async () => {
         const tempDir = createTempDir();
@@ -157,6 +167,32 @@ describe('state store', () => {
         expect(await store.deleteSemantic('qa-regression', 'agents')).toBe(true);
         expect(await store.clearSemantic('agents')).toBe(1);
         expect(await store.listSemantic({ namespace: 'agents' })).toEqual([]);
+    });
+    it('stores and filters feedback entries', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const store = createStateStore({ basePath: tempDir });
+        await store.submitFeedback({
+            selectedAgent: 'architect',
+            rating: 5,
+            taskDescription: 'Review rollout plan',
+            outcome: 'accepted',
+        });
+        await store.submitFeedback({
+            selectedAgent: 'qa',
+            rating: 3,
+            taskDescription: 'Regression run',
+            outcome: 'partial',
+        });
+        const architectHistory = await store.listFeedback({ agentId: 'architect' });
+        const allHistory = await store.listFeedback({ limit: 1 });
+        expect(architectHistory).toMatchObject([
+            {
+                selectedAgent: 'architect',
+                rating: 5,
+            },
+        ]);
+        expect(allHistory).toHaveLength(1);
     });
     it('persists session lifecycle transitions', async () => {
         const tempDir = createTempDir();

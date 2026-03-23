@@ -14,11 +14,18 @@ export const RETAINED_COMMANDS = [
     { command: 'discuss', description: 'Run a top-level multi-provider discussion through shared runtime tracing.' },
 ];
 export const ADVANCED_COMMANDS = [
+    { command: 'ability', description: 'List built-in runtime abilities or inject matched ability context for a task.' },
+    { command: 'feedback', description: 'Capture operator feedback and inspect aggregate agent feedback signals.' },
     { command: 'guard', description: 'List, apply, and evaluate workflow guard policies.' },
     { command: 'agent', description: 'Inspect or register agents through the shared runtime state store.' },
     { command: 'mcp', description: 'Inspect available MCP tools or invoke them through the local MCP surface.' },
     { command: 'session', description: 'Create and manage collaboration sessions through shared runtime state.' },
     { command: 'review', description: 'Run deterministic v14-native code review heuristics with durable artifacts.' },
+    { command: 'history', description: 'View past workflow run history from the trace store.' },
+    { command: 'iterate', description: 'Repeat a command until success, iteration budget, or time budget is exhausted.' },
+    { command: 'monitor', description: 'Launch a local HTTP dashboard showing sessions, traces, and agents.' },
+    { command: 'scaffold', description: 'Generate contract-first components: schemas, domain packages, guard policies.' },
+    { command: 'update', description: 'Check for CLI updates and optionally install the latest version.' },
 ];
 export const WORKFLOW_FIRST_QUICKSTART = [
     'Bootstrap:',
@@ -55,6 +62,8 @@ export const WORKFLOW_FIRST_QUICKSTART = [
     '',
     'Advanced operational commands:',
     '  ax iterate run <workflow-id>',
+    '  ax ability list',
+    '  ax feedback overview',
     '  ax guard list',
     '  ax agent list',
     '  ax mcp tools',

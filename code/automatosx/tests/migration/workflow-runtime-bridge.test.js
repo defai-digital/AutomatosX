@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import { dispatch, parseWorkflowCommandInput } from '../../packages/cli/src/workflow-adapter.js';
 import { runCommand } from '../../packages/cli/src/commands/run.js';
 const COMMAND_CASES = [
@@ -62,6 +63,22 @@ describe('v14 workflow runtime bridge', () => {
             expect(data.output?.model).toBe('v14-runtime-bridge');
             expect(data.output?.status).toBeUndefined();
         }
+    });
+    it('preserves workflowId in trace input when the workflow is selected via --workflow-id', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const result = await runCommand([], {
+            ...defaultOptions(),
+            workflowId: 'ship',
+            outputDir: tempDir,
+        });
+        expect(result.success).toBe(true);
+        const data = result.data;
+        const runtime = createSharedRuntimeService({ basePath: tempDir });
+        const trace = await runtime.getTrace(data.traceId ?? '');
+        expect(trace?.input).toMatchObject({
+            workflowId: 'ship',
+        });
     });
     it('dispatches all five workflow commands through the runtime bridge and writes dispatched artifacts', async () => {
         for (const commandCase of COMMAND_CASES) {

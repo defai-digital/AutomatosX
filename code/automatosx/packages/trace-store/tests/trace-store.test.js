@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { rm, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -119,5 +119,23 @@ describe('trace store', () => {
             },
         });
         expect(traces.find((trace) => trace.traceId === 'completed-trace-001')?.status).toBe('completed');
+    });
+    it('uses custom storageFile for the default sqlite backend', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const customDbFile = join(tempDir, 'custom', 'traces-custom.db');
+        const store = createTraceStore({ basePath: tempDir, storageFile: customDbFile });
+        await store.upsertTrace({
+            traceId: 'trace-custom',
+            workflowId: 'ship',
+            surface: 'cli',
+            status: 'completed',
+            startedAt: '2026-03-21T00:00:00.000Z',
+            completedAt: '2026-03-21T00:00:01.000Z',
+            stepResults: [],
+        });
+        await expect(stat(customDbFile)).resolves.toMatchObject({
+            isFile: expect.any(Function),
+        });
     });
 });

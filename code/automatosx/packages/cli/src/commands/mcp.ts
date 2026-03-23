@@ -1,6 +1,7 @@
 import { createMcpServerSurface, createMcpStdioServer } from '@defai.digital/mcp-server';
 import type { CLIOptions, CommandResult } from '../types.js';
 import { failure, success, usageError } from '../utils/formatters.js';
+import { parseOptionalJsonInput } from '../utils/validation.js';
 
 export async function mcpCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'tools';
@@ -51,7 +52,13 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
         return usageError('ax mcp read <resource-uri>');
       }
 
-      const resource = await surface.readResource(uri);
+      let resource;
+      try {
+        resource = await surface.readResource(uri);
+      } catch (error) {
+        return failure(error instanceof Error ? error.message : String(error));
+      }
+
       return success(
         [
           `Resource: ${resource.uri}`,
@@ -76,12 +83,18 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
         return usageError('ax mcp prompt <prompt-name> [--input <json-object>]');
       }
 
-      const parsed = parseToolInput(options.input);
+      const parsed = parseOptionalJsonInput(options.input, 'MCP');
       if (parsed.error !== undefined) {
         return failure(parsed.error);
       }
 
-      const prompt = await surface.getPrompt(promptName, parsed.value);
+      let prompt;
+      try {
+        prompt = await surface.getPrompt(promptName, parsed.value ?? {});
+      } catch (error) {
+        return failure(error instanceof Error ? error.message : String(error));
+      }
+
       return success(
         [
           `Prompt: ${promptName}`,
@@ -104,12 +117,12 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
         return usageError('ax mcp call <tool-name> [--input <json-object>]');
       }
 
-      const parsed = parseToolInput(options.input);
+      const parsed = parseOptionalJsonInput(options.input, 'MCP');
       if (parsed.error !== undefined) {
         return failure(parsed.error);
       }
 
-      const result = await surface.invokeTool(toolName, parsed.value);
+      const result = await surface.invokeTool(toolName, parsed.value ?? {});
       if (!result.success) {
         return failure(`MCP tool failed: ${result.error ?? 'Unknown MCP error'}`, result);
       }
@@ -118,27 +131,5 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
     }
     default:
       return usageError('ax mcp [tools|describe|resources|read|prompts|prompt|call|serve]');
-  }
-}
-
-function parseToolInput(input: string | undefined): { value: Record<string, unknown>; error?: string } {
-  if (input === undefined) {
-    return { value: {} };
-  }
-
-  try {
-    const parsed = JSON.parse(input);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        value: {},
-        error: 'MCP input must be a JSON object.',
-      };
-    }
-    return { value: parsed as Record<string, unknown> };
-  } catch {
-    return {
-      value: {},
-      error: 'Invalid JSON input. Please provide a valid JSON object.',
-    };
   }
 }

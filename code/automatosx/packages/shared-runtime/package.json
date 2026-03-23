@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/shared-runtime",
-  "version": "13.5.2",
+  "version": "14.0.0",
   "private": true,
   "type": "module",
   "description": "Shared workflow runtime service used by CLI and MCP surfaces",
@@ -13,7 +13,7 @@
     "@defai.digital/workflow-engine": "file:../workflow-engine"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.5.0"
   },
   "scripts": {
     "build": "tsc --build",

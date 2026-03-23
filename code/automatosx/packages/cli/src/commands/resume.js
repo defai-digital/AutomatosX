@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { isRecord } from '../utils/validation.js';
 export async function resumeCommand(args, options) {
     const sourceTraceId = args[0] ?? options.traceId;
     if (sourceTraceId === undefined || sourceTraceId.length === 0) {
         return usageError('ax resume <trace-id>');
     }
     const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const trace = await runtime.getTrace(sourceTraceId);
     if (trace === undefined) {
         return failure(`Trace not found: ${sourceTraceId}`);
@@ -83,9 +83,6 @@ export async function resumeCommand(args, options) {
         return failure(`Resume failed for ${sourceTraceId}: ${result.error?.message ?? 'Unknown workflow error'}`, result);
     }
     return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
-}
-function isRecord(value) {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 function resolveWorkflowDir() {
     const candidateDirs = ['workflows', '.automatosx/workflows', 'examples/workflows'];

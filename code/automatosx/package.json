@@ -16,7 +16,7 @@
     "clean": "rm -rf .tmp"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.15",

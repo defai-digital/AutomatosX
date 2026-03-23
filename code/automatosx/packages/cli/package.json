@@ -1,6 +1,10 @@
 {
   "name": "@defai.digital/cli",
+  "version": "14.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "type": "module",
   "dependencies": {
     "@defai.digital/mcp-server": "file:../mcp-server",

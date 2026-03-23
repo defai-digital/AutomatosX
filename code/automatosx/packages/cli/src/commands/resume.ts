@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { isRecord } from '../utils/validation.js';
 
 export async function resumeCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const sourceTraceId = args[0] ?? options.traceId;
@@ -11,7 +11,7 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   }
 
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
   const trace = await runtime.getTrace(sourceTraceId);
   if (trace === undefined) {
     return failure(`Trace not found: ${sourceTraceId}`);
@@ -99,10 +99,6 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   }
 
   return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function resolveWorkflowDir(): string | undefined {

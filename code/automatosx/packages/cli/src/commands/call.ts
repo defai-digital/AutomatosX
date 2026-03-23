@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { splitCommaList } from '../utils/validation.js';
 
 type CallIntent = 'query' | 'analysis' | 'code';
 
@@ -29,7 +29,7 @@ export async function callCommand(args: string[], options: CLIOptions): Promise<
   }
 
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
   const prompt = await buildPrompt(parsed.prompt, parsed.files);
   if (parsed.autonomous || parsed.goal !== undefined || parsed.intent !== undefined) {
     return runAutonomousCall(runtime, {
@@ -106,7 +106,7 @@ function parseCallArgs(args: string[]): ParsedCallArgs {
 
     switch (name) {
       case 'files':
-        parsed.files = value.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+        parsed.files = splitCommaList(value);
         break;
       case 'system':
         parsed.systemPrompt = value;
@@ -145,8 +145,7 @@ function parseCallArgs(args: string[]): ParsedCallArgs {
         break;
       }
       default:
-        positionals.push(token, value);
-        break;
+        return { ...parsed, error: `Unknown call flag: --${name}.` };
     }
   }
 
@@ -178,7 +177,7 @@ async function buildPrompt(prompt: string, files: string[]): Promise<string> {
 }
 
 async function runAutonomousCall(
-  runtime: ReturnType<typeof createSharedRuntimeService>,
+  runtime: ReturnType<typeof createRuntime>,
   request: ParsedCallArgs & {
     prompt: string;
     basePath: string;

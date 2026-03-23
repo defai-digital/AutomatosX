@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseOptionalJsonInput } from '../utils/validation.js';
 export async function runCommand(args, options) {
     const workflowId = args[0] ?? options.workflowId;
     if (workflowId === undefined) {
@@ -11,12 +11,12 @@ export async function runCommand(args, options) {
     if (workflowDir === undefined) {
         return failure('No workflow directory found. Create workflows/ or .automatosx/workflows/.');
     }
-    const workflowInputParse = parseInputJson(options.input);
-    if (workflowInputParse.valid === false && workflowInputParse.error !== undefined) {
+    const workflowInputParse = parseOptionalJsonInput(options.input);
+    if (workflowInputParse.error !== undefined) {
         return failure(`Invalid JSON in --input parameter: ${workflowInputParse.error}`);
     }
     const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     try {
         const execution = await runtime.runWorkflow({
             workflowId,
@@ -26,7 +26,7 @@ export async function runCommand(args, options) {
             provider: options.provider,
             sessionId: options.sessionId,
             model: 'v14-runtime-bridge',
-            input: buildWorkflowInput(args, options, workflowInputParse.value),
+            input: buildWorkflowInput(workflowId, args, options, workflowInputParse.value ?? {}),
             surface: 'cli',
         });
         if (!execution.success && execution.error?.code === 'WORKFLOW_NOT_FOUND') {
@@ -64,12 +64,12 @@ export async function runCommand(args, options) {
         return failure(`Failed to run workflow "${workflowId}": ${message}`);
     }
 }
-function buildWorkflowInput(args, options, workflowInput) {
+function buildWorkflowInput(workflowId, args, options, workflowInput) {
     const parsedInput = workflowInput;
     const commandTask = parsedInput.task ?? options.task;
     const positionalArgs = args.slice(1).filter((value) => value.length > 0);
     return {
-        workflowId: args[0],
+        workflowId,
         task: commandTask,
         positionalArgs,
         rawArgs: args,
@@ -79,21 +79,6 @@ function buildWorkflowInput(args, options, workflowInput) {
         verbose: options.verbose,
         quiet: options.quiet,
     };
-}
-function parseInputJson(input) {
-    if (input === undefined) {
-        return { valid: true, value: {} };
-    }
-    try {
-        const parsed = JSON.parse(input);
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return { valid: false, value: {}, error: 'input JSON must be an object' };
-        }
-        return { valid: true, value: parsed };
-    }
-    catch {
-        return { valid: false, value: {}, error: 'invalid JSON payload' };
-    }
 }
 function formatStepSummary(execution) {
     if (execution.stepResults.length === 0) {

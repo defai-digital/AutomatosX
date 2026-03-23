@@ -1,6 +1,8 @@
 import { getErrorMessage, TIMEOUT_AGENT_STEP_DEFAULT } from '@defai.digital/contracts';
 export function createRealStepExecutor(config) {
-    const { promptExecutor, toolExecutor, discussionExecutor, defaultProvider, defaultModel } = config;
+    const { promptExecutor, toolExecutor, discussionExecutor, delegateExecutor, defaultProvider, defaultModel, maxDelegationDepth = 3, } = config;
+    const delegationDepths = new Map();
+    const activeDelegationChain = [];
     return async (step, context) => {
         const startTime = Date.now();
         try {
@@ -18,17 +20,7 @@ export function createRealStepExecutor(config) {
                 case 'discuss':
                     return executeDiscussStep(step, context, discussionExecutor, startTime);
                 case 'delegate':
-                    return {
-                        stepId: step.stepId,
-                        success: false,
-                        error: {
-                            code: 'DELEGATE_NOT_IMPLEMENTED',
-                            message: 'Delegate steps require an agent-domain executor (not yet implemented)',
-                            retryable: false,
-                        },
-                        durationMs: Date.now() - startTime,
-                        retryCount: 0,
-                    };
+                    return executeDelegateStep(step, context, delegateExecutor, defaultProvider, defaultModel, maxDelegationDepth, delegationDepths, activeDelegationChain, startTime);
                 default: {
                     const _exhaustive = step.type;
                     return {
@@ -124,7 +116,7 @@ async function executePromptStep(step, context, promptExecutor, defaultProvider,
 }
 async function executeToolStep(step, context, toolExecutor, startTime) {
     const config = (isRecord(step.config) ? step.config : {});
-    const toolName = config.toolName;
+    const toolName = config.toolName ?? step.tool;
     const toolInput = resolveToolInput(config.toolInput, context.input);
     if (toolExecutor === undefined) {
         return {
@@ -226,12 +218,17 @@ function executeLoopStep(step, context, startTime) {
 }
 function executeParallelStep(step, startTime) {
     const config = step.config;
+    const parallelSteps = Array.isArray(config?.steps)
+        ? config.steps
+        : Array.isArray(config?.tasks)
+            ? config.tasks
+            : [];
     return Promise.resolve({
         stepId: step.stepId,
         success: true,
         output: {
             type: 'parallel',
-            parallelSteps: config?.steps ?? [],
+            parallelSteps,
         },
         durationMs: Date.now() - startTime,
         retryCount: 0,
@@ -375,6 +372,138 @@ async function executeDiscussStep(step, context, discussionExecutor, startTime) 
         };
     }
 }
+async function executeDelegateStep(step, context, delegateExecutor, defaultProvider, defaultModel, maxDelegationDepth, delegationDepths, activeDelegationChain, startTime) {
+    if (delegateExecutor === undefined) {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_EXECUTOR_NOT_CONFIGURED',
+                message: 'Delegate steps require a DelegateExecutor. Configure it in RealStepExecutorConfig.',
+                retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    const config = (isRecord(step.config) ? step.config : {});
+    if (!config.targetAgentId || config.targetAgentId.trim() === '') {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_CONFIG_ERROR',
+                message: `Delegate step "${step.stepId}" requires targetAgentId in config`,
+                retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    const { targetAgentId } = config;
+    // INV-DT-002: No circular delegations
+    if (activeDelegationChain.includes(targetAgentId)) {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_CIRCULAR_REFERENCE',
+                message: `Circular delegation detected: "${targetAgentId}" is already in the delegation chain [${activeDelegationChain.join(' → ')}]`,
+                retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    // INV-DT-001: Depth never exceeds maxDelegationDepth
+    const currentDepth = delegationDepths.get(targetAgentId) ?? 0;
+    if (currentDepth >= maxDelegationDepth) {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_MAX_DEPTH_EXCEEDED',
+                message: `Max delegation depth (${String(maxDelegationDepth)}) exceeded for agent "${targetAgentId}"`,
+                retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    // Look up target agent in registry
+    const targetAgent = await delegateExecutor.getAgent(targetAgentId);
+    if (targetAgent === undefined) {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_AGENT_NOT_FOUND',
+                message: `Delegation target "${targetAgentId}" not found in agent registry`,
+                retryable: false,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    // Push into delegation chain before executing
+    activeDelegationChain.push(targetAgentId);
+    delegationDepths.set(targetAgentId, currentDepth + 1);
+    try {
+        const delegateInput = config.input ?? (context.input && typeof context.input === 'object' && !Array.isArray(context.input)
+            ? context.input
+            : undefined);
+        const result = await delegateExecutor.runAgent({
+            agentId: targetAgentId,
+            task: config.task,
+            input: delegateInput,
+            provider: defaultProvider,
+            model: defaultModel,
+        });
+        return {
+            stepId: step.stepId,
+            success: result.success,
+            output: {
+                type: 'delegate',
+                delegatedTo: targetAgentId,
+                agentName: targetAgent.name,
+                capabilities: targetAgent.capabilities,
+                content: result.content,
+                provider: result.provider,
+                model: result.model,
+                latencyMs: result.latencyMs,
+                delegationDepth: currentDepth + 1,
+            },
+            error: result.success ? undefined : {
+                code: result.error?.code ?? 'DELEGATE_EXECUTION_FAILED',
+                message: result.error?.message ?? `Delegated agent "${targetAgentId}" failed`,
+                retryable: true,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    catch (error) {
+        return {
+            stepId: step.stepId,
+            success: false,
+            error: {
+                code: 'DELEGATE_EXECUTION_ERROR',
+                message: getErrorMessage(error, `Delegation to "${targetAgentId}" threw an error`),
+                retryable: true,
+            },
+            durationMs: Date.now() - startTime,
+            retryCount: 0,
+        };
+    }
+    finally {
+        // Always restore delegation chain on exit
+        const chainIndex = activeDelegationChain.lastIndexOf(targetAgentId);
+        if (chainIndex !== -1) {
+            activeDelegationChain.splice(chainIndex, 1);
+        }
+        delegationDepths.set(targetAgentId, currentDepth);
+    }
+}
 function resolvePrompt(configPrompt, input) {
     if (configPrompt) {
         return configPrompt;
@@ -407,31 +536,86 @@ function resolveToolInput(configToolInput, input) {
     return {};
 }
 function evaluateCondition(condition, context) {
-    if (condition === 'true') {
-        return true;
+    try {
+        const orParts = splitFactoryByLogicalOp(condition, '||');
+        if (orParts.length > 1) return orParts.some((part) => evaluateCondition(part.trim(), context));
+        const andParts = splitFactoryByLogicalOp(condition, '&&');
+        if (andParts.length > 1) return andParts.every((part) => evaluateCondition(part.trim(), context));
+        const trimmed = condition.trim();
+        if (trimmed.startsWith('!')) return !evaluateCondition(trimmed.slice(1).trim(), context);
+        if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+            let depth = 0, firstOpenMatchesLast = true;
+            for (let i = 0; i < trimmed.length - 1; i++) {
+                if (trimmed[i] === '(') depth++;
+                else if (trimmed[i] === ')') depth--;
+                if (depth === 0) { firstOpenMatchesLast = false; break; }
+            }
+            if (firstOpenMatchesLast) return evaluateCondition(trimmed.slice(1, -1), context);
+        }
+        const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
+        if (comparisonMatch) {
+            const [, varPath, op, rawValue] = comparisonMatch;
+            if (varPath && op && rawValue) {
+                return compareFactoryConditionValues(getNestedValue(context, varPath), parseFactoryConditionValue(rawValue.trim()), op);
+            }
+        }
+        const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
+        if (varMatch?.[1]) return Boolean(getNestedValue(context, varMatch[1]));
+        if (trimmed === 'true') return true;
+        if (trimmed === 'false') return false;
+        return Boolean(condition);
+    } catch { return false; }
+}
+function splitFactoryByLogicalOp(condition, operator) {
+    const parts = [];
+    let current = '', depth = 0;
+    for (let i = 0; i < condition.length; i++) {
+        const char = condition[i];
+        if (char === '(') { depth++; current += char; }
+        else if (char === ')') { depth--; current += char; }
+        else if (depth === 0 && condition.slice(i, i + operator.length) === operator) {
+            parts.push(current); current = ''; i += operator.length - 1;
+        } else { current += char; }
     }
-    if (condition === 'false') {
-        return false;
+    if (current) parts.push(current);
+    return parts;
+}
+function parseFactoryConditionValue(value) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
+    if (value === 'null') return null;
+    if (value === 'undefined') return undefined;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    const num = Number(value);
+    if (!Number.isNaN(num)) return num;
+    return value;
+}
+function compareFactoryConditionValues(actual, expected, op) {
+    switch (op) {
+        case '===': return actual === expected;
+        case '!==': return actual !== expected;
+        case '==': return actual == expected;
+        case '!=': return actual != expected;
+        case '>': return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
+        case '<': return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
+        case '>=': return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
+        case '<=': return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
+        default: return false;
     }
-    const variableReference = /^\$\{(.+)\}$/.exec(condition);
-    if (variableReference?.[1]) {
-        return Boolean(getNestedValue(context, variableReference[1]));
-    }
-    return Boolean(condition);
 }
 function isRecord(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
+// INV-WF-SEC-001: Block prototype chain access to prevent prototype pollution
+const DANGEROUS_PROPS_FACTORY = new Set(['__proto__', 'constructor', 'prototype']);
 function getNestedValue(context, path) {
     const parts = path.split('.');
     let current = context;
     for (const part of parts) {
-        if (current === null || current === undefined) {
-            return undefined;
-        }
-        if (typeof current !== 'object') {
-            return undefined;
-        }
+        if (current === null || current === undefined) return undefined;
+        if (typeof current !== 'object') return undefined;
+        if (DANGEROUS_PROPS_FACTORY.has(part)) return undefined;
+        if (!Object.prototype.hasOwnProperty.call(current, part)) return undefined;
         current = current[part];
     }
     return current;

@@ -1,6 +1,6 @@
 {
   "name": "@defai.digital/workflow-engine",
-  "version": "13.5.2",
+  "version": "14.0.0",
   "private": true,
   "type": "module",
   "description": "Workflow execution engine - executes workflows following contract invariants",

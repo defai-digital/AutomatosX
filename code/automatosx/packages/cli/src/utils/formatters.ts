@@ -1,8 +1,12 @@
-import type { CommandResult } from '../types.js';
+import { getErrorMessage } from '@defai.digital/contracts';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import type { CLIOptions, CommandResult } from '../types.js';
 
-/**
- * Build a success command result.
- */
+export function createRuntime(options: CLIOptions): ReturnType<typeof createSharedRuntimeService> {
+  const basePath = options.outputDir ?? process.cwd();
+  return createSharedRuntimeService({ basePath });
+}
+
 export function success(message: string, data: unknown = undefined): CommandResult {
   return {
     success: true,
@@ -12,9 +16,6 @@ export function success(message: string, data: unknown = undefined): CommandResu
   };
 }
 
-/**
- * Build a failure command result.
- */
 export function failure(message: string, data: unknown = undefined): CommandResult {
   return {
     success: false,
@@ -24,18 +25,12 @@ export function failure(message: string, data: unknown = undefined): CommandResu
   };
 }
 
-/**
- * Build a failure command result from an error.
- */
 export function failureFromError(action: string, error: unknown): CommandResult {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = getErrorMessage(error);
   const stack = error instanceof Error ? error.stack : undefined;
   return failure(`Failed to ${action}: ${message}`, stack !== undefined ? { stack } : undefined);
 }
 
-/**
- * Build a usage error command result.
- */
 export function usageError(usage: string): CommandResult {
   return failure(`Usage: ${usage}`);
 }

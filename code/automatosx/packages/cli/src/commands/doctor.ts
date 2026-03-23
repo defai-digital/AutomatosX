@@ -2,9 +2,8 @@ import { constants } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createMcpServerSurface } from '@defai.digital/mcp-server';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success } from '../utils/formatters.js';
+import { createRuntime, failure, success } from '../utils/formatters.js';
 
 type DoctorStatus = 'ok' | 'warn' | 'fail';
 
@@ -39,7 +38,7 @@ const REQUIRED_MCP_TOOLS = ['workflow.run', 'trace.list', 'agent.list'];
 
 export async function doctorCommand(_args: string[], options: CLIOptions): Promise<CommandResult> {
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
   const checks: DoctorCheck[] = [];
   const automatosxDir = join(basePath, '.automatosx');
   const configPath = join(automatosxDir, 'config.json');

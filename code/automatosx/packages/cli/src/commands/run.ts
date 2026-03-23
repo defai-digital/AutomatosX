@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CommandResult, CLIOptions } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseOptionalJsonInput } from '../utils/validation.js';
 
 interface WorkflowStepSummary {
   stepId: string;
@@ -40,13 +40,13 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
     return failure('No workflow directory found. Create workflows/ or .automatosx/workflows/.');
   }
 
-  const workflowInputParse = parseInputJson(options.input);
-  if (workflowInputParse.valid === false && workflowInputParse.error !== undefined) {
+  const workflowInputParse = parseOptionalJsonInput(options.input);
+  if (workflowInputParse.error !== undefined) {
     return failure(`Invalid JSON in --input parameter: ${workflowInputParse.error}`);
   }
 
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
 
   try {
     const execution = await runtime.runWorkflow({
@@ -57,7 +57,7 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
       provider: options.provider,
       sessionId: options.sessionId,
       model: 'v14-runtime-bridge',
-      input: buildWorkflowInput(args, options, workflowInputParse.value),
+      input: buildWorkflowInput(workflowId, args, options, workflowInputParse.value ?? {}),
       surface: 'cli',
     });
 
@@ -100,6 +100,7 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
 }
 
 function buildWorkflowInput(
+  workflowId: string,
   args: string[],
   options: CLIOptions,
   workflowInput: Record<string, unknown>,
@@ -109,7 +110,7 @@ function buildWorkflowInput(
   const positionalArgs = args.slice(1).filter((value) => value.length > 0);
 
   return {
-    workflowId: args[0],
+    workflowId,
     task: commandTask,
     positionalArgs,
     rawArgs: args,
@@ -119,22 +120,6 @@ function buildWorkflowInput(
     verbose: options.verbose,
     quiet: options.quiet,
   };
-}
-
-function parseInputJson(input?: string): { valid: boolean; value: Record<string, unknown>; error?: string } {
-  if (input === undefined) {
-    return { valid: true, value: {} };
-  }
-
-  try {
-    const parsed = JSON.parse(input);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { valid: false, value: {}, error: 'input JSON must be an object' };
-    }
-    return { valid: true, value: parsed as Record<string, unknown> };
-  } catch {
-    return { valid: false, value: {}, error: 'invalid JSON payload' };
-  }
 }
 
 function formatStepSummary(execution: WorkflowExecutionSummary): string {
@@ -147,7 +132,7 @@ function formatStepSummary(execution: WorkflowExecutionSummary): string {
 }
 
 async function listWorkflowIds(
-  runtime: ReturnType<typeof createSharedRuntimeService>,
+  runtime: ReturnType<typeof createRuntime>,
   workflowDir: string,
   basePath: string,
 ): Promise<string[]> {

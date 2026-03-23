@@ -1,10 +1,14 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { success } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 
-export async function statusCommand(_args: string[], options: CLIOptions): Promise<CommandResult> {
-  const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+export async function statusCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
+  if (args[0] !== undefined) {
+    return args[0].startsWith('--')
+      ? failure(`Unknown status flag: ${args[0]}.`)
+      : usageError('ax status');
+  }
+
+  const runtime = createRuntime(options);
   const status = await runtime.getStatus({ limit: options.limit });
 
   return success([

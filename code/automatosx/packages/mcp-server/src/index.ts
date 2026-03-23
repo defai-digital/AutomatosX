@@ -1,5 +1,5 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { createInterface, type Interface } from 'node:readline';
 import type { StepGuardPolicy } from '@defai.digital/contracts';
 import { createDashboardService, type DashboardService } from '@defai.digital/monitoring';
@@ -225,6 +225,13 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     }),
   },
   {
+    name: 'trace.tree',
+    description: 'Reconstruct the parent/child trace hierarchy for a trace.',
+    inputSchema: objectSchema({
+      traceId: { type: 'string' },
+    }, ['traceId']),
+  },
+  {
     name: 'agent.register',
     description: 'Register an agent in the shared state store.',
     inputSchema: objectSchema({
@@ -267,6 +274,7 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
       input: objectSchema({}, [], true),
       traceId: { type: 'string' },
       sessionId: { type: 'string' },
+      basePath: { type: 'string' },
       provider: { type: 'string' },
       model: { type: 'string' },
       timeoutMs: { type: 'integer' },
@@ -517,6 +525,70 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     }, ['namespace', 'confirm']),
   },
   {
+    name: 'feedback.submit',
+    description: 'Submit a durable feedback event for an agent run or task.',
+    inputSchema: objectSchema({
+      selectedAgent: { type: 'string' },
+      recommendedAgent: { type: 'string' },
+      rating: { type: 'integer' },
+      feedbackType: { type: 'string' },
+      taskDescription: { type: 'string' },
+      userComment: { type: 'string' },
+      outcome: { type: 'string' },
+      durationMs: { type: 'integer' },
+      sessionId: { type: 'string' },
+      metadata: objectSchema({}, [], true),
+    }, ['selectedAgent', 'taskDescription']),
+  },
+  {
+    name: 'feedback.history',
+    description: 'List recent feedback entries.',
+    inputSchema: objectSchema({
+      agentId: { type: 'string' },
+      limit: { type: 'integer' },
+      since: { type: 'string' },
+    }),
+  },
+  {
+    name: 'feedback.stats',
+    description: 'Return aggregate feedback stats for an agent.',
+    inputSchema: objectSchema({
+      agentId: { type: 'string' },
+    }, ['agentId']),
+  },
+  {
+    name: 'feedback.overview',
+    description: 'Return overall feedback overview statistics.',
+    inputSchema: objectSchema({}),
+  },
+  {
+    name: 'feedback.adjustments',
+    description: 'Return bounded score adjustments derived from feedback.',
+    inputSchema: objectSchema({
+      agentId: { type: 'string' },
+    }, ['agentId']),
+  },
+  {
+    name: 'ability.list',
+    description: 'List built-in runtime abilities.',
+    inputSchema: objectSchema({
+      category: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+    }),
+  },
+  {
+    name: 'ability.inject',
+    description: 'Inject matched ability context for a task.',
+    inputSchema: objectSchema({
+      task: { type: 'string' },
+      requiredAbilities: { type: 'array', items: { type: 'string' } },
+      category: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+      maxAbilities: { type: 'integer' },
+      includeMetadata: { type: 'boolean' },
+    }, ['task']),
+  },
+  {
     name: 'config.get',
     description: 'Get a config value by dot-separated path.',
     inputSchema: objectSchema({
@@ -541,6 +613,7 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     description: 'Check whether a workspace-relative path exists.',
     inputSchema: objectSchema({
       path: { type: 'string' },
+      basePath: { type: 'string' },
     }, ['path']),
   },
   {
@@ -551,6 +624,7 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
       content: { type: 'string' },
       overwrite: { type: 'boolean' },
       createDirectories: { type: 'boolean' },
+      basePath: { type: 'string' },
     }, ['path', 'content']),
   },
   {
@@ -559,7 +633,15 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     inputSchema: objectSchema({
       path: { type: 'string' },
       recursive: { type: 'boolean' },
+      basePath: { type: 'string' },
     }, ['path']),
+  },
+  {
+    name: 'git.status',
+    description: 'Read git status for the current workspace.',
+    inputSchema: objectSchema({
+      basePath: { type: 'string' },
+    }),
   },
   {
     name: 'git.diff',
@@ -571,6 +653,38 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
       commit: { type: 'string' },
       stat: { type: 'boolean' },
     }),
+  },
+  {
+    name: 'commit.prepare',
+    description: 'Prepare a conventional commit message from local changes.',
+    inputSchema: objectSchema({
+      basePath: { type: 'string' },
+      paths: { type: 'array', items: { type: 'string' } },
+      stageAll: { type: 'boolean' },
+      type: { type: 'string' },
+      scope: { type: 'string' },
+    }),
+  },
+  {
+    name: 'pr.review',
+    description: 'Review a local branch diff against a base ref.',
+    inputSchema: objectSchema({
+      basePath: { type: 'string' },
+      base: { type: 'string' },
+      head: { type: 'string' },
+    }),
+  },
+  {
+    name: 'pr.create',
+    description: 'Create a pull request through the local gh CLI.',
+    inputSchema: objectSchema({
+      title: { type: 'string' },
+      body: { type: 'string' },
+      base: { type: 'string' },
+      head: { type: 'string' },
+      draft: { type: 'boolean' },
+      basePath: { type: 'string' },
+    }, ['title']),
   },
   {
     name: 'guard.list',
@@ -677,6 +791,287 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
       failureStrategy: { type: 'string', enum: ['failFast', 'failSafe'] },
       resultAggregation: { type: 'string', enum: ['list', 'merge'] },
     }, ['tasks']),
+  },
+  // ── Memory extras ──────────────────────────────────────────────────────────
+  {
+    name: 'memory.stats',
+    description: 'Return count of memory entries per namespace.',
+    inputSchema: objectSchema({ namespace: { type: 'string' } }),
+  },
+  {
+    name: 'memory.clear',
+    description: 'Delete all memory entries in a namespace.',
+    inputSchema: objectSchema({ namespace: { type: 'string' } }, ['namespace']),
+  },
+  {
+    name: 'memory.bulk_delete',
+    description: 'Delete multiple memory entries by key list.',
+    inputSchema: objectSchema({
+      keys: { type: 'array', items: { type: 'string' } },
+      namespace: { type: 'string' },
+    }, ['keys']),
+  },
+  // ── Telemetry / metrics ────────────────────────────────────────────────────
+  {
+    name: 'metrics.record',
+    description: 'Record a named metric value (stored in memory namespace "ax.metrics").',
+    inputSchema: objectSchema({
+      name: { type: 'string' },
+      value: { type: 'number' },
+      tags: { type: 'array', items: { type: 'string' } },
+    }, ['name', 'value']),
+  },
+  {
+    name: 'metrics.increment',
+    description: 'Increment a counter metric by a given amount (default 1).',
+    inputSchema: objectSchema({
+      name: { type: 'string' },
+      amount: { type: 'number' },
+      tags: { type: 'array', items: { type: 'string' } },
+    }, ['name']),
+  },
+  {
+    name: 'metrics.list',
+    description: 'List all recorded metric names.',
+    inputSchema: objectSchema({}),
+  },
+  {
+    name: 'metrics.query',
+    description: 'Query recorded values for a specific metric name.',
+    inputSchema: objectSchema({ name: { type: 'string' } }, ['name']),
+  },
+  {
+    name: 'telemetry.summary',
+    description: 'Return a summary of all metrics (count, sum, avg, min, max per metric).',
+    inputSchema: objectSchema({}),
+  },
+  // ── Task queue ─────────────────────────────────────────────────────────────
+  {
+    name: 'task.submit',
+    description: 'Submit a task to the in-process task queue.',
+    inputSchema: objectSchema({
+      taskId: { type: 'string' },
+      type: { type: 'string' },
+      payload: objectSchema({}, [], true),
+      priority: { type: 'integer' },
+    }, ['taskId', 'type']),
+  },
+  {
+    name: 'task.status',
+    description: 'Get the status of a submitted task.',
+    inputSchema: objectSchema({ taskId: { type: 'string' } }, ['taskId']),
+  },
+  {
+    name: 'task.list',
+    description: 'List tasks in the queue, optionally filtered by status.',
+    inputSchema: objectSchema({
+      status: { type: 'string', enum: ['pending', 'running', 'completed', 'failed', 'cancelled'] },
+      limit: { type: 'integer' },
+    }),
+  },
+  {
+    name: 'task.cancel',
+    description: 'Cancel a pending task.',
+    inputSchema: objectSchema({ taskId: { type: 'string' } }, ['taskId']),
+  },
+  {
+    name: 'task.retry',
+    description: 'Retry a failed task.',
+    inputSchema: objectSchema({ taskId: { type: 'string' } }, ['taskId']),
+  },
+  // ── Scaffold (MCP surface) ─────────────────────────────────────────────────
+  {
+    name: 'scaffold.contract',
+    description: 'Generate Zod schema and invariants doc for a new domain contract.',
+    inputSchema: objectSchema({
+      name: { type: 'string' },
+      description: { type: 'string' },
+      output: { type: 'string' },
+      dryRun: { type: 'boolean' },
+    }, ['name']),
+  },
+  {
+    name: 'scaffold.domain',
+    description: 'Generate a full domain package (types, service, tests, guard policy).',
+    inputSchema: objectSchema({
+      name: { type: 'string' },
+      scope: { type: 'string' },
+      output: { type: 'string' },
+      noTests: { type: 'boolean' },
+      noGuard: { type: 'boolean' },
+      dryRun: { type: 'boolean' },
+    }, ['name']),
+  },
+  {
+    name: 'scaffold.guard',
+    description: 'Generate a guard policy YAML file.',
+    inputSchema: objectSchema({
+      policyId: { type: 'string' },
+      domain: { type: 'string' },
+      radius: { type: 'integer' },
+      gates: { type: 'string' },
+      dryRun: { type: 'boolean' },
+    }, ['policyId']),
+  },
+  // ── Ability registry (custom abilities stored in semantic namespace) ────────
+  {
+    name: 'ability.get',
+    description: 'Get a registered custom ability by ID.',
+    inputSchema: objectSchema({ abilityId: { type: 'string' } }, ['abilityId']),
+  },
+  {
+    name: 'ability.register',
+    description: 'Register a custom ability into the ability registry.',
+    inputSchema: objectSchema({
+      abilityId: { type: 'string' },
+      displayName: { type: 'string' },
+      description: { type: 'string' },
+      category: { type: 'string' },
+      content: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+      enabled: { type: 'boolean' },
+    }, ['abilityId', 'displayName', 'description', 'content']),
+  },
+  {
+    name: 'ability.remove',
+    description: 'Remove a registered custom ability by ID.',
+    inputSchema: objectSchema({ abilityId: { type: 'string' } }, ['abilityId']),
+  },
+  // ── Memory import/export ───────────────────────────────────────────────────
+  {
+    name: 'memory.export',
+    description: 'Export all memory entries (optionally filtered by namespace) as JSON.',
+    inputSchema: objectSchema({ namespace: { type: 'string' } }),
+  },
+  {
+    name: 'memory.import',
+    description: 'Import memory entries from a JSON array.',
+    inputSchema: objectSchema({
+      entries: { type: 'array', items: objectSchema({ key: { type: 'string' }, namespace: { type: 'string' }, value: objectSchema({}, [], true) }, ['key']) },
+      overwrite: { type: 'boolean' },
+    }, ['entries']),
+  },
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  {
+    name: 'timer.start',
+    description: 'Start a named timer.',
+    inputSchema: objectSchema({ name: { type: 'string' } }, ['name']),
+  },
+  {
+    name: 'timer.stop',
+    description: 'Stop a named timer and return elapsed milliseconds.',
+    inputSchema: objectSchema({ name: { type: 'string' } }, ['name']),
+  },
+  // ── Queue (named job queues) ───────────────────────────────────────────────
+  {
+    name: 'queue.create',
+    description: 'Create a named job queue.',
+    inputSchema: objectSchema({ queueId: { type: 'string' }, maxSize: { type: 'integer' } }, ['queueId']),
+  },
+  {
+    name: 'queue.list',
+    description: 'List all queues and their sizes.',
+    inputSchema: objectSchema({}),
+  },
+  // ── Research ───────────────────────────────────────────────────────────────
+  {
+    name: 'research.query',
+    description: 'Execute a research query using available provider reasoning.',
+    inputSchema: objectSchema({
+      query: { type: 'string' },
+      maxSources: { type: 'integer' },
+      provider: { type: 'string' },
+    }, ['query']),
+  },
+  {
+    name: 'research.fetch',
+    description: 'Fetch and extract content from a URL for research purposes.',
+    inputSchema: objectSchema({
+      url: { type: 'string' },
+      selector: { type: 'string' },
+    }, ['url']),
+  },
+  {
+    name: 'research.synthesize',
+    description: 'Synthesize multiple sources into a coherent answer.',
+    inputSchema: objectSchema({
+      topic: { type: 'string' },
+      sources: { type: 'array', items: objectSchema({ url: { type: 'string' }, content: { type: 'string' } }, ['content']) },
+      provider: { type: 'string' },
+    }, ['topic', 'sources']),
+  },
+  // ── MCP ecosystem ──────────────────────────────────────────────────────────
+  {
+    name: 'mcp.server_list',
+    description: 'List registered external MCP servers.',
+    inputSchema: objectSchema({}),
+  },
+  {
+    name: 'mcp.server_register',
+    description: 'Register an external MCP server.',
+    inputSchema: objectSchema({
+      serverId: { type: 'string' },
+      command: { type: 'string' },
+      args: { type: 'array', items: { type: 'string' } },
+      description: { type: 'string' },
+    }, ['serverId', 'command']),
+  },
+  {
+    name: 'mcp.server_unregister',
+    description: 'Unregister an external MCP server.',
+    inputSchema: objectSchema({ serverId: { type: 'string' } }, ['serverId']),
+  },
+  {
+    name: 'mcp.tools_list',
+    description: 'List all available tools on this MCP server.',
+    inputSchema: objectSchema({ prefix: { type: 'string' } }),
+  },
+  {
+    name: 'mcp.tools_discover',
+    description: 'Discover tools matching a search query.',
+    inputSchema: objectSchema({ query: { type: 'string' } }, ['query']),
+  },
+  // ── Design (architecture guidance) ────────────────────────────────────────
+  {
+    name: 'design.api',
+    description: 'Generate an API design for a given domain and requirements.',
+    inputSchema: objectSchema({
+      domain: { type: 'string' },
+      requirements: { type: 'string' },
+      style: { type: 'string', enum: ['rest', 'rpc', 'graphql', 'event'] },
+    }, ['domain', 'requirements']),
+  },
+  {
+    name: 'design.architecture',
+    description: 'Generate an architecture design for a given system description.',
+    inputSchema: objectSchema({
+      system: { type: 'string' },
+      constraints: { type: 'string' },
+      pattern: { type: 'string' },
+    }, ['system']),
+  },
+  {
+    name: 'design.component',
+    description: 'Generate a component design specification.',
+    inputSchema: objectSchema({
+      name: { type: 'string' },
+      purpose: { type: 'string' },
+      dependencies: { type: 'array', items: { type: 'string' } },
+    }, ['name', 'purpose']),
+  },
+  {
+    name: 'design.schema',
+    description: 'Generate a data schema for a given domain entity.',
+    inputSchema: objectSchema({
+      entity: { type: 'string' },
+      fields: { type: 'string' },
+      constraints: { type: 'string' },
+    }, ['entity']),
+  },
+  {
+    name: 'design.list',
+    description: 'List stored design artifacts.',
+    inputSchema: objectSchema({ domain: { type: 'string' } }),
   },
 ];
 
@@ -907,6 +1302,40 @@ export function createMcpServerSurface(config: {
   const dashboardService = config.dashboardService ?? createDashboardService({
     traceStore: runtimeService.getStores().traceStore,
   });
+
+  // ── In-process timer state ────────────────────────────────────────────────
+  const timerStore = new Map<string, number>(); // name → startTime ms
+
+  // ── In-process named queues ───────────────────────────────────────────────
+  interface QueueRecord { queueId: string; maxSize: number; items: unknown[]; createdAt: string }
+  const namedQueues = new Map<string, QueueRecord>();
+
+  // ── In-process MCP server registry ───────────────────────────────────────
+  interface McpServerRecord { serverId: string; command: string; args: string[]; description: string; registeredAt: string }
+  const mcpServerRegistry = new Map<string, McpServerRecord>();
+
+  // ── In-process design artifact store ─────────────────────────────────────
+  interface DesignArtifact { type: string; domain: string; content: string; createdAt: string }
+  const designArtifacts: DesignArtifact[] = [];
+
+  // ── In-process task queue state ──────────────────────────────────────────
+  type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  interface TaskRecord {
+    taskId: string; type: string; payload: Record<string, unknown>;
+    priority: number; status: TaskStatus; createdAt: string; updatedAt: string; error?: string;
+  }
+  const taskQueue = new Map<string, TaskRecord>();
+
+  // ── In-process metrics state ──────────────────────────────────────────────
+  interface MetricSample { ts: string; value: number; tags: string[] }
+  const metricsStore = new Map<string, MetricSample[]>();
+
+  function recordMetric(name: string, value: number, tags: string[]): void {
+    const samples = metricsStore.get(name) ?? [];
+    samples.push({ ts: new Date().toISOString(), value, tags });
+    metricsStore.set(name, samples);
+  }
+
   const requestedToolPrefix = resolveToolPrefix(config.toolPrefix);
   const aliasDefinitions = requestedToolPrefix === undefined
     ? []
@@ -1181,6 +1610,11 @@ export function createMcpServerSurface(config: {
               success: true,
               data: await runtimeService.closeStuckTraces(asOptionalNumber(args.maxAgeMs)),
             };
+          case 'trace.tree':
+            return {
+              success: true,
+              data: await runtimeService.getTraceTree(asString(args.traceId, 'traceId')),
+            };
           case 'agent.register':
             return {
               success: true,
@@ -1220,6 +1654,7 @@ export function createMcpServerSurface(config: {
                 input: isRecord(args.input) ? args.input : undefined,
                 traceId: asOptionalString(args.traceId),
                 sessionId: asOptionalString(args.sessionId),
+                basePath: asOptionalString(args.basePath),
                 provider: asOptionalString(args.provider),
                 model: asOptionalString(args.model),
                 timeoutMs: asOptionalNumber(args.timeoutMs),
@@ -1280,7 +1715,7 @@ export function createMcpServerSurface(config: {
               success: true,
               data: await runtimeService.runDiscussionRecursive({
                 topic: asString(args.topic, 'topic'),
-                subtopics: asStringArray(args.subtopics) ?? [],
+                subtopics: (() => { const v = asStringArray(args.subtopics); if (!v || v.length === 0) throw new Error('subtopics is required and must be a non-empty array'); return v; })(),
                 traceId: asOptionalString(args.traceId),
                 sessionId: asOptionalString(args.sessionId),
                 basePath: asOptionalString(args.basePath),
@@ -1467,6 +1902,66 @@ export function createMcpServerSurface(config: {
               success: true,
               data: { cleared: await runtimeService.clearSemantic(asString(args.namespace, 'namespace')) },
             };
+          case 'feedback.submit':
+            return {
+              success: true,
+              data: await runtimeService.submitFeedback({
+                selectedAgent: asString(args.selectedAgent, 'selectedAgent'),
+                recommendedAgent: asOptionalString(args.recommendedAgent),
+                rating: asOptionalNumber(args.rating),
+                feedbackType: asOptionalString(args.feedbackType),
+                taskDescription: asString(args.taskDescription, 'taskDescription'),
+                userComment: asOptionalString(args.userComment),
+                outcome: asOptionalString(args.outcome),
+                durationMs: asOptionalNumber(args.durationMs),
+                sessionId: asOptionalString(args.sessionId),
+                metadata: isRecord(args.metadata) ? args.metadata : undefined,
+              }),
+            };
+          case 'feedback.history':
+            return {
+              success: true,
+              data: await runtimeService.listFeedbackHistory({
+                agentId: asOptionalString(args.agentId),
+                limit: asOptionalNumber(args.limit),
+                since: asOptionalString(args.since),
+              }),
+            };
+          case 'feedback.stats':
+            return {
+              success: true,
+              data: await runtimeService.getFeedbackStats(asString(args.agentId, 'agentId')),
+            };
+          case 'feedback.overview':
+            return {
+              success: true,
+              data: await runtimeService.getFeedbackOverview(),
+            };
+          case 'feedback.adjustments':
+            return {
+              success: true,
+              data: await runtimeService.getFeedbackAdjustments(asString(args.agentId, 'agentId')),
+            };
+          case 'ability.list':
+            return {
+              success: true,
+              data: await runtimeService.listAbilities({
+                category: asOptionalString(args.category),
+                tags: asStringArray(args.tags),
+              }),
+            };
+          case 'ability.inject':
+            return {
+              success: true,
+              data: await runtimeService.injectAbilities({
+                task: asString(args.task, 'task'),
+                requiredAbilities: asStringArray(args.requiredAbilities),
+                category: asOptionalString(args.category),
+                tags: asStringArray(args.tags),
+                maxAbilities: asOptionalNumber(args.maxAbilities),
+                includeMetadata: typeof args.includeMetadata === 'boolean' ? args.includeMetadata : undefined,
+              }),
+            };
           case 'config.get':
             return {
               success: true,
@@ -1489,11 +1984,11 @@ export function createMcpServerSurface(config: {
             return {
               success: true,
               data: {
-                exists: await pathExists(resolveWorkspacePath(basePath, asString(args.path, 'path'))),
+                exists: await pathExists(resolveWorkspacePath(asOptionalString(args.basePath) ?? basePath, asString(args.path, 'path'))),
               },
             };
           case 'file.write': {
-            const filePath = resolveWorkspacePath(basePath, asString(args.path, 'path'));
+            const filePath = resolveWorkspacePath(asOptionalString(args.basePath) ?? basePath, asString(args.path, 'path'));
             const overwrite = typeof args.overwrite === 'boolean' ? args.overwrite : false;
             const createDirectories = typeof args.createDirectories === 'boolean' ? args.createDirectories : false;
             if (!overwrite && await pathExists(filePath)) {
@@ -1509,13 +2004,20 @@ export function createMcpServerSurface(config: {
             };
           }
           case 'directory.create': {
-            const directoryPath = resolveWorkspacePath(basePath, asString(args.path, 'path'));
+            const directoryPath = resolveWorkspacePath(asOptionalString(args.basePath) ?? basePath, asString(args.path, 'path'));
             await mkdir(directoryPath, { recursive: typeof args.recursive === 'boolean' ? args.recursive : true });
             return {
               success: true,
               data: { path: directoryPath, created: true },
             };
           }
+          case 'git.status':
+            return {
+              success: true,
+              data: await runtimeService.gitStatus({
+                basePath: asOptionalString(args.basePath),
+              }),
+            };
           case 'git.diff':
             return {
               success: true,
@@ -1525,6 +2027,38 @@ export function createMcpServerSurface(config: {
                 staged: typeof args.staged === 'boolean' ? args.staged : undefined,
                 commit: asOptionalString(args.commit),
                 stat: typeof args.stat === 'boolean' ? args.stat : undefined,
+              }),
+            };
+          case 'commit.prepare':
+            return {
+              success: true,
+              data: await runtimeService.commitPrepare({
+                basePath: asOptionalString(args.basePath),
+                paths: asStringArray(args.paths),
+                stageAll: typeof args.stageAll === 'boolean' ? args.stageAll : undefined,
+                type: asOptionalString(args.type),
+                scope: asOptionalString(args.scope),
+              }),
+            };
+          case 'pr.review':
+            return {
+              success: true,
+              data: await runtimeService.reviewPullRequest({
+                basePath: asOptionalString(args.basePath),
+                base: asOptionalString(args.base),
+                head: asOptionalString(args.head),
+              }),
+            };
+          case 'pr.create':
+            return {
+              success: true,
+              data: await runtimeService.createPullRequest({
+                title: asString(args.title, 'title'),
+                body: asOptionalString(args.body),
+                base: asOptionalString(args.base),
+                head: asOptionalString(args.head),
+                draft: typeof args.draft === 'boolean' ? args.draft : undefined,
+                basePath: asOptionalString(args.basePath),
               }),
             };
           case 'guard.list':
@@ -1599,6 +2133,296 @@ export function createMcpServerSurface(config: {
                 surface: 'mcp',
               }),
             };
+          // ── Ability registry ───────────────────────────────────────────
+          case 'ability.get': {
+            const abilityId = asString(args.abilityId, 'abilityId');
+            const entry = await runtimeService.getSemantic(abilityId, 'ax.abilities');
+            if (entry === undefined) return { success: false, error: `Ability "${abilityId}" not found` };
+            return { success: true, data: entry.metadata ?? { abilityId, content: entry.content } };
+          }
+          case 'ability.register': {
+            const abilityId = asString(args.abilityId, 'abilityId');
+            const entry = await runtimeService.storeSemantic({
+              key: abilityId,
+              namespace: 'ax.abilities',
+              content: asString(args.content, 'content'),
+              tags: asStringArray(args.tags) ?? [],
+              metadata: {
+                abilityId,
+                displayName: asString(args.displayName, 'displayName'),
+                description: asString(args.description, 'description'),
+                category: asOptionalString(args.category),
+                enabled: typeof args.enabled === 'boolean' ? args.enabled : true,
+                registeredAt: new Date().toISOString(),
+              },
+            });
+            return { success: true, data: entry };
+          }
+          case 'ability.remove': {
+            const abilityId = asString(args.abilityId, 'abilityId');
+            const removed = await runtimeService.deleteSemantic(abilityId, 'ax.abilities');
+            return { success: true, data: { abilityId, removed } };
+          }
+          // ── Memory import/export ────────────────────────────────────────
+          case 'memory.export': {
+            const entries = await runtimeService.listMemory(asOptionalString(args.namespace));
+            return { success: true, data: { entries, count: entries.length } };
+          }
+          case 'memory.import': {
+            const rawEntries = Array.isArray(args.entries) ? args.entries as Record<string, unknown>[] : [];
+            const overwrite = args.overwrite === true;
+            let imported = 0; let skipped = 0;
+            for (const e of rawEntries) {
+              const key = asOptionalString(e['key']);
+              if (key === undefined) { skipped++; continue; }
+              if (!overwrite) {
+                const existing = await runtimeService.getMemory(key, asOptionalString(e['namespace']));
+                if (existing !== undefined) { skipped++; continue; }
+              }
+              await runtimeService.storeMemory({ key, namespace: asOptionalString(e['namespace']), value: e['value'] });
+              imported++;
+            }
+            return { success: true, data: { imported, skipped } };
+          }
+          // ── Timers ──────────────────────────────────────────────────────
+          case 'timer.start': {
+            const name = asString(args.name, 'name');
+            timerStore.set(name, Date.now());
+            return { success: true, data: { name, startedAt: new Date().toISOString() } };
+          }
+          case 'timer.stop': {
+            const name = asString(args.name, 'name');
+            const start = timerStore.get(name);
+            if (start === undefined) return { success: false, error: `Timer "${name}" not found` };
+            const elapsedMs = Date.now() - start;
+            timerStore.delete(name);
+            return { success: true, data: { name, elapsedMs } };
+          }
+          // ── Named queues ────────────────────────────────────────────────
+          case 'queue.create': {
+            const queueId = asString(args.queueId, 'queueId');
+            if (namedQueues.has(queueId)) return { success: false, error: `Queue "${queueId}" already exists` };
+            const q: QueueRecord = { queueId, maxSize: asOptionalNumber(args.maxSize) ?? 1000, items: [], createdAt: new Date().toISOString() };
+            namedQueues.set(queueId, q);
+            return { success: true, data: { queueId, maxSize: q.maxSize } };
+          }
+          case 'queue.list':
+            return { success: true, data: { queues: [...namedQueues.values()].map((q) => ({ queueId: q.queueId, size: q.items.length, maxSize: q.maxSize, createdAt: q.createdAt })) } };
+          // ── Research ────────────────────────────────────────────────────
+          case 'research.query': {
+            const query = asString(args.query, 'query');
+            const result = await runtimeService.callProvider({
+              provider: asOptionalString(args.provider),
+              prompt: `Research query: ${query}\n\nProvide a thorough, sourced answer with key findings and confidence assessment.`,
+              systemPrompt: 'You are a research assistant. Provide accurate, well-structured answers with clear confidence indicators.',
+              maxTokens: 2000,
+            });
+            return { success: true, data: { query, answer: result.content, provider: result.provider, timestamp: new Date().toISOString() } };
+          }
+          case 'research.fetch': {
+            const url = asString(args.url, 'url');
+            // Security: only allow http/https URLs
+            if (!/^https?:\/\//i.test(url)) return { success: false, error: 'Only http/https URLs are allowed' };
+            const { readFile: _rf } = await import('node:fs/promises');
+            const response = await fetch(url, { signal: AbortSignal.timeout(10_000) }).catch((e: unknown) => { throw new Error(`Fetch failed: ${e instanceof Error ? e.message : String(e)}`); });
+            const text = await response.text();
+            const truncated = text.length > 8000 ? `${text.slice(0, 8000)}\n[truncated]` : text;
+            return { success: true, data: { url, content: truncated, status: response.status, contentType: response.headers.get('content-type') } };
+          }
+          case 'research.synthesize': {
+            const topic = asString(args.topic, 'topic');
+            const sources = Array.isArray(args.sources) ? args.sources as Record<string, unknown>[] : [];
+            const sourceSummary = sources.map((s, i) => `Source ${i + 1}: ${asOptionalString(s['content']) ?? ''}`).join('\n\n');
+            const result = await runtimeService.callProvider({
+              provider: asOptionalString(args.provider),
+              prompt: `Synthesize the following sources on the topic: "${topic}"\n\n${sourceSummary}\n\nProvide a coherent synthesis with key insights.`,
+              systemPrompt: 'You are a research synthesizer. Create clear, accurate syntheses that fairly represent all provided sources.',
+              maxTokens: 2000,
+            });
+            return { success: true, data: { topic, synthesis: result.content, sourceCount: sources.length, provider: result.provider } };
+          }
+          // ── MCP ecosystem ───────────────────────────────────────────────
+          case 'mcp.server_list':
+            return { success: true, data: { servers: [...mcpServerRegistry.values()] } };
+          case 'mcp.server_register': {
+            const serverId = asString(args.serverId, 'serverId');
+            const rec: McpServerRecord = { serverId, command: asString(args.command, 'command'), args: asStringArray(args.args) ?? [], description: asOptionalString(args.description) ?? '', registeredAt: new Date().toISOString() };
+            mcpServerRegistry.set(serverId, rec);
+            return { success: true, data: rec };
+          }
+          case 'mcp.server_unregister': {
+            const serverId = asString(args.serverId, 'serverId');
+            const existed = mcpServerRegistry.delete(serverId);
+            return { success: true, data: { serverId, removed: existed } };
+          }
+          case 'mcp.tools_list': {
+            const prefix = asOptionalString(args.prefix);
+            const tools = toolDefinitions
+              .filter((t) => prefix === undefined || t.name.startsWith(prefix))
+              .map((t) => ({ name: t.name, description: t.description }));
+            return { success: true, data: { tools, count: tools.length } };
+          }
+          case 'mcp.tools_discover': {
+            const query = asString(args.query, 'query').toLowerCase();
+            const tools = toolDefinitions
+              .filter((t) => t.name.toLowerCase().includes(query) || t.description.toLowerCase().includes(query))
+              .map((t) => ({ name: t.name, description: t.description }));
+            return { success: true, data: { query, tools, count: tools.length } };
+          }
+          // ── Design ──────────────────────────────────────────────────────
+          case 'design.api':
+          case 'design.architecture':
+          case 'design.component':
+          case 'design.schema': {
+            const designType = canonicalToolName.split('.')[1]!;
+            const prompts: Record<string, string> = {
+              api: `Design a ${asOptionalString(args.style) ?? 'REST'} API for the "${asString(args.domain ?? args.name, 'domain')}" domain.\nRequirements: ${asString(args.requirements ?? args.purpose, 'requirements')}`,
+              architecture: `Design the architecture for: ${asString(args.system, 'system')}${args.constraints ? `\nConstraints: ${asString(args.constraints, 'constraints')}` : ''}${args.pattern ? `\nPreferred pattern: ${asString(args.pattern, 'pattern')}` : ''}`,
+              component: `Design the "${asString(args.name, 'name')}" component.\nPurpose: ${asString(args.purpose, 'purpose')}${args.dependencies ? `\nDependencies: ${(asStringArray(args.dependencies) ?? []).join(', ')}` : ''}`,
+              schema: `Design a data schema for "${asString(args.entity, 'entity')}".\nFields: ${asString(args.fields, 'fields')}${args.constraints ? `\nConstraints: ${asString(args.constraints, 'constraints')}` : ''}`,
+            };
+            const result = await runtimeService.callProvider({
+              prompt: prompts[designType] ?? `Design: ${JSON.stringify(args)}`,
+              systemPrompt: 'You are a senior software architect. Produce concise, opinionated design specifications with clear rationale.',
+              maxTokens: 2000,
+            });
+            const artifact: DesignArtifact = { type: designType, domain: asOptionalString(args.domain ?? args.entity ?? args.name) ?? 'unknown', content: result.content, createdAt: new Date().toISOString() };
+            designArtifacts.push(artifact);
+            return { success: true, data: { type: designType, design: result.content, provider: result.provider } };
+          }
+          case 'design.list': {
+            const domain = asOptionalString(args.domain);
+            const filtered = domain ? designArtifacts.filter((a) => a.domain === domain) : designArtifacts;
+            return { success: true, data: { artifacts: filtered, count: filtered.length } };
+          }
+          // ── Memory extras ──────────────────────────────────────────────
+          case 'memory.stats': {
+            const entries = await runtimeService.listMemory(asOptionalString(args.namespace));
+            const byNs: Record<string, number> = {};
+            for (const e of entries) {
+              const ns: string = e.namespace ?? 'default';
+              byNs[ns] = (byNs[ns] ?? 0) + 1;
+            }
+            return { success: true, data: { stats: Object.entries(byNs).map(([namespace, count]) => ({ namespace, count })) } };
+          }
+          case 'memory.clear': {
+            const ns = asString(args.namespace, 'namespace');
+            const entries = await runtimeService.listMemory(ns);
+            let deleted = 0;
+            for (const e of entries) { if (await runtimeService.deleteMemory(e.key, ns)) deleted++; }
+            return { success: true, data: { namespace: ns, deleted } };
+          }
+          case 'memory.bulk_delete': {
+            const keys = asStringArray(args.keys) ?? [];
+            const ns = asOptionalString(args.namespace);
+            let deleted = 0;
+            for (const k of keys) { if (await runtimeService.deleteMemory(k, ns)) deleted++; }
+            return { success: true, data: { deleted, requested: keys.length } };
+          }
+          // ── Telemetry / metrics ─────────────────────────────────────────
+          case 'metrics.record': {
+            const name = asString(args.name, 'name');
+            const value = typeof args.value === 'number' ? args.value : 0;
+            recordMetric(name, value, asStringArray(args.tags) ?? []);
+            return { success: true, data: { name, value } };
+          }
+          case 'metrics.increment': {
+            const name = asString(args.name, 'name');
+            const amount = typeof args.amount === 'number' ? args.amount : 1;
+            const existing = metricsStore.get(name) ?? [];
+            const prev = existing.length > 0 ? (existing[existing.length - 1]?.value ?? 0) : 0;
+            recordMetric(name, prev + amount, asStringArray(args.tags) ?? []);
+            return { success: true, data: { name, value: prev + amount } };
+          }
+          case 'metrics.list':
+            return { success: true, data: { metrics: [...metricsStore.keys()] } };
+          case 'metrics.query': {
+            const name = asString(args.name, 'name');
+            return { success: true, data: { name, samples: metricsStore.get(name) ?? [] } };
+          }
+          case 'telemetry.summary': {
+            const summary: Record<string, { count: number; sum: number; avg: number; min: number; max: number }> = {};
+            for (const [name, samples] of metricsStore) {
+              if (samples.length === 0) continue;
+              const values = samples.map((s) => s.value);
+              const sum = values.reduce((a, b) => a + b, 0);
+              summary[name] = { count: samples.length, sum, avg: sum / samples.length, min: Math.min(...values), max: Math.max(...values) };
+            }
+            return { success: true, data: { summary } };
+          }
+          // ── Task queue ──────────────────────────────────────────────────
+          case 'task.submit': {
+            const taskId = asString(args.taskId, 'taskId');
+            if (taskQueue.has(taskId)) return { success: false, error: `Task "${taskId}" already exists` };
+            const now = new Date().toISOString();
+            const task: TaskRecord = {
+              taskId, type: asString(args.type, 'type'),
+              payload: isRecord(args.payload) ? args.payload : {},
+              priority: typeof args.priority === 'number' ? args.priority : 0,
+              status: 'pending', createdAt: now, updatedAt: now,
+            };
+            taskQueue.set(taskId, task);
+            return { success: true, data: task };
+          }
+          case 'task.status': {
+            const taskId = asString(args.taskId, 'taskId');
+            const task = taskQueue.get(taskId);
+            if (task === undefined) return { success: false, error: `Task "${taskId}" not found` };
+            return { success: true, data: task };
+          }
+          case 'task.list': {
+            const statusFilter = asOptionalString(args.status) as TaskRecord['status'] | undefined;
+            const limitN = asOptionalNumber(args.limit) ?? 50;
+            let tasks = [...taskQueue.values()];
+            if (statusFilter !== undefined) tasks = tasks.filter((t) => t.status === statusFilter);
+            tasks.sort((a, b) => b.priority - a.priority);
+            return { success: true, data: { tasks: tasks.slice(0, limitN), total: tasks.length } };
+          }
+          case 'task.cancel': {
+            const taskId = asString(args.taskId, 'taskId');
+            const task = taskQueue.get(taskId);
+            if (task === undefined) return { success: false, error: `Task "${taskId}" not found` };
+            if (task.status !== 'pending') return { success: false, error: `Cannot cancel task with status "${task.status}"` };
+            task.status = 'cancelled'; task.updatedAt = new Date().toISOString();
+            return { success: true, data: task };
+          }
+          case 'task.retry': {
+            const taskId = asString(args.taskId, 'taskId');
+            const task = taskQueue.get(taskId);
+            if (task === undefined) return { success: false, error: `Task "${taskId}" not found` };
+            if (task.status !== 'failed') return { success: false, error: `Can only retry failed tasks, got status "${task.status}"` };
+            task.status = 'pending'; task.updatedAt = new Date().toISOString(); delete task.error;
+            return { success: true, data: task };
+          }
+          // ── Scaffold (MCP surface) ──────────────────────────────────────
+          case 'scaffold.contract':
+          case 'scaffold.domain':
+          case 'scaffold.guard': {
+            // Scaffold tools delegate to the shared scaffold utility
+            const subcommand = canonicalToolName.split('.')[1]!;
+            const nameArg = asOptionalString(args.name ?? args.policyId);
+            if (nameArg === undefined) return { success: false, error: `scaffold.${subcommand}: "name" is required` };
+            const subArgs = [subcommand, nameArg];
+            if (args.description !== undefined) subArgs.push('-d', asString(args.description, 'description'));
+            if (args.scope !== undefined) subArgs.push('-s', asString(args.scope, 'scope'));
+            if (args.output !== undefined) subArgs.push('-o', asString(args.output, 'output'));
+            if (args.domain !== undefined) subArgs.push('-m', asString(args.domain, 'domain'));
+            if (args.gates !== undefined) subArgs.push('-g', asString(args.gates, 'gates'));
+            if (args.radius !== undefined) subArgs.push('-r', String(asOptionalNumber(args.radius) ?? 3));
+            if (args.noTests === true) subArgs.push('--no-tests');
+            if (args.noGuard === true) subArgs.push('--no-guard');
+            if (args.dryRun === true) subArgs.push('--dry-run');
+            // Scaffold is a file-system operation; return the plan as structured data
+            // so MCP clients can execute the operations themselves if needed.
+            return {
+              success: true,
+              data: {
+                subcommand,
+                args: subArgs,
+                message: `Run: ax scaffold ${subArgs.join(' ')}`,
+              },
+            };
+          }
           default:
             return {
               success: false,
@@ -1680,7 +2504,8 @@ function objectSchema(
 function resolveWorkspacePath(basePath: string, targetPath: string): string {
   const resolvedBasePath = resolve(basePath);
   const resolvedTargetPath = resolve(resolvedBasePath, targetPath);
-  if (resolvedTargetPath !== resolvedBasePath && !resolvedTargetPath.startsWith(`${resolvedBasePath}/`)) {
+  const relativePath = relative(resolvedBasePath, resolvedTargetPath);
+  if (relativePath === '..' || /^\.\.(?:[\\/]|$)/.test(relativePath)) {
     throw new Error(`Path escapes workspace: ${targetPath}`);
   }
   return resolvedTargetPath;

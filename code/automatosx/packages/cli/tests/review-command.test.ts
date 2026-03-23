@@ -101,4 +101,15 @@ describe('review command', () => {
     expect(listed.success).toBe(true);
     expect(listed.message).toContain('review-trace-001');
   });
+
+  it('rejects unknown review flags', async () => {
+    const result = await reviewCommand([
+      'analyze',
+      '--bogus',
+      'src',
+    ], defaultOptions());
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Unknown review flag: --bogus.');
+  });
 });

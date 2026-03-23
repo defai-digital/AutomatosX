@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { createSqliteStateStore } from './sqlite.js';
 const DEFAULT_STATE_STORE_FILE = join('.automatosx', 'runtime', 'state.json');
 const stateStoreQueues = new Map();
 const LOCK_WAIT_TIMEOUT_MS = 5_000;
@@ -236,6 +237,49 @@ export class FileStateStore {
         })
             .sort((left, right) => left.namespace.localeCompare(right.namespace));
     }
+    async submitFeedback(entry) {
+        return this.withMutation(async (data) => {
+            const stored = {
+                feedbackId: entry.feedbackId ?? randomUUID(),
+                selectedAgent: entry.selectedAgent,
+                recommendedAgent: entry.recommendedAgent,
+                rating: normalizeRating(entry.rating),
+                feedbackType: typeof entry.feedbackType === 'string' && entry.feedbackType.trim().length > 0
+                    ? entry.feedbackType.trim().toLowerCase()
+                    : 'explicit',
+                taskDescription: entry.taskDescription,
+                userComment: entry.userComment,
+                outcome: entry.outcome,
+                durationMs: typeof entry.durationMs === 'number' && Number.isFinite(entry.durationMs)
+                    ? Math.max(0, Math.round(entry.durationMs))
+                    : undefined,
+                sessionId: entry.sessionId,
+                metadata: entry.metadata === undefined ? undefined : sortRecord(entry.metadata),
+                createdAt: new Date().toISOString(),
+            };
+            data.feedback.push(stored);
+            return stored;
+        });
+    }
+    async listFeedback(options = {}) {
+        const data = await this.readConsistentData();
+        const sinceTime = typeof options.since === 'string' ? Date.parse(options.since) : Number.NaN;
+        const filtered = data.feedback
+            .filter((entry) => {
+            if (options.agentId !== undefined && entry.selectedAgent !== options.agentId) {
+                return false;
+            }
+            if (!Number.isNaN(sinceTime) && Date.parse(entry.createdAt) < sinceTime) {
+                return false;
+            }
+            return true;
+        })
+            .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+        if (options.limit === undefined) {
+            return filtered;
+        }
+        return filtered.slice(0, Math.max(0, options.limit));
+    }
     async createSession(entry) {
         return this.withMutation(async (data) => {
             const now = new Date().toISOString();
@@ -370,6 +414,7 @@ export class FileStateStore {
                 policies: Array.isArray(parsed.policies) ? parsed.policies : [],
                 agents: Array.isArray(parsed.agents) ? parsed.agents : [],
                 semantic: Array.isArray(parsed.semantic) ? parsed.semantic : [],
+                feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
                 sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
             };
         }
@@ -379,6 +424,7 @@ export class FileStateStore {
                 policies: [],
                 agents: [],
                 semantic: [],
+                feedback: [],
                 sessions: [],
             };
         }
@@ -391,8 +437,16 @@ export class FileStateStore {
     }
 }
 export function createStateStore(config) {
-    return new FileStateStore(config);
+    if (config?.backend === 'json') {
+        return new FileStateStore(config);
+    }
+    return createSqliteStateStore({
+        basePath: config?.basePath,
+        dbFile: config?.storageFile,
+    });
 }
+export { createSqliteStateStore, SqliteStateStore } from './sqlite.js';
+export { migrateJsonToSqlite } from './migrate.js';
 function requireSession(data, sessionId) {
     const session = data.sessions.find((entry) => entry.sessionId === sessionId);
     if (session === undefined) {
@@ -426,6 +480,12 @@ function normalizeAgentRegistration(entry) {
 function normalizeTags(tags) {
     return Array.from(new Set((tags ?? []).map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0)))
         .sort((left, right) => left.localeCompare(right));
+}
+function normalizeRating(rating) {
+    if (typeof rating !== 'number' || !Number.isFinite(rating)) {
+        return undefined;
+    }
+    return Math.max(1, Math.min(5, Math.round(rating)));
 }
 function computeTokenFreq(content) {
     const tokens = content

@@ -1,8 +1,6 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success } from '../utils/formatters.js';
+import { createRuntime, failure, success } from '../utils/formatters.js';
 export async function traceCommand(args, options) {
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     if (args[0] === 'by-session') {
         const sessionId = args[1] ?? options.sessionId;
         if (sessionId === undefined) {
@@ -42,6 +40,17 @@ export async function traceCommand(args, options) {
         ];
         return success(lines.join('\n'), analysis);
     }
+    if (args[0] === 'tree') {
+        const traceId = args[1] ?? options.traceId;
+        if (traceId === undefined) {
+            return failure('Usage: ax trace tree <trace-id>');
+        }
+        const tree = await runtime.getTraceTree(traceId);
+        if (tree === undefined) {
+            return failure(`Trace not found: ${traceId}`);
+        }
+        return success(renderTraceTree(tree), tree);
+    }
     const traceId = args[0] ?? options.traceId;
     if (traceId !== undefined) {
         const trace = await runtime.getTrace(traceId);
@@ -71,4 +80,12 @@ export async function traceCommand(args, options) {
         ...traces.map((trace) => (`- ${trace.traceId} ${trace.workflowId} ${trace.status} ${trace.startedAt}`)),
     ];
     return success(lines.join('\n'), traces);
+}
+function renderTraceTree(node, depth = 0) {
+    const prefix = depth === 0 ? '' : `${'  '.repeat(depth - 1)}- `;
+    const lines = [`${prefix}${node.traceId} ${node.workflowId} ${node.status}`];
+    for (const child of node.children) {
+        lines.push(renderTraceTree(child, depth + 1));
+    }
+    return lines.join('\n');
 }

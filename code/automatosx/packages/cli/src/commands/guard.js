@@ -1,9 +1,8 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseJsonInput, asOptionalBoolean, asOptionalInteger, asOptionalRecord, asStringValue, } from '../utils/validation.js';
 export async function guardCommand(args, options) {
     const subcommand = args[0] ?? 'list';
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     switch (subcommand) {
         case 'list': {
             const policies = await runtime.listGuardPolicies();
@@ -42,19 +41,20 @@ export async function guardCommand(args, options) {
 }
 function parseGuardApplyInput(policyIdArg, input) {
     if (input !== undefined) {
-        try {
-            const parsed = JSON.parse(input);
-            if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                return { value: {}, error: 'Guard apply input must be a JSON object.' };
-            }
-            if (parsed.definition === undefined && typeof parsed.policyId !== 'string') {
-                return { value: {}, error: 'Guard apply input requires "policyId" or "definition".' };
-            }
-            return { value: parsed };
+        const parsed = parseJsonInput(input);
+        if (parsed.error !== undefined) {
+            return { value: {}, error: parsed.error };
         }
-        catch {
-            return { value: {}, error: 'Invalid JSON input. Please provide a valid JSON object.' };
+        const policyId = asStringValue(parsed.value.policyId);
+        const definition = parsed.value.definition;
+        const enabled = asOptionalBoolean(parsed.value.enabled);
+        if (parsed.value.enabled !== undefined && enabled === undefined) {
+            return { value: {}, error: 'Guard apply input requires "enabled" to be a boolean.' };
         }
+        if (definition === undefined && policyId === undefined) {
+            return { value: {}, error: 'Guard apply input requires "policyId" or "definition".' };
+        }
+        return { value: { policyId, definition, enabled } };
     }
     if (policyIdArg === undefined || policyIdArg.length === 0) {
         return { value: {}, error: 'Usage: ax guard apply <policy-id> or --input <json-object>' };
@@ -65,35 +65,37 @@ function parseGuardCheckInput(input, fallbackAgent) {
     if (input === undefined) {
         return { value: { stepId: '', stepType: '' }, error: 'Usage: ax guard check --input <json-object>' };
     }
-    try {
-        const parsed = JSON.parse(input);
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return { value: { stepId: '', stepType: '' }, error: 'Guard check input must be a JSON object.' };
-        }
-        if (typeof parsed.stepId !== 'string' || typeof parsed.stepType !== 'string') {
-            return { value: { stepId: '', stepType: '' }, error: 'Guard check input requires "stepId" and "stepType".' };
-        }
-        return {
-            value: {
-                policyId: typeof parsed.policyId === 'string' ? parsed.policyId : undefined,
-                position: parsed.position === 'after' ? 'after' : 'before',
-                agentId: typeof parsed.agentId === 'string' ? parsed.agentId : fallbackAgent,
-                executionId: typeof parsed.executionId === 'string' ? parsed.executionId : undefined,
-                sessionId: typeof parsed.sessionId === 'string' ? parsed.sessionId : undefined,
-                workflowId: typeof parsed.workflowId === 'string' ? parsed.workflowId : undefined,
-                stepId: parsed.stepId,
-                stepType: parsed.stepType,
-                stepIndex: typeof parsed.stepIndex === 'number' ? parsed.stepIndex : undefined,
-                totalSteps: typeof parsed.totalSteps === 'number' ? parsed.totalSteps : undefined,
-                previousOutputs: isRecord(parsed.previousOutputs) ? parsed.previousOutputs : undefined,
-                stepConfig: isRecord(parsed.stepConfig) ? parsed.stepConfig : undefined,
-            },
-        };
+    const parsed = parseJsonInput(input);
+    if (parsed.error !== undefined) {
+        return { value: { stepId: '', stepType: '' }, error: parsed.error };
     }
-    catch {
-        return { value: { stepId: '', stepType: '' }, error: 'Invalid JSON input. Please provide a valid JSON object.' };
+    const stepId = asStringValue(parsed.value.stepId);
+    const stepType = asStringValue(parsed.value.stepType);
+    if (stepId === undefined || stepType === undefined) {
+        return { value: { stepId: '', stepType: '' }, error: 'Guard check input requires "stepId" and "stepType".' };
     }
-}
-function isRecord(value) {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
+    const stepIndex = asOptionalInteger(parsed.value.stepIndex, 'stepIndex', { min: 0 });
+    if (stepIndex.error !== undefined) {
+        return { value: { stepId: '', stepType: '' }, error: stepIndex.error };
+    }
+    const totalSteps = asOptionalInteger(parsed.value.totalSteps, 'totalSteps', { min: 1 });
+    if (totalSteps.error !== undefined) {
+        return { value: { stepId: '', stepType: '' }, error: totalSteps.error };
+    }
+    return {
+        value: {
+            policyId: asStringValue(parsed.value.policyId),
+            position: parsed.value.position === 'after' ? 'after' : 'before',
+            agentId: asStringValue(parsed.value.agentId) ?? fallbackAgent,
+            executionId: asStringValue(parsed.value.executionId),
+            sessionId: asStringValue(parsed.value.sessionId),
+            workflowId: asStringValue(parsed.value.workflowId),
+            stepId,
+            stepType,
+            stepIndex: stepIndex.value,
+            totalSteps: totalSteps.value,
+            previousOutputs: asOptionalRecord(parsed.value.previousOutputs),
+            stepConfig: asOptionalRecord(parsed.value.stepConfig),
+        },
+    };
 }

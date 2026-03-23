@@ -1,6 +1,5 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 
 type ReviewFocus = 'all' | 'security' | 'correctness' | 'maintainability';
 
@@ -93,6 +92,14 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
         maxFiles,
         error: 'Missing value for --max-files.',
       };
+    } else if (token !== undefined && token.startsWith('--')) {
+      return {
+        subcommand,
+        paths,
+        focus,
+        maxFiles,
+        error: `Unknown review flag: ${token}.`,
+      };
     } else if (token !== undefined && !token.startsWith('--')) {
       paths.push(token);
     }
@@ -108,7 +115,7 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
 
 async function analyzeReview(parsed: ParsedReviewArgs, options: CLIOptions): Promise<CommandResult> {
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
   const result = await runtime.analyzeReview({
     paths: parsed.paths,
     focus: parsed.focus,
@@ -130,8 +137,7 @@ async function analyzeReview(parsed: ParsedReviewArgs, options: CLIOptions): Pro
 }
 
 async function listReviews(options: CLIOptions): Promise<CommandResult> {
-  const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
   const reviews = await runtime.listReviewTraces(options.limit);
   if (reviews.length === 0) {
     return success('No review traces found.', reviews);

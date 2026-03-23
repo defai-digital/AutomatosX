@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { createSqliteTraceStore } from './sqlite.js';
 
 export type TraceSurface = 'cli' | 'mcp';
 export type TraceStatus = 'running' | 'completed' | 'failed';
@@ -43,6 +44,8 @@ interface TraceStoreFile {
 export interface FileTraceStoreConfig {
   basePath?: string;
   storageFile?: string;
+  /** Storage backend. Defaults to 'sqlite'. Use 'json' to keep the legacy file-based store. */
+  backend?: 'sqlite' | 'json';
 }
 
 const DEFAULT_TRACE_STORE_FILE = join('.automatosx', 'runtime', 'traces.json');
@@ -143,8 +146,19 @@ export class FileTraceStore implements TraceStore {
 }
 
 export function createTraceStore(config?: FileTraceStoreConfig): TraceStore {
-  return new FileTraceStore(config);
+  if (config?.backend === 'json') {
+    return new FileTraceStore(config);
+  }
+  return createSqliteTraceStore({
+    basePath: config?.basePath,
+    dbFile: config?.storageFile,
+  });
 }
+
+export { createSqliteTraceStore, SqliteTraceStore } from './sqlite.js';
+export type { SqliteTraceStoreConfig, TraceTreeNode } from './sqlite.js';
+export { migrateTraceJsonToSqlite } from './migrate.js';
+export type { MigrateTraceJsonToSqliteOptions, TraceMigrationResult } from './migrate.js';
 
 async function waitForQueue(storageFile: string, queueMap: Map<string, Promise<void>>): Promise<void> {
   const pending = queueMap.get(storageFile);

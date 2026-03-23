@@ -290,6 +290,15 @@ describe('retained high-value commands', () => {
         expect(trace.success).toBe(true);
         expect(trace.message).toContain('Workflow: discuss.quick');
     });
+    it('rejects unknown discussion flags instead of treating them as topic text', async () => {
+        const result = await discussCommand([
+            '--bogus',
+            'value',
+            'Compare release strategies',
+        ], defaultOptions());
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('Unknown discuss flag: --bogus.');
+    });
     it('analyzes a stored trace through the trace command', async () => {
         const tempDir = createTempDir();
         tempDirs.push(tempDir);
@@ -337,5 +346,34 @@ describe('retained high-value commands', () => {
                 workflowId: 'discuss',
             },
         ]);
+    });
+    it('renders a trace tree through the trace command', async () => {
+        const tempDir = createTempDir();
+        tempDirs.push(tempDir);
+        const runtime = createSharedRuntimeService({ basePath: tempDir });
+        await runtime.getStores().traceStore.upsertTrace({
+            traceId: 'trace-root',
+            workflowId: 'parallel.run',
+            surface: 'cli',
+            status: 'completed',
+            startedAt: '2026-03-22T00:00:00.000Z',
+            stepResults: [],
+        });
+        await runtime.getStores().traceStore.upsertTrace({
+            traceId: 'trace-child',
+            workflowId: 'agent.run',
+            surface: 'cli',
+            status: 'completed',
+            startedAt: '2026-03-22T00:01:00.000Z',
+            stepResults: [],
+            metadata: {
+                parentTraceId: 'trace-root',
+                rootTraceId: 'trace-root',
+            },
+        });
+        const result = await traceCommand(['tree', 'trace-child'], defaultOptions({ outputDir: tempDir }));
+        expect(result.success).toBe(true);
+        expect(result.message).toContain('trace-root parallel.run completed');
+        expect(result.message).toContain('trace-child agent.run completed');
     });
 });

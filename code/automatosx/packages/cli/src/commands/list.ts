@@ -1,11 +1,11 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { findUnexpectedFlag } from '../utils/validation.js';
 import { WORKFLOW_COMMAND_DEFINITIONS } from './workflows.js';
 
 export async function listCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
 
   const describeTarget = parseDescribeTarget(args);
   if (describeTarget.error !== undefined) {
@@ -75,15 +75,26 @@ function parseDescribeTarget(args: string[]): { workflowId?: string; error?: str
     return {};
   }
 
+  const unexpectedFlag = findUnexpectedFlag(args);
+  if (unexpectedFlag !== undefined) {
+    return { error: `Unknown list flag: ${unexpectedFlag}.` };
+  }
+
   if (args[0] === 'describe') {
     const workflowId = args[1];
     if (workflowId === undefined || workflowId.length === 0) {
+      return { error: 'Usage: ax list describe <workflow-id>' };
+    }
+    if (args[2] !== undefined) {
       return { error: 'Usage: ax list describe <workflow-id>' };
     }
     return { workflowId };
   }
 
   if (args[0] !== undefined && args[0].length > 0) {
+    if (args[1] !== undefined) {
+      return { error: 'Usage: ax list [workflow-id]' };
+    }
     return { workflowId: args[0] };
   }
 

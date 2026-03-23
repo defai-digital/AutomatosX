@@ -1,10 +1,8 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { success, usageError } from '../utils/formatters.js';
+import { createRuntime, success, usageError } from '../utils/formatters.js';
 const DEFAULT_MAX_AGE_MS = 86_400_000;
 export async function cleanupCommand(args, options) {
     const scope = args[0] ?? 'stuck';
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const maxAgeMs = parseMaxAgeMs(args[1]);
     if (maxAgeMs.error !== undefined) {
         return usageError(maxAgeMs.error);

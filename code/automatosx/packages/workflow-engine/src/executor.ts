@@ -190,35 +190,161 @@ async function executeParallelStep(step: WorkflowStep, _context: StepContext): P
   };
 }
 
-function evaluateCondition(condition: string, context: StepContext): boolean {
-  if (condition === 'true') {
-    return true;
-  }
-  if (condition === 'false') {
-    return false;
-  }
+// INV-WF-SEC-001: Block prototype chain access to prevent prototype pollution
+const DANGEROUS_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
 
-  const variableReference = /^\$\{(.+)\}$/.exec(condition);
-  if (variableReference?.[1]) {
-    return Boolean(getNestedValue(context, variableReference[1]));
-  }
-
-  return Boolean(condition);
-}
-
-function getNestedValue(context: StepContext, path: string): unknown {
+/**
+ * Get a value from context using dot-notation path.
+ * INV-WF-SEC-001: Blocks __proto__, constructor, prototype traversal.
+ */
+function getValueFromPath(context: StepContext, path: string): unknown {
   const parts = path.split('.');
   let current: unknown = context;
 
   for (const part of parts) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    if (typeof current !== 'object') {
-      return undefined;
-    }
+    if (current === null || current === undefined) return undefined;
+    if (typeof current !== 'object') return undefined;
+    if (DANGEROUS_PROPS.has(part)) return undefined;
+    if (!Object.prototype.hasOwnProperty.call(current, part)) return undefined;
     current = (current as Record<string, unknown>)[part];
   }
 
   return current;
+}
+
+/**
+ * Safely evaluate a condition expression without using eval/Function.
+ *
+ * Supports:
+ * - ${variable} === value  (also !==, ==, !=, >, <, >=, <=)
+ * - ${variable}            (truthy check)
+ * - !${variable}           (falsy check)
+ * - condition && condition
+ * - condition || condition
+ * - (grouped expressions)
+ * - true / false literals
+ *
+ * INV-WF-COND-001: Parentheses must be balanced.
+ * INV-WF-COND-002: Supports strict (===, !==) and loose (==, !=) equality.
+ */
+function evaluateConditionSafely(condition: string, context: StepContext): boolean {
+  try {
+    // Handle logical OR (lower precedence)
+    const orParts = splitByLogicalOperator(condition, '||');
+    if (orParts.length > 1) {
+      return orParts.some((part) => evaluateConditionSafely(part.trim(), context));
+    }
+
+    // Handle logical AND (higher precedence)
+    const andParts = splitByLogicalOperator(condition, '&&');
+    if (andParts.length > 1) {
+      return andParts.every((part) => evaluateConditionSafely(part.trim(), context));
+    }
+
+    const trimmed = condition.trim();
+
+    // Handle negation
+    if (trimmed.startsWith('!')) {
+      return !evaluateConditionSafely(trimmed.slice(1).trim(), context);
+    }
+
+    // Handle parentheses — only strip if first '(' matches last ')'
+    // INV-WF-COND-001: Track depth to verify balanced parens
+    if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+      let depth = 0;
+      let firstOpenMatchesLast = true;
+      for (let i = 0; i < trimmed.length - 1; i++) {
+        if (trimmed[i] === '(') depth++;
+        else if (trimmed[i] === ')') depth--;
+        if (depth === 0) { firstOpenMatchesLast = false; break; }
+      }
+      if (firstOpenMatchesLast) {
+        return evaluateConditionSafely(trimmed.slice(1, -1), context);
+      }
+    }
+
+    // Parse comparison: ${variable} op value
+    const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
+    if (comparisonMatch) {
+      const [, varPath, op, rawValue] = comparisonMatch;
+      if (varPath && op && rawValue) {
+        const actualValue = getValueFromPath(context, varPath);
+        const expectedValue = parseConditionValue(rawValue.trim());
+        return compareConditionValues(actualValue, expectedValue, op);
+      }
+    }
+
+    // Handle simple variable reference (truthy check): ${variable}
+    const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
+    if (varMatch?.[1]) {
+      return Boolean(getValueFromPath(context, varMatch[1]));
+    }
+
+    // Literal booleans
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+
+    // Unknown pattern — warn and fail safely
+    console.warn(`[executor] Unknown condition pattern: ${condition}`);
+    return false;
+  } catch (error) {
+    console.warn(`[executor] Error evaluating condition: ${condition}`, error);
+    return false;
+  }
+}
+
+function splitByLogicalOperator(condition: string, operator: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+
+  for (let i = 0; i < condition.length; i++) {
+    const char = condition[i];
+    if (char === '(') { depth++; current += char; }
+    else if (char === ')') { depth--; current += char; }
+    else if (depth === 0 && condition.slice(i, i + operator.length) === operator) {
+      parts.push(current);
+      current = '';
+      i += operator.length - 1;
+    } else {
+      current += char;
+    }
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
+function parseConditionValue(value: string): unknown {
+  if ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  if (value === 'null') return null;
+  if (value === 'undefined') return undefined;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  const num = Number(value);
+  if (!Number.isNaN(num)) return num;
+  return value;
+}
+
+function compareConditionValues(actual: unknown, expected: unknown, op: string): boolean {
+  switch (op) {
+    case '===': return actual === expected;
+    case '!==': return actual !== expected;
+    // eslint-disable-next-line eqeqeq
+    case '==': return actual == expected;
+    // eslint-disable-next-line eqeqeq
+    case '!=': return actual != expected;
+    case '>':  return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
+    case '<':  return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
+    case '>=': return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
+    case '<=': return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
+    default:   return false;
+  }
+}
+
+// Keep backward-compatible alias used by executeConditionalStep
+function evaluateCondition(condition: string, context: StepContext): boolean {
+  return evaluateConditionSafely(condition, context);
 }

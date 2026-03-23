@@ -1,6 +1,22 @@
+# Runtime / temp
 .automatosx/logs/
 .automatosx/runtime/
 .automatosx/workflows/
 .tmp/
 tmp/
+automatosx/tmp/
+
+# Build artifacts
 tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store

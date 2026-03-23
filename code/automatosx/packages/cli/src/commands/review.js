@@ -1,5 +1,4 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 export async function reviewCommand(args, options) {
     const parsed = parseReviewArgs(args);
     if (parsed.error !== undefined) {
@@ -83,6 +82,15 @@ function parseReviewArgs(args) {
                 error: 'Missing value for --max-files.',
             };
         }
+        else if (token !== undefined && token.startsWith('--')) {
+            return {
+                subcommand,
+                paths,
+                focus,
+                maxFiles,
+                error: `Unknown review flag: ${token}.`,
+            };
+        }
         else if (token !== undefined && !token.startsWith('--')) {
             paths.push(token);
         }
@@ -96,7 +104,7 @@ function parseReviewArgs(args) {
 }
 async function analyzeReview(parsed, options) {
     const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const result = await runtime.analyzeReview({
         paths: parsed.paths,
         focus: parsed.focus,
@@ -112,8 +120,7 @@ async function analyzeReview(parsed, options) {
     return success(`Review completed with trace ${result.traceId}. Files scanned: ${result.filesScanned}. Findings: ${result.findings.length}.`, result);
 }
 async function listReviews(options) {
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     const reviews = await runtime.listReviewTraces(options.limit);
     if (reviews.length === 0) {
         return success('No review traces found.', reviews);

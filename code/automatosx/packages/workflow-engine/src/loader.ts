@@ -113,6 +113,18 @@ export class FileSystemWorkflowLoader implements WorkflowLoader {
       return [];
     }
 
+    if (!isDirectory(this.config.workflowsDir)) {
+      this.loaded = true;
+      if (!this.config.silent && !warnedFiles.has(`dir:${this.config.workflowsDir}`)) {
+        if (warnedFiles.size >= MAX_WARNED_FILES) {
+          warnedFiles.clear();
+        }
+        warnedFiles.add(`dir:${this.config.workflowsDir}`);
+        console.warn(`Workflow directory is not a directory: ${this.config.workflowsDir}`);
+      }
+      return [];
+    }
+
     const validFiles = fs.readdirSync(this.config.workflowsDir)
       .filter((file) => {
         const ext = path.extname(file).toLowerCase();
@@ -189,7 +201,7 @@ export const DEFAULT_WORKFLOW_DIRS = [
 export function findWorkflowDir(basePath: string): string | undefined {
   for (const dir of DEFAULT_WORKFLOW_DIRS) {
     const fullPath = path.join(basePath, dir);
-    if (fs.existsSync(fullPath)) {
+    if (fs.existsSync(fullPath) && isDirectory(fullPath)) {
       return fullPath;
     }
   }
@@ -198,4 +210,12 @@ export function findWorkflowDir(basePath: string): string | undefined {
 
 export function clearWarnedFilesCache(): void {
   warnedFiles.clear();
+}
+
+function isDirectory(filePath: string): boolean {
+  try {
+    return fs.statSync(filePath).isDirectory();
+  } catch {
+    return false;
+  }
 }

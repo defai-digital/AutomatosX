@@ -1,11 +1,9 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 
 export async function configCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'show';
-  const basePath = options.outputDir ?? process.cwd();
-  const runtime = createSharedRuntimeService({ basePath });
+  const runtime = createRuntime(options);
 
   switch (subcommand) {
     case 'show': {
@@ -55,6 +53,9 @@ function parseConfigValue(args: string[], input: string | undefined): { value: u
   try {
     return { value: JSON.parse(source) };
   } catch {
+    if (input !== undefined) {
+      return { value: undefined, error: 'Invalid JSON input. Please provide a valid JSON value.' };
+    }
     return { value: source };
   }
 }

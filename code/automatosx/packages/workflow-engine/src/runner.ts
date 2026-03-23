@@ -25,7 +25,6 @@ import {
 } from './retry.js';
 import type { StepGuardEngine } from './step-guard.js';
 
-const LOG_PREFIX = '[workflow-runner]';
 const UNKNOWN_AGENT_ID = 'unknown';
 const WORKFLOW_GUARD_BLOCKED = 'WORKFLOW_GUARD_BLOCKED';
 
@@ -67,6 +66,7 @@ export class WorkflowRunner {
 
   async run(workflowData: unknown, input?: unknown): Promise<WorkflowResult> {
     const startTime = Date.now();
+    const executionId = this.config.executionId ?? randomUUID();
 
     let prepared: PreparedWorkflow;
     try {
@@ -97,7 +97,7 @@ export class WorkflowRunner {
       };
 
       if (this.config.stepGuardEngine) {
-        const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+        const guardContext = this.buildGuardContext(executionId, step, i, prepared, stepResults);
         const beforeResults = await this.config.stepGuardEngine.runBeforeGuards(guardContext);
         if (this.config.stepGuardEngine.shouldBlock(beforeResults)) {
           return this.createBlockedResult(prepared, stepResults, step, beforeResults, startTime);
@@ -111,23 +111,23 @@ export class WorkflowRunner {
       this.config.onStepComplete?.(step, frozenResult);
 
       if (this.config.stepGuardEngine) {
-        const guardContext = this.buildGuardContext(step, i, prepared, stepResults);
+        const guardContext = this.buildGuardContext(executionId, step, i, prepared, stepResults);
         try {
           await this.config.stepGuardEngine.runAfterGuards(guardContext);
         } catch (guardError) {
-          const guardMessage = guardError instanceof Error ? guardError.message : String(guardError);
-          console.warn(`${LOG_PREFIX} After guard threw exception for step ${step.stepId}:`, guardError);
-          return {
-            workflowId: workflow.workflowId,
-            success: false,
+          return this.createErrorResult(
+            prepared.workflow.workflowId,
+            startTime,
             stepResults,
-            error: {
+            {
               code: WorkflowErrorCodes.AFTER_GUARD_ERROR,
-              message: `After guard failed for step ${step.stepId}: ${guardMessage}`,
-              failedStepId: step.stepId,
+              message: `After guard check failed for step ${step.stepId}`,
+              details: {
+                stepId: step.stepId,
+                error: guardError instanceof Error ? guardError.message : String(guardError),
+              },
             },
-            totalDurationMs: Date.now() - startTime,
-          };
+          );
         }
       }
 
@@ -283,6 +283,7 @@ export class WorkflowRunner {
   }
 
   private buildGuardContext(
+    executionId: string,
     step: WorkflowStep,
     stepIndex: number,
     workflow: PreparedWorkflow,
@@ -296,7 +297,7 @@ export class WorkflowRunner {
     }
 
     return {
-      executionId: this.config.executionId ?? randomUUID(),
+      executionId,
       agentId: this.config.agentId ?? UNKNOWN_AGENT_ID,
       workflowId: workflow.workflow.workflowId,
       stepId: step.stepId,

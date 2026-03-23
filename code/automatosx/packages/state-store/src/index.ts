@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { createSqliteStateStore } from './sqlite.js';
 
 export interface MemoryEntry {
   key: string;
@@ -49,6 +50,21 @@ export interface SemanticNamespaceStats {
   lastUpdatedAt?: string;
 }
 
+export interface FeedbackEntry {
+  feedbackId: string;
+  selectedAgent: string;
+  recommendedAgent?: string;
+  rating?: number;
+  feedbackType: string;
+  taskDescription: string;
+  userComment?: string;
+  outcome?: string;
+  durationMs?: number;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export type SessionStatus = 'active' | 'completed' | 'failed';
 export type SessionParticipantRole = 'initiator' | 'collaborator' | 'delegate';
 
@@ -95,6 +111,20 @@ export interface StateStore {
   deleteSemantic(key: string, namespace?: string): Promise<boolean>;
   clearSemantic(namespace: string): Promise<number>;
   semanticStats(namespace?: string): Promise<SemanticNamespaceStats[]>;
+  submitFeedback(entry: {
+    feedbackId?: string;
+    selectedAgent: string;
+    recommendedAgent?: string;
+    rating?: number;
+    feedbackType?: string;
+    taskDescription: string;
+    userComment?: string;
+    outcome?: string;
+    durationMs?: number;
+    sessionId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<FeedbackEntry>;
+  listFeedback(options?: { agentId?: string; limit?: number; since?: string }): Promise<FeedbackEntry[]>;
   createSession(entry: { sessionId?: string; task: string; initiator: string; workspace?: string; metadata?: Record<string, unknown> }): Promise<SessionEntry>;
   getSession(sessionId: string): Promise<SessionEntry | undefined>;
   listSessions(): Promise<SessionEntry[]>;
@@ -110,12 +140,15 @@ interface StateStoreFile {
   policies: PolicyEntry[];
   agents: AgentEntry[];
   semantic: SemanticEntry[];
+  feedback: FeedbackEntry[];
   sessions: SessionEntry[];
 }
 
 export interface FileStateStoreConfig {
   basePath?: string;
   storageFile?: string;
+  /** Storage backend. Defaults to 'sqlite'. Use 'json' to keep the legacy file-based store. */
+  backend?: 'sqlite' | 'json';
 }
 
 const DEFAULT_STATE_STORE_FILE = join('.automatosx', 'runtime', 'state.json');
@@ -385,6 +418,64 @@ export class FileStateStore implements StateStore {
       .sort((left, right) => left.namespace.localeCompare(right.namespace));
   }
 
+  async submitFeedback(entry: {
+    feedbackId?: string;
+    selectedAgent: string;
+    recommendedAgent?: string;
+    rating?: number;
+    feedbackType?: string;
+    taskDescription: string;
+    userComment?: string;
+    outcome?: string;
+    durationMs?: number;
+    sessionId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<FeedbackEntry> {
+    return this.withMutation(async (data) => {
+      const stored: FeedbackEntry = {
+        feedbackId: entry.feedbackId ?? randomUUID(),
+        selectedAgent: entry.selectedAgent,
+        recommendedAgent: entry.recommendedAgent,
+        rating: normalizeRating(entry.rating),
+        feedbackType: typeof entry.feedbackType === 'string' && entry.feedbackType.trim().length > 0
+          ? entry.feedbackType.trim().toLowerCase()
+          : 'explicit',
+        taskDescription: entry.taskDescription,
+        userComment: entry.userComment,
+        outcome: entry.outcome,
+        durationMs: typeof entry.durationMs === 'number' && Number.isFinite(entry.durationMs)
+          ? Math.max(0, Math.round(entry.durationMs))
+          : undefined,
+        sessionId: entry.sessionId,
+        metadata: entry.metadata === undefined ? undefined : sortRecord(entry.metadata),
+        createdAt: new Date().toISOString(),
+      };
+      data.feedback.push(stored);
+      return stored;
+    });
+  }
+
+  async listFeedback(options: { agentId?: string; limit?: number; since?: string } = {}): Promise<FeedbackEntry[]> {
+    const data = await this.readConsistentData();
+    const sinceTime = typeof options.since === 'string' ? Date.parse(options.since) : Number.NaN;
+    const filtered = data.feedback
+      .filter((entry) => {
+        if (options.agentId !== undefined && entry.selectedAgent !== options.agentId) {
+          return false;
+        }
+        if (!Number.isNaN(sinceTime) && Date.parse(entry.createdAt) < sinceTime) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+
+    if (options.limit === undefined) {
+      return filtered;
+    }
+    return filtered.slice(0, Math.max(0, options.limit));
+  }
+
   async createSession(entry: { sessionId?: string; task: string; initiator: string; workspace?: string; metadata?: Record<string, unknown> }): Promise<SessionEntry> {
     return this.withMutation(async (data) => {
       const now = new Date().toISOString();
@@ -531,6 +622,7 @@ export class FileStateStore implements StateStore {
         policies: Array.isArray(parsed.policies) ? parsed.policies : [],
         agents: Array.isArray(parsed.agents) ? parsed.agents : [],
         semantic: Array.isArray(parsed.semantic) ? parsed.semantic : [],
+        feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
         sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       };
     } catch {
@@ -539,6 +631,7 @@ export class FileStateStore implements StateStore {
         policies: [],
         agents: [],
         semantic: [],
+        feedback: [],
         sessions: [],
       };
     }
@@ -553,8 +646,19 @@ export class FileStateStore implements StateStore {
 }
 
 export function createStateStore(config?: FileStateStoreConfig): StateStore {
-  return new FileStateStore(config);
+  if (config?.backend === 'json') {
+    return new FileStateStore(config);
+  }
+  return createSqliteStateStore({
+    basePath: config?.basePath,
+    dbFile: config?.storageFile,
+  });
 }
+
+export { createSqliteStateStore, SqliteStateStore } from './sqlite.js';
+export type { SqliteStateStoreConfig } from './sqlite.js';
+export { migrateJsonToSqlite } from './migrate.js';
+export type { MigrateJsonToSqliteOptions, MigrationResult } from './migrate.js';
 
 function requireSession(data: StateStoreFile, sessionId: string): SessionEntry {
   const session = data.sessions.find((entry) => entry.sessionId === sessionId);
@@ -598,6 +702,13 @@ function normalizeAgentRegistration(entry: {
 function normalizeTags(tags: string[] | undefined): string[] {
   return Array.from(new Set((tags ?? []).map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0)))
     .sort((left, right) => left.localeCompare(right));
+}
+
+function normalizeRating(rating: number | undefined): number | undefined {
+  if (typeof rating !== 'number' || !Number.isFinite(rating)) {
+    return undefined;
+  }
+  return Math.max(1, Math.min(5, Math.round(rating)));
 }
 
 function computeTokenFreq(content: string): Record<string, number> {

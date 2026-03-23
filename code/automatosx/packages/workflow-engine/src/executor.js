@@ -2,6 +2,8 @@ import { getErrorMessage } from '@defai.digital/contracts';
 import { WorkflowErrorCodes } from './types.js';
 const DEFAULT_LOOP_MAX_ITERATIONS = 100;
 const DEFAULT_PARALLEL_CONCURRENCY = 5;
+// INV-WF-SEC-001: Block prototype chain access to prevent prototype pollution
+const DANGEROUS_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
 export const defaultStepExecutor = async (step, context) => {
     const startTime = Date.now();
     try {
@@ -106,7 +108,7 @@ function executeToolStep(step, _context) {
 function executeConditionalStep(step, context) {
     const config = step.config ?? {};
     const condition = typeof config.condition === 'string' ? config.condition : 'true';
-    const evaluated = evaluateCondition(condition, context);
+    const evaluated = evaluateConditionSafely(condition, context);
     return Promise.resolve({
         type: 'conditional',
         stepId: step.stepId,
@@ -147,30 +149,88 @@ async function executeParallelStep(step, _context) {
         results: tasks.map((task, index) => ({ index, task, success: true })),
     };
 }
-function evaluateCondition(condition, context) {
-    if (condition === 'true') {
-        return true;
-    }
-    if (condition === 'false') {
-        return false;
-    }
-    const variableReference = /^\$\{(.+)\}$/.exec(condition);
-    if (variableReference?.[1]) {
-        return Boolean(getNestedValue(context, variableReference[1]));
-    }
-    return Boolean(condition);
-}
-function getNestedValue(context, path) {
+// INV-WF-SEC-001: Safe path traversal (blocks prototype chain)
+function getValueFromPath(context, path) {
     const parts = path.split('.');
     let current = context;
     for (const part of parts) {
-        if (current === null || current === undefined) {
-            return undefined;
-        }
-        if (typeof current !== 'object') {
-            return undefined;
-        }
+        if (current === null || current === undefined) return undefined;
+        if (typeof current !== 'object') return undefined;
+        if (DANGEROUS_PROPS.has(part)) return undefined;
+        if (!Object.prototype.hasOwnProperty.call(current, part)) return undefined;
         current = current[part];
     }
     return current;
+}
+function evaluateConditionSafely(condition, context) {
+    try {
+        const orParts = splitByLogicalOperator(condition, '||');
+        if (orParts.length > 1) return orParts.some((part) => evaluateConditionSafely(part.trim(), context));
+        const andParts = splitByLogicalOperator(condition, '&&');
+        if (andParts.length > 1) return andParts.every((part) => evaluateConditionSafely(part.trim(), context));
+        const trimmed = condition.trim();
+        if (trimmed.startsWith('!')) return !evaluateConditionSafely(trimmed.slice(1).trim(), context);
+        if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+            let depth = 0, firstOpenMatchesLast = true;
+            for (let i = 0; i < trimmed.length - 1; i++) {
+                if (trimmed[i] === '(') depth++;
+                else if (trimmed[i] === ')') depth--;
+                if (depth === 0) { firstOpenMatchesLast = false; break; }
+            }
+            if (firstOpenMatchesLast) return evaluateConditionSafely(trimmed.slice(1, -1), context);
+        }
+        const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
+        if (comparisonMatch) {
+            const [, varPath, op, rawValue] = comparisonMatch;
+            if (varPath && op && rawValue) {
+                return compareConditionValues(getValueFromPath(context, varPath), parseConditionValue(rawValue.trim()), op);
+            }
+        }
+        const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
+        if (varMatch?.[1]) return Boolean(getValueFromPath(context, varMatch[1]));
+        if (trimmed === 'true') return true;
+        if (trimmed === 'false') return false;
+        console.warn(`[executor] Unknown condition pattern: ${condition}`);
+        return false;
+    } catch (error) {
+        console.warn(`[executor] Error evaluating condition: ${condition}`, error);
+        return false;
+    }
+}
+function splitByLogicalOperator(condition, operator) {
+    const parts = [];
+    let current = '', depth = 0;
+    for (let i = 0; i < condition.length; i++) {
+        const char = condition[i];
+        if (char === '(') { depth++; current += char; }
+        else if (char === ')') { depth--; current += char; }
+        else if (depth === 0 && condition.slice(i, i + operator.length) === operator) {
+            parts.push(current); current = ''; i += operator.length - 1;
+        } else { current += char; }
+    }
+    if (current) parts.push(current);
+    return parts;
+}
+function parseConditionValue(value) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
+    if (value === 'null') return null;
+    if (value === 'undefined') return undefined;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    const num = Number(value);
+    if (!Number.isNaN(num)) return num;
+    return value;
+}
+function compareConditionValues(actual, expected, op) {
+    switch (op) {
+        case '===': return actual === expected;
+        case '!==': return actual !== expected;
+        case '==': return actual == expected;
+        case '!=': return actual != expected;
+        case '>': return typeof actual === 'number' && typeof expected === 'number' && actual > expected;
+        case '<': return typeof actual === 'number' && typeof expected === 'number' && actual < expected;
+        case '>=': return typeof actual === 'number' && typeof expected === 'number' && actual >= expected;
+        case '<=': return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
+        default: return false;
+    }
 }

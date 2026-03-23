@@ -1,9 +1,8 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { parseOptionalJsonInput, asOptionalString, asOptionalRecord, asStringArray } from '../utils/validation.js';
 export async function agentCommand(args, options) {
     const subcommand = args[0] ?? 'list';
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+    const runtime = createRuntime(options);
     switch (subcommand) {
         case 'list': {
             const agents = await runtime.listAgents();
@@ -68,7 +67,7 @@ export async function agentCommand(args, options) {
             if (agentId === undefined || agentId.length === 0) {
                 return usageError('ax agent run <agent-id> --task <text> [--input <json-object>]');
             }
-            const parsed = parseOptionalJsonInput(options.input);
+            const parsed = parseOptionalJsonInput(options.input, 'Agent run');
             if (parsed.error !== undefined) {
                 return failure(parsed.error);
             }
@@ -123,64 +122,25 @@ function parseRegistrationInput(input) {
             error: 'Usage: ax agent register --input <json-object>',
         };
     }
-    try {
-        const parsed = JSON.parse(input);
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return {
-                value: { agentId: '', name: '' },
-                error: 'Agent register input must be a JSON object.',
-            };
-        }
-        if (typeof parsed.agentId !== 'string' || parsed.agentId.length === 0) {
-            return {
-                value: { agentId: '', name: '' },
-                error: 'Agent register input requires "agentId".',
-            };
-        }
-        if (typeof parsed.name !== 'string' || parsed.name.length === 0) {
-            return {
-                value: { agentId: parsed.agentId, name: '' },
-                error: 'Agent register input requires "name".',
-            };
-        }
-        return {
-            value: {
-                agentId: parsed.agentId,
-                name: parsed.name,
-                capabilities: Array.isArray(parsed.capabilities)
-                    ? parsed.capabilities.filter((entry) => typeof entry === 'string' && entry.length > 0)
-                    : undefined,
-                metadata: parsed.metadata !== null && typeof parsed.metadata === 'object' && !Array.isArray(parsed.metadata)
-                    ? parsed.metadata
-                    : undefined,
-            },
-        };
+    const parsed = parseOptionalJsonInput(input, 'Agent register');
+    if (parsed.error !== undefined) {
+        return { value: { agentId: '', name: '' }, error: parsed.error };
     }
-    catch {
-        return {
-            value: { agentId: '', name: '' },
-            error: 'Invalid JSON input. Please provide a valid JSON object.',
-        };
+    const value = parsed.value ?? {};
+    const agentId = asOptionalString(value.agentId);
+    const name = asOptionalString(value.name);
+    if (agentId === undefined) {
+        return { value: { agentId: '', name: '' }, error: 'Agent register input requires "agentId".' };
     }
-}
-function parseOptionalJsonInput(input) {
-    if (input === undefined) {
-        return {};
+    if (name === undefined) {
+        return { value: { agentId, name: '' }, error: 'Agent register input requires "name".' };
     }
-    try {
-        const parsed = JSON.parse(input);
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return {
-                error: 'Agent run input must be a JSON object.',
-            };
-        }
-        return {
-            value: parsed,
-        };
-    }
-    catch {
-        return {
-            error: 'Invalid JSON input. Please provide a valid JSON object.',
-        };
-    }
+    return {
+        value: {
+            agentId,
+            name,
+            capabilities: asStringArray(value.capabilities),
+            metadata: asOptionalRecord(value.metadata),
+        },
+    };
 }

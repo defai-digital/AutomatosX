@@ -84,6 +84,24 @@ describe('cli dispatch', () => {
         ]);
         expect(statusResult.success).toBe(true);
         expect(statusResult.message).toContain('AutomatosX Status');
+        const abilityResult = await executeCli([
+            'ability',
+            'list',
+            '--category',
+            'review',
+            '--output-dir',
+            tempDir,
+        ]);
+        expect(abilityResult.success).toBe(true);
+        expect(abilityResult.message).toContain('code-review');
+        const feedbackResult = await executeCli([
+            'feedback',
+            'overview',
+            '--output-dir',
+            tempDir,
+        ]);
+        expect(feedbackResult.success).toBe(true);
+        expect(feedbackResult.message).toContain('Feedback overview');
         const sourceDir = join(tempDir, 'src');
         mkdirSync(sourceDir, { recursive: true });
         await writeFile(join(sourceDir, 'sample.ts'), [

@@ -34,8 +34,9 @@ ax doctor
 - `ax call "<prompt>"` is now the direct provider-invocation surface for the shared runtime bridge, with optional file context loading, explicit execution-mode reporting, and an autonomy mode for bounded multi-round execution.
 - `ax doctor`, `ax status`, `ax list`, `ax trace`, and `ax discuss` are retained as high-value support commands from the legacy surfaces.
 - `ax config` and `ax cleanup` are now first-class operational commands for workspace config and stale runtime state management.
+- `ax ability` and `ax feedback` are now first-class operator commands for reusable runtime ability context and durable quality feedback loops.
 - `ax resume <trace-id>` can rerun prior workflow or discussion traces from stored execution context, and `ax iterate ...` can repeat runnable commands until success or budget exhaustion.
-- `ax trace analyze <trace-id>` summarizes execution health, and `ax trace by-session <session-id>` groups correlated runtime traces.
+- `ax trace analyze <trace-id>` summarizes execution health, `ax trace by-session <session-id>` groups correlated runtime traces, and `ax trace tree <trace-id>` reconstructs trace hierarchies.
 - `ax guard` now includes a built-in `safe-filesystem` policy that blocks out-of-scope writes, oversized change sets, sensitive-path edits, and obvious secret leakage.
 - `ax agent`, `ax mcp`, `ax session`, and `ax review` are retained as advanced operational surfaces on top of the shared runtime and MCP-aligned stores.
 - `ax mcp` can inspect MCP tools, resources, prompts, and per-tool schemas in addition to serving and invoking tools.
@@ -76,15 +77,19 @@ Example provider bridge configuration:
 Representative shared-runtime-backed MCP tools:
 
 - `workflow.run`, `workflow.list`, `workflow.describe`
-- `trace.get`, `trace.list`, `trace.analyze`, `trace.by_session`, `trace.close_stuck`
-- `agent.register`, `agent.get`, `agent.list`, `agent.remove`, `agent.capabilities`
+- `trace.get`, `trace.list`, `trace.analyze`, `trace.by_session`, `trace.tree`, `trace.close_stuck`
+- `agent.register`, `agent.get`, `agent.list`, `agent.remove`, `agent.capabilities`, `agent.run`, `agent.recommend`
 - `memory.store`, `memory.list`, `memory.retrieve`, `memory.search`, `memory.delete`
+- `semantic.store`, `semantic.search`, `semantic.get`, `semantic.list`, `semantic.delete`, `semantic.stats`, `semantic.clear`
+- `feedback.submit`, `feedback.history`, `feedback.stats`, `feedback.overview`, `feedback.adjustments`
+- `ability.list`, `ability.inject`
 - `config.get`, `config.set`, `config.show`
 - `file.exists`, `file.write`, `directory.create`
-- `git.diff`
+- `git.status`, `git.diff`, `commit.prepare`, `pr.review`, `pr.create`
 - `session.create`, `session.get`, `session.list`, `session.join`, `session.leave`, `session.complete`, `session.fail`, `session.close_stuck`
 - `review.analyze`, `review.list`
-- `discuss.run`
+- `discuss.run`, `discuss.quick`, `discuss.recursive`
+- `parallel.plan`, `parallel.run`
 - `policy.register`, `policy.list`
 - `dashboard.list`
 

@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { execFile } from 'node:child_process';
-import { rm } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { promisify } from 'node:util';
@@ -239,6 +239,91 @@ describe('mcp server surface', () => {
     ]);
   });
 
+  it('exposes feedback, abilities, trace trees, and local git/pr helpers', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    await initializeGitRepo(tempDir);
+    await execFileAsync('git', ['checkout', '-b', 'feature/mcp-wave'], { cwd: tempDir });
+    await writeFile(join(tempDir, 'tracked.txt'), 'baseline\nchanged\n', 'utf8');
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.getStores().traceStore.upsertTrace({
+      traceId: 'tree-root',
+      workflowId: 'parallel.run',
+      surface: 'mcp',
+      status: 'completed',
+      startedAt: '2026-03-22T00:00:00.000Z',
+      stepResults: [],
+    });
+    await runtime.getStores().traceStore.upsertTrace({
+      traceId: 'tree-child',
+      workflowId: 'agent.run',
+      surface: 'mcp',
+      status: 'completed',
+      startedAt: '2026-03-22T00:01:00.000Z',
+      stepResults: [],
+      metadata: {
+        parentTraceId: 'tree-root',
+        rootTraceId: 'tree-root',
+      },
+    });
+
+    const surface = createMcpServerSurface({ basePath: tempDir, runtimeService: runtime });
+    const feedback = await surface.invokeTool('feedback.submit', {
+      selectedAgent: 'architect',
+      rating: 5,
+      taskDescription: 'Review rollout plan',
+      outcome: 'accepted',
+    });
+    const feedbackStats = await surface.invokeTool('feedback.stats', { agentId: 'architect' });
+    const abilities = await surface.invokeTool('ability.list', { category: 'review' });
+    const injection = await surface.invokeTool('ability.inject', { task: 'Review the diff for security issues' });
+    const tree = await surface.invokeTool('trace.tree', { traceId: 'tree-child' });
+    const gitStatus = await surface.invokeTool('git.status', {});
+    const commitPrepare = await surface.invokeTool('commit.prepare', {
+      paths: ['tracked.txt'],
+      type: 'fix',
+      scope: 'mcp',
+    });
+
+    await execFileAsync('git', ['commit', '-m', 'feature mcp change'], { cwd: tempDir });
+    const prReview = await surface.invokeTool('pr.review', { base: 'main', head: 'HEAD' });
+
+    const originalPath = process.env.PATH;
+    const ghPath = join(tempDir, process.platform === 'win32' ? 'gh.cmd' : 'gh');
+    await writeFile(
+      ghPath,
+      process.platform === 'win32'
+        ? '@echo off\r\necho https://example.test/pr/2\r\n'
+        : '#!/bin/sh\necho https://example.test/pr/2\n',
+      'utf8',
+    );
+    if (process.platform !== 'win32') {
+      await execFileAsync('chmod', ['+x', ghPath]);
+    }
+    process.env.PATH = `${tempDir}${process.platform === 'win32' ? ';' : ':'}${originalPath ?? ''}`;
+
+    try {
+      const prCreate = await surface.invokeTool('pr.create', {
+        title: 'MCP test PR',
+        base: 'main',
+        head: 'HEAD',
+      });
+
+      expect(feedback.success).toBe(true);
+      expect(feedbackStats.data).toMatchObject({ agentId: 'architect', averageRating: 5 });
+      expect(abilities.data).toMatchObject([expect.objectContaining({ abilityId: 'code-review' })]);
+      expect((injection.data as { content: string }).content).toContain('review');
+      expect(tree.data).toMatchObject({ traceId: 'tree-root' });
+      expect(gitStatus.data).toMatchObject({ branch: 'feature/mcp-wave' });
+      expect(commitPrepare.data).toMatchObject({ message: 'fix(mcp): update mcp' });
+      expect(prReview.data).toMatchObject({ base: 'main' });
+      expect(prCreate.data).toMatchObject({ url: 'https://example.test/pr/2' });
+    } finally {
+      process.env.PATH = originalPath;
+    }
+  }, 15000);
+
   it('exposes guard list/apply/check tools on the MCP surface', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
@@ -327,6 +412,32 @@ describe('mcp server surface', () => {
     expect((diff.data as { diff: string }).diff).toContain('todo.txt');
   });
 
+  it('forwards basePath to filesystem tools on the MCP surface', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const surface = createMcpServerSurface({ basePath: join(process.cwd(), 'tmp', 'unrelated-mcp-root') });
+    const created = await surface.invokeTool('directory.create', {
+      path: 'notes',
+      basePath: tempDir,
+    });
+    const written = await surface.invokeTool('file.write', {
+      path: 'notes/override.txt',
+      content: 'hello\n',
+      createDirectories: true,
+      basePath: tempDir,
+    });
+    const exists = await surface.invokeTool('file.exists', {
+      path: 'notes/override.txt',
+      basePath: tempDir,
+    });
+
+    expect(created.success).toBe(true);
+    expect(written.success).toBe(true);
+    expect(exists.success).toBe(true);
+    expect(exists.data).toMatchObject({ exists: true });
+  });
+
   it('exposes workflow describe, discuss, and review tools on the shared runtime surface', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
@@ -381,6 +492,37 @@ describe('mcp server surface', () => {
         workflowId: 'review',
       },
     ]);
+  });
+
+  it('forwards provider overrides for research tools on the MCP surface', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const surface = createMcpServerSurface({ basePath: tempDir });
+    const query = await surface.invokeTool('research.query', {
+      query: 'Compare release strategies',
+      provider: 'gemini',
+    });
+    const synthesis = await surface.invokeTool('research.synthesize', {
+      topic: 'Release strategies',
+      provider: 'grok',
+      sources: [
+        { content: 'Blue-green reduces downtime.' },
+        { content: 'Canary lowers initial blast radius.' },
+      ],
+    });
+
+    expect(query.success).toBe(true);
+    expect(query.data).toMatchObject({
+      query: 'Compare release strategies',
+      provider: 'gemini',
+    });
+    expect(synthesis.success).toBe(true);
+    expect(synthesis.data).toMatchObject({
+      topic: 'Release strategies',
+      provider: 'grok',
+      sourceCount: 2,
+    });
   });
 
   it('exposes quick and recursive discussion tools on the shared runtime surface', async () => {
@@ -512,6 +654,59 @@ describe('mcp server surface', () => {
         sessionId: 'mcp-agent-session-001',
         agentId: 'architect',
       }),
+    });
+  });
+
+  it('forwards agent.run basePath to the shared runtime provider bridge', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await writeFile(join(tempDir, 'workspace-agent-provider.mjs'), [
+      "let input = '';",
+      "process.stdin.setEncoding('utf8');",
+      "process.stdin.on('data', (chunk) => { input += chunk; });",
+      "process.stdin.on('end', () => {",
+      "  const payload = JSON.parse(input || '{}');",
+      "  const provider = payload.provider || 'unknown';",
+      "  process.stdout.write(JSON.stringify({",
+      "    success: true,",
+      "    provider,",
+      "    model: `workspace-${provider}`,",
+      "    content: `WORKSPACE-AGENT:${provider}:${payload.prompt || ''}`",
+      "  }));",
+      "});",
+    ].join('\n'), 'utf8');
+    mkdirSync(join(tempDir, '.automatosx'), { recursive: true });
+    await writeFile(join(tempDir, '.automatosx', 'config.json'), `${JSON.stringify({
+      providers: {
+        executors: {
+          claude: {
+            command: 'node',
+            args: [join(tempDir, 'workspace-agent-provider.mjs')],
+          },
+        },
+      },
+    }, null, 2)}\n`, 'utf8');
+
+    const surface = createMcpServerSurface({ basePath: join(process.cwd(), 'tmp', 'unrelated-mcp-root') });
+    await surface.invokeTool('agent.register', {
+      agentId: 'architect',
+      name: 'Architect',
+      capabilities: ['architecture'],
+    });
+
+    const executed = await surface.invokeTool('agent.run', {
+      agentId: 'architect',
+      task: 'Design rollout plan',
+      traceId: 'mcp-agent-workspace-001',
+      basePath: tempDir,
+    });
+
+    expect(executed.success).toBe(true);
+    expect(executed.data).toMatchObject({
+      traceId: 'mcp-agent-workspace-001',
+      executionMode: 'subprocess',
+      content: expect.stringContaining('WORKSPACE-AGENT:claude:'),
     });
   });
 
@@ -834,3 +1029,12 @@ describe('mcp server surface', () => {
     expect(stdout).toContain('dashboard.list');
   });
 });
+
+async function initializeGitRepo(tempDir: string): Promise<void> {
+  await execFileAsync('git', ['init', '-b', 'main'], { cwd: tempDir });
+  await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd: tempDir });
+  await execFileAsync('git', ['config', 'user.name', 'Test User'], { cwd: tempDir });
+  await writeFile(join(tempDir, 'tracked.txt'), 'baseline\n', 'utf8');
+  await execFileAsync('git', ['add', 'tracked.txt'], { cwd: tempDir });
+  await execFileAsync('git', ['commit', '-m', 'init'], { cwd: tempDir });
+}

@@ -3,11 +3,14 @@ import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  abilityCommand,
   agentCommand,
   callCommand,
   cleanupCommand,
   configCommand,
   guardCommand,
+  feedbackCommand,
+  listCommand,
   mcpCommand,
   sessionCommand,
   setupCommand,
@@ -150,6 +153,76 @@ describe('advanced retained commands', () => {
     expect(recommendResult.message).toContain('architect');
   });
 
+  it('lists abilities and captures feedback through dedicated CLI commands', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const listResult = await abilityCommand(['list'], defaultOptions({
+      outputDir: tempDir,
+      category: 'review',
+    }));
+    expect(listResult.success).toBe(true);
+    expect(listResult.message).toContain('code-review');
+
+    const injectResult = await abilityCommand(['inject'], defaultOptions({
+      outputDir: tempDir,
+      task: 'Review the diff for security issues',
+      limit: 2,
+    }));
+    expect(injectResult.success).toBe(true);
+    expect(injectResult.message).toContain('Ability injection for:');
+
+    const submitResult = await feedbackCommand(['submit'], defaultOptions({
+      outputDir: tempDir,
+      agent: 'architect',
+      task: 'Review rollout plan',
+      input: JSON.stringify({ rating: 5, outcome: 'accepted' }),
+    }));
+    expect(submitResult.success).toBe(true);
+    expect(submitResult.message).toContain('Feedback submitted:');
+
+    const overviewResult = await feedbackCommand(['overview'], defaultOptions({
+      outputDir: tempDir,
+    }));
+    expect(overviewResult.success).toBe(true);
+    expect(overviewResult.message).toContain('Feedback overview');
+
+    const statsResult = await feedbackCommand(['stats', 'architect'], defaultOptions({
+      outputDir: tempDir,
+    }));
+    expect(statsResult.success).toBe(true);
+    expect(statsResult.message).toContain('Average rating: 5');
+  });
+
+  it('rejects stray flags and extra args for strict CLI wrappers', async () => {
+    const abilityResult = await abilityCommand(['inject', '--bogus'], defaultOptions());
+    expect(abilityResult.success).toBe(false);
+    expect(abilityResult.message).toContain('Unknown ability flag: --bogus.');
+
+    const feedbackResult = await feedbackCommand(['history', '--bogus'], defaultOptions());
+    expect(feedbackResult.success).toBe(false);
+    expect(feedbackResult.message).toContain('Unknown feedback flag: --bogus.');
+
+    const listResult = await listCommand(['--bogus'], defaultOptions());
+    expect(listResult.success).toBe(false);
+    expect(listResult.message).toContain('Unknown list flag: --bogus.');
+
+    const statusResult = await statusCommand(['--bogus'], defaultOptions());
+    expect(statusResult.success).toBe(false);
+    expect(statusResult.message).toContain('Unknown status flag: --bogus.');
+  });
+
+  it('rejects unknown flags for provider calls', async () => {
+    const result = await callCommand([
+      '--bogus',
+      'value',
+      'Summarize release risk',
+    ], defaultOptions());
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Unknown call flag: --bogus.');
+  });
+
   it('lists local MCP tools and invokes them through the in-process MCP surface', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
@@ -195,6 +268,20 @@ describe('advanced retained commands', () => {
 
     const data = callResult.data as Array<{ agentId: string }>;
     expect(data.some((entry) => entry.agentId === 'architect')).toBe(true);
+  });
+
+  it('returns CLI failures for unknown MCP resources and prompts instead of throwing', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+
+    const readResult = await mcpCommand(['read', 'ax://missing/resource'], defaultOptions({ outputDir: tempDir }));
+    expect(readResult.success).toBe(false);
+    expect(readResult.message).toContain('Unknown resource: ax://missing/resource');
+
+    const promptResult = await mcpCommand(['prompt', 'missing.prompt'], defaultOptions({ outputDir: tempDir }));
+    expect(promptResult.success).toBe(false);
+    expect(promptResult.message).toContain('Unknown prompt: missing.prompt');
   });
 
   it('serves MCP JSON-RPC over stdio and handles initialize + tools/list + tools/call', async () => {
@@ -283,6 +370,29 @@ describe('advanced retained commands', () => {
     expect(fetched.message).toContain('qa:collaborator');
   });
 
+  it('preserves an explicit empty summary when completing a session', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await sessionCommand(['create'], defaultOptions({
+      outputDir: tempDir,
+      input: JSON.stringify({
+        sessionId: 'cli-session-empty-summary',
+        task: 'Check summary handling',
+        initiator: 'architect',
+      }),
+    }));
+
+    const completed = await sessionCommand(['complete', 'cli-session-empty-summary'], defaultOptions({
+      outputDir: tempDir,
+      input: JSON.stringify({
+        summary: '',
+      }),
+    }));
+    expect(completed.success).toBe(true);
+    expect((completed.data as { summary?: string }).summary).toBe('');
+  });
+
   it('surfaces workspace config read/write through a dedicated CLI command', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
@@ -299,6 +409,19 @@ describe('advanced retained commands', () => {
     const showResult = await configCommand(['show'], defaultOptions({ outputDir: tempDir }));
     expect(showResult.success).toBe(true);
     expect(showResult.message).toContain('"providers"');
+  });
+
+  it('rejects malformed JSON when config set uses --input', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const result = await configCommand(['set', 'providers.default'], defaultOptions({
+      outputDir: tempDir,
+      input: '{"provider"',
+    }));
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Invalid JSON input. Please provide a valid JSON value.');
   });
 
   it('closes stale sessions and traces through cleanup', async () => {
@@ -377,6 +500,33 @@ describe('advanced retained commands', () => {
     expect(filesystemCheckResult.success).toBe(true);
     expect(filesystemCheckResult.message).toContain('Guard check: blocked');
     expect(filesystemCheckResult.message).toContain('enforce-allowed-paths');
+  });
+
+  it('rejects invalid guard input types before writing policy state or building guard context', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const invalidApply = await guardCommand(['apply'], defaultOptions({
+      outputDir: tempDir,
+      input: JSON.stringify({
+        policyId: 'step-validation',
+        enabled: 'false',
+      }),
+    }));
+    expect(invalidApply.success).toBe(false);
+    expect(invalidApply.message).toContain('Guard apply input requires "enabled" to be a boolean.');
+
+    const invalidCheck = await guardCommand(['check'], defaultOptions({
+      outputDir: tempDir,
+      input: JSON.stringify({
+        stepId: 'broken-tool',
+        stepType: 'tool',
+        stepIndex: -1,
+        totalSteps: 0,
+      }),
+    }));
+    expect(invalidCheck.success).toBe(false);
+    expect(invalidCheck.message).toContain('Input requires "stepIndex" to be a non-negative integer.');
   });
 
   it('calls a provider directly and reports runtime status through CLI commands', async () => {

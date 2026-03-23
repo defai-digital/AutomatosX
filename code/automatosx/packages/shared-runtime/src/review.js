@@ -25,7 +25,7 @@ export async function runReviewAnalysis(traceStore, request) {
         },
     });
     try {
-        const files = await collectFiles(request.paths, maxFiles);
+        const files = await collectFiles(request.paths, maxFiles, request.basePath);
         const findings = [];
         for (const file of files) {
             const content = await readFile(file, 'utf8');
@@ -142,17 +142,18 @@ export async function runReviewAnalysis(traceStore, request) {
     }
 }
 export async function listReviewTraces(traceStore, limit) {
-    const traces = await traceStore.listTraces(limit);
-    return traces.filter((trace) => trace.workflowId === 'review');
+    const traces = await traceStore.listTraces();
+    const reviews = traces.filter((trace) => trace.workflowId === 'review');
+    return limit === undefined ? reviews : reviews.slice(0, limit);
 }
 function safeDurationMs(startedAt, completedAt) {
     const duration = Date.parse(completedAt) - Date.parse(startedAt);
     return Number.isFinite(duration) ? Math.max(0, duration) : 0;
 }
-async function collectFiles(inputPaths, maxFiles) {
+async function collectFiles(inputPaths, maxFiles, basePath) {
     const results = [];
     for (const rawPath of inputPaths) {
-        const filePath = resolve(rawPath);
+        const filePath = resolve(basePath, rawPath);
         await visit(filePath, results, maxFiles);
         if (results.length >= maxFiles) {
             break;

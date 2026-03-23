@@ -1,6 +1,9 @@
-/**
- * Build a success command result.
- */
+import { getErrorMessage } from '@defai.digital/contracts';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+export function createRuntime(options) {
+    const basePath = options.outputDir ?? process.cwd();
+    return createSharedRuntimeService({ basePath });
+}
 export function success(message, data = undefined) {
     return {
         success: true,
@@ -9,9 +12,6 @@ export function success(message, data = undefined) {
         exitCode: 0,
     };
 }
-/**
- * Build a failure command result.
- */
 export function failure(message, data = undefined) {
     return {
         success: false,
@@ -20,17 +20,11 @@ export function failure(message, data = undefined) {
         exitCode: 1,
     };
 }
-/**
- * Build a failure command result from an error.
- */
 export function failureFromError(action, error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     const stack = error instanceof Error ? error.stack : undefined;
     return failure(`Failed to ${action}: ${message}`, stack !== undefined ? { stack } : undefined);
 }
-/**
- * Build a usage error command result.
- */
 export function usageError(usage) {
     return failure(`Usage: ${usage}`);
 }

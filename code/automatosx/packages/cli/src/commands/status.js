@@ -1,8 +1,11 @@
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
-import { success } from '../utils/formatters.js';
-export async function statusCommand(_args, options) {
-    const basePath = options.outputDir ?? process.cwd();
-    const runtime = createSharedRuntimeService({ basePath });
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+export async function statusCommand(args, options) {
+    if (args[0] !== undefined) {
+        return args[0].startsWith('--')
+            ? failure(`Unknown status flag: ${args[0]}.`)
+            : usageError('ax status');
+    }
+    const runtime = createRuntime(options);
     const status = await runtime.getStatus({ limit: options.limit });
     return success([
         'AutomatosX Status',

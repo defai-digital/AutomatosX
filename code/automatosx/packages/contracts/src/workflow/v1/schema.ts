@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_BACKOFF_CAP_MS } from '../../constants.js';
+import { DEFAULT_BACKOFF_CAP_MS, RETRY_DELAY_DEFAULT } from '../../constants.js';
 
 const DEFAULT_RETRY_ON = [
   'timeout',
@@ -50,7 +50,7 @@ export const WorkflowStepSchema = z.object({
   inputSchema: SchemaReferenceSchema.optional(),
   outputSchema: SchemaReferenceSchema.optional(),
   retryPolicy: RetryPolicySchema.optional(),
-  timeout: z.number().int().min(100).max(3_600_000).optional(),
+  timeout: z.number().int().min(RETRY_DELAY_DEFAULT).max(3_600_000).optional(),
   config: z.record(z.unknown()).optional(),
   dependencies: z.array(z.string().max(64)).optional(),
   tool: z.string().max(128).optional(),

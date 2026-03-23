@@ -18,6 +18,9 @@ export {
   type DiscussStepConfigLike,
   type DiscussionProgressEventLike,
   type DiscussionResultLike,
+  type DelegateExecutorLike,
+  type DelegateAgentLike,
+  type DelegateRunResultLike,
   type RealStepExecutorConfig,
 } from './step-executor-factory.js';
 export {

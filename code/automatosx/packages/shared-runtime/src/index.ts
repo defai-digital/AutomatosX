@@ -24,6 +24,7 @@ import {
 import {
   createStateStore,
   type AgentEntry,
+  type FeedbackEntry,
   type MemoryEntry,
   type PolicyEntry,
   type SemanticEntry,
@@ -229,6 +230,7 @@ export interface RuntimeAgentRunRequest {
   agentId: string;
   traceId?: string;
   sessionId?: string;
+  basePath?: string;
   provider?: string;
   model?: string;
   timeoutMs?: number;
@@ -373,6 +375,102 @@ export interface RuntimeTraceAnalysis {
   findings: RuntimeTraceAnalysisFinding[];
 }
 
+export interface RuntimeTraceTreeNode {
+  traceId: string;
+  workflowId: string;
+  surface: TraceSurface;
+  status: TraceRecord['status'];
+  startedAt: string;
+  completedAt?: string;
+  parentTraceId?: string;
+  rootTraceId?: string;
+  children: RuntimeTraceTreeNode[];
+}
+
+export interface RuntimeFeedbackStats {
+  agentId: string;
+  totalFeedback: number;
+  ratingsCount: number;
+  averageRating?: number;
+  ratingDistribution: Record<string, number>;
+  averageDurationMs?: number;
+  latestOutcome?: string;
+}
+
+export interface RuntimeFeedbackOverview {
+  totalFeedback: number;
+  ratedFeedback: number;
+  agentsWithFeedback: number;
+  averageRating?: number;
+  topAgents: RuntimeFeedbackStats[];
+}
+
+export interface RuntimeFeedbackAdjustment {
+  agentId: string;
+  adjustment: number;
+  confidence: number;
+  sampleSize: number;
+  averageRating?: number;
+}
+
+export interface RuntimeAbility {
+  abilityId: string;
+  name: string;
+  category: string;
+  tags: string[];
+  content: string;
+}
+
+export interface RuntimeAbilityInjection {
+  task: string;
+  abilities: RuntimeAbility[];
+  content: string;
+}
+
+export interface RuntimeGitStatusFile {
+  path: string;
+  indexStatus: string;
+  workTreeStatus: string;
+}
+
+export interface RuntimeGitStatusResponse {
+  branch: string;
+  upstream?: string;
+  ahead: number;
+  behind: number;
+  staged: RuntimeGitStatusFile[];
+  unstaged: RuntimeGitStatusFile[];
+  untracked: string[];
+  clean: boolean;
+}
+
+export interface RuntimeCommitPrepareResponse {
+  message: string;
+  stagedPaths: string[];
+  diffStat: string;
+  type: string;
+  scope?: string;
+}
+
+export interface RuntimePrReviewResponse {
+  base: string;
+  head: string;
+  commits: string[];
+  changedFiles: string[];
+  diffStat: string;
+  summary: string;
+}
+
+export interface RuntimePrCreateResponse {
+  title: string;
+  base: string;
+  head: string;
+  draft: boolean;
+  url?: string;
+  output: string;
+  command: string[];
+}
+
 export interface SharedRuntimeService {
   callProvider(request: RuntimeCallRequest): Promise<RuntimeCallResponse>;
   runWorkflow(request: RuntimeWorkflowRequest): Promise<RuntimeWorkflowResponse>;
@@ -384,7 +482,11 @@ export interface SharedRuntimeService {
   planParallel(request: { tasks: RuntimeParallelTask[] }): Promise<RuntimeParallelPlan>;
   runParallel(request: RuntimeParallelRunRequest): Promise<RuntimeParallelRunResponse>;
   getStatus(request?: { limit?: number }): Promise<RuntimeStatusResponse>;
+  gitStatus(request?: { basePath?: string }): Promise<RuntimeGitStatusResponse>;
   gitDiff(request?: { basePath?: string; paths?: string[]; staged?: boolean; commit?: string; stat?: boolean }): Promise<RuntimeGitDiffResponse>;
+  commitPrepare(request?: { basePath?: string; paths?: string[]; stageAll?: boolean; type?: string; scope?: string }): Promise<RuntimeCommitPrepareResponse>;
+  reviewPullRequest(request?: { basePath?: string; base?: string; head?: string }): Promise<RuntimePrReviewResponse>;
+  createPullRequest(request: { title: string; body?: string; base?: string; head?: string; draft?: boolean; basePath?: string }): Promise<RuntimePrCreateResponse>;
   listWorkflows(options?: { workflowDir?: string; basePath?: string }): Promise<Array<{ workflowId: string; name?: string; version: string; steps: number }>>;
   describeWorkflow(request: { workflowId: string; workflowDir?: string; basePath?: string }): Promise<RuntimeWorkflowDescription | undefined>;
   analyzeReview(request: { paths: string[]; focus?: ReviewFocus; maxFiles?: number; traceId?: string; sessionId?: string; basePath?: string; surface?: TraceSurface }): Promise<RuntimeReviewResponse>;
@@ -394,6 +496,7 @@ export interface SharedRuntimeService {
   setConfig(path: string, value: unknown): Promise<Record<string, unknown>>;
   getTrace(traceId: string): Promise<TraceRecord | undefined>;
   analyzeTrace(traceId: string): Promise<RuntimeTraceAnalysis | undefined>;
+  getTraceTree(traceId: string): Promise<RuntimeTraceTreeNode | undefined>;
   listTracesBySession(sessionId: string, limit?: number): Promise<TraceRecord[]>;
   listTraces(limit?: number): Promise<TraceRecord[]>;
   closeStuckTraces(maxAgeMs?: number): Promise<TraceRecord[]>;
@@ -409,6 +512,31 @@ export interface SharedRuntimeService {
   deleteSemantic(key: string, namespace?: string): Promise<boolean>;
   clearSemantic(namespace: string): Promise<number>;
   semanticStats(namespace?: string): Promise<SemanticNamespaceStats[]>;
+  submitFeedback(entry: {
+    selectedAgent: string;
+    recommendedAgent?: string;
+    rating?: number;
+    feedbackType?: string;
+    taskDescription: string;
+    userComment?: string;
+    outcome?: string;
+    durationMs?: number;
+    sessionId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<FeedbackEntry>;
+  listFeedbackHistory(options?: { agentId?: string; limit?: number; since?: string }): Promise<FeedbackEntry[]>;
+  getFeedbackStats(agentId: string): Promise<RuntimeFeedbackStats>;
+  getFeedbackOverview(): Promise<RuntimeFeedbackOverview>;
+  getFeedbackAdjustments(agentId: string): Promise<RuntimeFeedbackAdjustment>;
+  listAbilities(options?: { category?: string; tags?: string[] }): Promise<RuntimeAbility[]>;
+  injectAbilities(request: {
+    task: string;
+    requiredAbilities?: string[];
+    category?: string;
+    tags?: string[];
+    maxAbilities?: number;
+    includeMetadata?: boolean;
+  }): Promise<RuntimeAbilityInjection>;
   registerPolicy(entry: { policyId: string; name: string; enabled?: boolean; metadata?: Record<string, unknown> }): Promise<PolicyEntry>;
   listPolicies(): Promise<PolicyEntry[]>;
   listGuardPolicies(): Promise<RuntimeGuardPolicySummary[]>;
@@ -522,6 +650,44 @@ const BUILTIN_GUARD_POLICIES: StepGuardPolicy[] = [
   },
 ];
 
+const BUILTIN_ABILITIES: RuntimeAbility[] = [
+  {
+    abilityId: 'workflow-first',
+    name: 'Workflow First Planning',
+    category: 'workflow',
+    tags: ['workflow', 'planning', 'orchestration'],
+    content: 'Prefer first-class workflows when the task maps cleanly to ship, architect, audit, qa, or release. Keep inputs explicit and preserve trace/session correlation.',
+  },
+  {
+    abilityId: 'code-review',
+    name: 'Deterministic Code Review',
+    category: 'review',
+    tags: ['review', 'correctness', 'security', 'maintainability'],
+    content: 'Prioritize concrete findings with file references, severity ordering, and missing-test risks. Prefer actionable defects over narrative summaries.',
+  },
+  {
+    abilityId: 'git-hygiene',
+    name: 'Git Hygiene',
+    category: 'git',
+    tags: ['git', 'commit', 'pr', 'review'],
+    content: 'Keep commits scoped, summarize changed files before preparing commit messages, and use diff-based evidence when reviewing branches or pull requests.',
+  },
+  {
+    abilityId: 'agent-routing',
+    name: 'Agent Routing',
+    category: 'agent',
+    tags: ['agent', 'capabilities', 'routing', 'delegation'],
+    content: 'Route work to agents based on explicit capability overlap and keep delegated tasks bounded, observable, and trace-linked.',
+  },
+  {
+    abilityId: 'feedback-loop',
+    name: 'Feedback Loop',
+    category: 'operations',
+    tags: ['feedback', 'quality', 'operations'],
+    content: 'Capture outcome, rating, and operator notes after meaningful runs so routing and quality adjustments can be derived from evidence instead of anecdotes.',
+  },
+];
+
 export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): SharedRuntimeService {
   const basePath = config.basePath ?? process.cwd();
   const traceStore = config.traceStore ?? createTraceStore({ basePath });
@@ -533,9 +699,41 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     maxDiscussionRounds: config.maxDiscussionRounds ?? DEFAULT_DISCUSSION_ROUNDS,
     providerBridge,
   });
+  const providerBridgeCache = new Map<string, ReturnType<typeof createProviderBridge>>();
+  providerBridgeCache.set(basePath, providerBridge);
+  const discussionCoordinatorCache = new Map<string, DiscussionCoordinator>();
+  discussionCoordinatorCache.set(basePath, discussionCoordinator);
+
+  const resolveProviderBridge = (requestBasePath?: string) => {
+    const resolvedBasePath = requestBasePath ?? basePath;
+    const cached = providerBridgeCache.get(resolvedBasePath);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const created = createProviderBridge({ basePath: resolvedBasePath });
+    providerBridgeCache.set(resolvedBasePath, created);
+    return created;
+  };
+
+  const resolveDiscussionCoordinator = (requestBasePath?: string) => {
+    const resolvedBasePath = requestBasePath ?? basePath;
+    const cached = discussionCoordinatorCache.get(resolvedBasePath);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const created = createDiscussionCoordinator({
+      maxConcurrentDiscussions: config.maxConcurrentDiscussions ?? DEFAULT_DISCUSSION_CONCURRENCY,
+      maxProvidersPerDiscussion: config.maxProvidersPerDiscussion ?? DEFAULT_DISCUSSION_PROVIDER_BUDGET,
+      maxDiscussionRounds: config.maxDiscussionRounds ?? DEFAULT_DISCUSSION_ROUNDS,
+      providerBridge: resolveProviderBridge(resolvedBasePath),
+    });
+    discussionCoordinatorCache.set(resolvedBasePath, created);
+    return created;
+  };
 
   return {
     async callProvider(request) {
+      const runtimeProviderBridge = resolveProviderBridge(request.basePath);
       const traceId = request.traceId ?? randomUUID();
       const startedAt = new Date().toISOString();
       const resolvedProvider = request.provider ?? 'claude';
@@ -562,7 +760,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
         },
       });
 
-      const bridgeResult = await providerBridge.executePrompt({
+      const bridgeResult = await runtimeProviderBridge.executePrompt({
         provider: resolvedProvider,
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
@@ -694,7 +892,9 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     },
 
     async runWorkflow(request) {
-      const workflowDir = request.workflowDir ?? findWorkflowDir(request.basePath ?? basePath) ?? join(process.cwd(), 'workflows');
+      const runtimeProviderBridge = resolveProviderBridge(request.basePath);
+      const runtimeDiscussionCoordinator = resolveDiscussionCoordinator(request.basePath);
+      const workflowDir = resolveWorkflowDir(request.workflowDir, request.basePath, basePath);
       const loader = createWorkflowLoader({ workflowsDir: workflowDir });
       const workflow = await loader.load(request.workflowId);
 
@@ -748,9 +948,9 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
         executionId: traceId,
         agentId: request.surface ?? 'cli',
         stepExecutor: createRealStepExecutor({
-          promptExecutor: createPromptExecutor(providerBridge, request.provider, request.model),
+          promptExecutor: createPromptExecutor(runtimeProviderBridge, request.provider, request.model),
           toolExecutor: createToolExecutor(),
-          discussionExecutor: createDiscussionExecutor(traceId, request.provider, discussionCoordinator),
+          discussionExecutor: createDiscussionExecutor(traceId, request.provider, runtimeDiscussionCoordinator),
           defaultProvider: request.provider ?? 'claude',
           defaultModel: request.model ?? 'v14-shared-runtime',
         }),
@@ -797,6 +997,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     },
 
     async runDiscussion(request) {
+      const runtimeDiscussionCoordinator = resolveDiscussionCoordinator(request.basePath);
       const traceId = request.traceId ?? randomUUID();
       const startedAt = new Date().toISOString();
       const providers = normalizeProviders(request.providers, request.provider);
@@ -828,7 +1029,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
         },
       });
 
-      const result = await discussionCoordinator.run({
+      const result = await runtimeDiscussionCoordinator.run({
         traceId,
         provider: request.provider,
         config: {
@@ -1046,6 +1247,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     },
 
     async runAgent(request) {
+      const runtimeProviderBridge = resolveProviderBridge(request.basePath);
       const traceId = request.traceId ?? randomUUID();
       const agent = await stateStore.getAgent(request.agentId);
       const startedAt = new Date().toISOString();
@@ -1122,7 +1324,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
         },
       });
 
-      const bridgeResult = await providerBridge.executePrompt({
+      const bridgeResult = await runtimeProviderBridge.executePrompt({
         provider: resolvedProvider,
         prompt,
         systemPrompt,
@@ -1502,6 +1704,10 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
       };
     },
 
+    gitStatus(request) {
+      return getGitStatus(request?.basePath ?? basePath);
+    },
+
     async gitDiff(request) {
       const diffBasePath = request?.basePath ?? basePath;
       const command = ['diff'];
@@ -1531,8 +1737,37 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
       }
     },
 
+    commitPrepare(request) {
+      return prepareCommit({
+        basePath: request?.basePath ?? basePath,
+        paths: request?.paths,
+        stageAll: request?.stageAll,
+        type: request?.type,
+        scope: request?.scope,
+      });
+    },
+
+    reviewPullRequest(request) {
+      return reviewPullRequest({
+        basePath: request?.basePath ?? basePath,
+        base: request?.base,
+        head: request?.head,
+      });
+    },
+
+    createPullRequest(request) {
+      return createPullRequest({
+        basePath: request.basePath ?? basePath,
+        title: request.title,
+        body: request.body,
+        base: request.base,
+        head: request.head,
+        draft: request.draft,
+      });
+    },
+
     async listWorkflows(options) {
-      const workflowDir = options?.workflowDir ?? findWorkflowDir(options?.basePath ?? basePath) ?? join(process.cwd(), 'workflows');
+      const workflowDir = resolveWorkflowDir(options?.workflowDir, options?.basePath, basePath);
       const loader = createWorkflowLoader({ workflowsDir: workflowDir });
       const workflows = await loader.loadAll();
       return workflows.map((workflow) => ({
@@ -1544,7 +1779,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     },
 
     async describeWorkflow(request) {
-      const workflowDir = request.workflowDir ?? findWorkflowDir(request.basePath ?? basePath) ?? join(process.cwd(), 'workflows');
+      const workflowDir = resolveWorkflowDir(request.workflowDir, request.basePath, basePath);
       const loader = createWorkflowLoader({ workflowsDir: workflowDir });
       const workflow = await loader.load(request.workflowId);
       if (workflow === undefined) {
@@ -1612,6 +1847,11 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
       return analyzeTraceRecord(trace);
     },
 
+    async getTraceTree(traceId) {
+      const traces = await traceStore.listTraces();
+      return buildTraceTree(traces, traceId);
+    },
+
     listTraces(limit) {
       return traceStore.listTraces(limit);
     },
@@ -1621,7 +1861,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
     },
 
     async listTracesBySession(sessionId, limit) {
-      const traces = await traceStore.listTraces(limit === undefined ? undefined : Math.max(limit * 3, limit));
+      const traces = await traceStore.listTraces();
       const filtered = traces.filter((trace) => trace.metadata?.sessionId === sessionId);
       return limit === undefined ? filtered : filtered.slice(0, limit);
     },
@@ -1672,6 +1912,37 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
 
     semanticStats(namespace) {
       return stateStore.semanticStats(namespace);
+    },
+
+    submitFeedback(entry) {
+      return stateStore.submitFeedback(entry);
+    },
+
+    listFeedbackHistory(options) {
+      return stateStore.listFeedback(options);
+    },
+
+    async getFeedbackStats(agentId) {
+      const entries = await stateStore.listFeedback({ agentId });
+      return buildFeedbackStats(agentId, entries);
+    },
+
+    async getFeedbackOverview() {
+      const entries = await stateStore.listFeedback();
+      return buildFeedbackOverview(entries);
+    },
+
+    async getFeedbackAdjustments(agentId) {
+      const entries = await stateStore.listFeedback({ agentId });
+      return buildFeedbackAdjustment(agentId, entries);
+    },
+
+    async listAbilities(options) {
+      return filterAbilities(BUILTIN_ABILITIES, options);
+    },
+
+    async injectAbilities(request) {
+      return injectAbilities(BUILTIN_ABILITIES, request);
     },
 
     registerPolicy(entry) {
@@ -1801,6 +2072,332 @@ function normalizeProviders(explicitProviders: string[] | undefined, providerOve
   }
 
   return ['claude', 'openai', 'gemini'];
+}
+
+function resolveWorkflowDir(
+  explicitWorkflowDir: string | undefined,
+  requestBasePath: string | undefined,
+  defaultBasePath: string,
+): string {
+  const resolvedBasePath = requestBasePath ?? defaultBasePath;
+  return explicitWorkflowDir ?? findWorkflowDir(resolvedBasePath) ?? join(resolvedBasePath, 'workflows');
+}
+
+async function getGitStatus(basePath: string): Promise<RuntimeGitStatusResponse> {
+  try {
+    const { stdout } = await execFileAsync('git', ['status', '--porcelain=1', '--branch'], {
+      cwd: basePath,
+      maxBuffer: 1024 * 1024 * 4,
+    });
+    return parseGitStatus(stdout);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`git status failed: ${message}`);
+  }
+}
+
+async function prepareCommit(request: {
+  basePath: string;
+  paths?: string[];
+  stageAll?: boolean;
+  type?: string;
+  scope?: string;
+}): Promise<RuntimeCommitPrepareResponse> {
+  if (request.stageAll === true) {
+    await execGit(request.basePath, ['add', '-A']);
+  } else if (Array.isArray(request.paths) && request.paths.length > 0) {
+    await execGit(request.basePath, ['add', '--', ...request.paths]);
+  }
+
+  const status = await getGitStatus(request.basePath);
+  const candidatePaths = status.staged.map((entry) => entry.path);
+  const paths = candidatePaths.length > 0
+    ? candidatePaths
+    : Array.from(new Set([
+      ...status.unstaged.map((entry) => entry.path),
+      ...status.untracked,
+    ]));
+
+  if (paths.length === 0) {
+    throw new Error('commit prepare failed: no changed files found');
+  }
+
+  const diffStat = status.staged.length > 0
+    ? (await execGit(request.basePath, ['diff', '--cached', '--stat'])).stdout
+    : (await execGit(request.basePath, ['diff', '--stat'])).stdout;
+  const type = request.type ?? inferCommitType(paths);
+  const scope = request.scope ?? inferCommitScope(paths);
+
+  return {
+    message: `${type}${scope !== undefined ? `(${scope})` : ''}: ${buildCommitSummary(paths, type, scope)}`,
+    stagedPaths: paths,
+    diffStat,
+    type,
+    scope,
+  };
+}
+
+async function reviewPullRequest(request: {
+  basePath: string;
+  base?: string;
+  head?: string;
+}): Promise<RuntimePrReviewResponse> {
+  const base = request.base ?? 'main';
+  const head = request.head ?? 'HEAD';
+  const diffRange = `${base}...${head}`;
+
+  const [diffStatResult, filesResult, commitsResult] = await Promise.all([
+    execGit(request.basePath, ['diff', '--stat', diffRange]),
+    execGit(request.basePath, ['diff', '--name-only', diffRange]),
+    execGit(request.basePath, ['log', '--oneline', `${base}..${head}`]),
+  ]);
+
+  const changedFiles = filesResult.stdout.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+  const commits = commitsResult.stdout.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+
+  return {
+    base,
+    head,
+    commits,
+    changedFiles,
+    diffStat: diffStatResult.stdout,
+    summary: `${changedFiles.length} changed file${changedFiles.length === 1 ? '' : 's'} across ${commits.length} commit${commits.length === 1 ? '' : 's'} from ${base} to ${head}.`,
+  };
+}
+
+async function createPullRequest(request: {
+  basePath: string;
+  title: string;
+  body?: string;
+  base?: string;
+  head?: string;
+  draft?: boolean;
+}): Promise<RuntimePrCreateResponse> {
+  const base = request.base ?? 'main';
+  const head = request.head ?? 'HEAD';
+  const body = request.body ?? (await reviewPullRequest({
+    basePath: request.basePath,
+    base,
+    head,
+  })).summary;
+  const command = ['pr', 'create', '--title', request.title, '--body', body, '--base', base, '--head', head];
+  if (request.draft === true) {
+    command.push('--draft');
+  }
+
+  try {
+    const { stdout, stderr } = await execFileAsync('gh', command, {
+      cwd: request.basePath,
+      maxBuffer: 1024 * 1024 * 4,
+    });
+    const output = `${stdout}${stderr}`.trim();
+    const url = output.split('\n').map((line) => line.trim()).find((line) => /^https?:\/\//.test(line));
+    return {
+      title: request.title,
+      base,
+      head,
+      draft: request.draft ?? false,
+      url,
+      output,
+      command: ['gh', ...command],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`pr create failed: ${message}`);
+  }
+}
+
+function buildTraceTree(traces: TraceRecord[], traceId: string): RuntimeTraceTreeNode | undefined {
+  const traceMap = new Map(traces.map((trace) => [trace.traceId, trace] as const));
+  const anchor = traceMap.get(traceId);
+  if (anchor === undefined) {
+    return undefined;
+  }
+
+  let root = anchor;
+  const seen = new Set<string>();
+  while (typeof root.metadata?.parentTraceId === 'string' && traceMap.has(root.metadata.parentTraceId) && !seen.has(root.traceId)) {
+    seen.add(root.traceId);
+    root = traceMap.get(root.metadata.parentTraceId)!;
+  }
+  if (root === anchor && typeof anchor.metadata?.rootTraceId === 'string' && traceMap.has(anchor.metadata.rootTraceId)) {
+    root = traceMap.get(anchor.metadata.rootTraceId)!;
+  }
+
+  const childMap = new Map<string, TraceRecord[]>();
+  for (const trace of traces) {
+    const parentId = typeof trace.metadata?.parentTraceId === 'string'
+      ? trace.metadata.parentTraceId
+      : typeof trace.metadata?.rootTraceId === 'string' && trace.traceId !== trace.metadata.rootTraceId
+        ? trace.metadata.rootTraceId
+        : undefined;
+    if (parentId === undefined) {
+      continue;
+    }
+    const children = childMap.get(parentId) ?? [];
+    children.push(trace);
+    childMap.set(parentId, children);
+  }
+
+  return toTraceTreeNode(root, childMap, new Set<string>());
+}
+
+function toTraceTreeNode(
+  trace: TraceRecord,
+  childMap: Map<string, TraceRecord[]>,
+  visited: Set<string>,
+): RuntimeTraceTreeNode {
+  if (visited.has(trace.traceId)) {
+    return {
+      traceId: trace.traceId,
+      workflowId: trace.workflowId,
+      surface: trace.surface,
+      status: trace.status,
+      startedAt: trace.startedAt,
+      completedAt: trace.completedAt,
+      parentTraceId: asMetadataString(trace.metadata, 'parentTraceId'),
+      rootTraceId: asMetadataString(trace.metadata, 'rootTraceId'),
+      children: [],
+    };
+  }
+
+  visited.add(trace.traceId);
+  const children = (childMap.get(trace.traceId) ?? [])
+    .sort((left, right) => left.startedAt.localeCompare(right.startedAt))
+    .map((child) => toTraceTreeNode(child, childMap, visited));
+
+  return {
+    traceId: trace.traceId,
+    workflowId: trace.workflowId,
+    surface: trace.surface,
+    status: trace.status,
+    startedAt: trace.startedAt,
+    completedAt: trace.completedAt,
+    parentTraceId: asMetadataString(trace.metadata, 'parentTraceId'),
+    rootTraceId: asMetadataString(trace.metadata, 'rootTraceId'),
+    children,
+  };
+}
+
+function buildFeedbackStats(agentId: string, entries: FeedbackEntry[]): RuntimeFeedbackStats {
+  const ratings = entries.flatMap((entry) => typeof entry.rating === 'number' ? [entry.rating] : []);
+  const ratingDistribution = {
+    '1': ratings.filter((rating) => rating === 1).length,
+    '2': ratings.filter((rating) => rating === 2).length,
+    '3': ratings.filter((rating) => rating === 3).length,
+    '4': ratings.filter((rating) => rating === 4).length,
+    '5': ratings.filter((rating) => rating === 5).length,
+  };
+  const durations = entries.flatMap((entry) => typeof entry.durationMs === 'number' ? [entry.durationMs] : []);
+  return {
+    agentId,
+    totalFeedback: entries.length,
+    ratingsCount: ratings.length,
+    averageRating: ratings.length > 0 ? roundNumber(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) : undefined,
+    ratingDistribution,
+    averageDurationMs: durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : undefined,
+    latestOutcome: entries[0]?.outcome,
+  };
+}
+
+function buildFeedbackOverview(entries: FeedbackEntry[]): RuntimeFeedbackOverview {
+  const byAgent = new Map<string, FeedbackEntry[]>();
+  for (const entry of entries) {
+    const list = byAgent.get(entry.selectedAgent) ?? [];
+    list.push(entry);
+    byAgent.set(entry.selectedAgent, list);
+  }
+
+  const topAgents = [...byAgent.entries()]
+    .map(([agentId, agentEntries]) => buildFeedbackStats(agentId, agentEntries))
+    .sort((left, right) => (right.averageRating ?? 0) - (left.averageRating ?? 0) || right.totalFeedback - left.totalFeedback)
+    .slice(0, 5);
+
+  const ratings = entries.flatMap((entry) => typeof entry.rating === 'number' ? [entry.rating] : []);
+  return {
+    totalFeedback: entries.length,
+    ratedFeedback: ratings.length,
+    agentsWithFeedback: byAgent.size,
+    averageRating: ratings.length > 0 ? roundNumber(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) : undefined,
+    topAgents,
+  };
+}
+
+function buildFeedbackAdjustment(agentId: string, entries: FeedbackEntry[]): RuntimeFeedbackAdjustment {
+  const stats = buildFeedbackStats(agentId, entries);
+  const confidence = Math.min(1, stats.ratingsCount / 5);
+  const averageRating = stats.averageRating;
+  const normalized = averageRating === undefined ? 0 : (averageRating - 3) / 2;
+  return {
+    agentId,
+    adjustment: roundNumber(normalized * 0.5 * confidence),
+    confidence: roundNumber(confidence),
+    sampleSize: stats.ratingsCount,
+    averageRating,
+  };
+}
+
+function filterAbilities(abilities: RuntimeAbility[], options?: { category?: string; tags?: string[] }): RuntimeAbility[] {
+  const tags = normalizeStringArray(options?.tags);
+  return abilities.filter((ability) => {
+    if (options?.category !== undefined && ability.category !== options.category) {
+      return false;
+    }
+    if (tags.length > 0 && !tags.every((tag) => ability.tags.includes(tag))) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function injectAbilities(
+  abilities: RuntimeAbility[],
+  request: {
+    task: string;
+    requiredAbilities?: string[];
+    category?: string;
+    tags?: string[];
+    maxAbilities?: number;
+    includeMetadata?: boolean;
+  },
+): RuntimeAbilityInjection {
+  const required = new Set(normalizeStringArray(request.requiredAbilities));
+  const taskTokens = new Set(tokenizeText(request.task));
+  const ranked = filterAbilities(abilities, { category: request.category, tags: request.tags })
+    .map((ability) => {
+      let score = required.has(ability.abilityId) ? 100 : 0;
+      for (const token of taskTokens) {
+        if (ability.tags.includes(token)) {
+          score += 8;
+        }
+        if (ability.category === token) {
+          score += 4;
+        }
+        if (ability.name.toLowerCase().includes(token)) {
+          score += 2;
+        }
+        if (ability.content.toLowerCase().includes(token)) {
+          score += 1;
+        }
+      }
+      return { ability, score };
+    })
+    .filter((entry) => entry.score > 0 || required.has(entry.ability.abilityId))
+    .sort((left, right) => right.score - left.score || left.ability.name.localeCompare(right.ability.name))
+    .slice(0, Math.max(1, request.maxAbilities ?? 3))
+    .map((entry) => entry.ability);
+
+  const content = ranked.map((ability) => (
+    request.includeMetadata === true
+      ? `## ${ability.name}\nCategory: ${ability.category}\nTags: ${ability.tags.join(', ')}\n${ability.content}`
+      : ability.content
+  )).join('\n\n');
+
+  return {
+    task: request.task,
+    abilities: ranked,
+    content,
+  };
 }
 
 function buildParallelPlan(tasks: RuntimeParallelTask[]): RuntimeParallelPlan {
@@ -2059,6 +2656,127 @@ function normalizeStringArray(values: string[] | undefined): string[] {
   }
 
   return Array.from(new Set(values.map((entry) => entry.trim().toLowerCase()).filter((entry) => entry.length > 0)));
+}
+
+function tokenizeText(value: string): string[] {
+  return tokenizeForMatching(value);
+}
+
+function roundNumber(value: number): number {
+  return Number(value.toFixed(4));
+}
+
+function asMetadataString(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+async function execGit(basePath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+  try {
+    return await execFileAsync('git', args, {
+      cwd: basePath,
+      maxBuffer: 1024 * 1024 * 4,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`git ${args[0] ?? 'command'} failed: ${message}`);
+  }
+}
+
+function parseGitStatus(output: string): RuntimeGitStatusResponse {
+  const lines = output.replace(/\r/g, '').split('\n').filter((line) => line.length > 0);
+  const header = lines[0]?.startsWith('## ') ? lines.shift() ?? '## HEAD' : '## HEAD';
+  const { branch, upstream, ahead, behind } = parseGitBranchHeader(header);
+  const staged: RuntimeGitStatusFile[] = [];
+  const unstaged: RuntimeGitStatusFile[] = [];
+  const untracked: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('?? ')) {
+      untracked.push(line.slice(3));
+      continue;
+    }
+
+    const indexStatus = line[0] ?? ' ';
+    const workTreeStatus = line[1] ?? ' ';
+    const path = line.slice(3).trim();
+    const entry: RuntimeGitStatusFile = { path, indexStatus, workTreeStatus };
+    if (indexStatus !== ' ') {
+      staged.push(entry);
+    }
+    if (workTreeStatus !== ' ') {
+      unstaged.push(entry);
+    }
+  }
+
+  return {
+    branch,
+    upstream,
+    ahead,
+    behind,
+    staged,
+    unstaged,
+    untracked,
+    clean: staged.length === 0 && unstaged.length === 0 && untracked.length === 0,
+  };
+}
+
+function parseGitBranchHeader(header: string): { branch: string; upstream?: string; ahead: number; behind: number } {
+  const content = header.replace(/^##\s+/, '');
+  const [branchPart, statusPart] = content.split(' [', 2);
+  const [branch, upstream] = branchPart.split('...', 2);
+  const status = statusPart?.replace(/\]$/, '') ?? '';
+  const aheadMatch = status.match(/ahead\s+(\d+)/);
+  const behindMatch = status.match(/behind\s+(\d+)/);
+
+  return {
+    branch: branch.trim(),
+    upstream: upstream?.trim() || undefined,
+    ahead: aheadMatch === null ? 0 : Number.parseInt(aheadMatch[1]!, 10),
+    behind: behindMatch === null ? 0 : Number.parseInt(behindMatch[1]!, 10),
+  };
+}
+
+function inferCommitType(paths: string[]): string {
+  if (paths.every((path) => path.endsWith('.md') || path.startsWith('docs/') || path.startsWith('PRD/') || path.startsWith('ADR/'))) {
+    return 'docs';
+  }
+  if (paths.every((path) => path.includes('/tests/') || path.endsWith('.test.ts') || path.endsWith('.test.js'))) {
+    return 'test';
+  }
+  if (paths.some((path) => path === 'package.json' || path.endsWith('/package.json') || path === 'package-lock.json')) {
+    return 'chore';
+  }
+  return 'feat';
+}
+
+function inferCommitScope(paths: string[]): string | undefined {
+  const packageMatch = paths.find((path) => path.startsWith('packages/'));
+  if (packageMatch !== undefined) {
+    const parts = packageMatch.split('/');
+    return parts[1];
+  }
+  if (paths.some((path) => path.startsWith('PRD/') || path.startsWith('ADR/'))) {
+    return 'docs';
+  }
+  return undefined;
+}
+
+function buildCommitSummary(paths: string[], type: string, scope?: string): string {
+  if (type === 'docs') {
+    return 'update docs';
+  }
+  if (type === 'test') {
+    return 'expand test coverage';
+  }
+  if (scope !== undefined && scope.length > 0) {
+    return `update ${scope}`;
+  }
+  const packageMatch = inferCommitScope(paths);
+  if (packageMatch !== undefined && packageMatch !== 'docs') {
+    return `update ${packageMatch}`;
+  }
+  return `update ${paths.length} file${paths.length === 1 ? '' : 's'}`;
 }
 
 function compareParallelTasks(left: RuntimeParallelTask, right: RuntimeParallelTask): number {

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { createSqliteTraceStore } from './sqlite.js';
 const DEFAULT_TRACE_STORE_FILE = join('.automatosx', 'runtime', 'traces.json');
 const traceStoreQueues = new Map();
 const LOCK_WAIT_TIMEOUT_MS = 5_000;
@@ -85,8 +86,16 @@ export class FileTraceStore {
     }
 }
 export function createTraceStore(config) {
-    return new FileTraceStore(config);
+    if (config?.backend === 'json') {
+        return new FileTraceStore(config);
+    }
+    return createSqliteTraceStore({
+        basePath: config?.basePath,
+        dbFile: config?.storageFile,
+    });
 }
+export { createSqliteTraceStore, SqliteTraceStore } from './sqlite.js';
+export { migrateTraceJsonToSqlite } from './migrate.js';
 async function waitForQueue(storageFile, queueMap) {
     const pending = queueMap.get(storageFile);
     if (pending !== undefined) {

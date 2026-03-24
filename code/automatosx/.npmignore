@@ -6,6 +6,8 @@ TODO/
 .claude/
 .gemini/
 .grok/
+.ax-grok/
+.automatosx/
 .vscode/
 .idea/
 AGENTS.md

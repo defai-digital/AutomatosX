@@ -1,10 +1,10 @@
 # Runtime / temp
-.automatosx/logs/
-.automatosx/runtime/
-.automatosx/workflows/
 .tmp/
 tmp/
 automatosx/tmp/
+
+# AutomatosX runtime (entire directory)
+.automatosx/
 
 # Build artifacts
 tsconfig.tsbuildinfo
@@ -22,9 +22,12 @@ node_modules/
 .cursor/
 .vscode/
 .idea/
+
+# AI assistant runtime dirs (may contain API keys, session data)
 .claude/
 .gemini/
 .grok/
+.ax-grok/
 
 # OS
 .DS_Store

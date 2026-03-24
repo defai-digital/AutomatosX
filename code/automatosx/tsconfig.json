@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@defai.digital/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
+      "@defai.digital/mcp-server": [
+        "./packages/mcp-server/src/index.ts"
+      ],
+      "@defai.digital/monitoring": [
+        "./packages/monitoring/src/index.ts"
+      ],
+      "@defai.digital/shared-runtime": [
+        "./packages/shared-runtime/src/index.ts"
+      ],
+      "@defai.digital/state-store": [
+        "./packages/state-store/src/index.ts"
+      ],
+      "@defai.digital/trace-store": [
+        "./packages/trace-store/src/index.ts"
+      ],
+      "@defai.digital/workflow-engine": [
+        "./packages/workflow-engine/src/index.ts"
+      ]
+    },
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
+  },
+  "include": [
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

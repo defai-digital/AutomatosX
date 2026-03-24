@@ -1,0 +1,21 @@
+{
+  "workflowId": "qa",
+  "name": "QA Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "inspect-target",
+      "type": "prompt",
+      "config": {
+        "prompt": "Inspect QA target."
+      }
+    },
+    {
+      "stepId": "record-results",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare QA artifacts."
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+# Internal engineering docs
+ADR/
+BUGS/
+PRD/
+
+# Runtime / temp
+.tmp/
+tmp/
+automatosx/tmp/
+
+# AutomatosX runtime (entire directory)
+.automatosx/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# IDE / AI assistant config
+.cursor/
+.vscode/
+.idea/
+
+# AI assistant runtime dirs (may contain API keys, session data)
+.claude/
+.gemini/
+.grok/
+.ax-grok/
+
+# OS
+.DS_Store

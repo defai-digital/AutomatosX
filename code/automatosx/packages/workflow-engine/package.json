@@ -1,0 +1,26 @@
+{
+  "name": "@defai.digital/workflow-engine",
+  "version": "14.0.0",
+  "description": "Workflow execution engine - executes workflows following contract invariants",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@defai.digital/contracts": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

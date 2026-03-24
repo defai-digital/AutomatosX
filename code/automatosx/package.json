@@ -1,0 +1,46 @@
+{
+  "name": "automatosx-v14",
+  "version": "14.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AutomatosX v14 — monorepo workspace",
+  "workspaces": [
+    "packages/*"
+  ],
+  "packageManager": "npm@10.0.0",
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest run",
+    "test:migration": "vitest run tests/migration",
+    "test:cli": "vitest run packages/cli/tests",
+    "test:shared-runtime": "vitest run packages/shared-runtime/tests",
+    "typecheck": "tsc --build",
+    "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
+    "version:patch": "npm version patch -m 'chore: bump version to %s'",
+    "version:minor": "npm version minor -m 'chore: bump version to %s'",
+    "version:major": "npm version major -m 'chore: bump version to %s'",
+    "version:beta": "npm version prerelease --preid=beta -m 'chore: bump version to %s'",
+    "version:rc": "npm version prerelease --preid=rc -m 'chore: bump version to %s'",
+    "sync:versions": "node tools/sync-versions.js",
+    "prerelease": "npm run sync:versions && npm run typecheck && npm test",
+    "release:standard": "commit-and-tag-version",
+    "release:beta": "commit-and-tag-version --prerelease beta",
+    "release:rc": "commit-and-tag-version --prerelease rc",
+    "release:first": "commit-and-tag-version --first-release",
+    "prepare": "husky || true"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@types/node": "^22.19.15",
+    "commit-and-tag-version": "^12.0.0",
+    "husky": "^9.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "yaml": "^2.8.1",
+    "zod": "^3.25.76"
+  }
+}

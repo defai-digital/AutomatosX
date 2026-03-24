@@ -1,0 +1,24 @@
+{
+  "name": "@defai.digital/contracts",
+  "version": "14.0.0",
+  "description": "Contract schemas and behavioral invariants for AutomatosX - Single Source of Truth",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.js",
+    "./workflow/v1": "./src/workflow/v1/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

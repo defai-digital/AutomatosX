@@ -1042,7 +1042,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
           },
           providerTimeout: 0,
           continueOnProviderFailure: true,
-          minProviders: request.minProviders ?? Math.min(2, providers.length),
+          minProviders: request.minProviders ?? Math.max(1, Math.min(2, providers.length)),
           temperature: 0,
           context: request.context,
           verbose: request.verbose ?? false,
@@ -1609,7 +1609,7 @@ export function createSharedRuntimeService(config: SharedRuntimeConfig = {}): Sh
         }
       }
 
-      const orderedResults = plan.orderedTaskIds.map((taskId) => results.get(taskId)!).filter((entry): entry is RuntimeParallelTaskResult => entry !== undefined);
+      const orderedResults = plan.orderedTaskIds.map((taskId) => results.get(taskId)).filter((entry): entry is RuntimeParallelTaskResult => entry !== undefined);
       const success = orderedResults.every((entry) => entry.status === 'completed');
       const completedAt = new Date().toISOString();
       const aggregatedResult = aggregateParallelResults(orderedResults, resultAggregation);
@@ -3264,8 +3264,8 @@ function createDiscussionCoordinator(config: {
       return Promise.resolve(0);
     }
 
-    const depth = queue.length + 1;
     return new Promise<number>((resolve) => {
+      const depth = queue.length + 1;
       queue.push(() => {
         active += 1;
         resolve(depth);

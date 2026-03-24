@@ -125,11 +125,15 @@ function parseFeedbackInput(input, options) {
     if (taskDescription === undefined) {
         return { value: { selectedAgent, taskDescription: '' }, error: 'Feedback submit requires "taskDescription" or --task.' };
     }
+    const rating = asOptionalNumber(parsed.rating);
+    if (rating !== undefined && (rating < 1 || rating > 5)) {
+        return { value: { selectedAgent, taskDescription }, error: 'Rating must be between 1 and 5.' };
+    }
     return {
         value: {
             selectedAgent,
             recommendedAgent: asStringValue(parsed.recommendedAgent),
-            rating: asOptionalNumber(parsed.rating),
+            rating,
             feedbackType: asStringValue(parsed.feedbackType),
             taskDescription,
             userComment: asStringValue(parsed.userComment),

@@ -165,6 +165,52 @@ describe('step guard engine', () => {
     ]));
   });
 
+  it('does not flag mismatched quote delimiters in secret patterns', async () => {
+    engine.registerPolicy({
+      policyId: 'secrets-only',
+      name: 'Secrets Only',
+      enabled: true,
+      priority: 20,
+      workflowPatterns: ['*'],
+      stepTypes: ['tool'],
+      agentPatterns: ['*'],
+      guards: [
+        {
+          guardId: 'secrets-guard',
+          stepId: '*',
+          position: 'before',
+          gates: ['secrets_detection'],
+          onFail: 'block',
+          enabled: true,
+        },
+      ],
+    });
+
+    const context: StepGuardContext = {
+      executionId: 'exec-2c',
+      agentId: 'agent-1',
+      stepId: 'write-files',
+      stepIndex: 0,
+      totalSteps: 3,
+      stepType: 'tool',
+      previousOutputs: {},
+      stepConfig: {
+        content: 'const api_key = "abcdefgh\'',
+      },
+    };
+
+    const results = await engine.runBeforeGuards(context);
+    expect(results).toHaveLength(1);
+    expect(engine.shouldBlock(results)).toBe(false);
+    expect(results[0]).toMatchObject({
+      guardId: 'secrets-guard',
+      blocked: false,
+    });
+    expect(results[0]?.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ gateId: 'secrets_detection', status: 'PASS' }),
+    ]));
+  });
+
   it('filters policies by agent patterns and preserves priority order', async () => {
     engine.registerPolicy({
       policyId: 'general',

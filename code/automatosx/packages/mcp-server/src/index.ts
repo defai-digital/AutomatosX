@@ -1305,6 +1305,8 @@ export function createMcpServerSurface(config: {
 
   // ── In-process timer state ────────────────────────────────────────────────
   const timerStore = new Map<string, number>(); // name → startTime ms
+  const MAX_ACTIVE_TIMERS = 1000;
+  const TIMER_TTL_MS = 60 * 60 * 1000;
 
   // ── In-process named queues ───────────────────────────────────────────────
   interface QueueRecord { queueId: string; maxSize: number; items: unknown[]; createdAt: string }
@@ -1334,6 +1336,15 @@ export function createMcpServerSurface(config: {
     const samples = metricsStore.get(name) ?? [];
     samples.push({ ts: new Date().toISOString(), value, tags });
     metricsStore.set(name, samples);
+  }
+
+  function cleanupTimers(): void {
+    const now = Date.now();
+    for (const [name, startedAt] of timerStore) {
+      if (now - startedAt > TIMER_TTL_MS) {
+        timerStore.delete(name);
+      }
+    }
   }
 
   const requestedToolPrefix = resolveToolPrefix(config.toolPrefix);
@@ -2187,11 +2198,16 @@ export function createMcpServerSurface(config: {
           // ── Timers ──────────────────────────────────────────────────────
           case 'timer.start': {
             const name = asString(args.name, 'name');
+            cleanupTimers();
+            if (!timerStore.has(name) && timerStore.size >= MAX_ACTIVE_TIMERS) {
+              return { success: false, error: 'Maximum active timers reached; stop existing timers before starting more.' };
+            }
             timerStore.set(name, Date.now());
             return { success: true, data: { name, startedAt: new Date().toISOString() } };
           }
           case 'timer.stop': {
             const name = asString(args.name, 'name');
+            cleanupTimers();
             const start = timerStore.get(name);
             if (start === undefined) return { success: false, error: `Timer "${name}" not found` };
             const elapsedMs = Date.now() - start;
@@ -2371,7 +2387,14 @@ export function createMcpServerSurface(config: {
             return { success: true, data: task };
           }
           case 'task.list': {
-            const statusFilter = asOptionalString(args.status) as TaskRecord['status'] | undefined;
+            const validStatuses: TaskRecord['status'][] = ['pending', 'running', 'completed', 'failed', 'cancelled'];
+            const statusFilter = asOptionalString(args.status);
+            if (statusFilter !== undefined && !validStatuses.includes(statusFilter as TaskRecord['status'])) {
+              return {
+                success: false,
+                error: `Invalid status filter: ${statusFilter}. Valid values: ${validStatuses.join(', ')}`,
+              };
+            }
             const limitN = asOptionalNumber(args.limit) ?? 50;
             let tasks = [...taskQueue.values()];
             if (statusFilter !== undefined) tasks = tasks.filter((t) => t.status === statusFilter);

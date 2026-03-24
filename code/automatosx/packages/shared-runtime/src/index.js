@@ -451,14 +451,14 @@ export function createSharedRuntimeService(config = {}) {
                     consensus: {
                         method: consensusMethod,
                     },
-                    providerTimeout: 0,
-                    continueOnProviderFailure: true,
-                    minProviders: request.minProviders ?? Math.min(2, providers.length),
-                    temperature: 0,
-                    context: request.context,
-                    verbose: request.verbose ?? false,
-                },
-            });
+            providerTimeout: 0,
+            continueOnProviderFailure: true,
+            minProviders: request.minProviders ?? Math.max(1, Math.min(2, providers.length)),
+            temperature: 0,
+            context: request.context,
+            verbose: request.verbose ?? false,
+        },
+      });
             const completedAt = new Date().toISOString();
             await traceStore.upsertTrace({
                 traceId,
@@ -2292,8 +2292,8 @@ function createDiscussionCoordinator(config) {
             active += 1;
             return Promise.resolve(0);
         }
-        const depth = queue.length + 1;
         return new Promise((resolve) => {
+            const depth = queue.length + 1;
             queue.push(() => {
                 active += 1;
                 resolve(depth);

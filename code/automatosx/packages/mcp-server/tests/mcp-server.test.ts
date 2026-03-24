@@ -494,6 +494,29 @@ describe('mcp server surface', () => {
     ]);
   });
 
+  it('validates task list status filters', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const surface = createMcpServerSurface({ basePath: tempDir });
+    const submitted = await surface.invokeTool('task.submit', {
+      taskId: 'task-001',
+      type: 'lint',
+      payload: { file: 'src/index.ts' },
+      priority: 1,
+    });
+    expect(submitted.success).toBe(true);
+
+    const pending = await surface.invokeTool('task.list', { status: 'pending' });
+    expect(pending.success).toBe(true);
+    expect((pending.data as { tasks: unknown[] }).tasks).toHaveLength(1);
+
+    const invalid = await surface.invokeTool('task.list', { status: 'bogus' as 'pending' });
+    expect(invalid.success).toBe(false);
+    expect(typeof invalid.error).toBe('string');
+    expect((invalid.error as string)).toMatch(/Invalid status filter|arguments\.status must be one of:/);
+  });
+
   it('forwards provider overrides for research tools on the MCP surface', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);

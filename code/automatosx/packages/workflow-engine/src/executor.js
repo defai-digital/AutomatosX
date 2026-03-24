@@ -181,11 +181,13 @@ function evaluateConditionSafely(condition, context) {
         }
         const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
         if (comparisonMatch) {
-            const [, varPath, op, rawValue] = comparisonMatch;
-            if (varPath && op && rawValue) {
-                return compareConditionValues(getValueFromPath(context, varPath), parseConditionValue(rawValue.trim()), op);
-            }
+        const [, varPath, op, rawValue] = comparisonMatch;
+        if (varPath && op && rawValue) {
+            const rawConditionValue = rawValue.trim();
+            const expectedValue = rawConditionValue.length === 0 ? undefined : parseConditionValue(rawConditionValue);
+            return compareConditionValues(getValueFromPath(context, varPath), expectedValue, op);
         }
+    }
         const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
         if (varMatch?.[1]) return Boolean(getValueFromPath(context, varMatch[1]));
         if (trimmed === 'true') return true;

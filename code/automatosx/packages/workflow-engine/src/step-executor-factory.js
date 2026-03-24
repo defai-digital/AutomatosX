@@ -554,11 +554,13 @@ function evaluateCondition(condition, context) {
         }
         const comparisonMatch = /^\$\{([^}]+)\}\s*(===|!==|==|!=|>=|<=|>|<)\s*(.+)$/.exec(trimmed);
         if (comparisonMatch) {
-            const [, varPath, op, rawValue] = comparisonMatch;
-            if (varPath && op && rawValue) {
-                return compareFactoryConditionValues(getNestedValue(context, varPath), parseFactoryConditionValue(rawValue.trim()), op);
+                const [, varPath, op, rawValue] = comparisonMatch;
+                if (varPath && op && rawValue) {
+                    const rawConditionValue = rawValue.trim();
+                    const expected = rawConditionValue.length === 0 ? undefined : parseFactoryConditionValue(rawConditionValue);
+                    return compareFactoryConditionValues(getNestedValue(context, varPath), expected, op);
+                }
             }
-        }
         const varMatch = /^\$\{([^}]+)\}$/.exec(trimmed);
         if (varMatch?.[1]) return Boolean(getNestedValue(context, varMatch[1]));
         if (trimmed === 'true') return true;

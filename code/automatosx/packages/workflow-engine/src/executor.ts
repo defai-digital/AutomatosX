@@ -269,7 +269,8 @@ function evaluateConditionSafely(condition: string, context: StepContext): boole
       const [, varPath, op, rawValue] = comparisonMatch;
       if (varPath && op && rawValue) {
         const actualValue = getValueFromPath(context, varPath);
-        const expectedValue = parseConditionValue(rawValue.trim());
+        const rawConditionValue = rawValue.trim();
+        const expectedValue = rawConditionValue.length === 0 ? undefined : parseConditionValue(rawConditionValue);
         return compareConditionValues(actualValue, expectedValue, op);
       }
     }

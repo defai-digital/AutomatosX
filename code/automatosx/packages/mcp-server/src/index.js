@@ -1160,6 +1160,8 @@ export function createMcpServerSurface(config = {}) {
     });
     // ── In-process timer state ────────────────────────────────────────────────
     const timerStore = new Map(); // name → startTime ms
+    const MAX_ACTIVE_TIMERS = 1000;
+    const TIMER_TTL_MS = 60 * 60 * 1000;
     const namedQueues = new Map();
     const mcpServerRegistry = new Map();
     const designArtifacts = [];
@@ -1169,6 +1171,14 @@ export function createMcpServerSurface(config = {}) {
         const samples = metricsStore.get(name) ?? [];
         samples.push({ ts: new Date().toISOString(), value, tags });
         metricsStore.set(name, samples);
+    }
+    function cleanupTimers() {
+        const now = Date.now();
+        for (const [name, startedAt] of timerStore) {
+            if (now - startedAt > TIMER_TTL_MS) {
+                timerStore.delete(name);
+            }
+        }
     }
     const requestedToolPrefix = resolveToolPrefix(config.toolPrefix);
     const aliasDefinitions = requestedToolPrefix === undefined
@@ -1994,11 +2004,16 @@ export function createMcpServerSurface(config = {}) {
                     // ── Timers ──────────────────────────────────────────────────────
                     case 'timer.start': {
                         const name = asString(args.name, 'name');
+                        cleanupTimers();
+                        if (!timerStore.has(name) && timerStore.size >= MAX_ACTIVE_TIMERS) {
+                            return { success: false, error: 'Maximum active timers reached; stop existing timers before starting more.' };
+                        }
                         timerStore.set(name, Date.now());
                         return { success: true, data: { name, startedAt: new Date().toISOString() } };
                     }
                     case 'timer.stop': {
                         const name = asString(args.name, 'name');
+                        cleanupTimers();
                         const start = timerStore.get(name);
                         if (start === undefined)
                             return { success: false, error: `Timer "${name}" not found` };
@@ -2190,7 +2205,11 @@ export function createMcpServerSurface(config = {}) {
                         return { success: true, data: task };
                     }
                     case 'task.list': {
+                        const validStatuses = ['pending', 'running', 'completed', 'failed', 'cancelled'];
                         const statusFilter = asOptionalString(args.status);
+                        if (statusFilter !== undefined && !validStatuses.includes(statusFilter)) {
+                            return { success: false, error: `Invalid status filter: ${statusFilter}. Valid values: ${validStatuses.join(', ')}` };
+                        }
                         const limitN = asOptionalNumber(args.limit) ?? 50;
                         let tasks = [...taskQueue.values()];
                         if (statusFilter !== undefined)

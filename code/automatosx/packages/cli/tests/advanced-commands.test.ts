@@ -194,6 +194,21 @@ describe('advanced retained commands', () => {
     expect(statsResult.message).toContain('Average rating: 5');
   });
 
+  it('rejects feedback ratings outside the 1-5 range', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const submitResult = await feedbackCommand(['submit'], defaultOptions({
+      outputDir: tempDir,
+      agent: 'architect',
+      task: 'Review rollout plan',
+      input: JSON.stringify({ rating: 1000 }),
+    }));
+
+    expect(submitResult.success).toBe(false);
+    expect(submitResult.message).toContain('Rating must be between 1 and 5.');
+  });
+
   it('rejects stray flags and extra args for strict CLI wrappers', async () => {
     const abilityResult = await abilityCommand(['inject', '--bogus'], defaultOptions());
     expect(abilityResult.success).toBe(false);

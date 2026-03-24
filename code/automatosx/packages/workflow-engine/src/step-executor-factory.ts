@@ -877,7 +877,8 @@ function evaluateCondition(condition: string, context: StepContext): boolean {
       const [, varPath, op, rawValue] = comparisonMatch;
       if (varPath && op && rawValue) {
         const actual = getNestedValue(context, varPath);
-        const expected = parseFactoryConditionValue(rawValue.trim());
+        const rawConditionValue = rawValue.trim();
+        const expected = rawConditionValue.length === 0 ? undefined : parseFactoryConditionValue(rawConditionValue);
         return compareFactoryConditionValues(actual, expected, op);
       }
     }

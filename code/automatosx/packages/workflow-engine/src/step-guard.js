@@ -412,7 +412,7 @@ const SECRET_PATTERNS = [
     { pattern: 'private-key', regex: /-----BEGIN [A-Z ]*PRIVATE KEY-----/i },
     { pattern: 'openai-key', regex: /\bsk-[A-Za-z0-9]{16,}\b/ },
     { pattern: 'aws-secret', regex: /\b(?:aws[_-]?secret|secret[_-]?access[_-]?key)\b.{0,20}[A-Za-z0-9/+]{20,}/i },
-    { pattern: 'generic-token', regex: /\b(?:api[_-]?key|token|secret)\b\s*[:=]\s*['"][^'"\n]{8,}['"]/i },
+        { pattern: 'generic-token', regex: /\b(?:api[_-]?key|token|secret)\b\s*[:=]\s*(['"])[^'"\n]{8,}\1/i },
 ];
 function extractChangedPaths(context) {
     const stepConfig = context.stepConfig ?? {};

@@ -1,0 +1,76 @@
+# Development documentation and AI assistant configuration
+PRD/
+BUGS/
+TODO/
+.claude/
+.gemini/
+.grok/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Internal release documentation
+RELEASE-CHECKLIST.md
+RELEASE-NOTES.md
+
+# Development config
+.gitignore
+.gitattributes
+.editorconfig
+.prettierrc*
+.eslintrc*
+tsconfig.json
+vitest.config.ts
+vitest.config.js
+commitlint.config.js
+.versionrc.json
+
+# Source files (only publish dist/ or src/ per package)
+tests/
+__tests__/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build artifacts
+*.tsbuildinfo
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Temporary
+tmp/
+temp/
+*.tmp
+automatosx/tmp/
+
+# Runtime
+.automatosx/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env*

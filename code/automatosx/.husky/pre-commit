@@ -1,0 +1,4 @@
+#!/bin/sh
+# Pre-commit: type check and test
+npm run typecheck
+npm test

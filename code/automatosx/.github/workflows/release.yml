@@ -1,0 +1,238 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 14.1.0, 14.1.0-beta.0)'
+        required: true
+        type: string
+      npm_tag:
+        description: 'npm tag to publish under'
+        required: true
+        type: choice
+        options:
+          - latest
+          - beta
+          - rc
+          - next
+
+permissions:
+  contents: write
+  id-token: write  # Required for npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false  # Queue releases instead of canceling
+
+    env:
+      CI: true
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      # Determine if this is a pre-release (from tag or manual input)
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            NPM_TAG="${{ github.event.inputs.npm_tag }}"
+            if [[ "$NPM_TAG" != "latest" ]]; then
+              IS_PRERELEASE=true
+            else
+              IS_PRERELEASE=false
+            fi
+          else
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+            if [[ "$TAG_NAME" =~ -(beta|rc|alpha)\. ]]; then
+              IS_PRERELEASE=true
+              if [[ "$TAG_NAME" =~ -beta\. ]]; then
+                NPM_TAG=beta
+              elif [[ "$TAG_NAME" =~ -rc\. ]]; then
+                NPM_TAG=rc
+              else
+                NPM_TAG=next
+              fi
+            else
+              IS_PRERELEASE=false
+              NPM_TAG=latest
+            fi
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "NPM_TAG=$NPM_TAG" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+          echo "npm tag: $NPM_TAG"
+          echo "Pre-release: $IS_PRERELEASE"
+
+      - name: Validate version consistency
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_VERSION="${{ steps.prerelease.outputs.VERSION }}"
+
+          echo "package.json version: $PACKAGE_VERSION"
+          echo "Release version: $RELEASE_VERSION"
+
+          if [[ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Version mismatch: package.json has $PACKAGE_VERSION but releasing $RELEASE_VERSION"
+            exit 1
+          fi
+
+          echo "Version consistency validated"
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_ENV: ''  # Override to install devDependencies
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run TypeScript type check
+        run: npm run typecheck
+
+      - name: Run test suite
+        run: npm test
+        timeout-minutes: 10
+        env:
+          NODE_ENV: test
+
+      - name: Check package size
+        run: npm run check:size || echo "Size check not configured"
+
+      - name: Test package
+        run: |
+          echo "Creating package tarball..."
+          cd packages/cli && npm pack
+
+          echo "Package contents:"
+          tar -tzf *.tgz | head -50
+
+          echo "Package size:"
+          ls -lh *.tgz
+
+      - name: Verify package installability
+        run: |
+          cd packages/cli
+          PACKAGE_FILE=$(ls *.tgz)
+          npm install -g "$PACKAGE_FILE"
+          ax --version
+          echo "Package is installable"
+
+      # Publish each public package (with retry for network failures)
+      - name: Publish packages to npm
+        id: publish
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "Publishing @defai.digital/contracts..."
+            cd packages/contracts && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/workflow-engine..."
+            cd packages/workflow-engine && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/shared-runtime..."
+            cd packages/shared-runtime && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/state-store..."
+            cd packages/state-store && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/trace-store..."
+            cd packages/trace-store && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/mcp-server..."
+            cd packages/mcp-server && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/monitoring..."
+            cd packages/monitoring && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "Publishing @defai.digital/cli..."
+            cd packages/cli && npm publish --provenance --access public --tag ${{ steps.prerelease.outputs.NPM_TAG }} && cd ../..
+            echo "NPM_PUBLISH_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Wait for npm to propagate
+        run: |
+          echo "Waiting for npm to propagate..."
+          sleep 30
+          npm view @defai.digital/cli@${{ steps.prerelease.outputs.VERSION }} version || echo "Package not yet visible (may take a few minutes)"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          if [[ -f "CHANGELOG.md" ]]; then
+            CHANGELOG_SECTION=$(sed -n "/## \[${{ steps.prerelease.outputs.VERSION }}\]/,/## \[/p" CHANGELOG.md | sed '$d')
+            if [[ -n "$CHANGELOG_SECTION" ]]; then
+              echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+              echo "$CHANGELOG_SECTION" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.prerelease.outputs.VERSION) || github.ref_name }}
+          name: ${{ format('Release {0}', steps.prerelease.outputs.VERSION) }}
+          body: |
+            ## AutomatosX ${{ steps.prerelease.outputs.VERSION }}
+
+            ${{ steps.release_notes.outputs.CHANGELOG || 'See [CHANGELOG.md](./CHANGELOG.md) for details.' }}
+
+            ---
+
+            ### Installation
+
+            ```bash
+            npm install -g @defai.digital/cli@${{ steps.prerelease.outputs.VERSION }}
+            # or
+            npx @defai.digital/cli@${{ steps.prerelease.outputs.VERSION }}
+            ```
+
+            ### Links
+
+            - **npm**: [npmjs.com/package/@defai.digital/cli](https://www.npmjs.com/package/@defai.digital/cli)
+            - **GitHub**: [github.com/defai-digital/automatosx](https://github.com/defai-digital/automatosx)
+
+            ### Release Info
+
+            - **npm tag**: `${{ steps.prerelease.outputs.NPM_TAG }}`
+            - **Published**: ${{ steps.publish.outputs.NPM_PUBLISH_TIME }}
+            - **Node.js**: >=22.5.0
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE == 'true' }}
+          generate_release_notes: true
+          files: |
+            CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify success
+        run: |
+          echo "Successfully released version ${{ steps.prerelease.outputs.VERSION }}"
+          echo "npm tag: ${{ steps.prerelease.outputs.NPM_TAG }}"
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "Release failed for version ${{ steps.prerelease.outputs.VERSION }}"
+          echo "Check: NPM_TOKEN secret, version already published, test failures, build errors"

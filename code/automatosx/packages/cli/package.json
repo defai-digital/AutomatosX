@@ -1,16 +1,26 @@
 {
   "name": "@defai.digital/cli",
   "version": "14.0.0",
-  "private": true,
+  "description": "AutomatosX v14 CLI — ax command-line tool",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "ax": "./src/index.js",
+    "automatosx": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=22.5.0"
   },
-  "type": "module",
   "dependencies": {
-    "@defai.digital/mcp-server": "file:../mcp-server",
-    "@defai.digital/shared-runtime": "file:../shared-runtime"
-  },
-  "bin": {
-    "ax": "./src/main.js"
+    "@defai.digital/mcp-server": "^14.0.0",
+    "@defai.digital/shared-runtime": "^14.0.0"
   }
 }

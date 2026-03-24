@@ -1,16 +1,22 @@
 {
   "name": "@defai.digital/shared-runtime",
   "version": "14.0.0",
-  "private": true,
-  "type": "module",
   "description": "Shared workflow runtime service used by CLI and MCP surfaces",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "exports": {
     ".": "./src/index.js"
   },
   "dependencies": {
-    "@defai.digital/state-store": "file:../state-store",
-    "@defai.digital/trace-store": "file:../trace-store",
-    "@defai.digital/workflow-engine": "file:../workflow-engine"
+    "@defai.digital/state-store": "^14.0.0",
+    "@defai.digital/trace-store": "^14.0.0",
+    "@defai.digital/workflow-engine": "^14.0.0"
   },
   "engines": {
     "node": ">=22.5.0"

@@ -2,9 +2,12 @@
 PRD/
 BUGS/
 TODO/
+.cursor/
 .claude/
 .gemini/
 .grok/
+.vscode/
+.idea/
 AGENTS.md
 CLAUDE.md
 GEMINI.md

@@ -18,5 +18,13 @@ node_modules/
 *.db-shm
 *.db-wal
 
+# IDE / AI assistant config
+.cursor/
+.vscode/
+.idea/
+.claude/
+.gemini/
+.grok/
+
 # OS
 .DS_Store

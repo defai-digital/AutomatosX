@@ -1,0 +1,23 @@
+{
+  "name": "@defai.digital/trace-store",
+  "version": "14.0.0",
+  "description": "Shared trace persistence for CLI and MCP workflow execution",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

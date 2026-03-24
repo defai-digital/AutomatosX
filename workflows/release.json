@@ -1,0 +1,21 @@
+{
+  "workflowId": "release",
+  "name": "Release Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "inspect-release",
+      "type": "prompt",
+      "config": {
+        "prompt": "Inspect release scope."
+      }
+    },
+    {
+      "stepId": "draft-release-notes",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare release artifacts."
+      }
+    }
+  ]
+}

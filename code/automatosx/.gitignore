@@ -1,3 +1,8 @@
+# Internal engineering docs
+ADR/
+BUGS/
+PRD/
+
 # Runtime / temp
 .tmp/
 tmp/

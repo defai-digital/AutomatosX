@@ -1,6 +1,7 @@
 # Development documentation and AI assistant configuration
-PRD/
+ADR/
 BUGS/
+PRD/
 TODO/
 .cursor/
 .claude/

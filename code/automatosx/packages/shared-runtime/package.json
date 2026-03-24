@@ -1,28 +1,33 @@
 {
   "name": "@defai.digital/shared-runtime",
-  "version": "14.0.0",
+  "version": "14.0.1",
   "description": "Shared workflow runtime service used by CLI and MCP surfaces",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "dependencies": {
-    "@defai.digital/state-store": "^14.0.0",
-    "@defai.digital/trace-store": "^14.0.0",
-    "@defai.digital/workflow-engine": "^14.0.0"
+    "@defai.digital/contracts": "^14.0.1",
+    "@defai.digital/state-store": "^14.0.1",
+    "@defai.digital/trace-store": "^14.0.1",
+    "@defai.digital/workflow-engine": "^14.0.1"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   }
 }

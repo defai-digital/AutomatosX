@@ -1,6 +1,6 @@
 {
   "name": "automatosx-v14",
-  "version": "14.0.0",
+  "version": "14.0.1",
   "private": true,
   "type": "module",
   "description": "AutomatosX v14 — monorepo workspace",
@@ -9,12 +9,12 @@
   ],
   "packageManager": "npm@10.0.0",
   "scripts": {
-    "build": "tsc --build",
+    "build": "for pkg in contracts workflow-engine state-store trace-store shared-runtime monitoring mcp-server cli; do npm run build --workspace=packages/$pkg; done",
     "test": "vitest run",
     "test:migration": "vitest run tests/migration",
     "test:cli": "vitest run packages/cli/tests",
     "test:shared-runtime": "vitest run packages/shared-runtime/tests",
-    "typecheck": "tsc --build",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
     "version:patch": "npm version patch -m 'chore: bump version to %s'",
     "version:minor": "npm version minor -m 'chore: bump version to %s'",

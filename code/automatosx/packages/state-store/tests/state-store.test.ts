@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createStateStore } from '../src/index.js';
+import { ensurePackageBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -80,9 +81,10 @@ describe('state store', () => {
   it('preserves writes across concurrent node processes', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
+    await ensurePackageBuilt('state-store');
 
     const workerSource = [
-      'import { createStateStore } from "./packages/state-store/src/index.js";',
+      'import { createStateStore } from "./packages/state-store/dist/index.js";',
       'const store = createStateStore({ basePath: process.env.AX_BASE_PATH });',
       'const prefix = process.env.AX_PREFIX;',
       'for (let index = 0; index < 20; index += 1) {',

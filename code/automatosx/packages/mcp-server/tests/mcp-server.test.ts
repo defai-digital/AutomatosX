@@ -9,6 +9,7 @@ import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import { initCommand, setupCommand } from '../../cli/src/commands/index.js';
 import type { CLIOptions } from '../../cli/src/types.js';
 import { createMcpServerSurface, createMcpStdioServer } from '../src/index.js';
+import { ensureWorkspaceBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -1037,9 +1038,10 @@ describe('mcp server surface', () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
     await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    await ensureWorkspaceBuilt();
 
     const { stdout } = await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'mcp',
       'tools',
       '--output-dir',

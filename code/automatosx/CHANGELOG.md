@@ -2,6 +2,26 @@
 
 All notable changes to AutomatosX are documented here.
 
+## [14.0.1] - 2026-03-24
+
+### Code Refactoring
+
+- Removed checked-in JavaScript duplicates from package source and test trees so TypeScript is the single source of truth
+- Kept NodeNext-compatible `.js` import specifiers while moving package publishing to compiled `dist/` outputs
+- Added package-local build configs to compile each workspace package in dependency order
+
+### Build System
+
+- Switched package `files`, `exports`, `types`, and CLI `bin` metadata to publish built artifacts from `dist/`
+- Added explicit workspace package build scripts and root build orchestration for `contracts`, `workflow-engine`, `state-store`, `trace-store`, `shared-runtime`, `monitoring`, `mcp-server`, and `cli`
+- Updated internal package dependency ranges to `^14.0.1`
+
+### Tests
+
+- Added a build-aware process-test helper that only compiles workspace packages when required
+- Preserved full regression coverage after the TypeScript-only migration with all 191 tests passing
+- Verified package build, typecheck, and runtime process entrypoints against the `14.0.1` workspace version
+
 ## [14.0.0] - 2026-03-23
 
 ### Features

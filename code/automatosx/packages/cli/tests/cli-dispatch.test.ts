@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CLI_COMMAND_NAMES, CLI_VERSION, executeCli, parseCommand, renderCommandResult } from '../src/index.js';
+import { ensureWorkspaceBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
 type ExecError = Error & { stdout?: string; stderr?: string; code?: number };
@@ -320,9 +321,10 @@ describe('cli dispatch', () => {
   it('runs the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
+    await ensureWorkspaceBuilt();
 
     const { stdout } = await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'version',
       '--format',
       'json',
@@ -336,9 +338,10 @@ describe('cli dispatch', () => {
   it('runs call and status through the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
+    await ensureWorkspaceBuilt();
 
     const { stdout: callStdout } = await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'call',
       'Summarize release risk.',
       '--output-dir',
@@ -349,7 +352,7 @@ describe('cli dispatch', () => {
     expect(callStdout).toContain('Execution mode: simulated');
 
     const { stdout: statusStdout } = await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'status',
       '--output-dir',
       tempDir,
@@ -362,9 +365,10 @@ describe('cli dispatch', () => {
   it('runs doctor through the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
+    await ensureWorkspaceBuilt();
 
     await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'setup',
       '--output-dir',
       tempDir,
@@ -372,7 +376,7 @@ describe('cli dispatch', () => {
       cwd: process.cwd(),
     });
     await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'init',
       '--output-dir',
       tempDir,
@@ -381,7 +385,7 @@ describe('cli dispatch', () => {
     });
 
     const { stdout } = await execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'doctor',
       '--output-dir',
       tempDir,
@@ -398,8 +402,9 @@ describe('cli dispatch', () => {
   });
 
   it('returns process-level failures for invalid invocations', async () => {
+    await ensureWorkspaceBuilt();
     await expect(execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'list',
       '--output-dir',
     ], {
@@ -411,8 +416,9 @@ describe('cli dispatch', () => {
   });
 
   it('returns process-level failures for invalid command-specific arguments', async () => {
+    await ensureWorkspaceBuilt();
     await expect(execFileAsync('node', [
-      'packages/cli/src/main.js',
+      'packages/cli/dist/main.js',
       'review',
       'analyze',
       'packages/cli/src',

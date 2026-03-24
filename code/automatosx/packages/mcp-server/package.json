@@ -1,27 +1,32 @@
 {
   "name": "@defai.digital/mcp-server",
-  "version": "14.0.0",
+  "version": "14.0.1",
   "description": "Minimal MCP-compatible workflow tool surface on shared runtime",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "dependencies": {
-    "@defai.digital/monitoring": "^14.0.0",
-    "@defai.digital/shared-runtime": "^14.0.0"
+    "@defai.digital/contracts": "^14.0.1",
+    "@defai.digital/monitoring": "^14.0.1",
+    "@defai.digital/shared-runtime": "^14.0.1"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   }
 }

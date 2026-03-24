@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": false,
+    "paths": {
+      "@defai.digital/contracts": [
+        "./packages/contracts/dist/index.d.ts"
+      ],
+      "@defai.digital/state-store": [
+        "./packages/state-store/dist/index.d.ts"
+      ],
+      "@defai.digital/trace-store": [
+        "./packages/trace-store/dist/index.d.ts"
+      ],
+      "@defai.digital/workflow-engine": [
+        "./packages/workflow-engine/dist/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "tests/**",
+    "dist/**"
+  ]
+}

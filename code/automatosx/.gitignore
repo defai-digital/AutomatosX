@@ -12,6 +12,7 @@ automatosx/tmp/
 .automatosx/
 
 # Build artifacts
+dist/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 

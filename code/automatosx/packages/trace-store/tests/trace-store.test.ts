@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTraceStore } from '../src/index.js';
+import { ensurePackageBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -57,9 +58,10 @@ describe('trace store', () => {
   it('preserves trace writes across concurrent node processes', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
+    await ensurePackageBuilt('trace-store');
 
     const workerSource = [
-      'import { createTraceStore } from "./packages/trace-store/src/index.js";',
+      'import { createTraceStore } from "./packages/trace-store/dist/index.js";',
       'const store = createTraceStore({ basePath: process.env.AX_BASE_PATH });',
       'const prefix = process.env.AX_PREFIX;',
       'for (let index = 0; index < 20; index += 1) {',

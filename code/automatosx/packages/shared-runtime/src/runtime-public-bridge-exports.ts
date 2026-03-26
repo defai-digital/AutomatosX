@@ -6,8 +6,6 @@ export {
   CANONICAL_SKILL_FILE,
   SKILL_MARKDOWN_FILE,
   BridgeKindSchema,
-  ApprovalSpecSchema,
-  ProvenanceSpecSchema,
   SkillDispatchModeSchema,
   SkillSpecSchema,
   BridgeArtifactSchema,
@@ -20,15 +18,6 @@ export type {
   BridgeSpec,
   SkillSpec,
 } from './bridge-contracts.js';
-
-export {
-  evaluateBridgeExecutionTrust,
-  evaluateSkillExecutionTrust,
-  assertBridgeExecutionAllowed,
-  assertSkillExecutionAllowed,
-  RuntimeGovernanceError,
-  isRuntimeGovernanceError,
-} from './bridge-governance.js';
 
 export {
   createRuntimeBridgeService,
@@ -51,24 +40,4 @@ export type {
   ImportedSkillResult,
   ExportedSkillResult,
   BridgeExecutionResult,
-  RuntimeBridgeService,
 } from './bridge-runtime-service.js';
-
-export {
-  RuntimeTraceGuardSummarySchema,
-  RuntimeGovernanceAggregateEntrySchema,
-  DeniedImportedSkillAggregateEntrySchema,
-  DeniedImportedSkillAggregateSchema,
-  RuntimeGovernanceAggregateSchema,
-  extractRuntimeTraceGuardSummary,
-  buildRuntimeGovernanceAggregate,
-  buildDeniedImportedSkillAggregate,
-} from './runtime-governance-summary.js';
-export type {
-  RuntimeTraceGuardSummary,
-  RuntimeGovernanceAggregateEntry,
-  RuntimeGovernanceAggregate,
-  RuntimeGovernanceTraceLike,
-  DeniedImportedSkillAggregateEntry,
-  DeniedImportedSkillAggregate,
-} from './runtime-governance-summary.js';

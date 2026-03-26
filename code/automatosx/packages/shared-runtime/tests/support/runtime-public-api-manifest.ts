@@ -1,31 +1,21 @@
 export const EXPECTED_RUNTIME_VALUE_EXPORTS = [
   'AUTOMATOSX_DIRECTORY',
-  'ApprovalSpecSchema',
   'BRIDGE_DIRECTORY',
   'BridgeArtifactSchema',
   'BridgeKindSchema',
   'BridgeSpecSchema',
   'CANONICAL_BRIDGE_FILE',
   'CANONICAL_SKILL_FILE',
-  'DeniedImportedSkillAggregateEntrySchema',
-  'DeniedImportedSkillAggregateSchema',
-  'ProvenanceSpecSchema',
-  'RuntimeGovernanceAggregateEntrySchema',
   'RuntimeGovernanceAggregateSchema',
-  'RuntimeGovernanceError',
-  'RuntimeTraceGuardSummarySchema',
   'SKILL_DIRECTORY',
   'SKILL_MARKDOWN_FILE',
   'SkillDispatchModeSchema',
   'SkillSpecSchema',
-  'assertBridgeExecutionAllowed',
-  'assertSkillExecutionAllowed',
   'buildDeniedImportedSkillAggregate',
   'buildRuntimeGovernanceAggregate',
   'createRuntimeBridgeService',
   'createSharedRuntimeService',
   'evaluateBridgeExecutionTrust',
-  'evaluateSkillExecutionTrust',
   'executeBridge',
   'exportSkillDocument',
   'extractRuntimeTraceGuardSummary',
@@ -37,7 +27,6 @@ export const EXPECTED_RUNTIME_VALUE_EXPORTS = [
   'importSkillDocument',
   'installBridgeDefinition',
   'isBundledWorkflowDir',
-  'isRuntimeGovernanceError',
   'isStableCatalogAgentEntry',
   'listDefaultAgentCatalog',
   'listStableAgentCapabilities',
@@ -50,6 +39,54 @@ export const EXPECTED_RUNTIME_VALUE_EXPORTS = [
   'resolveSkillRoot',
   'scoreSkillAgainstQuery',
   'toDefaultAgentRegistrations',
+] as const;
+
+export const EXPECTED_BRIDGE_PUBLIC_VALUE_EXPORTS = [
+  'AUTOMATOSX_DIRECTORY',
+  'BRIDGE_DIRECTORY',
+  'SKILL_DIRECTORY',
+  'CANONICAL_BRIDGE_FILE',
+  'CANONICAL_SKILL_FILE',
+  'SKILL_MARKDOWN_FILE',
+  'BridgeKindSchema',
+  'SkillDispatchModeSchema',
+  'SkillSpecSchema',
+  'BridgeArtifactSchema',
+  'BridgeSpecSchema',
+  'formatSchemaErrors',
+  'resolveBridgeRoot',
+  'resolveSkillRoot',
+  'createRuntimeBridgeService',
+  'installBridgeDefinition',
+  'executeBridge',
+  'importSkillDocument',
+  'exportSkillDocument',
+  'scoreSkillAgainstQuery',
+] as const;
+
+export const EXPECTED_GOVERNANCE_PUBLIC_VALUE_EXPORTS = [
+  'evaluateBridgeExecutionTrust',
+  'RuntimeGovernanceAggregateSchema',
+  'extractRuntimeTraceGuardSummary',
+  'buildRuntimeGovernanceAggregate',
+  'buildDeniedImportedSkillAggregate',
+] as const;
+
+export const EXPECTED_CATALOG_PUBLIC_VALUE_EXPORTS = [
+  'getDefaultAgentCatalogEntry',
+  'getStableAgentEntry',
+  'isStableCatalogAgentEntry',
+  'listDefaultAgentCatalog',
+  'listStableAgentCapabilities',
+  'listStableAgentEntries',
+  'recommendStableAgents',
+  'toDefaultAgentRegistrations',
+  'formatWorkflowInputSummary',
+  'getWorkflowCatalogEntry',
+  'listWorkflowCatalog',
+  'isBundledWorkflowDir',
+  'resolveBundledWorkflowDir',
+  'resolveEffectiveWorkflowDir',
 ] as const;
 
 export const BLOCKED_INTERNAL_VALUE_EXPORTS = [
@@ -68,6 +105,17 @@ export const BLOCKED_INTERNAL_VALUE_EXPORTS = [
   'createWorkflowToolExecutor',
   'buildWorkflowGuardSummary',
   'createRuntimeDependencyResolvers',
+  'ApprovalSpecSchema',
+  'ProvenanceSpecSchema',
+  'evaluateSkillExecutionTrust',
+  'assertBridgeExecutionAllowed',
+  'assertSkillExecutionAllowed',
+  'RuntimeGovernanceError',
+  'isRuntimeGovernanceError',
+  'RuntimeTraceGuardSummarySchema',
+  'RuntimeGovernanceAggregateEntrySchema',
+  'DeniedImportedSkillAggregateEntrySchema',
+  'DeniedImportedSkillAggregateSchema',
 ] as const;
 
 export const EXPECTED_BRIDGE_CONTRACT_PUBLIC_TYPES = [
@@ -93,6 +141,9 @@ export const EXPECTED_BRIDGE_RUNTIME_PUBLIC_TYPES = [
   'ImportedSkillResult',
   'ExportedSkillResult',
   'BridgeExecutionResult',
+] as const;
+
+export const BLOCKED_BRIDGE_RUNTIME_PUBLIC_TYPES = [
   'RuntimeBridgeService',
 ] as const;
 
@@ -127,4 +178,11 @@ export const EXPECTED_WORKFLOW_CATALOG_PUBLIC_TYPES = [
 export const BLOCKED_WORKFLOW_CATALOG_PUBLIC_TYPES = [
   'StableWorkflowCommandId',
   'StableWorkflowRequiredInputMode',
+] as const;
+
+export const INTENTIONALLY_UNCONSUMED_RUNTIME_VALUE_EXPORTS = [
+  'executeBridge',
+  'exportSkillDocument',
+  'importSkillDocument',
+  'installBridgeDefinition',
 ] as const;

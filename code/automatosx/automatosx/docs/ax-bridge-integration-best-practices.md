@@ -18,11 +18,11 @@ The current local prototype already proves the right split:
 
 Current implementation entry points:
 
-- CLI manifest and command metadata are centralized in `src/command-manifest.ts` and `src/command-metadata.ts`.
-- shared-runtime now owns the core bridge and skill service layer in `../shared-runtime/src/bridge-runtime-service.ts`.
-- bridge runtime execution is isolated behind a thin CLI adapter in `src/bridge-runtime.ts`.
-- bridge registry logic is isolated behind a thin CLI adapter in `src/bridge-registry.ts`.
-- skill registry logic is isolated behind a thin CLI adapter in `src/skill-registry.ts`.
+- CLI manifest and command metadata are centralized in `packages/cli/src/command-manifest.ts` and `packages/cli/src/command-metadata.ts`.
+- shared-runtime now owns the core bridge and skill service layer in `packages/shared-runtime/src/bridge-runtime-service.ts`.
+- bridge runtime execution is isolated behind a thin CLI adapter in `packages/cli/src/bridge-runtime.ts`.
+- bridge registry logic is isolated behind a thin CLI adapter in `packages/cli/src/bridge-registry.ts`.
+- skill registry logic is isolated behind a thin CLI adapter in `packages/cli/src/skill-registry.ts`.
 
 This is the correct short-term shape for fast delivery.
 
@@ -31,10 +31,10 @@ This is the correct short-term shape for fast delivery.
 The current repository already has the right extension points for a maintainable integration:
 
 - CLI command registration is centralized through metadata and manifest dispatch.
-- shared runtime state is already exposed through service boundaries in `../shared-runtime/src/runtime-state-service.ts`.
-- MCP tool exposure is centralized in `../mcp-server/src/runtime-state-tool-service.ts`.
-- workflow delegation already has bounded semantics in `../workflow-engine/src/step-executor-factory.ts`.
-- workspace-scoped config is already cached in `../shared-runtime/src/workspace-config-cache.ts`.
+- shared runtime state is already exposed through service boundaries in `packages/shared-runtime/src/runtime-state-service.ts`.
+- MCP tool exposure is centralized in `packages/mcp-server/src/runtime-state-tool-service.ts`.
+- workflow delegation already has bounded semantics in `packages/workflow-engine/src/step-executor-factory.ts`.
+- workspace-scoped config is already cached in `packages/shared-runtime/src/workspace-config-cache.ts`.
 
 The best practice is to reuse these seams instead of inventing a parallel subsystem.
 
@@ -152,9 +152,9 @@ Filesystem layout rules should live in one small module.
 
 Current examples:
 
-- `src/bridge-layout.ts`
-- `src/bridge-registry.ts`
-- `src/skill-registry.ts`
+- `packages/cli/src/bridge-layout.ts`
+- `packages/cli/src/bridge-registry.ts`
+- `packages/cli/src/skill-registry.ts`
 
 Path conventions should not be duplicated across commands, tests, and services.
 
@@ -205,9 +205,9 @@ Rule:
 
 Status: completed
 
-Initial implementation now exists in `../shared-runtime/src/bridge-runtime-service.ts`, with CLI commands calling it through thin wrapper modules.
+Initial implementation now exists in `packages/shared-runtime/src/bridge-runtime-service.ts`, with CLI commands calling it through thin wrapper modules.
 
-Skill dispatch now also lives in `../shared-runtime/src/runtime-skill-service.ts`, so CLI/MCP no longer own bridge-vs-delegate branching.
+Skill dispatch now also lives in `packages/shared-runtime/src/runtime-skill-service.ts`, so CLI/MCP no longer own bridge-vs-delegate branching.
 
 Add a dedicated bridge service in `shared-runtime` for:
 
@@ -225,7 +225,7 @@ Rule:
 
 Status: completed
 
-Initial MCP bridge integration now exists as a dedicated service module in `../mcp-server/src/runtime-bridge-tool-service.ts`, with separate tool definitions for bridge and skill discovery/execution.
+Initial MCP bridge integration now exists as a dedicated service module in `packages/mcp-server/src/runtime-bridge-tool-service.ts`, with separate tool definitions for bridge and skill discovery/execution.
 
 Add a dedicated MCP bridge tool service instead of bloating the current monolithic switch.
 
@@ -250,9 +250,9 @@ Shared runtime skill execution now maps:
 
 Workflow-driven execution now reuses the same shared-runtime semantics instead of reimplementing dispatch inside workflow steps. Current canonical tool-step mappings are:
 
-- `skill.run` -> `runSkill()` in `../shared-runtime/src/runtime-skill-service.ts`
-- `bridge.run` -> bridge resolution + execution in `../shared-runtime/src/bridge-runtime-service.ts`
-- `bridge.install` -> canonical local install + provenance writeback in `../shared-runtime/src/bridge-runtime-service.ts`
+- `skill.run` -> `runSkill()` in `packages/shared-runtime/src/runtime-skill-service.ts`
+- `bridge.run` -> bridge resolution + execution in `packages/shared-runtime/src/bridge-runtime-service.ts`
+- `bridge.install` -> canonical local install + provenance writeback in `packages/shared-runtime/src/bridge-runtime-service.ts`
 
 Bridge the skill dispatch model into workflow semantics:
 
@@ -292,9 +292,9 @@ Workflow-native governance currently reuses shared-runtime outputs instead of re
 - `ax doctor` now treats recent runtime-governance blocks as a first-class health signal instead of hiding them behind raw trace inspection
 - `ax doctor` data payload and `/api/state` now carry a structured runtime-governance aggregate so external consumers do not need to parse raw trace metadata
 - `ax doctor --format json` now exposes canonical `data.governance` only
-- the CLI package governance contract is documented in `docs/governance-surface-contract.md`
-- the alias-removal outcome is summarized in `docs/governance-migration-note.md`
-- repo-level follow-up wording is staged in `docs/governance-upstream-sync-note.md`
+- the repo-level governance contract is documented in `./governance-surface-contract.md`
+- the alias-removal outcome is summarized in `./governance-migration-note.md`
+- repo-level follow-up wording is staged in `./governance-upstream-sync-note.md`
 
 Current config shape:
 

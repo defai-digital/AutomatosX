@@ -53,24 +53,24 @@ Recommended ADR decision statement:
 
 Implementation surfaces:
 
-- `src/commands/governance.ts`
-- `src/commands/doctor.ts`
-- `src/commands/status.ts`
-- `src/commands/monitor.ts`
-- `src/commands/monitor-state.ts`
+- `packages/cli/src/commands/governance.ts`
+- `packages/cli/src/commands/doctor.ts`
+- `packages/cli/src/commands/status.ts`
+- `packages/cli/src/commands/monitor.ts`
+- `packages/cli/src/commands/monitor-state.ts`
 
 Contract / docs:
 
-- `docs/governance-surface-contract.md`
-- `docs/governance-migration-note.md`
-- `docs/ax-bridge-integration-best-practices.md`
+- `./governance-surface-contract.md`
+- `./governance-migration-note.md`
+- `./ax-bridge-integration-best-practices.md`
 
 Verification gates:
 
-- `tests/governance-surface-parity.test.ts`
-- `tests/governance-alias-audit.test.ts`
-- `tests/doctor-command.test.ts`
-- process-level doctor JSON tests in `tests/cli-dispatch.test.ts`
+- `packages/cli/tests/governance-surface-parity.test.ts`
+- `packages/cli/tests/governance-alias-audit.test.ts`
+- `packages/cli/tests/doctor-command.test.ts`
+- process-level doctor JSON tests in `packages/cli/tests/cli-dispatch.test.ts`
 
 ## Suggested Upstream Wording
 

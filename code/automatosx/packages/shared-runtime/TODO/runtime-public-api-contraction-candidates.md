@@ -35,6 +35,20 @@ Removed in type contraction batch:
 - `StableWorkflowCommandId`
 - `StableWorkflowRequiredInputMode`
 
+Removed in governance contraction batch:
+- `ApprovalSpecSchema`
+- `ProvenanceSpecSchema`
+- `evaluateSkillExecutionTrust`
+- `assertBridgeExecutionAllowed`
+- `assertSkillExecutionAllowed`
+- `RuntimeGovernanceError`
+- `isRuntimeGovernanceError`
+- `RuntimeTraceGuardSummarySchema`
+- `RuntimeGovernanceAggregateEntrySchema`
+- `DeniedImportedSkillAggregateEntrySchema`
+- `DeniedImportedSkillAggregateSchema`
+- `RuntimeBridgeService`
+
 Why these are candidates:
 - they are low-level bridge/governance helpers
 - they are not imported from `@defai.digital/shared-runtime` by current repo source consumers
@@ -43,7 +57,9 @@ Why these are candidates:
 Guardrail:
 - `tests/support/runtime-public-api-manifest.ts`
 - `runtime-public-api.test.ts`
+- `runtime-public-barrel-surface.test.ts`
 - `runtime-public-type-surface.test.ts`
+- `runtime-public-consumer-audit.test.ts`
 - entrypoint compilation in `shared-runtime`, `cli`, and `mcp-server`
 
 Exit criteria:
@@ -54,4 +70,9 @@ Exit criteria:
 
 Current note:
 - the initial contraction phase is complete
+- the repo now keeps a small, explicit set of intentionally unconsumed direct helpers:
+  - `installBridgeDefinition`
+  - `executeBridge`
+  - `importSkillDocument`
+  - `exportSkillDocument`
 - future changes should be treated as explicit public API decisions, not opportunistic cleanup

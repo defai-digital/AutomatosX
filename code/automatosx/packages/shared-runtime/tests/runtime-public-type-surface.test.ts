@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BLOCKED_BRIDGE_CONTRACT_TYPES,
+  BLOCKED_BRIDGE_RUNTIME_PUBLIC_TYPES,
   BLOCKED_REVIEW_PUBLIC_TYPES,
   BLOCKED_WORKFLOW_CATALOG_PUBLIC_TYPES,
   EXPECTED_AGENT_CATALOG_PUBLIC_TYPES,
@@ -16,6 +17,7 @@ import {
 const SHARED_RUNTIME_SRC = join(import.meta.dirname, '..', 'src');
 const BRIDGE_EXPORTS_PATH = join(SHARED_RUNTIME_SRC, 'runtime-public-bridge-exports.ts');
 const CATALOG_EXPORTS_PATH = join(SHARED_RUNTIME_SRC, 'runtime-public-catalog-exports.ts');
+const GOVERNANCE_EXPORTS_PATH = join(SHARED_RUNTIME_SRC, 'runtime-public-governance-exports.ts');
 
 function parseTypeExportBlocks(source: string): Map<string, string[]> {
   const blocks = new Map<string, string[]>();
@@ -44,11 +46,15 @@ function extractTypeExportBlock(source: string, relativeModulePath: string): str
 
 describe('shared-runtime public type surface', () => {
   it('keeps contracted bridge/governance types out of the public bridge barrel', () => {
-    const source = readFileSync(BRIDGE_EXPORTS_PATH, 'utf8');
-    const bridgeContractsTypeBlock = extractTypeExportBlock(source, './bridge-contracts.js');
-    const bridgeRuntimeTypeBlock = extractTypeExportBlock(source, './bridge-runtime-service.js');
-    const bridgeGovernanceTypeBlock = extractTypeExportBlock(source, './bridge-governance.js');
-    const governanceSummaryTypeBlock = extractTypeExportBlock(source, './runtime-governance-summary.js');
+    const bridgeSource = readFileSync(BRIDGE_EXPORTS_PATH, 'utf8');
+    const governanceSource = readFileSync(GOVERNANCE_EXPORTS_PATH, 'utf8');
+    const bridgeContractsTypeBlock = extractTypeExportBlock(bridgeSource, './bridge-contracts.js');
+    const bridgeRuntimeTypeBlock = extractTypeExportBlock(bridgeSource, './bridge-runtime-service.js');
+    const bridgeGovernanceTypeBlock = extractTypeExportBlock(bridgeSource, './bridge-governance.js');
+    const governanceSummaryTypeBlock = extractTypeExportBlock(
+      governanceSource,
+      './runtime-governance-summary.js',
+    );
 
     expect(bridgeContractsTypeBlock).toEqual([...EXPECTED_BRIDGE_CONTRACT_PUBLIC_TYPES]);
     expect(bridgeRuntimeTypeBlock).toEqual([...EXPECTED_BRIDGE_RUNTIME_PUBLIC_TYPES]);
@@ -57,6 +63,9 @@ describe('shared-runtime public type surface', () => {
 
     for (const symbol of BLOCKED_BRIDGE_CONTRACT_TYPES) {
       expect(bridgeContractsTypeBlock).not.toContain(symbol);
+    }
+    for (const symbol of BLOCKED_BRIDGE_RUNTIME_PUBLIC_TYPES) {
+      expect(bridgeRuntimeTypeBlock).not.toContain(symbol);
     }
   });
 

@@ -56,10 +56,10 @@ it must now read:
 
 The current implementation is protected by:
 
-- `tests/governance-surface-parity.test.ts`
-- `tests/governance-alias-audit.test.ts`
-- `tests/doctor-command.test.ts`
-- process-level doctor JSON tests in `tests/cli-dispatch.test.ts`
+- `packages/cli/tests/governance-surface-parity.test.ts`
+- `packages/cli/tests/governance-alias-audit.test.ts`
+- `packages/cli/tests/doctor-command.test.ts`
+- process-level doctor JSON tests in `packages/cli/tests/cli-dispatch.test.ts`
 
 ## Operator Guidance
 

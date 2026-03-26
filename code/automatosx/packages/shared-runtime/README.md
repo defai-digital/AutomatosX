@@ -24,6 +24,7 @@ The package entrypoint is a facade:
 Curated public exports are split by domain:
 
 - [src/runtime-public-bridge-exports.ts](./src/runtime-public-bridge-exports.ts)
+- [src/runtime-public-governance-exports.ts](./src/runtime-public-governance-exports.ts)
 - [src/runtime-public-catalog-exports.ts](./src/runtime-public-catalog-exports.ts)
 
 Internal support modules such as execution, workflow runner, provider-call helpers, dependency resolvers, and guard-summary builders are intentionally kept off the package entrypoint.
@@ -38,8 +39,12 @@ Current guardrails:
   Canonical manifest for intended public value exports, blocked internal helpers, and allowed type barrels.
 - [tests/runtime-public-api.test.ts](./tests/runtime-public-api.test.ts)
   Locks the value-export surface and blocks internal helper leakage against the manifest.
+- [tests/runtime-public-barrel-surface.test.ts](./tests/runtime-public-barrel-surface.test.ts)
+  Locks the bridge, governance, and catalog barrels as separate value-export surfaces instead of only checking the flattened entrypoint.
 - [tests/runtime-public-type-surface.test.ts](./tests/runtime-public-type-surface.test.ts)
   Locks bridge, governance, review, catalog, and workflow type barrels against the manifest.
+- [tests/runtime-public-consumer-audit.test.ts](./tests/runtime-public-consumer-audit.test.ts)
+  Audits repo consumers of `@defai.digital/shared-runtime` so low-level public helpers do not linger without an explicit reason.
 
 When changing the package entrypoint:
 
@@ -56,12 +61,14 @@ Recent cleanup removed low-level helpers from the package entrypoint when they h
 - governance plumbing such as trust-config readers and provenance builders
 - unused catalog/workflow-path re-exports
 - unused type exports that were broader than the actual consumer surface
+- unused governance schemas and runtime-governance helpers that were only relevant to internal plumbing
 
 The result is a curated public API with:
 
 - explicit value-export snapshot coverage
 - explicit blocked-internal helper coverage
 - explicit type-barrel coverage
+- explicit repo-consumer audit coverage
 
 The running record is kept in:
 

@@ -67,11 +67,11 @@ These surfaces should not invent a second governance schema:
 
 The CLI package keeps this contract stable through:
 
-- `tests/governance-surface-parity.test.ts`
+- `packages/cli/tests/governance-surface-parity.test.ts`
   verifies canonical aggregate parity across governance, doctor, status, and monitor
-- `tests/governance-alias-audit.test.ts`
+- `packages/cli/tests/governance-alias-audit.test.ts`
   verifies the removed legacy field name does not reappear
-- process-level doctor JSON tests in `tests/cli-dispatch.test.ts`
+- process-level doctor JSON tests in `packages/cli/tests/cli-dispatch.test.ts`
   verify the main entrypoint returns canonical `data.governance`
 
 ## Maintenance Rule

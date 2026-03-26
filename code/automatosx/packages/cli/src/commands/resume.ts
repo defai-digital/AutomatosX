@@ -1,8 +1,12 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
-import { isRecord } from '../utils/validation.js';
+import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
+import {
+  asOptionalNumber,
+  asOptionalRecord,
+  asOptionalString,
+  asStringArray,
+} from '../utils/validation.js';
+import { resolveEffectiveWorkflowDir } from '../workflow-paths.js';
 
 export async function resumeCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const sourceTraceId = args[0] ?? options.traceId;
@@ -10,7 +14,7 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
     return usageError('ax resume <trace-id>');
   }
 
-  const basePath = options.outputDir ?? process.cwd();
+  const basePath = resolveCliBasePath(options);
   const runtime = createRuntime(options);
   const trace = await runtime.getTrace(sourceTraceId);
   if (trace === undefined) {
@@ -20,28 +24,76 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   const resumedTraceId = options.traceId !== undefined && options.traceId !== sourceTraceId
     ? options.traceId
     : undefined;
+  const traceInput = asOptionalRecord(trace.input) ?? {};
+  const traceMetadata = trace.metadata;
+  const providers = asStringArray(traceInput.providers);
+  const commonDiscussionRequest = {
+    traceId: resumedTraceId,
+    sessionId: asOptionalString(traceMetadata?.sessionId) ?? options.sessionId,
+    basePath,
+    provider: asOptionalString(traceMetadata?.provider) ?? options.provider,
+    surface: 'cli' as const,
+    pattern: asOptionalString(traceInput.pattern),
+    rounds: asOptionalNumber(traceInput.rounds),
+    providers,
+    context: asOptionalString(traceInput.context),
+    minProviders: asOptionalNumber(traceInput.minProviders) ?? (
+      providers !== undefined
+        ? Math.min(2, Math.max(1, providers.length))
+        : undefined
+    ),
+  };
 
-  if (trace.workflowId === 'discuss') {
-    const input = isRecord(trace.input) ? trace.input : {};
-    const topic = typeof input.topic === 'string' ? input.topic : undefined;
+  if (trace.workflowId === 'discuss' || trace.workflowId === 'discuss.recursive.root') {
+    const topic = asOptionalString(traceInput.topic);
     if (topic === undefined) {
       return failure(`Trace ${sourceTraceId} cannot be resumed because the original discussion topic is missing.`);
     }
 
     const result = await runtime.runDiscussion({
       topic,
-      traceId: resumedTraceId,
-      sessionId: typeof trace.metadata?.sessionId === 'string' ? trace.metadata.sessionId : options.sessionId,
-      basePath,
-      provider: typeof trace.metadata?.provider === 'string' ? trace.metadata.provider : options.provider,
-      surface: 'cli',
-      pattern: typeof input.pattern === 'string' ? input.pattern : undefined,
-      rounds: typeof input.rounds === 'number' ? input.rounds : undefined,
-      providers: Array.isArray(input.providers) ? input.providers.filter((entry): entry is string => typeof entry === 'string') : undefined,
-      context: typeof input.context === 'string' ? input.context : undefined,
-      minProviders: Array.isArray(input.providers)
-        ? Math.min(2, Math.max(1, input.providers.filter((entry): entry is string => typeof entry === 'string').length))
-        : undefined,
+      ...commonDiscussionRequest,
+    });
+
+    if (!result.success) {
+      return failure(`Resume failed for ${sourceTraceId}: ${result.error?.message ?? 'Unknown discussion error'}`, result);
+    }
+
+    return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
+  }
+
+  if (trace.workflowId === 'discuss.quick' || trace.workflowId === 'discuss.recursive.child') {
+    const topic = asOptionalString(traceInput.topic);
+    if (topic === undefined) {
+      return failure(`Trace ${sourceTraceId} cannot be resumed because the original discussion topic is missing.`);
+    }
+
+    const result = await runtime.runDiscussionQuick({
+      topic,
+      ...commonDiscussionRequest,
+    });
+
+    if (!result.success) {
+      return failure(`Resume failed for ${sourceTraceId}: ${result.error?.message ?? 'Unknown discussion error'}`, result);
+    }
+
+    return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
+  }
+
+  if (trace.workflowId === 'discuss.recursive') {
+    const topic = asOptionalString(traceInput.topic);
+    const subtopics = asStringArray(traceInput.subtopics) ?? [];
+    if (topic === undefined) {
+      return failure(`Trace ${sourceTraceId} cannot be resumed because the original discussion topic is missing.`);
+    }
+    if (subtopics.length === 0) {
+      return failure(`Trace ${sourceTraceId} cannot be resumed because the original recursive subtopics are missing.`);
+    }
+
+    const result = await runtime.runDiscussionRecursive({
+      topic,
+      subtopics,
+      ...commonDiscussionRequest,
     });
 
     if (!result.success) {
@@ -52,18 +104,17 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   }
 
   if (trace.workflowId === 'review') {
-    const input = isRecord(trace.input) ? trace.input : {};
-    const paths = Array.isArray(input.paths) ? input.paths.filter((entry): entry is string => typeof entry === 'string') : [];
+    const paths = asStringArray(traceInput.paths) ?? [];
     if (paths.length === 0) {
       return failure(`Trace ${sourceTraceId} cannot be resumed because the original review paths are missing.`);
     }
 
     const result = await runtime.analyzeReview({
       paths,
-      focus: normalizeReviewFocus(input.focus),
-      maxFiles: typeof input.maxFiles === 'number' ? input.maxFiles : undefined,
+      focus: normalizeReviewFocus(traceInput.focus),
+      maxFiles: asOptionalNumber(traceInput.maxFiles),
       traceId: resumedTraceId,
-      sessionId: typeof trace.metadata?.sessionId === 'string' ? trace.metadata.sessionId : options.sessionId,
+      sessionId: asOptionalString(traceMetadata?.sessionId) ?? options.sessionId,
       basePath,
       surface: 'cli',
     });
@@ -75,9 +126,9 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
     return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
   }
 
-  const workflowDir = typeof trace.metadata?.workflowDir === 'string'
-    ? trace.metadata.workflowDir
-    : options.workflowDir ?? resolveWorkflowDir();
+  const workflowDir = asOptionalString(traceMetadata?.workflowDir)
+    ?? options.workflowDir
+    ?? resolveEffectiveWorkflowDir({ basePath });
   if (workflowDir === undefined) {
     return failure(`Trace ${sourceTraceId} cannot be resumed because no workflow directory is available.`);
   }
@@ -85,12 +136,12 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   const result = await runtime.runWorkflow({
     workflowId: trace.workflowId,
     traceId: resumedTraceId,
-    sessionId: typeof trace.metadata?.sessionId === 'string' ? trace.metadata.sessionId : options.sessionId,
+    sessionId: asOptionalString(traceMetadata?.sessionId) ?? options.sessionId,
     workflowDir,
     basePath,
-    provider: typeof trace.metadata?.provider === 'string' ? trace.metadata.provider : options.provider,
-    model: typeof trace.metadata?.model === 'string' ? trace.metadata.model : 'v14-runtime-bridge',
-    input: isRecord(trace.input) ? trace.input : {},
+    provider: asOptionalString(traceMetadata?.provider) ?? options.provider,
+    model: asOptionalString(traceMetadata?.model) ?? 'v14-runtime-bridge',
+    input: traceInput,
     surface: 'cli',
   });
 
@@ -99,17 +150,6 @@ export async function resumeCommand(args: string[], options: CLIOptions): Promis
   }
 
   return success(`Resumed trace ${sourceTraceId} as ${result.traceId}.`, result);
-}
-
-function resolveWorkflowDir(): string | undefined {
-  const candidateDirs = ['workflows', '.automatosx/workflows', 'examples/workflows'];
-  for (const dir of candidateDirs) {
-    const candidate = join(process.cwd(), dir);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
 }
 
 function normalizeReviewFocus(value: unknown): 'all' | 'security' | 'correctness' | 'maintainability' | undefined {

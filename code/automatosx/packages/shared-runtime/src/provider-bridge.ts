@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { z } from 'zod';
+import { readCachedWorkspaceConfig } from './workspace-config-cache.js';
 
 export type ProviderExecutionMode = 'auto' | 'simulate' | 'require-real';
 export type ProviderExecutionProtocol = 'json-stdio' | 'raw-stdin' | 'argv-last';
@@ -52,6 +52,27 @@ const PROVIDER_NATIVE_COMMANDS: Record<string, { command: string; protocol: Prov
   grok: { command: 'ax-grok', protocol: 'raw-stdin' },
 };
 
+const nativeCommandAvailabilityCache = new Map<string, boolean>();
+const providerUsageSchema = z.object({
+  inputTokens: z.number().finite().optional(),
+  outputTokens: z.number().finite().optional(),
+  totalTokens: z.number().finite().optional(),
+}).passthrough();
+const stringArraySchema = z.array(z.string().min(1));
+const recordSchema = z.record(z.string(), z.unknown());
+const providerOutputSchema = z.object({
+  success: z.boolean().optional(),
+  provider: z.string().optional(),
+  model: z.string().optional(),
+  content: z.string().optional(),
+  text: z.string().optional(),
+  output: z.string().optional(),
+  latencyMs: z.number().finite().optional(),
+  usage: providerUsageSchema.optional(),
+  error: z.string().optional(),
+  errorCode: z.string().optional(),
+}).passthrough();
+
 export function createProviderBridge(config: {
   basePath: string;
   env?: NodeJS.ProcessEnv;
@@ -99,7 +120,7 @@ async function resolveProviderCommand(
   env: NodeJS.ProcessEnv,
 ): Promise<ProviderCommandConfig | undefined> {
   const providerIds = getProviderLookupOrder(provider);
-  const workspaceConfig = await readWorkspaceConfig(basePath);
+  const workspaceConfig = await readCachedWorkspaceConfig(basePath);
 
   for (const providerId of providerIds) {
     const configured = getConfiguredProviderCommand(workspaceConfig, providerId);
@@ -264,7 +285,11 @@ function normalizeProviderOutput(
   }
 
   try {
-    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const parsedResult = providerOutputSchema.safeParse(JSON.parse(trimmed));
+    if (!parsedResult.success) {
+      return buildRawTextProviderResponse(trimmed, request, latencyMs);
+    }
+    const parsed = parsedResult.data;
     const content = firstString(parsed.content, parsed.text, typeof parsed.output === 'string' ? parsed.output : undefined);
     return {
       success: parsed.success !== false,
@@ -278,20 +303,28 @@ function normalizeProviderOutput(
       mode: 'subprocess',
     };
   } catch {
-    return {
-      success: true,
-      content: trimmed,
-      provider: request.provider,
-      model: request.model,
-      latencyMs,
-      usage: {
-        inputTokens: tokenize(request.prompt),
-        outputTokens: tokenize(trimmed),
-        totalTokens: tokenize(request.prompt) + tokenize(trimmed),
-      },
-      mode: 'subprocess',
-    };
+    return buildRawTextProviderResponse(trimmed, request, latencyMs);
   }
+}
+
+function buildRawTextProviderResponse(
+  trimmed: string,
+  request: ProviderExecutionRequest,
+  latencyMs: number,
+): ProviderExecutionResponse {
+  return {
+    success: true,
+    content: trimmed,
+    provider: request.provider,
+    model: request.model,
+    latencyMs,
+    usage: {
+      inputTokens: tokenize(request.prompt),
+      outputTokens: tokenize(trimmed),
+      totalTokens: tokenize(request.prompt) + tokenize(trimmed),
+    },
+    mode: 'subprocess',
+  };
 }
 
 function normalizeUsage(
@@ -367,12 +400,7 @@ function getNativeProviderCommand(
     return undefined;
   }
 
-  const lookupCommand = process.platform === 'win32' ? 'where' : 'which';
-  const detection = spawnSync(lookupCommand, [preset.command], {
-    env,
-    stdio: 'ignore',
-  });
-  if (detection.status !== 0) {
+  if (!isNativeCommandAvailable(env, preset.command)) {
     return undefined;
   }
 
@@ -415,15 +443,29 @@ function nativeAdaptersEnabled(
   return providers?.nativeAdapters === true;
 }
 
-async function readWorkspaceConfig(basePath: string): Promise<Record<string, unknown>> {
-  const configPath = join(basePath, '.automatosx', 'config.json');
-  try {
-    const raw = await readFile(configPath, 'utf8');
-    const parsed = JSON.parse(raw);
-    return asRecord(parsed) ?? {};
-  } catch {
-    return {};
+function isNativeCommandAvailable(env: NodeJS.ProcessEnv, command: string): boolean {
+  const lookupCommand = process.platform === 'win32' ? 'where' : 'which';
+  const cacheKey = [
+    process.platform,
+    lookupCommand,
+    command,
+    env.PATH ?? '',
+    env.PATHEXT ?? '',
+  ].join('\n');
+  const cached = nativeCommandAvailabilityCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
   }
+
+  const detection = spawnSync(lookupCommand, [command], {
+    env,
+    stdio: 'ignore',
+  });
+  const available = detection.status === 0;
+  if (available) {
+    nativeCommandAvailabilityCache.set(cacheKey, true);
+  }
+  return available;
 }
 
 function parseArgs(value: string | undefined): string[] {
@@ -434,8 +476,8 @@ function parseArgs(value: string | undefined): string[] {
   const trimmed = value.trim();
   if (trimmed.startsWith('[')) {
     try {
-      const parsed = JSON.parse(trimmed);
-      return normalizeArgs(parsed);
+      const result = stringArraySchema.safeParse(JSON.parse(trimmed));
+      return result.success ? result.data : [];
     } catch {
       return [];
     }
@@ -511,9 +553,8 @@ function getProviderLookupOrder(provider: string): string[] {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
+  const result = recordSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 function asNumber(value: unknown): number | undefined {

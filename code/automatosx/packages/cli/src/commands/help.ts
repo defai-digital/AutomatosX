@@ -1,51 +1,18 @@
 import { success } from '../utils/formatters.js';
 import type { CLIOptions, CommandResult } from '../types.js';
-import { WORKFLOW_COMMAND_DEFINITIONS } from './workflows.js';
-
-export const RETAINED_COMMANDS = [
-  { command: 'setup', description: 'Bootstrap local AutomatosX workspace state, agents, and policies.' },
-  { command: 'init', description: 'Create project context files and local MCP metadata for AI-tool integration.' },
-  { command: 'doctor', description: 'Validate workspace, workflow, and shared runtime readiness.' },
-  { command: 'status', description: 'Show active sessions, running traces, and provider/runtime readiness.' },
-  { command: 'config', description: 'Inspect or update workspace config used by the runtime and provider bridge.' },
-  { command: 'cleanup', description: 'Auto-close stale sessions and traces from shared runtime storage.' },
-  { command: 'resume', description: 'Rerun a prior workflow or discussion trace from stored execution context.' },
-  { command: 'call', description: 'Call a provider directly through the shared runtime bridge.' },
-  { command: 'list', description: 'List available workflows from the shared runtime loader.' },
-  { command: 'trace', description: 'Inspect recent traces or a single trace record from shared runtime storage.' },
-  { command: 'discuss', description: 'Run a top-level multi-provider discussion through shared runtime tracing.' },
-] as const;
-
-export const ADVANCED_COMMANDS = [
-  { command: 'ability', description: 'List built-in runtime abilities or inject matched ability context for a task.' },
-  { command: 'feedback', description: 'Capture operator feedback and inspect aggregate agent feedback signals.' },
-  { command: 'guard', description: 'List, apply, and evaluate workflow guard policies.' },
-  { command: 'agent', description: 'Inspect or register agents through the shared runtime state store.' },
-  { command: 'mcp', description: 'Inspect available MCP tools or invoke them through the local MCP surface.' },
-  { command: 'session', description: 'Create and manage collaboration sessions through shared runtime state.' },
-  { command: 'review', description: 'Run deterministic v14-native code review heuristics with durable artifacts.' },
-  { command: 'history', description: 'View past workflow run history from the trace store.' },
-  { command: 'iterate', description: 'Repeat a command until success, iteration budget, or time budget is exhausted.' },
-  { command: 'monitor', description: 'Launch a local HTTP dashboard showing sessions, traces, and agents.' },
-  { command: 'scaffold', description: 'Generate contract-first components: schemas, domain packages, guard policies.' },
-  { command: 'update', description: 'Check for CLI updates and optionally install the latest version.' },
-] as const;
+import { ADVANCED_COMMANDS, RETAINED_COMMANDS, WORKFLOW_PRIMARY_USAGES } from '../command-metadata.js';
+import { listWorkflowCatalog } from '../workflow-adapter.js';
 
 export const WORKFLOW_FIRST_QUICKSTART = [
   'Bootstrap:',
   '  ax setup',
-  '  ax init',
   '  ax doctor',
   '',
   'Workflow-first commands:',
-  '  ax ship --scope <area>',
-  '  ax architect --request "<requirement>"',
-  '  ax audit --scope <path-or-area>',
-  '  ax qa --target <service-or-feature> --url <url>',
-  '  ax release --release-version <version>',
+  ...WORKFLOW_PRIMARY_USAGES.map((usage) => `  ${usage}`),
   '',
   'Recommended flow:',
-  '  1. Run ax setup and ax init once per project.',
+  '  1. Run ax setup once per project.',
   '  2. Start with one of the five workflow commands above.',
   '  3. Use --dry-run to preview artifacts without runtime side effects.',
   '  4. Inspect manifest.json, summary.json, and artifact markdown in .automatosx/workflows/.',
@@ -74,11 +41,13 @@ export const WORKFLOW_FIRST_QUICKSTART = [
   '  ax mcp serve',
   '  ax session list',
   '  ax review analyze <paths...>',
+  '  ax governance',
 ].join('\n');
 
 export async function helpCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  const commandLines = WORKFLOW_COMMAND_DEFINITIONS.map(
-    (definition) => `- ax ${definition.command}: ${definition.description}`,
+  const workflowCatalog = listWorkflowCatalog();
+  const commandLines = workflowCatalog.map(
+    (definition) => `- ax ${definition.commandId}: ${definition.description}`,
   );
   const retainedLines = RETAINED_COMMANDS.map(
     (definition) => `- ax ${definition.command}: ${definition.description}`,
@@ -106,10 +75,10 @@ export async function helpCommand(_args: string[], _options: CLIOptions): Promis
       workflowFirst: true,
       quickstart: WORKFLOW_FIRST_QUICKSTART,
       commands: [
-        ...WORKFLOW_COMMAND_DEFINITIONS.map((definition) => ({
-          command: definition.command,
+        ...workflowCatalog.map((definition) => ({
+          command: definition.commandId,
           description: definition.description,
-          stable: definition.stable,
+          stable: true,
         })),
         ...RETAINED_COMMANDS.map((definition) => ({
           command: definition.command,
@@ -122,6 +91,7 @@ export async function helpCommand(_args: string[], _options: CLIOptions): Promis
           stable: true,
         })),
       ],
+      workflowCatalog,
     },
   );
 }

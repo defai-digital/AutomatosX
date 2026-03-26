@@ -1,0 +1,21 @@
+{
+  "workflowId": "architect",
+  "name": "Architect Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "analyze-requirement",
+      "type": "prompt",
+      "config": {
+        "prompt": "Interpret requirements and constraints."
+      }
+    },
+    {
+      "stepId": "draft-architecture",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare architecture proposal artifacts."
+      }
+    }
+  ]
+}

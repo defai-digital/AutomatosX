@@ -1,4 +1,8 @@
 import { failure, success } from '../utils/formatters.js';
+import {
+  WORKFLOW_COMMAND_METADATA,
+  getWorkflowCommandMetadata,
+} from '../command-metadata.js';
 import type { CLIOptions, CommandHandler, CommandResult } from '../types.js';
 import {
   buildWorkflowInput,
@@ -52,61 +56,41 @@ async function executeWorkflowCommand(
   });
 }
 
-export async function shipCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  return executeWorkflowCommand('ship', _args, _options);
-}
+export const WORKFLOW_COMMAND_HANDLERS: Readonly<Record<WorkflowCommandId, CommandHandler>> = {
+  ship: async (args, options) => executeWorkflowCommand('ship', args, options),
+  architect: async (args, options) => executeWorkflowCommand('architect', args, options),
+  audit: async (args, options) => executeWorkflowCommand('audit', args, options),
+  qa: async (args, options) => executeWorkflowCommand('qa', args, options),
+  release: async (args, options) => executeWorkflowCommand('release', args, options),
+};
 
-export async function architectCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  return executeWorkflowCommand('architect', _args, _options);
-}
-
-export async function auditCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  return executeWorkflowCommand('audit', _args, _options);
-}
-
-export async function qaCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  return executeWorkflowCommand('qa', _args, _options);
-}
-
-export async function releaseCommand(_args: string[], _options: CLIOptions): Promise<CommandResult> {
-  return executeWorkflowCommand('release', _args, _options);
-}
+export const shipCommand = WORKFLOW_COMMAND_HANDLERS.ship;
+export const architectCommand = WORKFLOW_COMMAND_HANDLERS.architect;
+export const auditCommand = WORKFLOW_COMMAND_HANDLERS.audit;
+export const qaCommand = WORKFLOW_COMMAND_HANDLERS.qa;
+export const releaseCommand = WORKFLOW_COMMAND_HANDLERS.release;
 
 export const WORKFLOW_COMMAND_DEFINITIONS: readonly WorkflowCommandDefinition[] = [
-  {
-    command: 'ship',
-    description: 'Prepare a change for ship readiness using the shared workflow runtime.',
-    handler: shipCommand,
-    stable: true,
-  },
-  {
-    command: 'architect',
-    description: 'Turn a requirement into an implementation-ready architecture proposal.',
-    handler: architectCommand,
-    stable: true,
-  },
-  {
-    command: 'audit',
-    description: 'Run the audit workflow through the shared workflow runtime.',
-    handler: auditCommand,
-    stable: true,
-  },
-  {
-    command: 'qa',
-    description: 'Run the QA workflow through the shared workflow runtime.',
-    handler: qaCommand,
-    stable: true,
-  },
-  {
-    command: 'release',
-    description: 'Run the release workflow through the shared workflow runtime.',
-    handler: releaseCommand,
-    stable: true,
-  },
+  ...WORKFLOW_COMMAND_METADATA.map((definition) => ({
+    command: definition.command as WorkflowCommandId,
+    description: definition.description,
+    handler: getWorkflowCommandHandler(definition.command as WorkflowCommandId),
+    stable: definition.stable,
+  })),
 ] as const;
 
 export function getWorkflowCommandDefinition(command: string): WorkflowCommandDefinition | undefined {
-  return WORKFLOW_COMMAND_DEFINITIONS.find((definition) => definition.command === command);
+  const metadata = getWorkflowCommandMetadata(command);
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  return {
+    command: metadata.command as WorkflowCommandId,
+    description: metadata.description,
+    handler: getWorkflowCommandHandler(metadata.command as WorkflowCommandId),
+    stable: metadata.stable,
+  };
 }
 
 function applyGlobalWorkflowOptions(
@@ -116,8 +100,14 @@ function applyGlobalWorkflowOptions(
   if (options.provider !== undefined) {
     workflowInput.options.provider = options.provider;
   }
+  if (options.sessionId !== undefined) {
+    workflowInput.options.sessionId = options.sessionId;
+  }
   if (options.outputDir !== undefined) {
     workflowInput.options.outputDir = options.outputDir;
+  }
+  if (options.basePath !== undefined) {
+    workflowInput.options.basePath = options.basePath;
   }
   if (options.dryRun !== undefined) {
     workflowInput.options.dryRun = options.dryRun;
@@ -131,4 +121,8 @@ function applyGlobalWorkflowOptions(
   if (options.traceId !== undefined) {
     workflowInput.traceContext = { parentTraceId: options.traceId };
   }
+}
+
+function getWorkflowCommandHandler(command: WorkflowCommandId): CommandHandler {
+  return WORKFLOW_COMMAND_HANDLERS[command];
 }

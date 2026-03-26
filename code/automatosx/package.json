@@ -9,7 +9,7 @@
   ],
   "packageManager": "npm@10.0.0",
   "scripts": {
-    "build": "for pkg in contracts workflow-engine state-store trace-store shared-runtime monitoring mcp-server cli; do npm run build --workspace=packages/$pkg; done",
+    "build": "node --experimental-strip-types tools/build-workspaces.ts",
     "test": "vitest run",
     "test:migration": "vitest run tests/migration",
     "test:cli": "vitest run packages/cli/tests",
@@ -21,7 +21,7 @@
     "version:major": "npm version major -m 'chore: bump version to %s'",
     "version:beta": "npm version prerelease --preid=beta -m 'chore: bump version to %s'",
     "version:rc": "npm version prerelease --preid=rc -m 'chore: bump version to %s'",
-    "sync:versions": "node tools/sync-versions.js",
+    "sync:versions": "node --experimental-strip-types tools/sync-versions.ts",
     "prerelease": "npm run sync:versions && npm run typecheck && npm test",
     "release:standard": "commit-and-tag-version",
     "release:beta": "commit-and-tag-version --prerelease beta",

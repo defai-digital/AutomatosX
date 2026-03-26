@@ -1,0 +1,21 @@
+{
+  "workflowId": "audit",
+  "name": "Audit Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "inspect-scope",
+      "type": "prompt",
+      "config": {
+        "prompt": "Inspect audit scope."
+      }
+    },
+    {
+      "stepId": "draft-report",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare audit report artifacts."
+      }
+    }
+  ]
+}

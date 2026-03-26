@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+  formatWorkflowInputSummary,
+  getWorkflowCatalogEntry as getSharedWorkflowCatalogEntry,
+  listWorkflowCatalog as listSharedWorkflowCatalog,
+  type StableWorkflowCatalogEntry,
+} from '@defai.digital/shared-runtime';
+import { z } from 'zod';
 import { runCommand } from './commands/run.js';
 import type { CLIOptions, CommandResult } from './types.js';
+import { parseJsonObjectString } from './utils/validation.js';
 
 export type WorkflowCommandId = 'ship' | 'architect' | 'audit' | 'qa' | 'release';
 
@@ -11,8 +19,10 @@ export interface WorkflowCommandInput {
   arguments: Record<string, string | boolean>;
   options: {
     provider?: string;
+    sessionId?: string;
     dryRun?: boolean;
     outputDir?: string;
+    basePath?: string;
     verbose?: boolean;
     quiet?: boolean;
   };
@@ -41,6 +51,20 @@ export interface WorkflowCommandResult {
   artifactPaths?: string[];
   errorCode?: string;
   errorMessage?: string;
+  guard?: WorkflowCommandGuardSummary;
+}
+
+export interface WorkflowCommandGuardSummary {
+  summary: string;
+  guardId?: string;
+  failedStepId?: string;
+  failedGates: string[];
+  failedGateMessages?: string[];
+  blockedByRuntimeGovernance: boolean;
+  toolName?: string;
+  trustState?: string;
+  requiredTrustStates?: string[];
+  sourceRef?: string;
 }
 
 export interface WorkflowInputPayload {
@@ -51,7 +75,9 @@ export interface WorkflowInputPayload {
   task: string;
   options: {
     provider?: string;
+    sessionId?: string;
     outputDir?: string;
+    basePath?: string;
     verbose?: boolean;
     quiet?: boolean;
   };
@@ -65,19 +91,16 @@ type WorkflowStatus = 'preview' | 'pending' | 'dispatched' | 'failed';
 
 type RuntimeDispatcher = (payload: WorkflowInputPayload) => Promise<WorkflowCommandResult>;
 
-interface WorkflowSpec {
-  commandId: WorkflowCommandId;
-  workflowId: string;
-  version: string;
-  workflowName: string;
-  agent: string;
-  stages: string[];
-  artifactNames: string[];
-  positionalArgumentName: string;
-  requiredAny: string[];
+interface WorkflowTaskSpec {
   taskTemplateBase: string[];
   taskTemplateByArgument: Record<string, string>;
 }
+
+type WorkflowSpec = StableWorkflowCatalogEntry & WorkflowTaskSpec & {
+  agent: string;
+};
+
+export type WorkflowCatalogEntry = StableWorkflowCatalogEntry;
 
 interface WorkflowArtifactWriteResult {
   outputDir: string;
@@ -86,22 +109,10 @@ interface WorkflowArtifactWriteResult {
   artifactPaths: string[];
 }
 
-const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
+const artifactDocumentSchema = z.record(z.string(), z.unknown());
+
+const WORKFLOW_TASK_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowTaskSpec> = {
   ship: {
-    commandId: 'ship',
-    workflowId: 'ship',
-    version: 'v0',
-    workflowName: 'ax ship',
-    agent: 'quality',
-    stages: [
-      'Inspect scope and current implementation context',
-      'Review quality and risk posture',
-      'Summarize test status or recommended test plan',
-      'Produce PR-ready summary artifacts',
-    ],
-    artifactNames: ['review summary', 'test summary or test plan', 'risk notes', 'PR draft summary'],
-    positionalArgumentName: 'scope',
-    requiredAny: [],
     taskTemplateBase: [
       'Prepare this change for ship readiness.',
       'Inspect the current diff or feature scope and produce a concise ship summary.',
@@ -115,20 +126,6 @@ const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
     },
   },
   architect: {
-    commandId: 'architect',
-    workflowId: 'architect',
-    version: 'v0',
-    workflowName: 'ax architect',
-    agent: 'architecture',
-    stages: [
-      'Interpret requirements and constraints',
-      'Develop architecture proposal',
-      'Draft ADR and phased implementation plan',
-      'Summarize risks and tradeoffs',
-    ],
-    artifactNames: ['architecture proposal', 'ADR draft', 'phased implementation plan', 'risk matrix'],
-    positionalArgumentName: 'request',
-    requiredAny: ['request', 'input'],
     taskTemplateBase: [
       'Turn this requirement into an implementation-ready architecture proposal.',
       'Produce an architecture summary, ADR draft, phased implementation plan, and risk matrix.',
@@ -141,20 +138,6 @@ const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
     },
   },
   audit: {
-    commandId: 'audit',
-    workflowId: 'audit',
-    version: 'v0',
-    workflowName: 'ax audit',
-    agent: 'quality',
-    stages: [
-      'Inspect repository or selected scope',
-      'Analyze risks, bottlenecks, and quality gaps',
-      'Rank issues by severity',
-      'Produce remediation guidance',
-    ],
-    artifactNames: ['audit report', 'severity ranking', 'bottleneck list', 'remediation plan'],
-    positionalArgumentName: 'scope',
-    requiredAny: [],
     taskTemplateBase: [
       'Perform a structured audit of this codebase or selected scope.',
       'Identify design drift, dependency risk, quality gaps, and operational bottlenecks.',
@@ -167,20 +150,6 @@ const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
     },
   },
   qa: {
-    commandId: 'qa',
-    workflowId: 'qa',
-    version: 'v0',
-    workflowName: 'ax qa',
-    agent: 'quality',
-    stages: [
-      'Interpret target and expected scenarios',
-      'Validate user-facing behavior',
-      'Capture pass/fail outcomes and defects',
-      'Summarize reproduction steps and follow-up actions',
-    ],
-    artifactNames: ['pass/fail report', 'scenario summary', 'defect summary', 'reproduction steps'],
-    positionalArgumentName: 'target',
-    requiredAny: ['target', 'url'],
     taskTemplateBase: [
       'Perform a QA validation pass for the provided target.',
       'Check expected behavior, identify defects, and summarize pass/fail outcomes.',
@@ -193,20 +162,6 @@ const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
     },
   },
   release: {
-    commandId: 'release',
-    workflowId: 'release',
-    version: 'v0',
-    workflowName: 'ax release',
-    agent: 'writer',
-    stages: [
-      'Inspect target version and release scope',
-      'Summarize merged work and release highlights',
-      'Draft release artifacts and upgrade guidance',
-      'Produce deployment and docs follow-up checklist',
-    ],
-    artifactNames: ['changelog draft', 'release notes', 'upgrade notes', 'deployment checklist'],
-    positionalArgumentName: 'releaseVersion',
-    requiredAny: ['releaseVersion', 'commits', 'target'],
     taskTemplateBase: [
       'Prepare release artifacts for the requested software delivery scope.',
       'Produce a changelog draft, release notes, upgrade notes, and a deployment checklist.',
@@ -221,12 +176,25 @@ const WORKFLOW_SPEC_BY_ID: Record<WorkflowCommandId, WorkflowSpec> = {
 
 const CLI_BOOLEAN_OPTIONS = new Set(['dryRun', 'verbose', 'quiet']);
 
+function getWorkflowSpec(commandId: WorkflowCommandId): WorkflowSpec {
+  const catalogEntry = getSharedWorkflowCatalogEntry(commandId);
+  if (catalogEntry === undefined) {
+    throw new Error(`Unknown workflow catalog entry: ${commandId}`);
+  }
+
+  return {
+    ...catalogEntry,
+    ...WORKFLOW_TASK_SPEC_BY_ID[commandId],
+    agent: catalogEntry.agentId,
+  };
+}
+
 export function parseWorkflowCommandInput(
   commandId: WorkflowCommandId,
   args: string[],
   globalProvider?: string,
 ): WorkflowCommandInput {
-  const definition = WORKFLOW_SPEC_BY_ID[commandId];
+  const definition = getWorkflowSpec(commandId);
   const parsed = parseCommandArgs(args);
   const positionalValues = parsed.positionals;
 
@@ -248,6 +216,9 @@ export function parseWorkflowCommandInput(
       provider: (typeof globalProvider === 'string' && globalProvider.length > 0)
         ? globalProvider
         : (typeof parsed.stringOptions.provider === 'string' && parsed.stringOptions.provider.length > 0 ? parsed.stringOptions.provider : undefined),
+      sessionId: typeof parsed.stringOptions.sessionId === 'string' && parsed.stringOptions.sessionId.length > 0
+        ? parsed.stringOptions.sessionId
+        : undefined,
       dryRun: parsed.boolOptions.dryRun,
       outputDir: parsed.stringOptions.outputDir,
       verbose: parsed.boolOptions.verbose,
@@ -257,19 +228,26 @@ export function parseWorkflowCommandInput(
 }
 
 export function validateWorkflowInput(input: WorkflowCommandInput): string | null {
-  const spec = WORKFLOW_SPEC_BY_ID[input.commandId];
-  const hasOneRequired = spec.requiredAny.length === 0 || spec.requiredAny.some((key) => hasInputValue(input.arguments[key]));
+  const spec = getWorkflowSpec(input.commandId);
+  const hasRequiredInputs = hasRequiredWorkflowInputs(spec, input.arguments);
 
-  if (!hasOneRequired) {
-    const required = spec.requiredAny.join(' or ');
-    return `A ${required} is required for ${spec.commandId}`;
+  if (!hasRequiredInputs) {
+    return buildRequiredInputError(spec);
   }
 
   return null;
 }
 
+export function listWorkflowCatalog(): WorkflowCatalogEntry[] {
+  return listSharedWorkflowCatalog();
+}
+
+export function getWorkflowCatalogEntry(command: string): WorkflowCatalogEntry | undefined {
+  return getSharedWorkflowCatalogEntry(command);
+}
+
 export function buildWorkflowInput(input: WorkflowCommandInput): WorkflowInputPayload {
-  const spec = WORKFLOW_SPEC_BY_ID[input.commandId];
+  const spec = getWorkflowSpec(input.commandId);
   const traceId = input.traceContext?.parentTraceId ?? randomUUID();
 
   const task = buildTaskText(spec, input.arguments);
@@ -283,6 +261,7 @@ export function buildWorkflowInput(input: WorkflowCommandInput): WorkflowInputPa
     arguments: { ...input.arguments },
     options: {
       provider: input.options.provider,
+      sessionId: input.options.sessionId,
       outputDir: input.options.outputDir,
       verbose: input.options.verbose,
       quiet: input.options.quiet,
@@ -292,7 +271,7 @@ export function buildWorkflowInput(input: WorkflowCommandInput): WorkflowInputPa
 }
 
 export function preview(input: WorkflowCommandInput): Promise<WorkflowCommandPreview> {
-  const spec = WORKFLOW_SPEC_BY_ID[input.commandId];
+  const spec = getWorkflowSpec(input.commandId);
   const traceId = input.traceContext?.parentTraceId ?? randomUUID();
   const task = buildTaskText(spec, input.arguments);
 
@@ -314,7 +293,7 @@ export async function dispatch(
     runtimeDispatcher?: RuntimeDispatcher;
   },
 ): Promise<WorkflowCommandResult> {
-  const spec = WORKFLOW_SPEC_BY_ID[input.commandId];
+  const spec = getWorkflowSpec(input.commandId);
   const traceId = input.traceContext?.parentTraceId ?? randomUUID();
   const task = buildTaskText(spec, input.arguments);
   const artifactNames = [...spec.artifactNames];
@@ -343,7 +322,9 @@ export async function dispatch(
       traceId,
       options: {
         provider: input.options.provider,
+        sessionId: input.options.sessionId,
         outputDir,
+        basePath: input.options.basePath,
         verbose: input.options.verbose,
         quiet: input.options.quiet,
       },
@@ -356,15 +337,18 @@ export async function dispatch(
     if (!execution.success) {
       const errorCode = execution.errorCode ?? 'workflow_dispatch_failed';
       const errorMessage = execution.errorMessage ?? 'Workflow dispatch failed';
-      const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', errorMessage);
-      return { ...failResult, success: false, traceId, errorCode, errorMessage };
+      const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', {
+        errorMessage,
+        guard: execution.guard,
+      });
+      return { ...failResult, success: false, traceId, errorCode, errorMessage, guard: execution.guard };
     }
 
     const successResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'dispatched');
     return { ...successResult, success: true, traceId };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', errorMessage);
+    const failResult = await updateWorkflowArtifactsStatus(artifactWriteResult, 'failed', { errorMessage });
     return { ...failResult, success: false, traceId, errorCode: 'workflow_dispatch_failed', errorMessage };
   }
 }
@@ -374,11 +358,26 @@ function resolveOutputDir(input: WorkflowCommandInput, traceId: string): string 
     return input.options.outputDir;
   }
 
-  return join(process.cwd(), '.automatosx', 'workflows', input.commandId, traceId);
+  return join(input.options.basePath ?? process.cwd(), '.automatosx', 'workflows', input.commandId, traceId);
 }
 
 function hasInputValue(value: string | boolean | undefined): value is string {
   return typeof value === 'string' ? value.length > 0 : false;
+}
+
+function hasRequiredWorkflowInputs(
+  spec: WorkflowSpec,
+  values: Record<string, string | boolean>,
+): boolean {
+  if (spec.requiredInputs.length === 0) {
+    return true;
+  }
+
+  if (spec.requiredInputMode === 'any') {
+    return spec.requiredInputs.some((key) => hasInputValue(values[key]));
+  }
+
+  return spec.requiredInputs.every((key) => hasInputValue(values[key]));
 }
 
 function buildTaskText(spec: WorkflowSpec, values: Record<string, string | boolean>): string {
@@ -392,6 +391,15 @@ function buildTaskText(spec: WorkflowSpec, values: Record<string, string | boole
   }
 
   return parts.join(' ');
+}
+
+function buildRequiredInputError(spec: WorkflowSpec): string {
+  const formatted = formatWorkflowInputSummary(spec.requiredInputs, spec.requiredInputMode);
+  if (spec.requiredInputs.length === 1 || spec.requiredInputMode === 'any') {
+    return `A ${formatted} is required for ${spec.commandId}`;
+  }
+
+  return `Required inputs for ${spec.commandId}: ${formatted}`;
 }
 
 function applyTemplate(template: string, value: string): string {
@@ -456,7 +464,7 @@ function parseCommandArgs(args: string[]): {
     }
 
     const next = args[i + 1];
-    if (next !== undefined && !next.startsWith('-')) {
+    if (next !== undefined && !next.startsWith('--')) {
       resultOptions[normalizedKey] = next;
       stringOptions[normalizedKey] = next;
       i += 1;
@@ -567,19 +575,26 @@ async function writeWorkflowArtifacts(
 async function updateWorkflowArtifactsStatus(
   result: WorkflowArtifactWriteResult,
   status: WorkflowStatus,
-  errorMessage?: string,
+  options: {
+    errorMessage?: string;
+    guard?: WorkflowCommandGuardSummary;
+  } = {},
 ): Promise<WorkflowCommandResult> {
   const updatedAt = new Date().toISOString();
+  const { errorMessage, guard } = options;
 
-  const manifestDataRaw = await readFile(result.manifestPath, 'utf8');
-  const summaryDataRaw = await readFile(result.summaryPath, 'utf8');
-  const manifestData = JSON.parse(manifestDataRaw) as Record<string, unknown>;
-  const summaryData = JSON.parse(summaryDataRaw) as Record<string, unknown>;
+  const [manifestData, summaryData] = await Promise.all([
+    readArtifactDocument(result.manifestPath),
+    readArtifactDocument(result.summaryPath),
+  ]);
 
   const updatedArtifacts = await Promise.all(
     result.artifactPaths.map(async (artifactPath) => {
       const artifactContent = await readFile(artifactPath, 'utf8');
-      return { artifactPath, content: artifactContent.replace(/^- Status: .+$/m, `- Status: ${status}`) };
+      return {
+        artifactPath,
+        content: updateArtifactMarkdownContent(artifactContent, status, { errorMessage, guard }),
+      };
     }),
   );
 
@@ -591,6 +606,7 @@ async function updateWorkflowArtifactsStatus(
         status,
         updatedAt,
         ...(errorMessage !== undefined ? { error: errorMessage } : {}),
+        ...(guard !== undefined ? { guard } : {}),
       }, null, 2)}\n`,
       'utf8',
     ),
@@ -601,6 +617,7 @@ async function updateWorkflowArtifactsStatus(
         status,
         updatedAt,
         ...(errorMessage !== undefined ? { error: errorMessage } : {}),
+        ...(guard !== undefined ? { guard } : {}),
       }, null, 2)}\n`,
       'utf8',
     ),
@@ -615,17 +632,26 @@ async function updateWorkflowArtifactsStatus(
     manifestPath: result.manifestPath,
     summaryPath: result.summaryPath,
     artifactPaths: result.artifactPaths,
+    ...(guard !== undefined ? { guard } : {}),
   };
 }
 
-function getWorkflowSpecVersion(workflowId: string): string {
-  for (const value of Object.values(WORKFLOW_SPEC_BY_ID)) {
-    if (value.workflowId === workflowId) {
-      return value.version;
+async function readArtifactDocument(path: string): Promise<Record<string, unknown>> {
+  try {
+    const raw = await readFile(path, 'utf8');
+    const parsed = parseJsonObjectString(raw);
+    if (parsed.error !== undefined) {
+      return {};
     }
+    const result = artifactDocumentSchema.safeParse(parsed.value);
+    return result.success ? result.data : {};
+  } catch {
+    return {};
   }
+}
 
-  return 'v0';
+function getWorkflowSpecVersion(workflowId: string): string {
+  return getSharedWorkflowCatalogEntry(workflowId)?.version ?? 'v0';
 }
 
 function slugifyArtifactName(name: string): string {
@@ -664,6 +690,66 @@ async function renderArtifactMarkdown(
   ].join('\n');
 }
 
+function updateArtifactMarkdownContent(
+  content: string,
+  status: WorkflowStatus,
+  options: {
+    errorMessage?: string;
+    guard?: WorkflowCommandGuardSummary;
+  },
+): string {
+  const base = stripDispatchOutcomeSection(
+    content.replace(/^- Status: .+$/m, `- Status: ${status}`),
+  );
+  const dispatchOutcome = renderDispatchOutcomeSection(status, options);
+  return dispatchOutcome === undefined ? base : `${base}\n${dispatchOutcome}`;
+}
+
+function stripDispatchOutcomeSection(content: string): string {
+  return content.replace(/\n## Dispatch Outcome\n[\s\S]*$/m, '').trimEnd();
+}
+
+function renderDispatchOutcomeSection(
+  status: WorkflowStatus,
+  options: {
+    errorMessage?: string;
+    guard?: WorkflowCommandGuardSummary;
+  },
+): string | undefined {
+  const { errorMessage, guard } = options;
+  if (errorMessage === undefined && guard === undefined) {
+    return undefined;
+  }
+
+  const lines = [
+    '',
+    '## Dispatch Outcome',
+    `- Status: ${status}`,
+  ];
+
+  if (errorMessage !== undefined) {
+    lines.push(`- Error: ${errorMessage}`);
+  }
+
+  if (guard !== undefined) {
+    lines.push(`- Guard: ${guard.summary}`);
+    if (guard.toolName !== undefined) {
+      lines.push(`- Guard tool: ${guard.toolName}`);
+    }
+    if (guard.trustState !== undefined) {
+      lines.push(`- Guard trust: ${guard.trustState}`);
+    }
+    if (guard.requiredTrustStates !== undefined && guard.requiredTrustStates.length > 0) {
+      lines.push(`- Guard requires: ${guard.requiredTrustStates.join(', ')}`);
+    }
+    if (guard.sourceRef !== undefined) {
+      lines.push(`- Guard source: ${guard.sourceRef}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 function previewInputs(preview: WorkflowCommandPreview): Record<string, string> {
   return {
     workflowId: preview.workflowId,
@@ -679,6 +765,7 @@ async function executeWorkflowWithCLI(payload: WorkflowInputPayload): Promise<Wo
     [payload.workflowId],
     toRunOptions(payload),
   );
+  const runData = asWorkflowRunData(runResult.data);
 
   if (!runResult.success) {
     return {
@@ -690,6 +777,7 @@ async function executeWorkflowWithCLI(payload: WorkflowInputPayload): Promise<Wo
       artifactPaths: [],
       errorCode: 'workflow_runtime_failed',
       errorMessage: runResult.message ?? 'Workflow runtime failed',
+      guard: runData?.guard,
     };
   }
 
@@ -703,15 +791,63 @@ async function executeWorkflowWithCLI(payload: WorkflowInputPayload): Promise<Wo
   };
 }
 
+function asWorkflowRunData(value: unknown): { guard?: WorkflowCommandGuardSummary } | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const candidate = value as Record<string, unknown>;
+  const guard = asWorkflowCommandGuardSummary(candidate.guard);
+  return guard === undefined ? undefined : { guard };
+}
+
+function asWorkflowCommandGuardSummary(value: unknown): WorkflowCommandGuardSummary | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const candidate = value as Record<string, unknown>;
+  const summary = typeof candidate.summary === 'string' && candidate.summary.trim().length > 0
+    ? candidate.summary.trim()
+    : undefined;
+  const failedGates = Array.isArray(candidate.failedGates)
+    ? candidate.failedGates.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      .map((entry) => entry.trim())
+    : [];
+  if (summary === undefined || typeof candidate.blockedByRuntimeGovernance !== 'boolean') {
+    return undefined;
+  }
+  const failedGateMessages = Array.isArray(candidate.failedGateMessages)
+    ? candidate.failedGateMessages.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      .map((entry) => entry.trim())
+    : undefined;
+  const requiredTrustStates = Array.isArray(candidate.requiredTrustStates)
+    ? candidate.requiredTrustStates.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      .map((entry) => entry.trim())
+    : undefined;
+  return {
+    summary,
+    failedGates,
+    blockedByRuntimeGovernance: candidate.blockedByRuntimeGovernance,
+    guardId: typeof candidate.guardId === 'string' ? candidate.guardId : undefined,
+    failedStepId: typeof candidate.failedStepId === 'string' ? candidate.failedStepId : undefined,
+    failedGateMessages,
+    toolName: typeof candidate.toolName === 'string' ? candidate.toolName : undefined,
+    trustState: typeof candidate.trustState === 'string' ? candidate.trustState : undefined,
+    requiredTrustStates,
+    sourceRef: typeof candidate.sourceRef === 'string' ? candidate.sourceRef : undefined,
+  };
+}
+
 function resolveOutputDirFromPayload(payload: WorkflowInputPayload): string {
   if (payload.options.outputDir !== undefined && payload.options.outputDir.length > 0) {
     return payload.options.outputDir;
   }
 
-  return join(process.cwd(), '.automatosx', 'workflows', payload.workflowId, payload.traceId);
+  return join(payload.options.basePath ?? process.cwd(), '.automatosx', 'workflows', payload.workflowId, payload.traceId);
 }
 
 function toRunOptions(payload: WorkflowInputPayload): CLIOptions {
+  const runtimeBasePath = payload.options.basePath ?? process.cwd();
+
   return {
     help: false,
     version: false,
@@ -728,7 +864,7 @@ function toRunOptions(payload: WorkflowInputPayload): CLIOptions {
     noContext: false,
     category: undefined,
     tags: undefined,
-    agent: payload.workflowId,
+    agent: payload.agent,
     task: payload.task,
     core: undefined,
     maxTokens: undefined,
@@ -736,7 +872,9 @@ function toRunOptions(payload: WorkflowInputPayload): CLIOptions {
     compact: false,
     team: undefined,
     provider: payload.options.provider,
+    sessionId: payload.options.sessionId,
     outputDir: payload.options.outputDir,
+    basePath: runtimeBasePath,
     dryRun: false,
     quiet: Boolean(payload.options.quiet),
   };

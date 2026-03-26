@@ -15,6 +15,8 @@ export interface StepResult {
   error?: StepError | undefined;
   durationMs: number;
   retryCount: number;
+  startedAt?: string | undefined;
+  completedAt?: string | undefined;
 }
 
 export interface WorkflowError {

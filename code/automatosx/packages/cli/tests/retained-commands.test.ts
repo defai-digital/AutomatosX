@@ -1,22 +1,35 @@
-import { existsSync, mkdirSync } from 'node:fs';
-import { readFile, rm, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
+import { MCP_BASE_PATH_ENV_VAR } from '@defai.digital/mcp-server';
+import {
+  RuntimeGovernanceAggregateSchema,
+  createSharedRuntimeService,
+} from '@defai.digital/shared-runtime';
+import {
+  DEFAULT_ENTRY_PATH_COMMANDS,
+  README_WORKFLOW_COMMANDS,
+  RETAINED_HIGH_VALUE_COMMANDS,
+} from '../src/command-metadata.js';
 import {
   doctorCommand,
   discussCommand,
   initCommand,
   listCommand,
+  skillCommand,
   setupCommand,
   traceCommand,
 } from '../src/commands/index.js';
 import type { CLIOptions } from '../src/types.js';
+import {
+  CLI_WORKFLOW_DIR,
+  WORKSPACE_ROOT,
+  createCliTestTempDir,
+} from './support/test-paths.js';
 
 function createTempDir(): string {
-  const dir = join(process.cwd(), '.tmp', `retained-commands-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
+  return createCliTestTempDir('retained-commands');
 }
 
 function defaultOptions(overrides: Partial<CLIOptions> = {}): CLIOptions {
@@ -60,6 +73,26 @@ describe('retained high-value commands', () => {
     await Promise.all(tempDirs.splice(0).map((tempDir) => rm(tempDir, { recursive: true, force: true })));
   });
 
+  it('keeps checked-in workflow-first docs aligned with the shared command surface', async () => {
+    const agentsMd = await readFile(join(WORKSPACE_ROOT, 'AGENTS.md'), 'utf8');
+    const readme = await readFile(join(WORKSPACE_ROOT, 'README.md'), 'utf8');
+
+    expect(agentsMd).toContain('This repository is configured for AutomatosX v14.');
+    for (const usage of DEFAULT_ENTRY_PATH_COMMANDS) {
+      expect(agentsMd).toContain(`- ${usage}`);
+    }
+    for (const usage of RETAINED_HIGH_VALUE_COMMANDS) {
+      expect(agentsMd).toContain(`- ${usage}`);
+    }
+    for (const usage of README_WORKFLOW_COMMANDS) {
+      expect(readme).toContain(usage);
+    }
+    expect(readme).toContain('ax iterate <command> --max-iterations 3');
+    expect(readme).not.toContain('ax audit --scope <path>');
+    expect(readme).not.toContain('ax qa --target <service> --url <url>');
+    expect(readme).not.toContain('ax iterate <command> --max-rounds 3');
+  });
+
   it('bootstraps local workspace state with setup', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
@@ -78,10 +111,13 @@ describe('retained high-value commands', () => {
 
     const environment = JSON.parse(await readFile(join(tempDir, '.automatosx', 'environment.json'), 'utf8')) as {
       providers?: Array<{ providerId: string; installed: boolean }>;
-      mcp?: { command?: string; args?: string[] };
+      mcp?: { command?: string; args?: string[]; env?: Record<string, string> };
     };
     expect(environment.mcp?.command).toBe('ax');
     expect(environment.mcp?.args).toEqual(['mcp', 'serve']);
+    expect(environment.mcp?.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
     expect(environment.providers).toEqual(expect.arrayContaining([
       expect.objectContaining({ providerId: 'claude', installed: true }),
       expect.objectContaining({ providerId: 'gemini', installed: true }),
@@ -101,16 +137,51 @@ describe('retained high-value commands', () => {
     expect(policies.map((policy) => policy.policyId)).toContain('workflow-artifact-contract');
   });
 
-  it('creates project context and provider integration metadata with init', async () => {
+  it('keeps setup idempotent when a built-in agent already exists with older configuration', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.registerAgent({
+      agentId: 'architect',
+      name: 'Architect',
+      capabilities: ['planning'],
+      metadata: {
+        team: 'core',
+      },
+    });
+
+    const result = await setupCommand([], defaultOptions({ outputDir: tempDir }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Agents ready: architect, quality, bug-hunter, release-manager');
+
+    const agents = await runtime.listAgents();
+    expect(agents.map((agent) => agent.agentId)).toEqual([
+      'architect',
+      'bug-hunter',
+      'quality',
+      'release-manager',
+    ]);
+    await expect(runtime.getAgent('architect')).resolves.toMatchObject({
+      agentId: 'architect',
+      capabilities: ['planning'],
+      metadata: {
+        team: 'core',
+      },
+    });
+  });
+
+  it('creates project context and provider integration metadata with setup', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
     process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
 
-    const result = await initCommand([], defaultOptions({ outputDir: tempDir }));
+    const result = await setupCommand([], defaultOptions({ outputDir: tempDir }));
 
     expect(result.success).toBe(true);
-    expect(result.message).toContain('provider integration files');
-    expect(await readFile(join(tempDir, 'AX.md'), 'utf8')).toContain('AutomatosX v14');
+    expect(result.message).toContain('Provider integration files:');
+    expect(await readFile(join(tempDir, 'AGENTS.md'), 'utf8')).toContain('AutomatosX v14');
     expect(await readFile(join(tempDir, '.automatosx', 'context', 'conventions.md'), 'utf8')).toContain('Conventions');
     expect(await readFile(join(tempDir, '.automatosx', 'context', 'rules.md'), 'utf8')).toContain('Prefer first-class workflow commands');
 
@@ -119,18 +190,25 @@ describe('retained high-value commands', () => {
       transport?: string;
       command?: string;
       args?: string[];
+      env?: Record<string, string>;
     };
-    expect(mcpConfig.tools).toContain('workflow.run');
-    expect(mcpConfig.tools).toContain('trace.list');
+    expect(mcpConfig.tools).toContain('workflow_run');
+    expect(mcpConfig.tools).toContain('trace_list');
     expect(mcpConfig.transport).toBe('stdio');
     expect(mcpConfig.command).toBe('ax');
     expect(mcpConfig.args).toEqual(['mcp', 'serve']);
+    expect(mcpConfig.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
 
     const claudeMcp = JSON.parse(await readFile(join(tempDir, '.mcp.json'), 'utf8')) as {
-      mcpServers?: { automatosx?: { command?: string; args?: string[] } };
+      mcpServers?: { automatosx?: { command?: string; args?: string[]; env?: Record<string, string> } };
     };
     expect(claudeMcp.mcpServers?.automatosx?.command).toBe('ax');
     expect(claudeMcp.mcpServers?.automatosx?.args).toEqual(['mcp', 'serve']);
+    expect(claudeMcp.mcpServers?.automatosx?.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
 
     const claudeSettings = JSON.parse(await readFile(join(tempDir, '.claude', 'settings.json'), 'utf8')) as {
       permissions?: { allow?: string[] };
@@ -142,26 +220,36 @@ describe('retained high-value commands', () => {
     expect(existsSync(join(tempDir, '.claude', 'hooks', 'session-end.sh'))).toBe(true);
 
     const cursorConfig = JSON.parse(await readFile(join(tempDir, '.cursor', 'mcp.json'), 'utf8')) as {
-      mcpServers?: { automatosx?: { command?: string; args?: string[] } };
+      mcpServers?: { automatosx?: { command?: string; args?: string[]; env?: Record<string, string> } };
     };
     expect(cursorConfig.mcpServers?.automatosx?.command).toBe('ax');
     expect(cursorConfig.mcpServers?.automatosx?.args).toEqual(['mcp', 'serve']);
+    expect(cursorConfig.mcpServers?.automatosx?.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
 
     const geminiConfig = JSON.parse(await readFile(join(tempDir, '.gemini', 'settings.json'), 'utf8')) as {
-      mcpServers?: { automatosx?: { command?: string; args?: string[]; transport?: string } };
+      mcpServers?: { automatosx?: { command?: string; args?: string[]; env?: Record<string, string>; transport?: string } };
     };
     expect(geminiConfig.mcpServers?.automatosx?.command).toBe('ax');
     expect(geminiConfig.mcpServers?.automatosx?.transport).toBe('stdio');
+    expect(geminiConfig.mcpServers?.automatosx?.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
 
     const grokConfig = JSON.parse(await readFile(join(tempDir, '.ax-grok', 'settings.json'), 'utf8')) as {
-      mcpServers?: { automatosx?: { command?: string; args?: string[]; transport?: string } };
+      mcpServers?: { automatosx?: { command?: string; args?: string[]; env?: Record<string, string>; transport?: string } };
     };
     expect(grokConfig.mcpServers?.automatosx?.command).toBe('ax');
     expect(grokConfig.mcpServers?.automatosx?.transport).toBe('stdio');
+    expect(grokConfig.mcpServers?.automatosx?.env).toMatchObject({
+      [MCP_BASE_PATH_ENV_VAR]: tempDir,
+    });
 
     const codexSnippet = await readFile(join(tempDir, '.automatosx', 'providers', 'codex.config.toml'), 'utf8');
     expect(codexSnippet).toContain('[mcp_servers.automatosx]');
     expect(codexSnippet).toContain('command = "ax"');
+    expect(codexSnippet).toContain(`${MCP_BASE_PATH_ENV_VAR} = ${JSON.stringify(tempDir)}`);
 
     const providerSummary = JSON.parse(await readFile(join(tempDir, '.automatosx', 'providers.json'), 'utf8')) as {
       providers?: Array<{ providerId: string; installed: boolean; enabled: boolean }>;
@@ -169,12 +257,12 @@ describe('retained high-value commands', () => {
     expect(providerSummary.providers?.every((provider) => provider.installed && provider.enabled)).toBe(true);
   });
 
-  it('supports selectively skipping provider registration during init', async () => {
+  it('supports selectively skipping provider registration during setup', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
     process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
 
-    const result = await initCommand(['--skip-mcp'], defaultOptions({ outputDir: tempDir }));
+    const result = await setupCommand(['--skip-mcp'], defaultOptions({ outputDir: tempDir }));
 
     expect(result.success).toBe(true);
     expect(existsSync(join(tempDir, '.mcp.json'))).toBe(false);
@@ -190,27 +278,38 @@ describe('retained high-value commands', () => {
     expect(providerSummary.providers?.every((provider) => provider.enabled === false)).toBe(true);
   });
 
-  it('fails init on unknown command-specific flags', async () => {
+  it('fails setup on unknown command-specific flags', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
 
-    const result = await initCommand(['--skip-unknown'], defaultOptions({ outputDir: tempDir }));
+    const result = await setupCommand(['--skip-unknown'], defaultOptions({ outputDir: tempDir }));
 
     expect(result.success).toBe(false);
-    expect(result.message).toContain('Unknown init flag');
+    expect(result.message).toContain('Unknown setup flag');
   });
 
-  it('reports workspace readiness with doctor after setup and init', async () => {
+  it('keeps init as a compatibility alias to setup', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
+
+    const result = await initCommand([], defaultOptions({ outputDir: tempDir }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('ax init is deprecated');
+    expect(await readFile(join(tempDir, 'AGENTS.md'), 'utf8')).toContain('AutomatosX v14');
+  });
+
+  it('reports workspace readiness with doctor after setup', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
     process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
 
     await setupCommand([], defaultOptions({ outputDir: tempDir }));
-    await initCommand([], defaultOptions({ outputDir: tempDir }));
 
     const result = await doctorCommand([], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(true);
@@ -234,12 +333,11 @@ describe('retained high-value commands', () => {
     process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
 
     await setupCommand([], defaultOptions({ outputDir: tempDir }));
-    await initCommand([], defaultOptions({ outputDir: tempDir }));
     await unlink(join(tempDir, '.cursor', 'mcp.json'));
 
     const result = await doctorCommand([], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(true);
@@ -252,18 +350,130 @@ describe('retained high-value commands', () => {
     expect(data.summary.warn).toBe(2);
   });
 
+  it('surfaces recent runtime governance blocks through doctor', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
+
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.getStores().traceStore.upsertTrace({
+      traceId: 'doctor-guard-001',
+      workflowId: 'ship',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: '2026-03-25T00:00:00.000Z',
+      completedAt: '2026-03-25T00:00:05.000Z',
+      stepResults: [],
+      error: {
+        code: 'WORKFLOW_GUARD_BLOCKED',
+        message: 'Runtime governance blocked workflow execution.',
+      },
+      metadata: {
+        guardId: 'enforce-runtime-trust',
+        guardFailedGates: ['runtime_trust'],
+        guardSummary: 'Runtime governance blocked step "run-skill". Guard "enforce-runtime-trust" rejected tool "skill.run". Trust state: implicit-local. Required trust states: trusted-id.',
+        guardBlockedByRuntimeGovernance: true,
+        guardToolName: 'skill.run',
+        guardTrustState: 'implicit-local',
+        guardRequiredTrustStates: ['trusted-id'],
+      },
+    });
+
+    const result = await doctorCommand([], defaultOptions({
+      outputDir: tempDir,
+      workflowDir: CLI_WORKFLOW_DIR,
+    }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Recent runtime-governance blocks detected');
+    expect(result.message).toContain('doctor-guard-001');
+    expect(result.message).toContain('Runtime governance blocked step "run-skill"');
+    expect(result.data).toMatchObject({
+      governance: {
+        blockedCount: 1,
+        latest: {
+          traceId: 'doctor-guard-001',
+          toolName: 'skill.run',
+          trustState: 'implicit-local',
+        },
+      },
+    });
+    expect(RuntimeGovernanceAggregateSchema.parse((result.data as { governance: unknown }).governance)).toMatchObject({
+      blockedCount: 1,
+      latest: {
+        traceId: 'doctor-guard-001',
+      },
+    });
+  });
+
+  it('surfaces denied imported skills through doctor', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    process.env.AUTOMATOSX_INIT_AVAILABLE_CLIENTS = 'claude,cursor,gemini,codex,grok';
+
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    const sourcePath = join(tempDir, 'fixtures', 'guarded-import', 'SKILL.md');
+    await mkdir(dirname(sourcePath), { recursive: true });
+    await writeFile(sourcePath, [
+      '---',
+      'name: Guarded Import Skill',
+      'approval-mode: prompt',
+      'dispatch: delegate',
+      'linked-agent-id: guarded-reviewer',
+      'description: Requires explicit trust on import.',
+      '---',
+      '# Guarded Import Skill',
+      '',
+      'Import this skill for review workflows.',
+      '',
+    ].join('\n'), 'utf8');
+
+    const importResult = await skillCommand(['import', sourcePath], defaultOptions({ outputDir: tempDir }));
+    expect(importResult.success).toBe(true);
+
+    const result = await doctorCommand([], defaultOptions({
+      outputDir: tempDir,
+      workflowDir: CLI_WORKFLOW_DIR,
+    }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Denied imported skills detected');
+    expect(result.message).toContain('guarded-import-skill');
+    expect(result.message).toContain('Execution blocked because');
+    expect(result.data).toMatchObject({
+      governance: {
+        blockedCount: 0,
+        deniedImportedSkills: {
+          deniedCount: 1,
+          latest: {
+            skillId: 'guarded-import-skill',
+            trustState: 'denied',
+          },
+        },
+      },
+    });
+    expect(RuntimeGovernanceAggregateSchema.parse((result.data as { governance: unknown }).governance)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 1,
+      },
+    });
+  });
+
   it('reports setup failures with doctor in an uninitialized workspace', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
 
     const result = await doctorCommand([], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('Run "ax setup"');
     expect(result.message).toContain('Overall status: unhealthy');
+    expect(result.message).toContain('built-in stable catalog still exposes 4 agents for discovery');
   });
 
   it('lists available workflows with stable-surface annotations', async () => {
@@ -272,11 +482,12 @@ describe('retained high-value commands', () => {
 
     const result = await listCommand([], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(true);
     expect(result.message).toContain('Available workflows');
+    expect(result.message).toContain('owner quality');
     const data = result.data as Array<{ workflowId: string; stableSurface: boolean }>;
     expect(data.some((entry) => entry.workflowId === 'ship' && entry.stableSurface)).toBe(true);
     expect(data.some((entry) => entry.workflowId === 'architect' && entry.stableSurface)).toBe(true);
@@ -288,13 +499,16 @@ describe('retained high-value commands', () => {
 
     const result = await listCommand(['architect'], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(true);
     expect(result.message).toContain('Workflow: architect');
     expect(result.message).toContain('Stable surface: yes');
+    expect(result.message).toContain('Owner agent: architect');
+    expect(result.message).toContain('Required inputs: request or input');
     expect(result.message).toContain('Steps:');
+    expect(result.message).toContain('Examples:');
 
     const data = result.data as {
       workflowId: string;
@@ -306,13 +520,28 @@ describe('retained high-value commands', () => {
     expect(data.steps.length).toBeGreaterThan(0);
   });
 
+  it('lists stable workflows from the bundled workflow catalog without an explicit workflow directory', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const result = await listCommand([], defaultOptions({
+      basePath: tempDir,
+    }));
+
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('ship');
+    const data = result.data as Array<{ workflowId: string; stableSurface: boolean; source?: string }>;
+    expect(data.some((entry) => entry.workflowId === 'ship' && entry.stableSurface)).toBe(true);
+    expect(data.some((entry) => entry.source === 'bundled-definition' || entry.source === 'bundled-catalog')).toBe(true);
+  });
+
   it('returns a usage error for list describe without a workflow id', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
 
     const result = await listCommand(['describe'], defaultOptions({
       outputDir: tempDir,
-      workflowDir: join(process.cwd(), 'workflows'),
+      workflowDir: CLI_WORKFLOW_DIR,
     }));
 
     expect(result.success).toBe(false);
@@ -426,6 +655,58 @@ describe('retained high-value commands', () => {
       workflowId: 'discuss',
       status: 'completed',
       failedSteps: 0,
+    });
+  });
+
+  it('surfaces runtime guard summaries in trace detail and analysis views', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.getStores().traceStore.upsertTrace({
+      traceId: 'cli-trace-guard-001',
+      workflowId: 'ship',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: '2026-03-25T00:00:00.000Z',
+      completedAt: '2026-03-25T00:00:05.000Z',
+      stepResults: [],
+      error: {
+        code: 'WORKFLOW_GUARD_BLOCKED',
+        message: 'Runtime governance blocked workflow execution.',
+      },
+      metadata: {
+        sessionId: 'cli-guard-session-001',
+        guardId: 'enforce-runtime-trust',
+        guardFailedGates: ['runtime_trust'],
+        guardFailedGateMessages: ['Tool trust state "implicit-local" did not satisfy required states.'],
+        guardSummary: 'Runtime governance blocked step "run-skill". Guard "enforce-runtime-trust" rejected tool "skill.run". Trust state: implicit-local. Required trust states: trusted-id.',
+        guardBlockedByRuntimeGovernance: true,
+        guardToolName: 'skill.run',
+        guardTrustState: 'implicit-local',
+        guardRequiredTrustStates: ['trusted-id'],
+        guardSourceRef: 'skill:deploy-review',
+      },
+    });
+
+    const detailResult = await traceCommand(['cli-trace-guard-001'], defaultOptions({ outputDir: tempDir }));
+    expect(detailResult.success).toBe(true);
+    expect(detailResult.message).toContain('Guard: Runtime governance blocked step "run-skill"');
+    expect(detailResult.message).toContain('Guard tool: skill.run');
+    expect(detailResult.message).toContain('Guard trust: implicit-local');
+    expect(detailResult.message).toContain('Guard requires: trusted-id');
+
+    const analysisResult = await traceCommand(['analyze', 'cli-trace-guard-001'], defaultOptions({ outputDir: tempDir }));
+    expect(analysisResult.success).toBe(true);
+    expect(analysisResult.message).toContain('Guard: Runtime governance blocked step "run-skill"');
+    expect(analysisResult.message).toContain('RUNTIME_GOVERNANCE_BLOCK');
+    expect(analysisResult.data).toMatchObject({
+      traceId: 'cli-trace-guard-001',
+      guard: {
+        guardId: 'enforce-runtime-trust',
+        toolName: 'skill.run',
+        trustState: 'implicit-local',
+      },
     });
   });
 

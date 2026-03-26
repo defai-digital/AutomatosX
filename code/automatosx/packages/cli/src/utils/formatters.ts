@@ -2,8 +2,12 @@ import { getErrorMessage } from '@defai.digital/contracts';
 import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import type { CLIOptions, CommandResult } from '../types.js';
 
+export function resolveCliBasePath(options: CLIOptions): string {
+  return options.basePath ?? options.outputDir ?? process.cwd();
+}
+
 export function createRuntime(options: CLIOptions): ReturnType<typeof createSharedRuntimeService> {
-  const basePath = options.outputDir ?? process.cwd();
+  const basePath = resolveCliBasePath(options);
   return createSharedRuntimeService({ basePath });
 }
 
@@ -34,4 +38,3 @@ export function failureFromError(action: string, error: unknown): CommandResult 
 export function usageError(usage: string): CommandResult {
   return failure(`Usage: ${usage}`);
 }
-

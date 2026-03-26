@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { CLIOptions, CommandResult } from '../types.js';
 import { failure, success } from '../utils/formatters.js';
+import { parseCommandArgs } from '../utils/command-args.js';
 
 const execAsync = promisify(exec);
 
@@ -82,7 +83,53 @@ async function installUpdate(version: string): Promise<void> {
   }
 }
 
+interface UpdateArgs {
+  checkOnly: boolean;
+  skipConfirm: boolean;
+  error?: string;
+}
+
+export function parseUpdateArgs(args: string[]): UpdateArgs {
+  const parsed = parseCommandArgs<UpdateArgs>({
+    args,
+    initial: {
+      checkOnly: false,
+      skipConfirm: false,
+    },
+    flags: {
+      check: {
+        kind: 'boolean',
+        aliases: ['c'],
+        apply: (state) => {
+          state.checkOnly = true;
+        },
+      },
+      yes: {
+        kind: 'boolean',
+        aliases: ['y'],
+        apply: (state) => {
+          state.skipConfirm = true;
+        },
+      },
+    },
+    allowPositionals: false,
+    unknownFlagMessage: (token) => `Unknown update flag: ${token}.`,
+    unexpectedPositionalMessage: () => 'Usage: ax update [options]',
+  });
+
+  if (parsed.error !== undefined) {
+    return { ...parsed.value, error: parsed.error };
+  }
+
+  return parsed.value;
+}
+
 export async function updateCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
+  const parsedArgs = parseUpdateArgs(args);
+  if (parsedArgs.error !== undefined) {
+    return failure(parsedArgs.error);
+  }
+
   if (options.help) {
     return success(
       'Usage: ax update [options]\n\n' +
@@ -92,8 +139,7 @@ export async function updateCommand(args: string[], options: CLIOptions): Promis
     );
   }
 
-  const checkOnly   = args.includes('--check') || args.includes('-c');
-  const skipConfirm = args.includes('--yes')   || args.includes('-y');
+  const { checkOnly, skipConfirm } = parsedArgs;
 
   console.log('\nAutomatosX Update Checker\n');
 

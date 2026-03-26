@@ -193,9 +193,7 @@ export async function runReviewAnalysis(
 }
 
 export async function listReviewTraces(traceStore: TraceStore, limit?: number): Promise<TraceRecord[]> {
-  const traces = await traceStore.listTraces();
-  const reviews = traces.filter((trace) => trace.workflowId === 'review');
-  return limit === undefined ? reviews : reviews.slice(0, limit);
+  return traceStore.listTracesByWorkflow('review', limit);
 }
 
 function safeDurationMs(startedAt: string, completedAt: string): number {

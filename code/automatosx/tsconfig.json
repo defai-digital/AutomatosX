@@ -8,6 +8,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@defai.digital/contracts": [
@@ -40,6 +41,7 @@
   "include": [
     "packages/**/*.ts",
     "tests/**/*.ts",
+    "tools/**/*.ts",
     "vitest.config.ts"
   ]
 }

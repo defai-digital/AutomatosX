@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { parseCommandArgs } from '../utils/command-args.js';
 import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 
 type ReviewFocus = 'all' | 'security' | 'correctness' | 'maintainability';
@@ -42,74 +43,51 @@ function parseReviewArgs(args: string[]): ParsedReviewArgs {
     ? args[0]
     : 'analyze';
   const startIndex = args[0] === subcommand ? 1 : 0;
-  const paths: string[] = [];
-  let focus: ReviewFocus = 'all';
-  let maxFiles = 25;
+  const parsed = parseCommandArgs<Pick<ParsedReviewArgs, 'focus' | 'maxFiles'>>({
+    args: args.slice(startIndex),
+    initial: {
+      focus: 'all',
+      maxFiles: 25,
+    },
+    flags: {
+      focus: {
+        kind: 'string',
+        apply: (state, value) => {
+          if (value !== 'all' && value !== 'security' && value !== 'correctness' && value !== 'maintainability') {
+            return 'Review focus must be one of: all, security, correctness, maintainability.';
+          }
+          state.focus = value;
+        },
+      },
+      'max-files': {
+        kind: 'string',
+        apply: (state, value) => {
+          const parsedMax = Number.parseInt(value, 10);
+          if (!Number.isFinite(parsedMax) || parsedMax <= 0) {
+            return 'Review max-files must be a positive integer.';
+          }
+          state.maxFiles = parsedMax;
+        },
+      },
+    },
+    unknownFlagMessage: (token) => `Unknown review flag: ${token}.`,
+  });
 
-  for (let index = startIndex; index < args.length; index += 1) {
-    const token = args[index];
-    if (token === '--focus' && args[index + 1] !== undefined) {
-      const next = args[index + 1] as ReviewFocus;
-      if (next === 'all' || next === 'security' || next === 'correctness' || next === 'maintainability') {
-        focus = next;
-      } else {
-        return {
-          subcommand,
-          paths,
-          focus,
-          maxFiles,
-          error: 'Review focus must be one of: all, security, correctness, maintainability.',
-        };
-      }
-      index += 1;
-    } else if (token === '--focus') {
-      return {
-        subcommand,
-        paths,
-        focus,
-        maxFiles,
-        error: 'Missing value for --focus.',
-      };
-    } else if (token === '--max-files' && args[index + 1] !== undefined) {
-      const parsedMax = Number.parseInt(args[index + 1] ?? '', 10);
-      if (Number.isFinite(parsedMax) && parsedMax > 0) {
-        maxFiles = parsedMax;
-      } else {
-        return {
-          subcommand,
-          paths,
-          focus,
-          maxFiles,
-          error: 'Review max-files must be a positive integer.',
-        };
-      }
-      index += 1;
-    } else if (token === '--max-files') {
-      return {
-        subcommand,
-        paths,
-        focus,
-        maxFiles,
-        error: 'Missing value for --max-files.',
-      };
-    } else if (token !== undefined && token.startsWith('--')) {
-      return {
-        subcommand,
-        paths,
-        focus,
-        maxFiles,
-        error: `Unknown review flag: ${token}.`,
-      };
-    } else if (token !== undefined && !token.startsWith('--')) {
-      paths.push(token);
-    }
+  if (parsed.error !== undefined) {
+    return {
+      subcommand,
+      paths: parsed.positionals,
+      focus: parsed.value.focus,
+      maxFiles: parsed.value.maxFiles,
+      error: parsed.error,
+    };
   }
 
   return {
     subcommand,
-    paths,
-    focus,
-    maxFiles,
+    paths: parsed.positionals,
+    focus: parsed.value.focus,
+    maxFiles: parsed.value.maxFiles,
   };
 }
 

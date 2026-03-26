@@ -1,22 +1,15 @@
-import { execFile } from 'node:child_process';
-import { access } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
+import { access, mkdir, rm, stat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import {
+  getWorkspaceBuildEntry,
+  workspaceBuildOutputs,
+} from '../../tools/workspace-manifest.js';
+import { buildAllWorkspaces, buildWorkspacePackage, repoRoot } from '../../tools/workspace-build.js';
 
-const execFileAsync = promisify(execFile);
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const buildPromises = new Map<string, Promise<void>>();
-const workspaceOutputs = [
-  'packages/contracts/dist/index.js',
-  'packages/workflow-engine/dist/index.js',
-  'packages/state-store/dist/index.js',
-  'packages/trace-store/dist/index.js',
-  'packages/shared-runtime/dist/index.js',
-  'packages/monitoring/dist/index.js',
-  'packages/mcp-server/dist/index.js',
-  'packages/cli/dist/main.js',
-];
+const BUILD_LOCK_DIR = resolve(repoRoot, '.tmp', 'ensure-built-locks');
+const BUILD_LOCK_STALE_MS = 5 * 60 * 1000;
+const BUILD_LOCK_RETRY_MS = 100;
 
 async function allOutputsExist(paths: string[]): Promise<boolean> {
   const results = await Promise.all(paths.map(async (path) => {
@@ -30,31 +23,82 @@ async function allOutputsExist(paths: string[]): Promise<boolean> {
   return results.every(Boolean);
 }
 
-function runBuild(key: string, args: string[]): Promise<void> {
+function getBuildLockPath(key: string): string {
+  return join(BUILD_LOCK_DIR, key.replaceAll(/[^a-zA-Z0-9_-]/g, '-'));
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+async function clearStaleBuildLock(lockPath: string): Promise<void> {
+  try {
+    const info = await stat(lockPath);
+    if (Date.now() - info.mtimeMs > BUILD_LOCK_STALE_MS) {
+      await rm(lockPath, { recursive: true, force: true });
+    }
+  } catch {
+    return;
+  }
+}
+
+async function withBuildLock(
+  key: string,
+  outputs: string[],
+  build: () => Promise<void>,
+): Promise<void> {
   const existing = buildPromises.get(key);
   if (existing !== undefined) {
     return existing;
   }
 
-  const buildPromise = execFileAsync('npm', args, {
-    cwd: repoRoot,
-    env: process.env,
-  }).then(() => undefined);
+  const buildPromise = (async () => {
+    const lockPath = getBuildLockPath(key);
+    await mkdir(BUILD_LOCK_DIR, { recursive: true });
+
+    while (true) {
+      if (await allOutputsExist(outputs)) {
+        return;
+      }
+
+      try {
+        await mkdir(lockPath);
+        break;
+      } catch {
+        await clearStaleBuildLock(lockPath);
+        await sleep(BUILD_LOCK_RETRY_MS);
+      }
+    }
+
+    try {
+      if (!(await allOutputsExist(outputs))) {
+        await build();
+      }
+    } finally {
+      await rm(lockPath, { recursive: true, force: true });
+    }
+  })();
 
   buildPromises.set(key, buildPromise);
   return buildPromise;
 }
 
 export async function ensureWorkspaceBuilt(): Promise<void> {
-  if (await allOutputsExist(workspaceOutputs)) {
+  if (await allOutputsExist(workspaceBuildOutputs)) {
     return;
   }
-  return runBuild('workspace', ['run', 'build']);
+  return withBuildLock('workspace', workspaceBuildOutputs, () => buildAllWorkspaces());
 }
 
 export async function ensurePackageBuilt(packageName: string): Promise<void> {
-  if (await allOutputsExist([`packages/${packageName}/dist/index.js`])) {
+  const entry = getWorkspaceBuildEntry(packageName);
+  if (entry === undefined) {
+    throw new Error(`Unknown build workspace: ${packageName}`);
+  }
+
+  if (await allOutputsExist([entry.buildOutput])) {
     return;
   }
-  return runBuild(`package:${packageName}`, ['run', 'build', '--workspace', `packages/${packageName}`]);
+
+  return withBuildLock(`package:${packageName}`, [entry.buildOutput], () => buildWorkspacePackage(packageName));
 }

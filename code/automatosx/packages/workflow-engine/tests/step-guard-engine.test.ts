@@ -269,6 +269,267 @@ describe('step guard engine', () => {
     expect(results[1]?.guardId).toBe('general-guard');
   });
 
+  it('evaluates canonical runtime trust metadata from tool output', async () => {
+    engine.registerPolicy({
+      policyId: 'runtime-governance',
+      name: 'Runtime Governance',
+      enabled: true,
+      priority: 30,
+      workflowPatterns: ['*'],
+      stepTypes: ['tool'],
+      agentPatterns: ['*'],
+      guards: [
+        {
+          guardId: 'enforce-runtime-trust',
+          stepId: '*',
+          position: 'after',
+          gates: ['runtime_trust'],
+          onFail: 'block',
+          enabled: true,
+        },
+      ],
+    });
+
+    const context: StepGuardContext = {
+      executionId: 'exec-runtime-pass',
+      agentId: 'agent-1',
+      workflowId: 'ship',
+      stepId: 'run-skill',
+      stepIndex: 1,
+      totalSteps: 2,
+      stepType: 'tool',
+      stepConfig: {
+        toolName: 'skill.run',
+        requiredTrustStates: ['trusted-id', 'approved-policy'],
+      },
+      previousOutputs: {
+        'run-skill': {
+          type: 'tool',
+          toolName: 'skill.run',
+          toolOutput: {
+            skillId: 'deploy-review',
+            dispatch: 'delegate',
+            success: true,
+            skillTrust: {
+              allowed: true,
+              state: 'trusted-id',
+              reason: 'Trusted by id "deploy-review".',
+              remoteSource: false,
+            },
+          },
+        },
+      },
+      currentOutput: {
+        type: 'tool',
+        toolName: 'skill.run',
+        toolOutput: {
+          skillId: 'deploy-review',
+          dispatch: 'delegate',
+          success: true,
+          skillTrust: {
+            allowed: true,
+            state: 'trusted-id',
+            reason: 'Trusted by id "deploy-review".',
+            remoteSource: false,
+          },
+        },
+      },
+      currentStepSuccess: true,
+    };
+
+    const results = await engine.runAfterGuards(context);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      guardId: 'enforce-runtime-trust',
+      blocked: false,
+      status: 'PASS',
+    });
+    expect(results[0]?.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        gateId: 'runtime_trust',
+        status: 'PASS',
+      }),
+    ]));
+  });
+
+  it('blocks runtime trust states that do not satisfy workflow requirements', async () => {
+    engine.registerPolicy({
+      policyId: 'runtime-governance',
+      name: 'Runtime Governance',
+      enabled: true,
+      priority: 30,
+      workflowPatterns: ['*'],
+      stepTypes: ['tool'],
+      agentPatterns: ['*'],
+      guards: [
+        {
+          guardId: 'enforce-runtime-trust',
+          stepId: '*',
+          position: 'after',
+          gates: ['runtime_trust'],
+          onFail: 'block',
+          enabled: true,
+        },
+      ],
+    });
+
+    const context: StepGuardContext = {
+      executionId: 'exec-runtime-fail',
+      agentId: 'agent-1',
+      workflowId: 'ship',
+      stepId: 'run-skill',
+      stepIndex: 1,
+      totalSteps: 2,
+      stepType: 'tool',
+      stepConfig: {
+        toolName: 'skill.run',
+        requiredTrustStates: ['trusted-id'],
+      },
+      previousOutputs: {
+        'run-skill': {
+          type: 'tool',
+          toolName: 'skill.run',
+          toolOutput: {
+            skillId: 'deploy-review',
+            dispatch: 'delegate',
+            success: true,
+            skillTrust: {
+              allowed: true,
+              state: 'implicit-local',
+              reason: 'Allowed because the definition is local and does not require explicit approval.',
+              remoteSource: false,
+            },
+          },
+        },
+      },
+      currentOutput: {
+        type: 'tool',
+        toolName: 'skill.run',
+        toolOutput: {
+          skillId: 'deploy-review',
+          dispatch: 'delegate',
+          success: true,
+          skillTrust: {
+            allowed: true,
+            state: 'implicit-local',
+            reason: 'Allowed because the definition is local and does not require explicit approval.',
+            remoteSource: false,
+          },
+        },
+      },
+      currentStepSuccess: true,
+    };
+
+    const results = await engine.runAfterGuards(context);
+    expect(engine.shouldBlock(results)).toBe(true);
+    expect(results[0]).toMatchObject({
+      guardId: 'enforce-runtime-trust',
+      blocked: true,
+      status: 'FAIL',
+    });
+    expect(results[0]?.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        gateId: 'runtime_trust',
+        status: 'FAIL',
+      }),
+    ]));
+  });
+
+  it('blocks bridge installs when installed bridge trust is denied', async () => {
+    engine.registerPolicy({
+      policyId: 'runtime-governance',
+      name: 'Runtime Governance',
+      enabled: true,
+      priority: 30,
+      workflowPatterns: ['*'],
+      stepTypes: ['tool'],
+      agentPatterns: ['*'],
+      guards: [
+        {
+          guardId: 'enforce-runtime-trust',
+          stepId: '*',
+          position: 'after',
+          gates: ['runtime_trust'],
+          onFail: 'block',
+          enabled: true,
+        },
+      ],
+    });
+
+    const context: StepGuardContext = {
+      executionId: 'exec-bridge-install-fail',
+      agentId: 'agent-1',
+      workflowId: 'ship',
+      stepId: 'install-bridge',
+      stepIndex: 1,
+      totalSteps: 2,
+      stepType: 'tool',
+      stepConfig: {
+        toolName: 'bridge.install',
+      },
+      previousOutputs: {
+        'install-bridge': {
+          type: 'tool',
+          toolName: 'bridge.install',
+          toolOutput: {
+            definition: {
+              bridgeId: 'remote-bridge',
+              provenance: {
+                importer: 'ax.bridge.install',
+                type: 'github',
+                ref: 'https://github.com/example/remote-bridge',
+              },
+            },
+            trust: {
+              allowed: false,
+              state: 'denied',
+              reason: 'Execution blocked because remote source "https://github.com/example/remote-bridge" is not trusted in .automatosx/config.json.',
+              sourceRef: 'https://github.com/example/remote-bridge',
+              remoteSource: true,
+            },
+          },
+        },
+      },
+      currentOutput: {
+        type: 'tool',
+        toolName: 'bridge.install',
+        toolOutput: {
+          definition: {
+            bridgeId: 'remote-bridge',
+            provenance: {
+              importer: 'ax.bridge.install',
+              type: 'github',
+              ref: 'https://github.com/example/remote-bridge',
+            },
+          },
+          trust: {
+            allowed: false,
+            state: 'denied',
+            reason: 'Execution blocked because remote source "https://github.com/example/remote-bridge" is not trusted in .automatosx/config.json.',
+            sourceRef: 'https://github.com/example/remote-bridge',
+            remoteSource: true,
+          },
+        },
+      },
+      currentStepSuccess: true,
+    };
+
+    const results = await engine.runAfterGuards(context);
+    expect(engine.shouldBlock(results)).toBe(true);
+    expect(results[0]).toMatchObject({
+      guardId: 'enforce-runtime-trust',
+      blocked: true,
+      status: 'FAIL',
+    });
+    expect(results[0]?.gates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        gateId: 'runtime_trust',
+        status: 'FAIL',
+        message: expect.stringContaining('Installed bridge trust denied'),
+      }),
+    ]));
+  });
+
   it('emits stage progress events through progress tracker', () => {
     const events: StageProgressEvent[] = [];
     const tracker = createProgressTracker('exec-4', 'agent-2', 2, (event) => events.push(event));

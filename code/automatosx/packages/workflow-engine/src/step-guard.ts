@@ -15,6 +15,12 @@ import {
   getErrorMessage,
 } from '@defai.digital/contracts';
 
+type RuntimeAwareStepGuardContext = StepGuardContext & {
+  currentOutput?: unknown;
+  currentStepSuccess?: boolean;
+  currentStepError?: Record<string, unknown>;
+};
+
 export type GateCheckFn = (context: StepGuardContext) => Promise<StepGateResult>;
 
 export interface GateRegistry {
@@ -179,6 +185,7 @@ export class StepGuardEngine {
       if (!policy.enabled) continue;
       if (!this.matchesPatterns(policy.agentPatterns, context.agentId)) continue;
       if (policy.stepTypes && !policy.stepTypes.includes(context.stepType)) continue;
+      if (!context.workflowId && policy.workflowPatterns?.some((p) => p !== '*')) continue;
       if (context.workflowId && !this.matchesPatterns(policy.workflowPatterns, context.workflowId)) continue;
       applicable.push(policy);
     }
@@ -511,6 +518,169 @@ export class StepGuardEngine {
         details: {},
       };
     });
+
+    this.gateRegistry.register('runtime_trust', async (context) => {
+      const runtimeContext = context as RuntimeAwareStepGuardContext;
+      const toolName = resolveRuntimeToolName(runtimeContext);
+      if (toolName === undefined) {
+        return {
+          gateId: 'runtime_trust',
+          status: 'PASS' as GuardCheckStatus,
+          message: 'Runtime trust gate not applicable for this step',
+          details: {},
+        };
+      }
+
+      const currentOutput = resolveCurrentToolOutput(runtimeContext);
+      if (currentOutput === undefined) {
+        if (runtimeContext.currentStepSuccess === false) {
+          return {
+            gateId: 'runtime_trust',
+            status: 'WARN' as GuardCheckStatus,
+            message: `Runtime trust metadata was unavailable because "${toolName}" failed before producing output`,
+            details: {
+              toolName,
+              currentStepError: runtimeContext.currentStepError,
+            },
+            suggestion: 'Inspect the step error first; trust evaluation only runs on canonical tool output.',
+          };
+        }
+
+        return {
+          gateId: 'runtime_trust',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Canonical runtime tool "${toolName}" did not expose governance metadata`,
+          details: {
+            toolName,
+          },
+          suggestion: 'Route the step through the shared runtime bridge/skill services so trust and provenance are attached to the tool output.',
+        };
+      }
+
+      const requiredTrustStates = normalizeLabelArray(
+        context.stepConfig?.requiredTrustStates ?? context.stepConfig?.allowedTrustStates,
+      );
+
+      if (toolName === 'bridge.install') {
+        const provenance = extractInstalledBridgeProvenance(currentOutput);
+        if (provenance === undefined) {
+          return {
+            gateId: 'runtime_trust',
+            status: 'FAIL' as GuardCheckStatus,
+            message: 'Installed bridge output is missing provenance metadata',
+            details: {
+              toolName,
+            },
+            suggestion: 'Install bridges through the canonical bridge runtime so provenance is recorded in bridge.json.',
+          };
+        }
+
+        const trust = extractInstalledBridgeTrust(currentOutput);
+        if (trust === undefined) {
+          return {
+            gateId: 'runtime_trust',
+            status: 'FAIL' as GuardCheckStatus,
+            message: 'Installed bridge output is missing trust metadata',
+            details: {
+              toolName,
+              provenance,
+            },
+            suggestion: 'Use the canonical bridge install output unchanged so workflow guards can evaluate the installed bridge trust state.',
+          };
+        }
+
+        if (!trust.allowed) {
+          return {
+            gateId: 'runtime_trust',
+            status: 'FAIL' as GuardCheckStatus,
+            message: `Installed bridge trust denied: ${trust.reason}`,
+            details: {
+              toolName,
+              provenance,
+              trust,
+            },
+          };
+        }
+
+        if (requiredTrustStates.length > 0 && !requiredTrustStates.includes(trust.state)) {
+          return {
+            gateId: 'runtime_trust',
+            status: 'FAIL' as GuardCheckStatus,
+            message: `Installed bridge trust state "${trust.state}" does not satisfy this step's required trust states`,
+            details: {
+              toolName,
+              provenance,
+              trust,
+              requiredTrustStates,
+            },
+            suggestion: 'Allowlist the bridge id or source, or relax requiredTrustStates in the workflow step config.',
+          };
+        }
+
+        return {
+          gateId: 'runtime_trust',
+          status: 'PASS' as GuardCheckStatus,
+          message: `Bridge install recorded provenance${provenance.importer ? ` via ${String(provenance.importer)}` : ''} with trust state "${trust.state}"`,
+          details: {
+            toolName,
+            provenance,
+            trust,
+            requiredTrustStates,
+          },
+        };
+      }
+
+      const trust = extractRuntimeTrustDecision(toolName, currentOutput);
+      if (trust === undefined) {
+        return {
+          gateId: 'runtime_trust',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Canonical runtime tool "${toolName}" is missing trust metadata`,
+          details: {
+            toolName,
+            output: currentOutput,
+          },
+          suggestion: 'Use shared-runtime outputs unchanged so workflow guards can evaluate trust state without recomputing it.',
+        };
+      }
+
+      if (!trust.allowed) {
+        return {
+          gateId: 'runtime_trust',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Runtime trust denied for "${toolName}": ${trust.reason}`,
+          details: {
+            toolName,
+            trust,
+          },
+        };
+      }
+
+      if (requiredTrustStates.length > 0 && !requiredTrustStates.includes(trust.state)) {
+        return {
+          gateId: 'runtime_trust',
+          status: 'FAIL' as GuardCheckStatus,
+          message: `Runtime trust state "${trust.state}" does not satisfy this step's required trust states`,
+          details: {
+            toolName,
+            trust,
+            requiredTrustStates,
+          },
+          suggestion: 'Allowlist the bridge/skill id or source, or relax requiredTrustStates in the workflow step config.',
+        };
+      }
+
+      return {
+        gateId: 'runtime_trust',
+        status: 'PASS' as GuardCheckStatus,
+        message: `Runtime trust accepted with state "${trust.state}"`,
+        details: {
+          toolName,
+          trust,
+          requiredTrustStates,
+        },
+      };
+    });
   }
 }
 
@@ -548,6 +718,16 @@ function normalizeStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
       .map((entry) => normalizeWorkspacePath(entry))
+    : [];
+}
+
+function normalizeLabelArray(value: unknown): string[] {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return [value.trim()];
+  }
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      .map((entry) => entry.trim())
     : [];
 }
 
@@ -619,6 +799,117 @@ function collectStringValues(value: unknown, depth = 0): string[] {
     return Object.values(value).flatMap((entry) => collectStringValues(entry, depth + 1));
   }
   return [];
+}
+
+function resolveRuntimeToolName(context: RuntimeAwareStepGuardContext): 'skill.run' | 'bridge.run' | 'bridge.install' | undefined {
+  const configToolName = firstNonEmptyString(
+    asString(context.stepConfig?.toolName),
+    asString(context.stepConfig?.tool),
+  );
+  const outputToolName = extractToolEnvelope(context.currentOutput)?.toolName
+    ?? extractToolEnvelope(context.previousOutputs[context.stepId])?.toolName;
+  const toolName = configToolName ?? outputToolName;
+  if (toolName === 'skill.run' || toolName === 'bridge.run' || toolName === 'bridge.install') {
+    return toolName;
+  }
+  return undefined;
+}
+
+function resolveCurrentToolOutput(context: RuntimeAwareStepGuardContext): unknown {
+  const currentEnvelope = extractToolEnvelope(context.currentOutput);
+  if (currentEnvelope !== undefined) {
+    return currentEnvelope.toolOutput;
+  }
+  const previousEnvelope = extractToolEnvelope(context.previousOutputs[context.stepId]);
+  return previousEnvelope?.toolOutput;
+}
+
+function extractToolEnvelope(value: unknown): { toolName?: string; toolOutput?: unknown } | undefined {
+  if (!isRecord(value) || value.type !== 'tool') {
+    return undefined;
+  }
+  return {
+    toolName: asString(value.toolName),
+    toolOutput: value.toolOutput,
+  };
+}
+
+function extractRuntimeTrustDecision(
+  toolName: 'skill.run' | 'bridge.run',
+  output: unknown,
+): RuntimeTrustSnapshot | undefined {
+  if (!isRecord(output)) {
+    return undefined;
+  }
+
+  if (toolName === 'skill.run') {
+    return asRuntimeTrustSnapshot(output.skillTrust)
+      ?? asRuntimeTrustSnapshot(isRecord(output.execution) ? output.execution.trust : undefined);
+  }
+
+  return asRuntimeTrustSnapshot(isRecord(output.execution) ? output.execution.trust : undefined);
+}
+
+function extractInstalledBridgeProvenance(output: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(output)) {
+    return undefined;
+  }
+  const definition = isRecord(output.definition) ? output.definition : undefined;
+  return definition && isRecord(definition.provenance) ? definition.provenance : undefined;
+}
+
+function extractInstalledBridgeTrust(output: unknown): RuntimeTrustSnapshot | undefined {
+  if (!isRecord(output)) {
+    return undefined;
+  }
+  return asRuntimeTrustSnapshot(output.trust);
+}
+
+interface RuntimeTrustSnapshot {
+  allowed: boolean;
+  state: string;
+  reason: string;
+  approvalMode?: string;
+  approvalPolicyId?: string;
+  sourceRef?: string;
+  remoteSource?: boolean;
+}
+
+function asRuntimeTrustSnapshot(value: unknown): RuntimeTrustSnapshot | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const state = asString(value.state);
+  const reason = asString(value.reason);
+  if (typeof value.allowed !== 'boolean' || state === undefined || reason === undefined) {
+    return undefined;
+  }
+  return {
+    allowed: value.allowed,
+    state,
+    reason,
+    approvalMode: asString(value.approvalMode),
+    approvalPolicyId: asString(value.approvalPolicyId),
+    sourceRef: asString(value.sourceRef),
+    remoteSource: typeof value.remoteSource === 'boolean' ? value.remoteSource : undefined,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function firstNonEmptyString(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
 }
 
 export function createGateRegistry(): GateRegistry {

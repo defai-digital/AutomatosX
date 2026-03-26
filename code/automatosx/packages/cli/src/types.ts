@@ -108,6 +108,11 @@ export interface CLIOptions {
   refresh: number | undefined;
 
   /**
+   * Trace status filter for history-like output.
+   */
+  status?: string;
+
+  /**
    * Compact output formatting.
    */
   compact: boolean;
@@ -126,6 +131,11 @@ export interface CLIOptions {
    * Command output directory.
    */
   outputDir?: string;
+
+  /**
+   * Internal runtime workspace base path override.
+   */
+  basePath?: string;
 
   /**
    * Dry-run mode.

@@ -8,6 +8,7 @@ import {
 } from '@defai.digital/contracts';
 import type {
   WorkflowResult,
+  WorkflowError,
   WorkflowRunnerConfig,
   StepResult,
   StepContext,
@@ -27,6 +28,12 @@ import type { StepGuardEngine } from './step-guard.js';
 
 const UNKNOWN_AGENT_ID = 'unknown';
 const WORKFLOW_GUARD_BLOCKED = 'WORKFLOW_GUARD_BLOCKED';
+
+type RuntimeAwareStepGuardContext = StepGuardContext & {
+  currentOutput?: unknown;
+  currentStepSuccess?: boolean;
+  currentStepError?: Record<string, unknown>;
+};
 
 interface ResolvedConfig {
   stepExecutor: StepExecutor;
@@ -105,15 +112,20 @@ export class WorkflowRunner {
       }
 
       this.config.onStepStart?.(step, context);
+      const stepStartedAt = new Date().toISOString();
       const result = await this.executeStepWithRetry(step, context);
+      const stepCompletedAt = new Date().toISOString();
+      (result as { startedAt?: string; completedAt?: string }).startedAt = stepStartedAt;
+      (result as { startedAt?: string; completedAt?: string }).completedAt = stepCompletedAt;
       const frozenResult = deepFreezeStepResult(result);
       stepResults.push(frozenResult);
       this.config.onStepComplete?.(step, frozenResult);
 
       if (this.config.stepGuardEngine) {
         const guardContext = this.buildGuardContext(executionId, step, i, prepared, stepResults);
+        let afterResults: StepGuardResult[];
         try {
-          await this.config.stepGuardEngine.runAfterGuards(guardContext);
+          afterResults = await this.config.stepGuardEngine.runAfterGuards(guardContext);
         } catch (guardError) {
           return this.createErrorResult(
             prepared.workflow.workflowId,
@@ -129,10 +141,13 @@ export class WorkflowRunner {
             },
           );
         }
+        if (this.config.stepGuardEngine.shouldBlock(afterResults)) {
+          return this.createBlockedResult(prepared, stepResults, step, afterResults, startTime);
+        }
       }
 
       if (!frozenResult.success) {
-        const workflowError: WorkflowResult['error'] = {
+        const workflowError: WorkflowError = {
           code: WorkflowErrorCodes.STEP_EXECUTION_FAILED,
           message: `Step ${step.stepId} failed: ${frozenResult.error?.message ?? 'Unknown error'}`,
           failedStepId: step.stepId,
@@ -296,7 +311,10 @@ export class WorkflowRunner {
       }
     }
 
-    return {
+    const latestResult = stepResults[stepResults.length - 1];
+    const currentResult = latestResult?.stepId === step.stepId ? latestResult : undefined;
+
+    const context: RuntimeAwareStepGuardContext = {
       executionId,
       agentId: this.config.agentId ?? UNKNOWN_AGENT_ID,
       workflowId: workflow.workflow.workflowId,
@@ -306,7 +324,13 @@ export class WorkflowRunner {
       totalSteps: workflow.workflow.steps.length,
       stepConfig: step.config,
       previousOutputs,
+      currentOutput: currentResult?.output,
+      currentStepSuccess: currentResult?.success,
+      currentStepError: currentResult?.error === undefined
+        ? undefined
+        : { ...currentResult.error },
     };
+    return context;
   }
 
   private createBlockedResult(
@@ -331,6 +355,7 @@ export class WorkflowRunner {
         details: {
           guardId: blockingGuard?.guardId,
           failedGates: failedGates.map((gate) => gate.gateId),
+          failedGateMessages: failedGates.map((gate) => gate.message),
         },
       },
       totalDurationMs: Date.now() - startTime,

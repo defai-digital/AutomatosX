@@ -4,16 +4,32 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { CLI_COMMAND_NAMES, CLI_VERSION, executeCli, parseCommand, renderCommandResult } from '../src/index.js';
-import { ensureWorkspaceBuilt } from '../../../tests/support/ensure-built.js';
+import {
+  RuntimeGovernanceAggregateSchema,
+  createSharedRuntimeService,
+} from '@defai.digital/shared-runtime';
+import {
+  CLI_COMMAND_NAMES,
+  CLI_VERSION,
+  executeCli,
+  executeParsedCli,
+  parseCommand,
+  renderCommandResult,
+} from '../src/index.js';
+import { ensurePackageBuilt } from '../../../tests/support/ensure-built.js';
+import {
+  CLI_ENTRY_PATH,
+  CLI_PACKAGE_ROOT,
+  CLI_WORKFLOW_DIR,
+  createCliTestTempDir,
+} from './support/test-paths.js';
 
 const execFileAsync = promisify(execFile);
 type ExecError = Error & { stdout?: string; stderr?: string; code?: number };
+const PROCESS_TEST_TIMEOUT_MS = 20_000;
 
 function createTempDir(): string {
-  const dir = join(process.cwd(), '.tmp', `cli-dispatch-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
+  return createCliTestTempDir('cli-dispatch');
 }
 
 describe('cli dispatch', () => {
@@ -44,13 +60,114 @@ describe('cli dispatch', () => {
     expect(parsed.options.outputDir).toBe('/tmp/example');
     expect(parsed.options.traceId).toBe('trace-001');
     expect(parsed.options.sessionId).toBe('session-001');
+    expect(parsed.options.status).toBeUndefined();
     expect(parsed.options.format).toBe('json');
     expect(parsed.args).toEqual(['analyze', 'src', '--focus', 'security']);
+  });
+
+  it('parses advertised history status filters as global options', () => {
+    const parsed = parseCommand(['history', '--status', 'failed', '--limit', '5']);
+
+    expect(parsed.command).toBe('history');
+    expect(parsed.options.status).toBe('failed');
+    expect(parsed.options.limit).toBe(5);
+    expect(parsed.args).toEqual([]);
+  });
+
+  it('parses inline global flags without consuming inline command-specific flags', () => {
+    const parsed = parseCommand([
+      'review',
+      'analyze',
+      'src',
+      '--focus=security',
+      '--output-dir=/tmp/example-inline',
+      '--trace-id=trace-inline-001',
+      '--format=json',
+      '--tags=architecture,audit',
+      '--limit=2',
+    ]);
+
+    expect(parsed.command).toBe('review');
+    expect(parsed.options.outputDir).toBe('/tmp/example-inline');
+    expect(parsed.options.traceId).toBe('trace-inline-001');
+    expect(parsed.options.format).toBe('json');
+    expect(parsed.options.tags).toEqual(['architecture', 'audit']);
+    expect(parsed.options.limit).toBe(2);
+    expect(parsed.args).toEqual(['analyze', 'src', '--focus=security']);
   });
 
   it('dispatches version and renders json output', async () => {
     const result = await executeCli(['version', '--format', 'json']);
     const parsed = parseCommand(['version', '--format', 'json']);
+    const rendered = renderCommandResult(result, parsed.options);
+
+    expect(result.success).toBe(true);
+    expect(rendered).toContain(`"version": "${CLI_VERSION}"`);
+  });
+
+  it('preserves global max-tokens for call through the unified entrypoint', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const result = await executeCli([
+      'call',
+      'Summarize release risk.',
+      '--max-tokens',
+      '42',
+      '--trace-id',
+      'dispatch-call-max-tokens-001',
+      '--output-dir',
+      tempDir,
+    ]);
+
+    expect(result.success).toBe(true);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await expect(runtime.getTrace('dispatch-call-max-tokens-001')).resolves.toMatchObject({
+      traceId: 'dispatch-call-max-tokens-001',
+      workflowId: 'call',
+      input: expect.objectContaining({
+        maxTokens: 42,
+      }),
+    });
+  });
+
+  it('supports inline global max-tokens through the unified entrypoint', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const result = await executeCli([
+      'call',
+      'Summarize release risk.',
+      '--max-tokens=41',
+      '--trace-id=dispatch-call-inline-max-tokens-001',
+      '--output-dir',
+      tempDir,
+    ]);
+
+    expect(result.success).toBe(true);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await expect(runtime.getTrace('dispatch-call-inline-max-tokens-001')).resolves.toMatchObject({
+      traceId: 'dispatch-call-inline-max-tokens-001',
+      workflowId: 'call',
+      input: expect.objectContaining({
+        maxTokens: 41,
+      }),
+    });
+  });
+
+  it('treats --version as a true global flag after the command name', async () => {
+    const result = await executeCli(['status', '--version']);
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe(`AutomatosX v${CLI_VERSION}`);
+    expect(result.data).toEqual({ version: CLI_VERSION });
+  });
+
+  it('executes an already parsed command without reparsing', async () => {
+    const parsed = parseCommand(['version', '--format', 'json']);
+    const result = await executeParsedCli(parsed);
     const rendered = renderCommandResult(result, parsed.options);
 
     expect(result.success).toBe(true);
@@ -64,7 +181,7 @@ describe('cli dispatch', () => {
     const workflowResult = await executeCli([
       'list',
       '--workflow-dir',
-      join(process.cwd(), 'workflows'),
+      CLI_WORKFLOW_DIR,
       '--output-dir',
       tempDir,
     ]);
@@ -74,7 +191,7 @@ describe('cli dispatch', () => {
       'list',
       'architect',
       '--workflow-dir',
-      join(process.cwd(), 'workflows'),
+      CLI_WORKFLOW_DIR,
       '--output-dir',
       tempDir,
     ]);
@@ -210,7 +327,7 @@ describe('cli dispatch', () => {
       'run',
       'ship',
       '--workflow-dir',
-      join(process.cwd(), 'workflows'),
+      CLI_WORKFLOW_DIR,
       '--output-dir',
       tempDir,
       '--max-iterations',
@@ -238,6 +355,88 @@ describe('cli dispatch', () => {
     ]);
     expect(resumeResult.success).toBe(true);
     expect(resumeResult.message).toContain('Resumed trace dispatch-review-resume-source');
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.runDiscussion({
+      topic: 'Preserve provider budget',
+      traceId: 'dispatch-discuss-resume-source',
+      providers: ['claude', 'gemini', 'grok'],
+      minProviders: 3,
+      surface: 'cli',
+    });
+
+    const resumedDiscussResult = await executeCli([
+      'resume',
+      'dispatch-discuss-resume-source',
+      '--trace-id',
+      'dispatch-discuss-resume-target',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(resumedDiscussResult.success).toBe(true);
+
+    const resumedDiscussTrace = await runtime.getTrace('dispatch-discuss-resume-target');
+    expect(resumedDiscussTrace?.input).toMatchObject({
+      minProviders: 3,
+      providers: ['claude', 'gemini', 'grok'],
+    });
+
+    const quickResult = await runtime.runDiscussionQuick({
+      topic: 'Quick resume path',
+      traceId: 'dispatch-discuss-quick-source',
+      providers: ['claude', 'gemini'],
+      surface: 'cli',
+    });
+    expect(quickResult.success).toBe(true);
+
+    const resumedQuickResult = await executeCli([
+      'resume',
+      'dispatch-discuss-quick-source',
+      '--trace-id',
+      'dispatch-discuss-quick-target',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(resumedQuickResult.success).toBe(true);
+
+    const resumedQuickTrace = await runtime.getTrace('dispatch-discuss-quick-target');
+    expect(resumedQuickTrace).toMatchObject({
+      traceId: 'dispatch-discuss-quick-target',
+      workflowId: 'discuss.quick',
+      status: 'completed',
+    });
+
+    const recursiveResult = await runtime.runDiscussionRecursive({
+      topic: 'Recursive resume path',
+      subtopics: ['risk', 'validation'],
+      traceId: 'dispatch-discuss-recursive-source',
+      providers: ['claude', 'gemini'],
+      minProviders: 2,
+      surface: 'cli',
+    });
+    expect(recursiveResult.success).toBe(true);
+
+    const resumedRecursiveResult = await executeCli([
+      'resume',
+      'dispatch-discuss-recursive-source',
+      '--trace-id',
+      'dispatch-discuss-recursive-target',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(resumedRecursiveResult.success).toBe(true);
+
+    const resumedRecursiveTrace = await runtime.getTrace('dispatch-discuss-recursive-target');
+    expect(resumedRecursiveTrace).toMatchObject({
+      traceId: 'dispatch-discuss-recursive-target',
+      workflowId: 'discuss.recursive',
+      status: 'completed',
+    });
+    expect(resumedRecursiveTrace?.input).toMatchObject({
+      subtopics: ['risk', 'validation'],
+      minProviders: 2,
+      providers: ['claude', 'gemini'],
+    });
   });
 
   it('dispatches doctor through the unified entrypoint', async () => {
@@ -249,8 +448,39 @@ describe('cli dispatch', () => {
       '--output-dir',
       tempDir,
     ]);
+
+    const result = await executeCli([
+      'doctor',
+      '--output-dir',
+      tempDir,
+      '--workflow-dir',
+      CLI_WORKFLOW_DIR,
+      '--format',
+      'json',
+    ]);
+
+    expect(result.success).toBe(true);
+    const data = result.data as {
+      status: string;
+      summary: { fail: number };
+      governance: unknown;
+    };
+    expect(data.status).toBe('warning');
+    expect(data.summary.fail).toBe(0);
+    expect(RuntimeGovernanceAggregateSchema.parse(data.governance)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
+      },
+    });
+  }, PROCESS_TEST_TIMEOUT_MS);
+
+  it('does not emit a legacy doctor governance alias in json output', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
     await executeCli([
-      'init',
+      'setup',
       '--output-dir',
       tempDir,
     ]);
@@ -260,15 +490,207 @@ describe('cli dispatch', () => {
       '--output-dir',
       tempDir,
       '--workflow-dir',
-      join(process.cwd(), 'workflows'),
+      CLI_WORKFLOW_DIR,
       '--format',
       'json',
     ]);
 
     expect(result.success).toBe(true);
-    const data = result.data as { status: string; summary: { fail: number } };
-    expect(data.status).toBe('warning');
-    expect(data.summary.fail).toBe(0);
+    const data = result.data as {
+      governance: unknown;
+    };
+    expect(RuntimeGovernanceAggregateSchema.parse(data.governance)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
+      },
+    });
+    expect(data).not.toHaveProperty(['runtime', 'Governance'].join(''));
+  }, PROCESS_TEST_TIMEOUT_MS);
+
+  it('dispatches memory and semantic commands with command-local flags', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const memorySetResult = await executeCli([
+      'memory',
+      'set',
+      'project.config',
+      '--namespace',
+      'agents',
+      '--input',
+      '{"provider":"claude","enabled":true}',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(memorySetResult.success).toBe(true);
+    expect(memorySetResult.message).toContain('Memory stored: project.config');
+
+    const memoryGetResult = await executeCli([
+      'memory',
+      'get',
+      'project.config',
+      '--namespace',
+      'agents',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(memoryGetResult.success).toBe(true);
+    expect(memoryGetResult.message).toContain('Namespace: agents');
+    expect(memoryGetResult.message).toContain('"provider": "claude"');
+
+    const semanticStoreResult = await executeCli([
+      'semantic',
+      'store',
+      'arch.decision',
+      '--content',
+      'We use event sourcing for audit trails',
+      '--tags',
+      'architecture,audit',
+      '--namespace',
+      'architecture',
+      '--input',
+      '{"owner":"platform"}',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(semanticStoreResult.success).toBe(true);
+    expect(semanticStoreResult.message).toContain('Semantic entry stored: arch.decision');
+    expect(semanticStoreResult.message).toContain('Tags: architecture, audit');
+
+    const semanticListResult = await executeCli([
+      'semantic',
+      'list',
+      '--namespace',
+      'architecture',
+      '--tags',
+      'architecture',
+      '--limit',
+      '1',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(semanticListResult.success).toBe(true);
+    expect(semanticListResult.message).toContain('arch.decision');
+    expect(semanticListResult.data).toEqual([
+      expect.objectContaining({
+        key: 'arch.decision',
+        namespace: 'architecture',
+        tags: ['architecture', 'audit'],
+      }),
+    ]);
+  });
+
+  it('returns validation errors for invalid structured memory and semantic input', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const invalidMemoryResult = await executeCli([
+      'memory',
+      'set',
+      'project.config',
+      '--input',
+      '{bad-json}',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(invalidMemoryResult.success).toBe(false);
+    expect(invalidMemoryResult.message).toContain('Invalid JSON in --input. Provide a valid JSON value.');
+
+    const invalidSemanticResult = await executeCli([
+      'semantic',
+      'store',
+      'arch.decision',
+      '--content',
+      'We use event sourcing for audit trails',
+      '--input',
+      '[]',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(invalidSemanticResult.success).toBe(false);
+    expect(invalidSemanticResult.message).toContain('Semantic metadata input must be a JSON object.');
+  });
+
+  it('dispatches parallel plan and run with advertised task-array input and local aliases', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.registerAgent({
+      agentId: 'architect',
+      name: 'Architect',
+      capabilities: ['architecture', 'planning'],
+      metadata: { provider: 'claude' },
+    });
+    await runtime.registerAgent({
+      agentId: 'qa',
+      name: 'QA',
+      capabilities: ['testing', 'regression'],
+      metadata: { provider: 'claude' },
+    });
+
+    const planResult = await executeCli([
+      'parallel',
+      'plan',
+      '--input',
+      '[{"taskId":"design","agentId":"architect","task":"Design rollout"},{"taskId":"verify","agentId":"qa","dependencies":["design"]}]',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(planResult.success).toBe(true);
+    expect(planResult.message).toContain('Parallel plan valid');
+    expect(planResult.message).toContain('Layer 1: design');
+    expect(planResult.message).toContain('Layer 2: verify');
+
+    const runResult = await executeCli([
+      'parallel',
+      'run',
+      '--tasks',
+      '[{"taskId":"design","agentId":"architect","task":"Design rollout","provider":"claude"},{"taskId":"verify","agentId":"qa","dependencies":["design"],"provider":"claude"}]',
+      '--max-concurrent',
+      '2',
+      '--failure-strategy',
+      'failSafe',
+      '--result-aggregation',
+      'merge',
+      '--trace',
+      'parallel-cli-run-001',
+      '--session',
+      'parallel-cli-session-001',
+      '--output-dir',
+      tempDir,
+    ]);
+    expect(runResult.success).toBe(true);
+    expect(runResult.message).toContain('Parallel run complete');
+    expect(runResult.message).toContain('Trace: parallel-cli-run-001');
+    expect(runResult.message).toContain('Strategy: failSafe');
+
+    const runData = runResult.data as {
+      traceId: string;
+      success: boolean;
+      aggregatedResult?: Record<string, unknown>;
+      results: Array<{ taskId: string; status: string }>;
+    };
+    expect(runData.traceId).toBe('parallel-cli-run-001');
+    expect(runData.success).toBe(true);
+    expect(runData.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({ taskId: 'design', status: 'completed' }),
+      expect.objectContaining({ taskId: 'verify', status: 'completed' }),
+    ]));
+    expect(runData.aggregatedResult).toMatchObject({
+      design: expect.any(String),
+      verify: expect.any(String),
+    });
+
+    const trace = await runtime.getTrace('parallel-cli-run-001');
+    expect(trace).toMatchObject({
+      traceId: 'parallel-cli-run-001',
+      workflowId: 'parallel.run',
+      metadata: expect.objectContaining({
+        sessionId: 'parallel-cli-session-001',
+      }),
+    });
   });
 
   it('returns a clear failure for unknown commands', async () => {
@@ -289,6 +711,40 @@ describe('cli dispatch', () => {
     const invalidNumber = await executeCli(['trace', '--limit', 'abc']);
     expect(invalidNumber.success).toBe(false);
     expect(invalidNumber.message).toContain('Invalid value for --limit');
+  });
+
+  it('fails fast on invalid command-specific flags for history and monitor', async () => {
+    const historyResult = await executeCli(['history', '--bogus']);
+    expect(historyResult.success).toBe(false);
+    expect(historyResult.message).toContain('Unknown history flag: --bogus.');
+
+    const monitorResult = await executeCli(['monitor', '--bogus']);
+    expect(monitorResult.success).toBe(false);
+    expect(monitorResult.message).toContain('Unknown monitor flag: --bogus.');
+  });
+
+  it('fails fast on invalid command-specific args for config, trace, and cleanup', async () => {
+    const configResult = await executeCli(['config', 'show', '--bogus']);
+    expect(configResult.success).toBe(false);
+    expect(configResult.message).toContain('Unknown config flag: --bogus.');
+
+    const traceResult = await executeCli(['trace', 'tree', 'trace-1', 'extra']);
+    expect(traceResult.success).toBe(false);
+    expect(traceResult.message).toContain('Usage: ax trace tree <trace-id>');
+
+    const cleanupResult = await executeCli(['cleanup', '--bogus']);
+    expect(cleanupResult.success).toBe(false);
+    expect(cleanupResult.message).toContain('Unknown cleanup flag: --bogus.');
+  });
+
+  it('fails fast on invalid command-specific args for doctor and update', async () => {
+    const doctorResult = await executeCli(['doctor', '--bogus']);
+    expect(doctorResult.success).toBe(false);
+    expect(doctorResult.message).toContain('Unknown doctor flag: --bogus.');
+
+    const updateResult = await executeCli(['update', '--bogus']);
+    expect(updateResult.success).toBe(false);
+    expect(updateResult.message).toContain('Unknown update flag: --bogus.');
   });
 
   it('returns command-specific help for --help and help subcommand', async () => {
@@ -321,114 +777,150 @@ describe('cli dispatch', () => {
   it('runs the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
-    await ensureWorkspaceBuilt();
+    await ensurePackageBuilt('cli');
 
     const { stdout } = await execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'version',
       '--format',
       'json',
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     });
 
     expect(stdout).toContain(`"version": "${CLI_VERSION}"`);
-  });
+  }, PROCESS_TEST_TIMEOUT_MS);
 
   it('runs call and status through the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
-    await ensureWorkspaceBuilt();
+    await ensurePackageBuilt('cli');
 
     const { stdout: callStdout } = await execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'call',
       'Summarize release risk.',
       '--output-dir',
       tempDir,
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     });
     expect(callStdout).toContain('Execution mode: simulated');
 
     const { stdout: statusStdout } = await execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'status',
       '--output-dir',
       tempDir,
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     });
     expect(statusStdout).toContain('AutomatosX Status');
-  });
+  }, PROCESS_TEST_TIMEOUT_MS);
 
   it('runs doctor through the main entrypoint as a process', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
-    await ensureWorkspaceBuilt();
+    await ensurePackageBuilt('cli');
 
     await execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'setup',
       '--output-dir',
       tempDir,
     ], {
-      cwd: process.cwd(),
-    });
-    await execFileAsync('node', [
-      'packages/cli/dist/main.js',
-      'init',
-      '--output-dir',
-      tempDir,
-    ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     });
 
     const { stdout } = await execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'doctor',
       '--output-dir',
       tempDir,
       '--workflow-dir',
-      join(process.cwd(), 'workflows'),
+      CLI_WORKFLOW_DIR,
       '--format',
       'json',
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     });
 
     expect(stdout).toContain('"status": "warning"');
     expect(stdout).toContain('"fail": 0');
-  });
+  }, PROCESS_TEST_TIMEOUT_MS);
+
+  it('runs doctor without a legacy governance alias through the main entrypoint as a process', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    await ensurePackageBuilt('cli');
+
+    await execFileAsync('node', [
+      CLI_ENTRY_PATH,
+      'setup',
+      '--output-dir',
+      tempDir,
+    ], {
+      cwd: CLI_PACKAGE_ROOT,
+    });
+
+    const { stdout } = await execFileAsync('node', [
+      CLI_ENTRY_PATH,
+      'doctor',
+      '--output-dir',
+      tempDir,
+      '--workflow-dir',
+      CLI_WORKFLOW_DIR,
+      '--format',
+      'json',
+    ], {
+      cwd: CLI_PACKAGE_ROOT,
+    });
+
+    const parsed = JSON.parse(stdout) as {
+      success: boolean;
+      data?: {
+        governance?: unknown;
+      };
+    };
+
+    expect(parsed.success).toBe(true);
+    expect(RuntimeGovernanceAggregateSchema.parse(parsed.data?.governance)).toMatchObject({
+      blockedCount: 0,
+      deniedImportedSkills: {
+        deniedCount: 0,
+      },
+    });
+    expect(parsed.data).not.toHaveProperty(['runtime', 'Governance'].join(''));
+  }, PROCESS_TEST_TIMEOUT_MS);
 
   it('returns process-level failures for invalid invocations', async () => {
-    await ensureWorkspaceBuilt();
+    await ensurePackageBuilt('cli');
     await expect(execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'list',
       '--output-dir',
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     })).rejects.toMatchObject({
       code: 1,
       stderr: expect.stringContaining('Missing value for --output-dir.'),
     } satisfies Partial<ExecError>);
-  });
+  }, PROCESS_TEST_TIMEOUT_MS);
 
   it('returns process-level failures for invalid command-specific arguments', async () => {
-    await ensureWorkspaceBuilt();
+    await ensurePackageBuilt('cli');
     await expect(execFileAsync('node', [
-      'packages/cli/dist/main.js',
+      CLI_ENTRY_PATH,
       'review',
       'analyze',
       'packages/cli/src',
       '--focus',
       'unsafe',
     ], {
-      cwd: process.cwd(),
+      cwd: CLI_PACKAGE_ROOT,
     })).rejects.toMatchObject({
       code: 1,
       stderr: expect.stringContaining('Review focus must be one of'),
     } satisfies Partial<ExecError>);
-  });
+  }, PROCESS_TEST_TIMEOUT_MS);
 });

@@ -1,9 +1,18 @@
 import type { CLIOptions, CommandResult } from '../types.js';
-import { createRuntime, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { findUnexpectedFlag } from '../utils/validation.js';
 
 const DEFAULT_MAX_AGE_MS = 86_400_000;
 
 export async function cleanupCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
+  const unexpectedFlag = findUnexpectedFlag(args);
+  if (unexpectedFlag !== undefined) {
+    return failure(`Unknown cleanup flag: ${unexpectedFlag}.`);
+  }
+  if (args[2] !== undefined) {
+    return usageError('ax cleanup [stuck|sessions|traces] [max-age-ms]');
+  }
+
   const scope = args[0] ?? 'stuck';
   const runtime = createRuntime(options);
   const maxAgeMs = parseMaxAgeMs(args[1]);

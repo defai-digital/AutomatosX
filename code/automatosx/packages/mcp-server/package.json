@@ -20,7 +20,8 @@
   "dependencies": {
     "@defai.digital/contracts": "^14.0.1",
     "@defai.digital/monitoring": "^14.0.1",
-    "@defai.digital/shared-runtime": "^14.0.1"
+    "@defai.digital/shared-runtime": "^14.0.1",
+    "@modelcontextprotocol/sdk": "^1.26.0"
   },
   "engines": {
     "node": ">=22.5.0"

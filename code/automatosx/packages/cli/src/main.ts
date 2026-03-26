@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { executeCli, parseCommand, renderCommandResult } from './index.js';
+import { executeParsedCli, parseCommand, renderCommandResult } from './index.js';
 
 const argv = process.argv.slice(2);
 const parsed = parseCommand(argv);
-const result = await executeCli(argv);
+const result = await executeParsedCli(parsed);
 const output = renderCommandResult(result, parsed.options);
 
 if (output.length > 0) {

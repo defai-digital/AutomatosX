@@ -1,4 +1,5 @@
 import type { CLIOptions, CommandResult } from '../types.js';
+import { parseCommandArgs } from '../utils/command-args.js';
 import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 import { splitCommaList } from '../utils/validation.js';
 
@@ -71,71 +72,79 @@ export async function discussCommand(args: string[], options: CLIOptions): Promi
 }
 
 function parseDiscussArgs(args: string[]): { value: DiscussArgs; error?: string } {
-  const parsed: DiscussArgs = {};
-  const positionals: string[] = [];
-
-  for (let index = 0; index < args.length; index += 1) {
-    const token = args[index];
-    if (token === undefined) {
-      continue;
-    }
-
-    if ((token === 'quick' || token === 'recursive') && positionals.length === 0 && parsed.variant === undefined) {
-      parsed.variant = token;
-      continue;
-    }
-
-    if (!token.startsWith('--')) {
-      positionals.push(token);
-      continue;
-    }
-
-    const name = token.slice(2);
-    const value = args[index + 1];
-    if (value === undefined || value.startsWith('--')) {
-      return { value: parsed, error: `Missing value for --${name}.` };
-    }
-
-    index += 1;
-    switch (name) {
-      case 'providers':
-        parsed.providers = splitCommaList(value);
-        break;
-      case 'pattern':
-        parsed.pattern = value;
-        break;
-      case 'rounds': {
-        const rounds = Number.parseInt(value, 10);
-        if (!Number.isFinite(rounds) || rounds < 1) {
-          return { value: parsed, error: 'Rounds must be a positive integer.' };
-        }
-        parsed.rounds = rounds;
-        break;
+  const parsed = parseCommandArgs<DiscussArgs>({
+    args,
+    initial: {},
+    flags: {
+      providers: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.providers = splitCommaList(value);
+        },
+      },
+      pattern: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.pattern = value;
+        },
+      },
+      rounds: {
+        kind: 'string',
+        apply: (state, value) => {
+          const rounds = Number.parseInt(value, 10);
+          if (!Number.isFinite(rounds) || rounds < 1) {
+            return 'Rounds must be a positive integer.';
+          }
+          state.rounds = rounds;
+        },
+      },
+      consensus: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.consensusMethod = value;
+        },
+      },
+      context: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.context = value;
+        },
+      },
+      topic: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.topic = value;
+        },
+      },
+      subtopics: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.subtopics = splitCommaList(value);
+        },
+      },
+    },
+    onPositional: (state, value, positionals) => {
+      if ((value === 'quick' || value === 'recursive') && positionals.length === 0 && state.variant === undefined) {
+        state.variant = value;
+        return false;
       }
-      case 'consensus':
-        parsed.consensusMethod = value;
-        break;
-      case 'context':
-        parsed.context = value;
-        break;
-      case 'topic':
-        parsed.topic = value;
-        break;
-      case 'subtopics':
-        parsed.subtopics = splitCommaList(value);
-        break;
-      default:
-        return { value: parsed, error: `Unknown discuss flag: --${name}.` };
-    }
+      return true;
+    },
+    unknownFlagMessage: (token) => `Unknown discuss flag: ${token}.`,
+  });
+
+  if (parsed.error !== undefined) {
+    return { value: parsed.value, error: parsed.error };
   }
 
-  if (parsed.topic === undefined && positionals.length > 0) {
-    parsed.topic = positionals.join(' ');
+  if (parsed.value.topic === undefined && parsed.positionals.length > 0) {
+    parsed.value.topic = parsed.positionals.join(' ');
   }
 
-  if (parsed.variant === 'recursive' && (parsed.subtopics === undefined || parsed.subtopics.length === 0)) {
-    return { value: parsed, error: 'Recursive discussions require --subtopics <a,b,c>.' };
+  if (parsed.value.variant === 'recursive'
+    && (parsed.value.subtopics === undefined || parsed.value.subtopics.length === 0)) {
+    return { value: parsed.value, error: 'Recursive discussions require --subtopics <a,b,c>.' };
   }
 
-  return { value: parsed };
+  return { value: parsed.value };
 }

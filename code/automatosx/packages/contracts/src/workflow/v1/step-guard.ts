@@ -66,6 +66,9 @@ export const StepGuardContextSchema = z.object({
   previousOutputs: z.record(z.unknown()),
   stepConfig: z.record(z.unknown()).optional(),
   workflowId: z.string().optional(),
+  currentOutput: z.unknown().optional(),
+  currentStepSuccess: z.boolean().optional(),
+  currentStepError: z.record(z.unknown()).optional(),
 });
 export type StepGuardContext = z.infer<typeof StepGuardContextSchema>;
 

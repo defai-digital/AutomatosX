@@ -203,9 +203,7 @@ export function createRealStepExecutor(config: RealStepExecutorConfig): StepExec
     maxDelegationDepth = 3,
   } = config;
 
-  // Per-executor delegation depth tracker: agentId → current depth
-  const delegationDepths = new Map<string, number>();
-  // Delegation chain for circular detection: tracks active agent IDs in current chain
+  // Delegation chain for circular detection and depth tracking: tracks active agent IDs in current chain
   const activeDelegationChain: string[] = [];
 
   return async (step: WorkflowStep, context: StepContext): Promise<StepResult> => {
@@ -233,7 +231,6 @@ export function createRealStepExecutor(config: RealStepExecutorConfig): StepExec
             defaultProvider,
             defaultModel,
             maxDelegationDepth,
-            delegationDepths,
             activeDelegationChain,
             startTime,
           );
@@ -655,7 +652,6 @@ async function executeDelegateStep(
   defaultProvider: string | undefined,
   defaultModel: string | undefined,
   maxDelegationDepth: number,
-  delegationDepths: Map<string, number>,
   activeDelegationChain: string[],
   startTime: number,
 ): Promise<StepResult> {
@@ -706,9 +702,8 @@ async function executeDelegateStep(
     };
   }
 
-  // INV-DT-001: Depth never exceeds maxDelegationDepth
-  const currentDepth = delegationDepths.get(targetAgentId) ?? 0;
-  if (currentDepth >= maxDelegationDepth) {
+  // INV-DT-001: Depth never exceeds maxDelegationDepth (measured as nesting depth of current chain)
+  if (activeDelegationChain.length >= maxDelegationDepth) {
     return {
       stepId: step.stepId,
       success: false,
@@ -740,7 +735,6 @@ async function executeDelegateStep(
 
   // Push into delegation chain before executing
   activeDelegationChain.push(targetAgentId);
-  delegationDepths.set(targetAgentId, currentDepth + 1);
 
   try {
     const delegateInput = config.input ?? (
@@ -769,7 +763,7 @@ async function executeDelegateStep(
         provider: result.provider,
         model: result.model,
         latencyMs: result.latencyMs,
-        delegationDepth: currentDepth + 1,
+        delegationDepth: activeDelegationChain.length,
       },
       error: result.success ? undefined : {
         code: result.error?.code ?? 'DELEGATE_EXECUTION_FAILED',
@@ -797,7 +791,6 @@ async function executeDelegateStep(
     if (chainIndex !== -1) {
       activeDelegationChain.splice(chainIndex, 1);
     }
-    delegationDepths.set(targetAgentId, currentDepth);
   }
 }
 
@@ -892,7 +885,7 @@ function evaluateCondition(condition: string, context: StepContext): boolean {
     if (trimmed === 'true') return true;
     if (trimmed === 'false') return false;
 
-    return Boolean(condition);
+    return false;
   } catch {
     return false;
   }

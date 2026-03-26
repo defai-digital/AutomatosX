@@ -1,10 +1,70 @@
+import { z } from 'zod';
+
 export interface ParseResult<T> {
   value: T;
   error?: string;
 }
 
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+const jsonObjectSchema = z.record(z.string(), z.unknown());
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(jsonValueSchema),
+  z.record(z.string(), jsonValueSchema),
+]));
+const nonEmptyStringSchema = z.string().min(1);
+const stringValueSchema = z.string();
+const booleanSchema = z.boolean();
+const finiteNumberSchema = z.number().finite();
+const stringArraySchema = z.array(nonEmptyStringSchema);
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  return jsonObjectSchema.safeParse(value).success;
+}
+
+export function parseJsonObjectString(
+  input: string,
+  context?: string,
+): ParseResult<Record<string, unknown>> {
+  try {
+    const parsed = JSON.parse(input);
+    const result = jsonObjectSchema.safeParse(parsed);
+    if (!result.success) {
+      return {
+        value: {},
+        error: context ? `${context} input must be a JSON object.` : 'Input must be a JSON object.',
+      };
+    }
+    return { value: result.data };
+  } catch {
+    return { value: {}, error: 'Invalid JSON input. Please provide a valid JSON object.' };
+  }
+}
+
+export function parseJsonValueString(
+  input: string,
+  options?: { invalidJsonMessage?: string; invalidValueMessage?: string },
+): ParseResult<JsonValue> {
+  try {
+    const parsed = JSON.parse(input);
+    const result = jsonValueSchema.safeParse(parsed);
+    if (!result.success) {
+      return {
+        value: null,
+        error: options?.invalidValueMessage ?? 'Input must be a valid JSON value.',
+      };
+    }
+    return { value: result.data };
+  } catch {
+    return {
+      value: null,
+      error: options?.invalidJsonMessage ?? 'Invalid JSON input. Please provide a valid JSON value.',
+    };
+  }
 }
 
 export function parseJsonInput(input: string | undefined, options?: { allowEmpty?: boolean }): ParseResult<Record<string, unknown>> {
@@ -16,15 +76,7 @@ export function parseJsonInput(input: string | undefined, options?: { allowEmpty
       : { value: {}, error: 'Command requires --input <json-object>' };
   }
 
-  try {
-    const parsed = JSON.parse(input);
-    if (!isRecord(parsed)) {
-      return { value: {}, error: 'Input must be a JSON object.' };
-    }
-    return { value: parsed };
-  } catch {
-    return { value: {}, error: 'Invalid JSON input. Please provide a valid JSON object.' };
-  }
+  return parseJsonObjectString(input);
 }
 
 export function parseOptionalJsonInput(input: string | undefined, context?: string): ParseResult<Record<string, unknown> | undefined> {
@@ -32,41 +84,40 @@ export function parseOptionalJsonInput(input: string | undefined, context?: stri
     return { value: undefined };
   }
 
-  try {
-    const parsed = JSON.parse(input);
-    if (!isRecord(parsed)) {
-      return { 
-        value: undefined, 
-        error: context ? `${context} input must be a JSON object.` : 'Input must be a JSON object.' 
-      };
-    }
-    return { value: parsed };
-  } catch {
-    return { value: undefined, error: 'Invalid JSON input. Please provide a valid JSON object.' };
+  const parsed = parseJsonObjectString(input, context);
+  if (parsed.error !== undefined) {
+    return { value: undefined, error: parsed.error };
   }
+
+  return { value: parsed.value };
 }
 
 export function asString(value: unknown, field: string): ParseResult<string> {
-  if (typeof value !== 'string' || value.length === 0) {
+  const result = nonEmptyStringSchema.safeParse(value);
+  if (!result.success) {
     return { value: '', error: `Input requires "${field}".` };
   }
-  return { value };
+  return { value: result.data };
 }
 
 export function asOptionalString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
+  const result = nonEmptyStringSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function asStringValue(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+  const result = stringValueSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function asOptionalBoolean(value: unknown): boolean | undefined {
-  return typeof value === 'boolean' ? value : undefined;
+  const result = booleanSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function asOptionalNumber(value: unknown): number | undefined {
-  return typeof value === 'number' ? value : undefined;
+  const result = finiteNumberSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function asOptionalInteger(
@@ -91,12 +142,13 @@ export function asOptionalInteger(
 }
 
 export function asOptionalRecord(value: unknown): Record<string, unknown> | undefined {
-  return isRecord(value) ? value : undefined;
+  const result = jsonObjectSchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function asStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+  const result = stringArraySchema.safeParse(value);
+  return result.success ? result.data : undefined;
 }
 
 export function findUnexpectedFlag(args: string[], startIndex = 0): string | undefined {

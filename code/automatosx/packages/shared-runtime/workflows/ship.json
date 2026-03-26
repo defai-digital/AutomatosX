@@ -1,0 +1,21 @@
+{
+  "workflowId": "ship",
+  "name": "Ship Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "review-scope",
+      "type": "prompt",
+      "config": {
+        "prompt": "Review the requested ship scope."
+      }
+    },
+    {
+      "stepId": "prepare-summary",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare ship artifacts."
+      }
+    }
+  ]
+}

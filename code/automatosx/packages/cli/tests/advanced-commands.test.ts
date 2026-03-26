@@ -1,7 +1,7 @@
-import { mkdirSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createSharedRuntimeService } from '@defai.digital/shared-runtime';
 import {
   abilityCommand,
   agentCommand,
@@ -10,18 +10,23 @@ import {
   configCommand,
   guardCommand,
   feedbackCommand,
+  historyCommand,
   listCommand,
   mcpCommand,
+  runCommand,
   sessionCommand,
   setupCommand,
+  skillCommand,
   statusCommand,
 } from '../src/commands/index.js';
 import type { CLIOptions } from '../src/types.js';
+import {
+  SHARED_RUNTIME_MOCK_PROVIDER,
+  createCliTestTempDir,
+} from './support/test-paths.js';
 
 function createTempDir(): string {
-  const dir = join(process.cwd(), '.tmp', `advanced-commands-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
-  mkdirSync(dir, { recursive: true });
-  return dir;
+  return createCliTestTempDir('advanced-commands');
 }
 
 function defaultOptions(overrides: Partial<CLIOptions> = {}): CLIOptions {
@@ -72,17 +77,84 @@ describe('advanced retained commands', () => {
 
     const listResult = await agentCommand(['list'], defaultOptions({ outputDir: tempDir }));
     expect(listResult.success).toBe(true);
-    expect(listResult.message).toContain('Registered agents');
+    expect(listResult.message).toContain('Available agents');
     expect(listResult.message).toContain('bug-hunter');
+    expect(listResult.message).toContain('Owns: architect');
 
     const getResult = await agentCommand(['get', 'architect'], defaultOptions({ outputDir: tempDir }));
     expect(getResult.success).toBe(true);
     expect(getResult.message).toContain('Agent: architect');
     expect(getResult.message).toContain('Capabilities: adr, architecture, planning');
+    expect(getResult.message).toContain('Owns workflows: architect');
+    expect(getResult.message).toContain('Recommended commands: ax architect');
 
     const capabilityResult = await agentCommand(['capabilities'], defaultOptions({ outputDir: tempDir }));
     expect(capabilityResult.success).toBe(true);
     expect(capabilityResult.message).toContain('architecture');
+  });
+
+  it('exposes built-in stable agents before setup seeds runtime state', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const listResult = await agentCommand(['list'], defaultOptions({ outputDir: tempDir }));
+    expect(listResult.success).toBe(true);
+    expect(listResult.message).toContain('Available agents');
+    expect(listResult.message).toContain('architect');
+    expect(listResult.message).toContain('release-manager');
+
+    const getResult = await agentCommand(['get', 'architect'], defaultOptions({ outputDir: tempDir }));
+    expect(getResult.success).toBe(true);
+    expect(getResult.message).toContain('Availability: built-in stable surface');
+    expect(getResult.message).toContain('Runtime registration: not seeded');
+    expect(getResult.message).toContain('Recommended commands: ax architect');
+
+    const capabilityResult = await agentCommand(['capabilities'], defaultOptions({ outputDir: tempDir }));
+    expect(capabilityResult.success).toBe(true);
+    expect(capabilityResult.message).toContain('architecture');
+
+    const recommendResult = await agentCommand(['recommend'], defaultOptions({
+      outputDir: tempDir,
+      task: 'Need architecture planning for rollout',
+      limit: 1,
+    }));
+    expect(recommendResult.success).toBe(true);
+    expect(recommendResult.message).toContain('architect');
+
+    const runResult = await agentCommand(['run', 'architect'], defaultOptions({
+      outputDir: tempDir,
+      task: 'Design a rollout plan',
+    }));
+    expect(runResult.success).toBe(false);
+    expect(runResult.message).toContain('is not registered');
+    expect(runResult.message).toContain('direct agent execution requires runtime registration via "ax setup"');
+    expect(runResult.message).toContain('Stable workflow commands: ax architect');
+  });
+
+  it('enriches legacy agent records with catalog metadata on read', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await agentCommand(['register'], defaultOptions({
+      outputDir: tempDir,
+      input: JSON.stringify({
+        agentId: 'architect',
+        name: 'Architect',
+        capabilities: ['planning'],
+      }),
+    }));
+
+    const listResult = await agentCommand(['list'], defaultOptions({ outputDir: tempDir }));
+    expect(listResult.success).toBe(true);
+    expect(listResult.message).toContain('Turns requirements into architecture proposals');
+    expect(listResult.message).toContain('Owns: architect');
+
+    const getResult = await agentCommand(['get', 'architect'], defaultOptions({ outputDir: tempDir }));
+    expect(getResult.success).toBe(true);
+    expect(getResult.message).toContain('Description: Turns requirements into architecture proposals');
+    expect(getResult.message).toContain('Owns workflows: architect');
+    expect(getResult.message).toContain('Recommended commands: ax architect');
+    expect(getResult.message).toContain('Use this when: new system design');
   });
 
   it('registers agents from JSON input through the shared runtime store', async () => {
@@ -245,12 +317,12 @@ describe('advanced retained commands', () => {
 
     const toolsResult = await mcpCommand(['tools'], defaultOptions({ outputDir: tempDir }));
     expect(toolsResult.success).toBe(true);
-    expect(toolsResult.message).toContain('workflow.run');
-    expect(toolsResult.message).toContain('agent.list');
+    expect(toolsResult.message).toContain('workflow_run');
+    expect(toolsResult.message).toContain('agent_list');
 
-    const describeResult = await mcpCommand(['describe', 'workflow.run'], defaultOptions({ outputDir: tempDir }));
+    const describeResult = await mcpCommand(['describe', 'workflow_run'], defaultOptions({ outputDir: tempDir }));
     expect(describeResult.success).toBe(true);
-    expect(describeResult.message).toContain('MCP tool: workflow.run');
+    expect(describeResult.message).toContain('MCP tool: workflow_run');
     expect(describeResult.message).toContain('"workflowId"');
 
     const resourcesResult = await mcpCommand(['resources'], defaultOptions({ outputDir: tempDir }));
@@ -263,9 +335,9 @@ describe('advanced retained commands', () => {
 
     const promptsResult = await mcpCommand(['prompts'], defaultOptions({ outputDir: tempDir }));
     expect(promptsResult.success).toBe(true);
-    expect(promptsResult.message).toContain('workflow.run');
+    expect(promptsResult.message).toContain('workflow_run');
 
-    const promptResult = await mcpCommand(['prompt', 'workflow.run'], defaultOptions({
+    const promptResult = await mcpCommand(['prompt', 'workflow_run'], defaultOptions({
       outputDir: tempDir,
       input: JSON.stringify({
         workflowId: 'architect',
@@ -273,10 +345,10 @@ describe('advanced retained commands', () => {
       }),
     }));
     expect(promptResult.success).toBe(true);
-    expect(promptResult.message).toContain('Prompt: workflow.run');
+    expect(promptResult.message).toContain('Prompt: workflow_run');
     expect(promptResult.message).toContain('architect');
 
-    const callResult = await mcpCommand(['call', 'agent.list'], defaultOptions({
+    const callResult = await mcpCommand(['call', 'agent_list'], defaultOptions({
       outputDir: tempDir,
     }));
     expect(callResult.success).toBe(true);
@@ -299,47 +371,50 @@ describe('advanced retained commands', () => {
     expect(promptResult.message).toContain('Unknown prompt: missing.prompt');
   });
 
-  it('serves MCP JSON-RPC over stdio and handles initialize + tools/list + tools/call', async () => {
+  it('exposes MCP surface with tools and invokes agent_list via the surface', async () => {
     const tempDir = createTempDir();
     tempDirs.push(tempDir);
     await setupCommand([], defaultOptions({ outputDir: tempDir }));
 
-    const { createMcpStdioServer } = await import('@defai.digital/mcp-server');
-    const { Readable, Writable } = await import('node:stream');
+    const { createMcpServerSurface } = await import('@defai.digital/mcp-server');
+    const surface = createMcpServerSurface({ basePath: tempDir });
 
-    const outputChunks: string[] = [];
-    const output = new Writable({
-      write(chunk: Buffer, _enc, cb) {
-        outputChunks.push(chunk.toString());
-        cb();
-      },
-    });
+    const tools = surface.listToolDefinitions();
+    expect(tools.some((t) => t.name === 'workflow_run')).toBe(true);
+    expect(tools.some((t) => t.name === 'agent_list')).toBe(true);
 
-    const requests = [
-      JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', clientInfo: { name: 'test' } } }),
-      JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }),
-      JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'agent.list', arguments: {} } }),
-    ].join('\n') + '\n';
-
-    const input = Readable.from([requests]);
-    const server = createMcpStdioServer({ basePath: tempDir, input, output });
-    await server.serve();
-
-    const responses = outputChunks.join('').trim().split('\n').map((line) => JSON.parse(line) as { id: number; result?: unknown; error?: unknown });
-
-    const initResp = responses.find((r) => r.id === 1);
-    expect(initResp?.error).toBeUndefined();
-    expect((initResp?.result as { serverInfo?: { name?: string } })?.serverInfo?.name).toBe('automatosx');
-
-    const listResp = responses.find((r) => r.id === 2);
-    const listTools = (listResp?.result as { tools?: Array<{ name: string }> })?.tools ?? [];
-    expect(listTools.some((t) => t.name === 'workflow.run')).toBe(true);
-    expect(listTools.some((t) => t.name === 'agent.list')).toBe(true);
-
-    const callResp = responses.find((r) => r.id === 3);
-    const callContent = (callResp?.result as { content?: Array<{ text: string }> })?.content ?? [];
-    const parsed = JSON.parse(callContent[0]?.text ?? '[]') as Array<{ agentId: string }>;
+    const result = await surface.invokeTool('agent_list', {});
+    expect(result.success).toBe(true);
+    const parsed = result.data as Array<{ agentId: string }>;
     expect(parsed.some((entry) => entry.agentId === 'architect')).toBe(true);
+  });
+
+  it('uses the current workspace as the default base path for CLI MCP commands', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const runResult = await mcpCommand(['call', 'workflow_run'], defaultOptions({
+        input: JSON.stringify({
+          workflowId: 'architect',
+          traceId: 'cli-mcp-cwd-trace-001',
+        }),
+      }));
+
+      expect(runResult.success).toBe(true);
+
+      const runtime = createSharedRuntimeService({ basePath: tempDir });
+      await expect(runtime.getTrace('cli-mcp-cwd-trace-001')).resolves.toMatchObject({
+        traceId: 'cli-mcp-cwd-trace-001',
+        workflowId: 'architect',
+        surface: 'mcp',
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it('creates and transitions sessions through the shared runtime state', async () => {
@@ -437,6 +512,22 @@ describe('advanced retained commands', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('Invalid JSON input. Please provide a valid JSON value.');
+  });
+
+  it('accepts non-object JSON values when config set uses --input', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const setResult = await configCommand(['set', 'providers.priority'], defaultOptions({
+      outputDir: tempDir,
+      input: '["claude","gemini"]',
+    }));
+
+    expect(setResult.success).toBe(true);
+
+    const getResult = await configCommand(['get', 'providers.priority'], defaultOptions({ outputDir: tempDir }));
+    expect(getResult.success).toBe(true);
+    expect(getResult.data).toEqual(['claude', 'gemini']);
   });
 
   it('closes stale sessions and traces through cleanup', async () => {
@@ -549,7 +640,7 @@ describe('advanced retained commands', () => {
     tempDirs.push(tempDir);
     process.env.AUTOMATOSX_PROVIDER_CLAUDE_CMD = 'node';
     process.env.AUTOMATOSX_PROVIDER_CLAUDE_ARGS = JSON.stringify([
-      join(process.cwd(), 'packages/shared-runtime/tests/mock-provider.mjs'),
+      SHARED_RUNTIME_MOCK_PROVIDER,
     ]);
 
     const callResult = await callCommand([
@@ -579,7 +670,7 @@ describe('advanced retained commands', () => {
     tempDirs.push(tempDir);
     process.env.AUTOMATOSX_PROVIDER_CLAUDE_CMD = 'node';
     process.env.AUTOMATOSX_PROVIDER_CLAUDE_ARGS = JSON.stringify([
-      join(process.cwd(), 'packages/shared-runtime/tests/mock-provider.mjs'),
+      SHARED_RUNTIME_MOCK_PROVIDER,
     ]);
 
     const result = await callCommand([
@@ -603,5 +694,174 @@ describe('advanced retained commands', () => {
     expect(result.message).toContain('auto-call-001-r1');
     expect(result.message).toContain('auto-call-001-r2');
     expect(result.message).toContain('REAL:claude:');
+  });
+
+  it('surfaces runtime guard summaries in status and history views', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.getStores().traceStore.upsertTrace({
+      traceId: 'guard-history-001',
+      workflowId: 'workflow-skill-trust',
+      surface: 'cli',
+      status: 'failed',
+      startedAt: '2026-03-24T12:00:00.000Z',
+      completedAt: '2026-03-24T12:00:02.000Z',
+      stepResults: [{
+        stepId: 'run-skill',
+        success: false,
+        durationMs: 120,
+        retryCount: 0,
+        error: 'Step blocked by runtime governance.',
+      }],
+      error: {
+        code: 'WORKFLOW_GUARD_BLOCKED',
+        message: 'Step run-skill blocked by guard: runtime_trust: trust state mismatch',
+        failedStepId: 'run-skill',
+      },
+      metadata: {
+        guardSummary: 'Runtime governance blocked step "run-skill". Trust state: implicit-local. Required trust states: trusted-id.',
+        guardId: 'enforce-runtime-trust',
+        guardFailedGates: ['runtime_trust'],
+        guardToolName: 'skill.run',
+        guardTrustState: 'implicit-local',
+        guardRequiredTrustStates: ['trusted-id'],
+      },
+    });
+
+    const statusResult = await statusCommand([], defaultOptions({ outputDir: tempDir, limit: 5 }));
+    expect(statusResult.success).toBe(true);
+    expect(statusResult.message).toContain('Recent failed traces:');
+    expect(statusResult.message).toContain('guard: Runtime governance blocked step "run-skill"');
+
+    const historyResult = await historyCommand([], defaultOptions({
+      outputDir: tempDir,
+      limit: 5,
+      status: 'failed',
+    }));
+    expect(historyResult.success).toBe(true);
+    expect(historyResult.message).toContain('Run History:');
+    expect(historyResult.message).toContain('guard: Runtime governance blocked step "run-skill"');
+
+    const verboseHistory = await historyCommand([], defaultOptions({
+      outputDir: tempDir,
+      limit: 5,
+      status: 'failed',
+      verbose: true,
+    }));
+    expect(verboseHistory.success).toBe(true);
+    expect(verboseHistory.message).toContain('Guard:    Runtime governance blocked step "run-skill"');
+  });
+
+  it('surfaces denied imported skills in status views', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await setupCommand([], defaultOptions({ outputDir: tempDir }));
+    await mkdir(join(tempDir, 'fixtures', 'guarded-import'), { recursive: true });
+    await writeFile(join(tempDir, 'fixtures', 'guarded-import', 'SKILL.md'), [
+      '---',
+      'name: Guarded Import Skill',
+      'approval-mode: prompt',
+      'dispatch: delegate',
+      'linked-agent-id: guarded-reviewer',
+      'description: Requires explicit trust on import.',
+      '---',
+      '# Guarded Import Skill',
+      '',
+      'Import this skill for review workflows.',
+      '',
+    ].join('\n'), 'utf8');
+
+    const importResult = await skillCommand(
+      ['import', join(tempDir, 'fixtures', 'guarded-import', 'SKILL.md')],
+      defaultOptions({ outputDir: tempDir }),
+    );
+    expect(importResult.success).toBe(true);
+
+    const statusResult = await statusCommand([], defaultOptions({ outputDir: tempDir, limit: 5 }));
+    expect(statusResult.success).toBe(true);
+    expect(statusResult.message).toContain('Denied imported skills:');
+    expect(statusResult.message).toContain('guarded-import-skill denied');
+    expect(statusResult.message).toContain('requires explicit trust');
+    expect(statusResult.data).toMatchObject({
+      governance: {
+        deniedImportedSkills: {
+          deniedCount: 1,
+          latest: {
+            skillId: 'guarded-import-skill',
+            trustState: 'denied',
+          },
+        },
+      },
+    });
+  });
+
+  it('surfaces runtime-governance guard summaries in ax run failures', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    await mkdir(join(tempDir, '.automatosx', 'skills', 'deploy-review'), { recursive: true });
+    await writeFile(join(tempDir, '.automatosx', 'skills', 'deploy-review', 'SKILL.md'), [
+      '---',
+      'name: Deploy Review',
+      'dispatch: delegate',
+      'linked-agent-id: deploy-reviewer',
+      'description: Review rollout readiness.',
+      '---',
+      '# Deploy Review',
+      '',
+      'Use the deploy reviewer agent to assess rollout readiness.',
+      '',
+    ].join('\n'), 'utf8');
+    await writeFile(join(tempDir, 'workflow-skill-trust.json'), `${JSON.stringify({
+      workflowId: 'workflow-skill-trust',
+      version: '1.0.0',
+      steps: [
+        {
+          stepId: 'run-skill',
+          type: 'tool',
+          config: {
+            toolName: 'skill.run',
+            requiredTrustStates: ['trusted-id'],
+            toolInput: {
+              reference: 'deploy-review',
+              args: ['check', 'rollout'],
+            },
+          },
+        },
+      ],
+    }, null, 2)}\n`, 'utf8');
+
+    const runtime = createSharedRuntimeService({ basePath: tempDir });
+    await runtime.registerAgent({
+      agentId: 'deploy-reviewer',
+      name: 'Deploy Reviewer',
+      capabilities: ['deploy', 'review'],
+    });
+
+    const result = await runCommand(['workflow-skill-trust'], defaultOptions({
+      outputDir: tempDir,
+      workflowDir: tempDir,
+      traceId: 'run-guard-001',
+    }));
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Workflow "workflow-skill-trust" failed');
+    expect(result.message).toContain('Guard: Runtime governance blocked step "run-skill"');
+    expect(result.message).toContain('Trust state: implicit-local');
+    const data = result.data as {
+      guard?: {
+        blockedByRuntimeGovernance?: boolean;
+        trustState?: string;
+        toolName?: string;
+      };
+    };
+    expect(data.guard).toMatchObject({
+      blockedByRuntimeGovernance: true,
+      trustState: 'implicit-local',
+      toolName: 'skill.run',
+    });
   });
 });

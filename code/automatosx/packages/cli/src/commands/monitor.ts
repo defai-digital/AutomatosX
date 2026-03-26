@@ -9,12 +9,37 @@
  *   ax monitor --no-open      # Don't auto-open browser
  */
 
+import { execFile } from 'node:child_process';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import packageJson from '../../../../package.json' with { type: 'json' };
 import type { CLIOptions, CommandResult } from '../types.js';
-import { createRuntime, failure } from '../utils/formatters.js';
+import { getStableAgentEntry } from '../agent-catalog.js';
+import { buildDashboardHtml, escapeHtml } from './monitor-dashboard.js';
+import {
+  buildMonitorState,
+  createProviderSnapshotLoader,
+  readMonitorConfig,
+} from './monitor-state.js';
+import { loadMonitorWorkflowDetail } from './monitor-workflows.js';
+import type { MonitorApiState } from './monitor-types.js';
+import { parseCommandArgs } from '../utils/command-args.js';
+import { createRuntime, failure, resolveCliBasePath } from '../utils/formatters.js';
+import { resolveEffectiveWorkflowDir } from '../workflow-paths.js';
 
-const DEFAULT_PORT_MIN   = 3000;
-const DEFAULT_PORT_MAX   = 3999;
+export { buildDashboardHtml, escapeHtml };
+export {
+  readCachedProviderSnapshot,
+  resolveMonitorConfig,
+} from './monitor-state.js';
+export type {
+  MonitorApiState,
+  MonitorConfig,
+  MonitorProviderSnapshot,
+  MonitorWorkflowEntry,
+} from './monitor-types.js';
+
+const DEFAULT_MONITOR_TRACE_LIMIT = 100;
+const DEFAULT_DETAIL_LIMIT = 50;
 const MAX_PORT_ATTEMPTS  = 20;
 
 function tryPort(
@@ -23,8 +48,19 @@ function tryPort(
 ): Promise<{ close(): void } | null> {
   return new Promise((resolve) => {
     const server = createServer(handler);
-    server.once('error', () => resolve(null));
-    server.once('listening', () => resolve(server));
+    const onError = (): void => {
+      server.removeListener('listening', onListening);
+      resolve(null);
+    };
+    const onListening = (): void => {
+      server.removeListener('error', onError);
+      server.on('error', (error) => {
+        process.stderr.write(`Monitor server error: ${String(error)}\n`);
+      });
+      resolve(server);
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
     server.listen(port, '127.0.0.1');
   });
 }
@@ -52,57 +88,139 @@ async function startServer(
   throw new Error(`No available port found in range ${portMin}-${portMax}.`);
 }
 
-function buildDashboardHtml(data: {
-  sessions: unknown[]; traces: unknown[]; agents: unknown[];
-}): string {
-  const json = JSON.stringify(data, null, 2);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutomatosX Monitor</title>
-  <style>
-    body { font-family: monospace; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
-    h1 { color: #58a6ff; font-size: 1.2rem; margin-bottom: 4px; }
-    .subtitle { color: #6e7681; font-size: 0.8rem; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; }
-    .card h2 { color: #79c0ff; font-size: 0.9rem; margin: 0 0 8px; }
-    .count { font-size: 2rem; color: #56d364; font-weight: bold; }
-    .label { color: #6e7681; font-size: 0.75rem; }
-    pre { background: #0d1117; border: 1px solid #21262d; border-radius: 4px; padding: 12px; overflow: auto; font-size: 0.75rem; max-height: 300px; }
-    .refresh { color: #6e7681; font-size: 0.75rem; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>AutomatosX Monitor</h1>
-  <p class="subtitle">Localhost only &bull; Auto-refreshes every 10s</p>
-  <div class="grid">
-    <div class="card">
-      <h2>Active Sessions</h2>
-      <div class="count">${(data.sessions as unknown[]).filter((s: unknown) => (s as {status?:string}).status === 'active').length}</div>
-      <div class="label">of ${(data.sessions as unknown[]).length} total</div>
-    </div>
-    <div class="card">
-      <h2>Running Traces</h2>
-      <div class="count">${(data.traces as unknown[]).filter((t: unknown) => (t as {status?:string}).status === 'running').length}</div>
-      <div class="label">of ${(data.traces as unknown[]).length} recent</div>
-    </div>
-    <div class="card">
-      <h2>Registered Agents</h2>
-      <div class="count">${(data.agents as unknown[]).length}</div>
-      <div class="label">total</div>
-    </div>
-  </div>
-  <h2 style="color:#79c0ff;font-size:0.9rem;margin-top:24px;">Raw State</h2>
-  <pre id="raw">${json.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-  <p class="refresh">Last updated: <span id="ts">${new Date().toISOString()}</span></p>
-  <script>
-    setTimeout(() => location.reload(), 10000);
-  </script>
-</body>
-</html>`;
+interface MonitorArgs {
+  explicitPort?: number;
+  noOpen: boolean;
+  error?: string;
+}
+
+export function parseMonitorArgs(args: string[]): MonitorArgs {
+  const parsed = parseCommandArgs<MonitorArgs>({
+    args,
+    initial: {
+      explicitPort: undefined,
+      noOpen: false,
+    },
+    flags: {
+      'no-open': {
+        kind: 'boolean',
+        apply: (state) => {
+          state.noOpen = true;
+        },
+      },
+      port: {
+        kind: 'string',
+        aliases: ['p'],
+        apply: (state, rawPort) => {
+          const parsedPort = parseMonitorPort(rawPort);
+          if (parsedPort.error !== undefined) {
+            return parsedPort.error;
+          }
+          state.explicitPort = parsedPort.value;
+        },
+      },
+    },
+    allowPositionals: false,
+    unknownFlagMessage: (token) => `Unknown monitor flag: ${token}.`,
+    unexpectedPositionalMessage: () => 'Usage: ax monitor [options]',
+  });
+
+  if (parsed.error !== undefined) {
+    return { ...parsed.value, error: parsed.error };
+  }
+
+  return parsed.value;
+}
+
+function parseMonitorPort(rawPort: string): { value?: number; error?: string } {
+  const parsedPort = Number.parseInt(rawPort, 10);
+  if (!Number.isInteger(parsedPort) || parsedPort <= 0 || parsedPort >= 65536) {
+    return {
+      error: 'Port must be an integer between 1 and 65535.',
+    };
+  }
+
+  return {
+    value: parsedPort,
+  };
+}
+
+export function getMonitorPath(url: string | undefined): string {
+  return url?.split('?')[0] ?? '/';
+}
+
+export function createMonitorApiResponse(
+  path: string,
+  state: MonitorApiState,
+): { statusCode: number; contentType: string; body: string } {
+  switch (path) {
+    case '/api/health':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            status: 'ok',
+            version: packageJson.version,
+          },
+        }),
+      };
+    case '/api/status':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.status }),
+      };
+    case '/api/providers':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.providers }),
+      };
+    case '/api/governance':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.governance }),
+      };
+    case '/api/sessions':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.sessions }),
+      };
+    case '/api/agents':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.agents }),
+      };
+    case '/api/traces':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.traces }),
+      };
+    case '/api/workflows':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: state.workflows }),
+      };
+    case '/api/state':
+      return {
+        statusCode: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(state),
+      };
+    default:
+      return {
+        statusCode: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, error: 'Not found' }),
+      };
+  }
 }
 
 export async function monitorCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
@@ -119,20 +237,22 @@ export async function monitorCommand(args: string[], options: CLIOptions): Promi
     };
   }
 
+  const basePath = resolveCliBasePath(options);
   const runtime = createRuntime(options);
-
-  // Parse --port
-  let explicitPort: number | undefined;
-  const portIdx = args.indexOf('--port');
-  if (portIdx !== -1 && args[portIdx + 1] !== undefined) {
-    const p = parseInt(args[portIdx + 1]!, 10);
-    if (!isNaN(p) && p > 0 && p < 65536) explicitPort = p;
+  const loadProviderSnapshot = createProviderSnapshotLoader(basePath);
+  const effectiveWorkflowDir = resolveEffectiveWorkflowDir({
+    workflowDir: options.workflowDir,
+    basePath,
+  });
+  const monitorConfig = await readMonitorConfig(runtime);
+  const monitorArgs = parseMonitorArgs(args);
+  const monitorTraceLimit = options.limit ?? DEFAULT_MONITOR_TRACE_LIMIT;
+  if (monitorArgs.error !== undefined) {
+    return failure(monitorArgs.error);
   }
-  const noOpen = args.includes('--no-open');
 
-  // Request handler
   const requestHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    const remote = req.socket.remoteAddress ?? '';
+    const remote = req.socket?.remoteAddress ?? '';
     const isLocal = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remote);
     if (!isLocal) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
@@ -140,15 +260,119 @@ export async function monitorCommand(args: string[], options: CLIOptions): Promi
       return;
     }
 
-    if (req.url === '/api/state') {
+    const path = getMonitorPath(req.url);
+
+    if (path.startsWith('/api/traces/') && path.length > '/api/traces/'.length) {
       try {
-        const [sessions, traces, agents] = await Promise.all([
-          runtime.listSessions(),
-          runtime.listTraces(options.limit ?? 20),
-          runtime.listAgents(),
-        ]);
+        const traceId = decodeURIComponent(path.slice('/api/traces/'.length));
+        const trace = await runtime.getStores().traceStore.getTrace(traceId);
+        if (trace === undefined) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: `Trace not found: ${traceId}` }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: trace }));
+        }
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }));
+      }
+      return;
+    }
+
+    if (path.startsWith('/api/agents/') && path.length > '/api/agents/'.length) {
+      try {
+        const agentId = decodeURIComponent(path.slice('/api/agents/'.length));
+        const agent = getStableAgentEntry(agentId, await runtime.getAgent(agentId));
+        if (agent === undefined) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: `Agent not found: ${agentId}` }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: agent }));
+        }
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }));
+      }
+      return;
+    }
+
+    if (path.startsWith('/api/sessions/') && path.length > '/api/sessions/'.length) {
+      try {
+        const sessionId = decodeURIComponent(path.slice('/api/sessions/'.length));
+        const session = await runtime.getSession(sessionId);
+        if (session === undefined) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: `Session not found: ${sessionId}` }));
+        } else {
+          const traces = await runtime.getStores().traceStore.listTracesBySession(sessionId, DEFAULT_DETAIL_LIMIT);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: { session, traces } }));
+        }
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }));
+      }
+      return;
+    }
+
+    if (path === '/api/metrics/hourly' || path.startsWith('/api/metrics/hourly?')) {
+      try {
+        const buckets = await runtime.getStores().traceStore.getHourlyMetrics(24);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ sessions, traces, agents }));
+        res.end(JSON.stringify({ success: true, data: buckets }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }));
+      }
+      return;
+    }
+
+    if (path.startsWith('/api/workflows/') && path.length > '/api/workflows/'.length) {
+      try {
+        const workflowId = decodeURIComponent(path.slice('/api/workflows/'.length));
+        const state = await buildMonitorState(
+          runtime,
+          loadProviderSnapshot,
+          basePath,
+          effectiveWorkflowDir,
+          monitorTraceLimit,
+        );
+        const workflowEntry = await loadMonitorWorkflowDetail(
+          runtime,
+          workflowId,
+          basePath,
+          effectiveWorkflowDir,
+          state.workflows,
+        );
+        if (workflowEntry === undefined) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: `Workflow not found: ${workflowId}` }));
+        } else {
+          const workflowTraces = await runtime.getStores().traceStore.listTracesByWorkflow(workflowId, DEFAULT_DETAIL_LIMIT);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: { workflow: workflowEntry, traces: workflowTraces } }));
+        }
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }));
+      }
+      return;
+    }
+
+    if (path.startsWith('/api/')) {
+      try {
+        const state = await buildMonitorState(
+          runtime,
+          loadProviderSnapshot,
+          basePath,
+          effectiveWorkflowDir,
+          monitorTraceLimit,
+        );
+        const response = createMonitorApiResponse(path, state);
+        res.writeHead(response.statusCode, { 'Content-Type': response.contentType });
+        res.end(response.body);
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }));
@@ -156,15 +380,17 @@ export async function monitorCommand(args: string[], options: CLIOptions): Promi
       return;
     }
 
-    if (req.url === '/' || req.url === '/index.html') {
+    if (path === '/' || path === '/index.html') {
       try {
-        const [sessions, traces, agents] = await Promise.all([
-          runtime.listSessions(),
-          runtime.listTraces(options.limit ?? 20),
-          runtime.listAgents(),
-        ]);
+        const state = await buildMonitorState(
+          runtime,
+          loadProviderSnapshot,
+          basePath,
+          effectiveWorkflowDir,
+          monitorTraceLimit,
+        );
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(buildDashboardHtml({ sessions, traces, agents }));
+        res.end(buildDashboardHtml(state));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error loading state: ${err instanceof Error ? err.message : String(err)}`);
@@ -178,9 +404,12 @@ export async function monitorCommand(args: string[], options: CLIOptions): Promi
 
   let result: { server: { close(): void }; port: number };
   try {
-    result = await startServer(DEFAULT_PORT_MIN, DEFAULT_PORT_MAX, explicitPort, (req, res) => {
+    result = await startServer(monitorConfig.portMin, monitorConfig.portMax, monitorArgs.explicitPort, (req, res) => {
       requestHandler(req, res).catch((err) => {
-        if (!res.writableEnded) { res.writeHead(500); res.end('Internal Server Error'); }
+        try {
+          if (!res.writableEnded) { res.writeHead(500); res.end('Internal Server Error'); }
+        } catch {
+        }
         process.stderr.write(`Monitor handler error: ${err}\n`);
       });
     });
@@ -192,19 +421,24 @@ export async function monitorCommand(args: string[], options: CLIOptions): Promi
   console.log(`\nAutomatosX Monitor running at: ${url}`);
   console.log('Localhost access only. Press Ctrl+C to stop.\n');
 
-  if (!noOpen) {
-    const { exec } = await import('node:child_process');
-    const open = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-    exec(`${open} ${url}`);
+  if (!monitorArgs.noOpen && monitorConfig.autoOpen) {
+    const openCommand = process.platform === 'darwin'
+      ? ['open', url]
+      : process.platform === 'win32'
+        ? ['cmd', '/c', 'start', '', url]
+        : ['xdg-open', url];
+    execFile(openCommand[0], openCommand.slice(1));
   }
 
   const shutdown = (): void => {
+    process.off('SIGINT', shutdown);
+    process.off('SIGTERM', shutdown);
     console.log('\nShutting down monitor...');
     result.server.close();
     process.exit(0);
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 
   await new Promise(() => { /* runs until interrupted */ });
 

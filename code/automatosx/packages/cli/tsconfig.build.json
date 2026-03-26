@@ -7,6 +7,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "noEmit": false,
+    "allowImportingTsExtensions": false,
     "paths": {
       "@defai.digital/contracts": [
         "./packages/contracts/dist/index.d.ts"

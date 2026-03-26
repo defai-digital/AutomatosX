@@ -1,11 +1,15 @@
-import { createMcpServerSurface, createMcpStdioServer } from '@defai.digital/mcp-server';
+import {
+  createMcpServerSurface,
+  createMcpStdioServer,
+  resolveMcpSurfaceBasePath,
+} from '@defai.digital/mcp-server';
 import type { CLIOptions, CommandResult } from '../types.js';
 import { failure, success, usageError } from '../utils/formatters.js';
 import { parseOptionalJsonInput } from '../utils/validation.js';
 
 export async function mcpCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   const subcommand = args[0] ?? 'tools';
-  const basePath = options.outputDir ?? process.cwd();
+  const basePath = resolveMcpSurfaceBasePath(options.basePath ?? options.outputDir);
   const surface = createMcpServerSurface({ basePath });
 
   switch (subcommand) {
@@ -105,10 +109,11 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
         prompt,
       );
     }
+    case 'server':
     case 'serve': {
       const server = createMcpStdioServer({ basePath });
       await server.serve();
-      return success('MCP stdio server closed.');
+      process.exit(0);
     }
     case 'call':
     case 'invoke': {
@@ -130,6 +135,6 @@ export async function mcpCommand(args: string[], options: CLIOptions): Promise<C
       return success(`MCP tool ${toolName} completed successfully.`, result.data);
     }
     default:
-      return usageError('ax mcp [tools|describe|resources|read|prompts|prompt|call|serve]');
+      return usageError('ax mcp [tools|describe|resources|read|prompts|prompt|call|serve|server]');
   }
 }

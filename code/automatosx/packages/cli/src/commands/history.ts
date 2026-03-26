@@ -13,6 +13,8 @@
 
 import type { CLIOptions, CommandResult } from '../types.js';
 import { createRuntime, failure, success } from '../utils/formatters.js';
+import { formatRuntimeGuardSummaryLine } from '../utils/runtime-guard-summary.js';
+import { asOptionalRecord, asStringValue, findUnexpectedFlag } from '../utils/validation.js';
 
 const DEFAULT_LIMIT = 20;
 const MS_PER_SECOND = 1000;
@@ -62,10 +64,17 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
     );
   }
 
+  const unexpectedFlag = findUnexpectedFlag(args);
+  if (unexpectedFlag !== undefined) {
+    return failure(`Unknown history flag: ${unexpectedFlag}.`);
+  }
+  if (args[0] !== undefined) {
+    return failure('Usage: ax history [options]');
+  }
+
   const limit = options.limit ?? DEFAULT_LIMIT;
   const agentFilter = options.agent;
-  const rawOpts = options as unknown as Record<string, unknown>;
-  const statusFilter = rawOpts['status'] as string | undefined;
+  const statusFilter = options.status;
 
   const runtime = createRuntime(options);
   let traces = await runtime.listTraces(limit * 3); // fetch extra for client-side filtering
@@ -73,7 +82,7 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
   if (agentFilter !== undefined) {
     traces = traces.filter((t) =>
       t.workflowId.includes(agentFilter) ||
-      (t.metadata as Record<string, unknown> | undefined)?.['agentId'] === agentFilter,
+      asStringValue(asOptionalRecord(t.metadata)?.['agentId']) === agentFilter,
     );
   }
 
@@ -107,6 +116,10 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
       if (t.error?.message !== undefined) {
         lines.push(`   Error:    ${t.error.message}`);
       }
+      const verboseGuard = formatRuntimeGuardSummaryLine(t.metadata, '   Guard:   ', 108);
+      if (verboseGuard !== undefined) {
+        lines.push(verboseGuard);
+      }
       lines.push('');
     }
   } else {
@@ -122,6 +135,10 @@ export async function historyCommand(args: string[], options: CLIOptions): Promi
       const duration = formatDuration(durationMs).padEnd(8);
       const steps    = String(t.stepResults.length).padEnd(5);
       lines.push(`${status}  ${workflow}  ${started}  ${duration}  ${steps}`);
+      const compactGuard = formatRuntimeGuardSummaryLine(t.metadata, '        guard:', 96);
+      if (compactGuard !== undefined) {
+        lines.push(compactGuard);
+      }
     }
   }
 

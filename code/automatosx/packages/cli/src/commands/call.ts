@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { CLIOptions, CommandResult } from '../types.js';
+import { parseCommandArgs } from '../utils/command-args.js';
 import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
 import { splitCommaList } from '../utils/validation.js';
 
@@ -31,9 +32,11 @@ export async function callCommand(args: string[], options: CLIOptions): Promise<
   const basePath = options.outputDir ?? process.cwd();
   const runtime = createRuntime(options);
   const prompt = await buildPrompt(parsed.prompt, parsed.files);
+  const maxTokens = parsed.maxTokens ?? options.maxTokens;
   if (parsed.autonomous || parsed.goal !== undefined || parsed.intent !== undefined) {
     return runAutonomousCall(runtime, {
       ...parsed,
+      maxTokens,
       prompt,
       basePath,
       options,
@@ -47,7 +50,7 @@ export async function callCommand(args: string[], options: CLIOptions): Promise<
     sessionId: options.sessionId,
     basePath,
     provider: options.provider,
-    maxTokens: parsed.maxTokens,
+    maxTokens,
     temperature: parsed.temperature,
     surface: 'cli',
   });
@@ -70,87 +73,105 @@ export async function callCommand(args: string[], options: CLIOptions): Promise<
 }
 
 function parseCallArgs(args: string[]): ParsedCallArgs {
-  const parsed: ParsedCallArgs = {
-    files: [],
-    autonomous: false,
-    requireReal: false,
-  };
-  const positionals: string[] = [];
+  const parsed = parseCommandArgs<Omit<ParsedCallArgs, 'prompt' | 'error'>>({
+    args,
+    initial: {
+      files: [],
+      systemPrompt: undefined,
+      maxTokens: undefined,
+      temperature: undefined,
+      autonomous: false,
+      requireReal: false,
+      goal: undefined,
+      intent: undefined,
+      maxRounds: undefined,
+    },
+    flags: {
+      files: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.files = splitCommaList(value);
+        },
+      },
+      system: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.systemPrompt = value;
+        },
+      },
+      'max-tokens': {
+        kind: 'string',
+        apply: (state, value) => {
+          const maxTokens = Number.parseInt(value, 10);
+          if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
+            return 'Call max-tokens must be a positive integer.';
+          }
+          state.maxTokens = maxTokens;
+        },
+      },
+      temperature: {
+        kind: 'string',
+        apply: (state, value) => {
+          const temperature = Number.parseFloat(value);
+          if (!Number.isFinite(temperature) || temperature < 0) {
+            return 'Call temperature must be a non-negative number.';
+          }
+          state.temperature = temperature;
+        },
+      },
+      autonomous: {
+        kind: 'boolean',
+        apply: (state) => {
+          state.autonomous = true;
+        },
+      },
+      'require-real': {
+        kind: 'boolean',
+        apply: (state) => {
+          state.requireReal = true;
+        },
+      },
+      goal: {
+        kind: 'string',
+        apply: (state, value) => {
+          state.goal = value;
+        },
+      },
+      intent: {
+        kind: 'string',
+        apply: (state, value) => {
+          if (value !== 'query' && value !== 'analysis' && value !== 'code') {
+            return 'Call intent must be one of: query, analysis, code.';
+          }
+          state.intent = value;
+        },
+      },
+      'max-rounds': {
+        kind: 'string',
+        apply: (state, value) => {
+          const maxRounds = Number.parseInt(value, 10);
+          if (!Number.isFinite(maxRounds) || maxRounds < 1 || maxRounds > 6) {
+            return 'Call max-rounds must be an integer between 1 and 6.';
+          }
+          state.maxRounds = maxRounds;
+        },
+      },
+    },
+    unknownFlagMessage: (token) => `Unknown call flag: ${token}.`,
+  });
 
-  for (let index = 0; index < args.length; index += 1) {
-    const token = args[index];
-    if (token === undefined) {
-      continue;
-    }
-
-    if (!token.startsWith('--')) {
-      positionals.push(token);
-      continue;
-    }
-
-    const name = token.slice(2);
-    if (name === 'autonomous') {
-      parsed.autonomous = true;
-      continue;
-    }
-    if (name === 'require-real') {
-      parsed.requireReal = true;
-      continue;
-    }
-
-    const value = args[index + 1];
-    if (value === undefined || value.startsWith('--')) {
-      return { ...parsed, error: `Missing value for --${name}.` };
-    }
-    index += 1;
-
-    switch (name) {
-      case 'files':
-        parsed.files = splitCommaList(value);
-        break;
-      case 'system':
-        parsed.systemPrompt = value;
-        break;
-      case 'max-tokens': {
-        const maxTokens = Number.parseInt(value, 10);
-        if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
-          return { ...parsed, error: 'Call max-tokens must be a positive integer.' };
-        }
-        parsed.maxTokens = maxTokens;
-        break;
-      }
-      case 'temperature': {
-        const temperature = Number.parseFloat(value);
-        if (!Number.isFinite(temperature) || temperature < 0) {
-          return { ...parsed, error: 'Call temperature must be a non-negative number.' };
-        }
-        parsed.temperature = temperature;
-        break;
-      }
-      case 'goal':
-        parsed.goal = value;
-        break;
-      case 'intent':
-        if (value !== 'query' && value !== 'analysis' && value !== 'code') {
-          return { ...parsed, error: 'Call intent must be one of: query, analysis, code.' };
-        }
-        parsed.intent = value;
-        break;
-      case 'max-rounds': {
-        const maxRounds = Number.parseInt(value, 10);
-        if (!Number.isFinite(maxRounds) || maxRounds < 1 || maxRounds > 6) {
-          return { ...parsed, error: 'Call max-rounds must be an integer between 1 and 6.' };
-        }
-        parsed.maxRounds = maxRounds;
-        break;
-      }
-      default:
-        return { ...parsed, error: `Unknown call flag: --${name}.` };
-    }
+  if (parsed.error !== undefined) {
+    return {
+      ...parsed.value,
+      prompt: parsed.positionals.join(' ').trim(),
+      error: parsed.error,
+    };
   }
 
-  parsed.prompt = positionals.join(' ').trim();
-  return parsed;
+  return {
+    ...parsed.value,
+    prompt: parsed.positionals.join(' ').trim(),
+  };
 }
 
 async function buildPrompt(prompt: string, files: string[]): Promise<string> {

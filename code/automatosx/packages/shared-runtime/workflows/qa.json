@@ -1,0 +1,21 @@
+{
+  "workflowId": "qa",
+  "name": "QA Workflow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "stepId": "validate-target",
+      "type": "prompt",
+      "config": {
+        "prompt": "Interpret target and expected scenarios."
+      }
+    },
+    {
+      "stepId": "capture-findings",
+      "type": "prompt",
+      "config": {
+        "prompt": "Prepare QA findings and reproduction notes."
+      }
+    }
+  ]
+}

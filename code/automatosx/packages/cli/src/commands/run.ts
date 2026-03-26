@@ -1,8 +1,7 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { CommandResult, CLIOptions } from '../types.js';
-import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
 import { parseOptionalJsonInput } from '../utils/validation.js';
+import { resolveEffectiveWorkflowDir } from '../workflow-paths.js';
 
 interface WorkflowStepSummary {
   stepId: string;
@@ -24,6 +23,18 @@ interface WorkflowExecutionSummary {
     code?: string;
     message?: string;
     failedStepId?: string;
+    details?: Record<string, unknown>;
+  };
+  guard?: {
+    summary: string;
+    guardId?: string;
+    failedStepId?: string;
+    failedGates: string[];
+    blockedByRuntimeGovernance: boolean;
+    toolName?: string;
+    trustState?: string;
+    requiredTrustStates?: string[];
+    sourceRef?: string;
   };
   stepResults: WorkflowStepSummary[];
 }
@@ -35,9 +46,13 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
     return usageError('ax run <workflow-id>');
   }
 
-  const workflowDir = options.workflowDir ?? resolveWorkflowDir();
+  const basePath = resolveCliBasePath(options);
+  const workflowDir = resolveEffectiveWorkflowDir({
+    workflowDir: options.workflowDir,
+    basePath,
+  });
   if (workflowDir === undefined) {
-    return failure('No workflow directory found. Create workflows/ or .automatosx/workflows/.');
+    return failure('No workflow directory found. Create workflows/ or .automatosx/workflows/, or use the bundled workflow catalog.');
   }
 
   const workflowInputParse = parseOptionalJsonInput(options.input);
@@ -45,7 +60,6 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
     return failure(`Invalid JSON in --input parameter: ${workflowInputParse.error}`);
   }
 
-  const basePath = options.outputDir ?? process.cwd();
   const runtime = createRuntime(options);
 
   try {
@@ -79,6 +93,7 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
       durationMs: execution.totalDurationMs,
       output: execution.output,
       error: execution.error,
+      guard: execution.guard,
       steps: execution.stepResults.map((stepResult) => ({
         stepId: stepResult.stepId,
         success: stepResult.success,
@@ -92,7 +107,8 @@ export async function runCommand(args: string[], options: CLIOptions): Promise<C
       return success(`Workflow "${workflowId}" completed successfully.${stepSummary}`, data);
     }
 
-    return failure(`Workflow "${workflowId}" failed: ${execution.error?.message ?? 'Unknown error'}.${stepSummary}`, data);
+    const guardSummary = execution.guard?.summary ? `\n\nGuard: ${execution.guard.summary}` : '';
+    return failure(`Workflow "${workflowId}" failed: ${execution.error?.message ?? 'Unknown error'}.${stepSummary}${guardSummary}`, data);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return failure(`Failed to run workflow "${workflowId}": ${message}`);
@@ -142,15 +158,4 @@ async function listWorkflowIds(
   } catch {
     return [];
   }
-}
-
-function resolveWorkflowDir(): string | undefined {
-  const candidateDirs = ['workflows', '.automatosx/workflows', 'examples/workflows'];
-  for (const dir of candidateDirs) {
-    const candidate = join(process.cwd(), dir);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
 }

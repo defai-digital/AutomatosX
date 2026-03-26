@@ -1,5 +1,11 @@
 import type { CLIOptions, CommandResult } from '../types.js';
-import { createRuntime, failure, success, usageError } from '../utils/formatters.js';
+import { createRuntime, failure, resolveCliBasePath, success, usageError } from '../utils/formatters.js';
+import {
+  buildDeniedImportedSkillAggregate,
+  buildRuntimeGovernanceAggregate,
+  formatDeniedImportedSkillSummaryLines,
+  formatRuntimeGuardSummaryLine,
+} from '../utils/runtime-guard-summary.js';
 
 export async function statusCommand(args: string[], options: CLIOptions): Promise<CommandResult> {
   if (args[0] !== undefined) {
@@ -8,8 +14,24 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
       : usageError('ax status');
   }
 
+  const basePath = resolveCliBasePath(options);
   const runtime = createRuntime(options);
   const status = await runtime.getStatus({ limit: options.limit });
+  const deniedImportedSkills = await buildDeniedImportedSkillAggregate(basePath);
+  const governance = buildRuntimeGovernanceAggregate(status.recentFailedTraces, {
+    deniedImportedSkills,
+  });
+  const recentFailedTraces = status.recentFailedTraces.length > 0
+    ? status.recentFailedTraces.flatMap((trace) => {
+      const lines = [`- ${trace.traceId} ${trace.workflowId} ${trace.error?.message ?? 'Unknown error'}`];
+      const guardLine = formatRuntimeGuardSummaryLine(trace.metadata, '  guard:', 104);
+      if (guardLine !== undefined) {
+        lines.push(guardLine);
+      }
+      return lines;
+    })
+    : ['- none'];
+  const deniedImportedSkillLines = formatDeniedImportedSkillSummaryLines(governance.deniedImportedSkills);
 
   return success([
     'AutomatosX Status',
@@ -31,8 +53,12 @@ export async function statusCommand(args: string[], options: CLIOptions): Promis
       : ['- none']),
     '',
     'Recent failed traces:',
-    ...(status.recentFailedTraces.length > 0
-      ? status.recentFailedTraces.map((trace) => `- ${trace.traceId} ${trace.workflowId} ${trace.error?.message ?? 'Unknown error'}`)
-      : ['- none']),
-  ].join('\n'), status);
+    ...recentFailedTraces,
+    '',
+    'Denied imported skills:',
+    ...deniedImportedSkillLines,
+  ].join('\n'), {
+    ...status,
+    governance,
+  });
 }

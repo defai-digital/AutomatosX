@@ -29,12 +29,9 @@ AutomatosX adds **80+ specialized tools** to your AI coding assistant through MC
 # 1. Install AutomatosX
 npm install -g @defai.digital/cli
 
-# 2. Global setup (one-time)
-ax setup
-
-# 3. Initialize your project (registers MCP with your AI CLI)
+# 2. Bootstrap your project
 cd your-project
-ax init
+ax setup
 ```
 
 Now use your AI CLI - it has access to all AutomatosX tools.
@@ -43,7 +40,7 @@ Now use your AI CLI - it has access to all AutomatosX tools.
 
 ## Using AutomatosX with Your AI CLI
 
-After running `ax init`, your AI assistant gains access to 80+ new tools. Here's how to use them:
+After running `ax setup`, your AI assistant gains access to 80+ new tools. Here's how to use them:
 
 ### With Claude Code
 
@@ -143,9 +140,9 @@ Guard check passed: All changes within policy boundaries.
 
 ### With Cursor IDE
 
-Cursor IDE automatically detects the `.cursor/mcp.json` config created by `ax init`.
+Cursor IDE automatically detects the `.cursor/mcp.json` config created by `ax setup`.
 
-1. Run `ax init` in your project
+1. Run `ax setup` in your project
 2. Open the project in Cursor
 3. Use AutomatosX tools in Cursor's AI chat
 
@@ -431,8 +428,7 @@ Result:
 
 ```bash
 # System
-ax setup                    # Global setup (one-time)
-ax init                     # Project initialization (per-project)
+ax setup                    # Project bootstrap: workspace + MCP integration
 ax doctor                   # Check provider health
 ax status                   # Runtime status
 ax monitor                  # Launch web dashboard
@@ -460,8 +456,8 @@ ax guard check --policy bugfix --changed-paths src/
 ax run <workflow-id>
 ax ship --scope <area>
 ax architect --request "<requirement>"
-ax audit --scope <path>
-ax qa --target <service> --url <url>
+ax audit --scope <path-or-area>
+ax qa --target <service-or-feature> --url <url>
 ax release --release-version <version>
 
 # Traces
@@ -472,7 +468,7 @@ ax trace tree <trace-id>
 # Other
 ax ability list
 ax feedback submit
-ax iterate <command> --max-rounds 3
+ax iterate <command> --max-iterations 3
 ax resume <trace-id>
 ax history
 ax scaffold contract
@@ -520,14 +516,13 @@ Install at least one AI provider CLI:
 | [Cursor](https://cursor.com/) | `.cursor/mcp.json` (per-project) |
 | [Antigravity](https://antigravity.google) | `~/.gemini/antigravity/mcp_config.json` (global) |
 
-`ax init` automatically configures MCP for all detected providers and IDEs.
+`ax setup` automatically configures MCP for all detected providers and IDEs.
 
 ---
 
-## Setup vs Init
+## Setup
 
-- **`ax setup`** — Global, one-time setup. Detects installed provider CLIs, creates global config at `~/.automatosx/`.
-- **`ax init`** — Per-project initialization. Creates `.automatosx/` in current directory, registers MCP server with all detected providers and IDEs.
+- **`ax setup`** — Project bootstrap. Detects installed provider CLIs, creates `.automatosx/` in the current directory, writes `AGENTS.md`, and registers the MCP server with detected providers and IDEs.
 
 ---
 

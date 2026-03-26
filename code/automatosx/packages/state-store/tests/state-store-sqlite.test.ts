@@ -1,7 +1,8 @@
 import { mkdirSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { migrateJsonToSqlite } from '../src/migrate.js';
 import { SqliteStateStore } from '../src/sqlite.js';
 
 function createTempDir(): string {
@@ -201,6 +202,31 @@ describe('SqliteStateStore', () => {
     expect((await s.getSession('stuck-1'))?.error?.message).toBe('Auto-closed as stuck session');
   });
 
+  it('lists sessions by status with newest entries first', async () => {
+    const dir = createTempDir(); tempDirs.push(dir);
+    const s = store(dir);
+    await s.createSession({ sessionId: 'active-old', task: 'Old active task', initiator: 'arch' });
+    await s.createSession({ sessionId: 'active-new', task: 'New active task', initiator: 'arch' });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await s.joinSession({ sessionId: 'active-new', agentId: 'qa', role: 'collaborator' });
+    await s.createSession({ sessionId: 'failed-one', task: 'Failed task', initiator: 'arch' });
+    await s.failSession('failed-one', 'boom');
+
+    await expect(s.listSessionsByStatus('active')).resolves.toMatchObject([
+      { sessionId: 'active-new', status: 'active' },
+      { sessionId: 'active-old', status: 'active' },
+    ]);
+    await expect(s.getSessionStatusCounts()).resolves.toMatchObject({
+      total: 3,
+      active: 2,
+      completed: 0,
+      failed: 1,
+    });
+    await expect(s.countSessions()).resolves.toBe(3);
+    await expect(s.countSessions('active')).resolves.toBe(2);
+    await expect(s.countSessions('failed')).resolves.toBe(1);
+  });
+
   it('prevents joining a completed session', async () => {
     const dir = createTempDir(); tempDirs.push(dir);
     const s = store(dir);
@@ -225,5 +251,17 @@ describe('SqliteStateStore', () => {
     });
     expect(await s.getMemory('migrated-key', 'import')).toMatchObject({ key: 'migrated-key' });
     expect(await s.getAgent('imported-agent')).toMatchObject({ agentId: 'imported-agent' });
+  });
+
+  it('skips migration when state.json is valid JSON but not an object', async () => {
+    const dir = createTempDir(); tempDirs.push(dir);
+    const stateFile = join(dir, '.automatosx', 'runtime', 'state.json');
+    mkdirSync(join(dir, '.automatosx', 'runtime'), { recursive: true });
+    await writeFile(stateFile, '["not-an-object"]', 'utf8');
+
+    await expect(migrateJsonToSqlite({ basePath: dir })).resolves.toMatchObject({
+      skipped: true,
+      reason: 'state.json is not valid JSON — skipping migration.',
+    });
   });
 });

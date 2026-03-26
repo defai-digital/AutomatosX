@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { z } from 'zod';
 import { createSqliteStateStore } from './sqlite.js';
 
 export interface MemoryEntry {
@@ -91,6 +92,13 @@ export interface SessionEntry {
   updatedAt: string;
 }
 
+export interface SessionStatusCounts {
+  total: number;
+  active: number;
+  completed: number;
+  failed: number;
+}
+
 export interface StateStore {
   storeMemory(entry: { key: string; namespace?: string; value: unknown }): Promise<MemoryEntry>;
   getMemory(key: string, namespace?: string): Promise<MemoryEntry | undefined>;
@@ -128,6 +136,9 @@ export interface StateStore {
   createSession(entry: { sessionId?: string; task: string; initiator: string; workspace?: string; metadata?: Record<string, unknown> }): Promise<SessionEntry>;
   getSession(sessionId: string): Promise<SessionEntry | undefined>;
   listSessions(): Promise<SessionEntry[]>;
+  getSessionStatusCounts(): Promise<SessionStatusCounts>;
+  countSessions(status?: SessionStatus): Promise<number>;
+  listSessionsByStatus(status: SessionStatus, limit?: number): Promise<SessionEntry[]>;
   joinSession(entry: { sessionId: string; agentId: string; role?: SessionParticipantRole }): Promise<SessionEntry>;
   leaveSession(sessionId: string, agentId: string): Promise<SessionEntry>;
   completeSession(sessionId: string, summary?: string): Promise<SessionEntry>;
@@ -156,6 +167,15 @@ const stateStoreQueues = new Map<string, Promise<void>>();
 const LOCK_WAIT_TIMEOUT_MS = 5_000;
 const LOCK_STALE_AFTER_MS = 60_000;
 const LOCK_RETRY_DELAY_MS = 10;
+const stateStoreArraySchema = z.array(z.unknown());
+const stateStoreFileSchema = z.object({
+  memory: stateStoreArraySchema.optional(),
+  policies: stateStoreArraySchema.optional(),
+  agents: stateStoreArraySchema.optional(),
+  semantic: stateStoreArraySchema.optional(),
+  feedback: stateStoreArraySchema.optional(),
+  sessions: stateStoreArraySchema.optional(),
+});
 
 export class FileStateStore implements StateStore {
   private readonly storageFile: string;
@@ -518,6 +538,32 @@ export class FileStateStore implements StateStore {
     return [...data.sessions].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }
 
+  async getSessionStatusCounts(): Promise<SessionStatusCounts> {
+    const data = await this.readConsistentData();
+    return {
+      total: data.sessions.length,
+      active: data.sessions.filter((session) => session.status === 'active').length,
+      completed: data.sessions.filter((session) => session.status === 'completed').length,
+      failed: data.sessions.filter((session) => session.status === 'failed').length,
+    };
+  }
+
+  async countSessions(status?: SessionStatus): Promise<number> {
+    const data = await this.readConsistentData();
+    if (status === undefined) {
+      return data.sessions.length;
+    }
+    return data.sessions.filter((session) => session.status === status).length;
+  }
+
+  async listSessionsByStatus(status: SessionStatus, limit?: number): Promise<SessionEntry[]> {
+    const data = await this.readConsistentData();
+    const filtered = data.sessions
+      .filter((session) => session.status === status)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    return limit === undefined ? filtered : filtered.slice(0, limit);
+  }
+
   async joinSession(entry: { sessionId: string; agentId: string; role?: SessionParticipantRole }): Promise<SessionEntry> {
     return this.withMutation(async (data) => {
       const session = requireSession(data, entry.sessionId);
@@ -616,14 +662,18 @@ export class FileStateStore implements StateStore {
   private async readData(): Promise<StateStoreFile> {
     try {
       const raw = await readFile(this.storageFile, 'utf8');
-      const parsed = JSON.parse(raw) as Partial<StateStoreFile>;
+      const result = stateStoreFileSchema.safeParse(JSON.parse(raw));
+      if (!result.success) {
+        return emptyStateStoreFile();
+      }
+      const parsed = result.data;
       return {
-        memory: Array.isArray(parsed.memory) ? parsed.memory : [],
-        policies: Array.isArray(parsed.policies) ? parsed.policies : [],
-        agents: Array.isArray(parsed.agents) ? parsed.agents : [],
-        semantic: Array.isArray(parsed.semantic) ? parsed.semantic : [],
-        feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
-        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+        memory: Array.isArray(parsed.memory) ? parsed.memory as MemoryEntry[] : [],
+        policies: Array.isArray(parsed.policies) ? parsed.policies as PolicyEntry[] : [],
+        agents: Array.isArray(parsed.agents) ? parsed.agents as AgentEntry[] : [],
+        semantic: Array.isArray(parsed.semantic) ? parsed.semantic as SemanticEntry[] : [],
+        feedback: Array.isArray(parsed.feedback) ? parsed.feedback as FeedbackEntry[] : [],
+        sessions: Array.isArray(parsed.sessions) ? parsed.sessions as SessionEntry[] : [],
       };
     } catch {
       return {
@@ -645,9 +695,13 @@ export class FileStateStore implements StateStore {
   }
 }
 
+export function createLegacyJsonStateStore(config?: FileStateStoreConfig): StateStore {
+  return new FileStateStore(config);
+}
+
 export function createStateStore(config?: FileStateStoreConfig): StateStore {
   if (config?.backend === 'json') {
-    return new FileStateStore(config);
+    return createLegacyJsonStateStore(config);
   }
   return createSqliteStateStore({
     basePath: config?.basePath,
@@ -666,6 +720,17 @@ function requireSession(data: StateStoreFile, sessionId: string): SessionEntry {
     throw new Error(`Session not found: ${sessionId}`);
   }
   return session;
+}
+
+function emptyStateStoreFile(): StateStoreFile {
+  return {
+    memory: [],
+    policies: [],
+    agents: [],
+    semantic: [],
+    feedback: [],
+    sessions: [],
+  };
 }
 
 function ensureActiveSession(session: SessionEntry): void {

@@ -4,6 +4,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { SqliteTraceStore } from './sqlite.js';
 import type { TraceRecord } from './index.js';
 
@@ -20,6 +21,8 @@ export interface TraceMigrationResult {
 }
 
 const DEFAULT_TRACE_JSON = join('.automatosx', 'runtime', 'traces.json');
+const traceMigrationRootSchema = z.record(z.string(), z.unknown());
+const traceRecordArraySchema = z.array(z.unknown());
 
 export async function migrateTraceJsonToSqlite(options: MigrateTraceJsonToSqliteOptions = {}): Promise<TraceMigrationResult> {
   const basePath = options.basePath ?? process.cwd();
@@ -34,12 +37,17 @@ export async function migrateTraceJsonToSqlite(options: MigrateTraceJsonToSqlite
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result = traceMigrationRootSchema.safeParse(JSON.parse(raw));
+    if (!result.success) {
+      return { traces: 0, skipped: true, reason: 'traces.json is not valid JSON — skipping migration.' };
+    }
+    parsed = result.data;
   } catch {
     return { traces: 0, skipped: true, reason: 'traces.json is not valid JSON — skipping migration.' };
   }
 
-  const records: TraceRecord[] = Array.isArray(parsed['traces']) ? parsed['traces'] as TraceRecord[] : [];
+  const recordsResult = traceRecordArraySchema.safeParse(parsed['traces']);
+  const records = recordsResult.success ? recordsResult.data as TraceRecord[] : [];
 
   const store = new SqliteTraceStore({ basePath, dbFile: options.dbFile });
   await store.importFromJson(records);

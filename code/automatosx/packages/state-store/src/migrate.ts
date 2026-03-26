@@ -8,6 +8,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { SqliteStateStore } from './sqlite.js';
 
 export interface MigrateJsonToSqliteOptions {
@@ -30,6 +31,8 @@ export interface MigrationResult {
 }
 
 const DEFAULT_STATE_JSON = join('.automatosx', 'runtime', 'state.json');
+const migrationRootSchema = z.record(z.string(), z.unknown());
+const migrationArraySchema = z.array(z.unknown());
 
 export async function migrateJsonToSqlite(options: MigrateJsonToSqliteOptions = {}): Promise<MigrationResult> {
   const basePath = options.basePath ?? process.cwd();
@@ -44,17 +47,21 @@ export async function migrateJsonToSqlite(options: MigrateJsonToSqliteOptions = 
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result = migrationRootSchema.safeParse(JSON.parse(raw));
+    if (!result.success) {
+      return { memory: 0, policies: 0, agents: 0, semantic: 0, feedback: 0, sessions: 0, skipped: true, reason: 'state.json is not valid JSON — skipping migration.' };
+    }
+    parsed = result.data;
   } catch {
     return { memory: 0, policies: 0, agents: 0, semantic: 0, feedback: 0, sessions: 0, skipped: true, reason: 'state.json is not valid JSON — skipping migration.' };
   }
 
-  const memory   = Array.isArray(parsed['memory'])   ? parsed['memory']   as never[]   : [];
-  const policies = Array.isArray(parsed['policies']) ? parsed['policies'] as never[]   : [];
-  const agents   = Array.isArray(parsed['agents'])   ? parsed['agents']   as never[]   : [];
-  const semantic = Array.isArray(parsed['semantic']) ? parsed['semantic'] as never[]   : [];
-  const feedback = Array.isArray(parsed['feedback']) ? parsed['feedback'] as never[]   : [];
-  const sessions = Array.isArray(parsed['sessions']) ? parsed['sessions'] as never[]   : [];
+  const memory = parseMigrationArray(parsed['memory']);
+  const policies = parseMigrationArray(parsed['policies']);
+  const agents = parseMigrationArray(parsed['agents']);
+  const semantic = parseMigrationArray(parsed['semantic']);
+  const feedback = parseMigrationArray(parsed['feedback']);
+  const sessions = parseMigrationArray(parsed['sessions']);
 
   const store = new SqliteStateStore({ basePath, dbFile: options.dbFile });
   await store.importFromJson({ memory, policies, agents, semantic, feedback, sessions });
@@ -69,4 +76,9 @@ export async function migrateJsonToSqlite(options: MigrateJsonToSqliteOptions = 
     sessions: sessions.length,
     skipped: false,
   };
+}
+
+function parseMigrationArray(value: unknown): never[] {
+  const result = migrationArraySchema.safeParse(value);
+  return result.success ? result.data as never[] : [];
 }

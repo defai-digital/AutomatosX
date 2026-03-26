@@ -1,10 +1,10 @@
 import { mkdirSync } from 'node:fs';
-import { rm, stat } from 'node:fs/promises';
+import { rm, stat, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createStateStore } from '../src/index.js';
+import { createLegacyJsonStateStore, createStateStore } from '../src/index.js';
 import { ensurePackageBuilt } from '../../../tests/support/ensure-built.js';
 
 const execFileAsync = promisify(execFile);
@@ -76,6 +76,30 @@ describe('state store', () => {
     expect(memory).toHaveLength(1);
     expect(policies).toHaveLength(1);
     expect(agents.map((agent) => agent.agentId)).toEqual(['qa', 'release']);
+  });
+
+  it('exposes an explicit legacy json state store constructor', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const store = createLegacyJsonStateStore({ basePath: tempDir });
+    await store.registerPolicy({ policyId: 'compat-policy', name: 'Compatibility Policy' });
+
+    await expect(store.listPolicies()).resolves.toMatchObject([
+      { policyId: 'compat-policy' },
+    ]);
+  });
+
+  it('treats malformed legacy json state files as empty data', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    mkdirSync(join(tempDir, '.automatosx', 'runtime'), { recursive: true });
+    await writeFile(join(tempDir, '.automatosx', 'runtime', 'state.json'), '["invalid"]', 'utf8');
+    const store = createLegacyJsonStateStore({ basePath: tempDir });
+
+    await expect(store.listPolicies()).resolves.toEqual([]);
+    await expect(store.listAgents()).resolves.toEqual([]);
   });
 
   it('preserves writes across concurrent node processes', async () => {
@@ -300,5 +324,50 @@ describe('state store', () => {
         message: 'Auto-closed as stuck session',
       },
     });
+  });
+
+  it('lists sessions by status without requiring caller-side filtering', async () => {
+    const tempDir = createTempDir();
+    tempDirs.push(tempDir);
+
+    const store = createStateStore({ basePath: tempDir });
+    await store.createSession({
+      sessionId: 'session-active-old',
+      task: 'Old active task',
+      initiator: 'architect',
+    });
+    await store.createSession({
+      sessionId: 'session-active-new',
+      task: 'New active task',
+      initiator: 'architect',
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await store.joinSession({
+      sessionId: 'session-active-new',
+      agentId: 'qa',
+      role: 'collaborator',
+    });
+    await store.createSession({
+      sessionId: 'session-complete',
+      task: 'Completed task',
+      initiator: 'architect',
+    });
+    await store.completeSession('session-complete', 'Done');
+
+    await expect(store.listSessionsByStatus('active', 1)).resolves.toMatchObject([
+      {
+        sessionId: 'session-active-new',
+        status: 'active',
+      },
+    ]);
+    await expect(store.getSessionStatusCounts()).resolves.toMatchObject({
+      total: 3,
+      active: 2,
+      completed: 1,
+      failed: 0,
+    });
+    await expect(store.countSessions()).resolves.toBe(3);
+    await expect(store.countSessions('active')).resolves.toBe(2);
+    await expect(store.countSessions('completed')).resolves.toBe(1);
   });
 });

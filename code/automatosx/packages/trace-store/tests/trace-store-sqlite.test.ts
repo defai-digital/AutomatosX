@@ -1,7 +1,8 @@
 import { mkdirSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { migrateTraceJsonToSqlite } from '../src/migrate.js';
 import { SqliteTraceStore } from '../src/sqlite.js';
 import type { TraceRecord } from '../src/index.js';
 
@@ -103,13 +104,75 @@ describe('SqliteTraceStore', () => {
   it('listTracesBySession returns only matching traces', async () => {
     const dir = createTempDir(); tempDirs.push(dir);
     const s = store(dir);
-    await s.upsertTrace(makeTrace('s1', { metadata: { sessionId: 'sess-abc' } }));
-    await s.upsertTrace(makeTrace('s2', { metadata: { sessionId: 'sess-abc' } }));
+    await s.upsertTrace(makeTrace('s1', {
+      startedAt: '2026-03-21T00:00:00.000Z',
+      metadata: { sessionId: 'sess-abc' },
+    }));
+    await s.upsertTrace(makeTrace('s2', {
+      startedAt: '2026-03-22T00:00:00.000Z',
+      metadata: { sessionId: 'sess-abc' },
+    }));
     await s.upsertTrace(makeTrace('s3', { metadata: { sessionId: 'sess-xyz' } }));
 
-    const results = s.listTracesBySession('sess-abc');
+    const results = await s.listTracesBySession('sess-abc');
     expect(results).toHaveLength(2);
-    expect(results.map((r) => r.traceId).sort()).toEqual(['s1', 's2']);
+    expect(results.map((r) => r.traceId)).toEqual(['s2', 's1']);
+  });
+
+  it('listTracesByWorkflow returns only matching traces in descending startedAt order', async () => {
+    const dir = createTempDir(); tempDirs.push(dir);
+    const s = store(dir);
+    await s.upsertTrace(makeTrace('review-old', {
+      startedAt: '2026-03-21T00:00:00.000Z',
+      workflowId: 'review',
+    }));
+    await s.upsertTrace(makeTrace('review-new', {
+      startedAt: '2026-03-22T00:00:00.000Z',
+      workflowId: 'review',
+    }));
+    await s.upsertTrace(makeTrace('ship-trace', {
+      startedAt: '2026-03-23T00:00:00.000Z',
+      workflowId: 'ship',
+    }));
+
+    await expect(s.listTracesByWorkflow('review')).resolves.toMatchObject([
+      { traceId: 'review-new', workflowId: 'review' },
+      { traceId: 'review-old', workflowId: 'review' },
+    ]);
+  });
+
+  it('listTracesByStatus returns only matching traces in descending startedAt order', async () => {
+    const dir = createTempDir(); tempDirs.push(dir);
+    const s = store(dir);
+    await s.upsertTrace(makeTrace('failed-old', {
+      startedAt: '2026-03-21T00:00:00.000Z',
+      status: 'failed',
+      error: { message: 'old failure' },
+    }));
+    await s.upsertTrace(makeTrace('failed-new', {
+      startedAt: '2026-03-22T00:00:00.000Z',
+      status: 'failed',
+      error: { message: 'new failure' },
+    }));
+    await s.upsertTrace(makeTrace('running-trace', {
+      startedAt: '2026-03-23T00:00:00.000Z',
+      status: 'running',
+      completedAt: undefined,
+    }));
+
+    await expect(s.listTracesByStatus('failed')).resolves.toMatchObject([
+      { traceId: 'failed-new', status: 'failed' },
+      { traceId: 'failed-old', status: 'failed' },
+    ]);
+    await expect(s.getTraceStatusCounts()).resolves.toMatchObject({
+      total: 3,
+      running: 1,
+      completed: 0,
+      failed: 2,
+    });
+    await expect(s.countTraces()).resolves.toBe(3);
+    await expect(s.countTraces('failed')).resolves.toBe(2);
+    await expect(s.countTraces('running')).resolves.toBe(1);
   });
 
   it('listChildTraces returns direct children by parent_trace_id', async () => {
@@ -129,17 +192,30 @@ describe('SqliteTraceStore', () => {
     const s = store(dir);
     await s.upsertTrace(makeTrace('root'));
     await s.upsertTrace(makeTrace('child', { metadata: { parentTraceId: 'root' } }));
+    await s.upsertTrace(makeTrace('grandchild', { metadata: { parentTraceId: 'child', rootTraceId: 'root' } }));
 
-    const tree = s.getTraceTree('root');
+    const tree = await s.getTraceTree('grandchild');
     expect(tree?.trace.traceId).toBe('root');
-    // child may or may not appear depending on metadata propagation — at minimum root exists
-    expect(tree).toBeDefined();
+    expect(tree?.children).toMatchObject([
+      {
+        trace: {
+          traceId: 'child',
+        },
+        children: [
+          {
+            trace: {
+              traceId: 'grandchild',
+            },
+          },
+        ],
+      },
+    ]);
   });
 
-  it('getTraceTree returns undefined for missing trace', () => {
+  it('getTraceTree returns undefined for missing trace', async () => {
     const dir = createTempDir(); tempDirs.push(dir);
     const s = store(dir);
-    expect(s.getTraceTree('nonexistent')).toBeUndefined();
+    await expect(s.getTraceTree('nonexistent')).resolves.toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
@@ -175,6 +251,18 @@ describe('SqliteTraceStore', () => {
 
     await expect(s.importFromJson(records)).rejects.toThrow();
     await expect(s.listTraces()).resolves.toEqual([]);
+  });
+
+  it('skips migration when traces.json is valid JSON but not an object', async () => {
+    const dir = createTempDir(); tempDirs.push(dir);
+    const traceFile = join(dir, '.automatosx', 'runtime', 'traces.json');
+    mkdirSync(join(dir, '.automatosx', 'runtime'), { recursive: true });
+    await writeFile(traceFile, '["not-an-object"]', 'utf8');
+
+    await expect(migrateTraceJsonToSqlite({ basePath: dir })).resolves.toMatchObject({
+      skipped: true,
+      reason: 'traces.json is not valid JSON — skipping migration.',
+    });
   });
 
   // -------------------------------------------------------------------------

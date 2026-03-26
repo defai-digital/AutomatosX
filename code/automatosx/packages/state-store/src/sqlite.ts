@@ -4,7 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from './node-sqlite.js';
 import type {
   StateStore,
   MemoryEntry,
@@ -18,6 +18,7 @@ import type {
   SessionParticipant,
   SessionParticipantRole,
   SessionStatus,
+  SessionStatusCounts,
 } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,10 @@ function normalizeTags(tags: string[] | undefined): string[] {
   return Array.from(
     new Set((tags ?? []).map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0)),
   ).sort();
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[%_\\]/g, '\\$&');
 }
 
 function normalizeRating(rating: number | undefined): number | undefined {
@@ -115,7 +120,7 @@ function withJournalModeRetry<T>(operation: () => T): T {
 }
 
 export class SqliteStateStore implements StateStore {
-  private readonly db: DatabaseSync;
+  private readonly db: InstanceType<typeof DatabaseSync>;
 
   constructor(config: SqliteStateStoreConfig = {}) {
     const dbFile = config.dbFile ?? join(config.basePath ?? process.cwd(), DEFAULT_DB_FILE);
@@ -301,7 +306,7 @@ export class SqliteStateStore implements StateStore {
   async registerAgent(entry: { agentId: string; name: string; capabilities?: string[]; metadata?: Record<string, unknown> }): Promise<AgentEntry> {
     const capabilities = Array.from(new Set((entry.capabilities ?? []).map((c) => c.trim()).filter(Boolean))).sort();
     const metadata = entry.metadata;
-    const sortedMeta = metadata ? JSON.parse(JSON.stringify(metadata, Object.keys(metadata).sort())) as Record<string, unknown> : undefined;
+    const sortedMeta = metadata ? deepSortRecord(metadata) : undefined;
     const registrationKey = JSON.stringify({ agentId: entry.agentId, name: entry.name, capabilities, metadata: sortedMeta });
     const now = new Date().toISOString();
 
@@ -374,7 +379,7 @@ export class SqliteStateStore implements StateStore {
     let sql = `SELECT key, namespace, content, token_freq, tags, metadata, updated_at FROM semantic_items WHERE 1=1`;
     const params: SqlParameter[] = [];
     if (options.namespace !== undefined) { sql += ` AND namespace = ?`; params.push(options.namespace); }
-    for (const tag of filterTags) { sql += ` AND (',' || tags || ',') LIKE ?`; params.push(`%,${tag},%`); }
+    for (const tag of filterTags) { sql += ` AND (',' || tags || ',') LIKE ? ESCAPE '\\'`; params.push(`%,${escapeLikePattern(tag)},%`); }
 
     const rows = asRows<SemRow>(this.db.prepare(sql).all(...params));
     const ranked = rows
@@ -399,8 +404,8 @@ export class SqliteStateStore implements StateStore {
     let sql = `SELECT key, namespace, content, token_freq, tags, metadata, updated_at FROM semantic_items WHERE 1=1`;
     const params: SqlParameter[] = [];
     if (options.namespace !== undefined) { sql += ` AND namespace = ?`; params.push(options.namespace); }
-    if (options.keyPrefix !== undefined) { sql += ` AND key LIKE ?`; params.push(`${options.keyPrefix}%`); }
-    for (const tag of filterTags) { sql += ` AND (',' || tags || ',') LIKE ?`; params.push(`%,${tag},%`); }
+    if (options.keyPrefix !== undefined) { sql += ` AND key LIKE ? ESCAPE '\\'`; params.push(`${escapeLikePattern(options.keyPrefix)}%`); }
+    for (const tag of filterTags) { sql += ` AND (',' || tags || ',') LIKE ? ESCAPE '\\'`; params.push(`%,${escapeLikePattern(tag)},%`); }
     sql += ` ORDER BY updated_at DESC`;
     if (options.limit !== undefined) { sql += ` LIMIT ?`; params.push(Math.max(0, options.limit)); }
 
@@ -519,6 +524,47 @@ export class SqliteStateStore implements StateStore {
     return asRows<SessRow>(this.db.prepare(`SELECT * FROM sessions ORDER BY updated_at DESC`).all()).map(rowToSession);
   }
 
+  async getSessionStatusCounts(): Promise<SessionStatusCounts> {
+    const row = asRow<{
+      total: number;
+      active: number;
+      completed: number;
+      failed: number;
+    }>(this.db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+      FROM sessions
+    `).get());
+
+    return {
+      total: row?.total ?? 0,
+      active: row?.active ?? 0,
+      completed: row?.completed ?? 0,
+      failed: row?.failed ?? 0,
+    };
+  }
+
+  async countSessions(status?: SessionStatus): Promise<number> {
+    const row = status !== undefined
+      ? asRow<{ count: number }>(this.db.prepare(`SELECT COUNT(*) as count FROM sessions WHERE status = ?`).get(status))
+      : asRow<{ count: number }>(this.db.prepare(`SELECT COUNT(*) as count FROM sessions`).get());
+    return row?.count ?? 0;
+  }
+
+  async listSessionsByStatus(status: SessionStatus, limit?: number): Promise<SessionEntry[]> {
+    const rows = limit !== undefined
+      ? asRows<SessRow>(
+        this.db.prepare(`SELECT * FROM sessions WHERE status = ? ORDER BY updated_at DESC LIMIT ?`).all(status, limit),
+      )
+      : asRows<SessRow>(
+        this.db.prepare(`SELECT * FROM sessions WHERE status = ? ORDER BY updated_at DESC`).all(status),
+      );
+    return rows.map(rowToSession);
+  }
+
   async joinSession(entry: { sessionId: string; agentId: string; role?: SessionParticipantRole }): Promise<SessionEntry> {
     return this.mutateSession(entry.sessionId, (s) => {
       ensureActiveSession(s);
@@ -560,17 +606,28 @@ export class SqliteStateStore implements StateStore {
   async closeStuckSessions(maxAgeMs = 86_400_000): Promise<SessionEntry[]> {
     const threshold = new Date(Date.now() - maxAgeMs).toISOString();
     const now = new Date().toISOString();
-    const stuckRows = asRows<SessRow>(
-      this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND updated_at <= ?`).all(threshold),
-    );
-    const closed: SessionEntry[] = [];
-    for (const row of stuckRows) {
-      this.db.prepare(`UPDATE sessions SET status = 'failed', error_msg = ?, updated_at = ? WHERE session_id = ?`)
-        .run('Auto-closed as stuck session', now, row.session_id);
-      const updated = await this.getSession(row.session_id);
-      if (updated) closed.push(updated);
+
+    this.db.exec('BEGIN');
+    try {
+      const stuckRows = asRows<SessRow>(
+        this.db.prepare(`SELECT * FROM sessions WHERE status = 'active' AND updated_at <= ?`).all(threshold),
+      );
+      const update = this.db.prepare(`UPDATE sessions SET status = 'failed', error_msg = ?, updated_at = ? WHERE session_id = ?`);
+      for (const row of stuckRows) {
+        update.run('Auto-closed as stuck session', now, row.session_id);
+      }
+      this.db.exec('COMMIT');
+
+      const closed: SessionEntry[] = [];
+      for (const row of stuckRows) {
+        const updated = await this.getSession(row.session_id);
+        if (updated) closed.push(updated);
+      }
+      return closed;
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
     }
-    return closed;
   }
 
   private mutateSession(sessionId: string, mutate: (s: SessionEntry) => SessionEntry): SessionEntry {
@@ -657,6 +714,24 @@ function rowToSession(r: SessRow): SessionEntry {
 
 function ensureActiveSession(s: SessionEntry): void {
   if (s.status !== 'active') throw new Error(`Session "${s.sessionId}" is not active`);
+}
+
+function deepSortRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => [key, deepSortValue(value)]),
+  );
+}
+
+function deepSortValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => deepSortValue(entry));
+  }
+  if (value !== null && typeof value === 'object') {
+    return deepSortRecord(value as Record<string, unknown>);
+  }
+  return value;
 }
 
 // ---------------------------------------------------------------------------

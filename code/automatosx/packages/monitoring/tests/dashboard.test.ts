@@ -66,7 +66,7 @@ describe('dashboard service', () => {
     expect(cliResult.success).toBe(true);
 
     const mcp = createMcpServerSurface({ basePath: tempDir });
-    const mcpResult = await mcp.invokeTool('workflow.run', {
+    const mcpResult = await mcp.invokeTool('workflow_run', {
       workflowId: 'release',
       workflowDir: join(process.cwd(), 'workflows'),
       traceId: 'mcp-trace-001',
